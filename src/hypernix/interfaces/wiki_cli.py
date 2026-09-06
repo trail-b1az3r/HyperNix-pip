@@ -249,7 +249,7 @@ def _show_toc(console: Console) -> None:
 
 def _open_in_browser(module_name: str | None) -> None:
     """Open the wiki page for a module in the browser."""
-    base_url = "https://github.com/minerofthesoal/HyperNix-pip/wiki"
+    base_url = "https://github.com/trail-b1az3r/HyperNix-pip/wiki"
     if module_name:
         page_map = {
             "pressure_cooker_v6": "Pressure-Cooker-V6",

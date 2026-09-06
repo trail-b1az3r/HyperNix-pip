@@ -2996,7 +2996,7 @@ the original ``ray0rf1re/hyper-nix.1`` (still fully supported).
 
 🐛 **PyPI logo broken-image fix (carried over from 0.51.1.2).**  The 0.51.1 / 0.51.1.1
 README pointed at
-``https://raw.githubusercontent.com/minerofthesoal/hypernix-pip/main/assets/logo.png``
+``https://raw.githubusercontent.com/trail-b1az3r/hypernix-pip/main/assets/logo.png``
 but that path returns 404 — the logo file is on the
 ``claude/pytorch-quantization-package-cJMQp`` working branch
 and hasn't been merged to ``main`` yet, so the PyPI project page

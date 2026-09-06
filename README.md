@@ -1,12 +1,12 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/minerofthesoal/hypernix-pip/2d5eb37/assets/logo1.png" alt="hypernix logo" width="240" />
+  <img src="https://raw.githubusercontent.com/trail-b1az3r/hypernix-pip/2d5eb37/assets/logo1.png" alt="hypernix logo" width="240" />
 </p>
 
 # hypernix
 
 [![PyPI](https://img.shields.io/pypi/v/hypernix.svg)](https://pypi.org/project/hypernix/)
 [![Python](https://img.shields.io/pypi/pyversions/hypernix.svg)](https://pypi.org/project/hypernix/)
-[![License](https://img.shields.io/pypi/l/hypernix.svg)](https://github.com/minerofthesoal/hypernix-pip/blob/main/LICENSE)
+[![License](https://img.shields.io/pypi/l/hypernix.svg)](https://github.com/trail-b1az3r/hypernix-pip/blob/main/LICENSE)
 
 **End-to-end toolkit for training ai models on modern or old devices, originaly for converting hypernix.1 into gguf, now for all around training**
 

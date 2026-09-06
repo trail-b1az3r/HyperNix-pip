@@ -26,7 +26,7 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
           # 2. Clone the wiki repository into a temporary folder
-          # The ${{ github.repository }} variable automatically injects "minerofthesoal/HyperNix-pip"
+          # The ${{ github.repository }} variable automatically injects "trail-b1az3r/HyperNix-pip"
           git clone "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.wiki.git" wiki-tmp
 
           # 3. Sync files from your main repo's wiki/ folder to the cloned wiki repo

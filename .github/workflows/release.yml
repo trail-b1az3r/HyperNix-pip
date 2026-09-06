@@ -209,7 +209,7 @@ jobs:
   # Publish stable tags to real PyPI via trusted publishing (OIDC).
   # Requires configuring the PyPI project with:
   #   publisher = GitHub
-  #   repo      = minerofthesoal/hypernix-pip
+  #   repo      = trail-b1az3r/hypernix-pip
   #   workflow  = release.yml
   #   environment = pypi
   # ---------------------------------------------------------------------------

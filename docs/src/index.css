@@ -4,10 +4,6 @@
 @import '@fontsource/jetbrains-mono/500.css';
 @import '@fontsource/jetbrains-mono/700.css';
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
 :root {
   --font-sans: 'Inter Variable', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', Consolas, monospace;
@@ -16,6 +12,34 @@
   --space-section: clamp(48px, 6.5vw, 88px);
   --space-gutter: clamp(16px, 4vw, 24px);
   --measure: 62ch;
+
+  /* ── Color system ────────────────────────────────────────────────
+     Every surface/border/text color used across the site resolves to
+     one of these. Change a value here and it updates everywhere —
+     that's the whole reason this exists instead of ~300 inline hex
+     literals repeated across every page. */
+  --bg: #0d0d0d;
+  --surface-1: #111111;   /* code blocks, alt section backgrounds */
+  --surface-2: #161616;   /* cards, footer border */
+  --surface-3: #1a1a1a;   /* elevated cards, stat tiles, hairlines */
+
+  --border: #1f1f1f;
+  --border-strong: #252525;
+  --border-hover: #2a2a2a;
+
+  /* Text tiers, each tuned to clear (or come very close to) WCAG AA's
+     4.5:1 for normal text against --bg. --text-faint is the one
+     exception, reserved for large/decorative labels rather than body
+     copy. */
+  --text: #f5f5f4;         /* headings, primary content — 17.8:1 */
+  --text-dim: #a3a3a3;     /* body copy, descriptions — 7.7:1 */
+  --text-muted: #8f8f8f;   /* secondary nav, inactive tabs — 6.0:1 */
+  --text-faint: #7a7a7a;   /* small labels, footer links — 4.5:1 */
+
+  --accent: #c8192e;       /* brand red — buttons, borders, icons, large text (3.4:1, passes for ≥18.66px/bold) */
+  --accent-text: #ff5b6c;  /* same hue, lightened for small red text — 6.5:1 */
+  --ok: #34c759;
+  --ok-border: rgba(52, 199, 89, 0.35);
 
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
@@ -26,8 +50,8 @@
 body {
   margin: 0;
   padding: 0;
-  background: #0d0d0d;
-  color: #f0f0f0;
+  background: var(--bg);
+  color: var(--text);
   font-family: var(--font-sans);
   /* Inter's default figures are proportional; contextual alternates tidy up
      the "->" and "--" sequences that show up all over the CLI copy. */
@@ -35,7 +59,7 @@ body {
   line-height: 1.6;
 }
 
-* { box-sizing: border-box; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; }
 
 code, pre, kbd, samp { font-family: var(--font-mono); }
@@ -60,18 +84,33 @@ h1, h2, h3, h4 {
   text-transform: uppercase;
 }
 
-::selection { background: #c8192e; color: #fff; }
+::selection { background: var(--accent); color: #fff; }
 
 ::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: #111; }
-::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 3px; }
+::-webkit-scrollbar-track { background: var(--surface-1); }
+::-webkit-scrollbar-thumb { background: var(--border-hover); border-radius: 3px; transition: background 0.2s; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-faint); }
 
 /* Keyboard users get a visible ring; mouse users don't. */
 :focus-visible {
-  outline: 2px solid #c8192e;
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
   border-radius: 4px;
 }
+
+/* Screen-reader-only utility, used by the skip-to-content link and a few
+   status messages that shouldn't take up visual space. */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+}
+.skip-link {
+  position: fixed; top: -100px; left: 12px; z-index: 200;
+  background: var(--accent); color: #fff; padding: 10px 16px;
+  border-radius: 6px; font-size: 13px; font-weight: 600;
+  text-decoration: none; transition: top 0.15s ease;
+}
+.skip-link:focus { top: 12px; }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
@@ -81,3 +120,239 @@ h1, h2, h3, h4 {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ── Global chrome (moved out of a runtime <style> tag in App.tsx —
+   same rules, but now shipped as a real stylesheet the browser can
+   parse once and cache, instead of re-injecting on every mount) ─── */
+
+@media (max-width: 640px) {
+  .desk-nav { display: none !important; }
+  .mob-btn { display: block !important; }
+  .mob-sidebar-btn { display: block !important; }
+  .sidebar-closed { display: none; }
+  .sidebar-open { display: block; }
+  /* On the docs index (no article open yet) the page-card grid already
+     lists every wiki page, so the sidebar + its "Browse pages" toggle
+     would just be a second, redundant copy above it. Only show the
+     sidebar on mobile once you're actually reading an article, where
+     it's genuinely useful for jumping to another page. */
+  .docs-sidebar-browsing { display: none; }
+}
+@media (min-width: 641px) {
+  .mob-sidebar-btn { display: none !important; }
+  .sidebar-closed { display: block; }
+  .sidebar-open { display: block; }
+}
+
+/* ── Base micro-interaction defaults ─────────────────────────────── */
+a { transition: opacity 0.18s ease, color 0.18s ease; }
+a:hover { opacity: 0.75; }
+button { transition: opacity 0.18s ease, transform 0.15s ease, background-color 0.18s ease,
+  border-color 0.18s ease, box-shadow 0.18s ease; }
+button:hover { opacity: 0.88; }
+button:active { transform: scale(0.97); }
+button:disabled { opacity: 0.4; cursor: not-allowed; }
+button:disabled:hover { opacity: 0.4; }
+input, textarea { transition: border-color 0.18s ease, box-shadow 0.18s ease; }
+input:focus, textarea:focus { border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px rgba(200,25,46,0.12); }
+
+/* ── Reusable animation keyframes ─────────────────────────────────── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(200,25,46,0.35); }
+  50%      { box-shadow: 0 0 0 6px rgba(200,25,46,0); }
+}
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes bounceIn {
+  0%   { opacity: 0; transform: scale(0.85); }
+  60%  { opacity: 1; transform: scale(1.04); }
+  100% { transform: scale(1); }
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-4px); }
+}
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0; }
+}
+@keyframes slideInDrawer {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+
+/* ── Utility animation classes ─────────────────────────────────────── */
+.anim-fade-up { animation: fadeInUp 0.5s ease both; }
+.anim-fade { animation: fadeIn 0.4s ease both; }
+.anim-scale-in { animation: scaleIn 0.3s ease both; }
+.anim-bounce-in { animation: bounceIn 0.45s cubic-bezier(0.22,1,0.36,1) both; }
+.anim-stagger > * { animation: fadeInUp 0.45s ease both; }
+.anim-stagger > *:nth-child(1) { animation-delay: 0.02s; }
+.anim-stagger > *:nth-child(2) { animation-delay: 0.06s; }
+.anim-stagger > *:nth-child(3) { animation-delay: 0.10s; }
+.anim-stagger > *:nth-child(4) { animation-delay: 0.14s; }
+.anim-stagger > *:nth-child(5) { animation-delay: 0.18s; }
+.anim-stagger > *:nth-child(6) { animation-delay: 0.22s; }
+.anim-stagger > *:nth-child(n+7) { animation-delay: 0.24s; }
+
+.lift-card { transition: transform 0.22s cubic-bezier(0.22,1,0.36,1), border-color 0.22s ease,
+  box-shadow 0.22s ease, background-color 0.22s ease; }
+.lift-card:hover { transform: translateY(-3px); border-color: var(--text-faint);
+  box-shadow: 0 10px 28px -12px rgba(0,0,0,0.55); }
+
+.press-btn { transition: transform 0.15s cubic-bezier(0.22,1,0.36,1), opacity 0.18s ease,
+  box-shadow 0.18s ease; }
+.press-btn:hover { transform: translateY(-1px); }
+.press-btn:active { transform: translateY(0) scale(0.96); }
+
+.glow-pulse:hover { animation: pulseGlow 1.4s ease-in-out infinite; }
+
+.underline-grow { position: relative; }
+.underline-grow::after {
+  content: ''; position: absolute; left: 0; bottom: -2px; width: 0; height: 1px;
+  background: var(--accent); transition: width 0.25s ease;
+}
+.underline-grow:hover::after, .underline-grow:focus-visible::after { width: 100%; }
+
+.float-soft:hover { animation: float 1.8s ease-in-out infinite; }
+
+.connect-link { color: var(--text-dim); transition: color 0.18s ease; }
+.connect-link:hover, .connect-link:focus-visible { color: var(--accent-text); }
+.connect-link svg { color: var(--text-faint); transition: color 0.18s ease; }
+.connect-link:hover svg, .connect-link:focus-visible svg { color: var(--accent-text); }
+
+.spin-slow { animation: spin 0.8s linear infinite; }
+
+.skeleton-shimmer {
+  background: linear-gradient(90deg, var(--surface-3) 25%, #232323 37%, var(--surface-3) 63%);
+  background-size: 400% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+
+.nav-link { position: relative; transition: color 0.2s ease; }
+.nav-link::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: -4px; height: 2px;
+  background: var(--accent); transform: scaleX(0); transform-origin: center;
+  transition: transform 0.25s cubic-bezier(0.22,1,0.36,1);
+}
+.nav-link:hover::after, .nav-link.active::after { transform: scaleX(1); }
+
+/* ── Layout primitives ─────────────────────────────────────────────── */
+.section { padding: var(--space-section) var(--space-gutter); }
+.shell { max-width: 1120px; margin: 0 auto; }
+.shell-narrow { max-width: 760px; margin: 0 auto; }
+.hairline { height: 1px; background: var(--surface-3); border: 0; }
+
+/* Faint grid + a single red bloom behind the hero. Both sit under
+   the content at very low alpha so the flat backdrop still reads. */
+.hero-bg {
+  position: absolute; inset: 0; pointer-events: none; overflow: hidden;
+}
+.hero-bg::before {
+  content: ''; position: absolute; inset: -1px;
+  background-image:
+    linear-gradient(to right, #ffffff05 1px, transparent 1px),
+    linear-gradient(to bottom, #ffffff05 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(ellipse 90% 70% at 50% 30%, #000 20%, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse 90% 70% at 50% 30%, #000 20%, transparent 75%);
+}
+.hero-bg::after {
+  content: ''; position: absolute; left: 50%; top: -180px;
+  width: 900px; height: 520px; transform: translateX(-50%);
+  background: radial-gradient(ellipse at center, rgba(200,25,46,0.10), transparent 68%);
+  filter: blur(20px);
+}
+
+/* ── Terminal mock ──────────────────────────────────────────────────── */
+.term {
+  background: #0f0f0f; border: 1px solid #202020; border-radius: 10px;
+  overflow: hidden; box-shadow: 0 24px 60px -30px rgba(0,0,0,0.9);
+}
+.term-bar {
+  display: flex; align-items: center; gap: 7px;
+  padding: 9px 12px; background: #131313; border-bottom: 1px solid #1c1c1c;
+}
+.term-dot { width: 9px; height: 9px; border-radius: 50%; }
+.term-body {
+  padding: 14px 16px 18px; font-family: var(--font-mono);
+  font-size: 12.5px; line-height: 1.85; overflow-x: auto;
+}
+.term-line { white-space: pre; }
+@media (max-width: 640px) { .term-body { font-size: 10.5px; padding: 12px 13px 15px; } }
+
+/* ── Chips / filters ────────────────────────────────────────────────── */
+.chip {
+  font-family: var(--font-mono); font-size: 11px; padding: 3px 9px;
+  border-radius: 20px; border: 1px solid var(--border); background: #141414;
+  color: var(--text-dim); white-space: nowrap;
+}
+.filter-chip {
+  font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.04em;
+  padding: 6px 13px; border-radius: 20px; cursor: pointer;
+  border: 1px solid var(--border); background: #131313; color: var(--text-dim);
+  transition: border-color 0.18s ease, color 0.18s ease, background-color 0.18s ease;
+}
+.filter-chip:hover, .filter-chip:focus-visible { color: var(--text-muted); border-color: #2e2e2e; }
+.filter-chip[aria-pressed="true"] {
+  background: #1a0305; border-color: rgba(200,25,46,0.4); color: var(--accent-text);
+}
+
+/* ── Subsystem rows ─────────────────────────────────────────────────── */
+.sub-row {
+  display: grid; grid-template-columns: minmax(0,220px) minmax(0,1fr);
+  gap: 6px 22px; padding: 13px 4px; border-top: 1px solid #171717;
+  transition: background-color 0.18s ease;
+}
+.sub-row:hover { background: var(--surface-1); }
+@media (max-width: 720px) { .sub-row { grid-template-columns: 1fr; } }
+
+/* Accent bar that fills in on hover, tinted per feature card. */
+.accent-bar {
+  height: 2px; width: 26px; border-radius: 2px; margin-bottom: 14px;
+  transition: width 0.28s cubic-bezier(0.22,1,0.36,1);
+}
+.lift-card:hover .accent-bar { width: 52px; }
+.lift-card:hover .feat-icon { transform: translateY(-3px) scale(1.08); }
+
+/* ── Mobile nav drawer ──────────────────────────────────────────────── */
+.nav-drawer-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 150;
+  animation: fadeIn 0.2s ease both;
+}
+.nav-drawer {
+  position: fixed; top: 0; right: 0; bottom: 0; width: min(320px, 84vw);
+  background: var(--surface-2); border-left: 1px solid var(--border-strong);
+  z-index: 151; display: flex; flex-direction: column;
+  animation: slideInDrawer 0.24s cubic-bezier(0.22,1,0.36,1) both;
+  box-shadow: -20px 0 50px -20px rgba(0,0,0,0.6);
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav-drawer { animation: fadeIn 0.2s ease both; }
+}
+.nav-drawer-link {
+  display: block; width: 100%; text-align: left; background: none; border: none;
+  padding: 16px 22px; font-size: 16px; font-weight: 600; color: var(--text-dim);
+  cursor: pointer; font-family: inherit; border-bottom: 1px solid var(--border);
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+.nav-drawer-link:hover, .nav-drawer-link:focus-visible { color: var(--text); background: var(--surface-3); }
+.nav-drawer-link.active { color: var(--accent-text); }

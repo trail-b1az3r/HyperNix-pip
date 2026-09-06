@@ -2,13 +2,13 @@ Metadata-Version: 2.4
 Name: hypernix
 Version: 0.72.3
 Summary: Download and quantize the HyperNix PyTorch model to GGUF (fp32/fp16/Q8_0/Q6_K/Q4_K_M).
-Home-page: https://github.com/minerofthesoal/hypernix-pip
+Home-page: https://github.com/trail-b1az3r/hypernix-pip
 Author: HyperNix contributors
 License: HOL-1.0
-Project-URL: Homepage, https://minerofthesoal.github.io/HyperNix-pip/
-Project-URL: Source, https://github.com/minerofthesoal/hypernix-pip
-Project-URL: Issues, https://github.com/minerofthesoal/hypernix-pip/issues
-Project-URL: Logo, https://raw.githubusercontent.com/minerofthesoal/hypernix-pip/main/assets/logo.png
+Project-URL: Homepage, https://trail-b1az3r.github.io/HyperNix-pip/
+Project-URL: Source, https://github.com/trail-b1az3r/hypernix-pip
+Project-URL: Issues, https://github.com/trail-b1az3r/hypernix-pip/issues
+Project-URL: Logo, https://raw.githubusercontent.com/trail-b1az3r/hypernix-pip/main/assets/logo.png
 Keywords: hypernix,gguf,quantization,llama.cpp,pytorch
 Classifier: Development Status :: 4 - Beta
 Classifier: Environment :: Console
@@ -73,14 +73,14 @@ Requires-Dist: hypernix[gui-qt]; extra == "gui"
 Dynamic: license-file
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/minerofthesoal/hypernix-pip/2d5eb37/assets/logo1.png" alt="hypernix logo" width="240" />
+  <img src="https://raw.githubusercontent.com/trail-b1az3r/hypernix-pip/2d5eb37/assets/logo1.png" alt="hypernix logo" width="240" />
 </p>
 
 # hypernix
 
 [![PyPI](https://img.shields.io/pypi/v/hypernix.svg)](https://pypi.org/project/hypernix/)
 [![Python](https://img.shields.io/pypi/pyversions/hypernix.svg)](https://pypi.org/project/hypernix/)
-[![License](https://img.shields.io/pypi/l/hypernix.svg)](https://github.com/minerofthesoal/hypernix-pip/blob/main/LICENSE)
+[![License](https://img.shields.io/pypi/l/hypernix.svg)](https://github.com/trail-b1az3r/hypernix-pip/blob/main/LICENSE)
 
 **End-to-end toolkit for training ai models on modern or old devices, originaly for converting hypernix.1 into gguf, now for all around training**
 
