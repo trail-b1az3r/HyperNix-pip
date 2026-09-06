@@ -48,7 +48,7 @@ dependencies = [
     "huggingface-hub>=0.24",
     "gguf>=0.10.0",
     "tqdm>=4.66",
-    "rich<=14.3.4,>14",
+    "rich>14,<=15.0.0",
     # 0.2.1 is the first release with cp313 wheels; stick with it so a
     # fresh Python 3.13 env doesn't need a C++ toolchain to build from src.
     "sentencepiece>=0.2.1",
