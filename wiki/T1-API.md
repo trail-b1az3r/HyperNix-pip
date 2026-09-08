@@ -1231,6 +1231,66 @@ them in order and keeps the first that answers, so nothing has to change
 when the phone leaves the house. Authenticated, despite looking
 innocuous — a list of a machine's internal addresses is reconnaissance.
 
+### Finding a server, and knowing which one it is
+
+`GET /hyperlink/endpoints` answers "where can this machine be reached";
+0.72.4 adds "and which machine is it".
+
+```json
+{
+  "server_fingerprint": "a1b2c3d4e5f60718293a4b5c6d7e8f90",
+  "trusted_network": true,
+  "keyless_available_here": true,
+  "origin_trust": "tailnet"
+}
+```
+
+**The fingerprint** is a hash of a random seed the server generated once
+and keeps in `<config>/hyperlink/server-identity`, mode 0600. Stable
+across restarts, upgrades, address changes and key rotations —
+deliberately, because a fingerprint that moved on a routine secret
+rotation would train people to click through the warning. It reveals
+nothing about the seed, so it is safe to give any authenticated caller,
+and it is served only to authenticated callers because a stable machine
+identifier handed to anyone who can reach the port is reconnaissance for
+nothing in return.
+
+It exists because comparing the *server name* authenticates nothing. A
+name is chosen by whoever set the machine up and advertised in the
+clear; on a LAN or a tailnet anything can call itself `desktop`, and the
+first machine to claim the name would win. HyperLink pins the
+fingerprint at pairing time — when someone is standing at the PC reading
+a six-character code off its screen, the one moment with independent
+evidence of which machine it is — and compares it on every reconnection.
+A mismatch is a banner and a refusal to send the admin credential; it is
+never a silent re-pin, which would make the warning fire exactly once
+ever.
+
+This is not proof of identity on its own. Anyone who can read a
+fingerprint can repeat it, exactly as with a TLS certificate
+fingerprint. What it gives is the ability to *notice* that an address is
+answering for a different machine than last time, which a name
+comparison cannot do at all.
+
+**`keyless_available_here`** answers the question a client can act on.
+"This server allows keyless connections" and "this phone, on this
+network, right now, can make one" are different, and an app told only
+the first finds out about the second by failing.
+
+`GET /hyperlink/peers` lists other machines on the tailnet, so someone
+with a desktop and a laptop does not have to go and look up the laptop's
+tailnet name. Admin-only — the answer is a map of somebody's private
+network, and a phone's credential for one server is not authority to
+enumerate every machine its owner runs.
+
+Every row is `verified: false`, said in the payload rather than only
+here. Discovery is not connection and connection is not trust: the probe
+is a `GET /health` and the only use made of the reply is to copy two
+strings out for display. Nothing in a peer's response selects a code
+path, names a file, or reaches a shell. A client that acts on a row
+still authenticates against it, and the fingerprint that comes back is
+what says whether it found what it was looking for.
+
 ## Hugging Face link merging
 
 *New in T1 v1.0.26.8.0.1.* `POST /hyperlink/models/resolve`, and
@@ -1464,6 +1524,7 @@ where noted.
 | GET | `/hyperlink/files` | bearer | list; `?session_id=` to scope |
 | GET/DELETE | `/hyperlink/files/{id}` | bearer | download (always `attachment`) / delete |
 | POST | `/hyperlink/models/resolve` | bearer | merge a Hugging Face page + file link |
+| GET | `/hyperlink/peers` | bearer, **admin, not a device** | other HyperNix machines on this tailnet, as unverified candidates (0.72.4) |
 
 **0.72.4**
 

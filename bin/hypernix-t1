@@ -244,6 +244,18 @@ cmd_status() {
   dim "     keys      $(setting T1_KEYMASTER_DIR "$CONFIG_DIR/keymaster")"
   dim "     log       $LOG_FILE"
   dim "     address   $url"
+  # The identity a phone pins. Printed here so the comparison has two
+  # sides: HyperLink shows the fingerprint it pinned, and this is where
+  # someone standing at the machine reads the real one to check it
+  # against. Derived from a local seed file, so it works whether or not
+  # the server is running.
+  local ident
+  ident="$(T1_CONFIG_DIR="${T1_CONFIG_DIR:-$CONFIG_DIR}" "$(python_bin)" -c '
+from hypernix.hyperlink.identity import fingerprint
+value = fingerprint()
+print(" ".join(value[i:i + 8] for i in range(0, len(value), 8)))
+' 2>/dev/null || true)"
+  [ -n "$ident" ] && dim "     identity  $ident"
   if [ -n "$pid" ]; then
     local body
     body="$(curl -fsS --noproxy '*' "$url/status" 2>/dev/null || true)"

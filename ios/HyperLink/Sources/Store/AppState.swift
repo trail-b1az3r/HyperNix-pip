@@ -20,6 +20,20 @@ final class AppState {
     private(set) var isPaired: Bool = false
     private(set) var serverStatus: ServerStatus?
     private(set) var connectionError: String?
+    /// Set when the server at the current address reported a different
+    /// fingerprint than the one pinned at pairing time. Rendered as a
+    /// banner; nothing clears it but re-pairing, because the honest
+    /// answer to "something else is answering here" is not a toast.
+    private(set) var identityWarning: String?
+    /// Whether this phone's current network can connect to the paired
+    /// server without a key, as that server just reported it.
+    private(set) var keylessAvailableHere = false
+    /// True when this connection presented no credential at all. Kept
+    /// separate from "we have no token" because the app has to be able
+    /// to tell a deliberate keyless connection from a lost one — and
+    /// because a keyless caller never has admin rights server-side, so
+    /// nothing admin-shaped should be offered for one.
+    private(set) var isKeyless = false
 
     // MARK: - Content
 
@@ -41,6 +55,7 @@ final class AppState {
     private let client = HyperLinkClient()
     private var streamTask: Task<Void, Never>?
     private static let connectionKey = "hyperlink.connection"
+    private static let keylessKey = "hyperlink.connection.keyless"
 
     init() { restore() }
 
@@ -50,18 +65,30 @@ final class AppState {
         guard
             let data = UserDefaults.standard.data(forKey: Self.connectionKey),
             let saved = try? JSONDecoder().decode(ServerConnection.self, from: data),
-            saved.isConfigured,
-            let token = TokenStore.load()
+            saved.isConfigured
         else { return }
+        let token = TokenStore.load()
+        let wasKeyless = UserDefaults.standard.bool(forKey: Self.keylessKey)
+        // A stored connection with no credential is only restorable if
+        // it was keyless on purpose. Otherwise the token has been lost
+        // — a keychain reset, a restore from backup — and coming up
+        // "paired" would mean every request 401s with no explanation.
+        guard token != nil || wasKeyless else { return }
         connection = saved
+        isKeyless = wasKeyless
         isPaired = true
-        Task { await client.configure(endpoints: saved.endpoints, token: token) }
+        Task {
+            await client.configure(
+                endpoints: saved.endpoints, token: token, keyless: wasKeyless
+            )
+        }
     }
 
     private func persist() {
         if let data = try? JSONEncoder().encode(connection) {
             UserDefaults.standard.set(data, forKey: Self.connectionKey)
         }
+        UserDefaults.standard.set(isKeyless, forKey: Self.keylessKey)
     }
 
     // MARK: - Pairing
@@ -95,11 +122,62 @@ final class AppState {
                 serverName: discovered.serverName,
                 t1Version: discovered.t1Version,
                 deviceID: "",
-                deviceName: deviceName
+                deviceName: deviceName,
+                serverFingerprint: discovered.serverFingerprint
             )
+            keylessAvailableHere = discovered.keylessAvailableHere
+            isKeyless = false
             TokenStore.save(credential)
             persist()
             await client.configure(endpoints: endpoints, token: credential)
+            isPaired = true
+            await refreshAll()
+            return true
+        } catch {
+            connectionError = FailureAdvice.explain(error, address: address)
+            return false
+        }
+    }
+
+    /// Connect with no credential, to a server in trusted-network mode.
+    ///
+    /// The server decides whether this is allowed — its operator has to
+    /// have turned the mode on, and it classifies the connection as
+    /// loopback, LAN or tailnet before answering. A public origin is
+    /// refused whatever the configuration says, so this is not a way to
+    /// reach a machine over the internet by leaving the key out.
+    ///
+    /// Nothing is written to the keychain here, because there is nothing
+    /// to write. Signing out is forgetting an address.
+    func connectKeyless(address: String, deviceName: String) async -> Bool {
+        connectionError = nil
+        if let refusal = AddressCheck.advice(for: address).message {
+            connectionError = refusal
+            return false
+        }
+        do {
+            let discovered = try await HyperLinkClient.connectKeyless(address: address)
+            var endpoints = [HyperLinkClient.normalize(address)]
+            for endpoint in discovered.endpoints where !endpoints.contains(endpoint.url) {
+                endpoints.append(endpoint.url)
+            }
+            connection = ServerConnection(
+                endpoints: endpoints,
+                serverName: discovered.serverName,
+                t1Version: discovered.t1Version,
+                deviceID: "",
+                deviceName: deviceName,
+                serverFingerprint: discovered.serverFingerprint
+            )
+            isKeyless = true
+            keylessAvailableHere = discovered.keylessAvailableHere
+            // No token is stored, and any token from a previous pairing
+            // is cleared: leaving one behind would mean a "keyless"
+            // connection quietly presenting somebody else's credential
+            // the next time the flag was wrong.
+            TokenStore.delete()
+            persist()
+            await client.configure(endpoints: endpoints, token: nil, keyless: true)
             isPaired = true
             await refreshAll()
             return true
@@ -124,16 +202,24 @@ final class AppState {
             // still reach the PC after the phone leaves the network the
             // pairing happened on.
             var endpoints = [HyperLinkClient.normalize(address)]
-            for endpoint in discovered where !endpoints.contains(endpoint.url) {
+            for endpoint in discovered?.endpoints ?? [] where !endpoints.contains(endpoint.url) {
                 endpoints.append(endpoint.url)
             }
+            keylessAvailableHere = discovered?.keylessAvailableHere ?? false
             connection = ServerConnection(
                 endpoints: endpoints,
                 serverName: redeemed.serverName,
                 t1Version: redeemed.t1Version,
                 deviceID: redeemed.deviceID,
-                deviceName: redeemed.name
+                deviceName: redeemed.name,
+                // Trust on first use, and this is that first use:
+                // someone is standing at the PC reading a six-character
+                // code off its screen, which is the one moment in this
+                // app's life with independent evidence of which machine
+                // it is talking to.
+                serverFingerprint: discovered?.serverFingerprint ?? ""
             )
+            isKeyless = false
             TokenStore.save(redeemed.deviceToken)
             persist()
             await client.configure(endpoints: endpoints, token: redeemed.deviceToken)
@@ -156,10 +242,18 @@ final class AppState {
             try? await client.unpairSelf(deviceID: deviceID)
         }
         TokenStore.delete()
+        // The admin credential is scoped to this server's fingerprint,
+        // so signing out of the server is the moment it stops being
+        // something this phone should be holding.
+        AdminCredentialStore.delete(fingerprint: connection.serverFingerprint)
         UserDefaults.standard.removeObject(forKey: Self.connectionKey)
         await client.configure(endpoints: [], token: nil)
         connection = .empty
         isPaired = false
+        identityWarning = nil
+        keylessAvailableHere = false
+        isKeyless = false
+        UserDefaults.standard.removeObject(forKey: Self.keylessKey)
         sessions = []
         messages = []
         openSessionID = nil
@@ -185,7 +279,54 @@ final class AppState {
         async let status: Void = refreshStatus()
         async let list: Void = refreshSessions()
         async let models: Void = refreshModels()
-        _ = await (status, list, models)
+        async let identity: Void = verifyIdentity()
+        _ = await (status, list, models, identity)
+    }
+
+    /// Re-check that the address we reached is still the machine we
+    /// paired with, and note whether this network can go keyless.
+    ///
+    /// Run on every refresh rather than only at launch, because the
+    /// interesting case is the phone moving: home wifi, a friend's wifi,
+    /// a tailnet, back again — each a different route to what is
+    /// supposed to be the same PC, and one of them may not be.
+    ///
+    /// A failure to *reach* the server is not an identity problem and
+    /// must not raise one. "Something else is answering here" and "the
+    /// PC is asleep" are different, and only the first deserves a
+    /// banner nothing but re-pairing clears.
+    func verifyIdentity() async {
+        guard isPaired, let reply = try? await client.endpoints() else { return }
+        keylessAvailableHere = reply.keylessAvailableHere
+
+        let verdict = ServerIdentity.check(
+            reported: reply.serverFingerprint, pinned: connection.serverFingerprint
+        )
+        identityWarning = verdict.message
+        if case .mismatch = verdict { return }
+
+        // Fill in a blank pin — a pairing made before the server had a
+        // fingerprint — without ever overwriting one that exists.
+        let pinned = ServerIdentity.pinning(
+            current: connection.serverFingerprint, reported: reply.serverFingerprint
+        )
+        if pinned != connection.serverFingerprint {
+            connection.serverFingerprint = pinned
+            persist()
+        }
+    }
+
+    /// Other machines on the paired server's tailnet.
+    ///
+    /// Candidates, not servers. Nothing in the returned list has been
+    /// authenticated and none of the names in it means anything — a
+    /// person picks one and pairs with it, which is what proves what it
+    /// is. Admin-only server-side, so an ordinary phone gets a 403 and
+    /// the caller shows nothing rather than an error: not being an
+    /// admin is the normal case, not a fault.
+    func discoverPeers() async -> [DiscoveredPeer] {
+        guard isPaired, let reply = try? await client.peers() else { return [] }
+        return reply.peers.filter { $0.reachable }
     }
 
     func refreshStatus() async {

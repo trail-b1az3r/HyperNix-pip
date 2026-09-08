@@ -52,6 +52,10 @@ on:
         description: "Skip BOTH live-server integration jobs (API + iPhone simulator). They are the gate that proves a real server accepts a real key before anything publishes — only for a runner outage, never to get past a red test."
         type: boolean
         default: false
+      skip_hyperlink:
+        description: "Skip building the HyperLink IPA. The release still goes out, without the app attached — for a macOS runner outage, not to get past a build failure."
+        type: boolean
+        default: false
 
 concurrency:
   group: public-release-${{ github.ref }}
@@ -277,6 +281,17 @@ jobs:
             else
               echo "Initial tagged release."
             fi
+            echo ""
+            echo "### HyperLink"
+            echo ""
+            echo "The attached \`HyperLink-*.ipa\` is the companion iPhone app —"
+            echo "chat with the models on your own machine, over the LAN or a"
+            echo "tailnet. It is **unsigned** unless this release was built with"
+            echo "signing secrets, so install it with AltStore, Sideloadly, or a"
+            echo "free Xcode profile. Verify it against \`SHA256SUMS.ios\`."
+            echo ""
+            echo "No IPA attached means the app build did not run this time; the"
+            echo "Python package is unaffected."
           } > CHANGELOG_FRAGMENT.md
           echo "--- fragment ---"
           cat CHANGELOG_FRAGMENT.md
@@ -552,9 +567,48 @@ jobs:
           echo '--- t1api ---'; tail -n 100 t1api.log || true
           echo '--- fake model ---'; tail -n 40 fake-model.log || true
 
+  # ---------------------------------------------------------------------------
+  # Build the HyperLink IPA so the app ships attached to the same GitHub
+  # release as the Python package, which is what release.yml already does
+  # for tag-triggered releases.
+  #
+  # `version: ""` on purpose, rather than passing inputs.version. The
+  # app's marketing version tracks the *T1 API's* (1.0.26.x) rather than
+  # the Python package's, because that is the string a server reports and
+  # therefore the one a support question quotes -- ios/scripts/app_version.py
+  # computes it, and a test keeps project.yml's default equal to it.
+  # Passing the Python version here would stamp the app 0.72.x and break
+  # exactly the property that scheme exists for.
+  #
+  # A reusable workflow checks out the ref that triggered the run, so this
+  # sees the tree as it was *before* `cut` bumped it. That is right for
+  # the Python version (which the app does not use) and one release stale
+  # for the T1 version in the rare release that changes it -- the same
+  # trade release.yml makes.
+  #
+  # github-release does not require it to succeed: the
+  # macOS runner is slower, more expensive, and occasionally short of a
+  # working simulator, and none of that is a reason to hold a Python
+  # release. A missing IPA is a release without the app attached, which
+  # the notes say; a blocked release is a release that did not happen.
+  # ---------------------------------------------------------------------------
+  hyperlink-ipa:
+    name: HyperLink IPA
+    needs: [cut]
+    if: >-
+      always() &&
+      needs.cut.result == 'success' &&
+      !inputs.dry_run &&
+      !inputs.skip_hyperlink
+    uses: ./.github/workflows/ios.yml
+    with:
+      run_tests: true
+      version: ""
+    secrets: inherit
+
   github-release:
     name: GitHub Release
-    needs: [cut, integration-api, integration-ios]
+    needs: [cut, integration-api, integration-ios, hyperlink-ipa]
     if: >-
       always() &&
       needs.cut.result == 'success' &&
@@ -571,8 +625,22 @@ jobs:
           name: public-release-${{ inputs.version }}
           path: .
 
+      # continue-on-error rather than `if: success()`: the IPA is a
+      # bonus attachment, and a release that stopped because the app
+      # artifact was missing would be a worse outcome than one without
+      # the app.
+      - name: Download the HyperLink IPA
+        if: needs.hyperlink-ipa.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.hyperlink-ipa.outputs.ipa_artifact }}
+          path: dist/ios
+        continue-on-error: true
+
       - name: Show artifacts
-        run: ls -lah dist/
+        run: |
+          ls -lah dist/
+          ls -lah dist/ios/ 2>/dev/null || echo "(no iOS artifact this run)"
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -585,6 +653,8 @@ jobs:
             dist/*.whl
             dist/*.tar.gz
             dist/SHA256SUMS
+            dist/ios/*.ipa
+            dist/ios/SHA256SUMS.ios
 
   # ---------------------------------------------------------------------------
   # Publish stable tags to real PyPI via Trusted Publishing (OIDC).

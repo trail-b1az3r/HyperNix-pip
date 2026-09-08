@@ -1044,6 +1044,49 @@ class HyperLinkEndpointsResponse(BaseModel):
     endpoints: list[HyperLinkEndpoint]
     tailscale: bool
     reachable_off_lan: bool
+    #: This installation's stable identifier (0.72.4). A client pins it
+    #: at pairing time and re-checks it on every reconnection: a name can
+    #: be claimed by any machine on the network, this cannot. See
+    #: ``hypernix.hyperlink.identity``.
+    server_fingerprint: str = ""
+    #: Whether this server accepts keyless connections from trusted
+    #: networks at all, and whether the *caller's own* origin qualifies.
+    #: The second is what lets an app say "this network can connect
+    #: without a key" instead of making the user find out by failing.
+    trusted_network: bool = False
+    keyless_available_here: bool = False
+    #: How this caller was classified: loopback | tailnet | lan | public.
+    origin_trust: str = ""
+    request_id: str
+
+
+class HyperLinkPeer(BaseModel):
+    """One machine on the tailnet. A candidate, never a trusted server.
+
+    ``verified`` is always ``false`` and is present to say so in the
+    payload rather than only in the documentation: nothing in peer
+    discovery authenticates anything, and ``name``/``server_name`` are
+    what a peer calls itself, which any machine can claim.
+    """
+
+    name: str
+    address: str
+    url: str
+    online: bool = False
+    reachable: bool = False
+    t1_version: str = ""
+    server_name: str = ""
+    detail: str = ""
+    os: str = ""
+    verified: bool = False
+
+
+class HyperLinkPeersResponse(BaseModel):
+    peers: list[HyperLinkPeer] = Field(default_factory=list)
+    count: int = 0
+    reachable: int = 0
+    tailscale: bool = False
+    detail: str = ""
     request_id: str
 
 

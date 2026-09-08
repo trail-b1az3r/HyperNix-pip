@@ -20,6 +20,115 @@ next release header.
 - 𖢥 major bug fix
 - ꩜ restore to older version of item
 - ❗ unfixed known bug
+## 0.72.4.dev8 — HyperLink knows which machine it is talking to
+
+Item 1, plus the app icon and the release plumbing.
+
+**The app has an icon.** ✨ The appiconset declared a 1024 slot and
+contained no image, so HyperLink shipped with the iOS placeholder. It
+now carries the current HyperNix mark from `assets/logo-new` — three
+staggered parallelograms, dark to red up the stack — built by
+`ios/scripts/make_appicon.py` rather than committed as three mystery
+binaries. An icon with no recipe cannot be adjusted by whoever comes
+next; they can only replace it, and the brand drifts one replacement at
+a time. Three variants for iOS 18: opaque any/dark (iOS applies its own
+mask, so pre-rounding would show wedges in the home-screen corners) and
+a greyscale-on-transparency tinted one where the red bar becomes the
+*brightest* value — the system's auto-generated tinted icon drops it,
+and it is the bar that makes the mark recognisable. The app's
+`AccentColor` was a blue predating the mark, so every button was a
+different colour from the app's own icon; it is now `#c8192e`.
+
+**The IPA ships with the release.** ✨ `public-release.yml` builds
+HyperLink and attaches it to the GitHub release alongside the wheel,
+which `release.yml` already did for tag-triggered releases and this
+workflow did not. The app's version still comes from
+`ios/scripts/app_version.py` rather than the Python release number: the
+app quotes the *T1 API's* version because that is what a server reports
+and therefore what a support question contains. A macOS runner outage
+gives a release without the app attached, not a blocked release.
+
+### Which machine is that, actually
+
+**`hypernix.hyperlink.identity`** ✨ — a server fingerprint: a hash of 32
+random bytes generated once and kept in
+`<config>/hyperlink/server-identity` at mode 0600. Stable across
+restarts, upgrades, address changes and key rotations; unguessable from
+the hostname; not a secret. `GET /hyperlink/endpoints` reports it, to
+authenticated callers only.
+
+It exists because the app reaches its server at whichever of several
+addresses answers first, and those addresses move — a DHCP lease is
+reassigned, a tailnet name is transferred — so the app will happily try
+an address some *other* machine now answers on. The obvious check is the
+server name and the obvious check is wrong: a name is advertised in the
+clear and anything on the network can claim it, so the first machine to
+call itself `desktop` wins.
+
+HyperLink pins the fingerprint at pairing time — with someone standing
+at the PC reading a six-character code off its screen, the one moment
+with independent evidence of which machine it is — and re-checks it on
+every reconnection, which is every time the phone changes network. A
+mismatch shows a banner and withholds the admin credential. It is never
+a silent re-pin: that would make the warning fire exactly once, ever.
+
+Not proof on its own, and the docs say so — anyone who can read a
+fingerprint can repeat it, as with a TLS certificate fingerprint. What
+it adds is the ability to *notice*.
+
+**`GET /hyperlink/peers`** ✨ — other HyperNix machines on the tailnet,
+so someone with a desktop and a laptop does not have to look up the
+laptop's tailnet name. Admin-only: the answer is a map of a private
+network, and a phone's credential for one server is not authority to
+enumerate every machine its owner runs.
+
+Every row is `verified: false`, in the payload and not only in the
+docs. Discovery is not connection and connection is not trust. The probe
+is a `GET /health` with a 2.5s budget, probed concurrently, capped at 64
+peers and 64 KB per reply; the only use made of a response is copying
+two strings out for display. Nothing a peer returns selects a code path,
+names a file, or reaches a shell — there is one `subprocess.run` in the
+module and its argv is a literal.
+
+**Admin credentials, held briefly** ✨ — `AdminCredentialStore` is not
+`TokenStore` with a different key. A device token is scoped and
+revocable; an admin credential stops training runs and reads audit logs.
+So it is cleared at every launch unless the user turns that off in
+Settings, stored `WhenUnlockedThisDeviceOnly` (it never needs to run
+behind a lock screen and must not ride an iCloud backup), keyed on the
+server's *fingerprint* rather than its name or address, and never
+logged, printed or described. `has(fingerprint:)` exists so a view can
+ask "should I show this section?" without holding the secret to answer.
+
+**`keyless_available_here`** 🛡️ — "this server allows keyless
+connections" and "this phone, on this network, can make one" are
+different questions, and an app told only the first finds out about the
+second by failing.
+
+### Two bugs found while wiring it up
+
+**Swift's synthesised decoder ignores property defaults.** Adding
+`serverFingerprint` with a default to `ServerConnection` would have made
+every stored record from before this release fail to decode — and
+`restore()` wraps that in `try?`, so every existing user would have been
+silently signed out by the update with nothing anywhere saying why. It
+now has a hand-written `init(from:)`.
+
+**A T2S-key connection did not survive a restart.** `isConfigured`
+required a `deviceID`, and connecting with a key produces no device
+record on the server — the key *is* the credential — so the field was
+empty, `restore()` refused, and the app came up signed out every time.
+Whether there is a credential was always `TokenStore`'s question, which
+`restore()` already asks separately.
+
+### Not done
+
+LAN Bonjour discovery. The app already declares `_hypernix._tcp` and
+would browse for it, but nothing advertises the service: doing it
+properly needs a zeroconf dependency, and half of it is worse than none.
+Tailnet discovery is the case that was asked for and it is done; on the
+LAN the server's own ranked address list already covers it.
+
 ## 0.72.4.dev7 — what training is doing, and the controls for it
 
 Item 5. A training run is the longest-lived and least observable thing

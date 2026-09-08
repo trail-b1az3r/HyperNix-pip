@@ -171,11 +171,23 @@ Sources/
     HyperLinkClient.swift   one actor; endpoint failover lives here
     SSEStream.swift         the streaming chat frames
     TokenStore.swift        the device token, in the Keychain
+    AdminCredentialStore.swift  admin credentials, forgotten on restart
+    ServerIdentity.swift    is this the machine I paired with?
+    AddressAdvice.swift     the addresses that cannot work, and why
   Store/AppState.swift      one @Observable object, on the main actor
   Views/                    SwiftUI, one file per screen
+scripts/
+  app_version.py            the marketing version, from the T1 API's
+  make_appicon.py           the app icon, from assets/logo-new
 ```
 
-Three decisions worth knowing before changing anything:
+The icon is generated, not hand-placed: run
+`python ios/scripts/make_appicon.py` after changing the mark, and
+`tests/test_ios_appicon.py` checks the committed PNGs still match what
+the script would write and that the geometry still matches
+`hypernix-icon.svg`.
+
+Four decisions worth knowing before changing anything:
 
 **Endpoint failover, not network detection.** The phone cannot reliably
 know which network it is on, and asking iOS is racy. So the client keeps
@@ -194,6 +206,18 @@ the connection drops mid-reply the server persists what it streamed, so
 the app reloads history instead of keeping a half-message that exists
 only on the phone and would vanish on the next refresh.
 
+**A server's identity is its fingerprint, never its name.** The app
+reaches its server at whichever address answers first, and addresses
+move — a DHCP lease is reassigned, a tailnet name is transferred — so
+the app can end up talking to a different machine at an address it knows.
+Comparing the *name* would catch none of that: names are advertised in
+the clear and anything on the network can claim one. The server reports
+a fingerprint derived from a random seed it keeps to itself; the app
+pins it at pairing time and re-checks on every reconnection. See
+`ServerIdentity.swift` and, on the server, `hypernix.hyperlink.identity`.
+`hypernix-t1 status` prints the same value in the same grouping, so the
+two can be compared by eye.
+
 ---
 
 ## Privacy
@@ -208,3 +232,13 @@ never rides an iCloud backup to another device — a token identifies one
 physical phone to the server, and revoking it should revoke exactly one
 phone. Unpair from **Server → Unpair this device**, or from the PC with
 `waiter hyperlink unpair <device_id>`.
+
+An **admin credential** is treated differently, because it is a
+different thing: a device token is scoped and revocable from the PC,
+while an admin credential mints pairing codes, reads the audit log and
+stops training runs. It is forgotten every time HyperLink restarts
+unless you turn that off in **Server → Administration**, stored
+`WhenUnlockedThisDeviceOnly` (nothing needs it behind a lock screen),
+keyed on the server's fingerprint rather than its name, and never
+logged or printed. Turning the switch off deletes what is stored
+immediately rather than at the next launch.

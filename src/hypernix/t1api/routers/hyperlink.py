@@ -41,6 +41,7 @@ from ...hyperlink.discovery import advertise
 from ...hyperlink.files import AttachmentStore
 from ...hyperlink.hfmerge import HFResolveError
 from ...hyperlink.hfmerge import resolve as hf_resolve
+from ...hyperlink.identity import fingerprint as server_fingerprint
 from ...hyperlink.pairing import DeviceRegistry, pairing_payload
 from ...hyperlink.sessions import ChatMessage, ChatSessionStore
 from ..audit import AuditCategory, AuditOutcome
@@ -54,8 +55,10 @@ from ..deps import (
     get_device_registry,
     get_hyperlink_principal,
     get_job_queue,
+    get_origin,
     get_request_id,
     get_session_store,
+    get_trust_policy,
     require_hyperlink_admin,
 )
 from ..errors import T1APIError, T1ErrorCode
@@ -77,6 +80,8 @@ from ..schemas import (
     HyperLinkChatResponse,
     HyperLinkEndpoint,
     HyperLinkEndpointsResponse,
+    HyperLinkPeer,
+    HyperLinkPeersResponse,
     MessageListResponse,
     MessageSummary,
     PairingCodeResponse,
@@ -159,12 +164,75 @@ def list_endpoints(
     """
     _require_enabled(config)
     payload = _endpoints(config, request)
+    policy = get_trust_policy(request)
+    origin = get_origin(request)
     return HyperLinkEndpointsResponse(
         server_name=payload["server_name"],
         t1_version=payload["t1_version"],
         endpoints=[HyperLinkEndpoint(**e) for e in payload["endpoints"]],
         tailscale=payload["tailscale"],
         reachable_off_lan=payload["reachable_off_lan"],
+        # The identity a client pins. Returned here rather than from an
+        # open endpoint because this call is already authenticated, and
+        # publishing a stable machine identifier to anyone who can reach
+        # the port is reconnaissance for no gain.
+        server_fingerprint=server_fingerprint(),
+        trusted_network=policy.enabled,
+        keyless_available_here=policy.enabled and policy.allows_keyless(origin),
+        origin_trust=origin.trust.value,
+        request_id=request_id,
+    )
+
+
+@router.get("/peers", response_model=HyperLinkPeersResponse)
+def list_peers(
+    request: Request,
+    include_offline: bool = Query(False, description="Also list peers that are down."),
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    config: T1APIConfig = Depends(get_config),
+    request_id: str = Depends(get_request_id),
+) -> HyperLinkPeersResponse:
+    """Other HyperNix machines on this tailnet, as *candidates*.
+
+    Someone with a desktop and a laptop should not have to go and look
+    up the laptop's tailnet name to add it to their phone. This machine
+    is on the same tailnet and already knows.
+
+    Admin-only, and worth being explicit about why: the answer is a map
+    of somebody's private network. A device token is a phone's
+    credential for *this* server; it is not authority to enumerate every
+    other machine its owner runs.
+
+    Every result is ``verified: false``. Nothing here authenticates
+    anything — the probe is a GET to ``/health`` and the only use made of
+    the reply is to display two strings from it. A client that acts on
+    one of these still authenticates against it, and compares the
+    fingerprint that comes back with the one it pinned. The peer's
+    advertised name is for a human choosing from a list, never for the
+    decision to trust.
+    """
+    _require_enabled(config)
+    require_hyperlink_admin(principal)
+
+    from ...hyperlink import peers as _peers
+
+    found = _peers.discover(
+        port=_advertised_port(config, request),
+        include_offline=include_offline,
+    )
+    if not found:
+        from ...hyperlink.discovery import tailscale_diagnosis
+
+        return HyperLinkPeersResponse(
+            tailscale=False,
+            detail=tailscale_diagnosis() or "no other machines on this tailnet.",
+            request_id=request_id,
+        )
+    return HyperLinkPeersResponse(
+        peers=[HyperLinkPeer(**p.to_dict()) for p in found],
+        count=len(found),
+        reachable=sum(1 for p in found if p.reachable),
+        tailscale=True,
         request_id=request_id,
     )
 

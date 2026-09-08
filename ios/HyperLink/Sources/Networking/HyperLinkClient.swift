@@ -67,18 +67,77 @@ struct ServerConnection: Codable, Equatable, Sendable {
     var t1Version: String
     var deviceID: String
     var deviceName: String
+    /// The server's identity, pinned when this pairing was made. Not a
+    /// secret — it is a public identifier the server hands to any
+    /// authenticated caller, like a certificate fingerprint — so it
+    /// lives here with the rest of the connection rather than in the
+    /// keychain. See `ServerIdentity`.
+    var serverFingerprint: String = ""
 
     static let empty = ServerConnection(
-        endpoints: [], serverName: "", t1Version: "", deviceID: "", deviceName: ""
+        endpoints: [], serverName: "", t1Version: "", deviceID: "", deviceName: "",
+        serverFingerprint: ""
     )
 
-    var isConfigured: Bool { !endpoints.isEmpty && !deviceID.isEmpty }
+    init(
+        endpoints: [String], serverName: String, t1Version: String,
+        deviceID: String, deviceName: String, serverFingerprint: String = ""
+    ) {
+        self.endpoints = endpoints
+        self.serverName = serverName
+        self.t1Version = t1Version
+        self.deviceID = deviceID
+        self.deviceName = deviceName
+        self.serverFingerprint = serverFingerprint
+    }
+
+    /// Written out by hand because the synthesised one would not do
+    /// this. A property default is used by the *memberwise* initialiser,
+    /// not by the decoder: the synthesised `init(from:)` calls
+    /// `decode(_:forKey:)` and throws when the key is absent, defaulted
+    /// property or not.
+    ///
+    /// The stored record on every existing install was written before
+    /// `serverFingerprint` existed. With the synthesised decoder,
+    /// `restore()` would throw, its `try?` would swallow it, and the app
+    /// would come up unpaired — every user silently signed out by an
+    /// update, with nothing in any log to say why.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        endpoints = try container.decodeIfPresent([String].self, forKey: .endpoints) ?? []
+        serverName = try container.decodeIfPresent(String.self, forKey: .serverName) ?? ""
+        t1Version = try container.decodeIfPresent(String.self, forKey: .t1Version) ?? ""
+        deviceID = try container.decodeIfPresent(String.self, forKey: .deviceID) ?? ""
+        deviceName = try container.decodeIfPresent(String.self, forKey: .deviceName) ?? ""
+        serverFingerprint = try container.decodeIfPresent(
+            String.self, forKey: .serverFingerprint
+        ) ?? ""
+    }
+
+    /// Enough of a record to reconnect with.
+    ///
+    /// An address is the requirement; a `deviceID` is not. Connecting
+    /// with a T2S key produces no device record on the server — the key
+    /// *is* the credential — so it leaves `deviceID` empty, and
+    /// requiring one here meant a key-based connection failed
+    /// `restore()` and the app came up signed out after every restart.
+    /// Whether there is a credential is `TokenStore`'s question, and
+    /// `restore()` asks it separately.
+    var isConfigured: Bool { !endpoints.isEmpty }
 }
 
 actor HyperLinkClient {
     private var endpoints: [String]
     private var preferredIndex: Int = 0
     private var token: String?
+    /// Connected to a server in trusted-network mode with no credential.
+    ///
+    /// A separate flag rather than "send the token if we happen to have
+    /// one": that would make a lost token look like a deliberate
+    /// keyless connection, and the difference matters when deciding
+    /// what the app is allowed to offer. Keyless callers never get admin
+    /// rights server-side, so an admin screen must not be shown for one.
+    private var keyless: Bool = false
     private let session: URLSession
     private let decoder = JSONDecoder()
     private let encoder = JSONEncoder()
@@ -109,9 +168,10 @@ actor HyperLinkClient {
 
     // MARK: - Configuration
 
-    func configure(endpoints: [String], token: String?) {
+    func configure(endpoints: [String], token: String?, keyless: Bool = false) {
         self.endpoints = endpoints
         self.token = token
+        self.keyless = keyless
         self.preferredIndex = 0
     }
 
@@ -145,7 +205,7 @@ actor HyperLinkClient {
         if let contentType {
             request.setValue(contentType, forHTTPHeaderField: "Content-Type")
         }
-        if authenticated {
+        if authenticated && !keyless {
             guard let token, !token.isEmpty else { throw HyperLinkError.notConfigured }
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
@@ -275,7 +335,7 @@ actor HyperLinkClient {
         address: String,
         code: String,
         deviceName: String
-    ) async throws -> (PairRedeemResponse, [ServerEndpoint]) {
+    ) async throws -> (PairRedeemResponse, EndpointsResponse?) {
         let base = normalize(address)
         let client = HyperLinkClient(endpoints: [base], token: nil)
         let payload = PairRedeemRequest(
@@ -292,7 +352,11 @@ actor HyperLinkClient {
         // list. This is what makes the app work away from home without
         // the user ever typing a Tailscale name.
         await client.setToken(redeemed.deviceToken)
-        let discovered = (try? await client.endpoints())?.endpoints ?? []
+        // Optional on purpose: a phone that redeemed a code has a
+        // working credential, and failing the whole pairing because the
+        // follow-up address list did not come back would throw away a
+        // single-use code over something recoverable.
+        let discovered = try? await client.endpoints()
         return (redeemed, discovered)
     }
 
@@ -318,6 +382,26 @@ actor HyperLinkClient {
     ) async throws -> EndpointsResponse {
         let base = normalize(address)
         let client = HyperLinkClient(endpoints: [base], token: key.trimmingCharacters(in: .whitespacesAndNewlines))
+        return try await client.endpoints()
+    }
+
+    /// Connect with no credential at all, to a server in trusted-network
+    /// mode.
+    ///
+    /// The server decides, not the app: it answers only if its operator
+    /// turned the mode on *and* classifies this connection as loopback,
+    /// LAN or tailnet. A public origin is refused however the server is
+    /// configured, so this cannot be used to reach a machine over the
+    /// internet by leaving the key out.
+    ///
+    /// Throws `.unauthorized` when the mode is off, which is the common
+    /// case and reads correctly in the pairing screen: keyless is
+    /// something the person at the PC has to enable first.
+    static func connectKeyless(address: String) async throws -> EndpointsResponse {
+        let client = HyperLinkClient(endpoints: [normalize(address)], token: nil)
+        await client.configure(
+            endpoints: [normalize(address)], token: nil, keyless: true
+        )
         return try await client.endpoints()
     }
 
@@ -357,6 +441,18 @@ actor HyperLinkClient {
 
     func status() async throws -> ServerStatus {
         try await get("/status", as: ServerStatus.self, timeout: 10)
+    }
+
+    /// Other machines on the paired server's tailnet.
+    ///
+    /// Admin-only server-side, so this throws 403 for an ordinary device
+    /// token — which is correct: a phone's credential for one server is
+    /// not authority to enumerate every machine its owner runs.
+    ///
+    /// The timeout is long because the server probes each peer, and a
+    /// sleeping laptop costs the probe budget before it is given up on.
+    func peers() async throws -> PeersResponse {
+        try await get("/hyperlink/peers", as: PeersResponse.self, timeout: 30)
     }
 
     func whoami() async throws -> DeviceSummary {

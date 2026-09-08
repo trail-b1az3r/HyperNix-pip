@@ -12,6 +12,14 @@ struct HyperLinkApp: App {
     @State private var state = AppState()
     @Environment(\.scenePhase) private var scenePhase
 
+    init() {
+        // Before anything can read one. An admin credential is not meant
+        // to survive a restart unless someone asked for it to, and
+        // "unless someone asked" has to be decided at launch rather than
+        // at first use — by first use the app is already holding it.
+        AdminCredentialStore.beginSession()
+    }
+
     var body: some Scene {
         WindowGroup {
             RootView()
