@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 330 64" role="img" aria-label="HyperNix">
+  <title>HyperNix</title>
+  <g transform="translate(0,4.48) scale(0.86)">
+    <path d="M6,52 L16,40 L42,40 L32,52 Z" fill="#141414"/>
+    <path d="M12,34 L22,22 L48,22 L38,34 Z" fill="#6b6b6b"/>
+    <path d="M18,16 L28,4 L54,4 L44,16 Z" fill="#c8192e"/>
+  </g>
+  <text x="77.0" y="43" font-family="'Inter','Helvetica Neue','Liberation Sans',Arial,sans-serif" font-weight="800"
+        font-size="34" letter-spacing="-0.5" fill="#141414">HyperNix</text>
+</svg>
