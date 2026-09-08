@@ -1,12 +1,16 @@
-# hypernix
-
+<!-- README_HEADER_START -->
 <p align="center">
-  <a href="https://trail-b1az3r.github.io/HyperNix-pip/" target="_blank" rel="noopener">
-    <img src="./assets/banner-hero.svg" alt="HyperNix banner" width="100%" style="max-width:900px; height:auto; border-radius:8px;" />
-  </a>
+  <img src="https://raw.githubusercontent.com/trail-b1az3r/HyperNix-pip/main/assets/logo-new/hypernix-lockup-light.svg" alt="hypernix logo" width="240" />
 </p>
 
-**End-to-end toolkit for training AI models on modern or old devices, originally for converting hypernix.1 into gguf, now for all around training**
+<p align="center">
+  <img alt="PyPI" src="https://img.shields.io/badge/PyPI-v0.72.3-ff2d55?style=for-the-badge&logo=pypi&logoColor=white" />
+  <img alt="Python" src="https://img.shields.io/badge/Python-3.10--3.14-00c9ff?style=for-the-badge&logo=python&logoColor=white" />
+  <img alt="License" src="https://img.shields.io/badge/License-HOS%20/%20LLU-00c853?style=for-the-badge" />
+</p>
+<!-- README_HEADER_END -->
+
+**End-to-end toolkit for training ai models on modern or old devices, originaly for converting hypernix.1 into gguf, now for all around training**
 
 ## What's fixed in this update
 See [Changelog.md](/wiki/Changelog.md)
