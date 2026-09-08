@@ -1,3 +1,5 @@
+# hypernix
+
 <div align="center" style="display:block; width:100%; max-width:950px; margin:0 auto;">
   <a href="https://trail-b1az3r.github.io/HyperNix-pip/" target="_blank" rel="noopener"
      style="display:inline-block; vertical-align:middle;">
@@ -5,9 +7,6 @@
          alt="hypernix icon" width="140"
          style="border-radius:16px; border:6px solid #0c0c0c; box-shadow:0 14px 36px rgba(0,0,0,0.6);" />
   </a>
-
-  <img alt="decor bar" src="https://img.shields.io/badge/--/--/--?style=flat-square&color=0b0b0e&label=%20"
-       style="height:84px; width:700px; vertical-align:middle; margin-left:14px; border-radius:12px; border:6px solid #111; box-shadow:0 14px 36px rgba(0,0,0,0.6);" />
 
   <div style="margin-top:12px; text-align:center;">
     <img alt="PyPI" src="https://img.shields.io/badge/PyPI-v0.72.3-ff2d55?style=for-the-badge&logo=pypi&logoColor=white"
@@ -18,8 +17,6 @@
          style="border-radius:10px; border:2px solid #05240a; box-shadow:0 8px 20px rgba(0,200,83,0.08); margin-left:8px;" />
   </div>
 </div>
-
-# hypernix
 
 [![PyPI](https://img.shields.io/pypi/v/hypernix.svg)](https://pypi.org/project/hypernix/)
 [![Python](https://img.shields.io/pypi/pyversions/hypernix.svg)](https://pypi.org/project/hypernix/)
@@ -173,53 +170,3 @@ iPhone simulator, then delete every key they made. Nothing publishes
 until both pass.
 
 Full detail in the [Changelog](wiki/Changelog.md).
-
-## Package layout
-
-Modules are grouped by what they do rather than sitting in one flat
-directory:
-
-| Directory | Modules | Contents |
-|---|---|---|
-| `hypernix/chat/` | 5 | Chat templating, prompt presets and multi-turn session state. |
-| `hypernix/data/` | 15 | Datasets: collection, cleaning, splitting, packing and augmentation. |
-| `hypernix/evaluation/` | 6 | Scoring, rubric labelling, judging and module verification. |
-| `hypernix/interfaces/` | 11 | Human-facing front ends: CLIs, TUIs, GUIs and launchers. |
-| `hypernix/models/` | 11 | Architectures, snapshot loading, generation and model utilities. |
-| `hypernix/monitoring/` | 9 | Live dashboards, logging, telemetry and hardware sampling. |
-| `hypernix/optimizers/` | 8 | The Pressure Cooker optimizer family and optimizer plumbing. |
-| `hypernix/quant/` | 4 | The GGUF pipeline: convert, quantize, fetch tooling and upload. |
-| `hypernix/security/` | 3 | API keys, quotas and request gating. |
-| `hypernix/system/` | 15 | Environment, dependencies, hardware and housekeeping. |
-| `hypernix/timing/` | 5 | Timers, alarms, cadence control and progress animation. |
-| `hypernix/training/` | 14 | Training entry points, schedules and weight perturbation. |
-| `hypernix/t1api/` | — | The [T1 API](wiki/T1-API.md) server: registry, routing, quota, billing, audit, rate limiting, mTLS, deployment. |
-| `hypernix/t1sdk/` | — | The T1 API client SDK — typed, stdlib-only, no server extra needed. |
-| `hypernix/waiter/` | — | [`waiter`](wiki/Waiter-TUI.md), the official T1 API TUI/CLI. |
-
-**Every module keeps its old import path.** `hypernix.timer` and
-`hypernix.timing.timer` return the same module object, so nothing that
-imported a module before the move needs to change:
-
-```python
-from hypernix.timer import KitchenTimer          # always worked, still works
-from hypernix.timing.timer import KitchenTimer   # where the file actually is
-import hypernix; hypernix.timer is hypernix.timing.timer   # True
-```
-
-`hypernix.MODULE_CATEGORIES` (and its reverse, `hypernix.CATEGORY_OF`) is the
-one place the layout is written down — the lazy loader, the alias finder, the
-`hnx wiki` browser and the `scripts/autofix-*` tooling all read it, so moving a
-module between categories is a one-line change.
-
-## Module reference
-
-Click a category below to expand it.
-
-<details>
-<summary><strong>Models & Training</strong> &nbsp;(12 modules)</summary>
-
-| Subsystem | What it does |
-|---|---|
-| `hypernix.download` | Pull snapshots from the Hub (short-name resolution, gated repos, offline cache). |
-| `hypernix.train` | `HyperNixConfig`, `HyperNixModel`, `init_from_scratch`, `expand_checkpoint`, `train`. Non-HyperNix archs route through `AutoModelForCausalLM`. |
