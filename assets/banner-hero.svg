@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="220" viewBox="0 0 1200 220" role="img" aria-label="HyperNix banner">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#05060a" />
+      <stop offset="100%" stop-color="#0b0b0f" />
+    </linearGradient>
+    <linearGradient id="g1" x1="0" x2="1">
+      <stop offset="0%" stop-color="#ff2d55" />
+      <stop offset="100%" stop-color="#c3123b" />
+    </linearGradient>
+    <linearGradient id="g2" x1="0" x2="1">
+      <stop offset="0%" stop-color="#9aa0a6" />
+      <stop offset="100%" stop-color="#7a8086" />
+    </linearGradient>
+    <linearGradient id="g3" x1="0" x2="1">
+      <stop offset="0%" stop-color="#000" stop-opacity="0.9" />
+      <stop offset="100%" stop-color="#0a0a0a" stop-opacity="0.95" />
+    </linearGradient>
+    <filter id="soft" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="6" result="b" />
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- background -->
+  <rect width="1200" height="220" fill="url(#bg)" />
+
+  <!-- right glow sweep -->
+  <path d="M200 0 C 520 20, 880 30, 1000 220 L1200 220 L1200 0 Z" fill="rgba(0,180,255,0.03)" />
+  <path d="M0 220 C 260 120, 640 100, 1000 20 L1200 20 L1200 220 Z" fill="rgba(255,45,85,0.02)" />
+
+  <!-- slanted bars (logo motif) centered-left -->
+  <g transform="translate(520,24)">
+    <polygon points="0,0 120,0 100,28 -20,28" fill="url(#g1)" filter="url(#soft)" />
+    <polygon points="0,48 120,48 100,76 -20,76" fill="url(#g2)" />
+    <polygon points="0,96 120,96 100,124 -20,124" fill="url(#g3)" opacity="0.95" />
+  </g>
+
+  <!-- left-aligned compact icon (mirrors repo icon) -->
+  <g transform="translate(60,38)">
+    <rect x="0" y="0" width="128" height="128" rx="18" fill="#0b0b0f" stroke="#111" stroke-width="2" />
+    <g transform="translate(14,14) scale(0.55)">
+      <polygon points="200,0 320,0 300,28 180,28" fill="#ff2d55" />
+      <polygon points="200,48 320,48 300,76 180,76" fill="#9aa0a6" />
+      <polygon points="200,96 320,96 300,124 180,124" fill="#0b0b0f" />
+    </g>
+  </g>
+
+  <!-- title text on the left area -->
+  <text x="210" y="86" font-family="Inter, Roboto, system-ui, -apple-system, 'Segoe UI', Arial" font-size="40" fill="#ffffff">hypernix</text>
+  <text x="210" y="116" font-family="Inter, Roboto, system-ui, -apple-system, 'Segoe UI', Arial" font-size="14" fill="#9aa0a6">End-to-end toolkit for training AI models on modern or old devices</text>
+
+</svg>
