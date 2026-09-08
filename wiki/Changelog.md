@@ -20,6 +20,44 @@ next release header.
 - 𖢥 major bug fix
 - ꩜ restore to older version of item
 - ❗ unfixed known bug
+## 0.72.4.dev2 — the registry the server actually reads
+
+Second increment of 0.72.4, item 6/7: *"Waiter does not properly see the
+automatically indexed model registry."*
+
+`waiter models` asks the server, and the server reads a file — so that
+report is never about Waiter. It is about which file was opened and what
+happened when the file was not perfect. Three separate failures, each
+reachable from an ordinary setup.
+
+𖢥 **The server never looked for it.** With no `T1_MODEL_REGISTRY_PATH`
+the loader went straight to the shipped example seed. So `hypernix-t1
+index` would write a correct `models.json` and `waiter models` would
+list entries the seed file itself documents as *not real*, with nothing
+anywhere connecting the two. `discover()` now searches the config
+directory, `~/.hypernix/t1api`, `./hypernix/models` and the working
+directory; the indexer writes to the file the server will read, and says
+"restart it" instead of naming a variable that is no longer needed. An
+explicit `T1_MODEL_REGISTRY_PATH` still wins.
+
+𖢥 **A file being written was a crash.** The registry is produced by a
+different process, so the server opens it mid-write in the normal course
+of things — and a half-flushed file raised `JSONDecodeError` out of
+startup. Reading is now tolerant and never raises.
+
+𖢥 **One bad entry discarded every good one.** `ModelEntry.from_dict`
+raises `KeyError` on a missing required field, and that killed the whole
+load: a single typo took every other model with it, leaving an empty
+list and no cause. Bad entries are skipped and named; the rest load.
+
+✨ **`models.jsonl`.** One entry per line, which is how anything writes a
+registry incrementally — and a truncated final line, the shape a
+half-flushed append takes, costs only that line.
+
+🛡️ Two shapes people actually write are accepted rather than refused
+with a type error: a single entry object, and `{"models": [...]}`. The
+installer template's `_comment` stub is skipped rather than reported.
+
 ## 0.72.4.dev1 — HyperLink says why it cannot reach a server
 
 First increment of 0.72.4. Reported from a real iPhone: three addresses
