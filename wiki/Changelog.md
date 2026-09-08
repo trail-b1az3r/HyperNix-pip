@@ -20,6 +20,59 @@ next release header.
 - 𖢥 major bug fix
 - ꩜ restore to older version of item
 - ❗ unfixed known bug
+## 0.72.4.dev5 — `hypernix-t1 launch-script`
+
+Items 9, 10 and 11. Closing a laptop is the normal end of a remote
+working session and should not be the end of a training run.
+
+```bash
+hypernix-t1 launch-script ./train.py --name training-job --detach
+hypernix-t1 launch-script --status training-job
+hypernix-t1 launch-script --logs training-job --tail 50
+hypernix-t1 launch-script --stop training-job
+```
+
+`&` does not solve this. A backgrounded process is still in the shell's
+process group and still holds the tty, so the SIGHUP that follows a
+dropped connection reaches it. What survives is a process in its **own
+session**, which is what `hypernix.system.launcher` creates —
+`systemd-run --user` where there is a user bus, and a detached wrapper
+that records the exit status where there is not.
+
+Everything is on disk under the config directory, so `--status` and
+`--logs` work from a different SSH session, after a reboot, and whether
+or not the T1 server is running.
+
+**Authentication is required** and comes three ways: a key already
+configured for the machine, `-k`, or `--admin-password`. None of them
+reaches the job — a key in `argv` is readable by every user on the box
+through `ps`. Job records store environment **names only**, because the
+values are the caller's environment and several of them are credentials.
+
+Flags: `--name --env --cwd --detach --timeout --log-file --priority
+--gpu --cpu --status --logs --tail --stop --restart --list --json`.
+`--gpu` sets `CUDA_VISIBLE_DEVICES` and `HIP_VISIBLE_DEVICES` together,
+since which one a runtime reads depends on where it lands and the job
+should not have to know.
+
+### Two bugs the tests found
+
+**The `setsid` binary was the wrong tool.** It forks when it is already
+a process-group leader and then exits, so the pid recorded belonged to a
+process that had already gone — and `--status` reported *unknown* for a
+job running perfectly well. `Popen(start_new_session=True)` calls
+`setsid(2)` in the child directly: same new session, and the pid we
+actually want.
+
+**`nargs=REMAINDER` swallowed the flags.** The documented form is
+`launch-script ./train.py --name training-job --detach`, and REMAINDER
+handed `--name training-job` to the script, silently naming the job
+after the filename. Flags after the path now reach the CLI; the script's
+own arguments go after a `--`.
+
+33 tests, the first of which launches from a separate process, kills it,
+and checks the job is still running — the only one that proves the point.
+
 ## 0.72.4.dev4 — trusted-network mode
 
 Items 3 and 14. An origin on the LAN or a confirmed tailnet may connect
