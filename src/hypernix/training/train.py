@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import json
 import math
+import os
 import shutil
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -726,6 +727,7 @@ def train(
     checkpoint_every: int = 1,
     fuse_optimizer: bool = False,
     tune_allocator: bool = False,
+    run_id: str | None = None,
 ) -> Path:
     """Minimal causal-LM training loop.
 
@@ -759,6 +761,13 @@ def train(
             fragments less. Off by default because it edits the process
             environment; it has no effect once CUDA is initialized, and
             says so rather than pretending.
+        run_id: Publish progress under this id, readable by
+            ``GET /training/runs`` and by HyperLink. Defaults to
+            ``$HNX_RUN_ID``, which ``hypernix-t1 launch-script`` sets, so
+            a detached run is observable without the caller doing
+            anything. Reporting is on the ``log_every`` cadence, not
+            per-step: the status file is written on exactly the ticks
+            that already print a line.
     """
     model_dir = Path(model_dir)
     dataset_path = Path(dataset_path)
@@ -862,49 +871,96 @@ def train(
             regulator=regulator,
         )
 
-    step = 0
-    while step < steps:
-        batch_tensors = [chunks[(step * batch_size + i) % len(chunks)] for i in range(batch_size)]
-        batch = torch.stack(batch_tensors).to(dev)
-        inputs = batch[:, :-1]
-        labels = batch[:, 1:]
+    reporter = _progress_reporter(run_id, total_steps=steps, model=str(model_dir))
 
-        # Apply context regulation (STML wraps the regulator, or regulator alone)
-        if stml_mgr is not None:
-            if regulator is not None:
+    try:
+        step = 0
+        while step < steps:
+            batch_tensors = [chunks[(step * batch_size + i) % len(chunks)] for i in range(batch_size)]
+            batch = torch.stack(batch_tensors).to(dev)
+            inputs = batch[:, :-1]
+            labels = batch[:, 1:]
+
+            # Apply context regulation (STML wraps the regulator, or regulator alone)
+            if stml_mgr is not None:
+                if regulator is not None:
+                    regulator.step(step)
+                batch_dict = {"input_ids": inputs, "labels": labels}
+                batch_dict = stml_mgr.regulate(batch_dict)
+                inputs = batch_dict["input_ids"]
+                labels = batch_dict["labels"]
+            elif regulator is not None:
                 regulator.step(step)
-            batch_dict = {"input_ids": inputs, "labels": labels}
-            batch_dict = stml_mgr.regulate(batch_dict)
-            inputs = batch_dict["input_ids"]
-            labels = batch_dict["labels"]
-        elif regulator is not None:
-            regulator.step(step)
-            batch_dict = {"input_ids": inputs, "labels": labels}
-            batch_dict = regulator.regulate(batch_dict)
-            inputs = batch_dict["input_ids"]
-            labels = batch_dict["labels"]
+                batch_dict = {"input_ids": inputs, "labels": labels}
+                batch_dict = regulator.regulate(batch_dict)
+                inputs = batch_dict["input_ids"]
+                labels = batch_dict["labels"]
 
-        out_dict = model(inputs, labels=labels)
-        loss = out_dict["loss"]
+            out_dict = model(inputs, labels=labels)
+            loss = out_dict["loss"]
 
-        opt.zero_grad(set_to_none=True)
-        loss.backward()
-        if grad_clip:
-            torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
-        opt.step()
-        sched.step()
-        step += 1
+            opt.zero_grad(set_to_none=True)
+            loss.backward()
+            if grad_clip:
+                torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
+            opt.step()
+            sched.step()
+            step += 1
 
-        if step % log_every == 0:
-            ctx_len = inputs.shape[1] if hasattr(inputs, "shape") else context_length
-            print(f"[hypernix.train] step {step}/{steps}  loss={loss.item():.4f}  ppl={math.exp(min(loss.item(), 20)):.2f}  ctx={ctx_len}")
-        if save_every and step % save_every == 0:
-            save_snapshot(model, out, tokenizer_source=model_dir)
+            if step % log_every == 0:
+                ctx_len = inputs.shape[1] if hasattr(inputs, "shape") else context_length
+                print(f"[hypernix.train] step {step}/{steps}  loss={loss.item():.4f}  ppl={math.exp(min(loss.item(), 20)):.2f}  ctx={ctx_len}")
+                if reporter is not None:
+                    reporter.update(
+                        step=step,
+                        loss=loss.item(),
+                        lr=(sched.get_last_lr() or [lr])[0],
+                        context_length=ctx_len,
+                    )
+            if save_every and step % save_every == 0:
+                save_snapshot(model, out, tokenizer_source=model_dir)
+                if reporter is not None:
+                    reporter.checkpoint(out)
+
+    except BaseException as exc:
+        # Including KeyboardInterrupt and SystemExit: a run that was
+        # interrupted must not be left reporting "running" forever,
+        # and Ctrl-C is the most common way a run ends.
+        if reporter is not None:
+            reporter.failed(f"{type(exc).__name__}: {exc}")
+        raise
 
     save_snapshot(model, out, tokenizer_source=model_dir)
+    if reporter is not None:
+        reporter.checkpoint(out)
+        reporter.finished()
     return out
 
 
+
+def _progress_reporter(run_id: str | None, *, total_steps: int, model: str):
+    """A :class:`~hypernix.training.monitor.ProgressReporter`, or None.
+
+    None whenever no id was asked for *and* nothing can be built — the
+    monitor is an observability feature, and a training run must not
+    fail to start because the directory it would report into is not
+    writable. Any failure here is printed once and then forgotten.
+    """
+    resolved = run_id or os.environ.get("HNX_RUN_ID", "")
+    if not resolved:
+        return None
+    try:
+        from hypernix.training.monitor import ProgressReporter
+
+        return ProgressReporter(
+            resolved,
+            name=os.environ.get("HNX_JOB_NAME", resolved),
+            total_steps=total_steps,
+            model=model,
+        )
+    except Exception as exc:  # noqa: BLE001 - never fail a run over reporting
+        print(f"[hypernix.train] progress reporting is off: {exc}", flush=True)
+        return None
 
 # ---------------------------------------------------------------------------
 # Fresh-init helper

@@ -108,6 +108,25 @@ def get_cert_verifier(request: Request):
     return request.app.state.t1_cert_verifier
 
 
+def get_training_monitor(request: Request):
+    """The training monitor, built once per app.
+
+    Not created in ``create_app`` with the other subsystems because it
+    holds no state worth sharing — it is a directory reader — and
+    because building it lazily lets a test point one at a temporary
+    directory by assigning ``app.state.t1_training_monitor`` without
+    having to stand the whole app back up.
+    """
+    existing = getattr(request.app.state, "t1_training_monitor", None)
+    if existing is not None:
+        return existing
+    from ..training.monitor import TrainingMonitor, default_root
+
+    monitor = TrainingMonitor(default_root())
+    request.app.state.t1_training_monitor = monitor
+    return monitor
+
+
 def get_client_ip(request: Request) -> str:
     """The caller's address, honouring X-Forwarded-For only from a
     trusted proxy.
@@ -467,6 +486,7 @@ __all__ = [
     "get_config",
     "get_auth_context",
     "require_admin",
+    "get_training_monitor",
     "get_routing_engine",
     "get_server_registry",
     "get_module_registry",

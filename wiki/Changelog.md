@@ -20,6 +20,104 @@ next release header.
 - 𖢥 major bug fix
 - ꩜ restore to older version of item
 - ❗ unfixed known bug
+## 0.72.4.dev7 — what training is doing, and the controls for it
+
+Item 5. A training run is the longest-lived and least observable thing
+this package starts: it goes for hours, it is usually launched over a
+connection that will not survive it, and until now the only way to know
+how it was going was to read a log.
+
+**`hypernix.training.monitor`** ✨ — two halves, deliberately separate.
+`ProgressReporter` is written *by* the trainer: one atomic rewrite of a
+small JSON file per update, no lock, no append, no fsync, because the
+reader is a web request that can arrive halfway through an epoch and a
+half-written status is worse than a stale one. `TrainingMonitor` is read
+by everything else, and merges what the file says with what is actually
+running — a crashed trainer leaves a record still claiming to be
+`running`, and believing it shows a healthy run that has not existed
+since Tuesday.
+
+**`train()` reports itself** 🔁 — no caller has to arrange it. The
+launcher exports `HNX_RUN_ID` and `HNX_LOG_PATH`, so a run started with
+`hypernix-t1 launch-script ./train.py --name qwen-sft --detach` appears
+in the dashboard on its own. That mattered more than it sounds: if the
+id had to be passed by hand, the runs people most want to watch — the
+detached ones — are exactly the ones that would never appear. The loop
+catches `BaseException`, Ctrl-C and `SystemExit` included, so an
+interrupted run is recorded as failed rather than left claiming
+progress forever.
+
+**`GET /training/*`** ✨ — runs, one run, its log tail, its checkpoints
+(with `exists`, because a checkpoint list is used to decide what to
+resume from and a path that has since been deleted is the case worth
+knowing), and `/training/resources` for the GPU/CPU/RAM alongside it. A
+loss curve without utilisation cannot tell you why a run is slow, and
+that is the question people actually have.
+
+**`POST /training/runs/{id}/{pause,resume,stop}`** ✨ — SIGSTOP, SIGCONT
+and SIGTERM to the run's process group. Terminate rather than kill: a
+trainer that handles SIGTERM gets to write a final checkpoint, and the
+difference between "stopped at epoch 4" and "lost epoch 4" is the whole
+value of asking politely first.
+
+**`hypernix-t1 training`** ✨ — the same thing without a server in
+between, because the moment you most want to know what a run is doing is
+usually the moment the API is the thing in trouble. No key check: the
+controls signal processes this user already owns and the records are
+files this user can already read, so the access control is the
+filesystem's. Over the network is where credentials belong.
+
+### Who may call it
+
+The spec's line is *admin-only unless the server is using the explicitly
+enabled trusted LAN/Tailscale keyless mode*, and there are two tiers
+because a second opt-in earns the destructive half:
+
+| | admin key | trusted mode | + partial admin | public |
+|---|---|---|---|---|
+| read runs, logs, resources | ✅ | ✅ | ✅ | ❌ |
+| stop / pause / resume | ✅ | ❌ | ✅ | ❌ |
+
+Killing six hours of training is not something a device that presented
+no credential gets to do because it happens to be on the same wifi. A
+public origin never qualifies for either, whatever the configuration
+says — `TrustPolicy.allows_keyless` refuses `PUBLIC` before the policy is
+consulted, so no amount of configuration turns an unauthenticated
+internet connection into training administration. Every control is
+audited under `admin`, the same category as rotating a key.
+
+Presenting an ordinary read key does not *lose* you access you would
+have had keyless from the same address. "Authenticating made you less
+trusted than staying anonymous" is a rule people design around by not
+sending their key.
+
+### Three things running it found
+
+**Pausing does not free the card.** SIGSTOP freezes the process with its
+GPU allocations intact. That is what makes resuming instant and it is
+also the caveat, so both the API's `note` and the CLI say it out loud —
+it is the thing everyone assumes the opposite of.
+
+**A stopped process cannot handle SIGTERM.** Stopping a paused run had
+to SIGCONT it first, or "stop" reported success and left the run frozen
+forever.
+
+**A dead run kept advertising an ETA.** It holds its last measured rate,
+so a trainer that died an hour ago at 43% displayed `eta 6s` — which
+reads as *nearly finished*, the opposite of what happened. `eta_seconds`
+is now `None` for anything that is not still going, next to `progress`,
+which has always been `None` rather than `0.0` when no schedule was
+declared: a bar at 0% for a job two hours in is a lie a dashboard tells
+confidently.
+
+Stopping a run that has already ended is a 409 rather than a rewrite —
+overwriting `finished` with `stopped` would leave the history saying an
+operator killed a job that in fact completed.
+
+79 tests, including real child processes read back through `/proc`,
+because none of pause, resume or stop can be checked by reading the
+code.
+
 ## 0.72.4.dev6 — one way to ask about a GPU, whoever made it
 
 Item 13, beta 1 of the three or four you asked for: the abstraction and

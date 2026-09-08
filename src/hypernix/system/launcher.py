@@ -298,6 +298,12 @@ def launch(
         child_env["HIP_VISIBLE_DEVICES"] = gpu
     child_env["HNX_JOB_ID"] = job_id
     child_env["HNX_JOB_NAME"] = label
+    # What a training run reports itself under. The id rather than the
+    # label, so relaunching a job of the same name supersedes nothing —
+    # the monitor still resolves the label, because it falls back to
+    # matching on name when an id does not exist.
+    child_env["HNX_RUN_ID"] = job_id
+    child_env["HNX_LOG_PATH"] = str(log_path)
 
     chosen = supervisor or available_supervisor()
     job = Job(
@@ -339,8 +345,8 @@ def _launch_systemd(job, command, working, env, log_path, timeout, priority, cpu
         argv.append(f"--property=CPUAffinity={cpu}")
     # Environment goes through --setenv rather than the command line, so
     # nothing here lands in `ps`.
-    for key in ("HNX_JOB_ID", "HNX_JOB_NAME", "CUDA_VISIBLE_DEVICES",
-                "HIP_VISIBLE_DEVICES"):
+    for key in ("HNX_JOB_ID", "HNX_JOB_NAME", "HNX_RUN_ID", "HNX_LOG_PATH",
+                "CUDA_VISIBLE_DEVICES", "HIP_VISIBLE_DEVICES"):
         if key in env:
             argv.append(f"--setenv={key}={env[key]}")
     for key in job.env_keys:

@@ -17,6 +17,9 @@ T1 v1.0.26.9.2.1 adds: inference — the governed generation surface.
 ``/bridge/lmstudio/*`` is a pass-through that never consults the
 registry, the cascade or the quota; ``/inference/*`` is the same
 capability with every one of those applied.
+0.72.4 adds: training — progress, logs, checkpoints, machine
+resources and the stop/pause/resume controls, admin-gated unless the
+server is explicitly in trusted-network mode.
 
 Three routers expose endpoints beyond the spec's literal list, each for
 a stated reason rather than by accident:
@@ -49,6 +52,7 @@ from . import (
     modules,
     security,
     servers,
+    training,
     usage,
 )
 
@@ -75,6 +79,8 @@ ALL_ROUTERS = (
     backup.router,
     # T1 v1.0.26.9.2.1
     inference.router,
+    # 0.72.4
+    training.router,
 )
 
 __all__ = [
@@ -96,5 +102,6 @@ __all__ = [
     "modules",
     "security",
     "servers",
+    "training",
     "usage",
 ]

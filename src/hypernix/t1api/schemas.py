@@ -1466,3 +1466,94 @@ class InferenceBackendsResponse(BaseModel):
     backends: list[InferenceBackend] = Field(default_factory=list)
     default: str = ""
     request_id: str
+
+
+# ---------------------------------------------------------------------------
+# 0.72.4 — training administration
+# ---------------------------------------------------------------------------
+
+
+class TrainingRunItem(BaseModel):
+    """One run, as ``training.monitor`` reconciled it.
+
+    ``percent`` and ``eta_seconds`` are ``None`` rather than ``0`` when
+    the trainer never declared a schedule — a dashboard that renders 0%
+    for a job two hours in states something false with confidence.
+    """
+
+    run_id: str
+    name: str = ""
+    state: str = ""
+    epoch: int = 0
+    total_epochs: int = 0
+    step: int = 0
+    total_steps: int = 0
+    metrics: dict[str, float] = Field(default_factory=dict)
+    loss_history: list[float] = Field(default_factory=list)
+    checkpoints: list[str] = Field(default_factory=list)
+    model: str = ""
+    started_at: float = 0.0
+    updated_at: float = 0.0
+    finished_at: float | None = None
+    error: str = ""
+    job_id: str = ""
+    pid: int = 0
+    log_path: str = ""
+    percent: float | None = None
+    eta_seconds: float | None = None
+    is_active: bool = False
+
+
+class TrainingRunListResponse(BaseModel):
+    runs: list[TrainingRunItem] = Field(default_factory=list)
+    count: int = 0
+    active: int = 0
+    root: str = ""
+    request_id: str
+
+
+class TrainingRunResponse(BaseModel):
+    run: TrainingRunItem
+    request_id: str
+
+
+class TrainingLogResponse(BaseModel):
+    run_id: str
+    #: Empty with a populated ``detail`` when the run has no log — a
+    #: run started outside the launcher has nowhere to read from, and
+    #: that is not an error worth a 404 for the whole run.
+    log: str = ""
+    lines: int = 0
+    path: str = ""
+    detail: str = ""
+    request_id: str
+
+
+class TrainingCheckpointItem(BaseModel):
+    path: str
+    exists: bool = False
+    size_bytes: int = 0
+    modified_at: float | None = None
+
+
+class TrainingCheckpointListResponse(BaseModel):
+    run_id: str
+    checkpoints: list[TrainingCheckpointItem] = Field(default_factory=list)
+    count: int = 0
+    request_id: str
+
+
+class TrainingResourcesResponse(BaseModel):
+    gpus: list[dict[str, Any]] = Field(default_factory=list)
+    cpu_percent: float | None = None
+    ram_total_mb: int | None = None
+    ram_used_mb: int | None = None
+    ram_percent: float | None = None
+    request_id: str
+
+
+class TrainingControlResponse(BaseModel):
+    run: TrainingRunItem
+    action: str
+    note: str = ""
+    request_id: str
