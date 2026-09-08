@@ -20,6 +20,60 @@ next release header.
 - 𖢥 major bug fix
 - ꩜ restore to older version of item
 - ❗ unfixed known bug
+## 0.72.4.dev4 — trusted-network mode
+
+Items 3 and 14. An origin on the LAN or a confirmed tailnet may connect
+without a key **when the administrator turns that on**, and a public
+origin never can, however the server is configured.
+
+```
+T1_TRUSTED_NETWORK=1                     # off by default
+T1_TRUSTED_NETWORK_PARTIAL_ADMIN=1       # a second, separate opt-in
+```
+
+Or at install: `install-t1.sh --trusted-network`.
+
+### What a keyless caller gets
+
+Read only. `--trusted-network-partial-admin` adds write — and never
+`KeyScope.ADMIN`, so nothing an admin key exists to gate is reachable
+without one. "Partial administrative functionality" was the phrase in
+the request, and the partial part is load-bearing. The context carries
+no key material either: there was no credential, and recording a
+plausible-looking one would invent evidence of an authentication that
+never happened.
+
+### Three things that would each have been a hole
+
+**`--yes` cannot enable it.** `ask_yes_no` answers every confirmation
+with yes, which is right for *"are you sure"* and wrong for the one
+question that lowers an authentication requirement — an unattended
+install would have come up serving the LAN without a key and nobody
+would have chosen it. It takes `--trusted-network`, or a person.
+
+**The reverse-proxy trap.** nginx or caddy on the same host makes every
+request in the world arrive from `127.0.0.1`, which is the *most*
+trusted origin here. An operator enabling keyless LAN access behind an
+unconfigured proxy would have published it to the internet while
+believing it reachable only from their sofa. A forwarded header from a
+peer that is not a configured trusted proxy now collapses the origin to
+public — failing closed, since a direct client sending a junk header
+only denies itself.
+
+**A bad key is not "no key".** The keyless path runs only when the
+request brings no credential at all. If a failed key fell through to it,
+revoking a key would stop working from the LAN, which is the opposite of
+what revoking means.
+
+### Found while building it
+
+`_extract_credential` *raises* on a missing Authorization header, so the
+keyless check — written after it — could never run. Every origin got a
+401 with the mode on. The check moved above it; the credential path is
+untouched.
+
+27 tests, most of them the boundary rather than the feature.
+
 ## 0.72.4.dev3 — one answer to "where did this come from"
 
 Third increment, item 17's shared component for items 1, 3, 4 and 14.

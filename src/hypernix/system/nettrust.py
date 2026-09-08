@@ -239,9 +239,30 @@ def classify(
         if candidate is not None:
             via, address = str(address), candidate
     elif forwarded_for:
+        # A forwarded header from a peer we cannot vouch for. The header
+        # itself is worthless -- but its *presence* means something is
+        # probably relaying, and we cannot tell what.
+        #
+        # This is the reverse-proxy trap, and it is the dangerous
+        # direction. nginx or caddy on the same host makes every request
+        # in the world arrive from 127.0.0.1, which is the *most* trusted
+        # level here. Trust that, turn keyless mode on, and the entire
+        # internet has keyless access to a server whose operator believes
+        # it is reachable only from their LAN.
+        #
+        # So an unverifiable forwarded header collapses the origin to
+        # public. A direct client that sends a junk header only denies
+        # itself keyless access, which is a much better failure than the
+        # alternative.
         logger.debug(
-            "system.nettrust: ignoring a forwarded header from %s, which is not "
-            "a configured trusted proxy", peer,
+            "system.nettrust: %s sent a forwarded header and is not a "
+            "configured trusted proxy; treating the origin as public", peer,
+        )
+        return Origin(
+            str(address), Trust.PUBLIC,
+            reason=f"{peer} sent a forwarded header but is not a configured "
+                   f"trusted proxy, so what is behind it cannot be established. "
+                   f"Set T1_TRUSTED_PROXIES if this is your reverse proxy.",
         )
 
     text = str(address)
