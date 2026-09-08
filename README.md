@@ -2,7 +2,7 @@
 
 <p align="center">
   <a href="https://trail-b1az3r.github.io/HyperNix-pip/" target="_blank" rel="noopener">
-    <img src="./assets/banner-hero.svg" alt="HyperNix banner" width="900" />
+    <img src="./assets/banner-hero.svg" alt="HyperNix banner" width="100%" style="max-width:900px; height:auto; border-radius:8px;" />
   </a>
 </p>
 
