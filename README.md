@@ -1,8 +1,23 @@
-<p align="center">
-  <a href="https://trail-b1az3r.github.io/HyperNix-pip/" target="_blank" rel="noopener">
-    <img src="https://raw.githubusercontent.com/trail-b1az3r/HyperNix-pip/main/assets/logo-new/hypernix-lockup-light.svg" alt="hypernix logo" width="360" />
+<div align="center" style="display:block; width:100%; max-width:950px; margin:0 auto;">
+  <a href="https://trail-b1az3r.github.io/HyperNix-pip/" target="_blank" rel="noopener"
+     style="display:inline-block; vertical-align:middle;">
+    <img src="https://github.com/trail-b1az3r/HyperNix-pip/raw/main/assets/logo-new/icon-512.png?raw=true"
+         alt="hypernix icon" width="140"
+         style="border-radius:16px; border:6px solid #0c0c0c; box-shadow:0 14px 36px rgba(0,0,0,0.6);" />
   </a>
-</p>
+
+  <img alt="decor bar" src="https://img.shields.io/badge/--/--/--?style=flat-square&color=0b0b0e&label=%20"
+       style="height:84px; width:700px; vertical-align:middle; margin-left:14px; border-radius:12px; border:6px solid #111; box-shadow:0 14px 36px rgba(0,0,0,0.6);" />
+
+  <div style="margin-top:12px; text-align:center;">
+    <img alt="PyPI" src="https://img.shields.io/badge/PyPI-v0.72.3-ff2d55?style=for-the-badge&logo=pypi&logoColor=white"
+         style="border-radius:10px; border:2px solid #24000a; box-shadow:0 8px 20px rgba(255,45,85,0.12);" />
+    <img alt="Python" src="https://img.shields.io/badge/Python-3.10--3.14-00c9ff?style=for-the-badge&logo=python&logoColor=white"
+         style="border-radius:10px; border:2px solid #00212a; box-shadow:0 8px 20px rgba(0,201,255,0.10); margin-left:8px;" />
+    <img alt="License" src="https://img.shields.io/badge/License-HOS%20/%20LLU-00c853?style=for-the-badge"
+         style="border-radius:10px; border:2px solid #05240a; box-shadow:0 8px 20px rgba(0,200,83,0.08); margin-left:8px;" />
+  </div>
+</div>
 
 # hypernix
 
@@ -208,128 +223,3 @@ Click a category below to expand it.
 |---|---|
 | `hypernix.download` | Pull snapshots from the Hub (short-name resolution, gated repos, offline cache). |
 | `hypernix.train` | `HyperNixConfig`, `HyperNixModel`, `init_from_scratch`, `expand_checkpoint`, `train`. Non-HyperNix archs route through `AutoModelForCausalLM`. |
-| `hypernix.brewer` | `hyperNix0x-v2` architecture preset family — `Brewer(config).build()` for a from-scratch `BrewerModel`. GPU-oriented presets `33m` / `micro` / `small` / `medium` / `large`[...]|
-| `hypernix.instant_pot` | `brew(recipe)` — one-shot end-to-end pipeline. Also available as `hypernix brew recipe.json`. |
-| `hypernix.coffee_maker` | 3 tiers (drip / french-press / percolator) + `cold_brew` type for long checkpointed runs. |
-| `hypernix.deep_fryer` | 2-tier model-weight perturbation: `LightFry` (regulariser) / `HeavyFry` (severe, for bad-model negatives). In-place, reversible via snapshot. |
-| `hypernix.abbicus` | Automatic token regulation and curriculum tuning. **`Abbicus`** (linear) dynamically modifies max sequence length based on model size (0.5B-72B), global step, and dataset t[...]
-| `hypernix.compute_framework` | Hardware-agnostic multi-device training. Abstracts CUDA, MPS, CPU, TPU backends with automatic DDP/ZeRO wrapping. `ComputeFramework` handles PyTorch DDP initializ[...]
-| `hypernix.workshop` | Model frameworks and TTS/ASR pipelines. `WorkshopFramework` base class with `FrameworkConfig` for TTS, ASR, LLM, Vision models. Pre-built templates for the ray0rf1re/nano-[...]
-| `hypernix.whisk` | Checkpoint averaging — `swa_average` (uniform mean), `ema` (exponential), `geometric_mean`. Accepts state dicts or paths to `.pt` / `.safetensors`. `whisk_to_snapshot` writ[...]
-| `hypernix.recipe_book` | Named-config registry. `RecipeBook` with `add` / `get` / `save` / `load` / `cook(name, **overrides)`. `cook` dispatches by `kind` (`instant_pot` / `cold_brew` / `espresso`) [...]
-| `hypernix.mtp` | *(v0.70.5)* Multi-Token Prediction — predict multiple future tokens for 1.5-3x training efficiency + speculative decoding. `MTPConfig`, `MTPHead`, `MTPTrainer`. |
-
-</details>
-
-<details>
-<summary><strong>Optimizers</strong> &nbsp;(3 modules)</summary>
-
-| Subsystem | What it does |
-|---|---|
-| `hypernix.pressure_cooker` | Custom AdamW optimizer in 5 tiers: base `PressureCooker` + CPU (`StovetopCooker`, `ElectricCooker`) + GPU (`InductionCooker`, `ProCooker`) + `universal_cooker` sele[...]
-| `hypernix.pressure_cooker_v3` | ZeRO-optimized V3 optimizer with FP8 support. `QuantDtype` enum (FP8/FP16/FP32/FP64/Q8/Q6/Q5_5/Q4M) and `QuantConfig` dataclass. `PressureCookerV3` / `PressureCo[...]
-| `hypernix.pressure_cooker_v5` | *(v0.70.5 / v0.70.6)* ORCP optimizer family with int8-quantized momentum, factored curvature, QAT (Q4/Q5/Q6/Q8), Multi-Token Prediction, and EMA shadowing. `Pres[...]
-
-</details>
-
-<details>
-<summary><strong>Memory / VRAM</strong> &nbsp;(4 modules)</summary>
-
-| Subsystem | What it does |
-|---|---|
-| `hypernix.old_fridge` | Memory housekeeping: `freeze`, `unfreeze`, `parameter_stats`, `offload_to_cpu`, `chill_cache`. |
-| `hypernix.freezer` | VRAM manager: `OldFreezer` (8-10 GB, conservative batches, bf16/fp16), `NewFreezer` (11 GB+, fp32-preferred), `FlashFreezer` (OOM-safe retry wrapper around either). Pascal [...]
-| `hypernix.cake_pan` | Hybrid CPU + GPU training guard with NaN/Inf detection, wall-time watchdog, memory-pressure offload, and pristine-state rollback via `BakeOff`. |
-| `hypernix.vram` | *(v0.72.3)* **VRAM optimizations** — `configure_allocator()` (`expandable_segments`, so a long run stops fragmenting; must run before the first CUDA allocation, which is why[...]
-| `hypernix.stml` | *(v0.70.4)* **Short Term Memory Loss** — two tools. `calculate_vram_context(vram_gb, params, batch_size, precision)` estimates the max safe trained context given your hardwa[...]
-
-</details>
-
-<details>
-<summary><strong>Data Pipeline</strong> &nbsp;(9 modules)</summary>
-
-| Subsystem | What it does |
-|---|---|
-| `hypernix.pans` | 5-tier data preprocessing: `FryingPan` → `SaucePan` → `Skillet` → `GrillPan` → `Wok`. Pair with `sink.Sink.pour` to write the output to disk. |
-| `hypernix.blender` | 4-tier multi-source mixing: `HandBlender` / `PersonalBlender` / `CountertopBlender` / `HighPowerBlender`. |
-| `hypernix.toaster` | 4-tier per-line formatting: `TwoSliceToaster` / `FourSliceToaster` / `ConveyorToaster` / `ToasterOven`. |
-| `hypernix.food_processor` | 4-tier bulk chunking: `ChopBlade` / `SliceBlade` / `ShredBlade` / `PureeBlade`. |
-| `hypernix.salt_shaker` | 3-tier gentle data augmentation: `FromTheBag` / `HandCrusher` / `PoshSaltDish`. |
-| `hypernix.pepper_shaker` | 3-tier sharp perturbations: `SmallShaker` (MLM-style mask) / `Dish` (typos) / `TallHandmade` (negation). |
-| `hypernix.qa` | *(v0.70.4)* **`QAProcessor`** — turns structured datasets (JSONL, `list[dict]`, plain text) into causal LM training strings. Two modes: `question_answer` (`Question: {q}\nAnsw[...]
-| `hypernix.cutting_board` | Train / val / test splitting. `CuttingBoard` (deterministic random) + `StratifiedBoard` (preserves class distribution on labelled records). Renormalises ratios that d[...]
-| `hypernix.lunchbox` | Consistent-schema dataset packager. `Lunchbox.for_eval()` pre-loads the recommended eval-results columns; `pack(path)` / `push_to_hub(repo_id)` routes through `datasets.Da[...]
-
-</details>
-
-<details>
-<summary><strong>Inference & Chat</strong> &nbsp;(7 modules)</summary>
-
-| Subsystem | What it does |
-|---|---|
-| `hypernix.old_oven` | `CodeOven` — ready-to-use wrapper around a snapshot: `.complete()`, `.chat()`, `.fill()`, `.save_pt()`. `new_oven()` spins a fresh one from the [ARCH_PRESETS](#arch_pres[...]
-| `hypernix.microwave` | 5-tier throwaway inference: `defrost` → `low_zap` → `zap` → `high_zap` → `chat_zap`, plus `reheat` for continuing a prior output. |
-| `hypernix.cookbook` | Chat-template registry. Built-in templates for `chatml` / `hyper-nix.2` / `llama3` / `llama2` / `alpaca` / `vicuna` / `plain`. `for_model(repo_id)` picks the right one aut[...]
-| `hypernix.countertop` | Multi-turn chat session. `Countertop(oven, system=…)` with `say(user)` / `reset()` / `save(path)` / `load(path)`. Auto-trims long histories; optional `bell=` for token[...]
-| `hypernix.menu` | Named system-prompt registry: `default` / `concise` / `code-helper` / `judge` / `creative` / `chef` / `hyper-nix`. Pair with `countertop(oven, persona="…")` to pick a system prom[...]
-| `hypernix.bell` | Streaming-token + done-notification primitive. `Bell.iter_chat(oven, messages)` yields tokens; `stream_chat` collects and fires callbacks. `stdout_bell()` / `file_bell(path)` ship [...]
-| `hypernix.flour` | Chat-quality logits processor — repetition penalty, frequency / presence penalty, no-repeat n-gram, bad-word suppression, role-leak suppression (cuts hallucinated `user:`-style [...]
-
-</details>
-
-<details>
-<summary><strong>Monitoring & CLI</strong> &nbsp;(5 modules)</summary>
-
-| Subsystem | What it does |
-|---|---|
-| `hypernix.smoke_alarm` | Training-step planner & monitor. `RadsAlarm` (constants, lightest), `GasAlarm` (CPU/GPU presets), `ModernAlarm` (warmup-measured), `AutoAlarm` (selector). Plus `storage[...]
-| `hypernix.table` | Dead-simple tabular viewer: `from_training_log`, `from_judge_corpus`, `filter`, `select`, `show`. |
-| `hypernix.tvtop` | Backwards-compatibility shim — all functionality moved to `hypernix.tv`. Re-exports everything so `import hypernix.tvtop` continues to work. Console script `tvtop` now laun[...]
-| `hypernix.wiki_cli` | *(v0.70.5)* `hnx` / `hypenix` command — auto-generating wiki from source docstrings. `hnx`, `hnx -q`, `hnx -b`. |
-| `hypernix.vera` | *(v0.70.5)* Module verification — syntax, docstrings, types, smoke tests. `hnx vera <file>` / `hnx vera --all`. |
-
-</details>
-
-<details>
-<summary><strong>Datasets & Judging</strong> &nbsp;(6 modules)</summary>
-
-| Subsystem | What it does |
-|---|---|
-| `hypernix.mediocre_fridge` | Judge-training dataset generation — `synthesize_judge_corpus`, `collect_responses_from`. |
-| `hypernix.new_fridge` | Training-curve graphing — `parse_training_log`, `plot_loss_curve`, `plot_score_distribution`. Matplotlib installed lazily. |
-| `hypernix.new_range` / `old_range` / `industrial_range` | Labeling rubrics for `mediocre_fridge.collect_responses_from`: `new_range` is a zero-dep first-fail rubric, `old_range` is a scored rub[...]
-| `hypernix.espresso_maker` | 4-tier evaluation: `Ristretto` / `SingleShot` / `DoubleShot` / `Lungo` — run a prompt battery, score, return shots. |
-| `hypernix.smoker` | 4-tier training quality: `UseableSmoker` / `GoodSmoker` / `CommercialSmoker` / `HighQualitySmoker`. |
-| `hypernix.scavenger` | *(v0.70.5)* HuggingFace dataset discovery engine. Keyword search, storage budgets, quality filtering, relevance scoring. `ScavengerCriteria` + `Scavenger.hunt()`. |
-
-</details>
-
-<details>
-<summary><strong>Quantize & Export</strong> &nbsp;(3 modules)</summary>
-
-| Subsystem | What it does |
-|---|---|
-| `hypernix.convert` | Safetensors → GGUF at fp32/fp16. Architecture-agnostic tensor naming. |
-| `hypernix.quantize` | `llama-quantize` driver. v0.51.3 ships a 30-type `QUANT_CATALOG` (`QuantSpec` dataclass per type with bits-per-weight, category, recommendation) covering floats (`F32` / `F16` [...]
-| `hypernix.upload` | Push the produced artifacts back to a HuggingFace repo. |
-
-</details>
-
-<details>
-<summary><strong>Utilities</strong> &nbsp;(3 modules)</summary>
-
-| Subsystem | What it does |
-|---|---|
-| `hypernix.sink` | Append-only file sink with optional rotation + dedupe. |
-| `hypernix.apron` | RNG-state guard. `apron(seed=…)` context manager snapshots Python `random`, NumPy (if installed), torch CPU and every CUDA device's RNG, optionally seeds all of them, and r[...]
-| `hypernix.torch_compat` | Portability shim (RMSNorm + SDPA) for running on old Intel Macs with torch 1.13. See [`wiki/macOS-legacy.md`](wiki/macOS-legacy.md). |
-
-</details>
-
----
-
-## What's new in v0.70.5
-
-Eleven major additions:
-
-- **`hnx` / `hypenix` Wiki CLI** — Auto-generating documentation browser. `hnx` shows all modules; `hnx <module>` shows docs; `hnx -q <module>` streams quick mode; `hnx -b` opens in browser. Do[...]
