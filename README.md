@@ -1,28 +1,12 @@
 # hypernix
 
-<div align="center" style="display:block; width:100%; max-width:950px; margin:0 auto;">
-  <a href="https://trail-b1az3r.github.io/HyperNix-pip/" target="_blank" rel="noopener"
-     style="display:inline-block; vertical-align:middle;">
-    <img src="https://github.com/trail-b1az3r/HyperNix-pip/raw/main/assets/logo-new/icon-512.png?raw=true"
-         alt="hypernix icon" width="140"
-         style="border-radius:16px; border:6px solid #0c0c0c; box-shadow:0 14px 36px rgba(0,0,0,0.6);" />
+<p align="center">
+  <a href="https://trail-b1az3r.github.io/HyperNix-pip/" target="_blank" rel="noopener">
+    <img src="./assets/banner-hero.svg" alt="HyperNix banner" width="900" />
   </a>
+</p>
 
-  <div style="margin-top:12px; text-align:center;">
-    <img alt="PyPI" src="https://img.shields.io/badge/PyPI-v0.72.3-ff2d55?style=for-the-badge&logo=pypi&logoColor=white"
-         style="border-radius:10px; border:2px solid #24000a; box-shadow:0 8px 20px rgba(255,45,85,0.12);" />
-    <img alt="Python" src="https://img.shields.io/badge/Python-3.10--3.14-00c9ff?style=for-the-badge&logo=python&logoColor=white"
-         style="border-radius:10px; border:2px solid #00212a; box-shadow:0 8px 20px rgba(0,201,255,0.10); margin-left:8px;" />
-    <img alt="License" src="https://img.shields.io/badge/License-HOS%20/%20LLU-00c853?style=for-the-badge"
-         style="border-radius:10px; border:2px solid #05240a; box-shadow:0 8px 20px rgba(0,200,83,0.08); margin-left:8px;" />
-  </div>
-</div>
-
-[![PyPI](https://img.shields.io/pypi/v/hypernix.svg)](https://pypi.org/project/hypernix/)
-[![Python](https://img.shields.io/pypi/pyversions/hypernix.svg)](https://pypi.org/project/hypernix/)
-[![License](https://img.shields.io/pypi/l/hypernix.svg)](https://github.com/trail-b1az3r/hypernix-pip/blob/main/LICENSE)
-
-**End-to-end toolkit for training ai models on modern or old devices, originaly for converting hypernix.1 into gguf, now for all around training**
+**End-to-end toolkit for training AI models on modern or old devices, originally for converting hypernix.1 into gguf, now for all around training**
 
 ## What's fixed in this update
 See [Changelog.md](/wiki/Changelog.md)
