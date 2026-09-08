@@ -302,13 +302,50 @@ class TestArgumentsAndEnvironment:
 
     def test_gpu_sets_both_vendor_variables(self, tmp_path):
         """Which one the runtime reads depends on whether it lands on
-        CUDA or ROCm; the job should not have to know."""
+        CUDA or ROCm; the job should not have to know.
+
+        Runs on a machine with no GPU visible, which is the case where
+        the index deliberately cannot be checked: no vendor tool means
+        "cannot tell", not "no such card", and refusing there would
+        block a job in a container that has the device but not the CLI.
+        """
         work = script(tmp_path, 'echo "C=$CUDA_VISIBLE_DEVICES H=$HIP_VISIBLE_DEVICES"\n')
         store = JobStore(tmp_path / "jobs")
 
         job = settle(launch(work, gpu="1", store=store), store)
 
         assert "C=1 H=1" in read_logs(job)
+
+
+    def test_an_absent_gpu_index_is_refused_when_cards_are_visible(
+        self, tmp_path, monkeypatch
+    ):
+        """The other half: once we can see the cards, an index that is
+        not among them is a mistake worth catching before the job runs
+        for an hour and quietly uses the CPU."""
+        from hypernix.system.gpus import GPU, Vendor
+
+        monkeypatch.setattr(
+            "hypernix.system.gpus.detect",
+            lambda: [GPU(index=0, vendor=Vendor.NVIDIA, name="only one")],
+        )
+        work = script(tmp_path, "exit 0\n")
+
+        with pytest.raises(LaunchError, match="No GPU with index 3"):
+            launch(work, gpu="3", store=JobStore(tmp_path / "jobs"))
+
+    def test_a_present_index_is_accepted(self, tmp_path, monkeypatch):
+        from hypernix.system.gpus import GPU, Vendor
+
+        monkeypatch.setattr(
+            "hypernix.system.gpus.detect",
+            lambda: [GPU(index=0, vendor=Vendor.NVIDIA, name="one")],
+        )
+        work = script(tmp_path, "exit 0\n")
+
+        job = launch(work, gpu="0", store=JobStore(tmp_path / "jobs"))
+
+        assert job.gpu == "0"
 
     def test_a_working_directory_is_honoured(self, tmp_path):
         work = script(tmp_path, "pwd\n")

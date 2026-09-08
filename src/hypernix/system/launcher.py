@@ -266,6 +266,31 @@ def launch(
     child_env = dict(os.environ)
     child_env.update(env or {})
     if gpu:
+        # Checked against what is actually present. Setting
+        # CUDA_VISIBLE_DEVICES=3 on a two-card machine does not fail: the
+        # job starts, sees no GPU, and either runs on the CPU at a
+        # hundredth of the speed or dies deep in a framework — hours
+        # later, in a log nobody is watching.
+        from . import gpus as _gpus
+
+        visible = _gpus.detect()
+        if visible:
+            try:
+                _gpus.select(gpu, visible)
+            except ValueError as exc:
+                raise LaunchError(f"--gpu {gpu}: {exc}") from None
+        else:
+            # Nothing detected. That is *not* proof there is no GPU: a
+            # container without nvidia-smi installed sees none while the
+            # device is right there, and refusing here would block a job
+            # that would have run. An index we cannot check is passed
+            # through and left to the framework.
+            logger.warning(
+                "launcher: no GPU is visible from here, so --gpu %s could not "
+                "be checked. If the job needs one, make sure the vendor tool "
+                "(nvidia-smi / rocm-smi) is available in this environment.",
+                gpu,
+            )
         # The vendor-neutral pair. Setting both is right rather than
         # sloppy: which one a runtime reads depends on whether it ends up
         # on CUDA or ROCm, and the job should not have to know.

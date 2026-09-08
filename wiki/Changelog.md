@@ -20,6 +20,67 @@ next release header.
 - 𖢥 major bug fix
 - ꩜ restore to older version of item
 - ❗ unfixed known bug
+## 0.72.4.dev6 — one way to ask about a GPU, whoever made it
+
+Item 13, beta 1 of the three or four you asked for: the abstraction and
+detection, with acceleration to follow.
+
+`hypernix.system.gpus` is the layer everything else asks. Before it
+there were **42 places that shelled out to `nvidia-smi` and 12 that knew
+about `rocm-smi`**, spread over seven modules. That count is the problem
+rather than a symptom of it — AMD support was not so much missing as
+unevenly present, and every new panel reimplemented the same parsing and
+met the same edge cases again.
+
+```python
+from hypernix.system import gpus
+for card in gpus.detect():
+    print(card.vendor, card.name, card.memory_total_mb, card.framework)
+```
+
+NVIDIA via `nvidia-smi`, AMD via `amd-smi` then `rocm-smi`, in one shape,
+with `Vendor.framework` giving `cuda` / `rocm` / `mps` / `cpu` so no
+caller branches on vendor.
+
+### Three things it refuses to get wrong
+
+**A missing reading is `None`, never 0.** `[N/A]`, `Not Supported` and
+empty cells all appear in real output. A dashboard that reports an
+unknown temperature as zero says the card is freezing.
+
+**`rocm-smi` reports VRAM in bytes** where everything else here uses
+megabytes. Mixing them makes a panel unreadable and a limit check wrong.
+
+**It never raises for want of hardware.** No GPU, no driver, no vendor
+tool, a tool that errors or prints something unexpected — all mean "no
+cards found". A monitoring panel that crashes on a laptop is worse than
+one that says the laptop has no GPU. A probe that raises does not take
+the other vendor's down with it.
+
+ROCm field names have changed across releases, so each value is looked
+up through the spellings that have been used: a rename costs that
+reading, not the card.
+
+### Where it shows up
+
+`launch-script --gpu 3` is now checked before the job starts — on a
+two-card machine that used to succeed, and the job would see no GPU and
+either run on the CPU at a hundredth of the speed or die deep in a
+framework, hours later, in a log nobody was watching. Deliberately
+narrow: when *no* cards are visible the index is passed through with a
+warning, because a container without `nvidia-smi` cannot tell "no GPU"
+from "no tooling", and refusing there would block a job that would have
+run.
+
+`hypernix devices` now shows what the vendor tools see alongside what
+torch can use, and names a card that is present but unusable — that is a
+torch build question, not a driver one, and seeing both lists together
+is what tells you which you are looking at.
+
+47 tests, driven with real vendor output since there is no GPU in the
+machine that runs them. The part that goes wrong is never "can we call
+the tool" but "what do we do with what it said".
+
 ## 0.72.4.dev5 — `hypernix-t1 launch-script`
 
 Items 9, 10 and 11. Closing a laptop is the normal end of a remote
