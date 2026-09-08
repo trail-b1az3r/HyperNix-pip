@@ -63,7 +63,7 @@ import importlib.util
 import sys
 from typing import TYPE_CHECKING, Any
 
-__version__ = "0.72.4.dev2"
+__version__ = "0.72.4.dev3"
 DEFAULT_REPO_ID = "ray0rf1re/hyper-Nix.2"
 DEFAULT_MODEL = "qwen3.5-4b"  # New default model
 
@@ -132,6 +132,7 @@ __all__ = [
     "neo_oven",
     "NeoOven",
     "net",
+    "nettrust",
     "bake_code",
     "bell",
     "blender",
@@ -367,6 +368,7 @@ MODULE_CATEGORIES: dict[str, tuple[str, ...]] = {
         "ethanol",
         "freezer",
         "net",
+        "nettrust",
         "old_fridge",
         "outage",
         "pathfix",
@@ -523,6 +525,7 @@ _LAZY_ATTRS: dict[str, tuple[str, str | None]] = {
     'nano_nano': ('models.nano_nano', None),
     'neo_oven': ('models.neo_oven', None),
     'net': ('system.net', None),
+    'nettrust': ('system.nettrust', None),
     'new_fridge': ('evaluation.new_fridge', None),
     'new_oven': ('models.old_oven', 'new_oven'),
     'new_range': ('evaluation.new_range', None),

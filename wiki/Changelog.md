@@ -20,6 +20,51 @@ next release header.
 - 𖢥 major bug fix
 - ꩜ restore to older version of item
 - ❗ unfixed known bug
+## 0.72.4.dev3 — one answer to "where did this come from"
+
+Third increment, item 17's shared component for items 1, 3, 4 and 14.
+0.72.4 lets a LAN or tailnet connection act without a key, and that is
+only safe if *"from the LAN"* is a fact about the connection rather than
+a claim the connection makes. `hypernix.system.nettrust` is the single
+place that decides it — the T1 API, Waiter and the installer had three
+different notions of "local" between them.
+
+**The peer address is the evidence.** `X-Forwarded-For` is set by
+whoever is talking to you; a server that believes it has turned keyless
+LAN access into keyless access for anyone who can spell a header. It is
+read only when the immediate peer is a proxy the administrator listed,
+and then only the hop that proxy added — everything to its left came
+from the client. The default is no trusted proxies, so by default no
+forwarded header is read at all.
+
+**A tailnet address is a candidate, not a conclusion.** 100.64.0.0/10 is
+shared address space, so anything on a LAN can number itself 100.x and
+route to the server. A tailnet origin is confirmed by asking the local
+tailscaled who owns it (`tailscale whois`); unconfirmed is treated as
+public. That is what makes knowing the endpoint insufficient, which item
+3 asked for explicitly.
+
+**Public is never keyless.** The refusal lives in the check as well as
+in the constructor, so a hand-built policy cannot express it either.
+
+### A bug this nearly shipped
+
+The obvious implementation of "is it on the LAN" is
+`ipaddress.is_private`. That is much broader than RFC 1918: it is true
+for the documentation ranges (192.0.2/24, 198.51.100/24, 203.0.113/24),
+for 0.0.0.0/8, for benchmarking and reserved space — and for 100.64/10
+itself. Every one of those would have been LAN, and therefore eligible
+for keyless access, despite being on nobody's network.
+
+Found because a test used 203.0.113.9 as an example of a public address
+and got back `lan`. The ranges are spelled out now, and the six
+addresses `is_private` gets wrong are a test that asserts they *are*
+`is_private` before asserting we classify them public — so it cannot
+quietly stop proving anything.
+
+38 tests, most of them about the ways a public client could try to be
+mistaken for a local one.
+
 ## 0.72.4.dev2 — the registry the server actually reads
 
 Second increment of 0.72.4, item 6/7: *"Waiter does not properly see the
