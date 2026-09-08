@@ -20,6 +20,55 @@ next release header.
 - 𖢥 major bug fix
 - ꩜ restore to older version of item
 - ❗ unfixed known bug
+## 0.72.4.dev1 — HyperLink says why it cannot reach a server
+
+First increment of 0.72.4. Reported from a real iPhone: three addresses
+tried, three failures, and none of the messages named anything the
+reader could act on.
+
+𖢥 **The three addresses that cannot work now say so before the
+request.** iOS reported them as:
+
+| typed | shown |
+|---|---|
+| `127.0.0.1:8000` | *Could not connect to the server.* |
+| `100.109.195.71:8000` | *…App Transport Security policy requires the use of a secure connection.* |
+| `http://…ts.net:8000` | the same ATS message |
+
+The first reads as though the PC is down; it is the phone's own
+loopback, and nothing on the PC could ever answer it. The other two are
+about the phone rather than the server, are identical to each other, and
+name no address that would work.
+
+`AddressCheck.advice(for:)` judges the address before a request is sent
+and explains each case in its own terms — loopback is this device;
+a bare Tailscale IP cannot be excepted at all because **ATS exceptions
+match domain names and never IP literals**, so the MagicDNS name is the
+fix rather than a setting; a public `http://` host is refused as
+designed. `FailureAdvice.explain` translates what still comes back from
+the network — a refused connection now points at `hypernix-t1 status`,
+a timeout at `tailscale status`.
+
+The `ts.net` exception itself has been in `Info.plist` since the Sept 1
+fix, so a MagicDNS name works on a current build; the report came from
+an older one.
+
+𖢥 **The app reported a version CI had not built.** `project.yml` set
+
+```yaml
+CFBundleShortVersionString: "1.0.26"
+```
+
+as a literal. `ios/scripts/app_version.py` computes the version from
+`T1_VERSION` — the whole point being that app and server quote the same
+string in a support question — and `ios.yml` passes it to xcodebuild as
+`MARKETING_VERSION`. Overriding a build setting cannot change a plist
+key that never referenced it, so every build shipped saying `1.0.26`
+whatever CI computed. `CFBundleVersion` on the next line already had
+`$(CURRENT_PROJECT_VERSION)`; this key simply never got the same
+treatment. It does now, the fallback default is synced, and a test keeps
+the two from drifting — a default nobody checks is what went stale.
+
 ## 0.72.3.post7 — "it is installed already", and it was
 
 𖢥 **`hypernix-t1 start` told people to run a command that could not

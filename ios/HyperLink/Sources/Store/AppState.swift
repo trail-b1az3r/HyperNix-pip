@@ -75,6 +75,14 @@ final class AppState {
     /// revoking a device.
     func connect(address: String, key: String, deviceName: String) async -> Bool {
         connectionError = nil
+        // Before the request: three addresses people reasonably type
+        // cannot work, and iOS reports all three in words about its own
+        // policy rather than about the address. Saying so here beats
+        // sending a request that is guaranteed to fail.
+        if let refusal = AddressCheck.advice(for: address).message {
+            connectionError = refusal
+            return false
+        }
         let credential = key.trimmingCharacters(in: .whitespacesAndNewlines)
         do {
             let discovered = try await HyperLinkClient.connect(address: address, key: credential)
@@ -96,13 +104,17 @@ final class AppState {
             await refreshAll()
             return true
         } catch {
-            connectionError = (error as? HyperLinkError)?.errorDescription ?? error.localizedDescription
+            connectionError = FailureAdvice.explain(error, address: address)
             return false
         }
     }
 
     func pair(address: String, code: String, deviceName: String) async -> Bool {
         connectionError = nil
+        if let refusal = AddressCheck.advice(for: address).message {
+            connectionError = refusal
+            return false
+        }
         do {
             let (redeemed, discovered) = try await HyperLinkClient.pair(
                 address: address, code: code, deviceName: deviceName
@@ -129,7 +141,7 @@ final class AppState {
             await refreshAll()
             return true
         } catch {
-            connectionError = (error as? HyperLinkError)?.errorDescription ?? error.localizedDescription
+            connectionError = FailureAdvice.explain(error, address: address)
             return false
         }
     }
