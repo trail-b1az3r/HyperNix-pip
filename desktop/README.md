@@ -13,6 +13,37 @@ cmake --build build -j
 ./build/hypernix-studio
 ```
 
+## Two ways to get a model
+
+**On this machine.** Point Studio at a folder of `.gguf` files and it
+runs one here — no server, no network. Built with
+`-DSTUDIO_LOCAL_LLAMA=ON -DLLAMA_ROOT=/path/to/llama.cpp`:
+
+```
+cmake -S . -B build -DSTUDIO_LOCAL_LLAMA=ON -DLLAMA_ROOT=~/llama.cpp
+```
+
+`LLAMA_ROOT` wants a llama.cpp that has been built, and — for the
+HyperNix sub-bit types — one that `native/ggml-hnx/tools/patch_llamacpp.py`
+has been run against. Without the patch, a stock build loads everything
+else and refuses `IQ0.5_XXXL`; Studio says so rather than showing a bare
+failure.
+
+**On a server.** What Studio has always done, unchanged, and it does not
+need llama.cpp. That is why local inference is **off** by default:
+making the harder dependency mandatory would stop Studio building for
+everyone who only wants to connect to a HyperNix box. A build without it
+still lists what is on the disk and still tells you an `IQ0.5_XXXL` file
+is one — reading a GGUF header needs no inference — and only refuses to
+*load* it, with a sentence saying which flag turns that on.
+
+The switch is at the top of the Models tab. Everything else is the same
+either way: the same conversation, the same workspace, the same tool
+approval. A local model has exactly the reach a remote one had — file
+operations inside the workspace, each one approved — because it goes
+through the same `ToolPolicy`, and there is only one place in
+`StudioBridge.cpp` that reaches a mutating tool.
+
 ## What it does
 
 **Model switching.** The server's registry, with a GPU-offloading slider

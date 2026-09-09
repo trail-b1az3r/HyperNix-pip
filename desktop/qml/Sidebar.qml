@@ -185,7 +185,13 @@ Rectangle {
                 elide: Text.ElideRight
             }
 
-            ConnectPanel { Layout.fillWidth: true; visible: !studio.connected }
+            // Hidden in local mode: there is nothing to connect to, and
+            // a connect form on a machine running its own model is an
+            // invitation to think one is required.
+            ConnectPanel {
+                Layout.fillWidth: true
+                visible: !studio.connected && studio.source !== "local"
+            }
         }
     }
 }

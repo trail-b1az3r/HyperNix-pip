@@ -395,6 +395,107 @@ jobs:
             exit 1
           fi
 
+  # The patcher against a real llama.cpp, which is the only thing that
+  # would have caught what shipped broken: the fake tree in
+  # tests/test_ggml_hnx.py modelled one type_traits table, upstream has
+  # had two for a while, and every test passed while no real checkout
+  # compiled. A fake can only be as right as the person who wrote it.
+  #
+  # Separate job, and only ggml-base + ggml-cpu rather than all of
+  # llama.cpp: those two are where the registration lands, so they are
+  # where a bad patch fails, and stopping there is about two minutes
+  # instead of eight.
+  llamacpp:
+    name: patcher against real llama.cpp
+    needs: triage
+    if: needs.triage.outputs.narrow != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Clone llama.cpp
+        run: git clone --depth 1 https://github.com/ggml-org/llama.cpp /tmp/llama.cpp
+
+      - name: Patch it
+        run: |
+          set -euo pipefail
+          python native/ggml-hnx/tools/patch_llamacpp.py /tmp/llama.cpp --check
+          python native/ggml-hnx/tools/patch_llamacpp.py /tmp/llama.cpp
+
+      - name: Build the parts the registration lands in
+        run: |
+          set -euo pipefail
+          cmake -S /tmp/llama.cpp -B /tmp/llama.cpp/build \
+            -DCMAKE_BUILD_TYPE=Release -DLLAMA_CURL=OFF -DGGML_CCACHE=OFF \
+            -DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_EXAMPLES=OFF \
+            -DLLAMA_BUILD_TOOLS=OFF
+          cmake --build /tmp/llama.cpp/build --target ggml-base ggml-cpu \
+            -j"$(nproc)"
+
+      # Compiling is not the same as registering. This asks the built
+      # ggml what it thinks the five types are, which is what a model
+      # loader will ask.
+      - name: Ask ggml about the types
+        run: |
+          set -euo pipefail
+          cat > /tmp/typecheck.c <<'EOF'
+          #include <stdio.h>
+          #include <string.h>
+          #include "ggml.h"
+          int main(void) {
+              struct { int id; const char *name; size_t size; } want[] = {
+                  {200, "IQ0.9_L", 30}, {201, "IQ0.75_M", 26},
+                  {202, "IQ0.5_XXXL", 18}, {203, "IQ0.25_UXL", 8},
+                  {204, "INT1", 34},
+              };
+              int bad = 0;
+              for (unsigned i = 0; i < sizeof(want)/sizeof(want[0]); ++i) {
+                  enum ggml_type t = (enum ggml_type) want[i].id;
+                  const char *n = ggml_type_name(t);
+                  int ok = n && !strcmp(n, want[i].name)
+                        && ggml_type_size(t) == want[i].size
+                        && ggml_blck_size(t) == 256 && ggml_is_quantized(t);
+                  printf("  %-3d %-12s %s\n", want[i].id, n ? n : "(null)",
+                         ok ? "ok" : "MISMATCH");
+                  if (!ok) bad = 1;
+              }
+              if (strcmp(ggml_type_name(GGML_TYPE_Q4_0), "q4_0") != 0) {
+                  printf("  upstream Q4_0 was disturbed\n");
+                  bad = 1;
+              }
+              return bad;
+          }
+          EOF
+          cc -I/tmp/llama.cpp/ggml/include -o /tmp/typecheck /tmp/typecheck.c \
+            -L/tmp/llama.cpp/build/bin -lggml-base \
+            -Wl,-rpath,/tmp/llama.cpp/build/bin
+          /tmp/typecheck
+
+      # Studio's local engine, against the llama.cpp that is now here.
+      # The stub build is covered by ctest in the `native` job; this is
+      # the other configuration, and it is the one with a real API to
+      # drift against.
+      - name: Studio — compile the local engine against it
+        run: |
+          set -euo pipefail
+          c++ -std=c++17 -Wall -Wextra -Werror -DHNX_STUDIO_LOCAL_LLAMA \
+            -Idesktop/src -I/tmp/llama.cpp/include -I/tmp/llama.cpp/ggml/include \
+            -c desktop/src/LocalEngine.cpp -o /tmp/LocalEngine.o
+
+      - name: And revert cleanly
+        run: |
+          set -euo pipefail
+          python native/ggml-hnx/tools/patch_llamacpp.py /tmp/llama.cpp --revert
+          cd /tmp/llama.cpp
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "::error::--revert did not restore the tree"
+            git status --porcelain
+            exit 1
+          fi
+
   # The CUDA kernels, compiled. Separate from `native` on purpose: the
   # toolkit is ~2 GB and `native` runs on every full pass, so folding it
   # in would add minutes to every run for a file that changes rarely.

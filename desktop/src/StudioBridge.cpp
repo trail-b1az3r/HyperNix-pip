@@ -51,6 +51,53 @@ QVariantMap ToMap(const GpuInfo& gpu) {
 }  // namespace
 
 StudioBridge::StudioBridge(QObject* parent) : QObject(parent) {
+    loadModelFolders();
+
+    // --- local models -------------------------------------------------
+    connect(&local_, &LocalSession::scanned, this, [this] {
+        const int count = local_.models().size();
+        setStatus(count == 0
+                      ? "No models found. Add a folder in the Models tab."
+                      : QString::number(count) + " model(s) on this machine");
+        emit localChanged();
+    });
+    connect(&local_, &LocalSession::loadedChanged, this, [this] {
+        setBusy(false);
+        if (local_.loaded()) {
+            const QVariantMap info = local_.info();
+            setStatus(info.value("name").toString() + " — loaded on this machine");
+        }
+        emit localChanged();
+        emit readyChanged();
+    });
+    connect(&local_, &LocalSession::loadFailed, this,
+            [this](const QString& reason) {
+                setBusy(false);
+                setStatus("Could not load that model");
+                emit error("Load failed", reason);
+            });
+    connect(&local_, &LocalSession::token, this, [this](const QString& piece) {
+        // Extend the message already on screen. streamingIndex_ is
+        // checked against the current size rather than trusted: the
+        // conversation can be cleared while a generation is in flight,
+        // and writing past the end of the list would be the last thing
+        // this process did.
+        if (streamingIndex_ < 0 || streamingIndex_ >= messages_.size()) return;
+        QVariantMap message = messages_[streamingIndex_].toMap();
+        message["text"] = message.value("text").toString() + piece;
+        messages_[streamingIndex_] = message;
+        emit messagesChanged();
+    });
+    connect(&local_, &LocalSession::finished, this, [this] {
+        streamingIndex_ = -1;
+        setBusy(false);
+    });
+    connect(&local_, &LocalSession::failed, this, [this](const QString& reason) {
+        streamingIndex_ = -1;
+        setBusy(false);
+        emit error("Generation failed", reason);
+    });
+
     connect(&client_, &HyperLinkClient::connected, this,
             [this](const QString& name, const QString& version, bool keyless) {
                 connected_ = true;
@@ -226,6 +273,7 @@ void StudioBridge::switchModel(const QString& modelId, int gpuLayers) {
     }
     activeModel_ = modelId;
     emit modelsChanged();
+    emit readyChanged();
     setStatus("Loading " + modelId);
     client_.loadModel(modelId, gpuLayers);
 }
@@ -270,6 +318,14 @@ QJsonArray StudioBridge::toolSchema() const {
 }
 
 void StudioBridge::send(const QString& text) {
+    if (source_ == "local") {
+        sendToLocal(text);
+        return;
+    }
+    sendToServer(text);
+}
+
+void StudioBridge::sendToServer(const QString& text) {
     if (!connected_) {
         emit error("Not connected", "Connect to a server first.");
         return;
@@ -285,7 +341,55 @@ void StudioBridge::send(const QString& text) {
     client_.sendChat(activeModel_, transcript(), toolSchema());
 }
 
+void StudioBridge::sendToLocal(const QString& text) {
+    if (!LocalSession::available()) {
+        emit error("No local inference", LocalSession::unavailableReason());
+        return;
+    }
+    if (!local_.loaded()) {
+        emit error("No model loaded",
+                   "Pick a model in the Models tab. Loading a few gigabytes "
+                   "off disk takes a moment, and nothing can answer until it "
+                   "is done.");
+        return;
+    }
+    appendMessage("user", text);
+    // An empty assistant message first, which the tokens then extend.
+    // Appending a message per token would give a conversation a
+    // thousand bubbles in it.
+    appendMessage("assistant", QString());
+    streamingIndex_ = messages_.size() - 1;
+    setBusy(true);
+    local_.generate(localPrompt(), 1024, 0.7);
+}
+
+QString StudioBridge::localPrompt() const {
+    // A plain transcript rather than a model-specific chat template.
+    // llama.cpp knows each model's template and Studio does not, so
+    // guessing one would be wrong more often than this is -- and being
+    // wrong here reads as the model behaving oddly rather than as a
+    // formatting bug. Applying the GGUF's own template is the right fix
+    // and is a bigger change than this one.
+    QString prompt;
+    for (const QVariant& entry : messages_) {
+        const QVariantMap message = entry.toMap();
+        const QString role = message.value("role").toString();
+        const QString text = message.value("text").toString();
+        if (text.isEmpty()) continue;
+        if (role == "user") prompt += "User: " + text + "\n";
+        else if (role == "assistant") prompt += "Assistant: " + text + "\n";
+    }
+    prompt += "Assistant:";
+    return prompt;
+}
+
 void StudioBridge::clearConversation() {
+    // Whatever was streaming is no longer on screen, and its index no
+    // longer points at anything. Stopping the generation too, because
+    // otherwise it carries on writing into a conversation the person
+    // has just cleared.
+    streamingIndex_ = -1;
+    if (source_ == "local") local_.cancel();
     messages_.clear();
     emit messagesChanged();
 }
@@ -302,6 +406,80 @@ void StudioBridge::searchModels(const QString& query) {
 void StudioBridge::download(const QString& repoId, const QString& filename) {
     if (!connected_) return;
     client_.downloadModel(repoId, {filename});
+}
+
+// --- local models --------------------------------------------------------
+
+bool StudioBridge::ready() const {
+    if (source_ == "local") return local_.loaded();
+    return connected_ && !activeModel_.isEmpty();
+}
+
+void StudioBridge::setSource(const QString& value) {
+    const QString wanted = (value == "local") ? "local" : "server";
+    if (source_ == wanted) return;
+    source_ = wanted;
+    emit sourceChanged();
+    emit readyChanged();
+    if (source_ == "local" && local_.models().isEmpty()) scanLocalModels();
+}
+
+void StudioBridge::scanLocalModels() {
+    QStringList roots = modelFolders_;
+    roots += LocalSession::defaultRoots();
+    roots.removeDuplicates();
+    setStatus("Looking for models");
+    local_.scan(roots);
+}
+
+void StudioBridge::addModelFolder(const QString& path) {
+    // QML file dialogs hand back file:// URLs; a raw path is also
+    // accepted so this can be driven from a test or a settings file.
+    const QUrl url(path);
+    const QString local = url.isLocalFile() ? url.toLocalFile() : path;
+    if (local.isEmpty() || modelFolders_.contains(local)) return;
+    modelFolders_ << local;
+    saveModelFolders();
+    emit localChanged();
+    scanLocalModels();
+}
+
+void StudioBridge::removeModelFolder(const QString& path) {
+    if (modelFolders_.removeAll(path) == 0) return;
+    saveModelFolders();
+    emit localChanged();
+    scanLocalModels();
+}
+
+void StudioBridge::loadLocalModel(const QString& path, int gpuLayers,
+                                  int contextLength) {
+    if (!LocalSession::available()) {
+        emit error("No local inference", LocalSession::unavailableReason());
+        return;
+    }
+    setSource("local");
+    setStatus("Loading " + QFileInfo(path).fileName());
+    setBusy(true);
+    local_.load(path, gpuLayers, contextLength);
+}
+
+void StudioBridge::unloadLocalModel() {
+    local_.unload();
+    setStatus("Model unloaded");
+}
+
+void StudioBridge::stopGenerating() {
+    if (source_ == "local") local_.cancel();
+}
+
+void StudioBridge::loadModelFolders() {
+    QSettings settings("HyperNix", "Studio");
+    modelFolders_ = settings.value("local/folders").toStringList();
+}
+
+void StudioBridge::saveModelFolders() {
+    QSettings settings("HyperNix", "Studio");
+    settings.setValue("local/folders", modelFolders_);
 }
 
 // --- the approval flow ---------------------------------------------------

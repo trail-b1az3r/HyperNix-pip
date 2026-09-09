@@ -1,17 +1,24 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Dialogs
 import QtQuick.Layouts
 
 // ModelsView.qml — what is available, what is loaded, and getting more.
 //
-// GPU layers is the one number worth exposing and it defaults to "let
-// the server decide", because the server is the machine that knows how
-// much VRAM is actually free. A number chosen here is a guess about
-// somebody else's GPU, and a wrong one is an out-of-memory error minutes
-// into a load.
+// Two sources, one view. "This machine" lists the GGUF files on the
+// disk and runs one here; "Server" is what Studio has always done. The
+// switch is at the top because it changes what everything below means.
+//
+// GPU layers is the one number worth exposing. On the server it
+// defaults to "let the server decide", because that is the machine that
+// knows how much VRAM is free. Locally it defaults to CPU-only, which
+// is the setting that always works -- an offload guess that does not
+// fit is an out-of-memory minutes into a load, and this machine's GPU
+// may be busy with a training run.
 Item {
     id: root
-    property int gpuLayers: -1
+    property int gpuLayers: local ? 0 : -1
+    readonly property bool local: studio.source === "local"
 
     ColumnLayout {
         anchors.fill: parent
@@ -32,9 +39,94 @@ Item {
             Item { Layout.fillWidth: true }
             StudioButton {
                 text: "Refresh"
-                enabled: studio.connected
-                onClicked: studio.refresh()
+                enabled: root.local || studio.connected
+                onClicked: root.local ? studio.scanLocalModels() : studio.refresh()
             }
+        }
+
+        // --- where models come from ---
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 0
+
+            Repeater {
+                model: [
+                    { key: "local", label: "This machine" },
+                    { key: "server", label: "Server" }
+                ]
+                delegate: Rectangle {
+                    required property var modelData
+                    readonly property bool active: studio.source === modelData.key
+                    Layout.fillWidth: true
+                    implicitHeight: 34
+                    color: active ? Theme.accent : Theme.surface
+                    border.width: 1
+                    border.color: active ? Theme.accent : Theme.border
+                    Behavior on color { ColorAnimation { duration: Theme.anim } }
+
+                    Label {
+                        anchors.centerIn: parent
+                        text: modelData.label
+                        color: parent.active ? "#ffffff" : Theme.text
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontBody
+                        font.weight: parent.active ? Font.DemiBold : Font.Normal
+                    }
+                    TapHandler { onTapped: studio.source = modelData.key }
+                }
+            }
+        }
+
+        // Said once, plainly, rather than left for a failed load to
+        // explain. A build without llama.cpp can still list what is on
+        // the disk -- reading a header needs no inference -- so the
+        // models below are real even here, and only Load is refused.
+        Rectangle {
+            Layout.fillWidth: true
+            visible: root.local && !studio.localAvailable
+            implicitHeight: noLocal.implicitHeight + Theme.gap * 2
+            radius: Theme.radius
+            color: Theme.surfaceAlt
+            border.width: 1
+            border.color: Theme.border
+            Label {
+                id: noLocal
+                anchors.fill: parent
+                anchors.margins: Theme.gap
+                text: studio.localUnavailableReason
+                color: Theme.textFaint
+                font.family: Theme.fontFamily
+                font.pixelSize: 11
+                wrapMode: Text.WordWrap
+            }
+        }
+
+        // --- where to look ---
+        RowLayout {
+            Layout.fillWidth: true
+            visible: root.local
+            spacing: Theme.gap
+
+            Label {
+                text: studio.modelFolders.length > 0
+                      ? studio.modelFolders.length + " folder(s) added, plus the usual places"
+                      : "Looking in ~/.hypernix/models, the Hugging Face cache and ~/models"
+                color: Theme.textFaint
+                font.family: Theme.fontFamily
+                font.pixelSize: 11
+                Layout.fillWidth: true
+                elide: Text.ElideRight
+            }
+            StudioButton {
+                text: "Add folder"
+                onClicked: folderDialog.open()
+            }
+        }
+
+        FolderDialog {
+            id: folderDialog
+            title: "A folder with .gguf files in it"
+            onAccepted: studio.addModelFolder(selectedFolder)
         }
 
         // --- offloading ---
@@ -64,8 +156,9 @@ Item {
                     Item { Layout.fillWidth: true }
                     Label {
                         text: root.gpuLayers < 0
-                              ? "server decides"
-                              : root.gpuLayers + " layers"
+                              ? (root.local ? "as many as fit" : "server decides")
+                              : (root.gpuLayers === 0
+                                 ? "CPU only" : root.gpuLayers + " layers")
                         color: root.gpuLayers < 0 ? Theme.ok : Theme.text
                         font.family: Theme.monoFamily
                         font.pixelSize: Theme.fontSmall
@@ -106,9 +199,15 @@ Item {
                 }
 
                 Label {
-                    text: "All the way left leaves it to the server, which is " +
-                          "usually right — it is the machine that knows how " +
-                          "much VRAM is free. 0 is CPU only."
+                    text: root.local
+                          ? "0 is CPU only, and it is the setting that always " +
+                            "works. Raise it to put that many layers on the " +
+                            "GPU — if they do not fit, the load fails minutes " +
+                            "in. All the way left lets llama.cpp fit as many " +
+                            "as it can."
+                          : "All the way left leaves it to the server, which is " +
+                            "usually right — it is the machine that knows how " +
+                            "much VRAM is free. 0 is CPU only."
                     color: Theme.textFaint
                     font.family: Theme.fontFamily
                     font.pixelSize: 11
@@ -124,7 +223,7 @@ Item {
             Layout.fillHeight: true
             clip: true
             spacing: 6
-            model: studio.models
+            model: root.local ? studio.localModels : studio.models
             ScrollBar.vertical: ScrollBar {}
 
             delegate: Rectangle {
@@ -134,8 +233,11 @@ Item {
                 radius: Theme.radius
                 color: hover.hovered ? Theme.hover : Theme.surface
                 border.width: 1
-                border.color: modelData.id === studio.activeModel
-                              ? Theme.accent : Theme.border
+                readonly property bool isActive: root.local
+                    ? (studio.localLoaded &&
+                       modelData.path === studio.localInfo.path)
+                    : modelData.id === studio.activeModel
+                border.color: isActive ? Theme.accent : Theme.border
                 Behavior on color { ColorAnimation { duration: Theme.anim } }
 
                 HoverHandler { id: hover }
@@ -149,7 +251,16 @@ Item {
                         Layout.fillWidth: true
                         spacing: 2
                         Label {
-                            text: modelData.displayName
+                            // A server model calls it displayName and a
+                            // local one calls it name. Read whichever is
+                            // there rather than teaching one side the
+                            // other's spelling: undefined here would bind
+                            // as an empty label and look like a model with
+                            // no name.
+                            text: modelData.displayName !== undefined
+                                  ? modelData.displayName
+                                  : (modelData.name !== undefined
+                                     ? modelData.name : "")
                             color: Theme.text
                             font.family: Theme.fontFamily
                             font.pixelSize: Theme.fontBody
@@ -160,6 +271,26 @@ Item {
                         Label {
                             text: {
                                 var bits = []
+                                if (root.local) {
+                                    if (modelData.ok === false) {
+                                        // Listed rather than hidden: a
+                                        // file that is there and broken
+                                        // is something you want to see.
+                                        return "unreadable — " + modelData.error
+                                    }
+                                    if (modelData.parameters)
+                                        bits.push(modelData.parameters)
+                                    if (modelData.quantisation)
+                                        bits.push(modelData.quantisation)
+                                    if (modelData.contextLength > 0)
+                                        bits.push((modelData.contextLength / 1024)
+                                                  .toFixed(0) + "K ctx")
+                                    if (modelData.size)
+                                        bits.push(modelData.size)
+                                    if (modelData.architecture)
+                                        bits.push(modelData.architecture)
+                                    return bits.join("  ·  ")
+                                }
                                 if (modelData.parametersB > 0)
                                     bits.push(modelData.parametersB.toFixed(1) + "B")
                                 if (modelData.quantisation)
@@ -180,10 +311,23 @@ Item {
                     }
 
                     StudioButton {
-                        text: modelData.id === studio.activeModel ? "Loaded" : "Load"
-                        primary: modelData.id !== studio.activeModel
-                        enabled: modelData.id !== studio.activeModel
-                        onClicked: studio.switchModel(modelData.id, root.gpuLayers)
+                        text: parent.parent.isActive
+                              ? (root.local ? "Unload" : "Loaded") : "Load"
+                        primary: !parent.parent.isActive
+                        enabled: root.local
+                                 ? (studio.localAvailable &&
+                                    modelData.ok !== false && !studio.busy)
+                                 : !parent.parent.isActive
+                        onClicked: {
+                            if (!root.local) {
+                                studio.switchModel(modelData.id, root.gpuLayers)
+                            } else if (parent.parent.isActive) {
+                                studio.unloadLocalModel()
+                            } else {
+                                studio.loadLocalModel(modelData.path,
+                                                      root.gpuLayers, 0)
+                            }
+                        }
                     }
                 }
             }
@@ -193,9 +337,12 @@ Item {
             Label {
                 anchors.centerIn: parent
                 visible: parent.count === 0
-                text: studio.connected
-                      ? "The server's registry is empty.\nRun `hypernix-t1 index` on it."
-                      : "Connect to a server to see its models."
+                text: root.local
+                      ? "No .gguf files found.\nAdd a folder above, or put one " +
+                        "in ~/.hypernix/models."
+                      : (studio.connected
+                         ? "The server's registry is empty.\nRun `hypernix-t1 index` on it."
+                         : "Connect to a server to see its models.")
                 color: Theme.textFaint
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontBody
@@ -204,8 +351,13 @@ Item {
         }
 
         // --- Hugging Face ---
+        // Server-side: it is the machine that will hold the weights and
+        // the one with the token. Hidden rather than disabled in local
+        // mode, because a greyed-out box invites a click that cannot be
+        // explained.
         RowLayout {
             Layout.fillWidth: true
+            visible: !root.local
             spacing: Theme.gap
 
             StudioField {

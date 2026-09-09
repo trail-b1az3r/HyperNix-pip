@@ -21,6 +21,109 @@ next release header.
 - 𖢥 major bug fix
 - ꩜ restore to older version of item
 - ❗ unfixed known bug
+## 0.72.4.dev12 — Studio runs models itself, and a patcher that matched reality
+
+Two things, and the first one was reported from a real build.
+
+### `patch_llamacpp.py` was written against a ggml that no longer exists 𖢥
+
+The build failed with "array index in initializer exceeds array bounds",
+then "no member named `vec_dot`", then "`ggml_vec_dot_t` undeclared".
+Both causes are upstream changes the patcher had not kept up with, and
+the reason nobody noticed is worse than either: the fake llama.cpp the
+tests patch modelled the *old* shape, so every test passed while no real
+checkout would compile. A fake can only be as right as the person who
+wrote it.
+
+**`ggml_type_traits` is two tables now.** The format half (`type_name`,
+`blck_size`, `to_float`) stayed in `ggml.c`; everything the CPU computes
+with (`from_float`, `vec_dot`, `vec_dot_type`, `nrows`) moved to
+`ggml_type_traits_cpu` in `ggml-cpu/ggml-cpu.c`, behind a different
+header. The five entries are now split across both, each file getting
+the shim include under its own marker.
+
+**`GGML_TYPE_COUNT` is a literal, not a count.** Upstream writes
+`GGML_TYPE_COUNT = 43`, so adding members before it does not grow it —
+and it sizes both tables, making `[GGML_TYPE_HNX_IQ0_9]` an initialiser
+for element 200 of a 43-element array. The patcher rewrites that line
+and records the original verbatim in the marker comment, so `--revert`
+restores whatever *that* checkout had rather than a number baked in
+here.
+
+The ids stay at 200–204. They are written into every GGUF hyprslug
+produces, so packing them densely after upstream's 42 would make today's
+models unreadable the next time upstream adds a type. Holes are already
+normal there — upstream's own 36, 37 and 38 are commented out with their
+slots empty.
+
+**A new CI job builds against a real llama.cpp**, which is the only
+thing that would have caught this. It clones, patches, builds
+`ggml-base` and `ggml-cpu`, asks the built ggml what the five types
+are, compiles Studio's local engine against it, and checks `--revert`
+leaves the tree byte-identical. Only those two targets, so it is about
+two minutes rather than eight.
+
+### HyperNix Studio runs models on this machine ✨
+
+Studio was a client: chat went over HTTP to a HyperNix server, and a
+laptop with a GGUF on it still needed something running somewhere. Now
+there is a switch at the top of the Models tab.
+
+**`ModelCatalogue`** finds and describes models without loading any: it
+parses the GGUF header for architecture, name, context length, the exact
+parameter count summed from tensor shapes, and the type histogram — so
+"what quant is this" is answered by what the weights actually are rather
+than by `general.file_type`, which is one number for a file that usually
+mixes several. It knows the HyperNix sub-bit names itself rather than
+asking ggml, because the build that cannot run an `IQ0.5_XXXL` file is
+exactly the build where a bare "type 202" is least useful.
+
+Its input is hostile by construction — a model file is something
+somebody downloaded, and every length in its header is a 64-bit number
+the parser would otherwise be told to allocate. Every one is checked
+against what is left of the file, not just against a constant: "2^63"
+and "one byte more than this file" are the same mistake. 🛡️
+
+**`LocalEngine`** loads a GGUF and generates, streaming, with GPU
+offload and a cancel that works from another thread. **`LocalSession`**
+runs it on a worker thread, because loading a 7B model takes seconds and
+generating takes as long as it takes; on the GUI thread the window stops
+repainting and the desktop offers to kill it.
+
+Off by default, and that is the right default: the server path does not
+need llama.cpp, and making the harder dependency mandatory would stop
+Studio building for everyone who only wants to connect to a HyperNix
+box. Without it the same class compiles to a stub that says which flag
+turns it on — and the catalogue still works, so such a build lists
+what is on the disk and only refuses to *load* it.
+
+**The tool boundary does not move.** A local model gets exactly the
+reach a remote one had — file operations inside the workspace, each
+approved — because there is still precisely one place in
+`StudioBridge.cpp` that reaches a mutating tool, and a test counts it.
+
+Three UI bugs worth naming, all found by running the thing rather than
+reading it. The composer gated on `studio.connected`, which is false
+forever in local mode — it was dead with a model loaded and answering;
+it binds to a new `ready` now. The chat header showed "No model loaded"
+over a working local conversation. And Send becomes Stop while a local
+model is generating, because a long answer on a slow machine is a minute
+of watching and closing the window should not be the way out.
+
+Verified against a real model, not a mock: a tiny llama built with a
+real tokenizer, loaded and generated through `LocalEngine` — streaming,
+greedy reproducibility, callback stop, cross-thread cancel, an
+oversized prompt refused rather than silently truncated, and generating
+after unload an error rather than a crash. The catalogue was
+cross-checked against the project's own Python GGUF writer (identical
+parameter count, architecture, context and type histogram) and against
+all 19 real GGUFs llama.cpp ships.
+
+Tests: 35 C++ checks in `model_catalogue_test`, 18 in
+`local_engine_test` (which runs in both configurations and checks
+different things in each), and 18 in `tests/test_studio_local.py`. Full
+suite 5077 passed.
+
 ## 0.72.4.dev11 — beta 1 full: `fuse box`, and a claim that did not survive being measured
 
 A new module, `hypernix.system.fusebox`, and a subcommand: ✨
