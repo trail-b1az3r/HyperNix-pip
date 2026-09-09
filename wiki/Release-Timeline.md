@@ -602,3 +602,12 @@ timeline
         : acf8b02 - Auto-update README header (hourly)
 ```
 
+## Release v0.72.4.post1 (2026-09-09)
+
+```mermaid
+timeline
+    title Release v0.72.4.post1 Commits
+    0.72.4.post1
+        : 0cfdb91 - patch_llamacpp- the traits table is two tables, and COUNT is a literal
+```
+
