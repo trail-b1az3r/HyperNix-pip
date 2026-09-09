@@ -210,16 +210,33 @@ def _fake_llamacpp(root: Path) -> Path:
     Deliberately not a real clone: the point is to test the patcher's
     edits, and a 200 MB download to do that would mean this test only
     ever ran somewhere with a network.
+
+    It has to be shaped like the *current* upstream, though, and the
+    first version of it was not. It modelled one ``type_traits`` table
+    holding every field, which is how ggml looked once and has not
+    looked for a while: upstream split it, leaving the format
+    description (``type_name``, ``blck_size``, ``to_float``) in
+    ``ggml.c`` and moving everything the CPU computes with
+    (``from_float``, ``vec_dot``, ``vec_dot_type``, ``nrows``) into
+    ``ggml_type_traits_cpu`` in ``ggml-cpu/ggml-cpu.c``. A fake with one
+    table let the patcher write ``.vec_dot`` into ``ggml.c`` and every
+    test here pass, while a real build failed with "no member named
+    vec_dot" and "ggml_vec_dot_t undeclared".
+
+    ``GGML_TYPE_COUNT`` is likewise a literal here, because it is one
+    upstream -- not a value that falls out of the enum's length. Adding
+    members before it does not grow it, so the patcher has to rewrite
+    it, and a fake that let it grow on its own would hide that.
     """
     (root / "ggml" / "include").mkdir(parents=True)
-    (root / "ggml" / "src").mkdir(parents=True)
+    (root / "ggml" / "src" / "ggml-cpu").mkdir(parents=True)
     (root / "src").mkdir(parents=True)
 
     (root / "ggml" / "include" / "ggml.h").write_text(
         "enum ggml_type {\n"
         "    GGML_TYPE_F32 = 0,\n"
         "    GGML_TYPE_Q4_0 = 2,\n"
-        "    GGML_TYPE_COUNT = 39,\n"
+        "    GGML_TYPE_COUNT   = 43,\n"
         "};\n",
         encoding="utf-8",
     )
@@ -231,10 +248,30 @@ def _fake_llamacpp(root: Path) -> Path:
         "};\n",
         encoding="utf-8",
     )
+    (root / "ggml" / "src" / "ggml-cpu" / "ggml-cpu.c").write_text(
+        '#include "ggml-impl.h"\n'
+        "\n"
+        "static const struct ggml_type_traits_cpu "
+        "type_traits_cpu[GGML_TYPE_COUNT] = {\n"
+        "    [GGML_TYPE_F32] = { .vec_dot_type = GGML_TYPE_F32 },\n"
+        "};\n",
+        encoding="utf-8",
+    )
     (root / "ggml" / "src" / "CMakeLists.txt").write_text(
         "add_library(ggml\n    ggml.c\n    ggml-alloc.c\n)\n", encoding="utf-8"
     )
     return root
+
+
+def _patcher():
+    """The patcher module, imported from tools/ without installing it."""
+    sys.path.insert(0, str(TOOLS))
+    try:
+        import patch_llamacpp
+
+        return patch_llamacpp
+    finally:
+        sys.path.pop(0)
 
 
 class TestThePatcher:
@@ -282,6 +319,88 @@ class TestThePatcher:
         assert patch_llamacpp.main([str(root)]) == 0
         after = (root / "ggml" / "src" / "ggml.c").read_text(encoding="utf-8")
         assert after == before
+
+    def test_the_type_count_is_raised_past_the_new_ids(self, tmp_path):
+        """The bug that made a real build fail while every test passed.
+
+        Upstream pins ``GGML_TYPE_COUNT`` to a literal instead of letting
+        it fall out of the enum, and it sizes both trait tables. Insert
+        ids at 200 without raising it and ``[GGML_TYPE_HNX_IQ0_9]`` is
+        initialising element 200 of a 43-element array -- "array index in
+        initializer exceeds array bounds", before the compiler even gets
+        to the interesting error.
+        """
+        patcher = _patcher()
+        root = _fake_llamacpp(tmp_path / "llama.cpp")
+        assert patcher.main([str(root)]) == 0
+
+        header = (root / "ggml" / "include" / "ggml.h").read_text(encoding="utf-8")
+        # The declaring line, not the "was:" comment that records the
+        # old one -- a plain search finds the comment first, which is
+        # how the first version of this test managed to fail on a
+        # correctly patched tree.
+        declarations = [
+            line for line in header.splitlines()
+            if "GGML_TYPE_COUNT" in line and not line.lstrip().startswith("//")
+        ]
+
+        assert len(declarations) == 1, declarations
+        count = re.search(r"GGML_TYPE_COUNT\s*=\s*(\d+)", declarations[0])
+        assert count is not None
+        assert int(count.group(1)) == patcher.HNX_TYPE_COUNT
+        assert int(count.group(1)) > 204, "the highest HyperNix id"
+
+    def test_vec_dot_goes_in_the_cpu_table_not_the_format_one(self, tmp_path):
+        """The other half of the same failure.
+
+        ``ggml_type_traits`` in ggml.c has no ``vec_dot`` member and
+        cannot see ``ggml_vec_dot_t`` at all -- both moved to
+        ``ggml_type_traits_cpu`` in ggml-cpu/ggml-cpu.c. Writing them
+        into the wrong table is not a warning, it is four errors per
+        type.
+        """
+        patcher = _patcher()
+        root = _fake_llamacpp(tmp_path / "llama.cpp")
+        assert patcher.main([str(root)]) == 0
+
+        base = (root / "ggml" / "src" / "ggml.c").read_text(encoding="utf-8")
+        cpu = (root / "ggml" / "src" / "ggml-cpu" / "ggml-cpu.c").read_text(
+            encoding="utf-8")
+
+        assert ".vec_dot" not in base, "vec_dot must not go in ggml.c"
+        assert "ggml_vec_dot_t" not in base
+        assert ".to_float" in base, "but to_float belongs there"
+
+        assert ".vec_dot" in cpu
+        assert ".vec_dot_type" in cpu
+        assert ".to_float" not in cpu, "to_float must not go in the cpu table"
+        for suffix in ("iq0_9", "iq0_75", "iq0_5", "iq0_25", "int1"):
+            assert f"hnx_ggml_vec_dot_{suffix}" in cpu
+            assert f"hnx_ggml_to_float_{suffix}" in base
+
+    def test_both_files_get_the_shim_include(self, tmp_path):
+        """Each table names functions the other file does not declare."""
+        patcher = _patcher()
+        root = _fake_llamacpp(tmp_path / "llama.cpp")
+        assert patcher.main([str(root)]) == 0
+
+        for path in (root / "ggml" / "src" / "ggml.c",
+                     root / "ggml" / "src" / "ggml-cpu" / "ggml-cpu.c"):
+            assert '#include "ggml-hnx-shim.h"' in path.read_text(encoding="utf-8")
+
+    def test_reverting_the_count_restores_upstreams_value(self, tmp_path):
+        """Not a guess at what it used to be: the original line is
+        carried in the marker comment, so a checkout whose count is 43
+        goes back to 43 and one at 51 goes back to 51."""
+        patcher = _patcher()
+        root = _fake_llamacpp(tmp_path / "llama.cpp")
+        header = root / "ggml" / "include" / "ggml.h"
+        before = header.read_text(encoding="utf-8")
+
+        assert patcher.main([str(root)]) == 0
+        assert patcher.main([str(root), "--revert"]) == 0
+
+        assert header.read_text(encoding="utf-8") == before
 
     def test_a_moved_anchor_changes_nothing(self, tmp_path, capsys):
         """The failure mode a .patch file has and this must not: a
