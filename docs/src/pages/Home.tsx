@@ -95,7 +95,7 @@ function SubsystemBrowser() {
             <div style={{ minWidth:0 }}>
               <code style={{ fontSize:12.5, color:'var(--accent)', overflowWrap:'break-word',
                 wordBreak:'break-word' }}>{s.name}</code>
-              <div className="eyebrow" style={{ color:'var(--text-faint)', marginTop:5, fontSize:9.5 }}>
+              <div className="eyebrow" style={{ color:'var(--text-faint)', marginTop:5, fontSize:11 }}>
                 {subsystemGroup(s.name)}
               </div>
             </div>
@@ -122,7 +122,16 @@ function HomePage({ setPage, downloads, olderDownloads, totalDownloads, ghStats,
         overflow:'hidden' }}>
         <div className="hero-bg" aria-hidden="true" />
         <div className="shell" style={{ position:'relative', display:'grid', gap:'clamp(36px,5vw,56px)',
-          gridTemplateColumns:'repeat(auto-fit,minmax(480px,1fr))', alignItems:'center' }}>
+          /* min(480px,100%) and not 480px. A bare minmax(480px,1fr)
+             track cannot shrink below its minimum, so on a 375px phone
+             the column stayed 480px wide and the section's
+             overflow:hidden clipped the right third of the hero -- the
+             subtitle cut off mid-word, the third button gone, the
+             terminal running off the edge. The page never scrolled
+             sideways, which is why it looked fine to a check that only
+             measured document overflow. */
+          gridTemplateColumns:'repeat(auto-fit,minmax(min(480px,100%),1fr))',
+          alignItems:'center' }}>
 
           <div>
             <div className="anim-fade-up" style={{ display:'flex', alignItems:'center', gap:11,
@@ -145,7 +154,7 @@ function HomePage({ setPage, downloads, olderDownloads, totalDownloads, ghStats,
               package built for consumer hardware.
             </p>
 
-            <div className="anim-fade-up" style={{ display:'flex', gap:10, flexWrap:'wrap',
+            <div className="anim-fade-up cta-row" style={{ display:'flex', gap:10, flexWrap:'wrap',
               marginBottom:26, animationDelay:'0.18s' }}>
               <button onClick={() => setPage('docs')} className="press-btn glow-pulse" style={{
                 background:'var(--accent)', border:'none', color:'#fff', borderRadius:8,
@@ -192,7 +201,7 @@ function HomePage({ setPage, downloads, olderDownloads, totalDownloads, ghStats,
                 background:'var(--surface-1)' }}>
                 <div className="tabular" style={{ fontSize:27, fontWeight:800, color:'var(--accent)',
                   letterSpacing:'-0.03em' }}><CountUp value={s.val} /></div>
-                <div className="eyebrow" style={{ fontSize:9.5, color:'var(--text-faint)', marginTop:7 }}>
+                <div className="eyebrow" style={{ fontSize:11, color:'var(--text-faint)', marginTop:7 }}>
                   {s.label}
                 </div>
               </div>
@@ -224,7 +233,7 @@ function HomePage({ setPage, downloads, olderDownloads, totalDownloads, ghStats,
                 border:'1px solid var(--border-strong)', borderRadius:12, padding:'22px 20px 24px',
                 cursor:'default', position:'relative' }}>
                 <span className="eyebrow" style={{ position:'absolute', top:18, right:18,
-                  color:'var(--text-faint)', fontSize:9.5 }}>{String(i + 1).padStart(2,'0')}</span>
+                  color:'var(--text-faint)', fontSize:11 }}>{String(i + 1).padStart(2,'0')}</span>
                 <div className="feat-icon" style={{ marginBottom:14,
                   transition:'transform 0.25s ease' }}>
                   <FeatureIcon name={f.icon} />
@@ -296,8 +305,8 @@ function HomePage({ setPage, downloads, olderDownloads, totalDownloads, ghStats,
                 cursor:'default' }}>
                 <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between',
                   gap:8, marginBottom:12 }}>
-                  <span className="eyebrow" style={{ color:'var(--accent-text)', fontSize:10 }}>{m.family}</span>
-                  <span className="tabular" style={{ fontSize:10, color:'var(--text-faint)',
+                  <span className="eyebrow" style={{ color:'var(--accent-text)', fontSize:11 }}>{m.family}</span>
+                  <span className="tabular" style={{ fontSize:11, color:'var(--text-faint)',
                     fontFamily:'var(--font-mono)' }}>{m.models.length}</span>
                 </div>
                 <div style={{ display:'flex', flexWrap:'wrap', gap:5 }}>

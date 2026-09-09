@@ -41,6 +41,8 @@ Assistants & dashboards:
 
 Data & infra:
   scavenger              search + pull HF datasets under storage/quality budgets
+  gather                 crawl a site into a corpus (see Gather.md)
+  fusebox                GPU thermal governor for a run (see FuseBox.md)
   websearch              non-API web search utility
   net                    Tailscale mesh connect / export / log tailing
   gkey                   API key issuance, scoping, revocation (Gatekeeper + Keymaster)
@@ -484,6 +486,59 @@ hypernix scavenger --keywords "code,python" --max-storage 20 \
 Searches HuggingFace datasets and pulls them under a storage/quality
 budget (`--max-storage` in GB, `--min-likes`, `--max-age`, etc.) instead
 of downloading everything that matches a keyword.
+
+## `gather`
+
+```bash
+hnx gather -W https://example.org -Q 2 -T 4 -p 1.5 -f jsonl -o ./corpus
+hnx gather -L "a.org,b.org" -f parquet -C --xz -O corpus-2026-09
+hnx gather probe -W https://example.org -u 8      # measure a host's limit
+hnx gather formats --json                         # what this build supports
+```
+
+Crawls a site and writes it as training data. `-W` a site or `-L` a
+comma-separated list, `-T` threads, `-Q` depth, `-p` the pause between
+requests to a host, `-f` the format (`html`, `html-full`,
+`html-full-wimages`, `text`, `jsonl`, `parquet`, `js`), `-o` where,
+`-O` the file header or archive name, `-C` with `--xz` / `--7z` /
+`--zip` / `--gz` to compress, and `-U` to upload to a GitHub or Hugging
+Face repo (which needs `--yes`).
+
+robots.txt is honoured and there is a delay between requests by default,
+and a host's own `Crawl-delay` overrides `-p` when it asks for longer.
+`-f js` **saves** JavaScript; nothing in the module runs any.
+
+Script-shaped: `--json` on stdout with progress on stderr, and exit
+codes `0` crawled / `1` nothing fetched / `2` bad arguments / `3`
+interrupted. Full documentation in [Gather](Gather.md).
+
+## `fusebox`
+
+```bash
+hnx fusebox status                    # what the cards are doing now
+hnx fusebox watch --target 78         # hold 78 °C by pacing the run
+hnx fusebox watch --target 78 --underclock --yes
+hnx fusebox plan                      # what underclocking would do
+hnx fusebox restore                   # undo what a crashed run left
+```
+
+Holds a GPU at a temperature you chose, and trips like a fuse if it goes
+past `--trip` anyway. Two levers: pausing between steps (free, needs no
+privileges, on by default) and lowering a power limit (`--underclock`,
+needs root and `--yes`, outlives the process).
+
+**It is not a speedup and does not claim to be.** Holding a temperature
+costs throughput — a power limit 2–7 %, pausing 12–24 % — and the module
+prints what it cost when the run ends. What you buy is the temperature.
+The measurement is in `tests/test_fusebox.py`, and the reasoning is in
+[FuseBox](FuseBox.md).
+
+It never raises a power limit above the card's default, never escalates
+privileges, and records every change to `~/.hypernix/fusebox-state.json`
+so `hnx fusebox restore` can undo it after a crash.
+
+`hnx train run --thermal-target 78` paces a training run the same way,
+without touching any card setting.
 
 ## `websearch`
 

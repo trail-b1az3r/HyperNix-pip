@@ -128,6 +128,26 @@ class T1APIConfig:
         default_factory=lambda: _bool_env("T1_ENABLE_EXAMPLE_MODELS", False)
     )
 
+    # --- Trusted network (0.72.4) -----------------------------------------
+    # Off by default, and that default is the whole point: keyless access
+    # is something an administrator turns on knowing what it costs, never
+    # something that happens because a machine has a private address.
+    trusted_network: bool = field(
+        default_factory=lambda: _bool_env("T1_TRUSTED_NETWORK", False)
+    )
+    trusted_network_lan: bool = field(
+        default_factory=lambda: _bool_env("T1_TRUSTED_NETWORK_LAN", True)
+    )
+    trusted_network_tailnet: bool = field(
+        default_factory=lambda: _bool_env("T1_TRUSTED_NETWORK_TAILNET", True)
+    )
+    #: Partial administrative functions for trusted origins. Separate
+    #: from keyless *access* because they are separate decisions: letting
+    #: the phone on your sofa read models is not letting it stop training.
+    trusted_network_partial_admin: bool = field(
+        default_factory=lambda: _bool_env("T1_TRUSTED_NETWORK_PARTIAL_ADMIN", False)
+    )
+
     # --- Routing ----------------------------------------------------------
     routing_policy_path: str | None = field(
         default_factory=lambda: os.environ.get("T1_ROUTING_POLICY_PATH")

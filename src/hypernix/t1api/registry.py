@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import threading
 from dataclasses import asdict, dataclass
 from enum import StrEnum
@@ -44,6 +45,123 @@ logger = logging.getLogger(__name__)
 
 _DATA_DIR = Path(__file__).parent / "data"
 _EXAMPLE_REGISTRY_PATH = _DATA_DIR / "model_registry.example.json"
+
+
+#: Filenames a registry is looked for under, in preference order.
+#: ``.jsonl`` is accepted because an indexer that appends one entry per
+#: line is the natural way to write a registry incrementally, and a
+#: format the writer can produce but the reader cannot load is not a
+#: format.
+REGISTRY_NAMES = ("models.json", "models.jsonl")
+
+
+def registry_locations(config_dir: str | Path | None = None) -> list[Path]:
+    """Where a registry is looked for, in order, most specific first.
+
+    Discovery exists because the alternative was an environment variable
+    and nothing else. ``hypernix-t1 index`` would write ``models.json``,
+    the server would not be told about it, and ``waiter models`` would
+    show the *example* entries -- which are documented as not real --
+    while the operator's own models sat in a file two directories away.
+    Nothing anywhere said the two were unconnected.
+    """
+    roots: list[Path] = []
+    if config_dir:
+        roots.append(Path(config_dir))
+    env_dir = os.environ.get("T1_CONFIG_DIR")
+    if env_dir:
+        roots.append(Path(env_dir))
+    roots.append(Path.home() / ".hypernix" / "t1api")
+    roots.append(Path("./hypernix/models"))
+    roots.append(Path.cwd())
+
+    seen: set[Path] = set()
+    found: list[Path] = []
+    for root in roots:
+        for name in REGISTRY_NAMES:
+            candidate = root / name
+            if candidate not in seen:
+                seen.add(candidate)
+                found.append(candidate)
+    return found
+
+
+def discover(config_dir: str | Path | None = None) -> Path | None:
+    """The first registry file that exists, or None."""
+    for candidate in registry_locations(config_dir):
+        try:
+            if candidate.is_file():
+                return candidate
+        except OSError:  # noqa: PERF203 - an unreadable root is not fatal
+            continue
+    return None
+
+
+def read_entries(path: str | Path) -> tuple[list[ModelEntry], list[str]]:
+    """Entries from *path*, plus a list of what could not be read.
+
+    Never raises. A registry file is written by a separate process --
+    ``hypernix-t1 index``, or a person with an editor -- so the server
+    can and does open it mid-write. Before this, three ordinary states
+    each ended startup with a traceback:
+
+        half-written JSON   json.JSONDecodeError
+        a dict, not a list  TypeError: string indices must be integers
+        one entry missing   KeyError: 'display_name'
+        a required key
+
+    The last is the worst of the three: one malformed entry discarded
+    every good one alongside it. Bad entries are now skipped and named,
+    and the models that *are* readable load.
+    """
+    src = Path(path)
+    problems: list[str] = []
+    try:
+        text = src.read_text(encoding="utf-8")
+    except OSError as exc:
+        return [], [f"{src}: {exc}"]
+
+    raw: list[Any]
+    if src.suffix == ".jsonl":
+        raw = []
+        for number, line in enumerate(text.splitlines(), start=1):
+            stripped = line.strip()
+            if not stripped or stripped.startswith("//"):
+                continue
+            try:
+                raw.append(json.loads(stripped))
+            except ValueError as exc:
+                # A truncated final line is what a half-flushed append
+                # looks like; the lines before it are still good.
+                problems.append(f"{src}:{number}: {exc}")
+    else:
+        try:
+            parsed = json.loads(text)
+        except ValueError as exc:
+            return [], [f"{src}: {exc}"]
+        if isinstance(parsed, dict):
+            # A single entry, or {"models": [...]}, are both things people
+            # write. Accepting them beats a TypeError about string indices.
+            inner = parsed.get("models")
+            raw = list(inner) if isinstance(inner, list) else [parsed]
+        elif isinstance(parsed, list):
+            raw = parsed
+        else:
+            return [], [f"{src}: expected a list of model entries, got {type(parsed).__name__}"]
+
+    entries: list[ModelEntry] = []
+    for index, item in enumerate(raw):
+        if not isinstance(item, dict):
+            problems.append(f"{src}[{index}]: not an object")
+            continue
+        if item.get("_comment") and "model_id" not in item:
+            continue  # the installer template's explanatory stub
+        try:
+            entries.append(ModelEntry.from_dict(item))
+        except (KeyError, TypeError, ValueError) as exc:
+            name = item.get("model_id", f"entry {index}")
+            problems.append(f"{src}: {name}: {exc}")
+    return entries, problems
 
 
 class ModelStatus(StrEnum):
@@ -214,20 +332,43 @@ class ModelRegistry:
         *,
         include_examples: bool = False,
     ) -> ModelRegistry:
-        """Load a registry from a JSON file (a list of entry dicts).
+        """Load a registry, from *path* or from the conventional places.
 
-        Defaults to the shipped example seed file. Pass a real ``path`` to
-        point at production registry data instead.
+        With no ``path`` this now **looks for one** before falling back
+        to the shipped examples. That fallback is why an operator could
+        run ``hypernix-t1 index``, write a perfectly good ``models.json``,
+        and still see only entries the file itself documents as not real:
+        the server was never told where the registry was, and silently
+        served the seed instead of saying so.
+
+        Reading is tolerant. The file is written by another process, so
+        the server opens it mid-write in the ordinary course of things;
+        a half-flushed file used to end startup with a JSONDecodeError.
+        See :func:`read_entries`.
         """
-        src = Path(path) if path is not None else _EXAMPLE_REGISTRY_PATH
+        src = Path(path) if path is not None else discover()
+        if src is None:
+            src = _EXAMPLE_REGISTRY_PATH
+            logger.info(
+                "t1api.registry: no registry found in %s; using the example seed. "
+                "Run `hypernix-t1 index` to build one from your models.",
+                ", ".join(str(p) for p in registry_locations()[:4]),
+            )
         if not src.exists():
             logger.warning("t1api.registry: %s not found, starting with an empty registry", src)
             return cls(include_examples=include_examples)
-        raw = json.loads(src.read_text(encoding="utf-8"))
-        entries = {}
-        for item in raw:
-            entry = ModelEntry.from_dict(item)
-            entries[entry.model_id] = entry
+
+        found, problems = read_entries(src)
+        for problem in problems:
+            logger.warning("t1api.registry: %s", problem)
+        entries = {entry.model_id: entry for entry in found}
+        if problems and not entries:
+            # Nothing usable. Say it at a level someone will see, because
+            # the symptom downstream is an empty model list with no cause.
+            logger.error(
+                "t1api.registry: %s produced no usable entries (%d problem(s))",
+                src, len(problems),
+            )
         logger.info("t1api.registry: loaded %d entries from %s", len(entries), src)
         return cls(entries, include_examples=include_examples)
 

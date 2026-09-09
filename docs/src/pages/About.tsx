@@ -24,7 +24,7 @@ function AboutPage() {
       </p>
       <p style={{ color:'var(--text-dim)', lineHeight:1.75, marginBottom:40, fontSize:15 }}>Anyway, thanks for using HyperNix.</p>
       <div style={{ paddingTop:22, borderTop:'1px solid var(--surface-3)' }}>
-        <div style={{ fontSize:10, color:'var(--text-faint)', textTransform:'uppercase', letterSpacing:'0.12em',
+        <div style={{ fontSize:11, color:'var(--text-faint)', textTransform:'uppercase', letterSpacing:'0.12em',
           fontWeight:700, marginBottom:12 }}>Connect</div>
         <div style={{ display:'flex', flexWrap:'wrap', columnGap:18, rowGap:8, marginBottom:22 }}>
           {[

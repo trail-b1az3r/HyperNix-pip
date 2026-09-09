@@ -585,4 +585,29 @@ def describe(devices: list[Device] | None = None) -> str:
         lines.append(f"  --device auto would pick: {chosen.name} ({chosen.label})")
     else:
         lines.append("  Nothing usable but CPU.")
+
+    # What the vendor tools see, which is a different question from what
+    # torch can use. A card that is physically present and unusable here
+    # -- no ROCm build of torch, a wheel without kernels for it -- shows
+    # up in one list and not the other, and seeing both together is what
+    # tells you which of those you are looking at.
+    from ..system import gpus as _gpus
+
+    hardware = _gpus.detect()
+    if hardware:
+        lines.append("")
+        lines.append("Hardware the vendor tools report:")
+        lines.append(_gpus.describe(hardware))
+        torch_kinds = {d.kind for d in devices if d.usable}
+        unusable = [
+            card for card in hardware
+            if card.framework not in torch_kinds and card.framework != "cpu"
+        ]
+        if unusable:
+            names = ", ".join(f"{c.vendor.value}:{c.index}" for c in unusable)
+            lines.append("")
+            lines.append(
+                f"  {names} is present but this torch cannot use it. "
+                f"That is a torch build question, not a driver one."
+            )
     return "\n".join(lines)

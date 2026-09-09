@@ -105,16 +105,58 @@ def _has_binary(name: str) -> bool:
 
 def _detect_backend() -> str:
     """Pick the best vendor tool available.  ``"none"`` when no
-    overclocker is installed."""
-    if _has_binary("nvidia-smi") and _has_binary("nvidia-settings"):
+    overclocker is installed.
+
+    Tool *presence* rather than card detection, and that is right for
+    this module: everything here writes, so the question is which tool
+    can write, not which card exists. A read-only abstraction cannot
+    answer it.
+
+    But presence alone was wrong in one case worth closing. A driver
+    package can leave ``nvidia-smi`` on a machine whose card is a
+    Radeon -- a dual-GPU box, or a box where the NVIDIA card was
+    removed -- and this then picked "nvidia" and wrote clock offsets at
+    a device index that is not the AMD card. So when
+    :mod:`hypernix.system.gpus` can see the cards, the tool has to match
+    one of them. When it cannot see any, presence decides as before:
+    detection failing is not a reason to refuse to overclock a card the
+    operator knows is there.
+    """
+    vendors = _visible_vendors()
+
+    def usable(vendor: str) -> bool:
+        return not vendors or vendor in vendors
+
+    if usable("nvidia") and _has_binary("nvidia-smi") and _has_binary("nvidia-settings"):
         return "nvidia"
-    if _has_binary("nvidia-smi"):
+    if usable("nvidia") and _has_binary("nvidia-smi"):
         return "nvidia-smi-only"
-    if _has_binary("rocm-smi"):
+    if usable("amd") and _has_binary("rocm-smi"):
         return "rocm"
-    if _has_binary("intel_gpu_frequency"):
+    if usable("intel") and _has_binary("intel_gpu_frequency"):
         return "intel"
     return "none"
+
+
+def _visible_vendors() -> set[str]:
+    """Vendors with a card the abstraction can actually see.
+
+    Empty when detection found nothing, which reads as "no opinion" at
+    every call site rather than as "no GPUs" -- a container with the
+    devices passed through but no vendor tool visible is a real case,
+    and refusing to overclock there would be worse than trusting the
+    operator.
+    """
+    try:
+        from . import gpus as _gpus
+
+        return {card.vendor.value for card in _gpus.detect()}
+    except Exception:  # noqa: BLE001 - detection is advisory here
+        # Swallowed without a log line on purpose. This module has no
+        # logger, an empty set already means "no opinion" at every call
+        # site, and adding logging configuration for one advisory
+        # message would be the larger change.
+        return set()
 
 
 def _confirmed(confirm: bool) -> bool:

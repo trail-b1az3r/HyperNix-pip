@@ -244,6 +244,18 @@ cmd_status() {
   dim "     keys      $(setting T1_KEYMASTER_DIR "$CONFIG_DIR/keymaster")"
   dim "     log       $LOG_FILE"
   dim "     address   $url"
+  # The identity a phone pins. Printed here so the comparison has two
+  # sides: HyperLink shows the fingerprint it pinned, and this is where
+  # someone standing at the machine reads the real one to check it
+  # against. Derived from a local seed file, so it works whether or not
+  # the server is running.
+  local ident
+  ident="$(T1_CONFIG_DIR="${T1_CONFIG_DIR:-$CONFIG_DIR}" "$(python_bin)" -c '
+from hypernix.hyperlink.identity import fingerprint
+value = fingerprint()
+print(" ".join(value[i:i + 8] for i in range(0, len(value), 8)))
+' 2>/dev/null || true)"
+  [ -n "$ident" ] && dim "     identity  $ident"
   if [ -n "$pid" ]; then
     local body
     body="$(curl -fsS --noproxy '*' "$url/status" 2>/dev/null || true)"
@@ -405,6 +417,27 @@ cmd_key() {
   exec "$py" -m hypernix.security.gkey_cli "$@"
 }
 
+cmd_launch_script() {
+  # No require_installed: launching a job needs neither the server nor
+  # the [t1api] extra, and the whole point is that it works over a bare
+  # SSH connection to a machine where things may be half set up.
+  load_env
+  local py; py="$(python_bin)"
+  T1_CONFIG_DIR="${T1_CONFIG_DIR:-$CONFIG_DIR}" \
+    exec "$py" -m hypernix.t1api.launchscript_cli "$@"
+}
+
+cmd_training() {
+  # No require_installed: the monitor reads JSON files and signals
+  # processes this user already owns. It needs neither the server to be
+  # running nor the [t1api] extra -- and the moment you most want it is
+  # the moment the server is the thing in trouble.
+  load_env
+  local py; py="$(python_bin)"
+  T1_CONFIG_DIR="${T1_CONFIG_DIR:-$CONFIG_DIR}" \
+    exec "$py" -m hypernix.t1api.training_cli "$@"
+}
+
 cmd_index() {
   # No require_installed: indexing reads GGUF files and writes JSON, and
   # needs neither a configured server nor the [t1api] extra. Someone who
@@ -545,6 +578,15 @@ hypernix-t1 — manage a T1 API server
                         and write the model registry from what the files
                         say. Entries you have already edited are left
                         alone unless --refresh.
+  launch-script PATH [-k KEY] [--name N] [--detach] [--status|--logs|--stop N]
+                        Run a script so it survives an SSH disconnect. The
+                        job is supervised, its logs and exit status are
+                        kept, and --status works from any later session.
+  training [--active] [--show R] [--logs R] [--pause R] [--resume R]
+           [--stop R] [--resources]
+                        What training is doing on this machine, and the
+                        controls. Runs launched with launch-script appear
+                        here on their own.
   configure             Edit the configuration in \$EDITOR
   test                  Health, status, and a real end-to-end probe
   key ...               Run gkey against this server's key store
@@ -572,6 +614,8 @@ main() {
     test)              cmd_test "$@" ;;
     key|keys)          cmd_key "$@" ;;
     index)             cmd_index "$@" ;;
+    launch-script)     cmd_launch_script "$@" ;;
+    training)          cmd_training "$@" ;;
     autostart)         cmd_autostart "$@" ;;
     remove|uninstall)  cmd_remove "$@" ;;
     version|--version) printf 'hypernix-t1 %s\n' "$VERSION" ;;

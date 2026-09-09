@@ -1,0 +1,112 @@
+# HyperNix Studio — a desktop client for a HyperNix server.
+#
+#   cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+#   cmake --build build -j
+#   ./build/hypernix-studio
+#
+# Qt 6.4 or newer. On Debian/Ubuntu:
+#   sudo apt install qt6-base-dev qt6-declarative-dev cmake g++
+# On Fedora:
+#   sudo dnf install qt6-qtbase-devel qt6-qtdeclarative-devel cmake gcc-c++
+# On Arch:
+#   sudo pacman -S qt6-base qt6-declarative cmake
+#
+# The two libraries build and test WITHOUT Qt
+# ------------------------------------------
+# `hnx-studio-core` is the security-critical half -- the tool policy and
+# the runner -- in plain C++17 with no Qt at all, and `ctest` runs its
+# tests. That is deliberate: the part that stands between a language
+# model and somebody's filesystem should be checkable with a compiler
+# and nothing else, on any machine, including one with no Qt installed.
+#
+#   cmake -S . -B build -DSTUDIO_CORE_ONLY=ON
+#   cmake --build build && ctest --test-dir build
+cmake_minimum_required(VERSION 3.19)
+project(hypernix-studio VERSION 0.1.0 LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+option(STUDIO_CORE_ONLY
+       "Build and test only the Qt-free core. For CI and for machines with no Qt."
+       OFF)
+
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    add_compile_options(-Wall -Wextra)
+endif()
+
+# --- the core: no Qt ---------------------------------------------------
+add_library(hnx-studio-core STATIC
+    src/ToolPolicy.cpp
+    src/ToolRunner.cpp
+)
+target_include_directories(hnx-studio-core PUBLIC src)
+
+enable_testing()
+
+add_executable(tool_policy_test tests/tool_policy_test.cpp)
+target_link_libraries(tool_policy_test PRIVATE hnx-studio-core)
+add_test(NAME tool_policy COMMAND tool_policy_test)
+
+add_executable(tool_runner_test tests/tool_runner_test.cpp)
+target_link_libraries(tool_runner_test PRIVATE hnx-studio-core)
+add_test(NAME tool_runner COMMAND tool_runner_test)
+
+if(STUDIO_CORE_ONLY)
+    message(STATUS "STUDIO_CORE_ONLY: skipping the Qt application")
+    return()
+endif()
+
+# --- the application --------------------------------------------------
+# 6.4, not 6.5. Nothing here needs a 6.5 API, and 6.4 is what Ubuntu
+# 24.04 and Debian 12 ship -- requiring 6.5 meant the app would not
+# configure on the distributions most likely to run it, for no gain.
+# Raise it when something actually needs a newer API, and say what.
+find_package(Qt6 6.4 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 Network)
+
+qt_standard_project_setup(REQUIRES 6.4)
+
+qt_add_executable(hypernix-studio
+    src/main.cpp
+    src/HyperLinkClient.cpp
+    src/StudioBridge.cpp
+)
+
+qt_add_resources(hypernix-studio "studio"
+    PREFIX "/"
+    BASE "."
+    FILES
+        qml/Main.qml
+        qml/Theme.qml
+        qml/qmldir
+        qml/Sidebar.qml
+        qml/ConnectPanel.qml
+        qml/ChatView.qml
+        qml/MessageBubble.qml
+        qml/CodeView.qml
+        qml/ModelsView.qml
+        qml/MachineView.qml
+        qml/Meter.qml
+        qml/ToolApproval.qml
+        qml/StudioButton.qml
+        qml/StudioField.qml
+        qml/ErrorBanner.qml
+)
+
+target_link_libraries(hypernix-studio PRIVATE
+    hnx-studio-core
+    Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick Qt6::QuickControls2 Qt6::Network
+)
+
+set_target_properties(hypernix-studio PROPERTIES
+    WIN32_EXECUTABLE ON
+    MACOSX_BUNDLE ON
+)
+
+include(GNUInstallDirs)
+install(TARGETS hypernix-studio RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(FILES resources/hypernix-studio.desktop
+        DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/applications)
+install(FILES ../assets/logo-new/hypernix-icon.svg
+        DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/scalable/apps
+        RENAME hypernix-studio.svg)

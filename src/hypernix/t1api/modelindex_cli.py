@@ -95,9 +95,16 @@ def _human(result: dict, rows: list, *, dry_run: bool) -> None:
         print(f"    left      {count} already-registered {noun} unchanged{hint}")
     print(f"    {result['total']} model(s) in the registry")
     print()
-    print("  Point the server at it and restart:")
-    print(f"    T1_MODEL_REGISTRY_PATH={result['path']}")
-    print("    hypernix-t1 restart")
+    if result.get("discoverable"):
+        # No env var to set: the server looks here on its own. Telling
+        # someone to configure a path they do not need is how a working
+        # setup acquires a setting nobody can later explain.
+        print("  The server reads this location on its own. Restart it:")
+        print("    hypernix-t1 restart")
+    else:
+        print("  This is not somewhere the server looks. Point it there:")
+        print(f"    T1_MODEL_REGISTRY_PATH={result['path']}")
+        print("    hypernix-t1 restart")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -136,10 +143,15 @@ def main(argv: list[str] | None = None) -> int:
 
     output = args.output
     if not output:
-        import os
+        from .registry import discover, registry_locations
 
-        config = os.environ.get("T1_CONFIG_DIR", "")
-        output = str(Path(config) / "models.json") if config else "models.json"
+        # Write where the server will look, and to the file it is
+        # already reading if there is one. Indexing to a path the server
+        # does not consult is the failure this whole command exists to
+        # avoid -- it produces a correct registry and an empty model
+        # list, with nothing connecting the two.
+        existing = discover()
+        output = str(existing) if existing else str(registry_locations()[0])
 
     try:
         rows = index_directory(args.directory)
@@ -157,6 +169,12 @@ def main(argv: list[str] | None = None) -> int:
         for row in usable
     ]
 
+    from .registry import registry_locations
+
+    discoverable = Path(output).resolve() in {
+        p.resolve() for p in registry_locations()
+    }
+
     if args.dry_run:
         result = {"path": output, "added": [], "updated": [],
                   "unchanged": [], "total": len(entries),
@@ -164,10 +182,11 @@ def main(argv: list[str] | None = None) -> int:
     else:
         try:
             result = write_registry(entries, output, refresh=args.refresh)
-            result["refresh"] = args.refresh
         except IndexError_ as exc:
             print(f"hypernix-t1 index: {exc}", file=sys.stderr)
             return 1
+        result["refresh"] = args.refresh
+    result["discoverable"] = discoverable
 
     if args.as_json:
         print(json.dumps(

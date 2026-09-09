@@ -97,6 +97,9 @@ _SUBCOMMANDS = {
     "vera",
     "scavenger",
     "config",
+    "gather",
+    "fusebox",
+    "fuse-box",
     # v0.71.0
     "gkey",
     # v0.71.1
@@ -152,6 +155,8 @@ def _print_usage() -> None:
         table.add_row("[green]wiki[/]", "HyperNix documentation wiki CLI")
         table.add_row("[green]vera[/]", "Vera assistant CLI")
         table.add_row("[green]scavenger[/]", "Scavenger tools")
+        table.add_row("[green]gather[/]", "Crawl a site into a corpus (robots-aware)")
+        table.add_row("[green]fusebox[/]", "GPU thermal governor: pace a run, trip on heat, underclock")
         table.add_row("[green]config[/]", "Configuration management")
         table.add_row("[green]gkey[/]", "API key & access management (Gatekeeper + Keymaster)")
         table.add_row("[green]map[/]", "Steampunk schematic TUI: dials/pipes/steam for model + training state")
@@ -198,6 +203,8 @@ def _print_usage() -> None:
             "  wiki                   HyperNix documentation wiki CLI\n"
             "  vera                   Vera assistant CLI\n"
             "  scavenger              Scavenger tools\n"
+            "  gather                 crawl a site into a corpus (robots-aware)\n"
+            "  fusebox                GPU thermal governor for a training run\n"
             "  config                 Configuration management\n"
             "  gkey                   API key & access management (Gatekeeper + Keymaster)\n"
             "  map                    Steampunk schematic TUI: dials/pipes/steam for model + training state\n\n"
@@ -688,6 +695,13 @@ def _run_train(raw: list[str]) -> int:
         help="Set expandable_segments on the CUDA allocator so a long run "
              "fragments less.",
     )
+    p_run.add_argument(
+        "--thermal-target", type=float, default=None, metavar="C",
+        help="Keep the GPU at or below this temperature by pausing briefly "
+             "between steps. This costs throughput -- it buys a cooler "
+             "card, not a faster run -- and prints what it cost when the "
+             "run ends. Changes no card settings; `hnx fusebox` can.",
+    )
 
     ns = p.parse_args(raw)
     if ns.action == "init":
@@ -729,6 +743,7 @@ def _run_train(raw: list[str]) -> int:
             checkpoint_every=ns.checkpoint_every,
             fuse_optimizer=ns.fuse_optimizer,
             tune_allocator=ns.tune_allocator,
+            thermal_target_c=ns.thermal_target,
         )
     print(out)
     return 0
@@ -1070,6 +1085,14 @@ def main(argv: list[str] | None = None) -> int:
         from hypernix.audio.wakeup_cli import main as _wakeup_main
 
         return _wakeup_main(rest)
+    if cmd == "gather":
+        from hypernix.data.gather_cli import main as _gather_main
+
+        return _gather_main(rest)
+    if cmd in ("fusebox", "fuse-box"):
+        from hypernix.system.fusebox_cli import main as _fusebox_main
+
+        return _fusebox_main(rest)
     if cmd == "verify":
         return _run_verify(rest)
     if cmd == "info":

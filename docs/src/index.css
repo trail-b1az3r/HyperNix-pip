@@ -356,3 +356,115 @@ input:focus, textarea:focus { border-color: var(--accent) !important;
 }
 .nav-drawer-link:hover, .nav-drawer-link:focus-visible { color: var(--text); background: var(--surface-3); }
 .nav-drawer-link.active { color: var(--accent-text); }
+
+/* ── Touch sizing ───────────────────────────────────────────────────────
+ *
+ * Measured, not guessed. Driving the built site in a headless Chromium at
+ * 375x667 (iPhone SE, the floor worth supporting) found nav and footer
+ * links 15px tall, the burger and the copy buttons 22px, and body text
+ * down to 9.5px. Apple's own minimum tap target is 44px and the WCAG
+ * 2.2 minimum is 24px; 15px is neither, and a 9.5px label needs a pinch
+ * to read.
+ *
+ * These raise the floor on touch devices only. `pointer: coarse` rather
+ * than a width query on purpose: the thing that makes a 15px link hard
+ * to hit is a finger, not a narrow window, and a desktop browser
+ * dragged narrow should keep its tighter, denser layout.
+ * ─────────────────────────────────────────────────────────────────── */
+
+@media (pointer: coarse) {
+  /* Footer navigation. Padding rather than a height, so the text stays
+     where it was and only the hit area grows -- a min-height would push
+     every column taller and open gaps between the labels and their
+     headings. */
+  .footer-link {
+    padding: 9px 0;
+    margin-bottom: 0;
+    /* The link box only ever spanned its text, so the tappable area was
+       the width of the word. */
+    display: block;
+    min-height: 40px;
+    line-height: 22px;
+  }
+
+  /* The burger was 22px: a real button, plainly visible, and small
+     enough that hitting it is a matter of luck. */
+  .mob-btn {
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* The copy button was 22px too, but it cannot simply be made bigger:
+     it sits absolutely positioned in a code block's corner, and a 44px
+     chip there covers the first line of the code it is offering to
+     copy. So the *hit area* grows and the chip does not -- an invisible
+     pseudo-element centred on it, which is what the 44px minimum is
+     actually about. */
+  .copy-btn { position: absolute; }
+  .copy-btn::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 44px;
+    height: 44px;
+    transform: translate(-50%, -50%);
+  }
+
+  /* Anything that ended up under the WCAG floor gets it back. Scoped to
+     the interactive elements this actually applies to rather than a
+     blanket `a, button`, which would stretch inline links inside a
+     paragraph and break the line spacing around them. */
+  /* :not(.copy-btn) because the copy button gets its hit area from the
+     pseudo-element below instead. It is the one control here that
+     cannot grow: it sits over the code it is offering to copy. */
+  .nav-drawer-link, .press-btn:not(.copy-btn), .cta-row a, .cta-row button,
+  .chip, .filter-chip, .tab-btn {
+    min-height: 44px;
+  }
+
+  /* Inline links inside a paragraph are deliberately NOT in the list
+     above. Stretching one to 44px breaks the line spacing of the text
+     around it, and WCAG 2.2's target-size rule exempts a link whose
+     target is inline in a sentence for exactly that reason. The links
+     that were too small and are *not* inline -- the footer's -- are
+     handled by .footer-link above. */
+}
+
+@media (max-width: 640px) {
+  /* Text floors. 9.5px eyebrow labels and 10.5px terminal output are
+     legible on a 27-inch monitor and not on a phone held at arm's
+     length. Raised rather than removed: the small size is doing real
+     work in the design, it was just taken a step too far for a handset.
+
+     `.term-body` overrides the 10.5px set for max-width:640px further
+     up this file, which is why this block comes after it. */
+  .eyebrow { font-size: 11px !important; letter-spacing: 0.7px; }
+  .term-body { font-size: 12px; }
+  .term-line { font-size: 12px; }
+
+  /* Long unbroken tokens -- a repo id, a pip command, a model filename
+     -- are what force a horizontal scroll on a narrow screen even when
+     every container is well behaved. */
+  /* Long unbroken tokens -- a repo id, a model filename -- are what
+     force a scroll on a narrow screen even when every container is well
+     behaved. Prose and links may wrap mid-token. */
+  code, .footer-link { overflow-wrap: anywhere; }
+
+  /* The terminal demo may not. `.term-line` is `white-space: pre`
+     deliberately: a wrapped shell command reads as two commands, which
+     is worse than a scrollbar. So it scrolls -- and the scroll lives on
+     the body, so the whole block moves together and the lines stay
+     aligned with each other.
+     -webkit-overflow-scrolling for momentum on iOS, and
+     overscroll-behavior-inline so reaching the end of the command does
+     not start swiping the page sideways behind it. */
+  .term-body {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-inline: contain;
+  }
+}

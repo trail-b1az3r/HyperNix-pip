@@ -175,7 +175,7 @@ function StatsPage({ downloads, olderDownloads, threeMonthDownloads, totalDownlo
                     style={{ color:'var(--accent)', fontFamily:'monospace', fontSize:13, textDecoration:'none' }}>{r.version}</a>
                   {r.isPreRelease && (
                     <span style={{ background:'#e8960a22', border:'1px solid #e8960a44', color:'#e8960a',
-                      borderRadius:4, padding:'0 6px', fontSize:10 }}>pre</span>
+                      borderRadius:4, padding:'0 6px', fontSize:11 }}>pre</span>
                   )}
                   <span style={{ color:'var(--text-faint)', fontSize:12 }}>{r.date}</span>
                 </div>

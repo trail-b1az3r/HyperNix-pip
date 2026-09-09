@@ -50,12 +50,40 @@ struct EndpointsResponse: Decodable, Sendable {
     let endpoints: [ServerEndpoint]
     let tailscale: Bool
     let reachableOffLAN: Bool
+    /// The server's stable identity. Defaulted rather than required: a
+    /// server from before 0.72.4 does not send one, and an app that
+    /// failed to decode its reply would break every existing pairing on
+    /// upgrade. `ServerIdentity` treats an empty value as "unknown".
+    let serverFingerprint: String
+    /// Whether this server accepts keyless connections from trusted
+    /// networks, and whether *this* phone's current network is one.
+    /// The second is the only one the app can act on.
+    let trustedNetwork: Bool
+    let keylessAvailableHere: Bool
+    let originTrust: String
 
     enum CodingKeys: String, CodingKey {
         case serverName = "server_name"
         case t1Version = "t1_version"
         case endpoints, tailscale
         case reachableOffLAN = "reachable_off_lan"
+        case serverFingerprint = "server_fingerprint"
+        case trustedNetwork = "trusted_network"
+        case keylessAvailableHere = "keyless_available_here"
+        case originTrust = "origin_trust"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        serverName = try container.decodeIfPresent(String.self, forKey: .serverName) ?? ""
+        t1Version = try container.decodeIfPresent(String.self, forKey: .t1Version) ?? ""
+        endpoints = try container.decodeIfPresent([ServerEndpoint].self, forKey: .endpoints) ?? []
+        tailscale = try container.decodeIfPresent(Bool.self, forKey: .tailscale) ?? false
+        reachableOffLAN = try container.decodeIfPresent(Bool.self, forKey: .reachableOffLAN) ?? false
+        serverFingerprint = try container.decodeIfPresent(String.self, forKey: .serverFingerprint) ?? ""
+        trustedNetwork = try container.decodeIfPresent(Bool.self, forKey: .trustedNetwork) ?? false
+        keylessAvailableHere = try container.decodeIfPresent(Bool.self, forKey: .keylessAvailableHere) ?? false
+        originTrust = try container.decodeIfPresent(String.self, forKey: .originTrust) ?? ""
     }
 }
 
@@ -352,5 +380,78 @@ struct HFResolveRequest: Encodable, Sendable {
         case fileURL = "file_url"
         case prefer
         case includeVision = "include_vision"
+    }
+}
+
+
+/// One machine on the server's tailnet — a *candidate*, never a server
+/// this app has verified.
+///
+/// `verified` is decoded and always false; it is carried rather than
+/// dropped so the type cannot be mistaken for something authenticated.
+/// `name` and `serverName` are what that machine calls itself, which
+/// any machine on the network can claim: they are for a person picking
+/// from a list, and never for the decision to connect. Identity comes
+/// from the fingerprint, after a credential has been presented.
+struct DiscoveredPeer: Decodable, Hashable, Sendable, Identifiable {
+    let name: String
+    let address: String
+    let url: String
+    let online: Bool
+    let reachable: Bool
+    let t1Version: String
+    let serverName: String
+    let detail: String
+    let os: String
+    let verified: Bool
+
+    var id: String { address }
+
+    /// What to show in a list. The tailnet name if there is one, since
+    /// that is what the person recognises, falling back to the address.
+    var displayName: String {
+        let short = name.split(separator: ".").first.map(String.init) ?? ""
+        return short.isEmpty ? address : short
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case name, address, url, online, reachable, detail, os, verified
+        case t1Version = "t1_version"
+        case serverName = "server_name"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
+        address = try container.decodeIfPresent(String.self, forKey: .address) ?? ""
+        url = try container.decodeIfPresent(String.self, forKey: .url) ?? ""
+        online = try container.decodeIfPresent(Bool.self, forKey: .online) ?? false
+        reachable = try container.decodeIfPresent(Bool.self, forKey: .reachable) ?? false
+        t1Version = try container.decodeIfPresent(String.self, forKey: .t1Version) ?? ""
+        serverName = try container.decodeIfPresent(String.self, forKey: .serverName) ?? ""
+        detail = try container.decodeIfPresent(String.self, forKey: .detail) ?? ""
+        os = try container.decodeIfPresent(String.self, forKey: .os) ?? ""
+        verified = try container.decodeIfPresent(Bool.self, forKey: .verified) ?? false
+    }
+}
+
+struct PeersResponse: Decodable, Sendable {
+    let peers: [DiscoveredPeer]
+    let count: Int
+    let reachable: Int
+    let tailscale: Bool
+    let detail: String
+
+    enum CodingKeys: String, CodingKey {
+        case peers, count, reachable, tailscale, detail
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        peers = try container.decodeIfPresent([DiscoveredPeer].self, forKey: .peers) ?? []
+        count = try container.decodeIfPresent(Int.self, forKey: .count) ?? 0
+        reachable = try container.decodeIfPresent(Int.self, forKey: .reachable) ?? 0
+        tailscale = try container.decodeIfPresent(Bool.self, forKey: .tailscale) ?? false
+        detail = try container.decodeIfPresent(String.self, forKey: .detail) ?? ""
     }
 }

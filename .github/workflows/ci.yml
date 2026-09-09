@@ -307,6 +307,139 @@ jobs:
           echo '--- t1api ---'; tail -n 100 t1api.log || true
           echo '--- fake model ---'; tail -n 40 fake-model.log || true
 
+  # The two C/C++ pieces: the ggml sub-bit decoder and Studio's tool
+  # policy. Both are deliberately free of their heavy dependency -- the
+  # decoder needs no ggml, the policy needs no Qt -- precisely so they
+  # can be built and tested on a plain runner rather than only where a
+  # 200 MB checkout or a Qt install happens to exist.
+  #
+  # The Python suite compiles both too (tests/test_ggml_hnx.py,
+  # tests/test_studio_core.py). This job runs them through their own
+  # CMake as well, because that is how a developer builds them and a
+  # build file that only works when driven from pytest is a build file
+  # that is about to stop working.
+  native:
+    name: native (ggml-hnx + studio core)
+    needs: triage
+    if: needs.triage.outputs.narrow != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install the package (for the cross-check vectors)
+        run: pip install -e .
+
+      - name: ggml-hnx — build and cross-check against Python
+        run: |
+          set -euo pipefail
+          cmake -S native/ggml-hnx -B build/ggml-hnx -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/ggml-hnx -j"$(nproc)"
+          ctest --test-dir build/ggml-hnx --output-on-failure
+
+      - name: ggml-hnx — the patcher against a checkout it does not own
+        run: |
+          set -euo pipefail
+          # A real llama.cpp clone would be 200 MB for a test of four
+          # string edits; tests/test_ggml_hnx.py builds a tree with the
+          # anchors instead. This step proves the CLI itself runs.
+          python native/ggml-hnx/tools/patch_llamacpp.py --help >/dev/null
+          if python native/ggml-hnx/tools/patch_llamacpp.py . --check; then
+            echo "::error::the patcher accepted a directory that is not llama.cpp"
+            exit 1
+          fi
+
+      - name: Studio core — build and test, with no Qt installed
+        run: |
+          set -euo pipefail
+          cmake -S desktop -B build/studio -DSTUDIO_CORE_ONLY=ON \
+            -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/studio -j"$(nproc)"
+          ctest --test-dir build/studio --output-on-failure
+
+      # Qt as a separate step, after the core. The core is the part that
+      # must build anywhere; this is the part that needs 300 MB of Qt,
+      # and keeping them apart means a Qt packaging change cannot mask a
+      # failure in the security-critical half.
+      - name: Install Qt 6
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            qt6-base-dev qt6-declarative-dev \
+            qml6-module-qtquick-controls qml6-module-qtquick-layouts \
+            qml6-module-qtquick-templates qml6-module-qtquick-dialogs \
+            qml6-module-qtquick-window qml6-module-qtqml-workerscript
+
+      - name: Studio — compile the Qt application
+        run: |
+          set -euo pipefail
+          cmake -S desktop -B build/studio-qt -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/studio-qt -j"$(nproc)"
+
+      # The compiler does not check QML. Running the binary offscreen
+      # instantiates every .qml file the engine reaches, which is the only
+      # way a typo in a binding is found before somebody launches it --
+      # and it is how five "Unable to assign [undefined] to QString"
+      # warnings in the approval dialog were found, each of which left a
+      # property showing the *previous* request's value.
+      - name: Studio — load every QML file
+        run: |
+          set -euo pipefail
+          output="$(QT_QPA_PLATFORM=offscreen timeout 20 \
+            ./build/studio-qt/hypernix-studio 2>&1 || true)"
+          echo "$output"
+          if echo "$output" | grep -qE "Unable to assign|is not a type|failed to load component|^(qrc|file):.*error"; then
+            echo "::error::QML errors on startup"
+            exit 1
+          fi
+
+  # The CUDA kernels, compiled. Separate from `native` on purpose: the
+  # toolkit is ~2 GB and `native` runs on every full pass, so folding it
+  # in would add minutes to every run for a file that changes rarely.
+  #
+  # The checks that catch the failure that *matters* -- a template
+  # constant drifting from hypernix.quant.gguf, which produces a model
+  # that runs on the GPU and talks nonsense -- are source-level and run
+  # in `native` without any toolkit. This job proves the thing compiles
+  # and that the templates instantiate with the constants the launchers
+  # pass, which only nvcc can say.
+  cuda:
+    name: cuda kernels
+    needs: triage
+    if: needs.triage.outputs.narrow != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install nvcc
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends nvidia-cuda-toolkit
+          nvcc --version
+
+      - name: Install the package (for the block-size registry)
+        run: pip install -e . && pip install pytest
+
+      - name: Build with the CUDA kernels
+        run: |
+          set -euo pipefail
+          # sm_61 only: Pascal is this project's floor and building every
+          # architecture would triple the time for no extra coverage of
+          # the thing being tested.
+          cmake -S native/ggml-hnx -B build/cuda \
+            -DGGML_HNX_CUDA=ON -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CUDA_ARCHITECTURES=61
+          cmake --build build/cuda -j"$(nproc)"
+          ctest --test-dir build/cuda --output-on-failure
+
+      - name: The kernels instantiate with the CPU's constants
+        run: python -m pytest tests/test_ggml_hnx.py -q -k Cuda
+
   build-check:
     name: build sdist + wheel (smoke)
     needs: triage

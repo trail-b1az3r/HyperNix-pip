@@ -90,10 +90,10 @@ function DocsPage() {
             {sidebarOpen ? '▲ Hide pages' : '▼ Browse pages'}
           </button>
           <div className={sidebarOpen ? 'sidebar-open' : 'sidebar-closed'}>
-          <div style={{ fontSize:10, color:'var(--text-faint)', textTransform:'uppercase',
+          <div style={{ fontSize:11, color:'var(--text-faint)', textTransform:'uppercase',
             letterSpacing:'0.12em', marginBottom:14, fontWeight:700, display:'flex', alignItems:'center', gap:6 }}>
             Wiki Pages
-            {pagesSynced && <span title="Synced live from GitHub /wiki" style={{ color:'#2ecc71', fontSize:9, textTransform:'none', letterSpacing:0, fontWeight:400 }}>● live</span>}
+            {pagesSynced && <span title="Synced live from GitHub /wiki" style={{ color:'#2ecc71', fontSize:11, textTransform:'none', letterSpacing:0, fontWeight:400 }}>● live</span>}
           </div>
           {wikiPages.map(p => (
             <button key={p} onClick={() => { loadWiki(p); setSidebarOpen(false) }} style={{
@@ -105,7 +105,7 @@ function DocsPage() {
               transform: activeWiki === p ? 'translateX(2px)' : 'translateX(0)',
             }}>
               {p}
-              {newPages.has(p) && <span style={{ fontSize:8, color:'#0a0a0a', background:'var(--accent)', borderRadius:3, padding:'1px 4px', fontFamily:'sans-serif', fontWeight:700, flexShrink:0 }}>NEW</span>}
+              {newPages.has(p) && <span style={{ fontSize:11, color:'#0a0a0a', background:'var(--accent)', borderRadius:3, padding:'1px 4px', fontFamily:'sans-serif', fontWeight:700, flexShrink:0 }}>NEW</span>}
             </button>
           ))}
           </div>
@@ -122,7 +122,7 @@ function DocsPage() {
                   position:'relative', background:'var(--surface-3)', border:'1px solid var(--border-strong)', borderRadius:8,
                   padding:'14px 16px', textAlign:'left', cursor:'pointer', color:'var(--text)', fontSize:13, fontWeight:600,
                 }}>
-                  {newPages.has(p) && <span style={{ position:'absolute', top:8, right:8, fontSize:8, color:'#0a0a0a', background:'var(--accent)', borderRadius:3, padding:'1px 4px', fontFamily:'sans-serif', fontWeight:700 }}>NEW</span>}
+                  {newPages.has(p) && <span style={{ position:'absolute', top:8, right:8, fontSize:11, color:'#0a0a0a', background:'var(--accent)', borderRadius:3, padding:'1px 4px', fontFamily:'sans-serif', fontWeight:700 }}>NEW</span>}
                   {p.replace(/-/g, ' ')}
                   <div className="underline-grow" style={{ fontSize:11, color:'var(--text-faint)', marginTop:5, fontWeight:400, display:'block', width:'fit-content' }}>wiki ↗</div>
                 </button>

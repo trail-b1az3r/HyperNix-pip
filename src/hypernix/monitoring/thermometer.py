@@ -24,8 +24,6 @@ Zero hard deps; psutil is optional.
 from __future__ import annotations
 
 import json
-import shutil
-import subprocess
 import time
 from collections import deque
 from dataclasses import dataclass, field
@@ -98,23 +96,25 @@ def read_cpu_temp() -> tuple[float | None, dict[str, float]]:
 
 
 def read_gpu_temp() -> float | None:
-    if shutil.which("nvidia-smi") is None:
-        return None
-    try:
-        out = subprocess.run(
-            [
-                "nvidia-smi",
-                "--query-gpu=temperature.gpu",
-                "--format=csv,noheader,nounits",
-            ],
-            capture_output=True, text=True, check=False, timeout=2,
-        )
-        if out.returncode != 0:
-            return None
-        first = out.stdout.strip().splitlines()[0]
-        return float(first.strip())
-    except Exception:  # noqa: BLE001
-        return None
+    """The hottest GPU on the machine, whoever made it.
+
+    Was ``nvidia-smi`` directly, which meant an AMD card had no
+    temperature at all -- the thermometer reported the CPU and a blank
+    where the GPU should be, on the hardware where a temperature reading
+    matters most. :mod:`hypernix.system.gpus` asks whichever vendor tool
+    is present and reports the same shape either way.
+
+    The *hottest* card and not card 0: this feeds a single number, and
+    the only useful single number from a multi-GPU box is the one closest
+    to throttling.
+    """
+    from ..system import gpus as _gpus
+
+    readings = [
+        card.temperature_c for card in _gpus.detect()
+        if card.temperature_c is not None
+    ]
+    return max(readings) if readings else None
 
 
 def take_reading() -> Reading:
@@ -122,7 +122,11 @@ def take_reading() -> Reading:
     gpu = read_gpu_temp()
     sources = dict(by_src)
     if gpu is not None:
-        sources["nvidia-smi:gpu"] = gpu
+        # Named for the abstraction rather than for nvidia-smi, because
+        # the reading may well have come from rocm-smi. A source label
+        # that names the wrong tool is worse than a vague one when
+        # somebody is working out why a number looks wrong.
+        sources["gpu"] = gpu
     return Reading(timestamp=time.time(), cpu_celsius=cpu, gpu_celsius=gpu, sources=sources)
 
 

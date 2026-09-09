@@ -120,6 +120,11 @@ while [ $# -gt 0 ]; do
     --host)            shift; [ $# -gt 0 ] || die "--host needs an address"; FORCED_HOST="$1" ;;
     --port)            shift; [ $# -gt 0 ] || die "--port needs a number"; FORCED_PORT="$1" ;;
     --force)           FORCE_OVERWRITE=1 ;;
+    --trusted-network) TRUSTED_NETWORK=1; TRUSTED_NETWORK_SET=1 ;;
+    --no-trusted-network) TRUSTED_NETWORK=0; TRUSTED_NETWORK_SET=1 ;;
+    --trusted-network-partial-admin)
+                       TRUSTED_NETWORK=1; TRUSTED_NETWORK_SET=1
+                       TRUSTED_NETWORK_PARTIAL_ADMIN=1 ;;
     --config-dir)      shift; [ $# -gt 0 ] || die "--config-dir needs a path"; CONFIG_DIR="$1" ;;
     --install)         shift; [ $# -gt 0 ] || die "--install needs a mode"; INSTALL_MODE="$1" ;;
     --python)          shift; [ $# -gt 0 ] || die "--python needs a path"; PYTHON_OVERRIDE="$1" ;;
@@ -476,6 +481,11 @@ ENVIRONMENT="development"
 KEY_POLICY="both"          # t1 | t2 | both
 ADMIN_PASSWORD=""
 REQUIRE_WHITELIST=0
+# Defaults assigned *after* argument parsing, so they must not clobber
+# a flag: --trusted-network is parsed above and would be reset to 0.
+TRUSTED_NETWORK=${TRUSTED_NETWORK:-0}
+TRUSTED_NETWORK_SET=${TRUSTED_NETWORK_SET:-0}
+TRUSTED_NETWORK_PARTIAL_ADMIN=${TRUSTED_NETWORK_PARTIAL_ADMIN:-0}
 ALLOWED_CIDRS=""
 RATE_PRESET="standard"
 BILLING_MODE="free"        # free | metered
@@ -723,6 +733,67 @@ q_whitelist() {
       warn "Bound to all interfaces with no allowlist: anything that can route"
       warn "  to this machine can reach the API and try keys against it."
     fi
+  fi
+}
+
+q_trusted_network() {
+  head2 "Keyless access from your own network"
+  dim "     Normally every request needs a key. Trusted-network mode lets"
+  dim "     connections from this machine, your LAN, or your Tailscale"
+  dim "     tailnet skip that — so the phone app pairs without a key and"
+  dim "     'waiter' works from your desk without one."
+  dim ""
+  dim "     A public address can never get this, whatever you answer. The"
+  dim "     check is on the address the connection actually came from, so"
+  dim "     knowing the endpoint is not enough to get in."
+  # --yes must not turn this on. ask_yes_no answers every confirmation
+  # with yes, which is right for "are you sure" and wrong for the one
+  # question that lowers an authentication requirement: an unattended
+  # install would come up serving the LAN without a key, and nobody
+  # would have chosen that. It takes its own flag, or a person.
+  if [ "$TRUSTED_NETWORK_SET" = "1" ]; then
+    if [ "$TRUSTED_NETWORK" = "1" ]; then
+      dim "     Enabled by --trusted-network."
+    else
+      dim "     Disabled by --no-trusted-network."
+      return 0
+    fi
+  elif [ "$ASSUME_YES" = "1" ] && [ "$INTERACTIVE" = "1" ]; then
+    dim "     Left off: --yes does not enable keyless access. Pass"
+    dim "     --trusted-network to turn it on deliberately."
+    TRUSTED_NETWORK=0
+    return 0
+  elif ! ask_yes_no "Allow keyless access from this machine, the LAN and your tailnet?" "n"; then
+    TRUSTED_NETWORK=0
+    return 0
+  fi
+  TRUSTED_NETWORK=1
+  warn "Keyless access is on. Anything that can reach this server from your"
+  warn "  LAN or tailnet can use the API without presenting a key — including"
+  warn "  a guest on your wifi, and any device someone else added to the"
+  warn "  tailnet. This lowers the authentication requirement on purpose."
+  if [ "$BIND_HOST" = "0.0.0.0" ] && [ "$REQUIRE_WHITELIST" = "0" ]; then
+    warn ""
+    warn "  You are also bound to all interfaces with no allowlist. Keyless"
+    warn "  access still refuses public addresses, but the allowlist is what"
+    warn "  stops them reaching the server at all — consider turning it on."
+  fi
+  dim ""
+  dim "     Partial admin additionally lets those connections change things"
+  dim "     (write operations). It never grants full admin: a keyless caller"
+  dim "     cannot do what an admin key exists to gate."
+  if [ "$ASSUME_YES" = "1" ] && [ "$TRUSTED_NETWORK_SET" != "1" ]; then
+    dim "     Partial admin left off (--yes does not enable it)."
+  elif ask_yes_no "Also allow partial admin from trusted connections?" "n"; then
+    TRUSTED_NETWORK_PARTIAL_ADMIN=1
+    warn "Partial admin is on for LAN and tailnet connections."
+  fi
+  if [ -n "${REVERSE_PROXY:-}" ] || [ -n "${PUBLIC_URL:-}" ]; then
+    dim ""
+    dim "     You mentioned a proxy or a public URL. If a reverse proxy sits"
+    dim "     in front of this server, set T1_TRUSTED_PROXIES to its address"
+    dim "     in the generated .env — otherwise every request appears to come"
+    dim "     from the proxy, and keyless access is refused for all of them."
   fi
 }
 
@@ -988,6 +1059,19 @@ $(if [ -n "$PUBLIC_URL" ]; then printf 'T1_HYPERLINK_PUBLIC_URL=%s\n' "$PUBLIC_U
 # endpoint. The check runs before authentication.
 T1_NETWORK_POLICY_ENABLED=1
 T1_ALLOW_UNLISTED_CLIENTS=$allow_unlisted
+
+# Keyless access from this machine, the LAN and the tailnet. Off unless
+# it was asked for at install. A public address never gets it whatever
+# this says, and the decision is made on the address the connection
+# actually arrived from, so knowing the endpoint is not enough.
+T1_TRUSTED_NETWORK=$TRUSTED_NETWORK
+T1_TRUSTED_NETWORK_PARTIAL_ADMIN=$TRUSTED_NETWORK_PARTIAL_ADMIN
+
+# Reverse proxies whose X-Forwarded-For may be believed. Leave empty if
+# there is no proxy. If there IS one and this is empty, every request
+# looks like it came from the proxy, so keyless access is refused for
+# all of them rather than granted to all of them.
+# T1_TRUSTED_PROXIES=127.0.0.1/32
 
 # Never "*" on an authenticated API: a wildcard origin lets any site drive
 # it with a user's credentials.
@@ -1394,6 +1478,7 @@ main() {
   q_environment
   q_keys
   q_whitelist
+  q_trusted_network
   q_requests
   q_cost
   q_models

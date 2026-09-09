@@ -1346,6 +1346,100 @@ class NeoOven:
 # Top-level functional API (drop-in replacements for old_oven functions)
 # ---------------------------------------------------------------------------
 
+def preheat_brewed(
+    path: Path | str,
+    *,
+    tokenizer_source: Path | str | None = None,
+    device: str | None = None,
+    dtype: str = "float32",
+) -> NeoOven:
+    """Load a ``hyperNix0x-v2`` model into a :class:`NeoOven`.
+
+    Accepts either layout :mod:`hypernix.training.brewer` writes: a
+    ``.pt`` checkpoint holding ``{"config", "model_state_dict"}``, or a
+    save directory with a ``config.json``.
+
+    The model comes back wrapped by
+    :mod:`hypernix.models.brewer_adapter`, which is what lets every
+    NeoOven method reach it: ``BrewerModel.forward`` returns a bare
+    logits tensor and takes ``attn_mask`` in the position NeoOven passes
+    ``labels``, so calling it unwrapped does not fail -- it trains the
+    model into noise. See that module for why this is a wrapper rather
+    than a few checks at the call sites.
+
+    A brewed model has no tokenizer of its own; ``tokenizer_source``
+    points at one. Without it the oven loads with the tokenizer NeoOven
+    falls back to, which is fine for measuring shapes and wrong for
+    generating text -- so it says so.
+    """
+    from . import brewer_adapter
+
+    dev = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
+    tdtype = _dtype_from_str(dtype)
+
+    model, cfg = brewer_adapter.load(path)
+    model.to(dev, dtype=tdtype)
+    model.eval()
+
+    source = Path(tokenizer_source) if tokenizer_source else Path(path)
+    try:
+        tok, kind = _load_tokenizer(source)
+    except Exception:  # noqa: BLE001 - a missing tokenizer is not fatal here
+        logger.warning(
+            "neo_oven: no tokenizer at %s. The model will load and its shapes "
+            "are usable, but generated text will be nonsense until you pass "
+            "tokenizer_source= pointing at one.", source,
+        )
+        tok, kind = None, "none"
+
+    return NeoOven(model=model, tokenizer=tok, tokenizer_kind=kind,
+                   device=dev, dtype=tdtype, model_dir=Path(path),
+                   repo_id=getattr(cfg, "name", brewer_adapter.ARCH_NAME))
+
+
+def new_brewed(
+    out_dir: Path | str,
+    *,
+    preset: str = "small",
+    device: str | None = None,
+    dtype: str = "float32",
+    tokenizer_source: Path | str | None = None,
+) -> NeoOven:
+    """A fresh, untrained ``hyperNix0x-v2`` model in a :class:`NeoOven`.
+
+    The counterpart to :func:`new_oven` for this architecture. Kept
+    separate rather than folded into ``ARCH_PRESETS`` because a
+    hyperNix0x-v2 model is not a :class:`HyperNixConfig` with different
+    numbers -- it is a different module with its own config type, and
+    listing it as a preset would make ``new_oven`` claim it can build
+    something it cannot.
+    """
+    from ..training import brewer
+    from . import brewer_adapter
+
+    cfg = brewer_adapter.preset_config(preset)
+    model = brewer_adapter.wrap(brewer.BrewerModel(cfg))
+
+    dev = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
+    tdtype = _dtype_from_str(dtype)
+    model.to(dev, dtype=tdtype)
+
+    out = Path(out_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    cfg.save(out / "config.json")
+    torch.save(model.inner.state_dict(), out / "model.pt")
+
+    tok, kind = (None, "none")
+    if tokenizer_source is not None:
+        try:
+            tok, kind = _load_tokenizer(Path(tokenizer_source))
+        except Exception:  # noqa: BLE001
+            logger.warning("neo_oven: could not load %s", tokenizer_source)
+
+    return NeoOven(model=model, tokenizer=tok, tokenizer_kind=kind,
+                   device=dev, dtype=tdtype, model_dir=out, repo_id=cfg.name)
+
+
 def preheat(
     repo_id: str = "ray0rf1re/hyper-nix.1",
     *,
@@ -1366,6 +1460,16 @@ def preheat(
         warn_hyper_nix_2(repo_id)
     except Exception:
         pass
+
+    # A brewed model pointed at with local_dir= would otherwise fail
+    # verify_snapshot and then be re-downloaded from the Hub, which is
+    # both wrong and slow. Recognised by looking at the file rather than
+    # its extension -- see brewer_adapter.is_brewer_checkpoint.
+    if local_dir is not None:
+        from . import brewer_adapter
+
+        if brewer_adapter.is_brewer_checkpoint(local_dir):
+            return preheat_brewed(local_dir, device=device, dtype=dtype)
 
     if local_dir is not None:
         ld = Path(local_dir)

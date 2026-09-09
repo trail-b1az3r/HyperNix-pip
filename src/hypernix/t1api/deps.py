@@ -108,6 +108,25 @@ def get_cert_verifier(request: Request):
     return request.app.state.t1_cert_verifier
 
 
+def get_training_monitor(request: Request):
+    """The training monitor, built once per app.
+
+    Not created in ``create_app`` with the other subsystems because it
+    holds no state worth sharing — it is a directory reader — and
+    because building it lazily lets a test point one at a temporary
+    directory by assigning ``app.state.t1_training_monitor`` without
+    having to stand the whole app back up.
+    """
+    existing = getattr(request.app.state, "t1_training_monitor", None)
+    if existing is not None:
+        return existing
+    from ..training.monitor import TrainingMonitor, default_root
+
+    monitor = TrainingMonitor(default_root())
+    request.app.state.t1_training_monitor = monitor
+    return monitor
+
+
 def get_client_ip(request: Request) -> str:
     """The caller's address, honouring X-Forwarded-For only from a
     trusted proxy.
@@ -193,6 +212,18 @@ def get_auth_context(
     or a scoped token — both are accepted on every authenticated route so
     a client can use whichever credential it currently holds."""
     svc: T1AuthService = get_auth_service(request)
+
+    # Before _extract_credential, which *raises* on a missing header --
+    # so a keyless check placed after it could never run. A presented
+    # credential is still always evaluated on its own merits: this is a
+    # path for requests that bring nothing, never an escape hatch around
+    # a key that failed. Otherwise a revoked key would start working
+    # again from the sofa, which is the opposite of what revoking meant.
+    if not authorization:
+        keyless = trusted_network_context(request)
+        if keyless is not None:
+            return keyless
+
     credential = _extract_credential(authorization)
     if credential.startswith("T1S."):
         ctx = svc.verify_scoped_token(credential)
@@ -303,6 +334,103 @@ def get_payment_binding(request: Request) -> Any | None:
     return None
 
 
+def get_origin(request: Request):
+    """How this request arrived, classified once and cached.
+
+    Cached on ``request.state`` for the same reason ``get_client_ip`` is:
+    every consumer must see the origin the access decision was made on.
+    A second classification could disagree with the first, and an audit
+    record that names a different origin than the one that was allowed
+    in is worse than no audit record.
+    """
+    from ..system import nettrust
+
+    cached = getattr(request.state, "t1_origin", None)
+    if cached is not None:
+        return cached
+
+    config: T1APIConfig = request.app.state.t1_config
+    peer = request.client.host if request.client else ""
+    origin = nettrust.classify(
+        peer,
+        forwarded_for=request.headers.get("x-forwarded-for", ""),
+        trusted_proxies=nettrust.trusted_proxies_from_env(
+            ",".join(str(p) for p in getattr(config, "trusted_proxies", ()) or ())
+        ),
+    )
+    request.state.t1_origin = origin
+    return origin
+
+
+def get_trust_policy(request: Request):
+    """This server's stance on keyless access from trusted origins."""
+    from ..system.nettrust import TrustPolicy
+
+    config: T1APIConfig = request.app.state.t1_config
+    return TrustPolicy.from_config(
+        trusted_network=getattr(config, "trusted_network", False),
+        include_lan=getattr(config, "trusted_network_lan", True),
+        include_tailnet=getattr(config, "trusted_network_tailnet", True),
+        partial_admin=getattr(config, "trusted_network_partial_admin", False),
+    )
+
+
+def trusted_network_context(request: Request) -> AuthContext | None:
+    """An :class:`AuthContext` for a keyless request, or None.
+
+    None means "authenticate normally" — this returns a context only
+    when the administrator turned trusted-network mode on *and* the
+    origin qualifies. Every other case, including every public origin
+    however the server is configured, falls through to the key path.
+
+    The context it builds is deliberately not an admin one. Partial
+    administrative access is a second opt-in, and even then it is
+    partial: a keyless caller never gets ``KeyScope.ADMIN``, so nothing
+    that checks for admin the ordinary way is reachable without a key.
+    """
+    from ..security.keymaster import KeyMeta, KeyScope, KeyType
+
+    policy = get_trust_policy(request)
+    if not policy.enabled:
+        return None
+    origin = get_origin(request)
+    if not policy.allows_keyless(origin):
+        return None
+
+    scopes = {KeyScope.READ}
+    if policy.allows_partial_admin(origin):
+        # Write, but not ADMIN. "Partial administrative functionality"
+        # is the phrase in the spec, and the partial part is load-bearing:
+        # a connection that presented no credential at all must not be
+        # able to do the things an admin key exists to gate.
+        scopes.add(KeyScope.WRITE)
+
+    import time
+
+    meta = KeyMeta(
+        key_id=f"trusted-{origin.trust.value}",
+        # Never a real key value: there is no credential here, and
+        # putting a plausible-looking one in the audit trail would
+        # invent evidence of an authentication that did not happen.
+        key="",
+        key_type=KeyType.USER,
+        scopes=set(scopes),
+        created_at=time.time(),
+        expires_at=None,
+        usage_cap=None,
+        request_limit=None,
+        prefix="trusted",
+        tags={
+            "trust": origin.trust.value,
+            "origin": origin.address,
+            "tailnet_node": origin.tailnet_node,
+        },
+        server_id="",
+        note=f"keyless {origin.trust.value} origin: {origin.reason}",
+    )
+    return AuthContext(key_meta=meta, scopes=scopes)
+
+
 def _enforce_local_only(request: Request, ctx: AuthContext) -> None:
     """A bootstrap key works only from the machine that minted it.
 
@@ -358,6 +486,7 @@ __all__ = [
     "get_config",
     "get_auth_context",
     "require_admin",
+    "get_training_monitor",
     "get_routing_engine",
     "get_server_registry",
     "get_module_registry",

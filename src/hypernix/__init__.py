@@ -63,7 +63,7 @@ import importlib.util
 import sys
 from typing import TYPE_CHECKING, Any
 
-__version__ = "0.72.3.post8"
+__version__ = "0.72.4.dev11"
 DEFAULT_REPO_ID = "ray0rf1re/hyper-Nix.2"
 DEFAULT_MODEL = "qwen3.5-4b"  # New default model
 
@@ -131,7 +131,10 @@ __all__ = [
     "NanoNanoModel",
     "neo_oven",
     "NeoOven",
+    "gpus",
+    "fusebox",
     "net",
+    "nettrust",
     "bake_code",
     "bell",
     "blender",
@@ -171,6 +174,7 @@ __all__ = [
     "lunchbox",
     "mediocre_fridge",
     "menu",
+    "monitor",
     "microwave",
     "new_fridge",
     "new_oven",
@@ -268,21 +272,23 @@ MODULE_CATEGORIES: dict[str, tuple[str, ...]] = {
     ),
     # Datasets: collection, cleaning, splitting, packing and augmentation.
     "data": (
-        "blender",
-        "cardboard_box",
-        "cutting_board",
-        "food_processor",
-        "lunchbox",
-        "mediocre_fridge",
-        "pans",
-        "pepper_shaker",
-        "qa",
-        "salt_shaker",
-        "scavenger",
-        "sink",
-        "strainer",
-        "toaster",
-        "tupperware",
+        'blender',
+        'cardboard_box',
+        'cutting_board',
+        'food_processor',
+        'gather',
+        'gather_cli',
+        'lunchbox',
+        'mediocre_fridge',
+        'pans',
+        'pepper_shaker',
+        'qa',
+        'salt_shaker',
+        'scavenger',
+        'sink',
+        'strainer',
+        'toaster',
+        'tupperware',
     ),
     # Scoring, rubric labelling, judging and module verification.
     "evaluation": (
@@ -309,17 +315,18 @@ MODULE_CATEGORIES: dict[str, tuple[str, ...]] = {
     ),
     # Architectures, snapshot loading, generation and model utilities.
     "models": (
-        "arch",
-        "download",
-        "generate",
-        "microwave",
-        "multilama",
-        "nano_nano",
-        "neo_oven",
-        "old_oven",
-        "stml",
-        "whisk",
-        "workshop",
+        'arch',
+        'brewer_adapter',
+        'download',
+        'generate',
+        'microwave',
+        'multilama',
+        'nano_nano',
+        'neo_oven',
+        'old_oven',
+        'stml',
+        'whisk',
+        'workshop',
     ),
     # Live dashboards, logging, telemetry and hardware sampling.
     "monitoring": (
@@ -366,7 +373,10 @@ MODULE_CATEGORIES: dict[str, tuple[str, ...]] = {
         "doctor",
         "ethanol",
         "freezer",
+        "gpus",
+        "fusebox",
         "net",
+        "nettrust",
         "old_fridge",
         "outage",
         "pathfix",
@@ -388,6 +398,7 @@ MODULE_CATEGORIES: dict[str, tuple[str, ...]] = {
     # Training entry points, schedules and weight perturbation.
     "training": (
         "abbicus",
+        "monitor",
         "apron",
         "brewer",
         "cake_pan",
@@ -521,8 +532,14 @@ _LAZY_ATTRS: dict[str, tuple[str, str | None]] = {
     'menu': ('chat.menu', None),
     'microwave': ('models.microwave', None),
     'nano_nano': ('models.nano_nano', None),
+    'brewer_adapter': ('models.brewer_adapter', None),
+    'gather': ('data.gather', None),
     'neo_oven': ('models.neo_oven', None),
+    'monitor': ('training.monitor', None),
     'net': ('system.net', None),
+    'gpus': ('system.gpus', None),
+    'fusebox': ('system.fusebox', None),
+    'nettrust': ('system.nettrust', None),
     'new_fridge': ('evaluation.new_fridge', None),
     'new_oven': ('models.old_oven', 'new_oven'),
     'new_range': ('evaluation.new_range', None),

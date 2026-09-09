@@ -5,7 +5,7 @@ export function CopyButton({ text }) {
   return (
     <button
       onClick={() => { navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1500) }}
-      className="press-btn"
+      className="press-btn copy-btn"
       aria-label={copied ? 'Copied to clipboard' : 'Copy to clipboard'}
       style={{ position:'absolute', top:8, right:8, background:'var(--surface-2)', border:'1px solid var(--border)',
         borderRadius:4, color: copied ? 'var(--ok)' : 'var(--text-dim)', padding:'3px 8px', fontSize:11,

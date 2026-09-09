@@ -1231,6 +1231,66 @@ them in order and keeps the first that answers, so nothing has to change
 when the phone leaves the house. Authenticated, despite looking
 innocuous — a list of a machine's internal addresses is reconnaissance.
 
+### Finding a server, and knowing which one it is
+
+`GET /hyperlink/endpoints` answers "where can this machine be reached";
+0.72.4 adds "and which machine is it".
+
+```json
+{
+  "server_fingerprint": "a1b2c3d4e5f60718293a4b5c6d7e8f90",
+  "trusted_network": true,
+  "keyless_available_here": true,
+  "origin_trust": "tailnet"
+}
+```
+
+**The fingerprint** is a hash of a random seed the server generated once
+and keeps in `<config>/hyperlink/server-identity`, mode 0600. Stable
+across restarts, upgrades, address changes and key rotations —
+deliberately, because a fingerprint that moved on a routine secret
+rotation would train people to click through the warning. It reveals
+nothing about the seed, so it is safe to give any authenticated caller,
+and it is served only to authenticated callers because a stable machine
+identifier handed to anyone who can reach the port is reconnaissance for
+nothing in return.
+
+It exists because comparing the *server name* authenticates nothing. A
+name is chosen by whoever set the machine up and advertised in the
+clear; on a LAN or a tailnet anything can call itself `desktop`, and the
+first machine to claim the name would win. HyperLink pins the
+fingerprint at pairing time — when someone is standing at the PC reading
+a six-character code off its screen, the one moment with independent
+evidence of which machine it is — and compares it on every reconnection.
+A mismatch is a banner and a refusal to send the admin credential; it is
+never a silent re-pin, which would make the warning fire exactly once
+ever.
+
+This is not proof of identity on its own. Anyone who can read a
+fingerprint can repeat it, exactly as with a TLS certificate
+fingerprint. What it gives is the ability to *notice* that an address is
+answering for a different machine than last time, which a name
+comparison cannot do at all.
+
+**`keyless_available_here`** answers the question a client can act on.
+"This server allows keyless connections" and "this phone, on this
+network, right now, can make one" are different, and an app told only
+the first finds out about the second by failing.
+
+`GET /hyperlink/peers` lists other machines on the tailnet, so someone
+with a desktop and a laptop does not have to go and look up the laptop's
+tailnet name. Admin-only — the answer is a map of somebody's private
+network, and a phone's credential for one server is not authority to
+enumerate every machine its owner runs.
+
+Every row is `verified: false`, said in the payload rather than only
+here. Discovery is not connection and connection is not trust: the probe
+is a `GET /health` and the only use made of the reply is to copy two
+strings out for display. Nothing in a peer's response selects a code
+path, names a file, or reaches a shell. A client that acts on a row
+still authenticates against it, and the fingerprint that comes back is
+what says whether it found what it was looking for.
+
 ## Hugging Face link merging
 
 *New in T1 v1.0.26.8.0.1.* `POST /hyperlink/models/resolve`, and
@@ -1464,6 +1524,142 @@ where noted.
 | GET | `/hyperlink/files` | bearer | list; `?session_id=` to scope |
 | GET/DELETE | `/hyperlink/files/{id}` | bearer | download (always `attachment`) / delete |
 | POST | `/hyperlink/models/resolve` | bearer | merge a Hugging Face page + file link |
+| GET | `/hyperlink/peers` | bearer, **admin, not a device** | other HyperNix machines on this tailnet, as unverified candidates (0.72.4) |
+
+**0.72.4**
+
+*Training administration.* Admin-only unless the server is in
+[trusted-network mode](#trusted-network-mode); the destructive controls
+need the second opt-in on top of that. See [Training](#training).
+
+| Method | Path | Auth | Notes |
+|---|---|---|---|
+| GET | `/training/runs` | bearer, **admin or trusted** | every run, newest first; `?active=true` |
+| GET | `/training/runs/{run_id}` | bearer, **admin or trusted** | one run; the job name resolves too |
+| GET | `/training/runs/{run_id}/logs` | bearer, **admin or trusted** | tail of its output; `?tail=` (default 200) |
+| GET | `/training/runs/{run_id}/checkpoints` | bearer, **admin or trusted** | with `exists`, so a deleted one shows |
+| GET | `/training/resources` | bearer, **admin or trusted** | GPU/CPU/RAM right now |
+| POST | `/training/runs/{run_id}/pause` | bearer, **admin or partial-admin** | SIGSTOP; does *not* free VRAM |
+| POST | `/training/runs/{run_id}/resume` | bearer, **admin or partial-admin** | SIGCONT |
+| POST | `/training/runs/{run_id}/stop` | bearer, **admin or partial-admin** | SIGTERM, so it can checkpoint |
+
+## Trusted network mode
+
+Off by default, and that default is the whole feature. A private address
+is not consent: nothing is keyless until an administrator says so, with
+`T1_TRUSTED_NETWORK=1` or `install-t1.sh --trusted-network`.
+
+```bash
+T1_TRUSTED_NETWORK=1                 # loopback + LAN + tailnet, keyless
+T1_TRUSTED_NETWORK_LAN=1             # narrow it: 0 for tailnet-only
+T1_TRUSTED_NETWORK_TAILNET=1
+T1_TRUSTED_NETWORK_PARTIAL_ADMIN=0   # a second, separate opt-in
+```
+
+`hypernix.system.nettrust` classifies each connection as `loopback`,
+`tailnet`, `lan` or `public`. The LAN ranges are enumerated explicitly
+rather than taken from `ipaddress.is_private`, which is far broader than
+RFC 1918 — it is true for the documentation ranges (192.0.2/24,
+198.51.100/24, 203.0.113/24), for `0.0.0.0/8`, and for benchmarking and
+reserved space. Treating all of that as "the LAN" would have granted
+keyless access to addresses nobody would call local.
+
+Three boundaries this mode never crosses:
+
+**A public origin is never keyless.** `TrustPolicy.allows_keyless`
+refuses `PUBLIC` before the configuration is consulted, so a hand-built
+policy cannot express it either.
+
+**A same-host reverse proxy cannot launder a caller.** nginx or caddy in
+front of this process makes every request in the world arrive from
+`127.0.0.1` — the *most* trusted level. An unverifiable `X-Forwarded-For`
+therefore collapses the origin to public: set `T1_TRUSTED_PROXIES` before
+enabling any of this. Failing closed here is what stops an operator
+publishing a sofa-only server to the internet while believing otherwise.
+
+**A bad key is not "no key".** The keyless path runs only when a request
+brings no credential at all. If a rejected key fell through to it,
+revoking a key would stop working from the LAN — the opposite of what
+revoking means.
+
+Partial admin never grants the `ADMIN` scope. A keyless caller gets
+`READ`, plus `WRITE` when partial admin is on, so every endpoint that
+checks for admin the ordinary way stays unreachable without a key. The
+one surface that consults it directly is [Training](#training).
+
+## Training
+
+`hypernix.training.monitor` — a training run is the longest-lived and
+least observable thing this package starts. It goes for hours, it is
+usually launched over a connection that will not survive it, and reading
+a log was the only way to know how it was going.
+
+Two halves, deliberately separate. `ProgressReporter` is written *by* the
+trainer: one atomic rewrite of a small JSON file per update, no lock and
+no append, because the reader is a web request that can arrive halfway
+through an epoch and a half-written status is worse than a stale one.
+`TrainingMonitor` is read by everything else, and merges the file with
+the actual process state — a crashed trainer leaves a record still saying
+`running`, and believing it shows a healthy run that has not existed
+since Tuesday. That case is reported as `stale`, with the last update's
+age in `error`.
+
+Nothing has to be wired up by the caller. `hypernix-t1 launch-script`
+exports `HNX_RUN_ID` and `HNX_LOG_PATH`, and `train()` reads them, so a
+detached run appears on its own:
+
+```bash
+hypernix-t1 launch-script ./train.py --name qwen-sft --detach
+hypernix-t1 training                 # every run
+hypernix-t1 training --show qwen-sft # one, in full
+hypernix-t1 training --stop qwen-sft # SIGTERM, so it can checkpoint
+```
+
+The CLI takes no key. Its controls signal processes the invoking user
+already owns and its records are files that user can already read, so
+the access control is the filesystem's — the same one that decided
+whether the command could run at all. Credentials are for the network,
+and that path is the API below.
+
+### Who may call the endpoints
+
+| | admin key | trusted mode | + partial admin | public |
+|---|---|---|---|---|
+| read runs, logs, checkpoints, resources | ✅ | ✅ | ✅ | ❌ |
+| stop / pause / resume | ✅ | ❌ | ✅ | ❌ |
+
+Two tiers because the destructive half earns a second opt-in: killing six
+hours of training is not something a device that presented no credential
+gets to do because it happens to be on the same wifi. A public origin
+never qualifies for either, whatever the configuration says —
+`TrustPolicy.allows_keyless` refuses `PUBLIC` before the policy is
+consulted. Every control is audited under `admin`, the same category as
+rotating a key.
+
+Presenting an ordinary read key does not lose you access you would have
+had keyless from the same address; the stronger of the two decides.
+
+### Two things worth saying out loud
+
+**Pausing does not free the card.** `pause` is SIGSTOP, which freezes the
+process with its GPU allocations intact. That is what makes `resume`
+instant, and it is also why the card does not become available to
+anything else. Both the API's `note` and the CLI say so, because it is
+the thing people assume the opposite of.
+
+**Stop is terminate, not kill.** A trainer that handles SIGTERM gets to
+write a final checkpoint. Stopping a *paused* run sends SIGCONT first — a
+stopped process cannot handle SIGTERM, so without it "stop" reports
+success and leaves the run frozen forever. Stopping a run that has
+already ended is a `409`, not a rewrite: overwriting `finished` with
+`stopped` would leave the history saying an operator killed a job that in
+fact completed.
+
+`progress` and `eta_seconds` are `null` rather than `0` whenever they are
+unknown — no declared schedule for the first, a run that is no longer
+going for the second. A bar at 0% for a job two hours in, or `eta 6s` for
+a trainer that died an hour ago, are both lies a dashboard tells
+confidently.
 
 ## Configuration
 

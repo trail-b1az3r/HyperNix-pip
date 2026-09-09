@@ -235,11 +235,12 @@ Never give the full solution — guide them toward it with hints.`
 
           {/* Step 0: pick backend */}
           <div style={{ marginBottom:20 }}>
-            <div style={{ fontSize:10, color:'var(--text-dim)', textTransform:'uppercase',
+            <div style={{ fontSize:11, color:'var(--text-dim)', textTransform:'uppercase',
               letterSpacing:'0.12em', fontWeight:700, marginBottom:10 }}>Model server</div>
             <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
               {Object.entries(BACKENDS).map(([k, b]) => (
-                <button key={k} onClick={() => { setBackend(k); setTestStatus(null); setTestErr('') }} style={{
+                <button key={k} onClick={() => { setBackend(k); setTestStatus(null); setTestErr('') }}
+                  className="tab-btn" style={{
                   flex:'1 1 calc(50% - 4px)', minWidth:100, padding:'9px 6px', borderRadius:7, cursor:'pointer',
                   fontSize:12, fontWeight: backend === k ? 700 : 400,
                   background: backend === k ? (k === 'none' ? '#1a1304' : '#1a0305') : 'var(--surface-3)',
@@ -374,7 +375,7 @@ Never give the full solution — guide them toward it with hints.`
         {/* Sidebar */}
         <div style={{ width:208, flexShrink:0 }}>
           <div style={{ position:'sticky', top:76 }}>
-            <div style={{ fontSize:10, color:'var(--text-faint)', textTransform:'uppercase',
+            <div style={{ fontSize:11, color:'var(--text-faint)', textTransform:'uppercase',
               letterSpacing:'0.12em', marginBottom:10, fontWeight:700 }}>
               {Object.keys(passed).length}/{LEARN_LESSONS.length} done
             </div>
@@ -396,7 +397,7 @@ Never give the full solution — guide them toward it with hints.`
                     overflowWrap:'break-word', wordBreak:'break-word', lineHeight:1.4 }}>
                     {l.title}
                   </div>
-                  <div style={{ fontSize:10, color: l.trackColor + '99', marginTop:2 }}>
+                  <div style={{ fontSize:11, color: l.trackColor + '99', marginTop:2 }}>
                     {l.track}
                   </div>
                 </div>
@@ -453,7 +454,7 @@ Never give the full solution — guide them toward it with hints.`
             <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
               <div style={{ background:'var(--surface-1)', border:'1px solid var(--border)',
                 borderRadius:10, padding:'16px 18px' }}>
-                <div style={{ fontSize:10, color:'var(--accent)', textTransform:'uppercase',
+                <div style={{ fontSize:11, color:'var(--accent)', textTransform:'uppercase',
                   letterSpacing:'0.1em', fontWeight:700, marginBottom:9 }}>Concept</div>
                 <p style={{ color:'var(--text-dim)', fontSize:13, lineHeight:1.75, margin:0 }}>
                   {lesson.concept}
@@ -464,7 +465,7 @@ Never give the full solution — guide them toward it with hints.`
                 borderRadius:10, overflow:'hidden' }}>
                 <div style={{ padding:'9px 14px', borderBottom:'1px solid var(--surface-3)',
                   display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                  <span style={{ fontSize:10, color:'var(--text-faint)', textTransform:'uppercase',
+                  <span style={{ fontSize:11, color:'var(--text-faint)', textTransform:'uppercase',
                     letterSpacing:'0.1em', fontWeight:700 }}>Example</span>
                   <CopyButton text={lesson.example} />
                 </div>
@@ -480,7 +481,7 @@ Never give the full solution — guide them toward it with hints.`
             <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
               <div style={{ background:'var(--surface-1)', border:'1px solid var(--border)',
                 borderRadius:10, padding:'14px 16px' }}>
-                <div style={{ fontSize:10, color:'#4a9eff', textTransform:'uppercase',
+                <div style={{ fontSize:11, color:'#4a9eff', textTransform:'uppercase',
                   letterSpacing:'0.1em', fontWeight:700, marginBottom:8 }}>Exercise</div>
                 <p style={{ color:'var(--text-muted)', fontSize:13, lineHeight:1.72, margin:0 }}>
                   {lesson.exercise}
@@ -492,7 +493,7 @@ Never give the full solution — guide them toward it with hints.`
                 borderRadius:10, overflow:'hidden' }}>
                 <div style={{ padding:'8px 14px', borderBottom:'1px solid var(--surface-3)',
                   display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                  <span style={{ fontSize:10, color:'var(--text-faint)', textTransform:'uppercase',
+                  <span style={{ fontSize:11, color:'var(--text-faint)', textTransform:'uppercase',
                     letterSpacing:'0.1em', fontWeight:700 }}>Your code</span>
                   <button onClick={() => { setUserCode(lesson.starter); setFeedback(null) }}
                     style={{ background:'none', border:'none', color:'var(--text-faint)',
@@ -550,7 +551,7 @@ Never give the full solution — guide them toward it with hints.`
                   borderRadius:9, overflow:'hidden', animationDuration:'0.3s' }}>
                   <div style={{ padding:'7px 14px', borderBottom:'1px solid var(--surface-3)',
                     display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                    <span style={{ fontSize:10, color:'var(--text-faint)', textTransform:'uppercase',
+                    <span style={{ fontSize:11, color:'var(--text-faint)', textTransform:'uppercase',
                       letterSpacing:'0.1em', fontWeight:700 }}>Solution</span>
                     <button onClick={() => setUserCode(lesson.solution)} className="underline-grow" style={{
                       background:'none', border:'none', color:'var(--accent)',

@@ -35,7 +35,7 @@ function ApiPage() {
           borderRadius:8, padding:'10px 14px', color:'var(--text)', fontSize:14, marginBottom:24, outline:'none' }} />
       <div style={{ display:'flex', borderBottom:'1px solid var(--border-strong)', marginBottom:28 }}>
         {[['cli','CLI Commands'],['python','Python Modules']].map(([k,l]) => (
-          <button key={k} onClick={() => setTab(k)} style={{
+          <button key={k} onClick={() => setTab(k)} className="tab-btn" style={{
             background:'none', border:'none',
             borderBottom: tab === k ? '2px solid var(--accent)' : '2px solid transparent',
             color: tab === k ? 'var(--accent-text)' : 'var(--text-dim)', padding:'8px 20px', cursor:'pointer',

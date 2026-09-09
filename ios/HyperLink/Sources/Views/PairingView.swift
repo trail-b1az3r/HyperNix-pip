@@ -14,6 +14,12 @@ import UIKit
 private enum ConnectMethod: String, CaseIterable, Identifiable {
     case code = "Pairing code"
     case key = "T2S key"
+    /// No credential at all, to a server whose operator turned on
+    /// trusted-network mode. The *server* decides whether this works —
+    /// it refuses any origin it classifies as public, however it is
+    /// configured — so the app can offer it and let the answer come
+    /// back rather than trying to guess which network it is on.
+    case trusted = "This network"
 
     var id: String { rawValue }
 }
@@ -40,6 +46,7 @@ struct PairingView: View {
         switch method {
         case .code: return codeIsPlausible
         case .key: return keyIsPlausible
+        case .trusted: return true
         }
     }
 
@@ -53,7 +60,7 @@ struct PairingView: View {
     private var actionTitle: String {
         switch method {
         case .code: return isPairing ? "Pairing…" : "Pair"
-        case .key: return isPairing ? "Connecting…" : "Connect"
+        case .key, .trusted: return isPairing ? "Connecting…" : "Connect"
         }
     }
 
@@ -127,6 +134,18 @@ struct PairingView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
+                case .trusted:
+                    Section("No key") {
+                        Text("Works only if someone turned this on at the PC, and only from your home network or your tailnet. HyperNix refuses it from anywhere else however it is set up.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text("On the PC: `install-t1.sh --trusted-network`")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Label("A connection with no key never gets administrator access.", systemImage: "info.circle")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
 
                 Section("This device") {
@@ -157,6 +176,10 @@ struct PairingView: View {
                                 _ = await state.connect(
                                     address: address, key: key, deviceName: deviceName
                                 )
+                            case .trusted:
+                                _ = await state.connectKeyless(
+                                    address: address, deviceName: deviceName
+                                )
                             }
                             isPairing = false
                         }
@@ -183,6 +206,10 @@ struct PairingView: View {
             return "Paste a T2S key from the PC. It is 26 characters plus a prefix, "
                 + "limited to reading and non-admin writing, and needs nobody at the "
                 + "computer when you use it."
+        case .trusted:
+            return "Connect with no key at all. Only works if the PC was set up to "
+                + "trust your home network or your tailnet, and never from outside "
+                + "either of them."
         }
     }
 
@@ -190,8 +217,8 @@ struct PairingView: View {
         switch method {
         case .code:
             return "Shown on the PC in `waiter hyperlink devices`, so you can tell your devices apart later."
-        case .key:
-            return "Used to label this phone in the app. A key is not a paired device, so it will not appear in `waiter hyperlink devices`."
+        case .key, .trusted:
+            return "Used to label this phone in the app. Neither a key nor a keyless connection is a paired device, so it will not appear in `waiter hyperlink devices`."
         }
     }
 }

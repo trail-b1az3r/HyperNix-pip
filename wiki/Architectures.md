@@ -153,10 +153,61 @@ architecture presets. These are used for building new models, not loading pretra
 | `hypernix0x_v2_small` | `small` | 9 | 1024 | ~458M | 20482 |
 | `hypernix0x_v2_medium` | `medium` | 18 | 1280 | ~918M | 40964 |
 | `hypernix0x_v2_large` | `large` | 36 | 2048 | ~3.5B | 103724 |
+| `hypernix0x_v2_cpu_nano` | `cpu-nano` | 4 | 128 | — | 512 |
+| `hypernix0x_v2_cpu_tiny` | `cpu-tiny` | 6 | 256 | — | 1024 |
+| `hypernix0x_v2_cpu_small` | `cpu-small` | 8 | 384 | — | 2048 |
+
+The three `cpu-*` presets are sized to train on a CPU in a sitting
+rather than to be good — they exist so the pipeline can be exercised
+end to end without a GPU.
 
 The **33m** preset (`hypernix0x_v2_33m`) was added in v0.71.4b2. It targets lightweight edge
 devices, fast inference, and image text-to-text models (Vision support), with 33,642,900 parameters
 exactly (`n_layers=6`, `d_model=512`, `d_ff=1444`, `n_heads=16`, `n_kv_heads=4`, GQA, sliding window `1024`).
+
+### hyperNix0x-v2 in Neo oven
+
+Since 0.72.4.dev10, Neo oven loads and trains the Brewer family
+directly. `hypernix.models.brewer_adapter` is the bridge:
+
+```python
+from hypernix.models import neo_oven
+
+model, config = neo_oven.preheat_brewed("./checkpoints/run-3.pt")
+fresh        = neo_oven.new_brewed("small")
+```
+
+Plain `neo_oven.preheat(path)` also works: it recognises a Brewer
+checkpoint and routes itself, so a path that used to fail now loads.
+
+Recognition looks inside the file rather than trusting the extension. A
+directory is identified by `d_model` and `n_layers` in its
+`config.json` — together those are Brewer's and nothing else's, since
+`HyperNixConfig` and every HF config use `hidden_size` and
+`num_hidden_layers`. A `.pt` is a zip whose `data.pkl` member holds the
+pickled object graph, so the top-level keys are read out of the first
+64 KB of that member as literal bytes. Nothing is unpickled to answer
+the question: `torch.load` on an untrusted file executes code, and
+*"is this one of ours"* must never be the reason to run it.
+
+The adapter is an `nn.Module` subclass rather than a proxy, so `.to()`,
+`.parameters()`, `state_dict()`, gradient checkpointing and the
+optimizer all keep working without knowing it exists. What it exists for
+is one argument position:
+
+```python
+BrewerModel.forward(input_ids, attn_mask)   -> logits
+neo_oven  calls  model(ids, labels=labels)  -> {"loss": ...}
+```
+
+Passed straight through, `labels` binds to `attn_mask`, and a tensor of
+token ids gets used as an additive attention mask. That runs. It stays
+finite. It trains into noise and never raises, which is the worst shape
+a bug can have — so the binding is the adapter's whole job.
+
+`wrap()` is idempotent and a no-op for anything that already speaks the
+convention, so passing an HF model or an already-wrapped one back
+through returns it unchanged.
 
 ### `arch="auto"` vs native
 

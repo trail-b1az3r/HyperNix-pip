@@ -21,6 +21,926 @@ next release header.
 - 𖢥 major bug fix
 - ꩜ restore to older version of item
 - ❗ unfixed known bug
+## 0.72.4.dev11 — beta 1 full: `fuse box`, and a claim that did not survive being measured
+
+A new module, `hypernix.system.fusebox`, and a subcommand: ✨
+
+```
+hnx fusebox status                    # what the cards are doing now
+hnx fusebox watch --target 78         # hold 78 °C by pacing the run
+hnx fusebox watch --target 78 --underclock --yes
+hnx fusebox plan                      # what underclocking would do
+hnx fusebox restore                   # undo what a crashed run left
+hnx train run --thermal-target 78     # the same, from a training run
+```
+
+It reads every card through `hypernix.system.gpus` — so `nvidia-smi`,
+`amd-smi` and `rocm-smi` all the same — plus the CPU through
+`thermometer`. It holds a target by pacing the training loop, or by
+lowering a power limit if you allow it. And it trips like a fuse if a
+card passes a hard limit anyway: the run pauses, waits for the reset
+temperature, and resumes eased, since whatever got the card there is
+still true.
+
+### The brief said "slow down now to go faster later". It does not work. ❗
+
+The feature as described was: ease off before the driver throttles, and
+win back more than you gave up. Before writing that down as a claim, it
+got simulated — a first-order thermal model, hardware throttling shaped
+the way vendors do it, performance scaling as `power ** 0.35` the way
+every published power-vs-throughput curve does. Three strategies over
+the same wall time:
+
+| | throughput | temperature |
+| --- | --- | --- |
+| run flat out, take the driver's throttling | **fastest** | hottest |
+| hold a target with a lower power limit | −2 % to −7 % | much cooler |
+| hold a target by pausing between steps | −12 % to −24 % | much cooler |
+
+The ordering does not change across the range a real machine occupies —
+marginal cooling and a savage throttle included, which are the
+conditions under which the story would be true if it were ever true.
+
+The reason is not subtle once you see it: a thermal throttle still does
+*most* of the work — clocks at 55 % are 55 % of a card, not zero — while
+a pause does none. And because performance scales sublinearly with
+power, 80 % of the power buys about 92 % of the throughput while pausing
+20 % of the time buys 80 %.
+
+So the module ships, and it is not sold as a speedup. It sells the thing
+it actually delivers: **a temperature you chose, at a cost it prints**.
+
+```
+fusebox eased for 412s, peak 79°C. That cost 11.4% of the run.
+fusebox did not intervene: peaked at 63°C, target 80°C. It cost the run nothing.
+```
+
+That is a legitimate thing to want — a shared machine, a laptop on a
+desk, a room someone sleeps in, a card you would like to still own in
+three years — and so is the fuse, because "the driver will handle it" is
+not a plan when the driver's next move is a shutdown in the middle of a
+checkpoint write.
+
+The measurement is not a note in a changelog: it is
+`tests/test_fusebox.py::TestTheThroughputClaim`, which runs the model on
+every CI run and fails if the ordering ever changes, and a test that the
+module docstring still says "not a speedup". Prose and physics cannot
+drift apart without something going red.
+
+Two design consequences follow from the numbers rather than from taste.
+The power limit is the cheaper lever by three to four times, so it takes
+over from pausing after three sustained hot readings rather than eight.
+And once a limit is actually applied, the pause stands down to 40 % of
+its ceiling — both levers at full pays twice for the same degrees.
+
+### What it will not do 🛡️
+
+- **It will not raise a power limit above the card's factory default.**
+  Not with a flag, not on request, not through the restore path.
+  Lowering a limit and putting it back is thermal management; going past
+  the default is overclocking, and a training run that quietly overvolts
+  someone's card is not a feature. The check lives at the one function
+  that could break it and is asserted from four directions.
+- **It will not touch a card unless asked twice.** `--underclock` turns
+  it on and `--yes` confirms. Without both, every subcommand is
+  read-only and reports what it *would* set. A power limit outlives the
+  process that changed it, so a flag left in shell history should not be
+  enough to change one. `hnx train --thermal-target` cannot reach the
+  underclocker at all.
+- **It will not sudo.** Setting a power limit needs root on every
+  current driver. A refusal is reported once and the governor falls back
+  to pausing, which needs none.
+- **It will not run anything it was handed.** Vendor commands come from
+  a fixed table; the index goes through `int()` and the wattage through
+  `float()`; every invocation is a list and there is no shell.
+- **There is no CPU actuator.** The CPU is read, and can trip the
+  breaker with `--cpu-trip`, but it never drives the pacing — a CPU at
+  85 °C during data loading is normal, and easing a cold GPU over it
+  would be harm on no evidence. Turning a machine's frequency scaling
+  down because a training run is warm would slow everything else the
+  person is doing. The one exception is job-scoped: halving *this
+  process's* torch thread count while easing.
+
+### Putting it back after a crash 𖢥
+
+Changes are written to `~/.hypernix/fusebox-state.json` as each one is
+made, not at exit — the case the file exists for is the process not
+reaching its exit. A clean exit restores, an exception restores, and a
+`SIGKILL` leaves the file for `hnx fusebox status` to notice (exit 3)
+and `hnx fusebox restore` to undo.
+
+### The breaker does not hang ❗→🛡️
+
+An hour above the trip point is a broken fan, not a transient. The
+breaker raises `ThermalStall` and says to check the cooling, rather than
+blocking a run forever without saying why.
+
+### Two bugs that only closing the loop could find 𖢥
+
+Every unit test here observes a fixed temperature and checks the
+response, and all of them passed on a controller that never reached the
+temperature it was asked for. Driving the real governor against the
+thermal model found it: pure proportional control settles wherever its
+output happens to balance the error, which for an 80 °C target was
+82.5 °C — for ever. Someone asking for 80 got 82.5. Fixed with a slow
+integral term clamped to the same ceiling as the ease itself, which is
+the whole of the anti-windup: it can never store up more than the
+controller could have produced anyway. It now settles at 79.9 °C, and
+`TestItActuallyReachesTheTarget` runs the closed loop at three targets
+so a future controller change cannot quietly reintroduce an offset.
+
+The second was in the reporting. A governor holding 79.95 °C against an
+80 °C target reported itself *over target for the entire run*, because
+80.02 is greater than 80 and the counter had no margin — a number that
+would have had someone debugging a governor that was working perfectly.
+It now counts seconds more than 1 °C over, and carries the magnitude
+separately as degree-seconds, because seconds alone cannot tell 0.1 °C
+over for an hour from 9 °C over for an hour.
+
+### Docs 📚
+
+`wiki/FuseBox.md`, a `fusebox` section in `CLI.md`, and the numbers
+above stated where a person deciding whether to turn this on will see
+them.
+
+## 0.72.4.dev10 — beta 1 pt 1: `gather`, and Neo oven learns the house architecture
+
+Everything below the fold first: the website's mobile view, the last GPU
+readers that still asked NVIDIA directly, the desktop app that did not
+compile, and CUDA kernels for the sub-bit types. Then beta 1 pt 1.
+
+### `hnx gather` — a crawler ✨
+
+A new module, `hypernix.data.gather`, and a subcommand that drives it:
+
+```
+hnx gather -W https://example.org -Q 2 -T 4 -p 1.5 -f jsonl -o ./corpus
+hnx gather -L "a.org,b.org" -f parquet -C --xz -O corpus-2026-09
+hnx gather probe -W https://example.org -u 8
+hnx gather formats --json
+```
+
+The flags are the ones that were asked for. `-W` a site, `-L` a
+comma-separated list, `-T` threads, `-Q` depth, `-p` the pause between
+requests, `-f` the format, `-o` where to write it, `-O` the file header
+(or, with `-C`, the archive's name), `-C` plus one of `--xz` / `--7z` /
+`--zip` / `--gz` to compress, `-U` to upload the result to a GitHub or
+Hugging Face repo, and `-u` to measure a host's rate limit before
+committing to a crawl.
+
+Formats: `html` (a file per page), `html-full` (every page merged into
+one document — single-site only, and `-L` is refused rather than
+quietly producing a mess), `html-full-wimages` (the same, with images
+inlined as data URIs), `text`, `jsonl`, `parquet`, and `js` — which
+**saves** the JavaScript it finds. Nothing here runs any of it: there is
+no interpreter in the module, no browser engine imported, and a test
+reads the source to keep it that way.
+
+Three things it does that a fetch loop does not:
+
+- **It asks and it waits.** robots.txt is honoured by default, there is
+  a delay between requests by default, and when a host's own
+  `Crawl-delay` asks for longer than `-p` the host wins.
+- **The rate limiter is per host and claims its slot inside the lock.**
+  Claimed outside it, two of `-T 8`'s threads both look at the clock,
+  both decide now is fine, and the delay you asked for is not the delay
+  the server sees.
+- **It cannot write outside `-o`.** A URL path is attacker-controlled
+  and becomes a file name; `safe_output_path` resolves the result and
+  requires it to be under the root, so a link to `/../../.ssh/authorized_keys`
+  lands in the corpus as a mangled file name and nowhere else.
+
+Scriptable, as asked: `--json` puts the machine-readable result on
+stdout with progress on stderr, and the exit codes are distinct — `0`
+wrote output, `1` could not start, `2` finished having fetched nothing,
+`3` wrote output but some pages failed. `3` rather than `0` matters: a
+crawl that got eight pages of ten is a corpus with holes in it, and a
+pipeline should be able to notice without parsing the JSON.
+
+`-U` never uploads without `--yes`. Publishing a scrape is not a step to
+take because a flag was in the history.
+
+### `websearch` upgraded rather than duplicated 🔁
+
+The instruction was to upgrade a module that already scrapes rather than
+add a second one, and `interfaces/websearch.py` already had its own
+`urlopen`, its own title regex, its own link extractor and its own tag
+stripper. `fetch_web_page` now delegates to `gather.fetch`, which brings
+it three things it did not have: robots.txt, a rate limit, and a
+content-type check with a size ceiling — a PDF used to be decoded as
+UTF-8 and returned as a page of replacement characters that then looked
+like real text to whatever read it. 🐛
+
+The returned shape is unchanged, down to the twenty `{'text', 'href'}`
+links, so every caller keeps working. The *search* functions still fetch
+their own results pages: they scrape one engine with engine-specific
+parsing, and routing them through a crawler's politeness layer would put
+a one-second pause in front of every lookup an agent makes.
+
+### hyperNix0x-v2 in Neo oven ✨
+
+`hypernix.models.brewer_adapter` teaches NeoOven the house architecture.
+`preheat_brewed()` and `new_brewed()` are the explicit entry points, and
+plain `preheat()` recognises a Brewer checkpoint and routes itself.
+
+The adapter is an `nn.Module` subclass, not a proxy, so `.to()`,
+`.parameters()`, `state_dict()`, the optimizer and gradient checkpointing
+all keep working without knowing it exists. What it is actually for is
+one argument position: `BrewerModel.forward(input_ids, attn_mask)`
+returns bare logits, and NeoOven calls `model(ids, labels=labels)["loss"]`.
+Passed straight through, `labels` binds to `attn_mask` and a tensor of
+token ids is used as an additive attention mask — which runs, stays
+finite, and trains into noise without ever raising. 𖢥
+
+`is_brewer_checkpoint()` looks rather than trusting the extension, and
+looks *without* unpickling: a torch `.pt` is a zip whose `data.pkl`
+member holds the object graph, so the top-level keys can be read out of
+the first 64 KB of that member as literal bytes. `torch.load` on an
+untrusted file executes code, and "is this one of ours" must never be
+the reason to run it.
+
+### The website's mobile view 🛜
+
+Item 25. The hero grid was `minmax(480px, 1fr)`, which cannot shrink
+below its minimum; inside `overflow: hidden` it clipped instead of
+scrolling, so `scrollWidth == clientWidth` and every "does this page
+scroll sideways" check passed while a 390 px phone lost the right third
+of the page. Now `minmax(min(480px, 100%), 1fr)`. 𖢥
+
+Also: a `@media (pointer: coarse)` block, a 44×44 hit target behind every
+copy button, and every inline `fontSize` below 11 raised to 11 — the
+first pass used `sed` for that and missed `9.5`, `10.0`, `9` and `8`.
+
+### Every GPU reader goes through one abstraction 🔁
+
+Item 20's last mile. `thermometer`, `tv`, `livestream`, `pascal` and
+`ethanol` each still asked `nvidia-smi` directly; an AMD card was absent
+from the temperature reading, the TV view and the livestream. They now
+go through `hypernix.system.gpus`, `read_gpu_temp()` is the max across
+all cards rather than the first one's, and a card with no temperature
+reports `None` instead of `0.0` — which had been drawn as a very cold
+GPU.
+
+### The desktop app compiles 🐛
+
+HyperNix Studio, from dev9, did not. Three places used a `std::string`
+where a `QString` was wanted, CMake required Qt 6.5 while Ubuntu 24.04
+and Debian 12 ship 6.4, and QML produced five *"Unable to assign
+[undefined] to QString"* warnings — which are not cosmetic: a failed
+assignment leaves the property at its **previous** value, so the tool
+approval dialog could show the last request's file path next to a live
+"Approve" button. 𖢥
+
+### CUDA for the sub-bit types ✨
+
+`native/ggml-hnx/ggml-hnx-cuda.cu`: one warp per row, `__shfl_down_sync`
+for the reduction, no shared memory, templated on the block geometry so
+all five types share one kernel. Checked against the C path, which is
+checked against the Python packer, exactly.
+
+## 0.72.4.dev9 — a llama.cpp that reads sub-bit models, and a desktop app
+
+Two large pieces, plus three CI failures that were mine.
+
+### `native/ggml-hnx` — sub-bit types in C
+
+Item 24 asked for HyprSlug models to load in LM Studio. They cannot, and
+header rewriting cannot make them: `IQ0.5_XXXL` is not a llama.cpp
+quantisation under a different name, it is different arithmetic. A loader
+that believes a rewritten header reads a 30-byte block as though it were
+a 210-byte Q3_K one, and what comes out is noise. So: ✨ the decoder, in
+C, to be compiled into llama.cpp — which is what LM Studio runs.
+
+All five types (`IQ0.9_L`, `IQ0.75_M`, `IQ0.5_XXXL`, `IQ0.25_UXL`,
+`INT1`), decode plus `vec_dot`. The dot product never materialises a
+row: every weight is ±scale, so a block reduces to `scale · Σ(±y)`.
+That is the compensation for throwing the magnitudes away — these types
+are cheap to multiply precisely because so little of them survives.
+
+**The test that shapes everything else.** If the C and the Python
+disagree by one bit of one byte, the model loads, runs at full speed, and
+emits fluent nonsense. Nothing about that looks like a failure. So
+`tools/gen_vectors.py` has `hypernix.quant.subbit` — which wrote every
+HyperNix sub-bit file in existence — pack blocks and record its own
+decoding, and the C compares element by element, **exactly**. No
+tolerance: both sides multiply the same FP16 scale by ±1, so there is
+nothing to forgive, and a tolerance would hide the errors this exists to
+catch. The vectors include all-positive, all-negative, alternating and
+group-aligned blocks, because a uniform block passes with the bit order
+reversed. 45 blocks, all five types, identical.
+
+That is also why the decoder has no ggml dependency — it is buildable
+with a compiler and nothing else, which is how the bit order was
+verified rather than assumed.
+
+**Registration is a patcher, not a `.patch`.** 🔧 llama.cpp moves fast
+and a diff against line numbers rots in weeks: a rejected hunk, no idea
+which half applied, and a half-patched tree that compiles.
+`patch_llamacpp.py` finds each point by pattern, edits everything in
+memory, and writes nothing at all if any anchor moved. Idempotent, and
+`--revert` undoes it.
+
+Writing it found three bugs in itself, all caught by the round trip:
+
+- Two edits target `ggml.c`. Reading it fresh for each while writing both
+  meant the second write discarded the first, so the traits table was
+  never registered and *nothing said so* — the enum was there, the tree
+  looked patched, and the build failed later with an unrelated-looking
+  error. 𖢥
+- One shared marker string was a substring of three different first
+  lines, so `--revert` matched the wrong block and deleted sixty lines of
+  `ggml.c`. Each edit now has a unique marker, matched exactly, and revert
+  verifies the block it is about to remove is the one that was added. 𖢥
+- The `IQ0.25` decoder advanced the bit cursor by `group` instead of
+  `kept` in a first, unrolled draft. One loop driven by the type table
+  replaced four near-identical copies for exactly that reason.
+
+Said plainly in the README rather than left to be discovered: this makes
+a sub-bit model loadable and **correct**, not good — below ~1.5 bits per
+weight it is a different, much worse model. The types are CPU-only here;
+the CUDA kernel is not written. `from_float` is NULL on all five so
+`llama-quantize` refuses cleanly instead of producing a file that is the
+right size and wrong inside. And the LM Studio runtime swap is
+version-specific and unsupported by them, which the README says.
+
+### `desktop/` — HyperNix Studio
+
+✨ A Qt 6 / QML desktop client: model switching, chat, a workspace of
+code the model can edit, Hugging Face resolution, and a GPU/CPU/RAM panel
+from the server's own abstraction. It authenticates with a **T2S key** —
+read and non-admin write — because nothing it does is administration.
+
+**It cannot run a command.** No shell tool, no `exec`, no "run the tests"
+button. Not disabled — absent. A model can ask for a file to be written
+and a person can agree; there is no path by which a model runs code. That
+is the only guarantee in the app that does not depend on a check being
+correct, and the way to keep it is not to write the feature.
+`tests/test_studio_core.py` greps the sources for `system(`, `popen(`,
+`exec*`, `fork(`, `QProcess` and `posix_spawn` so it stays that way.
+
+**Two boundary checks, neither redundant.** `ToolPolicy::Resolve` is
+lexical — it collapses `..` and requires the result to be under the
+workspace with no filesystem access at all, so every escape is testable
+and none needs a disk. `ToolRunner::IsTrulyInside` is the filesystem
+check, run again immediately before each operation, and it catches what
+the lexical one cannot: a symlink *inside* the workspace pointing out of
+it, which passes every string test there is. Running it at the moment of
+the write also closes the gap between deciding and doing.
+
+**The approval dialog is mostly a list of things it does not have:** no
+"approve all", no "remember this", no timeout, no click-outside-to-
+dismiss, and no default focus on the affirmative button. Each of those is
+the same feature under a different name — a way for a file to be written
+without anyone having looked. A `Deny` never becomes a prompt at all:
+there is nothing to approve about reading a private key, and a dialog for
+one is a dialog people learn to click through, which would then be there
+for the request that mattered.
+
+The security core has no Qt dependency, on purpose, so CI checks it on a
+runner with no Qt: 110 checks across two suites, including every path
+escape and, on a real filesystem, symlinked files *and* symlinked
+directories.
+
+**Not verified:** the Qt half. There is no Qt in the environment this was
+written in, so `HyperLinkClient`, `StudioBridge` and all fifteen `.qml`
+files are unbuilt — written against the Qt 6.5 APIs and reviewed, not
+compiled. `desktop/README.md` says so where someone will read it before
+their first build.
+
+### Three CI failures 𖢥
+
+**A collected systemd unit reported every job as a success.**
+`systemctl show` does not error for a unit that no longer exists — it
+answers with property *defaults*: `ActiveState=inactive`,
+`Result=success`, `ExecMainStatus=0`. Indistinguishable from a clean run,
+and `--collect` reaps the unit the moment it exits. A job that exited 7
+was reported as having succeeded: not "we lost the outcome", the opposite
+of it. Both supervisors now share one exit-recording wrapper, and
+`<log>.exit` is authoritative.
+
+**The systemd path recorded no pid.** Everything that is not systemd
+addresses a job by pid — `--status`, and dev7's training pause/resume —
+and all of it was operating on pid 0.
+
+**The icon geometry check was the one assertion that skipped.**
+`make_appicon.py` imported Pillow at the top and CI installs without
+Pillow, so the test comparing the drawn coordinates to
+`hypernix-icon.svg` errored out instead of running. Pillow now loads
+inside the drawing functions, with a second test asserting the module
+still imports without it.
+
+All three passed locally because this container cannot run the branch
+they were in — no user bus, so setsid is always chosen. They are now
+covered by feeding the real `systemctl show` output into `refresh()`,
+because a test that only runs somewhere else is how both shipped.
+
+## 0.72.4.dev8 — HyperLink knows which machine it is talking to
+
+Item 1, plus the app icon and the release plumbing.
+
+**The app has an icon.** ✨ The appiconset declared a 1024 slot and
+contained no image, so HyperLink shipped with the iOS placeholder. It
+now carries the current HyperNix mark from `assets/logo-new` — three
+staggered parallelograms, dark to red up the stack — built by
+`ios/scripts/make_appicon.py` rather than committed as three mystery
+binaries. An icon with no recipe cannot be adjusted by whoever comes
+next; they can only replace it, and the brand drifts one replacement at
+a time. Three variants for iOS 18: opaque any/dark (iOS applies its own
+mask, so pre-rounding would show wedges in the home-screen corners) and
+a greyscale-on-transparency tinted one where the red bar becomes the
+*brightest* value — the system's auto-generated tinted icon drops it,
+and it is the bar that makes the mark recognisable. The app's
+`AccentColor` was a blue predating the mark, so every button was a
+different colour from the app's own icon; it is now `#c8192e`.
+
+**The IPA ships with the release.** ✨ `public-release.yml` builds
+HyperLink and attaches it to the GitHub release alongside the wheel,
+which `release.yml` already did for tag-triggered releases and this
+workflow did not. The app's version still comes from
+`ios/scripts/app_version.py` rather than the Python release number: the
+app quotes the *T1 API's* version because that is what a server reports
+and therefore what a support question contains. A macOS runner outage
+gives a release without the app attached, not a blocked release.
+
+### Which machine is that, actually
+
+**`hypernix.hyperlink.identity`** ✨ — a server fingerprint: a hash of 32
+random bytes generated once and kept in
+`<config>/hyperlink/server-identity` at mode 0600. Stable across
+restarts, upgrades, address changes and key rotations; unguessable from
+the hostname; not a secret. `GET /hyperlink/endpoints` reports it, to
+authenticated callers only.
+
+It exists because the app reaches its server at whichever of several
+addresses answers first, and those addresses move — a DHCP lease is
+reassigned, a tailnet name is transferred — so the app will happily try
+an address some *other* machine now answers on. The obvious check is the
+server name and the obvious check is wrong: a name is advertised in the
+clear and anything on the network can claim it, so the first machine to
+call itself `desktop` wins.
+
+HyperLink pins the fingerprint at pairing time — with someone standing
+at the PC reading a six-character code off its screen, the one moment
+with independent evidence of which machine it is — and re-checks it on
+every reconnection, which is every time the phone changes network. A
+mismatch shows a banner and withholds the admin credential. It is never
+a silent re-pin: that would make the warning fire exactly once, ever.
+
+Not proof on its own, and the docs say so — anyone who can read a
+fingerprint can repeat it, as with a TLS certificate fingerprint. What
+it adds is the ability to *notice*.
+
+**`GET /hyperlink/peers`** ✨ — other HyperNix machines on the tailnet,
+so someone with a desktop and a laptop does not have to look up the
+laptop's tailnet name. Admin-only: the answer is a map of a private
+network, and a phone's credential for one server is not authority to
+enumerate every machine its owner runs.
+
+Every row is `verified: false`, in the payload and not only in the
+docs. Discovery is not connection and connection is not trust. The probe
+is a `GET /health` with a 2.5s budget, probed concurrently, capped at 64
+peers and 64 KB per reply; the only use made of a response is copying
+two strings out for display. Nothing a peer returns selects a code path,
+names a file, or reaches a shell — there is one `subprocess.run` in the
+module and its argv is a literal.
+
+**Admin credentials, held briefly** ✨ — `AdminCredentialStore` is not
+`TokenStore` with a different key. A device token is scoped and
+revocable; an admin credential stops training runs and reads audit logs.
+So it is cleared at every launch unless the user turns that off in
+Settings, stored `WhenUnlockedThisDeviceOnly` (it never needs to run
+behind a lock screen and must not ride an iCloud backup), keyed on the
+server's *fingerprint* rather than its name or address, and never
+logged, printed or described. `has(fingerprint:)` exists so a view can
+ask "should I show this section?" without holding the secret to answer.
+
+**`keyless_available_here`** 🛡️ — "this server allows keyless
+connections" and "this phone, on this network, can make one" are
+different questions, and an app told only the first finds out about the
+second by failing.
+
+### Two bugs found while wiring it up
+
+**Swift's synthesised decoder ignores property defaults.** Adding
+`serverFingerprint` with a default to `ServerConnection` would have made
+every stored record from before this release fail to decode — and
+`restore()` wraps that in `try?`, so every existing user would have been
+silently signed out by the update with nothing anywhere saying why. It
+now has a hand-written `init(from:)`.
+
+**A T2S-key connection did not survive a restart.** `isConfigured`
+required a `deviceID`, and connecting with a key produces no device
+record on the server — the key *is* the credential — so the field was
+empty, `restore()` refused, and the app came up signed out every time.
+Whether there is a credential was always `TokenStore`'s question, which
+`restore()` already asks separately.
+
+### Not done
+
+LAN Bonjour discovery. The app already declares `_hypernix._tcp` and
+would browse for it, but nothing advertises the service: doing it
+properly needs a zeroconf dependency, and half of it is worse than none.
+Tailnet discovery is the case that was asked for and it is done; on the
+LAN the server's own ranked address list already covers it.
+
+## 0.72.4.dev7 — what training is doing, and the controls for it
+
+Item 5. A training run is the longest-lived and least observable thing
+this package starts: it goes for hours, it is usually launched over a
+connection that will not survive it, and until now the only way to know
+how it was going was to read a log.
+
+**`hypernix.training.monitor`** ✨ — two halves, deliberately separate.
+`ProgressReporter` is written *by* the trainer: one atomic rewrite of a
+small JSON file per update, no lock, no append, no fsync, because the
+reader is a web request that can arrive halfway through an epoch and a
+half-written status is worse than a stale one. `TrainingMonitor` is read
+by everything else, and merges what the file says with what is actually
+running — a crashed trainer leaves a record still claiming to be
+`running`, and believing it shows a healthy run that has not existed
+since Tuesday.
+
+**`train()` reports itself** 🔁 — no caller has to arrange it. The
+launcher exports `HNX_RUN_ID` and `HNX_LOG_PATH`, so a run started with
+`hypernix-t1 launch-script ./train.py --name qwen-sft --detach` appears
+in the dashboard on its own. That mattered more than it sounds: if the
+id had to be passed by hand, the runs people most want to watch — the
+detached ones — are exactly the ones that would never appear. The loop
+catches `BaseException`, Ctrl-C and `SystemExit` included, so an
+interrupted run is recorded as failed rather than left claiming
+progress forever.
+
+**`GET /training/*`** ✨ — runs, one run, its log tail, its checkpoints
+(with `exists`, because a checkpoint list is used to decide what to
+resume from and a path that has since been deleted is the case worth
+knowing), and `/training/resources` for the GPU/CPU/RAM alongside it. A
+loss curve without utilisation cannot tell you why a run is slow, and
+that is the question people actually have.
+
+**`POST /training/runs/{id}/{pause,resume,stop}`** ✨ — SIGSTOP, SIGCONT
+and SIGTERM to the run's process group. Terminate rather than kill: a
+trainer that handles SIGTERM gets to write a final checkpoint, and the
+difference between "stopped at epoch 4" and "lost epoch 4" is the whole
+value of asking politely first.
+
+**`hypernix-t1 training`** ✨ — the same thing without a server in
+between, because the moment you most want to know what a run is doing is
+usually the moment the API is the thing in trouble. No key check: the
+controls signal processes this user already owns and the records are
+files this user can already read, so the access control is the
+filesystem's. Over the network is where credentials belong.
+
+### Who may call it
+
+The spec's line is *admin-only unless the server is using the explicitly
+enabled trusted LAN/Tailscale keyless mode*, and there are two tiers
+because a second opt-in earns the destructive half:
+
+| | admin key | trusted mode | + partial admin | public |
+|---|---|---|---|---|
+| read runs, logs, resources | ✅ | ✅ | ✅ | ❌ |
+| stop / pause / resume | ✅ | ❌ | ✅ | ❌ |
+
+Killing six hours of training is not something a device that presented
+no credential gets to do because it happens to be on the same wifi. A
+public origin never qualifies for either, whatever the configuration
+says — `TrustPolicy.allows_keyless` refuses `PUBLIC` before the policy is
+consulted, so no amount of configuration turns an unauthenticated
+internet connection into training administration. Every control is
+audited under `admin`, the same category as rotating a key.
+
+Presenting an ordinary read key does not *lose* you access you would
+have had keyless from the same address. "Authenticating made you less
+trusted than staying anonymous" is a rule people design around by not
+sending their key.
+
+### Three things running it found
+
+**Pausing does not free the card.** SIGSTOP freezes the process with its
+GPU allocations intact. That is what makes resuming instant and it is
+also the caveat, so both the API's `note` and the CLI say it out loud —
+it is the thing everyone assumes the opposite of.
+
+**A stopped process cannot handle SIGTERM.** Stopping a paused run had
+to SIGCONT it first, or "stop" reported success and left the run frozen
+forever.
+
+**A dead run kept advertising an ETA.** It holds its last measured rate,
+so a trainer that died an hour ago at 43% displayed `eta 6s` — which
+reads as *nearly finished*, the opposite of what happened. `eta_seconds`
+is now `None` for anything that is not still going, next to `progress`,
+which has always been `None` rather than `0.0` when no schedule was
+declared: a bar at 0% for a job two hours in is a lie a dashboard tells
+confidently.
+
+Stopping a run that has already ended is a 409 rather than a rewrite —
+overwriting `finished` with `stopped` would leave the history saying an
+operator killed a job that in fact completed.
+
+79 tests, including real child processes read back through `/proc`,
+because none of pause, resume or stop can be checked by reading the
+code.
+
+## 0.72.4.dev6 — one way to ask about a GPU, whoever made it
+
+Item 13, beta 1 of the three or four you asked for: the abstraction and
+detection, with acceleration to follow.
+
+`hypernix.system.gpus` is the layer everything else asks. Before it
+there were **42 places that shelled out to `nvidia-smi` and 12 that knew
+about `rocm-smi`**, spread over seven modules. That count is the problem
+rather than a symptom of it — AMD support was not so much missing as
+unevenly present, and every new panel reimplemented the same parsing and
+met the same edge cases again.
+
+```python
+from hypernix.system import gpus
+for card in gpus.detect():
+    print(card.vendor, card.name, card.memory_total_mb, card.framework)
+```
+
+NVIDIA via `nvidia-smi`, AMD via `amd-smi` then `rocm-smi`, in one shape,
+with `Vendor.framework` giving `cuda` / `rocm` / `mps` / `cpu` so no
+caller branches on vendor.
+
+### Three things it refuses to get wrong
+
+**A missing reading is `None`, never 0.** `[N/A]`, `Not Supported` and
+empty cells all appear in real output. A dashboard that reports an
+unknown temperature as zero says the card is freezing.
+
+**`rocm-smi` reports VRAM in bytes** where everything else here uses
+megabytes. Mixing them makes a panel unreadable and a limit check wrong.
+
+**It never raises for want of hardware.** No GPU, no driver, no vendor
+tool, a tool that errors or prints something unexpected — all mean "no
+cards found". A monitoring panel that crashes on a laptop is worse than
+one that says the laptop has no GPU. A probe that raises does not take
+the other vendor's down with it.
+
+ROCm field names have changed across releases, so each value is looked
+up through the spellings that have been used: a rename costs that
+reading, not the card.
+
+### Where it shows up
+
+`launch-script --gpu 3` is now checked before the job starts — on a
+two-card machine that used to succeed, and the job would see no GPU and
+either run on the CPU at a hundredth of the speed or die deep in a
+framework, hours later, in a log nobody was watching. Deliberately
+narrow: when *no* cards are visible the index is passed through with a
+warning, because a container without `nvidia-smi` cannot tell "no GPU"
+from "no tooling", and refusing there would block a job that would have
+run.
+
+`hypernix devices` now shows what the vendor tools see alongside what
+torch can use, and names a card that is present but unusable — that is a
+torch build question, not a driver one, and seeing both lists together
+is what tells you which you are looking at.
+
+47 tests, driven with real vendor output since there is no GPU in the
+machine that runs them. The part that goes wrong is never "can we call
+the tool" but "what do we do with what it said".
+
+## 0.72.4.dev5 — `hypernix-t1 launch-script`
+
+Items 9, 10 and 11. Closing a laptop is the normal end of a remote
+working session and should not be the end of a training run.
+
+```bash
+hypernix-t1 launch-script ./train.py --name training-job --detach
+hypernix-t1 launch-script --status training-job
+hypernix-t1 launch-script --logs training-job --tail 50
+hypernix-t1 launch-script --stop training-job
+```
+
+`&` does not solve this. A backgrounded process is still in the shell's
+process group and still holds the tty, so the SIGHUP that follows a
+dropped connection reaches it. What survives is a process in its **own
+session**, which is what `hypernix.system.launcher` creates —
+`systemd-run --user` where there is a user bus, and a detached wrapper
+that records the exit status where there is not.
+
+Everything is on disk under the config directory, so `--status` and
+`--logs` work from a different SSH session, after a reboot, and whether
+or not the T1 server is running.
+
+**Authentication is required** and comes three ways: a key already
+configured for the machine, `-k`, or `--admin-password`. None of them
+reaches the job — a key in `argv` is readable by every user on the box
+through `ps`. Job records store environment **names only**, because the
+values are the caller's environment and several of them are credentials.
+
+Flags: `--name --env --cwd --detach --timeout --log-file --priority
+--gpu --cpu --status --logs --tail --stop --restart --list --json`.
+`--gpu` sets `CUDA_VISIBLE_DEVICES` and `HIP_VISIBLE_DEVICES` together,
+since which one a runtime reads depends on where it lands and the job
+should not have to know.
+
+### Two bugs the tests found
+
+**The `setsid` binary was the wrong tool.** It forks when it is already
+a process-group leader and then exits, so the pid recorded belonged to a
+process that had already gone — and `--status` reported *unknown* for a
+job running perfectly well. `Popen(start_new_session=True)` calls
+`setsid(2)` in the child directly: same new session, and the pid we
+actually want.
+
+**`nargs=REMAINDER` swallowed the flags.** The documented form is
+`launch-script ./train.py --name training-job --detach`, and REMAINDER
+handed `--name training-job` to the script, silently naming the job
+after the filename. Flags after the path now reach the CLI; the script's
+own arguments go after a `--`.
+
+33 tests, the first of which launches from a separate process, kills it,
+and checks the job is still running — the only one that proves the point.
+
+## 0.72.4.dev4 — trusted-network mode
+
+Items 3 and 14. An origin on the LAN or a confirmed tailnet may connect
+without a key **when the administrator turns that on**, and a public
+origin never can, however the server is configured.
+
+```
+T1_TRUSTED_NETWORK=1                     # off by default
+T1_TRUSTED_NETWORK_PARTIAL_ADMIN=1       # a second, separate opt-in
+```
+
+Or at install: `install-t1.sh --trusted-network`.
+
+### What a keyless caller gets
+
+Read only. `--trusted-network-partial-admin` adds write — and never
+`KeyScope.ADMIN`, so nothing an admin key exists to gate is reachable
+without one. "Partial administrative functionality" was the phrase in
+the request, and the partial part is load-bearing. The context carries
+no key material either: there was no credential, and recording a
+plausible-looking one would invent evidence of an authentication that
+never happened.
+
+### Three things that would each have been a hole
+
+**`--yes` cannot enable it.** `ask_yes_no` answers every confirmation
+with yes, which is right for *"are you sure"* and wrong for the one
+question that lowers an authentication requirement — an unattended
+install would have come up serving the LAN without a key and nobody
+would have chosen it. It takes `--trusted-network`, or a person.
+
+**The reverse-proxy trap.** nginx or caddy on the same host makes every
+request in the world arrive from `127.0.0.1`, which is the *most*
+trusted origin here. An operator enabling keyless LAN access behind an
+unconfigured proxy would have published it to the internet while
+believing it reachable only from their sofa. A forwarded header from a
+peer that is not a configured trusted proxy now collapses the origin to
+public — failing closed, since a direct client sending a junk header
+only denies itself.
+
+**A bad key is not "no key".** The keyless path runs only when the
+request brings no credential at all. If a failed key fell through to it,
+revoking a key would stop working from the LAN, which is the opposite of
+what revoking means.
+
+### Found while building it
+
+`_extract_credential` *raises* on a missing Authorization header, so the
+keyless check — written after it — could never run. Every origin got a
+401 with the mode on. The check moved above it; the credential path is
+untouched.
+
+27 tests, most of them the boundary rather than the feature.
+
+## 0.72.4.dev3 — one answer to "where did this come from"
+
+Third increment, item 17's shared component for items 1, 3, 4 and 14.
+0.72.4 lets a LAN or tailnet connection act without a key, and that is
+only safe if *"from the LAN"* is a fact about the connection rather than
+a claim the connection makes. `hypernix.system.nettrust` is the single
+place that decides it — the T1 API, Waiter and the installer had three
+different notions of "local" between them.
+
+**The peer address is the evidence.** `X-Forwarded-For` is set by
+whoever is talking to you; a server that believes it has turned keyless
+LAN access into keyless access for anyone who can spell a header. It is
+read only when the immediate peer is a proxy the administrator listed,
+and then only the hop that proxy added — everything to its left came
+from the client. The default is no trusted proxies, so by default no
+forwarded header is read at all.
+
+**A tailnet address is a candidate, not a conclusion.** 100.64.0.0/10 is
+shared address space, so anything on a LAN can number itself 100.x and
+route to the server. A tailnet origin is confirmed by asking the local
+tailscaled who owns it (`tailscale whois`); unconfirmed is treated as
+public. That is what makes knowing the endpoint insufficient, which item
+3 asked for explicitly.
+
+**Public is never keyless.** The refusal lives in the check as well as
+in the constructor, so a hand-built policy cannot express it either.
+
+### A bug this nearly shipped
+
+The obvious implementation of "is it on the LAN" is
+`ipaddress.is_private`. That is much broader than RFC 1918: it is true
+for the documentation ranges (192.0.2/24, 198.51.100/24, 203.0.113/24),
+for 0.0.0.0/8, for benchmarking and reserved space — and for 100.64/10
+itself. Every one of those would have been LAN, and therefore eligible
+for keyless access, despite being on nobody's network.
+
+Found because a test used 203.0.113.9 as an example of a public address
+and got back `lan`. The ranges are spelled out now, and the six
+addresses `is_private` gets wrong are a test that asserts they *are*
+`is_private` before asserting we classify them public — so it cannot
+quietly stop proving anything.
+
+38 tests, most of them about the ways a public client could try to be
+mistaken for a local one.
+
+## 0.72.4.dev2 — the registry the server actually reads
+
+Second increment of 0.72.4, item 6/7: *"Waiter does not properly see the
+automatically indexed model registry."*
+
+`waiter models` asks the server, and the server reads a file — so that
+report is never about Waiter. It is about which file was opened and what
+happened when the file was not perfect. Three separate failures, each
+reachable from an ordinary setup.
+
+𖢥 **The server never looked for it.** With no `T1_MODEL_REGISTRY_PATH`
+the loader went straight to the shipped example seed. So `hypernix-t1
+index` would write a correct `models.json` and `waiter models` would
+list entries the seed file itself documents as *not real*, with nothing
+anywhere connecting the two. `discover()` now searches the config
+directory, `~/.hypernix/t1api`, `./hypernix/models` and the working
+directory; the indexer writes to the file the server will read, and says
+"restart it" instead of naming a variable that is no longer needed. An
+explicit `T1_MODEL_REGISTRY_PATH` still wins.
+
+𖢥 **A file being written was a crash.** The registry is produced by a
+different process, so the server opens it mid-write in the normal course
+of things — and a half-flushed file raised `JSONDecodeError` out of
+startup. Reading is now tolerant and never raises.
+
+𖢥 **One bad entry discarded every good one.** `ModelEntry.from_dict`
+raises `KeyError` on a missing required field, and that killed the whole
+load: a single typo took every other model with it, leaving an empty
+list and no cause. Bad entries are skipped and named; the rest load.
+
+✨ **`models.jsonl`.** One entry per line, which is how anything writes a
+registry incrementally — and a truncated final line, the shape a
+half-flushed append takes, costs only that line.
+
+🛡️ Two shapes people actually write are accepted rather than refused
+with a type error: a single entry object, and `{"models": [...]}`. The
+installer template's `_comment` stub is skipped rather than reported.
+
+## 0.72.4.dev1 — HyperLink says why it cannot reach a server
+
+First increment of 0.72.4. Reported from a real iPhone: three addresses
+tried, three failures, and none of the messages named anything the
+reader could act on.
+
+𖢥 **The three addresses that cannot work now say so before the
+request.** iOS reported them as:
+
+| typed | shown |
+|---|---|
+| `127.0.0.1:8000` | *Could not connect to the server.* |
+| `100.109.195.71:8000` | *…App Transport Security policy requires the use of a secure connection.* |
+| `http://…ts.net:8000` | the same ATS message |
+
+The first reads as though the PC is down; it is the phone's own
+loopback, and nothing on the PC could ever answer it. The other two are
+about the phone rather than the server, are identical to each other, and
+name no address that would work.
+
+`AddressCheck.advice(for:)` judges the address before a request is sent
+and explains each case in its own terms — loopback is this device;
+a bare Tailscale IP cannot be excepted at all because **ATS exceptions
+match domain names and never IP literals**, so the MagicDNS name is the
+fix rather than a setting; a public `http://` host is refused as
+designed. `FailureAdvice.explain` translates what still comes back from
+the network — a refused connection now points at `hypernix-t1 status`,
+a timeout at `tailscale status`.
+
+The `ts.net` exception itself has been in `Info.plist` since the Sept 1
+fix, so a MagicDNS name works on a current build; the report came from
+an older one.
+
+𖢥 **The app reported a version CI had not built.** `project.yml` set
+
+```yaml
+CFBundleShortVersionString: "1.0.26"
+```
+
+as a literal. `ios/scripts/app_version.py` computes the version from
+`T1_VERSION` — the whole point being that app and server quote the same
+string in a support question — and `ios.yml` passes it to xcodebuild as
+`MARKETING_VERSION`. Overriding a build setting cannot change a plist
+key that never referenced it, so every build shipped saying `1.0.26`
+whatever CI computed. `CFBundleVersion` on the next line already had
+`$(CURRENT_PROJECT_VERSION)`; this key simply never got the same
+treatment. It does now, the fallback default is synced, and a test keeps
+the two from drifting — a default nobody checks is what went stale.
+
 ## 0.72.3.post7 — "it is installed already", and it was
 
 𖢥 **`hypernix-t1 start` told people to run a command that could not
