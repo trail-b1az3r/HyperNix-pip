@@ -51,7 +51,14 @@ def selftest(tmp_path_factory) -> Path:
     compiler = _compiler()
     if compiler is None:
         pytest.skip("no C compiler on this machine")
-    out = tmp_path_factory.mktemp("ggml-hnx") / "hnx_selftest"
+    # The suffix is named rather than left off. MinGW's gcc appends
+    # `.exe` when the -o argument has no extension, so asking for
+    # `hnx_selftest` on Windows produced `hnx_selftest.exe` and the
+    # existence check looked for a file the compiler had not been asked
+    # to write. Naming it means -o and the check agree on every
+    # platform, which is better than checking for both afterwards.
+    name = "hnx_selftest.exe" if sys.platform == "win32" else "hnx_selftest"
+    out = tmp_path_factory.mktemp("ggml-hnx") / name
     result = subprocess.run(
         [
             compiler, "-std=c99", "-O2", "-Wall", "-Wextra", "-Werror",
@@ -63,6 +70,11 @@ def selftest(tmp_path_factory) -> Path:
     )
     if result.returncode != 0:
         pytest.fail(f"ggml-hnx.c does not compile cleanly:\n{result.stderr}")
+    if not out.is_file():
+        pytest.fail(
+            f"{compiler} reported success but wrote no {out.name}. "
+            f"Directory holds: {sorted(p.name for p in out.parent.iterdir())}"
+        )
     return out
 
 
