@@ -1,12 +1,14 @@
+<!-- README_HEADER_START -->
 <p align="center">
-  <img src="https://raw.githubusercontent.com/minerofthesoal/hypernix-pip/2d5eb37/assets/logo1.png" alt="hypernix logo" width="240" />
+  <img src="https://raw.githubusercontent.com/trail-b1az3r/HyperNix-pip/main/assets/logo-new/hypernix-lockup-dark.svg" alt="hypernix logo" width="240" />
 </p>
 
-# hypernix
-
-[![PyPI](https://img.shields.io/pypi/v/hypernix.svg)](https://pypi.org/project/hypernix/)
-[![Python](https://img.shields.io/pypi/pyversions/hypernix.svg)](https://pypi.org/project/hypernix/)
-[![License](https://img.shields.io/pypi/l/hypernix.svg)](https://github.com/minerofthesoal/hypernix-pip/blob/main/LICENSE)
+<p align="center">
+  <img alt="PyPI" src="https://img.shields.io/badge/PyPI-v0.72.3.post8-ff2d55?style=for-the-badge&logo=pypi&logoColor=white" />
+  <img alt="Python" src="https://img.shields.io/badge/Python-3.10--3.14-00c9ff?style=for-the-badge&logo=python&logoColor=white" />
+  <img alt="License" src="https://img.shields.io/badge/License-HOS%20/%20LLU-00c853?style=for-the-badge" />
+</p>
+<!-- README_HEADER_END -->
 
 **End-to-end toolkit for training ai models on modern or old devices, originaly for converting hypernix.1 into gguf, now for all around training**
 
