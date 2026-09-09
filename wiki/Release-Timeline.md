@@ -579,3 +579,26 @@ timeline
         : f535daa - HyperLink gets the new mark as its app icon
 ```
 
+## Release v0.72.4 (2026-09-09)
+
+```mermaid
+timeline
+    title Release v0.72.4 Commits
+    0.72.4
+        : 739aae7 - hypernix v0.72.4rc1 [skip ci]
+        : 42abf29 - ggml-hnx self-test- name the binary suffix instead of assuming it
+        : 7392081 - Three CI failures- a race, and two POSIX assumptions stated as such
+        : e1e71f1 - 0.72.4.dev11 — beta 1 full- fuse box, and a claim that did not survive measurement
+        : 1946651 - 0.72.4.dev10 — beta 1 pt 1- gather, and hyperNix0x-v2 in Neo oven
+        : 7f92760 - Update logo and badges in README
+        : 5b88b8b - CUDA kernels for the sub-bit types
+        : 3d07cc0 - Item 13 beta 2- every GPU reader goes through one abstraction
+        : cda277f - Fix the website's mobile view, and sync the site from main
+        : b993ca8 - 0.72.4.dev9 — HyperNix Studio, and CI for both native pieces
+        : 477169e - native/ggml-hnx — a llama.cpp that can actually read a sub-bit model
+        : feab3f3 - Three CI failures, and the one that was worse than a failure
+        : 744d912 - chore- update JSON stats (scheduled)
+        : 9b956c3 - 0.72.4.dev8 — HyperLink knows which machine it is talking to
+        : acf8b02 - Auto-update README header (hourly)
+```
+
