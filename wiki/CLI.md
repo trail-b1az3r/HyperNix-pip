@@ -43,6 +43,7 @@ Data & infra:
   scavenger              search + pull HF datasets under storage/quality budgets
   gather                 crawl a site into a corpus (see Gather.md)
   fusebox                GPU thermal governor for a run (see FuseBox.md)
+  runtime                use the HyperNix llama.cpp from LM Studio etc.
   websearch              non-API web search utility
   net                    Tailscale mesh connect / export / log tailing
   gkey                   API key issuance, scoping, revocation (Gatekeeper + Keymaster)
@@ -540,6 +541,24 @@ so `hnx fusebox restore` can undo it after a crash.
 `hnx train run --thermal-target 78` paces a training run the same way,
 without touching any card setting.
 
+## `runtime`
+
+```bash
+hnx runtime status                # what is built, detected, installed
+hnx runtime serve model.gguf      # start the patched server
+hnx runtime path                  # the build's bin directory
+hnx runtime install --yes         # put it inside LM Studio
+hnx runtime restore --yes         # put LM Studio back
+```
+
+Makes the llama.cpp from `native/ggml-hnx` — the one that reads the
+sub-bit types — usable from other applications. `serve` starts an
+OpenAI-compatible server anything can point at and changes nothing on
+the machine; `install` replaces the libraries LM Studio bundles, which
+needs `--yes`, is backed up, and is undone by `restore`.
+
+Full documentation in [Runtime](Runtime.md).
+
 ## `websearch`
 
 ```bash
@@ -622,7 +641,7 @@ uvicorn invocation or hunting for a pid.
 
 | Command | |
 |---|---|
-| `start` | background the server (`setsid`, so closing the terminal does not take it with you), then wait for `/health` — and say *why* if it exits during startup instead of timing out |
+| `start` | background the server in a session of its own, so closing the terminal or dropping the ssh connection does not take it with you, then wait for `/health` — and say *why* if it exits during startup instead of timing out. On a machine whose logind has `KillUserProcesses=yes` it also warns that logging out will kill it anyway, and names the two ways out. |
 | `stop` | `SIGTERM`, then wait 15s. Still there? It says so and points at `kill` rather than escalating on its own. |
 | `kill` | `SIGKILL`, immediately. In-flight requests are lost, and it says so. |
 | `restart` | `stop`, escalating to `kill` if needed, then `start` |
@@ -638,6 +657,26 @@ uvicorn invocation or hunting for a pid.
 The pid file is checked against the process actually running under it, so
 a recycled pid is never mistaken for a live server and a stale file is
 cleaned up rather than reported as running.
+
+### If the server does not stay running
+
+`start` detaches through the interpreter it is already launching —
+`Popen(start_new_session=True)`, which is setsid(2) in the child — rather
+than through a `setsid` binary. macOS does not ship one, and where it
+does exist it forks when it is already a process-group leader, so the pid
+recorded could belong to a process that had already exited. The pid in
+`server.pid` is the uvicorn process itself, and `os.getsid(pid) == pid`
+is the fact that makes a SIGHUP from the closing terminal irrelevant.
+
+That does not cover **logout** on a machine whose systemd-logind sets
+`KillUserProcesses=yes`: it kills everything the user owns, a separate
+session included, and writes nothing to the log. `start` warns when it
+sees that setting with lingering off. Either way out works:
+
+```bash
+hypernix-t1 autostart on              # a user service, started at login
+sudo loginctl enable-linger "$USER"   # …and kept running after logout
+```
 
 ## `config`
 

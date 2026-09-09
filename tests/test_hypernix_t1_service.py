@@ -9,6 +9,7 @@ expensive way for this to go wrong.
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -630,3 +631,203 @@ class TestTheInstallAdviceNamesTheInterpreter:
         config, _python = self._stub(tmp_path, has_hypernix=False, has_extra=False)
 
         assert self._start(config).returncode != 0
+
+
+class TestStartOutlivesTheShell:
+    """`start` has to leave a server running, on every supported machine.
+
+    Two things went wrong at once and both wore the same symptom -- "it
+    says it started and then there is no server."
+
+    `setsid ... & echo $!` needs a `setsid` binary, and macOS does not
+    have one. The script advertises bash 3.2, which is the bash macOS
+    ships, so macOS is a supported platform; there the background job
+    died on "setsid: command not found", `echo $!` still succeeded so the
+    `|| die` guard never fired, and the only evidence was a raw shell
+    error tailed out of the log 45 seconds later.
+
+    And `$!` is not the server's pid in general: setsid(1) forks when it
+    is already a process-group leader and its parent then exits, so the
+    recorded pid can name a process that has already gone. `launch-script`
+    hit exactly that and reported "unknown" for healthy jobs -- see
+    `_launch_setsid` in hypernix/system/launcher.py, which stopped using
+    the binary for this reason. `start` had not been given the same fix.
+    """
+
+    def test_the_setsid_binary_is_not_invoked(self):
+        """Read argv positions, not the prose.
+
+        The function explains at length *why* the binary is wrong, so a
+        plain `"setsid" in source` search matches the explanation and
+        passes whatever the code does. Comments go first, then the match
+        has to be a command word.
+        """
+        source = SCRIPT.read_text(encoding="utf-8")
+        code = "\n".join(
+            line.split(" #")[0] if not line.lstrip().startswith("#") else ""
+            for line in source.splitlines()
+        )
+        offenders = re.findall(r"(?:^|[;&|(]|\bthen\b|\bdo\b)\s*setsid\b", code, re.M)
+        assert not offenders, (
+            "the setsid binary is invoked again -- it does not exist on macOS, "
+            "and $! is not the server's pid when it forks"
+        )
+
+    def test_it_starts_when_there_is_no_setsid_on_path(self, configured, tmp_path):
+        """The macOS shape: everything present except setsid.
+
+        Before the fix this printed "The server exited during startup"
+        and left nothing running.
+        """
+        home, config = configured
+        needed = [
+            "bash", "sh", "python3", "python", "curl", "ps", "grep", "sed",
+            "awk", "cat", "tail", "head", "find", "id", "sleep", "kill",
+            "env", "dirname", "basename", "tr", "date", "mkdir", "rm",
+            "cut", "sort", "chmod", "stat", "ln", "touch", "ls", "uname",
+        ]
+        fake_bin = tmp_path / "no-setsid-bin"
+        fake_bin.mkdir()
+        for tool in needed:
+            found = shutil.which(tool)
+            if found:
+                (fake_bin / tool).symlink_to(found)
+        assert shutil.which("python3", path=str(fake_bin)), "no python on the fake PATH"
+        assert not shutil.which("setsid", path=str(fake_bin)), "setsid leaked in"
+
+        env = {
+            **os.environ,
+            "PATH": str(fake_bin),
+            "HOME": str(home),
+            "T1_CONFIG_DIR": str(config),
+            "NO_COLOR": "1",
+            "PYTHONPATH": str(REPO_ROOT / "src"),
+        }
+        try:
+            started = subprocess.run(
+                [BASH, str(SCRIPT), "start"],
+                capture_output=True, text=True, encoding="utf-8",
+                timeout=180, env=env,
+            )
+            assert started.returncode == 0, started.stdout + started.stderr
+            assert "Running" in started.stdout, started.stdout + started.stderr
+            log = (config / "server.log").read_text(encoding="utf-8", errors="replace")
+            assert "setsid" not in log, log[-2000:]
+        finally:
+            run("kill", home=home, config=config)
+
+    def test_the_recorded_pid_is_the_server_itself(self, configured):
+        """Not a launcher that has already exited.
+
+        Everything downstream reads this number: `status` reports from
+        it, `stop` signals it, and `wait_healthy` decides the server died
+        when it goes away. A pid file that names the wrong process makes
+        a running server invisible to its own manager.
+        """
+        home, config = configured
+        try:
+            started = run("start", home=home, config=config, timeout=180)
+            assert started.returncode == 0, started.stdout + started.stderr
+            pid = int((config / "server.pid").read_text(encoding="utf-8").strip())
+            os.kill(pid, 0)  # raises if it is gone
+            argv = subprocess.run(
+                ["ps", "-p", str(pid), "-o", "args="],
+                capture_output=True, text=True, encoding="utf-8",
+            ).stdout
+            assert "hypernix.t1api" in argv, f"pid {pid} is not the server: {argv!r}"
+        finally:
+            run("kill", home=home, config=config)
+
+    def test_the_server_gets_a_session_of_its_own(self, configured):
+        """Which is the whole point of the detach.
+
+        A process still in the launching shell's session is sent the
+        SIGHUP that follows the terminal closing or the ssh connection
+        dropping. Session leadership is the observable fact -- setsid(2)
+        makes the child its own session leader, so its session id equals
+        its pid -- and it holds however the detach is spelled.
+        """
+        home, config = configured
+        try:
+            started = run("start", home=home, config=config, timeout=180)
+            assert started.returncode == 0, started.stdout + started.stderr
+            pid = int((config / "server.pid").read_text(encoding="utf-8").strip())
+            assert os.getsid(pid) == pid, (
+                f"server pid {pid} is in session {os.getsid(pid)}, not its own -- "
+                "a SIGHUP to the launching session would take it down"
+            )
+            assert os.getsid(pid) != os.getsid(os.getpid()), "same session as the test"
+        finally:
+            run("kill", home=home, config=config)
+
+    def test_a_launcher_that_prints_no_pid_is_a_failure(self, configured, tmp_path):
+        """The old shape could not detect this at all.
+
+        `( cmd & echo $! > pid )` ends in `echo`, which succeeds whether
+        or not the command behind it ever ran, so `|| die` was dead code.
+        The pid now has to arrive and has to be a number.
+        """
+        home, config = configured
+        stub = tmp_path / "python3"
+        stub.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+        stub.chmod(0o755)
+        source = SCRIPT.read_text(encoding="utf-8")
+        body = _function_body(source, "cmd_start")
+        assert "no pid from the launcher" in body, (
+            "cmd_start does not check that the launcher reported a pid"
+        )
+        assert "*[!0-9]*" in body, "the reported pid is not checked for being a number"
+
+
+class TestLogoutDoesNotTakeTheServerWithIt:
+    """systemd-logind's KillUserProcesses=yes is the other cause.
+
+    When it is on, logging out kills everything the user owns -- a
+    process in its own session included. setsid(2) does not exempt
+    anything from it; lingering does. Nothing is written to the log when
+    it happens, so from the operator's side the server simply is not
+    there any more, and `start` looked like it had not worked.
+    """
+
+    def test_the_check_exists_and_treats_lingering_as_the_exemption(self):
+        body = _function_body(SCRIPT.read_text(encoding="utf-8"), "logind_kills_user_processes")
+        assert "Linger" in body, "does not check whether lingering is on"
+        assert "KillUserProcesses" in body
+
+    def test_it_asks_the_running_configuration_first(self):
+        """Drop-ins under logind.conf.d override the main file.
+
+        Reading only /etc/systemd/logind.conf answers a question nobody
+        asked on a machine whose distribution ships a drop-in.
+        """
+        body = _function_body(SCRIPT.read_text(encoding="utf-8"), "logind_kills_user_processes")
+        assert "busctl" in body, "does not ask logind itself"
+        assert "logind.conf.d" in body, "the file fallback ignores drop-ins"
+
+    def test_the_warning_names_both_ways_out(self):
+        body = _function_body(SCRIPT.read_text(encoding="utf-8"), "cmd_start")
+        assert "logind_kills_user_processes" in body, "start never runs the check"
+        assert "autostart on" in body
+        assert "enable-linger" in body
+
+    def test_a_machine_without_loginctl_says_nothing(self, tmp_path):
+        """No systemd, no warning. The check must not guess."""
+        source = SCRIPT.read_text(encoding="utf-8")
+        harness = tmp_path / "harness.sh"
+        harness.write_text(
+            source.split("cmd_start() {")[0]
+            + '\nif logind_kills_user_processes; then echo WARNED; else echo QUIET; fi\n',
+            encoding="utf-8",
+        )
+        empty = tmp_path / "bin"
+        empty.mkdir()
+        for tool in ("sed", "tail", "id", "cat", "sh"):
+            found = shutil.which(tool)
+            if found:
+                (empty / tool).symlink_to(found)
+        result = subprocess.run(
+            [BASH, str(harness)],
+            capture_output=True, text=True, encoding="utf-8", timeout=60,
+            env={**os.environ, "PATH": str(empty), "HOME": str(tmp_path), "NO_COLOR": "1"},
+        )
+        assert result.stdout.strip().endswith("QUIET"), result.stdout + result.stderr

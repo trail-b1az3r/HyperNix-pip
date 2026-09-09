@@ -1,14 +1,30 @@
 #!/usr/bin/env python3
 """HyperNix multi-version launcher.
 
-This launcher checks for hypernix installation across Python versions
-in priority order: 3.12 → 3.13 → 3.14.
+Finds an interpreter that has hypernix installed and runs the CLI there,
+so `hnx` works on a machine with several Pythons and the package in only
+some of them.
 
-If hypernix is installed on 3.12, it runs there. Otherwise, it falls back
-to the first version (3.13 or 3.14) where hypernix is installed.
+The interpreter that owns this script goes first
+-----------------------------------------------
+That was not always so, and the bug it caused is worth writing down.
+This used to try python3.12, then 3.13, then 3.14, and run the first one
+where hypernix imported -- *whichever* one that was. So on a machine
+with an old hypernix on 3.12 and a fresh `pip install --upgrade` on
+3.13, `hnx` ran the old one. Every command added since that 3.12 install
+was missing, and the symptom was the usage table: the CLI does not
+recognise the subcommand, so it prints what it does recognise. Nothing
+said a different install was answering.
 
-This ensures consistent behavior regardless of which Python version was
-used to install the package, while preferring 3.12 when available.
+`pip` put this console script somewhere for a reason -- ``sys.executable``
+here *is* the interpreter it was installed into, and that is the install
+the person just upgraded. So it is tried first, and the version-priority
+list is only a fallback for the case this was really meant to cover: the
+script is on PATH but its own interpreter no longer has the package.
+
+When the fallback does fire and lands on a *different* version of
+hypernix, it says so on stderr. Silently running something other than
+what you installed is the thing this got wrong once already.
 """
 from __future__ import annotations
 
@@ -53,43 +69,82 @@ def check_hypernix_installed(py_exe: str) -> bool:
         return False
 
 
+def installed_version(py_exe: str) -> str:
+    """The hypernix version `py_exe` has, or "" if it has none."""
+    try:
+        result = subprocess.run(
+            [py_exe, "-c", "import hypernix; print(hypernix.__version__)"],
+            capture_output=True, text=True, timeout=5,
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+        return ""
+    return result.stdout.strip() if result.returncode == 0 else ""
+
+
 def find_best_python() -> str | None:
-    """Find the best Python executable with hypernix installed.
-    
-    Returns:
-        Path to Python executable, or None if no suitable version found.
+    """The interpreter to run the CLI on, or None if none has hypernix.
+
+    This interpreter first. It is the one `pip` installed this console
+    script into, so it is the one holding the version the person last
+    installed -- see the module docstring for the bug that came of
+    preferring a version number instead.
     """
+    try:
+        import hypernix  # noqa: F401
+
+        return sys.executable
+    except ImportError:
+        pass
+
+    # Only now the version list, for the case this was meant to cover:
+    # the script is on PATH but its own interpreter lost the package.
     for version in VERSION_PRIORITY:
-        # Try the versioned executable name first
         if check_hypernix_installed(version.exe_name):
             return version.exe_name
-        
-        # Also try 'pythonX.Y' format on Windows
+
         if sys.platform == "win32":
             win_exe = f"python{version.major}{version.minor}"
             if check_hypernix_installed(win_exe):
                 return win_exe
-    
-    # Fallback: check if current Python has hypernix
-    try:
-        import hypernix  # noqa: F401
-        return sys.executable
-    except ImportError:
-        pass
-    
+
     return None
 
 
 def run_with_selected_python(args: list[str]) -> int:
-    """Run hypernix.cli:main with the selected Python version."""
+    """Run the CLI on the selected interpreter."""
     selected = find_best_python()
-    
+
     if selected is None:
         # No Python version with hypernix found, fall back to current
         from hypernix.interfaces.cli import main
         return main(args)
-    
-    # Re-invoke with the selected Python version
+
+    if selected == sys.executable:
+        # The common case now, and the cheap one: no subprocess, no
+        # re-import, and the CLI runs in the interpreter that owns this
+        # script.
+        from hypernix.interfaces.cli import main
+        return main(args)
+
+    # Landing somewhere else means this interpreter lost the package.
+    # Say which install is answering when it is a different version --
+    # running an older hypernix than the one just installed, with no
+    # indication, is the bug this whole ordering exists to prevent.
+    try:
+        import hypernix
+
+        mine = hypernix.__version__
+    except Exception:  # noqa: BLE001
+        mine = ""
+    theirs = installed_version(selected)
+    if theirs and theirs != mine:
+        print(
+            f"hypernix: running {theirs} from {selected} "
+            f"({sys.executable} has "
+            f"{mine or 'no hypernix'}).",
+            file=sys.stderr,
+        )
+
     cmd = [selected, "-m", "hypernix"] + args
     try:
         result = subprocess.run(cmd, check=False)

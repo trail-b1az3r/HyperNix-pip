@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-VERSION="0.72.3.post3"
+VERSION="0.72.4.post5"
 
 CONFIG_DIR="${T1_CONFIG_DIR:-$HOME/.hypernix/t1api}"
 ENV_FILE="$CONFIG_DIR/.env"
@@ -165,6 +165,88 @@ wait_healthy() {
   return 1
 }
 
+# ---------------------------------------------------------------------------
+# Detaching
+# ---------------------------------------------------------------------------
+
+spawn_detached() {
+  # spawn_detached PYTHON LOGFILE ARGS... -- start ARGS in a new session
+  # and print the pid of the process that is actually running it.
+  #
+  # This used to be `setsid "$py" -m uvicorn ... &` with `echo $!` for the
+  # pid, and that was wrong twice over.
+  #
+  # macOS has no `setsid` binary. The script advertises bash 3.2, which
+  # is the bash macOS ships, so macOS is a supported platform -- and
+  # there `setsid` is "command not found", the background job dies at
+  # once, `echo $!` still succeeds so the `|| die` guard never fires, and
+  # the only sign is a raw shell error in the log 45 seconds later.
+  #
+  # And `$!` is not dependable even where setsid exists: setsid(1) forks
+  # when it is already a process-group leader and the parent then exits,
+  # so the pid recorded can belong to a process that has already gone.
+  # `launch-script` hit exactly that and reported "unknown" for jobs that
+  # were running perfectly well; see _launch_setsid in
+  # hypernix/system/launcher.py.
+  #
+  # Python is already a hard requirement here -- it is the thing being
+  # launched -- and Popen(start_new_session=True) calls setsid(2) in the
+  # child itself. Same new session, no fork in between, and the pid it
+  # reports is the server's own. stdin goes to /dev/null so a read after
+  # the terminal is gone cannot raise EIO.
+  local py="$1" log="$2"; shift 2
+  HNX_T1_LOG="$log" "$py" -c '
+import os, subprocess, sys
+
+log = os.environ["HNX_T1_LOG"]
+with open(log, "ab") as handle:
+    proc = subprocess.Popen(
+        sys.argv[1:],
+        stdin=subprocess.DEVNULL, stdout=handle, stderr=handle,
+        start_new_session=True,
+    )
+print(proc.pid)
+' "$@"
+}
+
+logind_kills_user_processes() {
+  # systemd-logind with KillUserProcesses=yes kills everything the user
+  # owns at logout, a new session included. setsid(2) does not protect
+  # against it and nothing in the log explains the disappearance -- the
+  # server is simply gone the next time someone looks. Lingering is the
+  # exemption, so a machine that has it on is not affected.
+  command -v loginctl >/dev/null 2>&1 || return 1
+  local linger
+  linger="$(loginctl show-user "$(id -un)" --property=Linger --value 2>/dev/null || true)"
+  [ "$linger" = "yes" ] && return 1
+  local setting=""
+  if command -v busctl >/dev/null 2>&1; then
+    # The running configuration, which is what actually decides. Drop-ins
+    # under logind.conf.d override the main file, so reading only
+    # /etc/systemd/logind.conf can answer the wrong question.
+    setting="$(busctl --no-pager get-property org.freedesktop.login1 \
+      /org/freedesktop/login1 org.freedesktop.login1.Manager \
+      KillUserProcesses 2>/dev/null || true)"
+    case "$setting" in
+      *true) return 0 ;;
+      *false) return 1 ;;
+    esac
+  fi
+  # No busctl: fall back to the files, newest drop-in last.
+  local file value=""
+  for file in /etc/systemd/logind.conf /etc/systemd/logind.conf.d/*.conf \
+              /run/systemd/logind.conf.d/*.conf /usr/lib/systemd/logind.conf.d/*.conf; do
+    [ -r "$file" ] || continue
+    local found
+    found="$(sed -n 's/^[[:space:]]*KillUserProcesses[[:space:]]*=[[:space:]]*\([^[:space:]#]*\).*/\1/p' "$file" | tail -n 1)"
+    [ -n "$found" ] && value="$found"
+  done
+  case "$value" in
+    yes|true|1|on) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
 cmd_start() {
   load_env; require_installed
   local existing; existing="$(server_pid || true)"
@@ -182,14 +264,24 @@ cmd_start() {
 
   mkdir -p "$CONFIG_DIR"
   say "Starting the T1 API on ${host}:${port}…"
-  # setsid so the server outlives this shell; without it, closing the
-  # terminal takes the server with it.
-  ( setsid "$py" -m uvicorn hypernix.t1api.app:create_app --factory \
-      --host "$host" --port "$port" >>"$LOG_FILE" 2>&1 &
-    echo $! > "$PID_FILE" ) || die "Could not start the server."
+  local pid=""
+  pid="$(spawn_detached "$py" "$LOG_FILE" \
+    "$py" -m uvicorn hypernix.t1api.app:create_app --factory \
+    --host "$host" --port "$port")" \
+    || die "Could not start the server."
+  case "$pid" in
+    ''|*[!0-9]*) die "Could not start the server (no pid from the launcher)." ;;
+  esac
+  printf '%s\n' "$pid" > "$PID_FILE"
 
   case "$(wait_healthy "$url" "$(setting T1_START_TIMEOUT 45)"; echo $?)" in
-    0) ok "Running (pid $(server_pid)) — $url" ;;
+    0) ok "Running (pid $(server_pid)) — $url"
+       if logind_kills_user_processes; then
+         warn "This machine's logind has KillUserProcesses=yes, so logging out"
+         warn "will kill the server even though it has its own session."
+         dim "     Survive logout:  hypernix-t1 autostart on"
+         dim "                      sudo loginctl enable-linger $(id -un)"
+       fi ;;
     2) rm -f "$PID_FILE"
        err "The server exited during startup. Last lines:"
        tail -n 20 "$LOG_FILE" >&2 || true
