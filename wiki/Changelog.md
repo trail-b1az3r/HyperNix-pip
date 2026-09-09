@@ -21,6 +21,63 @@ next release header.
 - 𖢥 major bug fix
 - ꩜ restore to older version of item
 - ❗ unfixed known bug
+## 0.72.4.post6 — the release guard stopped refusing prepared releases
+
+### "Already what the tree says" was the wrong answer 𖢥
+
+`public-release` writes whatever version it is handed, so a dispatch
+naming an older number silently downgrades main. That happened once —
+v0.72.3.post2 against a tree already at .post4 — and the guard added
+afterwards refused three things at once, only one of which was actually
+unsafe.
+
+Refusing a version *equal* to the tree's was the wrong one. Preparing a
+release means writing that number into `pyproject.toml`, `setup.cfg` and
+`__init__.py` and adding the changelog heading under it — and both steps
+downstream already expect to find that work done: "Commit version bump"
+notices there is nothing to commit, "Tag and push" skips a tag that
+exists. Only the guard disagreed, and its advice — "use a .postN
+suffix" — meant inventing a number at dispatch time. That is how 0.72.4
+`post1` and `post3` went out: numbers no changelog heading matches, so
+neither release says what shipped.
+
+What makes a repeat genuinely unsafe is the number already naming
+*different code*, and a version string cannot answer that. A tag can. So
+the guard now allows the prepared version, and refuses when
+`v<version>` points at a commit other than the one being released —
+naming both the tag's commit and the one at hand, since "use a .postN"
+is not the only way out and deleting a mistaken tag is often the right
+one. A tag on the same commit is a re-run of a release that failed after
+the tag push, which is a thing people legitimately do, so it proceeds
+with a notice. Backwards is still refused unless `allow_downgrade`.
+
+It also warns — not fails — when the tree's version has no changelog
+heading. Failing there would only push people back to inventing a number
+at dispatch, which is the behaviour that lost the notes to begin with.
+
+### It is a script now 🔧
+
+`.github/scripts/version_guard.py`, not a heredoc inside the workflow,
+so `tests/test_version_guard.py` can drive every branch of it: 24 tests
+covering the prepared-tree case, downgrades, forward bumps, a tag on
+another commit, a tag on this one, a checkout that cannot resolve HEAD,
+a checkout with no git at all, and each shape the `version` input
+accepts (`0.72.5`, `v0.72.5`, `0.72.5-rc1`, `0.70.6-2`, `0.70.6postr1`),
+including that `0.70.6-2` and a tree reading `0.70.6.post2` are
+recognised as the same request rather than a downgrade.
+
+### 📚 The roadmap through 0.73.6
+
+0.72.5 (`noodle` in `hyped-pro`, Dflash2 drafts from `hyprslug`, three
+`tvtoppro` additions, `cctvtop`'s remote desktop, T1 accounts and web
+auth without an API key), 0.72.6 (`neuron`, the scheduled code scanner,
+the self-updating flow chart, a real audio processor, `hyped` rebuilt
+around Python "dots"), 0.72.7 (the Python 3.12–3.15 migration and PEPs
+798/799/810/831), 0.73.0 (Studio without a T1 key), 0.73.1–0.73.5 (five
+releases that add nothing but stability), and 0.73.6 (HGPS, the GPU
+process scheduler for Pascal and Turing cards). 0.72.4 also gets the
+shipped entry it never had.
+
 ## 0.72.4.post5 — `hypernix-t1 start` left nothing running
 
 ### The `setsid` binary was the wrong tool here too 𖢥
