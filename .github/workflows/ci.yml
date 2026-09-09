@@ -395,6 +395,51 @@ jobs:
             exit 1
           fi
 
+  # The CUDA kernels, compiled. Separate from `native` on purpose: the
+  # toolkit is ~2 GB and `native` runs on every full pass, so folding it
+  # in would add minutes to every run for a file that changes rarely.
+  #
+  # The checks that catch the failure that *matters* -- a template
+  # constant drifting from hypernix.quant.gguf, which produces a model
+  # that runs on the GPU and talks nonsense -- are source-level and run
+  # in `native` without any toolkit. This job proves the thing compiles
+  # and that the templates instantiate with the constants the launchers
+  # pass, which only nvcc can say.
+  cuda:
+    name: cuda kernels
+    needs: triage
+    if: needs.triage.outputs.narrow != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install nvcc
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends nvidia-cuda-toolkit
+          nvcc --version
+
+      - name: Install the package (for the block-size registry)
+        run: pip install -e . && pip install pytest
+
+      - name: Build with the CUDA kernels
+        run: |
+          set -euo pipefail
+          # sm_61 only: Pascal is this project's floor and building every
+          # architecture would triple the time for no extra coverage of
+          # the thing being tested.
+          cmake -S native/ggml-hnx -B build/cuda \
+            -DGGML_HNX_CUDA=ON -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CUDA_ARCHITECTURES=61
+          cmake --build build/cuda -j"$(nproc)"
+          ctest --test-dir build/cuda --output-on-failure
+
+      - name: The kernels instantiate with the CPU's constants
+        run: python -m pytest tests/test_ggml_hnx.py -q -k Cuda
+
   build-check:
     name: build sdist + wheel (smoke)
     needs: triage

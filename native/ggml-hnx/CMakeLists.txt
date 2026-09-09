@@ -18,6 +18,13 @@ project(ggml_hnx C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
+# CUDA is opt-in and off by default: the CPU decoder is the thing that
+# must build anywhere, and requiring a CUDA toolkit to compile a
+# 300-line C file would be a bad trade. ON adds the kernels; the CPU
+# path stays as the fallback either way, because a machine can have the
+# toolkit and no device.
+option(GGML_HNX_CUDA "Build the CUDA kernels for the sub-bit types" OFF)
+
 add_library(ggml-hnx STATIC ggml-hnx.c)
 target_include_directories(ggml-hnx PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 # -fPIC because ggml is often built shared, and a static library linked
@@ -26,6 +33,19 @@ set_property(TARGET ggml-hnx PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(ggml-hnx PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
+if(GGML_HNX_CUDA)
+    enable_language(CUDA)
+    target_sources(ggml-hnx PRIVATE ggml-hnx-cuda.cu)
+    set_target_properties(ggml-hnx PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+    # 61 first, deliberately: Pascal is the floor this project supports
+    # (see hypernix.system.pascal), and a GTX 1080 is exactly the card a
+    # sub-bit model exists for. 75/86/89 cover Turing through Ada.
+    if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
+        set_property(TARGET ggml-hnx PROPERTY CUDA_ARCHITECTURES 61 75 86 89)
+    endif()
+    target_compile_definitions(ggml-hnx PUBLIC GGML_HNX_CUDA)
 endif()
 
 # Only when built on its own. Inside llama.cpp the parent project owns

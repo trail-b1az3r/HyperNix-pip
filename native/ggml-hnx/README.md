@@ -64,6 +64,7 @@ cmake -S . -B build && cmake --build build && ctest --test-dir build
 |---|---|
 | `ggml-hnx.h` / `.c` | the decoder. Plain C99, no ggml headers. |
 | `ggml-hnx-shim.h` / `.c` | ggml's calling convention over the decoder. |
+| `ggml-hnx-cuda.cu` / `-cuda.h` | the GPU kernels. Opt-in; see below. |
 | `hnx_selftest.c` | the checks, including the cross-check against Python. |
 | `tools/gen_vectors.py` | packs blocks with `hypernix.quant.subbit` and records what it decodes them to. |
 | `tools/patch_llamacpp.py` | registers the types in a checkout. |
@@ -123,10 +124,23 @@ weight a model stops being a slightly worse version of itself and
 becomes a different, much worse model. This makes such a file loadable
 and *correct*; accuracy is not something a decoder can give back.
 
-**The sub-bit types are CPU-only here.** There is a CUDA kernel to write
-and it is not written. A sub-bit tensor is dequantised on the CPU and
-the rest of the graph runs wherever you sent it — slower than a native
-kernel, and much faster than not loading at all.
+**CUDA is opt-in.** `-DGGML_HNX_CUDA=ON` builds
+`ggml-hnx-cuda.cu`: two kernels per type, one warp per row, a shuffle
+reduction and no shared memory. The dot product never materialises a
+row — every weight is ±scale, so a block reduces to `scale · Σ(±y)`,
+which means a row that would be 1 KB in F32 is 30 bytes of L2 and the
+kernel is bound by reading the activations rather than the weights. That
+is the compensation for discarding the magnitudes, and the reason these
+types are worth having beyond the file size.
+
+Off by default, because the CPU decoder has to build with a C compiler
+and nothing else. `sm_61` is first in the architecture list: Pascal is
+this project's floor, a GTX 1080 is exactly the card a sub-bit model
+exists for, and 61 is not in nvcc's default set.
+
+Without CUDA a sub-bit tensor is dequantised on the CPU and the rest of
+the graph runs wherever you sent it — slower, and much faster than not
+loading at all.
 
 **Quantising to these types is not exposed to `llama-quantize`.** The
 `from_float` slots are deliberately NULL, so `llama-quantize -> IQ0.5_XXXL`

@@ -334,3 +334,179 @@ class TestThePatcher:
 
         with pytest.raises(SystemExit, match="does not look like"):
             patch_llamacpp.main([str(tmp_path)])
+
+
+class TestTheCudaKernels:
+    """Beta 1 shipped these types CPU-only. These are the GPU kernels.
+
+    The one thing that can silently diverge is the geometry. The kernels
+    take ``group``, ``kept`` and ``block_bytes`` as *template* parameters
+    — they have to, so the inner loops unroll and the modulo arithmetic
+    folds at compile time — which means each type's constants are written
+    out a third time, next to the launchers.
+
+    A wrong one there does not fail to compile and does not crash. It
+    produces a model that runs at full speed on the GPU and talks
+    nonsense, exactly as a wrong bit order on the CPU would. So the
+    constants are checked against ``hypernix.quant.gguf`` here, and the
+    emitted PTX is checked to confirm the templates instantiated with the
+    values the source claims.
+    """
+
+    #: (suffix, group, kept) per type. block_bytes comes from the
+    #: registry, so this table cannot quietly disagree about size.
+    GEOMETRY = (
+        ("iq0_9", 8, 7, 200),
+        ("iq0_75", 4, 3, 201),
+        ("iq0_5", 4, 2, 202),
+        ("iq0_25", 16, 3, 203),
+        ("int1", 1, 1, 204),
+    )
+
+    @pytest.fixture(scope="class")
+    def source(self) -> str:
+        return (NATIVE / "ggml-hnx-cuda.cu").read_text(encoding="utf-8")
+
+    def test_the_file_exists_and_declares_all_five(self, source):
+        for suffix, _group, _kept, _type_id in self.GEOMETRY:
+            assert f"HNX_CUDA_LAUNCHERS({suffix}," in source.replace(" ", "") or \
+                   f"HNX_CUDA_LAUNCHERS({suffix}," in source
+
+    def test_the_launcher_constants_match_the_registry(self, source):
+        """group, kept and block_bytes, against the CPU's own table."""
+        from hypernix.quant.gguf import _BLOCK_SHAPE
+
+        for suffix, group, kept, type_id in self.GEOMETRY:
+            match = re.search(
+                rf"HNX_CUDA_LAUNCHERS\(\s*{suffix}\s*,\s*(\d+)\s*,\s*(\d+)\s*,"
+                rf"\s*(\d+)\s*\)",
+                source,
+            )
+            assert match, f"no launcher for {suffix}"
+            got_group, got_kept, got_bytes = (int(g) for g in match.groups())
+
+            assert got_group == group, f"{suffix} group"
+            assert got_kept == kept, f"{suffix} kept"
+
+            if type_id in _BLOCK_SHAPE:
+                _, expected_bytes = _BLOCK_SHAPE[type_id]
+                assert got_bytes == expected_bytes, (
+                    f"{suffix} is {got_bytes} bytes in the CUDA launcher and "
+                    f"{expected_bytes} in hypernix.quant.gguf"
+                )
+
+            # And the arithmetic has to close: the payload holds one bit
+            # per stored sign, plus the two-byte FP16 scale.
+            codes = 256 // got_group
+            payload = (codes * got_kept + 7) // 8
+            assert payload + 2 == got_bytes, (
+                f"{suffix}: group {got_group} / kept {got_kept} needs "
+                f"{payload + 2} bytes, launcher says {got_bytes}"
+            )
+
+    def test_it_uses_the_same_bit_order_as_the_cpu(self, source):
+        """LSB-first within the byte, continuous across the payload. The
+        expression is character-for-character the CPU's, which is the
+        cheapest way to keep them from drifting."""
+        cpu = (NATIVE / "ggml-hnx.c").read_text(encoding="utf-8")
+        extraction = "(payload[bit >> 3] >> (bit & 7)) & 1"
+
+        assert extraction in cpu
+        assert extraction in source
+
+    def test_cuda_is_opt_in(self):
+        """The CPU decoder must build with a C compiler and nothing else.
+        Requiring a CUDA toolkit to compile a 300-line C file would be a
+        bad trade."""
+        cmake = (NATIVE / "CMakeLists.txt").read_text(encoding="utf-8")
+
+        assert 'option(GGML_HNX_CUDA' in cmake
+        assert '"Build the CUDA kernels for the sub-bit types" OFF)' in cmake
+
+    def test_pascal_is_in_the_architecture_list(self):
+        """A GTX 1080 is exactly the card a sub-bit model exists for, and
+        sm_61 is not in nvcc's default set."""
+        cmake = (NATIVE / "CMakeLists.txt").read_text(encoding="utf-8")
+
+        assert "CUDA_ARCHITECTURES 61" in cmake
+
+    def test_the_row_stride_is_a_parameter_not_an_assumption(self):
+        """ggml pads rows: nb[1] is not always nblocks * block_bytes, and
+        computing it instead of being told reads every row after the
+        first from the wrong offset."""
+        header = (NATIVE / "ggml-hnx-cuda.h").read_text(encoding="utf-8")
+
+        assert "row_stride_bytes" in header
+
+    def test_it_compiles_if_nvcc_is_here(self, tmp_path):
+        nvcc = shutil.which("nvcc")
+        if nvcc is None:
+            pytest.skip("no CUDA toolkit on this machine")
+
+        result = subprocess.run(
+            [nvcc, "-std=c++17", "-O2", f"-I{NATIVE}", "-c",
+             str(NATIVE / "ggml-hnx-cuda.cu"), "-o", str(tmp_path / "cuda.o")],
+            capture_output=True, text=True, check=False,
+        )
+
+        assert result.returncode == 0, result.stderr
+
+    def test_every_kernel_is_instantiated_with_those_constants(self, tmp_path):
+        """The check the source grep cannot make: that the templates
+        actually instantiated with the values the launchers pass. The
+        mangled PTX entry names carry them, so a launcher that passes one
+        set while the template is stamped out with another shows up
+        here."""
+        nvcc = shutil.which("nvcc")
+        if nvcc is None:
+            pytest.skip("no CUDA toolkit on this machine")
+
+        ptx = tmp_path / "hnx.ptx"
+        result = subprocess.run(
+            [nvcc, "-std=c++17", "-O2", f"-I{NATIVE}", "-ptx",
+             str(NATIVE / "ggml-hnx-cuda.cu"), "-o", str(ptx)],
+            capture_output=True, text=True, check=False,
+        )
+        assert result.returncode == 0, result.stderr
+        text = ptx.read_text(encoding="utf-8")
+
+        # Two kernels per type: the dot product and the expansion.
+        assert text.count(".entry") == len(self.GEOMETRY) * 2
+
+        from hypernix.quant.gguf import _BLOCK_SHAPE
+
+        for suffix, group, kept, type_id in self.GEOMETRY:
+            block_bytes = (
+                _BLOCK_SHAPE[type_id][1] if type_id in _BLOCK_SHAPE else None
+            )
+            if block_bytes is None:
+                continue
+            # Itanium mangling for <int group, int kept, int bytes>.
+            signature = f"ILi{group}ELi{kept}ELi{block_bytes}EE"
+            assert f"hnx_mul_mat_vec{signature}" in text, (
+                f"no mul_mat_vec instantiated for {suffix} at "
+                f"({group}, {kept}, {block_bytes})"
+            )
+            assert f"hnx_dequantize{signature}" in text, (
+                f"no dequantize instantiated for {suffix}"
+            )
+
+    def test_the_dot_product_reduces_across_the_warp(self, tmp_path):
+        """One warp per row with a shuffle reduction, and no shared
+        memory or barrier -- which is the whole reason the block size is
+        32. If this stops appearing, the reduction has been replaced by
+        something that needs synchronising."""
+        nvcc = shutil.which("nvcc")
+        if nvcc is None:
+            pytest.skip("no CUDA toolkit on this machine")
+
+        ptx = tmp_path / "hnx.ptx"
+        subprocess.run(
+            [nvcc, "-std=c++17", "-O2", f"-I{NATIVE}", "-ptx",
+             str(NATIVE / "ggml-hnx-cuda.cu"), "-o", str(ptx)],
+            capture_output=True, check=True,
+        )
+        text = ptx.read_text(encoding="utf-8")
+
+        assert "shfl.sync.down" in text
+        assert "bar.sync" not in text, "a barrier appeared in a warp-level kernel"
