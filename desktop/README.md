@@ -171,6 +171,22 @@ Both are the kind of thing that only a compiler and a running engine
 find, which is why the Qt build is in CI rather than left to a first
 launch.
 
+**It is POSIX-only, and that is a real limit rather than a stated
+target.** `ToolRunner::IsTrulyInside` compares `fs::path` components,
+which on Windows carry a root-name (`C:`) that `operator==` compares as
+a case-sensitive string — so a workspace given as `C:\Users\me\work`
+and a resolved path that came back as `c:\users\me\work` read as two
+different directories, and 19 of the 38 runner checks fail there. The
+containment check is the boundary between a language model and
+somebody's filesystem, so this is not a cosmetic gap: a Windows port
+needs a real path comparison (case-folded, root-name aware) and a
+Windows build to test it against, not a guess from a Linux machine.
+Until then `tests/test_studio_core.py` skips the compile-and-run halves
+on Windows and says why. The source-level guarantees — no `system`, no
+`popen`, no `exec`, no `QProcess`, no shell in the tool list — are
+checked on every platform, because those read the file rather than the
+disk.
+
 What has **not** been exercised is the app against a real server:
 `HyperLinkClient`'s request and reply handling is written against the T1
 API's documented shapes and has not been run against a live one. The

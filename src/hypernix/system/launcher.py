@@ -74,6 +74,31 @@ class Supervisor(StrEnum):
     SETSID = "setsid"
 
 
+def _require_posix() -> None:
+    """Refuse on Windows, and say what is actually missing.
+
+    Both supervisors are POSIX. ``systemd-run`` is obviously so; the
+    fallback needs ``setsid(2)`` for the new session and ``/bin/sh`` for
+    the wrapper that records the exit status. Neither exists on Windows,
+    and detaching there is a different mechanism altogether
+    (``DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP``, with no session or
+    SIGHUP to escape in the first place).
+
+    Without this the failure was ``FileNotFoundError: [WinError 2] The
+    system cannot find the file specified`` -- which names no file, and
+    reads as a missing *script* rather than a missing platform.
+    """
+    if os.name == "nt":
+        raise LaunchError(
+            "launch-script is POSIX only. It detaches a job by putting it in "
+            "its own session -- setsid(2) plus a /bin/sh wrapper that records "
+            "the exit status -- and Windows has neither, nor the SIGHUP on "
+            "disconnect that this exists to escape. On Windows, use a "
+            "Scheduled Task or `start /b`, or run the trainer under WSL, "
+            "where this works normally."
+        )
+
+
 def default_root() -> Path:
     """Where job records live."""
     configured = os.environ.get("T1_CONFIG_DIR", "")
@@ -241,7 +266,11 @@ def launch(
     store: JobStore | None = None,
     supervisor: Supervisor | None = None,
 ) -> Job:
-    """Start *script* detached, and return its :class:`Job` record."""
+    """Start *script* detached, and return its :class:`Job` record.
+
+    POSIX only. See :func:`_require_posix`.
+    """
+    _require_posix()
     path = Path(script).expanduser()
     if not path.exists():
         raise LaunchError(f"No such script: {path}")

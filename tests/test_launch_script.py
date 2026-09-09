@@ -48,6 +48,23 @@ from hypernix.t1api.launchscript_cli import main as launch_main
 
 SRC = str(Path(__file__).resolve().parent.parent / "src")
 
+# Everything here is POSIX by construction, and not by oversight: the
+# module under test is *about* sessions, controlling terminals and
+# SIGHUP, none of which Windows has. `setsid(2)` has no counterpart, the
+# exit-recording wrapper is a /bin/sh script, and detaching on Windows is
+# a different mechanism entirely (DETACHED_PROCESS |
+# CREATE_NEW_PROCESS_GROUP). Skipped rather than xfailed: these tests do
+# not describe behaviour Windows is failing to provide, they describe an
+# interface Windows does not have. `launcher.launch()` says the same
+# thing in as many words rather than failing with `[WinError 2] The
+# system cannot find the file specified`, which is what it used to do.
+pytestmark = pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="launch-script is POSIX-only: it needs setsid(2) and /bin/sh, "
+           "and Windows detaching is a different mechanism. "
+           "launcher.launch() raises LaunchError there.",
+)
+
 
 def _process_state(pid: int) -> str:
     """The single-letter state from /proc, or "" if the pid is gone.
@@ -82,6 +99,28 @@ def settle(job, store, *, timeout: float = 20.0):
     return job
 
 
+def wait_for_log(job, text: str, *, timeout: float = 20.0) -> str:
+    """Wait until *text* appears in the job's log, then return the log.
+
+    `launch()` returns once the child is spawned, which is strictly
+    before the child has run its first line and flushed it. Reading the
+    log immediately therefore races the shell's startup, and on a loaded
+    runner the read wins -- which is exactly how this failed on macOS
+    while passing everywhere else, intermittently, for the same commit.
+
+    Returns whatever is there at the deadline rather than raising, so the
+    caller's assertion reports the actual contents.
+    """
+    deadline = time.time() + timeout
+    logs = ""
+    while time.time() < deadline:
+        logs = read_logs(job)
+        if text in logs:
+            return logs
+        time.sleep(0.05)
+    return logs
+
+
 class TestItSurvivesTheParent:
     """The whole point, and the only test that proves it."""
 
@@ -110,7 +149,7 @@ class TestItSurvivesTheParent:
         refresh(job, store)
 
         assert job.status == JobStatus.RUNNING.value
-        assert "started" in read_logs(job)
+        assert "started" in wait_for_log(job, "started")
 
     def test_and_it_finishes_with_its_exit_status_recorded(self, tmp_path):
         work = script(tmp_path, "echo working\nexit 7\n")
