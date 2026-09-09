@@ -31,6 +31,22 @@ option(STUDIO_CORE_ONLY
        "Build and test only the Qt-free core. For CI and for machines with no Qt."
        OFF)
 
+# Local models. OFF by default and that is the right default: the server
+# path does not need llama.cpp, and making the harder dependency
+# mandatory would stop Studio building for everyone who only wants to
+# connect to a HyperNix box.
+#
+#   cmake -S . -B build -DSTUDIO_LOCAL_LLAMA=ON -DLLAMA_ROOT=~/llama.cpp
+#
+# LLAMA_ROOT wants a llama.cpp that has been built, and -- for the
+# HyperNix sub-bit types -- one that native/ggml-hnx/tools/patch_llamacpp.py
+# has been run against. Without the patch a stock build loads everything
+# else and refuses IQ0.5_XXXL, which LocalEngine reports in as many words.
+option(STUDIO_LOCAL_LLAMA
+       "Run models in-process via llama.cpp, with no server."
+       OFF)
+set(LLAMA_ROOT "" CACHE PATH "A built llama.cpp checkout.")
+
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     add_compile_options(-Wall -Wextra)
 endif()
@@ -39,8 +55,51 @@ endif()
 add_library(hnx-studio-core STATIC
     src/ToolPolicy.cpp
     src/ToolRunner.cpp
+    src/ModelCatalogue.cpp
+    src/LocalEngine.cpp
 )
 target_include_directories(hnx-studio-core PUBLIC src)
+
+# --- local inference, optional ----------------------------------------
+if(STUDIO_LOCAL_LLAMA)
+    if(NOT LLAMA_ROOT)
+        message(FATAL_ERROR
+            "STUDIO_LOCAL_LLAMA=ON needs -DLLAMA_ROOT=/path/to/llama.cpp "
+            "(a checkout that has been built). Said here rather than "
+            "failing later with a missing llama.h.")
+    endif()
+    find_path(LLAMA_INCLUDE_DIR llama.h
+              HINTS "${LLAMA_ROOT}/include" "${LLAMA_ROOT}"
+              NO_DEFAULT_PATH)
+    find_library(LLAMA_LIBRARY NAMES llama
+                 HINTS "${LLAMA_ROOT}/build/bin" "${LLAMA_ROOT}/build"
+                       "${LLAMA_ROOT}/build/src"
+                 NO_DEFAULT_PATH)
+    find_library(GGML_BASE_LIBRARY NAMES ggml-base
+                 HINTS "${LLAMA_ROOT}/build/bin" "${LLAMA_ROOT}/build"
+                 NO_DEFAULT_PATH)
+    find_library(GGML_LIBRARY NAMES ggml
+                 HINTS "${LLAMA_ROOT}/build/bin" "${LLAMA_ROOT}/build"
+                 NO_DEFAULT_PATH)
+    if(NOT LLAMA_INCLUDE_DIR OR NOT LLAMA_LIBRARY)
+        message(FATAL_ERROR
+            "STUDIO_LOCAL_LLAMA=ON but ${LLAMA_ROOT} has no llama.h or no "
+            "built libllama. Build llama.cpp first: cmake -S . -B build && "
+            "cmake --build build -j")
+    endif()
+    target_compile_definitions(hnx-studio-core PUBLIC HNX_STUDIO_LOCAL_LLAMA)
+    target_include_directories(hnx-studio-core PUBLIC
+        "${LLAMA_INCLUDE_DIR}" "${LLAMA_ROOT}/ggml/include")
+    target_link_libraries(hnx-studio-core PUBLIC
+        "${LLAMA_LIBRARY}" "${GGML_BASE_LIBRARY}" "${GGML_LIBRARY}")
+    message(STATUS "Studio: local inference ON (${LLAMA_ROOT})")
+else()
+    message(STATUS "Studio: local inference OFF "
+                   "(-DSTUDIO_LOCAL_LLAMA=ON -DLLAMA_ROOT=... to enable)")
+endif()
+
+find_package(Threads REQUIRED)
+target_link_libraries(hnx-studio-core PUBLIC Threads::Threads)
 
 enable_testing()
 
@@ -51,6 +110,18 @@ add_test(NAME tool_policy COMMAND tool_policy_test)
 add_executable(tool_runner_test tests/tool_runner_test.cpp)
 target_link_libraries(tool_runner_test PRIVATE hnx-studio-core)
 add_test(NAME tool_runner COMMAND tool_runner_test)
+
+add_executable(model_catalogue_test tests/model_catalogue_test.cpp)
+target_link_libraries(model_catalogue_test PRIVATE hnx-studio-core)
+add_test(NAME model_catalogue COMMAND model_catalogue_test)
+
+# Runs in both builds and checks different things in each: with
+# llama.cpp it loads a model and generates; without, it checks the stub
+# refuses honestly rather than pretending. A test that only existed in
+# one configuration would let the other rot.
+add_executable(local_engine_test tests/local_engine_test.cpp)
+target_link_libraries(local_engine_test PRIVATE hnx-studio-core)
+add_test(NAME local_engine COMMAND local_engine_test)
 
 if(STUDIO_CORE_ONLY)
     message(STATUS "STUDIO_CORE_ONLY: skipping the Qt application")
@@ -69,6 +140,7 @@ qt_standard_project_setup(REQUIRES 6.4)
 qt_add_executable(hypernix-studio
     src/main.cpp
     src/HyperLinkClient.cpp
+    src/LocalSession.cpp
     src/StudioBridge.cpp
 )
 

@@ -30,10 +30,16 @@ Item {
                 ColumnLayout {
                     spacing: 0
                     Label {
-                        text: studio.activeModel.length > 0
-                              ? studio.activeModel : "No model loaded"
-                        color: studio.activeModel.length > 0
-                               ? Theme.text : Theme.textFaint
+                        // Whichever model is actually going to answer.
+                        // Binding to activeModel alone showed "No model
+                        // loaded" over a working local conversation.
+                        readonly property string current:
+                            studio.source === "local"
+                            ? (studio.localLoaded
+                               ? (studio.localInfo.name || "") : "")
+                            : studio.activeModel
+                        text: current.length > 0 ? current : "No model loaded"
+                        color: current.length > 0 ? Theme.text : Theme.textFaint
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontBody
                         font.weight: Font.DemiBold
@@ -120,10 +126,16 @@ Item {
 
                     TextArea {
                         id: input
-                        placeholderText: studio.connected
+                        // `ready` rather than `connected`: in local
+                        // mode there is no server to connect to, and
+                        // gating on one is what made the composer dead
+                        // with a model loaded and running.
+                        placeholderText: studio.ready
                                          ? "Ask, or describe a change to make"
-                                         : "Connect to a server first"
-                        enabled: studio.connected && !studio.busy
+                                         : (studio.source === "local"
+                                            ? "Load a model in the Models tab"
+                                            : "Connect to a server first")
+                        enabled: studio.ready && !studio.busy
                         color: Theme.text
                         placeholderTextColor: Theme.textFaint
                         font.family: Theme.fontFamily
@@ -159,11 +171,22 @@ Item {
 
                 StudioButton {
                     id: send
-                    text: studio.busy ? "…" : "Send"
+                    // Turns into Stop while a local model is generating.
+                    // A long answer on a slow machine is a minute of
+                    // watching, and there has to be a way out of it that
+                    // is not closing the window.
+                    readonly property bool stopping:
+                        studio.busy && studio.source === "local"
+                    text: stopping ? "Stop" : (studio.busy ? "…" : "Send")
                     primary: true
-                    enabled: studio.connected && !studio.busy &&
-                             input.text.trim().length > 0
+                    enabled: stopping ||
+                             (studio.ready && !studio.busy &&
+                              input.text.trim().length > 0)
                     onClicked: {
+                        if (stopping) {
+                            studio.stopGenerating()
+                            return
+                        }
                         studio.send(input.text.trim())
                         input.text = ""
                     }

@@ -35,6 +35,7 @@
 #include <memory>
 
 #include "HyperLinkClient.h"
+#include "LocalSession.h"
 #include "ToolRunner.h"
 
 namespace hnx {
@@ -64,6 +65,20 @@ class StudioBridge : public QObject {
     Q_PROPERTY(QVariantMap pendingApproval READ pendingApproval
                    NOTIFY pendingApprovalChanged)
 
+    // "server" or "local". Studio began as a client and the server path
+    // is unchanged; this decides which one send() goes down.
+    Q_PROPERTY(QString source READ source WRITE setSource NOTIFY sourceChanged)
+    Q_PROPERTY(bool localAvailable READ localAvailable CONSTANT)
+    Q_PROPERTY(QString localUnavailableReason READ localUnavailableReason
+                   CONSTANT)
+    Q_PROPERTY(QVariantList localModels READ localModels NOTIFY localChanged)
+    Q_PROPERTY(bool localLoaded READ localLoaded NOTIFY localChanged)
+    Q_PROPERTY(QVariantMap localInfo READ localInfo NOTIFY localChanged)
+    Q_PROPERTY(QStringList modelFolders READ modelFolders NOTIFY localChanged)
+    // True when a model can answer, whichever way. What the composer
+    // binds to, so it does not have to know which mode it is in.
+    Q_PROPERTY(bool ready READ ready NOTIFY readyChanged)
+
 public:
     explicit StudioBridge(QObject* parent = nullptr);
     ~StudioBridge() override;
@@ -84,6 +99,18 @@ public:
     bool busy() const { return busy_; }
     QVariantMap pendingApproval() const { return pendingApproval_; }
 
+    QString source() const { return source_; }
+    void setSource(const QString& value);
+    bool localAvailable() const { return LocalSession::available(); }
+    QString localUnavailableReason() const {
+        return LocalSession::unavailableReason();
+    }
+    QVariantList localModels() const { return local_.models(); }
+    bool localLoaded() const { return local_.loaded(); }
+    QVariantMap localInfo() const { return local_.info(); }
+    QStringList modelFolders() const { return modelFolders_; }
+    bool ready() const;
+
 public slots:
     // Connection. `key` is a T2S key; Studio never asks for an admin
     // one, because nothing it does needs administration.
@@ -102,6 +129,17 @@ public slots:
     void approveTool();
     void rejectTool();
 
+    // Local models. All no-ops in a build without llama.cpp, except
+    // scanning -- the catalogue is always there, so a Studio that
+    // cannot run a model can still tell you what is on the disk and
+    // why it cannot run it.
+    void scanLocalModels();
+    void addModelFolder(const QString& path);
+    void removeModelFolder(const QString& path);
+    void loadLocalModel(const QString& path, int gpuLayers, int contextLength);
+    void unloadLocalModel();
+    void stopGenerating();
+
     // For the file tree. Read-only and policy-checked like everything
     // else, so a view cannot list its way outside the workspace.
     QVariantList listWorkspace(const QString& relative);
@@ -119,6 +157,9 @@ signals:
     void messagesChanged();
     void busyChanged();
     void pendingApprovalChanged();
+    void sourceChanged();
+    void localChanged();
+    void readyChanged();
     // A mismatch is not a toast. The UI puts the app into a blocked
     // state until the user re-pairs or dismisses deliberately, because
     // "something else is answering at this address" is not information
@@ -139,8 +180,22 @@ private:
     QJsonArray toolSchema() const;
     QJsonArray transcript() const;
 
+    void sendToServer(const QString& text);
+    void sendToLocal(const QString& text);
+    QString localPrompt() const;
+    void loadModelFolders();
+    void saveModelFolders();
+
     HyperLinkClient client_;
+    LocalSession local_;
     std::unique_ptr<ToolRunner> runner_;
+
+    QString source_ = "server";
+    QStringList modelFolders_;
+    // Where the streaming reply is being assembled, so each token can
+    // extend the message already on screen instead of appending a new
+    // one per token.
+    int streamingIndex_ = -1;
 
     bool connected_ = false;
     bool busy_ = false;
