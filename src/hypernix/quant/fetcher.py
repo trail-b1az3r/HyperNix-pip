@@ -26,7 +26,7 @@ from pathlib import Path
 LLAMA_CPP_REPO = "ggml-org/llama.cpp"
 _LATEST_API = f"https://api.github.com/repos/{LLAMA_CPP_REPO}/releases/latest"
 _LIST_API = f"https://api.github.com/repos/{LLAMA_CPP_REPO}/releases"
-_USER_AGENT = "hypernix/fetcher (+https://github.com/minerofthesoal/hypernix-pip)"
+_USER_AGENT = "hypernix/fetcher (+https://github.com/trail-b1az3r/hypernix-pip)"
 
 
 def cache_dir() -> Path:

@@ -153,7 +153,7 @@ PROVIDERS: dict[str, ProviderInfo] = {
     "t1api": ProviderInfo(
         vendor="t1api", kind="t1api", label="HyperNix T1 API (local or remote)",
         auth_env_var="HNX_T1_API_KEY",
-        docs_url="https://github.com/minerofthesoal/HyperNix-pip/blob/main/wiki/T1-API.md",
+        docs_url="https://github.com/trail-b1az3r/HyperNix-pip/blob/main/wiki/T1-API.md",
         notes="Control plane only: authenticates the key, routes to a model "
               "through the server's quota cascade, and records usage. The "
               "chosen model runs locally through the same catalog as any "

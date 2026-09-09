@@ -93,7 +93,7 @@ automatically the moment the LAN address stops answering.
 ## Installing the IPA
 
 Every release attaches `HyperLink-<version>.ipa`
-([Releases](https://github.com/minerofthesoal/hypernix-pip/releases)),
+([Releases](https://github.com/trail-b1az3r/hypernix-pip/releases)),
 and every CI run uploads one as a build artifact.
 
 The IPA is **unsigned** unless the release was built with signing

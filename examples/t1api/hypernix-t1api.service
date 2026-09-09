@@ -11,7 +11,7 @@
 
 [Unit]
 Description=HyperNix T1 API
-Documentation=https://github.com/minerofthesoal/hypernix-pip/blob/main/wiki/T1-API.md
+Documentation=https://github.com/trail-b1az3r/hypernix-pip/blob/main/wiki/T1-API.md
 After=network-online.target
 Wants=network-online.target
 # Uncomment when using the PostgreSQL backend on the same host.

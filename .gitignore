@@ -15,6 +15,11 @@ dist/
 *.egg-info/
 .eggs/
 
+# Node, for docs/. Not previously listed, which meant that building the
+# site once left 200MB of untracked files staged by the next `git add -A`.
+node_modules/
+.vite/
+
 # Test and tooling caches
 .pytest_cache/
 .ruff_cache/

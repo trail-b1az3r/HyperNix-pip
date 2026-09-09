@@ -76,7 +76,7 @@ from pathlib import Path
 from typing import Any
 
 _HYPERNIX_VERSION = "0.71.4b6"
-_USER_AGENT = f"hypernix/multilama {_HYPERNIX_VERSION} (+https://github.com/minerofthesoal/hypernix-pip)"
+_USER_AGENT = f"hypernix/multilama {_HYPERNIX_VERSION} (+https://github.com/trail-b1az3r/hypernix-pip)"
 
 
 class MultiLlamaError(RuntimeError):

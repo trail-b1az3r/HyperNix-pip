@@ -170,10 +170,10 @@ steamroller = "hypernix.quant.steamroller_cli:cli_main"
 noodle = "hypernix.interfaces.noodle.cli:cli_main"
 
 [project.urls]
-Homepage = "https://minerofthesoal.github.io/HyperNix-pip/"
-Source = "https://github.com/minerofthesoal/hypernix-pip"
-Issues = "https://github.com/minerofthesoal/hypernix-pip/issues"
-Logo = "https://raw.githubusercontent.com/minerofthesoal/hypernix-pip/main/assets/logo.png"
+Homepage = "https://trail-b1az3r.github.io/HyperNix-pip/"
+Source = "https://github.com/trail-b1az3r/hypernix-pip"
+Issues = "https://github.com/trail-b1az3r/hypernix-pip/issues"
+Logo = "https://raw.githubusercontent.com/trail-b1az3r/hypernix-pip/main/assets/logo.png"
 
 # ---------------------------------------------------------------------------
 # Setuptools: src/ layout + include extra files in the sdist via MANIFEST.in

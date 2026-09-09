@@ -25,8 +25,8 @@ export function Footer({ page, setPage, version, pages }) {
             {[['PyPI', 'https://pypi.org/project/hypernix/'],
               ['GitHub', 'https://github.com/trail-b1az3r/hypernix-pip'],
               ['HuggingFace', 'https://huggingface.co/ray0rf1re']].map(([l, h]) => (
-              <a key={l} href={h} target="_blank" rel="noreferrer" className="underline-grow"
-                className="footer-link"
+              <a key={l} href={h} target="_blank" rel="noreferrer"
+                className="underline-grow footer-link"
                 style={{ color: 'var(--text-faint)', fontSize: 12.5, textDecoration: 'none',
                   display: 'block', marginBottom: 7, width: 'fit-content' }}>{l} ↗</a>
             ))}
@@ -36,10 +36,10 @@ export function Footer({ page, setPage, version, pages }) {
               Site
             </div>
             {pages.filter(pp => pp !== page).slice(0, 4).map(pp => (
-              <button key={pp} onClick={() => setPage(pp)} className="underline-grow"
-                className="footer-link"
-                style={{ background: 'none', border: 'none', cursor: 'pointer',
-                  color: 'var(--text-faint)', fontSize: 12.5, display: 'block',
+              <button key={pp} onClick={() => setPage(pp)}
+                className="underline-grow footer-link"
+                style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                  color: 'var(--text-faint)', fontSize: 12.5, display: 'block', marginBottom: 7,
                   fontFamily: 'inherit', textTransform: 'capitalize' }}>{pp}</button>
             ))}
           </div>

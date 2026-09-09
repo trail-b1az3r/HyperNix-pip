@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="120" viewBox="0 0 1200 120" role="img" aria-label="HyperNix compact banner">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1">
+      <stop offset="0%" stop-color="#05060a" />
+      <stop offset="100%" stop-color="#0b0b0f" />
+    </linearGradient>
+    <linearGradient id="accent" x1="0" x2="1">
+      <stop offset="0%" stop-color="#ff2d55" />
+      <stop offset="100%" stop-color="#c3123b" />
+    </linearGradient>
+  </defs>
+
+  <!-- background -->
+  <rect width="1200" height="120" fill="url(#bg)" />
+
+  <!-- subtle diagonal glow shapes for depth (very low opacity so it doesn't overpower) -->
+  <path d="M0 120 C 200 40, 500 40, 800 120 L1200 120 L1200 0 L0 0 Z" fill="rgba(255,45,85,0.02)" />
+  <path d="M0 0 C 300 80, 700 80, 1200 0 L1200 120 L0 120 Z" fill="rgba(0,200,255,0.02)" />
+
+  <!-- compact logo on left (three slanted bars) -->
+  <g transform="translate(28,12) scale(0.7)">
+    <polygon points="0,0 160,0 140,34 -20,34" fill="url(#accent)" />
+    <polygon points="0,48 160,48 140,82 -20,82" fill="#9aa0a6" opacity="0.95" />
+    <polygon points="0,96 160,96 140,130 -20,130" fill="#0b0b0f" opacity="0.98" />
+  </g>
+
+  <!-- thin divider line at bottom for separation -->
+  <rect x="0" y="118" width="1200" height="2" fill="#121316" />
+</svg>
