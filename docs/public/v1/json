@@ -1,6 +1,6 @@
 {
-  "version": "0.72.3",
-  "total_downloads": 8793,
+  "version": "0.72.3.post8",
+  "total_downloads": 9389,
   "last_day": 0,
   "last_week": 0,
   "last_month": 0,
@@ -8,22 +8,6 @@
     "recent": {
       "window_days": 30,
       "daily": [
-        {
-          "date": "2026-08-03",
-          "downloads": 1
-        },
-        {
-          "date": "2026-08-05",
-          "downloads": 89
-        },
-        {
-          "date": "2026-08-06",
-          "downloads": 74
-        },
-        {
-          "date": "2026-08-07",
-          "downloads": 4
-        },
         {
           "date": "2026-08-08",
           "downloads": 20
@@ -123,34 +107,54 @@
         {
           "date": "2026-09-01",
           "downloads": 20
+        },
+        {
+          "date": "2026-09-02",
+          "downloads": 104
+        },
+        {
+          "date": "2026-09-03",
+          "downloads": 251
+        },
+        {
+          "date": "2026-09-04",
+          "downloads": 183
+        },
+        {
+          "date": "2026-09-05",
+          "downloads": 47
+        },
+        {
+          "date": "2026-09-06",
+          "downloads": 11
         }
       ]
     },
     "three_month": {
-      "days": 55,
-      "total_downloads": 3104,
-      "from": "2026-06-04",
-      "to": "2026-08-02"
+      "days": 54,
+      "total_downloads": 2946,
+      "from": "2026-06-09",
+      "to": "2026-08-07"
     },
     "older": {
-      "days": 39,
-      "total_downloads": 3968,
+      "days": 44,
+      "total_downloads": 4294,
       "from": "2026-04-21",
-      "to": "2026-06-03"
+      "to": "2026-06-08"
     }
   },
   "python_versions": [
     {
       "version": "3.12",
-      "downloads": 1690
+      "downloads": 1728
     },
     {
       "version": "3.11",
-      "downloads": 323
+      "downloads": 354
     },
     {
       "version": "3.14",
-      "downloads": 127
+      "downloads": 152
     },
     {
       "version": "3.10",
@@ -158,22 +162,22 @@
     },
     {
       "version": "3.13",
-      "downloads": 28
+      "downloads": 36
     }
   ],
   "operating_systems": [
     {
       "os": "Linux",
-      "downloads": 2017
+      "downloads": 2091
     },
     {
       "os": "Darwin",
-      "downloads": 239
+      "downloads": 267
     },
     {
       "os": "Windows",
       "downloads": 18
     }
   ],
-  "updated_at": "2026-09-02T22:50:35.982874Z"
+  "updated_at": "2026-09-07T22:59:24.376266Z"
 }
