@@ -21,7 +21,9 @@ next release header.
 - 𖢥 major bug fix
 - ꩜ restore to older version of item
 - ❗ unfixed known bug
-## 0.72.4.dev13 — the pinned llama.cpp stopped compiling
+## 0.72.4.post2 — Studio runs models itself, and the pinned llama.cpp builds again
+
+### The pinned llama.cpp stopped compiling
 
 `./build.sh` died on a current toolchain, in a file the patcher never
 opens: 𖢥
@@ -75,11 +77,11 @@ Five tests pin the invariants: the pin is not `b4585`, both `-include`
 flags reach CMake, the override exists, an existing checkout is
 reported, and the script is valid shell.
 
-## 0.72.4.dev12 — Studio runs models itself, and a patcher that matched reality
+### Studio runs models itself, and a patcher that matched reality
 
 Two things, and the first one was reported from a real build.
 
-### `patch_llamacpp.py` was written against a ggml that no longer exists 𖢥
+#### `patch_llamacpp.py` was written against a ggml that no longer exists 𖢥
 
 The build failed with "array index in initializer exceeds array bounds",
 then "no member named `vec_dot`", then "`ggml_vec_dot_t` undeclared".
@@ -117,7 +119,7 @@ are, compiles Studio's local engine against it, and checks `--revert`
 leaves the tree byte-identical. Only those two targets, so it is about
 two minutes rather than eight.
 
-### HyperNix Studio runs models on this machine ✨
+#### HyperNix Studio runs models on this machine ✨
 
 Studio was a client: chat went over HTTP to a HyperNix server, and a
 laptop with a GGUF on it still needed something running somewhere. Now
