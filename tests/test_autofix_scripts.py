@@ -378,6 +378,23 @@ class TestTargetLookup:
 # so the test fails for one reason beforehand and passes for one reason
 # after. plan_edits() only rewrites time.sleep() arguments and time-valued
 # keyword arguments, so a positional call to a local helper is left alone.
+# A test that must fail *deterministically*, so autofix-F has something to
+# widen. `_elapse` is a busy-wait rather than time.sleep() because autofix-F
+# scales sleeps, and this one is the fixed reference the scaled values move
+# against — it must stay put.
+#
+# Its 0.05 is load-bearing in both directions, against the coarsest clock
+# any runner has. IntervalTimer.should_fire() reads time.monotonic(), which
+# on Windows advances in ~15.6ms steps:
+#
+#   unwidened (interval 1e-06): 50ms of real time reads as >=34ms elapsed,
+#     so the timer has fired and `is False` fails — on any clock. At the
+#     1e-04 this used to be, a 100us wait often read as *zero* elapsed, the
+#     test passed, autofix-F correctly stood down, and the end-to-end test
+#     that expects a widening failed. That is a flake, not a fix.
+#   widened (interval 0.1): 50ms reads as at most ~66ms, still under the
+#     100ms interval, so `is False` holds; the scaled 0.2s sleep then puts
+#     it well past. Both sides keep ~35ms of margin.
 FAILING_TIMER_TEST = textwrap.dedent("""\
     from __future__ import annotations
 
@@ -394,7 +411,7 @@ FAILING_TIMER_TEST = textwrap.dedent("""\
 
     def test_interval_does_not_fire_immediately() -> None:
         t = timer.IntervalTimer(interval_seconds=1e-06).start()
-        _elapse(1e-04)
+        _elapse(0.05)
         assert t.should_fire() is False
         time.sleep(2e-06)
         assert t.should_fire() is True
