@@ -20,6 +20,141 @@ next release header.
 - 𖢥 major bug fix
 - ꩜ restore to older version of item
 - ❗ unfixed known bug
+## 0.72.4.dev10 — beta 1 pt 1: `gather`, and Neo oven learns the house architecture
+
+Everything below the fold first: the website's mobile view, the last GPU
+readers that still asked NVIDIA directly, the desktop app that did not
+compile, and CUDA kernels for the sub-bit types. Then beta 1 pt 1.
+
+### `hnx gather` — a crawler ✨
+
+A new module, `hypernix.data.gather`, and a subcommand that drives it:
+
+```
+hnx gather -W https://example.org -Q 2 -T 4 -p 1.5 -f jsonl -o ./corpus
+hnx gather -L "a.org,b.org" -f parquet -C --xz -O corpus-2026-09
+hnx gather probe -W https://example.org -u 8
+hnx gather formats --json
+```
+
+The flags are the ones that were asked for. `-W` a site, `-L` a
+comma-separated list, `-T` threads, `-Q` depth, `-p` the pause between
+requests, `-f` the format, `-o` where to write it, `-O` the file header
+(or, with `-C`, the archive's name), `-C` plus one of `--xz` / `--7z` /
+`--zip` / `--gz` to compress, `-U` to upload the result to a GitHub or
+Hugging Face repo, and `-u` to measure a host's rate limit before
+committing to a crawl.
+
+Formats: `html` (a file per page), `html-full` (every page merged into
+one document — single-site only, and `-L` is refused rather than
+quietly producing a mess), `html-full-wimages` (the same, with images
+inlined as data URIs), `text`, `jsonl`, `parquet`, and `js` — which
+**saves** the JavaScript it finds. Nothing here runs any of it: there is
+no interpreter in the module, no browser engine imported, and a test
+reads the source to keep it that way.
+
+Three things it does that a fetch loop does not:
+
+- **It asks and it waits.** robots.txt is honoured by default, there is
+  a delay between requests by default, and when a host's own
+  `Crawl-delay` asks for longer than `-p` the host wins.
+- **The rate limiter is per host and claims its slot inside the lock.**
+  Claimed outside it, two of `-T 8`'s threads both look at the clock,
+  both decide now is fine, and the delay you asked for is not the delay
+  the server sees.
+- **It cannot write outside `-o`.** A URL path is attacker-controlled
+  and becomes a file name; `safe_output_path` resolves the result and
+  requires it to be under the root, so a link to `/../../.ssh/authorized_keys`
+  lands in the corpus as a mangled file name and nowhere else.
+
+Scriptable, as asked: `--json` puts the machine-readable result on
+stdout with progress on stderr, and the exit codes are distinct — `0`
+wrote output, `1` could not start, `2` finished having fetched nothing,
+`3` wrote output but some pages failed. `3` rather than `0` matters: a
+crawl that got eight pages of ten is a corpus with holes in it, and a
+pipeline should be able to notice without parsing the JSON.
+
+`-U` never uploads without `--yes`. Publishing a scrape is not a step to
+take because a flag was in the history.
+
+### `websearch` upgraded rather than duplicated 🔁
+
+The instruction was to upgrade a module that already scrapes rather than
+add a second one, and `interfaces/websearch.py` already had its own
+`urlopen`, its own title regex, its own link extractor and its own tag
+stripper. `fetch_web_page` now delegates to `gather.fetch`, which brings
+it three things it did not have: robots.txt, a rate limit, and a
+content-type check with a size ceiling — a PDF used to be decoded as
+UTF-8 and returned as a page of replacement characters that then looked
+like real text to whatever read it. 🐛
+
+The returned shape is unchanged, down to the twenty `{'text', 'href'}`
+links, so every caller keeps working. The *search* functions still fetch
+their own results pages: they scrape one engine with engine-specific
+parsing, and routing them through a crawler's politeness layer would put
+a one-second pause in front of every lookup an agent makes.
+
+### hyperNix0x-v2 in Neo oven ✨
+
+`hypernix.models.brewer_adapter` teaches NeoOven the house architecture.
+`preheat_brewed()` and `new_brewed()` are the explicit entry points, and
+plain `preheat()` recognises a Brewer checkpoint and routes itself.
+
+The adapter is an `nn.Module` subclass, not a proxy, so `.to()`,
+`.parameters()`, `state_dict()`, the optimizer and gradient checkpointing
+all keep working without knowing it exists. What it is actually for is
+one argument position: `BrewerModel.forward(input_ids, attn_mask)`
+returns bare logits, and NeoOven calls `model(ids, labels=labels)["loss"]`.
+Passed straight through, `labels` binds to `attn_mask` and a tensor of
+token ids is used as an additive attention mask — which runs, stays
+finite, and trains into noise without ever raising. 𖢥
+
+`is_brewer_checkpoint()` looks rather than trusting the extension, and
+looks *without* unpickling: a torch `.pt` is a zip whose `data.pkl`
+member holds the object graph, so the top-level keys can be read out of
+the first 64 KB of that member as literal bytes. `torch.load` on an
+untrusted file executes code, and "is this one of ours" must never be
+the reason to run it.
+
+### The website's mobile view 🛜
+
+Item 25. The hero grid was `minmax(480px, 1fr)`, which cannot shrink
+below its minimum; inside `overflow: hidden` it clipped instead of
+scrolling, so `scrollWidth == clientWidth` and every "does this page
+scroll sideways" check passed while a 390 px phone lost the right third
+of the page. Now `minmax(min(480px, 100%), 1fr)`. 𖢥
+
+Also: a `@media (pointer: coarse)` block, a 44×44 hit target behind every
+copy button, and every inline `fontSize` below 11 raised to 11 — the
+first pass used `sed` for that and missed `9.5`, `10.0`, `9` and `8`.
+
+### Every GPU reader goes through one abstraction 🔁
+
+Item 20's last mile. `thermometer`, `tv`, `livestream`, `pascal` and
+`ethanol` each still asked `nvidia-smi` directly; an AMD card was absent
+from the temperature reading, the TV view and the livestream. They now
+go through `hypernix.system.gpus`, `read_gpu_temp()` is the max across
+all cards rather than the first one's, and a card with no temperature
+reports `None` instead of `0.0` — which had been drawn as a very cold
+GPU.
+
+### The desktop app compiles 🐛
+
+HyperNix Studio, from dev9, did not. Three places used a `std::string`
+where a `QString` was wanted, CMake required Qt 6.5 while Ubuntu 24.04
+and Debian 12 ship 6.4, and QML produced five *"Unable to assign
+[undefined] to QString"* warnings — which are not cosmetic: a failed
+assignment leaves the property at its **previous** value, so the tool
+approval dialog could show the last request's file path next to a live
+"Approve" button. 𖢥
+
+### CUDA for the sub-bit types ✨
+
+`native/ggml-hnx/ggml-hnx-cuda.cu`: one warp per row, `__shfl_down_sync`
+for the reduction, no shared memory, templated on the block geometry so
+all five types share one kernel. Checked against the C path, which is
+checked against the Python packer, exactly.
+
 ## 0.72.4.dev9 — a llama.cpp that reads sub-bit models, and a desktop app
 
 Two large pieces, plus three CI failures that were mine.

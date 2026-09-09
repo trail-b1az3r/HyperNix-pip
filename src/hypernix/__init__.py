@@ -63,7 +63,7 @@ import importlib.util
 import sys
 from typing import TYPE_CHECKING, Any
 
-__version__ = "0.72.4.dev9"
+__version__ = "0.72.4.dev10"
 DEFAULT_REPO_ID = "ray0rf1re/hyper-Nix.2"
 DEFAULT_MODEL = "qwen3.5-4b"  # New default model
 
@@ -271,21 +271,23 @@ MODULE_CATEGORIES: dict[str, tuple[str, ...]] = {
     ),
     # Datasets: collection, cleaning, splitting, packing and augmentation.
     "data": (
-        "blender",
-        "cardboard_box",
-        "cutting_board",
-        "food_processor",
-        "lunchbox",
-        "mediocre_fridge",
-        "pans",
-        "pepper_shaker",
-        "qa",
-        "salt_shaker",
-        "scavenger",
-        "sink",
-        "strainer",
-        "toaster",
-        "tupperware",
+        'blender',
+        'cardboard_box',
+        'cutting_board',
+        'food_processor',
+        'gather',
+        'gather_cli',
+        'lunchbox',
+        'mediocre_fridge',
+        'pans',
+        'pepper_shaker',
+        'qa',
+        'salt_shaker',
+        'scavenger',
+        'sink',
+        'strainer',
+        'toaster',
+        'tupperware',
     ),
     # Scoring, rubric labelling, judging and module verification.
     "evaluation": (
@@ -312,17 +314,18 @@ MODULE_CATEGORIES: dict[str, tuple[str, ...]] = {
     ),
     # Architectures, snapshot loading, generation and model utilities.
     "models": (
-        "arch",
-        "download",
-        "generate",
-        "microwave",
-        "multilama",
-        "nano_nano",
-        "neo_oven",
-        "old_oven",
-        "stml",
-        "whisk",
-        "workshop",
+        'arch',
+        'brewer_adapter',
+        'download',
+        'generate',
+        'microwave',
+        'multilama',
+        'nano_nano',
+        'neo_oven',
+        'old_oven',
+        'stml',
+        'whisk',
+        'workshop',
     ),
     # Live dashboards, logging, telemetry and hardware sampling.
     "monitoring": (
@@ -527,6 +530,8 @@ _LAZY_ATTRS: dict[str, tuple[str, str | None]] = {
     'menu': ('chat.menu', None),
     'microwave': ('models.microwave', None),
     'nano_nano': ('models.nano_nano', None),
+    'brewer_adapter': ('models.brewer_adapter', None),
+    'gather': ('data.gather', None),
     'neo_oven': ('models.neo_oven', None),
     'monitor': ('training.monitor', None),
     'net': ('system.net', None),

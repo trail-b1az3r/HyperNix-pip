@@ -97,6 +97,7 @@ _SUBCOMMANDS = {
     "vera",
     "scavenger",
     "config",
+    "gather",
     # v0.71.0
     "gkey",
     # v0.71.1
@@ -152,6 +153,7 @@ def _print_usage() -> None:
         table.add_row("[green]wiki[/]", "HyperNix documentation wiki CLI")
         table.add_row("[green]vera[/]", "Vera assistant CLI")
         table.add_row("[green]scavenger[/]", "Scavenger tools")
+        table.add_row("[green]gather[/]", "Crawl a site into a corpus (robots-aware)")
         table.add_row("[green]config[/]", "Configuration management")
         table.add_row("[green]gkey[/]", "API key & access management (Gatekeeper + Keymaster)")
         table.add_row("[green]map[/]", "Steampunk schematic TUI: dials/pipes/steam for model + training state")
@@ -198,6 +200,7 @@ def _print_usage() -> None:
             "  wiki                   HyperNix documentation wiki CLI\n"
             "  vera                   Vera assistant CLI\n"
             "  scavenger              Scavenger tools\n"
+            "  gather                 crawl a site into a corpus (robots-aware)\n"
             "  config                 Configuration management\n"
             "  gkey                   API key & access management (Gatekeeper + Keymaster)\n"
             "  map                    Steampunk schematic TUI: dials/pipes/steam for model + training state\n\n"
@@ -1070,6 +1073,10 @@ def main(argv: list[str] | None = None) -> int:
         from hypernix.audio.wakeup_cli import main as _wakeup_main
 
         return _wakeup_main(rest)
+    if cmd == "gather":
+        from hypernix.data.gather_cli import main as _gather_main
+
+        return _gather_main(rest)
     if cmd == "verify":
         return _run_verify(rest)
     if cmd == "info":

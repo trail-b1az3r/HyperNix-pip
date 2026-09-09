@@ -1,7 +1,30 @@
-"""websearch — non-API HTML-parsed web searching and page fetching module for HyperNix.
+"""websearch — non-API HTML-parsed web searching and page fetching.
 
-Allows searching the web without external paid API keys by using resilient HTML scraping
-with multiple fallbacks (DuckDuckGo, StartPage, SearXNG, Bing HTML).
+Searches without a paid API key, by scraping the HTML results pages of
+several engines with fallbacks (DuckDuckGo, StartPage, SearXNG, Bing).
+
+Page fetching now goes through :mod:`hypernix.data.gather`
+--------------------------------------------------------
+:func:`fetch_web_page` used to have its own ``urlopen`` call, its own
+title regex, its own link extractor and its own tag stripper. ``gather``
+has all four, plus three things this did not:
+
+* **robots.txt.** This fetched anything it was pointed at.
+* **A rate limit.** An agent calling this in a loop hit one host as fast
+  as the network allowed.
+* **A content-type check and a size ceiling.** A PDF or a 200 MB file
+  was decoded as UTF-8 and returned as a page of replacement characters,
+  which then looked like real text to whatever read it.
+
+Two implementations of "fetch a page and strip its tags" is two places
+for the same bug, and the one here was the weaker of the two. So this
+delegates, and the shape of what it returns is unchanged -- every caller
+keeps working.
+
+The *search* functions still do their own fetching. They are scraping
+one engine's results page with engine-specific parsing, not crawling,
+and routing them through a crawler's politeness layer would put a
+one-second delay in front of every search an agent makes.
 """
 from __future__ import annotations
 
@@ -136,56 +159,112 @@ def search_web_non_api(
 
 
 def fetch_web_page(url: str, max_length: int = 4000) -> dict[str, Any]:
-    """Fetch content of a web page and convert HTML into clean text and extracted links.
+    """Fetch a page and return clean text plus its links.
 
     Args:
-        url: Absolute web URL to fetch.
-        max_length: Character limit for text output.
+        url: Absolute http(s) URL.
+        max_length: Character limit on the text.
 
     Returns:
-        Dict with keys: 'url', 'title', 'text', 'links', 'status'.
+        ``{'url', 'title', 'text', 'links', 'status'}`` -- the same shape
+        this has always returned, so callers are unaffected.
+
+    Delegates to :mod:`hypernix.data.gather`, which brings robots.txt, a
+    per-host rate limit, a content-type check and a size ceiling that
+    this function did not have. See the module docstring.
     """
-    try:
-        req = _get_request(url)
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            html_raw = resp.read().decode("utf-8", errors="ignore")
+    from hypernix.data import gather
 
-        title_m = re.search(r"<title[^>]*>(.*?)</title>", html_raw, re.IGNORECASE | re.DOTALL)
-        title = html.unescape(title_m.group(1)).strip() if title_m else ""
+    # A module-level limiter, so an agent calling this in a loop is
+    # paced. Created once: a fresh limiter per call would remember
+    # nothing and pace nothing.
+    limiter = _shared_limiter()
 
-        # Extract links
-        raw_links = re.findall(r'<a[^>]*href="([^"]+)"[^>]*>(.*?)</a>', html_raw, re.IGNORECASE | re.DOTALL)
-        extracted_links: list[dict[str, str]] = []
-        for href, text in raw_links[:20]:
-            clean_text = html.unescape(re.sub(r"<[^>]+>", "", text)).strip()
-            if href.startswith("http") and clean_text:
-                extracted_links.append({"text": clean_text, "href": href})
-
-        # Clean HTML content to plain text
-        text = re.sub(r"<script.*?</script>", "", html_raw, flags=re.DOTALL | re.IGNORECASE)
-        text = re.sub(r"<style.*?</style>", "", text, flags=re.DOTALL | re.IGNORECASE)
-        text = re.sub(r"<[^>]+>", " ", text)
-        text = html.unescape(text)
-        text = re.sub(r"\s+", " ", text).strip()
-
-        if len(text) > max_length:
-            text = text[:max_length] + "…"
-
-        return {
-            "url": url,
-            "title": title,
-            "text": text,
-            "links": extracted_links,
-            "status": "success",
-        }
-    except Exception as exc:
+    robots = _shared_robots()
+    if not robots.allows(url):
         return {
             "url": url,
             "title": "",
-            "text": f"Error fetching URL '{url}': {exc}",
+            "text": f"robots.txt at this host disallows fetching {url}.",
             "links": [],
-            "status": f"error: {exc}",
+            "status": "error: disallowed by robots.txt",
         }
+
+    page = gather.fetch(url, timeout=15.0, limiter=limiter)
+    if not page.ok:
+        return {
+            "url": url,
+            "title": page.title,
+            "text": f"Error fetching URL '{url}': {page.error or page.status}",
+            "links": [],
+            "status": f"error: {page.error or page.status}",
+        }
+
+    text = page.text
+    if len(text) > max_length:
+        text = text[:max_length] + "\u2026"
+
+    # The old shape: 20 links, each with its anchor text. gather returns
+    # bare URLs because a crawler does not need the text, so the anchors
+    # are recovered here rather than changing gather's contract for one
+    # caller.
+    links = _links_with_text(page.html, url)[:20]
+
+    return {
+        "url": url,
+        "title": page.title,
+        "text": text,
+        "links": links,
+        "status": "success",
+    }
+
+
+_LIMITER = None
+_ROBOTS = None
+
+
+def _shared_limiter():
+    """One rate limiter for the process.
+
+    Module-level state, which is usually worth avoiding and is right
+    here: the whole point is to remember when this host was last
+    contacted, and a limiter created per call remembers nothing.
+    """
+    global _LIMITER
+    if _LIMITER is None:
+        from hypernix.data import gather
+
+        # Half a second rather than gather's 1.0: this serves an
+        # interactive agent looking things up, not a bulk crawl, and a
+        # one-second pause per lookup is felt.
+        _LIMITER = gather.RateLimiter(0.5)
+    return _LIMITER
+
+
+def _shared_robots():
+    global _ROBOTS
+    if _ROBOTS is None:
+        from hypernix.data import gather
+
+        _ROBOTS = gather.RobotsCache()
+    return _ROBOTS
+
+
+def _links_with_text(markup: str, base_url: str) -> list[dict[str, str]]:
+    """``[{'text', 'href'}]`` for the anchors in *markup*."""
+    out: list[dict[str, str]] = []
+    seen: set[str] = set()
+    pattern = re.compile(
+        r'<a[^>]*href="([^"]+)"[^>]*>(.*?)</a>', re.IGNORECASE | re.DOTALL
+    )
+    for href, body in pattern.findall(markup or ""):
+        label = html.unescape(re.sub(r"<[^>]+>", "", body)).strip()
+        target = urllib.parse.urljoin(base_url, html.unescape(href).strip())
+        if not label or not target.startswith("http") or target in seen:
+            continue
+        seen.add(target)
+        out.append({"text": label, "href": target})
+    return out
 
 
 def format_search_results(results: list[dict[str, str]]) -> str:
