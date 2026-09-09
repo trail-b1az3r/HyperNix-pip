@@ -21,6 +21,60 @@ next release header.
 - 𖢥 major bug fix
 - ꩜ restore to older version of item
 - ❗ unfixed known bug
+## 0.72.4.dev13 — the pinned llama.cpp stopped compiling
+
+`./build.sh` died on a current toolchain, in a file the patcher never
+opens: 𖢥
+
+```
+llama-mmap.h:26:5: error: 'uint32_t' does not name a type
+note: 'uint32_t' is defined in header '<cstdint>'
+```
+
+then a pile of *no declaration matches* errors after it, because once
+the compiler has guessed `int` for the return type nothing lines up any
+more.
+
+Not our patch. `src/llama-mmap.h` at the pinned tag uses `uint32_t`
+without including `<cstdint>`, and got away with it only while libstdc++
+handed `<cstdint>` out behind `<vector>` and `<memory>`. GCC 15 and 16
+stopped, upstream fixed that file — and our pin was nine months behind
+it. A pin is a promise that the revision builds, and `b4585` had stopped
+keeping it.
+
+**The pin moved to `b10883`**, which has upstream's fix. Verified the way
+the last one should have been: cloned, patched, configured, built to
+completion (exit 0, zero `error:` lines), then asked the built ggml what
+the five types are and ran `llama-cli --version` off the result.
+
+**And `-include cstdint` now goes ahead of every translation unit**
+(`-include stdint.h` for C), because moving the pin fixes the one file
+upstream fixed and not the class. 405 files at the *new* tag still get
+their fixed-width types from somebody else's header, so the next
+compiler to tighten its transitive includes breaks a different one. The
+flag costs nothing, edits no upstream source, and means a stale checkout
+or a `LLAMA_REF` you pinned yourself still builds. `HNX_FORCE_STDINT=0`
+turns it off — MSVC spells it `/FI`.
+
+**`build.sh` now says when it is reusing a checkout** rather than
+silently building whatever is there. That is how somebody pulls a fix to
+the patcher, re-runs the script, and rebuilds the same stale tree: the
+clone step is skipped when the directory exists, and nothing mentioned
+it. 🛡️
+
+Honest about what was not shown: this box has GCC 13, whose libstdc++
+still leaks `<cstdint>` transitively, so the original failure could not
+be reproduced here — three attempts at simulating the stricter headers
+were each defeated by GCC 13 pulling `<stdint.h>` in by another route.
+What *is* verified is that both the old and new pins build cleanly with
+the flags, that the new pin contains upstream's fix to the exact file
+that failed, and that `-include cstdint` is by definition GCC's own
+suggested fix applied to every translation unit.
+
+Five tests pin the invariants: the pin is not `b4585`, both `-include`
+flags reach CMake, the override exists, an existing checkout is
+reported, and the script is valid shell.
+
 ## 0.72.4.dev12 — Studio runs models itself, and a patcher that matched reality
 
 Two things, and the first one was reported from a real build.

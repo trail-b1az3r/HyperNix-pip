@@ -19,13 +19,39 @@
 # native kernel and still much faster than not loading at all.
 set -euo pipefail
 
-# Pinned rather than tracking master. The registration points this
-# patches have been stable for years, but "stable for years" is not
-# "stable this week", and a build that silently follows upstream is a
-# build that breaks on a day you were not looking. Move it deliberately:
-# bump this, run --check, fix what moved.
+# Pinned rather than tracking master. A build that silently follows
+# upstream is a build that breaks on a day you were not looking. Move it
+# deliberately: bump this, run --check, fix what moved.
+#
+# Moved from b4585, which no longer compiles. Not because of anything
+# here -- b4585's src/llama-mmap.h uses uint32_t without including
+# <cstdint>, and got away with it only because older libstdc++ headers
+# happened to pull <cstdint> in behind <vector> and <memory>. GCC 15 and
+# 16 stopped doing that, so the pinned build failed on a current
+# toolchain with "'uint32_t' does not name a type" and, once the
+# compiler had guessed `int` for it, a pile of no-declaration-matches
+# errors after it. Upstream fixed that file; the pin was nine months
+# behind it.
 LLAMA_REPO="${LLAMA_REPO:-https://github.com/ggml-org/llama.cpp.git}"
-LLAMA_REF="${LLAMA_REF:-b4585}"
+LLAMA_REF="${LLAMA_REF:-b10883}"
+
+# The same class of bug, defused rather than chased. Upstream still has
+# hundreds of files that get their fixed-width integer types from
+# somebody else's header, and the next compiler that tightens its
+# transitive includes will break a different one. Forcing <cstdint>
+# ahead of every translation unit costs nothing, edits no upstream
+# source, and means a stale checkout -- or a LLAMA_REF you pinned
+# yourself -- still builds.
+#
+# Overridable: HNX_FORCE_STDINT=0 turns it off if your compiler does not
+# take -include (MSVC wants /FI).
+if [ "${HNX_FORCE_STDINT:-1}" = "1" ]; then
+  STDINT_CXX="-include cstdint"
+  STDINT_C="-include stdint.h"
+else
+  STDINT_CXX=""
+  STDINT_C=""
+fi
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CHECK_ONLY=0
@@ -54,6 +80,22 @@ if [ ! -d "$TARGET" ]; then
   # Shallow, at the pinned tag: the full history is ~1 GB and nothing
   # here needs it.
   git clone --depth 1 --branch "$LLAMA_REF" "$LLAMA_REPO" "$TARGET"
+else
+  # An existing checkout is reused as-is, and that is the right default
+  # -- it may be one you are working in. But it is also how somebody
+  # pulls a fix to the patcher, re-runs this, and rebuilds the same
+  # stale tree they had before, which is a confusing way to spend an
+  # afternoon. So: say what is there, rather than deciding for them.
+  if [ -d "$TARGET/.git" ] && command -v git >/dev/null 2>&1; then
+    have="$(git -C "$TARGET" describe --tags --exact-match 2>/dev/null \
+            || git -C "$TARGET" rev-parse --short HEAD 2>/dev/null || echo unknown)"
+    if [ "$have" != "$LLAMA_REF" ]; then
+      echo "==> using the checkout already at $TARGET ($have)"
+      echo "    this script pins $LLAMA_REF. To move to it:"
+      echo "      rm -rf $TARGET && $0"
+      echo "    (or set LLAMA_REF=$have to pin what you have)"
+    fi
+  fi
 fi
 
 if [ "$CHECK_ONLY" = "1" ]; then
@@ -91,6 +133,8 @@ cmake -S "$TARGET" -B "$TARGET/build" \
   -DCMAKE_BUILD_TYPE=Release \
   -DGGML_NATIVE=OFF \
   -DLLAMA_BUILD_TESTS=OFF \
+  -DCMAKE_CXX_FLAGS="$STDINT_CXX ${CMAKE_CXX_FLAGS:-}" \
+  -DCMAKE_C_FLAGS="$STDINT_C ${CMAKE_C_FLAGS:-}" \
   "${@:2}"
 cmake --build "$TARGET/build" -j"$(nproc 2>/dev/null || echo 4)"
 

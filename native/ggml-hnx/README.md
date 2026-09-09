@@ -58,6 +58,39 @@ Test the decoder on its own, without cloning 200 MB of upstream:
 cmake -S . -B build && cmake --build build && ctest --test-dir build
 ```
 
+### If the build fails in a file we never touch
+
+`build.sh` pins a llama.cpp revision, and upstream has a long tail of
+files that get their fixed-width integer types (`uint32_t` and friends)
+from somebody else's header rather than from `<cstdint>`. That worked
+while libstdc++ handed `<cstdint>` out behind `<vector>` and `<memory>`.
+GCC 15 and 16 stopped doing that, so an older pin dies with:
+
+```
+llama-mmap.h:26:5: error: 'uint32_t' does not name a type
+note: 'uint32_t' is defined in header '<cstdint>'
+```
+
+followed by a pile of *no declaration matches* errors, because once the
+compiler has guessed `int` for the return type nothing lines up any
+more. None of it is the HyperNix patch — the patcher never opens
+`src/llama-mmap.h`.
+
+Two things handle it. The pin moved to a revision where upstream fixed
+that file, and `build.sh` passes `-include cstdint` (and `-include
+stdint.h` for C) so every translation unit gets the declaration before
+its first line, whatever revision you are on and whichever file trips
+next. Set `HNX_FORCE_STDINT=0` to turn that off — MSVC spells the flag
+`/FI`.
+
+If you already have a checkout, `build.sh` reuses it rather than
+re-cloning, and now says so along with the pin it expected. To move to
+the pinned revision:
+
+```bash
+rm -rf native/ggml-hnx/llama.cpp && ./build.sh
+```
+
 ## How it is put together
 
 | file | what |

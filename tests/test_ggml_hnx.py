@@ -467,6 +467,65 @@ class TestThePatcher:
             patch_llamacpp.main([str(tmp_path)])
 
 
+class TestTheBuildScript:
+    """`build.sh` is the thing people actually run.
+
+    It pins a llama.cpp revision, and a pin is a promise that the
+    revision builds. b4585 stopped keeping that promise: its
+    src/llama-mmap.h uses uint32_t without including <cstdint>, which
+    worked only while libstdc++ handed <cstdint> out behind <vector> and
+    <memory>. GCC 15 and 16 stopped, and `./build.sh` on a current
+    toolchain died with "'uint32_t' does not name a type" -- in a file
+    the patcher never touches.
+    """
+
+    SCRIPT = NATIVE / "build.sh"
+
+    def test_the_pin_is_not_the_one_that_stopped_building(self):
+        text = self.SCRIPT.read_text(encoding="utf-8")
+        pin = re.search(r'LLAMA_REF="\$\{LLAMA_REF:-([^}"]+)\}"', text)
+
+        assert pin is not None, "LLAMA_REF is no longer set the way this reads"
+        assert pin.group(1) != "b4585", (
+            "b4585 does not compile on GCC 15+; see the comment above the pin"
+        )
+
+    def test_it_forces_cstdint_ahead_of_every_translation_unit(self):
+        """The durable half. Moving the pin fixes the one file upstream
+        fixed; hundreds more still get their fixed-width integer types
+        from somebody else's header, so the next compiler to tighten its
+        transitive includes breaks a different one. `-include` costs
+        nothing and edits no upstream source.
+        """
+        text = self.SCRIPT.read_text(encoding="utf-8")
+
+        assert "-include cstdint" in text
+        assert "-include stdint.h" in text
+        assert "CMAKE_CXX_FLAGS" in text and "CMAKE_C_FLAGS" in text
+
+    def test_forcing_it_can_be_turned_off(self):
+        """MSVC spells it /FI. A flag no compiler has to accept should
+        not be the thing that stops a build."""
+        text = self.SCRIPT.read_text(encoding="utf-8")
+
+        assert "HNX_FORCE_STDINT" in text
+
+    def test_an_existing_checkout_is_reported_not_silently_reused(self):
+        """How somebody pulls a patcher fix, re-runs this, and rebuilds
+        the same stale tree: the clone step is skipped when the
+        directory is there, and nothing said so."""
+        text = self.SCRIPT.read_text(encoding="utf-8")
+
+        assert "using the checkout already at" in text
+        assert "this script pins" in text
+
+    def test_it_is_still_valid_shell(self):
+        result = subprocess.run(["bash", "-n", str(self.SCRIPT)],
+                                capture_output=True, text=True, check=False)
+
+        assert result.returncode == 0, result.stderr
+
+
 class TestTheCudaKernels:
     """Beta 1 shipped these types CPU-only. These are the GPU kernels.
 
