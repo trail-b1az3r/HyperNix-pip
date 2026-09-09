@@ -611,3 +611,15 @@ timeline
         : 0cfdb91 - patch_llamacpp- the traits table is two tables, and COUNT is a literal
 ```
 
+## Release v0.72.4.post3 (2026-09-09)
+
+```mermaid
+timeline
+    title Release v0.72.4.post3 Commits
+    0.72.4.post3
+        : c29c77d - 0.72.4.post2 — rebase onto the released main
+        : c375b0d - 0.72.4.dev13 — the pinned llama.cpp had stopped compiling
+        : 2ead0f2 - 0.72.4.dev12 — Studio runs models itself, with no server
+        : 6a02fc0 - Auto-update README header (hourly)
+```
+
