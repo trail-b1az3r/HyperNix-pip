@@ -21,6 +21,85 @@ next release header.
 - 𖢥 major bug fix
 - ꩜ restore to older version of item
 - ❗ unfixed known bug
+## 0.72.4.post4 — `hnx runtime`, and why `hnx gather` printed the usage table
+
+### `hnx gather` was reaching a different install 𖢥
+
+The command was registered, dispatched and tested, and it still answered
+with the usage table on a real machine. `hnx` is not
+`hypernix.interfaces.cli` — it is `version_launcher`, which re-execs the
+CLI on an interpreter it picks. It picked by *version number*: python3.12,
+then 3.13, then 3.14, running the first one where hypernix imported —
+whichever that was.
+
+So on a machine with an old hypernix on 3.12 and a fresh
+`pip install --upgrade` on 3.13, `hnx` ran the old one. Every subcommand
+added since that 3.12 install was missing, the CLI printed what it did
+recognise, and nothing said a different install was answering. `gather`
+was simply the first command new enough to notice.
+
+`sys.executable` in a console script *is* the interpreter pip installed
+it into, which is the install just upgraded — so that one is tried
+first now, and the version list is only the fallback for what it was
+really meant to cover: the script is on PATH but its own interpreter
+lost the package. When the fallback does fire and lands on a different
+version, it says so on stderr. And reaching our own interpreter no
+longer spawns a subprocess to do it.
+
+The tests asserted the old ordering ("prefers 3.12"), so they asserted
+the bug; they now assert the fix, plus one that walks every recent
+subcommand through the real entry point rather than through `cli.main`.
+
+### `hnx runtime` — the patched llama.cpp, from other applications ✨
+
+`native/ggml-hnx` builds a llama.cpp that reads the sub-bit types. This
+is how everything else gets to use it, and there are two routes with
+very different risk.
+
+**`serve`** starts the patched `llama-server`, which speaks the
+OpenAI-compatible API that LM Studio, Jan, Open WebUI, Continue, Zed and
+Cursor already know. Nothing on the machine is modified. It prints the
+base URL and where to paste it — on stderr, so `--print-only` leaves
+stdout a bare command line.
+
+**`install`** copies the patched libraries over the ones LM Studio
+bundles. That is surgery on somebody else's application, so: refused
+without `--yes`; everything replaced is copied to
+`~/.hypernix/runtime-bridge/backup` with a manifest first, so `restore`
+works after the installing process is gone; a directory with nothing
+named like `libllama` or `libggml` in it is refused rather than filled
+with shared objects; and an unpatched build is refused, because
+installing one replaces a runtime that cannot read sub-bit models with
+another that cannot, while looking like a fix. Whether a build is
+patched is read out of the binary, not guessed from its path. 🛡️
+
+**`path`** prints the bin directory bare, for
+`export LD_LIBRARY_PATH="$(hnx runtime path)"`.
+
+Verified end to end rather than mocked: the real patched build was
+detected as patched and a stock build of the same tag as *not*; the
+server was started against a real model and answered a real
+`/v1/chat/completions`; and install/restore round-tripped against a fake
+LM Studio tree with the originals coming back byte-for-byte.
+
+Two bugs the tests found before anyone else could:
+
+**The backup directory collided.** `strftime` has one-second
+resolution, so two installs in the same second shared a directory and
+the second overwrote the first's copies — with *our* libraries, since
+that is what the target held by then. Restore put ours back and the
+originals were gone for good. Small window, total loss.
+
+**A leading global option was mistaken for "no subcommand".**
+`--build DIR install --yes` starts with a dash, so the bare-invocation
+shortcut prepended `status` and argparse rejected the line. Decided by
+looking for a subcommand anywhere in the arguments now. `--json` and
+`--build` are also accepted on both sides of the subcommand, because
+people type both.
+
+Docs: `wiki/Runtime.md`, a `runtime` section in `CLI.md`. 37 tests.
+Full suite 5122 passed.
+
 ## 0.72.4.post2 — Studio runs models itself, and the pinned llama.cpp builds again
 
 ### Twenty-five copies of one upstream warning

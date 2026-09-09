@@ -43,6 +43,7 @@ Data & infra:
   scavenger              search + pull HF datasets under storage/quality budgets
   gather                 crawl a site into a corpus (see Gather.md)
   fusebox                GPU thermal governor for a run (see FuseBox.md)
+  runtime                use the HyperNix llama.cpp from LM Studio etc.
   websearch              non-API web search utility
   net                    Tailscale mesh connect / export / log tailing
   gkey                   API key issuance, scoping, revocation (Gatekeeper + Keymaster)
@@ -539,6 +540,24 @@ so `hnx fusebox restore` can undo it after a crash.
 
 `hnx train run --thermal-target 78` paces a training run the same way,
 without touching any card setting.
+
+## `runtime`
+
+```bash
+hnx runtime status                # what is built, detected, installed
+hnx runtime serve model.gguf      # start the patched server
+hnx runtime path                  # the build's bin directory
+hnx runtime install --yes         # put it inside LM Studio
+hnx runtime restore --yes         # put LM Studio back
+```
+
+Makes the llama.cpp from `native/ggml-hnx` — the one that reads the
+sub-bit types — usable from other applications. `serve` starts an
+OpenAI-compatible server anything can point at and changes nothing on
+the machine; `install` replaces the libraries LM Studio bundles, which
+needs `--yes`, is backed up, and is undone by `restore`.
+
+Full documentation in [Runtime](Runtime.md).
 
 ## `websearch`
 

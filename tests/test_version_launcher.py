@@ -101,95 +101,70 @@ class TestCheckHypernixInstalled:
 
 
 class TestFindBestPython:
-    """Tests for find_best_python function."""
+    """Which interpreter runs the CLI.
+
+    This used to try python3.12, then 3.13, then 3.14, and return the
+    first one with hypernix installed -- *whichever* that was. On a
+    machine with an old hypernix on 3.12 and a fresh `pip install
+    --upgrade` on 3.13, `hnx` ran the old one, so every subcommand added
+    since that 3.12 install was missing and the CLI answered with its
+    usage table instead. Nothing said a different install was answering.
+
+    These assert the other order. The interpreter that owns the console
+    script goes first, because that is the one `pip` just upgraded.
+    """
+
+    def test_this_interpreter_wins_when_it_has_hypernix(self):
+        import sys
+
+        # hypernix is importable in the test process by construction,
+        # which is exactly the situation a `pip install` leaves behind.
+        assert find_best_python() == sys.executable
 
     @patch("hypernix.version_launcher.check_hypernix_installed")
-    def test_prefers_3_12_when_available(self, mock_check):
-        """Test that 3.12 is preferred when hypernix is installed there."""
-        # Mock: 3.12 has hypernix, others don't matter
-        mock_check.side_effect = lambda x: x == "python3.12"
-        
-        result = find_best_python()
-        
-        assert result == "python3.12"
-        # Should check 3.12 first and return immediately
-        mock_check.assert_called_with("python3.12")
+    def test_the_version_list_is_only_a_fallback(self, mock_check):
+        """It is for the case this was really meant to cover: the script
+        is on PATH but its own interpreter no longer has the package."""
+        mock_check.side_effect = lambda exe: exe == "python3.13"
 
-    @patch("hypernix.version_launcher.check_hypernix_installed")
-    def test_falls_back_to_3_13_if_3_12_missing(self, mock_check):
-        """Test fallback to 3.13 when 3.12 doesn't have hypernix."""
-        # Mock: 3.12 doesn't have it, 3.13 does
-        def side_effect(exe):
-            if exe == "python3.12":
-                return False
-            elif exe == "python3.13":
-                return True
-            return False
-        
-        mock_check.side_effect = side_effect
-        
-        result = find_best_python()
-        
+        # None in sys.modules makes `import hypernix` raise, standing in
+        # for an interpreter that does not have it.
+        with patch.dict("sys.modules", {"hypernix": None}):
+            result = find_best_python()
+
         assert result == "python3.13"
 
     @patch("hypernix.version_launcher.check_hypernix_installed")
-    def test_falls_back_to_3_14_if_3_12_and_3_13_missing(self, mock_check):
-        """Test fallback to 3.14 when 3.12 and 3.13 don't have hypernix."""
-        # Mock: only 3.14 has hypernix
-        def side_effect(exe):
-            return exe == "python3.14"
-        
-        mock_check.side_effect = side_effect
-        
-        result = find_best_python()
-        
-        assert result == "python3.14"
+    def test_the_fallback_keeps_its_priority_order(self, mock_check):
+        """3.12 before 3.13 before 3.14 within the fallback. That half
+        was never the problem."""
+        mock_check.side_effect = lambda exe: exe in ("python3.12", "python3.14")
+
+        with patch.dict("sys.modules", {"hypernix": None}):
+            assert find_best_python() == "python3.12"
+
+    @patch("hypernix.version_launcher.check_hypernix_installed")
+    def test_the_fallback_reaches_the_last_version(self, mock_check):
+        mock_check.side_effect = lambda exe: exe == "python3.14"
+
+        with patch.dict("sys.modules", {"hypernix": None}):
+            assert find_best_python() == "python3.14"
+
+    @patch("hypernix.version_launcher.check_hypernix_installed")
+    @patch("hypernix.version_launcher.sys.platform", "win32")
+    def test_it_checks_the_windows_spelling_in_the_fallback(self, mock_check):
+        mock_check.side_effect = lambda exe: exe == "python312"
+
+        with patch.dict("sys.modules", {"hypernix": None}):
+            assert find_best_python() == "python312"
 
     @patch("hypernix.version_launcher.check_hypernix_installed")
     @patch("hypernix.version_launcher.sys.executable", "/usr/bin/python3")
     def test_falls_back_to_current_python_if_none_have_hypernix(self, mock_check):
-        """Test fallback to current Python if no versioned Python has hypernix."""
-        # Mock: no versioned Python has hypernix
         mock_check.return_value = False
-        
-        # Mock import of hypernix in current Python
+
         with patch.dict("sys.modules", {"hypernix": MagicMock()}):
-            result = find_best_python()
-            
-            assert result == "/usr/bin/python3"
-
-    @patch("hypernix.version_launcher.check_hypernix_installed")
-    def test_returns_none_if_no_python_has_hypernix_and_current_doesnt_either(
-        self, mock_check
-    ):
-        """Test returns None if no Python version has hypernix installed."""
-        # Mock: no versioned Python has hypernix
-        mock_check.return_value = False
-        
-        # Mock: current Python also doesn't have hypernix by patching the import
-        with patch("hypernix.version_launcher.sys.modules", {}):
-            with patch("builtins.__import__", side_effect=ImportError("No module named 'hypernix'")):
-                result = find_best_python()
-                
-                assert result is None
-
-    @patch("hypernix.version_launcher.sys.platform", "win32")
-    @patch("hypernix.version_launcher.check_hypernix_installed")
-    def test_checks_windows_format_on_windows(self, mock_check):
-        """Test that Windows-specific executable names are checked."""
-        # Mock: python3.12 fails, but python312 (Windows format) succeeds
-        def side_effect(exe):
-            if exe == "python312":
-                return True
-            return False
-        
-        mock_check.side_effect = side_effect
-        
-        result = find_best_python()
-        
-        assert result == "python312"
-        # Should have checked both python3.12 and python312
-        assert mock_check.call_count >= 2
+            assert find_best_python() == "/usr/bin/python3"
 
 
 class TestMainLauncher:
@@ -226,20 +201,39 @@ class TestMainLauncher:
 
     @patch("hypernix.version_launcher.subprocess.run")
     @patch("hypernix.version_launcher.find_best_python")
-    def test_re_invokes_with_selected_python(self, mock_find_best, mock_subprocess_run):
-        """Test that launcher re-invokes with selected Python version."""
+    def test_re_invokes_only_for_a_different_interpreter(
+        self, mock_find_best, mock_subprocess_run):
+        """A subprocess is for reaching *another* install. Spawning one
+        to reach our own would be a fork, an import and a process for
+        nothing."""
         mock_find_best.return_value = "python3.12"
         mock_subprocess_run.return_value = MagicMock(returncode=0)
-        
+
         from hypernix.version_launcher import run_with_selected_python
-        
+
         result = run_with_selected_python(["--version"])
-        
+
         assert result == 0
-        mock_subprocess_run.assert_called_once_with(
-            ["python3.12", "-m", "hypernix", "--version"],
-            check=False,
-        )
+        assert mock_subprocess_run.call_args_list[-1].args[0] == [
+            "python3.12", "-m", "hypernix", "--version"
+        ]
+
+    def test_our_own_interpreter_is_called_in_process(self, monkeypatch):
+        """No subprocess at all in the common case."""
+        import sys
+
+        from hypernix import version_launcher
+
+        monkeypatch.setattr(version_launcher, "find_best_python",
+                            lambda: sys.executable)
+        calls = []
+        monkeypatch.setattr(version_launcher.subprocess, "run",
+                            lambda *a, **k: calls.append(a) or MagicMock(returncode=0))
+        monkeypatch.setattr("hypernix.interfaces.cli.main",
+                            lambda argv: 7)
+
+        assert version_launcher.run_with_selected_python(["--version"]) == 7
+        assert calls == [], "should not have spawned anything"
 
     @patch("hypernix.version_launcher.find_best_python")
     def test_falls_back_to_current_when_selected_not_found(

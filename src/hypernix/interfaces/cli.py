@@ -100,6 +100,7 @@ _SUBCOMMANDS = {
     "gather",
     "fusebox",
     "fuse-box",
+    "runtime",
     # v0.71.0
     "gkey",
     # v0.71.1
@@ -157,6 +158,7 @@ def _print_usage() -> None:
         table.add_row("[green]scavenger[/]", "Scavenger tools")
         table.add_row("[green]gather[/]", "Crawl a site into a corpus (robots-aware)")
         table.add_row("[green]fusebox[/]", "GPU thermal governor: pace a run, trip on heat, underclock")
+        table.add_row("[green]runtime[/]", "Use the HyperNix llama.cpp from LM Studio and other apps")
         table.add_row("[green]config[/]", "Configuration management")
         table.add_row("[green]gkey[/]", "API key & access management (Gatekeeper + Keymaster)")
         table.add_row("[green]map[/]", "Steampunk schematic TUI: dials/pipes/steam for model + training state")
@@ -205,6 +207,7 @@ def _print_usage() -> None:
             "  scavenger              Scavenger tools\n"
             "  gather                 crawl a site into a corpus (robots-aware)\n"
             "  fusebox                GPU thermal governor for a training run\n"
+            "  runtime                use the HyperNix llama.cpp from other apps\n"
             "  config                 Configuration management\n"
             "  gkey                   API key & access management (Gatekeeper + Keymaster)\n"
             "  map                    Steampunk schematic TUI: dials/pipes/steam for model + training state\n\n"
@@ -1093,6 +1096,10 @@ def main(argv: list[str] | None = None) -> int:
         from hypernix.system.fusebox_cli import main as _fusebox_main
 
         return _fusebox_main(rest)
+    if cmd == "runtime":
+        from hypernix.quant.runtime_bridge_cli import main as _runtime_main
+
+        return _runtime_main(rest)
     if cmd == "verify":
         return _run_verify(rest)
     if cmd == "info":
