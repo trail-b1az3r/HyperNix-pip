@@ -129,10 +129,27 @@ echo "==> building llama.cpp"
 # architecture rather than only the one that built it -- these get
 # copied onto other boxes, and an illegal-instruction crash on startup
 # is a confusing way to learn about -march=native.
+# C++17 for the whole tree, which is the standard upstream actually
+# targets: ggml/CMakeLists.txt sets CMAKE_CXX_STANDARD 17, but only
+# inside its own subdirectory, so tools/ and common/ get whatever the
+# compiler defaults to. GCC 13 defaults to gnu++17 and is quiet; GCC 16
+# defaults to a newer one, where a bitwise OR between two different
+# enum types is deprecated (C++20, P1120R0) -- and tools/mtmd does
+# exactly that in clip-graph.h, once per translation unit that includes
+# it. The result is the same upstream warning twenty-five times in a
+# build log, which is a good way to miss a real error in it.
+#
+# Setting the standard rather than passing -Wno-...: the warning is
+# telling the truth, it is just telling it about code compiled to a
+# standard nobody asked for. Nothing in llama.cpp requires C++20. A
+# -DCMAKE_CXX_STANDARD=20 of your own still wins -- it lands after this
+# on the command line, and CMake takes the last one.
 cmake -S "$TARGET" -B "$TARGET/build" \
   -DCMAKE_BUILD_TYPE=Release \
   -DGGML_NATIVE=OFF \
   -DLLAMA_BUILD_TESTS=OFF \
+  -DCMAKE_CXX_STANDARD=17 \
+  -DCMAKE_CXX_STANDARD_REQUIRED=ON \
   -DCMAKE_CXX_FLAGS="$STDINT_CXX ${CMAKE_CXX_FLAGS:-}" \
   -DCMAKE_C_FLAGS="$STDINT_C ${CMAKE_C_FLAGS:-}" \
   "${@:2}"
