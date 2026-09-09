@@ -510,6 +510,35 @@ class TestTheBuildScript:
 
         assert "HNX_FORCE_STDINT" in text
 
+    def test_it_pins_the_c_plus_plus_standard(self):
+        """ggml sets CMAKE_CXX_STANDARD 17 inside its own subdirectory,
+        so tools/ and common/ get the compiler's default instead. GCC 13
+        defaults to gnu++17 and is quiet; GCC 16 defaults to a newer one,
+        where a bitwise OR between two enum types is deprecated -- and
+        tools/mtmd/clip-graph.h does that once per translation unit that
+        includes it. Measured on b10883: 46 copies of the same upstream
+        warning at C++20, none at C++17, with the target still linking.
+
+        Suppressing it with -Wno- would have been the wrong fix. The
+        warning is true; it is just being told about code compiled to a
+        standard nobody asked for.
+        """
+        text = self.SCRIPT.read_text(encoding="utf-8")
+
+        assert "-DCMAKE_CXX_STANDARD=17" in text
+        assert "-DCMAKE_CXX_STANDARD_REQUIRED=ON" in text
+        assert "-Wno-deprecated-enum-enum-conversion" not in text
+
+    def test_a_caller_can_still_choose_a_newer_standard(self):
+        """`"${@:2}"` goes last on the command line and CMake takes the
+        final -D, so a -DCMAKE_CXX_STANDARD=20 of your own wins."""
+        text = self.SCRIPT.read_text(encoding="utf-8")
+        invocation = text.split('cmake -S "$TARGET" -B "$TARGET/build"', 1)[1]
+        ours = invocation.index("-DCMAKE_CXX_STANDARD=17")
+        theirs = invocation.index('"${@:2}"')
+
+        assert ours < theirs, "the caller's flags must come after ours"
+
     def test_an_existing_checkout_is_reported_not_silently_reused(self):
         """How somebody pulls a patcher fix, re-runs this, and rebuilds
         the same stale tree: the clone step is skipped when the

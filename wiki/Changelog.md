@@ -23,6 +23,33 @@ next release header.
 - ❗ unfixed known bug
 ## 0.72.4.post2 — Studio runs models itself, and the pinned llama.cpp builds again
 
+### Twenty-five copies of one upstream warning
+
+The build works — that log was warnings, not errors, and `mtmd` linked
+at 71%. But it repeated the same upstream deprecation once per
+translation unit, and a log like that is a good way to miss a real error
+in it.
+
+`ggml/CMakeLists.txt` sets `CMAKE_CXX_STANDARD 17`, but only inside its
+own subdirectory, so `tools/` and `common/` get whatever the compiler
+defaults to. GCC 13 defaults to `gnu++17` and says nothing; GCC 16
+defaults to a newer one, where a bitwise OR between two different enum
+types is deprecated (C++20, P1120R0) — and `tools/mtmd/clip-graph.h`
+does exactly that in a macro every model file includes.
+
+`build.sh` now passes `-DCMAKE_CXX_STANDARD=17` for the whole tree,
+which is the standard upstream actually targets and tests against.
+Nothing in llama.cpp needs C++20. Measured on b10883, building `mtmd`:
+**46 warnings at C++20, 0 at C++17**, target still linking, no errors
+either way.
+
+Not `-Wno-deprecated-enum-enum-conversion`, which was the tempting
+one-liner. The warning is telling the truth — it is just telling it
+about code compiled to a standard nobody asked for, and silencing it
+would have hidden the same construct if it ever appeared in ours. A
+`-DCMAKE_CXX_STANDARD=20` of your own still wins: it lands after ours on
+the command line and CMake takes the last one.
+
 ### The pinned llama.cpp stopped compiling
 
 `./build.sh` died on a current toolchain, in a file the patcher never
