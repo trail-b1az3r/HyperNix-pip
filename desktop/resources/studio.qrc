@@ -1,0 +1,22 @@
+<RCC>
+    <!-- Compiled in rather than loaded from disk: a QML file next to the
+         binary is a QML file somebody can edit, and this one drives the
+         approval dialog. -->
+    <qresource prefix="/">
+        <file>qml/Main.qml</file>
+        <file>qml/Theme.qml</file>
+        <file>qml/qmldir</file>
+        <file>qml/Sidebar.qml</file>
+        <file>qml/ConnectPanel.qml</file>
+        <file>qml/ChatView.qml</file>
+        <file>qml/MessageBubble.qml</file>
+        <file>qml/CodeView.qml</file>
+        <file>qml/ModelsView.qml</file>
+        <file>qml/MachineView.qml</file>
+        <file>qml/Meter.qml</file>
+        <file>qml/ToolApproval.qml</file>
+        <file>qml/StudioButton.qml</file>
+        <file>qml/StudioField.qml</file>
+        <file>qml/ErrorBanner.qml</file>
+    </qresource>
+</RCC>

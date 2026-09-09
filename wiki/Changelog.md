@@ -20,6 +20,142 @@ next release header.
 - 𖢥 major bug fix
 - ꩜ restore to older version of item
 - ❗ unfixed known bug
+## 0.72.4.dev9 — a llama.cpp that reads sub-bit models, and a desktop app
+
+Two large pieces, plus three CI failures that were mine.
+
+### `native/ggml-hnx` — sub-bit types in C
+
+Item 24 asked for HyprSlug models to load in LM Studio. They cannot, and
+header rewriting cannot make them: `IQ0.5_XXXL` is not a llama.cpp
+quantisation under a different name, it is different arithmetic. A loader
+that believes a rewritten header reads a 30-byte block as though it were
+a 210-byte Q3_K one, and what comes out is noise. So: ✨ the decoder, in
+C, to be compiled into llama.cpp — which is what LM Studio runs.
+
+All five types (`IQ0.9_L`, `IQ0.75_M`, `IQ0.5_XXXL`, `IQ0.25_UXL`,
+`INT1`), decode plus `vec_dot`. The dot product never materialises a
+row: every weight is ±scale, so a block reduces to `scale · Σ(±y)`.
+That is the compensation for throwing the magnitudes away — these types
+are cheap to multiply precisely because so little of them survives.
+
+**The test that shapes everything else.** If the C and the Python
+disagree by one bit of one byte, the model loads, runs at full speed, and
+emits fluent nonsense. Nothing about that looks like a failure. So
+`tools/gen_vectors.py` has `hypernix.quant.subbit` — which wrote every
+HyperNix sub-bit file in existence — pack blocks and record its own
+decoding, and the C compares element by element, **exactly**. No
+tolerance: both sides multiply the same FP16 scale by ±1, so there is
+nothing to forgive, and a tolerance would hide the errors this exists to
+catch. The vectors include all-positive, all-negative, alternating and
+group-aligned blocks, because a uniform block passes with the bit order
+reversed. 45 blocks, all five types, identical.
+
+That is also why the decoder has no ggml dependency — it is buildable
+with a compiler and nothing else, which is how the bit order was
+verified rather than assumed.
+
+**Registration is a patcher, not a `.patch`.** 🔧 llama.cpp moves fast
+and a diff against line numbers rots in weeks: a rejected hunk, no idea
+which half applied, and a half-patched tree that compiles.
+`patch_llamacpp.py` finds each point by pattern, edits everything in
+memory, and writes nothing at all if any anchor moved. Idempotent, and
+`--revert` undoes it.
+
+Writing it found three bugs in itself, all caught by the round trip:
+
+- Two edits target `ggml.c`. Reading it fresh for each while writing both
+  meant the second write discarded the first, so the traits table was
+  never registered and *nothing said so* — the enum was there, the tree
+  looked patched, and the build failed later with an unrelated-looking
+  error. 𖢥
+- One shared marker string was a substring of three different first
+  lines, so `--revert` matched the wrong block and deleted sixty lines of
+  `ggml.c`. Each edit now has a unique marker, matched exactly, and revert
+  verifies the block it is about to remove is the one that was added. 𖢥
+- The `IQ0.25` decoder advanced the bit cursor by `group` instead of
+  `kept` in a first, unrolled draft. One loop driven by the type table
+  replaced four near-identical copies for exactly that reason.
+
+Said plainly in the README rather than left to be discovered: this makes
+a sub-bit model loadable and **correct**, not good — below ~1.5 bits per
+weight it is a different, much worse model. The types are CPU-only here;
+the CUDA kernel is not written. `from_float` is NULL on all five so
+`llama-quantize` refuses cleanly instead of producing a file that is the
+right size and wrong inside. And the LM Studio runtime swap is
+version-specific and unsupported by them, which the README says.
+
+### `desktop/` — HyperNix Studio
+
+✨ A Qt 6 / QML desktop client: model switching, chat, a workspace of
+code the model can edit, Hugging Face resolution, and a GPU/CPU/RAM panel
+from the server's own abstraction. It authenticates with a **T2S key** —
+read and non-admin write — because nothing it does is administration.
+
+**It cannot run a command.** No shell tool, no `exec`, no "run the tests"
+button. Not disabled — absent. A model can ask for a file to be written
+and a person can agree; there is no path by which a model runs code. That
+is the only guarantee in the app that does not depend on a check being
+correct, and the way to keep it is not to write the feature.
+`tests/test_studio_core.py` greps the sources for `system(`, `popen(`,
+`exec*`, `fork(`, `QProcess` and `posix_spawn` so it stays that way.
+
+**Two boundary checks, neither redundant.** `ToolPolicy::Resolve` is
+lexical — it collapses `..` and requires the result to be under the
+workspace with no filesystem access at all, so every escape is testable
+and none needs a disk. `ToolRunner::IsTrulyInside` is the filesystem
+check, run again immediately before each operation, and it catches what
+the lexical one cannot: a symlink *inside* the workspace pointing out of
+it, which passes every string test there is. Running it at the moment of
+the write also closes the gap between deciding and doing.
+
+**The approval dialog is mostly a list of things it does not have:** no
+"approve all", no "remember this", no timeout, no click-outside-to-
+dismiss, and no default focus on the affirmative button. Each of those is
+the same feature under a different name — a way for a file to be written
+without anyone having looked. A `Deny` never becomes a prompt at all:
+there is nothing to approve about reading a private key, and a dialog for
+one is a dialog people learn to click through, which would then be there
+for the request that mattered.
+
+The security core has no Qt dependency, on purpose, so CI checks it on a
+runner with no Qt: 110 checks across two suites, including every path
+escape and, on a real filesystem, symlinked files *and* symlinked
+directories.
+
+**Not verified:** the Qt half. There is no Qt in the environment this was
+written in, so `HyperLinkClient`, `StudioBridge` and all fifteen `.qml`
+files are unbuilt — written against the Qt 6.5 APIs and reviewed, not
+compiled. `desktop/README.md` says so where someone will read it before
+their first build.
+
+### Three CI failures 𖢥
+
+**A collected systemd unit reported every job as a success.**
+`systemctl show` does not error for a unit that no longer exists — it
+answers with property *defaults*: `ActiveState=inactive`,
+`Result=success`, `ExecMainStatus=0`. Indistinguishable from a clean run,
+and `--collect` reaps the unit the moment it exits. A job that exited 7
+was reported as having succeeded: not "we lost the outcome", the opposite
+of it. Both supervisors now share one exit-recording wrapper, and
+`<log>.exit` is authoritative.
+
+**The systemd path recorded no pid.** Everything that is not systemd
+addresses a job by pid — `--status`, and dev7's training pause/resume —
+and all of it was operating on pid 0.
+
+**The icon geometry check was the one assertion that skipped.**
+`make_appicon.py` imported Pillow at the top and CI installs without
+Pillow, so the test comparing the drawn coordinates to
+`hypernix-icon.svg` errored out instead of running. Pillow now loads
+inside the drawing functions, with a second test asserting the module
+still imports without it.
+
+All three passed locally because this container cannot run the branch
+they were in — no user bus, so setsid is always chosen. They are now
+covered by feeding the real `systemctl show` output into `refresh()`,
+because a test that only runs somewhere else is how both shipped.
+
 ## 0.72.4.dev8 — HyperLink knows which machine it is talking to
 
 Item 1, plus the app icon and the release plumbing.

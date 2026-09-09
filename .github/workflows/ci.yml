@@ -307,6 +307,58 @@ jobs:
           echo '--- t1api ---'; tail -n 100 t1api.log || true
           echo '--- fake model ---'; tail -n 40 fake-model.log || true
 
+  # The two C/C++ pieces: the ggml sub-bit decoder and Studio's tool
+  # policy. Both are deliberately free of their heavy dependency -- the
+  # decoder needs no ggml, the policy needs no Qt -- precisely so they
+  # can be built and tested on a plain runner rather than only where a
+  # 200 MB checkout or a Qt install happens to exist.
+  #
+  # The Python suite compiles both too (tests/test_ggml_hnx.py,
+  # tests/test_studio_core.py). This job runs them through their own
+  # CMake as well, because that is how a developer builds them and a
+  # build file that only works when driven from pytest is a build file
+  # that is about to stop working.
+  native:
+    name: native (ggml-hnx + studio core)
+    needs: triage
+    if: needs.triage.outputs.narrow != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install the package (for the cross-check vectors)
+        run: pip install -e .
+
+      - name: ggml-hnx — build and cross-check against Python
+        run: |
+          set -euo pipefail
+          cmake -S native/ggml-hnx -B build/ggml-hnx -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/ggml-hnx -j"$(nproc)"
+          ctest --test-dir build/ggml-hnx --output-on-failure
+
+      - name: ggml-hnx — the patcher against a checkout it does not own
+        run: |
+          set -euo pipefail
+          # A real llama.cpp clone would be 200 MB for a test of four
+          # string edits; tests/test_ggml_hnx.py builds a tree with the
+          # anchors instead. This step proves the CLI itself runs.
+          python native/ggml-hnx/tools/patch_llamacpp.py --help >/dev/null
+          if python native/ggml-hnx/tools/patch_llamacpp.py . --check; then
+            echo "::error::the patcher accepted a directory that is not llama.cpp"
+            exit 1
+          fi
+
+      - name: Studio core — build and test, with no Qt installed
+        run: |
+          set -euo pipefail
+          cmake -S desktop -B build/studio -DSTUDIO_CORE_ONLY=ON \
+            -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/studio -j"$(nproc)"
+          ctest --test-dir build/studio --output-on-failure
+
   build-check:
     name: build sdist + wheel (smoke)
     needs: triage

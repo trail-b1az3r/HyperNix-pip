@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=HyperNix Studio
+GenericName=Local LLM workbench
+Comment=Chat with, and code against, models running on your own machine
+Exec=hypernix-studio
+Icon=hypernix-studio
+Terminal=false
+Categories=Development;IDE;Science;
+Keywords=llm;ai;model;gguf;hypernix;
+StartupWMClass=hypernix-studio
