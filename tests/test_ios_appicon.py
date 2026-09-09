@@ -44,17 +44,45 @@ def _svg_fills() -> list[str]:
     return [f.lower() for f in re.findall(r'fill="(#[0-9a-fA-F]{6})"', SVG.read_text(encoding="utf-8"))]
 
 
+def _make_appicon():
+    """The generator module, imported by path.
+
+    No ``importorskip`` here on purpose. It imports Pillow inside its
+    drawing functions rather than at the top, precisely so the geometry
+    check below runs on a machine without Pillow — which is what CI is.
+    A top-level import made the most important assertion in this file
+    the one that got skipped, and it skipped straight past a release.
+    """
+    from importlib.util import module_from_spec, spec_from_file_location
+
+    spec = spec_from_file_location(
+        "make_appicon", ROOT / "ios" / "scripts" / "make_appicon.py"
+    )
+    module = module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 class TestTheGeometryHasNotDrifted:
     def test_the_script_draws_the_svg_shapes(self):
-        from importlib.util import module_from_spec, spec_from_file_location
+        assert list(_make_appicon().BARS) == _svg_paths()
 
-        spec = spec_from_file_location(
-            "make_appicon", ROOT / "ios" / "scripts" / "make_appicon.py"
-        )
-        module = module_from_spec(spec)
-        spec.loader.exec_module(module)
+    def test_it_needs_no_pillow_to_be_asked(self):
+        """So the check above cannot quietly become a skip again."""
+        import builtins
 
-        assert list(module.BARS) == _svg_paths()
+        real = builtins.__import__
+
+        def without_pillow(name, *args, **kwargs):
+            if name.split(".")[0] == "PIL":
+                raise ImportError("Pillow is not installed")
+            return real(name, *args, **kwargs)
+
+        builtins.__import__ = without_pillow
+        try:
+            assert len(_make_appicon().BARS) == 3
+        finally:
+            builtins.__import__ = real
 
     def test_the_bars_are_ordered_bottom_to_top(self):
         """The dark-to-red progression up the stack is the mark's whole
@@ -133,22 +161,11 @@ class TestTheCommittedPNGsAreCurrent:
     dependency bump is a test people learn to ignore.
     """
 
-    @staticmethod
-    def _module():
-        from importlib.util import module_from_spec, spec_from_file_location
-
-        spec = spec_from_file_location(
-            "make_appicon", ROOT / "ios" / "scripts" / "make_appicon.py"
-        )
-        module = module_from_spec(spec)
-        spec.loader.exec_module(module)
-        return module
-
     def test_rerunning_the_script_would_change_nothing(self):
         pytest.importorskip("PIL")
         from PIL import Image, ImageChops
 
-        make = self._module()
+        make = _make_appicon()
         mark = make._draw_mark(make.BAR_COLOURS)
 
         expected = {}

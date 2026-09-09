@@ -43,8 +43,6 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from PIL import Image, ImageDraw
-
 ROOT = Path(__file__).resolve().parent.parent.parent
 MARK_SVG = ROOT / "assets" / "logo-new" / "hypernix-icon.svg"
 OUT = ROOT / "ios" / "HyperLink" / "Resources" / "Assets.xcassets" / "AppIcon.appiconset"
@@ -89,13 +87,21 @@ TINTED_VALUES = (200, 144, 255)
 #: antialiasing of its own, and these are all diagonals.
 SUPERSAMPLE = 4
 
+# Pillow is imported inside the drawing functions, not at the top. The
+# geometry above is what tests/test_ios_appicon.py compares against
+# hypernix-icon.svg, and that check is the one worth running everywhere
+# -- CI installs the package without Pillow, and a top-level import made
+# the most important assertion in that file the one that got skipped.
 
-def _ground(top: tuple[int, int, int], bottom: tuple[int, int, int]) -> Image.Image:
+
+def _ground(top: tuple[int, int, int], bottom: tuple[int, int, int]):
     """A vertical gradient, drawn as a 1px column and stretched.
 
     Cheaper than per-pixel and — more usefully — exactly reproducible, so
     rerunning this script does not produce a diff.
     """
+    from PIL import Image
+
     column = Image.new("RGB", (1, SIZE))
     pixels = column.load()
     for y in range(SIZE):
@@ -104,8 +110,10 @@ def _ground(top: tuple[int, int, int], bottom: tuple[int, int, int]) -> Image.Im
     return column.resize((SIZE, SIZE), Image.BILINEAR).convert("RGBA")
 
 
-def _draw_mark(colours) -> Image.Image:
+def _draw_mark(colours):
     """The three bars on transparency, at icon size."""
+    from PIL import Image, ImageDraw
+
     big = SIZE * SUPERSAMPLE
     layer = Image.new("RGBA", (big, big), (0, 0, 0, 0))
     pen = ImageDraw.Draw(layer)

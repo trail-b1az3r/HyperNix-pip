@@ -325,6 +325,60 @@ def launch(
     return job
 
 
+def _exit_recording_script(
+    job: Job, command: list[str], *, timeout: int = 0, priority: int = 0
+) -> str:
+    """A shell wrapper that records how the command ended.
+
+    Used by *both* supervisors, and that is the point. systemd knows how
+    a unit ended right up until it collects it, at which point
+    ``systemctl show`` answers for a unit that no longer exists — with
+    *defaults*, not an error: ``ActiveState=inactive``, ``Result=success``,
+    ``ExecMainStatus=0``. Read naively that is indistinguishable from a
+    clean run, so a job that exited 7 was reported as having succeeded.
+
+    A file the job writes itself cannot lie about that. It is the ground
+    truth for the outcome on either path, and systemd is consulted only
+    for "is it still going".
+    """
+    inner = " ".join(shlex.quote(part) for part in command)
+    if timeout > 0 and shutil.which("timeout"):
+        inner = f"timeout {int(timeout)} {inner}"
+    if priority and shutil.which("nice"):
+        inner = f"nice -n {int(priority)} {inner}"
+    return (
+        f"{inner}\n"
+        f"printf '%s' \"$?\" > {shlex.quote(str(job.exit_file))}\n"
+    )
+
+
+def _systemd_main_pid(unit: str) -> int:
+    """The pid systemd started, or 0.
+
+    Asked for straight after the unit starts, because it is the only
+    moment it is reliably knowable: ``--collect`` reaps the unit when it
+    exits and then there is no pid to ask about. It is worth having at
+    all because everything that is not systemd -- `--status`, the
+    training monitor's pause and resume -- addresses a job by pid.
+
+    A short retry: ``systemd-run`` returns once the job is *queued*, and
+    MainPID is 0 for the moment between that and the fork.
+    """
+    for _ in range(20):
+        try:
+            result = subprocess.run(
+                ["systemctl", "--user", "show", unit, "--property=MainPID"],
+                capture_output=True, text=True, timeout=10, check=False,
+            )
+        except (OSError, subprocess.SubprocessError):
+            return 0
+        value = result.stdout.strip().partition("=")[2].strip()
+        if value.isdigit() and int(value) > 0:
+            return int(value)
+        time.sleep(0.05)
+    return 0
+
+
 def _launch_systemd(job, command, working, env, log_path, timeout, priority, cpu) -> None:
     unit = f"hnx-{job.name}-{job.job_id}"
     argv = [
@@ -353,7 +407,10 @@ def _launch_systemd(job, command, working, env, log_path, timeout, priority, cpu
         if key in env:
             argv.append(f"--setenv={key}={env[key]}")
     argv.append("--")
-    argv.extend(command)
+    # Wrapped rather than exec'd directly, so the job records its own
+    # exit status. See _exit_recording_script: without it, a collected
+    # unit reports a failed job as successful.
+    argv.extend(["/bin/sh", "-c", _exit_recording_script(job, command)])
 
     result = subprocess.run(argv, capture_output=True, text=True, check=False)
     if result.returncode != 0:
@@ -362,6 +419,7 @@ def _launch_systemd(job, command, working, env, log_path, timeout, priority, cpu
             f"{(result.stderr or result.stdout).strip()}"
         )
     job.unit = unit
+    job.pid = _systemd_main_pid(unit)
 
 
 def _launch_setsid(job, command, working, env, log_path, timeout, priority) -> None:
@@ -372,16 +430,7 @@ def _launch_setsid(job, command, working, env, log_path, timeout, priority) -> N
     dropping is never delivered here. The wrapper exists because without
     a supervisor nothing else would record how the job ended.
     """
-    exit_file = Path(job.log_path).with_suffix(".exit")
-    inner = " ".join(shlex.quote(part) for part in command)
-    if timeout > 0 and shutil.which("timeout"):
-        inner = f"timeout {int(timeout)} {inner}"
-    if priority and shutil.which("nice"):
-        inner = f"nice -n {int(priority)} {inner}"
-    script = (
-        f"{inner}\n"
-        f"printf '%s' \"$?\" > {shlex.quote(str(exit_file))}\n"
-    )
+    script = _exit_recording_script(job, command, timeout=timeout, priority=priority)
 
     # No `setsid` binary here, deliberately. It forks when it is already
     # a process-group leader and the parent then exits, so the pid we
@@ -419,10 +468,25 @@ def refresh(job: Job, store: JobStore | None = None) -> Job:
 
 
 def _refresh_systemd(job: Job) -> None:
+    """How the unit ended, from the job's own exit file where possible.
+
+    The exit file comes first because ``systemctl show`` cannot be
+    trusted for a unit that has been collected: it answers with property
+    *defaults* rather than an error, and those defaults —
+    ``ActiveState=inactive``, ``Result=success``, ``ExecMainStatus=0`` —
+    are indistinguishable from a clean run. Reading them was reporting
+    every collected job as a success, including one that exited 7.
+
+    systemd is still asked, for the one thing the exit file cannot say:
+    whether the job is still going.
+    """
+    if _record_exit_file(job):
+        return
+
     try:
         result = subprocess.run(
             ["systemctl", "--user", "show", job.unit,
-             "--property=ActiveState,Result,ExecMainStatus,ExecMainExitTimestampMonotonic"],
+             "--property=LoadState,ActiveState,Result,ExecMainStatus"],
             capture_output=True, text=True, timeout=10, check=False,
         )
     except (OSError, subprocess.SubprocessError):
@@ -430,37 +494,39 @@ def _refresh_systemd(job: Job) -> None:
     values = dict(
         line.split("=", 1) for line in result.stdout.splitlines() if "=" in line
     )
-    state = values.get("ActiveState", "")
-    if state in ("activating", "active", "reloading"):
+    if values.get("ActiveState", "") in ("activating", "active", "reloading"):
         job.status = JobStatus.RUNNING.value
         return
-    if not state or state == "inactive" and not values.get("Result"):
-        # The unit is gone. --collect reaps it, so an exit status we
-        # never observed is genuinely unknowable rather than a failure.
-        job.status = JobStatus.UNKNOWN.value
-        job.finished_at = job.finished_at or time.time()
-        return
-    code = values.get("ExecMainStatus", "")
-    job.exit_status = int(code) if code.isdigit() else None
+
+    # Either the unit was never there or it has been collected. Both mean
+    # the same thing here, and neither is evidence of an outcome: the
+    # wrapper writes the exit file as its last act, so reaching this
+    # point without one is a job that was killed outright.
+    job.status = JobStatus.UNKNOWN.value
     job.finished_at = job.finished_at or time.time()
-    if values.get("Result") == "success" or job.exit_status == 0:
-        job.status = JobStatus.SUCCEEDED.value
-    else:
-        job.status = JobStatus.FAILED.value
+
+
+def _record_exit_file(job: Job) -> bool:
+    """Read ``<log>.exit`` into *job*. True when there was one."""
+    exit_file = job.exit_file
+    if not exit_file.exists():
+        return False
+    try:
+        job.exit_status = int(exit_file.read_text(encoding="utf-8").strip() or 1)
+    except (OSError, ValueError):
+        job.exit_status = 1
+    try:
+        job.finished_at = job.finished_at or exit_file.stat().st_mtime
+    except OSError:
+        job.finished_at = job.finished_at or time.time()
+    job.status = (
+        JobStatus.SUCCEEDED.value if job.exit_status == 0 else JobStatus.FAILED.value
+    )
+    return True
 
 
 def _refresh_setsid(job: Job) -> None:
-    exit_file = Path(job.log_path).with_suffix(".exit")
-    if exit_file.exists():
-        try:
-            job.exit_status = int(exit_file.read_text(encoding="utf-8").strip() or 1)
-        except ValueError:
-            job.exit_status = 1
-        job.finished_at = job.finished_at or exit_file.stat().st_mtime
-        job.status = (
-            JobStatus.SUCCEEDED.value if job.exit_status == 0
-            else JobStatus.FAILED.value
-        )
+    if _record_exit_file(job):
         return
     if job.pid and _alive(job.pid):
         job.status = JobStatus.RUNNING.value

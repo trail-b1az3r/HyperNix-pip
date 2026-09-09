@@ -475,3 +475,254 @@ def available_supervisor_value() -> str:
     from hypernix.system.launcher import available_supervisor
 
     return available_supervisor().value
+
+
+class TestTheSystemdPathWithoutSystemd:
+    """The branch this container cannot run, and therefore shipped broken.
+
+    There is no user bus here, so `available_supervisor()` picks setsid
+    and every test above exercised that path. On a GitHub runner there
+    *is* a bus, systemd is chosen, and two bugs were waiting there:
+
+    **`systemctl show` answers for units that do not exist.** Not with
+    an error — with property *defaults*. A collected unit reports
+    ``ActiveState=inactive``, ``Result=success``, ``ExecMainStatus=0``,
+    which is indistinguishable from a clean run, and `--collect` reaps
+    the unit the moment it exits. So a job that exited 7 was reported as
+    having succeeded: not "we lost the status", but the opposite of the
+    truth.
+
+    **No pid was recorded.** Everything that is not systemd addresses a
+    job by pid — `--status`, and the training monitor's pause and resume
+    — and all of it was operating on pid 0.
+
+    Both are tested here by feeding the real command output in, because
+    a test that needs systemd is a test that does not run where the code
+    was written.
+    """
+
+    def _stub(self, monkeypatch, stdout: str, calls: list | None = None):
+        from hypernix.system import launcher
+
+        class _Result:
+            def __init__(self, out):
+                self.stdout = out
+                self.stderr = ""
+                self.returncode = 0
+
+        def fake_run(argv, *args, **kwargs):
+            if calls is not None:
+                calls.append(argv)
+            return _Result(stdout)
+
+        monkeypatch.setattr(launcher.subprocess, "run", fake_run)
+
+    def _job(self, tmp_path, **overrides):
+        from hypernix.system.launcher import Job, JobStatus, Supervisor
+
+        defaults = dict(
+            job_id="abc123", name="trainer", command=["/bin/true"],
+            cwd=str(tmp_path), log_path=str(tmp_path / "job.log"),
+            supervisor=Supervisor.SYSTEMD.value, created_at=time.time(),
+            unit="hnx-trainer-abc123", pid=4242,
+            status=JobStatus.RUNNING.value,
+        )
+        defaults.update(overrides)
+        return Job(**defaults)
+
+    #: Exactly what `systemctl --user show` prints for a unit that has
+    #: been collected, or was never loaded. Every value here is a
+    #: default, and every one of them reads as success.
+    COLLECTED = (
+        "LoadState=not-found\n"
+        "ActiveState=inactive\n"
+        "Result=success\n"
+        "ExecMainStatus=0\n"
+    )
+
+    def test_a_collected_unit_is_unknown_not_a_success(self, tmp_path, monkeypatch):
+        from hypernix.system.launcher import JobStatus, refresh
+
+        self._stub(monkeypatch, self.COLLECTED)
+        job = self._job(tmp_path)
+
+        refresh(job)
+
+        assert job.status == JobStatus.UNKNOWN.value
+        assert job.exit_status is None
+
+    def test_the_exit_file_beats_the_defaults(self, tmp_path, monkeypatch):
+        """A job that exited 7 is a failure however systemd answers."""
+        from hypernix.system.launcher import JobStatus, refresh
+
+        self._stub(monkeypatch, self.COLLECTED)
+        job = self._job(tmp_path)
+        job.exit_file.write_text("7", encoding="utf-8")
+
+        refresh(job)
+
+        assert job.status == JobStatus.FAILED.value
+        assert job.exit_status == 7
+
+    def test_a_zero_exit_file_is_a_success(self, tmp_path, monkeypatch):
+        from hypernix.system.launcher import JobStatus, refresh
+
+        self._stub(monkeypatch, self.COLLECTED)
+        job = self._job(tmp_path)
+        job.exit_file.write_text("0", encoding="utf-8")
+
+        refresh(job)
+
+        assert job.status == JobStatus.SUCCEEDED.value
+        assert job.exit_status == 0
+
+    def test_the_exit_file_is_not_even_asked_of_systemd(self, tmp_path, monkeypatch):
+        """When the job said how it ended, systemd is not consulted at
+        all — one subprocess call saved on every poll, and no way for a
+        stale unit to contradict the job itself."""
+        from hypernix.system.launcher import refresh
+
+        calls: list = []
+        self._stub(monkeypatch, self.COLLECTED, calls)
+        job = self._job(tmp_path)
+        job.exit_file.write_text("0", encoding="utf-8")
+
+        refresh(job)
+
+        assert calls == []
+
+    @pytest.mark.parametrize("state", ["activating", "active", "reloading"])
+    def test_a_live_unit_is_running(self, tmp_path, monkeypatch, state):
+        from hypernix.system.launcher import JobStatus, refresh
+
+        self._stub(
+            monkeypatch,
+            f"LoadState=loaded\nActiveState={state}\nResult=success\nExecMainStatus=0\n",
+        )
+        job = self._job(tmp_path)
+
+        refresh(job)
+
+        assert job.status == JobStatus.RUNNING.value
+
+    def test_a_failed_unit_with_no_exit_file_is_unknown(self, tmp_path, monkeypatch):
+        """The wrapper writes the exit file as its last act, so a job
+        that ended without one was killed outright. Reporting a number
+        systemd happens to have would be inventing one."""
+        from hypernix.system.launcher import JobStatus, refresh
+
+        self._stub(
+            monkeypatch,
+            "LoadState=loaded\nActiveState=failed\nResult=exit-code\nExecMainStatus=9\n",
+        )
+        job = self._job(tmp_path)
+
+        refresh(job)
+
+        assert job.status == JobStatus.UNKNOWN.value
+
+    def test_systemctl_being_absent_leaves_the_status_alone(self, tmp_path, monkeypatch):
+        """Better a stale "running" than a fabricated outcome."""
+        from hypernix.system import launcher
+        from hypernix.system.launcher import JobStatus, refresh
+
+        def boom(*args, **kwargs):
+            raise FileNotFoundError("systemctl")
+
+        monkeypatch.setattr(launcher.subprocess, "run", boom)
+        job = self._job(tmp_path)
+
+        refresh(job)
+
+        assert job.status == JobStatus.RUNNING.value
+
+
+class TestTheSystemdPidLookup:
+    def test_it_reads_mainpid(self, monkeypatch):
+        from hypernix.system import launcher
+
+        class _Result:
+            stdout = "MainPID=8123\n"
+            stderr = ""
+            returncode = 0
+
+        monkeypatch.setattr(launcher.subprocess, "run", lambda *a, **k: _Result())
+
+        assert launcher._systemd_main_pid("hnx-x") == 8123
+
+    def test_it_waits_out_the_zero(self, monkeypatch):
+        """`systemd-run` returns once the job is queued. MainPID is 0
+        for the moment between that and the fork, and taking the 0
+        recorded a job with no pid at all."""
+        from hypernix.system import launcher
+
+        answers = iter(["MainPID=0\n", "MainPID=0\n", "MainPID=8123\n"])
+
+        class _Result:
+            def __init__(self):
+                self.stdout = next(answers)
+                self.stderr = ""
+                self.returncode = 0
+
+        monkeypatch.setattr(launcher.subprocess, "run", lambda *a, **k: _Result())
+        monkeypatch.setattr(launcher.time, "sleep", lambda _s: None)
+
+        assert launcher._systemd_main_pid("hnx-x") == 8123
+
+    def test_it_gives_up_rather_than_hanging(self, monkeypatch):
+        from hypernix.system import launcher
+
+        class _Result:
+            stdout = "MainPID=0\n"
+            stderr = ""
+            returncode = 0
+
+        monkeypatch.setattr(launcher.subprocess, "run", lambda *a, **k: _Result())
+        monkeypatch.setattr(launcher.time, "sleep", lambda _s: None)
+
+        assert launcher._systemd_main_pid("hnx-x") == 0
+
+    def test_no_systemctl_is_zero_not_a_crash(self, monkeypatch):
+        from hypernix.system import launcher
+
+        def boom(*args, **kwargs):
+            raise FileNotFoundError("systemctl")
+
+        monkeypatch.setattr(launcher.subprocess, "run", boom)
+
+        assert launcher._systemd_main_pid("hnx-x") == 0
+
+
+class TestBothSupervisorsRecordTheOutcomeTheSameWay:
+    def test_the_systemd_command_is_the_exit_recording_wrapper(self, tmp_path, monkeypatch):
+        """The fix that makes the two paths agree: systemd runs the same
+        wrapper the setsid path does, so the outcome comes from the job
+        rather than from a unit that may no longer exist."""
+        from hypernix.system import launcher
+        from hypernix.system.launcher import JobStore, Supervisor, launch
+
+        seen: list = []
+
+        class _Result:
+            stdout = "MainPID=8123\n"
+            stderr = ""
+            returncode = 0
+
+        def fake_run(argv, *args, **kwargs):
+            seen.append(argv)
+            return _Result()
+
+        monkeypatch.setattr(launcher.subprocess, "run", fake_run)
+        work = script(tmp_path, "true\n")
+
+        job = launch(
+            work, name="wrapped", store=JobStore(tmp_path / "jobs"),
+            supervisor=Supervisor.SYSTEMD,
+        )
+
+        started = seen[0]
+        assert started[0] == "systemd-run"
+        assert "/bin/sh" in started
+        # The wrapper's last line, which is the whole point of it.
+        assert any(str(job.exit_file) in part for part in started)
+        assert job.pid == 8123
