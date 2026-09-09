@@ -50,7 +50,6 @@ from __future__ import annotations
 
 import re
 import shutil
-import subprocess
 import sys
 import time
 from collections import deque
@@ -449,34 +448,29 @@ def _query_nvidia_smi_full() -> dict[str, Any]:
         "mem_used_mib": None, "mem_total_mib": None, "util_percent": None,
         "temp_c": None, "power_w": None, "power_limit_w": None, "name": None,
     }
-    if shutil.which("nvidia-smi") is None:
-        _NVIDIA_CACHE["at"] = now
-        _NVIDIA_CACHE["full"] = empty
-        _NVIDIA_CACHE["value"] = (None, None, None)
-        return dict(empty)
+    # Through hypernix.system.gpus rather than nvidia-smi directly, so an
+    # AMD card fills this panel too. It was NVIDIA-only, which on a Radeon
+    # box meant every GPU field in the dashboard read blank -- and the
+    # dashboard is the thing people open *because* they want those
+    # numbers.
     try:
-        out = subprocess.run(
-            [
-                "nvidia-smi",
-                "--query-gpu=memory.used,memory.total,utilization.gpu,"
-                "temperature.gpu,power.draw,power.limit,name",
-                "--format=csv,noheader,nounits",
-            ],
-            capture_output=True, text=True, check=False, timeout=2,
-        )
-        if out.returncode != 0:
+        from ..system import gpus as _gpus
+
+        cards = _gpus.detect()
+        if not cards:
             full = empty
         else:
-            first = out.stdout.strip().splitlines()[0]
-            cells = [c.strip() for c in first.split(",", 6)]  # Split exactly 6 times to leave name intact
+            # Card 0. tv's GPU panel shows one card; `tvtop` is the view
+            # for a multi-GPU machine.
+            card = cards[0]
             full = {
-                "mem_used_mib": _maybe_int(cells[0]),
-                "mem_total_mib": _maybe_int(cells[1]),
-                "util_percent": _maybe_float(cells[2]),
-                "temp_c": _maybe_float(cells[3]),
-                "power_w": _maybe_float(cells[4]),
-                "power_limit_w": _maybe_float(cells[5]),
-                "name": cells[6] if len(cells) > 6 else None,
+                "mem_used_mib": card.memory_used_mb,
+                "mem_total_mib": card.memory_total_mb,
+                "util_percent": card.utilization_pct,
+                "temp_c": card.temperature_c,
+                "power_w": card.power_w,
+                "power_limit_w": card.power_limit_w,
+                "name": card.name or None,
             }
     except Exception:  # noqa: BLE001
         full = empty

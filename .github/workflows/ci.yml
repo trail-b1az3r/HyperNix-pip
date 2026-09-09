@@ -359,6 +359,42 @@ jobs:
           cmake --build build/studio -j"$(nproc)"
           ctest --test-dir build/studio --output-on-failure
 
+      # Qt as a separate step, after the core. The core is the part that
+      # must build anywhere; this is the part that needs 300 MB of Qt,
+      # and keeping them apart means a Qt packaging change cannot mask a
+      # failure in the security-critical half.
+      - name: Install Qt 6
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            qt6-base-dev qt6-declarative-dev \
+            qml6-module-qtquick-controls qml6-module-qtquick-layouts \
+            qml6-module-qtquick-templates qml6-module-qtquick-dialogs \
+            qml6-module-qtquick-window qml6-module-qtqml-workerscript
+
+      - name: Studio — compile the Qt application
+        run: |
+          set -euo pipefail
+          cmake -S desktop -B build/studio-qt -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/studio-qt -j"$(nproc)"
+
+      # The compiler does not check QML. Running the binary offscreen
+      # instantiates every .qml file the engine reaches, which is the only
+      # way a typo in a binding is found before somebody launches it --
+      # and it is how five "Unable to assign [undefined] to QString"
+      # warnings in the approval dialog were found, each of which left a
+      # property showing the *previous* request's value.
+      - name: Studio — load every QML file
+        run: |
+          set -euo pipefail
+          output="$(QT_QPA_PLATFORM=offscreen timeout 20 \
+            ./build/studio-qt/hypernix-studio 2>&1 || true)"
+          echo "$output"
+          if echo "$output" | grep -qE "Unable to assign|is not a type|failed to load component|^(qrc|file):.*error"; then
+            echo "::error::QML errors on startup"
+            exit 1
+          fi
+
   build-check:
     name: build sdist + wheel (smoke)
     needs: triage

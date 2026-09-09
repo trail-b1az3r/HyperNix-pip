@@ -4,7 +4,7 @@
 #   cmake --build build -j
 #   ./build/hypernix-studio
 #
-# Qt 6.5 or newer. On Debian/Ubuntu:
+# Qt 6.4 or newer. On Debian/Ubuntu:
 #   sudo apt install qt6-base-dev qt6-declarative-dev cmake g++
 # On Fedora:
 #   sudo dnf install qt6-qtbase-devel qt6-qtdeclarative-devel cmake gcc-c++
@@ -58,9 +58,13 @@ if(STUDIO_CORE_ONLY)
 endif()
 
 # --- the application --------------------------------------------------
-find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 Network)
+# 6.4, not 6.5. Nothing here needs a 6.5 API, and 6.4 is what Ubuntu
+# 24.04 and Debian 12 ship -- requiring 6.5 meant the app would not
+# configure on the distributions most likely to run it, for no gain.
+# Raise it when something actually needs a newer API, and say what.
+find_package(Qt6 6.4 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 Network)
 
-qt_standard_project_setup(REQUIRES 6.5)
+qt_standard_project_setup(REQUIRES 6.4)
 
 qt_add_executable(hypernix-studio
     src/main.cpp

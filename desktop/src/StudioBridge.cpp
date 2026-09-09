@@ -441,7 +441,9 @@ void StudioBridge::runApproved(const QString& name, const QJsonObject& arguments
             break;
     }
 
-    if (!result.detail.isEmpty()) appendMessage("system", result.detail);
+    if (!result.detail.empty()) {
+        appendMessage("system", QString::fromStdString(result.detail));
+    }
     reportToolResult(callId, result);
 }
 
@@ -453,7 +455,7 @@ void StudioBridge::reportToolResult(const QString& callId,
     // end it retries.
     QVariantMap message;
     message["role"] = "tool";
-    message["text"] = result.output;
+    message["text"] = QString::fromStdString(result.output);
     message["detail"] = callId;
     messages_.append(message);
     emit messagesChanged();

@@ -39,8 +39,6 @@ from __future__ import annotations
 
 import logging
 import math
-import shutil
-import subprocess
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -215,27 +213,40 @@ def detect(index: int = 0) -> GPUInfo:
     except Exception:  # noqa: BLE001 - detection is best-effort by contract
         logger.debug("pascal.detect: torch path unavailable", exc_info=True)
 
-    smi = shutil.which("nvidia-smi")
-    if smi:
-        try:
-            proc = subprocess.run(  # noqa: S603
-                [smi, "--query-gpu=name,memory.total,compute_cap,driver_version",
-                 "--format=csv,noheader,nounits", f"--id={index}"],
-                capture_output=True, text=True, timeout=10, check=False,
+    # The vendor-tool path goes through hypernix.system.gpus rather than
+    # shelling out here. It was a second, slightly different nvidia-smi
+    # parser -- and the two disagreed about "[N/A]", which this one read
+    # as 0.0 VRAM.
+    #
+    # This module is about *Pascal*, so the answer is still NVIDIA-shaped:
+    # `compute` is a CUDA compute capability and `identify` matches NVIDIA
+    # product names. An AMD card detected here gets its name, VRAM and
+    # driver filled in and no compute capability, which is honest -- gfx
+    # targets are not (major, minor) and pretending otherwise would make
+    # the FP16 guard below reason about a number that means something
+    # else.
+    try:
+        from . import gpus as _gpus
+
+        cards = _gpus.detect()
+        card = next((c for c in cards if c.index == index), None)
+        if card is not None:
+            info.name = card.name
+            info.vram_gb = (
+                card.memory_total_mb / 1024 if card.memory_total_mb else 0.0
             )
-            if proc.returncode == 0 and proc.stdout.strip():
-                parts = [p.strip() for p in proc.stdout.strip().splitlines()[0].split(",")]
-                info.name = parts[0] if parts else ""
-                info.vram_gb = float(parts[1]) / 1024 if len(parts) > 1 and parts[1] else 0.0
-                if len(parts) > 2 and "." in parts[2]:
-                    major, minor = parts[2].split(".", 1)
+            info.driver = card.driver
+            info.source = f"{card.vendor.value}-smi"
+            if card.vendor is _gpus.Vendor.NVIDIA and "." in card.compute:
+                major, minor = card.compute.split(".", 1)
+                try:
                     info.compute = (int(major), int(minor))
-                info.driver = parts[3] if len(parts) > 3 else ""
-                info.source = "nvidia-smi"
-                info.matched = identify(info.name)
-                return info
-        except (OSError, subprocess.SubprocessError, ValueError):
-            logger.debug("pascal.detect: nvidia-smi path failed", exc_info=True)
+                except ValueError:
+                    logger.debug("pascal.detect: odd compute_cap %r", card.compute)
+            info.matched = identify(info.name)
+            return info
+    except Exception:  # noqa: BLE001 - detection is best-effort by contract
+        logger.debug("pascal.detect: gpus path failed", exc_info=True)
     return info
 
 

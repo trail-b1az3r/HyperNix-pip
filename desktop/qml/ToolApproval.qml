@@ -23,9 +23,18 @@ Rectangle {
     color: Qt.rgba(0, 0, 0, 0.72)
 
     readonly property var call: studio.pendingApproval
-    readonly property bool suspicious: call && call.suspicious === true
-    readonly property bool isSearch: call && call.tool === "web_search"
-    readonly property bool isDelete: call && call.tool === "delete_file"
+    readonly property bool suspicious: field("suspicious") === true
+    readonly property bool isSearch: field("tool") === "web_search"
+    readonly property bool isDelete: field("tool") === "delete_file"
+
+    // Every read of `call` goes through this. See the note above: an
+    // undefined field leaves a QString property at its previous value,
+    // and in this dialog the previous value is the last file somebody
+    // was asked about.
+    function field(name) {
+        if (!call || call[name] === undefined || call[name] === null) return ""
+        return call[name]
+    }
 
     // Swallows every click that is not on the panel. Not a way to
     // dismiss: clicking away from a dialog is how people close things
@@ -57,8 +66,7 @@ Rectangle {
                 }
                 Label {
                     text: {
-                        if (!root.call) return ""
-                        switch (root.call.tool) {
+                        switch (root.field("tool")) {
                         case "write_file":  return "Change a file?"
                         case "create_file": return "Create a file?"
                         case "delete_file": return "Delete a file?"
@@ -73,7 +81,7 @@ Rectangle {
                 }
                 Item { Layout.fillWidth: true }
                 Label {
-                    text: root.call ? root.call.tool : ""
+                    text: root.field("tool")
                     color: Theme.textFaint
                     font.family: Theme.monoFamily
                     font.pixelSize: Theme.fontSmall
@@ -81,7 +89,7 @@ Rectangle {
             }
 
             Label {
-                text: root.call ? root.call.reason : ""
+                text: root.field("reason")
                 color: Theme.textDim
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontBody
@@ -95,7 +103,7 @@ Rectangle {
             // model wrote. They can differ, and when they do that is the
             // most important thing on the screen.
             ColumnLayout {
-                visible: !root.isSearch && root.call
+                visible: !root.isSearch && root.field("tool").length > 0
                 Layout.fillWidth: true
                 spacing: 2
 
@@ -107,7 +115,7 @@ Rectangle {
                     font.letterSpacing: 1
                 }
                 Label {
-                    text: root.call ? root.call.path : ""
+                    text: root.field("path")
                     color: Theme.text
                     font.family: Theme.monoFamily
                     font.pixelSize: Theme.fontSmall
@@ -118,11 +126,10 @@ Rectangle {
                     // Only when the model asked for something that
                     // resolved elsewhere -- a `..`, or a different
                     // spelling. Worth seeing.
-                    visible: root.call && root.call.requestedPath !== undefined &&
-                             root.call.requestedPath.length > 0 &&
-                             root.call.path.indexOf(root.call.requestedPath) < 0
-                    text: "the model asked for: " +
-                          (root.call ? root.call.requestedPath : "")
+                    visible: root.field("requestedPath").length > 0 &&
+                             root.field("path").indexOf(
+                                 root.field("requestedPath")) < 0
+                    text: "the model asked for: " + root.field("requestedPath")
                     color: Theme.warn
                     font.family: Theme.monoFamily
                     font.pixelSize: 10
@@ -154,7 +161,7 @@ Rectangle {
                         id: queryText
                         anchors.fill: parent
                         anchors.margins: 8
-                        text: root.call ? root.call.query : ""
+                        text: root.field("query")
                         color: Theme.text
                         font.family: Theme.monoFamily
                         font.pixelSize: Theme.fontSmall
@@ -170,18 +177,16 @@ Rectangle {
             // that summarises this ("142 lines") is a dialog that asks
             // someone to approve something they cannot see.
             ColumnLayout {
-                visible: !root.isSearch && !root.isDelete && root.call &&
-                         root.call.contents !== undefined &&
-                         root.call.contents.length > 0
+                visible: !root.isSearch && !root.isDelete &&
+                         root.field("contents").length > 0
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 spacing: 2
 
                 Label {
-                    text: root.call && root.call.existing !== undefined &&
-                          root.call.existing.length > 0
+                    text: root.field("existing").length > 0
                           ? "NEW CONTENTS — replacing " +
-                            root.call.existing.split("\n").length + " lines"
+                            root.field("existing").split("\n").length + " lines"
                           : "CONTENTS"
                     color: Theme.textFaint
                     font.family: Theme.fontFamily
@@ -196,7 +201,7 @@ Rectangle {
 
                     TextArea {
                         readOnly: true
-                        text: root.call ? root.call.contents : ""
+                        text: root.field("contents")
                         color: Theme.text
                         font.family: Theme.monoFamily
                         font.pixelSize: Theme.fontSmall

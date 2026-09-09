@@ -34,10 +34,8 @@ import json
 import logging
 import os
 import queue
-import shutil
 import socket
 import struct
-import subprocess
 import threading
 import time
 from collections import deque
@@ -100,36 +98,36 @@ def sample_hardware() -> dict[str, Any]:
     """
     out: dict[str, Any] = {"gpus": [], "cpu_percent": 0.0, "ram": {}}
 
-    smi = shutil.which("nvidia-smi")
-    if smi:
-        try:
-            proc = subprocess.run(  # noqa: S603
-                [smi,
-                 "--query-gpu=index,name,utilization.gpu,memory.used,memory.total,"
-                 "temperature.gpu,power.draw",
-                 "--format=csv,noheader,nounits"],
-                capture_output=True, text=True, timeout=5, check=False,
+    # hypernix.system.gpus rather than nvidia-smi: a stream watched by
+    # somebody with a Radeon showed no GPUs at all, which reads as "the
+    # stream is broken" rather than "this tool only supports one vendor".
+    try:
+        from ..system import gpus as _gpus
+
+        for card in _gpus.detect():
+            used, total = card.memory_used_mb, card.memory_total_mb
+            out["gpus"].append(
+                {
+                    "index": card.index,
+                    "name": card.name,
+                    "utilization": card.utilization_pct,
+                    "vram_used_mb": used,
+                    "vram_total_mb": total,
+                    "vram_percent": (
+                        round(used / total * 100, 1)
+                        if used is not None and total else 0.0
+                    ),
+                    # None, not 0.0, when the vendor tool declined to
+                    # answer. nvidia-smi reports "[N/A]" for power draw
+                    # on several consumer cards, and a stream showing
+                    # 0 W reads as an idle GPU rather than as a missing
+                    # measurement.
+                    "temperature_c": card.temperature_c,
+                    "power_w": card.power_w,
+                }
             )
-            if proc.returncode == 0:
-                for line in proc.stdout.strip().splitlines():
-                    parts = [p.strip() for p in line.split(",")]
-                    if len(parts) < 5:
-                        continue
-                    used, total = _f(parts[3]), _f(parts[4])
-                    out["gpus"].append(
-                        {
-                            "index": _i(parts[0]),
-                            "name": parts[1],
-                            "utilization": _f(parts[2]),
-                            "vram_used_mb": used,
-                            "vram_total_mb": total,
-                            "vram_percent": round(used / total * 100, 1) if total else 0.0,
-                            "temperature_c": _f(parts[5]) if len(parts) > 5 else 0.0,
-                            "power_w": _f(parts[6]) if len(parts) > 6 else 0.0,
-                        }
-                    )
-        except (OSError, subprocess.SubprocessError):
-            logger.debug("livestream: nvidia-smi failed", exc_info=True)
+    except Exception:  # noqa: BLE001 - a sample must never kill the stream
+        logger.debug("livestream: GPU sampling failed", exc_info=True)
 
     try:
         with open("/proc/meminfo", encoding="utf-8") as handle:

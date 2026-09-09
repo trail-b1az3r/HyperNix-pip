@@ -4,7 +4,7 @@ A Linux desktop client for a HyperNix server: switch models, chat, work
 on a folder of code, and let the model edit files in it — with your
 agreement, every time.
 
-Qt 6 with QML, C++17.
+Qt 6.4 or newer, QML, C++17.
 
 ```bash
 sudo apt install qt6-base-dev qt6-declarative-dev cmake g++   # Debian/Ubuntu
@@ -151,12 +151,32 @@ for `llama-cli` — see [`../native/ggml-hnx`](../native/ggml-hnx).
 
 ## State of it
 
-The Qt half has not been compiled: there is no Qt in the environment this
-was written in, so `HyperLinkClient`, `StudioBridge` and every `.qml`
-file are unbuilt. They are written against the Qt 6.5 APIs and reviewed,
-not verified. Expect to fix compile errors on a first build.
+**It compiles and it runs.** Qt 6.4.2, `-Wall -Wextra`, and the binary
+starts under `QT_QPA_PLATFORM=offscreen` with every `.qml` file
+instantiated and no warnings. CI does both on every run.
 
-The core half — `ToolPolicy` and `ToolRunner`, which is where being wrong
-costs someone their files — is built, tested and passing: 110 checks
-across the two suites, run by `ctest` and by `tests/test_studio_core.py`
-in the Python suite.
+Compiling it found what review had not:
+
+* `ToolResult`'s fields are `std::string` — the core is deliberately
+  Qt-free — and three places used them as though they were `QString`s.
+* Five bindings in `ToolApproval.qml` read fields off `pendingApproval`
+  while it was empty, logging `Unable to assign [undefined] to QString`.
+  Not cosmetic: an undefined assignment leaves a QString property at its
+  **previous** value, so the dialog could show the last request's path
+  and diff next to a live "Do it" button. Every read now goes through
+  one `field()` helper with an explicit `""` fallback, which can never be
+  last time's answer.
+
+Both are the kind of thing that only a compiler and a running engine
+find, which is why the Qt build is in CI rather than left to a first
+launch.
+
+What has **not** been exercised is the app against a real server:
+`HyperLinkClient`'s request and reply handling is written against the T1
+API's documented shapes and has not been run against a live one. The
+endpoints it calls are covered by the Python suite from the server side;
+the client's parsing of them is not.
+
+The core half — `ToolPolicy` and `ToolRunner`, where being wrong costs
+someone their files — is 110 checks across two suites, run by `ctest`
+and by `tests/test_studio_core.py`.
