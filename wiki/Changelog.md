@@ -21,6 +21,56 @@ next release header.
 - 𖢥 major bug fix
 - ꩜ restore to older version of item
 - ❗ unfixed known bug
+## 0.72.4.post5 — `hypernix-t1 start` left nothing running
+
+### The `setsid` binary was the wrong tool here too 𖢥
+
+`start` backgrounded uvicorn with `setsid ... & echo $! > server.pid`.
+That fails outright on macOS, which has no `setsid` binary at all — and
+macOS is a supported platform, since the script advertises bash 3.2,
+which is the bash macOS ships. There the background job died on
+`setsid: command not found`, `echo $!` still succeeded so the `|| die`
+guard behind it never fired, and the first sign of trouble was a raw
+shell error tailed out of the log 45 seconds later under "The server
+exited during startup".
+
+`$!` was not dependable where the binary does exist, either. setsid(1)
+forks when it is already a process-group leader and the parent then
+exits, so the recorded pid can name a process that has already gone.
+`launch-script` hit exactly that in 0.72.2 and stopped using the binary
+for it — `Popen(start_new_session=True)` calls setsid(2) in the child
+directly, which is the same new session with the pid actually wanted.
+`start` never got the same fix.
+
+It does now, through the interpreter it is already about to launch:
+same new session (the server's session id is its own pid), the pid is
+the server's, stdin goes to `/dev/null`, and a launcher that reports no
+pid is a failure instead of dead code.
+
+### Logging out was the other way to lose it 🛡️
+
+systemd-logind with `KillUserProcesses=yes` kills everything the user
+owns at logout, a process in its own session included; setsid(2) is not
+an exemption and lingering is. Nothing is written to the log when it
+happens, so the server is simply gone the next time anyone looks.
+`start` now checks the running configuration — over `busctl`, falling
+back to `logind.conf` *and its drop-ins*, since a distribution shipping
+a drop-in makes the main file the wrong thing to read — and when
+lingering is off and the setting is on, says so and names both ways
+out: `hypernix-t1 autostart on`, or `loginctl enable-linger`.
+
+### 🧪 9 new tests
+
+Behavioural where it counts: one starts the server on a PATH with every
+tool on it except `setsid` (red before this change), one asserts the
+recorded pid really is the uvicorn process, and one asserts the server
+is its own session leader — the observable fact behind surviving a
+SIGHUP, however the detach is spelled. The check that the binary is
+gone reads argv positions after stripping comments, because the
+function now explains at length why the binary is wrong and a plain
+substring search would match the explanation and pass whatever the code
+does.
+
 ## 0.72.4.post4 — `hnx runtime`, and why `hnx gather` printed the usage table
 
 ### `hnx gather` was reaching a different install 𖢥
