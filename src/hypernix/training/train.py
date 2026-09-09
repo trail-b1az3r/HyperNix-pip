@@ -728,6 +728,7 @@ def train(
     fuse_optimizer: bool = False,
     tune_allocator: bool = False,
     run_id: str | None = None,
+    thermal_target_c: float | None = None,
 ) -> Path:
     """Minimal causal-LM training loop.
 
@@ -768,6 +769,17 @@ def train(
             anything. Reporting is on the ``log_every`` cadence, not
             per-step: the status file is written on exactly the ticks
             that already print a line.
+        thermal_target_c: Keep the GPU at or below this temperature by
+            pausing briefly between steps. This *costs* throughput --
+            around 12-24% for a target that actually bites, measured in
+            ``tests/test_fusebox.py`` -- and buys a cooler card, not a
+            faster run; the cost is printed when the run ends. See
+            :mod:`hypernix.system.fusebox`. ``None``
+            (default) reads ``$HNX_THERMAL_TARGET``; without that, no
+            thermal management happens and the loop is unchanged. This
+            never touches the card's settings -- the underclocking half
+            of fusebox is opt-in through ``hnx fusebox`` and is not
+            reachable from here.
     """
     model_dir = Path(model_dir)
     dataset_path = Path(dataset_path)
@@ -872,6 +884,7 @@ def train(
         )
 
     reporter = _progress_reporter(run_id, total_steps=steps, model=str(model_dir))
+    box = _thermal_governor(thermal_target_c)
 
     try:
         step = 0
@@ -922,20 +935,79 @@ def train(
                 if reporter is not None:
                     reporter.checkpoint(out)
 
+            if box is not None:
+                # After the optimizer step and the checkpoint, so a pause
+                # never sits between a backward pass and the step that
+                # consumes its gradients: the card is idle here either
+                # way, which is the whole point of pausing here.
+                box.pace()
+
     except BaseException as exc:
         # Including KeyboardInterrupt and SystemExit: a run that was
         # interrupted must not be left reporting "running" forever,
         # and Ctrl-C is the most common way a run ends.
         if reporter is not None:
             reporter.failed(f"{type(exc).__name__}: {exc}")
+        if box is not None:
+            # Before re-raising: a run that dies must not leave a card
+            # holding a lowered limit, and this is the only `finally`
+            # short of the process not reaching one at all.
+            box.close()
         raise
 
     save_snapshot(model, out, tokenizer_source=model_dir)
     if reporter is not None:
         reporter.checkpoint(out)
         reporter.finished()
+    if box is not None:
+        box.close()
+        print(f"[hypernix.train] {box.summary()}", flush=True)
     return out
 
+
+
+def _thermal_governor(target_c: float | None):
+    """A :class:`~hypernix.system.fusebox.FuseBox`, or None.
+
+    None unless asked for, and None rather than an exception if anything
+    about it fails: thermal management is insurance, and insurance that
+    stops the run it was protecting has done more harm than the risk.
+
+    ``apply_changes`` is not passed, so this can pace the loop and can
+    trip on heat, and cannot change a power limit. Underclocking outlives
+    the process and needs a person to have said so; ``hnx fusebox watch
+    --underclock --yes`` is where that lives.
+    """
+    resolved = target_c
+    if resolved is None:
+        raw = os.environ.get("HNX_THERMAL_TARGET", "").strip()
+        if not raw:
+            return None
+        try:
+            resolved = float(raw)
+        except ValueError:
+            print(f"[hypernix.train] ignoring HNX_THERMAL_TARGET={raw!r}: "
+                  f"not a number", flush=True)
+            return None
+    try:
+        from hypernix.system.fusebox import FuseBox, Policy
+
+        policy = Policy(target_c=resolved)
+        if policy.trip_c <= policy.target_c:
+            # A target at or above the default trip point would have the
+            # breaker open from the first read. Move the fuse up with it
+            # rather than refusing: the caller asked for a hot target and
+            # a trip 10° above it is what they meant.
+            policy.trip_c = resolved + 10.0
+            policy.reset_c = resolved - 2.0
+        box = FuseBox(policy)
+        print(f"[hypernix.train] thermal governor on: target "
+              f"{policy.target_c:.0f}°C, breaker {policy.trip_c:.0f}°C",
+              flush=True)
+        return box
+    except Exception as exc:  # noqa: BLE001 - never fail a run over this
+        print(f"[hypernix.train] thermal governor is off: {exc}", flush=True)
+        return None
 
 
 def _progress_reporter(run_id: str | None, *, total_steps: int, model: str):

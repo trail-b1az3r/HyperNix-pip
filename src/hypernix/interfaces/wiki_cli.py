@@ -274,6 +274,7 @@ def _open_in_browser(module_name: str | None) -> None:
             "workshop": "Workshop",
             "scavenger": "Scavenger",
             "gather": "Gather",
+            "fusebox": "FuseBox",
         }
         page = page_map.get(module_name, module_name.replace("_", "-").title())
         url = f"{base_url}/{page}"

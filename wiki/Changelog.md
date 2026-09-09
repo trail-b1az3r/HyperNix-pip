@@ -20,6 +20,148 @@ next release header.
 - 𖢥 major bug fix
 - ꩜ restore to older version of item
 - ❗ unfixed known bug
+## 0.72.4.dev11 — beta 1 full: `fuse box`, and a claim that did not survive being measured
+
+A new module, `hypernix.system.fusebox`, and a subcommand: ✨
+
+```
+hnx fusebox status                    # what the cards are doing now
+hnx fusebox watch --target 78         # hold 78 °C by pacing the run
+hnx fusebox watch --target 78 --underclock --yes
+hnx fusebox plan                      # what underclocking would do
+hnx fusebox restore                   # undo what a crashed run left
+hnx train run --thermal-target 78     # the same, from a training run
+```
+
+It reads every card through `hypernix.system.gpus` — so `nvidia-smi`,
+`amd-smi` and `rocm-smi` all the same — plus the CPU through
+`thermometer`. It holds a target by pacing the training loop, or by
+lowering a power limit if you allow it. And it trips like a fuse if a
+card passes a hard limit anyway: the run pauses, waits for the reset
+temperature, and resumes eased, since whatever got the card there is
+still true.
+
+### The brief said "slow down now to go faster later". It does not work. ❗
+
+The feature as described was: ease off before the driver throttles, and
+win back more than you gave up. Before writing that down as a claim, it
+got simulated — a first-order thermal model, hardware throttling shaped
+the way vendors do it, performance scaling as `power ** 0.35` the way
+every published power-vs-throughput curve does. Three strategies over
+the same wall time:
+
+| | throughput | temperature |
+| --- | --- | --- |
+| run flat out, take the driver's throttling | **fastest** | hottest |
+| hold a target with a lower power limit | −2 % to −7 % | much cooler |
+| hold a target by pausing between steps | −12 % to −24 % | much cooler |
+
+The ordering does not change across the range a real machine occupies —
+marginal cooling and a savage throttle included, which are the
+conditions under which the story would be true if it were ever true.
+
+The reason is not subtle once you see it: a thermal throttle still does
+*most* of the work — clocks at 55 % are 55 % of a card, not zero — while
+a pause does none. And because performance scales sublinearly with
+power, 80 % of the power buys about 92 % of the throughput while pausing
+20 % of the time buys 80 %.
+
+So the module ships, and it is not sold as a speedup. It sells the thing
+it actually delivers: **a temperature you chose, at a cost it prints**.
+
+```
+fusebox eased for 412s, peak 79°C. That cost 11.4% of the run.
+fusebox did not intervene: peaked at 63°C, target 80°C. It cost the run nothing.
+```
+
+That is a legitimate thing to want — a shared machine, a laptop on a
+desk, a room someone sleeps in, a card you would like to still own in
+three years — and so is the fuse, because "the driver will handle it" is
+not a plan when the driver's next move is a shutdown in the middle of a
+checkpoint write.
+
+The measurement is not a note in a changelog: it is
+`tests/test_fusebox.py::TestTheThroughputClaim`, which runs the model on
+every CI run and fails if the ordering ever changes, and a test that the
+module docstring still says "not a speedup". Prose and physics cannot
+drift apart without something going red.
+
+Two design consequences follow from the numbers rather than from taste.
+The power limit is the cheaper lever by three to four times, so it takes
+over from pausing after three sustained hot readings rather than eight.
+And once a limit is actually applied, the pause stands down to 40 % of
+its ceiling — both levers at full pays twice for the same degrees.
+
+### What it will not do 🛡️
+
+- **It will not raise a power limit above the card's factory default.**
+  Not with a flag, not on request, not through the restore path.
+  Lowering a limit and putting it back is thermal management; going past
+  the default is overclocking, and a training run that quietly overvolts
+  someone's card is not a feature. The check lives at the one function
+  that could break it and is asserted from four directions.
+- **It will not touch a card unless asked twice.** `--underclock` turns
+  it on and `--yes` confirms. Without both, every subcommand is
+  read-only and reports what it *would* set. A power limit outlives the
+  process that changed it, so a flag left in shell history should not be
+  enough to change one. `hnx train --thermal-target` cannot reach the
+  underclocker at all.
+- **It will not sudo.** Setting a power limit needs root on every
+  current driver. A refusal is reported once and the governor falls back
+  to pausing, which needs none.
+- **It will not run anything it was handed.** Vendor commands come from
+  a fixed table; the index goes through `int()` and the wattage through
+  `float()`; every invocation is a list and there is no shell.
+- **There is no CPU actuator.** The CPU is read, and can trip the
+  breaker with `--cpu-trip`, but it never drives the pacing — a CPU at
+  85 °C during data loading is normal, and easing a cold GPU over it
+  would be harm on no evidence. Turning a machine's frequency scaling
+  down because a training run is warm would slow everything else the
+  person is doing. The one exception is job-scoped: halving *this
+  process's* torch thread count while easing.
+
+### Putting it back after a crash 𖢥
+
+Changes are written to `~/.hypernix/fusebox-state.json` as each one is
+made, not at exit — the case the file exists for is the process not
+reaching its exit. A clean exit restores, an exception restores, and a
+`SIGKILL` leaves the file for `hnx fusebox status` to notice (exit 3)
+and `hnx fusebox restore` to undo.
+
+### The breaker does not hang ❗→🛡️
+
+An hour above the trip point is a broken fan, not a transient. The
+breaker raises `ThermalStall` and says to check the cooling, rather than
+blocking a run forever without saying why.
+
+### Two bugs that only closing the loop could find 𖢥
+
+Every unit test here observes a fixed temperature and checks the
+response, and all of them passed on a controller that never reached the
+temperature it was asked for. Driving the real governor against the
+thermal model found it: pure proportional control settles wherever its
+output happens to balance the error, which for an 80 °C target was
+82.5 °C — for ever. Someone asking for 80 got 82.5. Fixed with a slow
+integral term clamped to the same ceiling as the ease itself, which is
+the whole of the anti-windup: it can never store up more than the
+controller could have produced anyway. It now settles at 79.9 °C, and
+`TestItActuallyReachesTheTarget` runs the closed loop at three targets
+so a future controller change cannot quietly reintroduce an offset.
+
+The second was in the reporting. A governor holding 79.95 °C against an
+80 °C target reported itself *over target for the entire run*, because
+80.02 is greater than 80 and the counter had no margin — a number that
+would have had someone debugging a governor that was working perfectly.
+It now counts seconds more than 1 °C over, and carries the magnitude
+separately as degree-seconds, because seconds alone cannot tell 0.1 °C
+over for an hour from 9 °C over for an hour.
+
+### Docs 📚
+
+`wiki/FuseBox.md`, a `fusebox` section in `CLI.md`, and the numbers
+above stated where a person deciding whether to turn this on will see
+them.
+
 ## 0.72.4.dev10 — beta 1 pt 1: `gather`, and Neo oven learns the house architecture
 
 Everything below the fold first: the website's mobile view, the last GPU

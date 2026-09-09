@@ -42,6 +42,7 @@ Assistants & dashboards:
 Data & infra:
   scavenger              search + pull HF datasets under storage/quality budgets
   gather                 crawl a site into a corpus (see Gather.md)
+  fusebox                GPU thermal governor for a run (see FuseBox.md)
   websearch              non-API web search utility
   net                    Tailscale mesh connect / export / log tailing
   gkey                   API key issuance, scoping, revocation (Gatekeeper + Keymaster)
@@ -510,6 +511,34 @@ and a host's own `Crawl-delay` overrides `-p` when it asks for longer.
 Script-shaped: `--json` on stdout with progress on stderr, and exit
 codes `0` crawled / `1` nothing fetched / `2` bad arguments / `3`
 interrupted. Full documentation in [Gather](Gather.md).
+
+## `fusebox`
+
+```bash
+hnx fusebox status                    # what the cards are doing now
+hnx fusebox watch --target 78         # hold 78 °C by pacing the run
+hnx fusebox watch --target 78 --underclock --yes
+hnx fusebox plan                      # what underclocking would do
+hnx fusebox restore                   # undo what a crashed run left
+```
+
+Holds a GPU at a temperature you chose, and trips like a fuse if it goes
+past `--trip` anyway. Two levers: pausing between steps (free, needs no
+privileges, on by default) and lowering a power limit (`--underclock`,
+needs root and `--yes`, outlives the process).
+
+**It is not a speedup and does not claim to be.** Holding a temperature
+costs throughput — a power limit 2–7 %, pausing 12–24 % — and the module
+prints what it cost when the run ends. What you buy is the temperature.
+The measurement is in `tests/test_fusebox.py`, and the reasoning is in
+[FuseBox](FuseBox.md).
+
+It never raises a power limit above the card's default, never escalates
+privileges, and records every change to `~/.hypernix/fusebox-state.json`
+so `hnx fusebox restore` can undo it after a crash.
+
+`hnx train run --thermal-target 78` paces a training run the same way,
+without touching any card setting.
 
 ## `websearch`
 
