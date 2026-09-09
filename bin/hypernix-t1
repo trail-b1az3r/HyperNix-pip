@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-VERSION="0.72.4.post6"
+VERSION="0.72.4.post7"
 
 CONFIG_DIR="${T1_CONFIG_DIR:-$HOME/.hypernix/t1api}"
 ENV_FILE="$CONFIG_DIR/.env"

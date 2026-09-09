@@ -21,6 +21,56 @@ next release header.
 - 𖢥 major bug fix
 - ꩜ restore to older version of item
 - ❗ unfixed known bug
+## 0.72.4.post7 — the subsystem map describes the tree that exists
+
+### It had stopped being true 📚
+
+`wiki/Home.md`'s map showed the training pipeline as of roughly 0.70 and
+nothing after it: no T1 API, no HyperLink, no Studio, no quantisation
+stack, no `gather`, no `fuse box`, no `hnx runtime`, no monitoring
+lineage, no security layer. Twelve subsystems that exist in `src/` were
+absent from the picture of what HyperNix is.
+
+Two things on it were not merely stale but wrong, and running the new
+checks is what surfaced them:
+
+- **`new_oven` was drawn as a module beside `old_oven`.** It is a
+  *function* in `models.old_oven`; there is no `models/new_oven.py` and
+  there never was one to lose.
+- **`neo_oven` is the successor, not a third peer.** Its own docstring
+  says it replaces `old_oven`, `CodeOven`, `new_oven` and all three
+  fridges — so `system.old_fridge`, `data.mediocre_fridge` and
+  `evaluation.new_fridge` are the earlier generation, not current assist
+  modules sitting alongside it.
+
+The map now covers four surfaces over one package, and each area —
+training, quantisation and GGUF, serving and security, interfaces and
+monitoring — names real modules rather than shapes.
+
+### 🧪 The map is checked against the tree
+
+Every dotted name it prints is resolved against `src/`, brace shorthand
+(`data.{pans, strainer}`) expanded first, and every directory and file
+it points at is confirmed to exist. A map whose boxes cannot be looked
+up is worse than no map, and this one had drifted for about fifteen
+releases without anything noticing.
+
+Getting the check to have teeth took three attempts, each caught by
+trying to break it rather than by reading it:
+
+1. `subsystem in SECTION` passed for `chat` on the strength of
+   `CodeOven.chat` — a method, in a completely different sentence.
+2. Excluding a preceding dot still passed, on the prose "the chat TUI".
+3. It now requires the map to name an actual *module* inside each
+   subsystem, which cannot be satisfied by accident — and every name
+   that satisfies it has already been resolved against the tree.
+
+That last one forced the serving block to be written in checkable form
+rather than as bare labels, which is a better block anyway.
+
+34 tests, including the two specific things the old map got wrong, so
+neither can come back quietly.
+
 ## 0.72.4.post6 — the release guard stopped refusing prepared releases
 
 ### "Already what the tree says" was the wrong answer 𖢥
