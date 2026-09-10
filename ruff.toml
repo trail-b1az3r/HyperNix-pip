@@ -28,11 +28,15 @@ extend-immutable-calls = [
     "fastapi.Cookie",
 ]
 
-# These deprecated shims intentionally print a warning before their
-# imports so the message fires even if the rest of the module fails
-# to load; that ordering is the point, not an oversight.
+# These deprecated modules intentionally announce themselves before
+# their imports, so the message fires even if the rest of the module
+# fails to load -- and, for the ones that import torch, without waiting
+# several seconds for it. That ordering is the point, not an oversight.
+# The announcement itself is hypernix.system.deprecation, which imports
+# nothing heavier than os, sys and warnings.
 [lint.per-file-ignores]
 "src/hypernix/data/mediocre_fridge.py" = ["E402"]
 "src/hypernix/evaluation/new_fridge.py" = ["E402"]
 "src/hypernix/system/old_fridge.py" = ["E402"]
 "src/hypernix/models/old_oven.py" = ["E402"]
+"src/hypernix/monitoring/tvtop.py" = ["E402"]

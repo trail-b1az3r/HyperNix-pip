@@ -150,39 +150,170 @@ Surfaces documented inside those pages rather than on their own:
 
 ## The subsystem map
 
-```
-                 ┌──────────────┐
-                 │  download    │  huggingface-hub + KNOWN_MODELS
-                 └──────┬───────┘
-                        ▼
-          ┌───────────────────────────┐
-          │        train              │  HyperNixConfig / Model
-          │  (init, expand, loop,     │  AutoModel fallback for
-          │   load_snapshot)          │  Gemma 4 / Qwen 3.5+ / GLM 5 / …
-          └──────┬────────────┬───────┘
-                 │            │
-                 ▼            ▼
-          ┌───────────┐  ┌───────────┐
-          │ old_oven  │  │  new_oven │  new_oven = fresh init in
-          │ (preheat) │  │           │  one of 20+ ARCH_PRESETS
-          └─────┬─────┘  └─────┬─────┘
-                └──────┬──────┘
-                       ▼
-         ┌──────────────────────────────┐
-         │        CodeOven              │  .complete, .chat, .fill,
-         │                              │  .train, .save_pt
-         └──────────────────────────────┘
+Four surfaces sit on one Python package. Every box below is a real
+module or directory — `hypernix.data.gather`, `desktop/src/LocalEngine.cpp`
+— so the map can be checked against the tree rather than believed.
 
-                           Assist modules
-                                │
-            ┌──────────────┬────┴────┬──────────────┐
-            ▼              ▼         ▼              ▼
-       freezer         old_fridge  mediocre_   new_fridge
-       (VRAM mgr)      (memory)    fridge       (graphing)
-                                   (datasets)
-
-       convert → quantize → upload     (GGUF pipeline)
 ```
+ ┌────────────────────────────────────────────────────────────────────┐
+ │                          What people run                           │
+ ├─────────────┬──────────────┬──────────────────┬────────────────────┤
+ │  hnx / CLI  │ hypernix-t1  │  HyperNix Studio │  HyperLink (iOS)   │
+ │  hyped      │ (bin/, bash) │  (desktop/, Qt6) │  (ios/, Swift)     │
+ │  waiter     │              │                  │                    │
+ └──────┬──────┴───────┬──────┴─────────┬────────┴─────────┬──────────┘
+        │              │                │                  │
+        │              └────────┬───────┴──────────────────┘
+        │                       ▼
+        │              ┌──────────────────┐
+        │              │  t1api (FastAPI) │  auth, registry, routing,
+        │              │  t1sdk · waiter  │  jobs, usage, billing, audit
+        │              └────────┬─────────┘
+        ▼                       ▼
+ ┌────────────────────────────────────────────────────────────────────┐
+ │                        hypernix (the package)                      │
+ └────────────────────────────────────────────────────────────────────┘
+```
+
+`hnx`, `hypernix` and `hypernix-quantize` all enter through
+`interfaces.version_launcher`, which picks an interpreter and re-execs
+`python -m hypernix` → `interfaces.cli`. It is not `cli:main` directly,
+and that distinction has cost a release: see [Changelog](Changelog.md)
+0.72.4.post4.
+
+### Training
+
+```
+     data.gather ─────────────┐   crawl → corpus (jsonl/txt)
+                              ▼
+   data.{cutting_board, pans, strainer, blender, salt_shaker,
+         pepper_shaker, food_processor, tupperware, lunchbox}
+                              │   clean · split · shard · store
+                              ▼
+   models.download ───▶ ┌───────────────────────────┐
+   (hf-hub +            │        training.train     │  HyperNixConfig
+    KNOWN_MODELS)       │  init · expand · loop ·   │  AutoModel fallback
+                        │  load_snapshot            │  for Gemma 4 /
+                        └───┬───────────────────┬───┘  Qwen 3.5+ / GLM 5
+                            │                   │
+              ┌─────────────▼──────────┐   ┌────▼─────────────────────┐
+              │    models.old_oven     │   │    models.neo_oven       │
+              │  preheat() · CodeOven  │   │  NeoOven — the successor │
+              │  new_oven() seeds a    │──▶│  to old_oven, CodeOven,  │
+              │  fresh model from one  │   │  new_oven() and all      │
+              │  of 20+ ARCH_PRESETS   │   │  three fridges           │
+              └────────────────────────┘   │  + hyperNix0x-v2, the    │
+                                           │  house architecture      │
+              hypernix.preheat,            └──────────────────────────┘
+              hypernix.new_oven and
+              hypernix.NeoOven all resolve to neo_oven.
+
+   optimizers.pressure_cooker{,_v3,_v4,_v5,_v5s,_v6,_v6v}
+   training.{brewer, mtp, camouflage, deep_fryer, instant_pot, smoker}
+```
+
+Assist modules around the loop:
+
+```
+   system.freezer      VRAM manager          system.vram      allocator tuning
+   system.fusebox      GPU thermals          system.gpus      NVIDIA / AMD /
+   training.monitor    training admin                          CPU behind one
+   timing.spinner      progress · cadence                      interface
+```
+
+The earlier generation, all three absorbed into `NeoOven` and all three
+still importable: `system.old_fridge` (memory), `data.mediocre_fridge`
+(datasets), `evaluation.new_fridge` (graphing).
+
+### Quantisation and GGUF
+
+```
+   quant.convert ──▶ quant.quantize ──▶ quant.gguf ──▶ model.gguf
+        (fp32/fp16)      (k-quants)         (writer)         │
+                                                             │
+   quant.steamroller   descending llama.cpp quantiser        │
+   quant.hyprslug      the sub-bit quantiser (IQ0.x, INT1,   │
+                       INT4, FP2, Q4_M) ──────────────────────┤
+   quant.imatrix       importance matrices                    │
+   quant.dflash2       a draft model written *into* the same ─┤
+                       GGUF, for speculative decoding         │
+   quant.lowbit                                               │
+   quant.subbit        the sub-bit runtime                    ▼
+                                                    ┌───────────────────┐
+   quant.hyprslug_headers  self-describing headers  │  native/ggml-hnx  │
+   quant.hyprslug_server   OpenAI-shaped server ────│  the llama.cpp    │
+   quant.runtime_bridge    `hnx runtime` — install  │  patch: 5 HyperNix│
+                           the patched libs so LM   │  types, 200–204,  │
+                           Studio and friends can   │  never renumbered │
+                           read a sub-bit model     └─────────┬─────────┘
+                                                              │
+   bridge.lmstudio  ── `waiter bridge`, outward to a server ───┘
+                       HyperNix does not run
+```
+
+### Serving, clients and security
+
+```
+   t1api.{auth, keys, registry, modelindex, routing}   who · what · where
+   t1api.{jobs, events, transport}                     async work
+   t1api.{usage, cost, billing, billingkeys}           what it costs
+   t1api.{audit, authhistory, backup}                  what happened
+   t1api.{mtls, netpolicy, ratelimit, security}        who gets in
+
+   security.keymaster    mints keys       security.gatekeeper  admits them
+   security.t2keys       T2 · T2S · T2P   security.gkey_cli    `gkey`
+   security.keyversions  v1 · v2 · v2short
+   system.nettrust       one trust decision: LAN · tailnet · public
+
+   t1sdk.client       stdlib-only Python SDK — no dependencies, on purpose
+   waiter.tui         the official client, plus waiter.{discovery,
+                      diagnose, smoke, local_config}
+   hyperlink.{pairing, identity, peers, sessions, files}   what the iOS
+   hyperlink.{hfdownload, hfmerge}                         app talks to
+   hyperlink.sync      a change feed and idempotency keys, so a phone
+                       can catch up and a retry cannot send twice
+   hyperlink.notify    push registrations, queue and APNs payloads
+   hyperlink.search    portable search — no FTS5, so it runs on
+                       PostgreSQL too
+   hyperlink.ondevice  will this GGUF run on that phone? Mirrored by
+                       ios/…/OnDevice/ModelFit.swift, which a test
+                       keeps in step with it
+   system.launcher    launch-script's supervisor: setsid(2) and a
+                      recording wrapper, or a systemd user unit
+   system.deprecation one way for a module on its way out to say so:
+                      a DeprecationWarning for tooling, and a stderr
+                      line for the human, never both and never stdout
+```
+
+### Interfaces and monitoring
+
+```
+   interfaces.hyped        the chat TUI
+   interfaces.hyped_pro    …and its pro form: core · bridge · tools · gui
+   interfaces.noodle       the autonomous multi-agent executor
+   interfaces.assistant    tool-calling, behind HYPERNIX_TOOL_POLICY
+   scriptgen.cli           build a training script, GUI or CLI
+
+   chat.{cookbook, countertop, flour, menu}   templates · presets ·
+   chat.injection                             session state · defence
+   audio.wakeup            the wake-word trainer and runtime
+   evaluation.{vera, espresso_maker, old_range, new_range,
+               industrial_range}              scoring · judging ·
+                                              module verification
+
+   monitoring.tv ▶ tvtop ▶ tvtop_plus_plus ▶ tvtoppro     the TUI lineage
+   monitoring.cctvtop      the C++ dashboard (+ remote desktop)
+   monitoring.map          the steampunk schematic
+   monitoring.{hyper_log, livestream, plasma, table, thermometer}
+
+   desktop/src   Studio: ModelCatalogue (Qt-free GGUF reader) · LocalEngine
+                 (llama.cpp, no server) · LocalSession · StudioBridge ·
+                 HyperLinkClient · ToolPolicy · ToolRunner
+```
+
+This map is maintained by hand. 0.72.6 plans to generate it — see
+[Roadmap](Roadmap.md) — with beta features on a second chart and
+not-yet-built links in red.
 
 ## Design principles
 

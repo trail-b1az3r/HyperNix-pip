@@ -63,7 +63,7 @@ import importlib.util
 import sys
 from typing import TYPE_CHECKING, Any
 
-__version__ = "0.72.4.post5"
+__version__ = "0.72.4.post11"
 DEFAULT_REPO_ID = "ray0rf1re/hyper-Nix.2"
 DEFAULT_MODEL = "qwen3.5-4b"  # New default model
 
@@ -542,7 +542,13 @@ _LAZY_ATTRS: dict[str, tuple[str, str | None]] = {
     'fusebox': ('system.fusebox', None),
     'nettrust': ('system.nettrust', None),
     'new_fridge': ('evaluation.new_fridge', None),
-    'new_oven': ('models.old_oven', 'new_oven'),
+    # 0.72.4.post9: neo_oven, not old_oven. The 0.71.5a2 notes said
+    # these shortcuts returned a NeoOven from that release on; the map
+    # was never moved, so `hypernix.preheat` kept resolving into a
+    # deprecated module and -- once that module started announcing
+    # itself properly -- told callers of the *top-level* API to stop
+    # using a module they had not imported.
+    'new_oven': ('models.neo_oven', 'new_oven'),
     'new_range': ('evaluation.new_range', None),
     'old_fridge': ('system.old_fridge', None),
     'old_oven': ('models.old_oven', None),
@@ -552,7 +558,7 @@ _LAZY_ATTRS: dict[str, tuple[str, str | None]] = {
     'pans': ('data.pans', None),
     'pepper_shaker': ('data.pepper_shaker', None),
     'plasma': ('monitoring.plasma', None),
-    'preheat': ('models.old_oven', 'preheat'),
+    'preheat': ('models.neo_oven', 'preheat'),
     'pressure_cooker': ('optimizers.pressure_cooker', None),
     'pressure_cooker_v3': ('optimizers.pressure_cooker_v3', None),
     'pressure_cooker_v4': ('optimizers.pressure_cooker_v4', None),

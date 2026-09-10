@@ -16,9 +16,15 @@ Each plotting function accepts an ``out_path``; no GUI is ever opened.
 """
 from __future__ import annotations
 
-from rich.console import Console
+from hypernix.system.deprecation import deprecated_module
 
-Console().print("[bold red]WARNING: new_fridge is deprecated. Please transition to neo_oven.[/]")
+# Announced before the heavy imports below, so the notice reaches the
+# operator immediately rather than after torch has finished loading.
+deprecated_module(
+    "hypernix.evaluation.new_fridge",
+    instead="hypernix.models.neo_oven",
+    since="0.71.5a2",
+)
 
 import re
 from collections.abc import Sequence

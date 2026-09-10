@@ -612,4 +612,150 @@ actor HyperLinkClient {
             timeout: 60
         )
     }
+
+    // MARK: - Sync (0.72.4.post9)
+
+    /// Changes since `cursor`, as a bounded page.
+    ///
+    /// Loop until `more` is false, carrying `cursor` forward from each
+    /// page. Do **not** advance it by the page size: a filtered feed
+    /// skips rows, and guessing would skip real changes with them.
+    func sync(
+        cursor: Int,
+        limit: Int = 100,
+        sessionID: String? = nil,
+        entities: [String]? = nil
+    ) async throws -> SyncPage {
+        var path = "/hyperlink/sync?cursor=\(cursor)&limit=\(limit)"
+        if let sessionID, !sessionID.isEmpty {
+            path += "&session_id=\(sessionID)"
+        }
+        if let entities, !entities.isEmpty {
+            path += "&entities=\(entities.joined(separator: ","))"
+        }
+        return try await get(path, as: SyncPage.self)
+    }
+
+    /// Claim an idempotency key before sending a turn.
+    ///
+    /// The phone cannot tell "the server never saw it" from "the server
+    /// saw it and the reply was lost", so it retries — and without a
+    /// key that produces two identical messages and two replies, one of
+    /// which cost real tokens for nothing. Mint the id **before** the
+    /// first attempt and reuse it on every retry.
+    func claim(clientMsgID: String) async throws -> SyncClaim {
+        try await post(
+            "/hyperlink/sync/claim",
+            body: SyncClaimRequest(clientMsgID: clientMsgID),
+            as: SyncClaim.self,
+            timeout: 20
+        )
+    }
+
+    /// An id for one outbound turn.
+    ///
+    /// A UUID rather than a counter: a counter resets when the app is
+    /// reinstalled, and a reused key would silently return an old
+    /// turn's answer instead of sending the new one.
+    static func newClientMessageID() -> String {
+        "cmsg_" + UUID().uuidString.replacingOccurrences(of: "-", with: "").prefix(24)
+    }
+
+    // MARK: - Push notifications (0.72.4.post9)
+
+    /// Register this device's APNs token.
+    ///
+    /// Safe to call on every launch — iOS hands the app a token each
+    /// time, and the server updates rather than duplicating. The
+    /// response carries a fingerprint; the token is never returned.
+    func registerPush(
+        token: Data,
+        bundleID: String,
+        environment: String = "production",
+        events: [String]? = nil
+    ) async throws -> PushRegistration {
+        let hex = token.map { String(format: "%02x", $0) }.joined()
+        let response: PushRegistrationResponse = try await post(
+            "/hyperlink/push",
+            body: PushRegisterRequest(
+                token: hex, platform: "ios", bundleID: bundleID,
+                environment: environment, events: events
+            ),
+            as: PushRegistrationResponse.self,
+            timeout: 20
+        )
+        return response.registration
+    }
+
+    func pushRegistrations(includeDisabled: Bool = false) async throws -> PushRegistrationList {
+        try await get(
+            "/hyperlink/push?include_disabled=\(includeDisabled)",
+            as: PushRegistrationList.self
+        )
+    }
+
+    /// What this server can notify about.
+    ///
+    /// Fetched rather than hard-coded, so a server that gains an event
+    /// kind can offer it without an App Store release.
+    func pushEventCatalogue() async throws -> [String] {
+        try await get("/hyperlink/push/events", as: PushEventCatalogue.self).events
+    }
+
+    func setPushEvents(
+        registrationID: String, events: [String]
+    ) async throws -> PushRegistration {
+        let data = try encoder.encode(PushEventsRequest(events: events))
+        let response: PushRegistrationResponse = try decode(
+            PushRegistrationResponse.self,
+            from: await send(
+                path: "/hyperlink/push/\(registrationID)", method: "PATCH",
+                body: data, timeout: 20
+            )
+        )
+        return response.registration
+    }
+
+    func unregisterPush(registrationID: String) async throws {
+        _ = try await send(
+            path: "/hyperlink/push/\(registrationID)", method: "DELETE", timeout: 20
+        )
+    }
+
+    // MARK: - Search (0.72.4.post9)
+
+    /// Search this account's sessions and messages.
+    ///
+    /// Check `capped` before presenting the result as complete: the
+    /// server bounds its scan, and a silent partial answer is what
+    /// makes someone conclude a conversation is gone.
+    func search(
+        _ query: String,
+        limit: Int = 25,
+        sessionID: String? = nil,
+        includeArchived: Bool = false,
+        roles: [String]? = nil
+    ) async throws -> SearchResults {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            // The server rejects an empty `q` with a 422. Answering
+            // locally keeps an empty search box from producing an error
+            // banner on every keystroke.
+            return SearchResults(hits: [], scanned: 0, capped: false, terms: [])
+        }
+        let escaped = trimmed.addingPercentEncoding(
+            withAllowedCharacters: .urlQueryAllowed
+        ) ?? trimmed
+        var path = "/hyperlink/search?q=\(escaped)&limit=\(limit)"
+        if let sessionID, !sessionID.isEmpty {
+            path += "&session_id=\(sessionID)"
+        }
+        if includeArchived {
+            path += "&include_archived=true"
+        }
+        if let roles, !roles.isEmpty {
+            path += "&roles=\(roles.joined(separator: ","))"
+        }
+        return try await get(path, as: SearchResults.self, timeout: 30)
+    }
 }

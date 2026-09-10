@@ -136,55 +136,26 @@ jobs:
           pip install --index-url https://download.pytorch.org/whl/cpu torch
           pip install -e ".[dev]"
 
-      - name: Refuse a version that goes backwards
-        # This workflow writes whatever version it is handed, so a
-        # dispatch naming an older one silently downgrades main. It has
-        # happened: v0.72.3.post2 was dispatched against a tree already
-        # at 0.72.3.post4 and rewrote all three version strings to the
-        # older number, leaving main claiming a release that predates the
-        # code in it. Nothing downstream can detect that -- the built
-        # wheel is internally consistent, it is just wrong about which
-        # release it is.
-        if: ${{ !inputs.allow_downgrade }}
+      - name: Check the version this release was dispatched with
+        # Three questions, and the old inline guard conflated two of
+        # them. It refused a version equal to the tree's outright --
+        # "already what the tree says, use a .postN suffix" -- but
+        # preparing a release *is* writing that version into the three
+        # source files and adding the changelog heading under it, and
+        # both steps below already expect it: the commit step notices
+        # there is nothing to commit and the tag step skips a tag that
+        # exists. Only the guard disagreed, and the cost was paid in the
+        # changelog: 0.72.4 post1 and post3 were cut under numbers
+        # invented at dispatch time to get past it, so neither has a
+        # heading and neither says what shipped.
+        #
+        # What actually makes a repeat unsafe is the number naming other
+        # code, which a version string cannot tell you and a tag can.
+        # See .github/scripts/version_guard.py -- it is a script rather
+        # than a heredoc so tests/test_version_guard.py can drive it.
         run: |
-          python - <<'GUARD'
-          import re, sys
-          from pathlib import Path
-          from packaging.version import Version, InvalidVersion
-
-          requested = "${{ inputs.version }}"
-          pep440 = requested.replace("postr", "post")
-          if re.fullmatch(r"\d+\.\d+\.\d+-\d+", pep440):
-              base, build = pep440.rsplit("-", 1)
-              pep440 = f"{base}.post{build}"
-
-          current = re.search(
-              r'^version = "([^"]+)"', Path("pyproject.toml").read_text(), re.M
-          )
-          if current is None:
-              sys.exit("::error::no version line in pyproject.toml")
-
-          try:
-              new, old = Version(pep440), Version(current.group(1))
-          except InvalidVersion as exc:
-              sys.exit(f"::error::{exc}")
-
-          if new > old:
-              print(f"{old} -> {new}")
-          elif new == old:
-              sys.exit(
-                  f"::error::version {new} is already what the tree says. "
-                  f"Re-releasing the same number publishes different code "
-                  f"under one version. Use a .postN suffix."
-              )
-          else:
-              sys.exit(
-                  f"::error::version {new} is OLDER than the tree's {old}. "
-                  f"Publishing it would make main claim a release that "
-                  f"predates its own code. If you really mean to roll back, "
-                  f"re-run with allow_downgrade."
-              )
-          GUARD
+          python .github/scripts/version_guard.py '${{ inputs.version }}' \
+            ${{ inputs.allow_downgrade && '--allow-downgrade' || '' }}
 
       - name: Bump versions in source
         run: |

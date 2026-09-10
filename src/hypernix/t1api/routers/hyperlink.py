@@ -42,8 +42,11 @@ from ...hyperlink.files import AttachmentStore
 from ...hyperlink.hfmerge import HFResolveError
 from ...hyperlink.hfmerge import resolve as hf_resolve
 from ...hyperlink.identity import fingerprint as server_fingerprint
+from ...hyperlink.notify import EventKind, NotificationStore
 from ...hyperlink.pairing import DeviceRegistry, pairing_payload
+from ...hyperlink.search import SearchIndex
 from ...hyperlink.sessions import ChatMessage, ChatSessionStore
+from ...hyperlink.sync import SyncStore
 from ..audit import AuditCategory, AuditOutcome
 from ..config import T1APIConfig
 from ..deps import (
@@ -55,9 +58,12 @@ from ..deps import (
     get_device_registry,
     get_hyperlink_principal,
     get_job_queue,
+    get_notification_store,
     get_origin,
     get_request_id,
+    get_search_index,
     get_session_store,
+    get_sync_store,
     get_trust_policy,
     require_hyperlink_admin,
 )
@@ -88,11 +94,22 @@ from ..schemas import (
     PairingCreateRequest,
     PairingRedeemRequest,
     PairingRedeemResponse,
+    PushEventsRequest,
+    PushRegisterRequest,
+    PushRegistrationListResponse,
+    PushRegistrationResponse,
+    PushRegistrationSummary,
+    SearchHit,
+    SearchResponse,
     SessionCreateRequest,
     SessionListResponse,
     SessionResponse,
     SessionSummary,
     SessionUpdateRequest,
+    SyncChange,
+    SyncClaimRequest,
+    SyncClaimResponse,
+    SyncPageResponse,
 )
 from ..version import T1_VERSION
 
@@ -1210,6 +1227,239 @@ def list_downloaded(
             )
     return DownloadedModelsResponse(
         models=models, count=len(models), directory=str(root), request_id=request_id
+    )
+
+
+# ---------------------------------------------------------------------------
+# Catching up (0.72.4.post9)
+# ---------------------------------------------------------------------------
+#
+# A phone loses the route mid-request, is suspended by the OS in the
+# middle of a POST, and comes back hours later on a different network.
+# Polling GET /sessions tells it the current state of everything, which
+# costs a cellular download of conversations it already has and still
+# does not reveal that a session was *deleted* -- an absence cannot be
+# diffed against a list you no longer trust.
+
+
+@router.get("/sync", response_model=SyncPageResponse)
+def sync_changes(
+    cursor: int = Query(default=0, ge=0),
+    limit: int = Query(default=100, ge=1, le=500),
+    session_id: str | None = Query(default=None),
+    entities: str | None = Query(
+        default=None, description="Comma-separated: session,message,device,attachment"
+    ),
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    store: SyncStore = Depends(get_sync_store),
+    config: T1APIConfig = Depends(get_config),
+    request_id: str = Depends(get_request_id),
+) -> SyncPageResponse:
+    _require_enabled(config)
+    wanted = (
+        [e.strip() for e in entities.split(",") if e.strip()] if entities else None
+    )
+    page = store.since(
+        cursor, owner=principal.owner, limit=limit,
+        session_id=session_id, entities=wanted,
+    )
+    return SyncPageResponse(
+        changes=[SyncChange(**c.to_dict()) for c in page.changes],
+        cursor=page.cursor,
+        more=page.more,
+        resync_required=page.resync_required,
+        head=store.head(owner=principal.owner),
+        request_id=request_id,
+    )
+
+
+@router.post("/sync/claim", response_model=SyncClaimResponse)
+def claim_client_message(
+    payload: SyncClaimRequest,
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    store: SyncStore = Depends(get_sync_store),
+    config: T1APIConfig = Depends(get_config),
+    request_id: str = Depends(get_request_id),
+) -> SyncClaimResponse:
+    """Claim an idempotency key before sending a turn.
+
+    The phone cannot tell "the server never saw it" from "the server saw
+    it and the reply was lost", so it retries -- and produces two
+    identical messages and two replies, one of which cost real tokens
+    for nothing. A key minted before the first attempt and reused on
+    every retry makes the second attempt return the first one's answer.
+
+    Scoped to the calling device, so two phones cannot collide.
+    """
+    _require_enabled(config)
+    claim = store.claim(
+        device_id=principal.device_id or principal.owner,
+        client_msg_id=payload.client_msg_id,
+        owner=principal.owner,
+    )
+    return SyncClaimResponse(**claim.to_dict(), request_id=request_id)
+
+
+# ---------------------------------------------------------------------------
+# Push notifications (0.72.4.post9)
+# ---------------------------------------------------------------------------
+
+
+@router.post("/push", response_model=PushRegistrationResponse)
+def register_push(
+    payload: PushRegisterRequest,
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    store: NotificationStore = Depends(get_notification_store),
+    config: T1APIConfig = Depends(get_config),
+    request_id: str = Depends(get_request_id),
+) -> PushRegistrationResponse:
+    """Register this device's APNs token.
+
+    Re-registering the same token updates rather than duplicates: iOS
+    hands the app a token on every launch, and a row per launch would
+    send every notification once per day the app had been opened.
+
+    The response carries a fingerprint, never the token.
+    """
+    _require_enabled(config)
+    registration = store.register(
+        device_id=principal.device_id or principal.owner,
+        owner=principal.owner,
+        token=payload.token,
+        platform=payload.platform,
+        bundle_id=payload.bundle_id,
+        environment=payload.environment,
+        events=payload.events,
+    )
+    return PushRegistrationResponse(
+        registration=PushRegistrationSummary(**registration.to_dict()),
+        request_id=request_id,
+    )
+
+
+@router.get("/push", response_model=PushRegistrationListResponse)
+def list_push(
+    include_disabled: bool = Query(default=False),
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    store: NotificationStore = Depends(get_notification_store),
+    config: T1APIConfig = Depends(get_config),
+    request_id: str = Depends(get_request_id),
+) -> PushRegistrationListResponse:
+    _require_enabled(config)
+    registrations = store.list_registrations(
+        owner=principal.owner, include_disabled=include_disabled
+    )
+    return PushRegistrationListResponse(
+        registrations=[PushRegistrationSummary(**r.to_dict()) for r in registrations],
+        count=len(registrations),
+        pending=store.pending_count(owner=principal.owner),
+        request_id=request_id,
+    )
+
+
+@router.patch("/push/{registration_id}", response_model=PushRegistrationResponse)
+def set_push_events(
+    registration_id: str,
+    payload: PushEventsRequest,
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    store: NotificationStore = Depends(get_notification_store),
+    config: T1APIConfig = Depends(get_config),
+    request_id: str = Depends(get_request_id),
+) -> PushRegistrationResponse:
+    _require_enabled(config)
+    _require_own_registration(store, registration_id, principal)
+    registration = store.set_events(registration_id, payload.events)
+    return PushRegistrationResponse(
+        registration=PushRegistrationSummary(**registration.to_dict()),
+        request_id=request_id,
+    )
+
+
+@router.delete("/push/{registration_id}", response_model=GenericOkResponse)
+def unregister_push(
+    registration_id: str,
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    store: NotificationStore = Depends(get_notification_store),
+    config: T1APIConfig = Depends(get_config),
+    request_id: str = Depends(get_request_id),
+) -> GenericOkResponse:
+    _require_enabled(config)
+    _require_own_registration(store, registration_id, principal)
+    store.unregister(registration_id)
+    return GenericOkResponse(ok=True, request_id=request_id)
+
+
+@router.get("/push/events", response_model=dict)
+def list_push_events(
+    config: T1APIConfig = Depends(get_config),
+    request_id: str = Depends(get_request_id),
+) -> dict:
+    """What a device may subscribe to.
+
+    Served rather than hard-coded in the app, so a server that gains an
+    event kind does not need the client updated to offer it.
+    """
+    _require_enabled(config)
+    return {"events": sorted(EventKind.ALL), "request_id": request_id}
+
+
+def _require_own_registration(
+    store: NotificationStore, registration_id: str, principal: HyperLinkPrincipal
+) -> None:
+    """A registration belongs to its owner.
+
+    Without this, knowing a registration id -- which is not a secret --
+    would let any authenticated device silence or delete another
+    device's notifications. Checked before every mutation rather than
+    trusted from the path.
+    """
+    registration = store.get_registration(registration_id)
+    if registration.owner != principal.owner:
+        # Not found, not forbidden: confirming the id exists tells an
+        # unauthorised caller something they should not learn.
+        raise T1APIError(
+            T1ErrorCode.NOT_FOUND, f"No push registration {registration_id!r}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Search (0.72.4.post9)
+# ---------------------------------------------------------------------------
+
+
+@router.get("/search", response_model=SearchResponse)
+def search_history(
+    q: str = Query(min_length=1, max_length=500),
+    limit: int = Query(default=25, ge=1, le=200),
+    session_id: str | None = Query(default=None),
+    include_archived: bool = Query(default=False),
+    roles: str | None = Query(default=None, description="Comma-separated"),
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    index: SearchIndex = Depends(get_search_index),
+    config: T1APIConfig = Depends(get_config),
+    request_id: str = Depends(get_request_id),
+) -> SearchResponse:
+    """Search this owner's sessions and messages.
+
+    Matching is done in Python over a bounded, SQL-narrowed candidate
+    set rather than with FTS5, because the T1 API runs on SQLite *or*
+    PostgreSQL. That also buys Unicode-correct case folding -- `LIKE` is
+    case-insensitive for ASCII only, so it does not match "straße" for
+    "STRASSE" -- and makes a query containing `%` a search for a percent
+    sign rather than a request for every row.
+    """
+    _require_enabled(config)
+    wanted = [r.strip() for r in roles.split(",") if r.strip()] if roles else None
+    results = index.search(
+        q, owner=principal.owner, limit=limit, session_id=session_id,
+        include_archived=include_archived, roles=wanted,
+    )
+    return SearchResponse(
+        hits=[SearchHit(**h.to_dict()) for h in results.hits],
+        scanned=results.scanned,
+        capped=results.capped,
+        terms=results.terms,
+        request_id=request_id,
     )
 
 

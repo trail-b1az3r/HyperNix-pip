@@ -20,9 +20,15 @@ primitives gate themselves behind ``torch.cuda.is_available()``.
 """
 from __future__ import annotations
 
-from rich.console import Console
+from hypernix.system.deprecation import deprecated_module
 
-Console().print("[bold red]WARNING: old_fridge is deprecated. Please transition to neo_oven.[/]")
+# Announced before the heavy imports below, so the notice reaches the
+# operator immediately rather than after torch has finished loading.
+deprecated_module(
+    "hypernix.system.old_fridge",
+    instead="hypernix.models.neo_oven",
+    since="0.71.5a2",
+)
 
 import fnmatch
 import gc

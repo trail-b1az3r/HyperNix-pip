@@ -521,6 +521,18 @@ def get_attachment_store(request: Request):
     return request.app.state.t1_attachment_store
 
 
+def get_sync_store(request: Request):
+    return request.app.state.t1_sync_store
+
+
+def get_notification_store(request: Request):
+    return request.app.state.t1_notification_store
+
+
+def get_search_index(request: Request):
+    return request.app.state.t1_search_index
+
+
 @dataclass
 class HyperLinkPrincipal:
     """Who is making a HyperLink request: a paired device, or a T1 key.

@@ -31,3 +31,11 @@ htmlcov/
 # Local virtualenvs
 .venv/
 venv/
+
+# The iOS inference engine: cloned and built by
+# ios/scripts/build_llama_xcframework.sh. Hundreds of megabytes, and
+# reproducible from the pinned ref — ios/vendor/llama-api-b10883.json
+# records what the API looked like, which is the part worth committing.
+ios/.build/
+ios/vendor/llama.xcframework/
+ios/vendor/llama.xcframework.json

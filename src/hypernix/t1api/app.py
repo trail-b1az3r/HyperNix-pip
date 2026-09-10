@@ -59,8 +59,11 @@ from hypernix.security.gatekeeper import Gatekeeper
 from hypernix.security.keymaster import Keymaster
 
 from ..hyperlink.files import AttachmentStore
+from ..hyperlink.notify import NotificationStore
 from ..hyperlink.pairing import DeviceRegistry
+from ..hyperlink.search import SearchIndex
 from ..hyperlink.sessions import ChatSessionStore
+from ..hyperlink.sync import SyncStore
 from ..security.t2keys import ServerKeyRegistry
 from . import __t1api_version__
 from .audit import AuditCategory, AuditLog, AuditOutcome
@@ -223,6 +226,10 @@ def create_app(
     device_registry: DeviceRegistry | None = None,
     session_store: ChatSessionStore | None = None,
     attachment_store: AttachmentStore | None = None,
+    # 0.72.4.post9 -- injectable for the same reason as everything above.
+    sync_store: SyncStore | None = None,
+    notification_store: NotificationStore | None = None,
+    search_index: SearchIndex | None = None,
     # T1 v1.0.26.8.1.0
     auth_history: AuthHistory | None = None,
     backup_store: BackupStore | None = None,
@@ -327,6 +334,12 @@ def create_app(
         backend=db,
         max_bytes=cfg.hyperlink_max_upload_bytes,
     )
+    # 0.72.4.post9. Same backend again, for the same reason: a phone
+    # that can catch up, be notified, and search its own history should
+    # not cost the operator a second thing to back up.
+    sync = sync_store or SyncStore(db)
+    notifications = notification_store or NotificationStore(db)
+    searching = search_index or SearchIndex(db)
 
     tls = cfg.tls_settings()
     cert_verifier = ClientCertVerifier(tls)
@@ -389,6 +402,10 @@ def create_app(
     app.state.t1_device_registry = devices
     app.state.t1_session_store = sessions
     app.state.t1_attachment_store = attachments
+    # 0.72.4.post9
+    app.state.t1_sync_store = sync
+    app.state.t1_notification_store = notifications
+    app.state.t1_search_index = searching
     # T1 v1.0.26.8.1.0
     app.state.t1_auth_history = history
     app.state.t1_backup_store = backups

@@ -21,6 +21,495 @@ next release header.
 - 𖢥 major bug fix
 - ꩜ restore to older version of item
 - ❗ unfixed known bug
+## 0.72.4.post11 — the engine is linked
+
+`ios/scripts/build_llama_xcframework.sh` produces
+`ios/vendor/llama.xcframework`, `project.yml` links it, and
+`LlamaRunner.swift` runs a GGUF on the phone through it. post10 left
+this specified; it is wired now.
+
+### Upstream's build script, not a hand-listed target ✨
+
+The obvious approach — a native XcodeGen target listing llama.cpp's
+sources — is a trap. llama.cpp restructures its build between releases:
+`ggml-metal.m` became `ggml-metal.cpp` and the Metal backend moved
+directory, so a hand-maintained file list breaks on every bump in a way
+that reads as a compiler error rather than as "the list is stale".
+
+The SPM route is gone too. Checking rather than assuming was worth it:
+`Package.swift` **404s** at the pinned ref — upstream removed it.
+
+What does exist is `build-xcframework.sh`, upstream's own supported
+Apple build, and that is what runs. The script clones at the ref
+`native/ggml-hnx/build.sh` pins — the phone and the desktop must agree
+about the HyperNix tensor types, and a skew would look like a corrupt
+model rather than a version mismatch — applies the sub-bit patch, and
+copies the result into `ios/vendor/`.
+
+### 236 symbols, pinned 🧪
+
+The llama.cpp C API churns hard, and this file could not be compiled
+here to find out. So it was written against the real
+`include/llama.h` fetched at the pinned ref, and every symbol it uses is
+checked against a committed manifest of what that header declares.
+
+Each of these was the correct name recently and is gone:
+
+| was | is |
+|---|---|
+| `llama_load_model_from_file` | `llama_model_load_from_file` |
+| `llama_new_context_with_model` | `llama_init_from_model` |
+| `llama_free_model` | `llama_model_free` |
+| `llama_kv_cache_clear(ctx)` | `llama_memory_clear(llama_get_memory(ctx), _)` |
+| `params.use_mmap` / `use_mlock` | `params.load_mode` |
+
+Written from memory, every one of those would have compiled into
+nothing on a machine nobody in CI has. The check was verified by
+breaking it three ways: a retired function name, the removed `use_mmap`
+field, and a ref mismatch between phone and desktop.
+
+### "JIT models" turns out to be a real flag 🔧
+
+`llama_model_params.lazy_mode` reads the rows of marked tensors **on
+demand** rather than pulling whole tensors up front.
+`LLAMA_LAZY_MODE_AUTO` applies it to tensors over 4 GiB, which is the
+default here — full `ON` is a per-model decision and not one to make on
+someone's behalf.
+
+Paired with `LLAMA_LOAD_MODE_MMAP` so the weights are file-backed and
+evictable rather than dirty anonymous pages: on iOS that is the
+difference between pages the kernel can reclaim under pressure and pages
+that count fully against the jetsam limit. Not `MLOCK` — pinning
+gigabytes on a phone is the fastest way to be killed.
+
+### A build without the engine still builds 🛡️
+
+`LocalLlama.xcconfig` ships with `HNX_LOCAL_LLAMA` empty, so
+`LlamaRunner` compiles out and `LocalInference` falls back to
+`EchoRunner`, which says this build has no local engine. The framework
+dependency is `optional: true`, so `xcodegen generate` succeeds on a
+checkout that has never run the build script.
+
+CI matches: `local_engine` is a workflow input, off by default, because
+two slices on a hosted macOS runner is 15-25 minutes nobody should pay
+on a PR that touched a view. The generate step prints which of the two
+builds it made, since an app that silently has no engine is the
+confusing case.
+
+### ❗ Still not compiled
+
+There is no Xcode, no Swift toolchain and no macOS here, so the build
+script has never run and none of the Swift has been compiled. What has
+been checked: every llama.cpp symbol against the real header, the two
+refs agreeing, the dependency being optional, the flag shipping off,
+and brace balance. The first real macOS build is where a compile error
+would surface.
+
+## 0.72.4.post10 — HyperLink runs models on the phone
+
+Search Hugging Face, download a GGUF, run it with no server involved.
+The hard part was never the running; it is answering "will this one
+work?" before a four-gigabyte download, and being right.
+
+### Total RAM is not the budget 𖢥
+
+The mistake almost every naive implementation makes, and it is fatal
+rather than cosmetic. `ProcessInfo.physicalMemory` returns 8 GB on an
+iPhone 15 Pro and **an app may not use it**: iOS gives each process a
+jetsam limit well below total RAM — commonly 2-3 GB — and exceeding it
+is not a swap, not a slowdown, and not an exception you can catch. The
+process is killed with no warning.
+
+A fit check written against `physicalMemory` therefore tells the user a
+5 GB model fits, downloads it over twenty minutes of cellular, and dies
+partway through the first reply. `os_proc_available_memory()` is the
+number that matters, and it is what `DeviceMemory` reads.
+
+The `increased-memory-limit` entitlement is read from the provisioning
+profile and **reported**, never used to inflate an estimate — claiming
+headroom the process may not have been granted is the same bug in a new
+place. The budget also shrinks while the app is open, so the check runs
+again immediately before every load.
+
+### The KV cache, and unified memory 🔁
+
+At 32k context an 8B model's cache is 4 GiB, comparable to its
+quantised weights; at 128k it is 16 GiB. A planner that sizes only the
+weights is wrong exactly when someone uses the long context they chose
+the model for, so `largest_context` answers "how much context can I
+have" rather than refusing outright. Sized by the *key/value* head
+count, not the attention head count — the difference is 4x on Llama 3.
+
+And on Apple silicon, moving layers to Metal does not reduce memory: a
+Metal buffer and a malloc come from the same pool. Offloading buys
+speed and no headroom, and a planner that subtracts offloaded layers
+approves models that cannot run.
+
+### The Neural Engine cannot run a GGUF ❗
+
+It is reachable only through Core ML, and llama.cpp has no Core ML
+backend for LLM inference — its Apple backend is Metal, with Accelerate
+on the CPU path. Running on the ANE would mean converting the model: a
+different file, in a different format, from a different toolchain. Not
+a setting.
+
+So there is no ANE toggle, and `ANE_EXPLANATION` is shown instead. A
+switch that claims otherwise is a lie the user acts on.
+
+### Sizing a file before downloading it 🔧
+
+A GGUF is not bits times parameters. llama.cpp keeps the embedding and
+output tensors at a higher precision than the name suggests, and for a
+small model those dominate — Llama-3.2-1B has a 128k vocabulary over
+2048 dimensions, 21% of its parameters. Sizing it flat under-counts by
+8%.
+
+Under-counting is the direction that gets the process killed, so the
+exception is priced separately. Every estimate now lands at or above
+the real file: +1.1% on the 1B, +5.2% on an 8B, +1.9% on Q8_0. The
+asymmetry is deliberate — over-estimating hides a model that would have
+run, under-estimating ends the app.
+
+Two errors were caught doing this. The first was mine in the validation
+harness rather than the code: Hugging Face quotes file sizes in decimal
+GB and I compared them against GiB, which made a -1.5% error look like
+-8.2%. The second was real: `FORMATS` knows eight GGUF quantisations
+and Hugging Face uses about thirty, so `Q4_K_S` — on thousands of
+repositories — could not be sized at all.
+
+### 🧪 Two implementations, kept in step
+
+The decision has to be made on the phone, before a download and again
+before a load, when there may be no network. So the arithmetic exists
+twice: `hypernix/hyperlink/ondevice.py` as the reference, and
+`ModelFit.swift` as the mirror.
+
+Duplicated arithmetic drifts, and the symptom here is the Swift side
+approving a model the Python side would refuse.
+`tests/test_hyperlink_ondevice_mirror.py` parses the Swift and compares
+every constant and every quantisation bit width against the Python —
+verified by breaking it three ways: a drifted margin, a drifted bit
+width, and an ANE case sneaking into the backend enum.
+
+87 new tests. There is no Swift toolchain in CI, so none of them
+compile the Swift; they check the numbers, which are the part that
+decides whether a phone survives.
+
+### ❗ llama.cpp is not linked into the iOS target
+
+Everything above it is here: the memory guard, the load and unload
+lifecycle, the pressure response, the resumable background download
+(excluded from iCloud backup, disk checked with
+`volumeAvailableCapacityForImportantUsage`, short files deleted rather
+than kept), the Keychain-held Hugging Face token, the settings, and the
+streaming interface the UI talks to. `EchoRunner` ships so a build
+without the engine degrades to a clear message rather than a link
+error.
+
+Linking it means a native target in `ios/project.yml` building ggml
+with Metal for arm64-apple-ios. That build has not been run, and the
+Swift here has not been compiled — there is no Xcode or Swift toolchain
+in this environment. Specified, not done.
+
+## 0.72.4.post9 — HyperLink learns to catch up, notify and search
+
+Three subsystems that exist because a phone is not a desktop client, and
+the difference is not cosmetic. Plus the two issues found while writing
+post7 and post8, now fixed.
+
+### `hypernix.hyperlink.sync` — the retry that sent everything twice 𖢥
+
+A phone POSTs a turn, the connection drops before the response arrives,
+and it cannot tell "the server never saw it" from "the server saw it and
+the reply was lost". Retrying is the only safe-looking option and it
+produced two identical user messages and two model replies — one of
+which cost real tokens for nothing. There is no client-side fix.
+
+`POST /hyperlink/sync/claim` takes a `client_msg_id` the client mints
+*before* its first attempt and reuses on every retry; a second claim
+returns what the first produced. Keys are scoped per device, so two
+phones cannot collide, and expire after a day.
+
+The other half is catching up. Polling `GET /sessions` downloads
+conversations the phone already has and still cannot reveal that a
+session was **deleted** — an absence is invisible when you are diffing
+against a list you no longer trust. `GET /hyperlink/sync` is a change
+feed with real tombstone rows, a `head` so a new device can skip the
+history rather than replaying every change ever made, and a
+`resync_required` flag for a cursor that has fallen off the back of the
+log.
+
+Sequence numbers come from a counter row read and written inside the
+same transaction as the change it labels, not `MAX(seq) + 1` — two
+writers reading the same maximum pick the same number. Verified under
+eight concurrent writers: 320 rows, no duplicates, no gaps.
+
+### `hypernix.hyperlink.notify` — and two bugs only running found ✨
+
+Push registrations, a durable queue with backoff, collapse handling, and
+the APNs payload. Delivery itself is an operator-supplied transport,
+because an APNs push needs an Apple team key and a route to
+`api.push.apple.com`, neither of which ships with an open-source
+package. That boundary is stated rather than pretended past.
+
+Device tokens are credentials, so they are stored because delivery needs
+them and never returned by an API, logged, or put in a `repr` — an
+eight-character fingerprint goes out instead.
+
+Both payload bugs were invisible until the code met real text:
+
+- **`json.dumps` escapes non-ASCII by default.** `ensure_ascii=True`
+  turns each Japanese character into a six-byte `\uXXXX` where UTF-8
+  needs three. The builder measured UTF-8 and shipped 8069-byte payloads
+  against a 4096-byte limit — refused by APNs for every reply that was
+  not plain English.
+- **Subtracting the overflow over-corrects to nothing.** A body of 8000
+  double quotes escapes to two bytes each, so the first overflow is
+  about as large as the whole budget; the subtraction drove it to zero
+  and produced a 143-byte payload with an empty body. **A model reply
+  containing code arrived with no text in it.** Binary search finds the
+  real maximum: 1,979 quotes and 3,276 characters of Python where there
+  had been none.
+
+### `hypernix.hyperlink.search` — without FTS5 🔁
+
+The T1 API runs on SQLite *or* PostgreSQL, and FTS5 has no PostgreSQL
+counterpart, so an FTS5 index would make search SQLite-only and the
+schema unportable. SQL narrows, Python matches — which also buys what
+`LIKE` cannot give: `LIKE` is case-insensitive for ASCII only, so it
+never matched "straße" for "STRASSE"; a query containing `%` is now a
+search for a percent sign rather than a request for every row; and
+ranking can see match positions instead of a boolean.
+
+Bounded at 20,000 rows, and the result says `capped` when it hit the
+bound — a silent partial answer is what makes someone conclude a
+conversation is gone.
+
+### `hypernix.preheat` stopped routing through a deprecated module 𖢥
+
+The 0.71.5a2 notes said the top-level shortcuts returned a `NeoOven`
+from that release on. The lazy import map in `hypernix/__init__.py` was
+never moved, so `hypernix.preheat` and `hypernix.new_oven` kept
+resolving into `old_oven` — and once post8 made that module announce
+itself properly, the *top-level* API began telling callers to stop using
+a module they had never imported. Moved. `tests/test_old_oven.py` now
+reaches `old_oven` directly, because the shortcut would otherwise have
+turned it into a second NeoOven suite: passing, and covering nothing it
+was written to cover.
+
+### The dead ruff config 🔧
+
+`pyproject.toml` carried a `[tool.ruff]` block alongside `ruff.toml`.
+Ruff stops at the first config it finds, so the pyproject block had no
+effect and had drifted — missing the per-file E402 exemptions and the
+flake8-bugbear list FastAPI needs. Removed, with a note saying where the
+live one is.
+
+### 🧪 208 new tests
+
+70 for notifications, 50 for sync, 51 for search, 37 driving all seven
+new endpoints over real HTTP. The cross-owner checks are the ones worth
+naming: a registration id is not a secret, so knowing one must not let
+any authenticated caller silence or delete another account's
+notifications — and the refusal is 404 rather than 403, because
+confirming an id exists tells an unauthorised caller something they
+should not learn.
+
+## 0.72.4.post8 — deprecated modules say so where it can be seen
+
+### The notice was going to stdout 𖢥
+
+Four modules had announced their own deprecation since 0.71.5a2, from
+the top of the file::
+
+    from rich.console import Console
+
+    Console().print("[bold red]WARNING: old_oven is deprecated. ...[/]")
+
+That got the hard part right — it was visible, immediately, before the
+module's own imports, so it appeared even when the module below it
+failed to load. `ruff.toml` still carries a per-file E402 exemption
+saying that ordering is deliberate, and it is.
+
+But `rich.Console()` writes to **stdout**, which is the caller's data
+channel. `hnx … > out.json` got a line of English in its JSON;
+`json.load` on the result raised instead of parsing. A diagnostic
+belongs on stderr, and now goes there.
+
+Three more things were wrong with a printed string. There was no
+`DeprecationWarning`, so `-W error` did not fail on it, `pytest.warns`
+could not assert it, and nothing could find callers of the deprecated
+surface — every tool that exists for this problem was blind to it. It
+could not be turned off, so a script that knowingly uses the old API had
+the choice of noise forever or patching the library. And it imported
+`rich` to print eleven words, from the top of a module whose own imports
+had not run yet.
+
+### `monitoring.tvtop` had said nothing at all ✨
+
+Its docstring has described it as existing "solely for
+backwards-compatibility" since the 0.70.0 tvtop rewrite, and it told
+nobody who imported it. A shim that never announces itself keeps its
+callers on the shim. It announces now, pointing at
+`hypernix.monitoring.tv`.
+
+### One mechanism 🔧
+
+`hypernix.system.deprecation` emits a real `DeprecationWarning` for
+tooling **and** guarantees a one-line notice on stderr — because
+`DeprecationWarning` is hidden by default and, outside `__main__`,
+plain `warnings.warn` shows nothing whatsoever. "Prints immediately on
+import" would otherwise mean "prints for nobody".
+
+Doing both without printing twice needs to know whether the warning was
+actually displayed, and there is no public API for that. So the single
+`warnings.warn` call is made with `warnings.showwarning` briefly
+swapped for a spy: if the active filters let it through, the spy sees it
+and the stderr line is skipped; if they suppressed it, the line is
+printed instead. Under `-W error` the warning is raised and propagates,
+which is what that flag asks for. The helper imports `os`, `sys` and
+`warnings` and nothing else.
+
+`HYPERNIX_DEPRECATION_WARNINGS=0` silences the stderr line and
+deliberately not the warning: making one variable suppress both would
+let a stray export disarm `-W error::DeprecationWarning` for a whole CI
+run. `PYTHONWARNINGS=ignore::DeprecationWarning` handles the other half,
+so an operator who wants silence still has an environment-only route.
+
+### 🧪 49 tests
+
+Behavioural, in subprocesses, because `sys.modules` caches an import and
+the question is what happens the first time. Each of the five modules is
+checked for announcing on import, naming its successor, writing nothing
+to stdout, failing under `-W error::DeprecationWarning`, and announcing
+exactly once when the warning *is* displayed. One test imports through
+an intermediate module rather than `__main__` — the hidden case the
+whole stderr fallback exists for.
+
+Two guard the claim that this covers *all* of them: the set of modules
+calling `deprecated_module` must equal the documented set, and any
+module whose docstring calls itself deprecated or a compatibility shim
+must announce it. That second one is exactly how `monitoring.tvtop` sat
+quiet for several releases, and it now fails the build. Both were
+verified by breaking them.
+
+### ❗ `hypernix.preheat` still routes through a deprecated module
+
+`hypernix.preheat` and `hypernix.new_oven` resolve to
+`models.old_oven`, so touching either now raises its deprecation
+notice. The 0.71.5a2 notes say those shortcuts were meant to return a
+`NeoOven` from that release on — the lazy import map in
+`hypernix/__init__.py` was never moved across. Left alone here: changing
+it changes what the top-level shortcuts return, which is not a
+documentation fix.
+
+## 0.72.4.post7 — the subsystem map describes the tree that exists
+
+### It had stopped being true 📚
+
+`wiki/Home.md`'s map showed the training pipeline as of roughly 0.70 and
+nothing after it: no T1 API, no HyperLink, no Studio, no quantisation
+stack, no `gather`, no `fuse box`, no `hnx runtime`, no monitoring
+lineage, no security layer. Twelve subsystems that exist in `src/` were
+absent from the picture of what HyperNix is.
+
+Two things on it were not merely stale but wrong, and running the new
+checks is what surfaced them:
+
+- **`new_oven` was drawn as a module beside `old_oven`.** It is a
+  *function* in `models.old_oven`; there is no `models/new_oven.py` and
+  there never was one to lose.
+- **`neo_oven` is the successor, not a third peer.** Its own docstring
+  says it replaces `old_oven`, `CodeOven`, `new_oven` and all three
+  fridges — so `system.old_fridge`, `data.mediocre_fridge` and
+  `evaluation.new_fridge` are the earlier generation, not current assist
+  modules sitting alongside it.
+
+The map now covers four surfaces over one package, and each area —
+training, quantisation and GGUF, serving and security, interfaces and
+monitoring — names real modules rather than shapes.
+
+### 🧪 The map is checked against the tree
+
+Every dotted name it prints is resolved against `src/`, brace shorthand
+(`data.{pans, strainer}`) expanded first, and every directory and file
+it points at is confirmed to exist. A map whose boxes cannot be looked
+up is worse than no map, and this one had drifted for about fifteen
+releases without anything noticing.
+
+Getting the check to have teeth took three attempts, each caught by
+trying to break it rather than by reading it:
+
+1. `subsystem in SECTION` passed for `chat` on the strength of
+   `CodeOven.chat` — a method, in a completely different sentence.
+2. Excluding a preceding dot still passed, on the prose "the chat TUI".
+3. It now requires the map to name an actual *module* inside each
+   subsystem, which cannot be satisfied by accident — and every name
+   that satisfies it has already been resolved against the tree.
+
+That last one forced the serving block to be written in checkable form
+rather than as bare labels, which is a better block anyway.
+
+34 tests, including the two specific things the old map got wrong, so
+neither can come back quietly.
+
+## 0.72.4.post6 — the release guard stopped refusing prepared releases
+
+### "Already what the tree says" was the wrong answer 𖢥
+
+`public-release` writes whatever version it is handed, so a dispatch
+naming an older number silently downgrades main. That happened once —
+v0.72.3.post2 against a tree already at .post4 — and the guard added
+afterwards refused three things at once, only one of which was actually
+unsafe.
+
+Refusing a version *equal* to the tree's was the wrong one. Preparing a
+release means writing that number into `pyproject.toml`, `setup.cfg` and
+`__init__.py` and adding the changelog heading under it — and both steps
+downstream already expect to find that work done: "Commit version bump"
+notices there is nothing to commit, "Tag and push" skips a tag that
+exists. Only the guard disagreed, and its advice — "use a .postN
+suffix" — meant inventing a number at dispatch time. That is how 0.72.4
+`post1` and `post3` went out: numbers no changelog heading matches, so
+neither release says what shipped.
+
+What makes a repeat genuinely unsafe is the number already naming
+*different code*, and a version string cannot answer that. A tag can. So
+the guard now allows the prepared version, and refuses when
+`v<version>` points at a commit other than the one being released —
+naming both the tag's commit and the one at hand, since "use a .postN"
+is not the only way out and deleting a mistaken tag is often the right
+one. A tag on the same commit is a re-run of a release that failed after
+the tag push, which is a thing people legitimately do, so it proceeds
+with a notice. Backwards is still refused unless `allow_downgrade`.
+
+It also warns — not fails — when the tree's version has no changelog
+heading. Failing there would only push people back to inventing a number
+at dispatch, which is the behaviour that lost the notes to begin with.
+
+### It is a script now 🔧
+
+`.github/scripts/version_guard.py`, not a heredoc inside the workflow,
+so `tests/test_version_guard.py` can drive every branch of it: 24 tests
+covering the prepared-tree case, downgrades, forward bumps, a tag on
+another commit, a tag on this one, a checkout that cannot resolve HEAD,
+a checkout with no git at all, and each shape the `version` input
+accepts (`0.72.5`, `v0.72.5`, `0.72.5-rc1`, `0.70.6-2`, `0.70.6postr1`),
+including that `0.70.6-2` and a tree reading `0.70.6.post2` are
+recognised as the same request rather than a downgrade.
+
+### 📚 The roadmap through 0.73.6
+
+0.72.5 (`noodle` in `hyped-pro`, Dflash2 drafts from `hyprslug`, three
+`tvtoppro` additions, `cctvtop`'s remote desktop, T1 accounts and web
+auth without an API key), 0.72.6 (`neuron`, the scheduled code scanner,
+the self-updating flow chart, a real audio processor, `hyped` rebuilt
+around Python "dots"), 0.72.7 (the Python 3.12–3.15 migration and PEPs
+798/799/810/831), 0.73.0 (Studio without a T1 key), 0.73.1–0.73.5 (five
+releases that add nothing but stability), and 0.73.6 (HGPS, the GPU
+process scheduler for Pascal and Turing cards). 0.72.4 also gets the
+shipped entry it never had.
+
 ## 0.72.4.post5 — `hypernix-t1 start` left nothing running
 
 ### The `setsid` binary was the wrong tool here too 𖢥

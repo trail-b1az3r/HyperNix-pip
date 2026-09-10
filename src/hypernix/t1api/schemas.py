@@ -1600,3 +1600,116 @@ class TrainingControlResponse(BaseModel):
     action: str
     note: str = ""
     request_id: str
+
+
+# ---------------------------------------------------------------------------
+# HyperLink sync, notifications and search (0.72.4.post9)
+# ---------------------------------------------------------------------------
+
+
+class SyncChange(BaseModel):
+    seq: int
+    kind: str
+    entity: str
+    entity_id: str
+    created_at: float
+    session_id: str | None = None
+    device_id: str | None = None
+    payload: dict[str, Any] | None = None
+
+
+class SyncPageResponse(BaseModel):
+    changes: list[SyncChange]
+    cursor: int
+    more: bool
+    # True when the client's cursor predates the oldest surviving row,
+    # so replaying the log can no longer bring it up to date. It must
+    # refetch state and restart the feed at `head`.
+    resync_required: bool
+    head: int
+    request_id: str
+
+
+class SyncClaimRequest(BaseModel):
+    client_msg_id: str = Field(min_length=1, max_length=128)
+
+
+class SyncClaimResponse(BaseModel):
+    # False means an earlier attempt already did this work; `result`
+    # carries what it produced, and `settled` says whether it finished.
+    fresh: bool
+    client_msg_id: str
+    settled: bool
+    result: dict[str, Any]
+    request_id: str
+
+
+class PushRegisterRequest(BaseModel):
+    # Hex, 64-200 characters. Never echoed back -- responses carry the
+    # fingerprint instead.
+    token: str = Field(min_length=64, max_length=200)
+    platform: str = "ios"
+    bundle_id: str = ""
+    environment: str = "production"
+    events: list[str] | None = None
+
+
+class PushRegistrationSummary(BaseModel):
+    registration_id: str
+    device_id: str
+    fingerprint: str
+    platform: str
+    bundle_id: str
+    environment: str
+    events: list[str]
+    enabled: bool
+    created_at: float
+    updated_at: float
+    last_delivery_at: float
+    failure_count: int
+
+
+class PushRegistrationResponse(BaseModel):
+    registration: PushRegistrationSummary
+    request_id: str
+
+
+class PushRegistrationListResponse(BaseModel):
+    registrations: list[PushRegistrationSummary]
+    count: int
+    pending: int
+    request_id: str
+
+
+class PushEventsRequest(BaseModel):
+    events: list[str]
+
+
+class SearchSnippet(BaseModel):
+    # Offsets, not markup: the client decides how a match is drawn.
+    text: str
+    ranges: list[list[int]]
+    truncated_start: bool
+    truncated_end: bool
+
+
+class SearchHit(BaseModel):
+    session_id: str
+    title: str
+    score: float
+    updated_at: float
+    matched_terms: list[str]
+    message_id: str | None = None
+    role: str | None = None
+    created_at: float | None = None
+    snippet: SearchSnippet | None = None
+
+
+class SearchResponse(BaseModel):
+    hits: list[SearchHit]
+    # How many rows were looked at, and whether that was all of them.
+    # A silent partial answer reads as "the conversation is gone".
+    scanned: int
+    capped: bool
+    terms: list[str]
+    request_id: str

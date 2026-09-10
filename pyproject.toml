@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hypernix"
-version = "0.72.4.post5"
+version = "0.72.4.post11"
 description = "Download and quantize the HyperNix PyTorch model to GGUF (fp32/fp16/Q8_0/Q6_K/Q4_K_M)."
 readme = { file = "README.md", content-type = "text/markdown" }
 license = { text = "HOL-1.0" }
@@ -198,16 +198,15 @@ hypernix = ["py.typed", "webui_static/*", "*.js", "t1api/data/*.json"]
 # Ruff / pytest defaults (also duplicated in ruff.toml / pytest.ini so
 # editors pick them up regardless of project layout).
 # ---------------------------------------------------------------------------
-[tool.ruff]
-line-length = 100
-target-version = "py312"
-
-[tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B"]
-ignore = ["E501"]
-
-[tool.ruff.lint.isort]
-known-first-party = ["hypernix"]
+# ruff is configured in ruff.toml, not here.
+#
+# There used to be a [tool.ruff] block in this file as well. Ruff reads
+# .ruff.toml, then ruff.toml, then pyproject.toml's [tool.ruff], and
+# stops at the first one it finds -- so with ruff.toml present, this
+# block had no effect and had drifted: it was missing the per-file E402
+# exemptions for the deprecated modules and the flake8-bugbear
+# extend-immutable-calls list FastAPI needs. Two configs where one is
+# silently dead is worse than either.
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
