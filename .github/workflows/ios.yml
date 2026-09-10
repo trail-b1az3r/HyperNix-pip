@@ -36,10 +36,18 @@ on:
         description: "Run the unit tests on a simulator"
         type: boolean
         default: true
+      local_engine:
+        description: "Build llama.cpp into the app so it can run models on-device. Adds 15-25 minutes."
+        type: boolean
+        default: false
   workflow_call:
     inputs:
       run_tests:
         description: "Run the unit tests on a simulator"
+        type: boolean
+        default: false
+      local_engine:
+        description: "Build llama.cpp into the app so it can run models on-device."
         type: boolean
         default: false
       version:
@@ -118,12 +126,36 @@ jobs:
           echo "build=${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
           echo "::notice::HyperLink $marketing (build ${GITHUB_RUN_NUMBER})"
 
+      # Off by default, and deliberately so: it clones llama.cpp and
+      # compiles it for two slices, which is 15-25 minutes on a hosted
+      # macOS runner and is not worth paying on a PR that touched a
+      # view. Without it the app builds and ships with EchoRunner,
+      # which tells the user this build has no local engine.
+      - name: Build the inference engine
+        if: ${{ inputs.local_engine }}
+        working-directory: ios
+        run: |
+          set -euo pipefail
+          ./scripts/build_llama_xcframework.sh
+          echo "--- what was built ---"
+          cat vendor/llama.xcframework.json
+          echo "--- the flag the project reads ---"
+          cat vendor/LocalLlama.xcconfig
+
       - name: Generate the Xcode project
         working-directory: ios
         run: |
           set -euo pipefail
           xcodegen generate --spec project.yml
           ls -la HyperLink.xcodeproj
+          # Say which of the two builds this is, in the log, where
+          # someone reading a failure will look. An app that silently
+          # has no engine is the confusing case.
+          if grep -q 'HNX_LOCAL_LLAMA = HNX_LOCAL_LLAMA' vendor/LocalLlama.xcconfig; then
+            echo "::notice::on-device inference is ON (llama.cpp linked)"
+          else
+            echo "::notice::on-device inference is OFF — EchoRunner only"
+          fi
 
       - name: Do we have signing secrets?
         id: signing

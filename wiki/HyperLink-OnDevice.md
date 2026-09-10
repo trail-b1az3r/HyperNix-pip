@@ -179,18 +179,86 @@ as a 403 forty minutes into a download.
 | Pause in background | on | A backgrounded app holding gigabytes is the most likely thing to be jetsammed |
 | Enforce the memory check | on | Overridable, because the estimate is an estimate |
 
-## What is not built
+## The engine
 
-**llama.cpp is not linked into the iOS target.** Everything above it is
-here and works — the memory guard, the load and unload lifecycle, the
-pressure response, the download path, the settings, and the streaming
-interface the UI talks to. `EchoRunner` ships so a build without the
-engine degrades to a clear message rather than a link error.
+```bash
+cd ios && ./scripts/build_llama_xcframework.sh
+xcodegen generate && open HyperLink.xcodeproj
+```
 
-Linking it means adding a native target to `ios/project.yml` that builds
-ggml with Metal for `arm64-apple-ios`. That build has not been run, and
-neither has the Swift in this directory been compiled: there is no Xcode
-or Swift toolchain in the environment it was written in. Treat the
-native side as **specified, not done**.
+That clones llama.cpp at the ref `native/ggml-hnx/build.sh` pins,
+applies the HyperNix tensor-type patch so the phone can read sub-bit
+models, and runs **upstream's own `build-xcframework.sh`** to produce
+`ios/vendor/llama.xcframework`.
+
+Upstream's script rather than a hand-listed Xcode target on purpose:
+llama.cpp restructures its build between releases — `ggml-metal.m`
+became `ggml-metal.cpp`, the Metal backend moved directory — and a
+hand-maintained file list breaks on every bump in a way that reads as a
+compiler error rather than as *"the list is stale"*. It also removed its
+`Package.swift`, so the SPM route is gone.
+
+Requires macOS with Xcode: an xcframework is produced by `xcodebuild`,
+which does not cross-compile. On Linux, build the desktop engine with
+`native/ggml-hnx/build.sh` instead.
+
+### Builds without it
+
+A checkout that has never run the script still generates and builds.
+`ios/vendor/LocalLlama.xcconfig` ships with `HNX_LOCAL_LLAMA` empty,
+`LlamaRunner.swift` compiles out entirely, and `LocalInference` falls
+back to `EchoRunner`, which tells the user this build has no local
+engine. Someone changing a view should not need a twenty-minute
+llama.cpp compile.
+
+CI is the same: `local_engine` is a workflow input, off by default,
+because two slices on a hosted macOS runner is 15–25 minutes nobody
+should pay on a PR that touched a view.
+
+### The API churns, so the symbols are pinned
+
+`ios/vendor/llama-api-b10883.json` records every function, struct and
+constant `include/llama.h` declared at the pinned ref — 236 functions —
+and `tests/test_ios_llama_link.py` checks that every `llama_*` symbol
+`LlamaRunner.swift` calls is in it.
+
+That check exists because the C API moves a lot, and each of these was
+the right name recently:
+
+| was | is |
+|---|---|
+| `llama_load_model_from_file` | `llama_model_load_from_file` |
+| `llama_new_context_with_model` | `llama_init_from_model` |
+| `llama_free_model` | `llama_model_free` |
+| `llama_kv_cache_clear(ctx)` | `llama_memory_clear(llama_get_memory(ctx), _)` |
+| `params.use_mmap` / `use_mlock` | `params.load_mode` |
+
+Tokenizer calls take a `const llama_vocab *` from
+`llama_model_get_vocab(model)`, not the model.
+
+### "JIT" loading is real, and it is `lazy_mode`
+
+`llama_model_params.lazy_mode` reads the rows of tensors the
+architecture marks **on demand** rather than pulling whole tensors up
+front. HyperLink uses `LLAMA_LAZY_MODE_AUTO`, which applies it only to
+tensors over 4 GiB — full `ON` is a per-model decision and not one to
+make on someone's behalf.
+
+Paired with `LLAMA_LOAD_MODE_MMAP`, so the weights are file-backed and
+evictable rather than dirty anonymous pages. On iOS that is the
+difference between pages the kernel can reclaim under pressure and pages
+that count fully against the jetsam limit. Emphatically **not**
+`MLOCK`: pinning gigabytes on a phone is the fastest way to be killed.
+
+## What is still not verified
+
+**None of the Swift has been compiled, and the engine has not been
+built.** There is no Xcode, no Swift toolchain and no macOS in the
+environment this was written in, so the build script has never run.
+
+What *has* been checked: every llama.cpp symbol against the real header
+at the pinned ref, the iOS and desktop refs agreeing, the framework
+dependency being optional, the flag shipping off, and brace balance.
+The first real macOS build is where compile errors would surface.
 
 See also: [HyperLink sync](HyperLink-Sync.md) · [CLI](CLI.md) · [Home](Home.md)

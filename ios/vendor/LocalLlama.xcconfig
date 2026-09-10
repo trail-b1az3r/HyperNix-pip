@@ -1,0 +1,17 @@
+// LocalLlama.xcconfig — is the inference engine vendored?
+//
+// Committed with the flag OFF, and overwritten by
+// ios/scripts/build_llama_xcframework.sh when it has produced
+// vendor/llama.xcframework.
+//
+// The alternative — deciding at `xcodegen generate` time — cannot work:
+// XcodeGen does not evaluate disk state into a build setting, and a
+// setting that claimed the framework was there when it was not would
+// produce a link error rather than a clear message in the app.
+//
+// With this empty, LlamaRunner.swift compiles out entirely and
+// LocalInference falls back to EchoRunner, which tells the user this
+// build has no local engine. That is a legitimate build: someone
+// changing a view should not need a twenty-minute llama.cpp compile.
+
+HNX_LOCAL_LLAMA =

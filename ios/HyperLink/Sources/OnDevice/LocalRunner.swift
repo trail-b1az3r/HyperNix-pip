@@ -80,6 +80,34 @@ enum LocalRunnerError: LocalizedError {
     }
 }
 
+/// Picks the engine this build actually has.
+///
+/// `HNX_LOCAL_LLAMA` is set by ios/vendor/LocalLlama.xcconfig, which
+/// ios/scripts/build_llama_xcframework.sh writes once it has produced
+/// the framework. Without it `LlamaRunner` is not compiled at all and
+/// this returns the runner that explains why, rather than the app
+/// failing to link.
+enum RunnerFactory {
+    static func make() -> any ModelRunner {
+        #if HNX_LOCAL_LLAMA
+        return LlamaRunner()
+        #else
+        return EchoRunner()
+        #endif
+    }
+
+    /// Whether this build can actually run a model, for a settings
+    /// screen that should say so rather than offering a download that
+    /// leads nowhere.
+    static var hasLocalEngine: Bool {
+        #if HNX_LOCAL_LLAMA
+        return true
+        #else
+        return false
+        #endif
+    }
+}
+
 /// Owns the loaded model and refuses to load one that will not fit.
 @MainActor
 final class LocalInference: ObservableObject {
@@ -90,10 +118,15 @@ final class LocalInference: ObservableObject {
     private let runner: any ModelRunner
     private let settings: OnDeviceSettings
 
-    init(runner: any ModelRunner, settings: OnDeviceSettings) {
-        self.runner = runner
+    init(runner: (any ModelRunner)? = nil, settings: OnDeviceSettings) {
+        self.runner = runner ?? RunnerFactory.make()
         self.settings = settings
     }
+
+    /// False in a build without the engine. The UI uses this to say so
+    /// up front instead of letting someone download four gigabytes and
+    /// then discover nothing can run it.
+    var hasLocalEngine: Bool { RunnerFactory.hasLocalEngine }
 
     /// Check fit against the budget *now*, not when the list was drawn.
     ///

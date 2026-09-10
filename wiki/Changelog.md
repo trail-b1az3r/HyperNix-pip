@@ -21,6 +21,90 @@ next release header.
 - 𖢥 major bug fix
 - ꩜ restore to older version of item
 - ❗ unfixed known bug
+## 0.72.4.post11 — the engine is linked
+
+`ios/scripts/build_llama_xcframework.sh` produces
+`ios/vendor/llama.xcframework`, `project.yml` links it, and
+`LlamaRunner.swift` runs a GGUF on the phone through it. post10 left
+this specified; it is wired now.
+
+### Upstream's build script, not a hand-listed target ✨
+
+The obvious approach — a native XcodeGen target listing llama.cpp's
+sources — is a trap. llama.cpp restructures its build between releases:
+`ggml-metal.m` became `ggml-metal.cpp` and the Metal backend moved
+directory, so a hand-maintained file list breaks on every bump in a way
+that reads as a compiler error rather than as "the list is stale".
+
+The SPM route is gone too. Checking rather than assuming was worth it:
+`Package.swift` **404s** at the pinned ref — upstream removed it.
+
+What does exist is `build-xcframework.sh`, upstream's own supported
+Apple build, and that is what runs. The script clones at the ref
+`native/ggml-hnx/build.sh` pins — the phone and the desktop must agree
+about the HyperNix tensor types, and a skew would look like a corrupt
+model rather than a version mismatch — applies the sub-bit patch, and
+copies the result into `ios/vendor/`.
+
+### 236 symbols, pinned 🧪
+
+The llama.cpp C API churns hard, and this file could not be compiled
+here to find out. So it was written against the real
+`include/llama.h` fetched at the pinned ref, and every symbol it uses is
+checked against a committed manifest of what that header declares.
+
+Each of these was the correct name recently and is gone:
+
+| was | is |
+|---|---|
+| `llama_load_model_from_file` | `llama_model_load_from_file` |
+| `llama_new_context_with_model` | `llama_init_from_model` |
+| `llama_free_model` | `llama_model_free` |
+| `llama_kv_cache_clear(ctx)` | `llama_memory_clear(llama_get_memory(ctx), _)` |
+| `params.use_mmap` / `use_mlock` | `params.load_mode` |
+
+Written from memory, every one of those would have compiled into
+nothing on a machine nobody in CI has. The check was verified by
+breaking it three ways: a retired function name, the removed `use_mmap`
+field, and a ref mismatch between phone and desktop.
+
+### "JIT models" turns out to be a real flag 🔧
+
+`llama_model_params.lazy_mode` reads the rows of marked tensors **on
+demand** rather than pulling whole tensors up front.
+`LLAMA_LAZY_MODE_AUTO` applies it to tensors over 4 GiB, which is the
+default here — full `ON` is a per-model decision and not one to make on
+someone's behalf.
+
+Paired with `LLAMA_LOAD_MODE_MMAP` so the weights are file-backed and
+evictable rather than dirty anonymous pages: on iOS that is the
+difference between pages the kernel can reclaim under pressure and pages
+that count fully against the jetsam limit. Not `MLOCK` — pinning
+gigabytes on a phone is the fastest way to be killed.
+
+### A build without the engine still builds 🛡️
+
+`LocalLlama.xcconfig` ships with `HNX_LOCAL_LLAMA` empty, so
+`LlamaRunner` compiles out and `LocalInference` falls back to
+`EchoRunner`, which says this build has no local engine. The framework
+dependency is `optional: true`, so `xcodegen generate` succeeds on a
+checkout that has never run the build script.
+
+CI matches: `local_engine` is a workflow input, off by default, because
+two slices on a hosted macOS runner is 15-25 minutes nobody should pay
+on a PR that touched a view. The generate step prints which of the two
+builds it made, since an app that silently has no engine is the
+confusing case.
+
+### ❗ Still not compiled
+
+There is no Xcode, no Swift toolchain and no macOS here, so the build
+script has never run and none of the Swift has been compiled. What has
+been checked: every llama.cpp symbol against the real header, the two
+refs agreeing, the dependency being optional, the flag shipping off,
+and brace balance. The first real macOS build is where a compile error
+would surface.
+
 ## 0.72.4.post10 — HyperLink runs models on the phone
 
 Search Hugging Face, download a GGUF, run it with no server involved.

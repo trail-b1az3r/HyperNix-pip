@@ -120,10 +120,45 @@ targets:
           Take a photo to send straight into a conversation.
         NSBonjourServices:
           - _hypernix._tcp
+    # Carries HNX_LOCAL_LLAMA, set by the build script once the engine
+    # has actually been produced. Committed with it empty, so a checkout
+    # that has never run the script still generates and builds.
+    configFiles:
+      Debug: vendor/LocalLlama.xcconfig
+      Release: vendor/LocalLlama.xcconfig
+    dependencies:
+      # The inference engine. Built by ios/scripts/build_llama_xcframework.sh,
+      # which clones llama.cpp at the ref native/ggml-hnx/build.sh pins,
+      # applies the HyperNix tensor-type patch, and runs upstream's own
+      # build-xcframework.sh.
+      #
+      # An xcframework rather than a list of source files in a native
+      # target: llama.cpp restructures its build between releases —
+      # ggml-metal.m became ggml-metal.cpp, the Metal backend moved
+      # directory — and a hand-maintained file list breaks on every bump
+      # in a way that reads as a compiler error rather than as "the list
+      # is stale".
+      #
+      # `optional: true` so a checkout without the framework still
+      # generates and builds: HyperLink degrades to EchoRunner and says
+      # so, rather than failing at `xcodegen generate` for anyone who
+      # only wanted to change a view. HNX_LOCAL_LLAMA below is what the
+      # code branches on.
+      - framework: vendor/llama.xcframework
+        embed: true
+        codeSign: true
+        optional: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.hypernix.hyperlink
         CURRENT_PROJECT_VERSION: "1"
+        # From vendor/LocalLlama.xcconfig. Empty until the build
+        # script has produced the framework, which compiles
+        # LlamaRunner out and leaves LocalInference on EchoRunner.
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) $(HNX_LOCAL_LLAMA)"
+        # llama.cpp is C++; the Swift target needs the C++ runtime and
+        # the frameworks the module map declares.
+        OTHER_LDFLAGS: "$(inherited) -lc++"
         # The fallback for a local Xcode build; CI passes the computed
         # one on the command line. Kept equal to ios/scripts/app_version.py
         # by a test, because a stale default here is exactly what shipped
