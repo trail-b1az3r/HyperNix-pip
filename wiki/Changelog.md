@@ -21,6 +21,90 @@ next release header.
 - 𖢥 major bug fix
 - ꩜ restore to older version of item
 - ❗ unfixed known bug
+## 0.72.4.post17 — a checker for the files already on disk
+
+post16 stopped the quantiser writing files llama.cpp refuses. It did
+nothing for the ones already written, which is where every model
+somebody has already spent an hour on lives:
+
+```
+gguf_init_from_reader: tensor 'blk.0.ssm_conv1d.weight' of type 202
+(IQ0.5_XXXL) has 4 elements per row, not a multiple of block size (256)
+```
+
+### `--check` and `--repair-to` ✨
+
+`hypernix.quant.ggufcheck` answers the question from the tensor table
+alone, so checking a 40 GB model costs what checking a small one costs:
+
+```
+hyprslug MODEL.gguf --check
+hyprslug MODEL.gguf --repair-to FIXED.gguf
+```
+
+`--check` exits non-zero when the file will not load, so a build step
+can gate on it without parsing anything, and `--json` gives the same
+answer machine-readably. `--repair-to` widens every offending tensor
+back to F32 and copies the rest through byte for byte — the file loads
+without a second quantisation run. It is not as good as re-quantising
+from the base model and the report says so: the values it writes are
+the ones the packer produced, so whatever the quantiser discarded is
+already gone.
+
+The message it prints is llama.cpp's, word for word, so pasting the
+error into a search finds the tool. That meant using the *tier* name
+(`IQ0.5_XXXL`, which is `type_name` in the ggml traits table) rather
+than the Python enum's `HNX_IQ0_5` — the first draft printed the second
+while the docstring claimed the first.
+
+### The format layer refuses too 𖢥
+
+`_should_quantize` deciding correctly is one line away from deciding
+incorrectly again — it already did once, and the round trip passed
+because the reader shared the writer's misconception. So `tensor_nbytes`,
+which is on the path of every write, now refuses to lay out a tensor
+whose `ne[0]` cannot divide into its type's block.
+
+That turns "this bug is fixed" into "this file cannot be produced":
+with `_should_quantize` deliberately reverted to the element-count
+check, `quantize_gguf` raises instead of writing.
+
+The guard is on **writes only**. A reader that refused these files
+would make them undiagnosable by the tool written to repair them, so
+`tensor_nbytes_unchecked` is what `GGUFFile.read` uses.
+
+### INT4 and FP2 cannot be loaded by any llama.cpp ❗
+
+Found while checking whether anything else in this area was wrong, and
+it is not new — it has been true since those tiers were added.
+
+`hyprslug` offers seven extension tiers. `native/ggml-hnx/tools/patch_llamacpp.py`
+registers **five**: it adds enum members 200–204 and pins
+`GGML_TYPE_COUNT` to 205. INT4 (205) and FP2 (206) are past the end of
+both trait tables, and `ggml-hnx.c` has no decoder for either, so
+gguf.cpp rejects such a file on the type check before it reads a
+tensor.
+
+They are not broken files — `hnx generate` and `hnx chat` run them,
+because HyperNix's own runtime knows all seven. But nothing said that
+llama.cpp and llama-server never would, so `--list-tiers` now marks
+them `[hnx runtime only]` and explains why, and `--check` reports a
+file carrying one as unloadable-by-llama.cpp while noting it still runs
+under the hnx runtime.
+
+A test parses the enum out of the patch script's own C text and asserts
+the Python table agrees, so registering a type on one side and not the
+other is a test failure rather than a discovery.
+
+### ❗ Not verified
+
+No hyprslug output has been loaded in a real llama.cpp binary from the
+test environment — there is no checkout in it and building one is not a
+test-suite job. Everything above is checked against the patch script's
+source and this package's own reader. Given that writer-and-reader
+agreeing with each other is precisely what hid the row bug, that gap is
+worth stating rather than leaving implied.
+
 ## 0.72.4.post16 — `ne[0]`, not the element count
 
 A build log from the desktop side, ending in a model that would not
