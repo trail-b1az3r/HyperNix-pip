@@ -272,6 +272,9 @@ still importable: `system.old_fridge` (memory), `data.mediocre_fridge`
    hyperlink.{hfdownload, hfmerge}                         app talks to
    system.launcher    launch-script's supervisor: setsid(2) and a
                       recording wrapper, or a systemd user unit
+   system.deprecation one way for a module on its way out to say so:
+                      a DeprecationWarning for tooling, and a stderr
+                      line for the human, never both and never stdout
 ```
 
 ### Interfaces and monitoring

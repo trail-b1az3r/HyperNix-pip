@@ -718,8 +718,41 @@ currently implemented rather than assuming full parity with `chat` or
 | `HF_TOKEN` | HuggingFace token for gated repos / upload |
 | `HYPERNIX_AUTO_INSTALL=0` | Disable the runtime pip-install shim |
 | `HYPERNIX_CACHE_DIR` | Override `~/.cache/hypernix/` |
+| `HYPERNIX_DEPRECATION_WARNINGS=0` | Silence HyperNix's own one-line deprecation notice on stderr. It does **not** touch the `DeprecationWarning` itself — that would let a stray export disarm `-W error::DeprecationWarning` for a whole CI run. Silence that with `PYTHONWARNINGS=ignore::DeprecationWarning`; set both to hear nothing. See [deprecated modules](#deprecated-modules). |
 | `HYPERNIX_TOOL_POLICY` | `ask` (default) / `deny` / `allow` — consent before `hyped-pro`'s agent runs a side-effecting tool. Tool calls are parsed out of the *model's own reply*, so anything that can influence that reply could otherwise run shell commands. `ask` with no terminal degrades to **deny**, so a CI job or daemon is not a shell for whoever can reach the model. |
 | `T1_KEYMASTER_DIR` | The key store `gkey` and the [T1 API](T1-API.md) server share. Set it on both, or neither. |
+
+## Deprecated modules
+
+Five modules are deprecated and each says so, on stderr, the moment it
+is imported:
+
+| Module | Use instead | Since |
+|---|---|---|
+| `hypernix.models.old_oven` | `hypernix.models.neo_oven` | 0.71.5a2 |
+| `hypernix.system.old_fridge` | `hypernix.models.neo_oven` | 0.71.5a2 |
+| `hypernix.data.mediocre_fridge` | `hypernix.models.neo_oven` | 0.71.5a2 |
+| `hypernix.evaluation.new_fridge` | `hypernix.models.neo_oven` | 0.71.5a2 |
+| `hypernix.monitoring.tvtop` | `hypernix.monitoring.tv` | 0.70.0 |
+
+None of them is scheduled for removal; the files are kept intact.
+
+Each import emits a real `DeprecationWarning` — so `-W error`,
+`pytest.warns` and any audit tooling can see it — **and** a one-line
+notice on stderr, because outside `__main__` Python hides
+`DeprecationWarning` by default and would show nothing at all.
+`hypernix.system.deprecation` prints the stderr line only when the
+warning was actually suppressed, so no one sees it twice.
+
+Nothing goes to **stdout**. That matters: until 0.72.4.post8 the notice
+was printed with `rich.Console()`, which defaults to stdout, so
+`hnx … > out.json` got a line of English in its JSON.
+
+> `hypernix.preheat` and `hypernix.new_oven` still resolve to
+> `old_oven`, so touching either raises its notice. The 0.71.5a2 notes
+> say those shortcuts were meant to return a `NeoOven` from that release
+> on; the lazy import map in `hypernix/__init__.py` was never moved
+> across.
 
 ## Exit codes
 

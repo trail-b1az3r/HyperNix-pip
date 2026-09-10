@@ -21,6 +21,94 @@ next release header.
 - 𖢥 major bug fix
 - ꩜ restore to older version of item
 - ❗ unfixed known bug
+## 0.72.4.post8 — deprecated modules say so where it can be seen
+
+### The notice was going to stdout 𖢥
+
+Four modules had announced their own deprecation since 0.71.5a2, from
+the top of the file::
+
+    from rich.console import Console
+
+    Console().print("[bold red]WARNING: old_oven is deprecated. ...[/]")
+
+That got the hard part right — it was visible, immediately, before the
+module's own imports, so it appeared even when the module below it
+failed to load. `ruff.toml` still carries a per-file E402 exemption
+saying that ordering is deliberate, and it is.
+
+But `rich.Console()` writes to **stdout**, which is the caller's data
+channel. `hnx … > out.json` got a line of English in its JSON;
+`json.load` on the result raised instead of parsing. A diagnostic
+belongs on stderr, and now goes there.
+
+Three more things were wrong with a printed string. There was no
+`DeprecationWarning`, so `-W error` did not fail on it, `pytest.warns`
+could not assert it, and nothing could find callers of the deprecated
+surface — every tool that exists for this problem was blind to it. It
+could not be turned off, so a script that knowingly uses the old API had
+the choice of noise forever or patching the library. And it imported
+`rich` to print eleven words, from the top of a module whose own imports
+had not run yet.
+
+### `monitoring.tvtop` had said nothing at all ✨
+
+Its docstring has described it as existing "solely for
+backwards-compatibility" since the 0.70.0 tvtop rewrite, and it told
+nobody who imported it. A shim that never announces itself keeps its
+callers on the shim. It announces now, pointing at
+`hypernix.monitoring.tv`.
+
+### One mechanism 🔧
+
+`hypernix.system.deprecation` emits a real `DeprecationWarning` for
+tooling **and** guarantees a one-line notice on stderr — because
+`DeprecationWarning` is hidden by default and, outside `__main__`,
+plain `warnings.warn` shows nothing whatsoever. "Prints immediately on
+import" would otherwise mean "prints for nobody".
+
+Doing both without printing twice needs to know whether the warning was
+actually displayed, and there is no public API for that. So the single
+`warnings.warn` call is made with `warnings.showwarning` briefly
+swapped for a spy: if the active filters let it through, the spy sees it
+and the stderr line is skipped; if they suppressed it, the line is
+printed instead. Under `-W error` the warning is raised and propagates,
+which is what that flag asks for. The helper imports `os`, `sys` and
+`warnings` and nothing else.
+
+`HYPERNIX_DEPRECATION_WARNINGS=0` silences the stderr line and
+deliberately not the warning: making one variable suppress both would
+let a stray export disarm `-W error::DeprecationWarning` for a whole CI
+run. `PYTHONWARNINGS=ignore::DeprecationWarning` handles the other half,
+so an operator who wants silence still has an environment-only route.
+
+### 🧪 49 tests
+
+Behavioural, in subprocesses, because `sys.modules` caches an import and
+the question is what happens the first time. Each of the five modules is
+checked for announcing on import, naming its successor, writing nothing
+to stdout, failing under `-W error::DeprecationWarning`, and announcing
+exactly once when the warning *is* displayed. One test imports through
+an intermediate module rather than `__main__` — the hidden case the
+whole stderr fallback exists for.
+
+Two guard the claim that this covers *all* of them: the set of modules
+calling `deprecated_module` must equal the documented set, and any
+module whose docstring calls itself deprecated or a compatibility shim
+must announce it. That second one is exactly how `monitoring.tvtop` sat
+quiet for several releases, and it now fails the build. Both were
+verified by breaking them.
+
+### ❗ `hypernix.preheat` still routes through a deprecated module
+
+`hypernix.preheat` and `hypernix.new_oven` resolve to
+`models.old_oven`, so touching either now raises its deprecation
+notice. The 0.71.5a2 notes say those shortcuts were meant to return a
+`NeoOven` from that release on — the lazy import map in
+`hypernix/__init__.py` was never moved across. Left alone here: changing
+it changes what the top-level shortcuts return, which is not a
+documentation fix.
+
 ## 0.72.4.post7 — the subsystem map describes the tree that exists
 
 ### It had stopped being true 📚
