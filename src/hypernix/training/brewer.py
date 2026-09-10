@@ -267,12 +267,23 @@ class BrewerAttention(nn.Module):
     def _sliding_mask(
         self, T: int, device: torch.device, dtype: torch.dtype
     ) -> torch.Tensor:
-        """Return an additive causal sliding-window mask of shape (T, T)."""
+        """Return an additive causal sliding-window mask of shape (T, T).
+
+        ``dist[i][j] = i - j`` is how far key *j* lies in the past of query
+        *i*: positive is the past, zero is the token itself, negative is
+        the future. A causal local window keeps ``0 <= dist <= win - 1``
+        and masks everything else.
+
+        This used to read ``(dist >= 0) | (dist < -(win - 1))``, which
+        masks out the past and the token itself and *keeps* the strictly
+        future positions inside the window -- an anti-causal band. On its
+        own that is only half the story; see :meth:`forward` for what the
+        two masks did together.
+        """
         win = self.sliding_window_size
         idx = torch.arange(T, device=device)
-        dist = idx.unsqueeze(1) - idx.unsqueeze(0)   # (T, T)
-        # attend only to positions within [−win+1, 0]
-        mask = (dist >= 0) | (dist < -(win - 1))     # True = mask out
+        dist = idx.unsqueeze(1) - idx.unsqueeze(0)   # (T, T); + is the past
+        mask = (dist < 0) | (dist > win - 1)         # True = mask out
         return mask.to(dtype) * torch.finfo(dtype).min
 
     def forward(
@@ -301,26 +312,48 @@ class BrewerAttention(nn.Module):
             k = k.repeat_interleave(self.n_rep, dim=1)
             v = v.repeat_interleave(self.n_rep, dim=1)
 
-        # Build causal mask
-        causal_mask = torch.full(
-            (T, T), torch.finfo(q.dtype).min, device=x.device, dtype=q.dtype
-        )
-        causal_mask = causal_mask.triu(diagonal=1)   # upper-triangular = -inf
+        # A plain causal layer needs no mask tensor at all: is_causal lets
+        # SDPA take its fused path instead of materialising a B*H*T*T
+        # score matrix to add a mask to. is_causal and attn_mask are
+        # mutually exclusive, so this is only the no-window, no-padding
+        # case -- which is every even layer.
+        if not self.use_sliding_window and attn_mask is None:
+            attn_out = F.scaled_dot_product_attention(
+                q, k, v,
+                is_causal=True,
+                dropout_p=self.dropout_p if self.training else 0.0,
+            )
+        else:
+            causal_mask = torch.full(
+                (T, T), torch.finfo(q.dtype).min, device=x.device, dtype=q.dtype
+            )
+            causal_mask = causal_mask.triu(diagonal=1)  # upper-triangular = -inf
 
-        if self.use_sliding_window:
-            sw_mask = self._sliding_mask(T, x.device, q.dtype)
-            # combine: mask if EITHER causal OR outside window
-            causal_mask = torch.maximum(causal_mask, sw_mask)
+            if self.use_sliding_window:
+                sw_mask = self._sliding_mask(T, x.device, q.dtype)
+                # Mask if EITHER is masked. These are *additive* masks --
+                # 0 allows, finfo.min forbids -- so "either" is the
+                # elementwise **minimum**. torch.maximum keeps the less
+                # masked of the two, which is "allow if either allows",
+                # and it let every query on an odd layer attend to its own
+                # future: with the default window of 4096 and any sequence
+                # no longer than that, the layer was fully bidirectional.
+                # The model trains to a good loss and generates nothing.
+                #
+                # The two halves of this bug are coupled: minimum against
+                # the old anti-causal window mask masks every position of
+                # every row, and fixing that mask while keeping maximum
+                # makes the window a silent no-op equal to plain causal.
+                causal_mask = torch.minimum(causal_mask, sw_mask)
 
-        if attn_mask is not None:
-            causal_mask = causal_mask + attn_mask
+            if attn_mask is not None:
+                causal_mask = causal_mask + attn_mask
 
-        # Scaled dot-product attention
-        attn_out = F.scaled_dot_product_attention(
-            q, k, v,
-            attn_mask=causal_mask,
-            dropout_p=self.dropout_p if self.training else 0.0,
-        )
+            attn_out = F.scaled_dot_product_attention(
+                q, k, v,
+                attn_mask=causal_mask,
+                dropout_p=self.dropout_p if self.training else 0.0,
+            )
 
         # Merge heads → (B, T, d_model)
         attn_out = attn_out.transpose(1, 2).contiguous().view(B, T, -1)
