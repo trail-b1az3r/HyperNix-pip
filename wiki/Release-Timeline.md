@@ -681,3 +681,13 @@ timeline
         : 28d01459 - 0.72.4.post17 — check and repair the files already written
 ```
 
+## Release v0.72.4.post18 (2026-09-10)
+
+```mermaid
+timeline
+    title Release v0.72.4.post18 Commits
+    0.72.4.post18
+        : 8ff6b497 - 0.72.4.post18 — Brewer attention was not causal
+        : 35b0dd90 - Auto-update README header (hourly)
+```
+
