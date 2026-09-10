@@ -691,3 +691,15 @@ timeline
         : 35b0dd90 - Auto-update README header (hourly)
 ```
 
+## Release v0.72.4.post20 (2026-09-10)
+
+```mermaid
+timeline
+    title Release v0.72.4.post20 Commits
+    0.72.4.post20
+        : 845cf628 - chore- update JSON stats (scheduled)
+        : 99f6b87f - 0.72.4.post20 — status did not know about the autostart service
+        : fc08f185 - 0.72.4.post19 — start was reporting someone else's server
+        : cbf7a1fd - Auto-update README header (hourly)
+```
+
