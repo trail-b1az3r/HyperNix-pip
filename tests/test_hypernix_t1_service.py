@@ -265,10 +265,30 @@ class TestRemoveKeepsTheKeys:
         assert "'remove'" in body or '"remove"' in body
 
 
-@pytest.mark.skipif(
-    subprocess.run(["python3", "-c", "import fastapi"], capture_output=True).returncode != 0,
-    reason="needs the [t1api] extra",
+def _can_serve() -> bool:
+    """Can this machine actually run `hypernix-t1 start`?
+
+    Asked of a subprocess rather than with an import here, because the
+    script runs whatever `python3` is on PATH and that is not
+    necessarily the interpreter running pytest.
+
+    Both modules, not just fastapi. `start` execs `python -m uvicorn`,
+    so uvicorn is what decides whether a server comes up -- and a check
+    for fastapi alone passes on a machine that has fastapi and no
+    uvicorn, which is precisely the machine CI runs on. Three tests
+    went red there for exactly that reason.
+    """
+    return subprocess.run(
+        ["python3", "-c", "import fastapi, uvicorn"], capture_output=True
+    ).returncode == 0
+
+
+NEEDS_A_SERVER = pytest.mark.skipif(
+    not _can_serve(), reason="needs the [t1api] extra (fastapi + uvicorn)"
 )
+
+
+@NEEDS_A_SERVER
 class TestAgainstARealServer:
     def test_start_status_and_stop(self, configured):
         home, config = configured
@@ -673,6 +693,7 @@ class TestStartOutlivesTheShell:
             "and $! is not the server's pid when it forks"
         )
 
+    @NEEDS_A_SERVER
     def test_it_starts_when_there_is_no_setsid_on_path(self, configured, tmp_path):
         """The macOS shape: everything present except setsid.
 
@@ -716,6 +737,7 @@ class TestStartOutlivesTheShell:
         finally:
             run("kill", home=home, config=config)
 
+    @NEEDS_A_SERVER
     def test_the_recorded_pid_is_the_server_itself(self, configured):
         """Not a launcher that has already exited.
 
@@ -738,6 +760,7 @@ class TestStartOutlivesTheShell:
         finally:
             run("kill", home=home, config=config)
 
+    @NEEDS_A_SERVER
     def test_the_server_gets_a_session_of_its_own(self, configured):
         """Which is the whole point of the detach.
 

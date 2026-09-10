@@ -125,7 +125,7 @@ class TestNoWildcardInjection:
         assert wrapped_ids == bare_ids
 
     def test_underscore_is_a_word_character_not_a_single_char_wildcard(self):
-        """It differs from `%`, and the difference is worth stating.
+        r"""It differs from `%`, and the difference is worth stating.
 
         `_` is `\w`, so `_vram_` tokenises as one literal word rather
         than being dropped as punctuation. In a `LIKE` it would match
