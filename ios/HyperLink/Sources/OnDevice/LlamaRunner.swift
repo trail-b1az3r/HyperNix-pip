@@ -25,6 +25,16 @@
 import Foundation
 import llama
 
+/// `llama_backend_init()`, run once per process.
+///
+/// A global `let` with a side-effecting initialiser is Swift's
+/// once-only idiom: lazily initialised, and the runtime guarantees a
+/// single thread-safe initialisation.
+private let llamaBackendReady: Bool = {
+    llama_backend_init()
+    return true
+}()
+
 /// llama.cpp, behind the `ModelRunner` protocol.
 ///
 /// An actor because llama_context is not thread-safe and generation is
@@ -38,8 +48,6 @@ actor LlamaRunner: ModelRunner {
     private var cancelled = false
     private var loadedContextLength: Int32 = 0
 
-    private static var backendReady = false
-
     var isLoaded: Bool { model != nil && context != nil }
 
     // MARK: - Lifecycle
@@ -47,10 +55,12 @@ actor LlamaRunner: ModelRunner {
     func load(url: URL, shape: ModelShape, settings: RunnerSettings) async throws {
         await unload()
 
-        if !Self.backendReady {
-            llama_backend_init()
-            Self.backendReady = true
-        }
+        // Touching the global runs its initialiser exactly once, and
+        // Swift guarantees that is thread-safe. The previous version
+        // was a mutable `static var` guard, which is shared mutable
+        // state across actor instances -- the thing strict concurrency
+        // exists to catch.
+        _ = llamaBackendReady
 
         var mparams = llama_model_default_params()
         // Negative means every layer. On unified memory this changes
@@ -145,7 +155,7 @@ actor LlamaRunner: ModelRunner {
 
     // MARK: - Generation
 
-    func generate(
+    nonisolated func generate(
         prompt: String, systemPrompt: String, maxTokens: Int
     ) -> AsyncThrowingStream<GeneratedToken, Error> {
         AsyncThrowingStream { continuation in

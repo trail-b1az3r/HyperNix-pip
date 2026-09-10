@@ -21,6 +21,69 @@ next release header.
 - 𖢥 major bug fix
 - ꩜ restore to older version of item
 - ❗ unfixed known bug
+## 0.72.4.post14 — actor isolation, and the easy fix that was wrong
+
+The project wiring from post13 held: the build got past `xcodegen`,
+into the Swift compiler, and stopped there.
+
+```
+Call to actor-isolated instance method
+'generate(prompt:systemPrompt:maxTokens:)' in a synchronous main
+actor-isolated context
+```
+
+### `nonisolated`, not `async` 🔧
+
+`ModelRunner` inherits `Actor`, which makes every requirement
+actor-isolated by default. `LocalInference` is `@MainActor` and calls
+`generate` synchronously.
+
+Making the caller `async` compiles and is the wrong fix: every view
+starting a generation would `await` something that returns
+*immediately*. `generate` hands back an `AsyncThrowingStream` and does
+all its work inside that stream's `Task` — it genuinely needs no
+isolation, which is what `nonisolated` says.
+
+The cost is that an implementation may not touch isolated state in the
+synchronous part of its body. `EchoRunner` read `model` inside the
+stream builder, which is an escaping `@Sendable` closure — a second
+error, waiting behind the first. That check moved into the `Task` and
+asks `await self.isLoaded`.
+
+### And a mutable static that strict concurrency exists to catch 🐛
+
+`LlamaRunner` guarded `llama_backend_init()` with a
+`private static var backendReady`, which is shared mutable state across
+every instance of the actor. It is a global `let` with a side-effecting
+initialiser now — Swift's once-only idiom, lazily initialised with a
+guaranteed thread-safe single initialisation.
+
+### 🧪 Twelve tests for a language this repo cannot compile
+
+There is no Swift toolchain in CI, so these are structural checks on
+the source — and they exist precisely because the compiler found
+something this environment could not. They pin `generate` as
+`nonisolated` in the protocol and both conformances, assert the caller
+stays synchronous, assert every *other* `runner.` call awaits (the
+class of error, not the one instance), and assert the stream builder
+opens its `Task` before doing anything, which is the rule `nonisolated`
+imposes.
+
+All four regressions were verified by reintroducing them.
+
+### 🛡️ What was checked before pushing, for once
+
+Each CI round on a macOS runner is expensive, so the rest of the file
+was audited rather than discovered a round at a time: every pointer
+type against the real header — `llama_model`, `llama_context` and
+`llama_vocab` are forward-declared and so `OpaquePointer`, while
+`llama_sampler` is fully defined and so
+`UnsafeMutablePointer<llama_sampler>`, which is what the code already
+had — every `runner.` call site, the `nonisolated` delegate hops in
+`ModelStore`, and the whole source tree for duplicate type names.
+
+That found no further problems, which is not the same as a compile.
+
 ## 0.72.4.post13 — `optional: true` does not mean what I thought
 
 The iOS build failed on a checkout without the engine:
