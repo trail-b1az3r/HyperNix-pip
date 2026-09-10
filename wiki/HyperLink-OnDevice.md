@@ -182,8 +182,10 @@ as a 403 forty minutes into a download.
 ## The engine
 
 ```bash
-cd ios && ./scripts/build_llama_xcframework.sh
-xcodegen generate && open HyperLink.xcodeproj
+cd ios
+./scripts/build_llama_xcframework.sh          # 15-25 minutes
+python3 scripts/prepare_project.py            # picks it up
+xcodegen generate --spec project.generated.yml
 ```
 
 That clones llama.cpp at the ref `native/ggml-hnx/build.sh` pins,
@@ -204,12 +206,27 @@ which does not cross-compile. On Linux, build the desktop engine with
 
 ### Builds without it
 
-A checkout that has never run the script still generates and builds.
-`ios/vendor/LocalLlama.xcconfig` ships with `HNX_LOCAL_LLAMA` empty,
+A checkout that has never run the script still generates and builds —
+but only because `prepare_project.py` leaves the dependency out.
+
+XcodeGen cannot decide this itself. Its `optional: true` sets weak
+*linking*, a dynamic-linker property; the framework still has to exist
+at build time. A spec that always names it fails with `There is no
+XCFramework found at ...` on any checkout that has not built the
+engine, which is what happened the first time this shipped. So the
+decision is made in Python, where it can be tested both ways, and
+`project.generated.yml` is what XcodeGen actually reads.
+
+With the engine absent, `HNX_LOCAL_LLAMA` is empty,
 `LlamaRunner.swift` compiles out entirely, and `LocalInference` falls
 back to `EchoRunner`, which tells the user this build has no local
 engine. Someone changing a view should not need a twenty-minute
 llama.cpp compile.
+
+The framework is **linked, not embedded**: upstream builds it with
+`BUILD_SHARED_LIBS=OFF`, so it is static and its code goes into the app
+binary. Embedding a static framework copies an archive into the bundle
+for nothing, and App Store validation rejects it.
 
 CI is the same: `local_engine` is a workflow input, off by default,
 because two slices on a hosted macOS runner is 15–25 minutes nobody
