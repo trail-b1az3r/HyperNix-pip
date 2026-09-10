@@ -623,3 +623,23 @@ timeline
         : 6a02fc0 - Auto-update README header (hourly)
 ```
 
+## Release v0.72.4.post12 (2026-09-10)
+
+```mermaid
+timeline
+    title Release v0.72.4.post12 Commits
+    0.72.4.post12
+        : 70a1d7e - 0.72.4.post12 — three tests that needed a server and never said so
+        : ff63f05 - 0.72.4.post11 — the engine is linked
+        : 17a8807 - 0.72.4.post10 — HyperLink runs models on the phone
+        : 46f5901 - 0.72.4.post9 — HyperLink catches up, notifies, and searches
+        : 27222ca - 0.72.4.post8 — deprecated modules say so where it can be seen
+        : 9a45a26 - 0.72.4.post7 — the subsystem map describes the tree that exists
+        : 0031df3 - 0.72.4.post6 — the release guard stopped refusing prepared releases
+        : e37e37d - chore- update JSON stats (scheduled)
+        : 60f45d6 - 0.72.4.post5 — hypernix-t1 start left nothing running
+        : fb4e216 - 0.72.4.post4 — hnx runtime, and the reason hnx gather printed the usage table
+        : d3eaad2 - build.sh- pin C++17, so one upstream warning stops repeating 46 times
+        : 29a3103 - Auto-update README header (hourly)
+```
+
