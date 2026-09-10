@@ -21,6 +21,110 @@ next release header.
 - 𖢥 major bug fix
 - ꩜ restore to older version of item
 - ❗ unfixed known bug
+## 0.72.4.post9 — HyperLink learns to catch up, notify and search
+
+Three subsystems that exist because a phone is not a desktop client, and
+the difference is not cosmetic. Plus the two issues found while writing
+post7 and post8, now fixed.
+
+### `hypernix.hyperlink.sync` — the retry that sent everything twice 𖢥
+
+A phone POSTs a turn, the connection drops before the response arrives,
+and it cannot tell "the server never saw it" from "the server saw it and
+the reply was lost". Retrying is the only safe-looking option and it
+produced two identical user messages and two model replies — one of
+which cost real tokens for nothing. There is no client-side fix.
+
+`POST /hyperlink/sync/claim` takes a `client_msg_id` the client mints
+*before* its first attempt and reuses on every retry; a second claim
+returns what the first produced. Keys are scoped per device, so two
+phones cannot collide, and expire after a day.
+
+The other half is catching up. Polling `GET /sessions` downloads
+conversations the phone already has and still cannot reveal that a
+session was **deleted** — an absence is invisible when you are diffing
+against a list you no longer trust. `GET /hyperlink/sync` is a change
+feed with real tombstone rows, a `head` so a new device can skip the
+history rather than replaying every change ever made, and a
+`resync_required` flag for a cursor that has fallen off the back of the
+log.
+
+Sequence numbers come from a counter row read and written inside the
+same transaction as the change it labels, not `MAX(seq) + 1` — two
+writers reading the same maximum pick the same number. Verified under
+eight concurrent writers: 320 rows, no duplicates, no gaps.
+
+### `hypernix.hyperlink.notify` — and two bugs only running found ✨
+
+Push registrations, a durable queue with backoff, collapse handling, and
+the APNs payload. Delivery itself is an operator-supplied transport,
+because an APNs push needs an Apple team key and a route to
+`api.push.apple.com`, neither of which ships with an open-source
+package. That boundary is stated rather than pretended past.
+
+Device tokens are credentials, so they are stored because delivery needs
+them and never returned by an API, logged, or put in a `repr` — an
+eight-character fingerprint goes out instead.
+
+Both payload bugs were invisible until the code met real text:
+
+- **`json.dumps` escapes non-ASCII by default.** `ensure_ascii=True`
+  turns each Japanese character into a six-byte `\uXXXX` where UTF-8
+  needs three. The builder measured UTF-8 and shipped 8069-byte payloads
+  against a 4096-byte limit — refused by APNs for every reply that was
+  not plain English.
+- **Subtracting the overflow over-corrects to nothing.** A body of 8000
+  double quotes escapes to two bytes each, so the first overflow is
+  about as large as the whole budget; the subtraction drove it to zero
+  and produced a 143-byte payload with an empty body. **A model reply
+  containing code arrived with no text in it.** Binary search finds the
+  real maximum: 1,979 quotes and 3,276 characters of Python where there
+  had been none.
+
+### `hypernix.hyperlink.search` — without FTS5 🔁
+
+The T1 API runs on SQLite *or* PostgreSQL, and FTS5 has no PostgreSQL
+counterpart, so an FTS5 index would make search SQLite-only and the
+schema unportable. SQL narrows, Python matches — which also buys what
+`LIKE` cannot give: `LIKE` is case-insensitive for ASCII only, so it
+never matched "straße" for "STRASSE"; a query containing `%` is now a
+search for a percent sign rather than a request for every row; and
+ranking can see match positions instead of a boolean.
+
+Bounded at 20,000 rows, and the result says `capped` when it hit the
+bound — a silent partial answer is what makes someone conclude a
+conversation is gone.
+
+### `hypernix.preheat` stopped routing through a deprecated module 𖢥
+
+The 0.71.5a2 notes said the top-level shortcuts returned a `NeoOven`
+from that release on. The lazy import map in `hypernix/__init__.py` was
+never moved, so `hypernix.preheat` and `hypernix.new_oven` kept
+resolving into `old_oven` — and once post8 made that module announce
+itself properly, the *top-level* API began telling callers to stop using
+a module they had never imported. Moved. `tests/test_old_oven.py` now
+reaches `old_oven` directly, because the shortcut would otherwise have
+turned it into a second NeoOven suite: passing, and covering nothing it
+was written to cover.
+
+### The dead ruff config 🔧
+
+`pyproject.toml` carried a `[tool.ruff]` block alongside `ruff.toml`.
+Ruff stops at the first config it finds, so the pyproject block had no
+effect and had drifted — missing the per-file E402 exemptions and the
+flake8-bugbear list FastAPI needs. Removed, with a note saying where the
+live one is.
+
+### 🧪 208 new tests
+
+70 for notifications, 50 for sync, 51 for search, 37 driving all seven
+new endpoints over real HTTP. The cross-owner checks are the ones worth
+naming: a registration id is not a secret, so knowing one must not let
+any authenticated caller silence or delete another account's
+notifications — and the refusal is 404 rather than 403, because
+confirming an id exists tells an unauthorised caller something they
+should not learn.
+
 ## 0.72.4.post8 — deprecated modules say so where it can be seen
 
 ### The notice was going to stdout 𖢥

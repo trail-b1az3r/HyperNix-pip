@@ -144,17 +144,21 @@ class TestTheThingsItGotWrongBefore:
         assert "successor" in doc
         assert "successor" in SECTION
 
-    def test_the_top_level_shortcuts_are_described_correctly(self):
-        """`hypernix.preheat` resolves to old_oven, `NeoOven` to neo_oven.
+    def test_the_top_level_shortcuts_reach_neo_oven(self):
+        """They resolve to neo_oven, as the 0.71.5a2 notes always said.
 
-        The map says this because the two disagree with neo_oven's
-        docstring, which claims the top-level shortcuts return a NeoOven.
-        If the lazy map is ever changed to match, this test says so.
+        This test used to assert the opposite, and pass: the lazy map
+        pointed `hypernix.preheat` at the deprecated `old_oven` for
+        thirteen releases while the changelog said it returned a
+        `NeoOven`. Moved in 0.72.4.post9, once old_oven started
+        announcing itself and the top-level API began telling callers to
+        stop using a module they had never imported.
         """
         init = (SRC / "hypernix" / "__init__.py").read_text(encoding="utf-8")
-        assert "'preheat': ('models.old_oven', 'preheat')" in init
+        assert "'preheat': ('models.neo_oven', 'preheat')" in init
+        assert "'new_oven': ('models.neo_oven', 'new_oven')" in init
         assert "'NeoOven': ('models.neo_oven', 'NeoOven')" in init
-        assert "resolve" in SECTION and "old_oven" in SECTION
+        assert "neo_oven" in SECTION
 
     @pytest.mark.parametrize(
         "subsystem",

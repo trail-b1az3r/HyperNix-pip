@@ -32,7 +32,6 @@ deprecated_module(
     "hypernix.models.old_oven",
     instead="hypernix.models.neo_oven",
     since="0.71.5a2",
-    extra="`hypernix.preheat` and `hypernix.new_oven` still resolve here.",
 )
 
 from dataclasses import dataclass

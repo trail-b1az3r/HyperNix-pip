@@ -204,9 +204,9 @@ and that distinction has cost a release: see [Changelog](Changelog.md)
               │  of 20+ ARCH_PRESETS   │   │  three fridges           │
               └────────────────────────┘   │  + hyperNix0x-v2, the    │
                                            │  house architecture      │
-              hypernix.preheat and         └──────────────────────────┘
-              hypernix.new_oven resolve
-              to old_oven; hypernix.NeoOven to neo_oven.
+              hypernix.preheat,            └──────────────────────────┘
+              hypernix.new_oven and
+              hypernix.NeoOven all resolve to neo_oven.
 
    optimizers.pressure_cooker{,_v3,_v4,_v5,_v5s,_v6,_v6v}
    training.{brewer, mtp, camouflage, deep_fryer, instant_pot, smoker}
@@ -270,6 +270,11 @@ still importable: `system.old_fridge` (memory), `data.mediocre_fridge`
                       diagnose, smoke, local_config}
    hyperlink.{pairing, identity, peers, sessions, files}   what the iOS
    hyperlink.{hfdownload, hfmerge}                         app talks to
+   hyperlink.sync      a change feed and idempotency keys, so a phone
+                       can catch up and a retry cannot send twice
+   hyperlink.notify    push registrations, queue and APNs payloads
+   hyperlink.search    portable search — no FTS5, so it runs on
+                       PostgreSQL too
    system.launcher    launch-script's supervisor: setsid(2) and a
                       recording wrapper, or a systemd user unit
    system.deprecation one way for a module on its way out to say so:

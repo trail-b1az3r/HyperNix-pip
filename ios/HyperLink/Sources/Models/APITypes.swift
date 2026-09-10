@@ -455,3 +455,266 @@ struct PeersResponse: Decodable, Sendable {
         detail = try container.decodeIfPresent(String.self, forKey: .detail) ?? ""
     }
 }
+
+// MARK: - Sync, notifications and search (0.72.4.post9)
+
+/// One change from `GET /hyperlink/sync`.
+///
+/// `sessionID`, `deviceID` and `payload` are optional because the server
+/// omits them when they do not apply — a device change carries no
+/// session id. Decoding them as non-optional with a default would turn
+/// "not applicable" into an empty string the UI has to special-case.
+struct SyncChange: Decodable, Sendable, Identifiable {
+    let seq: Int
+    let kind: String
+    let entity: String
+    let entityID: String
+    let createdAt: Double
+    let sessionID: String?
+    let deviceID: String?
+
+    var id: Int { seq }
+
+    /// Kinds the server may send. Compared as strings rather than
+    /// decoded into an enum: an unrecognised kind from a newer server
+    /// must survive the round trip, and a `RawRepresentable` enum would
+    /// fail the whole page's decode instead.
+    enum Kind {
+        static let created = "created"
+        static let updated = "updated"
+        static let deleted = "deleted"
+    }
+
+    enum Entity {
+        static let session = "session"
+        static let message = "message"
+        static let device = "device"
+        static let attachment = "attachment"
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case seq, kind, entity
+        case entityID = "entity_id"
+        case createdAt = "created_at"
+        case sessionID = "session_id"
+        case deviceID = "device_id"
+    }
+}
+
+/// One bounded page of changes.
+struct SyncPage: Decodable, Sendable {
+    let changes: [SyncChange]
+    let cursor: Int
+    let more: Bool
+    /// The cursor fell off the back of the log: tombstones it needed
+    /// have expired, so replaying what remains would leave this device
+    /// holding a session the server has forgotten. Refetch state and
+    /// restart the feed at `head`.
+    let resyncRequired: Bool
+    /// Where the log currently ends. A device with no local state starts
+    /// here instead of at 0, which would replay every change ever made
+    /// to rebuild a state it is about to fetch anyway.
+    let head: Int
+
+    enum CodingKeys: String, CodingKey {
+        case changes, cursor, more, head
+        case resyncRequired = "resync_required"
+    }
+}
+
+struct SyncClaimRequest: Encodable, Sendable {
+    let clientMsgID: String
+
+    enum CodingKeys: String, CodingKey {
+        case clientMsgID = "client_msg_id"
+    }
+}
+
+/// The answer to "has this already been sent?".
+struct SyncClaim: Decodable, Sendable {
+    /// The only field to branch on. `false` means an earlier attempt
+    /// already did this work.
+    let fresh: Bool
+    let clientMsgID: String
+    /// `false` with `fresh == false` means an earlier attempt is still
+    /// running — wait and ask again rather than sending a duplicate.
+    let settled: Bool
+    let result: [String: String]
+
+    enum CodingKeys: String, CodingKey {
+        case fresh, settled, result
+        case clientMsgID = "client_msg_id"
+    }
+
+    /// Decoded leniently: `result` is server-shaped JSON whose values
+    /// are not all strings, and a turn must not fail to send because a
+    /// field the client does not read would not decode.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        fresh = try container.decode(Bool.self, forKey: .fresh)
+        settled = try container.decode(Bool.self, forKey: .settled)
+        clientMsgID = try container.decode(String.self, forKey: .clientMsgID)
+        result = (try? container.decode([String: String].self, forKey: .result)) ?? [:]
+    }
+}
+
+struct PushRegisterRequest: Encodable, Sendable {
+    let token: String
+    let platform: String
+    let bundleID: String
+    let environment: String
+    let events: [String]?
+
+    enum CodingKeys: String, CodingKey {
+        case token, platform, environment, events
+        case bundleID = "bundle_id"
+    }
+}
+
+/// A push registration as the server describes it.
+///
+/// There is deliberately no `token` field. The server never returns one
+/// — a device token lets its holder push to that device — and adding a
+/// property for it here would invite code that expects one.
+struct PushRegistration: Decodable, Sendable, Identifiable {
+    let registrationID: String
+    let deviceID: String
+    /// Eight hex characters. Enough to tell two of your own phones
+    /// apart, useless for sending anything.
+    let fingerprint: String
+    let platform: String
+    let bundleID: String
+    let environment: String
+    let events: [String]
+    let enabled: Bool
+    let createdAt: Double
+    let updatedAt: Double
+    let lastDeliveryAt: Double
+    let failureCount: Int
+
+    var id: String { registrationID }
+
+    /// Zero means nothing has been delivered yet, not "delivered at the
+    /// epoch" — worth distinguishing before showing a date.
+    var hasEverDelivered: Bool { lastDeliveryAt > 0 }
+
+    enum CodingKeys: String, CodingKey {
+        case fingerprint, platform, environment, events, enabled
+        case registrationID = "registration_id"
+        case deviceID = "device_id"
+        case bundleID = "bundle_id"
+        case createdAt = "created_at"
+        case updatedAt = "updated_at"
+        case lastDeliveryAt = "last_delivery_at"
+        case failureCount = "failure_count"
+    }
+}
+
+struct PushRegistrationResponse: Decodable, Sendable {
+    let registration: PushRegistration
+}
+
+struct PushRegistrationList: Decodable, Sendable {
+    let registrations: [PushRegistration]
+    let count: Int
+    /// How many notifications are queued but not yet delivered.
+    let pending: Int
+}
+
+struct PushEventsRequest: Encodable, Sendable {
+    let events: [String]
+}
+
+/// The event kinds a server offers.
+///
+/// Fetched rather than hard-coded, so a server that gains a kind can
+/// offer it without an App Store release.
+struct PushEventCatalogue: Decodable, Sendable {
+    let events: [String]
+}
+
+/// A window of matching text, with the match located.
+///
+/// `ranges` are character offsets into `text`, not markup: the server
+/// returning HTML would have decided how a SwiftUI view highlights a
+/// match, which it cannot use.
+struct SearchSnippet: Decodable, Sendable {
+    let text: String
+    let ranges: [[Int]]
+    let truncatedStart: Bool
+    let truncatedEnd: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case text, ranges
+        case truncatedStart = "truncated_start"
+        case truncatedEnd = "truncated_end"
+    }
+
+    /// The offsets as `Range<String.Index>`, clamped to the string.
+    ///
+    /// Clamped because the offsets are computed server-side over
+    /// case-folded text, and folding can change length — "ß" folds to
+    /// "ss". An unclamped `index(_:offsetBy:)` would trap rather than
+    /// merely highlight the wrong characters, and a crash is a much
+    /// worse outcome than a slightly-off underline.
+    var highlightRanges: [Range<String.Index>] {
+        ranges.compactMap { pair in
+            guard pair.count == 2, pair[0] >= 0, pair[1] > pair[0] else { return nil }
+            let count = text.count
+            guard pair[0] < count else { return nil }
+            let lower = text.index(text.startIndex, offsetBy: pair[0])
+            let upper = text.index(text.startIndex, offsetBy: min(pair[1], count))
+            return lower..<upper
+        }
+    }
+}
+
+struct SearchHit: Decodable, Sendable, Identifiable {
+    let sessionID: String
+    let title: String
+    let score: Double
+    let updatedAt: Double
+    let matchedTerms: [String]
+    let messageID: String?
+    let role: String?
+    let createdAt: Double?
+    let snippet: SearchSnippet?
+
+    /// A session may appear both for its title and for a message in it,
+    /// so the session id alone is not unique within one result list.
+    var id: String { "\(sessionID)#\(messageID ?? "title")" }
+
+    /// True when the match was on the session's title rather than in a
+    /// message — worth showing differently, since tapping it should
+    /// open the conversation at the top rather than at a message.
+    var isTitleMatch: Bool { messageID == nil }
+
+    enum CodingKeys: String, CodingKey {
+        case title, score, role, snippet
+        case sessionID = "session_id"
+        case updatedAt = "updated_at"
+        case matchedTerms = "matched_terms"
+        case messageID = "message_id"
+        case createdAt = "created_at"
+    }
+}
+
+struct SearchResults: Decodable, Sendable {
+    let hits: [SearchHit]
+    let scanned: Int
+    /// The server stopped before reading everything. Say so in the UI:
+    /// a silent partial answer is what makes someone conclude a
+    /// conversation is gone.
+    let capped: Bool
+    let terms: [String]
+
+    /// A Decodable struct gets no memberwise initialiser once it has a
+    /// custom one anywhere, and the client needs to build an empty
+    /// result for a blank search box without a round trip.
+    init(hits: [SearchHit], scanned: Int, capped: Bool, terms: [String]) {
+        self.hits = hits
+        self.scanned = scanned
+        self.capped = capped
+        self.terms = terms
+    }
+}

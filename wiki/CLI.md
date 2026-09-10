@@ -748,11 +748,11 @@ Nothing goes to **stdout**. That matters: until 0.72.4.post8 the notice
 was printed with `rich.Console()`, which defaults to stdout, so
 `hnx … > out.json` got a line of English in its JSON.
 
-> `hypernix.preheat` and `hypernix.new_oven` still resolve to
-> `old_oven`, so touching either raises its notice. The 0.71.5a2 notes
-> say those shortcuts were meant to return a `NeoOven` from that release
-> on; the lazy import map in `hypernix/__init__.py` was never moved
-> across.
+`hypernix.preheat` and `hypernix.new_oven` resolve to `neo_oven`, so
+the top-level API does **not** raise a deprecation notice. They pointed
+at `old_oven` until 0.72.4.post9 even though the 0.71.5a2 notes said
+they returned a `NeoOven` — which meant the top-level shortcuts told
+callers to stop using a module they had never imported.
 
 ## Exit codes
 

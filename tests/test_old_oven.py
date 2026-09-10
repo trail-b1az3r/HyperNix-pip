@@ -1,4 +1,11 @@
-"""Tests for hypernix.old_oven (code-generation wrapper around HyperNix)."""
+"""Tests for hypernix.old_oven (code-generation wrapper around HyperNix).
+
+Every import here reaches `hypernix.models.old_oven` directly rather
+than through `hypernix.new_oven` / `hypernix.preheat`. Those shortcuts
+resolved here until 0.72.4.post9 and now resolve to `neo_oven`, which
+would silently turn this file into a second NeoOven test suite --
+passing, and covering nothing it was written to cover.
+"""
 from __future__ import annotations
 
 from pathlib import Path
@@ -23,7 +30,7 @@ def tiny_snapshot_dir(tmp_path: Path) -> Path:
 
 
 def test_preheat_from_local_snapshot(tiny_snapshot_dir: Path) -> None:
-    from hypernix import old_oven
+    from hypernix.models import old_oven
 
     oven = old_oven.preheat(local_dir=tiny_snapshot_dir, device="cpu")
     assert oven.tokenizer_kind == "byte"  # no tokenizer.json => byte fallback
@@ -32,7 +39,7 @@ def test_preheat_from_local_snapshot(tiny_snapshot_dir: Path) -> None:
 
 
 def test_complete_is_deterministic_with_temperature_zero(tiny_snapshot_dir: Path) -> None:
-    from hypernix import old_oven
+    from hypernix.models import old_oven
 
     oven = old_oven.preheat(local_dir=tiny_snapshot_dir, device="cpu")
     out_a = oven.complete(
@@ -47,7 +54,7 @@ def test_complete_is_deterministic_with_temperature_zero(tiny_snapshot_dir: Path
 
 def test_fill_falls_back_without_fim_tokens(tiny_snapshot_dir: Path) -> None:
     """Byte tokenizer has no FIM tokens => .fill() continues the prefix."""
-    from hypernix import old_oven
+    from hypernix.models import old_oven
 
     oven = old_oven.preheat(local_dir=tiny_snapshot_dir, device="cpu")
     out = oven.fill(
@@ -67,7 +74,7 @@ def test_trim_at_stop_cuts_at_first_match() -> None:
 
 
 def test_save_pt_and_load_pt_roundtrip(tiny_snapshot_dir: Path, tmp_path: Path) -> None:
-    from hypernix import old_oven
+    from hypernix.models import old_oven
 
     oven = old_oven.preheat(local_dir=tiny_snapshot_dir, device="cpu")
     pt_path = tmp_path / "oven.pt"
@@ -90,7 +97,7 @@ def test_save_pt_and_load_pt_roundtrip(tiny_snapshot_dir: Path, tmp_path: Path) 
 
 def test_bake_code_accepts_snapshot_path(tiny_snapshot_dir: Path) -> None:
     """`bake_code` should accept a raw path and preheat internally."""
-    from hypernix import old_oven
+    from hypernix.models import old_oven
 
     out = old_oven.bake_code(
         tiny_snapshot_dir, "def fib(n):",
@@ -104,7 +111,7 @@ def test_bake_code_accepts_snapshot_path(tiny_snapshot_dir: Path) -> None:
 # ---------------------------------------------------------------------------
 
 def test_new_oven_hypernix_arch_has_no_qkv_bias(tmp_path: Path) -> None:
-    from hypernix import new_oven
+    from hypernix.models.old_oven import new_oven
 
     oven = new_oven(
         tmp_path / "hn", arch="hypernix",
@@ -122,7 +129,7 @@ def test_new_oven_hypernix_arch_has_no_qkv_bias(tmp_path: Path) -> None:
 
 
 def test_new_oven_qwen2_arch_has_qkv_bias_but_not_oproj(tmp_path: Path) -> None:
-    from hypernix import new_oven
+    from hypernix.models.old_oven import new_oven
 
     oven = new_oven(
         tmp_path / "qw", arch="qwen2",
@@ -151,7 +158,7 @@ def test_new_oven_qwen25_alias_matches_qwen2(tmp_path: Path) -> None:
 
 
 def test_new_oven_rejects_unknown_arch(tmp_path: Path) -> None:
-    from hypernix import new_oven
+    from hypernix.models.old_oven import new_oven
 
     with pytest.raises(ValueError, match="unknown arch"):
         new_oven(tmp_path / "x", arch="does-not-exist", device="cpu")
@@ -170,7 +177,7 @@ def _write_dataset(path: Path) -> Path:
 @pytest.mark.parametrize("arch", ["hypernix", "qwen2"])
 def test_train_drives_loss_down(tmp_path: Path, arch: str) -> None:
     """Quick smoke training: loss at the end should be below initial loss."""
-    from hypernix import new_oven
+    from hypernix.models.old_oven import new_oven
 
     oven = new_oven(
         tmp_path / f"src-{arch}", arch=arch,
@@ -209,7 +216,8 @@ def _eval_loss(oven, dataset_path: Path, context_length: int) -> float:
 
 def test_train_reloadable_and_bias_survives_save_roundtrip(tmp_path: Path) -> None:
     """After .train() a qwen2 oven can be re-preheated with its bias intact."""
-    from hypernix import new_oven, old_oven
+    from hypernix.models import old_oven
+    from hypernix.models.old_oven import new_oven
 
     oven = new_oven(
         tmp_path / "qw", arch="qwen2",
