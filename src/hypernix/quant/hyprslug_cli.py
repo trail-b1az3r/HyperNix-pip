@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from pathlib import Path
 
 from .hyprslug import (
     ALIASES,
@@ -38,12 +39,24 @@ def _describe_tier(tier: str, type_id: int, packing: str) -> dict:
     from inside a ``--json`` branch -- an unhandled crash on a listing
     command, which is the one thing a listing command must not do.
     """
+    from .ggufcheck import llama_cpp_can_load_type
+
+    reachable = llama_cpp_can_load_type(type_id)
     common = {
         "name": tier,
         "ggml_type": type_id,
         "packing": packing,
         "upstream": False,
-        "summary": "HyperNix extension type; stock llama.cpp refuses it by name.",
+        # Whether a *patched* llama.cpp can open it. Stock refuses every
+        # tier here; these two are refused by the patched build as well,
+        # because the patch never registered them.
+        "llama_cpp": reachable,
+        "summary": (
+            "HyperNix extension type; stock llama.cpp refuses it by name."
+            if reachable
+            else "HyperNix extension type; runs only under the hnx runtime, "
+                 "as no llama.cpp build registers this id."
+        ),
     }
     if packing in PACKINGS:
         spec = PACKINGS[packing]
@@ -67,6 +80,64 @@ def _describe_tier(tier: str, type_id: int, packing: str) -> dict:
             f"{len(codec.levels)} fixed levels"
         ),
     }
+
+
+
+def _check_or_repair(args) -> int:
+    """``--check`` and ``--repair-to``, which share their one argument.
+
+    Separated from the quantise path because neither takes a tier: a
+    file already has one, and asking for it again is how a repair gets
+    invoked with the wrong one.
+    """
+    from .gguf import GGUFError
+    from .ggufcheck import check_gguf, repair_gguf
+
+    if not args.source:
+        print("--check and --repair-to need a GGUF to look at.", file=sys.stderr)
+        return 2
+    source = Path(args.source)
+    if not source.exists():
+        print(f"No such file: {source}", file=sys.stderr)
+        return 2
+
+    try:
+        report = check_gguf(source)
+    except GGUFError as exc:
+        print(f"{source}: {exc}", file=sys.stderr)
+        return 1
+
+    if not args.repair_to:
+        if args.as_json:
+            print(json.dumps(report.as_dict(), indent=2))
+        elif not args.quiet:
+            print(report.describe())
+        # Non-zero when the file will not load, so a script can gate on
+        # it without parsing anything.
+        return 0 if report.loadable else 1
+
+    if report.loadable:
+        if not args.quiet:
+            print(f"{source} already loads; nothing to repair.")
+        return 0
+    try:
+        repaired = repair_gguf(source, args.repair_to)
+    except GGUFError as exc:
+        print(f"{source}: {exc}", file=sys.stderr)
+        return 2
+    if args.as_json:
+        print(json.dumps({
+            "source": repaired.source,
+            "output": repaired.output,
+            "repaired": repaired.repaired,
+            "copied": repaired.copied,
+            "source_bytes": repaired.source_bytes,
+            "output_bytes": repaired.output_bytes,
+        }, indent=2))
+    elif not args.quiet:
+        print(repaired.describe())
+    # The repair is only done if the result actually loads.
+    return 0 if check_gguf(repaired.output).loadable else 1
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -104,9 +175,24 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--no-quantize-output", dest="quantize_output",
                         action="store_false", help="Leave the output head alone")
     parser.add_argument("--list-tiers", action="store_true")
+    parser.add_argument(
+        "--check", action="store_true",
+        help="Report whether SOURCE is a file llama.cpp will load, and stop. "
+             "Reads the tensor table only, so it is quick on a large model.",
+    )
+    parser.add_argument(
+        "--repair-to", metavar="PATH",
+        help="Rewrite SOURCE to PATH with every tensor llama.cpp would refuse "
+             "widened back to F32. Gets a file made by a pre-0.72.4.post16 "
+             "hyprslug to load without re-quantising; it cannot recover what "
+             "the quantiser already discarded.",
+    )
     parser.add_argument("--json", dest="as_json", action="store_true")
     parser.add_argument("-q", "--quiet", action="store_true")
     args = parser.parse_args(argv)
+
+    if args.check or args.repair_to:
+        return _check_or_repair(args)
 
     if args.list_tiers:
         # --json applies here too; this branch used to return before ever
@@ -146,9 +232,33 @@ def main(argv: list[str] | None = None) -> int:
         print("HyperNix extension tiers (stock llama.cpp refuses these by name):")
         for tier, (type_id, packing) in TIER_TYPES.items():
             described = _describe_tier(tier, type_id, packing)
+            # Five of the seven are registered in the ggml patch; INT4 and
+            # FP2 are not, and a listing that presented all seven the same
+            # way is how somebody picks a tier no llama.cpp can open.
+            reach = "" if described["llama_cpp"] else "  [hnx runtime only]"
             print(
                 f"  {tier:12} {described['bits_per_weight']:5.3f} bits/weight  "
-                f"type {type_id}  {described['shape']}"
+                f"type {type_id}  {described['shape']}{reach}"
+            )
+        if any(
+            not _describe_tier(t_, i_, p_)["llama_cpp"]
+            for t_, (i_, p_) in TIER_TYPES.items()
+        ):
+            print()
+            print(
+                "  [hnx runtime only] runs under `hnx generate` and `hnx chat`."
+            )
+            print(
+                "  The ggml patch registers type ids 200-204 and pins"
+            )
+            print(
+                "  GGML_TYPE_COUNT to 205, so these are past the end of both"
+            )
+            print(
+                "  trait tables and gguf.cpp rejects them before reading a"
+            )
+            print(
+                "  tensor. Pick another tier for llama.cpp or llama-server."
             )
         return 0
 

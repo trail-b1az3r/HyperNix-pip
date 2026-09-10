@@ -45,6 +45,7 @@ __all__ = [
     "type_block_size",
     "type_size_bytes",
     "tensor_nbytes",
+    "tensor_nbytes_unchecked",
 ]
 
 GGUF_MAGIC = b"GGUF"
@@ -202,19 +203,62 @@ def type_size_bytes(ggml_type: int) -> int:
 
 
 def tensor_nbytes(ggml_type: int, shape: tuple[int, ...]) -> int:
-    """Bytes one tensor of *shape* occupies in *ggml_type*."""
+    """Bytes one tensor of *shape* occupies in *ggml_type*.
+
+    Refuses a shape GGML cannot represent in this type, which is the
+    last place a mistake upstream can still be caught for free: every
+    write goes through here to lay the file out, so a tensor that gets
+    past this is a tensor in a file somebody will try to load.
+
+    The constraint is on ``ne[0]``, the row length. GGML quantises row
+    by row, so a block never straddles two rows and it is the *row* that
+    has to divide -- not the element total, which is the weaker test
+    this used to apply. A ``[4, 4096]`` SSM convolution weight has
+    16,384 elements, divides cleanly by 256, and is four elements per
+    row: it passed here, was written as a sub-bit type, and llama.cpp
+    refused the finished file with
+
+        tensor 'blk.0.ssm_conv1d.weight' of type 202 (IQ0.5_XXXL) has 4
+        elements per row, not a multiple of block size (256)
+
+    The row test subsumes the total, since a product is divisible by
+    anything its first factor is.
+    """
+    block = type_block_size(ggml_type)
+    row = int(shape[0]) if shape else _element_count(shape)
+    if block > 1 and row % block:
+        raise GGUFError(
+            f"A tensor of {row} elements per row does not divide into "
+            f"{block}-element blocks for type {ggml_type}. GGML quantises row "
+            f"by row, so ne[0] is the dimension that has to divide."
+        )
+    return tensor_nbytes_unchecked(ggml_type, shape)
+
+
+def _element_count(shape: tuple[int, ...]) -> int:
     elements = 1
     for dim in shape:
         elements *= int(dim)
+    return elements
+
+
+def tensor_nbytes_unchecked(ggml_type: int, shape: tuple[int, ...]) -> int:
+    """:func:`tensor_nbytes` without the row check, for *reading*.
+
+    A reader must not refuse what a writer should not have produced.
+    Files with the row bug exist -- that is the whole reason
+    :mod:`hypernix.quant.ggufcheck` exists -- and a reader that raised on
+    them would make them undiagnosable and unrepairable by the very tool
+    written to fix them.
+
+    The arithmetic is what the old writer used, so it reproduces the
+    byte layout of such a file exactly; for any legal tensor the two
+    functions agree, since a row that divides means a total that does.
+    """
     block, size = _BLOCK_SHAPE.get(int(ggml_type), (None, None))
     if block is None:
         raise GGUFError(f"Unknown GGML type id {ggml_type}; size not known.")
-    if elements % block:
-        raise GGUFError(
-            f"A tensor of {elements} elements does not divide into {block}-element "
-            f"blocks for type {ggml_type}."
-        )
-    return (elements // block) * size
+    return (_element_count(shape) // block) * size
 
 
 # ---------------------------------------------------------------------------
@@ -352,7 +396,9 @@ class GGUFFile:
 
         for tensor in tensors:
             try:
-                tensor.nbytes = tensor_nbytes(tensor.ggml_type, tensor.shape)
+                tensor.nbytes = tensor_nbytes_unchecked(
+                    tensor.ggml_type, tensor.shape
+                )
             except GGUFError:
                 # An unknown type can still be copied byte for byte; the
                 # length comes from the next tensor's offset instead.

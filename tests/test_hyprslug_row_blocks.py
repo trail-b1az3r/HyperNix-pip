@@ -203,3 +203,100 @@ class TestDflash2HasTheSameGuard:
             "dflash2 is back to counting elements instead of the row length"
         )
         assert "int(tensor.shape[0]) % block_size" in code
+
+
+class TestTheWriterRefusesEvenIfTheCheckRegresses:
+    """Defence in depth, and the reason this is worth having twice.
+
+    ``_should_quantize`` deciding correctly is one line of code away from
+    deciding incorrectly again -- it already did once, and the round trip
+    passed because the reader shared the writer's misconception. So the
+    *file format layer* refuses too: ``tensor_nbytes`` is on the path of
+    every write, and it will not lay out a tensor whose ``ne[0]`` cannot
+    divide into its type's block.
+
+    That turns "we fixed this bug" into "this file cannot be produced".
+    """
+
+    def test_add_tensor_refuses_a_row_that_cannot_divide(self, tmp_path):
+        from hypernix.quant.gguf import GGUFError
+
+        writer = GGUFWriter(tmp_path / "refused.gguf")
+        writer.set_metadata("general.architecture", "llama")
+        with pytest.raises(GGUFError, match="elements per row"):
+            writer.add_tensor(
+                "blk.0.ssm_conv1d.weight", (4, 4096), int(GGMLType.HNX_IQ0_5)
+            )
+
+    def test_the_message_names_ne0_as_the_dimension(self, tmp_path):
+        """A size error that says "16384 elements" sends somebody to
+        look at a number that is fine."""
+        from hypernix.quant.gguf import GGUFError
+
+        writer = GGUFWriter(tmp_path / "refused.gguf")
+        with pytest.raises(GGUFError, match="ne\\[0\\]"):
+            writer.add_tensor("w", (4, 4096), int(GGMLType.HNX_IQ0_5))
+
+    def test_a_legal_tensor_is_unaffected(self, tmp_path):
+        writer = GGUFWriter(tmp_path / "fine.gguf")
+        tensor = writer.add_tensor("w", (256, 512), int(GGMLType.HNX_IQ0_5))
+        assert tensor.nbytes > 0
+
+    def test_f32_of_any_shape_is_unaffected(self, tmp_path):
+        """Block size 1 divides everything; norms and 1-D tensors must
+        keep working whatever their shape."""
+        writer = GGUFWriter(tmp_path / "fine.gguf")
+        for shape in [(7,), (4, 4096), (3, 5, 7)]:
+            assert writer.add_tensor(f"w{shape}", shape, int(GGMLType.F32)).nbytes > 0
+
+    def test_the_reader_still_opens_a_file_that_has_the_bug(self, tmp_path):
+        """The guard belongs on writes only.
+
+        Files with this bug exist -- that is why ggufcheck exists -- and
+        a reader that refused them would make them undiagnosable by the
+        tool written to repair them.
+        """
+        from hypernix.quant import gguf
+
+        path = tmp_path / "legacy.gguf"
+        original = gguf.tensor_nbytes
+        gguf.tensor_nbytes = gguf.tensor_nbytes_unchecked
+        try:
+            writer = GGUFWriter(path)
+            writer.set_metadata("general.architecture", "llama")
+            writer.add_tensor("blk.0.ssm_conv1d.weight", (4, 256), int(GGMLType.HNX_IQ0_5))
+            writer.write(lambda t: bytes(t.nbytes))
+        finally:
+            gguf.tensor_nbytes = original
+
+        model = GGUFFile.read(path)
+        assert [t.name for t in model.tensors] == ["blk.0.ssm_conv1d.weight"]
+        assert int(model.tensors[0].ggml_type) == int(GGMLType.HNX_IQ0_5)
+
+    def test_quantize_gguf_cannot_write_one_even_with_the_check_regressed(
+        self, tmp_path, monkeypatch
+    ):
+        """The whole point, stated as the scenario that produced the bug.
+
+        With ``_should_quantize`` put back to the element-count test that
+        shipped, quantising a model with an SSM convolution in it must
+        fail loudly rather than produce a file that llama.cpp refuses
+        after an hour of quantisation.
+        """
+        from hypernix.quant import hyprslug
+        from hypernix.quant.gguf import GGUFError
+
+        def regressed(tensor, *, block, **kwargs):
+            if tensor.elements % block:
+                return False, "the old, wrong check"
+            return True, ""
+
+        monkeypatch.setattr(hyprslug, "_should_quantize", regressed)
+        source = self._model(tmp_path / "in.gguf", {"blk.0.ssm_conv1d.weight": (4, 4096)})
+        with pytest.raises(GGUFError, match="elements per row"):
+            quantize_gguf(source, tmp_path / "out.gguf", tier="IQ0.5_XXXL")
+
+    #: The same builder the load tests use, rather than a second copy of
+    #: a GGUF writer that could drift from it. Re-wrapped because
+    #: reaching through the class hands back the plain function.
+    _model = staticmethod(TestTheFileActuallyLoads._model)
