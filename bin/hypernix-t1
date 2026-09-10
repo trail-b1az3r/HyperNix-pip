@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-VERSION="0.72.4.post18"
+VERSION="0.72.4.post19"
 
 CONFIG_DIR="${T1_CONFIG_DIR:-$HOME/.hypernix/t1api}"
 ENV_FILE="$CONFIG_DIR/.env"
@@ -153,10 +153,51 @@ server_pid() {
   printf '%s' "$pid"
 }
 
+# port_in_use PYTHON HOST PORT -- 0 when something already listens there.
+#
+# Asked before spawning, because "is this port free" and "does this port
+# answer /health" are different questions, and only the first one is
+# about the server we are about to start. A bind test answers it without
+# needing ss, netstat or lsof to be installed.
+port_in_use() {
+  "$1" - "$2" "$3" <<'PY' >/dev/null 2>&1
+import socket, sys
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+# SO_REUSEADDR because uvicorn sets it, and this has to ask the question
+# uvicorn will actually face. Without it a port still in TIME_WAIT from a
+# just-stopped server reads as busy, and `restart` refuses to start the
+# thing it has only this moment stopped. With it, a bind still fails
+# while another socket is really LISTENing -- which is the case worth
+# refusing.
+sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+try:
+    sock.bind((sys.argv[1], int(sys.argv[2])))
+except OSError:
+    raise SystemExit(0)      # in use
+else:
+    raise SystemExit(1)      # free
+finally:
+    sock.close()
+PY
+}
+
 wait_healthy() {
-  local url="$1" seconds="${2:-45}" i=0
+  local url="$1" seconds="${2:-45}" pid="${3:-}" i=0
   while [ "$i" -lt "$seconds" ]; do
-    if curl -fsS --noproxy '*' "$url/health" >/dev/null 2>&1; then return 0; fi
+    if curl -fsS --noproxy '*' "$url/health" >/dev/null 2>&1; then
+      # Something answered. That is not the same as "our server came up".
+      # A server already holding this port answers /health perfectly well
+      # while the process we just started is inside uvicorn's startup and
+      # about to die on `address already in use` -- uvicorn logs
+      # "Application startup complete" *before* it binds, so for a moment
+      # there is a live pid and a healthy port belonging to two different
+      # processes. Reporting success there is how `start` printed a pid
+      # that `status` could not find a second later.
+      [ -n "$pid" ] || return 0
+      sleep 1
+      kill -0 "$pid" 2>/dev/null || return 3
+      return 0
+    fi
     # Died during startup? Say so now rather than after the full timeout.
     server_pid >/dev/null 2>&1 || return 2
     sleep 1
@@ -263,6 +304,21 @@ cmd_start() {
   [ "$host" = "0.0.0.0" ] && url="http://127.0.0.1:${port}"
 
   mkdir -p "$CONFIG_DIR"
+
+  # Nothing of ours is running (checked above), so anything on this port
+  # belongs to someone else -- very often the systemd user service this
+  # script installs itself via `autostart on`. Spawning into that gives a
+  # uvicorn that binds nothing and exits, while /health goes on answering
+  # from the other process.
+  if port_in_use "$py" "$host" "$port"; then
+    err "Something is already listening on ${host}:${port}, and it is not a"
+    err "server this script started (no live pid file)."
+    dim "     If that is the autostart service:  systemctl --user status hypernix-t1"
+    dim "     To take it over:                   hypernix-t1 autostart off"
+    dim "     To use another port:               set T1_PORT in $ENV_FILE"
+    return 1
+  fi
+
   say "Starting the T1 API on ${host}:${port}…"
   local pid=""
   pid="$(spawn_detached "$py" "$LOG_FILE" \
@@ -274,7 +330,7 @@ cmd_start() {
   esac
   printf '%s\n' "$pid" > "$PID_FILE"
 
-  case "$(wait_healthy "$url" "$(setting T1_START_TIMEOUT 45)"; echo $?)" in
+  case "$(wait_healthy "$url" "$(setting T1_START_TIMEOUT 45)" "$pid"; echo $?)" in
     0) ok "Running (pid $(server_pid)) — $url"
        if logind_kills_user_processes; then
          warn "This machine's logind has KillUserProcesses=yes, so logging out"
@@ -284,6 +340,11 @@ cmd_start() {
        fi ;;
     2) rm -f "$PID_FILE"
        err "The server exited during startup. Last lines:"
+       tail -n 20 "$LOG_FILE" >&2 || true
+       return 1 ;;
+    3) rm -f "$PID_FILE"
+       err "${host}:${port} answers, but the server this command started is"
+       err "already gone -- so the reply comes from something else."
        tail -n 20 "$LOG_FILE" >&2 || true
        return 1 ;;
     *) err "Started, but it never answered /health. Last lines:"
@@ -331,6 +392,21 @@ cmd_status() {
     ok "running (pid $pid)"
   else
     warn "not running"
+    # Why not. "not running" on its own sends people to guess, and the
+    # answer is almost always in the last few lines of the log.
+    local stale=""
+    [ -r "$PID_FILE" ] && stale="$(cat "$PID_FILE" 2>/dev/null || true)"
+    if [ -n "$stale" ]; then
+      dim "     pid $stale is named in $PID_FILE but is not running: it exited."
+    fi
+    if port_in_use "$(python_bin)" "$host" "$port"; then
+      dim "     ...yet something is listening on ${host}:${port}."
+      dim "     Check:  systemctl --user status hypernix-t1"
+    fi
+    if [ -s "$LOG_FILE" ]; then
+      dim "     last lines of $LOG_FILE:"
+      tail -n 5 "$LOG_FILE" 2>/dev/null | sed -e 's/^/       /' >&2 || true
+    fi
   fi
   dim "     config    $ENV_FILE"
   dim "     keys      $(setting T1_KEYMASTER_DIR "$CONFIG_DIR/keymaster")"

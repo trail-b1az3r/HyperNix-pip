@@ -11,6 +11,7 @@ from __future__ import annotations
 import os
 import re
 import shutil
+import signal
 import subprocess
 import tempfile
 from pathlib import Path
@@ -854,3 +855,186 @@ class TestLogoutDoesNotTakeTheServerWithIt:
             env={**os.environ, "PATH": str(empty), "HOME": str(tmp_path), "NO_COLOR": "1"},
         )
         assert result.stdout.strip().endswith("QUIET"), result.stdout + result.stderr
+
+
+class TestStartDoesNotReportSomeoneElsesServer:
+    """`start` said Running with a pid; `status` a second later said not
+    running. From a screenshot, and reproduced exactly.
+
+    The sequence was `autostart` (which installs a **systemd user
+    service**) and then `start`. The service holds the port; `start` sees
+    no live pid file of its own, so it spawns a second uvicorn. That
+    uvicorn logs "Application startup complete", *then* tries to bind,
+    gets ``[Errno 98] address already in use`` and exits.
+
+    Meanwhile ``wait_healthy`` was asking "does anything answer /health
+    on this port?" -- and something does: the first server. So it
+    returned success, and the pid printed alongside it belonged to a
+    process already on its way out. Every part of that is a true
+    statement about a different process.
+    """
+
+    @pytest.fixture
+    def isolated(self, configured):
+        """`configured` pins port 8123, which every server test in this
+        file shares. These tests deliberately orphan a server from its
+        pid file, so they need a port of their own and a cleanup that
+        does not go through the script -- otherwise a leaked server sits
+        on 8123 and the *next* test fails on the port guard this change
+        added, which is a confusing way to discover you wrote a leaky
+        test.
+        """
+        import socket
+
+        home, config = configured
+        with socket.socket() as probe:
+            probe.bind(("127.0.0.1", 0))
+            port = probe.getsockname()[1]
+        env = (config / ".env").read_text(encoding="utf-8")
+        (config / ".env").write_text(
+            env.replace("T1_PORT=8123", f"T1_PORT={port}"), encoding="utf-8"
+        )
+        started: list[int] = []
+        yield home, config, started
+        for pid in started:
+            try:
+                os.kill(pid, signal.SIGKILL)
+            except (ProcessLookupError, PermissionError):
+                pass
+
+    def _pid_file(self, config: Path) -> Path:
+        return config / "server.pid"
+
+    def _remember(self, config: Path, started: list) -> int:
+        """Record the running pid so the fixture can clean up after a
+        test has taken the pid file away."""
+        pid = int(self._pid_file(config).read_text(encoding="utf-8").strip())
+        started.append(pid)
+        return pid
+
+    @NEEDS_A_SERVER
+    def test_it_refuses_instead_of_claiming_success(self, isolated):
+        """The reproduction: a healthy server on the port, no pid file of
+        ours -- which is exactly what a systemd-managed instance looks
+        like to this script."""
+        home, config, started = isolated
+        first = run("start", home=home, config=config, timeout=120)
+        assert first.returncode == 0, first.output
+        self._remember(config, started)
+        self._pid_file(config).unlink()              # systemd owns it now
+
+        second = run("start", home=home, config=config, timeout=120)
+        assert second.returncode != 0, (
+            "start reported success for someone else's server:\n" + second.output
+        )
+        assert "already listening" in second.output
+        assert "Running (pid" not in second.output
+
+    @NEEDS_A_SERVER
+    def test_the_refusal_names_the_usual_cause(self, isolated):
+        """`autostart on` is what put the other server there, and it is
+        this script that installed it -- so it can say so rather than
+        leaving a port number and a shrug."""
+        home, config, started = isolated
+        run("start", home=home, config=config, timeout=120)
+        self._remember(config, started)
+        self._pid_file(config).unlink()
+        result = run("start", home=home, config=config, timeout=120)
+        assert "systemctl --user status hypernix-t1" in result.output
+        assert "autostart off" in result.output
+        assert "T1_PORT" in result.output
+
+    @NEEDS_A_SERVER
+    def test_status_says_why_it_thinks_nothing_is_running(self, isolated):
+        """"not running" on its own is what sent this bug unexplained.
+        With a foreign listener on the port, status has to mention it."""
+        home, config, started = isolated
+        run("start", home=home, config=config, timeout=120)
+        self._remember(config, started)
+        self._pid_file(config).unlink()
+        status = run("status", home=home, config=config)
+        assert "not running" in status.output
+        assert "listening on" in status.output
+        assert "systemctl --user status hypernix-t1" in status.output
+
+    @NEEDS_A_SERVER
+    def test_status_shows_the_log_when_stopped(self, isolated):
+        """The answer is nearly always in the last few lines, and nothing
+        was printing them."""
+        home, config, _started = isolated
+        run("start", home=home, config=config, timeout=120)
+        run("stop", home=home, config=config, timeout=120)
+        status = run("status", home=home, config=config)
+        assert "not running" in status.output
+        assert "server.log" in status.output
+
+    @NEEDS_A_SERVER
+    def test_restart_still_works(self, isolated):
+        """The port guard must not refuse to start the server it has just
+        stopped -- the failure mode a naive bind test introduces."""
+        home, config, _started = isolated
+        try:
+            assert run("start", home=home, config=config, timeout=120).returncode == 0
+            result = run("restart", home=home, config=config, timeout=180)
+            assert result.returncode == 0, result.output
+            assert "Running" in result.output
+        finally:
+            run("kill", home=home, config=config)
+
+    @NEEDS_A_SERVER
+    def test_a_normal_start_is_unaffected(self, isolated):
+        home, config, _started = isolated
+        try:
+            result = run("start", home=home, config=config, timeout=120)
+            assert result.returncode == 0, result.output
+            assert "Running (pid" in result.output
+            assert run("status", home=home, config=config).returncode == 0
+        finally:
+            run("kill", home=home, config=config)
+
+
+class TestTheHealthProbeIsAboutOurProcess:
+    """Static checks, so the reasoning survives an edit that looks
+    harmless. Each pins a line whose removal restores the bug."""
+
+    def test_wait_healthy_is_given_the_pid(self):
+        source = SCRIPT.read_text(encoding="utf-8")
+        body = _function_body(source, "wait_healthy")
+        assert 'pid="${3:-}"' in body, "wait_healthy no longer takes a pid"
+
+    def test_wait_healthy_rechecks_the_pid_after_a_good_probe(self):
+        """A 200 from the port proves a server is there, not that ours
+        is. Without this the caller cannot tell the two apart."""
+        body = _function_body(SCRIPT.read_text(encoding="utf-8"), "wait_healthy")
+        probe = body.index("/health")
+        assert "kill -0" in body[probe:], (
+            "wait_healthy accepts any answer on the port again"
+        )
+
+    def test_start_passes_the_pid_through(self):
+        """The argument existing is no use if the call site drops it."""
+        body = _function_body(SCRIPT.read_text(encoding="utf-8"), "cmd_start")
+        call = body.split("wait_healthy")[1][:120]
+        assert '"$pid"' in call, call
+
+    def test_start_checks_the_port_before_spawning(self):
+        body = _function_body(SCRIPT.read_text(encoding="utf-8"), "cmd_start")
+        spawn = body.index("spawn_detached")
+        assert "port_in_use" in body[:spawn], (
+            "the port check must come before the spawn, or it is just a "
+            "second opinion about a process that already failed"
+        )
+
+    def test_the_port_probe_sets_reuseaddr(self):
+        """uvicorn sets it, so the probe has to ask the same question --
+        otherwise a port in TIME_WAIT reads as busy and `restart` refuses
+        to start what it just stopped."""
+        body = _function_body(SCRIPT.read_text(encoding="utf-8"), "port_in_use")
+        assert "SO_REUSEADDR" in body
+
+    def test_the_port_probe_needs_no_extra_tools(self):
+        """ss, netstat and lsof are all missing on some machines this
+        runs on; a bind test is always available."""
+        body = _function_body(SCRIPT.read_text(encoding="utf-8"), "port_in_use")
+        for tool in ("ss ", "netstat", "lsof"):
+            assert tool not in body, tool
