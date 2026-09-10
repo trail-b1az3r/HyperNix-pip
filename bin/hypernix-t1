@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-VERSION="0.72.4.post19"
+VERSION="0.72.4.post20"
 
 CONFIG_DIR="${T1_CONFIG_DIR:-$HOME/.hypernix/t1api}"
 ENV_FILE="$CONFIG_DIR/.env"
@@ -181,6 +181,54 @@ finally:
 PY
 }
 
+# --- who is running the server ------------------------------------------
+#
+# `autostart on` installs a systemd user service, so a server systemd is
+# managing is every bit as much "ours" as one started from this shell --
+# it is running this same script's `start-foreground`. Reading only our
+# own pid file reported an eight-hour-old, perfectly healthy service as
+# "not running", and sent `start` off to fight it for the port.
+SYSTEMD_UNIT="hypernix-t1.service"
+
+systemd_available() {
+  command -v systemctl >/dev/null 2>&1 || return 1
+  # On PATH is not the same as reachable: in a container, over plain ssh
+  # and on WSL there is no user bus and every --user call fails.
+  systemctl --user show-environment >/dev/null 2>&1
+}
+
+systemd_pid() {
+  systemd_available || return 1
+  [ "$(systemctl --user is-active "$SYSTEMD_UNIT" 2>/dev/null || true)" = "active" ] || return 1
+  local pid
+  pid="$(systemctl --user show -p MainPID --value "$SYSTEMD_UNIT" 2>/dev/null || true)"
+  case "$pid" in
+    ''|0|*[!0-9]*) return 1 ;;
+  esac
+  kill -0 "$pid" 2>/dev/null || return 1
+  printf '%s' "$pid"
+}
+
+# The pid under either manager. server_pid() deliberately stays pid-file
+# only: it is how wait_healthy notices the process *this command* spawned
+# dying, and a fallback to systemd there would mask exactly that.
+running_pid() {
+  local pid
+  pid="$(server_pid || true)"
+  if [ -n "$pid" ]; then printf '%s' "$pid"; return 0; fi
+  systemd_pid
+}
+
+# "script", "systemd", or nothing. Printed, because which one is running
+# decides whether `stop` should use systemctl -- and a plain kill against
+# a unit with Restart=on-failure is how a server appears to refuse to
+# stop.
+running_owner() {
+  server_pid >/dev/null 2>&1 && { printf 'script'; return 0; }
+  systemd_pid >/dev/null 2>&1 && { printf 'systemd'; return 0; }
+  return 1
+}
+
 wait_healthy() {
   local url="$1" seconds="${2:-45}" pid="${3:-}" i=0
   while [ "$i" -lt "$seconds" ]; do
@@ -290,9 +338,17 @@ logind_kills_user_processes() {
 
 cmd_start() {
   load_env; require_installed
-  local existing; existing="$(server_pid || true)"
+  local existing owner
+  existing="$(running_pid || true)"
   if [ -n "$existing" ]; then
-    ok "Already running (pid $existing)."
+    owner="$(running_owner || true)"
+    if [ "$owner" = "systemd" ]; then
+      ok "Already running (pid $existing) — the autostart service has it."
+      dim "     Manage it with:  systemctl --user {status,restart,stop} $SYSTEMD_UNIT"
+      dim "     Or hand it back: hypernix-t1 autostart off"
+    else
+      ok "Already running (pid $existing)."
+    fi
     return 0
   fi
 
@@ -312,7 +368,7 @@ cmd_start() {
   # from the other process.
   if port_in_use "$py" "$host" "$port"; then
     err "Something is already listening on ${host}:${port}, and it is not a"
-    err "server this script started (no live pid file)."
+    err "server either this script or the autostart service is running."
     dim "     If that is the autostart service:  systemctl --user status hypernix-t1"
     dim "     To take it over:                   hypernix-t1 autostart off"
     dim "     To use another port:               set T1_PORT in $ENV_FILE"
@@ -354,6 +410,16 @@ cmd_start() {
 }
 
 cmd_stop() {
+  load_env
+  if [ "$(running_owner || true)" = "systemd" ]; then
+    # SIGTERM straight at systemd's MainPID leaves the unit thinking it
+    # crashed, and Restart=on-failure brings it back -- which reads as a
+    # server that will not stop.
+    say "Stopping the autostart service…"
+    systemctl --user stop "$SYSTEMD_UNIT" && { ok "Stopped."; return 0; }
+    err "systemctl could not stop $SYSTEMD_UNIT."
+    return 1
+  fi
   local pid; pid="$(server_pid || true)"
   if [ -z "$pid" ]; then ok "Not running."; rm -f "$PID_FILE"; return 0; fi
   say "Stopping (pid $pid)…"
@@ -368,6 +434,13 @@ cmd_stop() {
 }
 
 cmd_kill() {
+  load_env
+  if [ "$(running_owner || true)" = "systemd" ]; then
+    warn "The autostart service owns this one; stopping it through systemd."
+    systemctl --user stop "$SYSTEMD_UNIT" 2>/dev/null || true
+    ok "Stopped."
+    return 0
+  fi
   local pid; pid="$(server_pid || true)"
   if [ -z "$pid" ]; then ok "Not running."; rm -f "$PID_FILE"; return 0; fi
   warn "Force-killing pid $pid — in-flight requests are lost."
@@ -377,11 +450,23 @@ cmd_kill() {
   ok "Killed."
 }
 
-cmd_restart() { cmd_stop || cmd_kill; cmd_start; }
+cmd_restart() {
+  load_env
+  if [ "$(running_owner || true)" = "systemd" ]; then
+    say "Restarting the autostart service…"
+    systemctl --user restart "$SYSTEMD_UNIT" || { err "systemctl could not restart $SYSTEMD_UNIT."; return 1; }
+    ok "Running (pid $(running_pid)) — autostart service"
+    return 0
+  fi
+  cmd_stop || cmd_kill
+  cmd_start
+}
 
 cmd_status() {
   load_env
-  local pid; pid="$(server_pid || true)"
+  local pid owner
+  pid="$(running_pid || true)"
+  owner="$(running_owner || true)"
   local host port url
   host="$(setting T1_HOST 127.0.0.1)"; port="$(setting T1_PORT 8000)"
   url="http://${host}:${port}"; [ "$host" = "0.0.0.0" ] && url="http://127.0.0.1:${port}"
@@ -389,7 +474,11 @@ cmd_status() {
   say ""
   say "  ${C_BOLD}HyperNix T1 API${C_OFF}"
   if [ -n "$pid" ]; then
-    ok "running (pid $pid)"
+    if [ "$owner" = "systemd" ]; then
+      ok "running (pid $pid) — autostart service"
+    else
+      ok "running (pid $pid)"
+    fi
   else
     warn "not running"
     # Why not. "not running" on its own sends people to guess, and the

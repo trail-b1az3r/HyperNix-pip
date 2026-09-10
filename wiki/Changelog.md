@@ -21,6 +21,78 @@ next release header.
 - 𖢥 major bug fix
 - ꩜ restore to older version of item
 - ❗ unfixed known bug
+## 0.72.4.post20 — `status` did not know about the autostart service
+
+The `systemctl` output settled it:
+
+```
+● hypernix-t1.service - HyperNix T1 API
+   Loaded: loaded (/home/ceo/.config/systemd/user/hypernix-t1.service; enabled)
+   Active: active (running) since Thu 2026-09-10 06:45:26 PDT; 8h ago
+ Main PID: 921 (python)
+   CGroup: └─921 /home/ceo/.hypernix/t1api/venv/bin/python -m uvicorn …
+```
+
+The server had been up for **eight hours**. `hypernix-t1 status` said
+`! not running`.
+
+### One server, two managers, and only one of them visible 𖢥
+
+`autostart on` installs that user unit, and the unit's `ExecStart` is
+**this same script's `start-foreground`**. A server systemd is managing
+is not somebody else's — it is ours, started a different way. But every
+command here read only `$PID_FILE`, which systemd never writes, so:
+
+- `status` reported a healthy service as down,
+- `start` saw no pid file, spawned a second uvicorn, and lost the race
+  for the port — which is the whole of post19,
+- `stop` would have sent SIGTERM to systemd's `MainPID`, leaving the
+  unit believing it crashed and `Restart=on-failure` bringing it
+  straight back, presenting as a server that will not stop.
+
+post19 made `start` refuse and point at `systemctl`. That was the right
+diagnosis and the wrong altitude: it told you where the server was
+instead of just finding it.
+
+### Every command now looks in both places 🐛
+
+`systemd_pid` asks the unit — `is-active`, then `MainPID`, then
+`kill -0` on it, because MainPID outlives the process in a crashed unit.
+`running_pid` is "pid file, else systemd", and `running_owner` names
+which. On that footing:
+
+```
+hypernix-t1 status      running (pid 921) — autostart service
+hypernix-t1 start       Already running (pid 921) — the autostart service has it.
+hypernix-t1 stop        Stopping the autostart service…
+hypernix-t1 restart     Restarting the autostart service…
+```
+
+`stop`, `kill` and `restart` go through `systemctl` when systemd owns
+the process, so the unit's own restart policy is not fighting them.
+
+**`server_pid` deliberately stays pid-file-only.** It is what
+`wait_healthy` uses to notice the process *this command* spawned dying,
+and a systemd fallback there would mask exactly that — handing back the
+post19 bug wearing a different hat. Two tests pin that.
+
+Where `systemctl` is on `PATH` with no user bus behind it — containers,
+plain ssh, WSL — every `--user` call fails and all of this falls back
+quietly to the pid file, as before.
+
+### 🧪 Tests
+
+Twelve more, driven by a stub `systemctl` backed by a real process, since
+no machine this suite runs on has a user bus. Reverting the change turns
+three of them red with the screenshot's exact symptom: `status` saying
+not running while `start` cheerfully launches a second server.
+
+**And `configured` now takes a free port per test instead of a shared
+8123.** post19's port guard is correct, but it made one server left
+behind by a killed test fail every later test in the file — pointing at
+the guard rather than at the leak. Twice, during this change. Two runs
+can now share a machine, too.
+
 ## 0.72.4.post19 — `start` was reporting someone else's server
 
 From a screenshot: `start` printed a pid, and `status` a second later
