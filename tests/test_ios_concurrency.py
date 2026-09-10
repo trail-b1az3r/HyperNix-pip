@@ -183,3 +183,59 @@ class TestTheStreamBuilderTouchesNoIsolatedState:
         assert "guard model != nil else" not in echo, (
             "the synchronous state read is back"
         )
+
+
+class TestNoMacOnlyAPIs:
+    """iOS is not macOS, and the compiler is the only thing that knows.
+
+    `SecTaskCreateFromSelf` and `SecTaskCopyValueForEntitlement` are
+    macOS-only — private SPI on iOS — so using them is a compile error
+    on a machine this repository does not have:
+
+        error: cannot find 'SecTaskCreateFromSelf' in scope
+
+    Everything on this list is real API that a reasonable person reaches
+    for and that iOS does not offer. It is not exhaustive and cannot be;
+    it holds the ones already paid for.
+    """
+
+    MAC_ONLY = [
+        # Code-signing introspection: macOS only.
+        "SecTaskCreateFromSelf",
+        "SecTaskCopyValueForEntitlement",
+        "SecCodeCopySelfSigningInformation",
+        "SecStaticCodeCreateWithPath",
+        # AppKit, and its usual companions.
+        "NSWorkspace",
+        "NSApplication",
+        "NSPasteboard",
+        "NSSavePanel",
+        "NSOpenPanel",
+        # Keychain access-control API that iOS does not expose.
+        "SecKeychainCreate",
+        "SecKeychainFindGenericPassword",
+        # Process listing.
+        "proc_listpids",
+    ]
+
+    @pytest.mark.parametrize("symbol", MAC_ONLY)
+    def test_it_is_not_used(self, symbol):
+        offenders = []
+        root = REPO_ROOT / "ios" / "HyperLink" / "Sources"
+        for path in sorted(root.rglob("*.swift")):
+            if symbol in code(path):
+                offenders.append(path.name)
+        assert not offenders, (
+            f"{symbol} is macOS-only and will not compile for iOS — {offenders}"
+        )
+
+    def test_the_keychain_apis_that_are_used_are_the_ios_ones(self):
+        """SecItem* is available on both. SecKeychain* is not.
+
+        The app's three keychain users all predate this and compile, so
+        this is a guard rather than a fix.
+        """
+        root = REPO_ROOT / "ios" / "HyperLink" / "Sources"
+        joined = "\n".join(code(p) for p in root.rglob("*.swift"))
+        assert "SecItemCopyMatching" in joined, "no keychain use found at all"
+        assert "SecKeychain" not in joined

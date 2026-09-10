@@ -21,6 +21,67 @@ next release header.
 - 𖢥 major bug fix
 - ꩜ restore to older version of item
 - ❗ unfixed known bug
+## 0.72.4.post15 — SecTask is macOS-only
+
+post14's isolation fix held; the compiler moved on to the next file.
+
+```
+DeviceMemory.swift:80: error: cannot find 'SecTaskCreateFromSelf' in scope
+DeviceMemory.swift:81: error: cannot find 'SecTaskCopyValueForEntitlement' in scope
+```
+
+### Reading your own entitlements on iOS 🐛
+
+`SecTaskCreateFromSelf` and `SecTaskCopyValueForEntitlement` are the
+obvious way to ask whether the increased-memory-limit entitlement is
+granted, and they are **macOS-only** — private SPI on iOS, so not in
+scope, so a compile error rather than a runtime one.
+
+What iOS does offer is the embedded provisioning profile, which carries
+the entitlements the build was signed with: CMS-signed, with the plist
+as plain XML inside the envelope, and no public API that unwraps it.
+
+That changes what the answer *means*, and the code says so now.
+Development, ad-hoc and enterprise builds carry a profile; **App Store
+builds and the simulator do not**, so `false` is "not found", never
+"definitely not granted". The property is documented that way, and a
+test asserts it never reaches any arithmetic — a planner that gave
+itself headroom on the strength of this would be trusting a signal
+that goes missing exactly where the app is most constrained. The note
+in `ondevice.py` no longer asserts absence either.
+
+### A test that had started passing on a comment 𖢥
+
+`test_the_entitlement_is_read_not_assumed` asserted
+`SecTaskCopyValueForEntitlement` appeared in the file. It still does —
+in the comment explaining why that API *cannot* be used. The check
+would have gone on passing while the code did the opposite of what it
+claimed.
+
+This is the fourth time in this branch that comments have defeated a
+source check: the banned-token check in `gather`, the word "sudo" in a
+log message, the subsystem map's `CodingKeys`, and now this. Comments
+are stripped first here, and the same helper is used by the new checks
+below.
+
+### 🧪 A guard for the class, not the instance
+
+`TestNoMacOnlyAPIs` holds the macOS-only symbols a reasonable person
+reaches for and iOS does not offer — the two `SecTask` calls,
+`SecCodeCopySelfSigningInformation`, `NSWorkspace` and friends,
+`SecKeychain*`, `proc_listpids` — and fails if any appears in the iOS
+sources. It is not exhaustive and cannot be; it holds the ones already
+paid for.
+
+Every Security and system call in the app was audited alongside it:
+`SecItem*` and every `kSec*` constant are available on both platforms
+and were already in use by three pre-existing keychain files that
+compile, `sysctlbyname`, `uname` and `os_proc_available_memory` are
+iOS-available, and only the two `SecTask` calls were wrong.
+
+All three regressions verified by reintroducing them, including that
+the check no longer passes on the comment.
+
 ## 0.72.4.post14 — actor isolation, and the easy fix that was wrong
 
 The project wiring from post13 held: the build got past `xcodegen`,
