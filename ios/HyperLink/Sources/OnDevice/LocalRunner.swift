@@ -35,9 +35,31 @@ protocol ModelRunner: Actor {
     func load(url: URL, shape: ModelShape, settings: RunnerSettings) async throws
     func unload() async
     var isLoaded: Bool { get async }
-    func generate(
+
+    /// `nonisolated` on purpose, and load-bearing.
+    ///
+    /// A protocol inheriting `Actor` makes its requirements
+    /// actor-isolated by default, so this was isolated and
+    /// `LocalInference.generate` — a synchronous `@MainActor` method —
+    /// could not call it:
+    ///
+    ///     Call to actor-isolated instance method
+    ///     'generate(prompt:systemPrompt:maxTokens:)' in a synchronous
+    ///     main actor-isolated context
+    ///
+    /// Making the caller `async` would have been the easy fix and the
+    /// wrong one: every view that starts a generation would have to
+    /// await something that returns immediately. This returns a stream
+    /// and does the isolated work inside its `Task`, so it genuinely
+    /// needs no isolation — which is what `nonisolated` says.
+    ///
+    /// The cost is that an implementation may not touch isolated state
+    /// in the synchronous part of its body. `EchoRunner` did, and had
+    /// to move the check into the `Task`.
+    nonisolated func generate(
         prompt: String, systemPrompt: String, maxTokens: Int
     ) -> AsyncThrowingStream<GeneratedToken, Error>
+
     func cancel() async
 }
 
@@ -238,22 +260,27 @@ actor EchoRunner: ModelRunner {
 
     func cancel() async {}
 
-    func generate(
+    nonisolated func generate(
         prompt: String, systemPrompt: String, maxTokens: Int
     ) -> AsyncThrowingStream<GeneratedToken, Error> {
         AsyncThrowingStream { continuation in
-            guard model != nil else {
-                continuation.finish(throwing: LocalRunnerError.noModel)
-                return
-            }
-            continuation.yield(
-                GeneratedToken(
-                    text: LocalRunnerError.notBuiltIn.errorDescription ?? "",
-                    isFinal: false
+            // Inside a Task, because the builder closure is
+            // non-isolated: reading `model` directly here is a
+            // concurrency error, and it was one.
+            Task {
+                guard await self.isLoaded else {
+                    continuation.finish(throwing: LocalRunnerError.noModel)
+                    return
+                }
+                continuation.yield(
+                    GeneratedToken(
+                        text: LocalRunnerError.notBuiltIn.errorDescription ?? "",
+                        isFinal: false
+                    )
                 )
-            )
-            continuation.yield(GeneratedToken(text: "", isFinal: true))
-            continuation.finish()
+                continuation.yield(GeneratedToken(text: "", isFinal: true))
+                continuation.finish()
+            }
         }
     }
 }
