@@ -661,3 +661,14 @@ timeline
         : 58a3164 - 0.72.4.post14 — actor isolation, and the easy fix that was wrong
 ```
 
+## Release v0.72.4.post16 (2026-09-10)
+
+```mermaid
+timeline
+    title Release v0.72.4.post16 Commits
+    0.72.4.post16
+        : ff4dca46 - 0.72.4.post16 — ne[0], not the element count
+        : 0fd4adc2 - Auto-update README header (hourly)
+        : 4a3a7aa2 - 0.72.4.post15 — SecTask is macOS-only
+```
+
