@@ -11,6 +11,7 @@ from __future__ import annotations
 import os
 import re
 import shutil
+import signal
 import subprocess
 import tempfile
 from pathlib import Path
@@ -35,11 +36,16 @@ def _function_body(source: str, name: str) -> str:
     return source[start:end]
 
 
-def run(*argv: str, home: Path, config: Path, timeout: int = 60):
+def run(*argv: str, home: Path, config: Path, timeout: int = 60,
+        extra_env: dict | None = None):
     """Run the script. `.output` is stdout+stderr.
 
     Warnings go to stderr — correct for a status line, and easy to miss
     when asserting.
+
+    *extra_env* is how the systemd tests put a stub `systemctl` on PATH:
+    the machines this suite runs on have no user bus, so the only way to
+    exercise the systemd branches is to supply one.
     """
     result = subprocess.run(
         [BASH, str(SCRIPT), *argv],
@@ -52,10 +58,28 @@ def run(*argv: str, home: Path, config: Path, timeout: int = 60):
             "T1_CONFIG_DIR": str(config),
             "NO_COLOR": "1",
             "PYTHONPATH": str(REPO_ROOT / "src"),
+            **(extra_env or {}),
         },
     )
     result.output = result.stdout + result.stderr  # type: ignore[attr-defined]
     return result
+
+
+def _free_port() -> int:
+    """A port nothing is listening on, asked of the kernel.
+
+    These tests used to share a hard-coded 8123. `start` now refuses to
+    spawn into a port something else already holds -- correctly -- so one
+    server left behind by a crashed or killed test made every later test
+    in the file fail on the guard, pointing at the guard rather than at
+    the leak. A port per test keeps the failure where the fault is, and
+    lets two runs share a machine.
+    """
+    import socket
+
+    with socket.socket() as probe:
+        probe.bind(("127.0.0.1", 0))
+        return probe.getsockname()[1]
 
 
 @pytest.fixture
@@ -66,7 +90,7 @@ def configured(tmp_path):
     config.mkdir()
     (config / ".env").write_text(
         "T1_HOST=127.0.0.1\n"
-        "T1_PORT=8123\n"
+        f"T1_PORT={_free_port()}\n"
         f"T1_KEYMASTER_DIR={config}/keymaster\n"
         f"T1_DB_PATH={config}/t1.sqlite3\n"
         "T1_TOKEN_SECRET=" + "d" * 64 + "\n",
@@ -854,3 +878,352 @@ class TestLogoutDoesNotTakeTheServerWithIt:
             env={**os.environ, "PATH": str(empty), "HOME": str(tmp_path), "NO_COLOR": "1"},
         )
         assert result.stdout.strip().endswith("QUIET"), result.stdout + result.stderr
+
+
+class TestStartDoesNotReportSomeoneElsesServer:
+    """`start` said Running with a pid; `status` a second later said not
+    running. From a screenshot, and reproduced exactly.
+
+    The sequence was `autostart` (which installs a **systemd user
+    service**) and then `start`. The service holds the port; `start` sees
+    no live pid file of its own, so it spawns a second uvicorn. That
+    uvicorn logs "Application startup complete", *then* tries to bind,
+    gets ``[Errno 98] address already in use`` and exits.
+
+    Meanwhile ``wait_healthy`` was asking "does anything answer /health
+    on this port?" -- and something does: the first server. So it
+    returned success, and the pid printed alongside it belonged to a
+    process already on its way out. Every part of that is a true
+    statement about a different process.
+    """
+
+    @pytest.fixture
+    def isolated(self, configured):
+        """A cleanup that does not go through the script.
+
+        These tests deliberately orphan a server from its pid file, so
+        `stop` cannot find it afterwards; the pid has to be captured
+        while it is still recorded. (`configured` already gives each
+        test a port of its own.)
+        """
+        home, config = configured
+        started: list[int] = []
+        yield home, config, started
+        for pid in started:
+            try:
+                os.kill(pid, signal.SIGKILL)
+            except (ProcessLookupError, PermissionError):
+                pass
+
+    def _pid_file(self, config: Path) -> Path:
+        return config / "server.pid"
+
+    def _remember(self, config: Path, started: list) -> int:
+        """Record the running pid so the fixture can clean up after a
+        test has taken the pid file away."""
+        pid = int(self._pid_file(config).read_text(encoding="utf-8").strip())
+        started.append(pid)
+        return pid
+
+    @NEEDS_A_SERVER
+    def test_it_refuses_instead_of_claiming_success(self, isolated):
+        """The reproduction: a healthy server on the port, no pid file of
+        ours -- which is exactly what a systemd-managed instance looks
+        like to this script."""
+        home, config, started = isolated
+        first = run("start", home=home, config=config, timeout=120)
+        assert first.returncode == 0, first.output
+        self._remember(config, started)
+        self._pid_file(config).unlink()              # systemd owns it now
+
+        second = run("start", home=home, config=config, timeout=120)
+        assert second.returncode != 0, (
+            "start reported success for someone else's server:\n" + second.output
+        )
+        assert "already listening" in second.output
+        assert "Running (pid" not in second.output
+
+    @NEEDS_A_SERVER
+    def test_the_refusal_names_the_usual_cause(self, isolated):
+        """`autostart on` is what put the other server there, and it is
+        this script that installed it -- so it can say so rather than
+        leaving a port number and a shrug."""
+        home, config, started = isolated
+        run("start", home=home, config=config, timeout=120)
+        self._remember(config, started)
+        self._pid_file(config).unlink()
+        result = run("start", home=home, config=config, timeout=120)
+        assert "systemctl --user status hypernix-t1" in result.output
+        assert "autostart off" in result.output
+        assert "T1_PORT" in result.output
+
+    @NEEDS_A_SERVER
+    def test_status_says_why_it_thinks_nothing_is_running(self, isolated):
+        """"not running" on its own is what sent this bug unexplained.
+        With a foreign listener on the port, status has to mention it."""
+        home, config, started = isolated
+        run("start", home=home, config=config, timeout=120)
+        self._remember(config, started)
+        self._pid_file(config).unlink()
+        status = run("status", home=home, config=config)
+        assert "not running" in status.output
+        assert "listening on" in status.output
+        assert "systemctl --user status hypernix-t1" in status.output
+
+    @NEEDS_A_SERVER
+    def test_status_shows_the_log_when_stopped(self, isolated):
+        """The answer is nearly always in the last few lines, and nothing
+        was printing them."""
+        home, config, _started = isolated
+        run("start", home=home, config=config, timeout=120)
+        run("stop", home=home, config=config, timeout=120)
+        status = run("status", home=home, config=config)
+        assert "not running" in status.output
+        assert "server.log" in status.output
+
+    @NEEDS_A_SERVER
+    def test_restart_still_works(self, isolated):
+        """The port guard must not refuse to start the server it has just
+        stopped -- the failure mode a naive bind test introduces."""
+        home, config, _started = isolated
+        try:
+            assert run("start", home=home, config=config, timeout=120).returncode == 0
+            result = run("restart", home=home, config=config, timeout=180)
+            assert result.returncode == 0, result.output
+            assert "Running" in result.output
+        finally:
+            run("kill", home=home, config=config)
+
+    @NEEDS_A_SERVER
+    def test_a_normal_start_is_unaffected(self, isolated):
+        home, config, _started = isolated
+        try:
+            result = run("start", home=home, config=config, timeout=120)
+            assert result.returncode == 0, result.output
+            assert "Running (pid" in result.output
+            assert run("status", home=home, config=config).returncode == 0
+        finally:
+            run("kill", home=home, config=config)
+
+
+class TestTheHealthProbeIsAboutOurProcess:
+    """Static checks, so the reasoning survives an edit that looks
+    harmless. Each pins a line whose removal restores the bug."""
+
+    def test_wait_healthy_is_given_the_pid(self):
+        source = SCRIPT.read_text(encoding="utf-8")
+        body = _function_body(source, "wait_healthy")
+        assert 'pid="${3:-}"' in body, "wait_healthy no longer takes a pid"
+
+    def test_wait_healthy_rechecks_the_pid_after_a_good_probe(self):
+        """A 200 from the port proves a server is there, not that ours
+        is. Without this the caller cannot tell the two apart."""
+        body = _function_body(SCRIPT.read_text(encoding="utf-8"), "wait_healthy")
+        probe = body.index("/health")
+        assert "kill -0" in body[probe:], (
+            "wait_healthy accepts any answer on the port again"
+        )
+
+    def test_start_passes_the_pid_through(self):
+        """The argument existing is no use if the call site drops it."""
+        body = _function_body(SCRIPT.read_text(encoding="utf-8"), "cmd_start")
+        call = body.split("wait_healthy")[1][:120]
+        assert '"$pid"' in call, call
+
+    def test_start_checks_the_port_before_spawning(self):
+        body = _function_body(SCRIPT.read_text(encoding="utf-8"), "cmd_start")
+        spawn = body.index("spawn_detached")
+        assert "port_in_use" in body[:spawn], (
+            "the port check must come before the spawn, or it is just a "
+            "second opinion about a process that already failed"
+        )
+
+    def test_the_port_probe_sets_reuseaddr(self):
+        """uvicorn sets it, so the probe has to ask the same question --
+        otherwise a port in TIME_WAIT reads as busy and `restart` refuses
+        to start what it just stopped."""
+        body = _function_body(SCRIPT.read_text(encoding="utf-8"), "port_in_use")
+        assert "SO_REUSEADDR" in body
+
+    def test_the_port_probe_needs_no_extra_tools(self):
+        """ss, netstat and lsof are all missing on some machines this
+        runs on; a bind test is always available."""
+        body = _function_body(SCRIPT.read_text(encoding="utf-8"), "port_in_use")
+        for tool in ("ss ", "netstat", "lsof"):
+            assert tool not in body, tool
+
+
+FAKE_SYSTEMCTL = r"""#!/usr/bin/env bash
+# Stands in for `systemctl --user`. STATE/pid holds the MainPID; it names
+# a real process, so `kill -0` and MainPID mean what they mean on a
+# machine that has a user bus.
+STATE="${FAKE_SYSTEMD_STATE:?}"
+case "$*" in
+  "--user show-environment") [ -e "$STATE/nobus" ] && exit 1; exit 0 ;;
+  "--user is-active hypernix-t1.service")
+      if [ -s "$STATE/pid" ] && kill -0 "$(cat "$STATE/pid")" 2>/dev/null
+      then echo active; exit 0; else echo inactive; exit 3; fi ;;
+  "--user show -p MainPID --value hypernix-t1.service")
+      cat "$STATE/pid" 2>/dev/null || echo 0; exit 0 ;;
+  "--user stop hypernix-t1.service")
+      echo stop >> "$STATE/calls"
+      [ -s "$STATE/pid" ] && kill -TERM "$(cat "$STATE/pid")" 2>/dev/null
+      : > "$STATE/pid"; exit 0 ;;
+  "--user restart hypernix-t1.service")
+      echo restart >> "$STATE/calls"; exit 0 ;;
+  *) echo "$*" >> "$STATE/calls"; exit 0 ;;
+esac
+"""
+
+
+class TestItKnowsAboutTheAutostartService:
+    """`status` reported an eight-hour-old, perfectly healthy service as
+    "not running", because it read only its own pid file.
+
+    From a screenshot: `systemctl --user status hypernix-t1` showed
+    `active (running) since ... 8h ago`, Main PID 921, while
+    `hypernix-t1 status` said the server was down and `start` went off to
+    fight it for the port. `autostart on` installs that unit, and the
+    unit runs this same script's `start-foreground` — so a server systemd
+    is managing is as much "ours" as one started from this shell, and
+    every command here has to be able to see it.
+    """
+
+    @pytest.fixture
+    def fake_systemd(self, configured, tmp_path):
+        home, config = configured
+        state = tmp_path / "systemd-state"
+        state.mkdir()
+        binned = tmp_path / "fakebin"
+        binned.mkdir()
+        stub = binned / "systemctl"
+        stub.write_text(FAKE_SYSTEMCTL, encoding="utf-8")
+        stub.chmod(0o755)
+        env = {
+            "PATH": f"{binned}{os.pathsep}{os.environ.get('PATH', '')}",
+            "FAKE_SYSTEMD_STATE": str(state),
+        }
+
+        held = []
+
+        def activate() -> subprocess.Popen:
+            """Make the unit "active", with a real pid behind it."""
+            proc = subprocess.Popen(
+                ["sleep", "300"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+            )
+            held.append(proc)
+            (state / "pid").write_text(str(proc.pid), encoding="utf-8")
+            return proc
+
+        def crash(proc: subprocess.Popen) -> int:
+            """Kill it *and reap it*.
+
+            Without the wait() the child is a zombie, and `kill -0`
+            succeeds on a zombie -- so the test would pass while proving
+            nothing. Real systemd reaps its own children, so a MainPID
+            left behind by a crashed unit really is gone.
+            """
+            pid = proc.pid
+            proc.kill()
+            proc.wait()
+            return pid
+
+        yield home, config, env, state, activate, crash
+        for proc in held:
+            proc.kill()
+            proc.wait()
+
+    def test_status_sees_a_systemd_managed_server(self, fake_systemd):
+        """The screenshot, inverted: this used to print "not running"."""
+        home, config, env, _state, activate, _crash = fake_systemd
+        pid = activate().pid
+        result = run("status", home=home, config=config, extra_env=env)
+        assert "not running" not in result.output, result.output
+        assert f"running (pid {pid})" in result.output
+
+    def test_status_says_which_manager_has_it(self, fake_systemd):
+        """Because it decides whether `stop` here or `systemctl` is the
+        right next command."""
+        home, config, env, _state, activate, _crash = fake_systemd
+        activate()
+        assert "autostart service" in run(
+            "status", home=home, config=config, extra_env=env
+        ).output
+
+    def test_start_steps_aside_instead_of_fighting_for_the_port(self, fake_systemd):
+        home, config, env, _state, activate, _crash = fake_systemd
+        pid = activate().pid
+        result = run("start", home=home, config=config, extra_env=env)
+        assert result.returncode == 0, result.output
+        assert f"Already running (pid {pid})" in result.output
+        assert "autostart service has it" in result.output
+
+    def test_start_says_how_to_manage_it(self, fake_systemd):
+        home, config, env, _state, activate, _crash = fake_systemd
+        activate()
+        output = run("start", home=home, config=config, extra_env=env).output
+        assert "systemctl --user" in output
+        assert "autostart off" in output
+
+    def test_stop_goes_through_systemd(self, fake_systemd):
+        """A SIGTERM at systemd's MainPID leaves the unit believing it
+        crashed, and `Restart=on-failure` brings it straight back — which
+        presents as a server that will not stop."""
+        home, config, env, state, activate, crash = fake_systemd
+        activate()
+        result = run("stop", home=home, config=config, extra_env=env)
+        assert result.returncode == 0, result.output
+        assert "stop" in (state / "calls").read_text(encoding="utf-8")
+
+    def test_restart_goes_through_systemd(self, fake_systemd):
+        home, config, env, state, activate, crash = fake_systemd
+        activate()
+        run("restart", home=home, config=config, extra_env=env, timeout=120)
+        assert "restart" in (state / "calls").read_text(encoding="utf-8")
+
+    def test_kill_goes_through_systemd_too(self, fake_systemd):
+        """`kill` exists to end a process this script owns. Against a
+        unit it would just be a restart trigger."""
+        home, config, env, state, activate, crash = fake_systemd
+        activate()
+        run("kill", home=home, config=config, extra_env=env)
+        assert "stop" in (state / "calls").read_text(encoding="utf-8")
+
+    def test_an_inactive_unit_is_not_reported_as_running(self, fake_systemd):
+        """`is-active` must actually be consulted; assuming the unit file
+        exists is not the same as the service running."""
+        home, config, env, _state, _activate, _crash = fake_systemd
+        assert "not running" in run(
+            "status", home=home, config=config, extra_env=env
+        ).output
+
+    def test_a_dead_main_pid_is_not_reported_as_running(self, fake_systemd):
+        """MainPID outlives the process in a crashed unit."""
+        home, config, env, state, activate, crash = fake_systemd
+        crash(activate())
+        assert "not running" in run(
+            "status", home=home, config=config, extra_env=env
+        ).output
+
+    def test_no_user_bus_falls_back_quietly(self, fake_systemd):
+        """Containers, plain ssh and WSL have systemctl on PATH and no
+        bus behind it. Every --user call fails there, and none of it may
+        surface as an error."""
+        home, config, env, state, activate, crash = fake_systemd
+        activate()
+        (state / "nobus").write_text("", encoding="utf-8")
+        result = run("status", home=home, config=config, extra_env=env)
+        assert "not running" in result.output
+        assert "Failed to connect" not in result.output
+
+    def test_server_pid_stays_pid_file_only(self):
+        """`wait_healthy` uses it to notice the process *this command*
+        spawned dying. A fallback to systemd there would mask exactly
+        that, and hand back the post19 bug wearing a different hat."""
+        body = _function_body(SCRIPT.read_text(encoding="utf-8"), "server_pid")
+        assert "systemd" not in body.lower(), body
+
+    def test_wait_healthy_still_uses_the_narrow_one(self):
+        body = _function_body(SCRIPT.read_text(encoding="utf-8"), "wait_healthy")
+        assert "server_pid" in body
+        assert "running_pid" not in body

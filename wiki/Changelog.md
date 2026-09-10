@@ -21,6 +21,172 @@ next release header.
 - 𖢥 major bug fix
 - ꩜ restore to older version of item
 - ❗ unfixed known bug
+## 0.72.4.post20 — `status` did not know about the autostart service
+
+The `systemctl` output settled it:
+
+```
+● hypernix-t1.service - HyperNix T1 API
+   Loaded: loaded (/home/ceo/.config/systemd/user/hypernix-t1.service; enabled)
+   Active: active (running) since Thu 2026-09-10 06:45:26 PDT; 8h ago
+ Main PID: 921 (python)
+   CGroup: └─921 /home/ceo/.hypernix/t1api/venv/bin/python -m uvicorn …
+```
+
+The server had been up for **eight hours**. `hypernix-t1 status` said
+`! not running`.
+
+### One server, two managers, and only one of them visible 𖢥
+
+`autostart on` installs that user unit, and the unit's `ExecStart` is
+**this same script's `start-foreground`**. A server systemd is managing
+is not somebody else's — it is ours, started a different way. But every
+command here read only `$PID_FILE`, which systemd never writes, so:
+
+- `status` reported a healthy service as down,
+- `start` saw no pid file, spawned a second uvicorn, and lost the race
+  for the port — which is the whole of post19,
+- `stop` would have sent SIGTERM to systemd's `MainPID`, leaving the
+  unit believing it crashed and `Restart=on-failure` bringing it
+  straight back, presenting as a server that will not stop.
+
+post19 made `start` refuse and point at `systemctl`. That was the right
+diagnosis and the wrong altitude: it told you where the server was
+instead of just finding it.
+
+### Every command now looks in both places 🐛
+
+`systemd_pid` asks the unit — `is-active`, then `MainPID`, then
+`kill -0` on it, because MainPID outlives the process in a crashed unit.
+`running_pid` is "pid file, else systemd", and `running_owner` names
+which. On that footing:
+
+```
+hypernix-t1 status      running (pid 921) — autostart service
+hypernix-t1 start       Already running (pid 921) — the autostart service has it.
+hypernix-t1 stop        Stopping the autostart service…
+hypernix-t1 restart     Restarting the autostart service…
+```
+
+`stop`, `kill` and `restart` go through `systemctl` when systemd owns
+the process, so the unit's own restart policy is not fighting them.
+
+**`server_pid` deliberately stays pid-file-only.** It is what
+`wait_healthy` uses to notice the process *this command* spawned dying,
+and a systemd fallback there would mask exactly that — handing back the
+post19 bug wearing a different hat. Two tests pin that.
+
+Where `systemctl` is on `PATH` with no user bus behind it — containers,
+plain ssh, WSL — every `--user` call fails and all of this falls back
+quietly to the pid file, as before.
+
+### 🧪 Tests
+
+Twelve more, driven by a stub `systemctl` backed by a real process, since
+no machine this suite runs on has a user bus. Reverting the change turns
+three of them red with the screenshot's exact symptom: `status` saying
+not running while `start` cheerfully launches a second server.
+
+**And `configured` now takes a free port per test instead of a shared
+8123.** post19's port guard is correct, but it made one server left
+behind by a killed test fail every later test in the file — pointing at
+the guard rather than at the leak. Twice, during this change. Two runs
+can now share a machine, too.
+
+## 0.72.4.post19 — `start` was reporting someone else's server
+
+From a screenshot: `start` printed a pid, and `status` a second later
+said not running.
+
+```
+hypernix-t1 autostart
+  Autostart on (systemd user service).
+hypernix-t1 start
+Starting the T1 API on 0.0.0.0:8000…
+  Running (pid 122966) — http://127.0.0.1:8000
+hypernix-t1 status
+  ! not running
+```
+
+Reproduced exactly, and every line of it is true about a *different
+process*.
+
+### What happens 𖢥
+
+`autostart on` installs a **systemd user service**, which takes the
+port. `start` then looks for a live pid file of its own, finds none —
+systemd's instance is not one it started — and spawns a second uvicorn.
+That uvicorn logs `Application startup complete`, **then** binds, gets
+`[Errno 98] address already in use`, and exits.
+
+In between, `wait_healthy` was asking *"does anything answer /health on
+this port?"* Something does: the first server. So it returned success,
+and the pid printed beside it belonged to a process already on its way
+out. Seconds later `status` looks for that pid and correctly finds
+nothing.
+
+The log said so all along:
+
+```
+INFO:     Application startup complete.
+ERROR:    [Errno 98] error while attempting to bind on address
+          ('127.0.0.1', 8123): address already in use
+```
+
+### Three changes 🐛
+
+**`start` checks the port first.** Nothing of ours is running, so
+anything already listening belongs to someone else — usually the
+autostart service this script installed. It now refuses, and names the
+cause:
+
+```
+✗ Something is already listening on 127.0.0.1:8000, and it is not a
+✗ server this script started (no live pid file).
+     If that is the autostart service:  systemctl --user status hypernix-t1
+     To take it over:                   hypernix-t1 autostart off
+     To use another port:               set T1_PORT in ~/.hypernix/t1api/.env
+```
+
+The probe is a `bind()`, not `ss`/`netstat`/`lsof` — none of which are
+guaranteed to be installed. It sets `SO_REUSEADDR` because **uvicorn
+does**, so it asks the question uvicorn will actually face: without it a
+port still in `TIME_WAIT` reads as busy and `restart` refuses to start
+the server it has just stopped.
+
+**`wait_healthy` takes the pid and re-checks it.** A 200 on the port
+proves *a* server is there, not that ours is. After a good probe it
+confirms the process it was given is still alive, and reports a distinct
+failure when the port answers but our process is gone.
+
+**`status` says why.** "not running" on its own is what left this
+undiagnosed for a whole session. It now names a stale pid file, says
+when something *else* holds the port, and prints the last lines of the
+log:
+
+```
+  ! not running
+     pid 122966 is named in .../server.pid but is not running: it exited.
+     ...yet something is listening on 0.0.0.0:8000.
+     Check:  systemctl --user status hypernix-t1
+     last lines of .../server.log:
+       ERROR:    [Errno 98] ... address already in use
+```
+
+### 🧪 Tests
+
+Twelve, in `tests/test_hypernix_t1_service.py`. The central one is the
+reproduction — start a server, take its pid file away (which is exactly
+what a systemd-managed instance looks like to this script), start again,
+and assert it *fails* rather than printing a pid. Reverting either half
+of the fix turns it red.
+
+They take a port of their own and clean up by pid rather than through
+the script, because a test that orphans a server from its pid file
+cannot use `stop` to tidy up — and a leaked server on the shared port
+makes the *next* test fail on the new port guard, which is a confusing
+way to find out you wrote a leaky test.
+
 ## 0.72.4.post18 — Brewer attention was not causal
 
 Reported against `BrewerAttention.forward`, and correct: the causal and
