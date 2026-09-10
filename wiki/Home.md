@@ -275,6 +275,9 @@ still importable: `system.old_fridge` (memory), `data.mediocre_fridge`
    hyperlink.notify    push registrations, queue and APNs payloads
    hyperlink.search    portable search — no FTS5, so it runs on
                        PostgreSQL too
+   hyperlink.ondevice  will this GGUF run on that phone? Mirrored by
+                       ios/…/OnDevice/ModelFit.swift, which a test
+                       keeps in step with it
    system.launcher    launch-script's supervisor: setsid(2) and a
                       recording wrapper, or a systemd user unit
    system.deprecation one way for a module on its way out to say so:

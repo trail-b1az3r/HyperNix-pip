@@ -21,6 +21,112 @@ next release header.
 - 𖢥 major bug fix
 - ꩜ restore to older version of item
 - ❗ unfixed known bug
+## 0.72.4.post10 — HyperLink runs models on the phone
+
+Search Hugging Face, download a GGUF, run it with no server involved.
+The hard part was never the running; it is answering "will this one
+work?" before a four-gigabyte download, and being right.
+
+### Total RAM is not the budget 𖢥
+
+The mistake almost every naive implementation makes, and it is fatal
+rather than cosmetic. `ProcessInfo.physicalMemory` returns 8 GB on an
+iPhone 15 Pro and **an app may not use it**: iOS gives each process a
+jetsam limit well below total RAM — commonly 2-3 GB — and exceeding it
+is not a swap, not a slowdown, and not an exception you can catch. The
+process is killed with no warning.
+
+A fit check written against `physicalMemory` therefore tells the user a
+5 GB model fits, downloads it over twenty minutes of cellular, and dies
+partway through the first reply. `os_proc_available_memory()` is the
+number that matters, and it is what `DeviceMemory` reads.
+
+The `increased-memory-limit` entitlement is read from the provisioning
+profile and **reported**, never used to inflate an estimate — claiming
+headroom the process may not have been granted is the same bug in a new
+place. The budget also shrinks while the app is open, so the check runs
+again immediately before every load.
+
+### The KV cache, and unified memory 🔁
+
+At 32k context an 8B model's cache is 4 GiB, comparable to its
+quantised weights; at 128k it is 16 GiB. A planner that sizes only the
+weights is wrong exactly when someone uses the long context they chose
+the model for, so `largest_context` answers "how much context can I
+have" rather than refusing outright. Sized by the *key/value* head
+count, not the attention head count — the difference is 4x on Llama 3.
+
+And on Apple silicon, moving layers to Metal does not reduce memory: a
+Metal buffer and a malloc come from the same pool. Offloading buys
+speed and no headroom, and a planner that subtracts offloaded layers
+approves models that cannot run.
+
+### The Neural Engine cannot run a GGUF ❗
+
+It is reachable only through Core ML, and llama.cpp has no Core ML
+backend for LLM inference — its Apple backend is Metal, with Accelerate
+on the CPU path. Running on the ANE would mean converting the model: a
+different file, in a different format, from a different toolchain. Not
+a setting.
+
+So there is no ANE toggle, and `ANE_EXPLANATION` is shown instead. A
+switch that claims otherwise is a lie the user acts on.
+
+### Sizing a file before downloading it 🔧
+
+A GGUF is not bits times parameters. llama.cpp keeps the embedding and
+output tensors at a higher precision than the name suggests, and for a
+small model those dominate — Llama-3.2-1B has a 128k vocabulary over
+2048 dimensions, 21% of its parameters. Sizing it flat under-counts by
+8%.
+
+Under-counting is the direction that gets the process killed, so the
+exception is priced separately. Every estimate now lands at or above
+the real file: +1.1% on the 1B, +5.2% on an 8B, +1.9% on Q8_0. The
+asymmetry is deliberate — over-estimating hides a model that would have
+run, under-estimating ends the app.
+
+Two errors were caught doing this. The first was mine in the validation
+harness rather than the code: Hugging Face quotes file sizes in decimal
+GB and I compared them against GiB, which made a -1.5% error look like
+-8.2%. The second was real: `FORMATS` knows eight GGUF quantisations
+and Hugging Face uses about thirty, so `Q4_K_S` — on thousands of
+repositories — could not be sized at all.
+
+### 🧪 Two implementations, kept in step
+
+The decision has to be made on the phone, before a download and again
+before a load, when there may be no network. So the arithmetic exists
+twice: `hypernix/hyperlink/ondevice.py` as the reference, and
+`ModelFit.swift` as the mirror.
+
+Duplicated arithmetic drifts, and the symptom here is the Swift side
+approving a model the Python side would refuse.
+`tests/test_hyperlink_ondevice_mirror.py` parses the Swift and compares
+every constant and every quantisation bit width against the Python —
+verified by breaking it three ways: a drifted margin, a drifted bit
+width, and an ANE case sneaking into the backend enum.
+
+87 new tests. There is no Swift toolchain in CI, so none of them
+compile the Swift; they check the numbers, which are the part that
+decides whether a phone survives.
+
+### ❗ llama.cpp is not linked into the iOS target
+
+Everything above it is here: the memory guard, the load and unload
+lifecycle, the pressure response, the resumable background download
+(excluded from iCloud backup, disk checked with
+`volumeAvailableCapacityForImportantUsage`, short files deleted rather
+than kept), the Keychain-held Hugging Face token, the settings, and the
+streaming interface the UI talks to. `EchoRunner` ships so a build
+without the engine degrades to a clear message rather than a link
+error.
+
+Linking it means a native target in `ios/project.yml` building ggml
+with Metal for arm64-apple-ios. That build has not been run, and the
+Swift here has not been compiled — there is no Xcode or Swift toolchain
+in this environment. Specified, not done.
+
 ## 0.72.4.post9 — HyperLink learns to catch up, notify and search
 
 Three subsystems that exist because a phone is not a desktop client, and
