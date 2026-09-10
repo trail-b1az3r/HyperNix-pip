@@ -21,6 +21,69 @@ next release header.
 - 𖢥 major bug fix
 - ꩜ restore to older version of item
 - ❗ unfixed known bug
+## 0.72.4.post18 — Brewer attention was not causal
+
+Reported against `BrewerAttention.forward`, and correct: the causal and
+sliding-window masks were combined with `torch.maximum`. Both are
+*additive* masks — `0` allows, `finfo.min` forbids — so the elementwise
+maximum keeps the **less** masked of the two. That is "allow if either
+allows" where the requirement is "mask if either masks".
+
+A non-causal language model trains to an excellent loss, because
+predicting a token it can already see is easy, and then generates
+nothing usable. Nothing in a loss curve tells you which one you have.
+
+### It was worse than leaking the window 𖢥
+
+The report says every query saw up to `sliding_window_size - 1` tokens
+of its own future. That is the small-window case. `_sliding_mask` builds
+its band from `dist < -(win - 1)`, which no pair of positions satisfies
+when the sequence is no longer than the window — so the window mask
+forbade nothing at all, and the union with the causal mask left the
+layer **fully bidirectional**.
+
+The configured default is `sliding_window_size = 4096`, and the four
+presets in this module that enable it use 1024 / 4096 / 8192 / 16384.
+Any training run at or under its window had odd layers attending to the
+entire sequence in both directions.
+
+### Both halves were wrong, and neither could be fixed alone 𖢥
+
+`_sliding_mask` used `dist = i - j` — positive is the past — and then
+masked `dist >= 0`. That masks the past *and the token itself* and keeps
+the strictly future positions inside the window: an anti-causal band,
+not the "causal sliding-window mask" its docstring promised.
+
+So the two defects were coupled:
+
+- `torch.minimum` alone, against that band, masks **every position of
+  every row**. Softmax over all `-inf` is NaN — a different bug, walked
+  into by applying the obvious fix.
+- Fixing the mask while keeping `torch.maximum` makes the window a
+  **silent no-op**: it forbids a subset of what causal already forbids,
+  so the union is exactly plain causal attention. That version passes
+  every causality test.
+
+Both are now correct: the mask keeps `0 <= dist <= win - 1`, and the two
+are combined with `torch.minimum`.
+
+### 🔧 `is_causal=True` on the plain-causal layers
+
+An even layer with no padding mask now hands SDPA `is_causal=True`
+rather than a mask tensor, so it can take a fused path instead of
+materialising a `B·H·T·T` score matrix to add a mask to. `is_causal` and
+`attn_mask` are mutually exclusive, so a caller-supplied mask still
+takes the explicit path; a test asserts the two agree numerically.
+
+### 🧪 `tests/test_brewer_causality.py`
+
+25 tests. The central one is the reporter's own method — perturb one
+input token, assert no *earlier* output moves — because it tests the
+property rather than the mask's spelling and stays true if the masking
+is rewritten. Verified against all three broken variants: the original
+fails 13, `minimum`-only fails 13, and mask-fixed-only fails 3 (all of
+them window-behaviour tests, since that variant is perfectly causal).
+
 ## 0.72.4.post17 — a checker for the files already on disk
 
 post16 stopped the quantiser writing files llama.cpp refuses. It did
