@@ -21,6 +21,60 @@ next release header.
 - 𖢥 major bug fix
 - ꩜ restore to older version of item
 - ❗ unfixed known bug
+## 0.72.4.post12 — three tests that needed a server and never said so
+
+CI went red on `test_hypernix_t1_service.py` with
+`No module named uvicorn`, three times.
+
+### The tests were mine and the guard was missing 𖢥
+
+`TestStartOutlivesTheShell` — added in post5, when `hypernix-t1 start`
+stopped using the `setsid` binary — has three tests that start a real
+server. The file's *existing* real-server class,
+`TestAgainstARealServer`, is guarded by a `skipif` for the `[t1api]`
+extra. The three new ones were not, so on a runner without the extra
+they tried to start a server that could not exist.
+
+They passed locally because this machine has fastapi and uvicorn
+installed. Local green was never evidence for these; the environment
+was the whole variable.
+
+### And the guard was checking the wrong module 🛡️
+
+The existing one asks whether **fastapi** imports. `start` execs
+`python -m uvicorn`, so uvicorn is what decides whether a server comes
+up — and a machine with fastapi and no uvicorn passes that check and
+then fails exactly the way CI did. It was right by coincidence, because
+the extra installs both together.
+
+There is now one `NEEDS_A_SERVER` marker checking both, used by both
+classes. Verified against a synthetic environment with only uvicorn
+hidden: the old check says "run these", the new one skips.
+
+### 🛠️ `\w` in a docstring
+
+`tests/test_hyperlink_search.py` raised
+`SyntaxWarning: invalid escape sequence '\w'` — the docstring explains
+that `_` is a word character and wrote it as `\w` in a non-raw string.
+Now raw.
+
+### ❗ These three still do not run in CI
+
+The unit-test job installs `.[dev,security]`, not `[t1api]`, so they
+skip there — along with about 85 other tests, including the 37 HTTP
+tests added in post9. The jobs that *do* install the extra are the
+integration jobs, and those drive a live server directly rather than
+running pytest.
+
+Adding `[t1api]` to the test matrix would fix that and was not done
+here: the matrix is four operating systems by four Python versions, and
+`uvicorn[standard]` pulls `watchfiles`, `httptools` and `uvloop`, which
+are Rust and C wheels that may not exist for the newest Python in the
+matrix. Turning sixteen green jobs red to un-skip some tests is not a
+trade to make blind. Plain `fastapi uvicorn` without the `standard`
+extra would probably do it, and that is a change worth making
+deliberately with the matrix in front of you.
+
 ## 0.72.4.post11 — the engine is linked
 
 `ios/scripts/build_llama_xcframework.sh` produces
