@@ -160,7 +160,14 @@ cat <<DONE
 ==> done
 
   binaries   $TARGET/build/bin
-  try it     $TARGET/build/bin/llama-cli -m model-IQ0.5_XXXL.gguf -p "hello"
+  try it     $TARGET/build/bin/llama-cli -m YOUR-MODEL.gguf -p "hello"
+
+  model-IQ0.5_XXXL.gguf used to be printed there literally, and people
+  pasted it and got "No such file or directory" from a filename this
+  script invented. Point it at a model you actually made:
+
+    hnx quantize --tier IQ0.5_XXXL -i base.gguf -o small.gguf
+    ls ~/.hypernix/models/*/*/*.gguf
 
 A sub-bit model is a much worse model than the one it came from. Below
 about 1.5 bits per weight it stops being a slightly degraded version of

@@ -36,7 +36,21 @@ from hypernix.models.hnxtokenizer import tokenizer_from_metadata
 from hypernix.quant.gguf import GGMLType, GGUFWriter
 from hypernix.quant.hyprslug import quantize_gguf
 
-N_LAYER, N_EMBD, N_HEAD, N_KV, N_FF, VOCAB = 2, 64, 4, 2, 128, 256
+# N_EMBD and N_FF are multiples of 256 because that is the sub-bit block
+# size, and GGML quantises row by row: a tensor whose ne[0] is not a
+# multiple of the block size cannot be that type at all. llama.cpp says
+# so on load --
+#
+#     tensor '...' of type 202 (IQ0.5_XXXL) has 4 elements per row, not
+#     a multiple of block size (256)
+#
+# -- and until 0.72.4.post16 this fixture used N_EMBD=64, so every
+# tensor in it was 64 elements per row. hyprslug packed them anyway
+# (it checked the element *total*, which 64x256 satisfies) and the
+# round trip passed because hnxrun decoded them the same wrong way.
+# Both halves agreed with each other and neither agreed with llama.cpp,
+# which is the one reader that matters for a GGUF.
+N_LAYER, N_EMBD, N_HEAD, N_KV, N_FF, VOCAB = 2, 256, 4, 2, 512, 256
 HEAD_DIM = N_EMBD // N_HEAD
 
 SUB_BIT_TIERS = ["IQ0.9_L", "IQ0.75_M", "IQ0.5_XXXL"]
@@ -472,9 +486,25 @@ class TestTheCacheBudget:
     describing the packed case forever.
     """
 
-    #: Enough for the two embedding-sized tensors and not the rest, so
-    #: the budget is genuinely partial on a model this small.
-    PARTIAL_BUDGET = 100_000
+    @pytest.fixture(scope="class")
+    def partial_budget(self, quantised):
+        """A budget that affords some packed tensors and not all of them.
+
+        This was a hard-coded 100_000, chosen for a fixture whose largest
+        packed tensor was 32 KiB. When the fixture grew, every packed
+        tensor became larger than the budget, so nothing was pinned --
+        and three tests that assert pinning costs memory started
+        comparing a number with itself and passing on the tie until an
+        unrelated change made them fail. Deriving it from the model keeps
+        "partial" true whatever the fixture's dimensions are.
+        """
+        sizes = [
+            weight.dense_bytes
+            for weight in hnxrun.load_model(quantised["IQ0.5_XXXL"]).tensors.values()
+            if isinstance(weight, hnxrun.PackedWeight)
+        ]
+        assert len(sizes) > 1, "a budget cannot be partial over one tensor"
+        return sum(sizes) // 2
 
     def test_no_budget_pins_nothing(self, quantised):
         model = hnxrun.load_model(quantised["IQ0.5_XXXL"])
@@ -483,44 +513,52 @@ class TestTheCacheBudget:
     def test_a_budget_pins_the_largest_first(self, quantised):
         """Every forward pass touches every tensor exactly once, so there
         is no locality to exploit: the only question is how much decode
-        work a byte of budget buys, and the biggest tensor buys most."""
+        work a byte of budget buys, and the biggest tensor buys most.
+
+        Asserted by *size* rather than by name: several tensors tie for
+        largest, and which of them the spender reaches first is a
+        tie-break in a sort, not a promise. Naming one made this test
+        agree with the implementation by luck.
+        """
         model = hnxrun.load_model(quantised["IQ0.5_XXXL"])
         packed = {
             name: weight.dense_bytes
             for name, weight in model.tensors.items()
             if isinstance(weight, hnxrun.PackedWeight)
         }
-        largest = max(packed, key=lambda name: packed[name])
-        budget = hnxrun.load_model(
-            quantised["IQ0.5_XXXL"], cache_bytes=packed[largest]
-        )
-        assert budget.tensors[largest].pinned
-        assert budget.pinned_in_memory >= 1
+        biggest = max(packed.values())
+        budget = hnxrun.load_model(quantised["IQ0.5_XXXL"], cache_bytes=biggest)
+        pinned = [
+            name for name, weight in budget.tensors.items()
+            if isinstance(weight, hnxrun.PackedWeight) and weight.pinned
+        ]
+        assert len(pinned) == 1, f"a budget for one tensor pinned {pinned}"
+        assert packed[pinned[0]] == biggest
 
-    def test_the_reported_cost_moves_with_the_budget(self, quantised):
+    def test_the_reported_cost_moves_with_the_budget(self, quantised, partial_budget):
         packed = hnxrun.load_model(quantised["IQ0.5_XXXL"])
-        cached = hnxrun.load_model(quantised["IQ0.5_XXXL"], cache_bytes=self.PARTIAL_BUDGET)
+        cached = hnxrun.load_model(quantised["IQ0.5_XXXL"], cache_bytes=partial_budget)
         assert cached.resident_bytes > packed.resident_bytes
         assert cached.resident_bits_per_weight > packed.resident_bits_per_weight
         assert "pinned" in cached.describe()
 
-    def test_a_generous_budget_still_beats_materialising(self, quantised):
+    def test_a_generous_budget_still_beats_materialising(self, quantised, partial_budget):
         """Norms and any tensor the budget could not afford stay as they
         were, so this is a dial and not a second switch."""
-        cached = hnxrun.load_model(quantised["IQ0.5_XXXL"], cache_bytes=self.PARTIAL_BUDGET)
+        cached = hnxrun.load_model(quantised["IQ0.5_XXXL"], cache_bytes=partial_budget)
         dense = hnxrun.load_model(quantised["IQ0.5_XXXL"], materialize=True)
         assert cached.resident_bytes < dense.resident_bytes
 
-    def test_pinning_does_not_change_the_answer(self, quantised):
+    def test_pinning_does_not_change_the_answer(self, quantised, partial_budget):
         """The whole dial is worthless if the two ends disagree."""
         packed = hnxrun.load_model(quantised["IQ0.5_XXXL"])
-        cached = hnxrun.load_model(quantised["IQ0.5_XXXL"], cache_bytes=self.PARTIAL_BUDGET)
+        cached = hnxrun.load_model(quantised["IQ0.5_XXXL"], cache_bytes=partial_budget)
         first, _ = hnxrun.forward(packed, [1, 5, 9, 13])
         second, _ = hnxrun.forward(cached, [1, 5, 9, 13])
         assert torch.allclose(first, second, rtol=1e-4, atol=1e-4)
 
-    def test_unpinning_gives_the_memory_back(self, quantised):
-        model = hnxrun.load_model(quantised["IQ0.5_XXXL"], cache_bytes=self.PARTIAL_BUDGET)
+    def test_unpinning_gives_the_memory_back(self, quantised, partial_budget):
+        model = hnxrun.load_model(quantised["IQ0.5_XXXL"], cache_bytes=partial_budget)
         before = model.resident_bytes
         for weight in model.tensors.values():
             if isinstance(weight, hnxrun.PackedWeight):

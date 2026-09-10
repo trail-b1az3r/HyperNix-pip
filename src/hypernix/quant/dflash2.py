@@ -372,7 +372,12 @@ def attach(
             draft_name = f"{PREFIX}blk.{draft_index}.{suffix}"
             quantisable = (
                 len(tensor.shape) >= 2
-                and tensor.elements % block_size == 0
+                # ne[0], the row length -- GGML quantises row by row.
+                # The element count was the wrong test and shipped a
+                # model llama.cpp refuses: an SSM convolution weight is
+                # [4, N], four per row, total 4N which divides into 256
+                # whenever N does. See _should_quantize in hyprslug.py.
+                and int(tensor.shape[0]) % block_size == 0
                 and (
                     int(tensor.ggml_type) in _UNQUANTIZED
                     or llamaquants.is_supported(int(tensor.ggml_type))

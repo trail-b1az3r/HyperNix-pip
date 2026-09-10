@@ -21,6 +21,85 @@ next release header.
 - 𖢥 major bug fix
 - ꩜ restore to older version of item
 - ❗ unfixed known bug
+## 0.72.4.post16 — `ne[0]`, not the element count
+
+A build log from the desktop side, ending in a model that would not
+load:
+
+```
+llama_model_load: error loading model: tensor 'blk.0.ssm_conv1d.weight'
+of type 202 (IQ0.5_XXXL) has 4 elements per row, not a multiple of
+block size (256)
+```
+
+### The block-size check was on the wrong number 𖢥
+
+GGML quantises **row by row**. The constraint a block-quantised type
+imposes is on `ne[0]` — the row length, the fastest-moving dimension —
+and not on the tensor's element total. `hyprslug._should_quantize` and
+`dflash2` both checked the total:
+
+```python
+if tensor.elements % block:      # a 4 x 4096 tensor passes this
+    return False, ...
+```
+
+A `4 x 4096` tensor has 16,384 elements, divides cleanly by 256, and is
+4 elements per row — so both quantisers packed it, wrote type 202 into
+the tensor table, and produced a file llama.cpp refuses on load. Every
+1-D and narrow tensor in a real model hit this: `ssm_conv1d`, the norms,
+anything whose leading dimension is small.
+
+Both now read `tensor.shape[0]`, which *is* `ne[0]` — GGUF stores the
+dimensions fastest-first and the reader keeps file order — and the
+refusal message says what it measured:
+
+```
+4 elements per row do not divide into 256-element blocks
+```
+
+`tests/test_hyprslug_row_blocks.py` is 23 tests over this, including
+the reported tensor end to end: reintroducing the element-count check
+reproduces the llama.cpp message verbatim.
+
+### The test fixtures were never producing loadable files 𖢥
+
+The reason this survived so long is worth stating plainly. The sub-bit
+fixtures used `N_EMBD=64` against a 256-element block, so *every tensor
+they ever quantised* was 64 elements per row and could not legally be
+type 202. The round trips passed because `hnxrun` decoded them with the
+same misconception the writer packed them with. Writer and reader
+agreed with each other, and neither agreed with llama.cpp — which is the
+only reader a GGUF has to satisfy.
+
+`N_EMBD` and `N_FF` are now 256 and 512. That surfaced 48 failures, all
+of them the fixtures rather than the code, and two tests that had been
+measuring the fixture rather than the behaviour:
+
+- `test_the_default_leaves_the_table_in_float` asserted a
+  bits-per-weight *floor*. That number only stays high while the
+  untouched F32 table is a large share of the model, so growing the
+  fixture broke a test about a policy that had not changed. It now
+  reads the GGML type of `token_embd.weight` and `output.weight`
+  straight out of the file, and checks a layer that *is* meant to be
+  quantised really was — so a quantiser that silently did nothing
+  cannot pass it either.
+- `test_a_budget_pins_the_largest_first` named a specific tensor. Six
+  tensors tie for largest; which one the spender reaches first is a
+  sort's tie-break, not a promise. It asserts by size now.
+- `TestTheCacheBudget.PARTIAL_BUDGET` was a hard-coded `100_000`, which
+  stopped being partial when the fixture grew — no tensor fit, nothing
+  was pinned, and three tests comparing "with a budget" to "without"
+  were comparing a number with itself. It is derived from the model
+  now.
+
+### 🛡️ `native/ggml-hnx/build.sh`
+
+The "try it" line invented a filename (`model-IQ0.5_XXXL.gguf`) that no
+step in the script produces, so following the output verbatim gave
+`No such file`. It names a placeholder and says where a real one comes
+from.
+
 ## 0.72.4.post15 — SecTask is macOS-only
 
 post14's isolation fix held; the compiler moved on to the next file.
