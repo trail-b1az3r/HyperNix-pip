@@ -672,3 +672,12 @@ timeline
         : 4a3a7aa2 - 0.72.4.post15 — SecTask is macOS-only
 ```
 
+## Release v0.72.4.post17 (2026-09-10)
+
+```mermaid
+timeline
+    title Release v0.72.4.post17 Commits
+    0.72.4.post17
+        : 28d01459 - 0.72.4.post17 — check and repair the files already written
+```
+
