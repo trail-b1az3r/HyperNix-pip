@@ -652,3 +652,12 @@ timeline
         : 6c7be9e - 0.72.4.post13 — `optional- true` does not mean what I thought
 ```
 
+## Release v0.72.4.post14 (2026-09-10)
+
+```mermaid
+timeline
+    title Release v0.72.4.post14 Commits
+    0.72.4.post14
+        : 58a3164 - 0.72.4.post14 — actor isolation, and the easy fix that was wrong
+```
+
