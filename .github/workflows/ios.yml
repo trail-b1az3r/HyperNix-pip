@@ -146,16 +146,14 @@ jobs:
         working-directory: ios
         run: |
           set -euo pipefail
-          xcodegen generate --spec project.yml
+          # Decides whether the spec carries the llama.xcframework
+          # dependency, from whether the framework is actually there.
+          # XcodeGen cannot make that call: its `optional: true` means
+          # weak linking, not "skip when absent", so a spec that always
+          # names the framework fails to build on a checkout without it.
+          python3 scripts/prepare_project.py
+          xcodegen generate --spec project.generated.yml
           ls -la HyperLink.xcodeproj
-          # Say which of the two builds this is, in the log, where
-          # someone reading a failure will look. An app that silently
-          # has no engine is the confusing case.
-          if grep -q 'HNX_LOCAL_LLAMA = HNX_LOCAL_LLAMA' vendor/LocalLlama.xcconfig; then
-            echo "::notice::on-device inference is ON (llama.cpp linked)"
-          else
-            echo "::notice::on-device inference is OFF — EchoRunner only"
-          fi
 
       - name: Do we have signing secrets?
         id: signing

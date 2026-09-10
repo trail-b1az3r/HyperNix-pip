@@ -118,23 +118,54 @@ beta 5** and the iOS 27 SDK), and [XcodeGen](https://github.com/yonaskolb/XcodeG
 ```bash
 brew install xcodegen
 cd ios
-xcodegen generate            # writes HyperLink.xcodeproj
+python3 scripts/prepare_project.py    # decides what goes in the spec
+xcodegen generate --spec project.generated.yml
 open HyperLink.xcodeproj
 ```
 
 The `.xcodeproj` is generated rather than committed: a `pbxproj` is a
 merge-conflict machine, and CI has to build from a clean checkout
 without anyone having opened Xcode. `ios/project.yml` is the source of
-truth — edit that, not the generated project.
+truth — edit that, not the generated project or `project.generated.yml`.
+
+**`prepare_project.py` is not optional.** It looks at whether
+`vendor/llama.xcframework` exists and writes `project.generated.yml`
+either with the framework dependency or without it, plus the matching
+`HNX_LOCAL_LLAMA` flag. XcodeGen cannot make that call itself — its
+`optional: true` sets weak *linking*, not "skip when the file is
+absent", so a spec that always names the framework fails to build on a
+checkout that has not built the engine:
+
+```
+error: There is no XCFramework found at '.../ios/vendor/llama.xcframework'
+```
+
+Generating straight from `project.yml` gives you a project with **no**
+inference engine and no way to gain one, which builds but never runs a
+model.
 
 Command line:
 
 ```bash
 cd ios
-xcodegen generate
+python3 scripts/prepare_project.py
+xcodegen generate --spec project.generated.yml
 xcodebuild test -project HyperLink.xcodeproj -scheme HyperLink \
   -destination 'platform=iOS Simulator,name=iPhone 16' CODE_SIGNING_ALLOWED=NO
 ```
+
+### On-device inference
+
+```bash
+cd ios
+./scripts/build_llama_xcframework.sh   # 15-25 minutes, macOS + Xcode
+python3 scripts/prepare_project.py     # picks it up
+xcodegen generate --spec project.generated.yml
+```
+
+`scripts/prepare_project.py --check` says which of the two builds you
+would get without changing anything. See
+[wiki/HyperLink-OnDevice.md](../wiki/HyperLink-OnDevice.md).
 
 ### Deployment target
 

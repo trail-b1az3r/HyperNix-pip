@@ -120,34 +120,21 @@ targets:
           Take a photo to send straight into a conversation.
         NSBonjourServices:
           - _hypernix._tcp
-    # Carries HNX_LOCAL_LLAMA, set by the build script once the engine
-    # has actually been produced. Committed with it empty, so a checkout
-    # that has never run the script still generates and builds.
+    # Carries HNX_LOCAL_LLAMA, written by scripts/prepare_project.py
+    # from whether the engine is actually on disk.
     configFiles:
       Debug: vendor/LocalLlama.xcconfig
       Release: vendor/LocalLlama.xcconfig
-    dependencies:
-      # The inference engine. Built by ios/scripts/build_llama_xcframework.sh,
-      # which clones llama.cpp at the ref native/ggml-hnx/build.sh pins,
-      # applies the HyperNix tensor-type patch, and runs upstream's own
-      # build-xcframework.sh.
-      #
-      # An xcframework rather than a list of source files in a native
-      # target: llama.cpp restructures its build between releases —
-      # ggml-metal.m became ggml-metal.cpp, the Metal backend moved
-      # directory — and a hand-maintained file list breaks on every bump
-      # in a way that reads as a compiler error rather than as "the list
-      # is stale".
-      #
-      # `optional: true` so a checkout without the framework still
-      # generates and builds: HyperLink degrades to EchoRunner and says
-      # so, rather than failing at `xcodegen generate` for anyone who
-      # only wanted to change a view. HNX_LOCAL_LLAMA below is what the
-      # code branches on.
-      - framework: vendor/llama.xcframework
-        embed: true
-        codeSign: true
-        optional: true
+    # The llama.xcframework dependency is injected here by
+    # scripts/prepare_project.py when the engine is vendored, and left
+    # out when it is not.
+    #
+    # Not expressed as a normal dependency with XcodeGen's
+    # `optional: true`: that sets weak *linking*, not "skip when
+    # absent", so the framework still has to exist at build time and a
+    # checkout without it failed with "There is no XCFramework found
+    # at ...". Deciding in Python is what makes it testable.
+    # @prepare_project: dependencies
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.hypernix.hyperlink

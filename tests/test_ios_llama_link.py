@@ -34,6 +34,17 @@ BUILD_SCRIPT = IOS / "scripts" / "build_llama_xcframework.sh"
 PROJECT = IOS / "project.yml"
 XCCONFIG = IOS / "vendor" / "LocalLlama.xcconfig"
 DESKTOP_BUILD = REPO_ROOT / "native" / "ggml-hnx" / "build.sh"
+PREPARE = IOS / "scripts" / "prepare_project.py"
+
+
+def _prepare():
+    """Load prepare_project.py by path — ios/scripts is not a package."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("prepare_project", PREPARE)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 @pytest.fixture(scope="module")
@@ -176,15 +187,92 @@ class TestItDegradesWithoutTheEngine:
         assert "actor EchoRunner: ModelRunner" in local
         assert "notBuiltIn" in local
 
-    def test_the_framework_dependency_is_optional(self):
-        """`xcodegen generate` must succeed without it on disk."""
+    def test_the_committed_spec_names_no_framework(self):
+        """Because XcodeGen cannot skip one that is absent.
+
+        This test used to assert the dependency was declared with
+        `optional: true`, on the belief that "optional" meant "skip when
+        the file is missing". It does not — it sets weak *linking* — so
+        the framework still had to exist at build time, and a checkout
+        without it failed with "There is no XCFramework found at ...".
+
+        The test passed the whole time. It checked the spelling in the
+        YAML, not the behaviour, which is the useful lesson: the
+        decision now lives in prepare_project.py, where it can be
+        driven both ways from Python.
+        """
         import yaml
         project = yaml.safe_load(PROJECT.read_text(encoding="utf-8"))
         deps = project["targets"]["HyperLink"].get("dependencies", [])
-        frameworks = [d for d in deps if "framework" in d]
-        assert frameworks, "the app links no framework"
-        assert any("llama.xcframework" in d["framework"] for d in frameworks)
-        assert all(d.get("optional") for d in frameworks)
+        assert not [d for d in deps if "llama" in str(d)], (
+            "project.yml names the framework directly, so a checkout "
+            "without it cannot build"
+        )
+
+    def test_the_generator_adds_it_when_the_engine_is_there(self, tmp_path):
+        spec = _prepare().render(
+            PROJECT.read_text(encoding="utf-8"), with_engine=True
+        )
+        import yaml
+        deps = yaml.safe_load(spec)["targets"]["HyperLink"]["dependencies"]
+        assert any("llama.xcframework" in d["framework"] for d in deps)
+
+    def test_the_generator_leaves_it_out_when_it_is_not(self):
+        spec = _prepare().render(
+            PROJECT.read_text(encoding="utf-8"), with_engine=False
+        )
+        import yaml
+        assert not yaml.safe_load(spec)["targets"]["HyperLink"].get("dependencies")
+
+    @pytest.mark.parametrize("with_engine", [True, False])
+    def test_both_branches_are_valid_yaml(self, with_engine):
+        """The first version of the generator replaced the marker text
+        and left its indentation behind, which merged into the next line
+        and turned `    settings:` into `        settings:`. The spec
+        stopped parsing, and only running it showed that."""
+        import yaml
+        spec = _prepare().render(
+            PROJECT.read_text(encoding="utf-8"), with_engine=with_engine
+        )
+        parsed = yaml.safe_load(spec)
+        assert "settings" in parsed["targets"]["HyperLink"], "indentation broke"
+        assert parsed["targets"]["HyperLink"]["settings"]["base"][
+            "PRODUCT_BUNDLE_IDENTIFIER"
+        ] == "com.hypernix.hyperlink"
+
+    def test_the_framework_is_linked_not_embedded(self):
+        """Upstream builds it with BUILD_SHARED_LIBS=OFF, so it is a
+        static framework: its code goes into the app binary. Embedding
+        one copies a static archive into the bundle, which App Store
+        validation rejects and which is pure size in the meantime."""
+        import yaml
+        spec = _prepare().render(
+            PROJECT.read_text(encoding="utf-8"), with_engine=True
+        )
+        deps = yaml.safe_load(spec)["targets"]["HyperLink"]["dependencies"]
+        framework = next(d for d in deps if "llama" in d["framework"])
+        assert framework.get("embed") is False
+
+    def test_an_empty_directory_is_not_an_engine(self):
+        """An interrupted copy leaves one behind, and xcodebuild's
+        complaint about that is much less clear than ours."""
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            empty = Path(tmp) / "llama.xcframework"
+            empty.mkdir()
+            assert not _prepare().engine_present(empty)
+            (empty / "Info.plist").write_text("<plist/>")
+            assert _prepare().engine_present(empty)
+
+    def test_ci_runs_the_generator_before_generating(self):
+        workflow = (
+            REPO_ROOT / ".github" / "workflows" / "ios.yml"
+        ).read_text(encoding="utf-8")
+        assert "prepare_project.py" in workflow
+        assert "--spec project.generated.yml" in workflow, (
+            "CI generates from the committed spec, which has no dependency "
+            "and no way to gain one"
+        )
 
     def test_the_project_reads_the_xcconfig(self):
         import yaml

@@ -21,6 +21,72 @@ next release header.
 - 𖢥 major bug fix
 - ꩜ restore to older version of item
 - ❗ unfixed known bug
+## 0.72.4.post13 — `optional: true` does not mean what I thought
+
+The iOS build failed on a checkout without the engine:
+
+```
+error: There is no XCFramework found at
+       '.../ios/vendor/llama.xcframework' (in target 'HyperLink')
+```
+
+### The wrong mental model 𖢥
+
+post11 declared the framework dependency in `project.yml` with
+XcodeGen's `optional: true`, on the belief that "optional" meant "skip
+when the file is absent". It does not. It sets **weak linking** — a
+dynamic-linker property — and the framework still has to exist at build
+time.
+
+So the project generated cleanly and then failed to build, which is the
+worst shape for this: the error arrives after `xcodegen`, in
+`xcodebuild`, pointing at a path nobody asked for.
+
+**And a test asserted it.** `test_the_framework_dependency_is_optional`
+checked that the YAML said `optional: true` and passed the whole time.
+It verified the spelling, not the behaviour — a test written from the
+same wrong belief as the code, which is the failure mode that makes a
+green suite worthless.
+
+### The decision moves to Python 🔧
+
+`ios/scripts/prepare_project.py` looks at whether the framework is
+really there and writes `project.generated.yml` — next to `project.yml`
+so every relative path still resolves — with the dependency or without
+it, plus the matching `HNX_LOCAL_LLAMA` flag. Both come from one
+filesystem check, so they cannot disagree. XcodeGen reads the generated
+spec.
+
+Being Python, it can be driven both ways from a test, which is the
+whole point.
+
+### The framework is linked, not embedded 🐛
+
+Second bug in the same block. Upstream builds with
+`BUILD_SHARED_LIBS=OFF`, so `llama.xcframework` is **static**: its code
+goes into the app binary. `embed: true` copies a static archive into
+the bundle for nothing, and App Store validation rejects it.
+
+### And an indentation bug the generator's own tests caught 🧪
+
+The first version replaced the marker *text* and left its four spaces
+behind, which merged into the following line and turned `    settings:`
+into `        settings:`. The spec stopped parsing. Indentation is
+load-bearing in YAML and a substring replace inside an indented block
+is the wrong tool; it matches the whole line now.
+
+Both branches of the generator are now parsed and asserted in tests,
+and all three regressions — a framework named directly in `project.yml`,
+the indentation, and `embed: true` — were verified by reintroducing
+them.
+
+### ❗ Still not compiled
+
+The engine has still never been built here and no Swift has been
+compiled: there is no macOS, Xcode or Swift toolchain in this
+environment. What this release fixes is the build *wiring*, which is
+exactly the layer the CI failure was in.
+
 ## 0.72.4.post12 — three tests that needed a server and never said so
 
 CI went red on `test_hypernix_t1_service.py` with
