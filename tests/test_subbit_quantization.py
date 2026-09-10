@@ -544,12 +544,11 @@ class TestTheEmbeddingPolicyIsReachable:
         directory = tmp_path_factory.mktemp("embed-policy")
         return _write_model(directory / "tiny.f32.gguf", tokenizer=True)
 
-    def _quantize(self, source, name, *flags):
+    def _write(self, source, name, *flags):
         import contextlib
         import io
 
         from hypernix.interfaces import cli
-        from hypernix.models.ggufrun import load_gguf
 
         out = Path(source).parent / f"{name}.gguf"
         buffer = io.StringIO()
@@ -559,12 +558,52 @@ class TestTheEmbeddingPolicyIsReachable:
                 "--type", "IQ0.5_XXXL", "-hnx", *flags,
             ])
         assert code == 0, buffer.getvalue()
-        return load_gguf(out).model.resident_bits_per_weight
+        return out
+
+    def _quantize(self, source, name, *flags):
+        from hypernix.models.ggufrun import load_gguf
+
+        return load_gguf(
+            self._write(source, name, *flags)
+        ).model.resident_bits_per_weight
+
+    def _type_of(self, path, tensor):
+        """The GGML type ``llama.cpp`` would read for one tensor."""
+        from hypernix.quant.gguf import GGUFFile
+
+        for entry in GGUFFile.read(path).tensors:
+            if entry.name == tensor:
+                return entry.ggml_type
+        raise AssertionError(f"{path} has no {tensor}")
 
     def test_the_default_leaves_the_table_in_float(self, source):
-        """Unchanged behaviour, stated as a number so a change to it is
-        a test failure rather than a surprise."""
-        assert self._quantize(source, "default") > 4.0
+        """The policy this class is named for, read off the file.
+
+        This used to assert a bits-per-weight floor, which measured the
+        fixture rather than the policy: the average only stays high while
+        the untouched table is a large share of the model, so growing the
+        fixture broke a test about a decision that had not changed. The
+        decision is per tensor, so the assertion is too.
+        """
+        from hypernix.quant.gguf import GGMLType
+
+        out = self._write(source, "default")
+        assert self._type_of(out, "token_embd.weight") == int(GGMLType.F32)
+        assert self._type_of(out, "output.weight") == int(GGMLType.F32)
+        # ...and the layers it *is* meant to touch really were touched,
+        # so a quantiser that silently did nothing cannot pass this.
+        assert self._type_of(out, "blk.0.attn_q.weight") == int(GGMLType.HNX_IQ0_5)
+
+    def test_the_flags_reach_the_two_tensors(self, source):
+        """The flags' whole purpose: the headline bit rate is only
+        obtainable if these two stop being float."""
+        from hypernix.quant.gguf import GGMLType
+
+        out = self._write(
+            source, "flagged", "--quantize-embeddings", "--quantize-output"
+        )
+        assert self._type_of(out, "token_embd.weight") == int(GGMLType.HNX_IQ0_5)
+        assert self._type_of(out, "output.weight") == int(GGMLType.HNX_IQ0_5)
 
     def test_quantising_both_gets_under_a_bit(self, source):
         """The number the tier is named for, obtainable from the CLI."""

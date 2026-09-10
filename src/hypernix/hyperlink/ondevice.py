@@ -504,7 +504,10 @@ def plan(
             if not budget.has_increased_limit:
                 notes.append(
                     "The com.apple.developer.kernel.increased-memory-limit "
-                    "entitlement raises that ceiling; it is not enabled here."
+                    "entitlement raises that ceiling. It was not found in this "
+                    "build's provisioning profile — which App Store builds and "
+                    "the simulator do not carry, so that is not proof it is "
+                    "missing."
                 )
 
     if weights <= 0:

@@ -358,8 +358,30 @@ def _should_quantize(
         return False, "a norm or bias: all of the damage, none of the size"
     if not _readable(int(tensor.ggml_type)):
         return False, f"source type {tensor.ggml_type} is one hyprslug cannot read"
-    if tensor.elements % block:
-        return False, f"{tensor.elements} elements do not divide into {block}"
+    # The *row* length, not the element count. GGML quantises row by
+    # row, so the constraint is on ne[0] -- and shape[0] is ne[0],
+    # read straight from the file in GGUF's own order.
+    #
+    # Checking the total instead let a real model through and produced a
+    # file llama.cpp refuses to load:
+    #
+    #     gguf_init_from_reader: tensor 'blk.0.ssm_conv1d.weight' of
+    #     type 202 (IQ0.5_XXXL) has 4 elements per row, not a multiple
+    #     of block size (256)
+    #
+    # An SSM convolution weight is [4, N]: four elements per row, and a
+    # total of 4N that divides into 256 whenever N does. The total-count
+    # check passed, the tensor was packed, and the model would not load.
+    #
+    # The row check subsumes the total: if ne[0] divides into the block
+    # size then so does the product. It also happens to be why packing
+    # the flattened array is safe -- with ne[0] a multiple of the block,
+    # no block ever straddles two rows.
+    row = int(tensor.shape[0])
+    if row % block:
+        return False, (
+            f"{row} elements per row do not divide into {block}-element blocks"
+        )
     if not quantize_embeddings and _is_embedding(name):
         return False, "token embeddings (pass quantize_embeddings=True to include)"
     if not quantize_output and _is_output_head(name):

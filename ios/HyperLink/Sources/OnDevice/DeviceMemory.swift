@@ -31,10 +31,13 @@ struct DeviceMemory: Sendable, Equatable {
     /// From `ProcessInfo.physicalMemory`. Reported so the UI can
     /// explain the gap, never used to decide whether a model fits.
     let totalRAMBytes: Int
-    /// Whether `com.apple.developer.kernel.increased-memory-limit` is
-    /// in the entitlements. Recorded for reporting only: an estimate
-    /// must never be inflated by a limit the process may not have been
-    /// granted at runtime.
+    /// Whether `com.apple.developer.kernel.increased-memory-limit` was
+    /// *found* in the embedded provisioning profile.
+    ///
+    /// `false` means "not found" — App Store builds and the simulator
+    /// carry no profile — so it is never evidence of absence. Recorded
+    /// for reporting only: an estimate must never be inflated by a
+    /// limit the process may not have been granted.
     let hasIncreasedLimit: Bool
     /// Performance cores. Efficiency cores are excluded deliberately —
     /// llama.cpp scheduling work onto them costs more in scheduler
@@ -46,7 +49,7 @@ struct DeviceMemory: Sendable, Equatable {
         DeviceMemory(
             availableBytes: Int(os_proc_available_memory()),
             totalRAMBytes: Int(ProcessInfo.processInfo.physicalMemory),
-            hasIncreasedLimit: Self.entitlementPresent,
+            hasIncreasedLimit: Self.entitlementFound,
             performanceCores: Self.performanceCoreCount,
             deviceModel: Self.hardwareIdentifier
         )
@@ -71,18 +74,58 @@ struct DeviceMemory: Sendable, Equatable {
     /// The gap the UI has to explain when it refuses something.
     var explainsGap: Bool { totalRAMBytes > availableBytes * 2 }
 
-    private static var entitlementPresent: Bool {
-        // Read from the embedded provisioning profile rather than
-        // assumed: the entitlement is granted per-application by Apple,
-        // and a build that was not granted it will silently have a much
-        // lower ceiling than a build that was.
+    /// Whether the increased-memory-limit entitlement could be *found*.
+    ///
+    /// Not "whether it is enabled". The distinction is real and this
+    /// cannot close it.
+    ///
+    /// The obvious API — `SecTaskCreateFromSelf` and
+    /// `SecTaskCopyValueForEntitlement` — is macOS-only. On iOS those
+    /// are private SPI and not in scope, which is a compile error, not
+    /// a runtime one:
+    ///
+    ///     error: cannot find 'SecTaskCreateFromSelf' in scope
+    ///
+    /// What iOS does offer is the embedded provisioning profile, which
+    /// carries the entitlements the build was signed with. That is a
+    /// real signal for development, ad-hoc and enterprise builds — and
+    /// absent from App Store builds and usually from the simulator, so
+    /// `false` means "not found", never "definitely not granted".
+    ///
+    /// Which is why nothing depends on it. It is reported, and the
+    /// memory estimate is identical either way; a planner that gave
+    /// itself headroom on the strength of this would be trusting a
+    /// signal that is missing exactly where the app is most constrained.
+    private static var entitlementFound: Bool {
         guard
-            let task = SecTaskCreateFromSelf(nil),
-            let value = SecTaskCopyValueForEntitlement(
-                task, "com.apple.developer.kernel.increased-memory-limit" as CFString, nil
-            ) as? Bool
+            let url = Bundle.main.url(
+                forResource: "embedded", withExtension: "mobileprovision"
+            ),
+            let raw = try? Data(contentsOf: url)
         else { return false }
-        return value
+
+        // The profile is CMS-signed, with the plist embedded as plain
+        // XML inside the signature envelope. Slicing between the
+        // markers is the documented-by-practice way to read it; there
+        // is no public API that unwraps it.
+        guard
+            let start = raw.range(of: Data("<?xml".utf8)),
+            let end = raw.range(of: Data("</plist>".utf8))
+        else { return false }
+
+        // Re-wrapped in a fresh Data: a slice keeps the parent's index
+        // base, and PropertyListSerialization reads from zero.
+        let plistData = Data(raw[start.lowerBound..<end.upperBound])
+        guard
+            let plist = try? PropertyListSerialization.propertyList(
+                from: plistData, options: [], format: nil
+            ) as? [String: Any],
+            let entitlements = plist["Entitlements"] as? [String: Any]
+        else { return false }
+
+        return entitlements[
+            "com.apple.developer.kernel.increased-memory-limit"
+        ] as? Bool ?? false
     }
 
     private static var performanceCoreCount: Int {

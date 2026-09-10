@@ -38,6 +38,19 @@ def swift() -> str:
     return SWIFT.read_text(encoding="utf-8")
 
 
+def _strip_comments(source: str) -> str:
+    """Source with `//` lines removed.
+
+    These files quote compiler errors and name retired APIs on purpose,
+    to say what moved and why. A check that reads the comments finds
+    exactly the thing it is looking for the absence of.
+    """
+    return "\n".join(
+        line for line in source.splitlines()
+        if not line.strip().startswith("//") and not line.strip().startswith("///")
+    )
+
+
 def swift_constant(source: str, name: str) -> float:
     """Read `static let <name> = <number>` out of the Swift."""
     match = re.search(
@@ -176,8 +189,39 @@ class TestTheMemoryBudgetIsReadCorrectly:
         assert "func refreshed()" in memory_swift
 
     def test_the_entitlement_is_read_not_assumed(self, memory_swift):
-        assert "SecTaskCopyValueForEntitlement" in memory_swift
-        assert "increased-memory-limit" in memory_swift
+        """From the provisioning profile, which is the iOS-available route.
+
+        This test used to assert `SecTaskCopyValueForEntitlement`
+        appeared in the file — and it still does, in a comment
+        explaining why that API cannot be used. Comments are stripped
+        first, or this passes on the explanation for its own absence.
+        """
+        body = _strip_comments(memory_swift)
+        assert "SecTaskCreateFromSelf" not in body, (
+            "macOS-only API is back: 'cannot find SecTaskCreateFromSelf in scope'"
+        )
+        assert "SecTaskCopyValueForEntitlement" not in body
+        assert "embedded" in body and "mobileprovision" in body
+        assert "increased-memory-limit" in body
+
+    def test_the_entitlement_never_changes_the_estimate(self, memory_swift):
+        """`false` means "not found" — App Store builds and the
+        simulator carry no profile — so it is never evidence of
+        absence, and nothing may depend on it."""
+        body = _strip_comments(memory_swift)
+        assert "hasIncreasedLimit" in body
+        # It is stored and reported. If it ever appears in arithmetic,
+        # that is a planner trusting a signal that is missing exactly
+        # where the app is most constrained.
+        fit = (
+            REPO_ROOT / "ios" / "HyperLink" / "Sources" / "OnDevice" / "ModelFit.swift"
+        ).read_text(encoding="utf-8")
+        arithmetic = [
+            line for line in _strip_comments(fit).splitlines()
+            if "hasIncreasedLimit" in line
+            and any(op in line for op in ("*", "+", "-", "/", "safetyMargin"))
+        ]
+        assert not arithmetic, f"the entitlement is inflating an estimate: {arithmetic}"
 
     def test_it_counts_performance_cores_only(self, memory_swift):
         """Scheduling llama.cpp work onto efficiency cores costs more in
