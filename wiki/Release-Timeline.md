@@ -643,3 +643,12 @@ timeline
         : 29a3103 - Auto-update README header (hourly)
 ```
 
+## Release v0.72.4.post13 (2026-09-10)
+
+```mermaid
+timeline
+    title Release v0.72.4.post13 Commits
+    0.72.4.post13
+        : 6c7be9e - 0.72.4.post13 — `optional- true` does not mean what I thought
+```
+
