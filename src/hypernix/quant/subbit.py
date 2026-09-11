@@ -88,6 +88,28 @@ class Packing:
     group: int
     #: Bits in that code — and so how many of the group's signs are kept.
     code_bits: int
+    #: Sub-blocks that carry their own magnitude index, or 0 for the
+    #: sign-only tiers where the block scale is the whole of the
+    #: magnitude. Non-zero is what makes a tier above one bit per weight
+    #: possible at all: once every sign is stored, ``code_bits/group``
+    #: is capped at 1 and any further rate has to buy something else.
+    sub_blocks: int = 0
+    #: Bits in each sub-block's magnitude index.
+    sub_bits: int = 0
+
+    @property
+    def sub_size(self) -> int:
+        """Weights sharing one magnitude index."""
+        return BLOCK_SIZE // self.sub_blocks if self.sub_blocks else BLOCK_SIZE
+
+    @property
+    def levels(self) -> int:
+        """The largest magnitude index, so the codebook is ``i/levels``."""
+        return (1 << self.sub_bits) - 1 if self.sub_bits else 0
+
+    @property
+    def has_sub_magnitude(self) -> bool:
+        return bool(self.sub_blocks and self.sub_bits)
 
     @property
     def kept(self) -> int:
@@ -99,8 +121,12 @@ class Packing:
         return BLOCK_SIZE // self.group
 
     @property
+    def magnitude_bits(self) -> int:
+        return self.sub_blocks * self.sub_bits
+
+    @property
     def payload_bytes(self) -> int:
-        return (self.codes_per_block * self.code_bits + 7) // 8
+        return (self.codes_per_block * self.code_bits + self.magnitude_bits + 7) // 8
 
     @property
     def block_bytes(self) -> int:
@@ -128,6 +154,19 @@ PACKINGS: dict[str, Packing] = {
     #: About 59% of signs survive, which is barely above the 50% a coin
     #: gets; see the warning on the tier.
     "quarter_code_uxl": Packing("quarter_code_uxl", group=16, code_bits=3),
+    #: Every sign kept, *and* magnitude structure: 16 sub-blocks of 16
+    #: weights, each with a 5-bit index into ``i/31`` of the block scale.
+    #:
+    #: 32 bytes of signs + 10 bytes of indices + a 2-byte scale = 44,
+    #: which is 1.375 bits per weight exactly. It is the first tier above
+    #: INT1, and the difference between them is the whole idea: INT1
+    #: reconstructs all 256 weights at one magnitude, this one at sixteen.
+    #: Within a row, weights an order of magnitude apart are common, and
+    #: a single block mean puts every one of them at the same distance
+    #: from zero.
+    "hnx_1375bit": Packing(
+        "hnx_1375bit", group=1, code_bits=1, sub_blocks=16, sub_bits=5
+    ),
 }
 
 
@@ -195,6 +234,9 @@ def quantize_block(weights: list[float], packing: str,
     #
     # The importance matrix still earns its place: it sets the scale, and
     # at these bitrates the scale is most of what is left to get right.
+    if spec.has_sub_magnitude:
+        return _quantize_with_magnitude(weights, spec, importance)
+
     payload = bytearray(spec.payload_bytes)
     bit_cursor = 0
     for start in range(0, BLOCK_SIZE, spec.group):
@@ -202,6 +244,59 @@ def quantize_block(weights: list[float], packing: str,
             if weights[start + position] >= 0:
                 payload[bit_cursor // 8] |= 1 << (bit_cursor % 8)
             bit_cursor += 1
+    return _fp16_bytes(scale) + bytes(payload)
+
+
+def _sub_means(weights: list[float], spec: Packing,
+               importance: list[float] | None) -> list[float]:
+    """Each sub-block's (importance-weighted) mean absolute value."""
+    means = []
+    for start in range(0, BLOCK_SIZE, spec.sub_size):
+        stop = start + spec.sub_size
+        if importance is None:
+            divisor = float(spec.sub_size)
+            total = sum(abs(w) for w in weights[start:stop])
+        else:
+            weightings = [max(0.0, i) for i in importance[start:stop]]
+            divisor = sum(weightings)
+            total = sum(
+                abs(w) * i for w, i in zip(weights[start:stop], weightings, strict=True)
+            )
+        means.append((total / divisor) if divisor > 0 else 0.0)
+    return means
+
+
+def _quantize_with_magnitude(weights: list[float], spec: Packing,
+                             importance: list[float] | None) -> bytes:
+    """Every sign, plus one magnitude index per sub-block.
+
+    The stored scale is the **largest** sub-block mean rather than the
+    block mean, so the indices span ``0 .. levels`` and nothing clamps.
+    Using the block mean would put the hot sub-blocks off the top of the
+    codebook, which is precisely the structure this tier exists to keep.
+
+    That is not a contradiction of the mean-not-maximum rule the
+    sign-only tiers follow: the value each *weight* reconstructs to is
+    still a mean -- its own sub-block's -- and the maximum is only the
+    unit the sixteen means are expressed in.
+    """
+    means = _sub_means(weights, spec, importance)
+    scale = _finite(max(means) if means else 0.0)
+
+    payload = bytearray(spec.payload_bytes)
+    cursor = 0
+    for value in weights:
+        if value >= 0:
+            payload[cursor // 8] |= 1 << (cursor % 8)
+        cursor += 1
+    for mean in means:
+        index = 0 if scale <= 0 else min(
+            spec.levels, int(round(spec.levels * mean / scale))
+        )
+        for bit in range(spec.sub_bits):
+            if index >> bit & 1:
+                payload[cursor // 8] |= 1 << (cursor % 8)
+            cursor += 1
     return _fp16_bytes(scale) + bytes(payload)
 
 
@@ -226,6 +321,23 @@ def dequantize_block(data: bytes, packing: str) -> list[float]:
         )
     scale = struct.unpack("<e", data[:2])[0]
     payload = data[2:]
+
+    if spec.has_sub_magnitude:
+        signs = [
+            1.0 if payload[i // 8] >> (i % 8) & 1 else -1.0 for i in range(BLOCK_SIZE)
+        ]
+        cursor = BLOCK_SIZE
+        out: list[float] = []
+        for sub in range(spec.sub_blocks):
+            index = 0
+            for bit in range(spec.sub_bits):
+                if payload[cursor // 8] >> (cursor % 8) & 1:
+                    index |= 1 << bit
+                cursor += 1
+            magnitude = scale * index / spec.levels
+            base = sub * spec.sub_size
+            out.extend(s * magnitude for s in signs[base:base + spec.sub_size])
+        return out
 
     weights: list[float] = []
     bit_cursor = 0
@@ -360,9 +472,35 @@ def stored_signs(data: bytes, packing: str):
     # which on a runtime that exists to not hold the model is the point.
     stored = spec.codes_per_block * spec.kept
     head = np.take(_sign_table(), blocks[:, 2:], axis=0).reshape(len(blocks), -1)
+    if spec.has_sub_magnitude:
+        # Signs are byte-aligned (one per weight), so the indices start
+        # at a byte boundary and can be read without touching the signs.
+        signs = head[:, :stored].reshape(-1, spec.sub_blocks, spec.sub_size)
+        signs *= (
+            scales[:, None, None]
+            * _sub_indices(blocks, spec).astype(np.float32)[:, :, None]
+            / spec.levels
+        )
+        return signs.reshape(-1, spec.codes_per_block, spec.kept)
     head = head[:, :stored].reshape(-1, spec.codes_per_block, spec.kept)
     head *= scales[:, None, None]
     return head
+
+
+def _sub_indices(blocks, spec: Packing):
+    """The magnitude index of every sub-block, shape ``(blocks, sub)``.
+
+    Read straight off the packed bytes rather than by unpacking the whole
+    payload to bits: the indices are a tenth of it, and this runs on
+    every forward pass of a model held packed.
+    """
+    import numpy as np
+
+    first = 2 + (spec.codes_per_block * spec.code_bits) // 8
+    raw = np.unpackbits(blocks[:, first:], axis=1, bitorder="little")
+    raw = raw[:, : spec.magnitude_bits].reshape(-1, spec.sub_blocks, spec.sub_bits)
+    weights = (1 << np.arange(spec.sub_bits, dtype=np.uint32))
+    return (raw.astype(np.uint32) * weights).sum(axis=2)
 
 
 def dequantize_array(data: bytes, packing: str):

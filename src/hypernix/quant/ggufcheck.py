@@ -76,7 +76,9 @@ block_elements = type_block_size
 #: ``tests/test_ggufcheck.py`` parses the patch script's own enum text
 #: and asserts this agrees with it, so adding a type on the C side
 #: without updating this is a test failure rather than a surprise.
-LLAMA_CPP_REGISTERED_TYPES: frozenset[int] = frozenset({200, 201, 202, 203, 204})
+LLAMA_CPP_REGISTERED_TYPES: frozenset[int] = frozenset(
+    {200, 201, 202, 203, 204, 205, 206, 207}
+)
 
 
 def llama_cpp_can_load_type(ggml_type: int) -> bool:
@@ -158,6 +160,12 @@ class CheckReport:
     types: dict[str, int] = field(default_factory=dict)
     #: ``hypernix.tier`` as the file's own metadata states it.
     tier: str = ""
+    #: Problems with the container rather than a tensor's type: a file
+    #: that stops before its tensor data does, a duplicate name, a
+    #: misaligned offset. These are what an interrupted quantise or a
+    #: full disk leaves behind, and llama.cpp refuses them with a
+    #: generic "failed to load model" that names no tensor at all.
+    structural: list[str] = field(default_factory=list)
     #: Types in the file that no llama.cpp build registers, by name.
     #: A different failure from :attr:`bad` with a different remedy:
     #: the row problem is one tensor and repairable, this is the whole
@@ -167,14 +175,18 @@ class CheckReport:
     @property
     def loadable(self) -> bool:
         """Whether *llama.cpp* will open it."""
-        return not self.bad and not self.unregistered
+        return not self.bad and not self.unregistered and not self.structural
 
     @property
     def runs_under_hnxrun(self) -> bool:
         """HyperNix's own runtime knows every tier it writes, so an
         unregistered type is only a llama.cpp limitation -- worth saying,
-        because the file is not junk."""
-        return not self.bad
+        because the file is not junk.
+
+        A structural fault is different: bytes that were never written
+        cannot be read by any runtime, so it disqualifies this too.
+        """
+        return not self.bad and not self.structural
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -184,6 +196,7 @@ class CheckReport:
             "tier": self.tier,
             "types": self.types,
             "unregistered": self.unregistered,
+            "structural": self.structural,
             "runs_under_hnxrun": self.runs_under_hnxrun,
             "bad": [
                 {
@@ -208,6 +221,22 @@ class CheckReport:
                 f"{name} x{count}" for name, count in sorted(self.types.items())
             )
             lines.append(f"  types    {spread}")
+        if self.structural:
+            lines.append("  The file itself is wrong, before any tensor's type:")
+            for problem in self.structural[:6]:
+                lines.append(f"    {problem}")
+            if len(self.structural) > 6:
+                lines.append(f"    ... and {len(self.structural) - 6} more")
+            lines.append("")
+            lines.append(
+                "  A quantise that was interrupted, or a disk that filled up,"
+            )
+            lines.append(
+                "  leaves exactly this. llama.cpp reports it as a bare 'failed"
+            )
+            lines.append(
+                "  to load model' naming no tensor. Re-run the quantisation."
+            )
         if self.unregistered:
             spread = ", ".join(sorted(self.unregistered))
             lines.append(f"  No llama.cpp build registers: {spread}")
@@ -229,7 +258,7 @@ class CheckReport:
         if self.loadable:
             lines.append("  llama.cpp will load this file.")
             return "\n".join(lines)
-        if self.unregistered and not self.bad:
+        if not self.bad:
             return "\n".join(lines)
         lines.append(
             f"  {len(self.bad)} tensor(s) llama.cpp will refuse, the first being:"
@@ -255,6 +284,55 @@ class CheckReport:
         return "\n".join(lines)
 
 
+
+def _check_container(model: GGUFFile, path: Path, report: CheckReport) -> None:
+    """The checks that are about the file, not about a tensor's type.
+
+    llama.cpp validates these in ``gguf_init_from_reader`` before it
+    looks at a single block, and it reports every one of them as the same
+    bare "failed to load model" with no tensor named -- so a file that
+    fails here gives its owner nothing at all to go on.
+
+    Truncation is first because it is much the most likely: a quantise
+    that was interrupted, or a disk that filled part-way through writing
+    a multi-gigabyte tensor, leaves a file whose header promises more
+    than the file holds.
+    """
+    try:
+        size = path.stat().st_size
+    except OSError:
+        return
+
+    # Tensor offsets are relative to the data region; the reader
+    # already resolved where that starts.
+    data_start = int(model.data_start)
+    seen: dict[str, int] = {}
+    for index, tensor in enumerate(model.tensors):
+        if tensor.name in seen:
+            report.structural.append(
+                f"'{tensor.name}' appears twice (entries {seen[tensor.name]} and {index})"
+            )
+        seen[tensor.name] = index
+
+        if any(int(dim) <= 0 for dim in tensor.shape):
+            report.structural.append(
+                f"'{tensor.name}' has a zero or negative dimension: {tuple(tensor.shape)}"
+            )
+        if len(tensor.shape) > 4:
+            report.structural.append(
+                f"'{tensor.name}' has {len(tensor.shape)} dimensions; GGML allows 4"
+            )
+        if tensor.nbytes:
+            end = data_start + int(tensor.offset) + int(tensor.nbytes)
+            if end > size:
+                short = end - size
+                report.structural.append(
+                    f"'{tensor.name}' needs {short:,} bytes past the end of the "
+                    f"file (the file is {size:,} bytes; the table asks for "
+                    f"{end:,}) -- the file is truncated"
+                )
+
+
 def check_gguf(path: str | Path) -> CheckReport:
     """Read *path*'s tensor table and report what llama.cpp would refuse.
 
@@ -268,6 +346,7 @@ def check_gguf(path: str | Path) -> CheckReport:
         tensors=len(model.tensors),
         tier=str(model.metadata.get("hypernix.tier", "")),
     )
+    _check_container(model, Path(path), report)
     for tensor in model.tensors:
         name = _type_name(tensor.ggml_type)
         report.types[name] = report.types.get(name, 0) + 1

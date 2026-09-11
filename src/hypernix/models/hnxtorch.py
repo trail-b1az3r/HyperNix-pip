@@ -140,8 +140,34 @@ def stored_signs(packed, packing: str):
     stored = spec.codes_per_block * spec.kept
     bits = _unpack(blocks[:, 2:].contiguous(), 1, stored)
     head = bits.reshape(-1, spec.codes_per_block, spec.kept).to(torch.float32)
+    if spec.has_sub_magnitude:
+        # Sixteen magnitudes per block, not one. Same shape out, but the
+        # scale varies along the block -- which is the whole reason the
+        # tier exists, and the reason this branch cannot be folded into
+        # the line below.
+        signs = head.reshape(-1, spec.sub_blocks, spec.sub_size) * 2.0 - 1.0
+        magnitudes = (scales[:, None] * _sub_indices(blocks, spec)) / spec.levels
+        return (signs * magnitudes[:, :, None]).reshape(
+            -1, spec.codes_per_block, spec.kept
+        )
     # (2b - 1) * s, folded so the sign map and the scale are one pass.
     return head * (scales * 2.0)[:, None, None] - scales[:, None, None]
+
+
+def _sub_indices(blocks, spec):
+    """Each sub-block's magnitude index, on *blocks*' device.
+
+    Mirrors ``subbit._sub_indices``: the signs are one bit per weight so
+    they end on a byte boundary, and the indices start there.
+    """
+    first = 2 + (spec.codes_per_block * spec.code_bits) // 8
+    raw = _unpack(
+        blocks[:, first:].contiguous(), 1, spec.magnitude_bits
+    ).reshape(-1, spec.sub_blocks, spec.sub_bits)
+    import torch
+
+    powers = (1 << torch.arange(spec.sub_bits, device=blocks.device)).to(torch.float32)
+    return (raw.to(torch.float32) * powers).sum(dim=2)
 
 
 def dequantize_subbit(packed, packing: str):

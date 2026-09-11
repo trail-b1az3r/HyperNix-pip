@@ -139,6 +139,7 @@ class GGMLType(IntEnum):
     HNX_INT1 = 204
     HNX_INT4 = 205
     HNX_FP2 = 206
+    HNX_1375 = 207
 
 
 #: ``type -> (elements per block, bytes per block)``.
@@ -183,6 +184,9 @@ _BLOCK_SHAPE: dict[int, tuple[int, int]] = {
     GGMLType.HNX_INT1: (256, 34),
     GGMLType.HNX_INT4: (256, 130),
     GGMLType.HNX_FP2: (256, 66),
+    # Every sign (32 B) + sixteen 5-bit sub-block magnitudes
+    # (10 B) + the FP16 scale (2 B). 44 * 8 / 256 = 1.375 exactly.
+    GGMLType.HNX_1375: (256, 44),
 }
 
 

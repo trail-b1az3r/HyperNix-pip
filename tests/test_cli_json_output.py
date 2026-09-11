@@ -141,6 +141,7 @@ class TestHyprslugListTiers:
         assert ids == {
             "IQ0.9_L": 200, "IQ0.75_M": 201, "IQ0.5_XXXL": 202,
             "IQ0.25_UXL": 203, "INT1": 204, "INT4": 205, "FP2": 206,
+            "HNX_1375BIT": 207,
         }
         assert all(i >= 200 for i in ids.values())
 

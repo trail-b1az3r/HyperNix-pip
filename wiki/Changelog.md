@@ -21,6 +21,259 @@ next release header.
 - 𖢥 major bug fix
 - ꩜ restore to older version of item
 - ❗ unfixed known bug
+## 0.72.5 — `hnx_1375bit`, and quantisation-aware training
+
+### A tier that keeps every sign *and* the magnitude structure ✨
+
+`bpw = (2 + payload) * 8 / 256`, so 1.375 bits per weight is a 44-byte
+block. The sign-only family cannot reach it: those tiers spend
+`code_bits/group` bits on signs, which is capped at 1, and 1.375 needs
+1.3125 bits of payload per weight. Anything above one bit has to buy
+something other than signs.
+
+So this one buys magnitude:
+
+| | scale | signs | magnitude | bytes | bpw |
+|---|---|---|---|---|---|
+| INT1 | fp16 x1 | 256 | none | 34 | 1.0625 |
+| **hnx_1375bit** | fp16 x1 | **256** | **16 sub-blocks x 5 bits** | **44** | **1.375** |
+
+32 bytes of signs, 10 bytes holding sixteen 5-bit indices, and the FP16
+scale. Each index picks `scale * i / 31` for its 16 weights, and the
+stored scale is the **largest** sub-block mean rather than the block
+mean, so the indices span the codebook and nothing clamps.
+
+That is not a contradiction of the mean-not-maximum rule the sign-only
+tiers follow: what each *weight* reconstructs to is still a mean — its
+own sub-block's — and the maximum is only the unit the sixteen means are
+expressed in.
+
+On a block whose sub-blocks span 30x in magnitude, against INT1 at
+0.31 fewer bits:
+
+```
+int1_binary   34 B  1.0625 bpw  signs 100%  rmse 0.13378  corr +0.615
+hnx_1375bit   44 B  1.3750 bpw  signs 100%  rmse 0.09790  corr +0.816
+```
+
+It is registered the whole way down: `subbit.py`, `gguf.py` (type 207),
+`hyprslug`, `steamroller`, `hnxrun`, the C decoder, and the ggml patch.
+
+### INT4 and FP2 became loadable, because they had to 𖢥
+
+post21 reported that INT4 (205) and FP2 (206) were written by hyprslug
+and openable by no llama.cpp: the patch registered 200–204 and pinned
+`GGML_TYPE_COUNT` to 205, so those two were out of range and cleanly
+rejected.
+
+Adding a type at 207 forced the question. Raising the count to 208
+without registering them would have left 205 and 206 as *in-range* trait
+entries full of zeroes — and `ne[0] % ggml_blck_size(type)` on a zero
+block size is a division by zero, not a refusal. Turning a clean
+rejection into a crash is not an acceptable side effect of adding a
+tier, so both got C decoders and traits entries. All eight types 200–207
+are now registered, with no holes.
+
+Every one of them is checked against its Python implementation — decode
+bit for bit, and `vec_dot` against dequantise-then-dot — which is how
+the operation-order bug below was found rather than shipped.
+
+### Quantisation-aware training ✨
+
+`hypernix.quant.qat`:
+
+```python
+from hypernix.quant.qat import prepare_qat, finalize_qat
+
+model, report = prepare_qat(model, tier="HNX_1375BIT")
+...                                    # train as usual
+model = finalize_qat(model)            # plain nn.Linear, float weights
+```
+
+The forward pass uses the **quantised** weight, so the loss the model
+minimises is the loss it will have after `hyprslug` writes the file; the
+backward pass updates the float weight through a straight-through
+estimator. `finalize_qat` hands back the *float* weights, not the
+quantised ones — they are what hyprslug should be pointed at, and they
+now sit where the packer can represent them.
+
+Layers are skipped for the same reasons hyprslug skips tensors:
+embeddings, the output head, and any row shorter than a block or not a
+multiple of one. Simulating damage the quantiser will not do is its own
+way of making a model worse.
+
+### 𖢥 Clamping, without which QAT made everything worse
+
+A straight-through estimator puts no pressure on a weight's magnitude —
+only its sign reaches the output — so weights drift outward, and the
+block scale, being their mean absolute value, drifts with them. Measured
+on a 256-wide distillation task, weight norm 8.2 -> 18.9 over 600 steps.
+
+The first working version of this was *worse than not doing QAT at all*,
+on every tier:
+
+| tier | train in float | QAT, no clamp | QAT + clamp |
+|---|---|---|---|
+| HNX_1375BIT | 0.0350 | 0.0505 (0.69x) | **0.0232 (1.51x)** |
+| INT1 | 0.0370 | 0.0519 (0.71x) | **0.0196 (1.89x)** |
+| IQ0.9_L | 0.0500 | 0.2813 (0.18x) | **0.0336 (1.49x)** |
+| IQ0.5_XXXL | 0.0776 | 1.8994 (0.04x) | **0.0731 (1.06x)** |
+
+So weights are held within 1.5 block scales, by default. `QATConfig(clamp=0)`
+restores the textbook behaviour and the first column of numbers.
+
+Note the last row: at 0.56 bits per weight QAT buys 1.06x, because there
+is almost nothing left to arrange. The gains are where the tier has
+something to work with.
+
+### ❗ Where QAT did not help
+
+On a small classification task (1024-wide net, 8 classes, 800 steps) QAT
+was *worse* than training in float and quantising afterwards — 0.71
+against 0.58. Reported rather than omitted: these are two benchmarks,
+not a result, and the honest summary is that QAT helps on the
+regression-shaped task measured here and did not on the classification
+one.
+
+### 🧪 The fake quantiser is the real one, bit for bit
+
+If training simulates a packing that differs from what hyprslug writes,
+the model spends its capacity adapting to boundaries that never ship and
+the result is worse than no training. That is the row-length bug's exact
+shape — writer and reader agreeing with each other — with a training run
+attached, so `fake_quantize` is compared against the byte packer's own
+output and must match **exactly**.
+
+It did not, three times, and each was a real difference:
+
+- The packer stores an **FP16** scale, so every weight is a multiple of
+  one. The torch path used float32 — a ~3e-4 offset on every weight.
+- The straight-through estimator was spelled `w + (q - w).detach()`. In
+  floating point `w + (q - w)` is not `q`; each step rounds. And for a
+  non-finite weight it is `inf + (-inf)` = NaN, where the packer degrades
+  the block to zeros. `q.detach() + (w - w.detach())` adds an exact zero
+  instead.
+- `hnx_1375bit` decodes as `scale * index / 31`. The torch path computed
+  `(index / 31) * scale` — the same number in real arithmetic and a
+  different one in float32.
+
+All six packings are now bit-identical to the packer across seeds.
+
+## 0.72.4.post21 — why both tiers gave a 1.4 GB file
+
+Two models from the same BF16 Qwen3-class 2B, one `IQ0.9_L` and one
+`IQ0.5_XXXL`, **both 1.4 GB**. A tier claiming 0.56 bits per weight and
+one claiming 0.94 landing on the same size is not a coincidence.
+
+### The embedding table is the file 𖢥
+
+The default policy leaves `token_embd` and `output` at source precision.
+Qwen3's vocabulary is **151,936 tokens**, so on a 2.03B-parameter model
+those two tensors are **622M parameters — 31% of the model** — and at
+BF16 they are **1.24 GB before a single packed tensor is written**.
+
+The sub-bit body adds 99 MB at IQ0.5 and 165 MB at IQ0.9. That is the
+entire difference between the two files: 1.34 GB and 1.41 GB, both of
+which read as "1.4 GB".
+
+Measured, not reasoned:
+
+```
+70.8 MB source  ->  67.2 MB   default            15.20 bits/weight
+70.8 MB source  ->   2.5 MB   with the flags      0.56 bits/weight
+```
+
+`--quantize-embeddings --quantize-output` is a **27x** difference, and
+nothing anywhere mentioned it.
+
+### The report now states the file's rate 🐛
+
+`QuantizeReport` gained `effective_bits_per_weight` — output bytes over
+total weights — beside `tier_bits_per_weight`, which is the rate the
+packing writes for the tensors it touched. Both go into `--json`. When
+the first exceeds the second by more than 1.5x, the run says so and
+names the flags:
+
+```
+IQ0.5_XXXL  (quad_code_xxxl)
+  15.20 bits/weight over the whole file (0.562 where it packed)
+
+  ! This file costs 27x what the tier name suggests.
+    To get the size the tier is named for:
+      --quantize-embeddings --quantize-output
+```
+
+1.5x is deliberately generous: norms and biases are always copied and
+always small, so a little overshoot is the design working. Twenty-seven
+times over is the embedding table.
+
+### 🧪 The C and Python decoders now have to agree
+
+Checked for the first time, and they do — **bit for bit, on all five
+tiers**, including zeros, a single outlier, all-negative and alternating
+input.
+
+This mattered more than it sounds. `hypernix.quant.subbit` (what the
+quantiser and `hnxrun` use) and `native/ggml-hnx/ggml-hnx.c` (what a
+patched llama.cpp runs) are two independent implementations of the same
+packing, and nothing compared them. That is the exact shape of the
+row-length bug: writer and reader sharing a misconception and agreeing
+with each other. Had these drifted, a model that generates fine under
+`hnx generate` would produce noise under llama.cpp while every test
+passed. `tests/test_decoder_agreement.py` builds the C decoder and
+compares; it skips where there is no compiler.
+
+### ❗ What is *not* a bug: sub-bit output quality
+
+Measured end to end from a BF16 source:
+
+| tier | signs kept | correlation with the original weights |
+|---|---|---|
+| IQ0.9_L | 93.7% | +0.70 |
+| IQ0.5_XXXL | 75.0% | +0.40 |
+
+Both match their design exactly (0.9375 and 0.75 by construction). A
+correlation of 0.40 means **84% of the weight information is gone**, and
+that is what the tier *is* — it stores two signs of every four and no
+magnitude at all.
+
+A 2B model does not survive that, and no fix to this package will change
+it. `native/ggml-hnx/build.sh` has said so for several releases: below
+about 1.5 bits per weight a model stops being a degraded version of
+itself and becomes a different, far weaker one. For a 2B, IQ0.9_L is
+already past that line.
+
+If sub-bit is the goal, an importance matrix (`--imatrix`) decides which
+signs survive and is the only lever that makes these tiers meaningfully
+better. Without one the scale is a plain mean absolute value.
+
+### `--check` now catches a truncated file 🐛
+
+The other half of the report was a 1.4 GB `IQ0.5_XXXL` that would not
+load at all, under a screenshot that says **Interrupted**.
+
+`check_gguf` only ever asked about tensor *types*. It now validates the
+container the way `gguf_init_from_reader` does before it reaches a
+block: tensor data extending past the end of the file, duplicate tensor
+names, zero or negative dimensions, more than four dimensions. llama.cpp
+reports every one of those as the same bare "failed to load model"
+naming no tensor, so the file's owner gets nothing to go on.
+
+```
+The file itself is wrong, before any tensor's type:
+  'token_embd.weight' needs 18,637 bytes past the end of the file
+  (the file is 55,603 bytes; the table asks for 74,240) -- truncated
+
+A quantise that was interrupted, or a disk that filled up, leaves
+exactly this. Re-run the quantisation.
+```
+
+A multi-gigabyte write is long enough for that to be the likeliest
+explanation of a load failure with no other symptom. It is reported
+separately from the row-length fault because the remedies differ:
+`--repair-to` fixes that one, and cannot invent bytes that were never
+written.
+
 ## 0.72.4.post20 — `status` did not know about the autostart service
 
 The `systemctl` output settled it:

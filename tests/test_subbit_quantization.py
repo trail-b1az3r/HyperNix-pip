@@ -94,8 +94,14 @@ class TestTheBitRatesAreWhatTheTiersClaim:
             name for name, spec in PACKINGS.items()
             if spec.bits_per_weight >= 1.0
         ]
-        assert not_sub_bit == ["int1_binary"]
+        # Both of these live in this module because they are the same
+        # machinery -- signs and a scale -- not because they are sub-bit.
+        # INT1 is the k == g end of it; hnx_1375bit is what comes after,
+        # once every sign is stored and the only thing left to buy is
+        # magnitude. Neither is named IQ0-anything, and that is the point.
+        assert not_sub_bit == ["int1_binary", "hnx_1375bit"]
         assert TIER_TYPES["INT1"][1] == "int1_binary"
+        assert TIER_TYPES["HNX_1375BIT"][1] == "hnx_1375bit"
 
     def test_more_bits_means_less_error(self):
         """Monotonic, or the tiers are not a ladder.

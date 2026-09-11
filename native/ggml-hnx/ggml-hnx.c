@@ -13,14 +13,33 @@
 #include <math.h>
 #include <string.h>
 
-/* Order matters only for readability; lookup is a linear scan over five
- * entries, which is faster than anything cleverer at this size. */
+/* Order matters only for readability; lookup is a linear scan over six
+ * entries, which is faster than anything cleverer at this size.
+ *
+ * The trailing fields are sub_blocks/sub_bits then the codebook
+ * pointer and its width. Written out rather than left to C's
+ * zero-fill so -Werror builds stay quiet and the three families --
+ * signs only, signs plus sub-magnitude, fixed codebook -- are
+ * visible as three shapes in one table.
+ * Written out rather than left to C's zero-fill so -Werror builds
+ * stay quiet and the distinction is visible in the table. */
+/* The codebooks, matching hypernix.quant.lowbit.CODECS exactly. INT4 is
+ * asymmetric because two's complement is: -8 exists and +8 does not. */
+static const float HNX_LEVELS_INT4[16] = {
+    -8.0f, -7.0f, -6.0f, -5.0f, -4.0f, -3.0f, -2.0f, -1.0f,
+     0.0f,  1.0f,  2.0f,  3.0f,  4.0f,  5.0f,  6.0f,  7.0f,
+};
+static const float HNX_LEVELS_FP2[4] = { -2.0f, -1.0f, 1.0f, 2.0f };
+
 static const hnx_type_info HNX_TYPES[] = {
-    { HNX_TYPE_IQ0_9,  "IQ0.9_L",     8, 7, sizeof(hnx_block_iq0_9),  0.9375f },
-    { HNX_TYPE_IQ0_75, "IQ0.75_M",    4, 3, sizeof(hnx_block_iq0_75), 0.8125f },
-    { HNX_TYPE_IQ0_5,  "IQ0.5_XXXL",  4, 2, sizeof(hnx_block_iq0_5),  0.5625f },
-    { HNX_TYPE_IQ0_25, "IQ0.25_UXL", 16, 3, sizeof(hnx_block_iq0_25), 0.2500f },
-    { HNX_TYPE_INT1,   "INT1",        1, 1, sizeof(hnx_block_int1),   1.0625f },
+    { HNX_TYPE_IQ0_9,  "IQ0.9_L",     8, 7, sizeof(hnx_block_iq0_9),  0.9375f,  0, 0 , NULL, 0 },
+    { HNX_TYPE_IQ0_75, "IQ0.75_M",    4, 3, sizeof(hnx_block_iq0_75), 0.8125f,  0, 0 , NULL, 0 },
+    { HNX_TYPE_IQ0_5,  "IQ0.5_XXXL",  4, 2, sizeof(hnx_block_iq0_5),  0.5625f,  0, 0 , NULL, 0 },
+    { HNX_TYPE_IQ0_25, "IQ0.25_UXL", 16, 3, sizeof(hnx_block_iq0_25), 0.2500f,  0, 0 , NULL, 0 },
+    { HNX_TYPE_INT1,   "INT1",        1, 1, sizeof(hnx_block_int1),   1.0625f,  0, 0 , NULL, 0 },
+    { HNX_TYPE_1375,   "HNX_1375BIT", 1, 1, sizeof(hnx_block_1375),   1.3750f, 16, 5, NULL, 0 },
+    { HNX_TYPE_INT4,   "INT4",        1, 1, sizeof(hnx_block_int4),   4.0625f,  0, 0, HNX_LEVELS_INT4, 4 },
+    { HNX_TYPE_FP2,    "FP2",         1, 1, sizeof(hnx_block_fp2),    2.0625f,  0, 0, HNX_LEVELS_FP2,  2 },
 };
 static const size_t HNX_TYPE_COUNT = sizeof(HNX_TYPES) / sizeof(HNX_TYPES[0]);
 
@@ -34,6 +53,9 @@ _Static_assert(sizeof(hnx_block_iq0_75) == 26, "IQ0.75 block must be 26 bytes");
 _Static_assert(sizeof(hnx_block_iq0_5)  == 18, "IQ0.5 block must be 18 bytes");
 _Static_assert(sizeof(hnx_block_iq0_25) ==  8, "IQ0.25 block must be 8 bytes");
 _Static_assert(sizeof(hnx_block_int1)   == 34, "INT1 block must be 34 bytes");
+_Static_assert(sizeof(hnx_block_1375)   == 44, "HNX_1375BIT block must be 44 bytes");
+_Static_assert(sizeof(hnx_block_int4)   == 130, "INT4 block must be 130 bytes");
+_Static_assert(sizeof(hnx_block_fp2)    == 66, "FP2 block must be 66 bytes");
 #endif
 
 const hnx_type_info *hnx_type_lookup(int type) {
@@ -138,6 +160,51 @@ uint16_t hnx_fp32_to_fp16(float f) {
  * One loop that cannot disagree with itself is worth more here than the
  * unrolling.
  */
+/* Every sign stored, and one magnitude per sub-block.
+ *
+ * The signs occupy one bit each, so they end on a byte boundary and the
+ * indices start at payload[HNX_BLOCK_SIZE/8] -- no bit cursor has to
+ * cross between the two halves. Kept deliberately separate from
+ * hnx_decode: folding a second layout into that loop is how the IQ0.25
+ * cursor bug happened.
+ */
+static void hnx_decode_sub(const uint8_t *payload, float scale,
+                           int sub_blocks, int sub_bits, float *dst) {
+    const int sub_size = HNX_BLOCK_SIZE / sub_blocks;
+    const int levels   = (1 << sub_bits) - 1;
+    const uint8_t *indices = payload + (HNX_BLOCK_SIZE / 8);
+    size_t bit = 0;
+    for (int s = 0; s < sub_blocks; s++) {
+        int index = 0;
+        for (int b = 0; b < sub_bits; b++) {
+            index |= ((indices[bit >> 3] >> (bit & 7)) & 1) << b;
+            bit++;
+        }
+        const float magnitude = scale * (float)index / (float)levels;
+        const size_t base = (size_t)s * (size_t)sub_size;
+        for (int i = 0; i < sub_size; i++) {
+            const size_t at = base + (size_t)i;
+            const int set = (payload[at >> 3] >> (at & 7)) & 1;
+            dst[at] = set ? magnitude : -magnitude;
+        }
+    }
+}
+
+/* Fixed codebook: one code per weight, LSB-first, into `levels`. */
+static void hnx_decode_codebook(const uint8_t *payload, float scale,
+                                const float *levels, int bits, float *dst) {
+    const int mask = (1 << bits) - 1;
+    size_t bit = 0;
+    for (size_t i = 0; i < HNX_BLOCK_SIZE; i++) {
+        int code = 0;
+        for (int b = 0; b < bits; b++) {
+            code |= ((payload[bit >> 3] >> (bit & 7)) & 1) << b;
+            bit++;
+        }
+        dst[i] = levels[code & mask] * scale;
+    }
+}
+
 static void hnx_decode(const uint8_t *payload, float scale, int group, int kept,
                        float *dst) {
     size_t bit = 0;
@@ -166,7 +233,15 @@ int hnx_dequantize_block(int type, const void *src, float *dst) {
     uint16_t raw;
     memcpy(&raw, bytes, sizeof(raw));    /* memcpy, not a cast: the file
                                           * gives no alignment guarantee */
-    hnx_decode(bytes + 2, hnx_fp16_to_fp32(raw), info->group, info->kept, dst);
+    if (info->levels) {
+        hnx_decode_codebook(bytes + 2, hnx_fp16_to_fp32(raw), info->levels,
+                            info->level_bits, dst);
+    } else if (info->sub_blocks) {
+        hnx_decode_sub(bytes + 2, hnx_fp16_to_fp32(raw),
+                       info->sub_blocks, info->sub_bits, dst);
+    } else {
+        hnx_decode(bytes + 2, hnx_fp16_to_fp32(raw), info->group, info->kept, dst);
+    }
     return 0;
 }
 
@@ -177,8 +252,16 @@ size_t hnx_dequantize_rows(int type, const void *src, float *dst, size_t nblocks
     for (size_t b = 0; b < nblocks; b++) {
         uint16_t raw;
         memcpy(&raw, in, sizeof(raw));
-        hnx_decode(in + 2, hnx_fp16_to_fp32(raw), info->group, info->kept,
-                   dst + b * HNX_BLOCK_SIZE);
+        if (info->levels) {
+            hnx_decode_codebook(in + 2, hnx_fp16_to_fp32(raw), info->levels,
+                                info->level_bits, dst + b * HNX_BLOCK_SIZE);
+        } else if (info->sub_blocks) {
+            hnx_decode_sub(in + 2, hnx_fp16_to_fp32(raw), info->sub_blocks,
+                           info->sub_bits, dst + b * HNX_BLOCK_SIZE);
+        } else {
+            hnx_decode(in + 2, hnx_fp16_to_fp32(raw), info->group, info->kept,
+                       dst + b * HNX_BLOCK_SIZE);
+        }
         in += info->block_bytes;
     }
     return nblocks * HNX_BLOCK_SIZE;
@@ -198,6 +281,73 @@ float hnx_vec_dot(int type, const void *x, const float *y, size_t nblocks) {
     const uint8_t *in = (const uint8_t *)x;
     const int group = info->group;
     const int kept  = info->kept;
+
+    if (info->levels) {
+        /* Nothing to fold: every weight has its own code, so this is the
+         * ordinary dot product with a table lookup in it. */
+        const int bits = info->level_bits;
+        double total = 0.0;
+        for (size_t b = 0; b < nblocks; b++) {
+            uint16_t raw;
+            memcpy(&raw, in, sizeof(raw));
+            const float scale = hnx_fp16_to_fp32(raw);
+            const uint8_t *payload = in + 2;
+            const float *row = y + b * HNX_BLOCK_SIZE;
+            double acc = 0.0;
+            size_t bit = 0;
+            for (size_t i = 0; i < HNX_BLOCK_SIZE; i++) {
+                int code = 0;
+                for (int k = 0; k < bits; k++) {
+                    code |= ((payload[bit >> 3] >> (bit & 7)) & 1) << k;
+                    bit++;
+                }
+                acc += (double)info->levels[code] * (double)row[i];
+            }
+            total += (double)scale * acc;
+            in += info->block_bytes;
+        }
+        return (float)total;
+    }
+
+    if (info->sub_blocks) {
+        /* Every weight is +/- its sub-block's magnitude, so the block
+         * factors the same way the sign-only types do -- just sixteen
+         * times instead of once:
+         *
+         *   sum_i w_i y_i  ==  sum_s m_s * sum_{i in s} (+/-) y_i
+         *
+         * One multiply per sub-block, an add or subtract per weight, and
+         * the weights are still never materialised. */
+        const int sub_size = HNX_BLOCK_SIZE / info->sub_blocks;
+        const int levels   = (1 << info->sub_bits) - 1;
+        double total = 0.0;
+        for (size_t b = 0; b < nblocks; b++) {
+            uint16_t raw;
+            memcpy(&raw, in, sizeof(raw));
+            const float scale = hnx_fp16_to_fp32(raw);
+            const uint8_t *payload = in + 2;
+            const uint8_t *indices = payload + (HNX_BLOCK_SIZE / 8);
+            const float *row = y + b * HNX_BLOCK_SIZE;
+            size_t bit = 0;
+            for (int s = 0; s < info->sub_blocks; s++) {
+                int index = 0;
+                for (int k = 0; k < info->sub_bits; k++) {
+                    index |= ((indices[bit >> 3] >> (bit & 7)) & 1) << k;
+                    bit++;
+                }
+                const size_t base = (size_t)s * (size_t)sub_size;
+                double signed_sum = 0.0;
+                for (int i = 0; i < sub_size; i++) {
+                    const size_t at = base + (size_t)i;
+                    const int set = (payload[at >> 3] >> (at & 7)) & 1;
+                    signed_sum += set ? (double)row[at] : -(double)row[at];
+                }
+                total += (double)scale * (double)index / (double)levels * signed_sum;
+            }
+            in += info->block_bytes;
+        }
+        return (float)total;
+    }
 
     /* Accumulated in double. A 7B row is thousands of blocks and the
      * terms are all the same magnitude, which is the case where float32

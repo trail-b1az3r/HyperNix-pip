@@ -386,16 +386,11 @@ class TestTheTiersLlamaCppCanActuallyLoad:
         count = int(re.search(r"^HNX_TYPE_COUNT\s*=\s*(\d+)", text, re.M).group(1))
         assert count == max(LLAMA_CPP_REGISTERED_TYPES) + 1
 
-    @pytest.mark.parametrize("tier", ["INT4", "FP2"])
-    def test_the_two_python_only_tiers_are_reported_as_such(self, tier):
-        from hypernix.quant.ggufcheck import llama_cpp_can_load_type
-
-        assert not llama_cpp_can_load_type(TIER_TYPES[tier][0])
-
-    @pytest.mark.parametrize(
-        "tier", ["IQ0.9_L", "IQ0.75_M", "IQ0.5_XXXL", "IQ0.25_UXL", "INT1"]
-    )
-    def test_the_five_registered_tiers_are_loadable(self, tier):
+    @pytest.mark.parametrize("tier", sorted(TIER_TYPES))
+    def test_every_tier_is_loadable(self, tier):
+        """INT4 and FP2 were not, until adding a type at 207 forced the
+        question: raising GGML_TYPE_COUNT past 205 to reach it would have
+        turned their clean refusal into a division by zero."""
         from hypernix.quant.ggufcheck import llama_cpp_can_load_type
 
         assert llama_cpp_can_load_type(TIER_TYPES[tier][0])
@@ -409,7 +404,7 @@ class TestTheTiersLlamaCppCanActuallyLoad:
             for tier, (type_id, _packing) in TIER_TYPES.items()
         }
         assert len(verdicts) == len(TIER_TYPES)
-        assert sum(verdicts.values()) == 5, verdicts
+        assert all(verdicts.values()), verdicts
 
     def test_upstream_types_are_never_flagged(self):
         from hypernix.quant.ggufcheck import llama_cpp_can_load_type
@@ -417,30 +412,127 @@ class TestTheTiersLlamaCppCanActuallyLoad:
         for kind in (GGMLType.F32, GGMLType.F16, GGMLType.Q4_K, GGMLType.Q6_K):
             assert llama_cpp_can_load_type(int(kind))
 
-    def test_a_file_in_an_unregistered_type_is_reported(self, tmp_path):
-        path = tmp_path / "int4.gguf"
-        writer = GGUFWriter(path)
-        writer.set_metadata("general.architecture", "llama")
-        writer.set_metadata("hypernix.tier", "INT4")
-        writer.add_tensor("blk.0.attn_q.weight", CLEAN_SHAPE, int(GGMLType.HNX_INT4))
-        writer.write(lambda t: bytes(t.nbytes))
-        report = check_gguf(path)
-        assert report.unregistered == ["INT4"]
+    def test_an_unregistered_id_is_still_recognised_as_one(self):
+        """Every shipped tier is registered now, so this exercises the
+        mechanism rather than a tier.
+
+        It is worth keeping: the next type added starts life unregistered
+        between the Python table and the ggml patch, and this is what
+        tells the difference."""
+        from hypernix.quant.ggufcheck import llama_cpp_can_load_type
+
+        assert not llama_cpp_can_load_type(250)
+        assert not llama_cpp_can_load_type(208)
+
+    def test_the_report_describes_an_unregistered_type(self):
+        """Built directly, since no tier produces one any more."""
+        from hypernix.quant.ggufcheck import CheckReport
+
+        report = CheckReport(path="x.gguf", tensors=1, unregistered=["SOMETHING_NEW"])
         assert report.loadable is False
         assert report.runs_under_hnxrun is True
-
-    def test_the_advice_names_the_tiers_that_would_work(self, tmp_path):
-        """"cannot be loaded" without a way forward is not much help."""
-        path = tmp_path / "fp2.gguf"
-        writer = GGUFWriter(path)
-        writer.set_metadata("general.architecture", "llama")
-        writer.add_tensor("blk.0.attn_q.weight", CLEAN_SHAPE, int(GGMLType.HNX_FP2))
-        writer.write(lambda t: bytes(t.nbytes))
-        text = check_gguf(path).describe()
-        assert "IQ0.5_XXXL" in text
+        text = report.describe()
+        assert "SOMETHING_NEW" in text
         assert "hnx generate" in text
+        assert "IQ0.5_XXXL" in text, "the advice has to name a tier that works"
 
     def test_a_registered_tier_is_still_reported_loadable(self, loadable):
         report = check_gguf(loadable)
         assert report.unregistered == []
         assert report.loadable is True
+
+
+class TestTheContainerItself:
+    """Problems with the file, not with a tensor's type.
+
+    llama.cpp validates these in `gguf_init_from_reader` before it looks
+    at a single block, and reports every one as the same bare "failed to
+    load model" naming no tensor — so their owner gets nothing to go on.
+
+    Truncation is the one that matters: a quantise that was interrupted,
+    or a disk that filled part-way through a multi-gigabyte tensor,
+    leaves a header promising more than the file holds. A 1.4 GB model is
+    a long enough write for that to be the likeliest explanation of a
+    load failure with no other symptom.
+    """
+
+    @pytest.fixture
+    def intact(self, tmp_path):
+        path = tmp_path / "intact.gguf"
+        writer = GGUFWriter(path)
+        writer.set_metadata("general.architecture", "llama")
+        writer.add_tensor("blk.0.attn_q.weight", CLEAN_SHAPE, int(GGMLType.HNX_IQ0_5))
+        writer.add_tensor("blk.1.attn_q.weight", CLEAN_SHAPE, int(GGMLType.HNX_IQ0_5))
+        writer.write(lambda tensor: bytes(tensor.nbytes))
+        return path
+
+    def test_an_intact_file_is_loadable(self, intact):
+        assert check_gguf(intact).loadable
+
+    def test_a_truncated_file_is_caught(self, intact, tmp_path):
+        cut = tmp_path / "cut.gguf"
+        cut.write_bytes(intact.read_bytes()[:-64])
+        report = check_gguf(cut)
+        assert not report.loadable
+        assert report.structural
+
+    def test_it_says_truncated_in_so_many_words(self, intact, tmp_path):
+        """"failed to load model" told them nothing; this has to."""
+        cut = tmp_path / "cut2.gguf"
+        cut.write_bytes(intact.read_bytes()[:-64])
+        assert "truncated" in check_gguf(cut).structural[0]
+
+    def test_it_names_the_tensor_and_how_far_short(self, intact, tmp_path):
+        cut = tmp_path / "cut3.gguf"
+        cut.write_bytes(intact.read_bytes()[:-64])
+        problem = check_gguf(cut).structural[0]
+        assert "blk.1.attn_q.weight" in problem
+        assert "past the end of the file" in problem
+
+    def test_the_advice_is_to_requantise(self, intact, tmp_path):
+        """Repair cannot invent bytes that were never written."""
+        cut = tmp_path / "cut4.gguf"
+        cut.write_bytes(intact.read_bytes()[:-64])
+        text = check_gguf(cut).describe()
+        assert "interrupted" in text
+        assert "Re-run the quantisation" in text
+
+    def test_truncation_is_not_reported_as_a_type_problem(self, intact, tmp_path):
+        """The two have different remedies -- repair the one, requantise
+        the other -- so they must not be confused."""
+        cut = tmp_path / "cut5.gguf"
+        cut.write_bytes(intact.read_bytes()[:-64])
+        report = check_gguf(cut)
+        assert report.bad == []
+        assert report.structural
+
+    def test_a_truncated_file_is_not_reported_as_hnxrun_runnable(self, intact, tmp_path):
+        """`runs_under_hnxrun` says "llama.cpp cannot, but we can". A file
+        missing its bytes cannot be read by anything."""
+        cut = tmp_path / "cut6.gguf"
+        cut.write_bytes(intact.read_bytes()[:-64])
+        assert not check_gguf(cut).runs_under_hnxrun
+
+    def test_the_json_carries_the_structural_list(self, intact, tmp_path):
+        cut = tmp_path / "cut7.gguf"
+        cut.write_bytes(intact.read_bytes()[:-64])
+        payload = check_gguf(cut).as_dict()
+        assert payload["structural"]
+        assert payload["loadable"] is False
+
+    def test_the_cli_exits_non_zero_on_a_truncated_file(self, intact, tmp_path):
+        import contextlib
+        import io
+
+        from hypernix.quant.hyprslug_cli import main
+
+        out = io.StringIO()
+        cut = tmp_path / "cut8.gguf"
+        cut.write_bytes(intact.read_bytes()[:-64])
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(out):
+            code = main([str(cut), "--check"])
+        assert code == 1
+        assert "truncated" in out.getvalue()
+
+    def test_an_intact_file_reports_nothing_structural(self, intact):
+        assert check_gguf(intact).structural == []
