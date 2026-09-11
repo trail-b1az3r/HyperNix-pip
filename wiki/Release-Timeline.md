@@ -623,3 +623,83 @@ timeline
         : 6a02fc0 - Auto-update README header (hourly)
 ```
 
+## Release v0.72.4.post12 (2026-09-10)
+
+```mermaid
+timeline
+    title Release v0.72.4.post12 Commits
+    0.72.4.post12
+        : 70a1d7e - 0.72.4.post12 — three tests that needed a server and never said so
+        : ff63f05 - 0.72.4.post11 — the engine is linked
+        : 17a8807 - 0.72.4.post10 — HyperLink runs models on the phone
+        : 46f5901 - 0.72.4.post9 — HyperLink catches up, notifies, and searches
+        : 27222ca - 0.72.4.post8 — deprecated modules say so where it can be seen
+        : 9a45a26 - 0.72.4.post7 — the subsystem map describes the tree that exists
+        : 0031df3 - 0.72.4.post6 — the release guard stopped refusing prepared releases
+        : e37e37d - chore- update JSON stats (scheduled)
+        : 60f45d6 - 0.72.4.post5 — hypernix-t1 start left nothing running
+        : fb4e216 - 0.72.4.post4 — hnx runtime, and the reason hnx gather printed the usage table
+        : d3eaad2 - build.sh- pin C++17, so one upstream warning stops repeating 46 times
+        : 29a3103 - Auto-update README header (hourly)
+```
+
+## Release v0.72.4.post13 (2026-09-10)
+
+```mermaid
+timeline
+    title Release v0.72.4.post13 Commits
+    0.72.4.post13
+        : 6c7be9e - 0.72.4.post13 — `optional- true` does not mean what I thought
+```
+
+## Release v0.72.4.post14 (2026-09-10)
+
+```mermaid
+timeline
+    title Release v0.72.4.post14 Commits
+    0.72.4.post14
+        : 58a3164 - 0.72.4.post14 — actor isolation, and the easy fix that was wrong
+```
+
+## Release v0.72.4.post16 (2026-09-10)
+
+```mermaid
+timeline
+    title Release v0.72.4.post16 Commits
+    0.72.4.post16
+        : ff4dca46 - 0.72.4.post16 — ne[0], not the element count
+        : 0fd4adc2 - Auto-update README header (hourly)
+        : 4a3a7aa2 - 0.72.4.post15 — SecTask is macOS-only
+```
+
+## Release v0.72.4.post17 (2026-09-10)
+
+```mermaid
+timeline
+    title Release v0.72.4.post17 Commits
+    0.72.4.post17
+        : 28d01459 - 0.72.4.post17 — check and repair the files already written
+```
+
+## Release v0.72.4.post18 (2026-09-10)
+
+```mermaid
+timeline
+    title Release v0.72.4.post18 Commits
+    0.72.4.post18
+        : 8ff6b497 - 0.72.4.post18 — Brewer attention was not causal
+        : 35b0dd90 - Auto-update README header (hourly)
+```
+
+## Release v0.72.4.post20 (2026-09-10)
+
+```mermaid
+timeline
+    title Release v0.72.4.post20 Commits
+    0.72.4.post20
+        : 845cf628 - chore- update JSON stats (scheduled)
+        : 99f6b87f - 0.72.4.post20 — status did not know about the autostart service
+        : fc08f185 - 0.72.4.post19 — start was reporting someone else's server
+        : cbf7a1fd - Auto-update README header (hourly)
+```
+
