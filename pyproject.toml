@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "hypernix"
 version = "0.72.4.post20"
-description = "Download and quantize the HyperNix PyTorch model to GGUF (fp32/fp16/Q8_0/Q6_K/Q4_K_M)."
+description = "Download and quantize the HyperNix PyTorch model to GGUF (fp32/fp16/Q8_0/Q6_K/Q4_K_M). and train models with a massive ai toolkit "
 readme = { file = "README.md", content-type = "text/markdown" }
 license = { text = "HOL-1.0" }
 # Python 3.12 is preferred and will auto-run if installed.
@@ -14,7 +14,7 @@ license = { text = "HOL-1.0" }
 # Keep the floor at 3.10 so modern syntax compiles (structural pattern matching, PEP 604 unions).
 requires-python = ">=3.10,<3.15"
 authors = [{ name = "HyperNix contributors" }]
-keywords = ["hypernix", "gguf", "quantization", "llama.cpp", "pytorch"]
+keywords = ["hypernix", "gguf", "quantization", "llama.cpp", "pytorch", "Ai", "llm"]
 classifiers = [
     "Development Status :: 3 - alpha",
     "Environment :: Console",
