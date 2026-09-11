@@ -21,6 +21,121 @@ next release header.
 - 𖢥 major bug fix
 - ꩜ restore to older version of item
 - ❗ unfixed known bug
+## 0.72.4.post21 — why both tiers gave a 1.4 GB file
+
+Two models from the same BF16 Qwen3-class 2B, one `IQ0.9_L` and one
+`IQ0.5_XXXL`, **both 1.4 GB**. A tier claiming 0.56 bits per weight and
+one claiming 0.94 landing on the same size is not a coincidence.
+
+### The embedding table is the file 𖢥
+
+The default policy leaves `token_embd` and `output` at source precision.
+Qwen3's vocabulary is **151,936 tokens**, so on a 2.03B-parameter model
+those two tensors are **622M parameters — 31% of the model** — and at
+BF16 they are **1.24 GB before a single packed tensor is written**.
+
+The sub-bit body adds 99 MB at IQ0.5 and 165 MB at IQ0.9. That is the
+entire difference between the two files: 1.34 GB and 1.41 GB, both of
+which read as "1.4 GB".
+
+Measured, not reasoned:
+
+```
+70.8 MB source  ->  67.2 MB   default            15.20 bits/weight
+70.8 MB source  ->   2.5 MB   with the flags      0.56 bits/weight
+```
+
+`--quantize-embeddings --quantize-output` is a **27x** difference, and
+nothing anywhere mentioned it.
+
+### The report now states the file's rate 🐛
+
+`QuantizeReport` gained `effective_bits_per_weight` — output bytes over
+total weights — beside `tier_bits_per_weight`, which is the rate the
+packing writes for the tensors it touched. Both go into `--json`. When
+the first exceeds the second by more than 1.5x, the run says so and
+names the flags:
+
+```
+IQ0.5_XXXL  (quad_code_xxxl)
+  15.20 bits/weight over the whole file (0.562 where it packed)
+
+  ! This file costs 27x what the tier name suggests.
+    To get the size the tier is named for:
+      --quantize-embeddings --quantize-output
+```
+
+1.5x is deliberately generous: norms and biases are always copied and
+always small, so a little overshoot is the design working. Twenty-seven
+times over is the embedding table.
+
+### 🧪 The C and Python decoders now have to agree
+
+Checked for the first time, and they do — **bit for bit, on all five
+tiers**, including zeros, a single outlier, all-negative and alternating
+input.
+
+This mattered more than it sounds. `hypernix.quant.subbit` (what the
+quantiser and `hnxrun` use) and `native/ggml-hnx/ggml-hnx.c` (what a
+patched llama.cpp runs) are two independent implementations of the same
+packing, and nothing compared them. That is the exact shape of the
+row-length bug: writer and reader sharing a misconception and agreeing
+with each other. Had these drifted, a model that generates fine under
+`hnx generate` would produce noise under llama.cpp while every test
+passed. `tests/test_decoder_agreement.py` builds the C decoder and
+compares; it skips where there is no compiler.
+
+### ❗ What is *not* a bug: sub-bit output quality
+
+Measured end to end from a BF16 source:
+
+| tier | signs kept | correlation with the original weights |
+|---|---|---|
+| IQ0.9_L | 93.7% | +0.70 |
+| IQ0.5_XXXL | 75.0% | +0.40 |
+
+Both match their design exactly (0.9375 and 0.75 by construction). A
+correlation of 0.40 means **84% of the weight information is gone**, and
+that is what the tier *is* — it stores two signs of every four and no
+magnitude at all.
+
+A 2B model does not survive that, and no fix to this package will change
+it. `native/ggml-hnx/build.sh` has said so for several releases: below
+about 1.5 bits per weight a model stops being a degraded version of
+itself and becomes a different, far weaker one. For a 2B, IQ0.9_L is
+already past that line.
+
+If sub-bit is the goal, an importance matrix (`--imatrix`) decides which
+signs survive and is the only lever that makes these tiers meaningfully
+better. Without one the scale is a plain mean absolute value.
+
+### `--check` now catches a truncated file 🐛
+
+The other half of the report was a 1.4 GB `IQ0.5_XXXL` that would not
+load at all, under a screenshot that says **Interrupted**.
+
+`check_gguf` only ever asked about tensor *types*. It now validates the
+container the way `gguf_init_from_reader` does before it reaches a
+block: tensor data extending past the end of the file, duplicate tensor
+names, zero or negative dimensions, more than four dimensions. llama.cpp
+reports every one of those as the same bare "failed to load model"
+naming no tensor, so the file's owner gets nothing to go on.
+
+```
+The file itself is wrong, before any tensor's type:
+  'token_embd.weight' needs 18,637 bytes past the end of the file
+  (the file is 55,603 bytes; the table asks for 74,240) -- truncated
+
+A quantise that was interrupted, or a disk that filled up, leaves
+exactly this. Re-run the quantisation.
+```
+
+A multi-gigabyte write is long enough for that to be the likeliest
+explanation of a load failure with no other symptom. It is reported
+separately from the row-length fault because the remedies differ:
+`--repair-to` fixes that one, and cannot invent bytes that were never
+written.
+
 ## 0.72.4.post20 — `status` did not know about the autostart service
 
 The `systemctl` output settled it:

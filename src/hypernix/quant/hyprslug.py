@@ -416,6 +416,46 @@ class QuantizeReport:
         total = self.elements_quantized + self.elements_copied
         return (self.elements_quantized / total) if total else 0.0
 
+    @property
+    def elements_total(self) -> int:
+        return self.elements_quantized + self.elements_copied
+
+    @property
+    def effective_bits_per_weight(self) -> float:
+        """What the *file* costs per weight, not what the tier packs at.
+
+        The number the tier is named for describes the tensors it packs.
+        It says nothing about the ones left alone -- and on a model with
+        a large vocabulary those are most of the file. A Qwen3-class 2B
+        has a 151,936-token vocabulary, so `token_embd` and `output` are
+        622M of its 2.03B parameters; left at BF16 they are 1.24 GB
+        before a single packed tensor is written, and `IQ0.5_XXXL`
+        produces a 1.4 GB file at 5.3 bits per weight. Picking a
+        different tier barely moves it.
+
+        Reporting only the tier's rate is how somebody spends an hour
+        quantising and gets a file ten times the size they asked for,
+        with nothing anywhere saying why.
+        """
+        return (self.output_bytes * 8 / self.elements_total) if self.elements_total else 0.0
+
+    @property
+    def tier_bits_per_weight(self) -> float:
+        """The rate the packing writes, for the tensors it touched."""
+        return _bits_per_weight(self.packing) if self.packing else 0.0
+
+    @property
+    def name_is_misleading(self) -> bool:
+        """True when the file costs far more per weight than its tier.
+
+        1.5x is deliberately generous: norms and biases are always
+        copied and always small, so a little overshoot is the design
+        working. Ten times over is the embedding table, and worth
+        shouting about.
+        """
+        tier = self.tier_bits_per_weight
+        return bool(tier) and self.effective_bits_per_weight > tier * 1.5
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "tier": self.tier,
@@ -429,6 +469,9 @@ class QuantizeReport:
             "formats": dict(sorted(self.formats.items())),
             "requantized_from": dict(sorted(self.requantized_from.items())),
             "quantized_fraction": round(self.quantized_fraction, 4),
+            "effective_bits_per_weight": round(self.effective_bits_per_weight, 3),
+            "tier_bits_per_weight": round(self.tier_bits_per_weight, 3),
+            "name_is_misleading": self.name_is_misleading,
             "skipped": [{"tensor": n, "reason": r} for n, r in self.skipped],
             "seconds": round(self.seconds, 2),
         }
@@ -440,7 +483,27 @@ class QuantizeReport:
             f"({self.compression:.1f}x)",
             f"  {self.tensors_quantized}/{self.tensors_total} tensors packed, "
             f"{self.quantized_fraction * 100:.1f}% of weights",
+            f"  {self.effective_bits_per_weight:.2f} bits/weight over the whole file "
+            f"({self.tier_bits_per_weight:.3f} where it packed)",
         ]
+        if self.name_is_misleading:
+            over = self.effective_bits_per_weight / self.tier_bits_per_weight
+            lines.append("")
+            lines.append(
+                f"  ! This file costs {over:.0f}x what the tier name suggests."
+            )
+            lines.append(
+                "    The tensors left at source precision are most of it -- on a"
+            )
+            lines.append(
+                "    large vocabulary, token_embd and output alone can be a third"
+            )
+            lines.append(
+                "    of the parameters and nearly all of the bytes."
+            )
+            lines.append("    To get the size the tier is named for:")
+            lines.append("      --quantize-embeddings --quantize-output")
+            lines.append("")
         if len(self.formats) > 1:
             mix = ", ".join(f"{fmt} x{count}" for fmt, count in sorted(self.formats.items()))
             lines.append(f"  mix: {mix}")

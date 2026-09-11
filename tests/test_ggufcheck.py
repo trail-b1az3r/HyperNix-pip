@@ -444,3 +444,99 @@ class TestTheTiersLlamaCppCanActuallyLoad:
         report = check_gguf(loadable)
         assert report.unregistered == []
         assert report.loadable is True
+
+
+class TestTheContainerItself:
+    """Problems with the file, not with a tensor's type.
+
+    llama.cpp validates these in `gguf_init_from_reader` before it looks
+    at a single block, and reports every one as the same bare "failed to
+    load model" naming no tensor — so their owner gets nothing to go on.
+
+    Truncation is the one that matters: a quantise that was interrupted,
+    or a disk that filled part-way through a multi-gigabyte tensor,
+    leaves a header promising more than the file holds. A 1.4 GB model is
+    a long enough write for that to be the likeliest explanation of a
+    load failure with no other symptom.
+    """
+
+    @pytest.fixture
+    def intact(self, tmp_path):
+        path = tmp_path / "intact.gguf"
+        writer = GGUFWriter(path)
+        writer.set_metadata("general.architecture", "llama")
+        writer.add_tensor("blk.0.attn_q.weight", CLEAN_SHAPE, int(GGMLType.HNX_IQ0_5))
+        writer.add_tensor("blk.1.attn_q.weight", CLEAN_SHAPE, int(GGMLType.HNX_IQ0_5))
+        writer.write(lambda tensor: bytes(tensor.nbytes))
+        return path
+
+    def test_an_intact_file_is_loadable(self, intact):
+        assert check_gguf(intact).loadable
+
+    def test_a_truncated_file_is_caught(self, intact, tmp_path):
+        cut = tmp_path / "cut.gguf"
+        cut.write_bytes(intact.read_bytes()[:-64])
+        report = check_gguf(cut)
+        assert not report.loadable
+        assert report.structural
+
+    def test_it_says_truncated_in_so_many_words(self, intact, tmp_path):
+        """"failed to load model" told them nothing; this has to."""
+        cut = tmp_path / "cut2.gguf"
+        cut.write_bytes(intact.read_bytes()[:-64])
+        assert "truncated" in check_gguf(cut).structural[0]
+
+    def test_it_names_the_tensor_and_how_far_short(self, intact, tmp_path):
+        cut = tmp_path / "cut3.gguf"
+        cut.write_bytes(intact.read_bytes()[:-64])
+        problem = check_gguf(cut).structural[0]
+        assert "blk.1.attn_q.weight" in problem
+        assert "past the end of the file" in problem
+
+    def test_the_advice_is_to_requantise(self, intact, tmp_path):
+        """Repair cannot invent bytes that were never written."""
+        cut = tmp_path / "cut4.gguf"
+        cut.write_bytes(intact.read_bytes()[:-64])
+        text = check_gguf(cut).describe()
+        assert "interrupted" in text
+        assert "Re-run the quantisation" in text
+
+    def test_truncation_is_not_reported_as_a_type_problem(self, intact, tmp_path):
+        """The two have different remedies -- repair the one, requantise
+        the other -- so they must not be confused."""
+        cut = tmp_path / "cut5.gguf"
+        cut.write_bytes(intact.read_bytes()[:-64])
+        report = check_gguf(cut)
+        assert report.bad == []
+        assert report.structural
+
+    def test_a_truncated_file_is_not_reported_as_hnxrun_runnable(self, intact, tmp_path):
+        """`runs_under_hnxrun` says "llama.cpp cannot, but we can". A file
+        missing its bytes cannot be read by anything."""
+        cut = tmp_path / "cut6.gguf"
+        cut.write_bytes(intact.read_bytes()[:-64])
+        assert not check_gguf(cut).runs_under_hnxrun
+
+    def test_the_json_carries_the_structural_list(self, intact, tmp_path):
+        cut = tmp_path / "cut7.gguf"
+        cut.write_bytes(intact.read_bytes()[:-64])
+        payload = check_gguf(cut).as_dict()
+        assert payload["structural"]
+        assert payload["loadable"] is False
+
+    def test_the_cli_exits_non_zero_on_a_truncated_file(self, intact, tmp_path):
+        import contextlib
+        import io
+
+        from hypernix.quant.hyprslug_cli import main
+
+        out = io.StringIO()
+        cut = tmp_path / "cut8.gguf"
+        cut.write_bytes(intact.read_bytes()[:-64])
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(out):
+            code = main([str(cut), "--check"])
+        assert code == 1
+        assert "truncated" in out.getvalue()
+
+    def test_an_intact_file_reports_nothing_structural(self, intact):
+        assert check_gguf(intact).structural == []
