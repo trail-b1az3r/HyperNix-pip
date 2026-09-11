@@ -83,6 +83,11 @@ TIER_TYPES: dict[str, tuple[int, str]] = {
     "IQ0.75_M": (int(GGMLType.HNX_IQ0_75), "pair_code_m"),
     "IQ0.5_XXXL": (int(GGMLType.HNX_IQ0_5), "quad_code_xxxl"),
     "IQ0.25_UXL": (int(GGMLType.HNX_IQ0_25), "quarter_code_uxl"),
+    # Every sign kept plus per-sub-block magnitude. The only tier here
+    # above INT1, and the only one whose rate buys structure rather than
+    # more signs -- there are no more signs to buy once all 256 are
+    # stored.
+    "HNX_1375BIT": (int(GGMLType.HNX_1375), "hnx_1375bit"),
     # Fixed codebook, from hypernix.quant.lowbit. The packing name is the
     # codec name; :func:`_encoder_for` tells the two families apart by
     # looking the name up rather than by parsing it.

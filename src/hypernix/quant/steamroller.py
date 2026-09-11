@@ -188,6 +188,13 @@ TIERS: dict[str, Tier] = {
              "magnitude. A binary net, and the k == g end of the sub-bit family.",
              packing="hypernix-int1",
              honest_warning=_SUB_BIT_WARNING + " " + _EXTENSION_WARNING),
+        Tier("HNX_1375BIT", 1.375, False,
+             "Every sign kept and sixteen magnitudes per block: 5 bits of "
+             "sub-block scale over 16 weights each, on top of the FP16 block "
+             "scale. The step above INT1, which reconstructs all 256 weights "
+             "at a single magnitude.",
+             packing="hypernix-1375",
+             honest_warning=_SUB_BIT_WARNING + " " + _EXTENSION_WARNING),
         Tier("FP2", 2.0625, False,
              "Two-bit float: sign and exponent, levels ±1 and ±2, no zero. "
              "Block scale searched, because the obvious fit made it lose to INT1.",
@@ -217,6 +224,13 @@ _TIER_ALIASES = {
     "iq025uxl": "IQ0.25_UXL", "iq.0.25uxl": "IQ0.25_UXL",
     "int1": "INT1", "int4": "INT4", "fp2": "FP2",
     "i1": "INT1", "i4": "INT4", "f2": "FP2",
+    # The rate has a decimal point in it and people write it every way
+    # there is. get_tier() lower-cases and strips dashes and underscores,
+    # so these cover the rest.
+    "hnx_1375bit": "HNX_1375BIT", "hnx1375bit": "HNX_1375BIT",
+    "hnx_1375": "HNX_1375BIT", "hnx1375": "HNX_1375BIT",
+    "hnx_1.375bit": "HNX_1375BIT", "hnx1.375bit": "HNX_1375BIT",
+    "1375bit": "HNX_1375BIT", "1.375": "HNX_1375BIT",
 }
 
 

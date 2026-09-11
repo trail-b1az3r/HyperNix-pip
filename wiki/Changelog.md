@@ -21,6 +21,144 @@ next release header.
 - 𖢥 major bug fix
 - ꩜ restore to older version of item
 - ❗ unfixed known bug
+## 0.72.5 — `hnx_1375bit`, and quantisation-aware training
+
+### A tier that keeps every sign *and* the magnitude structure ✨
+
+`bpw = (2 + payload) * 8 / 256`, so 1.375 bits per weight is a 44-byte
+block. The sign-only family cannot reach it: those tiers spend
+`code_bits/group` bits on signs, which is capped at 1, and 1.375 needs
+1.3125 bits of payload per weight. Anything above one bit has to buy
+something other than signs.
+
+So this one buys magnitude:
+
+| | scale | signs | magnitude | bytes | bpw |
+|---|---|---|---|---|---|
+| INT1 | fp16 x1 | 256 | none | 34 | 1.0625 |
+| **hnx_1375bit** | fp16 x1 | **256** | **16 sub-blocks x 5 bits** | **44** | **1.375** |
+
+32 bytes of signs, 10 bytes holding sixteen 5-bit indices, and the FP16
+scale. Each index picks `scale * i / 31` for its 16 weights, and the
+stored scale is the **largest** sub-block mean rather than the block
+mean, so the indices span the codebook and nothing clamps.
+
+That is not a contradiction of the mean-not-maximum rule the sign-only
+tiers follow: what each *weight* reconstructs to is still a mean — its
+own sub-block's — and the maximum is only the unit the sixteen means are
+expressed in.
+
+On a block whose sub-blocks span 30x in magnitude, against INT1 at
+0.31 fewer bits:
+
+```
+int1_binary   34 B  1.0625 bpw  signs 100%  rmse 0.13378  corr +0.615
+hnx_1375bit   44 B  1.3750 bpw  signs 100%  rmse 0.09790  corr +0.816
+```
+
+It is registered the whole way down: `subbit.py`, `gguf.py` (type 207),
+`hyprslug`, `steamroller`, `hnxrun`, the C decoder, and the ggml patch.
+
+### INT4 and FP2 became loadable, because they had to 𖢥
+
+post21 reported that INT4 (205) and FP2 (206) were written by hyprslug
+and openable by no llama.cpp: the patch registered 200–204 and pinned
+`GGML_TYPE_COUNT` to 205, so those two were out of range and cleanly
+rejected.
+
+Adding a type at 207 forced the question. Raising the count to 208
+without registering them would have left 205 and 206 as *in-range* trait
+entries full of zeroes — and `ne[0] % ggml_blck_size(type)` on a zero
+block size is a division by zero, not a refusal. Turning a clean
+rejection into a crash is not an acceptable side effect of adding a
+tier, so both got C decoders and traits entries. All eight types 200–207
+are now registered, with no holes.
+
+Every one of them is checked against its Python implementation — decode
+bit for bit, and `vec_dot` against dequantise-then-dot — which is how
+the operation-order bug below was found rather than shipped.
+
+### Quantisation-aware training ✨
+
+`hypernix.quant.qat`:
+
+```python
+from hypernix.quant.qat import prepare_qat, finalize_qat
+
+model, report = prepare_qat(model, tier="HNX_1375BIT")
+...                                    # train as usual
+model = finalize_qat(model)            # plain nn.Linear, float weights
+```
+
+The forward pass uses the **quantised** weight, so the loss the model
+minimises is the loss it will have after `hyprslug` writes the file; the
+backward pass updates the float weight through a straight-through
+estimator. `finalize_qat` hands back the *float* weights, not the
+quantised ones — they are what hyprslug should be pointed at, and they
+now sit where the packer can represent them.
+
+Layers are skipped for the same reasons hyprslug skips tensors:
+embeddings, the output head, and any row shorter than a block or not a
+multiple of one. Simulating damage the quantiser will not do is its own
+way of making a model worse.
+
+### 𖢥 Clamping, without which QAT made everything worse
+
+A straight-through estimator puts no pressure on a weight's magnitude —
+only its sign reaches the output — so weights drift outward, and the
+block scale, being their mean absolute value, drifts with them. Measured
+on a 256-wide distillation task, weight norm 8.2 -> 18.9 over 600 steps.
+
+The first working version of this was *worse than not doing QAT at all*,
+on every tier:
+
+| tier | train in float | QAT, no clamp | QAT + clamp |
+|---|---|---|---|
+| HNX_1375BIT | 0.0350 | 0.0505 (0.69x) | **0.0232 (1.51x)** |
+| INT1 | 0.0370 | 0.0519 (0.71x) | **0.0196 (1.89x)** |
+| IQ0.9_L | 0.0500 | 0.2813 (0.18x) | **0.0336 (1.49x)** |
+| IQ0.5_XXXL | 0.0776 | 1.8994 (0.04x) | **0.0731 (1.06x)** |
+
+So weights are held within 1.5 block scales, by default. `QATConfig(clamp=0)`
+restores the textbook behaviour and the first column of numbers.
+
+Note the last row: at 0.56 bits per weight QAT buys 1.06x, because there
+is almost nothing left to arrange. The gains are where the tier has
+something to work with.
+
+### ❗ Where QAT did not help
+
+On a small classification task (1024-wide net, 8 classes, 800 steps) QAT
+was *worse* than training in float and quantising afterwards — 0.71
+against 0.58. Reported rather than omitted: these are two benchmarks,
+not a result, and the honest summary is that QAT helps on the
+regression-shaped task measured here and did not on the classification
+one.
+
+### 🧪 The fake quantiser is the real one, bit for bit
+
+If training simulates a packing that differs from what hyprslug writes,
+the model spends its capacity adapting to boundaries that never ship and
+the result is worse than no training. That is the row-length bug's exact
+shape — writer and reader agreeing with each other — with a training run
+attached, so `fake_quantize` is compared against the byte packer's own
+output and must match **exactly**.
+
+It did not, three times, and each was a real difference:
+
+- The packer stores an **FP16** scale, so every weight is a multiple of
+  one. The torch path used float32 — a ~3e-4 offset on every weight.
+- The straight-through estimator was spelled `w + (q - w).detach()`. In
+  floating point `w + (q - w)` is not `q`; each step rounds. And for a
+  non-finite weight it is `inf + (-inf)` = NaN, where the packer degrades
+  the block to zeros. `q.detach() + (w - w.detach())` adds an exact zero
+  instead.
+- `hnx_1375bit` decodes as `scale * index / 31`. The torch path computed
+  `(index / 31) * scale` — the same number in real arithmetic and a
+  different one in float32.
+
+All six packings are now bit-identical to the packer across seeds.
+
 ## 0.72.4.post21 — why both tiers gave a 1.4 GB file
 
 Two models from the same BF16 Qwen3-class 2B, one `IQ0.9_L` and one

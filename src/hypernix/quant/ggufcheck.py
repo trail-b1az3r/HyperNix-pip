@@ -76,7 +76,9 @@ block_elements = type_block_size
 #: ``tests/test_ggufcheck.py`` parses the patch script's own enum text
 #: and asserts this agrees with it, so adding a type on the C side
 #: without updating this is a test failure rather than a surprise.
-LLAMA_CPP_REGISTERED_TYPES: frozenset[int] = frozenset({200, 201, 202, 203, 204})
+LLAMA_CPP_REGISTERED_TYPES: frozenset[int] = frozenset(
+    {200, 201, 202, 203, 204, 205, 206, 207}
+)
 
 
 def llama_cpp_can_load_type(ggml_type: int) -> bool:

@@ -72,6 +72,23 @@ extern "C" {
 #define HNX_TYPE_IQ0_5   202
 #define HNX_TYPE_IQ0_25  203
 #define HNX_TYPE_INT1    204
+/* 1.375 bits/weight: every sign, plus a 5-bit magnitude index per
+ * 16-weight sub-block. The first type here whose rate buys
+ * structure rather than more signs -- once all 256 signs are
+ * stored there are no more to buy. */
+#define HNX_TYPE_1375    207
+
+/* The fixed-codebook pair. Every weight carries its own code into a
+ * table of levels, so there is nothing reconstructed and nothing folded.
+ *
+ * They are here because leaving them out was worse than including them:
+ * GGML_TYPE_COUNT sizes ggml's trait tables, so raising it past 205 to
+ * reach 207 would leave 205 and 206 as in-range entries that are all
+ * zeroes -- and `ne[0] % ggml_blck_size(type)` on a zero block size is a
+ * division by zero, not a refusal. Before, such a file was cleanly
+ * rejected for being out of range. */
+#define HNX_TYPE_INT4    205
+#define HNX_TYPE_FP2     206
 
 /* One block of each type. Laid out to match the file exactly: an FP16
  * scale then the packed sign bits, with no padding. The static asserts
@@ -82,6 +99,10 @@ typedef struct { uint16_t d; uint8_t qs[24]; } hnx_block_iq0_75;  /* 26 */
 typedef struct { uint16_t d; uint8_t qs[16]; } hnx_block_iq0_5;   /* 18 */
 typedef struct { uint16_t d; uint8_t qs[6];  } hnx_block_iq0_25;  /*  8 */
 typedef struct { uint16_t d; uint8_t qs[32]; } hnx_block_int1;    /* 34 */
+/* 32 bytes of signs then 10 bytes holding 16 five-bit indices. */
+typedef struct { uint16_t d; uint8_t qs[42]; } hnx_block_1375;    /* 44 */
+typedef struct { uint16_t d; uint8_t qs[128]; } hnx_block_int4;   /* 130 */
+typedef struct { uint16_t d; uint8_t qs[64]; } hnx_block_fp2;     /*  66 */
 
 /* Everything a caller needs to handle one of these types without a
  * switch over the ids. */
@@ -92,6 +113,16 @@ typedef struct {
     int         kept;        /* signs stored per group */
     size_t      block_bytes;
     float       bits_per_weight;
+    /* Sub-blocks carrying their own magnitude index, and the width of
+     * that index. Zero for the sign-only types, where the block scale is
+     * the whole of the magnitude -- which is why they can be appended
+     * here without touching the existing table rows. */
+    int         sub_blocks;
+    int         sub_bits;
+    /* Fixed-codebook types: every weight is levels[code] * scale.
+     * NULL for the sign-and-scale family. */
+    const float *levels;
+    int          level_bits;
 } hnx_type_info;
 
 /* NULL for an id this build does not implement. */
