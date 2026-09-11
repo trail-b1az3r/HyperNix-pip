@@ -16,7 +16,7 @@ requires-python = ">=3.10,<3.15"
 authors = [{ name = "HyperNix contributors" }]
 keywords = ["hypernix", "gguf", "quantization", "llama.cpp", "pytorch"]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 3 - alpha",
     "Environment :: Console",
     "Intended Audience :: Developers",
     "Operating System :: OS Independent",
