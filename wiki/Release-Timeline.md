@@ -703,3 +703,19 @@ timeline
         : cbf7a1fd - Auto-update README header (hourly)
 ```
 
+## Release v0.72.5.dev1 (2026-09-12)
+
+```mermaid
+timeline
+    title Release v0.72.5.dev1 Commits
+    0.72.5.dev1
+        : 1a789b6a - Document package layout and module organization
+        : 1fb16430 - chore- update JSON stats (scheduled)
+        : 2b300329 - Auto-update README header (hourly)
+        : 9cc43526 - 0.72.5 — hnx_1375bit, and quantisation-aware training
+        : ccbf43ee - 0.72.4.post21 — why both tiers gave a 1.4 GB file
+        : e463bdef - Update pyproject.toml
+        : 137dacc8 - Update pyproject.toml
+        : ccf76868 - Update pyproject.toml
+```
+
