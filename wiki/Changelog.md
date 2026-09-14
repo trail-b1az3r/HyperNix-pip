@@ -10,7 +10,7 @@ next release header.
 ## Legend
 
 - 🧪 new tests 
-- ✨ new feature
+- ✨ normal feature
 - 🐛 minor bug fix
 - 🛡️ UX / error-message polish
 - 📚 documentation
@@ -21,6 +21,11 @@ next release header.
 - 𖢥 major bug fix
 - ꩜ restore to older version of item
 - ❗ unfixed known bug
+- ❌ deprecation 
+- ๋࣭⭑ Major new feature 
+- 𖥔 minor new feature
+
+
 ## 0.72.5 — `hnx_1375bit`, and quantisation-aware training
 
 ### A tier that keeps every sign *and* the magnitude structure ✨
