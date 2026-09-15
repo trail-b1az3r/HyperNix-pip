@@ -310,6 +310,41 @@ class TestExtracting:
         assert variants(tmp_path / "plain.gguf") == []
 
 
+class TestATierIsSpelledOneWay:
+    """`build` resolved its targets through hyprslug and `extract` did
+    not, so a bundle built with `q4_m` could only be taken apart with
+    `Q4_K_M` — and the error named the canonical spellings without
+    saying that the one just typed was the same thing."""
+
+    @pytest.fixture
+    def built(self, base, tmp_path):
+        out = tmp_path / "bundle.gguf"
+        bundle(base, out, ["q8", "q4_m"])
+        return out
+
+    @pytest.mark.parametrize("spelling", ["q4_m", "Q4_K_M", "q4km", "q4_k_m"])
+    def test_every_spelling_of_a_tier_extracts_it(
+        self, built, tmp_path, spelling
+    ):
+        info = extract(built, tmp_path / f"{id(spelling)}.gguf", spelling)
+        assert info.tier == "Q4_K_M"
+
+    def test_a_tier_that_is_not_in_there_still_says_what_is(
+        self, built, tmp_path
+    ):
+        """And resolving the name first must not turn a "not in this
+        bundle" into a "no such target" — they are different problems
+        with different fixes."""
+        with pytest.raises(MultiQuantError, match="Q8_0, Q4_K_M"):
+            extract(built, tmp_path / "no.gguf", "iq0.5")
+
+    def test_a_name_that_is_not_a_target_at_all_is_not_a_traceback(
+        self, built, tmp_path
+    ):
+        with pytest.raises(MultiQuantError):
+            extract(built, tmp_path / "no.gguf", "nonsense")
+
+
 class TestTheDraftGenerations:
     def test_dflash1_writes_a_model_not_a_namespace(self, base, tmp_path):
         """The whole difference from dflash2: blocks numbered from zero
@@ -383,6 +418,119 @@ class TestTheDraftGenerations:
         from hypernix.quant.dflash1 import read_draft_info
 
         assert read_draft_info(base) == {}
+
+
+#: The nine precisions the drafts were asked for, in the spellings
+#: somebody types. Not the canonical names: `q4_m` and `IQ0.5` are what
+#: the request said, and a builder that only takes `Q4_K_M` and
+#: `IQ0.5_XXXL` has not answered it.
+DRAFT_TARGETS = ["q8", "int8", "fp16", "bf16", "fp32", "IQ0.5", "Q6_K",
+                 "q4_m", "int2"]
+
+
+class TestTheDraftsTakeEveryHyprslugTarget:
+    """Both builders validated against `llamaquants.FORMATS` — the ten
+    llama.cpp block types — rather than against what hyprslug can write.
+
+    So `--quant int8` came back "unknown" from the draft builders while
+    `hyprslug SOURCE int8` worked, and five of the nine precisions the
+    drafts were specified in were unreachable through them. The fix is
+    that both now plan through `hyprslug.plan_tensors`, which is also
+    what stops a third copy of the row-length rule existing.
+    """
+
+    @pytest.mark.parametrize("target", DRAFT_TARGETS)
+    def test_dflash1_writes_it(self, base, tmp_path, target):
+        from hypernix.quant.dflash1 import derive
+
+        out = tmp_path / f"{target}.gguf"
+        report = derive(base, out, depth=0.5, quant=target)
+        assert out.exists() and out.stat().st_size > 0
+        assert report.plan is not None
+        # Readable afterwards, which a wrong type count or a wrong
+        # declared size would break at the header rather than subtly.
+        GGUFFile.read(out)
+
+    @pytest.mark.parametrize("target", DRAFT_TARGETS)
+    def test_dflash2_attaches_it(self, base, tmp_path, target):
+        from hypernix.quant.dflash2 import attach
+
+        out = tmp_path / f"{target}.gguf"
+        attach(base, out, depth=0.5, quant=target)
+        model = GGUFFile.read(out)
+        assert any(t.name.startswith("dflash2.") for t in model.tensors)
+
+    @pytest.mark.parametrize("target", DRAFT_TARGETS)
+    def test_the_canonical_name_is_what_gets_recorded(
+        self, base, tmp_path, target
+    ):
+        """`--quant q4_m` has to land as `Q4_K_M` in the metadata, or the
+        runtime reading it back is told a tier that does not exist."""
+        from hypernix.quant.dflash1 import derive, read_draft_info
+        from hypernix.quant.hyprslug import target_spec
+
+        out = tmp_path / f"{target}.gguf"
+        derive(base, out, depth=0.5, quant=target)
+        assert read_draft_info(out)["quant"] == target_spec(target).name
+
+    def test_the_block_tensors_are_actually_at_that_target(
+        self, base, tmp_path
+    ):
+        """A builder that accepted the name and wrote F32 anyway would
+        pass every test above."""
+        from hypernix.quant.dflash1 import derive
+        from hypernix.quant.hyprslug import TIER_TYPES
+
+        out = tmp_path / "int2.gguf"
+        derive(base, out, depth=0.5, quant="int2")
+        model = GGUFFile.read(out)
+        expected = TIER_TYPES["INT2"][0]
+        packed = [
+            t for t in model.tensors
+            if t.name.startswith("blk.") and int(t.ggml_type) == expected
+        ]
+        assert packed, [
+            (t.name, int(t.ggml_type)) for t in model.tensors
+            if t.name.startswith("blk.")
+        ]
+
+    def test_a_width_target_converts_the_norms_too(self, base, tmp_path):
+        """A width is not a block quantisation, so the divisibility rule
+        that protects one does not apply. An "FP16" draft with F32 norms
+        in it loads, and is not the file that was asked for."""
+        from hypernix.quant.dflash1 import derive
+
+        out = tmp_path / "fp16.gguf"
+        derive(base, out, depth=0.5, quant="fp16")
+        model = GGUFFile.read(out)
+        blocks = [t for t in model.tensors if t.name.startswith("blk.")]
+        assert blocks
+        assert {int(t.ggml_type) for t in blocks} == {int(GGMLType.F16)}
+
+    def test_an_unknown_target_is_this_module_s_error(self, base, tmp_path):
+        """It was `plan_draft`'s `Dflash2Error`, which `dflash1`'s CLI
+        does not catch — so a mistyped flag printed a traceback."""
+        from hypernix.quant.dflash1 import Dflash1Error, derive
+
+        with pytest.raises(Dflash1Error, match="Unknown draft quantisation"):
+            derive(base, tmp_path / "no.gguf", quant="nonsense")
+
+    def test_each_target_gives_a_different_file(self, base, tmp_path):
+        """Nine names that all produced the same bytes would be nine
+        aliases for one tier, which is not what was asked for."""
+        from hypernix.quant.dflash1 import derive
+
+        sizes = {}
+        for target in DRAFT_TARGETS:
+            out = tmp_path / f"{target}.gguf"
+            derive(base, out, depth=0.5, quant=target)
+            sizes.setdefault(out.stat().st_size, []).append(target)
+        # fp16 and bf16 are both two bytes an element, so they are the
+        # one legitimate collision.
+        collisions = {n: t for n, t in sizes.items() if len(t) > 1}
+        assert collisions in ({}, {next(iter(collisions), 0): ["fp16", "bf16"]}), (
+            collisions
+        )
 
 
 class TestTheBlockTableCoversEverything:

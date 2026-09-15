@@ -87,6 +87,7 @@ __all__ = [
     "variants",
     "extract",
     "strip",
+    "canonical_tier",
     "slug_for",
 ]
 
@@ -115,6 +116,25 @@ _SLUG_BAD = re.compile(r"[^a-z0-9]+")
 
 class MultiQuantError(Exception):
     """A bundle could not be built, read or taken apart."""
+
+
+def canonical_tier(tier: str) -> str:
+    """*tier* as hyprslug spells it, or unchanged when it is not a target.
+
+    `build` resolves its targets through hyprslug, so a bundle built from
+    `q4_m` stores `Q4_K_M` — and `extract … q4_m` then could not find it,
+    because only the canonical spelling had been through the resolver.
+    One name in, one name out, wherever a tier is named.
+
+    Unresolvable names pass through rather than raising: the caller is
+    about to look the slug up in a real file and say what is actually in
+    there, which is a better error than this function's list of every
+    target hyprslug can write.
+    """
+    try:
+        return target_spec(tier).name
+    except HyprslugError:
+        return tier
 
 
 def slug_for(tier: str) -> str:
@@ -537,7 +557,7 @@ def extract(
         )
 
     found = _variants_of(model)
-    wanted = slug_for(tier)
+    wanted = slug_for(canonical_tier(tier))
     chosen = next((v for v in found if v.slug == wanted), None)
     if chosen is None:
         raise MultiQuantError(

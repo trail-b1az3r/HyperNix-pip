@@ -190,19 +190,50 @@ class TestTheFileActuallyLoads:
             )
 
 
-class TestDflash2HasTheSameGuard:
-    """It picked tensors the same wrong way, so a draft derived from an
-    SSM architecture would have failed identically."""
+class TestTheDraftBuildersDoNotKeepTheirOwnCopy:
+    """They each had one, written the same wrong way, so a draft derived
+    from an SSM architecture failed identically.
 
-    def test_it_checks_the_row_not_the_total(self):
-        source = Path("src/hypernix/quant/dflash2.py").read_text(encoding="utf-8")
+    The fix was not a third correct copy. Both now plan through
+    `hyprslug.plan_tensors`, so there is one place the rule lives and
+    `_should_quantize` above is the test of it. What is checked here is
+    that they still delegate — a builder that grew its own selection back
+    would pass every other test in this file while being wrong again.
+    """
+
+    @pytest.mark.parametrize(
+        "module", ["dflash1.py", "dflash2.py"]
+    )
+    def test_it_has_no_selection_rule_of_its_own(self, module):
+        source = (Path("src/hypernix/quant") / module).read_text(encoding="utf-8")
         code = "\n".join(
             line for line in source.splitlines() if not line.strip().startswith("#")
         )
-        assert "tensor.elements % block_size" not in code, (
-            "dflash2 is back to counting elements instead of the row length"
+        assert "% block_size" not in code, (
+            f"{module} is choosing tensors for itself again"
         )
-        assert "int(tensor.shape[0]) % block_size" in code
+
+    @pytest.mark.parametrize("module", ["dflash1.py", "dflash2.py"])
+    def test_it_plans_through_hyprslug(self, module):
+        source = (Path("src/hypernix/quant") / module).read_text(encoding="utf-8")
+        assert "draft_encoding(" in source
+
+    def test_draft_encoding_is_hyprslug_s_answer(self, tmp_path):
+        """Not just the same shape of answer: the same answer, for the
+        same model, tensor for tensor."""
+        from hypernix.quant.dflash2 import draft_encoding
+        from hypernix.quant.hyprslug import plan_tensors, target_spec
+
+        path = TestTheFileActuallyLoads._model(
+            tmp_path / "ssm.gguf", {"blk.0.ssm_conv1d.weight": (4, 5120)}
+        )
+        model = GGUFFile.read(path)
+        spec, planned = draft_encoding(model, "Q4_0")
+        direct = plan_tensors(model, target_spec("Q4_0"))
+        assert spec.name == "Q4_0"
+        assert {p.name: (p.ggml_type, p.encoding) for p in direct} == {
+            name: (p.ggml_type, p.encoding) for name, p in planned.items()
+        }
 
 
 class TestTheWriterRefusesEvenIfTheCheckRegresses:

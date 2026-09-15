@@ -59,9 +59,16 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from . import llamaquants
-from .dflash2 import DEFAULT_DRAFT_TOKENS, DraftPlan, plan_draft
+from . import hyprslug, llamaquants
+from .dflash2 import (
+    DEFAULT_DRAFT_TOKENS,
+    Dflash2Error,
+    DraftPlan,
+    draft_encoding,
+    plan_draft,
+)
 from .gguf import GGMLType, GGUFError, GGUFFile, GGUFTensor, GGUFWriter
+from .hyprslug import TensorPlan
 
 logger = logging.getLogger(__name__)
 
@@ -254,16 +261,28 @@ def derive(
             "the vocabulary from somewhere else."
         )
 
-    plan = plan_draft(
-        model,
-        layers=layers,
-        depth=depth,
-        quant=quant,
-        draft_tokens=draft_tokens,
-        share_embeddings=True,
-    )
+    # The shape decision is dflash2's — the two drafts differ in where
+    # the tensors go, not in which layers are kept — so its errors have
+    # to be re-raised as this module's. Left alone, a bad `--quant`
+    # reached `dflash1`'s CLI as a `Dflash2Error` the `except Dflash1Error`
+    # there did not catch, and a mistyped flag printed a traceback.
+    try:
+        plan = plan_draft(
+            model,
+            layers=layers,
+            depth=depth,
+            quant=quant,
+            draft_tokens=draft_tokens,
+            share_embeddings=True,
+        )
+    except Dflash2Error as exc:
+        raise Dflash1Error(str(exc)) from exc
     report = DeriveReport(plan=plan, base_bytes=base_path.stat().st_size)
-    block_size = llamaquants.FORMATS[plan.quant].block
+    # hyprslug's own planner, shared with dflash2. See `draft_encoding`:
+    # a draft at a given target is the same packing as a model at it, and
+    # a second copy of the row-length rule here is a second place to get
+    # it wrong.
+    spec, tensor_plans = draft_encoding(model, plan.quant)
 
     writer = GGUFWriter(out_path, alignment=model.alignment)
     writer.copy_metadata_from(model)
@@ -303,7 +322,7 @@ def derive(
         f"{plan.quant}) via hyprslug",
     )
 
-    sources: dict[str, tuple[GGUFTensor, str]] = {}
+    sources: dict[str, tuple[GGUFTensor, TensorPlan | None]] = {}
 
     # The vocabulary tensors, byte for byte. A draft that re-quantised
     # its embedding table would be speaking a slightly different
@@ -313,7 +332,7 @@ def derive(
         if tensor is None:  # pragma: no cover - plan_draft only lists present ones
             continue
         writer.add_tensor(tensor.name, tensor.shape, tensor.ggml_type)
-        sources[tensor.name] = (tensor, "")
+        sources[tensor.name] = (tensor, None)
         report.shared_tensors += 1
 
     for draft_index, source_index in enumerate(plan.layers):
@@ -325,31 +344,14 @@ def derive(
             # own right, so its ninth block is blk.8, not
             # dflash1.blk.8. That is the whole difference from dflash2.
             draft_name = f"blk.{draft_index}.{tensor.name[len(prefix):]}"
-            quantisable = (
-                len(tensor.shape) >= 2
-                # ne[0], the row length: GGML quantises row by row. See
-                # _should_quantize in hyprslug.py for the model this
-                # check was added for.
-                and int(tensor.shape[0]) % block_size == 0
-                and (
-                    int(tensor.ggml_type) in _UNQUANTIZED
-                    or llamaquants.is_supported(int(tensor.ggml_type))
-                )
-            )
-            if quantisable:
-                target_type = llamaquants.FORMATS[plan.quant].ggml_type
-                chosen = plan.quant
-                report.draft_tensors += 1
-            else:
-                target_type = tensor.ggml_type
-                chosen = ""
+            tensor_plan = tensor_plans[tensor.name]
+            if tensor_plan.copied:
                 report.copied_tensors += 1
-                report.skipped.append((
-                    draft_name,
-                    "1-D or not divisible: a norm is a rounding error of the size",
-                ))
-            writer.add_tensor(draft_name, tensor.shape, target_type)
-            sources[draft_name] = (tensor, chosen)
+                report.skipped.append((draft_name, tensor_plan.reason))
+            else:
+                report.draft_tensors += 1
+            writer.add_tensor(draft_name, tensor.shape, tensor_plan.ggml_type)
+            sources[draft_name] = (tensor, tensor_plan)
 
     if not sources:
         raise Dflash1Error(
@@ -362,7 +364,7 @@ def derive(
 
     def _data_for(declared: GGUFTensor) -> bytes:
         nonlocal done
-        original, chosen = sources[declared.name]
+        original, tensor_plan = sources[declared.name]
         raw = model.tensor_bytes(original)
         done += 1
         if progress is not None:
@@ -372,20 +374,21 @@ def derive(
                     "name": declared.name,
                     "index": done,
                     "total": total,
-                    "quantized": bool(chosen),
+                    "quantized": tensor_plan is not None and not tensor_plan.copied,
                 })
             except Exception:  # noqa: BLE001 - a listener must not fail the run
                 logger.debug("dflash1: progress callback raised", exc_info=True)
-        if not chosen:
+        if tensor_plan is None or tensor_plan.copied:
             return raw
-        values = _decode(raw, original.ggml_type)
-        if values is None:  # pragma: no cover - guarded by `quantisable`
-            return raw
-        return llamaquants.quantize_array(values, chosen)
+        data, _ = hyprslug.encode_tensor(
+            raw, int(original.ggml_type), tensor_plan, spec
+        )
+        return data
 
     try:
         writer.write(_data_for)
-    except (GGUFError, OSError, llamaquants.LlamaQuantError) as exc:
+    except (GGUFError, OSError, llamaquants.LlamaQuantError,
+            hyprslug.HyprslugError) as exc:
         raise Dflash1Error(f"Could not write {out_path}: {exc}") from exc
 
     report.draft_bytes = out_path.stat().st_size
