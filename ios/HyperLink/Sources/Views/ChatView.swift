@@ -3,6 +3,9 @@
 
 import PhotosUI
 import SwiftUI
+// For `UIImage`, which the camera hands back. SwiftUI does not re-export
+// UIKit, so this is not redundant however much it looks it.
+import UIKit
 import UniformTypeIdentifiers
 
 struct ChatView: View {
@@ -13,7 +16,11 @@ struct ChatView: View {
     @State private var pendingAttachments: [Attachment] = []
     @State private var photoItem: PhotosPickerItem?
     @State private var showingFileImporter = false
+    @State private var showingCodeImporter = false
+    @State private var showingPhotoPicker = false
+    @State private var showingCamera = false
     @State private var showingModelPicker = false
+    @State private var showingRename = false
     @State private var isUploading = false
 
     private var session: ChatSession? {
@@ -32,15 +39,51 @@ struct ChatView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    showingModelPicker = true
+                Menu {
+                    Button {
+                        showingRename = true
+                    } label: {
+                        Label("Rename", systemImage: "pencil")
+                    }
+                    Button {
+                        showingModelPicker = true
+                    } label: {
+                        Label("Model", systemImage: "cpu")
+                    }
                 } label: {
-                    Label("Model", systemImage: "cpu")
+                    Label("More", systemImage: "ellipsis.circle")
                 }
             }
         }
         .sheet(isPresented: $showingModelPicker) {
             ModelPickerSheet(sessionID: sessionID, currentModel: session?.modelID ?? "")
+        }
+        .sheet(isPresented: $showingRename) {
+            RenameChatSheet(
+                sessionID: sessionID, currentTitle: session?.title ?? ""
+            )
+        }
+        .photosPicker(
+            isPresented: $showingPhotoPicker,
+            selection: $photoItem,
+            // Videos as well: the server takes any attachment, and
+            // "photo or video" is what the menu row promises.
+            matching: .any(of: [.images, .videos])
+        )
+        .fileImporter(
+            isPresented: $showingCodeImporter,
+            // Narrowed on purpose. A "code or text" picker that shows
+            // every file on the phone is the "File" row again with a
+            // different name.
+            allowedContentTypes: [.sourceCode, .plainText, .json, .yaml, .xml, .propertyList],
+            allowsMultipleSelection: false
+        ) { result in
+            Task { await attachFile(result) }
+        }
+        .fullScreenCover(isPresented: $showingCamera) {
+            CameraCapture { image in
+                Task { await attachCameraImage(image) }
+            }
         }
         .task(id: sessionID) { await state.open(sessionID) }
         .onChange(of: photoItem) { _, item in
@@ -139,19 +182,37 @@ struct ChatView: View {
             }
 
             HStack(alignment: .bottom, spacing: 8) {
+                // One menu rather than a one-item menu beside a bare
+                // photo button. The old shape offered two of the four
+                // things people attach and gave no hint that the other
+                // two were possible -- a document from Files, and the
+                // camera, were both reachable by the server and by
+                // nothing on screen.
                 Menu {
+                    Button {
+                        showingPhotoPicker = true
+                    } label: {
+                        Label("Photo or video", systemImage: "photo.on.rectangle")
+                    }
+                    Button {
+                        showingCamera = true
+                    } label: {
+                        Label("Take a photo", systemImage: "camera")
+                    }
+                    Divider()
                     Button {
                         showingFileImporter = true
                     } label: {
-                        Label("File or code", systemImage: "doc")
+                        Label("File", systemImage: "doc")
+                    }
+                    Button {
+                        showingCodeImporter = true
+                    } label: {
+                        Label("Code or text", systemImage: "chevron.left.forwardslash.chevron.right")
                     }
                 } label: {
                     Image(systemName: "paperclip").font(.title3)
-                }
-                .disabled(isUploading || state.isSending)
-
-                PhotosPicker(selection: $photoItem, matching: .images) {
-                    Image(systemName: "photo").font(.title3)
+                        .accessibilityLabel("Attach")
                 }
                 .disabled(isUploading || state.isSending)
 
@@ -204,6 +265,25 @@ struct ChatView: View {
         // from the bytes.
         let name = item.itemIdentifier.map { "photo-\($0.prefix(8)).jpg" } ?? "photo.jpg"
         if let attachment = await state.upload(data: data, filename: name, contentType: "image/jpeg") {
+            pendingAttachments.append(attachment)
+        }
+    }
+
+    private func attachCameraImage(_ image: UIImage) async {
+        isUploading = true
+        defer { isUploading = false }
+        // 0.85 rather than 1.0: a full-quality capture from a modern
+        // phone is several megabytes, and this is going over whatever
+        // link the phone has to the PC -- often a Tailscale relay. The
+        // difference is invisible to a model reading the picture.
+        guard let data = image.jpegData(compressionQuality: 0.85) else {
+            state.lastError = "That photo could not be encoded."
+            return
+        }
+        let name = "camera-\(Int(Date().timeIntervalSince1970)).jpg"
+        if let attachment = await state.upload(
+            data: data, filename: name, contentType: "image/jpeg"
+        ) {
             pendingAttachments.append(attachment)
         }
     }

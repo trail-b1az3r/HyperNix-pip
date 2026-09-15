@@ -10,6 +10,7 @@ import SwiftUI
 @main
 struct HyperLinkApp: App {
     @State private var state = AppState()
+    @State private var themes = ThemeStore()
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
@@ -24,7 +25,11 @@ struct HyperLinkApp: App {
         WindowGroup {
             RootView()
                 .environment(state)
-                .tint(.accentColor)
+                .environment(themes)
+                // Replaces `.tint(.accentColor)`, which was the whole of
+                // HyperLink's colour: one accent, applied everywhere,
+                // saying nothing about which bubble is whose.
+                .hyperLinkTheme(themes.theme)
         }
         .onChange(of: scenePhase) { _, phase in
             // Coming back from the background is the moment the phone is

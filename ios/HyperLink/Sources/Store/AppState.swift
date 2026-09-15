@@ -54,41 +54,34 @@ final class AppState {
 
     private let client = HyperLinkClient()
     private var streamTask: Task<Void, Never>?
-    private static let connectionKey = "hyperlink.connection"
-    private static let keylessKey = "hyperlink.connection.keyless"
 
     init() { restore() }
 
     // MARK: - Persistence
+    //
+    // The reading and writing themselves live in `PairingStore`, not
+    // here, because this is no longer the only reader: an App Intent
+    // runs in its own process and the CarPlay scene can connect while
+    // the phone app has never been opened, and neither of those has an
+    // `AppState` to ask. What stays here is what to *do* with a restored
+    // pairing — which is this object's own state.
 
     private func restore() {
-        guard
-            let data = UserDefaults.standard.data(forKey: Self.connectionKey),
-            let saved = try? JSONDecoder().decode(ServerConnection.self, from: data),
-            saved.isConfigured
-        else { return }
-        let token = TokenStore.load()
-        let wasKeyless = UserDefaults.standard.bool(forKey: Self.keylessKey)
-        // A stored connection with no credential is only restorable if
-        // it was keyless on purpose. Otherwise the token has been lost
-        // — a keychain reset, a restore from backup — and coming up
-        // "paired" would mean every request 401s with no explanation.
-        guard token != nil || wasKeyless else { return }
-        connection = saved
-        isKeyless = wasKeyless
+        guard let pairing = PairingStore.load() else { return }
+        connection = pairing.connection
+        isKeyless = pairing.keyless
         isPaired = true
         Task {
             await client.configure(
-                endpoints: saved.endpoints, token: token, keyless: wasKeyless
+                endpoints: pairing.endpoints,
+                token: pairing.token,
+                keyless: pairing.keyless
             )
         }
     }
 
     private func persist() {
-        if let data = try? JSONEncoder().encode(connection) {
-            UserDefaults.standard.set(data, forKey: Self.connectionKey)
-        }
-        UserDefaults.standard.set(isKeyless, forKey: Self.keylessKey)
+        PairingStore.save(connection: connection, keyless: isKeyless)
     }
 
     // MARK: - Pairing
@@ -246,14 +239,13 @@ final class AppState {
         // so signing out of the server is the moment it stops being
         // something this phone should be holding.
         AdminCredentialStore.delete(fingerprint: connection.serverFingerprint)
-        UserDefaults.standard.removeObject(forKey: Self.connectionKey)
+        PairingStore.clear()
         await client.configure(endpoints: [], token: nil)
         connection = .empty
         isPaired = false
         identityWarning = nil
         keylessAvailableHere = false
         isKeyless = false
-        UserDefaults.standard.removeObject(forKey: Self.keylessKey)
         sessions = []
         messages = []
         openSessionID = nil
@@ -389,6 +381,30 @@ final class AppState {
             }
         } catch {
             handle(error)
+        }
+    }
+
+    /// Rename a conversation.
+    ///
+    /// Optimistic: the row changes as the sheet closes and is put back
+    /// if the server refuses. A rename that waits for a round trip feels
+    /// broken on a phone that is four hops and a Tailscale relay away
+    /// from the machine holding the chat.
+    @discardableResult
+    func rename(_ sessionID: String, to title: String) async -> Bool {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return false }
+        let index = sessions.firstIndex { $0.sessionID == sessionID }
+        let previous = index.map { sessions[$0].title }
+        if let index { sessions[index].title = trimmed }
+        do {
+            let updated = try await client.rename(sessionID, to: trimmed)
+            if let index { sessions[index] = updated }
+            return true
+        } catch {
+            if let index, let previous { sessions[index].title = previous }
+            handle(error)
+            return false
         }
     }
 

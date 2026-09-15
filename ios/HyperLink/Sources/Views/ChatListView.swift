@@ -10,6 +10,12 @@ struct ChatListView: View {
     /// chat" has to push the conversation it just created — and a
     /// NavigationStack one level up has no path this view can append to.
     @State private var path: [String] = []
+    /// The chat being renamed, which is also what presents the sheet.
+    /// An item-based sheet rather than a bool plus a separate "which
+    /// one" -- those two can disagree, and the bug is a sheet that
+    /// renames the wrong conversation.
+    @State private var renaming: ChatSession?
+    @Environment(\.hyperLinkTheme) private var theme
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -54,6 +60,27 @@ struct ChatListView: View {
                     } label: {
                         Label("Delete", systemImage: "trash")
                     }
+                    Button {
+                        renaming = session
+                    } label: {
+                        Label("Rename", systemImage: "pencil")
+                    }
+                    .tint(theme.accent)
+                }
+                // And by long-press, because a swipe is not discoverable
+                // and renaming is the one thing here somebody goes
+                // looking for.
+                .contextMenu {
+                    Button {
+                        renaming = session
+                    } label: {
+                        Label("Rename", systemImage: "pencil")
+                    }
+                    Button(role: .destructive) {
+                        Task { await state.delete(session.sessionID) }
+                    } label: {
+                        Label("Delete", systemImage: "trash")
+                    }
                 }
             }
         }
@@ -69,6 +96,11 @@ struct ChatListView: View {
                     Label("New chat", systemImage: "square.and.pencil")
                 }
             }
+        }
+        .sheet(item: $renaming) { session in
+            RenameChatSheet(
+                sessionID: session.sessionID, currentTitle: session.title
+            )
         }
         .refreshable { await state.refreshSessions() }
         .overlay {

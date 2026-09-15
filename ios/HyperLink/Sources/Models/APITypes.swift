@@ -162,7 +162,11 @@ struct ServerStatus: Decodable, Sendable {
 
 struct ChatSession: Decodable, Identifiable, Hashable, Sendable {
     let sessionID: String
-    let title: String
+    /// `var` alone among these, so a rename can show immediately and be
+    /// put back if the server refuses. Waiting for a round trip feels
+    /// broken on a phone four hops and a relay away from the machine
+    /// holding the chat.
+    var title: String
     let modelID: String
     let backend: String
     let createdAt: Double

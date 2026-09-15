@@ -496,6 +496,21 @@ actor HyperLinkClient {
         return try decode(SessionResponse.self, from: response).session
     }
 
+    /// Rename a conversation.
+    ///
+    /// The server has taken a title on `PATCH /hyperlink/sessions/{id}`
+    /// since HyperLink shipped; nothing on the phone ever sent one, so a
+    /// chat kept whichever of its first sixty characters `autotitle`
+    /// picked, for ever.
+    func rename(_ sessionID: String, to title: String) async throws -> ChatSession {
+        struct Body: Encodable { let title: String }
+        let data = try encoder.encode(Body(title: title))
+        let response = try await send(
+            path: "/hyperlink/sessions/\(sessionID)", method: "PATCH", body: data, timeout: 20
+        )
+        return try decode(SessionResponse.self, from: response).session
+    }
+
     func deleteSession(_ sessionID: String) async throws {
         _ = try await send(path: "/hyperlink/sessions/\(sessionID)", method: "DELETE", timeout: 15)
     }

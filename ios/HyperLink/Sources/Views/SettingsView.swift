@@ -5,6 +5,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @Environment(AppState.self) private var state
+    @Environment(ThemeStore.self) private var themes
     @State private var confirmingUnpair = false
     /// Mirrors `AdminCredentialStore.persistsAcrossLaunches`. Held in
     /// view state only as a switch position — the credential itself
@@ -32,6 +33,26 @@ struct SettingsView: View {
                         "LM Studio bridge",
                         value: status.lmstudioBridgeEnabled ? "on" : "off"
                     )
+                }
+            }
+
+            Section("Appearance") {
+                NavigationLink {
+                    ThemePickerView()
+                } label: {
+                    HStack {
+                        Text("Theme")
+                        Spacer()
+                        Text(themes.theme.name)
+                            .foregroundStyle(.secondary)
+                        // The accent as a dot, so the current theme is
+                        // legible from the settings list without opening
+                        // the picker.
+                        Circle()
+                            .fill(themes.theme.accent)
+                            .frame(width: 11, height: 11)
+                            .accessibilityHidden(true)
+                    }
                 }
             }
 

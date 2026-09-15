@@ -13,6 +13,8 @@ struct MessageBubble: View {
     let message: ChatMessage
     var isStreaming: Bool = false
 
+    @Environment(\.hyperLinkTheme) private var theme
+
     var body: some View {
         VStack(alignment: message.isUser ? .trailing : .leading, spacing: 4) {
             VStack(alignment: .leading, spacing: 8) {
@@ -45,9 +47,16 @@ struct MessageBubble: View {
                 }
             }
             .padding(12)
+            // The theme's two bubble colours at full strength, rather
+            // than one accent at 18% and the system grey at 12%. Those
+            // two were close enough in several appearances that the only
+            // thing separating the speakers was which side they were on.
             .background(
-                message.isUser ? Color.accentColor.opacity(0.18) : Color.secondary.opacity(0.12),
+                message.isUser ? theme.userBubble : theme.assistantBubble,
                 in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+            )
+            .foregroundStyle(
+                message.isUser ? theme.userBubbleText : theme.assistantBubbleText
             )
             .frame(maxWidth: .infinity, alignment: message.isUser ? .trailing : .leading)
 
