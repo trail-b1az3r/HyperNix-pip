@@ -233,7 +233,10 @@ def test_no_test_module_imports_fastapi_unguarded() -> None:
         lines = path.read_text(encoding="utf-8").splitlines()
         skipped_already = False
         for number, line in enumerate(lines, 1):
-            if 'importorskip("fastapi")' in line:
+            # Matched without the closing paren: `importorskip("fastapi",
+            # reason="…")` is the same guard and was being read as no
+            # guard at all, which failed a file that had done it right.
+            if 'importorskip("fastapi"' in line:
                 # Everything after this point is unreachable without
                 # fastapi, so a module-level import below it is fine.
                 skipped_already = True

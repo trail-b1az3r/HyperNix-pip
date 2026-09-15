@@ -236,7 +236,7 @@ def dispatch(req: dict[str, Any], cancel: threading.Event | None = None) -> dict
             core.set_t1_api_url(req["url"])
             return _ok(id_, {"url": core.t1_api_url()})
 
-        # -- 0.72.6: Noodle, the autonomous executor ------------------
+        # -- 0.72.5: Noodle, the autonomous executor ------------------
         #
         # Noodle has described itself as "the autonomous executor inside
         # Hyped Pro" since it shipped and was not reachable from

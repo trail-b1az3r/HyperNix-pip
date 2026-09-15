@@ -164,6 +164,139 @@ It did not, three times, and each was a real difference:
 
 All six packings are now bit-identical to the packer across seeds.
 
+### hyprslug builds drafts, and bundles quants ๋࣭⭑
+
+Two shapes of speculative decoding, from one quantiser:
+
+- **`dflash2`** embeds the draft in the base GGUF under a `dflash2.`
+  prefix. One file, one download, and a runtime that has never heard of
+  Dflash2 reads the base model straight through.
+- **`dflash1`** writes the draft as its own GGUF, for
+  `llama-cli --model-draft`. It renumbers the kept blocks from zero and
+  rewrites `<arch>.block_count` to match, because a draft that claims 32
+  blocks and ships 6 loads and then reads past the end of the tensor
+  table. It refuses a base with no tokenizer rather than writing a file
+  that cannot be sampled from.
+
+Both take the target precisions the roadmap asked for — `q8`, `int8`,
+`fp16`, `bf16`, `fp32`, `IQ0.5`, `Q6_K`, `Q4_M`, `int2` — and everything
+else hyprslug writes, because they now plan through `plan_tensors`
+rather than validating against llama.cpp's ten block formats. That check
+was the first version, and it meant `--quant int8` came back "unknown"
+from the draft builders while `hyprslug SOURCE int8` worked: five of the
+nine precisions the drafts were specified in were unreachable through
+them. Planning in one place is also what removed the third copy of the
+row-length rule, which had already been got wrong once.
+
+**Five new targets.** `INT8` and `INT2` join the fixed-codebook family;
+`FP32`, `FP16` and `BF16` are element widths rather than block
+quantisations and take a separate path in `encode_tensor`. BF16 rounds
+to nearest even; FP16 saturates an overflow to 65504 only when the input
+was **finite**, so an infinity stays an infinity instead of becoming a
+large number that looks like data.
+
+INT2 was expected to lose to FP2 and does not: 0.384 relRMS against
+0.397 over twelve seeds, because 39.7% of a weight tensor is near zero
+and INT2 spends a codeword there.
+
+**`hnx-bundle`** puts several quantisations of one model in a single
+GGUF under `hnxq.<slug>.`. The default variant keeps the ordinary tensor
+names, so a stock llama.cpp opens the file and runs it. Tensors every
+variant left untouched byte for byte are stored once; the rest are not,
+so a bundle is roughly its variants added together and the point is one
+download and one page cache rather than compression. `list` says what is in there, `extract` takes one back
+out as an ordinary GGUF, `strip` removes the extras.
+
+### tvtoppro: an intro, modules, and a watchdog ✨
+
+- `tvtop-older`'s animated **"decoding"** startup text, and the spinner
+  module, in tvtoppro's presentation.
+- **A module system.** A new stat is a file that registers itself, not a
+  patch to the renderer.
+- **A stall detector.** `train.log` untouched for over a week means the
+  run being watched is not the run that is happening: tvtoppro finds the
+  busiest Python process on the machine and reads *its* logs and
+  progress instead. Busy is measured over the process's whole lifetime
+  rather than with `cpu_percent()`, which returns 0.0 on the first call
+  and — for a process object built fresh from `process_iter` — every
+  call is a first call.
+
+### 𖢥 `cctvtop`'s Remote Desktop panel
+
+It reported a session as up whenever *something* held the port. The
+probe now completes an RFB handshake, so a stale listener, a tunnel with
+nothing behind it and a live desktop are three different answers. When
+there is no session it says which of the four reasons applies — no
+server installed, a server installed and not running, a Wayland session
+with only `x11vnc` available, or a display it cannot see — rather than
+"unavailable".
+
+### noodle runs inside hyped-pro 🔁
+
+`/noodle` in the TUI, and five bridge verbs behind it. The executor
+adopts keys already stored in the HyperNix config for its vendors, with
+the environment always winning over the stored copy, so a session that
+already works in `hyped` works here without being configured twice.
+
+### 🛡️ The `hypernix` CLI says what was wrong
+
+An unknown subcommand printed a usage block and exited 0. It now goes to
+stderr, exits 2, suggests the nearest real command, and accepts the
+aliases people type. Four commands that existed and were reachable only
+by knowing they existed are in the menu.
+
+### T1 v1.0.26.9.2.3 — an account without a key ๋࣭⭑
+
+Sign-up and browser sign-in, served four ways: localhost, over
+Tailscale, from the operator's own site, or from a prebuilt Cloudflare
+site hosted by the API host. scrypt for passwords, constant-time
+comparison, CSRF tokens on every form, SameSite cookies, lockout after
+repeated failures, and `Secure` coupled to whether the connection is
+actually TLS. A keyless caller never gets administrator rights, on any
+of the four.
+
+### 🛡️ Security
+
+- **The config file was world-readable.** It holds API keys. It is now
+  written `0600` into a `0700` directory, through a temporary file and
+  `os.replace` so there is no window where a half-written file exists at
+  the real path, and an existing file has its permissions tightened on
+  load.
+- **Key authentication leaked which key you sent.** The lookup compared
+  key strings and its loop position depended on the prefix, which is a
+  timing oracle for the stored keys. Keys are now indexed by digest and
+  compared with `hmac.compare_digest`; measured, the 60x spread across
+  probe keys is flat.
+
+### HyperLink: CarPlay, Siri, themes, attachments and renaming ๋࣭⭑
+
+- **CarPlay.** A conversation list, `CPVoiceControlTemplate` dictation,
+  six canned replies, and a keyboard **only when the car reports it will
+  allow one** — read from `CPSessionConfiguration.limitedUserInterfaces`
+  on every use and rebuilt from its delegate, because the answer changes
+  while the app is running.
+- **Siri.** Four App Intents — ask, load a model, read a chat, send a
+  message — none of which open the app, because the point of asking from
+  a car dock is that the phone stays where it is. Replies are trimmed
+  before being spoken: a fenced code block read aloud is unintelligible.
+- **Themes.** Eight, with the two bubble colours as the point rather than
+  one accent at 18%. Every theme's text clears WCAG AA against its own
+  bubble, the two bubbles are told apart by luminance, and so are
+  "connected" and "failed" — checked in
+  `tests/test_hyperlink_ios_wiring.py`, which found three that did not.
+- **The attachment menu** offers all four ways in. Two of them — a
+  document from Files, and the camera — were reachable by the server and
+  by nothing on screen.
+- **Renaming a chat.** The server has taken a title on `PATCH` since
+  HyperLink shipped and nothing on the phone ever sent one.
+
+### 📚 Docs
+
+- **Issue templates**, one for a bug and one for a feature request.
+- **[Model-Training-Guide](Model-Training-Guide.md)** — which of these
+  do I use, and in what order. Every API in it was run against the
+  package rather than written from memory; six were wrong.
+
 ## 0.72.4.post21 — why both tiers gave a 1.4 GB file
 
 Two models from the same BF16 Qwen3-class 2B, one `IQ0.9_L` and one

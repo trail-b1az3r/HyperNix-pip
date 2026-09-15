@@ -121,7 +121,7 @@ MODES: dict[str, WebAuthMode] = {
         # where the tighter setting costs nothing.
         same_site="strict",
         summary="http://127.0.0.1:8000 — one machine, nothing on a network.",
-        how="hypernix-t1 serve --accounts local",
+        how="T1_ACCOUNTS_ENABLED=1 T1_ACCOUNTS_MODE=local",
     ),
     "tailscale": WebAuthMode(
         name="tailscale",
@@ -133,7 +133,7 @@ MODES: dict[str, WebAuthMode] = {
             "and authenticated the link, so plain HTTP here is not plain "
             "HTTP on a network."
         ),
-        how="hypernix-t1 serve --accounts tailscale",
+        how="T1_ACCOUNTS_ENABLED=1 T1_ACCOUNTS_MODE=tailscale",
     ),
     "site": WebAuthMode(
         name="site",
@@ -145,7 +145,10 @@ MODES: dict[str, WebAuthMode] = {
             "Your own domain, your own TLS, your own reverse proxy. The "
             "proxy must strip the client's X-Forwarded-For and set its own."
         ),
-        how="hypernix-t1 serve --accounts site --public-url https://t1.example.com",
+        how=(
+            "T1_ACCOUNTS_ENABLED=1 T1_ACCOUNTS_MODE=site "
+            "T1_ACCOUNTS_PUBLIC_URL=https://t1.example.com"
+        ),
     ),
     "cloudflare": WebAuthMode(
         name="cloudflare",
@@ -157,7 +160,10 @@ MODES: dict[str, WebAuthMode] = {
             "Behind a Cloudflare tunnel. No port to open and no certificate "
             "to manage; Cloudflare terminates TLS and sets CF-Connecting-IP."
         ),
-        how="hypernix-t1 serve --accounts cloudflare --public-url https://t1.example.com",
+        how=(
+            "T1_ACCOUNTS_ENABLED=1 T1_ACCOUNTS_MODE=cloudflare "
+            "T1_ACCOUNTS_PUBLIC_URL=https://t1.example.com"
+        ),
     ),
 }
 
@@ -246,7 +252,7 @@ def validate(settings: WebAuthSettings) -> None:
     if mode.needs_tls and not settings.public_url:
         raise WebAuthError(
             f"Accounts mode {mode.name!r} serves over the network, so it needs "
-            "T1_ACCOUNTS_PUBLIC_URL (or --public-url) to know which origin to "
+            "T1_ACCOUNTS_PUBLIC_URL to know which origin to "
             "trust. Without it the CSRF origin check has nothing to check "
             "against."
         )

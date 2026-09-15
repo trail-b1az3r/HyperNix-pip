@@ -13,12 +13,15 @@
 **End-to-end toolkit for training ai models on modern or old devices, originaly for converting hypernix.1 into gguf, now for all around training**
 
 ## What's fixed in this update
-See [Changelog.md](/wiki/Changelog.md)
-for most updates
+
+The section below covers what 0.72.5 adds.
+[`wiki/Changelog.md`](wiki/Changelog.md) is the canonical per-release
+history, and [`wiki/Roadmap.md`](wiki/Roadmap.md) says what is next.
 
 ## Table of contents
 
 - [What's fixed in this update](#whats-fixed-in-this-update)
+- [What's new: 0.72.5 — drafts, bundles, accounts, and a car](#whats-new-0725--drafts-bundles-accounts-and-a-car)
 - [What's new: 0.72.3.post2 — sub-bit models you can actually run](#whats-new-0723post2--sub-bit-models-you-can-actually-run)
 - [What's new: 0.72.3 — T1 v1.0.2026.8.1.1](#whats-new-0723--t1-v102026811)
 - [Package layout](#package-layout)
@@ -41,6 +44,150 @@ for most updates
 
 
 Cross-platform: Linux, macOS, Windows. Python 3.10 - 3.14.
+
+## What's new: 0.72.5 — drafts, bundles, accounts, and a car
+
+**Speculative decoding, in both shapes.** `hyprslug` produced a
+quantised model and `dflash2` could attach a draft somebody else had
+made. Now it makes the draft:
+
+```bash
+dflash2 attach model.gguf -o model+draft.gguf --quant q4_m   # embedded, one file
+dflash1        model.gguf -o draft.gguf       --quant int8   # for --model-draft
+```
+
+`dflash2` writes the draft into the base GGUF under a `dflash2.` prefix,
+which is where the speed-up is: one file, one download, and a runtime
+that has never heard of Dflash2 reads the base model straight through.
+`dflash1` writes it as its own file for `llama-cli --model-draft`,
+renumbering the kept blocks from zero and rewriting `<arch>.block_count`
+to match — a draft that claims 32 blocks and ships 6 loads, and then
+reads past the end of its own tensor table. It refuses a base with no
+tokenizer rather than writing a draft nothing can sample from.
+
+Both take nine targets: `q8`, `int8`, `fp16`, `bf16`, `fp32`, `IQ0.5`,
+`Q6_K`, `Q4_M`, `int2` — and anything else `hyprslug` writes, because
+they plan through it rather than keeping their own list. A draft at a
+given tier is the same packing as a model at it.
+
+**Several quantisations in one GGUF.**
+
+```bash
+hnx-bundle build model.gguf q8,q4_m,iq0.5 -o all.gguf
+hnx-bundle list all.gguf
+hnx-bundle extract all.gguf q4_m -o just-q4m.gguf
+```
+
+Variants live under `hnxq.<slug>.`, and the default one keeps the
+ordinary tensor names — a stock llama.cpp opens the file and runs it
+with nothing unusual happening. A bundle is roughly its variants added
+together: what is stored once is the tensors every variant left
+untouched byte for byte, which for most tiers is the 1-D norms rather
+than the bulk. The point is not compression — it is one download
+instead of five, one page cache instead of five, and switching tiers on
+a served model without fetching anything.
+
+**Five new quant targets.** `INT8` and `INT2` join the fixed-codebook
+family; `FP32` / `FP16` / `BF16` are element widths and take their own
+path. BF16 rounds to nearest even. FP16 saturates an overflow to 65504
+only when the input was *finite*, so an infinity stays an infinity
+instead of quietly becoming a large number that looks like data.
+
+INT2 was expected to lose to FP2 and does not — 0.384 relRMS against
+0.397 over twelve seeds, because ~40% of a weight tensor sits near zero
+and INT2 spends a codeword there. Measurement in
+[LowBit](wiki/LowBit.md).
+
+**`tvtoppro` gets an intro, modules, and a watchdog.** `tvtop-older`'s
+animated "decoding" startup text and the spinner, in tvtoppro's
+presentation; a module system, so a new stat is a file that registers
+itself rather than a patch to the renderer; and a stall detector —
+`train.log` untouched for over a week means the run being watched is not
+the run that is happening, so it finds the busiest Python process on the
+machine and reads *its* logs and progress instead.
+
+```bash
+tvtoppro --find-run          # go looking, rather than waiting on a dead log
+```
+
+**`cctvtop`'s Remote Desktop panel works.** It called a session live
+whenever *something* held the port. The probe completes an RFB handshake
+now, so a stale listener, a tunnel with nothing behind it and a real
+desktop are three different answers — and when there is no session it
+says which of four reasons applies rather than "unavailable".
+
+**`noodle` runs inside `hyped-pro`.** `/noodle` in the TUI. It adopts
+vendor keys already stored in the HyperNix config, with the environment
+always winning over the stored copy, so a session that works in `hyped`
+is not configured twice.
+
+**The `hypernix` CLI says what was wrong.** An unknown subcommand used to
+print usage and exit 0. It now goes to stderr, exits 2, and suggests the
+nearest real command:
+
+```
+$ hypernix quantise
+hypernix: unknown command 'quantise'
+
+  You want:  hypernix quantize
+
+  hypernix --help   every subcommand
+```
+
+**T1 v1.0.26.9.2.3 — an account without already having a key.** Sign-up
+and browser sign-in, served four ways: from localhost, over Tailscale,
+from the operator's own site, or from a prebuilt Cloudflare site hosted
+by the API host.
+
+```bash
+t1-accounts create mason --admin     # password prompted, never an argument
+t1-accounts modes                    # what the four are, and what each needs
+
+T1_ACCOUNTS_ENABLED=1 T1_ACCOUNTS_MODE=tailscale hypernix-t1 start
+```
+
+scrypt for passwords, constant-time comparison, CSRF on every form,
+SameSite cookies, lockout after repeated failures, and `Secure` coupled
+to whether the connection is actually TLS. A keyless caller never gets
+administrator rights, in any of the four modes.
+
+**Two security fixes.** The config file holding API keys was
+world-readable; it is now written `0600` into a `0700` directory through
+a temporary file and `os.replace`, and an existing file is tightened on
+load. And key authentication compared key *strings*, in a loop whose
+position depended on the prefix — a timing oracle for the stored keys.
+Keys are indexed by digest and compared with `hmac.compare_digest`; the
+measured 60x spread across probe keys is flat.
+
+**HyperLink in a car, and out loud.** The iOS app gets a CarPlay scene,
+four Siri intents, eight themes, an attachment menu that offers all four
+ways in, and renaming.
+
+- CarPlay shows a conversation list, `CPVoiceControlTemplate` dictation
+  and six canned replies — and a keyboard **only when the car reports it
+  will allow one**, read from `CPSessionConfiguration.limitedUserInterfaces`
+  on every use and rebuilt from its delegate, because the answer changes
+  while the app is running.
+- "Siri, ask HyperLink what's the weather", "Siri, load the model Gemma 4
+  E2B on blazeindustries in HyperLink", "Siri, read me the HyperLink
+  chat". None of the four intents opens the app; the point of asking from
+  a car dock is that the phone stays where it is.
+- Every theme's text clears WCAG AA against its own bubble, the two
+  bubbles are told apart by luminance, and so are "connected" and
+  "failed" — checked in `tests/test_hyperlink_ios_wiring.py`, which found
+  three that were not.
+- A chat can be renamed. The server has taken a title on
+  `PATCH /hyperlink/sessions/{id}` since HyperLink shipped, and nothing
+  on the phone ever sent one.
+
+CarPlay needs `com.apple.developer.carplay-communication`, which Apple
+grants per app on request rather than with a paid account. Everything
+else builds and runs without it.
+
+**Docs.** Issue templates for bugs and for feature requests, and
+[Model-Training-Guide](wiki/Model-Training-Guide.md) — which of these do
+I use, and in what order. Every API in that guide was run against the
+package rather than written from memory; six were wrong.
 
 ## What's new: 0.72.3.post2 — sub-bit models you can actually run
 
@@ -163,21 +310,26 @@ directory:
 
 | Directory | Modules | Contents |
 |---|---|---|
+| `hypernix/audio/` | 4 | Wake words, audio files and speech plumbing. |
 | `hypernix/chat/` | 5 | Chat templating, prompt presets and multi-turn session state. |
-| `hypernix/data/` | 15 | Datasets: collection, cleaning, splitting, packing and augmentation. |
+| `hypernix/data/` | 17 | Datasets: collection, cleaning, splitting, packing and augmentation. |
 | `hypernix/evaluation/` | 6 | Scoring, rubric labelling, judging and module verification. |
-| `hypernix/interfaces/` | 11 | Human-facing front ends: CLIs, TUIs, GUIs and launchers. |
-| `hypernix/models/` | 11 | Architectures, snapshot loading, generation and model utilities. |
-| `hypernix/monitoring/` | 9 | Live dashboards, logging, telemetry and hardware sampling. |
-| `hypernix/optimizers/` | 8 | The Pressure Cooker optimizer family and optimizer plumbing. |
-| `hypernix/quant/` | 4 | The GGUF pipeline: convert, quantize, fetch tooling and upload. |
-| `hypernix/security/` | 3 | API keys, quotas and request gating. |
-| `hypernix/system/` | 15 | Environment, dependencies, hardware and housekeeping. |
+| `hypernix/hyperlink/` | 12 | The [HyperLink](wiki/HyperLink-Sync.md) server side: sessions, attachments, pairing, push. |
+| `hypernix/interfaces/` | 19 | Human-facing front ends: CLIs, TUIs, GUIs, launchers and `noodle`. |
+| `hypernix/models/` | 17 | Architectures, snapshot loading, generation and model utilities. |
+| `hypernix/monitoring/` | 14 | Live dashboards, logging, telemetry and hardware sampling. |
+| `hypernix/optimizers/` | 9 | The Pressure Cooker optimizer family and optimizer plumbing. |
+| `hypernix/quant/` | 28 | The GGUF pipeline: convert, quantise, the sub-bit tiers, the draft builders, bundles, fetch tooling and upload. |
+| `hypernix/scriptgen/` | 6 | The training-script builder behind `hnx-scriptgen`. |
+| `hypernix/security/` | 6 | API keys, quotas and request gating. |
+| `hypernix/system/` | 24 | Environment, dependencies, hardware and housekeeping. |
 | `hypernix/timing/` | 5 | Timers, alarms, cadence control and progress animation. |
-| `hypernix/training/` | 14 | Training entry points, schedules and weight perturbation. |
-| `hypernix/t1api/` | — | The [T1 API](wiki/T1-API.md) server: registry, routing, quota, billing, audit, rate limiting, mTLS, deployment. |
-| `hypernix/t1sdk/` | — | The T1 API client SDK — typed, stdlib-only, no server extra needed. |
-| `hypernix/waiter/` | — | [`waiter`](wiki/Waiter-TUI.md), the official T1 API TUI/CLI. |
+| `hypernix/training/` | 15 | Training entry points, schedules and weight perturbation. |
+| `hypernix/t1api/` | 57 | The [T1 API](wiki/T1-API.md) server: registry, routing, quota, billing, audit, rate limiting, mTLS, accounts, web auth, deployment. |
+| `hypernix/t1sdk/` | 4 | The T1 API client SDK — typed, stdlib-only, no server extra needed. |
+| `hypernix/waiter/` | 7 | [`waiter`](wiki/Waiter-TUI.md), the official T1 API TUI/CLI. |
+
+Counts are `.py` files excluding `__init__.py`, as of 0.72.5.
 
 **Every module keeps its old import path.** `hypernix.timer` and
 `hypernix.timing.timer` return the same module object, so nothing that
@@ -339,11 +491,8 @@ Eleven major additions:
 - **tvtop++ fixes** — Eliminated border flicker (layout built once), added `_block_history_bar` re-export, implemented `small_mode`, fixed self-process filtering.
 - **New wiki pages** — [Pressure-Cooker-V5](wiki/Pressure-Cooker-V5.md), [MTP](wiki/MTP.md), [Scavenger](wiki/Scavenger.md)
 - **Kitchen.md updated** — Added scavenger, MTP, and QAT sections
-- **Training benefits chart** — See below
 
 ### Training Benefits vs Complexity
-
-![HyperNix Training Features](docs/public/training-benefits-chart.png)
 
 > **Key insight**: MTP + Speculative Decoding offer the highest benefit-to-cost ratio. Int8-quantized momentum cuts the momentum buffer's own memory by 75% versus fp32, and PressureCookerV5/V5S's factored curvature keeps the rest of the optimizer state small too -- measured optimizer-state memory lands around 12-13% of AdamW's (see the [efficiency paper](pressure_cooker_v5_v5s_paper.md) for the exact numbers and methodology). The trade-offs -- including step-time overhead on some hardware -- are real and are covered in the paper rather than summarized as a single percentage here.
 
@@ -525,6 +674,10 @@ new_fridge.plot_loss_curve(new_fridge.parse_training_log(log), "loss.png")
 
 ## CLI reference
 
+`hypernix --help` prints the authoritative list — this is the shape of
+it. An unknown subcommand exits 2 on stderr and suggests the nearest
+real one rather than printing usage and claiming success.
+
 ```
 hypernix <subcommand> [options]
 
@@ -544,10 +697,38 @@ hypernix <subcommand> [options]
   generate              sample text from a local snapshot
   oven                  code-generation wrapper (preheat + complete / fill)
   chat                  interactive chat REPL against any supported model
-  hyped+ / hyped-pro    Node.js TUI agent CLI w/ real cloud+local model dispatch, /gui desktop mode
-                        (/t1api routes through a local or remote HyperNix T1 API server)
+  brew                  custom architecture builder and training suite
+  fizzle                fuse models and LoRAs                        (fiz)
+  fusebox               GPU thermal governor: pace a run, trip on heat
+  devices               what accelerators this machine has, and what they do
+  wakeup                train a trigger phrase, then listen for it
+  websearch             the search backend behind chat and the assistant
+  gather                crawl a site into a corpus (robots-aware)
+  runtime               use HyperNix's llama.cpp from LM Studio and friends
+  hyprslug-headers      self-describing GGUF headers, and the sub-bit server
   stml                  VRAM trained context length calculator
 ```
+
+The rest are their own console scripts, because each is a program rather
+than a step in the pipeline:
+
+| Command | What it is |
+|---|---|
+| `hyped` / `hyped-pro` | The TUI agent CLI. `/gui` for a desktop window, `/t1api` to route through a T1 server, `/noodle` for the autonomous executor. |
+| `hyprslug` (`doomslug`, `dstd`) | The quantiser, including the sub-bit tiers. |
+| `dflash2` / `dflash1` | Speculative-decoding drafts: embedded in the base GGUF, or standalone for `--model-draft`. |
+| `hnx-bundle` (`multiquant`) | Several quantisations in one GGUF. |
+| `hnx-imatrix` | Importance matrices. |
+| `steamroller` | The descending llama.cpp quantiser. |
+| `tvtoppro` / `cctvtop` / `tvtop-old` / `tvtop-older` | The dashboards, newest to oldest. |
+| `hnx-map` | The steampunk schematic TUI. |
+| `hnx-scriptgen` | The training-script builder. |
+| `waiter` | The T1 API's client TUI/CLI. Needs no server extra. |
+| `t1-accounts` | Web accounts for a T1 server: create, reset, unlock, and the four deployment modes. |
+| `gkey` | Gatekeeper + Keymaster, in one place. |
+| `multilama` | One interface over vanilla llama.cpp, ik_llama.cpp, PrismML and KoboldCpp. |
+| `noodle` | The autonomous multi-agent executor, standalone. |
+| `eth` / `ups` | Ethanol, and the UPS monitor. |
 
 `train run` accepts curriculum / context management flags:
 
@@ -649,6 +830,15 @@ Topic-focused reference guides live in the `wiki/` directory:
 - [`wiki/Pressure-Cooker-V5.md`](wiki/Pressure-Cooker-V5.md) — Pressure Cooker V5 / V5+ / V5S with QAT and MTP
 - [`wiki/MTP.md`](wiki/MTP.md) — Multi-Token Prediction guide
 - [`wiki/Scavenger.md`](wiki/Scavenger.md) — HuggingFace dataset discovery
+- [`wiki/Model-Training-Guide.md`](wiki/Model-Training-Guide.md) — which of these do I use, and in what order
+- [`wiki/HyprSlug.md`](wiki/HyprSlug.md) — the sub-bit quantiser
+- [`wiki/HyprSlug-Headers.md`](wiki/HyprSlug-Headers.md) — self-describing headers, the compat export, the sub-bit server
+- [`wiki/LowBit.md`](wiki/LowBit.md) — the fixed-codebook tiers and the measurements behind them
+- [`wiki/Dflash2.md`](wiki/Dflash2.md) — speculative-decoding drafts
+- [`wiki/TvTopPro.md`](wiki/TvTopPro.md) — the dashboard, its themes and its modules
+- [`wiki/T1-API.md`](wiki/T1-API.md) — the T1 API server
+- [`wiki/HyperLink-Sync.md`](wiki/HyperLink-Sync.md) — the phone app and what it talks to
+- [`wiki/Roadmap.md`](wiki/Roadmap.md) — what is planned, and what landed
 
 ## How the GGUF pipeline works
 

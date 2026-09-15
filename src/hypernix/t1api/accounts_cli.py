@@ -218,7 +218,7 @@ def _cmd_modes(_args) -> int:
         print(f"  {mode.name}")
         for line in _wrap(mode.summary, 68):
             print(f"      {line}")
-        print(f"      $ {mode.how}")
+        print(f"      $ {mode.how} hypernix-t1 start")
         flags = []
         flags.append("Secure cookies" if mode.secure_cookies else "no TLS required")
         if mode.behind_proxy:

@@ -33,7 +33,7 @@ say what they are doing.
 Inside hyped-pro
 ----------------
 The line above about being "the autonomous executor inside Hyped Pro" was
-aspirational until 0.72.6: Noodle was a library and a console script, and
+aspirational until 0.72.5: Noodle was a library and a console script, and
 hyped-pro had no command, no bridge verb and no idea it existed.
 :mod:`hypernix.interfaces.noodle.hyped` is the connection — sessions the
 TUI and the GUI drive with ``/noodle`` and a Noodle tab respectively,

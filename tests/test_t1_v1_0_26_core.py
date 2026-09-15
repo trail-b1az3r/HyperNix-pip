@@ -67,9 +67,9 @@ class TestT1Version:
         #
         # Deliberately a literal. This is the tripwire that makes a
         # version bump a decision rather than a side effect.
-        assert T1_VERSION.short == "1.0.26.9.2.1"
-        assert T1_VERSION.long == "1.0.2026.9.2.1"
-        assert T1_VERSION.display == "t1 v1.0.26.9.2.1"
+        assert T1_VERSION.short == "1.0.26.9.2.3"
+        assert T1_VERSION.long == "1.0.2026.9.2.3"
+        assert T1_VERSION.display == "t1 v1.0.26.9.2.3"
         assert T1_VERSION.generation == "1.0"
         assert T1_VERSION.release == "2026-09"
 
