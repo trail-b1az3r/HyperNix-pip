@@ -20,7 +20,6 @@ import os
 import socket
 import threading
 import time
-from pathlib import Path
 
 import pytest
 
@@ -76,7 +75,7 @@ class _Listener:
         while not self._stop.is_set():
             try:
                 client, _ = server.accept()
-            except socket.timeout:
+            except TimeoutError:
                 continue
             except OSError:
                 break

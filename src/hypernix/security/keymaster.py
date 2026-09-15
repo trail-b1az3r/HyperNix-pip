@@ -728,6 +728,13 @@ class Keymaster:
             if meta is None:
                 raise KeyError(f"Key not found: {key_id!r}")
             meta.key = key_str
+            # The only place a key's *material* changes without the
+            # dictionary changing, which makes it the one mutation the
+            # digest index cannot notice on its own. Missing it left the
+            # index holding the pre-restore digest, so `POST
+            # /t1/auth/undo` reported success and the restored key then
+            # failed to authenticate -- an undo that undid nothing.
+            self._reindex()
         self._save(meta)
         logger.info("keymaster: restored key material on %s", key_id[:8])
         return meta

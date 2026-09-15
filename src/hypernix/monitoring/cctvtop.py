@@ -7,7 +7,6 @@ it started one without being asked, with no password, on every interface.
 """
 from __future__ import annotations
 
-import subprocess
 import sys
 import time
 from pathlib import Path

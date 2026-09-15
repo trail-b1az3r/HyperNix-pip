@@ -31,8 +31,13 @@ from pathlib import Path
 import pytest
 
 from hypernix.quant import lowbit
-from hypernix.quant.gguf import GGMLType, GGUFFile, GGUFWriter, type_block_size
-from hypernix.quant.gguf import _BLOCK_SHAPE  # noqa: PLC2701 - the table under test
+from hypernix.quant.gguf import (
+    _BLOCK_SHAPE,  # noqa: PLC2701 - the table under test
+    GGMLType,
+    GGUFFile,
+    GGUFWriter,
+    type_block_size,
+)
 from hypernix.quant.hyprslug import (
     TIER_TYPES,
     WIDTHS,
@@ -123,7 +128,7 @@ class TestTheNewCodecs:
 
         def _error(name: str) -> float:
             back = lowbit.dequantize_array(lowbit.quantize_array(values, name), name)
-            return (sum((a - b) ** 2 for a, b in zip(back, values)) / len(values)) ** 0.5
+            return (sum((a - b) ** 2 for a, b in zip(back, values, strict=True)) / len(values)) ** 0.5
 
         assert _error("INT8") / scale < 0.02
         assert 0.2 < _error("INT2") / scale < 0.6

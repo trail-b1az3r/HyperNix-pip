@@ -22,7 +22,6 @@ from __future__ import annotations
 
 import os
 import time
-from pathlib import Path
 
 import pytest
 
@@ -66,7 +65,7 @@ class TestTheDecodeAnimation:
         text = "resolving"
         frames = decode_frames(text, seed=3)
         resolved_counts = [
-            sum(1 for a, b in zip(frame, text) if a == b) for frame in frames
+            sum(1 for a, b in zip(frame, text, strict=True) if a == b) for frame in frames
         ]
         assert resolved_counts == sorted(resolved_counts)
 

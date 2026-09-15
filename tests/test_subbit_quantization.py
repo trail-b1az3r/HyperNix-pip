@@ -493,8 +493,20 @@ class TestSteamrollerActuallyQuantises:
         assert recorded["hypernix.tier"] == "IQ0.75_M"
         assert recorded["hypernix.report"]["tensors_quantized"] == 1
 
-    def test_each_tier_produces_a_different_size(self, tmp_path):
-        """Three tiers that emit identical files are three labels."""
+    def test_each_bitrate_produces_a_different_size(self, tmp_path):
+        """A tier that emits the same file as a narrower one is a label.
+
+        Grouped by bitrate rather than by tier, because two tiers *at the
+        same rate* producing the same file is the design working, not a
+        bug: INT2 and FP2 are both 2.0625 bits per weight — one FP16
+        scale and 2-bit codes over a 256-weight block — and differ only
+        in what the four codes mean. INT2's levels include zero, FP2's do
+        not. Identical size, different weights.
+
+        What must hold is that a *narrower* tier produces a smaller file,
+        which is the claim a tier name actually makes.
+        """
+        from hypernix.quant.hyprslug import _bits_per_weight
         from hypernix.quant.steamroller import Steamroller
 
         source = self._source(tmp_path)
@@ -503,8 +515,19 @@ class TestSteamrollerActuallyQuantises:
             out = tmp_path / f"{tier}.gguf"
             Steamroller(hnx_only=True).run(source, tier, out, source_format="FP32")
             sizes[tier] = out.stat().st_size
-        assert len(set(sizes.values())) == len(sizes), sizes
+
+        by_rate: dict[float, set[int]] = {}
+        for tier, size in sizes.items():
+            rate = round(_bits_per_weight(TIER_TYPES[tier][1]), 4)
+            by_rate.setdefault(rate, set()).add(size)
+        for rate, found in by_rate.items():
+            assert len(found) == 1, f"tiers at {rate} bpw disagree on size: {sizes}"
+
+        ordered = sorted(by_rate)
+        produced = [next(iter(by_rate[rate])) for rate in ordered]
+        assert produced == sorted(produced), dict(zip(ordered, produced, strict=True))
         assert sizes["IQ0.5_XXXL"] < sizes["IQ0.75_M"] < sizes["IQ0.9_L"]
+        assert sizes["INT2"] < sizes["INT4"] < sizes["INT8"]
 
 
 class TestTheCLI:

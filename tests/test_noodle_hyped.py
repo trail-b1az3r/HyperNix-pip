@@ -25,7 +25,6 @@ from __future__ import annotations
 
 import json
 import os
-import threading
 import time
 
 import pytest
@@ -40,6 +39,30 @@ def _clean_sessions():
     noodle.clear_finished()
     yield
     noodle.clear_finished()
+
+
+@pytest.fixture(autouse=True)
+def _no_key_leakage():
+    """Undo what adopt_stored_keys() puts in the environment.
+
+    It sets real ``os.environ`` entries on purpose — that is the whole
+    mechanism, since Noodle's ProviderSpec.resolve_key reads nothing
+    else. But monkeypatch cannot restore a variable it never saw being
+    set, so without this a test here leaves ANTHROPIC_API_KEY set for
+    every test that runs afterwards in the same process. It did:
+    tests/test_security_fixes.py asserts on the *file* store and was
+    reading this module's leaked environment instead.
+    """
+    watched = {
+        name for names in noodle.KEY_VENDORS.values() for name in names
+    }
+    before = {name: os.environ.get(name) for name in watched}
+    yield
+    for name, value in before.items():
+        if value is None:
+            os.environ.pop(name, None)
+        else:
+            os.environ[name] = value
 
 
 @pytest.fixture

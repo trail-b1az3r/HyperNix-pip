@@ -257,7 +257,7 @@ def _rfb_handshake(port: int, host: str = "127.0.0.1", timeout: float = 0.4) -> 
         with socket.create_connection((host, port), timeout=timeout) as stream:
             stream.settimeout(timeout)
             greeting = stream.recv(12)
-    except (OSError, socket.timeout):
+    except (TimeoutError, OSError):
         return ""
     if greeting.startswith(b"RFB "):
         return greeting[4:11].decode("ascii", errors="replace")
@@ -272,7 +272,7 @@ def _owner_of(port: int) -> str:
     """
     for command in (
         ["ss", "-lptnH", f"sport = :{port}"],
-        ["lsof", "-nP", "-iTCP:%d" % port, "-sTCP:LISTEN"],
+        ["lsof", "-nP", f"-iTCP:{port}", "-sTCP:LISTEN"],
     ):
         try:
             result = subprocess.run(

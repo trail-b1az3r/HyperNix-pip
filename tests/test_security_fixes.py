@@ -20,13 +20,11 @@ to 3.84 microseconds.
 """
 from __future__ import annotations
 
-import importlib
 import os
 import stat
 import time
 
 import pytest
-
 
 # ---------------------------------------------------------------------------
 # 1. The config file held API keys world-readable
@@ -35,10 +33,20 @@ import pytest
 
 @pytest.fixture
 def config(tmp_path, monkeypatch):
-    """A fresh config module rooted at a temporary home."""
+    """A fresh config module rooted at a temporary home.
+
+    The environment has to be cleared as well as the paths.
+    ``get_provider_key`` resolves the vendor's environment variable
+    *before* the file — which is correct, and means a stray
+    ANTHROPIC_API_KEY (exported by the developer, or left behind by
+    another test in the same process) makes these read something other
+    than the file they are about.
+    """
     monkeypatch.setenv("HOME", str(tmp_path))
     import hypernix.system.config as module
 
+    for name in module.PROVIDER_ENV_VARS.values():
+        monkeypatch.delenv(name, raising=False)
     monkeypatch.setattr(module, "_CONFIG_DIR", tmp_path / ".hypernix")
     monkeypatch.setattr(
         module, "_CONFIG_FILE", tmp_path / ".hypernix" / "config.json"
@@ -207,6 +215,29 @@ class TestTheKeyLookupIsConstantTime:
         replacement = keymaster.rotate(meta.key_id)
         assert keymaster.get_by_key(meta.key) is None
         assert keymaster.get_by_key(replacement.key).key_id == replacement.key_id
+
+    def test_the_index_survives_a_restore(self, keymaster):
+        """The mutation the index cannot see on its own.
+
+        `restore_key` puts previous material back on an existing record,
+        which is the one place a key's secret changes without the
+        dictionary changing. Missing it left the index holding the
+        pre-restore digest, so `POST /t1/auth/undo` reported success and
+        the restored key then failed to authenticate — an undo that
+        undid nothing.
+        """
+        meta = _make(keymaster)[0]
+        original = meta.key
+        replacement = keymaster.rotate(meta.key_id)
+        # Captured now: restore_key mutates this same KeyMeta in place,
+        # so reading replacement.key afterwards gives the restored value.
+        rotated = replacement.key
+        assert rotated != original
+
+        keymaster.restore_key(replacement.key_id, original)
+
+        assert keymaster.get_by_key(original) is not None
+        assert keymaster.get_by_key(rotated) is None
 
     def test_the_index_is_rebuilt_from_disk(self, keymaster, tmp_path):
         """A reload that did not reindex would make every stored key stop

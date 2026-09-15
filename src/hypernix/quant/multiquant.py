@@ -61,11 +61,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from .gguf import GGMLType, GGUFError, GGUFFile, GGUFTensor, GGUFWriter
+from .gguf import GGUFError, GGUFFile, GGUFTensor, GGUFWriter
 from .hyprslug import (
     HyprslugError,
-    TensorPlan,
     TargetSpec,
+    TensorPlan,
     encode_tensor,
     load_imatrix,
     plan_tensors,

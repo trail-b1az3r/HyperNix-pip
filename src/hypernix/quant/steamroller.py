@@ -207,6 +207,21 @@ TIERS: dict[str, Tier] = {
              "exactly the integers.",
              packing="hypernix-int4",
              honest_warning=_EXTENSION_WARNING),
+        Tier("INT8", 8.0625, False,
+             "Signed 8-bit over a 256-weight block. Not Q8_0: same code "
+             "width, eight times the block, so the file is smaller and the "
+             "scale coarser. Take Q8_0 instead unless the codebook has to "
+             "be exactly the integers — any llama.cpp reads that one.",
+             packing="hypernix-int8",
+             honest_warning=_EXTENSION_WARNING),
+        Tier("INT2", 2.0625, False,
+             "Signed 2-bit two's complement: -2, -1, 0, +1. FP2's "
+             "counterpart with a zero in it, so a sparse kernel has "
+             "something to skip — around 40% of a Gaussian tensor lands "
+             "there. Reconstruction error is a tie with FP2 (0.384 vs "
+             "0.397 relative RMS); the zeros are the reason to pick it.",
+             packing="hypernix-int2",
+             honest_warning=_EXTENSION_WARNING),
     )
 }
 
@@ -223,7 +238,9 @@ _TIER_ALIASES = {
     "iq0.25_uxl": "IQ0.25_UXL", "iq0.25uxl": "IQ0.25_UXL",
     "iq025uxl": "IQ0.25_UXL", "iq.0.25uxl": "IQ0.25_UXL",
     "int1": "INT1", "int4": "INT4", "fp2": "FP2",
+    "int8": "INT8", "int2": "INT2",
     "i1": "INT1", "i4": "INT4", "f2": "FP2",
+    "i8": "INT8", "i2": "INT2",
     # The rate has a decimal point in it and people write it every way
     # there is. get_tier() lower-cases and strips dashes and underscores,
     # so these cover the rest.

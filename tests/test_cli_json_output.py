@@ -137,13 +137,16 @@ class TestHyprslugListTiers:
     def test_the_sub_bit_tiers_carry_their_ggml_type_ids(self, listing):
         """Deliberately above anything upstream allocates, and the
         number is the reason a stock loader refuses the file by name."""
+        from hypernix.quant.hyprslug import TIER_TYPES
+
         ids = {t["name"]: t["ggml_type"] for t in listing["sub_bit_tiers"]}
-        assert ids == {
-            "IQ0.9_L": 200, "IQ0.75_M": 201, "IQ0.5_XXXL": 202,
-            "IQ0.25_UXL": 203, "INT1": 204, "INT4": 205, "FP2": 206,
-            "HNX_1375BIT": 207,
-        }
+        # Read from the table rather than transcribed, so adding a tier
+        # is one edit rather than two. What is asserted here is the two
+        # properties the listing has to have: every tier appears, and
+        # every id is above the range upstream allocates.
+        assert ids == {name: kind for name, (kind, _p) in TIER_TYPES.items()}
         assert all(i >= 200 for i in ids.values())
+        assert len(set(ids.values())) == len(ids), "two tiers share a type id"
 
     def test_the_bit_rates_are_the_real_ones(self, listing):
         from hypernix.quant.lowbit import CODECS
@@ -166,8 +169,12 @@ class TestHyprslugListTiers:
         by_family = {}
         for tier in listing["sub_bit_tiers"]:
             by_family.setdefault(tier["family"], []).append(tier["name"])
+        from hypernix.quant.lowbit import CODECS
+
         assert set(by_family) == {"sign-and-scale", "fixed-codebook"}
-        assert set(by_family["fixed-codebook"]) == {"INT4", "FP2"}
+        # Every lowbit codec is a fixed-codebook tier and nothing else
+        # is -- derived rather than listed, for the same reason as above.
+        assert set(by_family["fixed-codebook"]) == set(CODECS)
         for tier in listing["sub_bit_tiers"]:
             if tier["family"] == "sign-and-scale":
                 assert "signs_kept" in tier and "group" in tier
