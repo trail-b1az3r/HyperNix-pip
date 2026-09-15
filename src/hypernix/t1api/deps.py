@@ -357,6 +357,7 @@ def get_origin(request: Request):
         trusted_proxies=nettrust.trusted_proxies_from_env(
             ",".join(str(p) for p in getattr(config, "trusted_proxies", ()) or ())
         ),
+        verify_tailnet=getattr(config, "trusted_network_tailnet_verify", True),
     )
     request.state.t1_origin = origin
     return origin
@@ -588,6 +589,29 @@ def get_hyperlink_principal(
     non-admin write outside HyperLink, and is now accepted here as a
     first-class way to reach a server.
     """
+    # Before _extract_credential, which *raises* on a missing header.
+    # get_auth_context carries a comment saying exactly this, and this
+    # function -- written next to it -- did it the other way round, so
+    # every /hyperlink route refused a keyless request while
+    # /usage/current served one. Trusted-network mode had never worked
+    # for the app it was largely built for.
+    #
+    # The delegation is deliberate: one keyless path, one set of rules
+    # about what it grants, rather than a second implementation here
+    # that could drift from it.
+    if not authorization:
+        keyless = trusted_network_context(request)
+        if keyless is not None:
+            return HyperLinkPrincipal(
+                owner=keyless.key_id,
+                scopes=tuple(scope.value for scope in keyless.scopes),
+                # Never, whatever partial-admin says. A connection that
+                # presented no credential must not be able to enrol a
+                # device or manage the ones already paired.
+                is_admin=False,
+                auth_context=keyless,
+            )
+
     credential = _extract_credential(authorization)
 
     if looks_like_t2(credential):

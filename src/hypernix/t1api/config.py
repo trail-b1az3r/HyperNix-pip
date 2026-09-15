@@ -141,6 +141,22 @@ class T1APIConfig:
     trusted_network_tailnet: bool = field(
         default_factory=lambda: _bool_env("T1_TRUSTED_NETWORK_TAILNET", True)
     )
+    #: Ask tailscaled whether a peer in Tailscale's range really is one.
+    #:
+    #: On by default, because the range alone is not evidence — anything
+    #: on a LAN can number itself 100.x. But `tailscale whois` fails for
+    #: ordinary reasons: the binary is not on a systemd unit's PATH, the
+    #: service user cannot reach the socket, the peer is one tailscaled
+    #: has seen no traffic from. Every one of those turned every tailnet
+    #: peer into a stranger with nothing the operator could say about it,
+    #: because this switch did not exist and `classify`'s own
+    #: `verify_tailnet` parameter had no caller.
+    #:
+    #: Turning it off trusts the range itself. That is a real widening
+    #: and it is why the default is on.
+    trusted_network_tailnet_verify: bool = field(
+        default_factory=lambda: _bool_env("T1_TRUSTED_NETWORK_TAILNET_VERIFY", True)
+    )
     #: Partial administrative functions for trusted origins. Separate
     #: from keyless *access* because they are separate decisions: letting
     #: the phone on your sofa read models is not letting it stop training.
