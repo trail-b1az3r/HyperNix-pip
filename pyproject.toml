@@ -174,6 +174,8 @@ scriptgen = "hypernix.scriptgen.cli:cli_main"
 steamroller = "hypernix.quant.steamroller_cli:cli_main"
 # 0.72.1: noodle, the autonomous multi-agent executor inside hyped-pro.
 noodle = "hypernix.interfaces.noodle.cli:cli_main"
+# T1 v1.0.26.9.2.3: web accounts — sign up for a T1 key without having one.
+t1-accounts = "hypernix.t1api.accounts_cli:cli_main"
 
 [project.urls]
 Homepage = "https://trail-b1az3r.github.io/HyperNix-pip/"

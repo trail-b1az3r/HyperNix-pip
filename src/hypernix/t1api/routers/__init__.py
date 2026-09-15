@@ -13,6 +13,11 @@ written.
 T1 v1.0.26.8.1.0 adds: authundo (``/t1/auth/undo`` and ``/t1/auth/redo``,
 aliased under ``/auth/t1/``) and backup (``/backup/list``,
 ``/backup/restore``).
+T1 v1.0.26.9.2.3 adds: accounts — a web sign-up flow, so a person can
+obtain their first T1 key without somebody who already has one minting it
+for them. Off by default (``T1_ACCOUNTS_ENABLED``), and its routes 404
+rather than 403 when off: a deployment without accounts should not
+advertise that it could have them.
 T1 v1.0.26.9.2.1 adds: inference — the governed generation surface.
 ``/bridge/lmstudio/*`` is a pass-through that never consults the
 registry, the cascade or the quota; ``/inference/*`` is the same
@@ -35,6 +40,7 @@ a stated reason rather than by accident:
 from __future__ import annotations
 
 from . import (
+    accounts,
     audit,
     auth,
     authundo,
@@ -81,10 +87,14 @@ ALL_ROUTERS = (
     inference.router,
     # 0.72.4
     training.router,
+    # T1 v1.0.26.9.2.3 -- sign up for a key without already having one.
+    # Off unless T1_ACCOUNTS_ENABLED; every route 404s when it is off.
+    accounts.router,
 )
 
 __all__ = [
     "ALL_ROUTERS",
+    "accounts",
     "audit",
     "auth",
     "authundo",
