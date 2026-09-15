@@ -1403,6 +1403,35 @@ class DownloadedModelsResponse(BaseModel):
     request_id: str
 
 
+class GenerationStopResponse(BaseModel):
+    """What Stop actually stopped. An empty list is a success."""
+
+    stopped: list[str] = Field(default_factory=list)
+    count: int = 0
+    request_id: str
+
+
+class GenerationListResponse(BaseModel):
+    generations: list[dict[str, Any]] = Field(default_factory=list)
+    count: int = 0
+    request_id: str
+
+
+class ModelCatalogueResponse(BaseModel):
+    """Every model this server can offer, from every source it has.
+
+    `sources` is not decoration. An empty `models` means two completely
+    different things — this server has no models, or LM Studio is not
+    running — and the app showed the same blank picker for both because
+    the only thing it had was the list.
+    """
+
+    models: list[dict[str, Any]] = Field(default_factory=list)
+    count: int = 0
+    sources: list[dict[str, Any]] = Field(default_factory=list)
+    request_id: str
+
+
 # ---------------------------------------------------------------------------
 # Inference (T1 v1.0.26.9.2.1)
 #

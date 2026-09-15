@@ -534,6 +534,11 @@ def get_search_index(request: Request):
     return request.app.state.t1_search_index
 
 
+def get_generation_registry(request: Request):
+    """In-flight streamed generations, so Stop has something to stop."""
+    return request.app.state.t1_generations
+
+
 @dataclass
 class HyperLinkPrincipal:
     """Who is making a HyperLink request: a paired device, or a T1 key.

@@ -64,6 +64,7 @@ from hypernix.security.gatekeeper import Gatekeeper
 from hypernix.security.keymaster import Keymaster
 
 from ..hyperlink.files import AttachmentStore
+from ..hyperlink.generation import GenerationRegistry
 from ..hyperlink.notify import NotificationStore
 from ..hyperlink.pairing import DeviceRegistry
 from ..hyperlink.search import SearchIndex
@@ -446,6 +447,10 @@ def create_app(
     app.state.t1_sync_store = sync
     app.state.t1_notification_store = notifications
     app.state.t1_search_index = searching
+    # Streamed generations currently running in this worker. Stop is
+    # cooperative -- see hyperlink.generation -- so there has to be
+    # somewhere to look the running one up.
+    app.state.t1_generations = GenerationRegistry()
     # T1 v1.0.26.8.1.0
     app.state.t1_auth_history = history
     app.state.t1_backup_store = backups

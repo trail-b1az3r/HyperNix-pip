@@ -37,8 +37,10 @@ from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile
 from fastapi.responses import Response, StreamingResponse
 
 from ...bridge.lmstudio import LMStudioBridge, LMStudioError
+from ...hyperlink.catalogue import collect
 from ...hyperlink.discovery import advertise
 from ...hyperlink.files import AttachmentStore
+from ...hyperlink.generation import GenerationRegistry
 from ...hyperlink.hfmerge import HFResolveError
 from ...hyperlink.hfmerge import resolve as hf_resolve
 from ...hyperlink.identity import fingerprint as server_fingerprint
@@ -56,10 +58,12 @@ from ..deps import (
     get_client_ip,
     get_config,
     get_device_registry,
+    get_generation_registry,
     get_hyperlink_principal,
     get_job_queue,
     get_notification_store,
     get_origin,
+    get_registry,
     get_request_id,
     get_search_index,
     get_session_store,
@@ -68,6 +72,7 @@ from ..deps import (
     require_hyperlink_admin,
 )
 from ..errors import T1APIError, T1ErrorCode
+from ..registry import ModelRegistry
 from ..schemas import (
     AttachmentListResponse,
     AttachmentResponse,
@@ -76,6 +81,8 @@ from ..schemas import (
     DeviceResponse,
     DeviceSummary,
     DownloadedModelsResponse,
+    GenerationListResponse,
+    GenerationStopResponse,
     GenericOkResponse,
     HFDownloadRequest,
     HFDownloadResponse,
@@ -90,6 +97,7 @@ from ..schemas import (
     HyperLinkPeersResponse,
     MessageListResponse,
     MessageSummary,
+    ModelCatalogueResponse,
     PairingCodeResponse,
     PairingCreateRequest,
     PairingRedeemRequest,
@@ -817,6 +825,7 @@ def chat_turn_stream(
     principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
     store: ChatSessionStore = Depends(get_session_store),
     files: AttachmentStore = Depends(get_attachment_store),
+    generations: GenerationRegistry = Depends(get_generation_registry),
     config: T1APIConfig = Depends(get_config),
     request_id: str = Depends(get_request_id),
 ) -> StreamingResponse:
@@ -858,25 +867,45 @@ def chat_turn_stream(
     def _frame(kind: str, **fields: Any) -> bytes:
         return f"data: {json.dumps({'type': kind, **fields})}\n\n".encode()
 
+    # Registered before the first chunk so a Stop that arrives while the
+    # model is still thinking has something to find. The id goes out in
+    # the start frame: the app can then stop *this* generation rather
+    # than "whatever is running in this session", which is the same thing
+    # right up until somebody has two devices open.
+    active = generations.begin(session_id, principal.owner)
+
     def _events():
         yield _frame(
             "start",
             session_id=session_id,
             user_message_id=user_message.message_id,
             seq=user_message.seq,
+            generation_id=active.generation_id,
         )
         collected: list[str] = []
         model_id = requested_model or ""
         finish = ""
         usage: dict[str, Any] = {}
         error: dict[str, Any] | None = None
+        cancelled = False
         try:
-            for chunk in bridge.chat_stream(
+            stream = bridge.chat_stream(
                 wire,
                 model=requested_model,
                 temperature=payload.temperature,
                 max_tokens=payload.max_tokens,
-            ):
+            )
+            for chunk in stream:
+                # The cooperative half of Stop. Breaking here closes
+                # `stream`, which closes the upstream response, which is
+                # what actually makes LM Studio stop generating —
+                # disconnecting the phone never did, because this
+                # generator runs in a threadpool and a thread blocked on
+                # a socket read cannot be cancelled.
+                if active.cancelled:
+                    cancelled = True
+                    stream.close()
+                    break
                 model_id = str(chunk.get("model") or model_id)
                 if isinstance(chunk.get("usage"), dict):
                     usage = chunk["usage"]
@@ -897,16 +926,26 @@ def chat_turn_stream(
             # The phone closed the connection (backgrounded, tunnel
             # dropped). Persist what arrived, then let the exit
             # propagate — swallowing it would leak the generator.
+            generations.finish(active.generation_id)
             _persist(collected, model_id, finish or "disconnected", usage, truncated=True)
             raise
+        finally:
+            generations.finish(active.generation_id)
 
-        message = _persist(collected, model_id, finish, usage, truncated=bool(error))
+        if cancelled:
+            finish = "cancelled"
+        message = _persist(
+            collected, model_id, finish, usage, truncated=bool(error) or cancelled
+        )
         yield _frame(
             "done",
             message_id=message.message_id,
             seq=message.seq,
             model_id=model_id,
             finish_reason=finish,
+            # So the app can say "stopped" rather than showing a reply
+            # that simply ends, which reads as the model failing.
+            cancelled=cancelled,
             input_tokens=message.input_tokens,
             output_tokens=message.output_tokens,
         )
@@ -942,6 +981,65 @@ def chat_turn_stream(
             "X-Request-Id": request_id,
             "X-Accel-Buffering": "no",
         },
+    )
+
+
+@router.post("/sessions/{session_id}/chat/stop", response_model=GenerationStopResponse)
+def stop_generation(
+    session_id: str,
+    generation_id: str | None = Query(default=None),
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    generations: GenerationRegistry = Depends(get_generation_registry),
+    config: T1APIConfig = Depends(get_config),
+    request_id: str = Depends(get_request_id),
+) -> GenerationStopResponse:
+    """Stop a streamed reply that is still being generated.
+
+    Before this, Stop cancelled the client's read and nothing else: LM
+    Studio kept generating into a socket nobody was reading, for the full
+    length of the answer, on the GPU the person had just asked to stop
+    using.
+
+    Stopping nothing is a success, not an error. The model finishing a
+    quarter-second before the Stop arrives is the common race, and the
+    person got what they asked for either way — turning that into a 404
+    would put an error on screen for a button that worked.
+
+    Owner-scoped: a caller can only stop their own generations, so a
+    guessed session id reaches nothing.
+    """
+    _require_enabled(config)
+    stopped = generations.cancel(
+        owner=principal.owner,
+        session_id=session_id,
+        generation_id=generation_id,
+        by=principal.label,
+    )
+    return GenerationStopResponse(
+        stopped=stopped, count=len(stopped), request_id=request_id
+    )
+
+
+@router.get("/generations", response_model=GenerationListResponse)
+def list_generations(
+    session_id: str | None = Query(default=None),
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    generations: GenerationRegistry = Depends(get_generation_registry),
+    config: T1APIConfig = Depends(get_config),
+    request_id: str = Depends(get_request_id),
+) -> GenerationListResponse:
+    """What is generating right now, for this caller.
+
+    What lets a phone coming back from the background tell "still
+    running, reattach" from "finished while you were away, reload" —
+    which it currently cannot, and guesses.
+    """
+    _require_enabled(config)
+    active = generations.active(owner=principal.owner, session_id=session_id)
+    return GenerationListResponse(
+        generations=[record.to_dict() for record in active],
+        count=len(active),
+        request_id=request_id,
     )
 
 
@@ -1227,6 +1325,46 @@ def list_downloaded(
             )
     return DownloadedModelsResponse(
         models=models, count=len(models), directory=str(root), request_id=request_id
+    )
+
+
+@router.get("/models", response_model=ModelCatalogueResponse)
+def model_catalogue(
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    registry: ModelRegistry = Depends(get_registry),
+    config: T1APIConfig = Depends(get_config),
+    request_id: str = Depends(get_request_id),
+) -> ModelCatalogueResponse:
+    """Everything runnable here: the registry, LM Studio, and the disk.
+
+    The app used to ask `/bridge/lmstudio/models` and nothing else, so a
+    server without LM Studio had an empty model picker however many GGUFs
+    were sitting in ~/.hypernix/models, and `hypernix-t1 index` wrote a
+    registry the phone never saw.
+
+    Reachable by a device token, a T2S key, or keylessly on a trusted
+    network — the same principal every other HyperLink route takes. It is
+    a read of what exists; loading one is a separate, gated decision.
+    """
+    _require_enabled(config)
+
+    bridge = None
+    if getattr(config, "lmstudio_enabled", False):
+        from .bridge import _bridge_for
+
+        bridge = _bridge_for(config)
+
+    catalogue = collect(
+        registry=registry,
+        bridge=bridge,
+        local_dir=config.hf_download_dir or None,
+    )
+    data = catalogue.to_dict()
+    return ModelCatalogueResponse(
+        models=data["models"],
+        count=data["count"],
+        sources=data["sources"],
+        request_id=request_id,
     )
 
 
