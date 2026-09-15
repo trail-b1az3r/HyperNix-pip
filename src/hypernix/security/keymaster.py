@@ -58,6 +58,8 @@ Usage::
 """
 from __future__ import annotations
 
+import hashlib
+import hmac
 import json
 import logging
 import os
@@ -139,6 +141,20 @@ _T1_PATTERN: re.Pattern[str] = re.compile(
     r"(?P<slash>[/\\])"
     r"(?P<digit>[1-9])$"
 )
+
+
+def _key_digest(key: str) -> str:
+    """SHA-256 of a raw key, for indexing without storing or comparing it.
+
+    Authentication looks a key up by this rather than by scanning for a
+    string match — see :meth:`Keymaster.get_by_key`. A digest is the
+    right index because it is uniformly distributed (so the dict probe
+    tells an observer nothing about the key) and because a plain hash is
+    exactly the right strength here: the input is 32+ characters of
+    CSPRNG output, not a human-chosen password, so there is no dictionary
+    to attack and nothing for a slow KDF to buy.
+    """
+    return hashlib.sha256(key.encode("utf-8")).hexdigest()
 
 
 # ---------------------------------------------------------------------------
@@ -426,6 +442,12 @@ class Keymaster:
 
         self._lock = threading.RLock()
         self._keys: dict[str, KeyMeta] = {}
+        # SHA-256 of each raw key -> its metadata. See :meth:`get_by_key`
+        # for why authentication goes through a digest rather than
+        # comparing key strings. Rebuilt by :meth:`_reindex` after every
+        # mutation of ``_keys``; rebuilding is O(n) and minting or
+        # revoking a key is rare, while authenticating is the hot path.
+        self._by_digest: dict[str, KeyMeta] = {}
         self._server_id = server_id
         self._cipher: Any = None
         self._revoke_observers: list[Callable[[str, str], None]] = []
@@ -509,6 +531,7 @@ class Keymaster:
                 meta = self._load_file(p)
                 if meta:
                     self._keys[meta.key_id] = meta
+            self._reindex()
 
     def _resume_server_id(self, requested_start: str) -> None:
         """Continue the server-ID sequence from what the store already holds.
@@ -607,6 +630,7 @@ class Keymaster:
         )
         with self._lock:
             self._keys[key_id] = meta
+            self._reindex()
         self._save(meta)
         logger.info("keymaster: created key %s (type=%s)", key_id[:8], key_type.value)
         return meta
@@ -616,12 +640,62 @@ class Keymaster:
         with self._lock:
             return self._keys.get(key_id)
 
+    def _reindex(self) -> None:
+        """Rebuild the digest index. Caller must hold ``self._lock``.
+
+        Rebuilt wholesale rather than patched per mutation: an index that
+        is updated at six call sites is an index that will be missed at a
+        seventh, and a missed one here does not corrupt anything — it
+        makes a valid key stop authenticating, which is the kind of bug
+        that gets "fixed" by going back to the string compare.
+        """
+        self._by_digest = {
+            _key_digest(meta.key): meta
+            for meta in self._keys.values()
+            if meta.key
+        }
+
     def get_by_key(self, key_str: str) -> KeyMeta | None:
-        """Return the KeyMeta for a given raw T1 key string."""
+        """Return the KeyMeta for a given raw T1 key string.
+
+        Constant-time in two senses, both of which matter because this is
+        the T1 API's primary authentication path —
+        :meth:`hypernix.security.gatekeeper.Gatekeeper.authenticate`
+        calls it with whatever an unauthenticated caller sent.
+
+        It used to be ``meta.key == key_str`` inside a loop over every
+        key. ``==`` on ``str`` short-circuits at the first differing
+        byte, so the time it takes is a function of how long a prefix the
+        attacker guessed right — recover one byte, try 256 values for the
+        next, and a key falls out in a few thousand requests rather than
+        in the heat death of the universe. That is the classic timing
+        oracle and a key check is the classic place to find one.
+
+        The loop was the second half of it: the *number of iterations*
+        depended on where in the dictionary the matching key sat, so even
+        a constant-time compare inside the loop would still have leaked
+        which key was being presented.
+
+        Both are fixed by comparing against a digest instead. Every key's
+        SHA-256 is indexed once at load; a lookup is one hash of the
+        candidate and one dict probe, and the dict probe is over a
+        uniformly-distributed 32-byte digest rather than over a secret.
+        :func:`hmac.compare_digest` guards the final confirmation, which
+        is belt-and-braces over a dict hit but costs nothing and means no
+        ``==`` on a secret survives anywhere in this path.
+        """
+        if not key_str:
+            return None
+        digest = _key_digest(key_str)
         with self._lock:
-            for meta in self._keys.values():
-                if meta.key == key_str:
-                    return meta
+            meta = self._by_digest.get(digest)
+            if meta is None:
+                return None
+            # A dict hit on a SHA-256 means the keys are equal unless
+            # somebody has broken SHA-256. Confirmed anyway, in constant
+            # time, so that nothing here depends on that assumption.
+            if hmac.compare_digest(meta.key, key_str):
+                return meta
         return None
 
     # ------------------------------------------------------------------
@@ -736,6 +810,7 @@ class Keymaster:
         meta.revoked_at = None
         with self._lock:
             self._keys[key_id] = meta
+            self._reindex()
         self._save(meta)
         try:
             self._archive_path(key_id).unlink()
@@ -808,6 +883,7 @@ class Keymaster:
             if reason:
                 meta.note = (meta.note + f" [revoked: {reason}]").strip()
             del self._keys[key_id]
+            self._reindex()
         # Save to archive, remove active record
         self._save(meta, archive=True)
         active_path = self._key_path(key_id)
@@ -856,6 +932,7 @@ class Keymaster:
             pass
         with self._lock:
             self._keys.pop(key_id, None)
+            self._reindex()
 
         logger.info("keymaster: rotated key %s → %s", key_id[:8], new_meta.key_id[:8])
         self._notify(self._rotate_observers, "rotation", key_id, new_meta.key_id)
@@ -966,6 +1043,7 @@ class Keymaster:
                     )
                     continue
                 self._keys[meta.key_id] = meta
+                self._reindex()
             self._save(meta)
             imported.append(meta.key_id)
         logger.info("keymaster: imported %d key(s)", len(imported))

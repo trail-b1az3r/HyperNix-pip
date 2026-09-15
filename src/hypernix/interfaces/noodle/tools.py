@@ -148,6 +148,15 @@ class ToolContext:
         """
         if not relative or not str(relative).strip():
             raise ToolError("A path is required", code="bad_path")
+        # expanduser() *after* the join, deliberately. By then any `~` the
+        # model supplied sits in the middle of the path, where it expands
+        # to nothing and stays a literal directory name under the root.
+        # Expanding first would turn `~/.ssh/id_rsa` into an absolute
+        # path to the real home directory -- and `Path(root) / "/abs"` is
+        # `/abs`, because pathlib's `/` discards the left side when the
+        # right is absolute. The containment check below still catches
+        # that, but it would be the only thing catching it. Do not
+        # "fix" this into expanding first.
         candidate = (self.root / str(relative)).expanduser()
         try:
             resolved = candidate.resolve()

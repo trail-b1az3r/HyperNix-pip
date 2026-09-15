@@ -5,7 +5,12 @@ HARD REQUIREMENTS)::
 
     from hypernix.t1api import create_app
     app = create_app()                     # standalone
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="127.0.0.1", port=8000)
+
+    # To serve other machines, put it behind a reverse proxy that
+    # terminates TLS. `host="0.0.0.0"` here puts the API on every
+    # interface in plaintext, and the first example in a docstring is the
+    # one that gets copied into production.
 
     # OR mount into an existing FastAPI app:
     existing_app.mount("/t1", create_app(mount_prefix="/t1"))
