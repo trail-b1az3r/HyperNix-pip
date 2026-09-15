@@ -43,7 +43,7 @@ from typing import Any
 
 from hypernix.interfaces import hyped_pro_core as core
 
-BRIDGE_VERSION = "1.0.26.8.1.0"
+BRIDGE_VERSION = "1.0.26.9.2.3"
 
 
 # ---------------------------------------------------------------------------
@@ -77,7 +77,15 @@ BRIDGE_VERSION = "1.0.26.8.1.0"
 # Commands that can take long enough to be worth cancelling, and are safe to
 # run off the main loop. Everything else is a fast config read/write and
 # stays inline, where it can't interleave with itself.
-BACKGROUND_COMMANDS = frozenset({"chat", "download", "t1api_status"})
+# noodle_poll is here because it long-polls: it waits up to `timeout`
+# seconds for an event rather than returning empty and being asked again
+# immediately. Inline, that wait would block the stdin loop and the TUI
+# could not deliver a cancel while a swarm was running -- the same bug
+# that made `chat` uncancellable before it moved off the loop.
+#
+# noodle_start is not here. It spawns a thread and returns at once, so
+# backgrounding it would buy a thread to start a thread.
+BACKGROUND_COMMANDS = frozenset({"chat", "download", "t1api_status", "noodle_poll"})
 
 # Backends whose generation loop polls should_stop. Anything else can be
 # asked to cancel, but the request will finish first.
@@ -227,6 +235,69 @@ def dispatch(req: dict[str, Any], cancel: threading.Event | None = None) -> dict
         if cmd == "t1api_set_url":
             core.set_t1_api_url(req["url"])
             return _ok(id_, {"url": core.t1_api_url()})
+
+        # -- 0.72.6: Noodle, the autonomous executor ------------------
+        #
+        # Noodle has described itself as "the autonomous executor inside
+        # Hyped Pro" since it shipped and was not reachable from
+        # hyped-pro at all. These five verbs are the connection.
+        #
+        # A run is a session rather than a call: it takes minutes and
+        # produces nothing until it ends, so doing it inside one request
+        # would hold a bridge thread and leave the TUI with nothing to
+        # draw. `noodle_start` returns a session id at once and
+        # `noodle_poll` drains events as they happen.
+        if cmd == "noodle_providers":
+            from hypernix.interfaces.noodle import hyped as noodle
+
+            return _ok(id_, noodle.providers())
+
+        if cmd == "noodle_start":
+            from hypernix.interfaces.noodle import hyped as noodle
+
+            try:
+                return _ok(id_, noodle.start(
+                    req.get("prompt", ""),
+                    roster=req.get("roster"),
+                    root=req.get("root"),
+                    tasks=req.get("tasks"),
+                    max_parallel=int(req.get("max_parallel", 4)),
+                    allow_execute=bool(req.get("allow_execute", False)),
+                    allow_outside=bool(req.get("allow_outside", False)),
+                    memory_enabled=bool(req.get("memory_enabled", False)),
+                    max_turns=int(req.get("max_turns", 12)),
+                    verify=req.get("verify", ""),
+                ))
+            except noodle.NoodleSessionError as exc:
+                return _err(id_, "HPB-NOODLE-001", str(exc))
+
+        if cmd == "noodle_poll":
+            from hypernix.interfaces.noodle import hyped as noodle
+
+            try:
+                return _ok(id_, noodle.poll(
+                    req["session"], timeout=float(req.get("timeout", 0.0))
+                ))
+            except noodle.NoodleSessionError as exc:
+                return _err(id_, "HPB-NOODLE-002", str(exc))
+
+        if cmd == "noodle_stop":
+            from hypernix.interfaces.noodle import hyped as noodle
+
+            try:
+                return _ok(id_, noodle.stop(req["session"]))
+            except noodle.NoodleSessionError as exc:
+                return _err(id_, "HPB-NOODLE-002", str(exc))
+
+        if cmd == "noodle_sessions":
+            from hypernix.interfaces.noodle import hyped as noodle
+
+            if req.get("session"):
+                try:
+                    return _ok(id_, noodle.summary(req["session"]))
+                except noodle.NoodleSessionError as exc:
+                    return _err(id_, "HPB-NOODLE-002", str(exc))
+            return _ok(id_, {"sessions": noodle.sessions()})
 
         if cmd == "cancel":
             return _ok(id_, {"target": req.get("target"),
