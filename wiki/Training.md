@@ -1,5 +1,9 @@
 # Training — scratch, expand, and fine-tune
 
+> **Looking for "which of these should I use?"** — that is
+> [the Model Training Guide](Model-Training-Guide.md). This page is the
+> `hypernix.train` API reference.
+
 Three flows live under `hypernix.train`:
 
 1. **`init_from_scratch`** — build a fresh, randomly-initialized
