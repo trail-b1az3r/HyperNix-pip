@@ -418,11 +418,17 @@ class TestTheTiersLlamaCppCanActuallyLoad:
 
         It is worth keeping: the next type added starts life unregistered
         between the Python table and the ggml patch, and this is what
-        tells the difference."""
-        from hypernix.quant.ggufcheck import llama_cpp_can_load_type
+        tells the difference.
+
+        The ids asserted here are deliberately *above* the highest
+        registered one rather than pinned to a number, because the last
+        two picked (208, 209) stopped being unregistered the moment INT8
+        and INT2 shipped. Anything past the top of the table is what this
+        is testing."""
+        from hypernix.quant.ggufcheck import LLAMA_CPP_REGISTERED_TYPES, llama_cpp_can_load_type
 
         assert not llama_cpp_can_load_type(250)
-        assert not llama_cpp_can_load_type(208)
+        assert not llama_cpp_can_load_type(max(LLAMA_CPP_REGISTERED_TYPES) + 1)
 
     def test_the_report_describes_an_unregistered_type(self):
         """Built directly, since no tier produces one any more."""

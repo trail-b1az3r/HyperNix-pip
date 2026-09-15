@@ -37,6 +37,7 @@ the same failure this module exists to fix.
 from __future__ import annotations
 
 import logging
+import math
 import struct
 import time
 from collections.abc import Callable
@@ -56,11 +57,15 @@ logger = logging.getLogger(__name__)
 __all__ = [
     "HyprslugError",
     "TIER_TYPES",
+    "WIDTHS",
     "RECIPES",
     "Recipe",
     "QuantizeReport",
     "quantize_gguf",
     "resolve_recipe",
+    "resolve_target",
+    "resolve_width",
+    "all_targets",
     "tier_for_packing",
     "ALIASES",
     "RECIPE_ALIASES",
@@ -91,8 +96,37 @@ TIER_TYPES: dict[str, tuple[int, str]] = {
     # Fixed codebook, from hypernix.quant.lowbit. The packing name is the
     # codec name; :func:`_encoder_for` tells the two families apart by
     # looking the name up rather than by parsing it.
+    "INT8": (int(GGMLType.HNX_INT8), "INT8"),
     "INT4": (int(GGMLType.HNX_INT4), "INT4"),
+    "INT2": (int(GGMLType.HNX_INT2), "INT2"),
     "FP2": (int(GGMLType.HNX_FP2), "FP2"),
+}
+
+
+#: Element widths, not quantisations: ``name -> (GGML type, bytes each)``.
+#:
+#: These are the third thing :func:`quantize_gguf` can be asked for, and
+#: they are a different kind of thing from the other two. A recipe and a
+#: tier both pick a *block* format — a shared scale over 256 weights and a
+#: code per weight. FP32, FP16 and BF16 have no block and no scale: every
+#: weight keeps its own exponent, and the operation is a width conversion.
+#:
+#: They belong in the same command anyway, because of what people
+#: actually do with them. "Upcast this Q8_0 to F16 so I can quantise it
+#: properly" and "downcast this F32 to BF16 before I ship it" are the two
+#: most common things anyone does to a GGUF that is not quantising it,
+#: and having to reach for a different tool for the step either side of
+#: the quantisation is how people end up converting through safetensors
+#: and back.
+#:
+#: BF16 rather than F16 is the default for a downcast for the usual
+#: reason: it has F32's exponent range, so a weight that overflows F16
+#: (and becomes an inf, and poisons every dot product it touches) merely
+#: loses mantissa bits here.
+WIDTHS: dict[str, tuple[int, int]] = {
+    "FP32": (int(GGMLType.F32), 4),
+    "FP16": (int(GGMLType.F16), 2),
+    "BF16": (int(GGMLType.BF16), 2),
 }
 
 
@@ -241,11 +275,18 @@ def _readable(ggml_type: int) -> bool:
 
 
 def _bits_per_weight(packing: str) -> float:
-    """The rate a packing writes, whichever family it belongs to."""
+    """The rate a packing writes, whichever family it belongs to.
+
+    :data:`WIDTHS` is the third family and its rate is exact rather than
+    amortised: there is no block scale to spread over 256 weights, so an
+    F16 weight costs 16 bits and not 16-and-a-bit.
+    """
     if packing in PACKINGS:
         return PACKINGS[packing].bits_per_weight
     if packing in CODECS:
         return CODECS[packing].bits_per_weight
+    if packing in WIDTHS:
+        return float(WIDTHS[packing][1] * 8)
     raise HyprslugError(f"No packing named {packing!r}")
 
 
@@ -272,7 +313,75 @@ RECIPE_ALIASES: dict[str, str] = {
     "Q5S": "Q5_K_S",
     "Q2S": "Q2_K_S",
     "Q3L": "Q3_K_L",
+    # "q8" is what everybody calls Q8_0, and it is unambiguous: there is
+    # no other Q8 here. Same for "q6"/"q4"/"q5", which name the K-quant
+    # of that width because that is the one anyone means.
+    "Q8": "Q8_0",
+    "Q6": "Q6_K",
+    "Q5": "Q5_K_M",
+    "Q4": "Q4_K_M",
+    "Q3": "Q3_K_M",
+    "Q2": "Q2_K_S",
 }
+
+
+#: Extension tiers and widths, under the spellings people type.
+#:
+#: Separate from :data:`RECIPE_ALIASES` because the targets they resolve
+#: to are not recipes. Everything here is matched after separators are
+#: stripped, so ``IQ0.5``, ``iq0_5`` and ``iq05`` are one request.
+TARGET_ALIASES: dict[str, str] = {
+    "IQ05": "IQ0.5_XXXL",
+    "IQ0.5": "IQ0.5_XXXL",
+    "IQ025": "IQ0.25_UXL",
+    "IQ0.25": "IQ0.25_UXL",
+    "IQ075": "IQ0.75_M",
+    "IQ0.75": "IQ0.75_M",
+    "IQ09": "IQ0.9_L",
+    "IQ0.9": "IQ0.9_L",
+    "HNX1375": "HNX_1375BIT",
+    "1375": "HNX_1375BIT",
+    "I8": "INT8",
+    "I4": "INT4",
+    "I2": "INT2",
+    "I1": "INT1",
+    "F32": "FP32",
+    "FLOAT32": "FP32",
+    "F16": "FP16",
+    "FLOAT16": "FP16",
+    "HALF": "FP16",
+    "BFLOAT16": "BF16",
+    "BF16": "BF16",
+}
+
+
+def resolve_width(target: str) -> str | None:
+    """The :data:`WIDTHS` key *target* names, or ``None``."""
+    key = (target or "").strip().upper().replace("-", "_")
+    if key in WIDTHS:
+        return key
+    squashed = key.replace("_", "").replace(".", "")
+    aliased = TARGET_ALIASES.get(squashed) or TARGET_ALIASES.get(key)
+    return aliased if aliased in WIDTHS else None
+
+
+def resolve_tier(target: str) -> str | None:
+    """The :data:`TIER_TYPES` key *target* names, or ``None``.
+
+    The sub-bit tiers are the ones with punctuation in their names, so
+    this is where the separator-insensitivity earns its keep: ``IQ0.5``
+    is what the documentation calls it, ``iq0_5`` is what fits in a
+    filename, and ``IQ0.5_XXXL`` is the actual key. All three arrive.
+    """
+    key = (target or "").strip().upper().replace("-", "_")
+    if key in TIER_TYPES:
+        return key
+    squashed = key.replace("_", "").replace(".", "")
+    for name in TIER_TYPES:
+        if name.upper().replace("_", "").replace(".", "") == squashed:
+            return name
+    aliased = TARGET_ALIASES.get(squashed) or TARGET_ALIASES.get(key)
+    return aliased if aliased in TIER_TYPES else None
 
 
 def resolve_recipe(tier: str) -> Recipe | None:
@@ -294,9 +403,36 @@ def resolve_recipe(tier: str) -> Recipe | None:
     return RECIPES[aliased] if aliased else None
 
 
+def resolve_target(target: str) -> tuple[str, str]:
+    """``(kind, canonical name)`` for anything :func:`quantize_gguf` takes.
+
+    *kind* is ``"recipe"``, ``"tier"`` or ``"width"``. Raises
+    :class:`HyprslugError` naming what is available when *target* is
+    none of them — one place that decides what a target string means,
+    so the CLI, the bundler and the draft builders cannot disagree about
+    whether ``iq0_5`` is a thing.
+    """
+    recipe = resolve_recipe(target)
+    if recipe is not None:
+        return "recipe", recipe.name
+    tier = resolve_tier(target)
+    if tier is not None:
+        return "tier", tier
+    width = resolve_width(target)
+    if width is not None:
+        return "width", width
+    raise HyprslugError(
+        f"Unknown target {target!r}. hyprslug writes: {', '.join(all_targets())}"
+    )
+
+
 def all_targets() -> list[str]:
     """Every name :func:`quantize_gguf` accepts, widest first."""
-    return sorted(RECIPES, key=lambda n: -RECIPES[n].bits_per_weight) + list(TIER_TYPES)
+    return (
+        list(WIDTHS)
+        + sorted(RECIPES, key=lambda n: -RECIPES[n].bits_per_weight)
+        + list(TIER_TYPES)
+    )
 
 
 def _decode_floats(data: bytes, ggml_type: int) -> list[float]:
@@ -338,6 +474,56 @@ def _decode_floats(data: bytes, ggml_type: int) -> list[float]:
             for i in range(count)
         ]
     return list(struct.unpack(f"<{count}{fmt[1]}", data[: count * width]))
+
+
+def _encode_width(values: list[float], width: str) -> bytes:
+    """Floats to *width*'s element encoding, no blocks and no scale.
+
+    F16 is the one that can lose a weight rather than merely round it:
+    its exponent tops out around 65504, and a value past that becomes an
+    inf which then poisons every dot product the tensor takes part in.
+    Saturating to the largest finite F16 is wrong too — but it is wrong
+    by the size of one weight rather than by the size of the model, and
+    it is what every other converter does. The count is reported so the
+    choice is visible rather than silent.
+    """
+    if width == "FP32":
+        return struct.pack(f"<{len(values)}f", *values)
+    if width == "BF16":
+        # The top 16 bits of the F32, round-to-nearest-even on the
+        # discarded half. Truncating instead is a half-ULP bias that
+        # compounds over a whole model, and it costs one add to avoid.
+        out = bytearray(len(values) * 2)
+        for index, value in enumerate(values):
+            bits = struct.unpack("<I", struct.pack("<f", value))[0]
+            if (bits & 0x7F800000) != 0x7F800000:  # not inf/NaN
+                bits += 0x7FFF + ((bits >> 16) & 1)
+            out[index * 2:index * 2 + 2] = struct.pack("<H", (bits >> 16) & 0xFFFF)
+        return bytes(out)
+    if width == "FP16":
+        # Only *finite* overflows saturate. An infinity in the source was
+        # broken before this ran, and turning it into 65504 would hide
+        # that: the file would stop looking wrong while still being
+        # wrong, and the next person to look would find a suspiciously
+        # round number rather than the inf that tells them where to go.
+        saturated = [
+            (65504.0 if value > 0 else -65504.0)
+            if math.isfinite(value) and abs(value) > 65504.0
+            else value
+            for value in values
+        ]
+        return struct.pack(f"<{len(saturated)}e", *saturated)
+    raise HyprslugError(f"No element width named {width!r}")
+
+
+def _f16_would_overflow(values: list[float]) -> int:
+    """How many finite weights F16 cannot hold. Reported, not hidden.
+
+    Finite only: a weight that is *already* an infinity was broken before
+    this ran, and counting it here would blame the conversion for
+    something it found rather than caused.
+    """
+    return sum(1 for value in values if math.isfinite(value) and abs(value) > 65504.0)
 
 
 def _is_embedding(name: str) -> bool:
@@ -411,6 +597,15 @@ class QuantizeReport:
     elements_copied: int = 0
     skipped: list[tuple[str, str]] = field(default_factory=list)
     seconds: float = 0.0
+    #: ``tensor -> weights saturated`` when converting to FP16. Empty for
+    #: every other target, and empty for FP16 too unless a weight
+    #: actually exceeded 65504 — which is rare, and the reason the count
+    #: is here rather than left to be discovered from an eval.
+    f16_overflows: dict[str, int] = field(default_factory=dict)
+
+    @property
+    def weights_saturated(self) -> int:
+        return sum(self.f16_overflows.values())
 
     @property
     def compression(self) -> float:
@@ -478,6 +673,8 @@ class QuantizeReport:
             "tier_bits_per_weight": round(self.tier_bits_per_weight, 3),
             "name_is_misleading": self.name_is_misleading,
             "skipped": [{"tensor": n, "reason": r} for n, r in self.skipped],
+            "f16_overflows": dict(sorted(self.f16_overflows.items())),
+            "weights_saturated": self.weights_saturated,
             "seconds": round(self.seconds, 2),
         }
 
@@ -512,6 +709,18 @@ class QuantizeReport:
         if len(self.formats) > 1:
             mix = ", ".join(f"{fmt} x{count}" for fmt, count in sorted(self.formats.items()))
             lines.append(f"  mix: {mix}")
+        if self.f16_overflows:
+            lines.append(
+                f"  ! {self.weights_saturated} weight(s) in "
+                f"{len(self.f16_overflows)} tensor(s) exceeded F16's range and "
+                f"were saturated to +/-65504."
+            )
+            lines.append(
+                "    BF16 holds them: it has F32's exponent and fewer mantissa"
+            )
+            lines.append(
+                "    bits, so the same weights round instead of clipping."
+            )
         if self.requantized_from:
             # Requantising compounds the first pass's error. Whether that
             # matters is the operator's call; whether they get to make it
@@ -527,6 +736,244 @@ class QuantizeReport:
             if len(self.skipped) > 5:
                 lines.append(f"    ... and {len(self.skipped) - 5} more")
         return "\n".join(lines)
+
+
+@dataclass(frozen=True)
+class TensorPlan:
+    """One tensor's fate under one target: what type, and how encoded.
+
+    Split out of :func:`quantize_gguf` so that
+    :mod:`hypernix.quant.multiquant` can ask "what would this target do
+    to this model?" without writing a file to find out — a bundle has to
+    declare every tensor of every variant before it can write the first
+    byte of any of them, and re-deriving the answer there would be a
+    second copy of the selection rules to keep in step with these.
+    """
+
+    #: The tensor in the source file.
+    source: GGUFTensor
+    #: The GGML type it will be written as.
+    ggml_type: int
+    #: ``""`` for a verbatim copy; a llama.cpp block format name
+    #: (``"Q4_K"``); ``"sub-bit"``; or ``"width"``.
+    encoding: str
+    #: Why it is being copied, when it is. Empty otherwise.
+    reason: str = ""
+
+    @property
+    def name(self) -> str:
+        return self.source.name
+
+    @property
+    def copied(self) -> bool:
+        return not self.encoding
+
+
+@dataclass(frozen=True)
+class TargetSpec:
+    """A resolved target: which of the three families, and its parameters."""
+
+    kind: str                 # "recipe" | "tier" | "width"
+    name: str                 # canonical name
+    recipe: Recipe | None = None
+    packing: str = ""         # sub-bit / codebook packing name
+    width: str = ""           # WIDTHS key
+    ggml_type: int = 0        # the single type a tier or width writes
+
+    @property
+    def bits_per_weight(self) -> float:
+        if self.recipe is not None:
+            return self.recipe.bits_per_weight
+        return _bits_per_weight(self.packing or self.width)
+
+
+def target_spec(target: str) -> TargetSpec:
+    """Resolve *target* to a :class:`TargetSpec`."""
+    kind, canonical = resolve_target(target)
+    if kind == "recipe":
+        return TargetSpec(kind, canonical, recipe=RECIPES[canonical])
+    if kind == "width":
+        return TargetSpec(kind, canonical, width=canonical,
+                          ggml_type=WIDTHS[canonical][0])
+    ggml_type, packing = TIER_TYPES[canonical]
+    if packing not in PACKINGS and packing not in CODECS:
+        raise HyprslugError(
+            f"Tier {canonical} names packing {packing!r}, which does not exist."
+        )
+    return TargetSpec(kind, canonical, packing=packing, ggml_type=ggml_type)
+
+
+def plan_tensors(
+    model: GGUFFile,
+    spec: TargetSpec,
+    *,
+    quantize_embeddings: bool | None = None,
+    quantize_output: bool | None = None,
+) -> list[TensorPlan]:
+    """What *spec* would do to each of *model*'s tensors.
+
+    The single place the selection rules live. :func:`quantize_gguf`
+    calls it, and so does the bundler — so a rule added here (the
+    row-length check, say) cannot apply to one and not the other.
+    """
+    if quantize_embeddings is None:
+        # A width conversion has no reason to leave anything out: it is
+        # not throwing away resolution to save space, it is restating
+        # every weight at a different precision, and skipping the
+        # embedding table would produce a "FP16" file with a Q8_0
+        # embedding in it. The sub-bit tiers skip both by default because
+        # at half a bit the embedding table *is* the model.
+        quantize_embeddings = spec.kind in ("recipe", "width")
+    if quantize_output is None:
+        quantize_output = spec.kind in ("recipe", "width")
+
+    plans: list[TensorPlan] = []
+    for tensor in model.tensors:
+        lowered = tensor.name.lower()
+        if spec.kind == "width":
+            # A width conversion has no block, so the divisibility rule
+            # that protects a block quantiser does not apply: every
+            # tensor converts, including the 1-D norms a quantiser
+            # deliberately leaves alone. Refusing them here would leave
+            # a "FP16" file with F32 norms in it -- which loads, and is
+            # not the file that was asked for.
+            do_it = _readable(int(tensor.ggml_type))
+            reason = "" if do_it else (
+                f"source type {tensor.ggml_type} is one hyprslug cannot read"
+            )
+            if do_it and not quantize_embeddings and _is_embedding(lowered):
+                do_it, reason = False, "token embeddings (--no-quantize-embeddings)"
+            if do_it and not quantize_output and _is_output_head(lowered):
+                do_it, reason = False, "output head (--no-quantize-output)"
+            if do_it and int(tensor.ggml_type) == spec.ggml_type:
+                # Already at the target width. Copying the bytes is both
+                # faster and exactly lossless, where a decode/re-encode
+                # round trip through F16 is only nearly so.
+                do_it, reason = False, f"already {spec.width}"
+            plans.append(TensorPlan(
+                tensor,
+                spec.ggml_type if do_it else tensor.ggml_type,
+                "width" if do_it else "",
+                reason,
+            ))
+            continue
+
+        chosen = spec.recipe.format_for(tensor.name) if spec.recipe else ""
+        block = llamaquants.FORMATS[chosen].block if spec.recipe else BLOCK_SIZE
+        do_it, reason = _should_quantize(
+            tensor,
+            block=block,
+            quantize_embeddings=quantize_embeddings,
+            quantize_output=quantize_output,
+        )
+        if not do_it:
+            plans.append(TensorPlan(tensor, tensor.ggml_type, "", reason))
+        elif spec.recipe is not None:
+            plans.append(TensorPlan(
+                tensor, llamaquants.FORMATS[chosen].ggml_type, chosen,
+            ))
+        else:
+            plans.append(TensorPlan(tensor, spec.ggml_type, "sub-bit"))
+    return plans
+
+
+def encode_tensor(
+    raw: bytes,
+    source_type: int,
+    plan: TensorPlan,
+    spec: TargetSpec,
+    *,
+    importance: list[float] | None = None,
+) -> tuple[bytes, int]:
+    """Encode one tensor's bytes under *plan*. Returns ``(bytes, saturated)``.
+
+    *saturated* counts weights F16 could not hold; zero for every other
+    target. Raises :class:`HyprslugError` with the tensor named on any
+    encoder failure, because "quantisation failed" halfway through a 70B
+    is not an actionable message.
+    """
+    if plan.copied:
+        return raw, 0
+    values = _decode_floats(raw, source_type)
+    if plan.encoding == "width":
+        lost = _f16_would_overflow(values) if spec.width == "FP16" else 0
+        return _encode_width(values, spec.width), lost
+    if importance is not None:
+        # An imatrix carries one number per *input channel*; a quantiser
+        # wants one per weight, and a GGUF weight tensor is rows of
+        # n_input elements, so the vector tiles. Where the two cannot be
+        # reconciled the imatrix is a different model's, and applying it
+        # would weight the wrong positions -- worse than not applying it,
+        # so say so and carry on without it.
+        expanded = expand_for_tensor(importance, len(values))
+        if expanded is None:
+            logger.warning(
+                "hyprslug: imatrix for %s has %d entries, which does not divide "
+                "the tensor's %d; ignoring it",
+                plan.name, len(importance), len(values),
+            )
+        importance = expanded
+    if plan.encoding == "sub-bit":
+        try:
+            if spec.packing in CODECS:
+                # A fixed codebook carries its own magnitude, so an
+                # imatrix has nothing to decide here -- there is no scale
+                # to steer and no sign to drop. Passing one would be
+                # accepting an argument and ignoring it.
+                return lowbit_quantize(values, spec.packing), 0
+            return quantize_tensor(values, spec.packing, importance), 0
+        except (SubBitError, LowBitError) as exc:
+            raise HyprslugError(f"{plan.name}: {exc}") from exc
+    try:
+        return llamaquants.quantize_array(values, plan.encoding, importance), 0
+    except llamaquants.LlamaQuantError as exc:
+        raise HyprslugError(f"{plan.name}: {exc}") from exc
+
+
+def write_provenance(
+    writer: GGUFWriter, spec: TargetSpec, *, imatrix: bool = False, prefix: str = ""
+) -> None:
+    """Record what was done to the model, in the model.
+
+    Not a sidecar. A sidecar can be lost in a copy, and then nothing
+    about the file says what produced it — which is how a model ends up
+    on a hub labelled ``Q4_K_M`` with no way to check.
+
+    *prefix* namespaces the keys for one variant of a bundle, where the
+    file carries several quantisations and one set of top-level keys
+    could only describe one of them.
+    """
+    def _set(key: str, value: Any) -> None:
+        writer.set_metadata(f"{prefix}{key}" if prefix else key, value)
+
+    _set("hypernix.quantiser", "hyprslug")
+    _set("hypernix.tier", spec.name)
+    _set("hypernix.imatrix", bool(imatrix))
+    if spec.kind == "width":
+        _set("hypernix.sub_bit", False)
+        _set("hypernix.width", spec.width)
+        description = (
+            f"{spec.width} ({WIDTHS[spec.width][1] * 8} bits per weight, "
+            f"no block scale) via hyprslug"
+        )
+    elif spec.kind == "tier":
+        _set("hypernix.packing", spec.packing)
+        _set("hypernix.sub_bit", True)
+        description = (
+            f"HyperNix {spec.name} ({_bits_per_weight(spec.packing):.3f} bpw)"
+        )
+    else:
+        assert spec.recipe is not None
+        _set("hypernix.sub_bit", False)
+        _set("hypernix.base_format", spec.recipe.base)
+        description = (
+            f"{spec.recipe.name} ({spec.recipe.bits_per_weight:.2f} bpw base) "
+            f"via hyprslug"
+        )
+    if prefix:
+        _set("hypernix.description", description)
+    else:
+        writer.set_metadata("general.file_type_description", description)
 
 
 def load_imatrix(path: str | Path) -> dict[str, list[float]]:
@@ -569,23 +1016,7 @@ def quantize_gguf(
     """
     source_path = Path(source)
     destination_path = Path(destination)
-    recipe = resolve_recipe(tier)
-    packing = ""
-    ggml_type = 0
-    if recipe is None:
-        if tier not in TIER_TYPES:
-            raise HyprslugError(
-                f"Unknown target {tier!r}. hyprslug writes: {', '.join(all_targets())}"
-            )
-        ggml_type, packing = TIER_TYPES[tier]
-        if packing not in PACKINGS and packing not in CODECS:
-            raise HyprslugError(
-                f"Tier {tier} names packing {packing!r}, which does not exist."
-            )
-    if quantize_embeddings is None:
-        quantize_embeddings = recipe is not None
-    if quantize_output is None:
-        quantize_output = recipe is not None
+    spec = target_spec(tier)
     if not source_path.exists():
         raise HyprslugError(f"No such model: {source_path}")
 
@@ -602,75 +1033,45 @@ def quantize_gguf(
         raise HyprslugError(f"{source_path}: {exc}") from exc
 
     report = QuantizeReport(
-        tier=recipe.name if recipe else tier,
-        packing=packing,
+        tier=spec.name,
+        packing=spec.packing or spec.width,
         source_bytes=source_path.stat().st_size,
         tensors_total=len(model.tensors),
     )
 
     writer = GGUFWriter(destination_path, alignment=model.alignment)
     writer.copy_metadata_from(model)
-    # Recorded in the file itself, not a sidecar. A sidecar can be lost in
-    # a copy, and then nothing about the model says what was done to it.
-    writer.set_metadata("hypernix.quantiser", "hyprslug")
-    writer.set_metadata("hypernix.tier", report.tier)
-    writer.set_metadata("hypernix.imatrix", bool(weights_by_tensor))
-    if recipe is None:
-        writer.set_metadata("hypernix.packing", packing)
-        writer.set_metadata("hypernix.sub_bit", True)
-        writer.set_metadata(
-            "general.file_type_description",
-            f"HyperNix {tier} ({_bits_per_weight(packing):.3f} bpw)",
-        )
-    else:
-        writer.set_metadata("hypernix.sub_bit", False)
-        writer.set_metadata("hypernix.base_format", recipe.base)
-        writer.set_metadata(
-            "general.file_type_description",
-            f"{recipe.name} ({recipe.bits_per_weight:.2f} bpw base) via hyprslug",
-        )
+    write_provenance(writer, spec, imatrix=bool(weights_by_tensor))
 
-    # (original tensor, declared tensor, block format or "" for a copy).
-    plan: list[tuple[GGUFTensor, GGUFTensor, str]] = []
-    for tensor in model.tensors:
-        chosen = recipe.format_for(tensor.name) if recipe else ""
-        block = llamaquants.FORMATS[chosen].block if recipe else BLOCK_SIZE
-        do_it, reason = _should_quantize(
-            tensor,
-            block=block,
-            quantize_embeddings=quantize_embeddings,
-            quantize_output=quantize_output,
-        )
-        if not do_it:
-            chosen = ""
-        if do_it and recipe:
-            target_type = llamaquants.FORMATS[chosen].ggml_type
-        elif do_it:
-            target_type = ggml_type
-        else:
-            target_type = tensor.ggml_type
-        declared = writer.add_tensor(tensor.name, tensor.shape, target_type)
-        plan.append((tensor, declared, chosen if recipe else ("sub-bit" if do_it else "")))
-        if do_it:
-            report.tensors_quantized += 1
-            report.elements_quantized += tensor.elements
-            label = chosen if recipe else tier
-            report.formats[label] = report.formats.get(label, 0) + 1
-            if int(tensor.ggml_type) not in _UNQUANTIZED:
-                was = GGMLType(int(tensor.ggml_type)).name
-                report.requantized_from[was] = report.requantized_from.get(was, 0) + 1
-        else:
+    plans = plan_tensors(
+        model, spec,
+        quantize_embeddings=quantize_embeddings,
+        quantize_output=quantize_output,
+    )
+    by_name: dict[str, TensorPlan] = {}
+    for plan in plans:
+        writer.add_tensor(plan.name, plan.source.shape, plan.ggml_type)
+        by_name[plan.name] = plan
+        if plan.copied:
             report.tensors_copied += 1
-            report.elements_copied += tensor.elements
-            report.skipped.append((tensor.name, reason))
+            report.elements_copied += plan.source.elements
+            report.skipped.append((plan.name, plan.reason))
+            continue
+        report.tensors_quantized += 1
+        report.elements_quantized += plan.source.elements
+        label = plan.encoding if spec.kind == "recipe" else spec.name
+        report.formats[label] = report.formats.get(label, 0) + 1
+        if int(plan.source.ggml_type) not in _UNQUANTIZED:
+            was = GGMLType(int(plan.source.ggml_type)).name
+            report.requantized_from[was] = report.requantized_from.get(was, 0) + 1
 
-    by_name = {declared.name: (original, fmt) for original, declared, fmt in plan}
     done = 0
+    overflowed: dict[str, int] = {}
 
     def _data_for(declared: GGUFTensor) -> bytes:
         nonlocal done
-        original, fmt = by_name[declared.name]
-        raw = model.tensor_bytes(original)
+        plan = by_name[declared.name]
+        raw = model.tensor_bytes(plan.source)
         done += 1
         if progress is not None:
             try:
@@ -678,46 +1079,22 @@ def quantize_gguf(
                     "event": "tensor",
                     "name": declared.name,
                     "index": done,
-                    "total": len(plan),
-                    "quantized": bool(fmt),
-                    "format": fmt,
+                    "total": len(plans),
+                    "quantized": not plan.copied,
+                    "format": plan.encoding,
                 })
             except Exception:  # noqa: BLE001 - a listener must not fail the run
                 logger.debug("hyprslug: progress callback raised", exc_info=True)
-        if not fmt:
-            return raw
-        values = _decode_floats(raw, original.ggml_type)
-        importance = weights_by_tensor.get(declared.name)
-        if importance is not None:
-            # An imatrix carries one number per *input channel*; a
-            # quantiser wants one per weight, and a GGUF weight tensor is
-            # rows of n_input elements, so the vector tiles. Where the two
-            # cannot be reconciled the imatrix is a different model's, and
-            # applying it would weight the wrong positions -- worse than
-            # not applying it, so say so and carry on without it.
-            expanded = expand_for_tensor(importance, len(values))
-            if expanded is None:
-                logger.warning(
-                    "hyprslug: imatrix for %s has %d entries, which does not divide "
-                    "the tensor's %d; ignoring it",
-                    declared.name, len(importance), len(values),
-                )
-            importance = expanded
-        if fmt == "sub-bit":
-            try:
-                if packing in CODECS:
-                    # A fixed codebook carries its own magnitude, so an
-                    # imatrix has nothing to decide here -- there is no
-                    # scale to steer and no sign to drop. Passing one
-                    # would be accepting an argument and ignoring it.
-                    return lowbit_quantize(values, packing)
-                return quantize_tensor(values, packing, importance)
-            except (SubBitError, LowBitError) as exc:
-                raise HyprslugError(f"{declared.name}: {exc}") from exc
-        try:
-            return llamaquants.quantize_array(values, fmt, importance)
-        except llamaquants.LlamaQuantError as exc:
-            raise HyprslugError(f"{declared.name}: {exc}") from exc
+        payload, saturated = encode_tensor(
+            raw, int(plan.source.ggml_type), plan, spec,
+            importance=weights_by_tensor.get(declared.name),
+        )
+        if saturated:
+            # Saturating is the least bad option and it is still a loss,
+            # so it is counted and shown rather than left for someone to
+            # find in the perplexity.
+            overflowed[declared.name] = saturated
+        return payload
 
     try:
         writer.write(_data_for)
@@ -725,6 +1102,7 @@ def quantize_gguf(
         raise HyprslugError(f"Could not write {destination_path}: {exc}") from exc
 
     report.output_bytes = destination_path.stat().st_size
+    report.f16_overflows = dict(overflowed)
     report.seconds = time.time() - started
     if progress is not None:
         try:

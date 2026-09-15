@@ -4,8 +4,20 @@ Also installed as ``doomslug``, ``doomslugthedestroyer`` and ``dstd``.
 
     hyprslug model.f16.gguf Q4_K_M -o model.q4km.gguf
     hyprslug model.f16.gguf IQ0.5_XXXL -o model.iq05.gguf
+    hyprslug model.q8_0.gguf BF16 -o model.bf16.gguf
     doomslug model.q8_0.gguf Q4_K_M --imatrix imatrix.json
     dstd --list-tiers
+
+Several quantisations in one file::
+
+    hyprslug model.f16.gguf --multi Q8_0,Q4_K_M,IQ0.5_XXXL -o model.bundle.gguf
+    hyprslug model.bundle.gguf --list-variants
+    hyprslug model.bundle.gguf --extract Q4_K_M -o model.q4km.gguf
+
+A speculative-decoding draft, either generation::
+
+    hyprslug model.f16.gguf --draft dflash1 -o model.draft.gguf
+    hyprslug model.f16.gguf --draft dflash2 -o model.with-draft.gguf
 """
 from __future__ import annotations
 
@@ -18,6 +30,7 @@ from .hyprslug import (
     ALIASES,
     RECIPES,
     TIER_TYPES,
+    WIDTHS,
     HyprslugError,
     quantize_gguf,
 )
@@ -25,6 +38,12 @@ from .lowbit import CODECS
 from .subbit import PACKINGS
 
 __all__ = ["main", "cli_main"]
+
+#: The two draft generations, and what each writes.
+DRAFT_KINDS = {
+    "dflash1": "a standalone draft GGUF, for --model-draft",
+    "dflash2": "the draft embedded in the base model, one file",
+}
 
 
 def _describe_tier(tier: str, type_id: int, packing: str) -> dict:
@@ -81,6 +100,163 @@ def _describe_tier(tier: str, type_id: int, packing: str) -> dict:
         ),
     }
 
+
+
+def _bundle(args) -> int:
+    """``--multi``: several quantisations written into one GGUF."""
+    from .multiquant import MultiQuantError, bundle
+
+    targets = [part.strip() for part in args.multi.replace(" ", ",").split(",")]
+    targets = [part for part in targets if part]
+    output = args.output or f"{args.source.rsplit('.', 1)[0]}.bundle.gguf"
+
+    def _progress(event: dict) -> None:
+        if args.quiet or args.as_json:
+            return
+        if event.get("event") == "variant":
+            print(f"  [{event['index']}/{event['total']}] {event['tier']}"
+                  + ("  (default)" if event["default"] else ""), file=sys.stderr)
+        elif event.get("event") == "tensor":
+            print(f"    [{event['index']:>4}/{event['total']}] {event['name']}",
+                  file=sys.stderr)
+
+    try:
+        report = bundle(
+            args.source, output, targets,
+            default=args.default,
+            imatrix=args.imatrix,
+            quantize_embeddings=args.quantize_embeddings,
+            quantize_output=args.quantize_output,
+            share=not args.no_share,
+            progress=None if args.quiet else _progress,
+        )
+    except MultiQuantError as exc:
+        print(f"hyprslug: {exc}", file=sys.stderr)
+        return 1
+    if args.as_json:
+        print(json.dumps(report.to_dict(), indent=2))
+    elif not args.quiet:
+        print(report.describe())
+        print(f"hyprslug: wrote {output}")
+    return 0
+
+
+def _list_variants(args) -> int:
+    """``--list-variants``: what quantisations a file carries."""
+    from .multiquant import MultiQuantError, variants
+
+    try:
+        found = variants(args.source)
+    except MultiQuantError as exc:
+        print(f"hyprslug: {exc}", file=sys.stderr)
+        return 1
+    if args.as_json:
+        print(json.dumps({"variants": [v.to_dict() for v in found]}, indent=2))
+        return 0
+    if not found:
+        # Not an error. Almost every GGUF in existence carries exactly
+        # one quantisation, and saying so plainly beats an error message
+        # for the normal case.
+        print(f"{args.source} carries one quantisation, the ordinary way.")
+        return 0
+    print(f"{args.source}: {len(found)} variants")
+    for variant in found:
+        mark = "*" if variant.default else " "
+        print(f"  {mark} {variant.tier:14} {variant.bits_per_weight:6.3f} bpw  "
+              f"{variant.nbytes / 1e6:8.1f} MB  {variant.tensor_count} tensors")
+    print()
+    print("  * is the one a stock llama.cpp runs when it opens this file.")
+    return 0
+
+
+def _extract(args) -> int:
+    """``--extract TIER``: one variant out of a bundle, as its own GGUF."""
+    from .multiquant import MultiQuantError, extract
+
+    output = args.output or (
+        f"{args.source.rsplit('.', 1)[0]}.{args.extract}.gguf"
+    )
+    try:
+        info = extract(args.source, output, args.extract)
+    except MultiQuantError as exc:
+        print(f"hyprslug: {exc}", file=sys.stderr)
+        return 1
+    if args.as_json:
+        print(json.dumps(info.to_dict(), indent=2))
+    elif not args.quiet:
+        print(f"{info.tier}: {info.tensor_count} tensors, "
+              f"{info.nbytes / 1e6:.1f} MB")
+        print(f"hyprslug: wrote {output}")
+    return 0
+
+
+def _draft(args) -> int:
+    """``--draft dflash1|dflash2``: derive a speculative-decoding draft."""
+    kind = args.draft.strip().lower()
+    stem = args.source.rsplit(".", 1)[0]
+
+    def _progress(event: dict) -> None:
+        if args.quiet or args.as_json or event.get("event") != "tensor":
+            return
+        print(f"  [{event['index']:>4}/{event['total']}] {event['name']}",
+              file=sys.stderr)
+
+    if kind == "dflash1":
+        from .dflash1 import Dflash1Error, derive
+
+        output = args.output or f"{stem}.draft.gguf"
+        try:
+            report = derive(
+                args.source, output,
+                depth=args.draft_depth,
+                quant=args.draft_quant,
+                draft_tokens=args.draft_tokens,
+                layers=args.draft_layers,
+                require_tokenizer=not args.no_tokenizer_check,
+                progress=None if args.quiet else _progress,
+            )
+        except Dflash1Error as exc:
+            print(f"hyprslug: {exc}", file=sys.stderr)
+            return 1
+        if args.as_json:
+            print(json.dumps(report.to_dict(), indent=2))
+        elif not args.quiet:
+            print(report.describe())
+            print(f"hyprslug: wrote {output}")
+            print(f"  run it with: --model-draft {output}")
+        return 0
+
+    from .dflash2 import Dflash2Error, attach
+
+    output = args.output or f"{stem}.dflash2.gguf"
+    try:
+        report = attach(
+            args.source, output,
+            depth=args.draft_depth,
+            quant=args.draft_quant,
+            draft_tokens=args.draft_tokens,
+            layers=args.draft_layers,
+            progress=None if args.quiet else _progress,
+        )
+    except Dflash2Error as exc:
+        print(f"hyprslug: {exc}", file=sys.stderr)
+        return 1
+    if args.as_json:
+        print(json.dumps(report.to_dict(), indent=2))
+    elif not args.quiet:
+        print(report.describe())
+        print(f"hyprslug: wrote {output}")
+    return 0
+
+
+def _layer_list(raw: str) -> list[int]:
+    """``--draft-layers 0,7,15`` to ``[0, 7, 15]``."""
+    try:
+        return [int(part) for part in raw.replace(" ", ",").split(",") if part]
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(
+            f"{raw!r} is not a comma-separated list of layer indices."
+        ) from exc
 
 
 def _check_or_repair(args) -> int:
@@ -175,6 +351,79 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--no-quantize-output", dest="quantize_output",
                         action="store_false", help="Leave the output head alone")
     parser.add_argument("--list-tiers", action="store_true")
+
+    multi = parser.add_argument_group(
+        "several quantisations in one file",
+        "One GGUF carrying a whole table of tiers. The default variant keeps "
+        "the ordinary tensor names, so a stock llama.cpp opens the file and "
+        "runs it with nothing unusual happening; the rest sit under hnxq. "
+        "prefixes it reads straight past.",
+    )
+    multi.add_argument(
+        "--multi", metavar="T1,T2,...",
+        help="Quantise SOURCE to every one of these and bundle them together.",
+    )
+    multi.add_argument(
+        "--default", metavar="TIER",
+        help="Which variant a stock loader runs. Defaults to the first of "
+             "--multi.",
+    )
+    multi.add_argument(
+        "--no-share", action="store_true",
+        help="Store every variant's tensors separately, even the ones that "
+             "would be byte-identical. Costs the size saving; gives each "
+             "variant a complete independent tensor set.",
+    )
+    multi.add_argument(
+        "--list-variants", action="store_true",
+        help="Print the quantisations SOURCE carries, and stop.",
+    )
+    multi.add_argument(
+        "--extract", metavar="TIER",
+        help="Write one variant out of a bundle as an ordinary GGUF.",
+    )
+
+    draft = parser.add_argument_group(
+        "speculative decoding drafts",
+        "A draft model derived from SOURCE by dropping layers and quantising "
+        "hard. dflash1 writes it as its own file for --model-draft; dflash2 "
+        "writes it inside the base model so there is one file to ship. "
+        "Neither is trained: check the acceptance rate before believing in it.",
+    )
+    draft.add_argument(
+        "--draft", choices=sorted(DRAFT_KINDS),
+        help="Derive a draft instead of quantising. "
+             + "; ".join(f"{k}: {v}" for k, v in sorted(DRAFT_KINDS.items())),
+    )
+    draft.add_argument(
+        "--draft-quant", default="Q4_0", metavar="FORMAT",
+        help="Block format for the draft's tensors (default: Q4_0). A draft "
+             "is throwaway arithmetic checked by the base model, so it can "
+             "be crushed harder than you would crush anything you had to "
+             "trust on its own.",
+    )
+    draft.add_argument(
+        "--draft-depth", type=float, default=0.25, metavar="FRACTION",
+        help="Fraction of the base's layers to keep (default: 0.25). First "
+             "and last are always among them.",
+    )
+    draft.add_argument(
+        "--draft-tokens", type=int, default=4, metavar="N",
+        help="Tokens the draft proposes per round (default: 4). Past four, "
+             "one rejection throws away more work than the extra acceptances "
+             "win back.",
+    )
+    draft.add_argument(
+        "--draft-layers", metavar="I,J,K", type=_layer_list, default=None,
+        help="Exact layer indices to keep, instead of --draft-depth.",
+    )
+    draft.add_argument(
+        "--no-tokenizer-check", action="store_true",
+        help="dflash1 only: write a draft from a base with no tokenizer "
+             "metadata. Only for test fixtures — a draft whose vocabulary "
+             "disagrees with the base has every proposal rejected, which "
+             "makes generation slower with no other symptom.",
+    )
     parser.add_argument(
         "--check", action="store_true",
         help="Report whether SOURCE is a file llama.cpp will load, and stop. "
@@ -191,8 +440,51 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("-q", "--quiet", action="store_true")
     args = parser.parse_args(argv)
 
+    # The modes that read SOURCE and do something other than quantise it
+    # to a tier. Each needs SOURCE and none needs TIER, so they are
+    # checked together and before the tier is required.
+    given = [
+        name for name, on in (
+            ("--check/--repair-to", args.check or args.repair_to),
+            ("--multi", args.multi),
+            ("--list-variants", args.list_variants),
+            ("--extract", args.extract),
+            ("--draft", args.draft),
+        ) if on
+    ]
+    modes = [bool(name) for name in given]
+    if sum(modes) > 1:
+        parser.error(
+            "--check/--repair-to, --multi, --list-variants, --extract and "
+            "--draft each write a different file from the same source. Pick "
+            "one per run."
+        )
+    if given and not args.source:
+        # print/return rather than parser.error, which raises SystemExit.
+        # main() is called directly by tests and by other entry points,
+        # and a library function that exits the process instead of
+        # returning a code is one nobody can wrap.
+        print(f"{given[0]} need a GGUF to look at.", file=sys.stderr)
+        return 2
+    if given and args.tier:
+        print(
+            f"{given[0]} does not take a tier, and {args.tier!r} was given. "
+            "A tier here would be silently ignored, which is how somebody "
+            "gets a file quantised to something other than what they typed.",
+            file=sys.stderr,
+        )
+        return 2
+
     if args.check or args.repair_to:
         return _check_or_repair(args)
+    if args.list_variants:
+        return _list_variants(args)
+    if args.multi:
+        return _bundle(args)
+    if args.extract:
+        return _extract(args)
+    if args.draft:
+        return _draft(args)
 
     if args.list_tiers:
         # --json applies here too; this branch used to return before ever
@@ -200,6 +492,21 @@ def main(argv: list[str] | None = None) -> int:
         # table and a parse error.
         if args.as_json:
             print(json.dumps({
+                "widths": [
+                    {
+                        "name": name,
+                        "ggml_type": type_id,
+                        "bits_per_weight": width_bytes * 8,
+                        "upstream": True,
+                        "blocked": False,
+                        "summary": (
+                            "A width conversion, not a quantisation: every "
+                            "weight keeps its own exponent and there is no "
+                            "block scale."
+                        ),
+                    }
+                    for name, (type_id, width_bytes) in WIDTHS.items()
+                ],
                 "recipes": [
                     {
                         "name": name,
@@ -220,6 +527,12 @@ def main(argv: list[str] | None = None) -> int:
                 ],
             }, indent=2))
             return 0
+        print("Element widths (no block, no scale; every llama.cpp reads these):")
+        for name, (_type_id, width_bytes) in WIDTHS.items():
+            print(f"  {name:8} {width_bytes * 8:5.2f} bits/weight  "
+                  f"a width conversion, not a quantisation"
+                  + ("  [F32 exponent range]" if name == "BF16" else ""))
+        print()
         print("llama.cpp quant types (any llama.cpp reads the result):")
         for name, recipe in sorted(
             RECIPES.items(), key=lambda kv: -kv[1].bits_per_weight

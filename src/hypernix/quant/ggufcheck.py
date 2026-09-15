@@ -61,23 +61,24 @@ block_elements = type_block_size
 
 #: The HyperNix type ids a patched llama.cpp actually registers.
 #:
-#: ``native/ggml-hnx/tools/patch_llamacpp.py`` adds five enum members
-#: (200-204) and pins ``GGML_TYPE_COUNT`` to 205, so 205 and 206 are
-#: past the end of both trait tables and gguf.cpp rejects them on the
-#: type check before it ever reaches a tensor.
+#: ``native/ggml-hnx/tools/patch_llamacpp.py`` adds the enum members and
+#: pins ``GGML_TYPE_COUNT`` one past the highest of them. Anything above
+#: that line is past the end of both trait tables, and gguf.cpp rejects
+#: it on the type check before it ever reaches a tensor.
 #:
-#: That matters because :mod:`hypernix.quant.hyprslug` offers seven
-#: tiers, not five. INT4 and FP2 quantise, write a well-formed GGUF and
-#: run under :mod:`hypernix.models.hnxrun` -- and cannot be opened by
-#: any llama.cpp build, patched or not. Nothing said so until this
-#: table existed, so somebody could spend an hour quantising to a tier
-#: that llama-server can never load.
+#: The table exists because the two sides drifted once. The patch script
+#: registered 200-204 and pinned the count at 205, while
+#: :mod:`hypernix.quant.hyprslug` offered seven tiers: INT4 (205) and FP2
+#: (206) quantised, wrote a well-formed GGUF and ran under
+#: :mod:`hypernix.models.hnxrun` -- and could not be opened by any
+#: llama.cpp build, patched or not. Nothing said so, so somebody could
+#: spend an hour quantising to a tier llama-server can never load.
 #:
 #: ``tests/test_ggufcheck.py`` parses the patch script's own enum text
 #: and asserts this agrees with it, so adding a type on the C side
 #: without updating this is a test failure rather than a surprise.
 LLAMA_CPP_REGISTERED_TYPES: frozenset[int] = frozenset(
-    {200, 201, 202, 203, 204, 205, 206, 207}
+    {200, 201, 202, 203, 204, 205, 206, 207, 208, 209}
 )
 
 

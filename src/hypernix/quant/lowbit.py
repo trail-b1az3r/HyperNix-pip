@@ -1,4 +1,4 @@
-"""hypernix.quant.lowbit — the fixed-codebook types: INT4, INT1, FP2.
+"""hypernix.quant.lowbit — the fixed-codebook types: INT8, INT4, INT2, INT1, FP2.
 
 Three formats that name themselves after the width of one weight: a
 block is 256 weights, one FP16 scale, and a code per weight indexing a
@@ -36,7 +36,9 @@ What the names mean
 =======  =====  ====================  ============  =====
 Name     bits   levels                block bytes   bpw
 =======  =====  ====================  ============  =====
+INT8         8  -128 .. 127                   258  8.062
 INT4         4  -8 .. 7                       130  4.062
+INT2         2  -2, -1, 0, +1                   66  2.062
 FP2          2  -2, -1, +1, +2                  66  2.062
 INT1         1  -1, +1                          34  1.062
 =======  =====  ====================  ============  =====
@@ -59,6 +61,50 @@ which is what two bits of float buys. There is no zero. A two-bit type
 *with* a zero needs five levels and therefore three bits, and the version
 that rounds a third of a normal distribution to zero is measurably worse
 than the version that does not — so this stores the exponent instead.
+
+INT2 is that other version, and it measured better than expected
+----------------------------------------------------------------
+``INT2`` is the two's-complement 2-bit range — ``-2, -1, 0, +1`` — so it
+*does* round to zero, which the paragraph above predicts should cost it.
+On 400k Gaussian weights over twelve seeds it does not:
+
+======  ==========  ==========
+codec   relative    weights
+        RMS error   at zero
+======  ==========  ==========
+INT2         0.384       39.7%
+FP2          0.397        0.0%
+======  ==========  ==========
+
+The prediction was made about a *symmetric* zero-inclusive codebook,
+where the zero is bought by spending a level on it. INT2 does not buy it:
+two's complement hands over ``-2, -1, 0, +1`` with an asymmetry already
+in it, and the searched scale then shifts to suit a codebook that is not
+centred. What comes out is a fourth level's worth of resolution near the
+origin, where a Gaussian keeps most of its mass, in exchange for a
+ceiling on the positive side — and on these weights that trade is very
+slightly positive rather than negative.
+
+Treat the 3% gap as a tie, not as a reason to switch. The reason to pick
+INT2 is the second column: a zero level is one a sparse kernel can skip,
+and a weight matrix that is 40% zeros is 40% of the multiply-accumulates
+that never happen. FP2 remains the right default when the runtime does
+dense arithmetic either way, which is most of them.
+
+The asymmetry is kept rather than corrected for the same reason
+``INT4``'s is: a signed 2-bit integer is what a kernel expecting one will
+read, and a codebook that quietly shifted the range would be a different
+format wearing the name.
+
+INT8 is the wide end, and it is not Q8_0
+-----------------------------------------
+Both store 8-bit codes against a block scale; the difference is the block.
+``Q8_0`` blocks 32 weights, so it pays a scale every 32 and lands at 8.5
+bits per weight. ``INT8`` blocks 256, the same as everything else in this
+module, and lands at 8.0625 — a smaller file, a coarser scale, and a
+tensor whose row-length constraint matches the rest of HyperNix rather
+than being the one exception. Prefer ``Q8_0`` when the file has to load
+in stock llama.cpp, which will refuse this one by type id.
 """
 from __future__ import annotations
 
@@ -135,10 +181,18 @@ class Codec:
 
 
 CODECS: dict[str, Codec] = {
+    #: Signed 8-bit over a 256-weight block. Not Q8_0 -- same code width,
+    #: eight times the block, so the file is smaller and the scale is
+    #: coarser. See the module docstring.
+    "INT8": Codec("INT8", 8, tuple(float(v) for v in range(-128, 128))),
     #: Signed 4-bit, the range a nibble holds. Asymmetric because two's
     #: complement is: -8 exists and +8 does not, and pretending otherwise
     #: wastes an eighth of the range on every block.
     "INT4": Codec("INT4", 4, tuple(float(v) for v in range(-8, 8))),
+    #: Signed 2-bit two's complement, zero included. Worse than FP2 on
+    #: reconstruction error and better than it on anything that skips
+    #: zeros. See the module docstring.
+    "INT2": Codec("INT2", 2, (-2.0, -1.0, 0.0, 1.0)),
     #: Sign and exponent, no mantissa, no zero. See the module docstring.
     "FP2": Codec("FP2", 2, (-2.0, -1.0, 1.0, 2.0)),
 }

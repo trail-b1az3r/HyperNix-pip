@@ -155,6 +155,12 @@ hyprslug-headers = "hypernix.quant.hyprslug_headers_cli:cli_main"
 hnx-headers = "hypernix.quant.hyprslug_headers_cli:cli_main"
 # 0.72.3 pt3: the embedded draft model, for speculative decoding.
 dflash2 = "hypernix.quant.dflash2_cli:cli_main"
+# 0.72.6: the standalone draft (--model-draft) and the multi-quant bundle.
+# Both are also reachable as `hyprslug --draft` / `hyprslug --multi`; these
+# names exist because that is what people look for.
+dflash1 = "hypernix.quant.dflash1_cli:cli_main"
+hnx-bundle = "hypernix.quant.multiquant_cli:cli_main"
+multiquant = "hypernix.quant.multiquant_cli:cli_main"
 # v0.71.5b1: HyperNix T1 API's official client TUI/CLI. Zero-extra-deps
 # client (stdlib urllib) — does NOT require `pip install hypernix[t1api]`,
 # that extra is only for running the server (hypernix.t1api.create_app()).

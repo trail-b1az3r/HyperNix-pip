@@ -90,6 +90,20 @@ extern "C" {
 #define HNX_TYPE_INT4    205
 #define HNX_TYPE_FP2     206
 
+/* The two widths added in 0.72.6, same family and same shape: an FP16
+ * scale over a 256-weight block, one code per weight into a fixed table.
+ *
+ * INT8 is not Q8_0. Same code width; Q8_0 blocks 32 weights and pays a
+ * scale every 32, landing at 8.5 bits/weight, while this blocks 256 and
+ * lands at 8.0625. Smaller file, coarser scale, and a row-length rule
+ * that matches every other type here instead of being the exception.
+ *
+ * INT2 is FP2's counterpart with a zero in it -- the two's complement
+ * range, -2..+1 -- so a kernel that skips zeros has something to skip.
+ * Around 40% of a Gaussian tensor lands there. */
+#define HNX_TYPE_INT8    208
+#define HNX_TYPE_INT2    209
+
 /* One block of each type. Laid out to match the file exactly: an FP16
  * scale then the packed sign bits, with no padding. The static asserts
  * below are load-bearing — a compiler that padded these would read every
@@ -103,6 +117,8 @@ typedef struct { uint16_t d; uint8_t qs[32]; } hnx_block_int1;    /* 34 */
 typedef struct { uint16_t d; uint8_t qs[42]; } hnx_block_1375;    /* 44 */
 typedef struct { uint16_t d; uint8_t qs[128]; } hnx_block_int4;   /* 130 */
 typedef struct { uint16_t d; uint8_t qs[64]; } hnx_block_fp2;     /*  66 */
+typedef struct { uint16_t d; uint8_t qs[256]; } hnx_block_int8;   /* 258 */
+typedef struct { uint16_t d; uint8_t qs[64]; } hnx_block_int2;    /*  66 */
 
 /* Everything a caller needs to handle one of these types without a
  * switch over the ids. */

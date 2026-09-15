@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Documentation
+    url: https://trail-b1az3r.github.io/HyperNix-pip/
+    about: Guides, the CLI reference, and the model training guide.
+  - name: Security vulnerability
+    url: https://github.com/trail-b1az3r/hypernix-pip/security/advisories/new
+    about: Report privately here — please do not open a public issue for a vulnerability.
+  - name: Questions and usage help
+    url: https://github.com/trail-b1az3r/hypernix-pip/discussions
+    about: "\"How do I…\" and \"is this supposed to…\" go here rather than in the issue tracker."

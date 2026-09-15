@@ -1,0 +1,98 @@
+name: Feature request
+description: Something HyperNix should be able to do and cannot.
+title: "[feature] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The requests that get built are the ones that describe a **problem**
+        rather than a solution. "hyprslug should take `--threads`" tells us
+        what to type; "quantising a 70B takes six hours on one core" tells us
+        what to fix, and `--threads` might not be the best answer to it.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do that you can't?
+      description: >
+        Describe the situation, not the feature. What are you doing today
+        instead, and what does it cost you?
+      placeholder: |
+        I want to ship one file that serves both a Q4_K_M and a Q8_0 of the
+        same model so users can pick a tier without a second download. Right
+        now I publish two GGUFs and a README explaining which to take.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you think should happen
+      description: >
+        A sketch of the interface is very welcome — a command line you wish
+        worked, a function signature, a screenshot of a TUI panel.
+      render: shell
+      placeholder: |
+        hyprslug model.gguf bundle.gguf --multi Q4_K_M,Q8_0 --default Q4_K_M
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of HyperNix
+      multiple: true
+      options:
+        - "quant (hyprslug / steamroller / dflash / gguf)"
+        - "training (brewer / pressure_cooker / instant_pot)"
+        - "monitoring (tvtop / tvtoppro / cctvtop)"
+        - "interfaces (hyped / hyped-pro / noodle / scriptgen)"
+        - "hyperlink (iOS / CarPlay / pairing / sync)"
+        - "t1api (server, auth, keys, billing)"
+        - "waiter (T1 client)"
+        - "security (gatekeeper / keymaster)"
+        - "install / packaging / CLI"
+        - "docs / README"
+        - "a new module"
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What you tried, or considered, instead
+      description: >
+        Existing flags, other tools, a shell script you wrote. If something
+        almost works, saying why it falls short is the most useful paragraph
+        in the issue.
+
+  - type: dropdown
+    id: breaking
+    attributes:
+      label: Would this change existing behaviour?
+      options:
+        - "No — purely additive"
+        - "Yes — it changes a default or an output format"
+        - "Not sure"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: help
+    attributes:
+      label: Are you able to work on this?
+      options:
+        - "No"
+        - "Maybe, with pointers to the right files"
+        - "Yes — I'd like to open a PR"
+    validations:
+      required: true
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: >
+        Links to prior art, a paper, how another project solved it, a model
+        that needs it.

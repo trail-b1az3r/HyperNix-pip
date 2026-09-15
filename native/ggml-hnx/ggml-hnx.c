@@ -30,6 +30,24 @@ static const float HNX_LEVELS_INT4[16] = {
      0.0f,  1.0f,  2.0f,  3.0f,  4.0f,  5.0f,  6.0f,  7.0f,
 };
 static const float HNX_LEVELS_FP2[4] = { -2.0f, -1.0f, 1.0f, 2.0f };
+/* INT2 is the two's complement 2-bit range, so it has the zero FP2
+ * deliberately does not -- and the same asymmetry INT4 has, for the same
+ * reason: -2 exists and +2 does not. */
+static const float HNX_LEVELS_INT2[4] = { -2.0f, -1.0f, 0.0f, 1.0f };
+/* -128..127, built by macro rather than transcribed. 256 hand-written
+ * rows is a table nobody can proofread, and a lazily-filled one would
+ * need a guard on first use from whichever thread got there first. This
+ * is a compile-time constant with neither problem. */
+#define HNX_I8_8(b)  (float)(b),        (float)((b) +  1), (float)((b) +  2), \
+                     (float)((b) +  3), (float)((b) +  4), (float)((b) +  5), \
+                     (float)((b) +  6), (float)((b) +  7)
+#define HNX_I8_64(b) HNX_I8_8(b),        HNX_I8_8((b) +  8), \
+                     HNX_I8_8((b) + 16), HNX_I8_8((b) + 24), \
+                     HNX_I8_8((b) + 32), HNX_I8_8((b) + 40), \
+                     HNX_I8_8((b) + 48), HNX_I8_8((b) + 56)
+static const float HNX_LEVELS_INT8[256] = {
+    HNX_I8_64(-128), HNX_I8_64(-64), HNX_I8_64(0), HNX_I8_64(64),
+};
 
 static const hnx_type_info HNX_TYPES[] = {
     { HNX_TYPE_IQ0_9,  "IQ0.9_L",     8, 7, sizeof(hnx_block_iq0_9),  0.9375f,  0, 0 , NULL, 0 },
@@ -40,6 +58,8 @@ static const hnx_type_info HNX_TYPES[] = {
     { HNX_TYPE_1375,   "HNX_1375BIT", 1, 1, sizeof(hnx_block_1375),   1.3750f, 16, 5, NULL, 0 },
     { HNX_TYPE_INT4,   "INT4",        1, 1, sizeof(hnx_block_int4),   4.0625f,  0, 0, HNX_LEVELS_INT4, 4 },
     { HNX_TYPE_FP2,    "FP2",         1, 1, sizeof(hnx_block_fp2),    2.0625f,  0, 0, HNX_LEVELS_FP2,  2 },
+    { HNX_TYPE_INT8,   "INT8",        1, 1, sizeof(hnx_block_int8),   8.0625f,  0, 0, HNX_LEVELS_INT8, 8 },
+    { HNX_TYPE_INT2,   "INT2",        1, 1, sizeof(hnx_block_int2),   2.0625f,  0, 0, HNX_LEVELS_INT2, 2 },
 };
 static const size_t HNX_TYPE_COUNT = sizeof(HNX_TYPES) / sizeof(HNX_TYPES[0]);
 
@@ -56,6 +76,8 @@ _Static_assert(sizeof(hnx_block_int1)   == 34, "INT1 block must be 34 bytes");
 _Static_assert(sizeof(hnx_block_1375)   == 44, "HNX_1375BIT block must be 44 bytes");
 _Static_assert(sizeof(hnx_block_int4)   == 130, "INT4 block must be 130 bytes");
 _Static_assert(sizeof(hnx_block_fp2)    == 66, "FP2 block must be 66 bytes");
+_Static_assert(sizeof(hnx_block_int8)   == 258, "INT8 block must be 258 bytes");
+_Static_assert(sizeof(hnx_block_int2)   == 66, "INT2 block must be 66 bytes");
 #endif
 
 const hnx_type_info *hnx_type_lookup(int type) {
