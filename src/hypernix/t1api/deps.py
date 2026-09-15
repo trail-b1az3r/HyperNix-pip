@@ -12,7 +12,7 @@ import uuid
 from dataclasses import dataclass
 from typing import Any
 
-from fastapi import Header, Request
+from fastapi import Depends, Header, Request
 
 from ..security.t2keys import looks_like_t2
 from .auth import AuthContext, T1AuthService
@@ -504,6 +504,7 @@ __all__ = [
     "get_client_ip",
     "resolve_client_ip",
     "require_confirmation",
+    "require_hyperlink_operator",
 ]
 
 
@@ -679,6 +680,41 @@ def _principal_from_t2(request: Request, credential: str) -> HyperLinkPrincipal:
         # A T2S key is never an admin — see t2keys.T2KeyGenerator.generate.
         is_admin=ctx.is_admin and parsed.family is not T2Type.T2S,
         auth_context=ctx,
+    )
+
+
+def require_hyperlink_operator(
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+) -> HyperLinkPrincipal:
+    """Admin, or partial admin. For reading the server rather than steering it.
+
+    Deliberately weaker than :func:`require_hyperlink_admin` and
+    deliberately not open. Seeing that a machine is at 94% memory and
+    78°C is what makes "why is my model slow" answerable from a phone,
+    and it is also a description of somebody's hardware — so it needs a
+    credential, and an ordinary read-only one is not enough.
+
+    "Partial admin" is whatever the deployment already means by it:
+    a key with WRITE, or a keyless trusted-network caller on a server
+    whose operator turned ``T1_TRUSTED_NETWORK_PARTIAL_ADMIN`` on. That
+    second case is the one this exists for — the phone on the sofa,
+    paired to nothing, asking what the PC is doing.
+    """
+    if principal.is_admin:
+        return principal
+    if "write" in principal.scopes or "admin" in principal.scopes:
+        return principal
+    raise T1APIError(
+        T1ErrorCode.AUTH_INSUFFICIENT_SCOPE,
+        "Reading this server's hardware needs an admin key, or partial "
+        "administrative access.",
+        details={
+            "remedy": (
+                "Use an admin key, a key with the 'write' scope, or enable "
+                "T1_TRUSTED_NETWORK_PARTIAL_ADMIN for trusted origins."
+            ),
+        },
+        http_status=403,
     )
 
 

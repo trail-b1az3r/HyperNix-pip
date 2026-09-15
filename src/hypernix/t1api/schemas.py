@@ -1403,6 +1403,44 @@ class DownloadedModelsResponse(BaseModel):
     request_id: str
 
 
+class HardwareResponse(BaseModel):
+    """One sample of what the machine is doing.
+
+    Every measurement is optional and `unavailable` says what could not
+    be read. A snapshot that invented a zero would be a dashboard
+    confidently reporting an overloaded machine as idle.
+    """
+
+    sampled_at: float = 0.0
+    hostname: str = ""
+    platform: str = ""
+    uptime_seconds: float | None = None
+    process_uptime_seconds: float = 0.0
+    cpu: dict[str, Any] = Field(default_factory=dict)
+    memory: dict[str, Any] = Field(default_factory=dict)
+    swap: dict[str, Any] = Field(default_factory=dict)
+    disks: list[dict[str, Any]] = Field(default_factory=list)
+    gpus: list[dict[str, Any]] = Field(default_factory=list)
+    unavailable: list[str] = Field(default_factory=list)
+    request_id: str
+
+
+class UptimeResponse(BaseModel):
+    """How long the server and the machine have been up.
+
+    Separate from the hardware snapshot because it needs no credential
+    beyond an ordinary one: "when did this restart" explains a dropped
+    session, and is not a description of somebody's hardware.
+    """
+
+    process_uptime_seconds: float = 0.0
+    machine_uptime_seconds: float | None = None
+    started_at: float = 0.0
+    server_name: str = ""
+    t1_version: str = ""
+    request_id: str
+
+
 class GenerationStopResponse(BaseModel):
     """What Stop actually stopped. An empty list is a success."""
 

@@ -70,6 +70,7 @@ from ..deps import (
     get_sync_store,
     get_trust_policy,
     require_hyperlink_admin,
+    require_hyperlink_operator,
 )
 from ..errors import T1APIError, T1ErrorCode
 from ..registry import ModelRegistry
@@ -84,6 +85,7 @@ from ..schemas import (
     GenerationListResponse,
     GenerationStopResponse,
     GenericOkResponse,
+    HardwareResponse,
     HFDownloadRequest,
     HFDownloadResponse,
     HFFile,
@@ -118,6 +120,7 @@ from ..schemas import (
     SyncClaimRequest,
     SyncClaimResponse,
     SyncPageResponse,
+    UptimeResponse,
 )
 from ..version import T1_VERSION
 
@@ -1017,6 +1020,60 @@ def stop_generation(
     )
     return GenerationStopResponse(
         stopped=stopped, count=len(stopped), request_id=request_id
+    )
+
+
+@router.get("/hardware", response_model=HardwareResponse)
+def server_hardware(
+    principal: HyperLinkPrincipal = Depends(require_hyperlink_operator),
+    config: T1APIConfig = Depends(get_config),
+    request_id: str = Depends(get_request_id),
+) -> HardwareResponse:
+    """What this machine is doing: CPU, memory, swap, disks, GPUs.
+
+    The question it answers is "is the server busy, or is my model just
+    slow?", which from six hundred miles away cannot be answered any
+    other way. The dashboards have sampled all of this for releases; this
+    is the same sampling with no terminal attached.
+
+    Admin or partial admin — it is a description of somebody's hardware,
+    so an ordinary read-only token is not enough.
+    """
+    _require_enabled(config)
+    from ...system.hardware import snapshot
+
+    paths = ["/"]
+    models_dir = config.hf_download_dir
+    if models_dir:
+        paths.append(str(models_dir))
+    data = snapshot(disk_paths=[p for p in paths if Path(p).exists()]).to_dict()
+    return HardwareResponse(**data, request_id=request_id)
+
+
+@router.get("/uptime", response_model=UptimeResponse)
+def server_uptime(
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    config: T1APIConfig = Depends(get_config),
+    request_id: str = Depends(get_request_id),
+) -> UptimeResponse:
+    """How long the server, and the machine under it, have been up.
+
+    Any HyperLink caller: this is not a description of the hardware, it
+    is the answer to "why did my session vanish". A process uptime of
+    four minutes explains that better than anything else the app could
+    show.
+    """
+    _require_enabled(config)
+    from ...system.hardware import process_uptime_seconds, uptime_seconds
+
+    process = process_uptime_seconds()
+    return UptimeResponse(
+        process_uptime_seconds=round(process, 2),
+        machine_uptime_seconds=uptime_seconds(),
+        started_at=time.time() - process,
+        server_name=config.server_name or "",
+        t1_version=T1_VERSION.short,
+        request_id=request_id,
     )
 
 
