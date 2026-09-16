@@ -26,6 +26,191 @@ next release header.
 - 𖥔 minor new feature
 
 
+## 0.72.5 pt3 — the phone can drive the machine
+
+pt2 gave the server the operations. pt3 is the app that uses them, plus
+three bugs that all had the same shape: something reported success and
+did nothing of the sort.
+
+### 𖢥 The inference engine was skipped on every push
+
+"It always skips the inference engine build." The first fix set the
+`workflow_call` default to true, which made *releases* right and could
+not have fixed this — the release path was never the one skipping.
+
+```yaml
+if: ${{ inputs.local_engine }}
+```
+
+The `inputs` context exists **only** for `workflow_dispatch` and
+`workflow_call`. On a `push` or a `pull_request` it is not populated at
+all, so this is null, null is falsy, and the engine step was skipped on
+every single commit to main — with a grey "skipped" in the log that is
+indistinguishable from a deliberate one. `--require-engine` was gated on
+the same expression, so the guard that exists to catch exactly this was
+switched off by it.
+
+A step now decides out loud, with a stated answer for every trigger:
+push builds the engine, a pull request does not, and an explicit true or
+false is honoured wherever it comes from. The old test asserted that the
+condition *mentioned* `local_engine` — which it did — rather than that
+it was ever true on a push, which it never was.
+
+### 𖢥 "The installed T1 thinks it is running an older version"
+
+Three copies of the version number, all maintained by hand, all stale:
+`install-t1.sh` had two (`VERSION` and `T1_API_VERSION`) and
+`bin/hypernix-t1` had the third. The banner said `0.72.2.post5 · t1
+v1.0.26.8.1.1` over an install that was several releases past both.
+
+Nothing was wrong with the install. The only thing that was ever wrong
+was the number printed over it — and from the outside those two are
+indistinguishable, which is why it got reported as the install being
+old.
+
+Hand-editing them is not the fix; it is the bug, once per release. Now:
+
+* `install-t1.sh` derives both from `src/hypernix/__init__.py` and
+  `src/hypernix/t1api/version.py` when it is run from a clone. The
+  literals stay as the `curl | bash` fallback, and a test fails if they
+  drift from the package again.
+* `hypernix-t1 version` asks the installed package — it runs *after* the
+  install by definition, so it can — and reports the T1 version, the
+  Python, and which interpreter it is running as.
+
+### Every model the server has, not the ones LM Studio has open ๋࣭⭑
+
+The models screen showed `/bridge/lmstudio/models`: one source of three,
+and the only one that needs a second application to be running. A
+machine with forty GGUFs in `~/.hypernix/models` showed an empty list
+under a message telling the user to go and open LM Studio.
+
+It now shows the merged catalogue grouped by where each model came from,
+and names any source it could not reach — an empty list used to mean
+either "this server has no models" or "LM Studio is not running", with
+one blank screen for both. Siri's "switch to X" was reading the same
+narrow list and is fixed with it.
+
+### Loading a model from the phone ๋࣭⭑
+
+`/runner/*` existed and nothing in HyperLink could drive it, so "switch
+model" still meant walking over to the PC — the thing the runner was
+built to end.
+
+The new screen shows what is running and where its layers are, and loads
+anything on the server's disk. Every number comes from the server,
+because the server is the thing with the GPU: the backends offered are
+the ones that machine can actually use, and the layer split is computed
+against its real free VRAM.
+
+It will not load without showing the plan first. `/runner/plan` costs
+one request and changes nothing, and seeing "41 of 81 on the GPU" before
+committing is the difference between a decision and a surprise —
+loading evicts whatever people are currently talking to.
+
+Also on the command line, for the machine itself:
+
+```
+hypernix-t1 runner status
+hypernix-t1 runner plan qwen3-8b
+hypernix-t1 runner load qwen3-8b --gpu-layers 24
+hypernix-t1 runner unload
+```
+
+It talks HTTP to the local server rather than loading anything itself:
+starting a second llama.cpp here would take the VRAM the server's own
+copy is using, and the failure would land on the one that was working.
+
+### 𖢥 Stop now stops
+
+The button cancelled the phone's read task and told nobody, so the model
+finished the whole answer into a socket nobody was reading. The local
+cancel still goes first — it is what makes the button feel instant — and
+the server call follows, naming the generation id from the stream so two
+devices on one conversation do not stop each other.
+
+### Markdown 𖥔
+
+Models write markdown; the prose half of a message was rendered with
+plain `Text`, so a numbered list arrived as one wrapped paragraph with
+the numbers buried in it. Blocks are split by hand and each one's inline
+markup parsed with `AttributedString` — not `Text(LocalizedStringKey)`,
+which routes model output through the app's string catalogue and turns a
+`%@` in a reply into a format specifier. Half-written markup renders as
+its own characters, because text that vanishes while the model finishes
+a token looks like a bug.
+
+### Thirty-two servers ✨
+
+One pairing, one keychain account. Pairing with a laptop overwrote the
+desktop, and getting back meant pairing again.
+
+Now a list of up to 32, each with its own keychain account so forgetting
+one leaves the others signed in. Switching clears the previous machine's
+sessions and models rather than showing them under the new machine's
+name.
+
+The risky half is the update, not the list: every install has a record
+in the old shape, and an update that started reading a new key would
+come up unpaired on every device at once — the worst possible way to
+ship a feature about *keeping* connections. The old record is carried
+across and its token left where it is.
+
+### Edit mode ✨
+
+Long-press a message to copy, edit or delete it.
+
+Editing truncates, and that is the feature rather than a side effect.
+Everything below an edited message was written in reply to the *old*
+text, and that same transcript is what gets sent as context on the next
+turn — so leaving it means telling the model it said things it never
+said. The count is shown first: "this removes 11 messages" is a
+decision, finding eleven messages gone afterwards is a bug report.
+
+Only your own messages. Rewriting what the model said turns the
+transcript into a record of something that did not happen.
+
+Deleting is the opposite, for the opposite reason: it removes one
+message and keeps the thread. Deleting is usually about removing
+something that should not be stored — a pasted key, a name — and taking
+the conversation with it would make people keep the secret instead.
+
+### The hardware page, and what it will not pretend to know ✨
+
+CPU, memory, swap, disks and GPUs, answering "is the server busy, or is
+my model just slow?" — which from six hundred miles away cannot be
+answered any other way.
+
+Every reading is optional and the server names what it could not sample.
+A panel that renders a missing GPU temperature as 0°C is a confident
+wrong answer about hardware nobody can see.
+
+### Update commands, with the right interpreter in them ✨
+
+A new screen shows what the server is running and the exact commands to
+move it, each with a copy button.
+
+The reason it is worth an endpoint rather than a documentation page is
+one field. `pip install --upgrade hypernix` on a machine with a system
+Python, a pyenv, and the venv the service actually runs under upgrades
+whichever comes first on `PATH`, prints a cheerful success, and leaves
+the server running exactly the version it was. The server knows
+`sys.executable`; these commands name it. An editable install is told to
+use git instead, because pip will not replace one and a command that
+silently no-ops is worse than no command.
+
+It hands out text rather than running anything. Updating the package
+under a running server is a decision with a restart attached, and a
+phone button that did it silently would be a phone button that takes a
+machine down in the middle of somebody else's conversation — so the
+warning that a pip upgrade does not restart the server is part of the
+answer.
+
+### Uptime on screen 𖥔
+
+A conversation that lost its context, or a pairing that stopped working,
+is usually a PC that rebooted. Nothing in the app said so.
+
 ## 0.72.5 pt2 — the server does the serving now
 
 pt1 made HyperNix quantise without llama.cpp. pt2 is about the thing

@@ -1227,3 +1227,82 @@ class TestItKnowsAboutTheAutostartService:
         body = _function_body(SCRIPT.read_text(encoding="utf-8"), "wait_healthy")
         assert "server_pid" in body
         assert "running_pid" not in body
+
+
+class TestItKnowsWhatVersionItIs:
+    """`hypernix-t1 version` printed a hand-maintained literal.
+
+    Three copies of the version number were being kept by hand —
+    `install-t1.sh` had two and this script had the third — and all of
+    them drifted. That is the whole of "the installed T1 thinks it is
+    running an older version": the install was fine, the number printed
+    over it was not, and from the outside those are the same thing.
+
+    Unlike `install-t1.sh`, this script runs *after* the package is
+    installed, by definition — it cannot do anything useful otherwise.
+    So it can simply ask, and a number derived from the thing it
+    describes cannot drift from it.
+    """
+
+    def test_it_asks_the_package(self):
+        script = (REPO_ROOT / "bin" / "hypernix-t1").read_text(encoding="utf-8")
+        assert "report_versions" in script
+        assert "import hypernix" in script
+
+    def test_the_version_command_calls_it(self):
+        script = (REPO_ROOT / "bin" / "hypernix-t1").read_text(encoding="utf-8")
+        assert re.search(r"version\|--version\)\s+report_versions", script), (
+            "`version` still prints the baked literal"
+        )
+
+    def test_it_reports_the_real_versions(self, tmp_path):
+        """Run for real, against this interpreter."""
+        import subprocess
+
+        import hypernix
+        from hypernix.t1api.version import T1_VERSION
+
+        result = subprocess.run(
+            ["bash", str(REPO_ROOT / "bin" / "hypernix-t1"), "version"],
+            capture_output=True, encoding="utf-8",
+            env={**os.environ, "T1_CONFIG_DIR": str(tmp_path), "NO_COLOR": "1"},
+        )
+        printed = result.stdout
+        assert hypernix.__version__ in printed, printed
+        assert T1_VERSION.short in printed, printed
+
+    def test_it_says_which_interpreter(self, tmp_path):
+        """The same reason the upgrade commands name it: on a machine
+        with several Pythons, "which hypernix" is not answerable without
+        "which python"."""
+        import subprocess
+
+        result = subprocess.run(
+            ["bash", str(REPO_ROOT / "bin" / "hypernix-t1"), "version"],
+            capture_output=True, encoding="utf-8",
+            env={**os.environ, "T1_CONFIG_DIR": str(tmp_path), "NO_COLOR": "1"},
+        )
+        assert "runs as" in result.stdout
+
+    def test_it_still_prints_something_without_the_package(self, tmp_path):
+        """A fallback that never runs is a fallback nobody notices is
+        broken. Pointed at an interpreter with no hypernix, the script
+        must still answer rather than exit non-zero under `set -e`."""
+        import subprocess
+
+        empty = tmp_path / "python3"
+        empty.write_text("#!/bin/sh\nexit 1\n", encoding="utf-8")
+        empty.chmod(0o755)
+
+        result = subprocess.run(
+            ["bash", str(REPO_ROOT / "bin" / "hypernix-t1"), "version"],
+            capture_output=True, encoding="utf-8",
+            env={
+                **os.environ,
+                "T1_CONFIG_DIR": str(tmp_path),
+                "T1_PYTHON": str(empty),
+                "NO_COLOR": "1",
+            },
+        )
+        assert result.returncode == 0, result.stderr
+        assert "hypernix-t1" in result.stdout

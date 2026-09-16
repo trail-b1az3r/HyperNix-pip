@@ -969,3 +969,107 @@ class TestIndexingModelsAtInstall:
             capture_output=True, text=True, encoding="utf-8", check=False,
         )
         assert not Path("/tmp/hnx-dry-run-check").exists()
+
+
+class TestTheInstallerKnowsWhatVersionItIs:
+    """"The installed T1 thinks it is running an older version."
+
+    `install-t1.sh` carried two hand-maintained constants::
+
+        VERSION="0.72.2.post5"
+        T1_API_VERSION="1.0.26.8.1.1"
+
+    and printed them in the banner and into the config it writes, while
+    the package it was installing was several releases past both.
+    Nothing was wrong with the install. The only thing that was ever
+    wrong was the number printed over it — and from the outside those
+    two are indistinguishable, which is why it got reported as the
+    install being old rather than the banner being wrong.
+
+    Hand-editing them is not the fix; it is the bug, once per release.
+    They are still literals because the script has to work as
+    `curl ... | bash`, with no checkout to read and no hypernix yet to
+    ask — so `derive_versions` replaces them from the sources whenever
+    the script runs from a clone, and these tests keep the fallback
+    honest for the case where it cannot.
+    """
+
+    @staticmethod
+    def _baked(name: str) -> str:
+        text = (REPO_ROOT / "install-t1.sh").read_text(encoding="utf-8")
+        found = re.search(rf'^{name}="([^"]+)"$', text, re.MULTILINE)
+        assert found, f"{name} is not set in install-t1.sh"
+        return found.group(1)
+
+    def test_the_package_fallback_matches_the_package(self):
+        import hypernix
+
+        assert self._baked("VERSION") == hypernix.__version__, (
+            "install-t1.sh's VERSION has drifted from hypernix.__version__. "
+            "It is the version a `curl | bash` install announces, and a "
+            "release that bumps one without the other ships an installer "
+            "that misreports itself."
+        )
+
+    def test_the_t1_fallback_matches_the_api(self):
+        from hypernix.t1api.version import T1_VERSION
+
+        assert self._baked("T1_API_VERSION") == T1_VERSION.short
+
+    def test_it_derives_them_when_it_can(self):
+        """Run from a checkout, the literals are replaced rather than
+        trusted — so a stale fallback is invisible to anyone who cloned
+        the repo, and only the piped-from-the-internet path depends on
+        the tests above."""
+        text = (REPO_ROOT / "install-t1.sh").read_text(encoding="utf-8")
+        assert "derive_versions" in text
+        assert re.search(r"^derive_versions$", text, re.MULTILINE), (
+            "derive_versions is defined and never called"
+        )
+
+    def test_derivation_beats_a_stale_literal(self):
+        """The actual behaviour, not the presence of a function.
+
+        The header is extracted, its constants are replaced with
+        obvious rubbish, and it is sourced from the repo root. What
+        comes back must be the real versions.
+        """
+        import subprocess
+        import tempfile
+
+        import hypernix
+        from hypernix.t1api.version import T1_VERSION
+
+        text = (REPO_ROOT / "install-t1.sh").read_text(encoding="utf-8")
+        header = text[:text.index("\nderive_versions\n") + len("\nderive_versions\n")]
+        header = re.sub(r'^VERSION="[^"]*"$', 'VERSION="9.9.9-STALE"',
+                        header, flags=re.MULTILINE)
+        header = re.sub(r'^T1_API_VERSION="[^"]*"$', 'T1_API_VERSION="0.0.0.0.0.0"',
+                        header, flags=re.MULTILINE)
+
+        with tempfile.NamedTemporaryFile(
+            "w", suffix=".sh", dir=REPO_ROOT, delete=False, encoding="utf-8"
+        ) as handle:
+            handle.write(header)
+            handle.write('printf "%s %s\\n" "$VERSION" "$T1_API_VERSION"\n')
+            script = Path(handle.name)
+        try:
+            printed = subprocess.run(
+                ["bash", script.name], cwd=REPO_ROOT,
+                capture_output=True, encoding="utf-8", check=True,
+            ).stdout.split()
+        finally:
+            script.unlink()
+
+        assert printed == [hypernix.__version__, T1_VERSION.short], (
+            f"derive_versions did not recover the real versions: {printed}"
+        )
+
+    def test_the_banner_shows_what_was_derived(self):
+        """A constant nobody prints cannot go stale in a way anybody
+        notices. This one is printed, which is how it was found."""
+        text = (REPO_ROOT / "install-t1.sh").read_text(encoding="utf-8")
+        banner = next(
+            line for line in text.splitlines() if "hypernix ${VERSION}" in line
+        )
+        assert "${T1_API_VERSION}" in banner

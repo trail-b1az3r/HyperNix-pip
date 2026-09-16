@@ -28,8 +28,59 @@
 
 set -euo pipefail
 
-VERSION="0.72.5.dev3"
+# The version this installer announces, in the banner and in the config
+# it writes.
+#
+# These two were maintained by hand and went stale, which is the whole
+# of the "the installed T1 thinks it is running an older version"
+# report: the banner said 0.72.2.post5 / t1 v1.0.26.8.1.1 while the
+# package being installed was several releases past both. Nothing was
+# wrong with the install — the only thing that was ever wrong was the
+# number printed over it, and there is no way to tell those apart from
+# the outside.
+#
+# They are still literals because this script has to work as
+# `curl ... | bash`, where there is no checkout to read and no hypernix
+# installed yet to ask. So they are a *fallback*, `derive_versions`
+# below replaces them whenever the script is run from a clone, and
+# tests/test_install_script.py fails if the fallback drifts from the
+# package again.
+VERSION="0.72.5.dev2"
 T1_API_VERSION="1.0.26.9.2.3"
+
+# Replace the baked versions with the real ones, when they can be read.
+#
+# Reads the sources rather than importing them: this runs before
+# anything is installed, and `python3 -c 'import hypernix'` at this
+# point either fails or — worse — succeeds against some *other*
+# hypernix that happens to be on the path and reports its version
+# instead of the one about to be installed.
+derive_versions() {
+  local here src package t1 year
+  here="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)" || return 0
+  src="$here/src/hypernix"
+  [ -f "$src/__init__.py" ] || return 0
+
+  package="$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' "$src/__init__.py" | head -1)"
+  [ -n "$package" ] && VERSION="$package"
+
+  # T1Version(api=1, major=0, year=2026, month=9, feature=2, fix=3)
+  # becomes 1.0.26.9.2.3 — the short spelling, two-digit year, which is
+  # what /status and every wire response carry.
+  t1="$(sed -n \
+    's/^T1_VERSION = T1Version(api=\([0-9][0-9]*\), *major=\([0-9][0-9]*\), *year=\([0-9][0-9]*\), *month=\([0-9][0-9]*\), *feature=\([0-9][0-9]*\), *fix=\([0-9][0-9]*\)).*$/\1 \2 \3 \4 \5 \6/p' \
+    "$src/t1api/version.py" | head -1)"
+  if [ -n "$t1" ]; then
+    # shellcheck disable=SC2086 # deliberate word splitting into $1..$6
+    set -- $t1
+    year="$3"
+    # 2026 -> 26. Left alone if it is already two digits.
+    [ ${#year} -gt 2 ] && year="${year#"${year%??}"}"
+    T1_API_VERSION="$1.$2.$year.$4.$5.$6"
+  fi
+}
+
+derive_versions
 
 # ---------------------------------------------------------------------------
 # Output
@@ -1494,6 +1545,13 @@ summary() {
   fi
   [ "$WANT_TUI" = "1" ] && say "    waiter tui              ${C_DIM}# the manager dashboard${C_OFF}"
   [ "$MODEL_SOURCE" = "lmstudio" ] && say "    waiter lmstudio status  ${C_DIM}# is a model loaded?${C_OFF}"
+  # The runner is the answer to "I have models and no LM Studio", which
+  # is the state this installer leaves a machine in when --index-models
+  # found some. Worth naming here rather than leaving it to be found.
+  if [ "$INDEX_MODELS" = "1" ]; then
+    say "    hypernix-t1 runner status  ${C_DIM}# what is serving, and where its layers are${C_OFF}"
+    say "    hypernix-t1 runner load <model>  ${C_DIM}# serve one without LM Studio${C_OFF}"
+  fi
   [ "$WANT_HYPERLINK" = "1" ] && say "    waiter hyperlink pair   ${C_DIM}# connect the phone app${C_OFF}"
   [ "$WANT_SYSTEMD" = "1" ] && say "    sudo cp $CONFIG_DIR/hypernix-t1api.service /etc/systemd/system/"
   say ""

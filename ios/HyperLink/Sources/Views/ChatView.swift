@@ -22,6 +22,12 @@ struct ChatView: View {
     @State private var showingModelPicker = false
     @State private var showingRename = false
     @State private var isUploading = false
+    /// The message being edited, if any. Only ever one of yours: the
+    /// assistant's words are a record of what happened, and rewriting
+    /// them would make the transcript fiction — and the next turn's
+    /// context along with it.
+    @State private var editing: ChatMessage?
+    @State private var deleting: ChatMessage?
 
     private var session: ChatSession? {
         state.sessions.first { $0.sessionID == sessionID }
@@ -62,6 +68,29 @@ struct ChatView: View {
             RenameChatSheet(
                 sessionID: sessionID, currentTitle: session?.title ?? ""
             )
+        }
+        .sheet(item: $editing) { message in
+            EditMessageSheet(message: message)
+        }
+        .confirmationDialog(
+            "Delete this message?",
+            isPresented: Binding(
+                get: { deleting != nil },
+                set: { if !$0 { deleting = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Delete", role: .destructive) {
+                guard let message = deleting else { return }
+                deleting = nil
+                Task { await state.deleteMessage(message.messageID) }
+            }
+            Button("Cancel", role: .cancel) { deleting = nil }
+        } message: {
+            // Unlike an edit, which truncates: deleting is usually about
+            // removing something that should not be stored, and taking
+            // the thread with it would make people keep the secret.
+            Text("The rest of the conversation stays. This removes it on the PC too.")
         }
         .photosPicker(
             isPresented: $showingPhotoPicker,
@@ -112,6 +141,29 @@ struct ChatView: View {
                     ForEach(state.messages.filter { !$0.isSystem }) { message in
                         MessageBubble(message: message)
                             .id(message.messageID)
+                            // Long press rather than a permanent edit
+                            // button: a control on every bubble is a
+                            // control in the way of reading, which is
+                            // what this screen is mostly for.
+                            .contextMenu {
+                                Button {
+                                    UIPasteboard.general.string = message.content
+                                } label: {
+                                    Label("Copy", systemImage: "doc.on.doc")
+                                }
+                                if message.isUser {
+                                    Button {
+                                        editing = message
+                                    } label: {
+                                        Label("Edit", systemImage: "pencil")
+                                    }
+                                }
+                                Button(role: .destructive) {
+                                    deleting = message
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+                            }
                     }
                     if !state.streamingText.isEmpty {
                         MessageBubble(

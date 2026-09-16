@@ -635,7 +635,98 @@ actor HyperLinkClient {
         try await get("/bridge/lmstudio/models", as: BridgeModelsResponse.self, timeout: 30)
     }
 
+    // MARK: - Editing what was said
+
+    /// Rewrite one of your own messages, dropping what came after it.
+    ///
+    /// The truncation is the feature. Everything below an edited
+    /// message was written in reply to the *old* text, and it is also
+    /// what gets sent as context on the next turn — so leaving it means
+    /// telling the model it said things it never said.
+    func editMessage(
+        sessionID: String, messageID: String, content: String, truncate: Bool = true
+    ) async throws -> MessageEdit {
+        struct Body: Encodable {
+            let content: String
+            let truncate: Bool
+        }
+        let data = try await send(
+            path: "/hyperlink/sessions/\(sessionID)/messages/\(messageID)",
+            method: "PATCH",
+            body: try encoder.encode(Body(content: content, truncate: truncate)),
+            timeout: 30
+        )
+        return try decode(MessageEdit.self, from: data)
+    }
+
+    /// Remove one message, leaving the rest of the conversation.
+    func deleteMessage(sessionID: String, messageID: String) async throws {
+        _ = try await send(
+            path: "/hyperlink/sessions/\(sessionID)/messages/\(messageID)",
+            method: "DELETE",
+            timeout: 30
+        )
+    }
+
+    // MARK: - The runner
+
+    /// What the server is running, where its layers are, and what
+    /// backends it can use.
+    ///
+    /// Readable by any HyperLink caller: knowing which model is
+    /// answering is not an administrative secret, and a client that
+    /// cannot tell shows the wrong model name.
+    func runnerStatus() async throws -> RunnerStatus {
+        try await get("/runner/status", as: RunnerStatus.self, timeout: 20)
+    }
+
+    /// Where a model's layers would go. Changes nothing.
+    func runnerPlan(_ request: RunnerLoadRequest) async throws -> RunnerPlan {
+        try await post("/runner/plan", body: request, as: RunnerPlan.self, timeout: 30)
+    }
+
+    /// Load a model, replacing whatever was running.
+    ///
+    /// Switching *is* loading — there is no separate verb, because two
+    /// llama.cpp servers on one machine each try to take the VRAM the
+    /// other has and the failure lands on the one that was working.
+    ///
+    /// The timeout is generous because the wait is real: a 70B coming
+    /// off a spinning disk takes minutes, and a client that gives up
+    /// first leaves a model loading with nothing watching it.
+    func runnerLoad(_ request: RunnerLoadRequest) async throws -> RunnerStatus {
+        try await post("/runner/load", body: request, as: RunnerStatus.self, timeout: 600)
+    }
+
+    /// Stop serving. Unloading nothing is a success, not an error.
+    @discardableResult
+    func runnerUnload() async throws -> RunnerStatus {
+        struct Empty: Encodable {}
+        return try await post(
+            "/runner/unload", body: Empty(), as: RunnerStatus.self, timeout: 120
+        )
+    }
+
     // MARK: - Uptime
+
+    /// What this server is running, and the commands to update it.
+    ///
+    /// Readable by any caller on purpose: "which version is this and
+    /// how do I move it" is the question behind most of the confusing
+    /// behaviour people report, and making it an admin secret keeps the
+    /// answer from the person who needs it.
+    func upgradeAdvice() async throws -> UpgradeAdvice {
+        try await get("/hyperlink/upgrade", as: UpgradeAdvice.self, timeout: 20)
+    }
+
+    /// What the machine is doing: CPU, memory, swap, disks, GPUs.
+    ///
+    /// Admin or partial admin server-side — it is a description of
+    /// somebody's hardware, so an ordinary phone gets a 403 and the
+    /// caller is expected to say so rather than show a blank dashboard.
+    func hardware() async throws -> ServerHardware {
+        try await get("/hyperlink/hardware", as: ServerHardware.self, timeout: 30)
+    }
 
     /// How long the server and the machine have been up.
     func uptime() async throws -> ServerUptime {

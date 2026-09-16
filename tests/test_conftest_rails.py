@@ -98,3 +98,85 @@ class TestTheRedirectsPointAtVariablesSomethingReads:
         from hypernix.hyperlink.identity import seed_path
 
         assert REAL_HOME not in seed_path().parents
+
+
+class TestNoSuiteClearsTheStorageRedirects:
+    """The mistake is easy, invisible, and was made again this release.
+
+    Several suites clear every ``T1_*`` variable to get a server with no
+    configuration, and they are right to want that. But the storage
+    redirects live in the same namespace, so the obvious loop::
+
+        for name in [k for k in os.environ if k.startswith("T1_")]:
+            monkeypatch.delenv(name, raising=False)
+
+    also removes ``T1_BACKUP_DIR`` and ``T1_MODULE_STORAGE_DIR``, and
+    the app then creates ``~/.hypernix/t1api/backups`` and
+    ``.../modules`` in the person's real home. It never fails a test,
+    and it only shows up if somebody happens to look at their home
+    directory afterwards — which is exactly how long it survived.
+
+    `conftest.clear_t1_config` does the same thing and keeps the four
+    paths. This test is what makes people use it.
+    """
+
+    #: Files allowed to write the loop by hand.
+    #:
+    #: `conftest.py` is where the correct version lives. The others
+    #: match the string for an unrelated reason — a T1 key prefix — and
+    #: are listed rather than excluded by a cleverer pattern, because a
+    #: cleverer pattern is one somebody's new file accidentally matches.
+    ALLOWED = {
+        "conftest.py",
+        "test_conftest_rails.py",           # this file quotes the bad loop
+        "test_t1_accounts.py",              # asserts a key starts with "T1_"
+        "test_v0710_gatekeeper_keymaster.py",  # same
+    }
+
+    def test_no_test_file_deletes_every_t1_variable(self):
+        import re
+
+        offenders = []
+        here = Path(__file__).resolve().parent
+        for path in sorted(here.glob("test_*.py")):
+            if path.name in self.ALLOWED:
+                continue
+            text = path.read_text(encoding="utf-8")
+            # The loop, not the string: `startswith("T1_")` next to a
+            # `delenv` is the shape that does the damage.
+            for match in re.finditer(r'startswith\("T1_"\)', text):
+                window = text[match.start():match.start() + 200]
+                if "STORAGE_KEYS" in window:
+                    # Excluding them by name is the other correct
+                    # answer, and the one a module-level helper with no
+                    # monkeypatch fixture has to use.
+                    continue
+                if "delenv" in window or "environ.pop" in window:
+                    offenders.append(f"{path.name}:{text[:match.start()].count(chr(10)) + 1}")
+        assert not offenders, (
+            "these clear the storage redirects along with the config, so the "
+            "app writes to the real ~/.hypernix: "
+            + ", ".join(offenders)
+            + ". Use conftest.clear_t1_config(monkeypatch) instead."
+        )
+
+    def test_clear_t1_config_keeps_the_paths(self, monkeypatch):
+        import os
+
+        conftest.clear_t1_config(monkeypatch)
+        for name in conftest.STORAGE_KEYS:
+            assert os.environ.get(name), f"{name} was cleared"
+
+    def test_clear_t1_config_clears_everything_else(self, monkeypatch):
+        import os
+
+        monkeypatch.setenv("T1_TRUSTED_NETWORK", "1")
+        conftest.clear_t1_config(monkeypatch)
+        assert "T1_TRUSTED_NETWORK" not in os.environ
+
+    def test_the_paths_it_keeps_are_not_the_real_home(self, monkeypatch):
+        import os
+
+        conftest.clear_t1_config(monkeypatch)
+        for name in conftest.STORAGE_KEYS:
+            assert str(REAL_HOME) not in os.environ.get(name, "")

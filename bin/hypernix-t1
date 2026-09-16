@@ -19,7 +19,41 @@
 
 set -euo pipefail
 
+# The version this script reports. A fallback, not the answer.
+#
+# It was a hand-maintained literal and it was stale, which is one third
+# of "the installed T1 thinks it is running an older version" — the
+# other two thirds were install-t1.sh's two constants. `hypernix-t1
+# version` now asks the installed package, because by the time this
+# script does anything useful the package is installed by definition,
+# and a number derived from the thing it describes cannot drift from it.
 VERSION="0.72.5"
+
+# The real versions, from the package this script drives.
+#
+# Deliberately not a `sed` of the source like install-t1.sh does: that
+# script runs before anything is installed and has a checkout to read,
+# and this one runs after and may have no checkout at all. Asking the
+# interpreter is the accurate answer *here* and the impossible one
+# there.
+report_versions() {
+  local py
+  py="$(python_bin 2>/dev/null)" || { printf 'hypernix-t1 %s\n' "$VERSION"; return 0; }
+  "$py" - <<'PYEOF' 2>/dev/null || printf 'hypernix-t1 %s\n' "$VERSION"
+import sys
+
+try:
+    import hypernix
+    from hypernix.t1api.version import T1_VERSION
+except Exception:
+    sys.exit(1)
+
+print(f"hypernix-t1 (hypernix {hypernix.__version__})")
+print(f"t1 api     v{T1_VERSION.short}")
+print(f"python     {'.'.join(str(p) for p in sys.version_info[:3])}")
+print(f"runs as    {sys.executable}")
+PYEOF
+}
 
 CONFIG_DIR="${T1_CONFIG_DIR:-$HOME/.hypernix/t1api}"
 ENV_FILE="$CONFIG_DIR/.env"
@@ -695,6 +729,19 @@ cmd_training() {
     exec "$py" -m hypernix.t1api.training_cli "$@"
 }
 
+cmd_runner() {
+  # Talks to the running server over HTTP rather than loading a model
+  # here. The runner is a process the *server* owns — starting a second
+  # llama.cpp from this script would take the VRAM the server's own
+  # copy is using and the failure would land on the one that was
+  # working.
+  require_installed
+  load_env
+  local py; py="$(python_bin)"
+  T1_CONFIG_DIR="${T1_CONFIG_DIR:-$CONFIG_DIR}" \
+    exec "$py" -m hypernix.t1api.runner_cli "$@"
+}
+
 cmd_index() {
   # No require_installed: indexing reads GGUF files and writes JSON, and
   # needs neither a configured server nor the [t1api] extra. Someone who
@@ -871,11 +918,12 @@ main() {
     test)              cmd_test "$@" ;;
     key|keys)          cmd_key "$@" ;;
     index)             cmd_index "$@" ;;
+    runner)            cmd_runner "$@" ;;
     launch-script)     cmd_launch_script "$@" ;;
     training)          cmd_training "$@" ;;
     autostart)         cmd_autostart "$@" ;;
     remove|uninstall)  cmd_remove "$@" ;;
-    version|--version) printf 'hypernix-t1 %s\n' "$VERSION" ;;
+    version|--version) report_versions ;;
     help|-h|--help)    usage ;;
     *) err "Unknown command: $cmd"; usage >&2; exit 2 ;;
   esac

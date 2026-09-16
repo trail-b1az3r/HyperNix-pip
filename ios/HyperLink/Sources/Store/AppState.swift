@@ -60,6 +60,22 @@ final class AppState {
     /// first refresh, and on a server too old to answer.
     private(set) var uptime: ServerUptime?
 
+    /// What the HyperNix runner is running, if anything.
+    ///
+    /// `.unknown` rather than nil while it has not been asked, so a
+    /// view can tell "no model loaded" from "this server has no runner"
+    /// — the first is a button to press and the second is not.
+    private(set) var runner: RunnerStatus = .unknown
+    /// False on a server too old to have `/runner/*`, or one where it is
+    /// switched off. Nothing about the runner is offered when it is.
+    private(set) var runnerAvailable = false
+    /// True while a load or unload is in flight. A 70B coming off a
+    /// spinning disk takes minutes, and a screen that does not say so
+    /// looks broken.
+    private(set) var runnerBusy = false
+    /// What the last load or unload said when it refused.
+    var runnerError: String?
+
     // MARK: - Transient UI state
 
     private(set) var isSending = false
@@ -149,6 +165,9 @@ final class AppState {
         openSessionID = nil
         catalogue = .empty
         uptime = nil
+        runner = .unknown
+        runnerAvailable = false
+        runnerError = nil
         serverStatus = nil
         identityWarning = nil
         lastError = nil
@@ -188,6 +207,9 @@ final class AppState {
             openSessionID = nil
             catalogue = .empty
             uptime = nil
+            runner = .unknown
+            runnerAvailable = false
+            runnerError = nil
             serverStatus = nil
             await client.configure(endpoints: [], token: nil)
         }
@@ -363,6 +385,9 @@ final class AppState {
         openSessionID = nil
         catalogue = .empty
         uptime = nil
+        runner = .unknown
+        runnerAvailable = false
+        runnerError = nil
         serverStatus = nil
     }
 
@@ -386,7 +411,8 @@ final class AppState {
         async let models: Void = refreshModels()
         async let identity: Void = verifyIdentity()
         async let clock: Void = refreshUptime()
-        _ = await (status, list, models, identity, clock)
+        async let engine: Void = refreshRunner()
+        _ = await (status, list, models, identity, clock, engine)
     }
 
     /// Re-check that the address we reached is still the machine we
@@ -475,6 +501,107 @@ final class AppState {
     /// about a feature nobody asked for.
     func refreshUptime() async {
         uptime = try? await client.uptime()
+    }
+
+    /// What the server is running, and how to update it.
+    ///
+    /// Throws rather than returning nil: a server too old to have the
+    /// endpoint is exactly the server somebody opened this screen to
+    /// update, and silently showing nothing would be the least helpful
+    /// possible response to that.
+    func upgradeAdvice() async throws -> UpgradeAdvice {
+        try await client.upgradeAdvice()
+    }
+
+    /// One hardware sample.
+    ///
+    /// Throws rather than returning nil, unlike the other refreshes:
+    /// this one is opened deliberately from a menu, and "you are not an
+    /// admin on this server" is the answer to show rather than an empty
+    /// screen. The distinction is the whole reason it is not cached in
+    /// `AppState` — a reading is true for a second, and a stale one on
+    /// screen is worse than a spinner.
+    func hardware() async throws -> ServerHardware {
+        try await client.hardware()
+    }
+
+    // MARK: - The runner
+
+    /// Ask what the server is running.
+    ///
+    /// A 404 or a 403 here is not an error worth showing: a server too
+    /// old for `/runner/*`, or a caller without the rights to see it,
+    /// is a normal state and the answer is to offer nothing rather than
+    /// to put a red line on screen.
+    func refreshRunner() async {
+        if let status = try? await client.runnerStatus() {
+            runner = status
+            runnerAvailable = true
+        } else {
+            runner = .unknown
+            runnerAvailable = false
+        }
+    }
+
+    /// Where this model's layers would go. Changes nothing.
+    func planLoad(
+        modelID: String, gpuLayers: Int?, backend: String,
+        contextLength: Int?, totalLayers: Int?
+    ) async -> RunnerPlan? {
+        try? await client.runnerPlan(RunnerLoadRequest(
+            model_id: modelID, gpu_layers: gpuLayers, backend: backend,
+            context_length: contextLength, total_layers: totalLayers
+        ))
+    }
+
+    /// Load a model on the server, replacing whatever was running.
+    ///
+    /// Unlike the read paths, a failure here *is* shown. Somebody just
+    /// asked for a specific thing to happen to a shared machine, and
+    /// "there is no built llama.cpp" or "this model does not fit" are
+    /// both things they can act on.
+    @discardableResult
+    func loadModel(
+        modelID: String, gpuLayers: Int? = nil, backend: String = "auto",
+        contextLength: Int? = nil, totalLayers: Int? = nil
+    ) async -> Bool {
+        runnerBusy = true
+        runnerError = nil
+        defer { runnerBusy = false }
+        do {
+            runner = try await client.runnerLoad(RunnerLoadRequest(
+                model_id: modelID, gpu_layers: gpuLayers, backend: backend,
+                context_length: contextLength, total_layers: totalLayers
+            ))
+            runnerAvailable = true
+            // The catalogue's `loaded` flags are now stale — the model
+            // that was answering a moment ago is not the one answering
+            // now, and a picker still showing the old green dot is how
+            // somebody talks to the wrong model.
+            await refreshModels()
+            return true
+        } catch {
+            runnerError = (error as? HyperLinkError)?.errorDescription
+                ?? error.localizedDescription
+            return false
+        }
+    }
+
+    /// Stop serving. Unloading nothing is a success.
+    @discardableResult
+    func unloadModel() async -> Bool {
+        runnerBusy = true
+        runnerError = nil
+        defer { runnerBusy = false }
+        do {
+            runner = try await client.runnerUnload()
+            await refreshModels()
+            return true
+        } catch {
+            runnerError = (error as? HyperLinkError)?.errorDescription
+                ?? error.localizedDescription
+            return false
+        }
     }
 
     // MARK: - Sessions
@@ -672,6 +799,69 @@ final class AppState {
                 sessionID: sessionID, generationID: generationID
             )
             messages = (try? await client.messages(in: sessionID)) ?? messages
+        }
+    }
+
+    // MARK: - Edit mode
+
+    /// Rewrite one of your own messages.
+    ///
+    /// Everything after it goes, because everything after it was a
+    /// reply to the old text. The caller is expected to have said so
+    /// first — `removedCount` on the result is what it costs, and
+    /// `editWouldRemove` answers the same question before anything
+    /// happens.
+    ///
+    /// Returns the number of messages dropped, or nil when the edit was
+    /// refused.
+    @discardableResult
+    func editMessage(_ messageID: String, to content: String) async -> Int? {
+        guard let sessionID = openSessionID else { return nil }
+        do {
+            let result = try await client.editMessage(
+                sessionID: sessionID, messageID: messageID, content: content
+            )
+            // Reloaded rather than patched in place: the server just
+            // deleted an unknown number of rows, and reconstructing that
+            // locally is how a phone ends up showing a conversation the
+            // server does not have.
+            messages = (try? await client.messages(in: sessionID)) ?? messages
+            await refreshSessionSummary()
+            return result.removedCount
+        } catch {
+            handle(error)
+            return nil
+        }
+    }
+
+    /// How many messages an edit at *messageID* would remove.
+    ///
+    /// Computed from what is on screen rather than asked of the server:
+    /// it is a confirmation prompt, it has to be instant, and being off
+    /// by one because a message arrived mid-prompt is not worth a round
+    /// trip.
+    func editWouldRemove(_ messageID: String) -> Int {
+        guard let index = messages.firstIndex(where: { $0.messageID == messageID })
+        else { return 0 }
+        return messages.count - index - 1
+    }
+
+    /// Remove one message, leaving the rest of the conversation.
+    ///
+    /// Not a truncation, unlike an edit: deleting is usually about
+    /// removing something that should not be stored — a pasted key, a
+    /// name — and taking the thread with it would make people keep the
+    /// secret rather than lose the conversation.
+    @discardableResult
+    func deleteMessage(_ messageID: String) async -> Bool {
+        guard let sessionID = openSessionID else { return false }
+        do {
+            try await client.deleteMessage(sessionID: sessionID, messageID: messageID)
+            messages.removeAll { $0.messageID == messageID }
+            return true
+        } catch {
+            handle(error)
+            return false
         }
     }
 

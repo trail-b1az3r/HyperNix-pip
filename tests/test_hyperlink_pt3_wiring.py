@@ -318,3 +318,192 @@ class TestTheVersionTheRequestAskedFor:
             capture_output=True, text=True, check=True,
         ).stdout.strip()
         assert printed == "1.0.26.9.2.3"
+
+
+class TestTheRunnerReachesTheApp:
+    """`/runner/*` landed as an API and nothing in HyperLink could drive
+    it, so "switch model" still meant walking over to the PC — which is
+    the thing the runner was built to end."""
+
+    @pytest.mark.parametrize(
+        "call", ["runnerStatus", "runnerPlan", "runnerLoad", "runnerUnload"]
+    )
+    def test_the_client_has_it(self, call):
+        assert f"func {call}(" in code("Networking", "HyperLinkClient.swift")
+
+    def test_the_store_exposes_load_and_unload(self):
+        body = code("Store", "AppState.swift")
+        assert "func loadModel(" in body
+        assert "func unloadModel(" in body
+
+    def test_planning_is_separate_from_loading(self):
+        """Loading evicts whatever people are currently talking to.
+        Seeing the consequence first is not a nicety."""
+        assert "func planLoad(" in code("Store", "AppState.swift")
+        assert "/runner/plan" in code("Networking", "HyperLinkClient.swift")
+
+    def test_there_is_a_screen(self):
+        assert (SOURCES / "Views" / "RunnerView.swift").is_file()
+
+    def test_the_menu_reaches_it(self):
+        assert "RunnerView()" in code("Views", "SettingsView.swift")
+
+    def test_the_backends_come_from_the_server(self):
+        """A machine without CUDA must not be offered CUDA, and only the
+        server knows which build it has."""
+        body = code("Views", "RunnerView.swift")
+        assert "state.runner.backends" in body
+
+    def test_a_server_without_a_runner_offers_nothing(self):
+        """A 404 from `/runner/status` is a normal state — an older
+        server — not an error to put on screen."""
+        body = code("Views", "RunnerView.swift")
+        assert "runnerAvailable" in body
+
+    def test_loading_refreshes_the_model_list(self):
+        """The catalogue's `loaded` flags are stale the moment a load
+        succeeds, and a picker still showing the old green dot is how
+        somebody talks to the wrong model."""
+        body = code("Store", "AppState.swift")
+        start = body.index("func loadModel(")
+        assert "refreshModels()" in body[start:body.index("func unloadModel(")]
+
+    def test_a_refusal_is_shown_rather_than_swallowed(self):
+        """Unlike the read paths: somebody just asked for a specific
+        thing to happen to a shared machine, and "there is no built
+        llama.cpp" is something they can act on."""
+        assert "runnerError" in code("Store", "AppState.swift")
+        assert "runnerError" in code("Views", "RunnerView.swift")
+
+
+class TestTheHardwarePage:
+    def test_the_client_asks(self):
+        body = code("Networking", "HyperLinkClient.swift")
+        assert "func hardware(" in body
+        assert '"/hyperlink/hardware"' in body
+
+    def test_there_is_a_screen_the_menu_reaches(self):
+        assert (SOURCES / "Views" / "HardwareView.swift").is_file()
+        assert "HardwareView()" in code("Views", "SettingsView.swift")
+
+    def test_a_refusal_is_explained(self):
+        """Admin or partial admin server-side. An ordinary phone gets a
+        403, and an empty dashboard is the wrong way to say that."""
+        assert "refusal" in code("Views", "HardwareView.swift")
+
+    def test_nothing_that_could_not_be_read_is_drawn_as_zero(self):
+        """A panel rendering a missing GPU temperature as 0°C is a
+        confident wrong answer about hardware nobody can see."""
+        assert "unavailable" in code("Views", "HardwareView.swift")
+
+    def test_the_field_names_match_the_sampler(self):
+        """A CodingKey that does not match is a silent nil, which renders
+        as "—" and looks exactly like a sensor that could not be read —
+        so a typo here is invisible rather than loud."""
+        from hypernix.system.hardware import CPUReading, DiskReading, GPUReading
+
+        body = read("Models", "APITypes.swift")
+        import dataclasses
+
+        for dataclass in (CPUReading, DiskReading, GPUReading):
+            for field in dataclasses.fields(dataclass):
+                if field.name in ("frequency_mhz", "power_w", "power_limit_w",
+                                  "used_bytes", "model", "index", "vendor"):
+                    continue  # not surfaced on the phone
+                assert f'"{field.name}"' in body or field.name in body, (
+                    f"{dataclass.__name__}.{field.name} has no Swift CodingKey"
+                )
+
+
+class TestUpdatingTheServer:
+    """The report was: the T1 installed thinks it is running an older
+    version."""
+
+    def test_the_endpoint_exists(self):
+        from hypernix.t1api import upgrade
+
+        assert hasattr(upgrade, "plan")
+
+    def test_the_client_asks_for_it(self):
+        body = code("Networking", "HyperLinkClient.swift")
+        assert "func upgradeAdvice(" in body
+        assert '"/hyperlink/upgrade"' in body
+
+    def test_there_is_a_copy_area(self):
+        assert (SOURCES / "Views" / "ServerUpdateView.swift").is_file()
+        assert "ServerUpdateView()" in code("Views", "SettingsView.swift")
+
+    def test_it_actually_copies(self):
+        assert "UIPasteboard.general.string" in code("Views", "ServerUpdateView.swift")
+
+    def test_it_shows_the_interpreter(self):
+        """The one field that makes the commands correct rather than
+        plausible."""
+        assert "installation.executable" in code("Views", "ServerUpdateView.swift")
+
+    def test_it_does_not_offer_to_run_them(self):
+        """Updating the package under a running server is a decision
+        with a restart attached. A phone button that did it silently
+        takes a machine down mid-conversation."""
+        body = code("Views", "ServerUpdateView.swift")
+        assert "runnerLoad" not in body
+        assert "POST" not in body
+
+
+class TestEditMode:
+    """Changing what you asked, and re-asking it."""
+
+    def test_the_client_can_edit_and_delete(self):
+        body = code("Networking", "HyperLinkClient.swift")
+        assert "func editMessage(" in body
+        assert "func deleteMessage(" in body
+
+    def test_the_store_exposes_it(self):
+        body = code("Store", "AppState.swift")
+        assert "func editMessage(" in body
+        assert "func deleteMessage(" in body
+
+    def test_there_is_a_sheet(self):
+        assert (SOURCES / "Views" / "EditMessageSheet.swift").is_file()
+
+    def test_the_chat_view_offers_it(self):
+        body = code("Views", "ChatView.swift")
+        assert "EditMessageSheet(" in body
+        assert "contextMenu" in body
+
+    def test_only_your_own_messages_can_be_edited(self):
+        """The server refuses an assistant edit, and the menu must not
+        offer what the server will refuse — an Edit button that always
+        errors is worse than no button."""
+        body = code("Views", "ChatView.swift")
+        start = body.index("contextMenu")
+        block = body[start:start + 700]
+        assert "message.isUser" in block
+
+    def test_the_cost_is_shown_before_it_is_paid(self):
+        """"Replacing this removes 11 messages" is a decision. Finding
+        eleven messages gone afterwards is a bug report."""
+        assert "editWouldRemove" in code("Store", "AppState.swift")
+        assert "wouldRemove" in code("Views", "EditMessageSheet.swift")
+
+    def test_the_history_is_reloaded_rather_than_patched(self):
+        """The server just deleted an unknown number of rows.
+        Reconstructing that locally is how a phone ends up showing a
+        conversation the server does not have."""
+        body = code("Store", "AppState.swift")
+        start = body.index("func editMessage(")
+        assert "client.messages(in: sessionID)" in body[start:start + 1400]
+
+    def test_deleting_does_not_truncate(self):
+        """Deleting is usually about removing something that should not
+        be stored. Taking the thread with it makes people keep the
+        secret instead."""
+        body = code("Store", "AppState.swift")
+        start = body.index("func deleteMessage(")
+        block = body[start:start + 700]
+        assert "messages.removeAll" in block
+
+    def test_an_empty_edit_cannot_be_saved(self):
+        body = code("Views", "EditMessageSheet.swift")
+        assert "empty" in body
+        assert "Delete it instead" in read("Views", "EditMessageSheet.swift")

@@ -1213,6 +1213,25 @@ class MessageListResponse(BaseModel):
     request_id: str
 
 
+class MessageEditRequest(BaseModel):
+    content: str
+    #: Drop everything after the edited message. On by default, because
+    #: what came after was written in reply to the *old* text: leaving
+    #: it makes the transcript a record of the model answering a
+    #: question nobody asked, and that transcript is what gets sent as
+    #: context on the next turn.
+    truncate: bool = True
+
+
+class MessageEditResponse(BaseModel):
+    message: MessageSummary
+    #: What the edit cost, so a client can say "this will remove 11
+    #: messages" rather than silently removing them.
+    removed: list[MessageSummary] = Field(default_factory=list)
+    removed_count: int = 0
+    request_id: str
+
+
 class HyperLinkChatRequest(BaseModel):
     content: str = ""
     attachment_ids: list[str] = Field(default_factory=list)
@@ -1574,6 +1593,21 @@ class GenerationStopResponse(BaseModel):
 class GenerationListResponse(BaseModel):
     generations: list[dict[str, Any]] = Field(default_factory=list)
     count: int = 0
+    request_id: str
+
+
+class UpgradeResponse(BaseModel):
+    """What this server is running, and the commands to change it.
+
+    The commands are not generic advice. They name `sys.executable`,
+    because "run pip install -U hypernix" on a machine with a system
+    Python, a pyenv and the venv the service actually uses is advice
+    that succeeds loudly and upgrades the wrong installation.
+    """
+
+    installation: dict[str, Any] = Field(default_factory=dict)
+    commands: list[dict[str, Any]] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
     request_id: str
 
 

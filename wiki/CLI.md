@@ -745,6 +745,47 @@ Doing it anyway is the worst of both: the machine looks unlocked and the
 keyboard looks dead. `--force` is there for someone who wants the
 wake-word prompt regardless.
 
+## `hypernix-t1 runner`
+
+Load, unload and inspect the model the server is serving — without LM
+Studio, and without walking over to the machine.
+
+```bash
+hypernix-t1 runner status
+hypernix-t1 runner plan qwen3-8b
+hypernix-t1 runner load qwen3-8b --gpu-layers 24 --backend cuda
+hypernix-t1 runner unload
+```
+
+`plan` says where a model's layers would go and changes nothing.
+Loading evicts whatever people are currently talking to, so seeing the
+consequence first is not a nicety:
+
+```
+qwen3-8b
+  file: /home/you/.hypernix/models/qwen3-8b-q4_k_m.gguf
+  33 of 33 on the GPU
+  24 GB of VRAM, 4.9 GB of weights plus a 32k cache
+
+Nothing has changed — this was a plan.
+```
+
+**It is a client, not a second runner.** It talks HTTP to the server on
+the same machine, exactly as HyperLink does. Loading the model in this
+process would start a *second* llama.cpp, which takes the VRAM the
+server's copy is using — and the failure then lands on the one that was
+working rather than the one being started.
+
+**The key** comes from `--key`, then `T1_ADMIN_KEY`, then the admin key
+in the server's own `.env` — which is the common case, since whoever is
+typing this is usually at the keyboard of the machine running it. A
+server in trusted-network mode with partial admin accepts the request
+with no key at all.
+
+A refusal is printed rather than raised, because a refusal is
+information: a 403 names the three ways to be allowed, and a 404 lists
+what this server *can* load.
+
 ## Environment variables
 
 | Var | What |

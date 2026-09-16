@@ -938,3 +938,388 @@ struct GenerationStopResult: Decodable, Equatable, Sendable {
         count = try c.decodeIfPresent(Int.self, forKey: .count) ?? 0
     }
 }
+
+// MARK: - The runner (T1 v1.0.26.9.2.3)
+//
+// Switching the model used to mean walking over to the PC and using LM
+// Studio. `/runner/*` owns a llama.cpp process instead, so load, unload
+// and switch are operations rather than instructions — and the app can
+// do them from six hundred miles away.
+
+/// Where a model's layers would go, or did.
+struct RunnerPlacement: Decodable, Equatable, Sendable {
+    let gpuLayers: Int
+    let totalLayers: Int
+    let backend: String
+    let vramBytes: Int
+    let ramBytes: Int
+    let swapUsedBytes: Int
+    let fullyOffloaded: Bool
+    /// True when the operator gave a layer count rather than letting the
+    /// server work one out. Somebody who has tuned their own machine
+    /// should be able to see that their number survived.
+    let explicit: Bool
+    /// The plan in words — shown rather than summarised, because the
+    /// server knows things about the machine that the phone does not.
+    let reason: String
+
+    enum CodingKeys: String, CodingKey {
+        case backend, explicit, reason
+        case gpuLayers = "gpu_layers"
+        case totalLayers = "total_layers"
+        case vramBytes = "vram_bytes"
+        case ramBytes = "ram_bytes"
+        case swapUsedBytes = "swap_used_bytes"
+        case fullyOffloaded = "fully_offloaded"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        gpuLayers = try c.decodeIfPresent(Int.self, forKey: .gpuLayers) ?? 0
+        totalLayers = try c.decodeIfPresent(Int.self, forKey: .totalLayers) ?? 0
+        backend = try c.decodeIfPresent(String.self, forKey: .backend) ?? ""
+        vramBytes = try c.decodeIfPresent(Int.self, forKey: .vramBytes) ?? 0
+        ramBytes = try c.decodeIfPresent(Int.self, forKey: .ramBytes) ?? 0
+        swapUsedBytes = try c.decodeIfPresent(Int.self, forKey: .swapUsedBytes) ?? 0
+        fullyOffloaded = try c.decodeIfPresent(Bool.self, forKey: .fullyOffloaded) ?? false
+        explicit = try c.decodeIfPresent(Bool.self, forKey: .explicit) ?? false
+        reason = try c.decodeIfPresent(String.self, forKey: .reason) ?? ""
+    }
+
+    /// "33 of 33 on the GPU" / "41 of 81 on the GPU, 40 on the CPU".
+    var layerSummary: String {
+        guard totalLayers > 0 else { return backend.isEmpty ? "" : backend }
+        if fullyOffloaded { return "all \(totalLayers) layers on the GPU" }
+        if gpuLayers <= 0 { return "all \(totalLayers) layers on the CPU" }
+        return "\(gpuLayers) of \(totalLayers) on the GPU, "
+            + "\(totalLayers - gpuLayers) on the CPU"
+    }
+}
+
+/// The model the server is running, if it is running one.
+struct RunningModel: Decodable, Equatable, Sendable {
+    let modelID: String
+    let path: String
+    let port: Int
+    let pid: Int
+    let baseURL: String
+    let contextLength: Int
+    let uptimeSeconds: Double
+    let placement: RunnerPlacement?
+
+    enum CodingKeys: String, CodingKey {
+        case path, port, pid, placement
+        case modelID = "model_id"
+        case baseURL = "base_url"
+        case contextLength = "context_length"
+        case uptimeSeconds = "uptime_seconds"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        modelID = try c.decodeIfPresent(String.self, forKey: .modelID) ?? ""
+        path = try c.decodeIfPresent(String.self, forKey: .path) ?? ""
+        port = try c.decodeIfPresent(Int.self, forKey: .port) ?? 0
+        pid = try c.decodeIfPresent(Int.self, forKey: .pid) ?? 0
+        baseURL = try c.decodeIfPresent(String.self, forKey: .baseURL) ?? ""
+        contextLength = try c.decodeIfPresent(Int.self, forKey: .contextLength) ?? 0
+        uptimeSeconds = try c.decodeIfPresent(Double.self, forKey: .uptimeSeconds) ?? 0
+        placement = try c.decodeIfPresent(RunnerPlacement.self, forKey: .placement)
+    }
+}
+
+struct RunnerStatus: Decodable, Equatable, Sendable {
+    let loaded: Bool
+    let model: RunningModel?
+    let baseURL: String
+    /// What this server can actually run on, as it reported them. Not a
+    /// list the app carries: a machine without CUDA must not be offered
+    /// CUDA, and only the server knows which build it has.
+    let backends: [String]
+    let wasRunning: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case loaded, model, backends
+        case baseURL = "base_url"
+        case wasRunning = "was_running"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        loaded = try c.decodeIfPresent(Bool.self, forKey: .loaded) ?? false
+        baseURL = try c.decodeIfPresent(String.self, forKey: .baseURL) ?? ""
+        backends = try c.decodeIfPresent([String].self, forKey: .backends) ?? []
+        wasRunning = try c.decodeIfPresent(Bool.self, forKey: .wasRunning) ?? false
+        // An unloaded server sends `{}` here, which decodes to a
+        // RunningModel of empty strings rather than to nil — so the
+        // emptiness is checked rather than the presence of the key.
+        let decoded = try c.decodeIfPresent(RunningModel.self, forKey: .model)
+        model = (decoded?.modelID.isEmpty ?? true) ? nil : decoded
+    }
+
+    static let unknown = RunnerStatus()
+
+    private init() {
+        loaded = false
+        model = nil
+        baseURL = ""
+        backends = []
+        wasRunning = false
+    }
+}
+
+/// What loading a model *would* do. Changes nothing.
+///
+/// Loading evicts whatever people are currently talking to, so being
+/// able to see the consequence first is not a nicety.
+struct RunnerPlan: Decodable, Equatable, Sendable {
+    let modelID: String
+    let path: String
+    let placement: RunnerPlacement?
+
+    enum CodingKeys: String, CodingKey {
+        case path, placement
+        case modelID = "model_id"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        modelID = try c.decodeIfPresent(String.self, forKey: .modelID) ?? ""
+        path = try c.decodeIfPresent(String.self, forKey: .path) ?? ""
+        placement = try c.decodeIfPresent(RunnerPlacement.self, forKey: .placement)
+    }
+}
+
+/// What the app sends to load a model.
+///
+/// Every tuning field is optional and nil means "work it out": a person
+/// who has not tuned anything should not have to, and a person who has
+/// should not have their number second-guessed.
+struct RunnerLoadRequest: Encodable, Sendable {
+    let model_id: String
+    let gpu_layers: Int?
+    let backend: String
+    let context_length: Int?
+    let total_layers: Int?
+}
+
+// MARK: - Server hardware
+//
+// Field names taken from `hypernix.system.hardware` rather than guessed:
+// `cores_logical` not `count`, `mount` not `path`, and
+// `utilization_percent` with the American spelling the sampler uses. A
+// CodingKey that does not match is a silent nil, which renders as "—"
+// and looks exactly like a sensor that could not be read.
+//
+// Every field is optional on purpose. The server sends an `unavailable`
+// list naming what it could not sample, and a panel that renders a
+// missing GPU temperature as 0°C is a confident wrong answer about
+// hardware nobody can see.
+
+struct CPUReading: Decodable, Equatable, Sendable {
+    let percent: Double?
+    let coresPhysical: Int?
+    let coresLogical: Int?
+    let loadAverage: [Double]?
+    let temperatureC: Double?
+    let model: String?
+
+    enum CodingKeys: String, CodingKey {
+        case percent, model
+        case coresPhysical = "cores_physical"
+        case coresLogical = "cores_logical"
+        case loadAverage = "load_average"
+        case temperatureC = "temperature_c"
+    }
+}
+
+struct MemoryReading: Decodable, Equatable, Sendable {
+    let totalBytes: Int?
+    let usedBytes: Int?
+    let availableBytes: Int?
+    let percent: Double?
+
+    enum CodingKeys: String, CodingKey {
+        case percent
+        case totalBytes = "total_bytes"
+        case usedBytes = "used_bytes"
+        case availableBytes = "available_bytes"
+    }
+}
+
+struct DiskReading: Decodable, Equatable, Sendable {
+    let mount: String?
+    let totalBytes: Int?
+    let freeBytes: Int?
+    let percent: Double?
+
+    enum CodingKeys: String, CodingKey {
+        case mount, percent
+        case totalBytes = "total_bytes"
+        case freeBytes = "free_bytes"
+    }
+}
+
+struct GPUReading: Decodable, Equatable, Sendable {
+    let index: Int?
+    let vendor: String?
+    let name: String?
+    let memoryTotalBytes: Int?
+    let memoryUsedBytes: Int?
+    let utilizationPercent: Double?
+    let temperatureC: Double?
+
+    enum CodingKeys: String, CodingKey {
+        case index, vendor, name
+        case memoryTotalBytes = "memory_total_bytes"
+        case memoryUsedBytes = "memory_used_bytes"
+        case utilizationPercent = "utilization_percent"
+        case temperatureC = "temperature_c"
+    }
+}
+
+struct ServerHardware: Decodable, Equatable, Sendable {
+    let hostname: String
+    let platform: String
+    let uptimeSeconds: Double?
+    let cpu: CPUReading?
+    let memory: MemoryReading?
+    let swap: MemoryReading?
+    let disks: [DiskReading]
+    let gpus: [GPUReading]
+    /// What could not be sampled, named. The reason this screen can be
+    /// honest about a machine it is not running on.
+    let unavailable: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case hostname, platform, cpu, memory, swap, disks, gpus, unavailable
+        case uptimeSeconds = "uptime_seconds"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        hostname = try c.decodeIfPresent(String.self, forKey: .hostname) ?? ""
+        platform = try c.decodeIfPresent(String.self, forKey: .platform) ?? ""
+        uptimeSeconds = try c.decodeIfPresent(Double.self, forKey: .uptimeSeconds)
+        // An empty dictionary is what the server sends for a subsystem
+        // it could not read at all, and it decodes to a reading of all
+        // nils rather than to nil — which renders identically, so it is
+        // left as-is rather than special-cased.
+        cpu = try c.decodeIfPresent(CPUReading.self, forKey: .cpu)
+        memory = try c.decodeIfPresent(MemoryReading.self, forKey: .memory)
+        swap = try c.decodeIfPresent(MemoryReading.self, forKey: .swap)
+        disks = try c.decodeIfPresent([DiskReading].self, forKey: .disks) ?? []
+        gpus = try c.decodeIfPresent([GPUReading].self, forKey: .gpus) ?? []
+        unavailable = try c.decodeIfPresent([String].self, forKey: .unavailable) ?? []
+    }
+}
+
+// MARK: - Updating the server
+//
+// "The T1 installed thinks it is running an older version." Half of that
+// was the installer printing a stale constant; the other half is that a
+// server genuinely does fall behind, and the only way to find out was to
+// walk over to the machine.
+//
+// The commands are text to copy rather than a button that runs them.
+// Updating the package under a running server is a decision with a
+// restart attached, and a phone button that did it silently would be a
+// phone button that takes a machine down mid-conversation.
+
+/// Where the server's code lives, and how it got there.
+struct ServerInstallation: Decodable, Equatable, Sendable {
+    /// The interpreter the server is running under. The one fact that
+    /// makes the commands correct rather than plausible.
+    let executable: String
+    let prefix: String
+    let inVenv: Bool
+    /// A development install, which pip will not replace.
+    let editable: Bool
+    let location: String
+    let pythonVersion: String
+    let packageVersion: String
+    let t1Version: String
+
+    enum CodingKeys: String, CodingKey {
+        case executable, prefix, editable, location
+        case inVenv = "in_venv"
+        case pythonVersion = "python_version"
+        case packageVersion = "package_version"
+        case t1Version = "t1_version"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        executable = try c.decodeIfPresent(String.self, forKey: .executable) ?? ""
+        prefix = try c.decodeIfPresent(String.self, forKey: .prefix) ?? ""
+        inVenv = try c.decodeIfPresent(Bool.self, forKey: .inVenv) ?? false
+        editable = try c.decodeIfPresent(Bool.self, forKey: .editable) ?? false
+        location = try c.decodeIfPresent(String.self, forKey: .location) ?? ""
+        pythonVersion = try c.decodeIfPresent(String.self, forKey: .pythonVersion) ?? ""
+        packageVersion = try c.decodeIfPresent(String.self, forKey: .packageVersion) ?? ""
+        t1Version = try c.decodeIfPresent(String.self, forKey: .t1Version) ?? ""
+    }
+}
+
+/// One copyable line, and what it is for.
+struct ServerCommand: Decodable, Identifiable, Equatable, Sendable {
+    let label: String
+    let command: String
+    let primary: Bool
+    let note: String
+
+    var id: String { command }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        label = try c.decodeIfPresent(String.self, forKey: .label) ?? ""
+        command = try c.decodeIfPresent(String.self, forKey: .command) ?? ""
+        primary = try c.decodeIfPresent(Bool.self, forKey: .primary) ?? false
+        note = try c.decodeIfPresent(String.self, forKey: .note) ?? ""
+    }
+}
+
+struct UpgradeAdvice: Decodable, Equatable, Sendable {
+    let installation: ServerInstallation?
+    let commands: [ServerCommand]
+    /// Things that make the commands not enough on their own — chiefly
+    /// that a pip upgrade does not restart a running server, which is
+    /// the most confusing possible outcome of following them.
+    let warnings: [String]
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        installation = try c.decodeIfPresent(
+            ServerInstallation.self, forKey: .installation
+        )
+        commands = try c.decodeIfPresent([ServerCommand].self, forKey: .commands) ?? []
+        warnings = try c.decodeIfPresent([String].self, forKey: .warnings) ?? []
+    }
+}
+
+// MARK: - Editing what was said
+//
+// The truncation is the feature rather than a side effect: everything
+// below an edited message was written in reply to the *old* text, and
+// that same transcript is what gets sent as context on the next turn.
+// Leaving it means telling the model it said things it never said.
+
+struct MessageEdit: Decodable, Equatable, Sendable {
+    let message: ChatMessage?
+    /// What the edit cost. Reported so the app can say "this removes 11
+    /// messages" *before* removing them.
+    let removed: [ChatMessage]
+    let removedCount: Int
+
+    enum CodingKeys: String, CodingKey {
+        case message, removed
+        case removedCount = "removed_count"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        message = try c.decodeIfPresent(ChatMessage.self, forKey: .message)
+        removed = try c.decodeIfPresent([ChatMessage].self, forKey: .removed) ?? []
+        removedCount = try c.decodeIfPresent(Int.self, forKey: .removedCount) ?? 0
+    }
+}

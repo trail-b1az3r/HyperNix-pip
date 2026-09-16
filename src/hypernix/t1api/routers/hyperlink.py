@@ -99,6 +99,8 @@ from ..schemas import (
     HyperLinkEndpointsResponse,
     HyperLinkPeer,
     HyperLinkPeersResponse,
+    MessageEditRequest,
+    MessageEditResponse,
     MessageListResponse,
     MessageSummary,
     ModelCatalogueResponse,
@@ -122,6 +124,7 @@ from ..schemas import (
     SyncClaimRequest,
     SyncClaimResponse,
     SyncPageResponse,
+    UpgradeResponse,
     UptimeResponse,
 )
 from ..version import T1_VERSION
@@ -608,6 +611,84 @@ def delete_session(
     return GenericOkResponse(ok=True, detail="Session deleted", request_id=request_id)
 
 
+@router.patch(
+    "/sessions/{session_id}/messages/{message_id}",
+    response_model=MessageEditResponse,
+)
+def edit_message(
+    session_id: str,
+    message_id: str,
+    payload: MessageEditRequest,
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    store: ChatSessionStore = Depends(get_session_store),
+    config: T1APIConfig = Depends(get_config),
+    request_id: str = Depends(get_request_id),
+) -> MessageEditResponse:
+    """Rewrite one of your own messages, and drop what came after it.
+
+    The truncation is the feature rather than a side effect. Everything
+    below an edited message was written *in reply to the old text*:
+    leaving it makes the conversation read as the model answering a
+    question nobody asked, and that same transcript is what gets sent as
+    context on the next turn — so the model would be told it had said
+    things it never said.
+
+    Only ``user`` messages. Editing the assistant's would turn the
+    transcript into a record of something that did not happen, which is
+    a different feature and not one anybody asked for.
+    """
+    _require_enabled(config)
+    removed = store.edit_message(
+        session_id, message_id,
+        content=payload.content, owner=principal.owner, truncate=payload.truncate,
+    )
+    updated = next(
+        (m for m in store.messages(session_id, owner=principal.owner)
+         if m.message_id == message_id),
+        None,
+    )
+    if updated is None:  # pragma: no cover - edit_message raises first
+        raise T1APIError(
+            T1ErrorCode.NOT_FOUND, f"No message {message_id!r}.", http_status=404
+        )
+    return MessageEditResponse(
+        message=MessageSummary(**updated.to_dict()),
+        removed=[MessageSummary(**m.to_dict()) for m in removed],
+        removed_count=len(removed),
+        request_id=request_id,
+    )
+
+
+@router.delete(
+    "/sessions/{session_id}/messages/{message_id}",
+    response_model=GenericOkResponse,
+)
+def delete_message(
+    session_id: str,
+    message_id: str,
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    store: ChatSessionStore = Depends(get_session_store),
+    config: T1APIConfig = Depends(get_config),
+    request_id: str = Depends(get_request_id),
+) -> GenericOkResponse:
+    """Remove one message, leaving the rest of the conversation.
+
+    Deliberately not a truncation, unlike an edit: deleting is usually
+    about removing something that should not be stored — a pasted key, a
+    name — and taking the thread with it would make people keep the
+    secret rather than lose the conversation.
+    """
+    _require_enabled(config)
+    removed = store.delete_message(session_id, message_id, owner=principal.owner)
+    if not removed:
+        raise T1APIError(
+            T1ErrorCode.NOT_FOUND,
+            f"No message {message_id!r} in this conversation.",
+            http_status=404,
+        )
+    return GenericOkResponse(ok=True, request_id=request_id)
+
+
 @router.get("/sessions/{session_id}/messages", response_model=MessageListResponse)
 def list_messages(
     session_id: str,
@@ -1084,6 +1165,44 @@ def server_hardware(
         paths.append(str(models_dir))
     data = snapshot(disk_paths=[p for p in paths if Path(p).exists()]).to_dict()
     return HardwareResponse(**data, request_id=request_id)
+
+
+@router.get("/upgrade", response_model=UpgradeResponse)
+def server_upgrade(
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    config: T1APIConfig = Depends(get_config),
+    request_id: str = Depends(get_request_id),
+) -> UpgradeResponse:
+    """What is installed here, and the exact commands to update it.
+
+    Readable by any HyperLink caller, and deliberately so: "which
+    version is this server running, and how do I move it" is the
+    question behind most of the confusing behaviour people report, and
+    making it an admin secret means the person who needs the answer
+    cannot get it.
+
+    Nothing here runs anything. The commands are text to copy — which is
+    the right shape for this: updating the package under a running
+    server is a decision with a restart attached, and a phone button
+    that did it silently would be a phone button that takes a machine
+    down mid-conversation.
+
+    Every command names the interpreter this server is running under.
+    On a machine with a system Python, a pyenv and the service's own
+    venv, a bare ``pip install -U hypernix`` upgrades whichever comes
+    first on the path, prints success, and leaves the server on the
+    version it started with.
+    """
+    _require_enabled(config)
+    from ..upgrade import plan
+
+    prepared = plan()
+    return UpgradeResponse(
+        installation=prepared.installation.to_dict(),
+        commands=[command.to_dict() for command in prepared.commands],
+        warnings=list(prepared.warnings),
+        request_id=request_id,
+    )
 
 
 @router.get("/uptime", response_model=UptimeResponse)

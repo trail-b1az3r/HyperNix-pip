@@ -15,6 +15,14 @@ struct SettingsView: View {
     /// never reaches a view.
     @State private var keepAdminCredentials = AdminCredentialStore.persistsAcrossLaunches
 
+    /// What the runner row says on its right-hand side. Never blank: a
+    /// row with nothing next to it reads as broken rather than idle.
+    private var runnerSummary: String {
+        guard state.runnerAvailable else { return "not available" }
+        guard let model = state.runner.model else { return "nothing loaded" }
+        return shortModelName(model.modelID)
+    }
+
     var body: some View {
         List {
             Section("Paired with") {
@@ -62,6 +70,39 @@ struct SettingsView: View {
                 Text(
                     "HyperLink remembers up to \(SavedServers.maxServers) machines "
                     + "and switches between them without re-pairing."
+                )
+            }
+
+            Section {
+                NavigationLink {
+                    RunnerView()
+                } label: {
+                    HStack {
+                        Label("Runner", systemImage: "bolt")
+                        Spacer()
+                        Text(runnerSummary)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                }
+                NavigationLink {
+                    HardwareView()
+                } label: {
+                    Label("Hardware", systemImage: "gauge.with.dots.needle.67percent")
+                }
+                NavigationLink {
+                    ServerUpdateView()
+                } label: {
+                    Label("Update the server", systemImage: "arrow.up.square")
+                }
+            } header: {
+                Text("This machine")
+            } footer: {
+                Text(
+                    "Load and unload models without touching the PC, see what its "
+                    + "hardware is doing, and get the exact update commands for "
+                    + "the Python it is actually running under."
                 )
             }
 
