@@ -829,3 +829,14 @@ timeline
         : 52544ab1 - ios- nothing in CI had ever started the app
 ```
 
+## Release v0.72.5.post8 (2026-09-16)
+
+```mermaid
+timeline
+    title Release v0.72.5.post8 Commits
+    0.72.5.post8
+        : 726ddb59 - ci- a check that cannot fail is not coverage
+        : fc4b7d21 - ios- the launch test raced the simulator, and lost
+        : e2fdb084 - ci- main's iOS builds were cancelling each other
+```
+
