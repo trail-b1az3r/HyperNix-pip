@@ -343,15 +343,63 @@ jobs:
 
       - name: Commit version bump
         if: ${{ !inputs.dry_run }}
+        env:
+          BRANCH: ${{ github.ref_name }}
+          VERSION: ${{ inputs.version }}
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add pyproject.toml setup.cfg src/hypernix/__init__.py wiki/Release-Timeline.md
+
+          # Every file `Bump versions in source` writes. install-t1.sh
+          # is the one that was missing: the bump edited it and this
+          # list did not stage it, so the change was written, discarded,
+          # and the installer drifted back to the previous version on the
+          # very next release -- the bug the bump step was added to fix.
+          # tests/test_install_script.py checks the two lists agree.
+          git add \
+            pyproject.toml \
+            setup.cfg \
+            src/hypernix/__init__.py \
+            install-t1.sh \
+            wiki/Release-Timeline.md
+
           if git diff --cached --quiet; then
-            echo "::notice::no version change to commit (already at v${{ inputs.version }})"
-          else
-            git commit -m "hypernix v${{ inputs.version }} [skip ci]"
-            git push origin HEAD:${{ github.ref_name }}
+            echo "::notice::no version change to commit (already at v$VERSION)"
+            exit 0
+          fi
+          git commit -m "hypernix v$VERSION [skip ci]"
+
+          # Rebase and retry rather than failing outright.
+          #
+          # Minutes pass between checkout and here -- a full test suite,
+          # a build, a twine check -- and anything that lands on the
+          # branch in that window makes a plain push fail with "fetch
+          # first". That failure is expensive and badly timed: the
+          # artifacts are built and the *tag* step has not run, so the
+          # release ends up published with no tag pointing at it.
+          #
+          # The commit is one commit touching version files, so rebasing
+          # it onto whatever arrived is exactly right. A conflict means
+          # somebody else bumped the version concurrently, which is not
+          # something to resolve automatically -- that stops, loudly.
+          pushed=""
+          for attempt in 1 2 3 4 5; do
+            if git push origin HEAD:"$BRANCH"; then
+              pushed=yes
+              break
+            fi
+            echo "::warning::push $attempt rejected; rebasing onto origin/$BRANCH"
+            git fetch origin "$BRANCH"
+            if ! git rebase "origin/$BRANCH"; then
+              git rebase --abort || true
+              echo "::error::the version bump conflicts with $BRANCH -- another release may be in flight"
+              exit 1
+            fi
+            sleep $((attempt * 3))
+          done
+          if [ -z "$pushed" ]; then
+            echo "::error::could not push the version bump after 5 attempts"
+            exit 1
           fi
 
       - name: Tag and push

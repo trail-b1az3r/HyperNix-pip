@@ -1096,6 +1096,70 @@ class TestTheInstallerKnowsWhatVersionItIs:
                 f"will ship it carrying the previous version"
             )
 
+    def test_the_commit_stages_every_file_the_bump_writes(self):
+        """The half that was missing, and it failed silently.
+
+        `Bump versions in source` writes four files. `Commit version
+        bump` stages an explicit list, and install-t1.sh was not on it —
+        so the release bumped the installer, threw the change away, and
+        the installer drifted back to the previous version on the very
+        next release. Exactly the bug the bump step was added to fix,
+        reintroduced one step later.
+
+        Two hand-maintained lists that must agree is the same shape as
+        the four hand-maintained version strings this whole class is
+        about, so it gets the same treatment: checked rather than
+        remembered.
+        """
+        import re
+
+        workflow = (
+            REPO_ROOT / ".github" / "workflows" / "public-release.yml"
+        ).read_text(encoding="utf-8")
+
+        bump = workflow[workflow.index("Bump versions in source"):]
+        bump = bump[:bump.index("- name: Lint")]
+        written = set(re.findall(r'Path\("([^"]+)"\)', bump))
+        assert written, "could not read what the bump step writes"
+
+        commit = workflow[workflow.index("- name: Commit version bump"):]
+        commit = commit[:commit.index("- name: Tag and push")]
+        staged = commit[commit.index("git add"):commit.index("git diff --cached")]
+
+        missing = sorted(path for path in written if path not in staged)
+        assert not missing, (
+            "the release bumps these and never commits them, so they are "
+            "written and discarded: " + ", ".join(missing)
+        )
+
+    def test_the_push_survives_the_branch_moving(self):
+        """Minutes pass between checkout and the push — a whole test
+        suite, a build, a twine check. Anything that lands on the branch
+        in that window made a plain `git push` fail with "fetch first",
+        after the artifacts were built and *before* the tag step ran, so
+        the release published with no tag pointing at it.
+        """
+        workflow = (
+            REPO_ROOT / ".github" / "workflows" / "public-release.yml"
+        ).read_text(encoding="utf-8")
+        step = workflow[workflow.index("- name: Commit version bump"):]
+        step = step[:step.index("- name: Tag and push")]
+        assert "git rebase" in step, (
+            "the version-bump push does not recover from the branch moving"
+        )
+        assert "git fetch origin" in step
+
+    def test_a_conflicting_bump_stops_rather_than_guessing(self):
+        """Two releases in flight at once is not something to resolve
+        automatically."""
+        workflow = (
+            REPO_ROOT / ".github" / "workflows" / "public-release.yml"
+        ).read_text(encoding="utf-8")
+        step = workflow[workflow.index("- name: Commit version bump"):]
+        step = step[:step.index("- name: Tag and push")]
+        assert "rebase --abort" in step
+        assert "exit 1" in step
+
     def test_the_workflow_rewrites_the_same_line_the_test_reads(self):
         """A bumper whose regex misses is a bumper that silently does
         nothing — and the failure then lands on the *next* release."""
