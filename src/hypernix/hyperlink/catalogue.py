@@ -227,6 +227,32 @@ def local_models(root: Path | str | None = None) -> tuple[list[CatalogueModel], 
                 if read.is_extension else ""
             ),
         ))
+    if not models:
+        # The directory is there and readable, so the source *worked* --
+        # it just has nothing to offer. Reporting that as a bare path
+        # left the app with "no models" and no way to say which of
+        # "wrong folder", "wrong user" or "no GGUFs here" it was. The
+        # count of what is actually in there is what separates them: a
+        # folder full of Hugging Face repos with no .gguf reads very
+        # differently from an empty one.
+        entries = 0
+        try:
+            entries = sum(1 for _ in directory.iterdir())
+        except OSError:
+            pass
+        if entries:
+            detail = (
+                f"{directory} has {entries} "
+                f"{'entry' if entries == 1 else 'entries'} but no .gguf files "
+                f"in any of them. A Hugging Face repo of safetensors is not "
+                f"something that can be loaded here; it needs converting first."
+            )
+        else:
+            detail = f"{directory} is empty."
+        return models, SourceReport(
+            "local", available=True, count=0, detail=detail
+        )
+
     return models, SourceReport(
         "local", available=True, count=len(models), detail=str(directory)
     )
