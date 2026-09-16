@@ -37,6 +37,43 @@ class HealthResponse(BaseModel):
     request_id: str
 
 
+class VersionResponse(BaseModel):
+    """What this process is running, and what is installed on its disk.
+
+    Those are different questions and the difference is the whole point.
+    ``hypernix.__version__`` is bound at import, so a server upgraded
+    with pip and never restarted keeps reporting the version it started
+    with -- which is what ``/status`` shows, and what had somebody
+    reading "0.72.5.dev3" off a machine where pip said 0.72.5.post5.
+
+    ``importlib.metadata`` reads the distribution metadata from disk at
+    call time, so the two disagreeing is a positive signal rather than a
+    mystery: the upgrade landed and the process has not picked it up.
+    ``stale`` says so outright, and ``executable`` and ``module_path``
+    say *which* install is running when a machine has more than one.
+    """
+
+    #: The version actually serving this request.
+    hypernix: str
+    #: What pip has on disk now. Empty when the distribution metadata
+    #: cannot be read at all -- a source checkout on sys.path, typically.
+    hypernix_installed: str = ""
+    #: The two disagree: restart the server to pick up the upgrade.
+    stale: bool = False
+    t1_api_version: str = ""
+    t1_api_version_long: str = ""
+    python: str = ""
+    #: The interpreter running the server. The answer to "I upgraded and
+    #: nothing changed" when a machine has more than one environment.
+    executable: str = ""
+    #: Where the imported hypernix actually came from.
+    module_path: str = ""
+    #: Seconds this process has been up, so "restart it" can be weighed
+    #: against what restarting would interrupt.
+    uptime_seconds: float = 0.0
+    request_id: str = ""
+
+
 class StatusResponse(BaseModel):
     status: str = "ok"
     environment: str
@@ -61,6 +98,13 @@ class StatusResponse(BaseModel):
     lmstudio_configured: bool = False
     hyperlink_enabled: bool = False
     model_count: int
+    #: How many of `model_count` are the installer's placeholders rather
+    #: than real models. Reported separately instead of subtracted,
+    #: because `model_count` is a field older clients already read and
+    #: quietly changing what it counts would be a silent behaviour change
+    #: for them. Non-zero means T1_ENABLE_EXAMPLE_MODELS=1 and a registry
+    #: that will not serve anything.
+    example_model_count: int = 0
     storage_backend: str
     request_id: str
     # Beta 3: enough for an operator (or `waiter status`) to see which

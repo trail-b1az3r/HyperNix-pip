@@ -13,11 +13,13 @@ from the outside instead of by reading the deployment's environment.
 """
 from __future__ import annotations
 
+import time as _time
+
 from fastapi import APIRouter, Depends
 
 from .. import __t1api_version__, __t1api_version_long__
 from ..deps import get_config, get_registry, get_request_id
-from ..schemas import HealthResponse, StatusResponse
+from ..schemas import HealthResponse, StatusResponse, VersionResponse
 from ..version import T1_VERSION
 
 router = APIRouter(tags=["health"])
@@ -26,6 +28,67 @@ router = APIRouter(tags=["health"])
 @router.get("/health", response_model=HealthResponse)
 def health(request_id: str = Depends(get_request_id)) -> HealthResponse:
     return HealthResponse(status="ok", request_id=request_id)
+
+
+#: When this process started. Module import time is close enough to
+#: process start for "how long has it been up", and it is the only
+#: moment that is definitely inside this process's own lifetime.
+_STARTED_AT = _time.time()
+
+
+def installed_version() -> str:
+    """What pip has on disk *now*, not what this process imported.
+
+    Read through importlib.metadata, which goes to the distribution
+    metadata rather than the loaded module, so an upgrade that has
+    landed but not been restarted into shows up here. The cache is
+    invalidated first because a dist-info written after this process
+    started is exactly the case worth catching.
+    """
+    try:
+        import importlib
+        import importlib.metadata
+
+        importlib.invalidate_caches()
+        return importlib.metadata.version("hypernix")
+    except Exception:  # noqa: BLE001 - a source checkout has no metadata
+        return ""
+
+
+@router.get("/version", response_model=VersionResponse)
+def version(request_id: str = Depends(get_request_id)) -> VersionResponse:
+    """What is running here, and whether it is what is installed.
+
+    Unauthenticated, like ``/health``: it reports no configuration and
+    no secrets, and ``/status`` already carries the same version string
+    for anyone who can reach it.
+
+    It exists because ``/status`` answers only half the question. The
+    version there is ``hypernix.__version__``, which is fixed at import,
+    so a server upgraded underneath itself reports the old one forever
+    and the screen showing it looks simply wrong. Here the installed
+    version sits next to it and ``stale`` says when they differ.
+    """
+    import sys
+
+    import hypernix
+
+    running = str(getattr(hypernix, "__version__", "unknown"))
+    installed = installed_version()
+    return VersionResponse(
+        hypernix=running,
+        hypernix_installed=installed,
+        # Only a claim when both are known. A source checkout with no
+        # distribution metadata is not a stale server.
+        stale=bool(installed) and installed != running,
+        t1_api_version=__t1api_version__,
+        t1_api_version_long=__t1api_version_long__,
+        python=sys.version.split()[0],
+        executable=sys.executable,
+        module_path=str(getattr(hypernix, "__file__", "") or ""),
+        uptime_seconds=round(_time.time() - _STARTED_AT, 3),
+        request_id=request_id,
+    )
 
 
 @router.get("/status", response_model=StatusResponse)
@@ -55,6 +118,14 @@ def status(
         # it and a renamed field is a breaking change for a cosmetic win.
         beta="t1-1.0",
         model_count=len(registry),
+        # Counted, not subtracted: `model_count` is what it always was.
+        # This says how much of it is placeholder, which is the
+        # difference between "44 models" and "44 things that cannot
+        # answer a question".
+        example_model_count=sum(
+            1 for e in registry.list()
+            if getattr(e, "is_example_entry", False)
+        ),
         storage_backend=config.storage_backend,
         tls_enabled=tls.tls_enabled,
         mtls_mode="proxy" if tls.behind_proxy else ("direct" if tls.mtls_enabled else "off"),

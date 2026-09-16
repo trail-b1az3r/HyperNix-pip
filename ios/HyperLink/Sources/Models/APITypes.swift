@@ -144,6 +144,18 @@ struct ServerStatus: Decodable, Sendable {
     let environment: String
     let t1APIVersion: String
     let hypernixVersion: String
+    /// How many of `modelCount` are the installer's placeholders. A
+    /// server set up with the example entries reports dozens of
+    /// "registered" models that cannot answer anything, which is how
+    /// "Models registered 44" sat next to an empty picker.
+    ///
+    /// Optional, and that is load-bearing. This struct uses the
+    /// *synthesised* decoder, which has no notion of a property default
+    /// -- a non-optional field whose key is absent fails the whole
+    /// decode, and every server older than this change omits it. An
+    /// Optional decodes to nil when the key is missing, so the Server
+    /// page keeps working against servers that predate the field.
+    let exampleModelCount: Int?
     let modelCount: Int
     let lmstudioBridgeEnabled: Bool
     let hyperlinkEnabled: Bool
@@ -152,6 +164,7 @@ struct ServerStatus: Decodable, Sendable {
         case environment
         case t1APIVersion = "t1_api_version"
         case hypernixVersion = "hypernix_version"
+        case exampleModelCount = "example_model_count"
         case modelCount = "model_count"
         case lmstudioBridgeEnabled = "lmstudio_bridge_enabled"
         case hyperlinkEnabled = "hyperlink_enabled"
@@ -878,6 +891,52 @@ struct ModelCatalogue: Decodable, Equatable, Sendable {
 
     /// Sources that reported a problem, for the line under an empty list.
     var unavailable: [CatalogueSource] { sources.filter { !$0.available } }
+}
+
+// MARK: - Version
+
+/// What the server is running, and what is installed on its disk.
+///
+/// Those differ more often than you would think. `hypernix.__version__`
+/// is fixed when the module is imported, so a server upgraded with pip
+/// and never restarted reports the version it started with — which is
+/// what `/status` carries, and what showed "0.72.5.dev3" on a machine
+/// where pip said 0.72.5.post5. Printing that one number made the app
+/// look wrong when it was faithfully reporting a stale process.
+struct ServerVersion: Decodable, Equatable, Sendable {
+    let hypernix: String
+    /// What pip has on disk now. Empty when the server is a source
+    /// checkout with no distribution metadata to read.
+    let hypernixInstalled: String
+    /// The two disagree: the upgrade landed and the process has not
+    /// picked it up.
+    let stale: Bool
+    let executable: String
+    let modulePath: String
+    let uptimeSeconds: Double
+
+    enum CodingKeys: String, CodingKey {
+        case hypernix
+        case hypernixInstalled = "hypernix_installed"
+        case stale
+        case executable
+        case modulePath = "module_path"
+        case uptimeSeconds = "uptime_seconds"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        hypernix = try c.decodeIfPresent(String.self, forKey: .hypernix) ?? ""
+        hypernixInstalled = try c.decodeIfPresent(
+            String.self, forKey: .hypernixInstalled
+        ) ?? ""
+        stale = try c.decodeIfPresent(Bool.self, forKey: .stale) ?? false
+        executable = try c.decodeIfPresent(String.self, forKey: .executable) ?? ""
+        modulePath = try c.decodeIfPresent(String.self, forKey: .modulePath) ?? ""
+        uptimeSeconds = try c.decodeIfPresent(
+            Double.self, forKey: .uptimeSeconds
+        ) ?? 0
+    }
 }
 
 // MARK: - Uptime

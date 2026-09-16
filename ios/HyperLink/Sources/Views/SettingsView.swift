@@ -47,7 +47,49 @@ struct SettingsView: View {
                 LabeledContent("T1 API", value: state.connection.t1Version.isEmpty ? "—" : "v" + state.connection.t1Version)
                 if let status = state.serverStatus {
                     LabeledContent("HyperNix", value: status.hypernixVersion)
-                    LabeledContent("Models registered", value: "\(status.modelCount)")
+                    // The number above is whatever the server process
+                    // imported when it started, which is the honest
+                    // answer to "what is running" and looks simply wrong
+                    // to somebody who upgraded an hour ago. When /version
+                    // reports the installed copy differing, say so here
+                    // rather than leaving a stale-looking number alone.
+                    if let built = state.serverVersion, built.stale,
+                       !built.hypernixInstalled.isEmpty {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("\(built.hypernixInstalled) is installed")
+                                .font(.caption)
+                            Text(
+                                "The server is still running "
+                                + "\(built.hypernix). Restart it to pick the "
+                                + "upgrade up."
+                            )
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        }
+                    }
+                    LabeledContent(
+                        "Models registered", value: "\(status.modelCount)"
+                    )
+                    // "44" next to an empty picker is two true numbers
+                    // and no way to reconcile them. The registry counts
+                    // what is registered; the picker refuses the
+                    // installer's placeholders, correctly. Saying how
+                    // many of the 44 are placeholders is what joins them.
+                    if let examples = status.exampleModelCount, examples > 0 {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(examples == status.modelCount
+                                 ? "All of them are installer placeholders"
+                                 : "\(examples) are installer placeholders")
+                                .font(.caption)
+                            Text(
+                                "Placeholders cannot answer anything. Run "
+                                + "`hypernix-t1 index` to register real models, "
+                                + "then set T1_ENABLE_EXAMPLE_MODELS=0."
+                            )
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        }
+                    }
                     LabeledContent(
                         "LM Studio bridge",
                         value: status.lmstudioBridgeEnabled ? "on" : "off"
