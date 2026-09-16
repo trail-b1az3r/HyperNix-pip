@@ -742,3 +742,26 @@ timeline
         : b91bb63f - chore- update JSON stats (scheduled)
 ```
 
+## Release v0.72.5 (2026-09-16)
+
+```mermaid
+timeline
+    title Release v0.72.5 Commits
+    0.72.5
+        : bbc1b156 - release- bump install-t1.sh with the other three, and compare files not wheels
+        : faee5534 - A HyperNix model runner, settings, memory and tool calling
+        : 3f05aaf6 - The version it actually is, the runner from the phone, and edit mode
+        : 345cf4c1 - ios- the engine step was skipped on every push, and HyperLink grew four things
+        : 2987d12e - Refactor pip install command for user site-packages
+        : 8588ed07 - Add --break-system-packages option to pip install
+        : b672593b - Update version numbers in install-t1.sh
+        : 3816faa3 - quant + prot- the router the quantiser was crushing, and a screen that stayed on
+        : cc94bf5a - t1- run a model without LM Studio, and switch it from the API
+        : 182b1efc - t1- index the models this machine has, and estimate what they cost
+        : 88c9024f - t1- noodle over the API — files, edits, fish and archives
+        : 087a6cf0 - t1- /chat/compact/* — making a long conversation fit again
+        : 6c58a994 - Fix the CI build break, and ship an IPA that can run a model
+        : 1803aaab - t1- what the server's hardware is doing, and how long it has been up
+        : 030bf41b - hyperlink- one model list from every source, and a Stop that stops
+```
+
