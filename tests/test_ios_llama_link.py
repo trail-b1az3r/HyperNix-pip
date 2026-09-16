@@ -240,18 +240,63 @@ class TestItDegradesWithoutTheEngine:
             "PRODUCT_BUNDLE_IDENTIFIER"
         ] == "com.hypernix.hyperlink"
 
-    def test_the_framework_is_linked_not_embedded(self):
-        """Upstream builds it with BUILD_SHARED_LIBS=OFF, so it is a
-        static framework: its code goes into the app binary. Embedding
-        one copies a static archive into the bundle, which App Store
-        validation rejects and which is pure size in the meantime."""
+    def test_the_framework_is_embedded(self):
+        """llama.framework is dynamic, so it has to be in the bundle.
+
+        This test asserted the opposite for a long time, with this
+        reasoning: "upstream builds it with BUILD_SHARED_LIBS=OFF, so it
+        is a static framework; embedding one copies a static archive
+        into the bundle for nothing." The flag is real. The conclusion
+        is not: upstream passes it for the *component* libraries and
+        then combines them into a dynamic one -- its own comment says
+        "Create dynamic libraries from static libraries" -- and sets
+        install_name @rpath/llama.framework/llama on the result.
+
+        So the app linked an @rpath dylib that was never copied in, and
+        every device that ran it died before reaching main:
+
+            namespace: DYLD, indicator: "Library missing"
+            Library not loaded: @rpath/llama.framework/llama
+              tried: .../App.app/Frameworks/llama.framework/llama
+                     (no such file)
+
+        The old test passed the entire time, because it checked the
+        spelling of a belief rather than a behaviour -- the same mistake
+        as the `optional: true` one this module already documents.
+        `otool -L` against the built archive is the honest check, and
+        the ios workflow does that now; this only keeps the setting from
+        being flipped back.
+        """
         import yaml
         spec = _prepare().render(
             PROJECT.read_text(encoding="utf-8"), with_engine=True
         )
         deps = yaml.safe_load(spec)["targets"]["HyperLink"]["dependencies"]
         framework = next(d for d in deps if "llama" in d["framework"])
-        assert framework.get("embed") is False
+        assert framework.get("embed") is True, (
+            "llama.framework is dynamic; not embedding it means dyld cannot "
+            "find it and the app is killed at launch on a real device"
+        )
+
+    def test_the_workflow_checks_the_bundle_for_linked_dylibs(self):
+        """The setting above is one layer from the truth.
+
+        A simulator test cannot catch this: `xcodebuild test` sets
+        DYLD_FRAMEWORK_PATH to the built products directory, so an
+        unembedded framework still resolves and the app launches. The
+        archive is where the question is answerable, so the workflow
+        reads the binary's @rpath entries and looks for each one in
+        Frameworks/.
+        """
+        workflow = (
+            REPO_ROOT / ".github" / "workflows" / "ios.yml"
+        ).read_text(encoding="utf-8")
+        assert "otool -L" in workflow, (
+            "nothing checks the archive's actual link commands"
+        )
+        assert "Frameworks/$rel" in workflow, (
+            "the check does not look for the linked library in the bundle"
+        )
 
     def test_an_empty_directory_is_not_an_engine(self):
         """An interrupted copy leaves one behind, and xcodebuild's

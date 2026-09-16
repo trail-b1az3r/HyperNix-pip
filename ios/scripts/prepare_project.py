@@ -46,18 +46,35 @@ XCCONFIG = IOS_DIR / "vendor" / "LocalLlama.xcconfig"
 # The dependency block, injected into the HyperLink target when the
 # engine is present.
 #
-# `embed: false` is not an oversight. Upstream's build-xcframework.sh
-# builds with BUILD_SHARED_LIBS=OFF, so this is a *static* framework:
-# its code is linked into the app binary, and embedding it would copy a
-# static archive into the bundle for nothing — App Store validation
-# rejects that, and it is pure size in the meantime. Embedding is for
-# dynamic frameworks.
+# `embed: true`, because llama.framework is **dynamic**. This said
+# `false` for a long time, on this reasoning:
+#
+#     Upstream's build-xcframework.sh builds with BUILD_SHARED_LIBS=OFF,
+#     so this is a *static* framework: its code is linked into the app
+#     binary, and embedding it would copy a static archive into the
+#     bundle for nothing.
+#
+# The flag is real and the conclusion does not follow. Upstream passes
+# BUILD_SHARED_LIBS=OFF for the *component* libraries and then combines
+# them into a dynamic one — its own comment reads "Create dynamic
+# libraries from static libraries", and it sets
+# `install_name=@rpath/llama.framework/llama` on the result. So the app
+# links against an @rpath dylib that was never copied into the bundle,
+# and dyld kills it the instant it starts:
+#
+#     namespace: DYLD, indicator: "Library missing"
+#     Library not loaded: @rpath/llama.framework/llama
+#       tried: .../App.app/Frameworks/llama.framework/llama (no such file)
+#
+# Reading the cmake flag and stopping is what produced the wrong answer;
+# the install_name is the thing that decides it.
 DEPENDENCY_BLOCK = """    dependencies:
       # Written by ios/scripts/prepare_project.py because the engine is
-      # vendored. Static (BUILD_SHARED_LIBS=OFF upstream), so linked and
-      # not embedded.
+      # vendored. Dynamic (upstream combines the static libs into one
+      # dylib with install_name @rpath/llama.framework/llama), so it has
+      # to be embedded or dyld cannot find it at launch.
       - framework: vendor/llama.xcframework
-        embed: false
+        embed: true
 """
 
 MARKER = "# @prepare_project: dependencies"

@@ -361,6 +361,55 @@ jobs:
       #
       # This looks at the bundle that is about to ship rather than at the
       # project that produced it.
+      # Every dylib the app links must be inside the bundle.
+      #
+      # This is the check that would have caught the crash that made it
+      # exist. llama.framework is dynamic -- upstream combines its static
+      # libs into one dylib with install_name @rpath/llama.framework/llama
+      # -- and it was configured as `embed: false`, so the app linked
+      # something that was never copied in. dyld killed it at launch:
+      #
+      #     namespace: DYLD, indicator: "Library missing"
+      #     Library not loaded: @rpath/llama.framework/llama
+      #
+      # The simulator tests could not see it. `xcodebuild test` sets
+      # DYLD_FRAMEWORK_PATH to the built products directory, so the
+      # framework resolves there whether or not it was embedded. Only a
+      # device -- or this check, against the archive -- can tell.
+      - name: Every linked framework is actually in the bundle
+        working-directory: ios
+        run: |
+          set -euo pipefail
+          app="build/HyperLink.xcarchive/Products/Applications/HyperLink.app"
+          binary="$app/HyperLink"
+          [ -f "$binary" ] || { echo "::error::no app binary in the archive"; exit 1; }
+
+          echo "::group::@rpath dylibs the binary asks for"
+          rpaths="$(otool -L "$binary" | awk '/@rpath\//{print $1}' || true)"
+          echo "${rpaths:-（none）}"
+          echo "::endgroup::"
+
+          missing=""
+          for ref in $rpaths; do
+            # @rpath/llama.framework/llama -> Frameworks/llama.framework/llama
+            rel="${ref#@rpath/}"
+            if [ ! -f "$app/Frameworks/$rel" ]; then
+              missing="$missing $ref"
+            fi
+          done
+
+          if [ -n "$missing" ]; then
+            echo "::group::what is in Frameworks/"
+            ls -la "$app/Frameworks" 2>/dev/null || echo "(no Frameworks directory at all)"
+            echo "::endgroup::"
+            echo "::error::the app links these @rpath libraries and none of" \
+                 "them is in the bundle:$missing — dyld will kill it at launch." \
+                 "A framework dependency needs embed: true."
+            exit 1
+          fi
+          count="$(echo "$rpaths" | grep -c . || true)"
+          echo "every @rpath library the binary links ($count) is embedded"
+
       - name: No restricted entitlements in an unsigned build
         id: entitlements
         if: steps.signing.outputs.available != 'true'
