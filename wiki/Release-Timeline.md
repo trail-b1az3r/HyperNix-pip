@@ -799,3 +799,12 @@ timeline
         : e177bd25 - ios- `?? (try await ...)` cannot work, and my guard could not see it
 ```
 
+## Release v0.72.5.post4 (2026-09-16)
+
+```mermaid
+timeline
+    title Release v0.72.5.post4 Commits
+    0.72.5.post4
+        : 561c8499 - ios- declare the CodingKeys that nothing was synthesising
+```
+
