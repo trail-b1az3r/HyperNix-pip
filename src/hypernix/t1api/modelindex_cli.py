@@ -10,6 +10,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 from .modelindex import (
     DEFAULT_MODELS_DIR,
@@ -132,6 +133,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--output-price", type=float, default=0.0,
                         help="Price per 1k output tokens for new entries.")
     parser.add_argument("--currency", default="USD")
+    parser.add_argument(
+        "--estimate-prices", action="store_true",
+        help=(
+            "Work out a price for each model from its size, quantisation, "
+            "parameter count, this machine's GPU, and its active-vs-total "
+            "parameters if it is a mixture-of-experts. A starting point, not "
+            "a market rate — and better than the zero that is otherwise "
+            "written, which bills the operator."
+        ),
+    )
     parser.add_argument("--availability", default="public",
                         choices=("public", "private", "internal", "beta"))
     parser.add_argument("--priority", type=int, default=10,
@@ -160,14 +171,29 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     usable = [r for r in rows if r.readable]
-    entries = [
-        build_entry(
-            row, plan=args.plan, input_price=args.input_price,
-            output_price=args.output_price, currency=args.currency,
+
+    estimates: dict[str, Any] = {}
+    if args.estimate_prices:
+        # Detected once rather than per model: it is a fact about the
+        # machine, and asking a GPU eleven times is eleven subprocesses.
+        from .pricing import _vram_bytes, estimate_for_indexed
+
+        vram = _vram_bytes()
+        estimates = {
+            row.model_id: estimate_for_indexed(row, vram_bytes=vram)
+            for row in usable
+        }
+
+    entries = []
+    for row in usable:
+        priced = estimates.get(row.model_id)
+        entries.append(build_entry(
+            row, plan=args.plan,
+            input_price=priced.input_price_per_1k if priced else args.input_price,
+            output_price=priced.output_price_per_1k if priced else args.output_price,
+            currency=priced.currency if priced else args.currency,
             availability=args.availability, routing_priority=args.priority,
-        )
-        for row in usable
-    ]
+        ))
 
     from .registry import registry_locations
 
@@ -191,11 +217,20 @@ def main(argv: list[str] | None = None) -> int:
     if args.as_json:
         print(json.dumps(
             {**result, "dry_run": args.dry_run,
-             "models": [r.to_dict() for r in rows]},
+             "models": [r.to_dict() for r in rows],
+             "estimates": {k: v.to_dict() for k, v in estimates.items()}},
             indent=2,
         ))
     else:
         _human(result, rows, dry_run=args.dry_run)
+        if estimates:
+            print("\nEstimated prices — a starting point, not a market rate.")
+            print("Every number below is derived from the file and this")
+            print("machine; `--input-price/--output-price` override them.\n")
+            for row in usable:
+                print(f"{row.display_name or row.model_id}")
+                print(estimates[row.model_id].describe())
+                print()
 
     # An unreadable file is worth a non-zero exit: the registry written
     # is missing a model the operator put there on purpose.

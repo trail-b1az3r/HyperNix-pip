@@ -889,3 +889,83 @@ done
     def test_the_help_documents_the_override(self, source: str):
         assert "--python PATH" in source
         assert "HYPERNIX_PYTHON" in source
+
+
+class TestIndexingModelsAtInstall:
+    """`hypernix-t1 index` existed and nothing ran it.
+
+    So a person with eleven GGUFs in ~/.hypernix/models finished the
+    installer with a registry containing one placeholder entry marked
+    "edit before serving traffic", and a HyperLink model picker with
+    nothing in it. Every model on the machine was invisible to the server
+    that was just set up to serve them.
+    """
+
+    def test_both_flags_are_accepted(self, source):
+        assert "--index-models)" in source
+        assert "--estimate-prices)" in source
+
+    def test_estimating_implies_indexing(self, code):
+        """Pricing models the installer did not index would price
+        nothing."""
+        line = next(
+            line for line in code.splitlines() if "--estimate-prices)" in line
+        )
+        assert "INDEX_MODELS=1" in line
+
+    def test_both_are_off_by_default(self, code):
+        assert "INDEX_MODELS=0" in code
+        assert "ESTIMATE_PRICES=0" in code
+
+    def test_they_are_documented(self):
+        result = subprocess.run(
+            [BASH, str(SCRIPT), "--help"],
+            capture_output=True, text=True, encoding="utf-8", check=True,
+        )
+        assert "--index-models" in result.stdout
+        assert "--estimate-prices" in result.stdout
+
+    def test_it_calls_the_shipped_indexer(self, code):
+        """Not a second GGUF parser in shell. The context limit the
+        indexer reads is the number the server then enforces, and a
+        second implementation is a second place for it to be wrong."""
+        assert "hypernix.t1api.modelindex_cli" in code
+
+    def test_it_runs_after_the_package_is_installed(self, code):
+        """It invokes the installed module, so it cannot run before
+        install_package."""
+        body = code[code.index("main() {"):]
+        assert body.index("install_package") < body.index("index_models")
+
+    def test_a_missing_models_directory_is_not_a_failure(self, code):
+        """A fresh machine has no ~/.hypernix/models, and that is the
+        normal case rather than a broken install."""
+        block = code[code.index("index_models() {"):]
+        block = block[:block.index("\nsummary() {")]
+        assert "return 0" in block
+        assert "nothing to index" in SCRIPT.read_text(encoding="utf-8")
+
+    def test_a_failed_index_does_not_abort_the_install(self, code):
+        """Everything else has already been set up by that point.
+        Leaving a working server uninstalled over a registry write is the
+        wrong trade."""
+        block = code[code.index("index_models() {"):]
+        block = block[:block.index("\nsummary() {")]
+        assert "warn" in block
+        assert "die" not in block
+
+    def test_a_dry_run_indexes_nothing(self, code):
+        block = code[code.index("index_models() {"):]
+        block = block[:block.index("\nsummary() {")]
+        assert 'DRY_RUN" = "1"' in block
+
+    def test_the_dry_run_still_says_nothing_was_written(self):
+        """The whole contract of --dry-run. A step added later that
+        wrote anyway would be the one thing this flag exists to
+        prevent."""
+        subprocess.run(
+            [BASH, str(SCRIPT), "--dry-run", "--non-interactive",
+             "--estimate-prices", "--config-dir", "/tmp/hnx-dry-run-check"],
+            capture_output=True, text=True, encoding="utf-8", check=False,
+        )
+        assert not Path("/tmp/hnx-dry-run-check").exists()

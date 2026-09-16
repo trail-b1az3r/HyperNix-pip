@@ -79,14 +79,31 @@ def _no_real_database() -> None:
 
 
 @pytest.fixture(autouse=True)
-def _keep_storage_redirected() -> None:
-    """Put the redirect back after a test that cleared the environment.
+def _isolate_the_environment() -> None:
+    """Every ``T1_*`` variable is restored after each test.
 
-    Several suites drop every ``T1_*`` variable to get a known
-    configuration. That is reasonable and it also removes the paths set
-    above, so they are restored around each test: "clear the config"
-    must not quietly come to mean "and use the real database".
+    Two problems, one fix.
+
+    **Configuration leaks between files.** A helper that does
+    ``os.environ["T1_TRUSTED_NETWORK"] = "1"`` — rather than going through
+    monkeypatch — leaves it set for everything that runs afterwards, so a
+    later file's ``test_it_needs_a_key`` gets a 200 from a server that is
+    now in trusted-network mode. That failure shows up in a full run and
+    not when the file is run alone, which is the most expensive kind to
+    diagnose. Restoring here makes it impossible, rather than asking
+    every helper in every file to remember.
+
+    **The storage redirect gets cleared.** Several suites drop every
+    ``T1_*`` variable on purpose to get a known configuration, which also
+    removes the paths set above. Re-applied on the way in, so "clear the
+    config" cannot quietly come to mean "and use the real database".
     """
+    saved = {k: v for k, v in os.environ.items() if k.startswith("T1_")}
     _redirect_environment()
-    yield
-    _redirect_environment()
+    try:
+        yield
+    finally:
+        for name in [k for k in os.environ if k.startswith("T1_")]:
+            del os.environ[name]
+        os.environ.update(saved)
+        _redirect_environment()

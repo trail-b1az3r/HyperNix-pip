@@ -69,6 +69,13 @@ banner() {
 
 INTERACTIVE=1
 DRY_RUN=0
+# Index ~/.hypernix/models into the registry after installing, so models
+# already on this machine are servable — and visible in HyperLink —
+# without anybody hand-writing models.json.
+INDEX_MODELS=0
+# The same, plus a price worked out per model. Separate because pricing
+# is a policy decision and indexing is not.
+ESTIMATE_PRICES=0
 CONFIG_DIR="${T1_CONFIG_DIR:-$HOME/.hypernix/t1api}"
 INSTALL_MODE=""          # venv | user | system | skip
 ASSUME_YES=0
@@ -97,6 +104,18 @@ install-t1.sh — interactive installer and setup for the HyperNix T1 API.
                         exposes it to every network this machine is on.
   --port N              Port, answering the "Port" question up front.
   --force               Overwrite an existing .env instead of stopping.
+  --index-models        After installing, read every GGUF in
+                        ~/.hypernix/models and write it into the model
+                        registry. They become servable, switchable, and
+                        visible in HyperLink without anybody editing
+                        models.json by hand.
+  --estimate-prices     Index, and work out what each model costs to
+                        serve from its size, quantisation, parameter
+                        count, this machine's GPU, and its active-vs-total
+                        parameters if it is a mixture-of-experts. Implies
+                        --index-models. A starting point, not a market
+                        rate — and better than the zero that is otherwise
+                        written, which bills you.
   --help                This.
 
 `hypernix-t1 create` forwards its own --host/--port/--force here, so the
@@ -120,6 +139,8 @@ while [ $# -gt 0 ]; do
     --host)            shift; [ $# -gt 0 ] || die "--host needs an address"; FORCED_HOST="$1" ;;
     --port)            shift; [ $# -gt 0 ] || die "--port needs a number"; FORCED_PORT="$1" ;;
     --force)           FORCE_OVERWRITE=1 ;;
+    --index-models)    INDEX_MODELS=1 ;;
+    --estimate-prices) INDEX_MODELS=1; ESTIMATE_PRICES=1 ;;
     --trusted-network) TRUSTED_NETWORK=1; TRUSTED_NETWORK_SET=1 ;;
     --no-trusted-network) TRUSTED_NETWORK=0; TRUSTED_NETWORK_SET=1 ;;
     --trusted-network-partial-admin)
@@ -1390,6 +1411,53 @@ CHECKEOF
   done
 }
 
+# Index the models this machine already has.
+#
+# After install_package, because it runs `hypernix-t1 index` -- which is
+# the shipped indexer rather than a second implementation here. An
+# installer that reimplemented GGUF parsing in shell would be a second
+# place for the context limit to be wrong, and the context limit is the
+# number the server then enforces.
+index_models() {
+  [ "$INDEX_MODELS" = "1" ] || return 0
+
+  local models_dir="${HOME}/.hypernix/models"
+  local registry="${MODEL_REGISTRY_PATH:-$CONFIG_DIR/models.json}"
+
+  head2 "Indexing models"
+  if [ ! -d "$models_dir" ]; then
+    dim "     $models_dir does not exist yet — nothing to index."
+    dim "     Models downloaded through HyperLink land there; run"
+    dim "     'hypernix-t1 index' once you have some."
+    return 0
+  fi
+
+  if [ "$DRY_RUN" = "1" ]; then
+    dim "     would index $models_dir into $registry"
+    return 0
+  fi
+
+  if ! py_available; then
+    warn "hypernix is not importable yet, so the index was skipped."
+    warn "Run 'hypernix-t1 index' by hand once the install settles."
+    return 0
+  fi
+
+  local args="--dir $models_dir -o $registry"
+  [ "$ESTIMATE_PRICES" = "1" ] && args="$args --estimate-prices"
+
+  # Not fatal. A registry that could not be written is worth reporting
+  # loudly and is not a reason to leave a working server uninstalled --
+  # everything else has already been set up by this point.
+  # shellcheck disable=SC2086
+  if "$PYTHON" -m hypernix.t1api.modelindex_cli $args; then
+    note_written "$registry"
+  else
+    warn "Indexing failed. The server is installed and will serve nothing"
+    warn "until the registry has an entry; run 'hypernix-t1 index' to retry."
+  fi
+}
+
 summary() {
   head2 "Done"
   say ""
@@ -1500,6 +1568,7 @@ main() {
 
   write_env
   write_registry_template
+  index_models
   write_start_script
   write_systemd_unit
   mint_admin_key
