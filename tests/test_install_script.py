@@ -1001,20 +1001,116 @@ class TestTheInstallerKnowsWhatVersionItIs:
         assert found, f"{name} is not set in install-t1.sh"
         return found.group(1)
 
-    def test_the_package_fallback_matches_the_package(self):
-        import hypernix
+    @staticmethod
+    def _source_version() -> str:
+        """The repo's own ``__version__``, read as text.
 
-        assert self._baked("VERSION") == hypernix.__version__, (
-            "install-t1.sh's VERSION has drifted from hypernix.__version__. "
+        Deliberately not ``import hypernix``. The two are the same in a
+        developer's checkout and *not* the same during a release: the
+        release workflow bumps the source files and then runs the suite,
+        and depending on how the suite is invoked the importable
+        `hypernix` may be an installed wheel built from a different
+        commit. Comparing a repo file against an installed package made
+        this test fail on the release itself — a version-drift guard
+        that blocks releases is worse than the drift it guards against.
+
+        install-t1.sh's literal is a repo artifact, so the thing it must
+        agree with is the other repo artifact.
+        """
+        text = (REPO_ROOT / "src" / "hypernix" / "__init__.py").read_text(
+            encoding="utf-8"
+        )
+        found = re.search(r'^__version__ = "([^"]+)"$', text, re.MULTILINE)
+        assert found, "__version__ is not set in src/hypernix/__init__.py"
+        return found.group(1)
+
+    @staticmethod
+    def _source_t1_version() -> str:
+        text = (REPO_ROOT / "src" / "hypernix" / "t1api" / "version.py").read_text(
+            encoding="utf-8"
+        )
+        found = re.search(
+            r"T1_VERSION = T1Version\(api=(\d+), *major=(\d+), *year=(\d+), *"
+            r"month=(\d+), *feature=(\d+), *fix=(\d+)\)",
+            text,
+        )
+        assert found, "T1_VERSION is not set in the expected shape"
+        api, major, year, month, feature, fix = found.groups()
+        return f"{api}.{major}.{int(year) % 100}.{month}.{feature}.{fix}"
+
+    def test_the_package_fallback_matches_the_package(self):
+        assert self._baked("VERSION") == self._source_version(), (
+            "install-t1.sh's VERSION has drifted from src/hypernix/__init__.py. "
             "It is the version a `curl | bash` install announces, and a "
             "release that bumps one without the other ships an installer "
-            "that misreports itself."
+            "that misreports itself. The release workflow bumps all four "
+            "files together — see `Bump versions in source` in public-release.yml."
         )
 
     def test_the_t1_fallback_matches_the_api(self):
-        from hypernix.t1api.version import T1_VERSION
+        assert self._baked("T1_API_VERSION") == self._source_t1_version()
 
-        assert self._baked("T1_API_VERSION") == T1_VERSION.short
+    def test_the_source_and_the_installed_package_agree_in_a_checkout(self):
+        """A developer's checkout has no excuse for these differing.
+
+        Skipped rather than failed when they do, because the one case
+        where it is legitimate — running the suite against an installed
+        wheel from another commit — is exactly the case that made the
+        test above compare files instead.
+        """
+        import hypernix
+
+        installed = getattr(hypernix, "__version__", "")
+        source = self._source_version()
+        if installed != source:
+            pytest.skip(
+                f"the importable hypernix is {installed} and the checkout is "
+                f"{source}; this suite is not running against src/"
+            )
+        assert installed == source
+
+    def test_the_release_workflow_bumps_all_four(self):
+        """The step that stops this from recurring every release.
+
+        Four files carry a version string: pyproject.toml, setup.cfg,
+        src/hypernix/__init__.py and install-t1.sh. The release workflow
+        bumped the first three and ran the suite — so the test above
+        failed *on the release itself*, which is the worst possible time
+        and the reason it now compares files rather than an installed
+        package.
+
+        Fixing only the comparison would have left the real problem: a
+        shipped installer announcing the previous version over a correct
+        install. So the workflow bumps the fourth too, and this checks
+        it still does.
+        """
+        workflow = (
+            REPO_ROOT / ".github" / "workflows" / "public-release.yml"
+        ).read_text(encoding="utf-8")
+        step = workflow[workflow.index("Bump versions in source"):]
+        step = step[:step.index("- name: Lint")]
+        for path in ("pyproject.toml", "setup.cfg",
+                     "src/hypernix/__init__.py", "install-t1.sh"):
+            assert path in step, (
+                f"the release workflow does not bump {path}, so a release "
+                f"will ship it carrying the previous version"
+            )
+
+    def test_the_workflow_rewrites_the_same_line_the_test_reads(self):
+        """A bumper whose regex misses is a bumper that silently does
+        nothing — and the failure then lands on the *next* release."""
+        import re as regex
+
+        workflow = (
+            REPO_ROOT / ".github" / "workflows" / "public-release.yml"
+        ).read_text(encoding="utf-8")
+        assert regex.search(r"VERSION=\[\^\"\]\+|VERSION=\"\[\^\"\]\+", workflow), (
+            "the workflow's installer regex does not look like it matches "
+            "install-t1.sh's VERSION line"
+        )
+        # And the line it targets is really the shape that is there.
+        installer = (REPO_ROOT / "install-t1.sh").read_text(encoding="utf-8")
+        assert regex.search(r'^VERSION="[^"]+"$', installer, regex.M)
 
     def test_it_derives_them_when_it_can(self):
         """Run from a checkout, the literals are replaced rather than
