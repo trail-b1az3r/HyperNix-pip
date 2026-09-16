@@ -818,3 +818,14 @@ timeline
         : d5612d45 - ios- a Siri phrase cannot name a String parameter
 ```
 
+## Release v0.72.5.post6 (2026-09-16)
+
+```mermaid
+timeline
+    title Release v0.72.5.post6 Commits
+    0.72.5.post6
+        : e16edf58 - ci- check the bundle that ships, not the project that made it
+        : 03930629 - ios- stop shipping a CarPlay entitlement the build does not hold
+        : 52544ab1 - ios- nothing in CI had ever started the app
+```
+
