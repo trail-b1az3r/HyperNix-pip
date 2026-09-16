@@ -843,14 +843,26 @@ class TestSwiftShapesThatDoNotCompile:
                     f"for it"
                 )
 
-    def test_no_await_on_the_right_of_a_coalescing_operator(self):
-        """`??` takes its right side as an autoclosure, which cannot be
-        async — "'async' call in an autoclosure that does not support
-        concurrency". The left side is fine, which is why the working
-        form everywhere here is `(try? await x()) ?? y`.
-        """
-        import re
+    #: `??`, `&&` and `||` take their right side as an autoclosure,
+    #: which can be neither throwing nor async.
+    #:
+    #: The pattern allows any run of opening parens and `try`/`await` in
+    #: either order, because the form that actually shipped was
+    #: `?? (try await client.createSession(...))` — parenthesised, which
+    #: a naive `\?\?\s*await` misses entirely. Parenthesising is the
+    #: first thing anybody tries when the compiler complains, and it
+    #: does not help: the autoclosure is still an autoclosure.
+    AUTOCLOSURE_OPERATOR = re.compile(
+        r"(\?\?|&&|\|\|)\s*[(\s]*(try\s+await|await\s+try|try\b|await\b)"
+    )
 
+    def test_no_async_or_throwing_on_the_right_of_an_autoclosure_operator(self):
+        """The left side is fine, which is why the working form
+        everywhere here is `(try? await x()) ?? y` — the call is
+        evaluated before the operator ever sees it.
+
+        The fix is never a parenthesis; it is an `if let`.
+        """
         offenders = []
         for path in self._swift_files():
             for number, line in enumerate(
@@ -858,14 +870,43 @@ class TestSwiftShapesThatDoNotCompile:
             ):
                 if line.strip().startswith("//"):
                     continue
-                if re.search(r"\?\?\s*(try\s+)?await\b", line):
-                    offenders.append(f"{path.name}:{number}")
-                if re.search(r"(&&|\|\|)\s*(try\s+)?await\b", line):
+                if self.AUTOCLOSURE_OPERATOR.search(line):
                     offenders.append(f"{path.name}:{number}")
         assert not offenders, (
-            "async on the right of an autoclosure operator: "
-            + ", ".join(offenders)
+            "async or throwing on the right of an autoclosure operator "
+            "(`??`, `&&`, `||`) — use an `if let`: " + ", ".join(offenders)
         )
+
+    def test_that_check_matches_the_form_that_actually_shipped(self):
+        """Guarding the guard.
+
+        The first version of the pattern above was `\?\?\s*await`, and
+        the line that broke the build was
+        `?? (try await client.createSession(title: "Siri"))`. It matched
+        nothing, passed, and the build failed anyway — so the shapes it
+        has to catch are pinned here.
+        """
+        must_match = [
+            '?? (try await client.createSession(title: "Siri"))',
+            "?? await something()",
+            "?? try somethingThrowing()",
+            "?? (await value)",
+            "value && await check()",
+            "value || (try check())",
+        ]
+        for line in must_match:
+            assert self.AUTOCLOSURE_OPERATOR.search(line), f"missed: {line}"
+
+        must_not_match = [
+            "sessions = (try? await client.sessions()) ?? sessions",
+            "let name = server.name ?? \"Unnamed\"",
+            "memories = (try? await client.memories())?.memories ?? memories",
+            "let host = URL(string: endpoint)?.host ?? endpoint",
+        ]
+        for line in must_not_match:
+            assert not self.AUTOCLOSURE_OPERATOR.search(line), (
+                f"false positive: {line}"
+            )
 
     def test_no_string_literal_has_an_unescaped_quote(self):
         """Typographic quotes inside UI copy are fine; a bare `"` inside
