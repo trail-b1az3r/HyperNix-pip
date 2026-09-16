@@ -144,6 +144,18 @@ struct ServerStatus: Decodable, Sendable {
     let environment: String
     let t1APIVersion: String
     let hypernixVersion: String
+    /// How many of `modelCount` are the installer's placeholders. A
+    /// server set up with the example entries reports dozens of
+    /// "registered" models that cannot answer anything, which is how
+    /// "Models registered 44" sat next to an empty picker.
+    ///
+    /// Optional, and that is load-bearing. This struct uses the
+    /// *synthesised* decoder, which has no notion of a property default
+    /// -- a non-optional field whose key is absent fails the whole
+    /// decode, and every server older than this change omits it. An
+    /// Optional decodes to nil when the key is missing, so the Server
+    /// page keeps working against servers that predate the field.
+    let exampleModelCount: Int?
     let modelCount: Int
     let lmstudioBridgeEnabled: Bool
     let hyperlinkEnabled: Bool
@@ -152,6 +164,7 @@ struct ServerStatus: Decodable, Sendable {
         case environment
         case t1APIVersion = "t1_api_version"
         case hypernixVersion = "hypernix_version"
+        case exampleModelCount = "example_model_count"
         case modelCount = "model_count"
         case lmstudioBridgeEnabled = "lmstudio_bridge_enabled"
         case hyperlinkEnabled = "hyperlink_enabled"

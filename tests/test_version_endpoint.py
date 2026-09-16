@@ -113,3 +113,80 @@ class TestStaleness:
 
         monkeypatch.setattr(importlib.metadata, "version", boom)
         assert installed_version() == ""
+
+
+class TestStatusSeparatesPlaceholdersFromModels:
+    """`model_count` counts what is registered, placeholders included.
+
+    That is what it has always meant and other clients read it, so it
+    keeps meaning that. `example_model_count` says how much of it cannot
+    answer a question, which is the number that reconciles "Models
+    registered 44" with an empty picker.
+    """
+
+    @pytest.fixture()
+    def examples_client(self, tmp_path, monkeypatch):
+        """A server set up the way the installer's "examples" option
+        sets one up.
+
+        With T1_ENABLE_EXAMPLE_MODELS unset, placeholders are invisible
+        to len() *and* to list(), so both counts agree and there is
+        nothing to reconcile. The discrepancy needs this on, which is
+        what install-t1.sh writes when you pick the bundled example
+        entries at setup.
+        """
+        clear_t1_config(monkeypatch)
+        monkeypatch.setenv("T1_DB_PATH", str(tmp_path / "t.sqlite3"))
+        monkeypatch.setenv("T1_CONFIG_DIR", str(tmp_path))
+        monkeypatch.setenv("T1_TRUSTED_NETWORK", "1")
+        monkeypatch.setenv("T1_ENABLE_EXAMPLE_MODELS", "1")
+        return TestClient(create_app())
+
+    def test_the_field_is_present_and_zero_by_default(self, client):
+        body = client.get("/status").json()
+        assert "example_model_count" in body
+        assert body["example_model_count"] == 0
+
+    def test_it_counts_only_the_placeholders(self, examples_client):
+        from hypernix.t1api.registry import ModelEntry, ModelPricing, ModelStatus
+
+        def entry(model_id, example):
+            return ModelEntry(
+                model_id=model_id, display_name=model_id, version="1.0",
+                total_parameters=7.0, active_parameters=None,
+                architecture="qwen3", supported_tasks=["chat"],
+                availability="public", minimum_plan="free",
+                free_tier_available=True, api_available=True,
+                local_available=True, remote_available=True,
+                context_limit=8000, input_token_limit=8000,
+                output_token_limit=2000, tool_call_limit=4,
+                pricing=ModelPricing(
+                    input_price_per_1k=1.0, output_price_per_1k=2.0
+                ),
+                routing_priority=10, fallback_model=None,
+                license="apache-2.0", status=ModelStatus.AVAILABLE,
+                is_example_entry=example,
+            )
+
+        client = examples_client
+        registry = client.app.state.t1_registry
+
+        # Relative, not absolute: with examples enabled the registry
+        # already carries the bundled placeholder set, and pinning a
+        # total here would break the first time that set changed size.
+        before = client.get("/status").json()
+        registry.register(entry("placeholder-1", True))
+        registry.register(entry("placeholder-2", True))
+        registry.register(entry("real-1", False))
+        after = client.get("/status").json()
+
+        assert after["model_count"] - before["model_count"] == 3
+        assert after["example_model_count"] - before["example_model_count"] == 2
+
+    def test_the_bundled_set_is_all_placeholders(self, examples_client):
+        """Which is the shape of the reported server: every registered
+        entry a placeholder, so the picker is empty while the count is
+        not."""
+        body = examples_client.get("/status").json()
+        assert body["model_count"] > 0
+        assert body["example_model_count"] == body["model_count"]

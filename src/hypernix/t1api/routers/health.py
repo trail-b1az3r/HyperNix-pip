@@ -118,6 +118,14 @@ def status(
         # it and a renamed field is a breaking change for a cosmetic win.
         beta="t1-1.0",
         model_count=len(registry),
+        # Counted, not subtracted: `model_count` is what it always was.
+        # This says how much of it is placeholder, which is the
+        # difference between "44 models" and "44 things that cannot
+        # answer a question".
+        example_model_count=sum(
+            1 for e in registry.list()
+            if getattr(e, "is_example_entry", False)
+        ),
         storage_backend=config.storage_backend,
         tls_enabled=tls.tls_enabled,
         mtls_mode="proxy" if tls.behind_proxy else ("direct" if tls.mtls_enabled else "off"),

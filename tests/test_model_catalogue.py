@@ -343,3 +343,76 @@ class TestAnEmptyFolderSaysWhyItIsEmpty:
         assert len(models) == 1, "a nested .gguf should still be found"
         assert report.count == 1
         assert report.detail == str(tmp_path)
+
+
+class TestPlaceholdersAreCountedAndExplained:
+    """"Models registered 44" on one screen, "No models" on the next.
+
+    Both numbers were right. `/status` reports len(registry), which
+    includes the installer's example entries when
+    T1_ENABLE_EXAMPLE_MODELS=1. The catalogue refuses those entries --
+    correctly, since a placeholder cannot answer anything -- and used to
+    refuse them silently, reporting count=0 with an empty detail. Two
+    true numbers with nothing to reconcile them is worse than either.
+    """
+
+    @staticmethod
+    def _entry(model_id: str, *, example: bool):
+        from hypernix.t1api.registry import ModelEntry, ModelPricing, ModelStatus
+
+        return ModelEntry(
+            model_id=model_id, display_name=model_id, version="1.0",
+            total_parameters=7.0, active_parameters=None, architecture="qwen3",
+            supported_tasks=["chat"], availability="public",
+            minimum_plan="free", free_tier_available=True, api_available=True,
+            local_available=True, remote_available=True, context_limit=8000,
+            input_token_limit=8000, output_token_limit=2000, tool_call_limit=4,
+            pricing=ModelPricing(input_price_per_1k=1.0, output_price_per_1k=2.0),
+            routing_priority=10, fallback_model=None, license="apache-2.0",
+            status=ModelStatus.AVAILABLE, is_example_entry=example,
+        )
+
+    def _registry(self, examples: int, real: int = 0):
+        from hypernix.t1api.registry import ModelRegistry
+
+        registry = ModelRegistry(include_examples=True)
+        for i in range(examples):
+            registry.register(self._entry(f"example-{i}", example=True))
+        for i in range(real):
+            registry.register(self._entry(f"real-{i}", example=False))
+        return registry
+
+    def test_the_reported_case_reproduces(self):
+        """44 registered, nothing offered."""
+        from hypernix.hyperlink.catalogue import registry_models
+
+        registry = self._registry(examples=44)
+        assert len(registry) == 44
+        models, report = registry_models(registry)
+        assert models == []
+        assert report.count == 0
+
+    def test_all_placeholders_says_so_and_says_what_to_do(self):
+        from hypernix.hyperlink.catalogue import registry_models
+
+        _, report = registry_models(self._registry(examples=44))
+        assert "44" in report.detail
+        assert "placeholder" in report.detail
+        assert "hypernix-t1 index" in report.detail
+        assert "T1_ENABLE_EXAMPLE_MODELS" in report.detail
+
+    def test_a_mixed_registry_still_offers_the_real_ones(self):
+        """Skipping placeholders must not skip everything."""
+        from hypernix.hyperlink.catalogue import registry_models
+
+        models, report = registry_models(self._registry(examples=3, real=2))
+        assert len(models) == 2
+        assert report.count == 2
+        assert "3 installer placeholders were skipped" in report.detail
+
+    def test_a_clean_registry_says_nothing_extra(self):
+        from hypernix.hyperlink.catalogue import registry_models
+
+        models, report = registry_models(self._registry(examples=0, real=2))
+        assert len(models) == 2
+        assert report.detail == ""

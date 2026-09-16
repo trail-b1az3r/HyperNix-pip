@@ -284,11 +284,13 @@ def registry_models(registry: Any) -> tuple[list[CatalogueModel], SourceReport]:
         return [], SourceReport("registry", available=False, detail=str(exc))
 
     models = []
+    examples = 0
     for entry in entries:
         # An example entry is the installer's placeholder, marked "edit
         # before serving traffic". Offering it as something to chat with
         # is offering a model that is not there.
         if getattr(entry, "is_example_entry", False):
+            examples += 1
             continue
         routable = bool(getattr(entry, "is_routable", True))
         models.append(CatalogueModel(
@@ -303,7 +305,28 @@ def registry_models(registry: Any) -> tuple[list[CatalogueModel], SourceReport]:
                 "" if routable else f"registry status: {entry.status}"
             ),
         ))
-    return models, SourceReport("registry", available=True, count=len(models))
+    if not models and examples:
+        # The case that produced "Models registered 44" on one screen and
+        # "No models" on the next. /status counts what is registered,
+        # which includes the installer's placeholders; this refuses them,
+        # correctly, and used to refuse them silently. Two true numbers
+        # and no way to reconcile them is the worst of both.
+        return models, SourceReport(
+            "registry", available=True, count=0,
+            detail=(
+                f"{examples} entries are registered and all of them are the "
+                f"installer's placeholders, not real models. That is what "
+                f"T1_ENABLE_EXAMPLE_MODELS=1 turns on. Run `hypernix-t1 index` "
+                f"to register the GGUFs you actually have, then set it to 0."
+            ),
+        )
+    return models, SourceReport(
+        "registry", available=True, count=len(models),
+        detail=(
+            f"{examples} installer placeholders were skipped."
+            if examples else ""
+        ),
+    )
 
 
 # ---------------------------------------------------------------------------

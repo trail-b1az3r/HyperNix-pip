@@ -98,6 +98,13 @@ class StatusResponse(BaseModel):
     lmstudio_configured: bool = False
     hyperlink_enabled: bool = False
     model_count: int
+    #: How many of `model_count` are the installer's placeholders rather
+    #: than real models. Reported separately instead of subtracted,
+    #: because `model_count` is a field older clients already read and
+    #: quietly changing what it counts would be a silent behaviour change
+    #: for them. Non-zero means T1_ENABLE_EXAMPLE_MODELS=1 and a registry
+    #: that will not serve anything.
+    example_model_count: int = 0
     storage_backend: str
     request_id: str
     # Beta 3: enough for an operator (or `waiter status`) to see which
