@@ -765,3 +765,26 @@ timeline
         : 030bf41b - hyperlink- one model list from every source, and a Stop that stops
 ```
 
+## Release v0.72.5.post1 (2026-09-16)
+
+```mermaid
+timeline
+    title Release v0.72.5.post1 Commits
+    0.72.5.post1
+        : b55b6e71 - ios- fix the Swift that did not compile, and stop CI hiding the rest
+        : 1062fa94 - Auto-update README header (hourly)
+        : 1ebe8469 - hypernix v0.72.5 [skip ci]
+        : bbc1b156 - release- bump install-t1.sh with the other three, and compare files not wheels
+        : faee5534 - A HyperNix model runner, settings, memory and tool calling
+        : 3f05aaf6 - The version it actually is, the runner from the phone, and edit mode
+        : 345cf4c1 - ios- the engine step was skipped on every push, and HyperLink grew four things
+        : 2987d12e - Refactor pip install command for user site-packages
+        : 8588ed07 - Add --break-system-packages option to pip install
+        : b672593b - Update version numbers in install-t1.sh
+        : 3816faa3 - quant + prot- the router the quantiser was crushing, and a screen that stayed on
+        : cc94bf5a - t1- run a model without LM Studio, and switch it from the API
+        : 182b1efc - t1- index the models this machine has, and estimate what they cost
+        : 88c9024f - t1- noodle over the API — files, edits, fish and archives
+        : 087a6cf0 - t1- /chat/compact/* — making a long conversation fit again
+```
+
