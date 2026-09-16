@@ -61,7 +61,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from .gguf import GGUFError, GGUFFile, GGUFTensor, GGUFWriter
+from .gguf import GGUFError, GGUFFile, GGUFTensor, GGUFValueType, GGUFWriter
 from .hyprslug import (
     HyprslugError,
     TargetSpec,
@@ -588,6 +588,24 @@ def extract(
         "general.file_type_description",
         str(model.metadata.get(f"{prefix}hypernix.description") or chosen.tier),
     )
+    # The bundle's own ``general.file_type`` describes its *default*
+    # variant, and was just copied across with everything else. Extract
+    # a Q2_K_S out of a bundle whose default is Q6_K and the file that
+    # comes out announces itself as Q6_K -- the one claim in the file
+    # that is both prominent and wrong.
+    try:
+        from .hyprslug import HyprslugError, file_type_for, target_spec
+
+        writer.set_metadata(
+            "general.file_type", file_type_for(target_spec(chosen.tier)),
+            type_hint=(int(GGUFValueType.UINT32), None),
+        )
+    except (HyprslugError, KeyError):
+        # A tier this build does not know. Saying nothing is better than
+        # saying the default's, so drop the inherited key rather than
+        # leaving it to describe a different variant.
+        writer.metadata.pop("general.file_type", None)
+        writer.metadata_types.pop("general.file_type", None)
 
     sources: dict[str, GGUFTensor] = {}
     if chosen.default:

@@ -35,11 +35,54 @@ REAL_HOME = Path.home() / ".hypernix"
 _SESSION_ROOT = Path(tempfile.mkdtemp(prefix="hypernix-tests-"))
 
 
+#: The variables that decide *where things are written*, as opposed to
+#: how the server behaves.
+#:
+#: The distinction matters because several suites clear every ``T1_*``
+#: variable to get a known configuration, and they are right to — but
+#: "no trusted network, no partial admin" and "use the real
+#: ``~/.hypernix``" are two different requests, and clearing the lot
+#: makes the second one by accident. Use :func:`clear_t1_config` to ask
+#: for the first without the second.
+STORAGE_KEYS = (
+    "T1_DB_PATH",
+    "T1_BACKUP_DIR",
+    "T1_MODULE_STORAGE_DIR",
+    "T1_CONFIG_DIR",
+)
+
+
 def _redirect_environment() -> None:
     os.environ.setdefault("T1_DB_PATH", str(_SESSION_ROOT / "t1api.sqlite3"))
     os.environ.setdefault("T1_BACKUP_DIR", str(_SESSION_ROOT / "backups"))
     os.environ.setdefault("T1_MODULE_STORAGE_DIR", str(_SESSION_ROOT / "modules"))
-    os.environ.setdefault("T1_HYPERLINK_DIR", str(_SESSION_ROOT / "hyperlink"))
+    # T1_CONFIG_DIR, not T1_HYPERLINK_DIR: the latter was the name this
+    # file invented and nothing in the package reads it, so the redirect
+    # it was making had no effect at all. What actually decides where
+    # HyperLink's server identity is written is
+    # `hyperlink.identity._config_root`, which reads T1_CONFIG_DIR and
+    # otherwise falls back to ~/.hypernix/t1api -- so every test that
+    # built the app wrote a seed file, which is *key material*, into the
+    # real home. The same variable covers the registry, the launcher and
+    # the training monitor.
+    os.environ.setdefault("T1_CONFIG_DIR", str(_SESSION_ROOT / "config"))
+
+
+def clear_t1_config(monkeypatch) -> None:
+    """Drop every ``T1_*`` variable except the storage redirects.
+
+    What a suite means by "clear the environment" is a server with no
+    configuration, not a server writing to the person's real home. The
+    two came apart in a full run only: the storage keys are set by this
+    file at session start, so a suite that cleared them got the real
+    ``~/.hypernix/t1api`` and created it — the modules directory, the
+    hyperlink directory, and, whenever it got past the
+    ``SQLiteBackend`` guard, the database.
+    """
+    for name in [k for k in os.environ if k.startswith("T1_")]:
+        if name not in STORAGE_KEYS:
+            monkeypatch.delenv(name, raising=False)
+    _redirect_environment()
 
 
 _redirect_environment()

@@ -43,12 +43,28 @@ def can_pack(shape: tuple[int, ...], *, block: int = BLOCK_SIZE, name: str = "bl
     )
 
 
-class TestTheReportedTensor:
-    """`blk.0.ssm_conv1d.weight`, four elements per row."""
+#: A ``[4, N]`` tensor under a name the never-quantise list does not
+#: cover.
+#:
+#: ``blk.0.ssm_conv1d.weight`` was the shape *and* the name in the
+#: original report, and it is now refused one check earlier — it is on
+#: the list of tensors no tier may touch, because a state-space
+#: convolution's output is carried across every later token. That
+#: protection is right and it is tested next door, in
+#: ``test_hyprslug_protected_tensors.py``. It also means the name can no
+#: longer reach the row-length check, so the shape is tested here under
+#: a name that has nothing else wrong with it. Both guards are real and
+#: they catch different files: an SSM convolution is protected whatever
+#: its shape, and a ``[4, N]`` tensor is unpackable whatever its name.
+NARROW_ROW = "blk.0.attn_q.weight"
+
+
+class TestTheReportedShape:
+    """Four elements per row, and a total that divides cleanly."""
 
     @pytest.mark.parametrize("rows", [64, 1024, 5120])
     def test_it_is_not_packed(self, rows):
-        ok, reason = can_pack((4, rows), name="blk.0.ssm_conv1d.weight")
+        ok, reason = can_pack((4, rows), name=NARROW_ROW)
         assert not ok
         assert "per row" in reason
 
@@ -64,9 +80,16 @@ class TestTheReportedTensor:
     def test_the_reason_names_the_real_constraint(self):
         """"20480 elements do not divide into 256" was both wrong and
         confusing, because 20480 does divide into 256."""
-        _, reason = can_pack((4, 5120), name="blk.0.ssm_conv1d.weight")
+        _, reason = can_pack((4, 5120), name=NARROW_ROW)
         assert "4 elements per row" in reason
         assert "20480" not in reason
+
+    def test_the_tensor_from_the_report_is_still_refused(self):
+        """By name now rather than by shape, and at every shape."""
+        for shape in ((4, 5120), (256, 5120)):
+            ok, reason = can_pack(shape, name="blk.0.ssm_conv1d.weight")
+            assert not ok
+            assert "state-space" in reason
 
 
 class TestWhatIsAndIsNotPackable:

@@ -22,6 +22,7 @@ import struct
 from pathlib import Path
 
 import pytest
+from conftest import clear_t1_config
 
 pytest.importorskip("fastapi")
 
@@ -56,9 +57,10 @@ def _gguf(path: Path, *, name: str = "Fixture", context: int = 4096) -> Path:
 @pytest.fixture(autouse=True)
 def _quiet(monkeypatch):
     logging.disable(logging.CRITICAL)
-    for name in list(__import__("os").environ):
-        if name.startswith("T1_"):
-            monkeypatch.delenv(name, raising=False)
+    # Not every T1_* variable: the storage redirects in conftest.py stay,
+    # or "a server with no configuration" quietly becomes "a server
+    # writing to the real ~/.hypernix".
+    clear_t1_config(monkeypatch)
     yield
     logging.disable(logging.NOTSET)
 

@@ -705,11 +705,45 @@ hypernix vera --help
 hypernix prot --help
 ```
 
-`vera` is a separate assistant CLI; `prot`/`protect` is a hardware health
-monitoring and protection module (thermal/power guardrails during long
-training runs). Both are early/minimal — check `--help` for what's
-currently implemented rather than assuming full parity with `chat` or
-`cli`.
+`vera` is a separate assistant CLI. `prot`/`protect` blanks the monitor,
+puts the terminal into raw mode, and waits for a wake word typed blind —
+type it and the screen comes back. It can also log CPU and memory to
+`~/.hypernix/protect_health.log` while it waits, since the screen is off
+and printing would be both invisible and destructive to raw mode.
+
+```bash
+hypernix prot                     # blank, wait for the wake word
+hypernix prot bind set <word>     # change the wake word (default: bon)
+hypernix prot bind reset
+hypernix prot --force             # wait even if the screen cannot be blanked
+```
+
+**How it blanks.** The method comes from the session, not the platform,
+and lives in `hypernix.system.blanking` shared with `outage`:
+
+| Session | Method |
+| --- | --- |
+| X11 | `xset +dpms` then `xset dpms force off` |
+| Hyprland | `hyprctl dispatch dpms off` |
+| sway | `swaymsg output * power off` |
+| wlroots | `wlopm --off '*'` |
+| GNOME/KDE | `org.freedesktop.ScreenSaver.SetActive` |
+| macOS | `pmset displaysleepnow` |
+
+The `+dpms` is the fix for "prot doesn't make the monitors black":
+`xset dpms force off` is a *request to the DPMS extension*, and when
+DPMS is disabled — which it is on a lot of desktops, because the desktop
+environment handles power management itself — the X server accepts it,
+does nothing, and exits 0. A session that had DPMS off deliberately gets
+it back on the way out.
+
+**It will not lock a screen it did not blank.** If there is no method
+for this session, `prot` says which of the four cases it is — no
+graphical session, a Wayland compositor with nothing installed, a
+missing `xset`, a wedged compositor — and **refuses to enter raw mode**.
+Doing it anyway is the worst of both: the machine looks unlocked and the
+keyboard looks dead. `--force` is there for someone who wants the
+wake-word prompt regardless.
 
 ## Environment variables
 

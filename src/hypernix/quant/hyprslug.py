@@ -46,13 +46,19 @@ from pathlib import Path
 from typing import Any
 
 from . import llamaquants
-from .gguf import GGMLType, GGUFError, GGUFFile, GGUFTensor, GGUFWriter
+from .gguf import GGMLType, GGUFError, GGUFFile, GGUFTensor, GGUFValueType, GGUFWriter
 from .imatrix import expand_for_tensor
 from .lowbit import CODECS, LowBitError
 from .lowbit import quantize_array as lowbit_quantize
 from .subbit import BLOCK_SIZE, PACKINGS, SubBitError, quantize_tensor
 
 logger = logging.getLogger(__name__)
+
+#: ``general.file_type`` and ``general.quantization_version`` are u32 in
+#: every file llama.cpp writes. Inferring the type from a small Python
+#: int gives i32, which a reader calling ``gguf_get_val_u32`` refuses --
+#: so the key would be present, correct, and unreadable.
+_UINT32 = (int(GGUFValueType.UINT32), None)
 
 __all__ = [
     "HyprslugError",
@@ -130,10 +136,132 @@ WIDTHS: dict[str, tuple[int, int]] = {
 }
 
 
-#: Tensors whose name contains one of these is *never* packed, whatever
-#: the recipe says: one-dimensional weights are a rounding error of the
-#: file size and a large fraction of the damage.
-_ALWAYS_COPY = ("_norm", "norm.", ".bias")
+#: Tensors that are *never* packed, whatever the target says, and why.
+#:
+#: Matched as substrings against the lower-cased tensor name, first match
+#: wins; the reason travels into :attr:`QuantizeReport.skipped` so a run
+#: can be asked what it left alone.
+#:
+#: Two different arguments live in this table and it is worth keeping
+#: them apart.
+#:
+#: **Not worth the bits.** Norms and biases are one number per channel.
+#: They are a rounding error of the file size and a large fraction of the
+#: damage, so every serious quantiser copies them. This was the whole of
+#: the list, and it is the smaller half of it.
+#:
+#: **Not a weight in the sense a quantiser assumes.** The rest of these
+#: are small 2-D tensors whose values are not summed over a long
+#: reduction, so the averaging that makes a 4-bit dot product survivable
+#: never happens. A mixture-of-experts router is the clearest case and
+#: the one that sent this list looking: ``ffn_gate_inp`` is
+#: ``[n_embd, n_expert]`` -- a few hundred kilobytes in a model of tens
+#: of gigabytes -- and its output is an argmax. Quantising it moved the
+#: router's logits by a few percent, which is nothing until two experts
+#: are within a few percent of each other, and then it is a different
+#: expert. The model does not degrade gracefully when that happens; it
+#: routes tokens to experts that were never trained for them and the
+#: output stops being language. That is what "falling apart" was: not
+#: the attention weights, which were fine, but eight numbers per token
+#: deciding the wrong thing.
+#:
+#: The same reasoning covers Mamba's convolution, RWKV's time-mixing
+#: constants and the positional and token-type tables: all small, all
+#: read directly rather than accumulated, all catastrophic when moved.
+#: llama.cpp refuses to quantise exactly these, for exactly this reason,
+#: and a quantiser that skipped the list produces files it will load and
+#: nobody can use.
+_NEVER_QUANTIZE: tuple[tuple[str, str], ...] = (
+    # Not worth the bits.
+    ("_norm", "a norm: all of the damage, none of the size"),
+    ("norm.", "a norm: all of the damage, none of the size"),
+    (".bias", "a bias: all of the damage, none of the size"),
+    # A routing decision, not a weight.
+    ("ffn_gate_inp", "a mixture-of-experts router: its output is an argmax, "
+                     "and a quantised argmax picks a different expert"),
+    ("ffn_exp_probs_b", "an expert-selection bias: read directly by the router"),
+    # Looked up, not accumulated.
+    ("position_embd", "a positional embedding table: looked up, never summed"),
+    ("pos_embd", "a positional embedding table: looked up, never summed"),
+    ("token_types", "a token-type embedding table: looked up, never summed"),
+    # Mamba and the short-convolution hybrids: small 2-D state weights.
+    ("ssm_conv1d", "a state-space convolution: small, and the state it "
+                   "produces is carried across every later token"),
+    ("shortconv.conv", "a short convolution: small, and carried forward"),
+    # RWKV time-mixing constants. Named one at a time on purpose:
+    # `time_mix_key` and `time_mix_value` are full-sized projections and
+    # quantise like any other, so a bare `time_mix` prefix would leave
+    # most of an RWKV model unquantised and call it a tier.
+    ("time_mix_first", "an RWKV time-mixing constant: small and read directly"),
+    ("time_mix_w0", "an RWKV time-mixing constant: small and read directly"),
+    ("time_mix_w1", "an RWKV time-mixing constant: small and read directly"),
+    ("time_mix_w2", "an RWKV time-mixing constant: small and read directly"),
+    ("time_mix_a0", "an RWKV time-mixing constant: small and read directly"),
+    ("time_mix_a1", "an RWKV time-mixing constant: small and read directly"),
+    ("time_mix_a2", "an RWKV time-mixing constant: small and read directly"),
+    ("time_mix_v0", "an RWKV time-mixing constant: small and read directly"),
+    ("time_mix_v1", "an RWKV time-mixing constant: small and read directly"),
+    ("time_mix_v2", "an RWKV time-mixing constant: small and read directly"),
+    ("time_mix_g1", "an RWKV time-mixing constant: small and read directly"),
+    ("time_mix_g2", "an RWKV time-mixing constant: small and read directly"),
+    ("time_mix_decay_w1", "an RWKV decay constant: small and read directly"),
+    ("time_mix_decay_w2", "an RWKV decay constant: small and read directly"),
+    ("time_mix_lerp", "an RWKV interpolation constant: small and read directly"),
+)
+
+
+def never_quantize_reason(tensor_name: str) -> str:
+    """Why *tensor_name* must be copied at source precision, or ``""``.
+
+    Public because the planners in :mod:`hypernix.quant.steamroller` and
+    :mod:`hypernix.quant.multiquant` need the same answer, and a second
+    copy of this list is a second copy that goes stale.
+    """
+    lowered = tensor_name.lower()
+    for fragment, reason in _NEVER_QUANTIZE:
+        if fragment in lowered:
+            return reason
+    return ""
+
+
+#: ``general.file_type`` values, as llama.cpp defines them.
+#:
+#: The output file used to inherit this key from the source, so a
+#: Q4_K_M produced from an F16 announced itself as F16 to every tool
+#: that asked -- llama.cpp's own load banner, the hub listing, and
+#: `hypernix-t1 index`. The tensor table was right and the label was
+#: wrong, which is the more expensive way round: nobody re-reads the
+#: tensor table to check a field that is right there.
+_FILE_TYPES: dict[str, int] = {
+    "FP32": 0, "FP16": 1, "BF16": 32,
+    "Q4_0": 2, "Q4_1": 3, "Q8_0": 7, "Q5_0": 8, "Q5_1": 9,
+    "Q2_K": 10, "Q2_K_S": 10,
+    "Q3_K_S": 11, "Q3_K": 12, "Q3_K_M": 12, "Q3_K_L": 13,
+    "Q4_K_S": 14, "Q4_K": 15, "Q4_K_M": 15,
+    "Q5_K_S": 16, "Q5_K": 17, "Q5_K_M": 17,
+    "Q6_K": 18,
+}
+
+#: Where HyperNix's own file types start.
+#:
+#: The sub-bit tiers have no upstream number and cannot borrow one: a
+#: half-bit file labelled ``Q2_K`` claims four times the precision it
+#: has. These are offset from the GGML type ids in :data:`TIER_TYPES`,
+#: well clear of anything upstream uses, so a reader that knows them
+#: gets the truth and a reader that does not gets an unrecognised number
+#: -- which is the correct thing to say about a file stock llama.cpp
+#: cannot load anyway, and is strictly better than the source's.
+HNX_FILE_TYPE_BASE = 1200
+
+
+def file_type_for(spec: TargetSpec) -> int:
+    """The ``general.file_type`` this target should write."""
+    if spec.kind == "width":
+        return _FILE_TYPES[spec.width]
+    if spec.kind == "tier":
+        return HNX_FILE_TYPE_BASE + (spec.ggml_type - 200)
+    assert spec.recipe is not None
+    return _FILE_TYPES.get(spec.recipe.name, _FILE_TYPES.get(spec.recipe.base, 1))
 
 
 @dataclass(frozen=True)
@@ -545,8 +673,9 @@ def _should_quantize(
     name = tensor.name.lower()
     if len(tensor.shape) < 2:
         return False, "1-D (norm or bias): all of the damage, none of the size"
-    if any(fragment in name for fragment in _ALWAYS_COPY):
-        return False, "a norm or bias: all of the damage, none of the size"
+    forbidden = never_quantize_reason(name)
+    if forbidden:
+        return False, forbidden
     if not _readable(int(tensor.ggml_type)):
         return False, f"source type {tensor.ggml_type} is one hyprslug cannot read"
     # The *row* length, not the element count. GGML quantises row by
@@ -949,6 +1078,18 @@ def write_provenance(
     _set("hypernix.quantiser", "hyprslug")
     _set("hypernix.tier", spec.name)
     _set("hypernix.imatrix", bool(imatrix))
+    if not prefix:
+        # Overwrites the source's, which is the point: the key was
+        # copied across with the rest of the metadata and then left to
+        # describe a file that no longer existed.
+        writer.set_metadata("general.file_type", file_type_for(spec),
+                            type_hint=_UINT32)
+        # llama.cpp writes this on every file it quantises and readers
+        # use it to decide how to interpret the block layouts. A file
+        # that carries quantised tensors and no version is a file that
+        # was quantised by something that did not know it mattered.
+        writer.set_metadata("general.quantization_version", 2,
+                            type_hint=_UINT32)
     if spec.kind == "width":
         _set("hypernix.sub_bit", False)
         _set("hypernix.width", spec.width)

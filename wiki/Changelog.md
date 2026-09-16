@@ -26,6 +26,251 @@ next release header.
 - 𖥔 minor new feature
 
 
+## 0.72.5 pt2 — the server does the serving now
+
+pt1 made HyperNix quantise without llama.cpp. pt2 is about the thing
+that happens next: a machine with forty GGUFs in `~/.hypernix/models`
+that served none of them, because "switch model" meant walking over to
+the PC and using LM Studio.
+
+### Models in `.hypernix/models` were invisible ๋࣭⭑
+
+They were on disk, and nothing listed them. `install-t1.sh` gained two
+options:
+
+```bash
+./install-t1.sh --index-models          # find them, register them, serve them
+./install-t1.sh --index-models --estimate-prices
+```
+
+`--index-models` walks the directory, reads each GGUF's real metadata —
+architecture, parameter count, context length, quantisation — and writes
+a registry, so every model becomes switchable rather than merely
+present.
+
+### A price, instead of `0.0` ✨
+
+`hypernix-t1 index` read everything about a model except what to charge
+for it, and wrote `0.0`. A price of zero on a 70B is not a policy, it is
+an unanswered question that bills the operator.
+
+`--estimate-prices` answers it from five things the indexer already
+knows: **file size, quantisation format, parameter count, the GPU this
+machine has, and — for a mixture-of-experts or a hybrid — the *active*
+parameter count rather than the total.**
+
+That last one is the whole feature. Qwen3-235B-A22B does 22B of work per
+token and carries 235B of weights. Priced by total it comes out **8.8×
+more expensive** than priced by active, and the second number is the
+right one: decode speed follows the parameters that actually run. The
+memory it demands still comes from the file, which is why placement is
+decided from the file's size and speed from the active count.
+
+Every estimate says what it assumed — a derived parameter count, a dense
+assumption, a missing GPU — because a silently-wrong price is worse than
+an obviously uncertain one.
+
+### Running a model without LM Studio ๋࣭⭑
+
+`hypernix.hyperlink.managed` owns a llama.cpp process, so load, unload
+and switch are operations rather than instructions. Layers go where they
+fit: a configurable number on the GPU and the rest in RAM and on the
+CPU, planned against real VRAM and RAM headroom rather than hoped for.
+
+| Model | Card | Placement |
+| --- | --- | --- |
+| 8B Q4 | 24 GB | 33/33 layers on GPU |
+| 70B Q4 | 24 GB | 41 of 81 on GPU, the rest CPU |
+| 70B Q4 | none | 0/81, all CPU |
+
+`POST /runner/plan` answers "where would this go" and changes nothing —
+loading a model evicts the one people are currently talking to, so being
+able to see the consequence first is not a nicety. `/runner/load`,
+`/runner/unload` and `/runner/status` do the rest.
+
+### Who may switch it 🛡️
+
+Changing what a shared server runs affects everybody using it, so it is
+gated harder than reading is. Three ways in, and the operator decides
+how far the third goes: an **admin** key, **partial admin**, or
+`T1_RUNNER_SWITCH_PERM` — an explicit access level an operator grants to
+somebody paired over `waiter` or Tailscale, which is the "access 6+ if
+servers enable it" the request asked for. Off unless set.
+
+### 𖢥 HyperLink could not authenticate over Tailscale at all
+
+"You can not auth using Tailscale in hyperlink, it says it needs an
+authorized t1 key." Three independent causes, and the first meant
+trusted-network mode had **never** worked for any `/hyperlink` route:
+the keyless branch was checked *after* the credential was extracted, so
+a request with no key was refused before the code that allows no key
+could run. The second was IPv6 — the tailnet check covered
+`100.64.0.0/10` and not `fd7a:115c:a1e0::/48`, so a client that resolved
+to a ULA looked like a stranger. The third was ordering: the tailnet
+check ran after the LAN check, and a tailnet address is not on the LAN.
+
+### 𖢥 One model list, from every source
+
+HyperLink showed neither the LM Studio bridge's models nor the
+`.hypernix` ones. `hypernix.hyperlink.catalogue` merges the registry,
+the bridge and the local GGUFs into a single list, each entry saying
+where it came from, and reports per-source what it could not reach
+rather than returning a short list silently.
+
+### 𖢥 Stop now stops the generation
+
+It marked the response finished and left the model generating. The cause
+is worth writing down: a sync generator run through Starlette's
+`iterate_in_threadpool` cannot have its `finally` reached on client
+disconnect, because a thread blocked in a socket read is not
+interruptible. So cancellation is cooperative — a `threading.Event` the
+generator checks between chunks. Proved against a generator that never
+terminates on its own: without the check the test hangs for 33 seconds
+and fails; with it, 3.9 seconds, upstream generator closed, at most
+three further chunks.
+
+### The server's hardware, and how long it has been up ✨
+
+`GET /hyperlink/hardware` returns CPU, memory, disk, GPU and load;
+`GET /hyperlink/uptime` returns both the machine's and the process's.
+Every field is optional and an `unavailable` list names what could not
+be read, because a hardware panel that invents a zero is worse than one
+that says it does not know.
+
+### noodle over the API ✨
+
+`/noodle/tools`, `/noodle/run` and `/noodle/workspace`, with file
+creation, file edits, **fish commands** and **zipping**, each in a
+per-owner workspace. Execution and web search are off unless the
+operator turns them on.
+
+### `/chat/compact/*` and `/memory/*` ✨
+
+Five compaction scopes — `prompts`, `system`, `responses`, `all` and
+`dynamic`, which picks for you — and a memory store with
+`create`/`get`/`list`/`edit`/`delete`, deduplicated, budgeted, and
+folded into a model's context automatically.
+
+### 𖢥 hyprslug was crushing the one tensor it must not
+
+"Fix hyprslug models from falling apart."
+
+Not the attention weights, which measure exactly what their bitrates
+allow, and not the codecs. It was `ffn_gate_inp` — the
+mixture-of-experts router.
+
+A router is `[n_embd, n_expert]`: a few hundred kilobytes in a model of
+tens of gigabytes, and the only tensor in the file whose output is an
+**argmax** rather than a sum. Every other weight gets averaged over a
+reduction of thousands of terms, which is what makes a 4-bit dot product
+survivable at all. The router's does not. Quantising it moved its logits
+by a few percent — nothing, right up until two experts are within a few
+percent of each other, and then it is a *different expert*, one never
+trained for this token. The model does not degrade gracefully when that
+happens; it stops being language.
+
+hyprslug's never-quantise list was norms and biases. It now also covers
+the router, Mamba's `ssm_conv1d`, RWKV's time-mixing constants, and the
+positional and token-type tables — small tensors read directly rather
+than accumulated. llama.cpp refuses exactly this list, for exactly this
+reason. `time_mix_key` and `time_mix_value` are *not* on it: they are
+full-sized projections, and a bare `time_mix` prefix would leave most of
+an RWKV model unquantised and still call it Q4_K_M.
+
+Measured, not assumed: Q2_K moves a realistic router's weights by 30%.
+
+### 🐛 A quantised file that called itself F16
+
+`general.file_type` was copied from the source and never rewritten, so a
+`Q4_K_M` made from an F16 announced itself as F16 to llama.cpp's load
+banner, to a hub listing, and to `hypernix-t1 index`. The tensor table
+was right and the field everybody actually reads was wrong.
+
+Every run now writes the target's real `general.file_type` and
+`general.quantization_version`, as u32 — an i32 is present, correct and
+unreadable to anything calling `gguf_get_val_u32`. Sub-bit tiers get
+numbers of their own rather than borrowing an upstream one: a half-bit
+file labelled `Q2_K` claims four times the precision it has. Extracting
+one variant out of a multiquant bundle no longer stamps it with the
+*default* variant's type either.
+
+### 𖢥 `prot` did not make the monitors black
+
+It was one line:
+
+```python
+subprocess.run(["xset", "dpms", "force", state], check=False,
+               stdout=DEVNULL, stderr=DEVNULL)
+```
+
+which does nothing at all under four common conditions and says nothing
+about any of them:
+
+- **DPMS is disabled.** `xset dpms force off` is a *request to the DPMS
+  extension*; when it is off — which it is on a lot of desktops, because
+  the desktop environment handles power management itself — the X server
+  accepts the request, does nothing, and exits 0. The most common one.
+- **The session is Wayland.** There is no X server to ask.
+- **There is no graphical session at all** — a TTY, SSH, a container.
+- **The platform is macOS**, which the code did not check for, so `hnx
+  prot` on a Mac printed "Monitor will sleep" and left the screen on.
+
+`check=False` plus two `DEVNULL`s plus `except Exception: pass` meant
+all four failed identically and silently: the screen stayed on, the
+terminal went into raw mode, and the only evidence was a message
+promising the opposite.
+
+The method is now chosen from the session — `xset` (with `+dpms` first,
+and the prior setting restored on the way out), `hyprctl`, `swaymsg`,
+`wlopm`, the freedesktop screensaver, or `pmset` — and a failure comes
+back as a reason and a remedy. **It will not lock a screen it did not
+blank**: with no method available `prot` says which of the four cases it
+is and refuses to enter raw mode, because a lit screen plus a dead
+keyboard is worse than either. `--force` is there for anyone who wants
+it anyway.
+
+### 🔁 One blanker, not two
+
+`outage` had its own copy of the same logic, missing the same `+dpms`
+and knowing nothing about Hyprland or sway — and picking `xset` on a
+Wayland session that lacked `wlopm`. Both now go through
+`hypernix.system.blanking`, and a test fails if either grows its own
+copy of the commands again.
+
+### 🧪 Tests
+
+- A conftest that makes it **impossible** for a test to touch the real
+  `~/.hypernix`. The environment redirect alone was not enough:
+  `T1APIConfig` reads `T1_DB_PATH` at construction, so a suite that
+  cleared the environment on purpose fell back to the real database past
+  every environment-level guard. `SQLiteBackend.__init__` is patched for
+  the session instead.
+- …and a `clear_t1_config()` for the suites that clear the environment
+  deliberately. "A server with no configuration" and "a server writing
+  to the person's real home" are two different requests, and deleting
+  every `T1_*` variable made the second one by accident — visible only
+  in a full run, because it is the session-wide redirect those suites
+  were deleting.
+- An autouse fixture restoring every `T1_*` variable after each test,
+  after twelve auth tests passed alone and failed in a full run: a
+  helper setting `os.environ` directly leaked `T1_TRUSTED_NETWORK` into
+  later files.
+- The price estimator checked against real model shapes — Qwen3 8B at
+  4.9 GB, a 70B at 40 GB, Qwen3-235B-A22B — rather than invented ones.
+- The full index → price → serve → display chain, end to end: a GGUF on
+  disk indexed with its real context limit read from the file, priced,
+  written to the registry, served at `/models`, and listed at
+  `/hyperlink/models`.
+
+### 𖢥 Releases were shipping an IPA with no inference engine
+
+"It always skips the inference engine build." `release.yml` called
+`ios.yml` without `local_engine`, so it took that input's `false`
+default and the shipped app had nothing to run a model with. Fixed in
+three places, because one was not enough: the caller passes it, the
+default is now `true`, and `prepare_project.py --require-engine` stops
+the build rather than quietly producing an engine-less IPA.
+
 ## 0.72.5 — `hnx_1375bit`, and quantisation-aware training
 
 ### A tier that keeps every sign *and* the magnitude structure ✨

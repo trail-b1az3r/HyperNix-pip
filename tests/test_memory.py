@@ -20,6 +20,7 @@ from __future__ import annotations
 import logging
 
 import pytest
+from conftest import clear_t1_config
 
 from hypernix.hyperlink.memory import AUTO_LIMIT, MAX_CONTENT, MemoryStore
 from hypernix.t1api.errors import T1APIError
@@ -28,9 +29,10 @@ from hypernix.t1api.errors import T1APIError
 @pytest.fixture(autouse=True)
 def _quiet(monkeypatch):
     logging.disable(logging.CRITICAL)
-    for name in list(__import__("os").environ):
-        if name.startswith("T1_"):
-            monkeypatch.delenv(name, raising=False)
+    # Not every T1_* variable: the storage redirects in conftest.py stay,
+    # or "a server with no configuration" quietly becomes "a server
+    # writing to the real ~/.hypernix".
+    clear_t1_config(monkeypatch)
     yield
     logging.disable(logging.NOTSET)
 

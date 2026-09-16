@@ -24,6 +24,7 @@ import logging
 import threading
 
 import pytest
+from conftest import STORAGE_KEYS
 
 from hypernix.hyperlink.generation import GenerationRegistry
 
@@ -180,9 +181,8 @@ def client(**env) -> TestClient:
     # Clear the configuration, but not where the storage lives: the
     # _own_storage fixture set those, and wiping them here sent every
     # app built by this helper back to the real ~/.hypernix database.
-    keep = {"T1_DB_PATH", "T1_BACKUP_DIR", "T1_MODULE_STORAGE_DIR", "T1_HYPERLINK_DIR"}
     for name in list(os.environ):
-        if name.startswith("T1_") and name not in keep:
+        if name.startswith("T1_") and name not in STORAGE_KEYS:
             os.environ.pop(name)
     os.environ["T1_TRUSTED_NETWORK"] = "1"
     for key, value in env.items():

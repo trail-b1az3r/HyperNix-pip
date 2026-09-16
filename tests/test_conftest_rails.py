@@ -9,6 +9,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+import conftest
 from conftest import REAL_HOME
 
 
@@ -63,3 +64,37 @@ class TestNothingReachedTheRealHome:
             f"{leaked} was written during this test run. Something built a "
             "SQLiteBackend that escaped the redirect in tests/conftest.py."
         )
+
+
+class TestTheRedirectsPointAtVariablesSomethingReads:
+    """A redirect nothing honours is worse than none: it reads as
+    coverage.
+
+    ``T1_HYPERLINK_DIR`` was set here for a long time and appears
+    nowhere in the package. What actually decides where HyperLink's
+    server identity goes is ``T1_CONFIG_DIR``, which was not set — so
+    every test that built the app wrote a seed file, which is key
+    material, into the real ``~/.hypernix/t1api/hyperlink``.
+    """
+
+    def test_every_redirected_variable_is_read_by_the_package(self):
+        import subprocess
+
+        source = Path(__file__).resolve().parent.parent / "src"
+        for name in conftest.STORAGE_KEYS:
+            found = subprocess.run(
+                ["grep", "-rl", name, str(source)],
+                capture_output=True, text=True,
+            )
+            assert found.stdout.strip(), (
+                f"tests/conftest.py redirects {name}, which nothing under "
+                f"src/ reads. Either the package stopped using it or the "
+                f"name was never right — and meanwhile whatever it was "
+                f"meant to redirect is going to the real home."
+            )
+
+    def test_the_hyperlink_identity_lands_in_the_sandbox(self):
+        """The one the missing variable was letting through."""
+        from hypernix.hyperlink.identity import seed_path
+
+        assert REAL_HOME not in seed_path().parents

@@ -27,11 +27,15 @@ Manual control::
     finally:
         o.restore()
 
-Backends, in order of preference:
+Backends come from :mod:`hypernix.system.blanking`, shared with
+``hnx prot`` so the two cannot drift apart again:
 
-* Linux X11: ``xset dpms force off`` / ``... force on``
-* Linux Wayland: ``wlopm --off ALL`` / ``wlopm --on ALL``
-  (when ``wlopm`` is on PATH)
+* Linux X11: ``xset +dpms`` then ``xset dpms force off``, and
+  ``... force on`` to wake. The ``+dpms`` matters: ``force off``
+  against a disabled DPMS extension is accepted and ignored, and the
+  screen stays on.
+* Linux Wayland: ``hyprctl``, ``swaymsg``, ``wlopm`` or the
+  freedesktop screensaver, whichever the session actually has
 * macOS: ``pmset displaysleepnow`` (auto-wake on input)
 * Windows: ``SendMessageW(HWND_BROADCAST, WM_SYSCOMMAND,
   SC_MONITORPOWER, 2)`` via ``ctypes.windll``
@@ -52,6 +56,8 @@ from dataclasses import dataclass, field
 from types import TracebackType
 from typing import Any
 
+from . import blanking
+
 
 @dataclass
 class OutageResult:
@@ -67,25 +73,44 @@ def _has(name: str) -> bool:
 
 
 def _detect_backend() -> str:
-    sys_p = sys.platform
-    if sys_p.startswith("linux"):
-        # Wayland session?  Prefer wlopm if available.
-        import os
-        if (os.environ.get("WAYLAND_DISPLAY") or os.environ.get("XDG_SESSION_TYPE") == "wayland") \
-                and _has("wlopm"):
-            return "wlopm"
-        if _has("xset"):
-            return "xset"
-        return "linux-none"
-    if sys_p == "darwin":
-        return "pmset"
-    if sys_p == "win32":
+    """The name of the method that will work here.
+
+    Delegated to :mod:`hypernix.system.blanking`, which is also what
+    ``hnx prot`` uses. The version that lived here asked
+    ``sys.platform`` and then looked for two binaries, which got three
+    things wrong that the shared table gets right: it chose ``xset`` on
+    a Wayland session that had no ``wlopm`` (there is no X server for
+    it to talk to), it never enabled DPMS before forcing it off (the
+    request is accepted and ignored, and the screen stays on), and it
+    knew nothing about Hyprland, sway or the freedesktop screensaver.
+
+    The strings it returns are unchanged for ``xset``, ``wlopm``,
+    ``pmset`` and ``windows``; the new compositors add their own, and
+    :meth:`Outage._do_blank` dispatches on the object rather than the
+    name so they need no branch here.
+    """
+    if sys.platform == "win32":
         return "windows"
-    return "unknown"
+    chosen = blanking.choose_blanker()
+    if chosen is not None:
+        return chosen.name
+    return "linux-none" if sys.platform.startswith("linux") else "unknown"
 
 
 def _run(cmd: list[str]) -> subprocess.CompletedProcess[str]:
     return subprocess.run(cmd, capture_output=True, text=True, check=False)
+
+
+def _blanker_named(name: str | None) -> blanking.Blanker | None:
+    """The shared table's entry for a backend name, or ``None``.
+
+    ``None`` covers both "no backend here" and a name a caller forced
+    that this build does not have, and both mean the same thing to
+    :class:`Outage`: record a note and skip rather than raise, which is
+    the documented behaviour and what ``strict`` deliberately does not
+    escalate.
+    """
+    return next((b for b in blanking.BLANKERS if b.name == name), None)
 
 
 def _windows_set_monitor(state: int) -> int:
@@ -120,6 +145,10 @@ class Outage:
     strict: bool = False
     on_restore: Callable[[], Any] | None = None
     last_result: OutageResult | None = field(default=None, init=False, repr=False)
+    #: What ``xset q`` said about DPMS before the screen was blanked, so
+    #: restoring can leave the session as it was found. ``None`` until
+    #: something has been blanked, and on every non-X11 backend.
+    _dpms_was_enabled: bool | None = field(default=None, init=False, repr=False)
 
     def __post_init__(self) -> None:
         if self.backend is None:
@@ -187,49 +216,46 @@ class Outage:
 
     def _do_blank(self, result: OutageResult) -> None:
         b = self.backend
-        if b == "xset":
-            r = _run(["xset", "dpms", "force", "off"])
-            result.notes.append(f"xset dpms force off rc={r.returncode}")
-            if r.returncode != 0:
-                raise RuntimeError(r.stderr.strip() or "xset failed")
-        elif b == "wlopm":
-            r = _run(["wlopm", "--off", "*"])
-            result.notes.append(f"wlopm --off * rc={r.returncode}")
-            if r.returncode != 0:
-                raise RuntimeError(r.stderr.strip() or "wlopm failed")
-        elif b == "pmset":
-            r = _run(["pmset", "displaysleepnow"])
-            result.notes.append(f"pmset displaysleepnow rc={r.returncode}")
-            if r.returncode != 0:
-                raise RuntimeError(r.stderr.strip() or "pmset failed")
-        elif b == "windows":
+        if b == "windows":
             rc = _windows_set_monitor(2)
             result.notes.append(f"windows monitor off rc={rc}")
-        else:
+            return
+        blanker = _blanker_named(b)
+        if blanker is None:
             result.notes.append(
                 f"no display-off backend available (backend={b!r}); skipping",
             )
+            return
+        # Read before blanking so :meth:`_do_restore` can put a session
+        # that had DPMS deliberately disabled back the way it was.
+        self._dpms_was_enabled = blanking.dpms_enabled()
+        outcome = blanking.set_monitor_state("off", blanker=blanker)
+        result.notes.append(f"{blanker.name}: {outcome.describe()}")
+        if not outcome.ok:
+            raise RuntimeError(outcome.reason)
 
     def _do_restore(self, result: OutageResult) -> None:
         b = self.backend
-        if b == "xset":
-            r = _run(["xset", "dpms", "force", "on"])
-            result.notes.append(f"xset dpms force on rc={r.returncode}")
-        elif b == "wlopm":
-            r = _run(["wlopm", "--on", "*"])
-            result.notes.append(f"wlopm --on * rc={r.returncode}")
-        elif b == "pmset":
-            # pmset has no explicit wake — input wakes it.  Best effort:
-            # call ``caffeinate -u -t 1`` to nudge the display.
-            r = _run(["caffeinate", "-u", "-t", "1"])
-            result.notes.append(f"caffeinate -u rc={r.returncode}")
-        elif b == "windows":
+        if b == "windows":
             rc = _windows_set_monitor(-1)
             result.notes.append(f"windows monitor on rc={rc}")
-        else:
+            return
+        blanker = _blanker_named(b)
+        if blanker is None:
             result.notes.append(
                 f"no display-on backend available (backend={b!r}); skipping",
             )
+            return
+        if blanker.name == "pmset":
+            # pmset has no explicit wake -- input wakes it. Best effort:
+            # ``caffeinate -u -t 1`` nudges the display.
+            r = _run(["caffeinate", "-u", "-t", "1"])
+            result.notes.append(f"caffeinate -u rc={r.returncode}")
+            return
+        outcome = blanking.set_monitor_state(
+            "on", blanker=blanker, restore_dpms=self._dpms_was_enabled,
+        )
+        result.notes.append(f"{blanker.name}: {outcome.describe()}")
 
 
 # ---------------------------------------------------------------------------
@@ -261,9 +287,11 @@ def platform_summary() -> dict[str, Any]:
         "platform": sys.platform,
         "system": platform.system(),
         "backend": _detect_backend(),
+        "session": blanking.detect_session(),
         "xset": _has("xset"),
         "wlopm": _has("wlopm"),
         "pmset": _has("pmset"),
+        "available": [b.name for b in blanking.BLANKERS if b.available],
     }
 
 
