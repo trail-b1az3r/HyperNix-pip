@@ -377,6 +377,7 @@ jobs:
       # framework resolves there whether or not it was embedded. Only a
       # device -- or this check, against the archive -- can tell.
       - name: Every linked framework is actually in the bundle
+        id: frameworks
         working-directory: ios
         run: |
           set -euo pipefail
@@ -409,6 +410,15 @@ jobs:
           fi
           count="$(echo "$rpaths" | grep -c . || true)"
           echo "every @rpath library the binary links ($count) is embedded"
+          if [ "$count" = "0" ]; then
+            # Not a failure -- an engine-less build links no dylib at all --
+            # but saying "0 embedded" as though it were a clean bill of
+            # health is how a vacuous check gets mistaken for coverage.
+            echo "verdict=no @rpath libraries linked (no engine in this build)" \
+              >> "$GITHUB_OUTPUT"
+          else
+            echo "verdict=$count linked, all embedded" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: No restricted entitlements in an unsigned build
         id: entitlements
@@ -562,6 +572,7 @@ jobs:
             echo "| signed | ${{ steps.signing.outputs.available }} |"
             echo "| artifact | \`${{ steps.package.outputs.artifact_name }}\` |"
             echo "| entitlements | ${{ steps.entitlements.outputs.verdict || 'not checked (signed build)' }} |"
+            echo "| frameworks | ${{ steps.frameworks.outputs.verdict || 'not checked' }} |"
             echo
             if [ "${{ steps.signing.outputs.available }}" != "true" ]; then
               echo "The IPA is **unsigned**. Install it with AltStore or Sideloadly,"
