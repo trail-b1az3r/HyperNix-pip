@@ -57,10 +57,42 @@ class TestItDescribesTheRealInstallation:
 class TestTheCommandsNameTheInterpreter:
     """The whole reason this exists."""
 
+    @staticmethod
+    def _as_installed(*, editable: bool) -> upgrade.Installation:
+        """This installation, with `editable` forced either way.
+
+        Asking `describe()` and taking what it says makes the assertion
+        depend on how *this suite's* environment happens to be
+        installed: CI installs a wheel and gets the pip branch, a
+        developer runs `pip install -e .` and gets the git branch, and
+        whichever one the test names, the other reports a failure that
+        is nothing to do with the code. Pinning the flag tests both
+        branches everywhere.
+        """
+        found = upgrade.describe()
+        return upgrade.Installation(
+            executable=found.executable, prefix=found.prefix,
+            in_venv=found.in_venv, editable=editable,
+            location=found.location, python_version=found.python_version,
+            package_version=found.package_version,
+            t1_version=found.t1_version,
+        )
+
     def test_the_upgrade_command_uses_this_python(self):
-        commands = upgrade.plan().commands
-        primary = next(c for c in commands if c.primary)
+        """A pip install is upgraded through the interpreter running it,
+        never a bare `pip`."""
+        plan = upgrade.plan(self._as_installed(editable=False))
+        primary = next(c for c in plan.commands if c.primary)
         assert shlex.quote(sys.executable) in primary.command
+
+    def test_an_editable_install_is_upgraded_with_git(self):
+        """pip cannot move an editable install forward: the code runs
+        from the checkout, so `pip install -U` reinstalls the same
+        files and reports success."""
+        plan = upgrade.plan(self._as_installed(editable=True))
+        primary = next(c for c in plan.commands if c.primary)
+        assert "git" in primary.command
+        assert "pip install" not in primary.command
 
     def test_no_command_is_a_bare_pip(self):
         """`pip install ...` with no interpreter is the advice that
@@ -191,10 +223,21 @@ class TestTheEndpoint:
         assert body["commands"]
         assert any(command["primary"] for command in body["commands"])
 
-    def test_the_commands_name_this_interpreter(self, client):
+    def test_the_commands_name_this_installation(self, client):
+        """Whatever it advises, it has to be about *this* server.
+
+        Which branch the endpoint takes depends on how the server was
+        installed, and the endpoint reads the live one, so this asserts
+        the property both branches share rather than pinning a shape.
+        Each branch's exact command is pinned above, where the flag can
+        be forced.
+        """
         body = client.get("/hyperlink/upgrade").json()
         primary = next(c for c in body["commands"] if c["primary"])
-        assert shlex.quote(sys.executable) in primary["command"]
+        if upgrade.describe().editable:
+            assert upgrade.describe().location in primary["command"]
+        else:
+            assert shlex.quote(sys.executable) in primary["command"]
 
     def test_it_runs_nothing(self, client):
         """A phone button that upgraded a running server would be a
