@@ -719,3 +719,26 @@ timeline
         : ccf76868 - Update pyproject.toml
 ```
 
+## Release v0.72.5.dev2 (2026-09-15)
+
+```mermaid
+timeline
+    title Release v0.72.5.dev2 Commits
+    0.72.5.dev2
+        : a97d518a - docs- a README that describes this release, and two claims made true
+        : 42e0b474 - quant- the drafts take every hyprslug target, and a tier is spelled one way
+        : 6171f046 - hyperlink- CarPlay, Siri, themes, the whole attachment menu, and renaming
+        : 2324f0fa - t1 v1.0.26.9.2.3- sign up for a key without already having one
+        : 2ced462d - cli- say what was wrong with the command, and list every command
+        : 8cf552db - docs- a training guide that answers 'which of these do I use?'
+        : 8bba7d55 - security- API keys were world-readable; key auth leaked which key you sent
+        : 2f92aebb - cctvtop- fix the Remote Desktop panel
+        : 7212638b - noodle- actually put it inside hyped-pro
+        : e46529b8 - tvtoppro- decoding intro, a module system, and a stale-log watchdog
+        : 1a3dcf49 - quant- INT8/INT2/FP32/FP16/BF16 targets, dflash1, and multi-quant bundles
+        : 9dc50952 - chore- update JSON stats (scheduled)
+        : d4ac3b4e - Add Changelog guide for hyperNix releases
+        : 7bdfc7ce - Update Changelog.md
+        : b91bb63f - chore- update JSON stats (scheduled)
+```
+
