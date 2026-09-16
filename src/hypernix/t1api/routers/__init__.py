@@ -47,6 +47,7 @@ from . import (
     backup,
     billing,
     bridge,
+    compact,
     config,
     events,
     health,
@@ -93,6 +94,7 @@ ALL_ROUTERS = (
     accounts.router,
     # 0.72.5 pt2 -- what the assistant remembers between conversations.
     memory.router,
+    compact.router,
 )
 
 __all__ = [
@@ -104,6 +106,7 @@ __all__ = [
     "backup",
     "billing",
     "bridge",
+    "compact",
     "config",
     "events",
     "health",

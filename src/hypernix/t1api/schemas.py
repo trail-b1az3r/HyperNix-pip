@@ -1403,6 +1403,34 @@ class DownloadedModelsResponse(BaseModel):
     request_id: str
 
 
+class CompactRequest(BaseModel):
+    session_id: str
+    #: Report what would happen and change nothing. The default is False
+    #: because the endpoint's name is a verb, but every caller should try
+    #: this first — compaction is not reversible from the model's side.
+    dry_run: bool = False
+    #: Turns at the end of the conversation never compacted, whatever the
+    #: scope says. The recent exchange is what the next reply answers.
+    keep_recent: int = 4
+
+
+class CompactResponse(BaseModel):
+    session_id: str
+    scope: str = ""
+    #: What was (or would be) replaced, and what it costs.
+    plan: dict[str, Any] = Field(default_factory=dict)
+    applied: bool = False
+    #: The summary that replaced them, when one was written.
+    summary_message_id: str = ""
+    summary: str = ""
+    #: "model" or "extractive". Worth reporting: an extractive summary is
+    #: quotes rather than prose, and a caller may want to try again once
+    #: a model is reachable.
+    summarised_by: str = ""
+    messages_compacted: int = 0
+    request_id: str
+
+
 class MemoryCreateRequest(BaseModel):
     content: str
     category: str = ""

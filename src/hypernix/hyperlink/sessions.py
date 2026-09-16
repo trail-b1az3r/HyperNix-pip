@@ -397,6 +397,53 @@ class ChatSessionStore:
                 ).fetchall()
         return [_message_from_row(r) for r in rows]
 
+    def mark_compacted(
+        self,
+        message_ids: list[str],
+        *,
+        session_id: str,
+        owner: str | None = None,
+        summary_id: str,
+    ) -> int:
+        """Record that these messages are now represented by a summary.
+
+        A flag, not a delete. `messages()` keeps returning them so the
+        person's transcript is unchanged; `context_for` skips them so the
+        model sees the short version. Returns how many were marked.
+
+        Idempotent: marking an already-marked message again is a no-op
+        rather than an error, because a retried compaction is a retry and
+        not a fault.
+        """
+        if not message_ids:
+            return 0
+        self.get(session_id, owner=owner)
+        marked = 0
+        with self._lock, self.backend.connect() as conn:
+            for message_id in message_ids:
+                row = conn.execute(
+                    "SELECT metadata FROM hyperlink_messages "
+                    "WHERE message_id = ? AND session_id = ?",
+                    (message_id, session_id),
+                ).fetchone()
+                if row is None:
+                    continue
+                try:
+                    metadata = json.loads(row["metadata"] or "{}")
+                except (ValueError, TypeError):
+                    metadata = {}
+                if not isinstance(metadata, dict):
+                    metadata = {}
+                if metadata.get("compacted_by"):
+                    continue
+                metadata["compacted_by"] = summary_id
+                conn.execute(
+                    "UPDATE hyperlink_messages SET metadata = ? WHERE message_id = ?",
+                    (json.dumps(metadata), message_id),
+                )
+                marked += 1
+        return marked
+
     def context_for(
         self,
         session_id: str,
@@ -412,6 +459,20 @@ class ChatSessionStore:
         mid-thread, which is worse than a shorter memory.
         """
         history = self.messages(session_id, owner=owner)
+        # A compacted message has been replaced by a summary that is
+        # itself in this history. Including both would mean paying for
+        # the long version and the short one, which is the opposite of
+        # what compaction was asked to do.
+        #
+        # Skipped here and not in `messages()`: the transcript a person
+        # scrolls is still the one they had, and only the model sees the
+        # shortened version. Deleting instead would make compaction
+        # destructive over data the person may care about more than the
+        # model does.
+        history = [
+            m for m in history
+            if not (isinstance(m.metadata, dict) and m.metadata.get("compacted_by"))
+        ]
         system = [m for m in history if m.role == "system"]
         rest = [m for m in history if m.role != "system"]
 
