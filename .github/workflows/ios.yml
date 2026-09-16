@@ -334,6 +334,50 @@ jobs:
           mkdir -p "$profiles"
           echo "$PROFILE" | base64 --decode > "$profiles/hyperlink.mobileprovision"
 
+      # The check that would have caught the crash-on-launch.
+      #
+      # `com.apple.developer.carplay-communication` is a restricted
+      # entitlement: it must be in the provisioning profile, and Apple
+      # grants it per app on request. An app signed with one it does not
+      # hold is killed at launch by amfid -- EXC_CRASH (SIGKILL),
+      # CODESIGNING -- before any of its own code runs.
+      #
+      # Xcode writes archived-expanded-entitlements.xcent into the .app
+      # when archiving, and that is what AltStore and Sideloadly read to
+      # decide what to request when they re-sign. So an unsigned IPA can
+      # still carry the demand for an entitlement the sideloader cannot
+      # be granted, and the app dies on the phone having passed every
+      # test -- the simulator does not enforce entitlements, so nothing
+      # before a device can see it.
+      #
+      # This looks at the bundle that is about to ship rather than at the
+      # project that produced it.
+      - name: No restricted entitlements in an unsigned build
+        if: steps.signing.outputs.available != 'true'
+        working-directory: ios
+        run: |
+          set -euo pipefail
+          app="build/HyperLink.xcarchive/Products/Applications/HyperLink.app"
+          found=""
+          for name in "archived-expanded-entitlements.xcent" "embedded.mobileprovision"; do
+            path="$app/$name"
+            [ -f "$path" ] || continue
+            echo "::group::$name"
+            plutil -p "$path" 2>/dev/null || strings "$path" | head -40
+            echo "::endgroup::"
+            if grep -qa "carplay" "$path"; then
+              found="$found $name"
+            fi
+          done
+          if [ -n "$found" ]; then
+            echo "::error::this unsigned build ships a CarPlay entitlement" \
+                 "($found). A sideloader cannot be granted it, so the app" \
+                 "is killed at launch. prepare_project.py must not have" \
+                 "been asked for --carplay."
+            exit 1
+          fi
+          echo "no restricted entitlements — this build will launch when sideloaded"
+
       - name: Package the IPA
         id: package
         working-directory: ios
