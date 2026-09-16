@@ -29,11 +29,26 @@ from hypernix.system import blanking, protect
 
 @pytest.fixture(autouse=True)
 def _no_real_commands(monkeypatch):
-    """Nothing in this file runs a real xset, swaymsg or pmset."""
+    """Nothing in this file runs a real xset, swaymsg or pmset, and
+    nothing in it depends on the platform it happens to run on.
+
+    The platform pin is not tidiness. ``detect_session`` answers
+    ``"darwin"`` from ``sys.platform`` alone, before it looks at a single
+    environment variable -- which is correct, because a Mac has no
+    ``DISPLAY`` to consult -- so on a macOS runner every test here that
+    sets up an X11 or Wayland session was describing a session the code
+    never saw, and got pmset or nothing. Windows fell through to the
+    Linux detector and answered ``"windows"``.
+
+    These tests are about which method a given *session* selects, so the
+    session is something each one states rather than inherits. The one
+    test that is about macOS sets ``darwin`` itself.
+    """
     def refuse(*args, **kwargs):  # pragma: no cover - only on a mistake
         raise AssertionError(f"a test tried to run {args!r}")
 
     monkeypatch.setattr(subprocess, "run", refuse)
+    monkeypatch.setattr(blanking.sys, "platform", "linux")
     for name in ("DISPLAY", "WAYLAND_DISPLAY", "XDG_SESSION_TYPE", "SWAYSOCK",
                  "HYPRLAND_INSTANCE_SIGNATURE"):
         monkeypatch.delenv(name, raising=False)
