@@ -28,8 +28,8 @@
 
 set -euo pipefail
 
-VERSION="0.72.2.post5"
-T1_API_VERSION="1.0.26.8.1.1"
+VERSION="0.72.5.dev3"
+T1_API_VERSION="1.0.26.9.2.3"
 
 # ---------------------------------------------------------------------------
 # Output
@@ -414,8 +414,12 @@ install_package() {
       ;;
     user)
       PIP_TARGET_DESC="user site-packages"
-      if [ "$DRY_RUN" = "1" ]; then dim "     would run: $PYTHON -m pip install --user $spec"; return; fi
-      "$PYTHON" -m pip install --quiet --user "$spec" || die "pip install --user $spec failed"
+      if [ "$DRY_RUN" = "1" ]; then
+        dim "     would run: $PYTHON -m pip install --user --break-system-packages $spec"
+        return
+      fi
+      "$PYTHON" -m pip install --quiet --user --break-system-packages "$spec" \
+        || die "pip install --user --break-system-packages $spec failed"
       ;;
     system)
       PIP_TARGET_DESC="system site-packages"
