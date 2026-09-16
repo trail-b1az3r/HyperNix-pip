@@ -160,6 +160,10 @@ struct HardwareView: View {
         return ByteCountFormatter.string(fromByteCount: Int64(value), countStyle: .memory)
     }
 
+    /// @MainActor because it mutates `@State`. `View.body` carries the
+    /// annotation; the rest of the struct does not, so an async helper
+    /// is nonisolated unless it says otherwise.
+    @MainActor
     private func load() async {
         loading = true
         defer { loading = false }

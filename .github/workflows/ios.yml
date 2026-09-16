@@ -237,6 +237,21 @@ jobs:
           fi
           echo "Testing on simulator $device"
           set -o pipefail
+          # The whole log to a file, and only a summary to the console.
+          #
+          # This used to be `| tail -60`, which discards exactly what is
+          # needed when the build fails: xcodebuild prints a short
+          # "Testing failed:" summary of *deduplicated* messages and
+          # then the per-file errors with their line numbers, and the
+          # tail keeps the wrong end. A compile failure would report six
+          # unique messages and one file:line, so fixing it took a round
+          # trip per error.
+          #
+          # Now every `error:` line is echoed first, in full, and the
+          # complete log is uploaded as an artifact.
+          # The redirect below needs the directory to exist first.
+          mkdir -p build
+          set +e
           xcodebuild test \
             -project HyperLink.xcodeproj \
             -scheme HyperLink \
@@ -244,7 +259,28 @@ jobs:
             -destination "id=$device" \
             -resultBundlePath build/TestResults.xcresult \
             CODE_SIGNING_ALLOWED=NO \
-            | tail -60
+            > build/xcodebuild.log 2>&1
+          status=$?
+          set -e
+
+          if [ "$status" -ne 0 ]; then
+            echo "::group::Every compiler error"
+            # Sorted and deduplicated: a batch build repeats the same
+            # error once per file that triggered it, and forty copies of
+            # one message buries the other five.
+            grep -E "(error|warning): " build/xcodebuild.log \
+              | sed 's|/Users/runner/work/HyperNix-pip/HyperNix-pip/||' \
+              | sort -u \
+              | head -200 || true
+            echo "::endgroup::"
+            echo "::group::The last 200 lines"
+            tail -200 build/xcodebuild.log
+            echo "::endgroup::"
+            echo "::error::xcodebuild failed — see the groups above, or the ios-build-log artifact"
+          else
+            tail -20 build/xcodebuild.log
+          fi
+          exit "$status"
 
       - name: Archive
         working-directory: ios
@@ -365,6 +401,15 @@ jobs:
             ios/build/output/SHA256SUMS.ios
           if-no-files-found: error
           retention-days: 90
+
+      - name: Upload the build log
+        if: always() && inputs.run_tests != false
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-build-log-${{ github.run_number }}
+          path: ios/build/xcodebuild.log
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Upload the test results
         if: always() && inputs.run_tests != false

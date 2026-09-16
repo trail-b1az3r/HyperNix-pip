@@ -108,6 +108,10 @@ struct ServerUpdateView: View {
         .task { await load() }
     }
 
+    /// @MainActor because it mutates `@State`. `View.body` carries the
+    /// annotation; the rest of the struct does not, so an async helper
+    /// is nonisolated unless it says otherwise.
+    @MainActor
     private func load() async {
         do {
             advice = try await state.upgradeAdvice()

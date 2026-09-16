@@ -42,17 +42,22 @@ struct ModelsView: View {
             }
 
             ForEach(grouped, id: \.source) { group in
-                Section(sectionTitle(group.source)) {
+                // `Section(title) { } footer: { }` does not exist —
+                // SwiftUI pairs a *string* title with content alone, and a
+                // footer needs the header in its own closure too.
+                Section {
                     ForEach(group.models) { model in
                         CatalogueRow(model: model)
                     }
+                } header: {
+                    Text(sectionTitle(group.source))
                 } footer: {
                     Text(sectionFooter(group.source))
                 }
             }
 
             if !state.catalogue.unavailable.isEmpty {
-                Section("Not reachable") {
+                Section {
                     ForEach(state.catalogue.unavailable) { source in
                         VStack(alignment: .leading, spacing: 2) {
                             Text(source.label)
@@ -63,6 +68,8 @@ struct ModelsView: View {
                             }
                         }
                     }
+                } header: {
+                    Text("Not reachable")
                 } footer: {
                     Text(
                         "A source that cannot be reached contributes nothing — "

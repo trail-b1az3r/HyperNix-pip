@@ -1438,16 +1438,22 @@ struct PreferencesEnvelope: Decodable, Equatable, Sendable {
 /// so a build that knows about six settings cannot blank the four it has
 /// never heard of.
 struct PreferencesPatch: Encodable, Sendable {
-    var display_name: String?
-    var bio: String?
-    var system_prompt: String?
-    var effort: String?
-    var context_minimum: Int?
-    var context_maximum: Int?
-    var backup_model: String?
-    var backend: String?
-    var tools_enabled: Bool?
-    var auto_memory: Bool?
+    // `= nil` on every one, and it is load-bearing rather than
+    // decorative: the synthesised memberwise initialiser only gives a
+    // parameter a default when the property has an initial value, so
+    // without these `PreferencesPatch(effort: "high")` would not
+    // compile — every call site would have to name all ten fields,
+    // which is exactly the whole-object PUT this type exists to avoid.
+    var display_name: String? = nil
+    var bio: String? = nil
+    var system_prompt: String? = nil
+    var effort: String? = nil
+    var context_minimum: Int? = nil
+    var context_maximum: Int? = nil
+    var backup_model: String? = nil
+    var backend: String? = nil
+    var tools_enabled: Bool? = nil
+    var auto_memory: Bool? = nil
 }
 
 // MARK: - What can answer

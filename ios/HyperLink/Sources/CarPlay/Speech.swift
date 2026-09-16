@@ -119,45 +119,59 @@ final class SpeechRecogniser {
             return nil
         }
 
+        // Everything mutable lives on the main actor, in `ListenState`.
+        //
+        // `recognitionTask`'s handler is called on an arbitrary queue,
+        // so the transcript, the resume flag and the silence timer
+        // cannot be captured `var`s in this closure. That is a data race
+        // and, under strict concurrency, two compile errors: "reference
+        // to property 'silenceTimeout' in closure requires explicit use
+        // of 'self'" and "call to main actor-isolated instance method
+        // 'stop()' in a synchronous nonisolated context". The handler
+        // reads value types out of the result and hops.
+        let silence = silenceTimeout
+        let ceiling = maximum
+
         return await withCheckedContinuation { continuation in
-            var resumed = false
-            var silenceTimer: Task<Void, Never>?
-            var heard = ""
+            let listening = ListenState(continuation)
 
-            func finish(_ text: String?) {
-                guard !resumed else { return }
-                resumed = true
-                silenceTimer?.cancel()
-                self.stop()
-                continuation.resume(returning: text)
+            // The hard ceiling, so a noisy car does not leave this
+            // listening until the battery goes.
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(for: .seconds(ceiling))
+                guard !Task.isCancelled else { return }
+                self?.stop()
+                listening.finish()
             }
 
-            // The hard ceiling.
-            Task { [maximum] in
-                try? await Task.sleep(for: .seconds(maximum))
-                finish(heard.isEmpty ? nil : heard)
-            }
+            task = recogniser.recognitionTask(with: request) { [weak self] result, error in
+                // Read out of the result *here*. SFSpeechRecognitionResult
+                // is not Sendable and must not cross to the main actor;
+                // a String and two Bools may.
+                let text = result?.bestTranscription.formattedString
+                let isFinal = result?.isFinal ?? false
+                let failed = error != nil
 
-            task = recogniser.recognitionTask(with: request) { result, error in
-                if let result {
-                    heard = result.bestTranscription.formattedString
+                Task { @MainActor in
+                    if let text, !text.isEmpty { listening.heard = text }
+                    if isFinal || failed {
+                        // Whatever was heard before an error is still
+                        // worth having — a recognition failure at the
+                        // end of a sentence should not throw the
+                        // sentence away.
+                        self?.stop()
+                        listening.finish()
+                        return
+                    }
                     // Restart the silence countdown on every word. When
                     // it fires, the speaker has stopped.
-                    silenceTimer?.cancel()
-                    silenceTimer = Task { [silenceTimeout] in
-                        try? await Task.sleep(for: .seconds(silenceTimeout))
+                    listening.silenceTimer?.cancel()
+                    listening.silenceTimer = Task { @MainActor in
+                        try? await Task.sleep(for: .seconds(silence))
                         guard !Task.isCancelled else { return }
-                        finish(heard.isEmpty ? nil : heard)
+                        self?.stop()
+                        listening.finish()
                     }
-                    if result.isFinal {
-                        finish(heard.isEmpty ? nil : heard)
-                    }
-                }
-                if error != nil {
-                    // Whatever was heard before the error is still worth
-                    // having — a recognition error at the end of a
-                    // sentence should not throw the sentence away.
-                    finish(heard.isEmpty ? nil : heard)
                 }
             }
         }
@@ -175,6 +189,35 @@ final class SpeechRecogniser {
         try? AVAudioSession.sharedInstance().setActive(
             false, options: .notifyOthersOnDeactivation
         )
+    }
+}
+
+/// The mutable half of one `listenOnce`, pinned to the main actor.
+///
+/// Exists because the recognition handler runs on an arbitrary queue
+/// and the continuation can be resumed from three places — the handler,
+/// the silence timer and the hard ceiling — exactly one of which may
+/// win. Keeping all of it on one actor makes "resumed twice" impossible
+/// rather than unlikely, and resuming a continuation twice is a crash.
+@MainActor
+private final class ListenState {
+    /// What has been heard so far.
+    var heard = ""
+    var silenceTimer: Task<Void, Never>?
+
+    private var continuation: CheckedContinuation<String?, Never>?
+
+    init(_ continuation: CheckedContinuation<String?, Never>) {
+        self.continuation = continuation
+    }
+
+    /// Resume with whatever was heard. The second call does nothing.
+    func finish() {
+        guard let continuation else { return }
+        self.continuation = nil
+        silenceTimer?.cancel()
+        silenceTimer = nil
+        continuation.resume(returning: heard.isEmpty ? nil : heard)
     }
 }
 

@@ -535,7 +535,14 @@ class TestTheSettingsScreen:
         ]
         assert declarations
         for line in declarations:
-            assert line.rstrip().endswith("?"), f"not optional: {line.strip()}"
+            stripped = line.strip()
+            # The type is optional *and* carries `= nil`. Both matter:
+            # the optional is what lets a field mean "leave it alone",
+            # and the default is what lets a call site name one field
+            # instead of all ten — a `var x: T?` with no initial value
+            # gets no default in the synthesised memberwise init.
+            assert "?" in stripped, f"not optional: {stripped}"
+            assert "= nil" in stripped, f"no memberwise default: {stripped}"
 
     def test_there_is_a_screen_and_a_tab(self):
         assert (SOURCES / "Views" / "MySettingsView.swift").is_file()
