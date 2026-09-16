@@ -108,19 +108,39 @@ class TestCarPlayIsReachable:
         configs = properties["UIApplicationSceneManifest"]["UISceneConfigurations"]
         assert "UIWindowSceneSessionRoleApplication" not in configs
 
-    def test_the_entitlement_file_exists_and_is_referenced(self, project):
-        setting = project["targets"]["HyperLink"]["settings"]["base"]
-        path = setting.get("CODE_SIGN_ENTITLEMENTS")
-        assert path, "no CODE_SIGN_ENTITLEMENTS; CarPlay cannot be granted"
+    ENTITLEMENTS = "HyperLink/HyperLink.entitlements"
+
+    def test_the_entitlement_file_exists_and_can_be_switched_on(self):
+        """It is reachable, but not unconditional.
+
+        This used to read CODE_SIGN_ENTITLEMENTS straight out of
+        project.yml, because the setting was hard-coded there. That is
+        what shipped an unsigned IPA carrying a restricted entitlement,
+        which iOS kills at launch. The setting is injected by
+        prepare_project.py now, so the question here is whether a build
+        that *asks* for CarPlay still gets a real file --
+        test_the_carplay_entitlement_is_not_shipped_by_default in
+        test_ios_llama_link.py covers the other direction.
+        """
+        import yaml
+        from test_ios_llama_link import _prepare
+
+        spec = yaml.safe_load(
+            _prepare().render(
+                (IOS / "project.yml").read_text(encoding="utf-8"),
+                with_engine=False, with_carplay=True,
+            )
+        )
+        path = spec["targets"]["HyperLink"]["settings"]["base"].get(
+            "CODE_SIGN_ENTITLEMENTS"
+        )
+        assert path, "a build asking for CarPlay gets no entitlements file"
         assert (IOS / path).is_file(), f"{path} is referenced and missing"
 
-    def test_it_asks_for_the_communication_category(self, project):
+    def test_it_asks_for_the_communication_category(self):
         """The category has to match what the app does. Asking for the
         wrong one is the usual reason Apple refuses the request."""
-        path = project["targets"]["HyperLink"]["settings"]["base"][
-            "CODE_SIGN_ENTITLEMENTS"
-        ]
-        entitlements = plistlib.loads((IOS / path).read_bytes())
+        entitlements = plistlib.loads((IOS / self.ENTITLEMENTS).read_bytes())
         assert entitlements.get("com.apple.developer.carplay-communication") is True
 
     def test_the_carplay_code_is_conditionally_compiled(self):

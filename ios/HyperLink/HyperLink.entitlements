@@ -18,9 +18,30 @@
       claim to be navigation, audio or parking. Asking for the wrong
       category is the usual reason a request is refused.
 
-      Until it is granted, everything else in this app builds and runs
-      normally - Sources/CarPlay is behind `#if canImport(CarPlay)` and
-      the scene manifest entry is inert without the entitlement.
+      This file is NOT applied unconditionally. ios/scripts/prepare_project.py
+      injects CODE_SIGN_ENTITLEMENTS only when the build is told it has
+      the grant (pass the carplay flag, or set
+      HNX_CARPLAY_ENTITLEMENT=1), because
+      shipping a restricted entitlement you do not hold does not degrade
+      gracefully.
+
+      This comment used to say the opposite. It claimed a build without
+      the grant "will compile, install, and show nothing in a car - with
+      no error anywhere", and the project setting was unconditional on
+      the strength of that. It is wrong. A restricted entitlement has to
+      be in the provisioning profile; an app signed with one that is not
+      is killed at launch by amfid - EXC_CRASH (SIGKILL), termination
+      reason CODESIGNING - before any of its own code runs. Not CarPlay
+      missing: the app does not open.
+
+      The first IPA ever built carrying this crashed immediately on
+      launch on a real phone, having passed every test, because the
+      simulator does not enforce entitlements and nothing short of a
+      device could have caught it.
+
+      Sources/CarPlay is behind `#if canImport(CarPlay)` and the scene
+      manifest entry is genuinely inert without the entitlement, so a
+      build without it is a complete app minus the car.
     -->
     <key>com.apple.developer.carplay-communication</key>
     <true/>

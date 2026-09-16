@@ -521,3 +521,108 @@ class TestRequireEngine:
         module = _prepare()
         monkeypatch.setattr(module, "FRAMEWORK", tmp_path / "nothing")
         assert module.main(["--check"]) == 0
+
+
+class TestTheCarPlayEntitlementIsNotShippedByDefault:
+    """A restricted entitlement you do not hold is a crash on launch,
+    not a missing feature.
+
+    `com.apple.developer.carplay-communication` has to be present in the
+    provisioning profile, and Apple grants it per app on request. An app
+    signed with an entitlement its profile does not carry is killed by
+    amfid the moment it starts -- EXC_CRASH (SIGKILL), termination
+    reason CODESIGNING -- before any of its own code runs.
+
+    This app is distributed unsigned and sideloaded, and neither
+    AltStore, Sideloadly nor a free Xcode profile can authorise a
+    restricted entitlement. So the setting is injected by
+    prepare_project.py only when the build explicitly claims the grant,
+    and these tests are about it staying that way.
+
+    The history: the setting was unconditional, on the strength of a
+    comment in the entitlements file saying a build without the grant
+    would "compile, install, and show nothing in a car -- with no error
+    anywhere". The first IPA ever built carrying it crashed immediately
+    on launch on a real phone, having passed every test in this repo.
+    Nothing short of a device could have caught it -- the simulator does
+    not enforce entitlements -- which is exactly why the guard is on the
+    project spec rather than on a build.
+    """
+
+    def test_the_spec_does_not_hard_code_the_entitlement(self):
+        text = PROJECT.read_text(encoding="utf-8")
+        assert "CODE_SIGN_ENTITLEMENTS" not in text, (
+            "project.yml sets CODE_SIGN_ENTITLEMENTS unconditionally again. "
+            "Every unsigned build then ships the CarPlay entitlement and is "
+            "killed at launch; prepare_project.py must inject it instead."
+        )
+
+    def test_the_default_build_has_no_entitlement(self):
+        import yaml
+
+        prepare = _prepare()
+        spec = yaml.safe_load(
+            prepare.render(PROJECT.read_text(encoding="utf-8"), with_engine=False)
+        )
+        base = spec["targets"]["HyperLink"]["settings"]["base"]
+        assert "CODE_SIGN_ENTITLEMENTS" not in base, (
+            "a build that never claimed Apple's CarPlay grant is shipping "
+            "the entitlement anyway"
+        )
+
+    def test_asking_for_it_puts_it_back(self):
+        """Off by default must not mean unreachable: somebody with the
+        grant and a matching profile has to be able to ship CarPlay."""
+        import yaml
+
+        prepare = _prepare()
+        spec = yaml.safe_load(
+            prepare.render(
+                PROJECT.read_text(encoding="utf-8"),
+                with_engine=False, with_carplay=True,
+            )
+        )
+        base = spec["targets"]["HyperLink"]["settings"]["base"]
+        assert base.get("CODE_SIGN_ENTITLEMENTS") == (
+            "HyperLink/HyperLink.entitlements"
+        )
+
+    def test_both_branches_still_parse_and_keep_their_neighbours(self):
+        """The substitution is a line replace inside an indented YAML
+        block, which this script has got wrong before: dropping the
+        marker text but leaving its indentation merged two keys and the
+        spec stopped parsing."""
+        import yaml
+
+        prepare = _prepare()
+        text = PROJECT.read_text(encoding="utf-8")
+        for carplay in (False, True):
+            spec = yaml.safe_load(
+                prepare.render(text, with_engine=True, with_carplay=carplay)
+            )
+            base = spec["targets"]["HyperLink"]["settings"]["base"]
+            assert base["PRODUCT_BUNDLE_IDENTIFIER"] == "com.hypernix.hyperlink"
+            assert "MARKETING_VERSION" in base
+            assert "TARGETED_DEVICE_FAMILY" in base
+
+    def test_the_entitlements_file_is_still_a_valid_plist(self):
+        """It carries a long comment, and an XML comment may not contain
+        a double hyphen -- which the first version of that comment did,
+        by naming a command-line flag."""
+        import plistlib
+
+        path = IOS / "HyperLink" / "HyperLink.entitlements"
+        with path.open("rb") as handle:
+            keys = list(plistlib.load(handle).keys())
+        assert "com.apple.developer.carplay-communication" in keys
+
+    def test_the_file_no_longer_claims_it_is_harmless(self):
+        """The wrong comment is what made the wrong setting look safe,
+        so it is worth keeping the correction pinned."""
+        text = (IOS / "HyperLink" / "HyperLink.entitlements").read_text(
+            encoding="utf-8"
+        )
+        assert "with no error anywhere" not in text, (
+            "the entitlements file is claiming again that a build without "
+            "Apple's grant just quietly lacks CarPlay. It is killed at launch."
+        )
