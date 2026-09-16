@@ -47,6 +47,26 @@ struct SettingsView: View {
                 LabeledContent("T1 API", value: state.connection.t1Version.isEmpty ? "—" : "v" + state.connection.t1Version)
                 if let status = state.serverStatus {
                     LabeledContent("HyperNix", value: status.hypernixVersion)
+                    // The number above is whatever the server process
+                    // imported when it started, which is the honest
+                    // answer to "what is running" and looks simply wrong
+                    // to somebody who upgraded an hour ago. When /version
+                    // reports the installed copy differing, say so here
+                    // rather than leaving a stale-looking number alone.
+                    if let built = state.serverVersion, built.stale,
+                       !built.hypernixInstalled.isEmpty {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("\(built.hypernixInstalled) is installed")
+                                .font(.caption)
+                            Text(
+                                "The server is still running "
+                                + "\(built.hypernix). Restart it to pick the "
+                                + "upgrade up."
+                            )
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        }
+                    }
                     LabeledContent("Models registered", value: "\(status.modelCount)")
                     LabeledContent(
                         "LM Studio bridge",

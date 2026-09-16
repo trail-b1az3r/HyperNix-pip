@@ -59,6 +59,11 @@ final class AppState {
     /// How long the server and its machine have been up. Nil until the
     /// first refresh, and on a server too old to answer.
     private(set) var uptime: ServerUptime?
+    /// What the server is running versus what is installed on it.
+    /// Separate from `serverStatus`, whose version is whatever the
+    /// process imported at start and so cannot report its own
+    /// staleness.
+    private(set) var serverVersion: ServerVersion?
 
     /// What the HyperNix runner is running, if anything.
     ///
@@ -454,7 +459,8 @@ final class AppState {
         async let clock: Void = refreshUptime()
         async let engine: Void = refreshRunner()
         async let mine: Void = refreshSettings()
-        _ = await (status, list, models, identity, clock, engine, mine)
+        async let built: Void = refreshVersion()
+        _ = await (status, list, models, identity, clock, engine, mine, built)
     }
 
     /// Re-check that the address we reached is still the machine we
@@ -543,6 +549,16 @@ final class AppState {
     /// about a feature nobody asked for.
     func refreshUptime() async {
         uptime = try? await client.uptime()
+    }
+
+    /// What is running here, and whether it is what is installed.
+    ///
+    /// `try?` for the same reason as uptime: a server too old to have
+    /// /version is not an error worth a red line, it just leaves the
+    /// extra detail off the Server page. The version already shown
+    /// there comes from /status and does not depend on this.
+    func refreshVersion() async {
+        serverVersion = try? await client.version()
     }
 
     /// What the server is running, and how to update it.

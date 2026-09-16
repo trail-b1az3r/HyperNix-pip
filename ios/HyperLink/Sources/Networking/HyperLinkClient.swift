@@ -813,6 +813,15 @@ actor HyperLinkClient {
         try await get("/hyperlink/hardware", as: ServerHardware.self, timeout: 30)
     }
 
+    /// What the server is running versus what is installed on it.
+    ///
+    /// Unauthenticated on the server, like /health, so this works even
+    /// when a pairing has gone stale — which is one of the moments the
+    /// answer matters most.
+    func version() async throws -> ServerVersion {
+        try await get("/version", as: ServerVersion.self, timeout: 15)
+    }
+
     /// How long the server and the machine have been up.
     func uptime() async throws -> ServerUptime {
         try await get("/hyperlink/uptime", as: ServerUptime.self, timeout: 15)

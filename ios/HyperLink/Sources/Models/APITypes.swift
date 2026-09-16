@@ -880,6 +880,52 @@ struct ModelCatalogue: Decodable, Equatable, Sendable {
     var unavailable: [CatalogueSource] { sources.filter { !$0.available } }
 }
 
+// MARK: - Version
+
+/// What the server is running, and what is installed on its disk.
+///
+/// Those differ more often than you would think. `hypernix.__version__`
+/// is fixed when the module is imported, so a server upgraded with pip
+/// and never restarted reports the version it started with — which is
+/// what `/status` carries, and what showed "0.72.5.dev3" on a machine
+/// where pip said 0.72.5.post5. Printing that one number made the app
+/// look wrong when it was faithfully reporting a stale process.
+struct ServerVersion: Decodable, Equatable, Sendable {
+    let hypernix: String
+    /// What pip has on disk now. Empty when the server is a source
+    /// checkout with no distribution metadata to read.
+    let hypernixInstalled: String
+    /// The two disagree: the upgrade landed and the process has not
+    /// picked it up.
+    let stale: Bool
+    let executable: String
+    let modulePath: String
+    let uptimeSeconds: Double
+
+    enum CodingKeys: String, CodingKey {
+        case hypernix
+        case hypernixInstalled = "hypernix_installed"
+        case stale
+        case executable
+        case modulePath = "module_path"
+        case uptimeSeconds = "uptime_seconds"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        hypernix = try c.decodeIfPresent(String.self, forKey: .hypernix) ?? ""
+        hypernixInstalled = try c.decodeIfPresent(
+            String.self, forKey: .hypernixInstalled
+        ) ?? ""
+        stale = try c.decodeIfPresent(Bool.self, forKey: .stale) ?? false
+        executable = try c.decodeIfPresent(String.self, forKey: .executable) ?? ""
+        modulePath = try c.decodeIfPresent(String.self, forKey: .modulePath) ?? ""
+        uptimeSeconds = try c.decodeIfPresent(
+            Double.self, forKey: .uptimeSeconds
+        ) ?? 0
+    }
+}
+
 // MARK: - Uptime
 
 /// How long the server and the machine have been up.
