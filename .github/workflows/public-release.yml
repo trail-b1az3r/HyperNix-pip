@@ -184,6 +184,19 @@ jobs:
 
           init = Path("src/hypernix/__init__.py")
           init.write_text(re.sub(r'__version__ = "[^"]+"', f'__version__ = "{v}"', init.read_text(), count=1))
+
+          # The fourth place a version string lives. install-t1.sh bakes
+          # one as the `curl | bash` fallback, for the case where there
+          # is no checkout to read and no hypernix installed yet to ask
+          # -- and a release that bumped the other three without this one
+          # shipped an installer whose banner announced the previous
+          # version over a correct install. tests/test_install_script.py
+          # fails when they drift, which is how this came to be here.
+          installer = Path("install-t1.sh")
+          installer.write_text(
+              re.sub(r'^VERSION="[^"]+"$', f'VERSION="{v}"',
+                     installer.read_text(), count=1, flags=re.M)
+          )
           PY
           echo "--- pyproject.toml version line"
           grep '^version' pyproject.toml
@@ -191,6 +204,8 @@ jobs:
           grep '^version' setup.cfg
           echo "--- __init__.py version line"
           grep __version__ src/hypernix/__init__.py
+          echo "--- install-t1.sh version line"
+          grep '^VERSION=' install-t1.sh
 
       - name: Lint
         run: ruff check src/hypernix
