@@ -164,6 +164,34 @@ class T1APIConfig:
         default_factory=lambda: _bool_env("T1_TRUSTED_NETWORK_PARTIAL_ADMIN", False)
     )
 
+    # --- Noodle (0.72.5 pt2) ----------------------------------------------
+    # The autonomous executor, over the API. Off by default, and every
+    # route 404s until it is on: writing and running files on somebody
+    # else's server is not a thing to enable by accident.
+    noodle_enabled: bool = field(
+        default_factory=lambda: _bool_env("T1_NOODLE_ENABLED", False)
+    )
+    #: Running what was written is a *second* switch. An agent that can
+    #: write a script and not run it is the useful half of the feature at
+    #: a fraction of the risk, and that is the default.
+    noodle_allow_execute: bool = field(
+        default_factory=lambda: _bool_env("T1_NOODLE_ALLOW_EXECUTE", False)
+    )
+    noodle_allow_web_search: bool = field(
+        default_factory=lambda: _bool_env("T1_NOODLE_WEB_SEARCH", True)
+    )
+    noodle_memory_enabled: bool = field(
+        default_factory=lambda: _bool_env("T1_NOODLE_MEMORY", False)
+    )
+    #: Where the per-owner workspaces live. Each owner gets a directory
+    #: under this and cannot reach out of it.
+    noodle_workspace_dir: str | None = field(
+        default_factory=lambda: os.environ.get("T1_NOODLE_WORKSPACE_DIR")
+    )
+    noodle_execute_timeout: float = field(
+        default_factory=lambda: _float_env("T1_NOODLE_EXECUTE_TIMEOUT", 60.0)
+    )
+
     # --- Routing ----------------------------------------------------------
     routing_policy_path: str | None = field(
         default_factory=lambda: os.environ.get("T1_ROUTING_POLICY_PATH")

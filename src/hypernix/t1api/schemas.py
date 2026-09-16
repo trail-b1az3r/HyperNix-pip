@@ -1403,6 +1403,32 @@ class DownloadedModelsResponse(BaseModel):
     request_id: str
 
 
+class NoodleRunRequest(BaseModel):
+    tool: str
+    arguments: dict[str, Any] = Field(default_factory=dict)
+
+
+class NoodleToolsResponse(BaseModel):
+    tools: list[dict[str, Any]] = Field(default_factory=list)
+    names: list[str] = Field(default_factory=list)
+    #: The flags matter as much as the list. A client that shows "run a
+    #: command" on a server with execution off produces a button that
+    #: always fails; the honest version greys it out.
+    execute_enabled: bool = False
+    web_search_enabled: bool = True
+    memory_enabled: bool = False
+    workspace: str = ""
+    request_id: str
+
+
+class NoodleWorkspaceResponse(BaseModel):
+    workspace: str = ""
+    files: list[dict[str, Any]] = Field(default_factory=list)
+    count: int = 0
+    total_bytes: int = 0
+    request_id: str
+
+
 class CompactRequest(BaseModel):
     session_id: str
     #: Report what would happen and change nothing. The default is False
