@@ -788,3 +788,14 @@ timeline
         : 087a6cf0 - t1- /chat/compact/* — making a long conversation fit again
 ```
 
+## Release v0.72.5.post3 (2026-09-16)
+
+```mermaid
+timeline
+    title Release v0.72.5.post3 Commits
+    0.72.5.post3
+        : f9a73ca9 - release- stage the file the bump writes, and survive the branch moving
+        : dd35954e - Auto-update README header (hourly)
+        : e177bd25 - ios- `?? (try await ...)` cannot work, and my guard could not see it
+```
+
