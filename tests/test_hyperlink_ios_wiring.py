@@ -1071,6 +1071,83 @@ class TestSwiftShapesThatDoNotCompile:
         )
 
 
+class TestSomethingActuallyLaunchesTheApp:
+    """A test suite that never starts the app cannot tell you it crashes
+    on launch, and this one did not.
+
+    `HyperLinkTests` is a `bundle.unit-test` with no host application.
+    For what it covers -- parsing, saved servers, markdown, address
+    advice -- that is the right shape: no app needed, and a fast bundle.
+    But it means the tests load into a bare runner. `HyperLinkApp.init()`
+    never executes, `AppState()` is never constructed, no scene is ever
+    built, and nothing reads Info.plist, the scene manifest or the
+    entitlements. A hundred and nine green tests said nothing at all
+    about whether the app opens, and a crash-on-launch shipped behind
+    them.
+
+    A UI-testing target installs the real bundle and launches it. These
+    checks are about that target continuing to exist and continuing to
+    be run -- a UI test that is built but not in the scheme's test
+    action is a file nobody executes.
+    """
+
+    @staticmethod
+    def _spec() -> dict:
+        import yaml
+
+        return yaml.safe_load((IOS / "project.yml").read_text(encoding="utf-8"))
+
+    def test_there_is_a_ui_testing_target(self):
+        targets = self._spec()["targets"]
+        uitests = [
+            name for name, body in targets.items()
+            if body.get("type") == "bundle.ui-testing"
+        ]
+        assert uitests, (
+            "no bundle.ui-testing target: nothing in this project starts "
+            "the app, so a crash on launch cannot fail the build"
+        )
+
+    def test_the_ui_target_hosts_the_real_app(self):
+        """A UI test target with no dependency on the app has no app to
+        launch, and XcodeGen will not set TEST_TARGET_NAME for it."""
+        targets = self._spec()["targets"]
+        for name, body in targets.items():
+            if body.get("type") != "bundle.ui-testing":
+                continue
+            deps = {d.get("target") for d in body.get("dependencies", [])}
+            assert "HyperLink" in deps, (
+                f"{name} does not depend on HyperLink, so it launches nothing"
+            )
+
+    def test_the_ui_target_is_in_the_scheme_test_action(self):
+        """Built but not run is the same as absent, and quieter."""
+        spec = self._spec()
+        targets = spec["targets"]
+        uitests = {
+            name for name, body in targets.items()
+            if body.get("type") == "bundle.ui-testing"
+        }
+        scheme = spec["schemes"]["HyperLink"]
+        running = set(scheme["test"]["targets"])
+        missing = uitests - running
+        assert not missing, (
+            "these UI test targets are never run by `xcodebuild test`: "
+            + ", ".join(sorted(missing))
+        )
+
+    def test_the_launch_test_asserts_the_app_is_still_up(self):
+        """`launch()` alone can pass for an app that dies immediately
+        after; the state assertion is what catches that."""
+        source = (IOS / "Tests" / "HyperLinkUITests" / "LaunchTests.swift").read_text(
+            encoding="utf-8"
+        )
+        assert "XCUIApplication()" in source
+        assert ".runningForeground" in source, (
+            "the launch test never checks the app is actually running"
+        )
+
+
 class TestTheBuildLogIsNotTruncated:
     """A build failure whose errors are cut off costs a full round trip
     to a macOS runner, every time.

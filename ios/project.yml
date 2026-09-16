@@ -205,17 +205,44 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.hypernix.hyperlink.tests
         GENERATE_INFOPLIST_FILE: YES
 
+  # Does the app start at all.
+  #
+  # HyperLinkTests above has no host application, which is the right
+  # shape for what it tests -- parsing, saved servers, markdown -- but
+  # means the bundle loads into a bare test runner and the app never
+  # runs. HyperLinkApp.init() does not execute, no scene is built, and
+  # so nothing reads Info.plist, the scene manifest or the
+  # entitlements. That is how a crash-on-launch shipped with 109 green
+  # tests behind it.
+  #
+  # A UI test target installs the real app and launches it the way the
+  # home screen does, so a launch failure lands in CI on a simulator
+  # rather than on a phone after release.
+  HyperLinkUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: Tests/HyperLinkUITests
+    dependencies:
+      - target: HyperLink
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.hypernix.hyperlink.uitests
+        GENERATE_INFOPLIST_FILE: YES
+
 schemes:
   HyperLink:
     build:
       targets:
         HyperLink: all
         HyperLinkTests: [test]
+        HyperLinkUITests: [test]
     run:
       config: Debug
     test:
       config: Debug
       targets:
         - HyperLinkTests
+        - HyperLinkUITests
     archive:
       config: Release
