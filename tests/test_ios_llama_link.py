@@ -542,11 +542,16 @@ class TestTheCarPlayEntitlementIsNotShippedByDefault:
     The history: the setting was unconditional, on the strength of a
     comment in the entitlements file saying a build without the grant
     would "compile, install, and show nothing in a car -- with no error
-    anywhere". The first IPA ever built carrying it crashed immediately
-    on launch on a real phone, having passed every test in this repo.
-    Nothing short of a device could have caught it -- the simulator does
-    not enforce entitlements -- which is exactly why the guard is on the
-    project spec rather than on a build.
+    anywhere", which is wrong for a signed build and is the belief this
+    guards against.
+
+    It is worth being accurate about why this exists: it was written
+    while chasing a crash-on-launch, on the theory that the entitlement
+    caused it. That theory is disproven -- an unsigned archive carries no
+    entitlements file, and the shipped IPA is unsigned, so it never
+    reached a phone. The guard stays because shipping a restricted
+    entitlement you do not hold is genuinely fatal to a *signed* build,
+    not because it fixed the crash.
     """
 
     def test_the_spec_does_not_hard_code_the_entitlement(self):

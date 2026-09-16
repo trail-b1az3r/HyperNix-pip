@@ -77,9 +77,14 @@ ENTITLEMENTS_MARKER = "# @prepare_project: entitlements"
 # The project believed the opposite. The entitlements file said a build
 # without the grant "will compile, install, and show nothing in a car -
 # with no error anywhere", and on the strength of that the setting was
-# unconditional. The first IPA ever built carrying it crashed on launch
-# on a real phone, having passed every test: the simulator does not
-# enforce entitlements, so nothing before a device could have caught it.
+# unconditional.
+#
+# Gating it is still right, but it fixed nothing that was observed. It
+# was added while chasing a crash-on-launch, on the theory that this
+# entitlement caused it; that theory is disproven. An unsigned archive
+# carries no entitlements file, and the shipped IPA is unsigned, so this
+# never reached a phone. It matters only for a build that is signed
+# without the grant.
 ENTITLEMENTS_BLOCK = """        CODE_SIGN_ENTITLEMENTS: HyperLink/HyperLink.entitlements
 """
 
