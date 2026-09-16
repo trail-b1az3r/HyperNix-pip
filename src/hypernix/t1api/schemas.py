@@ -1403,6 +1403,42 @@ class DownloadedModelsResponse(BaseModel):
     request_id: str
 
 
+class MemoryCreateRequest(BaseModel):
+    content: str
+    category: str = ""
+    #: "manual" when a person wrote it, "auto" when the model did. Kept
+    #: because somebody deleting "you dislike Python" needs to be able to
+    #: see where that idea came from.
+    source: str = "manual"
+    #: Which conversation an auto memory was learned in.
+    session_id: str = ""
+    pinned: bool = False
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class MemoryUpdateRequest(BaseModel):
+    memory_id: str
+    content: str | None = None
+    category: str | None = None
+    pinned: bool | None = None
+    metadata: dict[str, Any] | None = None
+
+
+class MemoryResponse(BaseModel):
+    memory: dict[str, Any] = Field(default_factory=dict)
+    request_id: str
+
+
+class MemoryListResponse(BaseModel):
+    memories: list[dict[str, Any]] = Field(default_factory=list)
+    count: int = 0
+    #: How many of these the model wrote by itself. Shown on a settings
+    #: screen next to the budget, because "the assistant has decided 64
+    #: things about me" is worth knowing without counting.
+    auto_count: int = 0
+    request_id: str
+
+
 class HardwareResponse(BaseModel):
     """One sample of what the machine is doing.
 

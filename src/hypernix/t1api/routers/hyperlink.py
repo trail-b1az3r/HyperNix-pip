@@ -44,6 +44,7 @@ from ...hyperlink.generation import GenerationRegistry
 from ...hyperlink.hfmerge import HFResolveError
 from ...hyperlink.hfmerge import resolve as hf_resolve
 from ...hyperlink.identity import fingerprint as server_fingerprint
+from ...hyperlink.memory import MemoryStore
 from ...hyperlink.notify import EventKind, NotificationStore
 from ...hyperlink.pairing import DeviceRegistry, pairing_payload
 from ...hyperlink.search import SearchIndex
@@ -61,6 +62,7 @@ from ..deps import (
     get_generation_registry,
     get_hyperlink_principal,
     get_job_queue,
+    get_memory_store,
     get_notification_store,
     get_origin,
     get_registry,
@@ -637,6 +639,32 @@ def _msg_dict(message: ChatMessage) -> dict[str, Any]:
     return message.to_dict()
 
 
+def _with_memories(
+    wire: list[dict[str, Any]], block: str
+) -> list[dict[str, Any]]:
+    """Put what the assistant remembers in front of the conversation.
+
+    Merged into the existing system message rather than added as a second
+    one. Two system messages is not an error and is not reliably handled:
+    some backends concatenate them, some keep only the first, and one
+    that keeps only the first would silently drop either the session's
+    own instructions or everything the assistant knows about the person,
+    depending on the order. One message has one meaning.
+
+    Memories go *after* the session's instructions, because the
+    instructions are what the conversation is for and the memories are
+    context for carrying them out.
+    """
+    if not block:
+        return wire
+    for index, message in enumerate(wire):
+        if message.get("role") == "system" and isinstance(message.get("content"), str):
+            merged = dict(message)
+            merged["content"] = f"{message['content']}\n\n{block}".strip()
+            return [*wire[:index], merged, *wire[index + 1:]]
+    return [{"role": "system", "content": block}, *wire]
+
+
 def _wire_messages(
     history: list[ChatMessage],
     store: AttachmentStore,
@@ -744,6 +772,7 @@ def chat_turn(
     principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
     store: ChatSessionStore = Depends(get_session_store),
     files: AttachmentStore = Depends(get_attachment_store),
+    memories: MemoryStore = Depends(get_memory_store),
     config: T1APIConfig = Depends(get_config),
     request_id: str = Depends(get_request_id),
 ) -> HyperLinkChatResponse:
@@ -775,7 +804,10 @@ def chat_turn(
     history = store.context_for(
         session_id, owner=principal.owner, token_budget=payload.token_budget
     )
-    wire = _wire_messages(history, files, principal.owner)
+    wire = _with_memories(
+        _wire_messages(history, files, principal.owner),
+        memories.prompt_block(owner=principal.owner),
+    )
 
     started = time.monotonic()
     try:
@@ -829,6 +861,7 @@ def chat_turn_stream(
     store: ChatSessionStore = Depends(get_session_store),
     files: AttachmentStore = Depends(get_attachment_store),
     generations: GenerationRegistry = Depends(get_generation_registry),
+    memories: MemoryStore = Depends(get_memory_store),
     config: T1APIConfig = Depends(get_config),
     request_id: str = Depends(get_request_id),
 ) -> StreamingResponse:
@@ -864,7 +897,10 @@ def chat_turn_stream(
     history = store.context_for(
         session_id, owner=principal.owner, token_budget=payload.token_budget
     )
-    wire = _wire_messages(history, files, principal.owner)
+    wire = _with_memories(
+        _wire_messages(history, files, principal.owner),
+        memories.prompt_block(owner=principal.owner),
+    )
     requested_model = payload.model_id or session.model_id or None
 
     def _frame(kind: str, **fields: Any) -> bytes:

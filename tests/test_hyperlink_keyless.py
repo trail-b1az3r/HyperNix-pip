@@ -74,10 +74,13 @@ def _quiet_and_clean(monkeypatch):
     logging.disable(logging.NOTSET)
 
 
+
+
 def client(peer: str, **env) -> TestClient:
     import os
 
     from hypernix.t1api.app import create_app
+
 
     for key, value in env.items():
         os.environ[key] = value

@@ -42,6 +42,8 @@ def _quiet(monkeypatch):
     logging.disable(logging.NOTSET)
 
 
+
+
 class TestTheSnapshot:
     def test_it_samples_without_raising(self):
         assert hardware.snapshot().sampled_at > 0
@@ -144,6 +146,7 @@ def client(**env) -> TestClient:
     import os
 
     from hypernix.t1api.app import create_app
+
 
     os.environ["T1_TRUSTED_NETWORK"] = "1"
     for key, value in env.items():

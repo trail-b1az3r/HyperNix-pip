@@ -136,7 +136,15 @@ class TestCarPlayIsReachable:
         # And the gate is read per use rather than stored, because the
         # answer changes while the app is running.
         assert "private var keyboardAvailable: Bool" in source
-        assert "CPTextInputTemplate" in source
+        assert "limitedUserInterfaces.contains(.keyboard)" in source
+
+    def test_typing_uses_the_one_template_that_has_a_keyboard(self):
+        """CarPlay has no general-purpose text-entry template.
+        `CPSearchTemplate` is the only public one that puts a keyboard on
+        screen, which is why typing is built on search."""
+        source = swift("CarPlayController.swift")
+        assert "CPSearchTemplate()" in source
+        assert "CPSearchTemplateDelegate" in source
 
 
 class TestPermissionsAreDeclared:
@@ -681,3 +689,79 @@ class TestEveryThemeIsReadable:
             _strip_noise(path.read_text()) for path in SOURCES.rglob("*.swift")
         )
         assert "carPlayTint" not in code
+
+
+# ---------------------------------------------------------------------------
+# Apple's symbols
+#
+# TestTheSwiftReferencesResolve above checks the app's own symbols against
+# the app's own source. It cannot check Apple's, and that is the gap that
+# shipped a build failure: `CPTextInputTemplate` does not exist. CarPlay
+# has no general-purpose text-entry template — the only public template
+# with a keyboard is `CPSearchTemplate` — and nothing here caught it,
+# because from Python `CPTextInputTemplate` looks exactly like
+# `CPListTemplate`.
+#
+# CI caught it, on the one job that has an SDK, at EmitSwiftModule. That
+# is the right place for it to be caught and a slow place to find out. So
+# the CarPlay surface is small enough to write down, and this asserts the
+# code stays inside it.
+#
+# An allowlist is a maintenance cost, and it is worth it here for one
+# reason: CarPlay's template set is closed by design. Apple adds to it
+# about once a year. A type not on this list is far more likely to be
+# invented than new, and when it is genuinely new, adding a line is the
+# whole cost.
+# ---------------------------------------------------------------------------
+
+#: Every CarPlay symbol this app is allowed to name. Public API as of the
+#: iOS 26 SDK; add to it deliberately.
+CARPLAY_API = {
+    # Templates. This is the closed set — there is no text-input one.
+    "CPTemplate", "CPListTemplate", "CPGridTemplate", "CPAlertTemplate",
+    "CPActionSheetTemplate", "CPSearchTemplate", "CPVoiceControlTemplate",
+    "CPInformationTemplate", "CPPointOfInterestTemplate", "CPTabBarTemplate",
+    "CPMapTemplate", "CPNowPlayingTemplate", "CPContactTemplate",
+    # Their contents.
+    "CPListItem", "CPListSection", "CPListImageRowItem", "CPMessageListItem",
+    "CPAlertAction", "CPGridButton", "CPBarButton", "CPTextButton",
+    "CPVoiceControlState", "CPInformationItem", "CPPointOfInterest",
+    "CPImageSet", "CPNowPlayingButton",
+    # The scene, the controller, and what they hand you.
+    "CPTemplateApplicationScene", "CPTemplateApplicationSceneDelegate",
+    "CPInterfaceController", "CPInterfaceControllerDelegate",
+    "CPSessionConfiguration", "CPSessionConfigurationDelegate",
+    "CPLimitableUserInterface", "CPContentStyle",
+    # Delegates for the templates above.
+    "CPListTemplateDelegate", "CPSearchTemplateDelegate",
+    "CPMapTemplateDelegate", "CPTabBarTemplateDelegate",
+    "CPNowPlayingTemplateObserver",
+    # Errors.
+    "CPError",
+}
+
+
+class TestOnlyRealCarPlayTypes:
+    def test_every_cp_symbol_is_one_apple_ships(self):
+        """The check that would have caught `CPTextInputTemplate` here
+        rather than in CI."""
+        used: set[str] = set()
+        for path in (SOURCES / "CarPlay").glob("*.swift"):
+            text = _strip_noise(path.read_text())
+            used |= set(re.findall(r"\b(CP[A-Z][A-Za-z0-9]*)\b", text))
+        invented = used - CARPLAY_API
+        assert not invented, (
+            f"{sorted(invented)} are not CarPlay types this app knows to "
+            "exist. If Apple has added one, add it to CARPLAY_API; if it "
+            "was invented, it will not compile."
+        )
+
+    def test_the_allowlist_has_not_been_emptied(self):
+        """A guard that passes because its list is empty is not a guard,
+        and emptying it is the easiest way to make this test stop
+        complaining."""
+        assert len(CARPLAY_API) > 25
+
+    def test_the_type_that_started_this_is_not_on_the_list(self):
+        assert "CPTextInputTemplate" not in CARPLAY_API
+        assert "CPTextInputTemplateDelegate" not in CARPLAY_API

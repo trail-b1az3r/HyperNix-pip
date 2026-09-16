@@ -276,11 +276,10 @@ final class CarPlayController: NSObject {
     ///
     /// The car decides, not this code and not a speed this code tries to
     /// work out for itself. `.keyboard` appearing in `limitedUserInterfaces`
-    /// is the car saying "not now"; CarPlay additionally refuses to
-    /// present `CPTextInputTemplate` while moving, so this is what stops
-    /// the app offering a row that would then be rejected — which reads
-    /// as a bug to the person tapping it — rather than the safety
-    /// mechanism itself.
+    /// is the car saying "not now"; CarPlay additionally refuses to put a
+    /// keyboard up while moving, so this is what stops the app offering a
+    /// row that would then be rejected — which reads as a bug to the
+    /// person tapping it — rather than the safety mechanism itself.
     private var keyboardAvailable: Bool {
         !sessionConfiguration.limitedUserInterfaces.contains(.keyboard)
     }
@@ -322,24 +321,42 @@ final class CarPlayController: NSObject {
 
     /// The parked-only path.
     ///
-    /// `CPTextInputTemplate` is CarPlay's keyboard, and the system
-    /// refuses to present it while the car is moving — so this is safe
-    /// even if `keyboardAvailable` were wrong. The row that leads here
-    /// is hidden rather than disabled, because a disabled row a driver
-    /// keeps tapping is worse than one that is not there.
+    /// `CPSearchTemplate` because it is the only public CarPlay template
+    /// that carries a keyboard. The first draft of this used a
+    /// `CPTextInputTemplate`, which does not exist — CarPlay has no
+    /// general-purpose text-entry template, and inventing one is not
+    /// something a reviewer or a Python test could catch; it failed at
+    /// EmitSwiftModule on the first CI run that had an SDK.
+    ///
+    /// Search is a reasonable fit rather than a workaround: the keyboard
+    /// is the system's, the car gates it exactly as it gates any other,
+    /// and the search button is the send button. The single result row
+    /// shows the whole line before it goes, which is worth having for
+    /// somebody who glanced away mid-word.
+    ///
+    /// The row that leads here is hidden rather than disabled, because a
+    /// disabled row somebody keeps tapping is worse than one that is not
+    /// there.
     private func typeMessage(sessionID: String) async {
-        let input = CPTextInputTemplate(keyboardType: .default)
-        _ = try? await interfaceController.presentTemplate(input, animated: true)
-        // The delegate callback lands in CarPlaySceneDelegate, which
-        // hands it back here; CarPlay has no async form of this.
         pendingTypedSessionID = sessionID
+        let search = CPSearchTemplate()
+        search.delegate = self
+        _ = try? await interfaceController.presentTemplate(search, animated: true)
     }
 
+    /// Which conversation a typed message belongs to.
+    ///
+    /// Held rather than passed because the delegate callbacks below are
+    /// the system's and carry no context of ours.
     private var pendingTypedSessionID: String?
+    /// The most recent thing typed, so the search button has something to
+    /// send when it is pressed without a row being tapped.
+    private var pendingTypedText: String = ""
 
     func textEntered(_ text: String) {
         let sessionID = pendingTypedSessionID
         pendingTypedSessionID = nil
+        pendingTypedText = ""
         Task { await send(text, sessionID: sessionID) }
     }
 
@@ -412,6 +429,66 @@ final class CarPlayController: NSObject {
 
     private func dismiss() async {
         _ = try? await interfaceController.dismissTemplate(animated: true)
+    }
+}
+
+// MARK: - Typing, when the car allows it
+
+/// `CPSearchTemplate` is CarPlay's keyboard. The "result" is the one line
+/// being composed: tapping it sends, and so does the search button,
+/// because somebody should not have to work out which of the two is the
+/// real one.
+extension CarPlayController: CPSearchTemplateDelegate {
+    /// `nonisolated` throughout, and the hop is the `Task`.
+    ///
+    /// Same reason as `CPSessionConfigurationDelegate` below: the
+    /// protocol is `@objc` and carries no actor annotation, so a
+    /// `@MainActor` method satisfying it is a concurrency warning today
+    /// and an error under a stricter setting later. CarPlay does call
+    /// these on the main thread; that is a fact about the runtime, not
+    /// something the type system knows.
+    nonisolated func searchTemplate(
+        _ searchTemplate: CPSearchTemplate,
+        updatedSearchText searchText: String,
+        completionHandler: @escaping ([CPListItem]) -> Void
+    ) {
+        // The handler is answered from the parameter rather than from
+        // stored state, so the keyboard stays responsive without waiting
+        // on an actor hop for every keystroke.
+        let trimmed = searchText.trimmingCharacters(in: .whitespaces)
+        completionHandler(
+            trimmed.isEmpty ? [] : [CPListItem(text: "Send", detailText: searchText)]
+        )
+        Task { @MainActor [weak self] in
+            self?.pendingTypedText = searchText
+        }
+    }
+
+    nonisolated func searchTemplate(
+        _ searchTemplate: CPSearchTemplate,
+        selectedResult item: CPListItem,
+        completionHandler: @escaping () -> Void
+    ) {
+        let typed = item.detailText
+        completionHandler()
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            let text = typed ?? self.pendingTypedText
+            await self.dismiss()
+            self.textEntered(text)
+        }
+    }
+
+    nonisolated func searchTemplateSearchButtonPressed(
+        _ searchTemplate: CPSearchTemplate
+    ) {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            let text = self.pendingTypedText
+            guard !text.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+            await self.dismiss()
+            self.textEntered(text)
+        }
     }
 }
 

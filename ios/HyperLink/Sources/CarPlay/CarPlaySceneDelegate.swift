@@ -57,16 +57,9 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
 
 extension CarPlaySceneDelegate: CPInterfaceControllerDelegate {}
 
-extension CarPlaySceneDelegate: CPTextInputTemplateDelegate {
-    func textInputTemplate(
-        _ template: CPTextInputTemplate, textEntered text: String
-    ) {
-        // Only reachable when the car is parked — CarPlay refuses to
-        // present the template otherwise, which is the enforcement;
-        // hiding the row that leads here is only the manners.
-        Task { @MainActor in
-            controller?.textEntered(text)
-        }
-    }
-}
+// Typing is `CPSearchTemplate`, and `CarPlayController` is its own
+// delegate — see the extension there. This file used to carry a
+// `CPTextInputTemplateDelegate` conformance for a template that does not
+// exist in CarPlay; there is no general-purpose text-entry template, and
+// the only public keyboard is the search one.
 #endif

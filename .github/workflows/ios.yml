@@ -49,7 +49,12 @@ on:
       local_engine:
         description: "Build llama.cpp into the app so it can run models on-device."
         type: boolean
-        default: false
+        # True for a *called* build, unlike the dispatch default below.
+        # The only reason to call this workflow is to ship the result,
+        # and an IPA that cannot run a model is not worth shipping. The
+        # expensive default is the safe one here; the cheap default
+        # belongs on the PR path, where it is.
+        default: true
       version:
         description: "Marketing version to stamp into the build"
         type: string
@@ -151,7 +156,11 @@ jobs:
           # XcodeGen cannot make that call: its `optional: true` means
           # weak linking, not "skip when absent", so a spec that always
           # names the framework fails to build on a checkout without it.
-          python3 scripts/prepare_project.py
+          # --require-engine when the build asked for one, so a failed
+          # or skipped engine step fails here instead of shipping an IPA
+          # in which every on-device feature quietly does nothing.
+          python3 scripts/prepare_project.py \
+            ${{ inputs.local_engine && '--require-engine' || '' }}
           xcodegen generate --spec project.generated.yml
           ls -la HyperLink.xcodeproj
 

@@ -320,3 +320,97 @@ class TestTheBuildScript:
         script = BUILD_SCRIPT.read_text(encoding="utf-8")
         assert "llama.xcframework.json" in script
         assert "hnx_patched" in script
+
+
+class TestAReleaseShipsTheEngine:
+    """Every release shipped an IPA that could not run a model.
+
+    `ios.yml` builds llama.cpp only when `local_engine` is set, and
+    `release.yml` called it without setting anything — so the input took
+    its `false` default and the artifact people install linked no engine
+    and used `EchoRunner`. Every on-device feature was inert in it.
+
+    Nothing reported this, and that is the interesting part: falling back
+    to EchoRunner is the *correct* behaviour for a PR build that did not
+    ask for an engine, so the release path was quietly taking the right
+    branch for the wrong reason.
+    """
+
+    @staticmethod
+    def _workflow(name: str) -> dict:
+        import yaml
+
+        return yaml.safe_load(
+            (Path(__file__).resolve().parent.parent / ".github" / "workflows" / name)
+            .read_text(encoding="utf-8")
+        )
+
+    def test_the_release_asks_for_the_engine(self):
+        release = self._workflow("release.yml")
+        job = release["jobs"]["ios"]
+        assert job["with"].get("local_engine") is True, (
+            "release.yml calls ios.yml without local_engine, so the shipped "
+            "IPA links no llama.cpp"
+        )
+
+    def test_a_caller_that_forgets_still_gets_one(self):
+        """The only reason to call this workflow is to ship the result.
+        The cheap default belongs on the PR path, where it still is."""
+        ios = self._workflow("ios.yml")
+        # PyYAML parses the `on:` key as the boolean True.
+        triggers = ios.get("on") or ios.get(True)
+        assert triggers["workflow_call"]["inputs"]["local_engine"]["default"] is True
+
+    def test_a_pull_request_still_does_not_pay_for_it(self):
+        """15-25 minutes on a hosted macOS runner is not worth paying on
+        a PR that touched a view."""
+        ios = self._workflow("ios.yml")
+        triggers = ios.get("on") or ios.get(True)
+        assert triggers["workflow_dispatch"]["inputs"]["local_engine"]["default"] is False
+
+    def test_the_engine_step_is_still_conditional(self):
+        ios = self._workflow("ios.yml")
+        steps = ios["jobs"]["build"]["steps"]
+        engine = next(s for s in steps if s.get("name") == "Build the inference engine")
+        assert "local_engine" in str(engine.get("if", ""))
+
+    def test_the_generate_step_requires_what_was_asked_for(self):
+        """The guard against the next version of this bug: an engine step
+        that runs and fails would otherwise still produce an IPA, because
+        prepare_project.py treats a missing framework as "no engine
+        wanted"."""
+        ios = self._workflow("ios.yml")
+        steps = ios["jobs"]["build"]["steps"]
+        generate = next(s for s in steps if s.get("name") == "Generate the Xcode project")
+        assert "--require-engine" in generate["run"]
+
+
+class TestRequireEngine:
+    def test_it_refuses_when_the_framework_is_absent(self, tmp_path, monkeypatch):
+        module = _prepare()
+        monkeypatch.setattr(module, "FRAMEWORK", tmp_path / "llama.xcframework")
+        with pytest.raises(SystemExit) as refused:
+            module.main(["--require-engine", "--check"])
+        assert "require-engine" in str(refused.value)
+
+    def test_it_says_how_to_fix_it(self, tmp_path, monkeypatch):
+        module = _prepare()
+        monkeypatch.setattr(module, "FRAMEWORK", tmp_path / "llama.xcframework")
+        with pytest.raises(SystemExit) as refused:
+            module.main(["--require-engine", "--check"])
+        assert "build_llama_xcframework.sh" in str(refused.value)
+
+    def test_it_is_quiet_when_the_framework_is_there(self, tmp_path, monkeypatch):
+        module = _prepare()
+        framework = tmp_path / "llama.xcframework"
+        framework.mkdir()
+        (framework / "Info.plist").write_text("<plist/>")
+        monkeypatch.setattr(module, "FRAMEWORK", framework)
+        assert module.main(["--require-engine", "--check"]) == 0
+
+    def test_without_the_flag_a_missing_framework_is_still_fine(self, tmp_path, monkeypatch):
+        """A checkout that has never built the engine must still be able
+        to build the app — that is the whole reason the fallback exists."""
+        module = _prepare()
+        monkeypatch.setattr(module, "FRAMEWORK", tmp_path / "nothing")
+        assert module.main(["--check"]) == 0

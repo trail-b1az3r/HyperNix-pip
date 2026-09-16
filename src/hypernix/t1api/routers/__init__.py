@@ -54,6 +54,7 @@ from . import (
     inference,
     jobs,
     keys,
+    memory,
     models,
     modules,
     security,
@@ -90,6 +91,8 @@ ALL_ROUTERS = (
     # T1 v1.0.26.9.2.3 -- sign up for a key without already having one.
     # Off unless T1_ACCOUNTS_ENABLED; every route 404s when it is off.
     accounts.router,
+    # 0.72.5 pt2 -- what the assistant remembers between conversations.
+    memory.router,
 )
 
 __all__ = [
@@ -108,6 +111,7 @@ __all__ = [
     "inference",
     "jobs",
     "keys",
+    "memory",
     "models",
     "modules",
     "security",

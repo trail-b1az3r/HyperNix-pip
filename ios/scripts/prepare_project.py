@@ -115,9 +115,33 @@ def main(argv: list[str] | None = None) -> int:
         "--check", action="store_true",
         help="report what would be written, change nothing",
     )
+    parser.add_argument(
+        "--require-engine", action="store_true",
+        help=(
+            "fail if llama.cpp is not vendored. For a build that asked "
+            "for the engine: falling back to EchoRunner is right for a PR "
+            "and is a silently inert release."
+        ),
+    )
     args = parser.parse_args(argv)
 
-    present = engine_present()
+    # FRAMEWORK read here rather than taken from engine_present's default
+    # argument: a default binds at definition time, so the two disagree
+    # the moment anything points the module at a different path.
+    present = engine_present(FRAMEWORK)
+    if args.require_engine and not present:
+        # The failure this exists for: a release asked for the engine,
+        # the engine build failed or was skipped, and the IPA shipped
+        # with every on-device feature quietly doing nothing. Nothing
+        # said so, because the fallback is the *correct* behaviour for a
+        # build that did not ask.
+        raise SystemExit(
+            "::error::--require-engine was passed and there is no "
+            f"llama.xcframework at {FRAMEWORK}. This build would ship "
+            "EchoRunner, so on-device inference would be inert. Run "
+            "ios/scripts/build_llama_xcframework.sh first, or drop "
+            "--require-engine for a build that genuinely does not need it."
+        )
     spec = render(SPEC.read_text(encoding="utf-8"), with_engine=present)
 
     state = "ON — llama.cpp linked" if present else "OFF — EchoRunner only"

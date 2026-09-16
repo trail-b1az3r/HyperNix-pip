@@ -65,6 +65,7 @@ from hypernix.security.keymaster import Keymaster
 
 from ..hyperlink.files import AttachmentStore
 from ..hyperlink.generation import GenerationRegistry
+from ..hyperlink.memory import MemoryStore
 from ..hyperlink.notify import NotificationStore
 from ..hyperlink.pairing import DeviceRegistry
 from ..hyperlink.search import SearchIndex
@@ -451,6 +452,7 @@ def create_app(
     # cooperative -- see hyperlink.generation -- so there has to be
     # somewhere to look the running one up.
     app.state.t1_generations = GenerationRegistry()
+    app.state.t1_memory_store = MemoryStore(db)
     # T1 v1.0.26.8.1.0
     app.state.t1_auth_history = history
     app.state.t1_backup_store = backups
