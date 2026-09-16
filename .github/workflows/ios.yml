@@ -362,6 +362,7 @@ jobs:
       # This looks at the bundle that is about to ship rather than at the
       # project that produced it.
       - name: No restricted entitlements in an unsigned build
+        id: entitlements
         if: steps.signing.outputs.available != 'true'
         working-directory: ios
         run: |
@@ -387,6 +388,8 @@ jobs:
             echo "::notice::this unsigned archive carries no entitlements file" \
                  "at all, so nothing can demand CarPlay of a sideloader." \
                  "Whatever re-signs it supplies its own entitlements."
+            echo "verdict=none present — nothing in the bundle can demand CarPlay" \
+              >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -405,7 +408,10 @@ jobs:
                  "is killed at launch."
             exit 1
           fi
-          echo "checked $(echo "$carriers" | wc -l | tr -d ' ') file(s): no CarPlay entitlement"
+          count="$(echo "$carriers" | wc -l | tr -d ' ')"
+          echo "checked $count file(s): no CarPlay entitlement"
+          echo "verdict=$count file(s) present, none demanding CarPlay" \
+            >> "$GITHUB_OUTPUT"
 
       - name: Package the IPA
         id: package
@@ -506,6 +512,7 @@ jobs:
             echo "| version | \`$MARKETING\` (build ${GITHUB_RUN_NUMBER}) |"
             echo "| signed | ${{ steps.signing.outputs.available }} |"
             echo "| artifact | \`${{ steps.package.outputs.artifact_name }}\` |"
+            echo "| entitlements | ${{ steps.entitlements.outputs.verdict || 'not checked (signed build)' }} |"
             echo
             if [ "${{ steps.signing.outputs.available }}" != "true" ]; then
               echo "The IPA is **unsigned**. Install it with AltStore or Sideloadly,"

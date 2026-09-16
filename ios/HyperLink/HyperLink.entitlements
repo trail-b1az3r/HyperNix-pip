@@ -34,10 +34,14 @@
       reason CODESIGNING - before any of its own code runs. Not CarPlay
       missing: the app does not open.
 
-      The first IPA ever built carrying this crashed immediately on
-      launch on a real phone, having passed every test, because the
-      simulator does not enforce entitlements and nothing short of a
-      device could have caught it.
+      This gating is a precaution, not a fix for anything observed.
+      It was added while chasing a crash-on-launch and the first
+      explanation was that this entitlement caused it. That turned out
+      to be wrong: an unsigned archive carries no entitlements file at
+      all, the shipped IPA is unsigned, so this never reached a phone
+      and cannot have killed anything. The reasoning above still holds
+      for a build that *is* signed without the grant, which is why the
+      gating stays.
 
       Sources/CarPlay is behind `#if canImport(CarPlay)` and the scene
       manifest entry is genuinely inert without the entitlement, so a
