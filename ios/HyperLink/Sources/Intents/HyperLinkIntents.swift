@@ -323,8 +323,18 @@ struct SendMessageIntent: AppIntent {
         }
         do {
             let sessions = try await client.sessions()
-            let session = ChatMatch.best(spoken: chat, in: sessions)
-                ?? (try await client.createSession(title: "Siri"))
+            // An `if let`, not `??`. The right side of `??` is an
+            // autoclosure, which can be neither throwing nor async, so
+            // `?? (try await ...)` is two compile errors — "operator can
+            // throw but expression is not marked with 'try'" and "'async'
+            // call in an autoclosure that does not support concurrency" —
+            // and no amount of parenthesising fixes it.
+            let session: ChatSession
+            if let existing = ChatMatch.best(spoken: chat, in: sessions) {
+                session = existing
+            } else {
+                session = try await client.createSession(title: "Siri")
+            }
             let reply = try await client.chat(sessionID: session.sessionID, content: message)
             return .result(dialog: IntentDialog(
                 stringLiteral: Speech.trim(reply.assistantMessage.content)
