@@ -840,3 +840,16 @@ timeline
         : e2fdb084 - ci- main's iOS builds were cancelling each other
 ```
 
+## Release v0.72.5.post9 (2026-09-16)
+
+```mermaid
+timeline
+    title Release v0.72.5.post9 Commits
+    0.72.5.post9
+        : d5d9b874 - ci- put the framework verdict in the summary too
+        : 99b86743 - ios- embed llama.framework, which is dynamic
+        : 2ade3a1f - docs- the entitlement did not cause the crash
+        : 7de3d059 - Auto-update README header (hourly)
+        : 5ae0e1f1 - ci- say in the summary what the shipped bundle carried
+```
+
