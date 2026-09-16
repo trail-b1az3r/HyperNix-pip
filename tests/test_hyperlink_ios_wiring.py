@@ -908,6 +908,92 @@ class TestSwiftShapesThatDoNotCompile:
                 f"false positive: {line}"
             )
 
+    def test_every_hand_written_decoder_declares_its_coding_keys(self):
+        """A type that writes its own `init(from:)` gets no `CodingKeys`.
+
+        Swift synthesises `CodingKeys` only as part of synthesising a
+        `Codable` conformance. Write `init(from decoder:)` by hand on a
+        `Decodable`-only type and there is nothing left to synthesise,
+        so the enum is never generated and every `forKey: .thing` in
+        the initialiser fails.
+
+        It reports as a wall of noise that never says "you forgot the
+        enum" -- "cannot find 'CodingKeys' in scope", "generic parameter
+        'Key' could not be inferred", and one "cannot infer contextual
+        base in reference to member 'x'" per field. Seven types shipped
+        like this at once and produced thirty-five errors.
+
+        Two shapes are legal and must not be flagged, because both
+        already exist in this app:
+
+        * A `Codable` type that hand-writes only `init(from:)`. Its
+          `encode(to:)` is still synthesised, and that synthesis brings
+          the enum with it -- `SavedServer` and `ServerConnection`
+          decode by hand so that a record written before a field existed
+          still loads, and they compile.
+        * A decoder built on `singleValueContainer()`, which has no keys
+          to name. `HFGated` reads a value that the Hub sends as either
+          a bool or a string.
+        """
+        import re
+
+        offenders = []
+        for path in self._swift_files():
+            lines = path.read_text(encoding="utf-8").splitlines()
+            depth = 0
+            current = None
+            for number, line in enumerate(lines, 1):
+                head = re.match(
+                    r"^(?:public\s+)?(?:struct|final class|class|enum)\s+"
+                    r"(\w+)\s*:([^{]*)",
+                    line,
+                )
+                if head and depth == 0:
+                    conformances = {
+                        part.strip() for part in head.group(2).split(",")
+                    }
+                    current = {
+                        "name": head.group(1),
+                        "line": number,
+                        "keys": False,
+                        "decoder": False,
+                        "encoder": False,
+                        "uses": False,
+                        "encodable": bool(
+                            conformances & {"Codable", "Encodable"}
+                        ),
+                    }
+                if current:
+                    if re.search(r"\benum CodingKeys\b", line):
+                        current["keys"] = True
+                    if "init(from decoder:" in line:
+                        current["decoder"] = True
+                    if "func encode(to encoder:" in line:
+                        current["encoder"] = True
+                    if "CodingKeys.self" in line:
+                        current["uses"] = True
+                depth += line.count("{") - line.count("}")
+                if current and depth == 0 and number > current["line"]:
+                    # The enum arrives with whichever half is still being
+                    # synthesised, so a Codable type that only hand-writes
+                    # the decoder still gets one.
+                    synthesised = current["encodable"] and not current["encoder"]
+                    if (
+                        current["uses"]
+                        and current["decoder"]
+                        and not current["keys"]
+                        and not synthesised
+                    ):
+                        offenders.append(
+                            f"{path.name}:{current['line']} {current['name']}"
+                        )
+                    current = None
+        assert not offenders, (
+            "these types hand-write init(from:) and name CodingKeys but "
+            "never declare `enum CodingKeys`, and nothing synthesises one "
+            "for them: " + ", ".join(offenders)
+        )
+
     def test_no_string_literal_has_an_unescaped_quote(self):
         """Typographic quotes inside UI copy are fine; a bare `"` inside
         a `"..."` literal ends the literal and the rest of the line

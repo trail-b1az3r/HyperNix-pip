@@ -830,6 +830,10 @@ struct CatalogueSource: Decodable, Identifiable, Equatable, Sendable {
 
     var id: String { name }
 
+    enum CodingKeys: String, CodingKey {
+        case name, available, count, detail
+    }
+
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         name = try c.decodeIfPresent(String.self, forKey: .name) ?? ""
@@ -852,6 +856,10 @@ struct ModelCatalogue: Decodable, Equatable, Sendable {
     let models: [CatalogueModel]
     let count: Int
     let sources: [CatalogueSource]
+
+    enum CodingKeys: String, CodingKey {
+        case models, count, sources
+    }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -931,6 +939,10 @@ struct ServerUptime: Decodable, Equatable, Sendable {
 struct GenerationStopResult: Decodable, Equatable, Sendable {
     let stopped: [String]
     let count: Int
+
+    enum CodingKeys: String, CodingKey {
+        case stopped, count
+    }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -1270,6 +1282,10 @@ struct ServerCommand: Decodable, Identifiable, Equatable, Sendable {
 
     var id: String { command }
 
+    enum CodingKeys: String, CodingKey {
+        case label, command, primary, note
+    }
+
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         label = try c.decodeIfPresent(String.self, forKey: .label) ?? ""
@@ -1286,6 +1302,10 @@ struct UpgradeAdvice: Decodable, Equatable, Sendable {
     /// that a pip upgrade does not restart a running server, which is
     /// the most confusing possible outcome of following them.
     let warnings: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case installation, commands, warnings
+    }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -1493,6 +1513,10 @@ struct BackendList: Decodable, Equatable, Sendable {
     /// The one a message would go to right now, or "" when none would.
     let active: String
 
+    enum CodingKeys: String, CodingKey {
+        case backends, active
+    }
+
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         backends = try c.decodeIfPresent([InferenceBackend].self, forKey: .backends) ?? []
@@ -1539,6 +1563,10 @@ struct MemoryItem: Decodable, Identifiable, Equatable, Sendable {
 struct MemoryList: Decodable, Equatable, Sendable {
     let memories: [MemoryItem]
     let count: Int
+
+    enum CodingKeys: String, CodingKey {
+        case memories, count
+    }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
