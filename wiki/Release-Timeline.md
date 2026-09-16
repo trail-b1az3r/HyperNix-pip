@@ -853,3 +853,13 @@ timeline
         : 5ae0e1f1 - ci- say in the summary what the shipped bundle carried
 ```
 
+## Release v0.72.5.post10 (2026-09-16)
+
+```mermaid
+timeline
+    title Release v0.72.5.post10 Commits
+    0.72.5.post10
+        : 9c98a24d - models- say where the scan looked and what was in there
+        : 6ab301e3 - Auto-update README header (hourly)
+```
+
