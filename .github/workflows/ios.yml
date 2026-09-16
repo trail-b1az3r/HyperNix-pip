@@ -67,9 +67,18 @@ on:
         description: "Whether the IPA is signed"
         value: ${{ jobs.build.outputs.signed }}
 
+# Cancel superseded runs on a branch, never on main.
+#
+# `cancel-in-progress: true` everywhere is right for a PR -- a ten
+# minute macOS build of a commit nobody is looking at any more is pure
+# waste. On main it is the opposite: every merge is a distinct commit
+# whose IPA somebody may want, and a busy afternoon of merges means each
+# build is killed by the next one. Runs 30, 31, 33, 34 and 36 were all
+# cancelled that way, so main went a whole day without ever producing a
+# verified IPA -- while the released one was crashing on launch.
 concurrency:
   group: ios-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
   contents: read
