@@ -722,3 +722,219 @@ struct SearchResults: Decodable, Sendable {
         self.terms = terms
     }
 }
+
+// MARK: - The model catalogue (T1 v1.0.26.9.2.3)
+//
+// `bridgeModels()` asked LM Studio what it had loaded, and that was the
+// whole picture: a machine with forty GGUFs in ~/.hypernix/models showed
+// an empty list and a message about opening LM Studio. `/hyperlink/models`
+// merges every source the server has — the registry, the LM Studio
+// bridge, and the files on disk — and says which one each model came
+// from.
+
+/// One model the server can offer, wherever it came from.
+struct CatalogueModel: Decodable, Identifiable, Equatable, Sendable {
+    let modelID: String
+    let name: String
+    /// "registry", "lmstudio" or "local".
+    let source: String
+    /// Non-empty only for a model with a file on this machine — which
+    /// is also the only kind the runner can load.
+    let path: String
+    let sizeBytes: Int
+    let architecture: String
+    let parametersB: Double
+    let contextLimit: Int
+    let quant: String
+    let bitsPerWeight: Double
+    /// Currently answering.
+    let loaded: Bool
+    /// Could be loaded, as opposed to merely known about.
+    let runnable: Bool
+    /// Why it is not runnable, when it is not.
+    let detail: String
+    /// The other sources that also know this model. A GGUF on disk that
+    /// LM Studio also has loaded is one model, not two.
+    let alsoIn: [String]
+
+    var id: String { modelID }
+
+    enum CodingKeys: String, CodingKey {
+        case modelID = "model_id"
+        case name, source, path, quant, loaded, runnable, detail
+        case sizeBytes = "size_bytes"
+        case architecture
+        case parametersB = "parameters_b"
+        case contextLimit = "context_limit"
+        case bitsPerWeight = "bits_per_weight"
+        case alsoIn = "also_in"
+    }
+
+    /// Every field defaulted: this list is merged from three sources of
+    /// differing richness, and a `local` entry that the indexer has not
+    /// seen carries little more than a path. Throwing on a missing key
+    /// would drop exactly the models this endpoint exists to surface.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        modelID = try c.decodeIfPresent(String.self, forKey: .modelID) ?? ""
+        name = try c.decodeIfPresent(String.self, forKey: .name) ?? ""
+        source = try c.decodeIfPresent(String.self, forKey: .source) ?? ""
+        path = try c.decodeIfPresent(String.self, forKey: .path) ?? ""
+        sizeBytes = try c.decodeIfPresent(Int.self, forKey: .sizeBytes) ?? 0
+        architecture = try c.decodeIfPresent(String.self, forKey: .architecture) ?? ""
+        parametersB = try c.decodeIfPresent(Double.self, forKey: .parametersB) ?? 0
+        contextLimit = try c.decodeIfPresent(Int.self, forKey: .contextLimit) ?? 0
+        quant = try c.decodeIfPresent(String.self, forKey: .quant) ?? ""
+        bitsPerWeight = try c.decodeIfPresent(Double.self, forKey: .bitsPerWeight) ?? 0
+        loaded = try c.decodeIfPresent(Bool.self, forKey: .loaded) ?? false
+        runnable = try c.decodeIfPresent(Bool.self, forKey: .runnable) ?? false
+        detail = try c.decodeIfPresent(String.self, forKey: .detail) ?? ""
+        alsoIn = try c.decodeIfPresent([String].self, forKey: .alsoIn) ?? []
+    }
+
+    /// Where this came from, in words for a label.
+    var sourceLabel: String {
+        switch source {
+        case "lmstudio": return "LM Studio"
+        case "registry": return "Registered"
+        case "local": return "On disk"
+        default: return source
+        }
+    }
+
+    /// "8.2B · Q4_K_M · 32k" — whichever of those the server knew.
+    var summary: String {
+        var parts: [String] = []
+        if parametersB > 0 { parts.append(String(format: "%.1fB", parametersB)) }
+        if !quant.isEmpty { parts.append(quant) }
+        if contextLimit > 0 { parts.append("\(contextLimit / 1024)k") }
+        if sizeBytes > 0 {
+            parts.append(ByteCountFormatter.string(
+                fromByteCount: Int64(sizeBytes), countStyle: .file
+            ))
+        }
+        return parts.joined(separator: " · ")
+    }
+}
+
+/// What one source contributed, and why it contributed nothing.
+///
+/// The reason this is on screen at all: an empty model list meant either
+/// "this server has no models" or "LM Studio is not running", and the
+/// app showed the same blank picker for both.
+struct CatalogueSource: Decodable, Identifiable, Equatable, Sendable {
+    let name: String
+    let available: Bool
+    let count: Int
+    let detail: String
+
+    var id: String { name }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        name = try c.decodeIfPresent(String.self, forKey: .name) ?? ""
+        available = try c.decodeIfPresent(Bool.self, forKey: .available) ?? false
+        count = try c.decodeIfPresent(Int.self, forKey: .count) ?? 0
+        detail = try c.decodeIfPresent(String.self, forKey: .detail) ?? ""
+    }
+
+    var label: String {
+        switch name {
+        case "lmstudio": return "LM Studio"
+        case "registry": return "Registry"
+        case "local": return "Models folder"
+        default: return name
+        }
+    }
+}
+
+struct ModelCatalogue: Decodable, Equatable, Sendable {
+    let models: [CatalogueModel]
+    let count: Int
+    let sources: [CatalogueSource]
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        models = try c.decodeIfPresent([CatalogueModel].self, forKey: .models) ?? []
+        count = try c.decodeIfPresent(Int.self, forKey: .count) ?? 0
+        sources = try c.decodeIfPresent([CatalogueSource].self, forKey: .sources) ?? []
+    }
+
+    static let empty = ModelCatalogue(models: [], count: 0, sources: [])
+
+    private init(models: [CatalogueModel], count: Int, sources: [CatalogueSource]) {
+        self.models = models
+        self.count = count
+        self.sources = sources
+    }
+
+    /// Sources that reported a problem, for the line under an empty list.
+    var unavailable: [CatalogueSource] { sources.filter { !$0.available } }
+}
+
+// MARK: - Uptime
+
+/// How long the server and the machine have been up.
+///
+/// Worth having on screen because it answers a question people actually
+/// ask: a conversation that lost its context, or a pairing that stopped
+/// working, is usually a PC that rebooted, and nothing in the app said so.
+struct ServerUptime: Decodable, Equatable, Sendable {
+    let processUptimeSeconds: Double
+    let machineUptimeSeconds: Double?
+    let startedAt: Double
+    let serverName: String
+    let t1Version: String
+
+    enum CodingKeys: String, CodingKey {
+        case processUptimeSeconds = "process_uptime_seconds"
+        case machineUptimeSeconds = "machine_uptime_seconds"
+        case startedAt = "started_at"
+        case serverName = "server_name"
+        case t1Version = "t1_version"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        processUptimeSeconds = try c.decodeIfPresent(
+            Double.self, forKey: .processUptimeSeconds
+        ) ?? 0
+        machineUptimeSeconds = try c.decodeIfPresent(
+            Double.self, forKey: .machineUptimeSeconds
+        )
+        startedAt = try c.decodeIfPresent(Double.self, forKey: .startedAt) ?? 0
+        serverName = try c.decodeIfPresent(String.self, forKey: .serverName) ?? ""
+        t1Version = try c.decodeIfPresent(String.self, forKey: .t1Version) ?? ""
+    }
+
+    /// "3d 4h", "4h 12m", "12m", "just now" — never "0 seconds", and
+    /// never more precision than the question deserves.
+    static func describe(_ seconds: Double?) -> String {
+        guard let seconds, seconds > 0 else { return "unknown" }
+        let total = Int(seconds)
+        let days = total / 86_400
+        let hours = (total % 86_400) / 3_600
+        let minutes = (total % 3_600) / 60
+        if days > 0 { return hours > 0 ? "\(days)d \(hours)h" : "\(days)d" }
+        if hours > 0 { return minutes > 0 ? "\(hours)h \(minutes)m" : "\(hours)h" }
+        if minutes > 0 { return "\(minutes)m" }
+        return "just now"
+    }
+
+    var serverDescription: String { Self.describe(processUptimeSeconds) }
+    var machineDescription: String { Self.describe(machineUptimeSeconds) }
+}
+
+/// What Stop actually stopped. An empty list is a success: the model
+/// finishing a quarter-second before the button arrives is the common
+/// race, and an error for a button that worked is the wrong answer.
+struct GenerationStopResult: Decodable, Equatable, Sendable {
+    let stopped: [String]
+    let count: Int
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        stopped = try c.decodeIfPresent([String].self, forKey: .stopped) ?? []
+        count = try c.decodeIfPresent(Int.self, forKey: .count) ?? 0
+    }
+}

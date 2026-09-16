@@ -136,8 +136,50 @@ jobs:
       # macOS runner and is not worth paying on a PR that touched a
       # view. Without it the app builds and ships with EchoRunner,
       # which tells the user this build has no local engine.
+      # Every trigger gets a stated answer, because the obvious
+      # expression does not have one.
+      #
+      # `if: ${{ inputs.local_engine }}` was the whole engine-skipping
+      # bug, and it looks correct. The `inputs` context exists *only*
+      # for `workflow_dispatch` and `workflow_call`; on a `push` or a
+      # `pull_request` it is not populated at all, so
+      # `inputs.local_engine` is null, null is falsy, and the step was
+      # skipped on every single commit to main -- silently, with a grey
+      # "skipped" in the log that looks exactly like a deliberate one.
+      # `--require-engine` was gated on the same expression, so the
+      # guard that exists to catch this was switched off by it too.
+      #
+      # Every commit to main therefore shipped an app whose on-device
+      # inference was EchoRunner. That is the "it always skips the
+      # inference engine build" report, and setting the workflow_call
+      # default to true (which fixed the release path) could not have
+      # fixed it: the release path was never the one skipping.
+      - name: Decide whether to build the engine
+        id: engine
+        env:
+          REQUESTED: ${{ inputs.local_engine }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          # REQUESTED is "true", "false", or empty when there is no
+          # `inputs` context to read. Empty is the case that has to be
+          # decided here rather than defaulted to false by accident.
+          case "$REQUESTED" in
+            true)  want=true ;;
+            false) want=false ;;
+            *)
+              # No input: the trigger decides. main is what people
+              # install from and it gets a real engine; a pull request
+              # does not, because 15-25 minutes on every push is what
+              # makes somebody turn this off permanently.
+              if [ "$EVENT" = "push" ]; then want=true; else want=false; fi
+              ;;
+          esac
+          echo "Engine requested: '${REQUESTED:-<no inputs context>}' on $EVENT -> $want"
+          echo "build=$want" >> "$GITHUB_OUTPUT"
+
       - name: Build the inference engine
-        if: ${{ inputs.local_engine }}
+        if: steps.engine.outputs.build == 'true'
         working-directory: ios
         run: |
           set -euo pipefail
@@ -160,7 +202,7 @@ jobs:
           # or skipped engine step fails here instead of shipping an IPA
           # in which every on-device feature quietly does nothing.
           python3 scripts/prepare_project.py \
-            ${{ inputs.local_engine && '--require-engine' || '' }}
+            ${{ steps.engine.outputs.build == 'true' && '--require-engine' || '' }}
           xcodegen generate --spec project.generated.yml
           ls -la HyperLink.xcodeproj
 

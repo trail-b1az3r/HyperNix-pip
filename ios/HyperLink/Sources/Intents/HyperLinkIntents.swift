@@ -162,13 +162,17 @@ struct LoadModelIntent: AppIntent {
             return .result(dialog: IntentDialog(stringLiteral: IntentBridge.notPaired))
         }
         do {
-            let available = try await client.bridgeModels().models
+            // The catalogue, not the LM Studio bridge. Asking Siri to
+            // switch to a model sitting in ~/.hypernix/models used to
+            // get back "your PC has no models loaded", because the only
+            // thing this looked at was what LM Studio had open.
+            let available = try await client.modelCatalogue().models
             guard let match = ModelMatch.best(
-                spoken: model, owner: owner, in: available.map(\.id)
+                spoken: model, owner: owner, in: available.map(\.modelID)
             ) else {
-                let names = available.prefix(3).map { shortModelName($0.id) }
+                let names = available.prefix(3).map { shortModelName($0.modelID) }
                 let suggestion = names.isEmpty
-                    ? "Your PC has no models loaded."
+                    ? "Your PC has no models."
                     : "I could not find that one. You have \(Speech.list(names))."
                 return .result(dialog: IntentDialog(stringLiteral: suggestion))
             }

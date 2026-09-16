@@ -18,11 +18,23 @@
 //  `UserDefaults`. That split is deliberate: a list of LAN addresses is
 //  not a secret and does not want keychain semantics (surviving an
 //  uninstall), while the credential is and does.
+//
+//  One pairing, or one of several
+//  ------------------------------
+//  There is now a list of up to 32 of them in `SavedServers`, and this
+//  type is the *selected* one. Everything above still holds — the
+//  intents and the CarPlay scene want "whichever server I am on", not a
+//  picker — so `PairingStore` keeps its shape and reads through to the
+//  list underneath. `connectionKey` and `keylessKey` survive as what the
+//  migration reads, not as where anything is written.
 
 import Foundation
 
 /// A pairing read back from disk.
 struct StoredPairing: Sendable {
+    /// Which saved server this is. Empty only for a pairing built in
+    /// memory rather than read back from the list.
+    var id: String = ""
     let connection: ServerConnection
     /// nil for a deliberate keyless connection. See `keyless`.
     let token: String?
@@ -45,33 +57,48 @@ enum PairingStore {
     /// from backup — and coming up "paired" would mean every request
     /// 401s with nothing on screen explaining why.
     static func load(defaults: UserDefaults = .standard) -> StoredPairing? {
-        guard
-            let data = defaults.data(forKey: connectionKey),
-            let connection = try? JSONDecoder().decode(ServerConnection.self, from: data),
-            connection.isConfigured
+        guard let server = SavedServers.selected(defaults: defaults),
+              server.connection.isConfigured
         else { return nil }
-        let token = TokenStore.load()
-        let keyless = defaults.bool(forKey: keylessKey)
-        guard token != nil || keyless else { return nil }
-        return StoredPairing(connection: connection, token: token, keyless: keyless)
+        let token = TokenStore.load(account: server.tokenAccount)
+        guard token != nil || server.keyless else { return nil }
+        return StoredPairing(
+            id: server.id, connection: server.connection,
+            token: token, keyless: server.keyless
+        )
     }
 
+    /// Remember this pairing and make it the current one.
+    ///
+    /// The token argument is new and it matters: with a keychain account
+    /// per server, saving a connection without saying which credential
+    /// goes with it cannot work. Passing nil leaves whatever is already
+    /// stored for that server alone, which is what a re-connect to a
+    /// known machine wants.
     static func save(
         connection: ServerConnection, keyless: Bool,
+        token: String? = nil,
         defaults: UserDefaults = .standard
     ) {
-        if let data = try? JSONEncoder().encode(connection) {
-            defaults.set(data, forKey: connectionKey)
-        }
-        defaults.set(keyless, forKey: keylessKey)
+        SavedServers.remember(
+            connection: connection, keyless: keyless, token: token, defaults: defaults
+        )
     }
 
-    /// Forget the pairing. The token is `TokenStore`'s to delete — this
-    /// clears only what lives in `UserDefaults`, so a caller that wants
-    /// a full sign-out does both.
+    /// Forget the *selected* pairing, its token included.
+    ///
+    /// This used to leave the token to the caller, because there was one
+    /// token and clearing it was a separate decision. With an account
+    /// per server, leaving it behind is an orphaned credential nothing
+    /// will ever look at again.
     static func clear(defaults: UserDefaults = .standard) {
-        defaults.removeObject(forKey: connectionKey)
-        defaults.removeObject(forKey: keylessKey)
+        guard let server = SavedServers.selected(defaults: defaults) else { return }
+        SavedServers.remove(id: server.id, defaults: defaults)
+    }
+
+    /// Forget every server. A full sign-out.
+    static func clearAll(defaults: UserDefaults = .standard) {
+        SavedServers.removeAll(defaults: defaults)
     }
 
     /// A client configured from the stored pairing, or nil when there

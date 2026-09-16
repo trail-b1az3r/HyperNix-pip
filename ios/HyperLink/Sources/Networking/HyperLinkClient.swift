@@ -613,8 +613,69 @@ actor HyperLinkClient {
 
     // MARK: - Models
 
+    /// Every model the server can offer, from every source it has.
+    ///
+    /// Replaces `bridgeModels()` as the thing the picker shows.
+    /// `/bridge/lmstudio/models` asks LM Studio what is loaded, which is
+    /// one source of three and the only one that requires a second
+    /// application to be running — so a machine with models in
+    /// `~/.hypernix/models` and no LM Studio showed an empty list.
+    func modelCatalogue() async throws -> ModelCatalogue {
+        try await get("/hyperlink/models", as: ModelCatalogue.self, timeout: 30)
+    }
+
+    /// What LM Studio specifically has loaded.
+    ///
+    /// Nothing in the app shows this any more — `modelCatalogue()` is
+    /// the list, and it already contains these marked as coming from
+    /// the bridge. Kept because it is the only way to ask that narrower
+    /// question, and because the answer to "is LM Studio running" is
+    /// sometimes the one being asked.
     func bridgeModels() async throws -> BridgeModelsResponse {
         try await get("/bridge/lmstudio/models", as: BridgeModelsResponse.self, timeout: 30)
+    }
+
+    // MARK: - Uptime
+
+    /// How long the server and the machine have been up.
+    func uptime() async throws -> ServerUptime {
+        try await get("/hyperlink/uptime", as: ServerUptime.self, timeout: 15)
+    }
+
+    // MARK: - Stop
+
+    /// Tell the server to stop generating.
+    ///
+    /// The button used to cancel the phone's read task and nothing else,
+    /// so the model finished the whole answer into a socket nobody was
+    /// reading. Cancelling locally is still right — it is what makes the
+    /// UI respond immediately — but it is half the job, and the missing
+    /// half is this call.
+    ///
+    /// Passing no `generationID` stops whatever is running in this
+    /// session, which is what the button means. Passing one is for two
+    /// devices open on the same conversation, where "whatever is running
+    /// here" would stop the other phone's answer.
+    @discardableResult
+    func stopGeneration(
+        sessionID: String, generationID: String? = nil
+    ) async throws -> GenerationStopResult {
+        // A query parameter, matching the endpoint: it takes
+        // `generation_id` in the query string and no body at all, and a
+        // JSON body here would be read as an empty query and silently
+        // stop the wrong thing — every generation in the session rather
+        // than the named one.
+        var path = "/hyperlink/sessions/\(sessionID)/chat/stop"
+        if let generationID, !generationID.isEmpty,
+           let escaped = generationID.addingPercentEncoding(
+               withAllowedCharacters: .urlQueryAllowed
+           ) {
+            path += "?generation_id=\(escaped)"
+        }
+        struct Empty: Encodable {}
+        return try await post(
+            path, body: Empty(), as: GenerationStopResult.self, timeout: 15
+        )
     }
 
     func resolveModel(pageURL: String, fileURL: String, prefer: String) async throws -> ResolvedModel {

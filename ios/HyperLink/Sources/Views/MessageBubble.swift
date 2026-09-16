@@ -5,6 +5,10 @@
 //  output inside ``` fences. Rendering that as body text — proportional,
 //  wrapped, with no way to copy just the code — is the difference
 //  between an app you can work in and one you read on.
+//
+//  Everything *between* the fences is markdown, and is rendered as such
+//  by `MarkdownText`. It used to be plain `Text`, so a numbered list
+//  arrived as one wrapped paragraph with the numbers buried in it.
 
 import SwiftUI
 import UIKit
@@ -21,9 +25,12 @@ struct MessageBubble: View {
                 ForEach(Array(MessageSegment.parse(message.content).enumerated()), id: \.offset) { _, segment in
                     switch segment {
                     case let .text(body):
-                        Text(body)
-                            .textSelection(.enabled)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                        // Markdown, not plain text: headings, lists and
+                        // **bold** are how every instruction-tuned model
+                        // writes, and rendering them literally left the
+                        // structure the model produced as the hardest
+                        // part of the reply to read. See `Markdown.swift`.
+                        MarkdownText(source: body)
                     case let .code(language, body):
                         CodeBlockView(language: language, code: body)
                     }

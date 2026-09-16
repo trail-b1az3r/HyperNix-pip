@@ -35,12 +35,30 @@ final class AppState {
     /// nothing admin-shaped should be offered for one.
     private(set) var isKeyless = false
 
+    /// Every machine this phone is paired with, most recently used
+    /// first. Up to `SavedServers.maxServers` of them.
+    private(set) var savedServers: [SavedServer] = []
+
+    /// The id of the server currently connected, or "" when none is.
+    private(set) var currentServerID: String = ""
+
     // MARK: - Content
 
     private(set) var sessions: [ChatSession] = []
     private(set) var messages: [ChatMessage] = []
     private(set) var openSessionID: String?
-    private(set) var availableModels: [BridgeModel] = []
+    /// Every model the server can offer, from every source it has —
+    /// the registry, the LM Studio bridge, and the GGUFs on disk.
+    ///
+    /// This replaced `availableModels`, which held `/bridge/lmstudio/models`
+    /// and nothing else: one source of three, and the only one that
+    /// needs a second application to be running. A machine with forty
+    /// models in ~/.hypernix/models showed an empty picker.
+    private(set) var catalogue: ModelCatalogue = .empty
+
+    /// How long the server and its machine have been up. Nil until the
+    /// first refresh, and on a server too old to answer.
+    private(set) var uptime: ServerUptime?
 
     // MARK: - Transient UI state
 
@@ -50,6 +68,11 @@ final class AppState {
     /// chat view renders this as a live bubble; it is cleared when the
     /// real persisted message arrives, so the bubble never appears twice.
     private(set) var streamingText: String = ""
+    /// The id the server gave this generation, when it sent one. Lets
+    /// Stop name exactly what to stop — which matters with two devices
+    /// open on one conversation, where "whatever is running here" would
+    /// stop the other phone's answer.
+    private var streamingGenerationID: String?
     var lastError: String?
 
     private let client = HyperLinkClient()
@@ -67,7 +90,9 @@ final class AppState {
     // pairing — which is this object's own state.
 
     private func restore() {
+        savedServers = SavedServers.all()
         guard let pairing = PairingStore.load() else { return }
+        currentServerID = pairing.id
         connection = pairing.connection
         isKeyless = pairing.keyless
         isPaired = true
@@ -80,8 +105,92 @@ final class AppState {
         }
     }
 
-    private func persist() {
-        PairingStore.save(connection: connection, keyless: isKeyless)
+    /// Write the current connection to the saved-server list.
+    ///
+    /// *token* goes with it, rather than being written separately by the
+    /// caller: each saved server keeps its credential under its own
+    /// keychain account, so "save this token" is not a question that can
+    /// be answered without knowing which server it belongs to. Passing
+    /// nil on a non-keyless save leaves the existing credential alone,
+    /// which is what a re-save of a known machine wants.
+    private func persist(token: String? = nil) {
+        PairingStore.save(connection: connection, keyless: isKeyless, token: token)
+        savedServers = SavedServers.all()
+        currentServerID = SavedServers.selected()?.id ?? ""
+    }
+
+    // MARK: - More than one server
+
+    /// Switch to another paired machine.
+    ///
+    /// Everything on screen belongs to the server it came from —
+    /// sessions, messages, the model list — so it is all cleared before
+    /// the new one is loaded rather than left to be replaced piecemeal.
+    /// A half-swapped view showing one machine's chats under another
+    /// machine's name is worse than an empty one for the second it takes
+    /// to fill.
+    @discardableResult
+    func switchTo(serverID: String) async -> Bool {
+        guard serverID != currentServerID else { return true }
+        guard SavedServers.select(id: serverID),
+              let pairing = PairingStore.load()
+        else {
+            savedServers = SavedServers.all()
+            return false
+        }
+
+        // Anything in flight belongs to the machine being left.
+        streamTask?.cancel()
+        streamTask = nil
+        isSending = false
+        streamingText = ""
+        sessions = []
+        messages = []
+        openSessionID = nil
+        catalogue = .empty
+        uptime = nil
+        serverStatus = nil
+        identityWarning = nil
+        lastError = nil
+
+        currentServerID = pairing.id
+        connection = pairing.connection
+        isKeyless = pairing.keyless
+        isPaired = true
+        savedServers = SavedServers.all()
+        await client.configure(
+            endpoints: pairing.endpoints, token: pairing.token, keyless: pairing.keyless
+        )
+        await refreshAll()
+        return true
+    }
+
+    /// Forget one machine without signing out of the others.
+    ///
+    /// Forgetting the one currently connected falls back to whichever
+    /// was used most recently, or to the pairing screen when that was
+    /// the last one.
+    func forget(serverID: String) async {
+        let wasCurrent = serverID == currentServerID
+        SavedServers.remove(id: serverID)
+        savedServers = SavedServers.all()
+        guard wasCurrent else { return }
+        if let next = SavedServers.selected() {
+            currentServerID = ""
+            await switchTo(serverID: next.id)
+        } else {
+            currentServerID = ""
+            connection = .empty
+            isPaired = false
+            isKeyless = false
+            sessions = []
+            messages = []
+            openSessionID = nil
+            catalogue = .empty
+            uptime = nil
+            serverStatus = nil
+            await client.configure(endpoints: [], token: nil)
+        }
     }
 
     // MARK: - Pairing
@@ -120,8 +229,7 @@ final class AppState {
             )
             keylessAvailableHere = discovered.keylessAvailableHere
             isKeyless = false
-            TokenStore.save(credential)
-            persist()
+            persist(token: credential)
             await client.configure(endpoints: endpoints, token: credential)
             isPaired = true
             await refreshAll()
@@ -165,10 +273,9 @@ final class AppState {
             isKeyless = true
             keylessAvailableHere = discovered.keylessAvailableHere
             // No token is stored, and any token from a previous pairing
-            // is cleared: leaving one behind would mean a "keyless"
-            // connection quietly presenting somebody else's credential
-            // the next time the flag was wrong.
-            TokenStore.delete()
+            // with this machine is cleared by `persist` — leaving one
+            // behind would mean a "keyless" connection quietly
+            // presenting a credential the next time the flag was wrong.
             persist()
             await client.configure(endpoints: endpoints, token: nil, keyless: true)
             isPaired = true
@@ -213,8 +320,7 @@ final class AppState {
                 serverFingerprint: discovered?.serverFingerprint ?? ""
             )
             isKeyless = false
-            TokenStore.save(redeemed.deviceToken)
-            persist()
+            persist(token: redeemed.deviceToken)
             await client.configure(endpoints: endpoints, token: redeemed.deviceToken)
             isPaired = true
             await refreshAll()
@@ -234,12 +340,18 @@ final class AppState {
         if !deviceID.isEmpty {
             try? await client.unpairSelf(deviceID: deviceID)
         }
-        TokenStore.delete()
+        // The token goes with the record: `PairingStore.clear()` deletes
+        // this server's keychain entry and leaves the other saved
+        // servers' alone. A bare `TokenStore.delete()` here would clear
+        // the legacy account, which after the migration belongs to
+        // whichever server was paired first — not necessarily this one.
+        //
         // The admin credential is scoped to this server's fingerprint,
         // so signing out of the server is the moment it stops being
         // something this phone should be holding.
         AdminCredentialStore.delete(fingerprint: connection.serverFingerprint)
         PairingStore.clear()
+        savedServers = SavedServers.all()
         await client.configure(endpoints: [], token: nil)
         connection = .empty
         isPaired = false
@@ -249,7 +361,8 @@ final class AppState {
         sessions = []
         messages = []
         openSessionID = nil
-        availableModels = []
+        catalogue = .empty
+        uptime = nil
         serverStatus = nil
     }
 
@@ -272,7 +385,8 @@ final class AppState {
         async let list: Void = refreshSessions()
         async let models: Void = refreshModels()
         async let identity: Void = verifyIdentity()
-        _ = await (status, list, models, identity)
+        async let clock: Void = refreshUptime()
+        _ = await (status, list, models, identity, clock)
     }
 
     /// Re-check that the address we reached is still the machine we
@@ -341,9 +455,26 @@ final class AppState {
     }
 
     func refreshModels() async {
-        // A server with no LM Studio configured is a normal state, not
-        // an error: the model picker just shows nothing to pick.
-        availableModels = (try? await client.bridgeModels())?.models ?? []
+        // One request, not two. The catalogue already contains what the
+        // LM Studio bridge would have returned, marked as coming from
+        // it, so asking the bridge separately was a second round trip
+        // for a subset of the answer.
+        //
+        // A server with nothing to offer is a normal state, not an
+        // error: the picker shows the reason instead of a red line.
+        if let merged = try? await client.modelCatalogue() {
+            catalogue = merged
+        }
+    }
+
+    /// How long the server has been up.
+    ///
+    /// Silent on failure by design: this is an ornament next to the
+    /// server name, and a server too old to have the endpoint 404s.
+    /// Turning that into a visible error would put a red line on screen
+    /// about a feature nobody asked for.
+    func refreshUptime() async {
+        uptime = try? await client.uptime()
     }
 
     // MARK: - Sessions
@@ -460,17 +591,21 @@ final class AppState {
             )
             for try await event in SSEStream.events(for: request) {
                 switch event {
-                case .start:
+                case let .start(_, _, generationID):
                     // The server has the message; drop the placeholder
-                    // and take the authoritative copy on the next reload.
-                    break
+                    // and take the authoritative copy on the next
+                    // reload. Keep the generation id, which is what
+                    // Stop names.
+                    streamingGenerationID = generationID.isEmpty ? nil : generationID
                 case let .delta(piece):
                     streamingText += piece
                 case .done:
+                    streamingGenerationID = nil
                     streamingText = ""
                     messages = (try? await client.messages(in: sessionID)) ?? messages
                     await refreshSessionSummary()
                 case let .failed(_, message):
+                    streamingGenerationID = nil
                     lastError = message
                     // Whatever streamed before the failure was persisted
                     // server-side, so reload rather than keeping a
@@ -501,7 +636,21 @@ final class AppState {
         sessions = updated
     }
 
-    /// Stop a streamed answer.
+    /// Stop a streamed answer — on the server as well as here.
+    ///
+    /// Cancelling the read task is what makes the button feel instant,
+    /// and on its own it is half the job: nothing told the server, so
+    /// the model finished the whole answer into a socket nobody was
+    /// reading. On a shared machine that is somebody else's GPU for a
+    /// minute and a half; on a metered deployment it is a bill for
+    /// output the person explicitly asked not to have.
+    ///
+    /// Order matters. The local cancel goes first because it is
+    /// instant and cannot fail, so the UI responds now rather than
+    /// after a round trip; the server call follows in its own task and
+    /// its failure is not shown — a Stop that reached the server late,
+    /// or reached a server too old to have the endpoint, still stopped
+    /// the thing the person was looking at.
     ///
     /// The server persists whatever streamed before the disconnect, so
     /// the history is reloaded rather than trusting what is on screen —
@@ -513,7 +662,17 @@ final class AppState {
         isSending = false
         streamingText = ""
         guard let sessionID = openSessionID else { return }
-        Task { messages = (try? await client.messages(in: sessionID)) ?? messages }
+        let generationID = streamingGenerationID
+        streamingGenerationID = nil
+        Task {
+            // `_ =` rather than a bare `try?`: the call is
+            // @discardableResult, but `try?` wraps it in an Optional and
+            // an unused Optional is a warning in its own right.
+            _ = try? await client.stopGeneration(
+                sessionID: sessionID, generationID: generationID
+            )
+            messages = (try? await client.messages(in: sessionID)) ?? messages
+        }
     }
 
     /// Switch which model answers in this session, from here on.

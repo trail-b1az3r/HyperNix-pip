@@ -464,6 +464,7 @@ class TestTheSwiftReferencesResolve:
     REACHED = [
         "PairingStore", "IntentBridge", "Speech", "Dictation",
         "TokenStore", "AdminCredentialStore",
+        "SavedServers", "SavedServer", "MarkdownBlock", "ServerUptime",
         "ModelMatch", "ChatMatch",
         "HyperLinkTheme", "ThemeStore",
         "HyperLinkClient", "HyperLinkError",

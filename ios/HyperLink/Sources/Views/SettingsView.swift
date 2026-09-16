@@ -1,5 +1,8 @@
 //  SettingsView.swift
 //  Which PC this phone is talking to, and how to stop.
+//
+//  "Which PC" is now a choice rather than a fact: up to
+//  `SavedServers.maxServers` of them, switched from `ServersView`.
 
 import SwiftUI
 
@@ -34,6 +37,32 @@ struct SettingsView: View {
                         value: status.lmstudioBridgeEnabled ? "on" : "off"
                     )
                 }
+                if let uptime = state.uptime {
+                    // Worth a line because it answers a question people
+                    // actually ask: a conversation that lost its context
+                    // or a pairing that stopped working is usually a PC
+                    // that rebooted, and nothing here used to say so.
+                    LabeledContent("Server up for", value: uptime.serverDescription)
+                    LabeledContent("Machine up for", value: uptime.machineDescription)
+                }
+            }
+
+            Section {
+                NavigationLink {
+                    ServersView()
+                } label: {
+                    HStack {
+                        Text("Servers")
+                        Spacer()
+                        Text("\(state.savedServers.count)")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            } footer: {
+                Text(
+                    "HyperLink remembers up to \(SavedServers.maxServers) machines "
+                    + "and switches between them without re-pairing."
+                )
             }
 
             Section("Appearance") {
