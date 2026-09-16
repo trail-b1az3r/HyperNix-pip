@@ -767,3 +767,191 @@ class TestOnlyRealCarPlayTypes:
     def test_the_type_that_started_this_is_not_on_the_list(self):
         assert "CPTextInputTemplate" not in CARPLAY_API
         assert "CPTextInputTemplateDelegate" not in CARPLAY_API
+
+
+class TestSwiftShapesThatDoNotCompile:
+    """Swift API misuse that a Python test can see, and that CI takes
+    twenty minutes to tell you about.
+
+    Every one of these is a real build failure this project has had. The
+    compiler is the authority — nothing here replaces it — but each
+    round trip to a macOS runner is minutes, and the log was truncating
+    the errors, so catching the mechanical ones here is worth the file.
+    """
+
+    @staticmethod
+    def _swift_files():
+        return sorted((IOS / "HyperLink" / "Sources").rglob("*.swift"))
+
+    def test_no_section_pairs_a_title_with_a_footer(self):
+        """`Section("Title") { } footer: { }` has no matching
+        initialiser. SwiftUI pairs a *string* title with content alone;
+        a footer means the header needs its own closure too.
+
+        It fails as three errors that do not mention Section — "missing
+        argument label 'content:'", "cannot convert value of type
+        'String'", "generic parameter 'Content' could not be inferred" —
+        so it is worth naming directly.
+        """
+        import re
+
+        offenders = []
+        for path in self._swift_files():
+            lines = path.read_text(encoding="utf-8").splitlines()
+            for index, line in enumerate(lines):
+                if not re.match(r"^\s*\}\s*(footer|header):\s*\{\s*$", line):
+                    continue
+                indent = len(line) - len(line.lstrip())
+                for back in range(index - 1, -1, -1):
+                    previous = lines[back]
+                    if not previous.strip():
+                        continue
+                    if len(previous) - len(previous.lstrip()) != indent:
+                        continue
+                    if "Section(" in previous and not re.search(
+                        r"Section\(\s*\)", previous
+                    ) and re.search(r"Section\(\s*[^)]", previous):
+                        offenders.append(f"{path.name}:{back + 1}")
+                    break
+        assert not offenders, (
+            "Section with both a title argument and a header/footer "
+            "closure: " + ", ".join(offenders)
+        )
+
+    def test_every_encodable_request_optional_has_a_default(self):
+        """A `var x: T?` with no `= nil` gets *no* default in the
+        synthesised memberwise initialiser, so `Patch(effort: "high")`
+        does not compile and every call site has to name every field —
+        which is the whole-object PUT an all-optional patch exists to
+        avoid.
+        """
+        import re
+
+        source = (
+            IOS / "HyperLink" / "Sources" / "Models" / "APITypes.swift"
+        ).read_text(encoding="utf-8")
+        for name in re.findall(r"struct (\w*Patch): Encodable", source):
+            start = source.index(f"struct {name}: Encodable")
+            block = source[start:source.index("\n}", start)]
+            for line in block.splitlines():
+                stripped = line.strip()
+                if not stripped.startswith("var ") or "?" not in stripped:
+                    continue
+                assert "= nil" in stripped, (
+                    f"{name}.{stripped.split()[1].rstrip(':')} is optional with "
+                    f"no `= nil`, so the memberwise initialiser has no default "
+                    f"for it"
+                )
+
+    def test_no_await_on_the_right_of_a_coalescing_operator(self):
+        """`??` takes its right side as an autoclosure, which cannot be
+        async — "'async' call in an autoclosure that does not support
+        concurrency". The left side is fine, which is why the working
+        form everywhere here is `(try? await x()) ?? y`.
+        """
+        import re
+
+        offenders = []
+        for path in self._swift_files():
+            for number, line in enumerate(
+                path.read_text(encoding="utf-8").splitlines(), 1
+            ):
+                if line.strip().startswith("//"):
+                    continue
+                if re.search(r"\?\?\s*(try\s+)?await\b", line):
+                    offenders.append(f"{path.name}:{number}")
+                if re.search(r"(&&|\|\|)\s*(try\s+)?await\b", line):
+                    offenders.append(f"{path.name}:{number}")
+        assert not offenders, (
+            "async on the right of an autoclosure operator: "
+            + ", ".join(offenders)
+        )
+
+    def test_no_string_literal_has_an_unescaped_quote(self):
+        """Typographic quotes inside UI copy are fine; a bare `"` inside
+        a `"..."` literal ends the literal and the rest of the line
+        becomes syntax."""
+        import re
+
+        offenders = []
+        for path in self._swift_files():
+            inside_multiline = False
+            for number, line in enumerate(
+                path.read_text(encoding="utf-8").splitlines(), 1
+            ):
+                if line.count('"""') % 2:
+                    inside_multiline = not inside_multiline
+                    continue
+                if inside_multiline:
+                    continue
+                stripped = line.strip()
+                if stripped.startswith("//"):
+                    continue
+                if len(re.findall(r'(?<!\\)"', line)) % 2:
+                    offenders.append(f"{path.name}:{number}")
+        assert not offenders, (
+            "unbalanced quotes in a Swift string literal: " + ", ".join(offenders)
+        )
+
+
+class TestTheBuildLogIsNotTruncated:
+    """A build failure whose errors are cut off costs a full round trip
+    to a macOS runner, every time.
+
+    The step used to end in `| tail -60`. xcodebuild prints a short
+    deduplicated "Testing failed:" summary *first* and the per-file
+    errors with line numbers after it, so the tail kept the wrong end: a
+    failure with nineteen errors reported six unique messages and one
+    file:line.
+    """
+
+    @staticmethod
+    def _test_step(project: dict = None) -> str:
+        import yaml
+
+        workflow = yaml.safe_load(
+            (IOS.parent / ".github" / "workflows" / "ios.yml").read_text(
+                encoding="utf-8"
+            )
+        )
+        steps = workflow["jobs"]["build"]["steps"]
+        return next(
+            s for s in steps if s.get("name") == "Run the unit tests"
+        )["run"]
+
+    def test_it_does_not_tail_the_build_output(self):
+        # Comment lines stripped: the step explains the old `| tail -60`
+        # in prose, and a check that read the prose would find exactly
+        # what it is looking for the absence of.
+        code = "\n".join(
+            line for line in self._test_step().splitlines()
+            if not line.strip().startswith("#")
+        )
+        assert "| tail -60" not in code
+
+    def test_it_prints_every_error_line(self):
+        step = self._test_step()
+        assert "error" in step and "grep" in step, (
+            "the step does not extract the compiler errors"
+        )
+
+    def test_the_whole_log_is_kept(self):
+        assert "xcodebuild.log" in self._test_step()
+
+    def test_the_log_is_uploaded(self):
+        import yaml
+
+        workflow = yaml.safe_load(
+            (IOS.parent / ".github" / "workflows" / "ios.yml").read_text(
+                encoding="utf-8"
+            )
+        )
+        names = [s.get("name", "") for s in workflow["jobs"]["build"]["steps"]]
+        assert any("build log" in name.lower() for name in names)
+
+    def test_the_failure_still_fails_the_job(self):
+        """Redirecting to a file means the exit status has to be carried
+        by hand. A step that captured the log and then returned 0 would
+        turn every build failure into a green run."""
+        step = self._test_step()
+        assert 'exit "$status"' in step or "exit $status" in step

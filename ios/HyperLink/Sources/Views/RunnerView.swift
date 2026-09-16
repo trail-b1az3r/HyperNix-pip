@@ -321,6 +321,10 @@ private struct LoadModelSheet: View {
         }
     }
 
+    /// @MainActor because it mutates `@State`. `View.body` carries the
+    /// annotation; the rest of the struct does not, so an async helper
+    /// is nonisolated unless it says otherwise.
+    @MainActor
     private func check() async {
         planning = true
         defer { planning = false }

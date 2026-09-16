@@ -97,6 +97,10 @@ struct EditMessageSheet: View {
         }
     }
 
+    /// @MainActor because it mutates `@State`. `View.body` carries the
+    /// annotation; the rest of the struct does not, so an async helper
+    /// is nonisolated unless it says otherwise.
+    @MainActor
     private func save() async {
         saving = true
         defer { saving = false }

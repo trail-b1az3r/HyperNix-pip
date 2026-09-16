@@ -220,6 +220,10 @@ struct MySettingsView: View {
 
     // MARK: - Work
 
+    /// @MainActor because it mutates `@State`. `View.body` carries the
+    /// annotation; the rest of the struct does not, so an async helper
+    /// is nonisolated unless it says otherwise.
+    @MainActor
     private func load() async {
         await state.refreshSettings()
         await state.refreshMemories()
@@ -232,6 +236,10 @@ struct MySettingsView: View {
         backupModel = preferences.backupModel
     }
 
+    /// @MainActor because it mutates `@State`. `View.body` carries the
+    /// annotation; the rest of the struct does not, so an async helper
+    /// is nonisolated unless it says otherwise.
+    @MainActor
     private func save(_ patch: PreferencesPatch) async {
         saving = true
         defer { saving = false }
