@@ -535,6 +535,11 @@ def get_search_index(request: Request):
     return request.app.state.t1_search_index
 
 
+def get_runner(request: Request):
+    """The llama.cpp process this server owns, if any."""
+    return request.app.state.t1_runner
+
+
 def get_memory_store(request: Request):
     """Durable per-owner facts, outside any session."""
     return request.app.state.t1_memory_store

@@ -59,6 +59,7 @@ from . import (
     models,
     modules,
     noodle,
+    runner,
     security,
     servers,
     training,
@@ -98,6 +99,8 @@ ALL_ROUTERS = (
     compact.router,
     # Off unless T1_NOODLE_ENABLED; every route 404s when it is off.
     noodle.router,
+    # Loading, unloading and switching the served model.
+    runner.router,
 )
 
 __all__ = [
@@ -121,6 +124,7 @@ __all__ = [
     "models",
     "modules",
     "noodle",
+    "runner",
     "security",
     "servers",
     "training",

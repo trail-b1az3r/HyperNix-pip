@@ -65,6 +65,7 @@ from hypernix.security.keymaster import Keymaster
 
 from ..hyperlink.files import AttachmentStore
 from ..hyperlink.generation import GenerationRegistry
+from ..hyperlink.managed import ManagedRunner
 from ..hyperlink.memory import MemoryStore
 from ..hyperlink.notify import NotificationStore
 from ..hyperlink.pairing import DeviceRegistry
@@ -453,6 +454,10 @@ def create_app(
     # somewhere to look the running one up.
     app.state.t1_generations = GenerationRegistry()
     app.state.t1_memory_store = MemoryStore(db)
+    # One llama.cpp process, owned by this server. Constructed
+    # unloaded: starting a model at boot would make a restart
+    # take minutes and would pick one nobody asked for.
+    app.state.t1_runner = ManagedRunner(port=cfg.runner_port)
     # T1 v1.0.26.8.1.0
     app.state.t1_auth_history = history
     app.state.t1_backup_store = backups

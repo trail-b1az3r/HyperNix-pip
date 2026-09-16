@@ -1403,6 +1403,38 @@ class DownloadedModelsResponse(BaseModel):
     request_id: str
 
 
+class RunnerLoadRequest(BaseModel):
+    model_id: str
+    #: Layers to put on the GPU. None means work it out from what is
+    #: free; somebody who has tuned their own machine should not have
+    #: their number second-guessed.
+    gpu_layers: int | None = None
+    backend: str = "auto"
+    context_length: int | None = None
+    #: The model's layer count, when the caller knows it. Without one, a
+    #: partial offload has no denominator and the plan is all-or-nothing.
+    total_layers: int | None = None
+
+
+class RunnerStatusResponse(BaseModel):
+    loaded: bool = False
+    model: dict[str, Any] = Field(default_factory=dict)
+    base_url: str = ""
+    backends: list[str] = Field(default_factory=list)
+    #: Whether an unload actually stopped something. Unloading nothing is
+    #: a success, and the caller may still want to know.
+    was_running: bool = False
+    request_id: str
+
+
+class RunnerPlanResponse(BaseModel):
+    model_id: str = ""
+    path: str = ""
+    placement: dict[str, Any] = Field(default_factory=dict)
+    model: dict[str, Any] = Field(default_factory=dict)
+    request_id: str
+
+
 class NoodleRunRequest(BaseModel):
     tool: str
     arguments: dict[str, Any] = Field(default_factory=dict)

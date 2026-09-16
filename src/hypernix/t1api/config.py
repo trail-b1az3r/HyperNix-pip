@@ -192,6 +192,21 @@ class T1APIConfig:
         default_factory=lambda: _float_env("T1_NOODLE_EXECUTE_TIMEOUT", 60.0)
     )
 
+    # --- Managed runner (0.72.5 pt2) --------------------------------------
+    #: The access level that may load, unload and switch the served
+    #: model without being an admin. 0 disables it entirely, which is the
+    #: default: changing what a shared server runs affects everybody on
+    #: it, and that is an opt-in an operator makes deliberately.
+    runner_switch_perm_level: int = field(
+        default_factory=lambda: _int_env("T1_RUNNER_SWITCH_PERM", 0)
+    )
+    #: Port for the llama.cpp server HyperNix owns. Not 8080: that is
+    #: what somebody's own llama-server is most likely already on, and
+    #: colliding with it would make this look broken.
+    runner_port: int = field(
+        default_factory=lambda: _int_env("T1_RUNNER_PORT", 8781)
+    )
+
     # --- Routing ----------------------------------------------------------
     routing_policy_path: str | None = field(
         default_factory=lambda: os.environ.get("T1_ROUTING_POLICY_PATH")
