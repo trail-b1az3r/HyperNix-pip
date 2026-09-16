@@ -67,9 +67,18 @@ on:
         description: "Whether the IPA is signed"
         value: ${{ jobs.build.outputs.signed }}
 
+# Cancel superseded runs on a branch, never on main.
+#
+# `cancel-in-progress: true` everywhere is right for a PR -- a ten
+# minute macOS build of a commit nobody is looking at any more is pure
+# waste. On main it is the opposite: every merge is a distinct commit
+# whose IPA somebody may want, and a busy afternoon of merges means each
+# build is killed by the next one. Runs 30, 31, 33, 34 and 36 were all
+# cancelled that way, so main went a whole day without ever producing a
+# verified IPA -- while the released one was crashing on launch.
 concurrency:
   group: ios-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
   contents: read
@@ -358,25 +367,45 @@ jobs:
         run: |
           set -euo pipefail
           app="build/HyperLink.xcarchive/Products/Applications/HyperLink.app"
+          echo "::group::What is actually in the bundle"
+          ls -la "$app" || { echo "::error::no .app in the archive"; exit 1; }
+          echo "--- anything entitlement-shaped, anywhere in it ---"
+          find "$app" \( -name '*.xcent' -o -name '*.mobileprovision' \
+                         -o -name 'embedded.provisionprofile' \) -print || true
+          echo "::endgroup::"
+
+          # Report which case this is rather than passing silently.
+          #
+          # An unsigned archive may legitimately contain no entitlements
+          # file at all: CODE_SIGNING_ALLOWED=NO skips the step that
+          # writes one. A check that just greps and exits 0 cannot tell
+          # that apart from "checked it and it was clean", and a check
+          # that cannot fail is not coverage.
+          carriers="$(find "$app" \( -name '*.xcent' -o -name '*.mobileprovision' \
+                                      -o -name 'embedded.provisionprofile' \) 2>/dev/null || true)"
+          if [ -z "$carriers" ]; then
+            echo "::notice::this unsigned archive carries no entitlements file" \
+                 "at all, so nothing can demand CarPlay of a sideloader." \
+                 "Whatever re-signs it supplies its own entitlements."
+            exit 0
+          fi
+
           found=""
-          for name in "archived-expanded-entitlements.xcent" "embedded.mobileprovision"; do
-            path="$app/$name"
-            [ -f "$path" ] || continue
-            echo "::group::$name"
+          for path in $carriers; do
+            echo "::group::$(basename "$path")"
             plutil -p "$path" 2>/dev/null || strings "$path" | head -40
             echo "::endgroup::"
             if grep -qa "carplay" "$path"; then
-              found="$found $name"
+              found="$found $(basename "$path")"
             fi
           done
           if [ -n "$found" ]; then
             echo "::error::this unsigned build ships a CarPlay entitlement" \
                  "($found). A sideloader cannot be granted it, so the app" \
-                 "is killed at launch. prepare_project.py must not have" \
-                 "been asked for --carplay."
+                 "is killed at launch."
             exit 1
           fi
-          echo "no restricted entitlements — this build will launch when sideloaded"
+          echo "checked $(echo "$carriers" | wc -l | tr -d ' ') file(s): no CarPlay entitlement"
 
       - name: Package the IPA
         id: package

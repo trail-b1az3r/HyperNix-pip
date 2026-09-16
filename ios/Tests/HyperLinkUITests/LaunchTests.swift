@@ -27,12 +27,18 @@ import XCTest
 
 final class LaunchTests: XCTestCase {
 
+    /// How long a simulator on a loaded CI runner may take to do any of
+    /// this. Generous on purpose: these waits return the moment the
+    /// state is reached, so a large timeout costs nothing when things
+    /// are working and only buys patience when they are not.
+    private let settle: TimeInterval = 30
+
     /// The app starts and stays up.
     func testTheAppLaunches() {
         let app = XCUIApplication()
         app.launch()
-        XCTAssertEqual(
-            app.state, .runningForeground,
+        XCTAssertTrue(
+            app.wait(for: .runningForeground, timeout: settle),
             "the app did not reach the foreground — it crashed during launch"
         )
     }
@@ -45,11 +51,18 @@ final class LaunchTests: XCTestCase {
     /// just after is usually the first thing the app does on its own —
     /// restoring a pairing, reading the keychain, a task kicked off from
     /// an initialiser.
+    ///
+    /// The sleep here is the test rather than a race: the point is to
+    /// let the work `AppState.restore()` starts get somewhere and then
+    /// look. The wait before it is what stops a slow launch being
+    /// mistaken for a death.
     func testTheAppIsStillRunningShortlyAfterLaunch() {
         let app = XCUIApplication()
         app.launch()
-        // Long enough for the work `AppState.restore()` starts to have
-        // got somewhere, short enough not to pad every CI run.
+        XCTAssertTrue(
+            app.wait(for: .runningForeground, timeout: settle),
+            "the app never reached the foreground"
+        )
         Thread.sleep(forTimeInterval: 3)
         XCTAssertEqual(
             app.state, .runningForeground,
@@ -63,15 +76,37 @@ final class LaunchTests: XCTestCase {
     /// `HyperLinkApp` does real work on `scenePhase` changes — it takes
     /// a background grant on the way out and calls `refreshAll()` on the
     /// way in. Neither had ever run anywhere before this target existed.
+    ///
+    /// Every step waits for a state instead of sleeping a fixed time.
+    /// The first version of this test slept two seconds after
+    /// `activate()` and asserted, which is a race, and CI won it: the
+    /// app was found in `.runningBackground` (3) rather than
+    /// `.runningForeground` (4) — alive, and simply not finished coming
+    /// back. A longer sleep would have hidden that rather than fixed it,
+    /// and would have cost every later run the same wait whether it
+    /// needed it or not.
     func testItSurvivesBeingBackgroundedAndResumed() {
         let app = XCUIApplication()
         app.launch()
+        XCTAssertTrue(
+            app.wait(for: .runningForeground, timeout: settle),
+            "the app never reached the foreground"
+        )
+
         XCUIDevice.shared.press(.home)
-        Thread.sleep(forTimeInterval: 2)
-        app.activate()
-        Thread.sleep(forTimeInterval: 2)
-        XCTAssertEqual(
+        // Not asserted: iOS may park a backgrounded app in either
+        // `.runningBackground` or `.runningBackgroundSuspended`, and
+        // which one is not this test's business. Waiting for it to stop
+        // being foreground is enough to know the transition happened.
+        _ = app.wait(for: .runningBackground, timeout: settle)
+        XCTAssertNotEqual(
             app.state, .runningForeground,
+            "pressing Home did not background the app"
+        )
+
+        app.activate()
+        XCTAssertTrue(
+            app.wait(for: .runningForeground, timeout: settle),
             "the app did not come back from the background"
         )
     }
