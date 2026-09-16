@@ -172,10 +172,24 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.hypernix.hyperlink
         CURRENT_PROJECT_VERSION: "1"
-        # CarPlay. The entitlement inside is granted by Apple per app on
-        # request -- see the comment in the file. A build without the
-        # grant compiles and runs; it just never appears in a car.
-        CODE_SIGN_ENTITLEMENTS: HyperLink/HyperLink.entitlements
+        # CarPlay's entitlement is injected here by
+        # ios/scripts/prepare_project.py, and only when the build was
+        # told it has Apple's grant for it.
+        #
+        # It is not a setting that can safely default to on.
+        # `com.apple.developer.carplay-communication` is *restricted*:
+        # it has to appear in the provisioning profile, and Apple grants
+        # it per app on request. Signing with an entitlement the profile
+        # does not carry produces an app that installs and is then
+        # killed at launch by amfid -- EXC_CRASH (SIGKILL), termination
+        # reason CODESIGNING. Not a CarPlay that does not appear: an app
+        # that does not open.
+        #
+        # This app is distributed unsigned and sideloaded (AltStore,
+        # Sideloadly, a free Xcode profile), and none of those can
+        # authorise a restricted entitlement, so off is the right
+        # default for every build that has not said otherwise.
+        # @prepare_project: entitlements
         # From vendor/LocalLlama.xcconfig. Empty until the build
         # script has produced the framework, which compiles
         # LlamaRunner out and leaves LocalInference on EchoRunner.
@@ -205,17 +219,44 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.hypernix.hyperlink.tests
         GENERATE_INFOPLIST_FILE: YES
 
+  # Does the app start at all.
+  #
+  # HyperLinkTests above has no host application, which is the right
+  # shape for what it tests -- parsing, saved servers, markdown -- but
+  # means the bundle loads into a bare test runner and the app never
+  # runs. HyperLinkApp.init() does not execute, no scene is built, and
+  # so nothing reads Info.plist, the scene manifest or the
+  # entitlements. That is how a crash-on-launch shipped with 109 green
+  # tests behind it.
+  #
+  # A UI test target installs the real app and launches it the way the
+  # home screen does, so a launch failure lands in CI on a simulator
+  # rather than on a phone after release.
+  HyperLinkUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: Tests/HyperLinkUITests
+    dependencies:
+      - target: HyperLink
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.hypernix.hyperlink.uitests
+        GENERATE_INFOPLIST_FILE: YES
+
 schemes:
   HyperLink:
     build:
       targets:
         HyperLink: all
         HyperLinkTests: [test]
+        HyperLinkUITests: [test]
     run:
       config: Debug
     test:
       config: Debug
       targets:
         - HyperLinkTests
+        - HyperLinkUITests
     archive:
       config: Release

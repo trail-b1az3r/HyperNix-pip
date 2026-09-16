@@ -108,19 +108,39 @@ class TestCarPlayIsReachable:
         configs = properties["UIApplicationSceneManifest"]["UISceneConfigurations"]
         assert "UIWindowSceneSessionRoleApplication" not in configs
 
-    def test_the_entitlement_file_exists_and_is_referenced(self, project):
-        setting = project["targets"]["HyperLink"]["settings"]["base"]
-        path = setting.get("CODE_SIGN_ENTITLEMENTS")
-        assert path, "no CODE_SIGN_ENTITLEMENTS; CarPlay cannot be granted"
+    ENTITLEMENTS = "HyperLink/HyperLink.entitlements"
+
+    def test_the_entitlement_file_exists_and_can_be_switched_on(self):
+        """It is reachable, but not unconditional.
+
+        This used to read CODE_SIGN_ENTITLEMENTS straight out of
+        project.yml, because the setting was hard-coded there. That is
+        what shipped an unsigned IPA carrying a restricted entitlement,
+        which iOS kills at launch. The setting is injected by
+        prepare_project.py now, so the question here is whether a build
+        that *asks* for CarPlay still gets a real file --
+        test_the_carplay_entitlement_is_not_shipped_by_default in
+        test_ios_llama_link.py covers the other direction.
+        """
+        import yaml
+        from test_ios_llama_link import _prepare
+
+        spec = yaml.safe_load(
+            _prepare().render(
+                (IOS / "project.yml").read_text(encoding="utf-8"),
+                with_engine=False, with_carplay=True,
+            )
+        )
+        path = spec["targets"]["HyperLink"]["settings"]["base"].get(
+            "CODE_SIGN_ENTITLEMENTS"
+        )
+        assert path, "a build asking for CarPlay gets no entitlements file"
         assert (IOS / path).is_file(), f"{path} is referenced and missing"
 
-    def test_it_asks_for_the_communication_category(self, project):
+    def test_it_asks_for_the_communication_category(self):
         """The category has to match what the app does. Asking for the
         wrong one is the usual reason Apple refuses the request."""
-        path = project["targets"]["HyperLink"]["settings"]["base"][
-            "CODE_SIGN_ENTITLEMENTS"
-        ]
-        entitlements = plistlib.loads((IOS / path).read_bytes())
+        entitlements = plistlib.loads((IOS / self.ENTITLEMENTS).read_bytes())
         assert entitlements.get("com.apple.developer.carplay-communication") is True
 
     def test_the_carplay_code_is_conditionally_compiled(self):
@@ -1068,6 +1088,83 @@ class TestSwiftShapesThatDoNotCompile:
                     offenders.append(f"{path.name}:{number}")
         assert not offenders, (
             "unbalanced quotes in a Swift string literal: " + ", ".join(offenders)
+        )
+
+
+class TestSomethingActuallyLaunchesTheApp:
+    """A test suite that never starts the app cannot tell you it crashes
+    on launch, and this one did not.
+
+    `HyperLinkTests` is a `bundle.unit-test` with no host application.
+    For what it covers -- parsing, saved servers, markdown, address
+    advice -- that is the right shape: no app needed, and a fast bundle.
+    But it means the tests load into a bare runner. `HyperLinkApp.init()`
+    never executes, `AppState()` is never constructed, no scene is ever
+    built, and nothing reads Info.plist, the scene manifest or the
+    entitlements. A hundred and nine green tests said nothing at all
+    about whether the app opens, and a crash-on-launch shipped behind
+    them.
+
+    A UI-testing target installs the real bundle and launches it. These
+    checks are about that target continuing to exist and continuing to
+    be run -- a UI test that is built but not in the scheme's test
+    action is a file nobody executes.
+    """
+
+    @staticmethod
+    def _spec() -> dict:
+        import yaml
+
+        return yaml.safe_load((IOS / "project.yml").read_text(encoding="utf-8"))
+
+    def test_there_is_a_ui_testing_target(self):
+        targets = self._spec()["targets"]
+        uitests = [
+            name for name, body in targets.items()
+            if body.get("type") == "bundle.ui-testing"
+        ]
+        assert uitests, (
+            "no bundle.ui-testing target: nothing in this project starts "
+            "the app, so a crash on launch cannot fail the build"
+        )
+
+    def test_the_ui_target_hosts_the_real_app(self):
+        """A UI test target with no dependency on the app has no app to
+        launch, and XcodeGen will not set TEST_TARGET_NAME for it."""
+        targets = self._spec()["targets"]
+        for name, body in targets.items():
+            if body.get("type") != "bundle.ui-testing":
+                continue
+            deps = {d.get("target") for d in body.get("dependencies", [])}
+            assert "HyperLink" in deps, (
+                f"{name} does not depend on HyperLink, so it launches nothing"
+            )
+
+    def test_the_ui_target_is_in_the_scheme_test_action(self):
+        """Built but not run is the same as absent, and quieter."""
+        spec = self._spec()
+        targets = spec["targets"]
+        uitests = {
+            name for name, body in targets.items()
+            if body.get("type") == "bundle.ui-testing"
+        }
+        scheme = spec["schemes"]["HyperLink"]
+        running = set(scheme["test"]["targets"])
+        missing = uitests - running
+        assert not missing, (
+            "these UI test targets are never run by `xcodebuild test`: "
+            + ", ".join(sorted(missing))
+        )
+
+    def test_the_launch_test_asserts_the_app_is_still_up(self):
+        """`launch()` alone can pass for an app that dies immediately
+        after; the state assertion is what catches that."""
+        source = (IOS / "Tests" / "HyperLinkUITests" / "LaunchTests.swift").read_text(
+            encoding="utf-8"
+        )
+        assert "XCUIApplication()" in source
+        assert ".runningForeground" in source, (
+            "the launch test never checks the app is actually running"
         )
 
 
