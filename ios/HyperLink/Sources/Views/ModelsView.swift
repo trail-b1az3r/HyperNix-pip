@@ -56,6 +56,42 @@ struct ModelsView: View {
                 }
             }
 
+            // When there is nothing at all, every source's report is the
+            // diagnosis -- including the ones that worked. "Models
+            // folder: /root/.hypernix/models is empty" and "Models
+            // folder: 21 entries but no .gguf files in any of them" are
+            // different problems with different fixes, and both of them
+            // used to render as the same blank screen.
+            if state.catalogue.models.isEmpty && !state.catalogue.sources.isEmpty {
+                Section {
+                    ForEach(state.catalogue.sources) { source in
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack {
+                                Text(source.label)
+                                Spacer()
+                                Text(source.available
+                                     ? "\(source.count)" : "unreachable")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            if !source.detail.isEmpty {
+                                Text(source.detail)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                } header: {
+                    Text("What each source reported")
+                } footer: {
+                    Text(
+                        "If a path here is not the one you expect, the server "
+                        + "is running as a different user than the one whose "
+                        + "home directory you filled."
+                    )
+                }
+            }
+
             if !state.catalogue.unavailable.isEmpty {
                 Section {
                     ForEach(state.catalogue.unavailable) { source in
@@ -96,6 +132,17 @@ struct ModelsView: View {
 
     /// Why the list is empty, in the terms of whichever thing is
     /// actually wrong.
+    ///
+    /// This used to end in a fixed sentence -- "no models registered,
+    /// none in ~/.hypernix/models, nothing in LM Studio" -- whenever
+    /// every source reported itself *available*. A source that looked in
+    /// the right place and found nothing is available: it worked. So a
+    /// server with a full models folder that the scan never saw, because
+    /// it was running as a different user and looking at a different
+    /// home directory, produced that sentence and no way to tell.
+    ///
+    /// The server already says where it looked and what was there. The
+    /// list below shows it, and this is only the lead-in.
     private var emptyExplanation: String {
         let broken = state.catalogue.unavailable
         if !broken.isEmpty {
@@ -103,9 +150,8 @@ struct ModelsView: View {
             return "\(named) could not be reached, so this list is incomplete. "
                 + "Pull to refresh once it is back."
         }
-        return "This server has no models registered, none in ~/.hypernix/models, "
-            + "and nothing loaded in LM Studio. Add one below, or drop a GGUF in "
-            + "the models folder and run `hypernix-t1 index`."
+        return "Every source answered and none of them had anything. "
+            + "What each one looked at is below."
     }
 
     private func sectionTitle(_ source: String) -> String {

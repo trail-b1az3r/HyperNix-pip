@@ -279,3 +279,67 @@ class TestTheEndpoint:
         is the one the app can actually use."""
         client = self.client(models_dir)
         assert client.get("/hyperlink/models").status_code == 200
+
+
+class TestAnEmptyFolderSaysWhyItIsEmpty:
+    """"No models" with no path on it is a screen nobody can act on.
+
+    A directory that exists and contains no GGUFs is a source that
+    *worked*: it looked where it was told and found nothing, so it
+    reports available=True. That is correct, and it meant the app's
+    empty state fell through to a fixed sentence -- "no models
+    registered, none in ~/.hypernix/models, nothing in LM Studio" --
+    which is exactly what a server showed while twenty-one model
+    directories sat in the home folder of a different user than the one
+    running it.
+
+    The count of what is actually in the directory separates the cases
+    that need different fixes: an empty folder, a folder full of Hugging
+    Face repos with no .gguf in them, and a folder that is not the one
+    you filled.
+    """
+
+    def test_an_empty_directory_says_it_is_empty(self, tmp_path):
+        from hypernix.hyperlink.catalogue import local_models
+
+        models, report = local_models(tmp_path)
+        assert models == []
+        assert report.available is True
+        assert report.count == 0
+        assert str(tmp_path) in report.detail
+        assert "empty" in report.detail
+
+    def test_entries_without_gguf_are_counted_and_named(self, tmp_path):
+        """The case from the report: full of model directories, no GGUF."""
+        from hypernix.hyperlink.catalogue import local_models
+
+        for name in ("unsloth", "jinaai", "LiquidAI"):
+            (tmp_path / name).mkdir()
+        (tmp_path / "unsloth" / "model.safetensors").write_bytes(b"x")
+
+        models, report = local_models(tmp_path)
+        assert models == []
+        assert report.available is True
+        assert "3 entries" in report.detail, report.detail
+        assert ".gguf" in report.detail
+        assert str(tmp_path) in report.detail
+
+    def test_one_entry_is_not_called_entries(self, tmp_path):
+        from hypernix.hyperlink.catalogue import local_models
+
+        (tmp_path / "only").mkdir()
+        _, report = local_models(tmp_path)
+        assert "1 entry but" in report.detail, report.detail
+
+    def test_a_folder_with_models_still_reports_its_path(self, tmp_path):
+        """The non-empty case keeps the old, shorter detail."""
+        from hypernix.hyperlink.catalogue import local_models
+
+        nested = tmp_path / "unsloth" / "Qwen"
+        nested.mkdir(parents=True)
+        (nested / "model.gguf").write_bytes(b"not really a gguf")
+
+        models, report = local_models(tmp_path)
+        assert len(models) == 1, "a nested .gguf should still be found"
+        assert report.count == 1
+        assert report.detail == str(tmp_path)
