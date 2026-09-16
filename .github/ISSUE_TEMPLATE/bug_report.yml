@@ -1,0 +1,114 @@
+name: Bug report
+description: Something in HyperNix does not do what it says it does.
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing. The single most useful thing you can give us is a
+        command we can run that fails the same way on our machine.
+
+        **Before you file:** run `hypernix doctor` (or `hnx doctor`) and paste
+        the output into the Environment box below — it answers most of the
+        questions we would otherwise have to ask you one at a time.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What did you run, and what did it do instead of what you expected?
+      placeholder: |
+        I ran `hyprslug model.gguf out.gguf --recipe IQ0.5_XXXL` and it exited 0,
+        but the output file is the same size as the input.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected instead
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Exact commands to reproduce
+      description: >
+        Paste the commands, not a description of them. If a model file is
+        involved, say which one and where it came from — "a 7B" is not
+        reproducible, `unsloth/Llama-3.2-1B-Instruct-GGUF Q8_0` is.
+      render: shell
+      placeholder: |
+        pip install hypernix==0.72.5
+        hypernix download unsloth/Llama-3.2-1B-Instruct-GGUF
+        hyprslug ~/.cache/hypernix/Llama-3.2-1B-Q8_0.gguf out.gguf --recipe IQ0.5_XXXL
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of HyperNix
+      description: Best guess is fine.
+      multiple: true
+      options:
+        - "quant (hyprslug / steamroller / dflash / gguf)"
+        - "training (brewer / pressure_cooker / instant_pot)"
+        - "monitoring (tvtop / tvtoppro / cctvtop)"
+        - "interfaces (hyped / hyped-pro / noodle / scriptgen)"
+        - "hyperlink (iOS / CarPlay / pairing / sync)"
+        - "t1api (server, auth, keys, billing)"
+        - "waiter (T1 client)"
+        - "security (gatekeeper / keymaster)"
+        - "install / packaging / CLI"
+        - "docs / README"
+        - "not sure"
+    validations:
+      required: true
+
+  - type: textarea
+    id: traceback
+    attributes:
+      label: Full traceback or error output
+      description: >
+        The whole thing, not the last line. If it is long, that is fine —
+        GitHub will fold it.
+      render: text
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: "Paste `hypernix doctor` output, or fill this in by hand."
+      render: text
+      placeholder: |
+        hypernix version:
+        Python version:
+        OS / arch:
+        torch version (if relevant):
+        GPU / VRAM (if relevant):
+        Installed from: pip / git / install-t1.sh
+    validations:
+      required: true
+
+  - type: dropdown
+    id: regression
+    attributes:
+      label: Did this used to work?
+      options:
+        - "No — first time I tried it"
+        - "Yes — it worked on an earlier version (say which below)"
+        - "Don't know"
+    validations:
+      required: true
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: >
+        Workarounds you found, related issues, a log file, the fact that it
+        only happens on Wayland. Anything that narrowed it down for you will
+        narrow it down for us.

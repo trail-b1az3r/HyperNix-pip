@@ -5,6 +5,10 @@
 //  output inside ``` fences. Rendering that as body text — proportional,
 //  wrapped, with no way to copy just the code — is the difference
 //  between an app you can work in and one you read on.
+//
+//  Everything *between* the fences is markdown, and is rendered as such
+//  by `MarkdownText`. It used to be plain `Text`, so a numbered list
+//  arrived as one wrapped paragraph with the numbers buried in it.
 
 import SwiftUI
 import UIKit
@@ -13,15 +17,20 @@ struct MessageBubble: View {
     let message: ChatMessage
     var isStreaming: Bool = false
 
+    @Environment(\.hyperLinkTheme) private var theme
+
     var body: some View {
         VStack(alignment: message.isUser ? .trailing : .leading, spacing: 4) {
             VStack(alignment: .leading, spacing: 8) {
                 ForEach(Array(MessageSegment.parse(message.content).enumerated()), id: \.offset) { _, segment in
                     switch segment {
                     case let .text(body):
-                        Text(body)
-                            .textSelection(.enabled)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                        // Markdown, not plain text: headings, lists and
+                        // **bold** are how every instruction-tuned model
+                        // writes, and rendering them literally left the
+                        // structure the model produced as the hardest
+                        // part of the reply to read. See `Markdown.swift`.
+                        MarkdownText(source: body)
                     case let .code(language, body):
                         CodeBlockView(language: language, code: body)
                     }
@@ -37,17 +46,25 @@ struct MessageBubble: View {
                 if isStreaming {
                     // A caret while the tokens arrive: cheaper to read
                     // than a spinner, and it disappears the moment the
-                    // real message replaces this bubble.
-                    Text("▌")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .accessibilityHidden(true)
+                    // real message replaces this bubble. It pulses
+                    // rather than spins, because a spinner says
+                    // "waiting" and this is the opposite — text is
+                    // arriving, and the caret is where the next
+                    // character will be.
+                    ThinkingCaret()
                 }
             }
             .padding(12)
+            // The theme's two bubble colours at full strength, rather
+            // than one accent at 18% and the system grey at 12%. Those
+            // two were close enough in several appearances that the only
+            // thing separating the speakers was which side they were on.
             .background(
-                message.isUser ? Color.accentColor.opacity(0.18) : Color.secondary.opacity(0.12),
+                message.isUser ? theme.userBubble : theme.assistantBubble,
                 in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+            )
+            .foregroundStyle(
+                message.isUser ? theme.userBubbleText : theme.assistantBubbleText
             )
             .frame(maxWidth: .infinity, alignment: message.isUser ? .trailing : .leading)
 

@@ -43,12 +43,28 @@ def can_pack(shape: tuple[int, ...], *, block: int = BLOCK_SIZE, name: str = "bl
     )
 
 
-class TestTheReportedTensor:
-    """`blk.0.ssm_conv1d.weight`, four elements per row."""
+#: A ``[4, N]`` tensor under a name the never-quantise list does not
+#: cover.
+#:
+#: ``blk.0.ssm_conv1d.weight`` was the shape *and* the name in the
+#: original report, and it is now refused one check earlier — it is on
+#: the list of tensors no tier may touch, because a state-space
+#: convolution's output is carried across every later token. That
+#: protection is right and it is tested next door, in
+#: ``test_hyprslug_protected_tensors.py``. It also means the name can no
+#: longer reach the row-length check, so the shape is tested here under
+#: a name that has nothing else wrong with it. Both guards are real and
+#: they catch different files: an SSM convolution is protected whatever
+#: its shape, and a ``[4, N]`` tensor is unpackable whatever its name.
+NARROW_ROW = "blk.0.attn_q.weight"
+
+
+class TestTheReportedShape:
+    """Four elements per row, and a total that divides cleanly."""
 
     @pytest.mark.parametrize("rows", [64, 1024, 5120])
     def test_it_is_not_packed(self, rows):
-        ok, reason = can_pack((4, rows), name="blk.0.ssm_conv1d.weight")
+        ok, reason = can_pack((4, rows), name=NARROW_ROW)
         assert not ok
         assert "per row" in reason
 
@@ -64,9 +80,16 @@ class TestTheReportedTensor:
     def test_the_reason_names_the_real_constraint(self):
         """"20480 elements do not divide into 256" was both wrong and
         confusing, because 20480 does divide into 256."""
-        _, reason = can_pack((4, 5120), name="blk.0.ssm_conv1d.weight")
+        _, reason = can_pack((4, 5120), name=NARROW_ROW)
         assert "4 elements per row" in reason
         assert "20480" not in reason
+
+    def test_the_tensor_from_the_report_is_still_refused(self):
+        """By name now rather than by shape, and at every shape."""
+        for shape in ((4, 5120), (256, 5120)):
+            ok, reason = can_pack(shape, name="blk.0.ssm_conv1d.weight")
+            assert not ok
+            assert "state-space" in reason
 
 
 class TestWhatIsAndIsNotPackable:
@@ -190,19 +213,50 @@ class TestTheFileActuallyLoads:
             )
 
 
-class TestDflash2HasTheSameGuard:
-    """It picked tensors the same wrong way, so a draft derived from an
-    SSM architecture would have failed identically."""
+class TestTheDraftBuildersDoNotKeepTheirOwnCopy:
+    """They each had one, written the same wrong way, so a draft derived
+    from an SSM architecture failed identically.
 
-    def test_it_checks_the_row_not_the_total(self):
-        source = Path("src/hypernix/quant/dflash2.py").read_text(encoding="utf-8")
+    The fix was not a third correct copy. Both now plan through
+    `hyprslug.plan_tensors`, so there is one place the rule lives and
+    `_should_quantize` above is the test of it. What is checked here is
+    that they still delegate — a builder that grew its own selection back
+    would pass every other test in this file while being wrong again.
+    """
+
+    @pytest.mark.parametrize(
+        "module", ["dflash1.py", "dflash2.py"]
+    )
+    def test_it_has_no_selection_rule_of_its_own(self, module):
+        source = (Path("src/hypernix/quant") / module).read_text(encoding="utf-8")
         code = "\n".join(
             line for line in source.splitlines() if not line.strip().startswith("#")
         )
-        assert "tensor.elements % block_size" not in code, (
-            "dflash2 is back to counting elements instead of the row length"
+        assert "% block_size" not in code, (
+            f"{module} is choosing tensors for itself again"
         )
-        assert "int(tensor.shape[0]) % block_size" in code
+
+    @pytest.mark.parametrize("module", ["dflash1.py", "dflash2.py"])
+    def test_it_plans_through_hyprslug(self, module):
+        source = (Path("src/hypernix/quant") / module).read_text(encoding="utf-8")
+        assert "draft_encoding(" in source
+
+    def test_draft_encoding_is_hyprslug_s_answer(self, tmp_path):
+        """Not just the same shape of answer: the same answer, for the
+        same model, tensor for tensor."""
+        from hypernix.quant.dflash2 import draft_encoding
+        from hypernix.quant.hyprslug import plan_tensors, target_spec
+
+        path = TestTheFileActuallyLoads._model(
+            tmp_path / "ssm.gguf", {"blk.0.ssm_conv1d.weight": (4, 5120)}
+        )
+        model = GGUFFile.read(path)
+        spec, planned = draft_encoding(model, "Q4_0")
+        direct = plan_tensors(model, target_spec("Q4_0"))
+        assert spec.name == "Q4_0"
+        assert {p.name: (p.ggml_type, p.encoding) for p in direct} == {
+            name: (p.ggml_type, p.encoding) for name, p in planned.items()
+        }
 
 
 class TestTheWriterRefusesEvenIfTheCheckRegresses:

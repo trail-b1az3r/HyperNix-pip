@@ -76,12 +76,36 @@ anything here will be, and a sub-bit tier goes to HyperNix's own runtime.
 
 ## What it will and will not touch
 
-Normalisation weights, biases and anything one-dimensional are copied at
-source precision — all of the damage, none of the size. Token embeddings
-and the output head are configurable, because which dominates a file
-depends on the model.
+Two different arguments, and it is worth keeping them apart.
 
-A tensor whose element count does not divide into 256 is copied and
+**Not worth the bits.** Normalisation weights, biases and anything
+one-dimensional are copied at source precision — all of the damage, none
+of the size. Token embeddings and the output head are configurable,
+because which dominates a file depends on the model.
+
+**Not a weight in the sense a quantiser assumes.** A handful of small
+2-D tensors are never packed at any tier, because their values are not
+summed over a long reduction — the averaging that makes a 4-bit dot
+product survivable never happens to them.
+
+The clearest case, and the one that sent this list looking, is the
+mixture-of-experts router. `ffn_gate_inp` is `[n_embd, n_expert]`: a few
+hundred kilobytes in a model of tens of gigabytes, and its output is an
+**argmax**. Quantising it moved the router's logits by a few percent,
+which is nothing right up until two experts are within a few percent of
+each other — and then it is a *different expert*, one never trained for
+this token. The model does not degrade gracefully when that happens; it
+stops being language. That was what "hyprslug models fall apart" turned
+out to be: not the attention weights, which were fine, but eight numbers
+per token deciding the wrong thing.
+
+The same reasoning covers Mamba's `ssm_conv1d`, RWKV's time-mixing
+constants (`time_mix_first`, `time_mix_w1`, the decay pair — but *not*
+`time_mix_key`/`time_mix_value`, which are full-sized projections and
+quantise like anything else), and the positional and token-type tables.
+llama.cpp refuses exactly this list, for exactly this reason.
+
+A tensor whose row length does not divide into 256 is copied and
 **reported**. A run that quietly left half a model at F16 while reporting
 `IQ0.5` would be the same failure this module exists to fix.
 
@@ -90,8 +114,27 @@ IQ0.5_XXXL  (quad_code_xxxl)
   4821.3 MB -> 512.7 MB (9.4x)
   226/291 tensors packed, 96.8% of weights
   65 copied at source precision:
-    blk.0.attn_norm.weight: 1-D (norm or bias): all of the damage, none of the size
+    blk.0.attn_norm.weight: a norm: all of the damage, none of the size
+    blk.0.ffn_gate_inp.weight: a mixture-of-experts router: its output is
+      an argmax, and a quantised argmax picks a different expert
 ```
+
+## The file says what it is
+
+`general.file_type` used to be copied from the source and never
+rewritten, so a `Q4_K_M` made from an F16 announced itself as **F16** —
+to llama.cpp's load banner, to a hub listing, and to `hypernix-t1
+index`. The tensor table was right and the field everybody actually
+reads was wrong, which is the more expensive way round: nobody re-reads
+a tensor table to check a field that is right there.
+
+Every run now writes the target's real `general.file_type` and
+`general.quantization_version`, as u32 like every other writer makes
+them. The sub-bit tiers get numbers of their own from
+`HNX_FILE_TYPE_BASE` rather than borrowing an upstream one: a half-bit
+file labelled `Q2_K` would be claiming four times the precision it has,
+and an unrecognised number is the correct thing to say about a file
+stock llama.cpp cannot load anyway.
 
 ## `-hnx` means never
 

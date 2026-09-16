@@ -1,9 +1,9 @@
 """hypernix.system — Environment, dependencies, hardware and housekeeping.
 
-Modules: ``compactor``, ``config``, ``deps``, ``dishwasher``,
-``doctor``, ``ethanol``, ``freezer``, ``net``, ``old_fridge``,
-``outage``, ``protect``, ``torch_compat``, ``ups``, ``utils``,
-``vram``.
+Modules: ``blanking``, ``compactor``, ``config``, ``deps``,
+``dishwasher``, ``doctor``, ``ethanol``, ``freezer``, ``net``,
+``old_fridge``, ``outage``, ``protect``, ``torch_compat``, ``ups``,
+``utils``, ``vram``.
 
 Every module here is also reachable under its historical flat name
 (``hypernix.compactor``); see the alias finder in ``hypernix/__init__.py``.
@@ -16,6 +16,7 @@ import importlib
 from typing import Any
 
 __all__ = [
+    "blanking",
     "compactor",
     "config",
     "deps",

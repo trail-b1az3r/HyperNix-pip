@@ -262,6 +262,54 @@ class Spinner:
 # Animated banner / intro print
 # ---------------------------------------------------------------------------
 
+#: Characters the decode effect scrambles through. Deliberately narrow
+#: and monospace-safe: a set with wide glyphs in it makes the line change
+#: width between frames, which reads as jitter rather than as decoding.
+_DECODE_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789#$%&@*+=<>/\\|"
+
+
+def decode_frames(
+    text: str, *, steps: int = 18, seed: int | None = None
+) -> list[str]:
+    """The frames of a ``decode`` animation, as plain strings.
+
+    Separated from the printing so it can be tested — an animation that
+    only exists inside a ``time.sleep`` loop is one nobody ever checks,
+    and the property that matters (the last frame is the text, exactly)
+    is trivial to assert and easy to get wrong.
+
+    Characters resolve in a *random* order rather than left to right.
+    That is the whole difference from ``glitch``: a left-to-right reveal
+    reads as typing, and the thing being imitated here reads as
+    decryption because the plaintext appears out of order.
+
+    Spaces never scramble. A title whose word boundaries move around is
+    one the eye cannot lock onto, so the shape of the text is visible
+    from the first frame and only the letters resolve.
+    """
+    import random
+
+    rng = random.Random(seed)
+    positions = [i for i, ch in enumerate(text) if not ch.isspace()]
+    rng.shuffle(positions)
+    steps = max(1, int(steps))
+
+    frames: list[str] = []
+    for step in range(steps):
+        # Ceil, so the last frame before the final one has resolved
+        # everything but at most one character rather than jumping.
+        resolved = set(positions[: (len(positions) * (step + 1) + steps - 1) // steps])
+        frames.append("".join(
+            ch if (index in resolved or ch.isspace())
+            else rng.choice(_DECODE_ALPHABET)
+            for index, ch in enumerate(text)
+        ))
+    # The contract: whatever the arithmetic above did, the animation ends
+    # showing exactly what was asked for.
+    frames[-1] = text
+    return frames
+
+
 def anime_print(
     text: str = "HyperNix",
     *,
@@ -274,6 +322,8 @@ def anime_print(
     Styles:
       ``banner``  — slide in letter by letter then flash
       ``glitch``  — glitch effect (randomised chars) then settle
+      ``decode``  — scrambled text resolving in random order, as if
+                    decrypted. See :func:`_decode_frames`.
       ``typewriter`` — typewriter character reveal
       ``fade``    — fade in using block characters
     """
@@ -311,6 +361,25 @@ def anime_print(
                 sys.stdout.write(f"\r{_BOLD}\x1b[95m{glitched}{_RESET}   ")
                 sys.stdout.flush()
                 time.sleep(delay * 1.5)
+            sys.stdout.write(f"\r{_BOLD}{_CYAN}{text}{_RESET}   \n")
+            sys.stdout.flush()
+        finally:
+            sys.stdout.write(_SHOW)
+            sys.stdout.flush()
+
+    elif style == "decode":
+        sys.stdout.write(_HIDE)
+        sys.stdout.flush()
+        try:
+            frames = decode_frames(text)
+            for index, frame in enumerate(frames):
+                # Unresolved characters stay dim and the resolved ones
+                # brighten, so the eye follows the plaintext appearing
+                # rather than the noise moving.
+                shade = _CYAN if index == len(frames) - 1 else "\x1b[96;2m"
+                sys.stdout.write(f"\r{_BOLD}{shade}{frame}{_RESET}   ")
+                sys.stdout.flush()
+                time.sleep(delay)
             sys.stdout.write(f"\r{_BOLD}{_CYAN}{text}{_RESET}   \n")
             sys.stdout.flush()
         finally:

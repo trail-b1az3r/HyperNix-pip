@@ -423,6 +423,7 @@ const COMMANDS = [
     { name: "/retry", desc: "Regenerate the last agent reply" },
     { name: "/key", desc: "Set/view a cloud API key: /key <vendor> [api-key]" },
     { name: "/t1api", desc: "HyperNix T1 API server: /t1api [status | url <url>]" },
+    { name: "/noodle", desc: "Run an autonomous agent swarm: /noodle <task>, or /noodle providers" },
     { name: "/version", desc: "Show the installed version and the latest public release" },
     { name: "/settings", desc: "View/change max input, output, and thinking tokens" },
     { name: "/tools", desc: "Toggle file create/edit/read/search tools on or off" },
@@ -473,6 +474,11 @@ let thinkingDisplay = THINKING_DISPLAY_MODES.includes(cfg.thinkingDisplay || "")
 // supports tool calling; hypernix.old_oven (the plain safetensors path)
 // has no tool-calling support to enable regardless of this setting.
 let toolsEnabled = cfg.toolsEnabled !== undefined ? cfg.toolsEnabled : true;
+// The Noodle swarm currently being polled, so `/noodle stop` with no
+// argument has something to aim at. Not persisted: a session id refers
+// to a thread inside the bridge process, and a stale one from last time
+// would address nothing.
+let noodleSession = null;
 const startTime = Date.now();
 // Models already confirmed present on disk this session, so we don't
 // re-check/re-download on every turn.
@@ -1145,6 +1151,139 @@ async function handleSlashCommand(cmdStr) {
             }
             out.push(dim("\n  Select it for chat with /model t1-routed \u2014 the server picks the model."));
             log(out.join(NL));
+            break;
+        }
+        // 0.72.6: Noodle. It has called itself "the autonomous executor
+        // inside Hyped Pro" since it shipped and was not reachable from here
+        // at all — running a swarm meant leaving this TUI and starting a
+        // different program in another terminal.
+        //
+        // A run is a session, not a call. `noodle_start` returns at once and
+        // this polls for events, so the swarm's progress lands in the
+        // scrollback live instead of the screen freezing for five minutes
+        // and then printing everything.
+        case "/noodle": {
+            const [sub, ...rest] = args;
+            if (sub === "providers" || sub === "models") {
+                const r = await bridge.call('noodle_providers', {});
+                if (!r.ok) {
+                    elog(r.code || 'HPT-NOODLE-001', r.error || 'could not list providers');
+                    break;
+                }
+                const out = [c256(96, "\n  Noodle providers:")];
+                (r.data.providers || []).forEach((p) => {
+                    const mark = p.ready ? c256(82, "✓") : dim("✗");
+                    const model = p.default_model ? dim(` ${p.default_model}`) : "";
+                    const why = p.reason ? dim(`  ${p.reason}`) : "";
+                    out.push(`  ${mark} ${c256(33, String(p.provider).padEnd(10))}${model}${why}`);
+                });
+                if ((r.data.adopted_keys || []).length) {
+                    out.push(dim(`\n  Using saved keys for: ${r.data.adopted_keys.join(", ")}`));
+                }
+                if (!r.data.any_ready) {
+                    out.push(c256(220, "\n  Nothing is usable yet. Set a key with /key <vendor> <key>,"));
+                    out.push(c256(220, "  or start Ollama for a local model."));
+                }
+                log(out.join(NL));
+                break;
+            }
+            if (sub === "sessions" || sub === "ls") {
+                const r = await bridge.call('noodle_sessions', {});
+                if (!r.ok) {
+                    elog(r.code || 'HPT-NOODLE-001', r.error || 'could not list sessions');
+                    break;
+                }
+                const list = r.data.sessions || [];
+                if (!list.length) {
+                    log(dim("  No Noodle sessions in this hyped-pro session yet."));
+                    break;
+                }
+                const out = [c256(96, "\n  Noodle sessions:")];
+                list.forEach((s) => {
+                    const state = s.running ? c256(220, "running") : (s.error ? c256(196, "failed") : c256(82, "done"));
+                    out.push(`  ${c256(33, s.session_id)} ${state} ${dim(`${s.elapsed}s`)}  ${String(s.prompt).slice(0, 48)}`);
+                });
+                log(out.join(NL));
+                break;
+            }
+            if (sub === "stop") {
+                const target = rest[0] || noodleSession;
+                if (!target) {
+                    log(dim("  Nothing to stop. /noodle sessions lists them."));
+                    break;
+                }
+                const r = await bridge.call('noodle_stop', { session: target });
+                if (!r.ok) {
+                    elog(r.code || 'HPT-NOODLE-001', r.error || 'could not stop it');
+                    break;
+                }
+                log(c256(220, `  Asked ${target} to stop.`));
+                // Said plainly because a "stop" that does not stop things is
+                // worth knowing about: every provider client is blocking HTTP in
+                // a thread pool, and a request already on the wire is paid for.
+                if (!r.data.swarm_notified) {
+                    log(dim("  Turns already in flight will finish — they are paid for either way."));
+                }
+                break;
+            }
+            const task = (sub ? [sub, ...rest] : []).join(" ").trim();
+            if (!task) {
+                log(c256(96, "\n  Usage:"));
+                log("  /noodle <task>            run an agent swarm on it");
+                log("  /noodle providers         which models it could use");
+                log("  /noodle sessions          past and running runs");
+                log("  /noodle stop [id]         ask a run to stop");
+                log(dim("\n  Agents get file tools rooted at ./.noodle — nothing outside it,"));
+                log(dim("  and no shell execution unless HYPED_NOODLE_EXEC=1 is set."));
+                break;
+            }
+            // Off by default and deliberately not a flag on the command. A
+            // chat TUI is a place people paste prompts without reading them
+            // closely, and "run whatever shell commands you like" should take
+            // more than a typo to switch on.
+            const allowExec = process.env.HYPED_NOODLE_EXEC === "1";
+            log(c256(96, `\n  Noodle: ${task}`));
+            if (allowExec)
+                log(c256(220, "  Shell execution is ON (HYPED_NOODLE_EXEC=1)."));
+            const started = await bridge.call('noodle_start', {
+                prompt: task,
+                allow_execute: allowExec,
+            });
+            if (!started.ok) {
+                elog(started.code || 'HPT-NOODLE-001', started.error || 'could not start the swarm');
+                log(dim("  /noodle providers shows what is usable here."));
+                break;
+            }
+            noodleSession = started.data.session_id;
+            log(dim(`  session ${noodleSession} · roster ${(started.data.roster || []).join(", ")} · root ${started.data.root}`));
+            // Long-poll until it finishes. The bridge answers a poll as soon
+            // as there is anything to say, so this is a live feed rather than
+            // a spin.
+            let running = true;
+            while (running) {
+                const tick = await bridge.call('noodle_poll', { session: noodleSession, timeout: 2.0 });
+                if (!tick.ok) {
+                    elog(tick.code || 'HPT-NOODLE-001', tick.error || 'poll failed');
+                    break;
+                }
+                (tick.data.events || []).forEach((ev) => {
+                    const kind = String(ev.kind || ev.type || "event");
+                    const detail = String(ev.message || ev.text || ev.tool || ev.task_id || "");
+                    log(`  ${dim(kind.padEnd(16))} ${detail.slice(0, 96)}`);
+                });
+                running = Boolean(tick.data.running);
+                if (!running) {
+                    if (tick.data.error) {
+                        log(c256(196, `  Swarm failed: ${tick.data.error}`));
+                    }
+                    else if (tick.data.report) {
+                        const rep = tick.data.report;
+                        const ok = rep.ok ? c256(82, "all tasks succeeded") : c256(220, `${(rep.failed || []).length} task(s) failed`);
+                        log(`  ${ok} ${dim(`in ${tick.data.elapsed}s`)}`);
+                    }
+                }
+            }
+            noodleSession = null;
             break;
         }
         case "/settings": {

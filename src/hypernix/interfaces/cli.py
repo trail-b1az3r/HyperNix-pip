@@ -113,6 +113,87 @@ _SUBCOMMANDS = {
 }
 
 
+#: Spellings that are not subcommands but are obviously meant as one.
+#:
+#: Separate from difflib's fuzzy matching because these are not typos --
+#: they are the other correct spelling, or the name of the tool rather
+#: than the name of the subcommand. "quantise" is British English and
+#: this package's own docstrings use it throughout; "tvtoppro" is a
+#: console script people reasonably expect to work as a subcommand too.
+_COMMAND_ALIASES: dict[str, str] = {
+    "quantise": "quantize",
+    "quant": "quantize",
+    "q": "quantize",
+    "dl": "download",
+    "get": "download",
+    "pull": "download",
+    "conv": "convert",
+    "gguf": "convert",
+    "ls": "info",
+    "list": "info",
+    "version": "--version",
+    "help": "--help",
+    "tvtoppro": "tvtop",
+    "tvtop-pro": "tvtop",
+    "hyprslug": "quantize",
+    "doomslug": "quantize",
+    "keys": "gkey",
+    "key": "gkey",
+    "docs": "wiki",
+    "diagnose": "doctor",
+    "check": "doctor",
+    "dashboard": "cctvtop",
+    "monitor": "cctvtop",
+}
+
+
+def _suggest(typed: str, limit: int = 3) -> list[str]:
+    """Subcommands *typed* was probably meant to be.
+
+    Prefix matches first and exactly: somebody who typed ``down`` meant
+    ``download`` and difflib's ratio does not reliably rank a prefix
+    above a similarly-sized edit. Fuzzy matches fill the rest.
+    """
+    import difflib
+
+    lowered = typed.lower()
+    known = sorted(_SUBCOMMANDS)
+    prefix = [name for name in known if name.startswith(lowered)]
+    contains = [
+        name for name in known
+        if lowered in name and name not in prefix and len(lowered) >= 3
+    ]
+    fuzzy = [
+        name for name in difflib.get_close_matches(lowered, known, n=limit, cutoff=0.6)
+        if name not in prefix and name not in contains
+    ]
+    ordered: list[str] = []
+    for name in (*prefix, *contains, *fuzzy):
+        if name not in ordered:
+            ordered.append(name)
+    return ordered[:limit]
+
+
+def _unknown_command(typed: str) -> int:
+    """Say what was wrong with it, and what to type instead."""
+    print(f"hypernix: unknown command {typed!r}", file=sys.stderr)
+
+    alias = _COMMAND_ALIASES.get(typed.lower())
+    if alias:
+        print(f"\n  You want:  hypernix {alias}", file=sys.stderr)
+    else:
+        suggestions = _suggest(typed)
+        if len(suggestions) == 1:
+            print(f"\n  Did you mean:  hypernix {suggestions[0]}", file=sys.stderr)
+        elif suggestions:
+            print("\n  Did you mean one of these?", file=sys.stderr)
+            for name in suggestions:
+                print(f"      hypernix {name}", file=sys.stderr)
+
+    print("\n  hypernix --help   every subcommand", file=sys.stderr)
+    return 2
+
+
 def _print_usage() -> None:
     try:
         from rich.console import Console
@@ -162,10 +243,23 @@ def _print_usage() -> None:
         table.add_row("[green]config[/]", "Configuration management")
         table.add_row("[green]gkey[/]", "API key & access management (Gatekeeper + Keymaster)")
         table.add_row("[green]map[/]", "Steampunk schematic TUI: dials/pipes/steam for model + training state")
+        # These four dispatch and always have; they were simply never
+        # added to the menu, so `hypernix --help` was not a list of what
+        # hypernix can do and there was no way to find them at all.
+        table.add_row("[green]devices[/]", "list the GPUs/accelerators this machine has, and what they support")
+        table.add_row("[green]wakeup[/]", "wake-word detection: train a trigger phrase, then listen for it")
+        table.add_row("[green]websearch[/]", "web search backend used by the chat and assistant surfaces")
+        table.add_row("[green]hyprslug-headers[/]", "self-describing GGUF headers + the OpenAI-compatible sub-bit server")
         
         shortcuts = Text("Shortcuts:\n", style="bold yellow")
         shortcuts.append("  --auto-oven            download the default snapshot and run code completion\n", style="white")
         shortcuts.append("                         (equivalent to `hypernix oven --auto ...`).\n", style="dim")
+        shortcuts.append("\nAlso accepted: ", style="bold yellow")
+        shortcuts.append(
+            "tvtop (cctvtop) · fiz (fizzle) · camouflage (camo) · protect (prot) ·\n"
+            "                 fuse-box (fusebox)\n",
+            style="dim",
+        )
         
         help_text = Text("\nRun `hypernix <subcommand> --help` for per-command flags.\nRun `hypernix all --help` for the classic pipeline flags.", style="italic dim")
         
@@ -1070,10 +1164,16 @@ def main(argv: list[str] | None = None) -> int:
     if raw[0] == "--auto-oven":
         return _run_oven(["--auto", *raw[1:]])
 
-    # First arg isn't a subcommand -> print help instead of falling back to 'all'
+    # First arg isn't a subcommand.
+    #
+    # This used to print the whole forty-row menu and exit 1, without ever
+    # mentioning what was typed. `hypernix downlod` produced fifty lines
+    # of table, none of which said "downlod", so the failure looked
+    # exactly like asking for help on purpose. With this many subcommands
+    # -- and pairs like quantize/quantise and fizzle/fiz -- a suggestion
+    # is worth more than the whole menu.
     if raw[0] not in _SUBCOMMANDS:
-        _print_usage()
-        return 1
+        return _unknown_command(raw[0])
 
     cmd, rest = raw[0], raw[1:]
     if cmd == "all":

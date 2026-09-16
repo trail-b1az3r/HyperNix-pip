@@ -1213,6 +1213,25 @@ class MessageListResponse(BaseModel):
     request_id: str
 
 
+class MessageEditRequest(BaseModel):
+    content: str
+    #: Drop everything after the edited message. On by default, because
+    #: what came after was written in reply to the *old* text: leaving
+    #: it makes the transcript a record of the model answering a
+    #: question nobody asked, and that transcript is what gets sent as
+    #: context on the next turn.
+    truncate: bool = True
+
+
+class MessageEditResponse(BaseModel):
+    message: MessageSummary
+    #: What the edit cost, so a client can say "this will remove 11
+    #: messages" rather than silently removing them.
+    removed: list[MessageSummary] = Field(default_factory=list)
+    removed_count: int = 0
+    request_id: str
+
+
 class HyperLinkChatRequest(BaseModel):
     content: str = ""
     attachment_ids: list[str] = Field(default_factory=list)
@@ -1400,6 +1419,260 @@ class DownloadedModelsResponse(BaseModel):
     models: list[dict[str, Any]] = Field(default_factory=list)
     count: int = 0
     directory: str = ""
+    request_id: str
+
+
+class RunnerLoadRequest(BaseModel):
+    model_id: str
+    #: Layers to put on the GPU. None means work it out from what is
+    #: free; somebody who has tuned their own machine should not have
+    #: their number second-guessed.
+    gpu_layers: int | None = None
+    backend: str = "auto"
+    context_length: int | None = None
+    #: The model's layer count, when the caller knows it. Without one, a
+    #: partial offload has no denominator and the plan is all-or-nothing.
+    total_layers: int | None = None
+
+
+class RunnerStatusResponse(BaseModel):
+    loaded: bool = False
+    model: dict[str, Any] = Field(default_factory=dict)
+    base_url: str = ""
+    backends: list[str] = Field(default_factory=list)
+    #: Whether an unload actually stopped something. Unloading nothing is
+    #: a success, and the caller may still want to know.
+    was_running: bool = False
+    request_id: str
+
+
+class RunnerPlanResponse(BaseModel):
+    model_id: str = ""
+    path: str = ""
+    placement: dict[str, Any] = Field(default_factory=dict)
+    model: dict[str, Any] = Field(default_factory=dict)
+    request_id: str
+
+
+class NoodleRunRequest(BaseModel):
+    tool: str
+    arguments: dict[str, Any] = Field(default_factory=dict)
+
+
+class NoodleToolsResponse(BaseModel):
+    tools: list[dict[str, Any]] = Field(default_factory=list)
+    names: list[str] = Field(default_factory=list)
+    #: The flags matter as much as the list. A client that shows "run a
+    #: command" on a server with execution off produces a button that
+    #: always fails; the honest version greys it out.
+    execute_enabled: bool = False
+    web_search_enabled: bool = True
+    memory_enabled: bool = False
+    workspace: str = ""
+    request_id: str
+
+
+class NoodleWorkspaceResponse(BaseModel):
+    workspace: str = ""
+    files: list[dict[str, Any]] = Field(default_factory=list)
+    count: int = 0
+    total_bytes: int = 0
+    request_id: str
+
+
+class CompactRequest(BaseModel):
+    session_id: str
+    #: Report what would happen and change nothing. The default is False
+    #: because the endpoint's name is a verb, but every caller should try
+    #: this first — compaction is not reversible from the model's side.
+    dry_run: bool = False
+    #: Turns at the end of the conversation never compacted, whatever the
+    #: scope says. The recent exchange is what the next reply answers.
+    keep_recent: int = 4
+
+
+class CompactResponse(BaseModel):
+    session_id: str
+    scope: str = ""
+    #: What was (or would be) replaced, and what it costs.
+    plan: dict[str, Any] = Field(default_factory=dict)
+    applied: bool = False
+    #: The summary that replaced them, when one was written.
+    summary_message_id: str = ""
+    summary: str = ""
+    #: "model" or "extractive". Worth reporting: an extractive summary is
+    #: quotes rather than prose, and a caller may want to try again once
+    #: a model is reachable.
+    summarised_by: str = ""
+    messages_compacted: int = 0
+    request_id: str
+
+
+class MemoryCreateRequest(BaseModel):
+    content: str
+    category: str = ""
+    #: "manual" when a person wrote it, "auto" when the model did. Kept
+    #: because somebody deleting "you dislike Python" needs to be able to
+    #: see where that idea came from.
+    source: str = "manual"
+    #: Which conversation an auto memory was learned in.
+    session_id: str = ""
+    pinned: bool = False
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class MemoryUpdateRequest(BaseModel):
+    memory_id: str
+    content: str | None = None
+    category: str | None = None
+    pinned: bool | None = None
+    metadata: dict[str, Any] | None = None
+
+
+class MemoryResponse(BaseModel):
+    memory: dict[str, Any] = Field(default_factory=dict)
+    request_id: str
+
+
+class MemoryListResponse(BaseModel):
+    memories: list[dict[str, Any]] = Field(default_factory=list)
+    count: int = 0
+    #: How many of these the model wrote by itself. Shown on a settings
+    #: screen next to the budget, because "the assistant has decided 64
+    #: things about me" is worth knowing without counting.
+    auto_count: int = 0
+    request_id: str
+
+
+class HardwareResponse(BaseModel):
+    """One sample of what the machine is doing.
+
+    Every measurement is optional and `unavailable` says what could not
+    be read. A snapshot that invented a zero would be a dashboard
+    confidently reporting an overloaded machine as idle.
+    """
+
+    sampled_at: float = 0.0
+    hostname: str = ""
+    platform: str = ""
+    uptime_seconds: float | None = None
+    process_uptime_seconds: float = 0.0
+    cpu: dict[str, Any] = Field(default_factory=dict)
+    memory: dict[str, Any] = Field(default_factory=dict)
+    swap: dict[str, Any] = Field(default_factory=dict)
+    disks: list[dict[str, Any]] = Field(default_factory=list)
+    gpus: list[dict[str, Any]] = Field(default_factory=list)
+    unavailable: list[str] = Field(default_factory=list)
+    request_id: str
+
+
+class UptimeResponse(BaseModel):
+    """How long the server and the machine have been up.
+
+    Separate from the hardware snapshot because it needs no credential
+    beyond an ordinary one: "when did this restart" explains a dropped
+    session, and is not a description of somebody's hardware.
+    """
+
+    process_uptime_seconds: float = 0.0
+    machine_uptime_seconds: float | None = None
+    started_at: float = 0.0
+    server_name: str = ""
+    t1_version: str = ""
+    request_id: str
+
+
+class GenerationStopResponse(BaseModel):
+    """What Stop actually stopped. An empty list is a success."""
+
+    stopped: list[str] = Field(default_factory=list)
+    count: int = 0
+    request_id: str
+
+
+class GenerationListResponse(BaseModel):
+    generations: list[dict[str, Any]] = Field(default_factory=list)
+    count: int = 0
+    request_id: str
+
+
+class BackendsResponse(BaseModel):
+    """Every thing that could answer a message, and whether it can now.
+
+    "No models" and "a model is loaded but the thing that serves it is
+    switched off" look identical from outside and need completely
+    different actions.
+    """
+
+    backends: list[dict[str, Any]] = Field(default_factory=list)
+    #: The one a message would go to right now, or "" when none would.
+    active: str = ""
+    request_id: str
+
+
+class PreferencesRequest(BaseModel):
+    """A partial update. Every field optional, and that is the point.
+
+    ``None`` means "leave it alone", so a client that knows about six
+    settings cannot blank the four it has never heard of by sending them
+    as defaults — which is what a whole-object PUT does the first time
+    the app and the server disagree about the field list.
+    """
+
+    display_name: str | None = None
+    bio: str | None = None
+    system_prompt: str | None = None
+    effort: str | None = None
+    context_minimum: int | None = None
+    context_maximum: int | None = None
+    backup_model: str | None = None
+    backend: str | None = None
+    tools_enabled: bool | None = None
+    auto_memory: bool | None = None
+
+
+class PreferencesResponse(BaseModel):
+    preferences: dict[str, Any] = Field(default_factory=dict)
+    #: The effort levels and bounds this server accepts, so the app does
+    #: not carry its own copy of a list the server owns.
+    effort_levels: list[str] = Field(default_factory=list)
+    context_floor: int = 0
+    context_ceiling: int = 0
+    max_system_prompt: int = 0
+    #: Every clamp and correction applied, in words. Silently storing
+    #: something other than what somebody typed is how a settings screen
+    #: becomes untrustworthy.
+    notes: list[str] = Field(default_factory=list)
+    request_id: str
+
+
+class UpgradeResponse(BaseModel):
+    """What this server is running, and the commands to change it.
+
+    The commands are not generic advice. They name `sys.executable`,
+    because "run pip install -U hypernix" on a machine with a system
+    Python, a pyenv and the venv the service actually uses is advice
+    that succeeds loudly and upgrades the wrong installation.
+    """
+
+    installation: dict[str, Any] = Field(default_factory=dict)
+    commands: list[dict[str, Any]] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    request_id: str
+
+
+class ModelCatalogueResponse(BaseModel):
+    """Every model this server can offer, from every source it has.
+
+    `sources` is not decoration. An empty `models` means two completely
+    different things — this server has no models, or LM Studio is not
+    running — and the app showed the same blank picker for both because
+    the only thing it had was the list.
+    """
+
+    models: list[dict[str, Any]] = Field(default_factory=list)
+    count: int = 0
+    sources: list[dict[str, Any]] = Field(default_factory=list)
     request_id: str
 
 

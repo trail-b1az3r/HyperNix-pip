@@ -120,6 +120,39 @@ targets:
           Take a photo to send straight into a conversation.
         NSBonjourServices:
           - _hypernix._tcp
+        # Siri dictation, in CarPlay and in the app's hands-free mode.
+        # Two separate grants: recognition and the microphone itself.
+        # Missing either is a crash on first use rather than a refusal,
+        # which is why both are here rather than added when somebody
+        # hits it.
+        NSSpeechRecognitionUsageDescription: >-
+          Speak a question instead of typing it. Recognition runs on the phone
+          where the language supports it.
+        NSMicrophoneUsageDescription: >-
+          Dictate messages to your PC, in the car or hands-free.
+        # Siri and Shortcuts read the App Intents in Sources/Intents.
+        NSUserActivityTypes:
+          - AskHyperLinkIntent
+          - LoadModelIntent
+          - ReadChatIntent
+          - SendMessageIntent
+        # CarPlay.
+        #
+        # A SwiftUI-lifecycle app declares only the CarPlay role here:
+        # SwiftUI still supplies UIWindowSceneSessionRoleApplication for
+        # its own WindowGroup, and listing that role explicitly means
+        # hand-writing a UIWindowSceneDelegate this app does not have.
+        #
+        # Without this block the delegate class is never instantiated,
+        # CarPlay shows nothing, and there is no error anywhere -- the
+        # scene simply never connects.
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: true
+          UISceneConfigurations:
+            CPTemplateApplicationSceneSessionRoleApplication:
+              - UISceneClassName: CPTemplateApplicationScene
+                UISceneConfigurationName: HyperLinkCarPlay
+                UISceneDelegateClassName: $(PRODUCT_MODULE_NAME).CarPlaySceneDelegate
     # Carries HNX_LOCAL_LLAMA, written by scripts/prepare_project.py
     # from whether the engine is actually on disk.
     configFiles:
@@ -139,6 +172,10 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.hypernix.hyperlink
         CURRENT_PROJECT_VERSION: "1"
+        # CarPlay. The entitlement inside is granted by Apple per app on
+        # request -- see the comment in the file. A build without the
+        # grant compiles and runs; it just never appears in a car.
+        CODE_SIGN_ENTITLEMENTS: HyperLink/HyperLink.entitlements
         # From vendor/LocalLlama.xcconfig. Empty until the build
         # script has produced the framework, which compiles
         # LlamaRunner out and leaves LocalInference on EchoRunner.
@@ -151,7 +188,7 @@ targets:
         # by a test, because a stale default here is exactly what shipped
         # the wrong version before -- and a default nobody checks goes
         # stale the first time the T1 version moves.
-        MARKETING_VERSION: "1.0.26.9.2.1"
+        MARKETING_VERSION: "1.0.26.9.2.3"
         TARGETED_DEVICE_FAMILY: "1,2"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor

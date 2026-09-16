@@ -55,7 +55,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from . import llamaquants
+from . import hyprslug, llamaquants
 from .gguf import GGMLType, GGUFError, GGUFFile, GGUFTensor, GGUFWriter
 
 logger = logging.getLogger(__name__)
@@ -170,11 +170,18 @@ def plan_draft(
             f"This model has {total} transformer block(s). There is nothing to "
             "draft from — a draft is the base model with layers removed."
         )
-    if quant not in llamaquants.FORMATS:
+    # Resolved through hyprslug rather than checked against
+    # `llamaquants.FORMATS`. A draft is a hyprslug output like any other,
+    # and the narrower list here meant `--quant int8` — a target hyprslug
+    # writes, and one of the nine drafts were specified in — came back
+    # "unknown" from the draft builders alone.
+    try:
+        quant = hyprslug.target_spec(quant).name
+    except hyprslug.HyprslugError as exc:
         raise Dflash2Error(
-            f"Unknown draft quantisation {quant!r}. Available: "
-            f"{', '.join(llamaquants.FORMATS)}"
-        )
+            f"Unknown draft quantisation {quant!r}. A draft takes anything "
+            f"hyprslug writes: {', '.join(hyprslug.all_targets())}"
+        ) from exc
     if draft_tokens < 1:
         raise Dflash2Error("draft_tokens must be at least 1.")
 
@@ -283,6 +290,26 @@ class AttachReport:
 _UNQUANTIZED = {int(GGMLType.F32), int(GGMLType.F16), int(GGMLType.BF16)}
 
 
+def draft_encoding(
+    model: GGUFFile, quant: str
+) -> tuple[hyprslug.TargetSpec, dict[str, hyprslug.TensorPlan]]:
+    """How each of *model*'s tensors would be written at *quant*.
+
+    Shared by :func:`attach` and by :func:`hypernix.quant.dflash1.derive`,
+    and deliberately hyprslug's own planner rather than a third copy of
+    the rules: a draft at `IQ0.5_XXXL` is the same packing as a model at
+    `IQ0.5_XXXL`, and the row-length check that decides what a block
+    quantiser may touch is one that has already been got wrong once.
+
+    Keyed by the *source* tensor's name, because a draft tensor is a
+    renamed copy of one — `blk.9.attn_q.weight` becomes `blk.2.…` in a
+    dflash1 draft and `dflash2.blk.2.…` in a dflash2 one, and neither
+    name is in the source model to look up.
+    """
+    spec = hyprslug.target_spec(quant)
+    return spec, {plan.name: plan for plan in hyprslug.plan_tensors(model, spec)}
+
+
 def _decode(raw: bytes, ggml_type: int) -> list[float] | None:
     """Tensor bytes to floats, or None when the type is unreadable."""
     kind = int(ggml_type)
@@ -342,7 +369,7 @@ def attach(
     )
     report = AttachReport(plan=plan, base_bytes=base_path.stat().st_size)
 
-    block_size = llamaquants.FORMATS[plan.quant].block
+    spec, tensor_plans = draft_encoding(model, plan.quant)
 
     writer = GGUFWriter(out_path, alignment=model.alignment)
     writer.copy_metadata_from(model)
@@ -357,10 +384,10 @@ def attach(
 
     # Base tensors first, unchanged and in their original order, so the
     # file a stock loader reads is the file it read before.
-    sources: dict[str, tuple[GGUFTensor, str]] = {}
+    sources: dict[str, tuple[GGUFTensor, hyprslug.TensorPlan | None]] = {}
     for tensor in model.tensors:
         writer.add_tensor(tensor.name, tensor.shape, tensor.ggml_type)
-        sources[tensor.name] = (tensor, "")
+        sources[tensor.name] = (tensor, None)
         report.copied_tensors += 1
 
     for draft_index, source_index in enumerate(plan.layers):
@@ -370,31 +397,13 @@ def attach(
                 continue
             suffix = tensor.name[len(prefix):]
             draft_name = f"{PREFIX}blk.{draft_index}.{suffix}"
-            quantisable = (
-                len(tensor.shape) >= 2
-                # ne[0], the row length -- GGML quantises row by row.
-                # The element count was the wrong test and shipped a
-                # model llama.cpp refuses: an SSM convolution weight is
-                # [4, N], four per row, total 4N which divides into 256
-                # whenever N does. See _should_quantize in hyprslug.py.
-                and int(tensor.shape[0]) % block_size == 0
-                and (
-                    int(tensor.ggml_type) in _UNQUANTIZED
-                    or llamaquants.is_supported(int(tensor.ggml_type))
-                )
+            tensor_plan = tensor_plans[tensor.name]
+            if tensor_plan.copied:
+                report.skipped.append((draft_name, tensor_plan.reason))
+            declared = writer.add_tensor(
+                draft_name, tensor.shape, tensor_plan.ggml_type
             )
-            if quantisable:
-                target_type = llamaquants.FORMATS[plan.quant].ggml_type
-                chosen = plan.quant
-            else:
-                target_type = tensor.ggml_type
-                chosen = ""
-                report.skipped.append((
-                    draft_name,
-                    "1-D or not divisible: a norm is a rounding error of the size",
-                ))
-            declared = writer.add_tensor(draft_name, tensor.shape, target_type)
-            sources[draft_name] = (tensor, chosen)
+            sources[draft_name] = (tensor, tensor_plan)
             report.draft_tensors += 1
             report.draft_bytes += declared.nbytes
 
@@ -403,7 +412,7 @@ def attach(
 
     def _data_for(declared: GGUFTensor) -> bytes:
         nonlocal done
-        original, chosen = sources[declared.name]
+        original, tensor_plan = sources[declared.name]
         raw = model.tensor_bytes(original)
         done += 1
         if progress is not None:
@@ -417,16 +426,17 @@ def attach(
                 })
             except Exception:  # noqa: BLE001 - a listener must not fail the run
                 logger.debug("dflash2: progress callback raised", exc_info=True)
-        if not chosen:
+        if tensor_plan is None or tensor_plan.copied:
             return raw
-        values = _decode(raw, original.ggml_type)
-        if values is None:  # pragma: no cover - guarded by `quantisable`
-            return raw
-        return llamaquants.quantize_array(values, chosen)
+        data, _ = hyprslug.encode_tensor(
+            raw, int(original.ggml_type), tensor_plan, spec
+        )
+        return data
 
     try:
         writer.write(_data_for)
-    except (GGUFError, OSError, llamaquants.LlamaQuantError) as exc:
+    except (GGUFError, OSError, llamaquants.LlamaQuantError,
+            hyprslug.HyprslugError) as exc:
         raise Dflash2Error(f"Could not write {out_path}: {exc}") from exc
 
     report.output_bytes = out_path.stat().st_size

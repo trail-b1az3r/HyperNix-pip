@@ -28,8 +28,59 @@
 
 set -euo pipefail
 
-VERSION="0.72.2.post5"
-T1_API_VERSION="1.0.26.8.1.1"
+# The version this installer announces, in the banner and in the config
+# it writes.
+#
+# These two were maintained by hand and went stale, which is the whole
+# of the "the installed T1 thinks it is running an older version"
+# report: the banner said 0.72.2.post5 / t1 v1.0.26.8.1.1 while the
+# package being installed was several releases past both. Nothing was
+# wrong with the install — the only thing that was ever wrong was the
+# number printed over it, and there is no way to tell those apart from
+# the outside.
+#
+# They are still literals because this script has to work as
+# `curl ... | bash`, where there is no checkout to read and no hypernix
+# installed yet to ask. So they are a *fallback*, `derive_versions`
+# below replaces them whenever the script is run from a clone, and
+# tests/test_install_script.py fails if the fallback drifts from the
+# package again.
+VERSION="0.72.5.dev2"
+T1_API_VERSION="1.0.26.9.2.3"
+
+# Replace the baked versions with the real ones, when they can be read.
+#
+# Reads the sources rather than importing them: this runs before
+# anything is installed, and `python3 -c 'import hypernix'` at this
+# point either fails or — worse — succeeds against some *other*
+# hypernix that happens to be on the path and reports its version
+# instead of the one about to be installed.
+derive_versions() {
+  local here src package t1 year
+  here="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)" || return 0
+  src="$here/src/hypernix"
+  [ -f "$src/__init__.py" ] || return 0
+
+  package="$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' "$src/__init__.py" | head -1)"
+  [ -n "$package" ] && VERSION="$package"
+
+  # T1Version(api=1, major=0, year=2026, month=9, feature=2, fix=3)
+  # becomes 1.0.26.9.2.3 — the short spelling, two-digit year, which is
+  # what /status and every wire response carry.
+  t1="$(sed -n \
+    's/^T1_VERSION = T1Version(api=\([0-9][0-9]*\), *major=\([0-9][0-9]*\), *year=\([0-9][0-9]*\), *month=\([0-9][0-9]*\), *feature=\([0-9][0-9]*\), *fix=\([0-9][0-9]*\)).*$/\1 \2 \3 \4 \5 \6/p' \
+    "$src/t1api/version.py" | head -1)"
+  if [ -n "$t1" ]; then
+    # shellcheck disable=SC2086 # deliberate word splitting into $1..$6
+    set -- $t1
+    year="$3"
+    # 2026 -> 26. Left alone if it is already two digits.
+    [ ${#year} -gt 2 ] && year="${year#"${year%??}"}"
+    T1_API_VERSION="$1.$2.$year.$4.$5.$6"
+  fi
+}
+
+derive_versions
 
 # ---------------------------------------------------------------------------
 # Output
@@ -69,6 +120,13 @@ banner() {
 
 INTERACTIVE=1
 DRY_RUN=0
+# Index ~/.hypernix/models into the registry after installing, so models
+# already on this machine are servable — and visible in HyperLink —
+# without anybody hand-writing models.json.
+INDEX_MODELS=0
+# The same, plus a price worked out per model. Separate because pricing
+# is a policy decision and indexing is not.
+ESTIMATE_PRICES=0
 CONFIG_DIR="${T1_CONFIG_DIR:-$HOME/.hypernix/t1api}"
 INSTALL_MODE=""          # venv | user | system | skip
 ASSUME_YES=0
@@ -97,6 +155,18 @@ install-t1.sh — interactive installer and setup for the HyperNix T1 API.
                         exposes it to every network this machine is on.
   --port N              Port, answering the "Port" question up front.
   --force               Overwrite an existing .env instead of stopping.
+  --index-models        After installing, read every GGUF in
+                        ~/.hypernix/models and write it into the model
+                        registry. They become servable, switchable, and
+                        visible in HyperLink without anybody editing
+                        models.json by hand.
+  --estimate-prices     Index, and work out what each model costs to
+                        serve from its size, quantisation, parameter
+                        count, this machine's GPU, and its active-vs-total
+                        parameters if it is a mixture-of-experts. Implies
+                        --index-models. A starting point, not a market
+                        rate — and better than the zero that is otherwise
+                        written, which bills you.
   --help                This.
 
 `hypernix-t1 create` forwards its own --host/--port/--force here, so the
@@ -120,6 +190,8 @@ while [ $# -gt 0 ]; do
     --host)            shift; [ $# -gt 0 ] || die "--host needs an address"; FORCED_HOST="$1" ;;
     --port)            shift; [ $# -gt 0 ] || die "--port needs a number"; FORCED_PORT="$1" ;;
     --force)           FORCE_OVERWRITE=1 ;;
+    --index-models)    INDEX_MODELS=1 ;;
+    --estimate-prices) INDEX_MODELS=1; ESTIMATE_PRICES=1 ;;
     --trusted-network) TRUSTED_NETWORK=1; TRUSTED_NETWORK_SET=1 ;;
     --no-trusted-network) TRUSTED_NETWORK=0; TRUSTED_NETWORK_SET=1 ;;
     --trusted-network-partial-admin)
@@ -393,8 +465,12 @@ install_package() {
       ;;
     user)
       PIP_TARGET_DESC="user site-packages"
-      if [ "$DRY_RUN" = "1" ]; then dim "     would run: $PYTHON -m pip install --user $spec"; return; fi
-      "$PYTHON" -m pip install --quiet --user "$spec" || die "pip install --user $spec failed"
+      if [ "$DRY_RUN" = "1" ]; then
+        dim "     would run: $PYTHON -m pip install --user --break-system-packages $spec"
+        return
+      fi
+      "$PYTHON" -m pip install --quiet --user --break-system-packages "$spec" \
+        || die "pip install --user --break-system-packages $spec failed"
       ;;
     system)
       PIP_TARGET_DESC="system site-packages"
@@ -1390,6 +1466,53 @@ CHECKEOF
   done
 }
 
+# Index the models this machine already has.
+#
+# After install_package, because it runs `hypernix-t1 index` -- which is
+# the shipped indexer rather than a second implementation here. An
+# installer that reimplemented GGUF parsing in shell would be a second
+# place for the context limit to be wrong, and the context limit is the
+# number the server then enforces.
+index_models() {
+  [ "$INDEX_MODELS" = "1" ] || return 0
+
+  local models_dir="${HOME}/.hypernix/models"
+  local registry="${MODEL_REGISTRY_PATH:-$CONFIG_DIR/models.json}"
+
+  head2 "Indexing models"
+  if [ ! -d "$models_dir" ]; then
+    dim "     $models_dir does not exist yet — nothing to index."
+    dim "     Models downloaded through HyperLink land there; run"
+    dim "     'hypernix-t1 index' once you have some."
+    return 0
+  fi
+
+  if [ "$DRY_RUN" = "1" ]; then
+    dim "     would index $models_dir into $registry"
+    return 0
+  fi
+
+  if ! py_available; then
+    warn "hypernix is not importable yet, so the index was skipped."
+    warn "Run 'hypernix-t1 index' by hand once the install settles."
+    return 0
+  fi
+
+  local args="--dir $models_dir -o $registry"
+  [ "$ESTIMATE_PRICES" = "1" ] && args="$args --estimate-prices"
+
+  # Not fatal. A registry that could not be written is worth reporting
+  # loudly and is not a reason to leave a working server uninstalled --
+  # everything else has already been set up by this point.
+  # shellcheck disable=SC2086
+  if "$PYTHON" -m hypernix.t1api.modelindex_cli $args; then
+    note_written "$registry"
+  else
+    warn "Indexing failed. The server is installed and will serve nothing"
+    warn "until the registry has an entry; run 'hypernix-t1 index' to retry."
+  fi
+}
+
 summary() {
   head2 "Done"
   say ""
@@ -1422,6 +1545,13 @@ summary() {
   fi
   [ "$WANT_TUI" = "1" ] && say "    waiter tui              ${C_DIM}# the manager dashboard${C_OFF}"
   [ "$MODEL_SOURCE" = "lmstudio" ] && say "    waiter lmstudio status  ${C_DIM}# is a model loaded?${C_OFF}"
+  # The runner is the answer to "I have models and no LM Studio", which
+  # is the state this installer leaves a machine in when --index-models
+  # found some. Worth naming here rather than leaving it to be found.
+  if [ "$INDEX_MODELS" = "1" ]; then
+    say "    hypernix-t1 runner status  ${C_DIM}# what is serving, and where its layers are${C_OFF}"
+    say "    hypernix-t1 runner load <model>  ${C_DIM}# serve one without LM Studio${C_OFF}"
+  fi
   [ "$WANT_HYPERLINK" = "1" ] && say "    waiter hyperlink pair   ${C_DIM}# connect the phone app${C_OFF}"
   [ "$WANT_SYSTEMD" = "1" ] && say "    sudo cp $CONFIG_DIR/hypernix-t1api.service /etc/systemd/system/"
   say ""
@@ -1500,6 +1630,7 @@ main() {
 
   write_env
   write_registry_template
+  index_models
   write_start_script
   write_systemd_unit
   mint_admin_key

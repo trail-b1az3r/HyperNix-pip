@@ -55,12 +55,31 @@ __all__ = [
     "tailnet_identity",
     "trusted_proxies_from_env",
     "TAILNET_RANGE",
+    "TAILNET_RANGES",
+    "TAILNET_RANGE_V6",
 ]
 
-#: Tailscale's assigned range: RFC 6598 shared address space, *not*
+#: Tailscale's assigned IPv4 range: RFC 6598 shared address space, *not*
 #: RFC 1918. The distinction matters twice over — iOS's
 #: NSAllowsLocalNetworking does not cover it either.
 TAILNET_RANGE = ipaddress.ip_network("100.64.0.0/10")
+
+#: Tailscale's IPv6 range. Every node gets one of these as well as a
+#: 100.x, and a client resolving a MagicDNS name is handed both — iOS in
+#: particular will often take the v6.
+#:
+#: Leaving it out did not merely refuse those connections. ``fd7a:…/48``
+#: sits inside ``fc00::/7``, which is in :data:`_LAN_RANGES`, so a
+#: Tailscale v6 peer was silently classified as *LAN*: it skipped tailnet
+#: identity verification entirely, it was let in by an operator who had
+#: turned the tailnet off, and it was refused by one who had turned the
+#: LAN off and the tailnet on. Wrong in both directions at once.
+TAILNET_RANGE_V6 = ipaddress.ip_network("fd7a:115c:a1e0::/48")
+
+#: Both, in the order :func:`classify` checks them. Tailscale's own
+#: prefixes and nothing else: ``fc00::/7`` as a whole is the private-ULA
+#: space and anyone may number themselves in it.
+TAILNET_RANGES = (TAILNET_RANGE, TAILNET_RANGE_V6)
 
 #: What counts as "the LAN": RFC 1918, link-local, and IPv6 unique-local
 #: and link-local. Spelled out rather than deferring to
@@ -270,7 +289,10 @@ def classify(
         return Origin(text, Trust.LOOPBACK, via_proxy=via,
                       reason="the connection never left this machine.")
 
-    if address.version == 4 and address in TAILNET_RANGE:
+    # Before the LAN check, not after: Tailscale's v6 prefix is inside
+    # fc00::/7, so testing the LAN first would classify every v6 tailnet
+    # peer as LAN and skip the identity check below.
+    if any(address in net for net in TAILNET_RANGES):
         if not verify_tailnet:
             return Origin(text, Trust.TAILNET, via_proxy=via,
                           reason="in the tailnet range (identity not checked).")
@@ -283,7 +305,12 @@ def classify(
                        + (f" belonging to {user}" if user else "") + ".",
             )
         # In the range and unconfirmed. Anything on a LAN can number
-        # itself 100.x, so the range alone is not evidence.
+        # itself 100.x, so the range alone is not evidence. An operator
+        # whose tailscaled cannot answer -- not installed for the service
+        # user, no permission on the socket, a peer it has seen no
+        # traffic from -- says so with T1_TRUSTED_NETWORK_TAILNET_VERIFY=0
+        # rather than having every tailnet peer quietly become a
+        # stranger.
         return Origin(
             text, Trust.PUBLIC, via_proxy=via,
             reason="in Tailscale's range but tailscaled does not recognise it, "

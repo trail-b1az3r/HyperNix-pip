@@ -141,11 +141,70 @@ class T1APIConfig:
     trusted_network_tailnet: bool = field(
         default_factory=lambda: _bool_env("T1_TRUSTED_NETWORK_TAILNET", True)
     )
+    #: Ask tailscaled whether a peer in Tailscale's range really is one.
+    #:
+    #: On by default, because the range alone is not evidence — anything
+    #: on a LAN can number itself 100.x. But `tailscale whois` fails for
+    #: ordinary reasons: the binary is not on a systemd unit's PATH, the
+    #: service user cannot reach the socket, the peer is one tailscaled
+    #: has seen no traffic from. Every one of those turned every tailnet
+    #: peer into a stranger with nothing the operator could say about it,
+    #: because this switch did not exist and `classify`'s own
+    #: `verify_tailnet` parameter had no caller.
+    #:
+    #: Turning it off trusts the range itself. That is a real widening
+    #: and it is why the default is on.
+    trusted_network_tailnet_verify: bool = field(
+        default_factory=lambda: _bool_env("T1_TRUSTED_NETWORK_TAILNET_VERIFY", True)
+    )
     #: Partial administrative functions for trusted origins. Separate
     #: from keyless *access* because they are separate decisions: letting
     #: the phone on your sofa read models is not letting it stop training.
     trusted_network_partial_admin: bool = field(
         default_factory=lambda: _bool_env("T1_TRUSTED_NETWORK_PARTIAL_ADMIN", False)
+    )
+
+    # --- Noodle (0.72.5 pt2) ----------------------------------------------
+    # The autonomous executor, over the API. Off by default, and every
+    # route 404s until it is on: writing and running files on somebody
+    # else's server is not a thing to enable by accident.
+    noodle_enabled: bool = field(
+        default_factory=lambda: _bool_env("T1_NOODLE_ENABLED", False)
+    )
+    #: Running what was written is a *second* switch. An agent that can
+    #: write a script and not run it is the useful half of the feature at
+    #: a fraction of the risk, and that is the default.
+    noodle_allow_execute: bool = field(
+        default_factory=lambda: _bool_env("T1_NOODLE_ALLOW_EXECUTE", False)
+    )
+    noodle_allow_web_search: bool = field(
+        default_factory=lambda: _bool_env("T1_NOODLE_WEB_SEARCH", True)
+    )
+    noodle_memory_enabled: bool = field(
+        default_factory=lambda: _bool_env("T1_NOODLE_MEMORY", False)
+    )
+    #: Where the per-owner workspaces live. Each owner gets a directory
+    #: under this and cannot reach out of it.
+    noodle_workspace_dir: str | None = field(
+        default_factory=lambda: os.environ.get("T1_NOODLE_WORKSPACE_DIR")
+    )
+    noodle_execute_timeout: float = field(
+        default_factory=lambda: _float_env("T1_NOODLE_EXECUTE_TIMEOUT", 60.0)
+    )
+
+    # --- Managed runner (0.72.5 pt2) --------------------------------------
+    #: The access level that may load, unload and switch the served
+    #: model without being an admin. 0 disables it entirely, which is the
+    #: default: changing what a shared server runs affects everybody on
+    #: it, and that is an opt-in an operator makes deliberately.
+    runner_switch_perm_level: int = field(
+        default_factory=lambda: _int_env("T1_RUNNER_SWITCH_PERM", 0)
+    )
+    #: Port for the llama.cpp server HyperNix owns. Not 8080: that is
+    #: what somebody's own llama-server is most likely already on, and
+    #: colliding with it would make this look broken.
+    runner_port: int = field(
+        default_factory=lambda: _int_env("T1_RUNNER_PORT", 8781)
     )
 
     # --- Routing ----------------------------------------------------------

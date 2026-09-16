@@ -88,6 +88,14 @@ class IndexedModel:
     is_extension: bool
     file_bytes: int
     vocab_size: int = 0
+    #: Parameters touched per token. Equal to `parameters_b` for a dense
+    #: model; smaller for a mixture-of-experts, where most of the weights
+    #: sit idle on any given token. 0.0 when it could not be worked out.
+    active_parameters_b: float = 0.0
+    #: Experts in total, and experts used per token. Both 0 for a dense
+    #: model.
+    expert_count: int = 0
+    expert_used_count: int = 0
     error: str = ""
     #: Fields that could not be read, so a report can say so rather than
     #: presenting a default as though it were measured.
@@ -109,6 +117,9 @@ class IndexedModel:
             "bits_per_weight": self.bits_per_weight,
             "needs_hnxrun": self.is_extension,
             "file_bytes": self.file_bytes,
+            "active_parameters_b": self.active_parameters_b,
+            "expert_count": self.expert_count,
+            "expert_used_count": self.expert_used_count,
             "assumed": list(self.assumed),
             "error": self.error,
         }
@@ -137,6 +148,13 @@ def _read_gguf(path: Path) -> tuple[dict, list, str]:
     except (GGUFError, OSError, ValueError) as exc:
         return {}, [], str(exc)
     return model.metadata, list(model.tensors), ""
+
+
+def _as_int(value: Any) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return 0
 
 
 def _elements(tensor) -> int:
@@ -196,6 +214,24 @@ def inspect(path: str | Path) -> IndexedModel:
     except Exception as exc:  # noqa: BLE001 - a header is a nicety here
         logger.debug("modelindex: no header for %s: %s", model_path, exc)
 
+    # Mixture-of-experts. A model with 235B total and 22B active does 22B
+    # of work per token and needs 235B of memory, and the two numbers are
+    # used for different things -- speed from the first, placement from
+    # the second. Pricing by total is wrong by an order of magnitude.
+    experts = _as_int(metadata.get(f"{architecture}.expert_count"))
+    used = _as_int(metadata.get(f"{architecture}.expert_used_count"))
+    active = float(parameters)
+    if experts > 1 and 0 < used <= experts:
+        # The expert tensors, identified by name. Summing them rather
+        # than assuming a fraction, because the split between shared and
+        # routed weights differs by architecture and a guess would be
+        # wrong exactly on the models this matters for.
+        expert_params = sum(
+            _elements(t) for t in tensors if "_exps" in t.name or "experts" in t.name
+        )
+        if expert_params:
+            active = parameters - expert_params + expert_params * (used / experts)
+
     display = metadata.get("general.name") or model_path.stem
     return IndexedModel(
         path=model_path,
@@ -209,6 +245,9 @@ def inspect(path: str | Path) -> IndexedModel:
         is_extension=extension,
         file_bytes=size,
         vocab_size=vocab,
+        active_parameters_b=round(active / 1e9, 4),
+        expert_count=experts,
+        expert_used_count=used,
         assumed=assumed,
     )
 

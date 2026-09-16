@@ -40,10 +40,12 @@ import json
 import logging
 import os
 import shlex
+import shutil
 import subprocess
 import time
 import urllib.parse
 import urllib.request
+import zipfile
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -148,6 +150,15 @@ class ToolContext:
         """
         if not relative or not str(relative).strip():
             raise ToolError("A path is required", code="bad_path")
+        # expanduser() *after* the join, deliberately. By then any `~` the
+        # model supplied sits in the middle of the path, where it expands
+        # to nothing and stays a literal directory name under the root.
+        # Expanding first would turn `~/.ssh/id_rsa` into an absolute
+        # path to the real home directory -- and `Path(root) / "/abs"` is
+        # `/abs`, because pathlib's `/` discards the left side when the
+        # right is absolute. The containment check below still catches
+        # that, but it would be the only thing catching it. Do not
+        # "fix" this into expanding first.
         candidate = (self.root / str(relative)).expanduser()
         try:
             resolved = candidate.resolve()
@@ -347,6 +358,212 @@ def _execute_file(ctx: ToolContext, args: dict[str, Any]) -> ToolResult:
     )
 
 
+#: Where a fish binary hides when PATH is minimal — which is exactly the
+#: environment `_execute_file` hands a subprocess, and a systemd unit's
+#: PATH besides.
+_FISH_PATHS = (
+    "/usr/bin/fish",
+    "/usr/local/bin/fish",
+    "/opt/homebrew/bin/fish",
+    "/bin/fish",
+)
+
+
+def _fish_binary() -> str:
+    return shutil.which("fish") or next(
+        (p for p in _FISH_PATHS if os.path.exists(p)), ""
+    )
+
+
+def _run_fish(ctx: ToolContext, args: dict[str, Any]) -> ToolResult:
+    """Run a fish command in the workspace.
+
+    Gated on ``allow_execute``, same as running a file, because it is the
+    same capability wearing different clothes: `fish -c` with
+    model-written text runs whatever the model wrote.
+
+    Fish rather than bash on purpose. It is what the person asked for,
+    and the difference is not cosmetic — fish has no `&&`/`||`, no `$()`
+    in the POSIX sense, and different quoting, so a bash one-liner pasted
+    in usually fails loudly instead of doing something slightly wrong.
+    """
+    if not ctx.allow_execute:
+        raise ToolError(
+            "Shell commands are disabled for this agent. Enable them "
+            "deliberately (ToolContext(allow_execute=True)) — running "
+            "model-written commands is not a default anyone should get by "
+            "accident.",
+            code="execute_disabled",
+        )
+    command = str(args.get("command") or "").strip()
+    if not command:
+        raise ToolError("A command is required", code="bad_command")
+
+    binary = _fish_binary()
+    if not binary:
+        raise ToolError(
+            "fish is not installed on this machine. Install it, or use "
+            "execute_file with an interpreter.",
+            code="fish_missing",
+        )
+
+    started = time.monotonic()
+    try:
+        proc = subprocess.run(  # noqa: S603 - argv list; the shell is the point here
+            [binary, "--no-config", "-c", command],
+            cwd=str(ctx.root),
+            capture_output=True,
+            text=True,
+            timeout=ctx.execute_timeout,
+            check=False,
+            # The same minimal environment execute_file uses, and for the
+            # same reason: this process may hold API keys for every
+            # provider in the roster, and a command the model wrote has
+            # no business inheriting them.
+            env={"PATH": os.environ.get("PATH", ""), "HOME": str(ctx.root),
+                 "LANG": os.environ.get("LANG", "C.UTF-8")},
+        )
+    except subprocess.TimeoutExpired:
+        raise ToolError(
+            f"Killed after {ctx.execute_timeout:.0f}s.", code="timeout"
+        ) from None
+    except OSError as exc:
+        raise ToolError(f"Could not run fish: {exc}", code="spawn_failed") from exc
+
+    elapsed = time.monotonic() - started
+    ctx.record("run_fish", {"command": command, "returncode": proc.returncode})
+    body = (
+        f"exit {proc.returncode} in {elapsed:.1f}s\n"
+        f"--- stdout ---\n{proc.stdout[-8000:]}\n"
+        f"--- stderr ---\n{proc.stderr[-8000:]}"
+    )
+    return ToolResult(
+        proc.returncode == 0, body, tool="run_fish",
+        code="" if proc.returncode == 0 else "nonzero_exit",
+        data={"returncode": proc.returncode, "seconds": elapsed},
+    )
+
+
+def _zip_paths(ctx: ToolContext, args: dict[str, Any]) -> ToolResult:
+    """Zip files or directories inside the workspace.
+
+    Written with zipfile rather than shelling out to `zip`, which is not
+    installed everywhere and would need `allow_execute` for what is
+    plainly a file operation.
+
+    Every member is resolved through `ctx.resolve`, so a symlink planted
+    by an earlier tool call cannot pull a file from outside the workspace
+    into the archive — the one way a zip tool turns into an exfiltration
+    primitive.
+    """
+    sources = args.get("paths") or args.get("path") or []
+    if isinstance(sources, str):
+        sources = [sources]
+    if not sources:
+        raise ToolError("Nothing to zip: pass paths.", code="bad_path")
+
+    destination = ctx.resolve(str(args.get("output") or "archive.zip"))
+    if destination.suffix.lower() != ".zip":
+        destination = destination.with_suffix(".zip")
+    ctx.note_write(destination)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+
+    members: list[tuple[Path, str]] = []
+    for entry in sources:
+        resolved = ctx.resolve(str(entry))
+        if not resolved.exists():
+            raise ToolError(f"{entry} does not exist", code="not_found")
+        if resolved.is_dir():
+            for child in sorted(resolved.rglob("*")):
+                if not child.is_file():
+                    continue
+                # Re-resolved individually: rglob follows into symlinked
+                # directories, so the containment check has to be applied
+                # to what is actually being read, not to the root of the
+                # walk.
+                checked = ctx.resolve(str(child.relative_to(ctx.root)))
+                members.append((checked, str(child.relative_to(ctx.root))))
+        else:
+            members.append((resolved, str(resolved.relative_to(ctx.root))))
+
+    if destination in {path for path, _ in members}:
+        raise ToolError(
+            "The archive cannot contain itself.", code="recursive_archive"
+        )
+
+    total = 0
+    with zipfile.ZipFile(destination, "w", zipfile.ZIP_DEFLATED) as archive:
+        for path, arcname in members:
+            size = path.stat().st_size
+            total += size
+            if total > ctx.max_file_bytes * 16:
+                raise ToolError(
+                    f"Archive would exceed {ctx.max_file_bytes * 16} bytes. "
+                    "Zip fewer files, or raise max_file_bytes deliberately.",
+                    code="too_large",
+                )
+            archive.write(path, arcname)
+
+    written = destination.stat().st_size
+    ctx.record("zip", {"output": str(destination), "members": len(members)})
+    return ToolResult(
+        True,
+        f"Wrote {destination.relative_to(ctx.root)} — {len(members)} file(s), "
+        f"{written} bytes (from {total} uncompressed).",
+        tool="zip",
+        data={
+            "output": str(destination.relative_to(ctx.root)),
+            "members": len(members),
+            "bytes": written,
+            "uncompressed_bytes": total,
+        },
+    )
+
+
+def _unzip(ctx: ToolContext, args: dict[str, Any]) -> ToolResult:
+    """Unpack an archive inside the workspace.
+
+    Every member's destination goes through `ctx.resolve`, which is what
+    stops a zip-slip: an archive entry named `../../etc/cron.d/x` extracts
+    exactly where it says unless something checks, and `ZipFile.extractall`
+    sanitises less than people assume.
+    """
+    source = ctx.resolve(str(args.get("path") or ""))
+    if not source.exists():
+        raise ToolError(f"{args.get('path')} does not exist", code="not_found")
+    into = ctx.resolve(str(args.get("into") or "."))
+    into.mkdir(parents=True, exist_ok=True)
+
+    written: list[str] = []
+    try:
+        with zipfile.ZipFile(source) as archive:
+            for info in archive.infolist():
+                if info.is_dir():
+                    continue
+                target = ctx.resolve(
+                    str((into / info.filename).relative_to(ctx.root))
+                )
+                ctx.note_write(target)
+                target.parent.mkdir(parents=True, exist_ok=True)
+                with archive.open(info) as member, open(target, "wb") as out:
+                    out.write(member.read(ctx.max_file_bytes + 1))
+                if target.stat().st_size > ctx.max_file_bytes:
+                    target.unlink(missing_ok=True)
+                    raise ToolError(
+                        f"{info.filename} is larger than {ctx.max_file_bytes} bytes.",
+                        code="too_large",
+                    )
+                written.append(str(target.relative_to(ctx.root)))
+    except zipfile.BadZipFile as exc:
+        raise ToolError(f"{args.get('path')} is not a zip: {exc}", code="bad_archive") from exc
+
+    ctx.record("unzip", {"path": str(source), "members": len(written)})
+    return ToolResult(
+        True, f"Unpacked {len(written)} file(s) from {source.name}.",
+        tool="unzip", data={"files": written[:100], "count": len(written)},
+    )
+
+
 def _web_search(ctx: ToolContext, args: dict[str, Any]) -> ToolResult:
     if not ctx.allow_web_search:
         raise ToolError("Web search is disabled for this agent.", code="search_disabled")
@@ -531,6 +748,23 @@ TOOLS: dict[str, Tool] = {
                 interpreter=_str("Command to run it with, e.g. 'python3'"),
                 args=_str("Extra arguments")),
              _execute_file, mutating=True),
+        Tool("run_fish",
+             "Run a fish shell command in the workspace and return its output. "
+             "Disabled unless the operator enabled execution.",
+             _p(command=_str("The fish command line", required=True)),
+             _run_fish, mutating=True),
+        Tool("zip",
+             "Zip files or directories from the workspace into an archive.",
+             _p(paths=_str("Paths to include, relative to the workspace root",
+                           required=True),
+                output=_str("Where to write the archive (default archive.zip)")),
+             _zip_paths, mutating=True),
+        Tool("unzip",
+             "Unpack an archive that is in the workspace.",
+             _p(path=_str("The archive, relative to the workspace root",
+                          required=True),
+                into=_str("Where to unpack it (default the workspace root)")),
+             _unzip, mutating=True),
         Tool("web_search",
              "Search the web for current information.",
              _p(query=_str("What to search for", required=True)),

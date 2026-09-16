@@ -162,7 +162,7 @@ Cut across `dev1`–`dev13` and `post1`–`post5`; see the
 - **beta 1 full — `fuse box`**, GPU thermal management, and a claim
   about it that did not survive being measured
 
-## 0.72.5 — planned
+## 0.72.5 — done
 
 - **The release guard stops refusing the version the tree is prepared
   with.** *Done* — `.github/scripts/version_guard.py`. Preparing a
@@ -172,29 +172,40 @@ Cut across `dev1`–`dev13` and `post1`–`post5`; see the
   `post3` shipped with no notes. It now asks the question that actually
   matters — does a `v<version>` tag already name *different* code — and
   only refuses then. Backwards is still refused.
-- **`noodle` works inside `hyped-pro`.** The autonomous multi-agent
-  executor has its own entry point and does not yet run as a mode of the
-  TUI it was written for.
-- **`hyprslug` builds Dflash2 drafts.** `hypernix.quant.dflash2` can
-  already `attach` a draft to a base GGUF; hyprslug cannot yet *produce*
-  the draft. Target precisions: `q8`, `int8`, `fp16`, `bf16`, `fp32`,
-  `IQ0.5`, `Q6_K`, `Q4_M` — then embedding the result in a single GGUF,
-  which is where the speed-up is: one file, one download, and a runtime
-  that has never heard of Dflash2 still reads the base model straight
-  through.
-- **Three additions to `tvtoppro`:**
+- **`noodle` works inside `hyped-pro`.** *Done* — `/noodle` in the TUI,
+  over five bridge verbs. It adopts vendor keys already in the HyperNix
+  config, with the environment winning over the stored copy, so a
+  session that works in `hyped` is not configured twice.
+- **`hyprslug` builds Dflash2 drafts.** *Done*, and Dflash1 as well. All
+  nine target precisions are there — `q8`, `int8`, `fp16`, `bf16`,
+  `fp32`, `IQ0.5`, `Q6_K`, `Q4_M`, `int2` — and Dflash2 embeds its draft
+  in the base GGUF, which is where the speed-up is: one file, one
+  download, and a runtime that has never heard of Dflash2 reads the base
+  model straight through. Dflash1 is the standalone `--model-draft`
+  file; it renumbers its kept blocks from zero and rewrites
+  `<arch>.block_count` to match, because a draft claiming 32 blocks and
+  shipping 6 loads and then reads past the end of the tensor table.
+  `hnx-bundle` puts several quantisations in one GGUF under
+  `hnxq.<slug>.`, storing once the tensors every variant left untouched.
+- **Three additions to `tvtoppro`.** *Done* — all three:
   1. the spinner module, and `tvtop-older`'s animated "decoding" startup
      text
   2. a module system, so a new stat is a file rather than a patch
   3. a stall detector — `train.log` untouched for over a week means look
      at the highest-usage running Python process instead, and read its
      logs and progress from there
-- **`cctvtop`'s remote desktop is broken.** Fix it.
-- **The README.** Update or replace; several sections describe a version
-  that is several releases behind.
-- **The `hypernix` CLI.** General improvement pass.
-- **T1 v1.0.26.9.2.2 (or .2.3) — accounts and web auth without a T1 API
-  key.** Local account creation and browser-based sign-in, served four
+- **`cctvtop`'s remote desktop is broken.** *Done* — it called a held
+  port a live session. The probe completes an RFB handshake now, and a
+  missing session says which of four reasons it is.
+- **The README.** *Done* — a 0.72.5 section, the module reference
+  brought up to date, and every console script this release adds listed
+  in the CLI reference.
+- **The `hypernix` CLI.** *Done* — an unknown subcommand exits 2 on
+  stderr with the nearest real command suggested, aliases are accepted,
+  and four commands that were reachable only by knowing they existed are
+  in the menu.
+- **T1 v1.0.26.9.2.3 — accounts and web auth without a T1 API key.**
+  *Done*, in all four modes, with every rule below held. Local account creation and browser-based sign-in, served four
   ways: from localhost, over Tailscale, from the operator's own site, or
   from a prebuilt Cloudflare site hosted by the API host. Non-negotiable
   for this one, and each is an existing rule rather than a new one:
@@ -205,7 +216,25 @@ Cut across `dev1`–`dev13` and `post1`–`post5`; see the
     sequence
   - discovery stays separate from execution: a host-provided application
     is never run without explicit user confirmation and validation
-- **Security pass.** Fix what the audit finds.
+- **Security pass.** *Done* — two real findings. The config file holding
+  API keys was world-readable, and is now written `0600` into a `0700`
+  directory through a temporary file and `os.replace`. Key
+  authentication compared key strings in a loop whose position depended
+  on the prefix, a timing oracle for the stored keys; keys are indexed
+  by digest and compared with `hmac.compare_digest`, and the measured
+  60x spread is flat.
+- **Issue templates.** *Done* — one for a bug, one for a feature
+  request.
+- **A training guide.** *Done* — [Model-Training-Guide](Model-Training-Guide.md),
+  written around "which of these do I use, and in what order". Every API
+  in it was run against the package; six were wrong.
+- **HyperLink: CarPlay, Siri, themes, attachments, renaming.** *Done*.
+  CarPlay offers a keyboard only when the car reports it will allow one.
+  Four App Intents, none of which open the app. Eight themes, each
+  checked for WCAG AA against its own bubbles. The attachment menu
+  offers all four ways in rather than two. And a chat can be renamed —
+  the server has taken a title on `PATCH` since HyperLink shipped and
+  nothing on the phone ever sent one.
 
 ## 0.72.6 — planned
 

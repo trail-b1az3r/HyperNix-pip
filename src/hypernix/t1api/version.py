@@ -275,9 +275,9 @@ def parse_version(text: str) -> T1Version:
 #: that ``/bridge/lmstudio/*`` passes straight through. Also in this
 #: release: the SSPKID stops being carried in memory alongside the key,
 #: and ``gkey create -Con`` takes identity from a configuration source.
-T1_VERSION = T1Version(api=1, major=0, year=2026, month=9, feature=2, fix=1)
-T1_VERSION_SHORT = T1_VERSION.short   # "1.0.26.9.2.1"
-T1_VERSION_LONG = T1_VERSION.long     # "1.0.2026.9.2.1"
+T1_VERSION = T1Version(api=1, major=0, year=2026, month=9, feature=2, fix=3)
+T1_VERSION_SHORT = T1_VERSION.short   # "1.0.26.9.2.3"
+T1_VERSION_LONG = T1_VERSION.long     # "1.0.2026.9.2.3"
 
 #: Oldest client this server still answers without a compatibility
 #: warning. Same generation, first release of it — everything from the

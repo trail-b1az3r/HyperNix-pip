@@ -397,6 +397,163 @@ class ChatSessionStore:
                 ).fetchall()
         return [_message_from_row(r) for r in rows]
 
+    def edit_message(
+        self,
+        session_id: str,
+        message_id: str,
+        *,
+        content: str,
+        owner: str | None = None,
+        truncate: bool = True,
+    ) -> list[ChatMessage]:
+        """Rewrite one message, and drop what came after it.
+
+        The truncation is the point, not a side effect. Everything below
+        an edited message was written *in reply to the old text*: leave
+        it and the conversation reads as the model answering a question
+        nobody asked, and — worse — that transcript is what gets sent as
+        context on the next turn, so the model is being told it said
+        things it did not.
+
+        ``truncate=False`` exists for fixing a typo in the last message
+        with nothing after it, where there is nothing to drop and
+        re-running would be wasteful.
+
+        Returns the messages that were removed, so a caller can say how
+        much the edit cost rather than silently deleting eleven turns.
+        """
+        if not content.strip():
+            raise T1APIError(
+                T1ErrorCode.VALIDATION_ERROR,
+                "An edited message cannot be empty. Delete it instead.",
+            )
+        self.get(session_id, owner=owner)
+        now = time.time()
+        with self._lock, self.backend.connect() as conn:
+            row = conn.execute(
+                "SELECT * FROM hyperlink_messages WHERE message_id = ? AND session_id = ?",
+                (message_id, session_id),
+            ).fetchone()
+            if row is None:
+                raise T1APIError(
+                    T1ErrorCode.NOT_FOUND,
+                    f"No message {message_id!r} in this conversation.",
+                    http_status=404,
+                )
+            original = _message_from_row(row)
+            if original.role != "user":
+                # Editing what the model said turns the transcript into
+                # fiction: the next turn would be built from words it
+                # never produced, and every later reply would be
+                # reasoning about them.
+                raise T1APIError(
+                    T1ErrorCode.VALIDATION_ERROR,
+                    "Only your own messages can be edited. Editing the "
+                    "assistant's would make the transcript a record of "
+                    "something that did not happen.",
+                )
+
+            removed: list[ChatMessage] = []
+            if truncate:
+                later = conn.execute(
+                    "SELECT * FROM hyperlink_messages WHERE session_id = ? AND seq > ? "
+                    "ORDER BY seq ASC",
+                    (session_id, original.seq),
+                ).fetchall()
+                removed = [_message_from_row(r) for r in later]
+                conn.execute(
+                    "DELETE FROM hyperlink_messages WHERE session_id = ? AND seq > ?",
+                    (session_id, original.seq),
+                )
+
+            metadata = dict(original.metadata)
+            # Kept rather than overwritten: somebody reading the
+            # transcript later can see that this line is not what was
+            # originally sent, which a silent rewrite would hide.
+            metadata.setdefault("edited_from", original.content)
+            metadata["edited_at"] = now
+            conn.execute(
+                "UPDATE hyperlink_messages SET content = ?, metadata = ? "
+                "WHERE message_id = ?",
+                (content, json.dumps(metadata), message_id),
+            )
+            conn.execute(
+                "UPDATE hyperlink_sessions SET updated_at = ? WHERE session_id = ?",
+                (now, session_id),
+            )
+        return removed
+
+    def delete_message(
+        self, session_id: str, message_id: str, *, owner: str | None = None
+    ) -> bool:
+        """Remove one message. Returns whether there was one.
+
+        Deliberately does *not* truncate: deleting a message is usually
+        about removing something that should not be stored — a pasted
+        key, a name — and taking the rest of the conversation with it
+        would make people keep the secret rather than lose the thread.
+        """
+        self.get(session_id, owner=owner)
+        with self._lock, self.backend.connect() as conn:
+            cursor = conn.execute(
+                "DELETE FROM hyperlink_messages WHERE message_id = ? AND session_id = ?",
+                (message_id, session_id),
+            )
+            removed = cursor.rowcount > 0
+            if removed:
+                conn.execute(
+                    "UPDATE hyperlink_sessions SET updated_at = ? WHERE session_id = ?",
+                    (time.time(), session_id),
+                )
+        return removed
+
+    def mark_compacted(
+        self,
+        message_ids: list[str],
+        *,
+        session_id: str,
+        owner: str | None = None,
+        summary_id: str,
+    ) -> int:
+        """Record that these messages are now represented by a summary.
+
+        A flag, not a delete. `messages()` keeps returning them so the
+        person's transcript is unchanged; `context_for` skips them so the
+        model sees the short version. Returns how many were marked.
+
+        Idempotent: marking an already-marked message again is a no-op
+        rather than an error, because a retried compaction is a retry and
+        not a fault.
+        """
+        if not message_ids:
+            return 0
+        self.get(session_id, owner=owner)
+        marked = 0
+        with self._lock, self.backend.connect() as conn:
+            for message_id in message_ids:
+                row = conn.execute(
+                    "SELECT metadata FROM hyperlink_messages "
+                    "WHERE message_id = ? AND session_id = ?",
+                    (message_id, session_id),
+                ).fetchone()
+                if row is None:
+                    continue
+                try:
+                    metadata = json.loads(row["metadata"] or "{}")
+                except (ValueError, TypeError):
+                    metadata = {}
+                if not isinstance(metadata, dict):
+                    metadata = {}
+                if metadata.get("compacted_by"):
+                    continue
+                metadata["compacted_by"] = summary_id
+                conn.execute(
+                    "UPDATE hyperlink_messages SET metadata = ? WHERE message_id = ?",
+                    (json.dumps(metadata), message_id),
+                )
+                marked += 1
+        return marked
+
     def context_for(
         self,
         session_id: str,
@@ -412,6 +569,20 @@ class ChatSessionStore:
         mid-thread, which is worse than a shorter memory.
         """
         history = self.messages(session_id, owner=owner)
+        # A compacted message has been replaced by a summary that is
+        # itself in this history. Including both would mean paying for
+        # the long version and the short one, which is the opposite of
+        # what compaction was asked to do.
+        #
+        # Skipped here and not in `messages()`: the transcript a person
+        # scrolls is still the one they had, and only the model sees the
+        # shortened version. Deleting instead would make compaction
+        # destructive over data the person may care about more than the
+        # model does.
+        history = [
+            m for m in history
+            if not (isinstance(m.metadata, dict) and m.metadata.get("compacted_by"))
+        ]
         system = [m for m in history if m.role == "system"]
         rest = [m for m in history if m.role != "system"]
 

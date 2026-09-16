@@ -46,7 +46,7 @@ reachable if you already knew the filename. Fixed.)
 
 | Guide | Covers |
 |---|---|
-| [Training](Training.md) | `init_from_scratch`, `expand_checkpoint`, `train`, AutoModel fallback, `compute_framework`, `abbicus`. |
+| [Training](Training.md) · [Model Training Guide](Model-Training-Guide.md) | `init_from_scratch`, `expand_checkpoint`, `train`, AutoModel fallback, `compute_framework`, `abbicus`. |
 | [Abbicus](Abbicus.md) | Automatic token regulation and curriculum tuning by model size / step. |
 | [Optimizers](Optimizers.md) | The custom AdamW-family optimizer modules (`pressure_cooker` and relatives). |
 | [Pressure Cooker v3](Pressure-Cooker-V3.md) | `PressureCookerV3`, V3Plus QAT, `StovetopV3CookerPlus`, `CookerLite`. |

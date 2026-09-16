@@ -88,7 +88,7 @@ MARK_CMAKE = "GGML_HNX_SOURCES"
 #: upstream's own 36, 37 and 38 are commented out and their table slots
 #: sit empty -- and every read goes through a bounds-checked lookup by
 #: an id some tensor actually carries, never a sweep of the range.
-HNX_TYPE_COUNT = 208
+HNX_TYPE_COUNT = 210
 
 # The enum values. Kept as one string so the marker and the entries
 # cannot be added separately -- a tree with the marker but not the
@@ -108,6 +108,8 @@ ENUM_ADDITION = f"""\
         GGML_TYPE_HNX_INT4   = 205,
         GGML_TYPE_HNX_FP2    = 206,
         GGML_TYPE_HNX_1375   = 207,
+        GGML_TYPE_HNX_INT8   = 208,
+        GGML_TYPE_HNX_INT2   = 209,
 """
 
 TRAITS_ADDITION = f"""\
@@ -117,7 +119,7 @@ TRAITS_ADDITION = f"""\
     // turn one back into floats. The arithmetic half lives in the CPU
     // table -- see TRAITS_CPU_ADDITION for why they are separate.
     //
-    // from_float_ref is NULL for all eight: these are decode-only here.
+    // from_float_ref is NULL for all ten: these are decode-only here.
     // Quantising to a sub-bit tier is hyprslug's job, which has the
     // importance matrix that decides where the surviving signs go --
     // and without one the result is meaningfully worse. A NULL
@@ -188,6 +190,22 @@ TRAITS_ADDITION = f"""\
         .to_float                 = (ggml_to_float_t) hnx_ggml_to_float_int1,
         .from_float_ref           = NULL,
     }},
+    [GGML_TYPE_HNX_INT8] = {{
+        .type_name                = "INT8",
+        .blck_size                = HNX_BLOCK_SIZE,
+        .type_size                = 258,
+        .is_quantized             = true,
+        .to_float                 = (ggml_to_float_t) hnx_ggml_to_float_int8,
+        .from_float_ref           = NULL,
+    }},
+    [GGML_TYPE_HNX_INT2] = {{
+        .type_name                = "INT2",
+        .blck_size                = HNX_BLOCK_SIZE,
+        .type_size                = 66,
+        .is_quantized             = true,
+        .to_float                 = (ggml_to_float_t) hnx_ggml_to_float_int2,
+        .from_float_ref           = NULL,
+    }},
 """
 
 TRAITS_CPU_ADDITION = f"""\
@@ -251,6 +269,18 @@ TRAITS_CPU_ADDITION = f"""\
     [GGML_TYPE_HNX_FP2] = {{
         .from_float               = NULL,
         .vec_dot                  = (ggml_vec_dot_t) hnx_ggml_vec_dot_fp2,
+        .vec_dot_type             = GGML_TYPE_F32,
+        .nrows                    = 1,
+    }},
+    [GGML_TYPE_HNX_INT8] = {{
+        .from_float               = NULL,
+        .vec_dot                  = (ggml_vec_dot_t) hnx_ggml_vec_dot_int8,
+        .vec_dot_type             = GGML_TYPE_F32,
+        .nrows                    = 1,
+    }},
+    [GGML_TYPE_HNX_INT2] = {{
+        .from_float               = NULL,
+        .vec_dot                  = (ggml_vec_dot_t) hnx_ggml_vec_dot_int2,
         .vec_dot_type             = GGML_TYPE_F32,
         .nrows                    = 1,
     }},

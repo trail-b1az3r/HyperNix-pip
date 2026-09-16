@@ -50,6 +50,14 @@ jobs:
     uses: ./.github/workflows/ios.yml
     with:
       run_tests: true
+      # A release IPA has to be able to run a model. Without this the
+      # build links no llama.cpp and ships EchoRunner, so every
+      # on-device feature is inert in the artifact people install --
+      # and nothing said so, because falling back is the correct
+      # behaviour for a PR build and the release used the same default.
+      # It costs 15-25 minutes and it is the difference between an app
+      # and a demo.
+      local_engine: true
       version: ""
     secrets: inherit
 

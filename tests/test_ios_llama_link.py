@@ -320,3 +320,204 @@ class TestTheBuildScript:
         script = BUILD_SCRIPT.read_text(encoding="utf-8")
         assert "llama.xcframework.json" in script
         assert "hnx_patched" in script
+
+
+class TestAReleaseShipsTheEngine:
+    """Every release shipped an IPA that could not run a model.
+
+    `ios.yml` builds llama.cpp only when `local_engine` is set, and
+    `release.yml` called it without setting anything — so the input took
+    its `false` default and the artifact people install linked no engine
+    and used `EchoRunner`. Every on-device feature was inert in it.
+
+    Nothing reported this, and that is the interesting part: falling back
+    to EchoRunner is the *correct* behaviour for a PR build that did not
+    ask for an engine, so the release path was quietly taking the right
+    branch for the wrong reason.
+    """
+
+    @staticmethod
+    def _workflow(name: str) -> dict:
+        import yaml
+
+        return yaml.safe_load(
+            (Path(__file__).resolve().parent.parent / ".github" / "workflows" / name)
+            .read_text(encoding="utf-8")
+        )
+
+    def test_the_release_asks_for_the_engine(self):
+        release = self._workflow("release.yml")
+        job = release["jobs"]["ios"]
+        assert job["with"].get("local_engine") is True, (
+            "release.yml calls ios.yml without local_engine, so the shipped "
+            "IPA links no llama.cpp"
+        )
+
+    def test_a_caller_that_forgets_still_gets_one(self):
+        """The only reason to call this workflow is to ship the result.
+        The cheap default belongs on the PR path, where it still is."""
+        ios = self._workflow("ios.yml")
+        # PyYAML parses the `on:` key as the boolean True.
+        triggers = ios.get("on") or ios.get(True)
+        assert triggers["workflow_call"]["inputs"]["local_engine"]["default"] is True
+
+    def test_a_pull_request_still_does_not_pay_for_it(self):
+        """15-25 minutes on a hosted macOS runner is not worth paying on
+        a PR that touched a view."""
+        ios = self._workflow("ios.yml")
+        triggers = ios.get("on") or ios.get(True)
+        assert triggers["workflow_dispatch"]["inputs"]["local_engine"]["default"] is False
+
+    def test_the_engine_step_is_still_conditional(self):
+        ios = self._workflow("ios.yml")
+        steps = ios["jobs"]["build"]["steps"]
+        engine = next(s for s in steps if s.get("name") == "Build the inference engine")
+        assert engine.get("if"), "the engine step must stay conditional"
+
+    def test_the_generate_step_requires_what_was_asked_for(self):
+        """The guard against the next version of this bug: an engine step
+        that runs and fails would otherwise still produce an IPA, because
+        prepare_project.py treats a missing framework as "no engine
+        wanted"."""
+        ios = self._workflow("ios.yml")
+        steps = ios["jobs"]["build"]["steps"]
+        generate = next(s for s in steps if s.get("name") == "Generate the Xcode project")
+        assert "--require-engine" in generate["run"]
+
+    def test_the_condition_does_not_read_inputs_directly(self):
+        """The bug that survived the first fix, and it looks correct.
+
+        The `inputs` context exists *only* for `workflow_dispatch` and
+        `workflow_call`. On a `push` or a `pull_request` it is not
+        populated, so `if: ${{ inputs.local_engine }}` is null, null is
+        falsy, and the engine was skipped on every commit to main — with
+        a grey "skipped" in the log indistinguishable from a deliberate
+        one. Setting the `workflow_call` default to true fixed the
+        release path and could not have fixed this one, because the
+        release path was never the one skipping.
+        """
+        ios = self._workflow("ios.yml")
+        steps = ios["jobs"]["build"]["steps"]
+        for name in ("Build the inference engine", "Generate the Xcode project"):
+            step = next(s for s in steps if s.get("name") == name)
+            text = str(step.get("if", "")) + step.get("run", "")
+            assert "inputs.local_engine" not in text, (
+                f"{name} reads inputs.local_engine directly, which is null "
+                f"on push and pull_request"
+            )
+
+
+class TestTheEngineDecisionIsMadeForEveryTrigger:
+    """The decision step, run as the shell actually runs it.
+
+    Parsing the YAML and asserting on the text of a condition is what
+    let this through the first time: the old test checked that the `if`
+    *mentioned* `local_engine`, which it did, and not that it was ever
+    true on a push, which it never was. So this extracts the real script
+    and runs it with each combination a trigger can produce.
+    """
+
+    @staticmethod
+    def _script() -> str:
+        import yaml
+
+        ios = yaml.safe_load(
+            (Path(__file__).resolve().parent.parent / ".github" / "workflows" / "ios.yml")
+            .read_text(encoding="utf-8")
+        )
+        steps = ios["jobs"]["build"]["steps"]
+        step = next(
+            s for s in steps if s.get("name") == "Decide whether to build the engine"
+        )
+        return step["run"]
+
+    @staticmethod
+    def _decide(requested: str, event: str) -> bool:
+        import os
+        import subprocess
+        import tempfile
+
+        script = TestTheEngineDecisionIsMadeForEveryTrigger._script()
+        with tempfile.TemporaryDirectory() as work:
+            output = Path(work) / "github_output"
+            output.touch()
+            subprocess.run(
+                ["bash", "-c", script],
+                env={
+                    **os.environ,
+                    "REQUESTED": requested,
+                    "EVENT": event,
+                    "GITHUB_OUTPUT": str(output),
+                },
+                check=True, capture_output=True, text=True,
+            )
+            written = output.read_text()
+        assert "build=" in written, "the step wrote no decision at all"
+        return "build=true" in written
+
+    def test_a_push_to_main_builds_the_engine(self):
+        """The one that was broken. `inputs` does not exist here, so
+        REQUESTED is the empty string — which the old expression read as
+        false on every commit."""
+        assert self._decide(requested="", event="push")
+
+    def test_a_pull_request_does_not(self):
+        """15-25 minutes on a hosted macOS runner is not worth paying on
+        a PR that touched a view, and paying it anyway is what makes
+        somebody turn this off permanently."""
+        assert not self._decide(requested="", event="pull_request")
+
+    def test_a_release_gets_what_it_asked_for(self):
+        assert self._decide(requested="true", event="push")
+
+    def test_an_explicit_no_is_honoured(self):
+        """Including on a push, where the trigger default would say yes.
+        A caller that said false meant false."""
+        assert not self._decide(requested="false", event="push")
+
+    def test_a_manual_run_can_ask_for_one(self):
+        assert self._decide(requested="true", event="workflow_dispatch")
+
+    def test_a_manual_run_without_the_box_ticked_does_not(self):
+        assert not self._decide(requested="false", event="workflow_dispatch")
+
+    def test_an_unknown_event_does_not_silently_build(self):
+        """A trigger nobody thought about should cost nothing, not 25
+        minutes of runner time."""
+        assert not self._decide(requested="", event="schedule")
+
+    def test_the_decision_is_announced(self):
+        """A skipped step looks the same whether it was skipped on
+        purpose or by a null. The log has to say which."""
+        assert "Engine requested" in self._script()
+
+
+class TestRequireEngine:
+    def test_it_refuses_when_the_framework_is_absent(self, tmp_path, monkeypatch):
+        module = _prepare()
+        monkeypatch.setattr(module, "FRAMEWORK", tmp_path / "llama.xcframework")
+        with pytest.raises(SystemExit) as refused:
+            module.main(["--require-engine", "--check"])
+        assert "require-engine" in str(refused.value)
+
+    def test_it_says_how_to_fix_it(self, tmp_path, monkeypatch):
+        module = _prepare()
+        monkeypatch.setattr(module, "FRAMEWORK", tmp_path / "llama.xcframework")
+        with pytest.raises(SystemExit) as refused:
+            module.main(["--require-engine", "--check"])
+        assert "build_llama_xcframework.sh" in str(refused.value)
+
+    def test_it_is_quiet_when_the_framework_is_there(self, tmp_path, monkeypatch):
+        module = _prepare()
+        framework = tmp_path / "llama.xcframework"
+        framework.mkdir()
+        (framework / "Info.plist").write_text("<plist/>")
+        monkeypatch.setattr(module, "FRAMEWORK", framework)
+        assert module.main(["--require-engine", "--check"]) == 0
+
+    def test_without_the_flag_a_missing_framework_is_still_fine(self, tmp_path, monkeypatch):
+        """A checkout that has never built the engine must still be able
+        to build the app — that is the whole reason the fallback exists."""
+        module = _prepare()
+        monkeypatch.setattr(module, "FRAMEWORK", tmp_path / "nothing")
+        assert module.main(["--check"]) == 0

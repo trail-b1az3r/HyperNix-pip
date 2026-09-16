@@ -496,6 +496,21 @@ actor HyperLinkClient {
         return try decode(SessionResponse.self, from: response).session
     }
 
+    /// Rename a conversation.
+    ///
+    /// The server has taken a title on `PATCH /hyperlink/sessions/{id}`
+    /// since HyperLink shipped; nothing on the phone ever sent one, so a
+    /// chat kept whichever of its first sixty characters `autotitle`
+    /// picked, for ever.
+    func rename(_ sessionID: String, to title: String) async throws -> ChatSession {
+        struct Body: Encodable { let title: String }
+        let data = try encoder.encode(Body(title: title))
+        let response = try await send(
+            path: "/hyperlink/sessions/\(sessionID)", method: "PATCH", body: data, timeout: 20
+        )
+        return try decode(SessionResponse.self, from: response).session
+    }
+
     func deleteSession(_ sessionID: String) async throws {
         _ = try await send(path: "/hyperlink/sessions/\(sessionID)", method: "DELETE", timeout: 15)
     }
@@ -598,8 +613,245 @@ actor HyperLinkClient {
 
     // MARK: - Models
 
+    /// Every model the server can offer, from every source it has.
+    ///
+    /// Replaces `bridgeModels()` as the thing the picker shows.
+    /// `/bridge/lmstudio/models` asks LM Studio what is loaded, which is
+    /// one source of three and the only one that requires a second
+    /// application to be running — so a machine with models in
+    /// `~/.hypernix/models` and no LM Studio showed an empty list.
+    func modelCatalogue() async throws -> ModelCatalogue {
+        try await get("/hyperlink/models", as: ModelCatalogue.self, timeout: 30)
+    }
+
+    /// What LM Studio specifically has loaded.
+    ///
+    /// Nothing in the app shows this any more — `modelCatalogue()` is
+    /// the list, and it already contains these marked as coming from
+    /// the bridge. Kept because it is the only way to ask that narrower
+    /// question, and because the answer to "is LM Studio running" is
+    /// sometimes the one being asked.
     func bridgeModels() async throws -> BridgeModelsResponse {
         try await get("/bridge/lmstudio/models", as: BridgeModelsResponse.self, timeout: 30)
+    }
+
+    // MARK: - Settings
+
+    /// This person's settings, and the bounds this server accepts.
+    func preferences() async throws -> PreferencesEnvelope {
+        try await get("/hyperlink/preferences", as: PreferencesEnvelope.self, timeout: 20)
+    }
+
+    /// Change some settings. Unsent fields are left alone — which is
+    /// why this is a PATCH and the patch type is all-optional: a build
+    /// that knows about six settings must not blank the four it has
+    /// never heard of.
+    func savePreferences(_ patch: PreferencesPatch) async throws -> PreferencesEnvelope {
+        let data = try await send(
+            path: "/hyperlink/preferences", method: "PATCH",
+            body: try encoder.encode(patch), timeout: 20
+        )
+        return try decode(PreferencesEnvelope.self, from: data)
+    }
+
+    func resetPreferences() async throws -> PreferencesEnvelope {
+        struct Empty: Encodable {}
+        return try await post(
+            "/hyperlink/preferences/reset", body: Empty(),
+            as: PreferencesEnvelope.self, timeout: 20
+        )
+    }
+
+    /// What could answer a message on this server, and what would now.
+    func backends() async throws -> BackendList {
+        try await get("/hyperlink/backends", as: BackendList.self, timeout: 20)
+    }
+
+    // MARK: - Memory
+
+    func memories(limit: Int = 200) async throws -> MemoryList {
+        try await get("/memory/list?limit=\(limit)", as: MemoryList.self, timeout: 20)
+    }
+
+    @discardableResult
+    func rememberFact(_ content: String, category: String = "") async throws -> Bool {
+        struct Body: Encodable {
+            let content: String
+            let category: String
+            let source: String
+        }
+        _ = try await send(
+            path: "/memory/create", method: "POST",
+            body: try encoder.encode(
+                Body(content: content, category: category, source: "manual")
+            ),
+            timeout: 20
+        )
+        return true
+    }
+
+    @discardableResult
+    func editMemory(
+        _ memoryID: String, content: String? = nil, pinned: Bool? = nil
+    ) async throws -> Bool {
+        struct Body: Encodable {
+            let memory_id: String
+            let content: String?
+            let pinned: Bool?
+        }
+        _ = try await send(
+            path: "/memory/edit", method: "POST",
+            body: try encoder.encode(
+                Body(memory_id: memoryID, content: content, pinned: pinned)
+            ),
+            timeout: 20
+        )
+        return true
+    }
+
+    func forgetMemory(_ memoryID: String) async throws {
+        let escaped = memoryID.addingPercentEncoding(
+            withAllowedCharacters: .urlQueryAllowed
+        ) ?? memoryID
+        struct Empty: Encodable {}
+        _ = try await send(
+            path: "/memory/delete?memory_id=\(escaped)", method: "POST",
+            body: try encoder.encode(Empty()), timeout: 20
+        )
+    }
+
+    // MARK: - Editing what was said
+
+    /// Rewrite one of your own messages, dropping what came after it.
+    ///
+    /// The truncation is the feature. Everything below an edited
+    /// message was written in reply to the *old* text, and it is also
+    /// what gets sent as context on the next turn — so leaving it means
+    /// telling the model it said things it never said.
+    func editMessage(
+        sessionID: String, messageID: String, content: String, truncate: Bool = true
+    ) async throws -> MessageEdit {
+        struct Body: Encodable {
+            let content: String
+            let truncate: Bool
+        }
+        let data = try await send(
+            path: "/hyperlink/sessions/\(sessionID)/messages/\(messageID)",
+            method: "PATCH",
+            body: try encoder.encode(Body(content: content, truncate: truncate)),
+            timeout: 30
+        )
+        return try decode(MessageEdit.self, from: data)
+    }
+
+    /// Remove one message, leaving the rest of the conversation.
+    func deleteMessage(sessionID: String, messageID: String) async throws {
+        _ = try await send(
+            path: "/hyperlink/sessions/\(sessionID)/messages/\(messageID)",
+            method: "DELETE",
+            timeout: 30
+        )
+    }
+
+    // MARK: - The runner
+
+    /// What the server is running, where its layers are, and what
+    /// backends it can use.
+    ///
+    /// Readable by any HyperLink caller: knowing which model is
+    /// answering is not an administrative secret, and a client that
+    /// cannot tell shows the wrong model name.
+    func runnerStatus() async throws -> RunnerStatus {
+        try await get("/runner/status", as: RunnerStatus.self, timeout: 20)
+    }
+
+    /// Where a model's layers would go. Changes nothing.
+    func runnerPlan(_ request: RunnerLoadRequest) async throws -> RunnerPlan {
+        try await post("/runner/plan", body: request, as: RunnerPlan.self, timeout: 30)
+    }
+
+    /// Load a model, replacing whatever was running.
+    ///
+    /// Switching *is* loading — there is no separate verb, because two
+    /// llama.cpp servers on one machine each try to take the VRAM the
+    /// other has and the failure lands on the one that was working.
+    ///
+    /// The timeout is generous because the wait is real: a 70B coming
+    /// off a spinning disk takes minutes, and a client that gives up
+    /// first leaves a model loading with nothing watching it.
+    func runnerLoad(_ request: RunnerLoadRequest) async throws -> RunnerStatus {
+        try await post("/runner/load", body: request, as: RunnerStatus.self, timeout: 600)
+    }
+
+    /// Stop serving. Unloading nothing is a success, not an error.
+    @discardableResult
+    func runnerUnload() async throws -> RunnerStatus {
+        struct Empty: Encodable {}
+        return try await post(
+            "/runner/unload", body: Empty(), as: RunnerStatus.self, timeout: 120
+        )
+    }
+
+    // MARK: - Uptime
+
+    /// What this server is running, and the commands to update it.
+    ///
+    /// Readable by any caller on purpose: "which version is this and
+    /// how do I move it" is the question behind most of the confusing
+    /// behaviour people report, and making it an admin secret keeps the
+    /// answer from the person who needs it.
+    func upgradeAdvice() async throws -> UpgradeAdvice {
+        try await get("/hyperlink/upgrade", as: UpgradeAdvice.self, timeout: 20)
+    }
+
+    /// What the machine is doing: CPU, memory, swap, disks, GPUs.
+    ///
+    /// Admin or partial admin server-side — it is a description of
+    /// somebody's hardware, so an ordinary phone gets a 403 and the
+    /// caller is expected to say so rather than show a blank dashboard.
+    func hardware() async throws -> ServerHardware {
+        try await get("/hyperlink/hardware", as: ServerHardware.self, timeout: 30)
+    }
+
+    /// How long the server and the machine have been up.
+    func uptime() async throws -> ServerUptime {
+        try await get("/hyperlink/uptime", as: ServerUptime.self, timeout: 15)
+    }
+
+    // MARK: - Stop
+
+    /// Tell the server to stop generating.
+    ///
+    /// The button used to cancel the phone's read task and nothing else,
+    /// so the model finished the whole answer into a socket nobody was
+    /// reading. Cancelling locally is still right — it is what makes the
+    /// UI respond immediately — but it is half the job, and the missing
+    /// half is this call.
+    ///
+    /// Passing no `generationID` stops whatever is running in this
+    /// session, which is what the button means. Passing one is for two
+    /// devices open on the same conversation, where "whatever is running
+    /// here" would stop the other phone's answer.
+    @discardableResult
+    func stopGeneration(
+        sessionID: String, generationID: String? = nil
+    ) async throws -> GenerationStopResult {
+        // A query parameter, matching the endpoint: it takes
+        // `generation_id` in the query string and no body at all, and a
+        // JSON body here would be read as an empty query and silently
+        // stop the wrong thing — every generation in the session rather
+        // than the named one.
+        var path = "/hyperlink/sessions/\(sessionID)/chat/stop"
+        if let generationID, !generationID.isEmpty,
+           let escaped = generationID.addingPercentEncoding(
+               withAllowedCharacters: .urlQueryAllowed
+           ) {
+            path += "?generation_id=\(escaped)"
+        }
+        struct Empty: Encodable {}
+        return try await post(
+            path, body: Empty(), as: GenerationStopResult.self, timeout: 15
+        )
     }
 
     func resolveModel(pageURL: String, fileURL: String, prefer: String) async throws -> ResolvedModel {

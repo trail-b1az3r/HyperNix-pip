@@ -29,9 +29,20 @@ to a different provider on its own (surprising invoices in one direction,
 surprising output in the other), and it does not execute a client
 application a remote server asked it to run. Both are opt-in and both
 say what they are doing.
+
+Inside hyped-pro
+----------------
+The line above about being "the autonomous executor inside Hyped Pro" was
+aspirational until 0.72.5: Noodle was a library and a console script, and
+hyped-pro had no command, no bridge verb and no idea it existed.
+:mod:`hypernix.interfaces.noodle.hyped` is the connection — sessions the
+TUI and the GUI drive with ``/noodle`` and a Noodle tab respectively,
+with a live event feed rather than a frozen screen for the length of a
+run.
 """
 from __future__ import annotations
 
+from . import hyped
 from .agent import Agent, AgentEvent, AgentResult
 from .hpo import HPOResult, SearchSpace, Trial, random_search, successive_halving
 from .providers import (
@@ -60,4 +71,5 @@ __all__ = [
     "Tool", "ToolContext", "ToolError", "ToolResult", "TOOLS", "run_tool", "tool_schemas",
     "syntax_verifier", "command_verifier", "combine",
     "SearchSpace", "Trial", "HPOResult", "random_search", "successive_halving",
+    "hyped",
 ]

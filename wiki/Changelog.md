@@ -26,6 +26,593 @@ next release header.
 - 𖥔 minor new feature
 
 
+## 0.72.5 pt3b — a HyperNix runner, not just a bridge
+
+### 𖢥 The runner was starting models nothing could talk to ๋࣭⭑
+
+pt2 gave the server its own llama.cpp process. The chat path did not
+know about it:
+
+```python
+def _chat_bridge(config):
+    if not config.lmstudio_enabled:
+        raise T1APIError(..., "This server has no chat backend configured")
+```
+
+So a machine with no LM Studio installed could load a 70B through
+`/runner/load`, watch the status screen report it as serving, and have
+every single message refused. The runner worked. The conversation was
+impossible.
+
+`hypernix.hyperlink.inference` is the choice that was missing. It picks:
+
+1. **the HyperNix runner**, when it has a model loaded — it is this
+   server's own process, it was started deliberately, and it is holding
+   the VRAM;
+2. **the LM Studio bridge**, when it is enabled;
+3. neither — and the refusal names *both* ways out, rather than the one
+   that happens to be checked first. Naming only LM Studio is how
+   somebody ends up installing it on a machine that did not need it.
+
+The runner wins even when both are available: somebody who loaded a
+model meant that model, and quietly answering from LM Studio would
+answer as a different model than the one on screen.
+
+The same OpenAI client talks to both, because `llama-server` and LM
+Studio both speak that API and a second client would be a second set of
+retry and timeout decisions to keep in step. What is *not* borrowed is
+the label — a reply from this server's own llama.cpp is recorded as
+`hypernix`, because `"lmstudio"` on a machine with no LM Studio is the
+kind of small lie that costs somebody an afternoon.
+
+`GET /hyperlink/backends` reports both and which one would answer now,
+because "this server has no models" and "a model is loaded but nothing
+is serving it" look identical from the app and need opposite fixes.
+
+### Settings, and the bounds that come with them ๋࣭⭑
+
+A new **You** tab — separate from **Server**, because that one is about
+the machine and this one is about the person. Profile, bio, a system
+prompt every conversation starts with, effort level, context bounds, a
+backup model, tools, and memory.
+
+All of it on the server. Two reasons, and the second decides it: a
+person with a phone and a tablet is one person, and these are *inputs to
+generation* — the prompt, the effort level and the context bounds all
+have to be in the process that builds the request.
+
+**The limits come back with the values.** The effort levels in the
+picker and the context bounds are the server's, sent with the settings.
+An effort level the phone offers and the server rejects is a settings
+screen that cannot save, with no way for the phone to know why.
+
+**Clamps are reported, not applied silently.** A context maximum of four
+million is not a preference — it is a number that makes every reply fail
+with an out-of-memory two minutes later and somewhere unrelated, so it
+reads as the model being broken. It is lowered, and the screen says so.
+A minimum above the maximum is swapped rather than refused, because
+somebody who typed them the wrong way round meant the range.
+
+### The system prompt, composed in scope order 𖥔
+
+Who the person is, then how they want to be answered generally, then
+what this conversation is for, then what is known about them. The
+session's own prompt comes *after* the global one so a conversation can
+override the default rather than fight it — the later instruction is the
+one a model follows when two conflict.
+
+### Effort levels ✨
+
+`minimal` through `maximum`. A backend with a real reasoning-effort
+control is given the level by name; one without gets a matching
+temperature and answer length. That second part is an approximation and
+is documented as one — it is scheduling, not thinking. An explicit
+`temperature` on the request still wins, because somebody who sent a
+number meant it.
+
+### A backup model ✨
+
+Tried once when the model you asked for does not answer, and never the
+same model twice — a retry of "nothing is loaded" fails identically.
+When it is used the message records it, because an answer from a
+different model than the one you chose is the single most confusing
+thing that can happen in a thread.
+
+Empty by default: failing honestly beats silently answering as somebody
+else.
+
+### Full tool calling ๋࣭⭑
+
+`/noodle/run` let a *caller* run one tool. Now the model can: it asks,
+the server runs it, and the result goes back into the conversation — so
+"zip the logs and tell me what is in them" is one message rather than
+five. Files, edits, fish commands and archives, in the same per-owner
+workspace `/noodle/*` uses, so anything it writes is something you can
+list and download.
+
+Three rules, each a designed-out failure:
+
+* **Bounded.** Eight rounds, and the model is *told* when it runs out —
+  one that does not know writes its last reply as if it were about to do
+  more, and you get half a sentence about what it was going to check.
+* **Every call is answered.** A missing tool, a raising tool and a
+  switched-off tool all produce a tool message saying so. A `tool_calls`
+  with no matching reply is a malformed conversation, and the *next*
+  turn is built from it.
+* **A refusal is a result.** `allow_execute` off is the operator's
+  answer, not an error — handed back as a normal result so the model can
+  say so, rather than the turn dying with a stack trace.
+
+Off until switched on, because letting a model write files on your
+machine is not a default.
+
+### Memory you can read ✨
+
+Facts carried between conversations — some you wrote, some the model
+noticed. Both shown, both editable, both deletable, and the automatic
+ones marked as such. A model that remembers things about you and gives
+you no way to see them is a model you cannot correct.
+
+### Animations, in one vocabulary 𖥔
+
+`Motion.swift` names every duration and curve. Springs rather than ease
+curves, because chat is all interruptions — a message lands while the
+list is still settling from the last one, and a spring continues from
+where it is where an `easeInOut` restarts.
+
+Reduce Motion collapses every one of them to a cross-fade. That setting
+means "no movement", not "no feedback", so the change is still shown —
+it just does not move.
+
+### ❗ Two and a half hours in the background, honestly
+
+The request asked for the connection to survive 2.5 hours of
+backgrounding. **iOS does not sell that.** `beginBackgroundTask` grants
+about 30 seconds on a modern release — it used to be three minutes — and
+an app that claims otherwise is one that gets terminated and does not
+notice.
+
+So the promise is kept a different way, and it is a better way: *the
+work does not live on the phone*. The server is generating and persists
+the reply as it goes, including when the client disconnects half way.
+The phone uses its ~30 seconds to let go cleanly, remembers which
+conversation was in flight, and reconciles on the way back.
+
+A conversation picked up three hours later is then indistinguishable
+from one that never stopped — which is what was being asked for. The
+2.5-hour window is how long the phone keeps caring; past it the reply is
+still on the server, it is simply no longer treated as in flight.
+
+## 0.72.5 pt3 — the phone can drive the machine
+
+pt2 gave the server the operations. pt3 is the app that uses them, plus
+three bugs that all had the same shape: something reported success and
+did nothing of the sort.
+
+### 𖢥 The inference engine was skipped on every push
+
+"It always skips the inference engine build." The first fix set the
+`workflow_call` default to true, which made *releases* right and could
+not have fixed this — the release path was never the one skipping.
+
+```yaml
+if: ${{ inputs.local_engine }}
+```
+
+The `inputs` context exists **only** for `workflow_dispatch` and
+`workflow_call`. On a `push` or a `pull_request` it is not populated at
+all, so this is null, null is falsy, and the engine step was skipped on
+every single commit to main — with a grey "skipped" in the log that is
+indistinguishable from a deliberate one. `--require-engine` was gated on
+the same expression, so the guard that exists to catch exactly this was
+switched off by it.
+
+A step now decides out loud, with a stated answer for every trigger:
+push builds the engine, a pull request does not, and an explicit true or
+false is honoured wherever it comes from. The old test asserted that the
+condition *mentioned* `local_engine` — which it did — rather than that
+it was ever true on a push, which it never was.
+
+### 𖢥 "The installed T1 thinks it is running an older version"
+
+Three copies of the version number, all maintained by hand, all stale:
+`install-t1.sh` had two (`VERSION` and `T1_API_VERSION`) and
+`bin/hypernix-t1` had the third. The banner said `0.72.2.post5 · t1
+v1.0.26.8.1.1` over an install that was several releases past both.
+
+Nothing was wrong with the install. The only thing that was ever wrong
+was the number printed over it — and from the outside those two are
+indistinguishable, which is why it got reported as the install being
+old.
+
+Hand-editing them is not the fix; it is the bug, once per release. Now:
+
+* `install-t1.sh` derives both from `src/hypernix/__init__.py` and
+  `src/hypernix/t1api/version.py` when it is run from a clone. The
+  literals stay as the `curl | bash` fallback, and a test fails if they
+  drift from the package again.
+* `hypernix-t1 version` asks the installed package — it runs *after* the
+  install by definition, so it can — and reports the T1 version, the
+  Python, and which interpreter it is running as.
+
+### Every model the server has, not the ones LM Studio has open ๋࣭⭑
+
+The models screen showed `/bridge/lmstudio/models`: one source of three,
+and the only one that needs a second application to be running. A
+machine with forty GGUFs in `~/.hypernix/models` showed an empty list
+under a message telling the user to go and open LM Studio.
+
+It now shows the merged catalogue grouped by where each model came from,
+and names any source it could not reach — an empty list used to mean
+either "this server has no models" or "LM Studio is not running", with
+one blank screen for both. Siri's "switch to X" was reading the same
+narrow list and is fixed with it.
+
+### Loading a model from the phone ๋࣭⭑
+
+`/runner/*` existed and nothing in HyperLink could drive it, so "switch
+model" still meant walking over to the PC — the thing the runner was
+built to end.
+
+The new screen shows what is running and where its layers are, and loads
+anything on the server's disk. Every number comes from the server,
+because the server is the thing with the GPU: the backends offered are
+the ones that machine can actually use, and the layer split is computed
+against its real free VRAM.
+
+It will not load without showing the plan first. `/runner/plan` costs
+one request and changes nothing, and seeing "41 of 81 on the GPU" before
+committing is the difference between a decision and a surprise —
+loading evicts whatever people are currently talking to.
+
+Also on the command line, for the machine itself:
+
+```
+hypernix-t1 runner status
+hypernix-t1 runner plan qwen3-8b
+hypernix-t1 runner load qwen3-8b --gpu-layers 24
+hypernix-t1 runner unload
+```
+
+It talks HTTP to the local server rather than loading anything itself:
+starting a second llama.cpp here would take the VRAM the server's own
+copy is using, and the failure would land on the one that was working.
+
+### 𖢥 Stop now stops
+
+The button cancelled the phone's read task and told nobody, so the model
+finished the whole answer into a socket nobody was reading. The local
+cancel still goes first — it is what makes the button feel instant — and
+the server call follows, naming the generation id from the stream so two
+devices on one conversation do not stop each other.
+
+### Markdown 𖥔
+
+Models write markdown; the prose half of a message was rendered with
+plain `Text`, so a numbered list arrived as one wrapped paragraph with
+the numbers buried in it. Blocks are split by hand and each one's inline
+markup parsed with `AttributedString` — not `Text(LocalizedStringKey)`,
+which routes model output through the app's string catalogue and turns a
+`%@` in a reply into a format specifier. Half-written markup renders as
+its own characters, because text that vanishes while the model finishes
+a token looks like a bug.
+
+### Thirty-two servers ✨
+
+One pairing, one keychain account. Pairing with a laptop overwrote the
+desktop, and getting back meant pairing again.
+
+Now a list of up to 32, each with its own keychain account so forgetting
+one leaves the others signed in. Switching clears the previous machine's
+sessions and models rather than showing them under the new machine's
+name.
+
+The risky half is the update, not the list: every install has a record
+in the old shape, and an update that started reading a new key would
+come up unpaired on every device at once — the worst possible way to
+ship a feature about *keeping* connections. The old record is carried
+across and its token left where it is.
+
+### Edit mode ✨
+
+Long-press a message to copy, edit or delete it.
+
+Editing truncates, and that is the feature rather than a side effect.
+Everything below an edited message was written in reply to the *old*
+text, and that same transcript is what gets sent as context on the next
+turn — so leaving it means telling the model it said things it never
+said. The count is shown first: "this removes 11 messages" is a
+decision, finding eleven messages gone afterwards is a bug report.
+
+Only your own messages. Rewriting what the model said turns the
+transcript into a record of something that did not happen.
+
+Deleting is the opposite, for the opposite reason: it removes one
+message and keeps the thread. Deleting is usually about removing
+something that should not be stored — a pasted key, a name — and taking
+the conversation with it would make people keep the secret instead.
+
+### The hardware page, and what it will not pretend to know ✨
+
+CPU, memory, swap, disks and GPUs, answering "is the server busy, or is
+my model just slow?" — which from six hundred miles away cannot be
+answered any other way.
+
+Every reading is optional and the server names what it could not sample.
+A panel that renders a missing GPU temperature as 0°C is a confident
+wrong answer about hardware nobody can see.
+
+### Update commands, with the right interpreter in them ✨
+
+A new screen shows what the server is running and the exact commands to
+move it, each with a copy button.
+
+The reason it is worth an endpoint rather than a documentation page is
+one field. `pip install --upgrade hypernix` on a machine with a system
+Python, a pyenv, and the venv the service actually runs under upgrades
+whichever comes first on `PATH`, prints a cheerful success, and leaves
+the server running exactly the version it was. The server knows
+`sys.executable`; these commands name it. An editable install is told to
+use git instead, because pip will not replace one and a command that
+silently no-ops is worse than no command.
+
+It hands out text rather than running anything. Updating the package
+under a running server is a decision with a restart attached, and a
+phone button that did it silently would be a phone button that takes a
+machine down in the middle of somebody else's conversation — so the
+warning that a pip upgrade does not restart the server is part of the
+answer.
+
+### Uptime on screen 𖥔
+
+A conversation that lost its context, or a pairing that stopped working,
+is usually a PC that rebooted. Nothing in the app said so.
+
+## 0.72.5 pt2 — the server does the serving now
+
+pt1 made HyperNix quantise without llama.cpp. pt2 is about the thing
+that happens next: a machine with forty GGUFs in `~/.hypernix/models`
+that served none of them, because "switch model" meant walking over to
+the PC and using LM Studio.
+
+### Models in `.hypernix/models` were invisible ๋࣭⭑
+
+They were on disk, and nothing listed them. `install-t1.sh` gained two
+options:
+
+```bash
+./install-t1.sh --index-models          # find them, register them, serve them
+./install-t1.sh --index-models --estimate-prices
+```
+
+`--index-models` walks the directory, reads each GGUF's real metadata —
+architecture, parameter count, context length, quantisation — and writes
+a registry, so every model becomes switchable rather than merely
+present.
+
+### A price, instead of `0.0` ✨
+
+`hypernix-t1 index` read everything about a model except what to charge
+for it, and wrote `0.0`. A price of zero on a 70B is not a policy, it is
+an unanswered question that bills the operator.
+
+`--estimate-prices` answers it from five things the indexer already
+knows: **file size, quantisation format, parameter count, the GPU this
+machine has, and — for a mixture-of-experts or a hybrid — the *active*
+parameter count rather than the total.**
+
+That last one is the whole feature. Qwen3-235B-A22B does 22B of work per
+token and carries 235B of weights. Priced by total it comes out **8.8×
+more expensive** than priced by active, and the second number is the
+right one: decode speed follows the parameters that actually run. The
+memory it demands still comes from the file, which is why placement is
+decided from the file's size and speed from the active count.
+
+Every estimate says what it assumed — a derived parameter count, a dense
+assumption, a missing GPU — because a silently-wrong price is worse than
+an obviously uncertain one.
+
+### Running a model without LM Studio ๋࣭⭑
+
+`hypernix.hyperlink.managed` owns a llama.cpp process, so load, unload
+and switch are operations rather than instructions. Layers go where they
+fit: a configurable number on the GPU and the rest in RAM and on the
+CPU, planned against real VRAM and RAM headroom rather than hoped for.
+
+| Model | Card | Placement |
+| --- | --- | --- |
+| 8B Q4 | 24 GB | 33/33 layers on GPU |
+| 70B Q4 | 24 GB | 41 of 81 on GPU, the rest CPU |
+| 70B Q4 | none | 0/81, all CPU |
+
+`POST /runner/plan` answers "where would this go" and changes nothing —
+loading a model evicts the one people are currently talking to, so being
+able to see the consequence first is not a nicety. `/runner/load`,
+`/runner/unload` and `/runner/status` do the rest.
+
+### Who may switch it 🛡️
+
+Changing what a shared server runs affects everybody using it, so it is
+gated harder than reading is. Three ways in, and the operator decides
+how far the third goes: an **admin** key, **partial admin**, or
+`T1_RUNNER_SWITCH_PERM` — an explicit access level an operator grants to
+somebody paired over `waiter` or Tailscale, which is the "access 6+ if
+servers enable it" the request asked for. Off unless set.
+
+### 𖢥 HyperLink could not authenticate over Tailscale at all
+
+"You can not auth using Tailscale in hyperlink, it says it needs an
+authorized t1 key." Three independent causes, and the first meant
+trusted-network mode had **never** worked for any `/hyperlink` route:
+the keyless branch was checked *after* the credential was extracted, so
+a request with no key was refused before the code that allows no key
+could run. The second was IPv6 — the tailnet check covered
+`100.64.0.0/10` and not `fd7a:115c:a1e0::/48`, so a client that resolved
+to a ULA looked like a stranger. The third was ordering: the tailnet
+check ran after the LAN check, and a tailnet address is not on the LAN.
+
+### 𖢥 One model list, from every source
+
+HyperLink showed neither the LM Studio bridge's models nor the
+`.hypernix` ones. `hypernix.hyperlink.catalogue` merges the registry,
+the bridge and the local GGUFs into a single list, each entry saying
+where it came from, and reports per-source what it could not reach
+rather than returning a short list silently.
+
+### 𖢥 Stop now stops the generation
+
+It marked the response finished and left the model generating. The cause
+is worth writing down: a sync generator run through Starlette's
+`iterate_in_threadpool` cannot have its `finally` reached on client
+disconnect, because a thread blocked in a socket read is not
+interruptible. So cancellation is cooperative — a `threading.Event` the
+generator checks between chunks. Proved against a generator that never
+terminates on its own: without the check the test hangs for 33 seconds
+and fails; with it, 3.9 seconds, upstream generator closed, at most
+three further chunks.
+
+### The server's hardware, and how long it has been up ✨
+
+`GET /hyperlink/hardware` returns CPU, memory, disk, GPU and load;
+`GET /hyperlink/uptime` returns both the machine's and the process's.
+Every field is optional and an `unavailable` list names what could not
+be read, because a hardware panel that invents a zero is worse than one
+that says it does not know.
+
+### noodle over the API ✨
+
+`/noodle/tools`, `/noodle/run` and `/noodle/workspace`, with file
+creation, file edits, **fish commands** and **zipping**, each in a
+per-owner workspace. Execution and web search are off unless the
+operator turns them on.
+
+### `/chat/compact/*` and `/memory/*` ✨
+
+Five compaction scopes — `prompts`, `system`, `responses`, `all` and
+`dynamic`, which picks for you — and a memory store with
+`create`/`get`/`list`/`edit`/`delete`, deduplicated, budgeted, and
+folded into a model's context automatically.
+
+### 𖢥 hyprslug was crushing the one tensor it must not
+
+"Fix hyprslug models from falling apart."
+
+Not the attention weights, which measure exactly what their bitrates
+allow, and not the codecs. It was `ffn_gate_inp` — the
+mixture-of-experts router.
+
+A router is `[n_embd, n_expert]`: a few hundred kilobytes in a model of
+tens of gigabytes, and the only tensor in the file whose output is an
+**argmax** rather than a sum. Every other weight gets averaged over a
+reduction of thousands of terms, which is what makes a 4-bit dot product
+survivable at all. The router's does not. Quantising it moved its logits
+by a few percent — nothing, right up until two experts are within a few
+percent of each other, and then it is a *different expert*, one never
+trained for this token. The model does not degrade gracefully when that
+happens; it stops being language.
+
+hyprslug's never-quantise list was norms and biases. It now also covers
+the router, Mamba's `ssm_conv1d`, RWKV's time-mixing constants, and the
+positional and token-type tables — small tensors read directly rather
+than accumulated. llama.cpp refuses exactly this list, for exactly this
+reason. `time_mix_key` and `time_mix_value` are *not* on it: they are
+full-sized projections, and a bare `time_mix` prefix would leave most of
+an RWKV model unquantised and still call it Q4_K_M.
+
+Measured, not assumed: Q2_K moves a realistic router's weights by 30%.
+
+### 🐛 A quantised file that called itself F16
+
+`general.file_type` was copied from the source and never rewritten, so a
+`Q4_K_M` made from an F16 announced itself as F16 to llama.cpp's load
+banner, to a hub listing, and to `hypernix-t1 index`. The tensor table
+was right and the field everybody actually reads was wrong.
+
+Every run now writes the target's real `general.file_type` and
+`general.quantization_version`, as u32 — an i32 is present, correct and
+unreadable to anything calling `gguf_get_val_u32`. Sub-bit tiers get
+numbers of their own rather than borrowing an upstream one: a half-bit
+file labelled `Q2_K` claims four times the precision it has. Extracting
+one variant out of a multiquant bundle no longer stamps it with the
+*default* variant's type either.
+
+### 𖢥 `prot` did not make the monitors black
+
+It was one line:
+
+```python
+subprocess.run(["xset", "dpms", "force", state], check=False,
+               stdout=DEVNULL, stderr=DEVNULL)
+```
+
+which does nothing at all under four common conditions and says nothing
+about any of them:
+
+- **DPMS is disabled.** `xset dpms force off` is a *request to the DPMS
+  extension*; when it is off — which it is on a lot of desktops, because
+  the desktop environment handles power management itself — the X server
+  accepts the request, does nothing, and exits 0. The most common one.
+- **The session is Wayland.** There is no X server to ask.
+- **There is no graphical session at all** — a TTY, SSH, a container.
+- **The platform is macOS**, which the code did not check for, so `hnx
+  prot` on a Mac printed "Monitor will sleep" and left the screen on.
+
+`check=False` plus two `DEVNULL`s plus `except Exception: pass` meant
+all four failed identically and silently: the screen stayed on, the
+terminal went into raw mode, and the only evidence was a message
+promising the opposite.
+
+The method is now chosen from the session — `xset` (with `+dpms` first,
+and the prior setting restored on the way out), `hyprctl`, `swaymsg`,
+`wlopm`, the freedesktop screensaver, or `pmset` — and a failure comes
+back as a reason and a remedy. **It will not lock a screen it did not
+blank**: with no method available `prot` says which of the four cases it
+is and refuses to enter raw mode, because a lit screen plus a dead
+keyboard is worse than either. `--force` is there for anyone who wants
+it anyway.
+
+### 🔁 One blanker, not two
+
+`outage` had its own copy of the same logic, missing the same `+dpms`
+and knowing nothing about Hyprland or sway — and picking `xset` on a
+Wayland session that lacked `wlopm`. Both now go through
+`hypernix.system.blanking`, and a test fails if either grows its own
+copy of the commands again.
+
+### 🧪 Tests
+
+- A conftest that makes it **impossible** for a test to touch the real
+  `~/.hypernix`. The environment redirect alone was not enough:
+  `T1APIConfig` reads `T1_DB_PATH` at construction, so a suite that
+  cleared the environment on purpose fell back to the real database past
+  every environment-level guard. `SQLiteBackend.__init__` is patched for
+  the session instead.
+- …and a `clear_t1_config()` for the suites that clear the environment
+  deliberately. "A server with no configuration" and "a server writing
+  to the person's real home" are two different requests, and deleting
+  every `T1_*` variable made the second one by accident — visible only
+  in a full run, because it is the session-wide redirect those suites
+  were deleting.
+- An autouse fixture restoring every `T1_*` variable after each test,
+  after twelve auth tests passed alone and failed in a full run: a
+  helper setting `os.environ` directly leaked `T1_TRUSTED_NETWORK` into
+  later files.
+- The price estimator checked against real model shapes — Qwen3 8B at
+  4.9 GB, a 70B at 40 GB, Qwen3-235B-A22B — rather than invented ones.
+- The full index → price → serve → display chain, end to end: a GGUF on
+  disk indexed with its real context limit read from the file, priced,
+  written to the registry, served at `/models`, and listed at
+  `/hyperlink/models`.
+
+### 𖢥 Releases were shipping an IPA with no inference engine
+
+"It always skips the inference engine build." `release.yml` called
+`ios.yml` without `local_engine`, so it took that input's `false`
+default and the shipped app had nothing to run a model with. Fixed in
+three places, because one was not enough: the caller passes it, the
+default is now `true`, and `prepare_project.py --require-engine` stops
+the build rather than quietly producing an engine-less IPA.
+
 ## 0.72.5 — `hnx_1375bit`, and quantisation-aware training
 
 ### A tier that keeps every sign *and* the magnitude structure ✨
@@ -163,6 +750,139 @@ It did not, three times, and each was a real difference:
   different one in float32.
 
 All six packings are now bit-identical to the packer across seeds.
+
+### hyprslug builds drafts, and bundles quants ๋࣭⭑
+
+Two shapes of speculative decoding, from one quantiser:
+
+- **`dflash2`** embeds the draft in the base GGUF under a `dflash2.`
+  prefix. One file, one download, and a runtime that has never heard of
+  Dflash2 reads the base model straight through.
+- **`dflash1`** writes the draft as its own GGUF, for
+  `llama-cli --model-draft`. It renumbers the kept blocks from zero and
+  rewrites `<arch>.block_count` to match, because a draft that claims 32
+  blocks and ships 6 loads and then reads past the end of the tensor
+  table. It refuses a base with no tokenizer rather than writing a file
+  that cannot be sampled from.
+
+Both take the target precisions the roadmap asked for — `q8`, `int8`,
+`fp16`, `bf16`, `fp32`, `IQ0.5`, `Q6_K`, `Q4_M`, `int2` — and everything
+else hyprslug writes, because they now plan through `plan_tensors`
+rather than validating against llama.cpp's ten block formats. That check
+was the first version, and it meant `--quant int8` came back "unknown"
+from the draft builders while `hyprslug SOURCE int8` worked: five of the
+nine precisions the drafts were specified in were unreachable through
+them. Planning in one place is also what removed the third copy of the
+row-length rule, which had already been got wrong once.
+
+**Five new targets.** `INT8` and `INT2` join the fixed-codebook family;
+`FP32`, `FP16` and `BF16` are element widths rather than block
+quantisations and take a separate path in `encode_tensor`. BF16 rounds
+to nearest even; FP16 saturates an overflow to 65504 only when the input
+was **finite**, so an infinity stays an infinity instead of becoming a
+large number that looks like data.
+
+INT2 was expected to lose to FP2 and does not: 0.384 relRMS against
+0.397 over twelve seeds, because 39.7% of a weight tensor is near zero
+and INT2 spends a codeword there.
+
+**`hnx-bundle`** puts several quantisations of one model in a single
+GGUF under `hnxq.<slug>.`. The default variant keeps the ordinary tensor
+names, so a stock llama.cpp opens the file and runs it. Tensors every
+variant left untouched byte for byte are stored once; the rest are not,
+so a bundle is roughly its variants added together and the point is one
+download and one page cache rather than compression. `list` says what is in there, `extract` takes one back
+out as an ordinary GGUF, `strip` removes the extras.
+
+### tvtoppro: an intro, modules, and a watchdog ✨
+
+- `tvtop-older`'s animated **"decoding"** startup text, and the spinner
+  module, in tvtoppro's presentation.
+- **A module system.** A new stat is a file that registers itself, not a
+  patch to the renderer.
+- **A stall detector.** `train.log` untouched for over a week means the
+  run being watched is not the run that is happening: tvtoppro finds the
+  busiest Python process on the machine and reads *its* logs and
+  progress instead. Busy is measured over the process's whole lifetime
+  rather than with `cpu_percent()`, which returns 0.0 on the first call
+  and — for a process object built fresh from `process_iter` — every
+  call is a first call.
+
+### 𖢥 `cctvtop`'s Remote Desktop panel
+
+It reported a session as up whenever *something* held the port. The
+probe now completes an RFB handshake, so a stale listener, a tunnel with
+nothing behind it and a live desktop are three different answers. When
+there is no session it says which of the four reasons applies — no
+server installed, a server installed and not running, a Wayland session
+with only `x11vnc` available, or a display it cannot see — rather than
+"unavailable".
+
+### noodle runs inside hyped-pro 🔁
+
+`/noodle` in the TUI, and five bridge verbs behind it. The executor
+adopts keys already stored in the HyperNix config for its vendors, with
+the environment always winning over the stored copy, so a session that
+already works in `hyped` works here without being configured twice.
+
+### 🛡️ The `hypernix` CLI says what was wrong
+
+An unknown subcommand printed a usage block and exited 0. It now goes to
+stderr, exits 2, suggests the nearest real command, and accepts the
+aliases people type. Four commands that existed and were reachable only
+by knowing they existed are in the menu.
+
+### T1 v1.0.26.9.2.3 — an account without a key ๋࣭⭑
+
+Sign-up and browser sign-in, served four ways: localhost, over
+Tailscale, from the operator's own site, or from a prebuilt Cloudflare
+site hosted by the API host. scrypt for passwords, constant-time
+comparison, CSRF tokens on every form, SameSite cookies, lockout after
+repeated failures, and `Secure` coupled to whether the connection is
+actually TLS. A keyless caller never gets administrator rights, on any
+of the four.
+
+### 🛡️ Security
+
+- **The config file was world-readable.** It holds API keys. It is now
+  written `0600` into a `0700` directory, through a temporary file and
+  `os.replace` so there is no window where a half-written file exists at
+  the real path, and an existing file has its permissions tightened on
+  load.
+- **Key authentication leaked which key you sent.** The lookup compared
+  key strings and its loop position depended on the prefix, which is a
+  timing oracle for the stored keys. Keys are now indexed by digest and
+  compared with `hmac.compare_digest`; measured, the 60x spread across
+  probe keys is flat.
+
+### HyperLink: CarPlay, Siri, themes, attachments and renaming ๋࣭⭑
+
+- **CarPlay.** A conversation list, `CPVoiceControlTemplate` dictation,
+  six canned replies, and a keyboard **only when the car reports it will
+  allow one** — read from `CPSessionConfiguration.limitedUserInterfaces`
+  on every use and rebuilt from its delegate, because the answer changes
+  while the app is running.
+- **Siri.** Four App Intents — ask, load a model, read a chat, send a
+  message — none of which open the app, because the point of asking from
+  a car dock is that the phone stays where it is. Replies are trimmed
+  before being spoken: a fenced code block read aloud is unintelligible.
+- **Themes.** Eight, with the two bubble colours as the point rather than
+  one accent at 18%. Every theme's text clears WCAG AA against its own
+  bubble, the two bubbles are told apart by luminance, and so are
+  "connected" and "failed" — checked in
+  `tests/test_hyperlink_ios_wiring.py`, which found three that did not.
+- **The attachment menu** offers all four ways in. Two of them — a
+  document from Files, and the camera — were reachable by the server and
+  by nothing on screen.
+- **Renaming a chat.** The server has taken a title on `PATCH` since
+  HyperLink shipped and nothing on the phone ever sent one.
+
+### 📚 Docs
+
+- **Issue templates**, one for a bug and one for a feature request.
+- **[Model-Training-Guide](Model-Training-Guide.md)** — which of these
+  do I use, and in what order. Every API in it was run against the
+  package rather than written from memory; six were wrong.
 
 ## 0.72.4.post21 — why both tiers gave a 1.4 GB file
 

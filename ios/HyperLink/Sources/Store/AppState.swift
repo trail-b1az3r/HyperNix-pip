@@ -35,12 +35,78 @@ final class AppState {
     /// nothing admin-shaped should be offered for one.
     private(set) var isKeyless = false
 
+    /// Every machine this phone is paired with, most recently used
+    /// first. Up to `SavedServers.maxServers` of them.
+    private(set) var savedServers: [SavedServer] = []
+
+    /// The id of the server currently connected, or "" when none is.
+    private(set) var currentServerID: String = ""
+
     // MARK: - Content
 
     private(set) var sessions: [ChatSession] = []
     private(set) var messages: [ChatMessage] = []
     private(set) var openSessionID: String?
-    private(set) var availableModels: [BridgeModel] = []
+    /// Every model the server can offer, from every source it has —
+    /// the registry, the LM Studio bridge, and the GGUFs on disk.
+    ///
+    /// This replaced `availableModels`, which held `/bridge/lmstudio/models`
+    /// and nothing else: one source of three, and the only one that
+    /// needs a second application to be running. A machine with forty
+    /// models in ~/.hypernix/models showed an empty picker.
+    private(set) var catalogue: ModelCatalogue = .empty
+
+    /// How long the server and its machine have been up. Nil until the
+    /// first refresh, and on a server too old to answer.
+    private(set) var uptime: ServerUptime?
+
+    /// What the HyperNix runner is running, if anything.
+    ///
+    /// `.unknown` rather than nil while it has not been asked, so a
+    /// view can tell "no model loaded" from "this server has no runner"
+    /// — the first is a button to press and the second is not.
+    private(set) var runner: RunnerStatus = .unknown
+    /// False on a server too old to have `/runner/*`, or one where it is
+    /// switched off. Nothing about the runner is offered when it is.
+    private(set) var runnerAvailable = false
+    /// True while a load or unload is in flight. A 70B coming off a
+    /// spinning disk takes minutes, and a screen that does not say so
+    /// looks broken.
+    private(set) var runnerBusy = false
+    /// What the last load or unload said when it refused.
+    var runnerError: String?
+
+    /// Reload one conversation's history from the server.
+    ///
+    /// What makes backgrounding survivable. The server keeps generating
+    /// and persists the reply as it goes, so a phone that was suspended
+    /// mid-answer does not need the socket it lost — it needs to ask
+    /// again. See `BackgroundSession` for why that is the whole trick.
+    func reload(sessionID: String) async {
+        guard let refreshed = try? await client.messages(in: sessionID) else { return }
+        if openSessionID == sessionID {
+            messages = refreshed
+            // A stream that was cut off mid-flight leaves this set, and
+            // a live bubble next to the real persisted reply is the same
+            // text twice.
+            streamingText = ""
+            isSending = false
+        }
+        sessions = (try? await client.sessions()) ?? sessions
+    }
+
+    // MARK: - Settings
+
+    /// This person's settings and the bounds this server accepts.
+    ///
+    /// The bounds travel with the values so the app never carries its
+    /// own copy of a list the server owns — an effort level the phone
+    /// offers and the server rejects is a settings screen that cannot
+    /// save.
+    private(set) var settings: PreferencesEnvelope = .empty
+    /// What could answer a message here, and what would right now.
+    private(set) var backends: BackendList = .empty
+    private(set) var memories: [MemoryItem] = []
 
     // MARK: - Transient UI state
 
@@ -50,45 +116,141 @@ final class AppState {
     /// chat view renders this as a live bubble; it is cleared when the
     /// real persisted message arrives, so the bubble never appears twice.
     private(set) var streamingText: String = ""
+    /// The id the server gave this generation, when it sent one. Lets
+    /// Stop name exactly what to stop — which matters with two devices
+    /// open on one conversation, where "whatever is running here" would
+    /// stop the other phone's answer.
+    private var streamingGenerationID: String?
     var lastError: String?
 
     private let client = HyperLinkClient()
     private var streamTask: Task<Void, Never>?
-    private static let connectionKey = "hyperlink.connection"
-    private static let keylessKey = "hyperlink.connection.keyless"
 
     init() { restore() }
 
     // MARK: - Persistence
+    //
+    // The reading and writing themselves live in `PairingStore`, not
+    // here, because this is no longer the only reader: an App Intent
+    // runs in its own process and the CarPlay scene can connect while
+    // the phone app has never been opened, and neither of those has an
+    // `AppState` to ask. What stays here is what to *do* with a restored
+    // pairing — which is this object's own state.
 
     private func restore() {
-        guard
-            let data = UserDefaults.standard.data(forKey: Self.connectionKey),
-            let saved = try? JSONDecoder().decode(ServerConnection.self, from: data),
-            saved.isConfigured
-        else { return }
-        let token = TokenStore.load()
-        let wasKeyless = UserDefaults.standard.bool(forKey: Self.keylessKey)
-        // A stored connection with no credential is only restorable if
-        // it was keyless on purpose. Otherwise the token has been lost
-        // — a keychain reset, a restore from backup — and coming up
-        // "paired" would mean every request 401s with no explanation.
-        guard token != nil || wasKeyless else { return }
-        connection = saved
-        isKeyless = wasKeyless
+        savedServers = SavedServers.all()
+        guard let pairing = PairingStore.load() else { return }
+        currentServerID = pairing.id
+        connection = pairing.connection
+        isKeyless = pairing.keyless
         isPaired = true
         Task {
             await client.configure(
-                endpoints: saved.endpoints, token: token, keyless: wasKeyless
+                endpoints: pairing.endpoints,
+                token: pairing.token,
+                keyless: pairing.keyless
             )
         }
     }
 
-    private func persist() {
-        if let data = try? JSONEncoder().encode(connection) {
-            UserDefaults.standard.set(data, forKey: Self.connectionKey)
+    /// Write the current connection to the saved-server list.
+    ///
+    /// *token* goes with it, rather than being written separately by the
+    /// caller: each saved server keeps its credential under its own
+    /// keychain account, so "save this token" is not a question that can
+    /// be answered without knowing which server it belongs to. Passing
+    /// nil on a non-keyless save leaves the existing credential alone,
+    /// which is what a re-save of a known machine wants.
+    private func persist(token: String? = nil) {
+        PairingStore.save(connection: connection, keyless: isKeyless, token: token)
+        savedServers = SavedServers.all()
+        currentServerID = SavedServers.selected()?.id ?? ""
+    }
+
+    // MARK: - More than one server
+
+    /// Switch to another paired machine.
+    ///
+    /// Everything on screen belongs to the server it came from —
+    /// sessions, messages, the model list — so it is all cleared before
+    /// the new one is loaded rather than left to be replaced piecemeal.
+    /// A half-swapped view showing one machine's chats under another
+    /// machine's name is worse than an empty one for the second it takes
+    /// to fill.
+    @discardableResult
+    func switchTo(serverID: String) async -> Bool {
+        guard serverID != currentServerID else { return true }
+        guard SavedServers.select(id: serverID),
+              let pairing = PairingStore.load()
+        else {
+            savedServers = SavedServers.all()
+            return false
         }
-        UserDefaults.standard.set(isKeyless, forKey: Self.keylessKey)
+
+        // Anything in flight belongs to the machine being left.
+        streamTask?.cancel()
+        streamTask = nil
+        isSending = false
+        streamingText = ""
+        sessions = []
+        messages = []
+        openSessionID = nil
+        catalogue = .empty
+        uptime = nil
+        settings = .empty
+        backends = .empty
+        memories = []
+        runner = .unknown
+        runnerAvailable = false
+        runnerError = nil
+        serverStatus = nil
+        identityWarning = nil
+        lastError = nil
+
+        currentServerID = pairing.id
+        connection = pairing.connection
+        isKeyless = pairing.keyless
+        isPaired = true
+        savedServers = SavedServers.all()
+        await client.configure(
+            endpoints: pairing.endpoints, token: pairing.token, keyless: pairing.keyless
+        )
+        await refreshAll()
+        return true
+    }
+
+    /// Forget one machine without signing out of the others.
+    ///
+    /// Forgetting the one currently connected falls back to whichever
+    /// was used most recently, or to the pairing screen when that was
+    /// the last one.
+    func forget(serverID: String) async {
+        let wasCurrent = serverID == currentServerID
+        SavedServers.remove(id: serverID)
+        savedServers = SavedServers.all()
+        guard wasCurrent else { return }
+        if let next = SavedServers.selected() {
+            currentServerID = ""
+            await switchTo(serverID: next.id)
+        } else {
+            currentServerID = ""
+            connection = .empty
+            isPaired = false
+            isKeyless = false
+            sessions = []
+            messages = []
+            openSessionID = nil
+            catalogue = .empty
+            uptime = nil
+            settings = .empty
+            backends = .empty
+            memories = []
+            runner = .unknown
+            runnerAvailable = false
+            runnerError = nil
+            serverStatus = nil
+            await client.configure(endpoints: [], token: nil)
+        }
     }
 
     // MARK: - Pairing
@@ -127,8 +289,7 @@ final class AppState {
             )
             keylessAvailableHere = discovered.keylessAvailableHere
             isKeyless = false
-            TokenStore.save(credential)
-            persist()
+            persist(token: credential)
             await client.configure(endpoints: endpoints, token: credential)
             isPaired = true
             await refreshAll()
@@ -172,10 +333,9 @@ final class AppState {
             isKeyless = true
             keylessAvailableHere = discovered.keylessAvailableHere
             // No token is stored, and any token from a previous pairing
-            // is cleared: leaving one behind would mean a "keyless"
-            // connection quietly presenting somebody else's credential
-            // the next time the flag was wrong.
-            TokenStore.delete()
+            // with this machine is cleared by `persist` — leaving one
+            // behind would mean a "keyless" connection quietly
+            // presenting a credential the next time the flag was wrong.
             persist()
             await client.configure(endpoints: endpoints, token: nil, keyless: true)
             isPaired = true
@@ -220,8 +380,7 @@ final class AppState {
                 serverFingerprint: discovered?.serverFingerprint ?? ""
             )
             isKeyless = false
-            TokenStore.save(redeemed.deviceToken)
-            persist()
+            persist(token: redeemed.deviceToken)
             await client.configure(endpoints: endpoints, token: redeemed.deviceToken)
             isPaired = true
             await refreshAll()
@@ -241,23 +400,35 @@ final class AppState {
         if !deviceID.isEmpty {
             try? await client.unpairSelf(deviceID: deviceID)
         }
-        TokenStore.delete()
+        // The token goes with the record: `PairingStore.clear()` deletes
+        // this server's keychain entry and leaves the other saved
+        // servers' alone. A bare `TokenStore.delete()` here would clear
+        // the legacy account, which after the migration belongs to
+        // whichever server was paired first — not necessarily this one.
+        //
         // The admin credential is scoped to this server's fingerprint,
         // so signing out of the server is the moment it stops being
         // something this phone should be holding.
         AdminCredentialStore.delete(fingerprint: connection.serverFingerprint)
-        UserDefaults.standard.removeObject(forKey: Self.connectionKey)
+        PairingStore.clear()
+        savedServers = SavedServers.all()
         await client.configure(endpoints: [], token: nil)
         connection = .empty
         isPaired = false
         identityWarning = nil
         keylessAvailableHere = false
         isKeyless = false
-        UserDefaults.standard.removeObject(forKey: Self.keylessKey)
         sessions = []
         messages = []
         openSessionID = nil
-        availableModels = []
+        catalogue = .empty
+        uptime = nil
+        settings = .empty
+        backends = .empty
+        memories = []
+        runner = .unknown
+        runnerAvailable = false
+        runnerError = nil
         serverStatus = nil
     }
 
@@ -280,7 +451,10 @@ final class AppState {
         async let list: Void = refreshSessions()
         async let models: Void = refreshModels()
         async let identity: Void = verifyIdentity()
-        _ = await (status, list, models, identity)
+        async let clock: Void = refreshUptime()
+        async let engine: Void = refreshRunner()
+        async let mine: Void = refreshSettings()
+        _ = await (status, list, models, identity, clock, engine, mine)
     }
 
     /// Re-check that the address we reached is still the machine we
@@ -349,9 +523,221 @@ final class AppState {
     }
 
     func refreshModels() async {
-        // A server with no LM Studio configured is a normal state, not
-        // an error: the model picker just shows nothing to pick.
-        availableModels = (try? await client.bridgeModels())?.models ?? []
+        // One request, not two. The catalogue already contains what the
+        // LM Studio bridge would have returned, marked as coming from
+        // it, so asking the bridge separately was a second round trip
+        // for a subset of the answer.
+        //
+        // A server with nothing to offer is a normal state, not an
+        // error: the picker shows the reason instead of a red line.
+        if let merged = try? await client.modelCatalogue() {
+            catalogue = merged
+        }
+    }
+
+    /// How long the server has been up.
+    ///
+    /// Silent on failure by design: this is an ornament next to the
+    /// server name, and a server too old to have the endpoint 404s.
+    /// Turning that into a visible error would put a red line on screen
+    /// about a feature nobody asked for.
+    func refreshUptime() async {
+        uptime = try? await client.uptime()
+    }
+
+    /// What the server is running, and how to update it.
+    ///
+    /// Throws rather than returning nil: a server too old to have the
+    /// endpoint is exactly the server somebody opened this screen to
+    /// update, and silently showing nothing would be the least helpful
+    /// possible response to that.
+    func upgradeAdvice() async throws -> UpgradeAdvice {
+        try await client.upgradeAdvice()
+    }
+
+    /// One hardware sample.
+    ///
+    /// Throws rather than returning nil, unlike the other refreshes:
+    /// this one is opened deliberately from a menu, and "you are not an
+    /// admin on this server" is the answer to show rather than an empty
+    /// screen. The distinction is the whole reason it is not cached in
+    /// `AppState` — a reading is true for a second, and a stale one on
+    /// screen is worse than a spinner.
+    func hardware() async throws -> ServerHardware {
+        try await client.hardware()
+    }
+
+    // MARK: - Settings
+
+    /// Load the settings and what can answer.
+    ///
+    /// Silent on failure, like the other background refreshes: a server
+    /// too old for `/hyperlink/preferences` 404s, and a red line about
+    /// a feature nobody asked for is worse than the defaults.
+    func refreshSettings() async {
+        if let envelope = try? await client.preferences() {
+            settings = envelope
+        }
+        if let list = try? await client.backends() {
+            backends = list
+        }
+    }
+
+    /// Save some settings. Returns the notes the server sent back.
+    ///
+    /// The notes are the point of returning anything: a context maximum
+    /// of four million is lowered, and a settings screen that did not
+    /// say so would be one nobody could trust afterwards.
+    @discardableResult
+    func saveSettings(_ patch: PreferencesPatch) async -> [String] {
+        do {
+            settings = try await client.savePreferences(patch)
+            // What answers can change with them — switching backend, or
+            // naming a backup model, changes what a message would reach.
+            if let list = try? await client.backends() { backends = list }
+            return settings.notes
+        } catch {
+            handle(error)
+            return []
+        }
+    }
+
+    @discardableResult
+    func resetSettings() async -> Bool {
+        do {
+            settings = try await client.resetPreferences()
+            return true
+        } catch {
+            handle(error)
+            return false
+        }
+    }
+
+    // MARK: - Memory
+
+    func refreshMemories() async {
+        memories = (try? await client.memories())?.memories ?? memories
+    }
+
+    @discardableResult
+    func remember(_ content: String) async -> Bool {
+        let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return false }
+        do {
+            try await client.rememberFact(trimmed)
+            await refreshMemories()
+            return true
+        } catch {
+            handle(error)
+            return false
+        }
+    }
+
+    @discardableResult
+    func updateMemory(_ memoryID: String, content: String? = nil, pinned: Bool? = nil) async -> Bool {
+        do {
+            try await client.editMemory(memoryID, content: content, pinned: pinned)
+            await refreshMemories()
+            return true
+        } catch {
+            handle(error)
+            return false
+        }
+    }
+
+    @discardableResult
+    func forget(_ memoryID: String) async -> Bool {
+        do {
+            try await client.forgetMemory(memoryID)
+            // Removed locally first so the row goes immediately, then
+            // reconciled — a list that waits for a round trip before a
+            // delete looks stuck.
+            memories.removeAll { $0.memoryID == memoryID }
+            await refreshMemories()
+            return true
+        } catch {
+            handle(error)
+            return false
+        }
+    }
+
+    // MARK: - The runner
+
+    /// Ask what the server is running.
+    ///
+    /// A 404 or a 403 here is not an error worth showing: a server too
+    /// old for `/runner/*`, or a caller without the rights to see it,
+    /// is a normal state and the answer is to offer nothing rather than
+    /// to put a red line on screen.
+    func refreshRunner() async {
+        if let status = try? await client.runnerStatus() {
+            runner = status
+            runnerAvailable = true
+        } else {
+            runner = .unknown
+            runnerAvailable = false
+        }
+    }
+
+    /// Where this model's layers would go. Changes nothing.
+    func planLoad(
+        modelID: String, gpuLayers: Int?, backend: String,
+        contextLength: Int?, totalLayers: Int?
+    ) async -> RunnerPlan? {
+        try? await client.runnerPlan(RunnerLoadRequest(
+            model_id: modelID, gpu_layers: gpuLayers, backend: backend,
+            context_length: contextLength, total_layers: totalLayers
+        ))
+    }
+
+    /// Load a model on the server, replacing whatever was running.
+    ///
+    /// Unlike the read paths, a failure here *is* shown. Somebody just
+    /// asked for a specific thing to happen to a shared machine, and
+    /// "there is no built llama.cpp" or "this model does not fit" are
+    /// both things they can act on.
+    @discardableResult
+    func loadModel(
+        modelID: String, gpuLayers: Int? = nil, backend: String = "auto",
+        contextLength: Int? = nil, totalLayers: Int? = nil
+    ) async -> Bool {
+        runnerBusy = true
+        runnerError = nil
+        defer { runnerBusy = false }
+        do {
+            runner = try await client.runnerLoad(RunnerLoadRequest(
+                model_id: modelID, gpu_layers: gpuLayers, backend: backend,
+                context_length: contextLength, total_layers: totalLayers
+            ))
+            runnerAvailable = true
+            // The catalogue's `loaded` flags are now stale — the model
+            // that was answering a moment ago is not the one answering
+            // now, and a picker still showing the old green dot is how
+            // somebody talks to the wrong model.
+            await refreshModels()
+            return true
+        } catch {
+            runnerError = (error as? HyperLinkError)?.errorDescription
+                ?? error.localizedDescription
+            return false
+        }
+    }
+
+    /// Stop serving. Unloading nothing is a success.
+    @discardableResult
+    func unloadModel() async -> Bool {
+        runnerBusy = true
+        runnerError = nil
+        defer { runnerBusy = false }
+        do {
+            runner = try await client.runnerUnload()
+            await refreshModels()
+            return true
+        } catch {
+            runnerError = (error as? HyperLinkError)?.errorDescription
+                ?? error.localizedDescription
+            return false
+        }
     }
 
     // MARK: - Sessions
@@ -389,6 +775,30 @@ final class AppState {
             }
         } catch {
             handle(error)
+        }
+    }
+
+    /// Rename a conversation.
+    ///
+    /// Optimistic: the row changes as the sheet closes and is put back
+    /// if the server refuses. A rename that waits for a round trip feels
+    /// broken on a phone that is four hops and a Tailscale relay away
+    /// from the machine holding the chat.
+    @discardableResult
+    func rename(_ sessionID: String, to title: String) async -> Bool {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return false }
+        let index = sessions.firstIndex { $0.sessionID == sessionID }
+        let previous = index.map { sessions[$0].title }
+        if let index { sessions[index].title = trimmed }
+        do {
+            let updated = try await client.rename(sessionID, to: trimmed)
+            if let index { sessions[index] = updated }
+            return true
+        } catch {
+            if let index, let previous { sessions[index].title = previous }
+            handle(error)
+            return false
         }
     }
 
@@ -444,17 +854,21 @@ final class AppState {
             )
             for try await event in SSEStream.events(for: request) {
                 switch event {
-                case .start:
+                case let .start(_, _, generationID):
                     // The server has the message; drop the placeholder
-                    // and take the authoritative copy on the next reload.
-                    break
+                    // and take the authoritative copy on the next
+                    // reload. Keep the generation id, which is what
+                    // Stop names.
+                    streamingGenerationID = generationID.isEmpty ? nil : generationID
                 case let .delta(piece):
                     streamingText += piece
                 case .done:
+                    streamingGenerationID = nil
                     streamingText = ""
                     messages = (try? await client.messages(in: sessionID)) ?? messages
                     await refreshSessionSummary()
                 case let .failed(_, message):
+                    streamingGenerationID = nil
                     lastError = message
                     // Whatever streamed before the failure was persisted
                     // server-side, so reload rather than keeping a
@@ -485,7 +899,21 @@ final class AppState {
         sessions = updated
     }
 
-    /// Stop a streamed answer.
+    /// Stop a streamed answer — on the server as well as here.
+    ///
+    /// Cancelling the read task is what makes the button feel instant,
+    /// and on its own it is half the job: nothing told the server, so
+    /// the model finished the whole answer into a socket nobody was
+    /// reading. On a shared machine that is somebody else's GPU for a
+    /// minute and a half; on a metered deployment it is a bill for
+    /// output the person explicitly asked not to have.
+    ///
+    /// Order matters. The local cancel goes first because it is
+    /// instant and cannot fail, so the UI responds now rather than
+    /// after a round trip; the server call follows in its own task and
+    /// its failure is not shown — a Stop that reached the server late,
+    /// or reached a server too old to have the endpoint, still stopped
+    /// the thing the person was looking at.
     ///
     /// The server persists whatever streamed before the disconnect, so
     /// the history is reloaded rather than trusting what is on screen —
@@ -497,7 +925,80 @@ final class AppState {
         isSending = false
         streamingText = ""
         guard let sessionID = openSessionID else { return }
-        Task { messages = (try? await client.messages(in: sessionID)) ?? messages }
+        let generationID = streamingGenerationID
+        streamingGenerationID = nil
+        Task {
+            // `_ =` rather than a bare `try?`: the call is
+            // @discardableResult, but `try?` wraps it in an Optional and
+            // an unused Optional is a warning in its own right.
+            _ = try? await client.stopGeneration(
+                sessionID: sessionID, generationID: generationID
+            )
+            messages = (try? await client.messages(in: sessionID)) ?? messages
+        }
+    }
+
+    // MARK: - Edit mode
+
+    /// Rewrite one of your own messages.
+    ///
+    /// Everything after it goes, because everything after it was a
+    /// reply to the old text. The caller is expected to have said so
+    /// first — `removedCount` on the result is what it costs, and
+    /// `editWouldRemove` answers the same question before anything
+    /// happens.
+    ///
+    /// Returns the number of messages dropped, or nil when the edit was
+    /// refused.
+    @discardableResult
+    func editMessage(_ messageID: String, to content: String) async -> Int? {
+        guard let sessionID = openSessionID else { return nil }
+        do {
+            let result = try await client.editMessage(
+                sessionID: sessionID, messageID: messageID, content: content
+            )
+            // Reloaded rather than patched in place: the server just
+            // deleted an unknown number of rows, and reconstructing that
+            // locally is how a phone ends up showing a conversation the
+            // server does not have.
+            messages = (try? await client.messages(in: sessionID)) ?? messages
+            await refreshSessionSummary()
+            return result.removedCount
+        } catch {
+            handle(error)
+            return nil
+        }
+    }
+
+    /// How many messages an edit at *messageID* would remove.
+    ///
+    /// Computed from what is on screen rather than asked of the server:
+    /// it is a confirmation prompt, it has to be instant, and being off
+    /// by one because a message arrived mid-prompt is not worth a round
+    /// trip.
+    func editWouldRemove(_ messageID: String) -> Int {
+        guard let index = messages.firstIndex(where: { $0.messageID == messageID })
+        else { return 0 }
+        return messages.count - index - 1
+    }
+
+    /// Remove one message, leaving the rest of the conversation.
+    ///
+    /// Not a truncation, unlike an edit: deleting is usually about
+    /// removing something that should not be stored — a pasted key, a
+    /// name — and taking the thread with it would make people keep the
+    /// secret rather than lose the conversation.
+    @discardableResult
+    func deleteMessage(_ messageID: String) async -> Bool {
+        guard let sessionID = openSessionID else { return false }
+        do {
+            try await client.deleteMessage(sessionID: sessionID, messageID: messageID)
+            messages.removeAll { $0.messageID == messageID }
+            return true
+        } catch {
+            handle(error)
+            return false
+        }
     }
 
     /// Switch which model answers in this session, from here on.

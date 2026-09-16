@@ -12,7 +12,7 @@ import uuid
 from dataclasses import dataclass
 from typing import Any
 
-from fastapi import Header, Request
+from fastapi import Depends, Header, Request
 
 from ..security.t2keys import looks_like_t2
 from .auth import AuthContext, T1AuthService
@@ -357,6 +357,7 @@ def get_origin(request: Request):
         trusted_proxies=nettrust.trusted_proxies_from_env(
             ",".join(str(p) for p in getattr(config, "trusted_proxies", ()) or ())
         ),
+        verify_tailnet=getattr(config, "trusted_network_tailnet_verify", True),
     )
     request.state.t1_origin = origin
     return origin
@@ -503,6 +504,7 @@ __all__ = [
     "get_client_ip",
     "resolve_client_ip",
     "require_confirmation",
+    "require_hyperlink_operator",
 ]
 
 
@@ -531,6 +533,32 @@ def get_notification_store(request: Request):
 
 def get_search_index(request: Request):
     return request.app.state.t1_search_index
+
+
+def get_runner(request: Request):
+    """The llama.cpp process this server owns, if any."""
+    return request.app.state.t1_runner
+
+
+def get_memory_store(request: Request):
+    """Durable per-owner facts, outside any session."""
+    return request.app.state.t1_memory_store
+
+
+def get_preference_store(request: Request):
+    """Per-person settings: profile, system prompt, effort, bounds.
+
+    On the server rather than the phone because these are *inputs to
+    generation* — the prompt, the effort level and the context bounds
+    all have to be in the process that builds the request — and because
+    a person with a phone and a tablet is one person.
+    """
+    return request.app.state.t1_preference_store
+
+
+def get_generation_registry(request: Request):
+    """In-flight streamed generations, so Stop has something to stop."""
+    return request.app.state.t1_generations
 
 
 @dataclass
@@ -588,6 +616,29 @@ def get_hyperlink_principal(
     non-admin write outside HyperLink, and is now accepted here as a
     first-class way to reach a server.
     """
+    # Before _extract_credential, which *raises* on a missing header.
+    # get_auth_context carries a comment saying exactly this, and this
+    # function -- written next to it -- did it the other way round, so
+    # every /hyperlink route refused a keyless request while
+    # /usage/current served one. Trusted-network mode had never worked
+    # for the app it was largely built for.
+    #
+    # The delegation is deliberate: one keyless path, one set of rules
+    # about what it grants, rather than a second implementation here
+    # that could drift from it.
+    if not authorization:
+        keyless = trusted_network_context(request)
+        if keyless is not None:
+            return HyperLinkPrincipal(
+                owner=keyless.key_id,
+                scopes=tuple(scope.value for scope in keyless.scopes),
+                # Never, whatever partial-admin says. A connection that
+                # presented no credential must not be able to enrol a
+                # device or manage the ones already paired.
+                is_admin=False,
+                auth_context=keyless,
+            )
+
     credential = _extract_credential(authorization)
 
     if looks_like_t2(credential):
@@ -650,6 +701,41 @@ def _principal_from_t2(request: Request, credential: str) -> HyperLinkPrincipal:
         # A T2S key is never an admin — see t2keys.T2KeyGenerator.generate.
         is_admin=ctx.is_admin and parsed.family is not T2Type.T2S,
         auth_context=ctx,
+    )
+
+
+def require_hyperlink_operator(
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+) -> HyperLinkPrincipal:
+    """Admin, or partial admin. For reading the server rather than steering it.
+
+    Deliberately weaker than :func:`require_hyperlink_admin` and
+    deliberately not open. Seeing that a machine is at 94% memory and
+    78°C is what makes "why is my model slow" answerable from a phone,
+    and it is also a description of somebody's hardware — so it needs a
+    credential, and an ordinary read-only one is not enough.
+
+    "Partial admin" is whatever the deployment already means by it:
+    a key with WRITE, or a keyless trusted-network caller on a server
+    whose operator turned ``T1_TRUSTED_NETWORK_PARTIAL_ADMIN`` on. That
+    second case is the one this exists for — the phone on the sofa,
+    paired to nothing, asking what the PC is doing.
+    """
+    if principal.is_admin:
+        return principal
+    if "write" in principal.scopes or "admin" in principal.scopes:
+        return principal
+    raise T1APIError(
+        T1ErrorCode.AUTH_INSUFFICIENT_SCOPE,
+        "Reading this server's hardware needs an admin key, or partial "
+        "administrative access.",
+        details={
+            "remedy": (
+                "Use an admin key, a key with the 'write' scope, or enable "
+                "T1_TRUSTED_NETWORK_PARTIAL_ADMIN for trusted origins."
+            ),
+        },
+        http_status=403,
     )
 
 

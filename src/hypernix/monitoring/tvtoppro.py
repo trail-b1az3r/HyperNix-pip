@@ -46,6 +46,34 @@ JSON file of the same keys. ``--dump-theme`` writes the active one out in
 btop's format, which is the quickest way to start editing one. Unknown
 keys are kept and unset ones inherit from the default, so a partial theme
 is a valid theme rather than a crash.
+
+Startup
+-------
+The ``decode`` animation and a spinner, the way ``tvtop-older`` opens.
+Neither is decoration: the spinner runs during log autodetection, which
+walks the working tree and is the one part of startup that can take a
+noticeable moment, and a dashboard that shows nothing while it does that
+looks hung. ``--no-intro`` skips both, and so does a non-TTY without
+being asked — an animation in a CI log is noise.
+
+Extra panels
+------------
+The five boxes here are the five that matter on a training box and not
+the only five anyone wants. ``--modules disk,net,swap`` adds more, from
+:mod:`hypernix.monitoring.tvtoppro_modules`: five ship, packages can
+advertise their own through an entry point, and a ``.py`` file dropped in
+``~/.config/hypernix/tvtoppro/modules/`` is picked up with no
+installation at all. ``--list-modules`` shows what was found, including
+what failed to load and why.
+
+When the log stops moving
+-------------------------
+A dashboard tailing a ``train.log`` nobody has written to since last
+Tuesday is not broken — it is faithfully reporting a dead file, and
+nothing on screen says so. If the log has gone untouched for a week
+(``--stale-after``), tvtoppro finds the busiest Python process on the
+machine, reads the logs *it* has open, and offers the one with progress
+lines in it. ``--find-run`` does the same on demand.
 """
 from __future__ import annotations
 
@@ -67,6 +95,7 @@ __all__ = [
     "box_top",
     "box_bottom",
     "TvTopPro",
+    "play_intro",
     "cli_main",
     "main",
 ]
@@ -470,6 +499,13 @@ class TvTopPro:
     width: int | None = None
     show_processes: bool = True
     source: Any = field(default=None, repr=False)
+    #: Extra panels, from :mod:`hypernix.monitoring.tvtoppro_modules`.
+    modules: list[Any] = field(default_factory=list)
+    #: Seconds of silence before the log is treated as dead and the
+    #: busiest Python process is asked what it is doing instead.
+    stale_after: float = 0.0
+    #: Run that investigation whatever the log's age.
+    always_find_run: bool = False
 
     def __post_init__(self) -> None:
         if self.source is None:
@@ -478,6 +514,42 @@ class TvTopPro:
             self.source = TVTopPlusPlus(
                 log_path=self.log_path, refresh_seconds=self.refresh_seconds
             )
+        # The investigation walks /proc and stats a pile of files, which
+        # is far too much to do at every refresh. Cached, and refreshed
+        # on the interval below -- a run that has been dead for a week is
+        # not going to come back to life between two frames.
+        self._stale_report: Any = None
+        self._stale_checked: float = 0.0
+
+    #: How often the stale-log investigation is redone, in seconds. Long,
+    #: because its answer changes on the timescale of a training run
+    #: starting, not on the timescale of a frame.
+    STALE_RECHECK_SECONDS = 30.0
+
+    def stale_report(self, *, now: float | None = None):
+        """The cached stale-log investigation, refreshed on its own clock.
+
+        ``None`` when neither :attr:`stale_after` nor
+        :attr:`always_find_run` asked for one — the check costs a /proc
+        walk and nobody should pay for it by default.
+        """
+        if not self.stale_after and not self.always_find_run:
+            return None
+        import time as _time
+
+        now = now if now is not None else _time.monotonic()
+        if (self._stale_report is not None
+                and now - self._stale_checked < self.STALE_RECHECK_SECONDS):
+            return self._stale_report
+        from .stale_log import DEFAULT_STALE_SECONDS, investigate
+
+        self._stale_report = investigate(
+            self.log_path,
+            threshold_seconds=self.stale_after or DEFAULT_STALE_SECONDS,
+            force=self.always_find_run,
+        )
+        self._stale_checked = now
+        return self._stale_report
 
     # -- pieces ---------------------------------------------------------
 
@@ -558,6 +630,121 @@ class TvTopPro:
                 )
             rows.append("  ".join(parts))
         return rows
+
+    def _panel_rows(self, panel, width: int, number: str) -> list[str]:
+        """One module's :class:`~...tvtoppro_modules.Panel`, drawn.
+
+        The module supplied numbers; every colour, meter and box
+        character here is the active theme's. That split is why a module
+        written against one theme looks right under all six.
+        """
+        theme = self.theme
+        inner = width - 4
+        out = [box_top(panel.title, width, line=theme["proc_box"],
+                       accent=theme["title"], number=number)]
+        if panel.error:
+            out.append(self._row(
+                f"[{theme['temp_end']}]! {panel.error}[/]", width,
+            ))
+        if not panel.readings:
+            out.append(self._row(
+                f"[{theme['inactive_fg']}]{panel.note or 'no readings'}[/]", width,
+            ))
+            out.append(box_bottom(width, line=theme["proc_box"]))
+            return out
+
+        label_width = min(12, max((len(r.label) for r in panel.readings), default=6))
+        for reading in panel.readings:
+            label = f"[{theme['inactive_fg']}]{reading.label[:label_width]:>{label_width}}[/]"
+            if reading.fraction is None:
+                out.append(self._row(
+                    f"{label}  [{theme['main_fg']}]{reading.value}[/]", width,
+                ))
+            else:
+                bar = max(8, inner - label_width - len(reading.value) - 6)
+                out.append(self._row(
+                    f"{label} "
+                    f"{meter(reading.fraction, bar, theme.ramp(reading.ramp, bar), empty=theme['meter_bg'])} "
+                    f"[{theme['main_fg']}]{reading.value}[/]",
+                    width,
+                ))
+            if reading.history:
+                for row in self._graph_rows(reading.history, inner, 2, reading.ramp):
+                    out.append(self._row(row, width))
+        out.append(box_bottom(width, line=theme["proc_box"]))
+        return out
+
+    def _stale_rows(self, report, width: int, number: str) -> list[str]:
+        """The "your log is dead, here is what is actually running" box.
+
+        Deliberately loud. The whole failure being addressed is that a
+        stale log looks exactly like a quiet one, so this box uses the
+        temperature ramp's hot end for its headline -- the same colour
+        the dashboard uses for a GPU about to throttle.
+        """
+        theme = self.theme
+        out = [box_top("stale log", width, line=theme["temp_end"],
+                       accent=theme["temp_end"], number=number)]
+        out.append(self._row(
+            f"[{theme['temp_end']}]![/] "
+            f"[{theme['main_fg']}]{report.log_path}[/] "
+            f"[{theme['inactive_fg']}]last written "
+            f"{_fmt_duration(report.log_age_seconds)} ago[/]",
+            width,
+        ))
+        process = report.process
+        if process is None:
+            out.append(self._row(
+                f"[{theme['inactive_fg']}]and no Python process here is busy, so "
+                f"nothing is training[/]",
+                width,
+            ))
+        else:
+            out.append(self._row(
+                f"[{theme['hi_fg']}]busiest[/] "
+                f"[{theme['main_fg']}]pid {process.pid}[/] "
+                f"[{theme['graph_text']}]{process.cpu_percent:.0f}% cpu · "
+                f"{process.memory_percent:.0f}% mem · "
+                f"up {_fmt_duration(process.age_seconds)}[/]",
+                width,
+            ))
+            out.append(self._row(
+                f"[{theme['inactive_fg']}]{process.command}[/]", width,
+            ))
+            if report.cwd:
+                out.append(self._row(
+                    f"[{theme['inactive_fg']}]cwd[/] "
+                    f"[{theme['graph_text']}]{report.cwd}[/]",
+                    width,
+                ))
+            if report.suggested_log:
+                out.append(self._row(
+                    f"[{theme['hi_fg']}]writing[/] "
+                    f"[{theme['main_fg']}]{report.suggested_log}[/]",
+                    width,
+                ))
+                if report.step is not None:
+                    bar = max(8, (width - 4) - 28)
+                    out.append(self._row(
+                        f"[{theme['hi_fg']}]step[/] "
+                        f"{meter(report.progress, bar, theme.ramp('free', bar), empty=theme['meter_bg'])} "
+                        f"[{theme['main_fg']}]{report.step}/{report.total_steps or '?'}[/]",
+                        width,
+                    ))
+                    if report.loss is not None:
+                        out.append(self._row(
+                            f"[{theme['inactive_fg']}]loss[/] "
+                            f"[{theme['main_fg']}]{report.loss:.4f}[/]",
+                            width,
+                        ))
+                out.append(self._row(
+                    f"[{theme['title']}]tvtoppro --log {report.suggested_log}[/]",
+                    width,
+                ))
+        for note in report.notes[:3]:
+            out.append(self._row(f"[{theme['inactive_fg']}]{note}[/]", width))
+        out.append(box_bottom(width, line=theme["temp_end"]))
+        return out
 
     def render(self, frame=None, width: int | None = None) -> str:
         """One whole screen as Rich markup.
@@ -702,10 +889,27 @@ class TvTopPro:
                     out.append(self._row(row, width))
         out.append(box_bottom(width, line=theme["proc_box"]))
 
+        # -- stale log ---------------------------------------------------
+        # Directly under training, because it is the box that explains
+        # the one above it. Further down and it reads as unrelated.
+        stale = self.stale_report()
+        next_number = 5
+        if stale is not None and stale.stale:
+            out.extend(self._stale_rows(stale, width, str(next_number)))
+            next_number += 1
+
+        # -- modules -----------------------------------------------------
+        if self.modules:
+            from .tvtoppro_modules import poll_all
+
+            for panel in poll_all(self.modules):
+                out.extend(self._panel_rows(panel, width, str(next_number)))
+                next_number += 1
+
         # -- processes ---------------------------------------------------
         if self.show_processes:
             out.append(box_top("proc", width, line=theme["proc_box"],
-                               accent=title, number="5"))
+                               accent=title, number=str(next_number)))
             out.append(self._row(
                 f"[{theme['title']}]{'pid':>7} {'user':<10} {'cpu%':>6} "
                 f"{'mem%':>6}  command[/]",
@@ -755,6 +959,114 @@ class TvTopPro:
 # ---------------------------------------------------------------------------
 
 
+#: ``--stale-after`` suffixes. Seconds when bare, because that is what
+#: every other duration in this package takes and a flag that silently
+#: meant minutes would be the sort of thing found out a week later.
+_DURATION_UNITS = {"s": 1, "m": 60, "h": 3600, "d": 86400, "w": 604800}
+
+
+def _duration(text: str) -> float:
+    """``"7d"`` to seconds. ``"off"``/``"0"``/``""`` disable, as 0.0."""
+    value = str(text or "").strip().lower()
+    if value in ("", "off", "none", "never", "0"):
+        return 0.0
+    scale = _DURATION_UNITS.get(value[-1:], 0)
+    number, scale = (value[:-1], scale) if scale else (value, 1)
+    try:
+        seconds = float(number) * scale
+    except ValueError:
+        raise ValueError(
+            f"{text!r} is not a duration. Use a number of seconds, or a "
+            f"suffix: {', '.join(sorted(_DURATION_UNITS))}. 'off' disables it."
+        ) from None
+    if seconds < 0:
+        raise ValueError(f"{text!r} is negative; a duration cannot be.")
+    return seconds
+
+
+def play_intro(theme: Theme, *, enabled: bool = True) -> None:
+    """The ``tvtop-older`` opening: the title decoding out of noise.
+
+    Silent on a non-TTY without being asked. An animation written into a
+    CI log is a few hundred lines of carriage returns and escape codes,
+    and the thing a CI log is for is reading afterwards.
+
+    Wrapped in a bare ``except`` on purpose. This is the first thing
+    ``tvtoppro`` does, and there is no failure of a decorative animation
+    that should stop a monitoring tool from starting -- a terminal that
+    cannot render braille, a closed stdout, an import that is not there.
+    """
+    if not enabled:
+        return
+    try:
+        from ..timing.spinner import anime_print
+
+        anime_print("tvtoppro", style="decode", delay=0.035)
+    except Exception:  # noqa: BLE001 - see docstring
+        logger = __import__("logging").getLogger(__name__)
+        logger.debug("tvtoppro: intro animation failed", exc_info=True)
+
+
+def _find_log(path: str | None, *, spinner: bool) -> Path | None:
+    """The log to tail, with a spinner over the part that takes a moment.
+
+    Autodetection walks the working tree looking for a file with
+    ``step N/M loss=`` lines in it, which on a large repository is not
+    instant. Without something on screen it looks like a hang, which is
+    the specific reason the spinner is here rather than for decoration.
+    """
+    if path:
+        return Path(path)
+    from .tv import _autodetect_log
+
+    if not spinner:
+        return _autodetect_log()
+    try:
+        from ..timing.spinner import Spinner
+
+        with Spinner("Looking for a training log", style="dots"):
+            return _autodetect_log()
+    except Exception:  # noqa: BLE001 - the search must happen either way
+        return _autodetect_log()
+
+
+def _list_modules() -> int:
+    """``--list-modules``, including what failed to load and why."""
+    from .tvtoppro_modules import (
+        ENTRY_POINT_GROUP,
+        Module,
+        discover,
+        user_module_dir,
+    )
+
+    found = discover()
+    if not found:
+        print("No modules found at all, which should not happen — the "
+              "built-ins are part of the package.")
+        return 1
+
+    for name, module in sorted(found.items()):
+        if isinstance(module, str):
+            print(f"  {name:12} [failed to load] {module}")
+            continue
+        try:
+            usable = module.available()
+            reason = "" if usable else module.unavailable_reason()
+        except Exception as exc:  # noqa: BLE001
+            usable, reason = False, f"available() raised {type(exc).__name__}: {exc}"
+        mark = " " if usable else "-"
+        note = f"  ({reason})" if reason else ""
+        print(f"{mark} {name:12} {module.description or module.title}{note}")
+    print()
+    print("  --modules disk,net        add those panels")
+    print("  --modules all             every one marked available")
+    print()
+    print(f"  Drop a .py file in {user_module_dir()} to add your own,")
+    print(f"  or ship one with a {ENTRY_POINT_GROUP!r} entry point.")
+    print(f"  See {Module.__module__} for the three classes involved.")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     import argparse
 
@@ -781,7 +1093,31 @@ def main(argv: list[str] | None = None) -> int:
                         help="Draw one frame and exit. For scripts and screenshots.")
     parser.add_argument("--json", dest="as_json", action="store_true",
                         help="With --once, emit the frame's numbers instead.")
+    parser.add_argument("--no-intro", dest="intro", action="store_false",
+                        default=True,
+                        help="Skip the startup animation and spinner. Implied "
+                             "on a non-TTY.")
+    parser.add_argument("--modules", default=None, metavar="A,B,C",
+                        help="Extra stat panels. 'all' for everything this "
+                             "machine supports; --list-modules to see them.")
+    parser.add_argument("--list-modules", action="store_true",
+                        help="Show every module found, including ones that "
+                             "failed to load and why.")
+    parser.add_argument(
+        "--stale-after", default="7d", metavar="DURATION",
+        help="Treat the log as dead after this long without a write, and "
+             "show what is actually running instead. Accepts 30m, 6h, 7d. "
+             "'off' disables the check. Default: 7d.",
+    )
+    parser.add_argument(
+        "--find-run", action="store_true",
+        help="Find the busiest Python process and the log it is writing, "
+             "whatever the age of --log. Print it and exit.",
+    )
     args = parser.parse_args(argv)
+
+    if args.list_modules:
+        return _list_modules()
 
     if args.list_themes:
         for name, theme in sorted(THEMES.items()):
@@ -801,12 +1137,47 @@ def main(argv: list[str] | None = None) -> int:
         print(theme.to_btop(), end="")
         return 0
 
-    from .tv import _autodetect_log
+    import sys
 
-    log = Path(args.log) if args.log else _autodetect_log()
+    try:
+        stale_after = _duration(args.stale_after)
+    except ValueError as exc:
+        print(f"tvtoppro: {exc}", file=sys.stderr)
+        return 2
+
+    modules, problems = [], []
+    if args.modules:
+        from .tvtoppro_modules import load_modules
+
+        modules, problems = load_modules(args.modules)
+        for name, reason in problems:
+            # A warning, not a failure. One bad name in
+            # `--modules disk,nte,swap` should cost the typo, not the
+            # other two panels and the dashboard.
+            print(f"tvtoppro: module {name!r}: {reason}", file=sys.stderr)
+
+    # An animation only makes sense when a human is watching it render.
+    interactive = bool(getattr(sys.stdout, "isatty", lambda: False)())
+    intro = args.intro and interactive and not args.as_json and not args.find_run
+
+    play_intro(theme, enabled=intro)
+    log = _find_log(args.log, spinner=intro)
+
+    if args.find_run:
+        from .stale_log import investigate
+
+        report = investigate(log, threshold_seconds=stale_after or 0, force=True)
+        if args.as_json:
+            print(json.dumps(report.to_dict(), indent=2))
+        else:
+            print(report.describe())
+        # Non-zero when nothing was found, so a script can gate on it.
+        return 0 if report.found_something else 1
+
     dashboard = TvTopPro(
         log_path=log, refresh_seconds=args.refresh, theme=theme,
         width=args.width, show_processes=args.processes,
+        modules=modules, stale_after=stale_after,
     )
 
     if args.once:

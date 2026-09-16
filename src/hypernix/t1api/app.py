@@ -5,7 +5,12 @@ HARD REQUIREMENTS)::
 
     from hypernix.t1api import create_app
     app = create_app()                     # standalone
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="127.0.0.1", port=8000)
+
+    # To serve other machines, put it behind a reverse proxy that
+    # terminates TLS. `host="0.0.0.0"` here puts the API on every
+    # interface in plaintext, and the first example in a docstring is the
+    # one that gets copied into production.
 
     # OR mount into an existing FastAPI app:
     existing_app.mount("/t1", create_app(mount_prefix="/t1"))
@@ -59,13 +64,18 @@ from hypernix.security.gatekeeper import Gatekeeper
 from hypernix.security.keymaster import Keymaster
 
 from ..hyperlink.files import AttachmentStore
+from ..hyperlink.generation import GenerationRegistry
+from ..hyperlink.managed import ManagedRunner
+from ..hyperlink.memory import MemoryStore
 from ..hyperlink.notify import NotificationStore
 from ..hyperlink.pairing import DeviceRegistry
+from ..hyperlink.preferences import PreferenceStore
 from ..hyperlink.search import SearchIndex
 from ..hyperlink.sessions import ChatSessionStore
 from ..hyperlink.sync import SyncStore
 from ..security.t2keys import ServerKeyRegistry
 from . import __t1api_version__
+from .accounts import AccountStore
 from .audit import AuditCategory, AuditLog, AuditOutcome
 from .auth import T1AuthService
 from .authhistory import AuthHistory
@@ -91,6 +101,8 @@ from .servers import ServerRegistry
 from .storage import UsageStore
 from .transport import ModuleTransport
 from .usage import UsageMeter
+from .webauth import WebAuthSettings
+from .webauth import settings_from_env as webauth_from_env
 
 logger = logging.getLogger(__name__)
 
@@ -234,6 +246,11 @@ def create_app(
     auth_history: AuthHistory | None = None,
     backup_store: BackupStore | None = None,
     server_key_registry: ServerKeyRegistry | None = None,
+    # T1 v1.0.26.9.2.3 -- injectable for the same reason as everything
+    # above: a test wants an AccountStore over its own backend, and
+    # settings it chose rather than whatever is in the environment.
+    accounts: AccountStore | None = None,
+    webauth: WebAuthSettings | None = None,
     mount_prefix: str | None = None,
     validate_production: bool | None = None,
 ) -> FastAPI:
@@ -324,6 +341,33 @@ def create_app(
     # authority on where these keys are.
     server_keys = server_key_registry or ServerKeyRegistry(store_dir=km.store_dir)
 
+    # T1 v1.0.26.9.2.3 -- web accounts.
+    #
+    # Built only when T1_ACCOUNTS_ENABLED is on. The store creates two
+    # tables on construction, and a deployment that mints keys some other
+    # way should not grow them; the routes 404 without it.
+    #
+    # settings_from_env() validates the combination and raises on one
+    # that cannot work -- Secure cookies over http://, 'invite'
+    # registration with no codes -- at startup rather than at the first
+    # login, because both of those produce a server that looks fine.
+    webauth_settings = webauth or webauth_from_env()
+    account_store: AccountStore | None = accounts
+    if account_store is None and webauth_settings.enabled:
+        account_store = AccountStore(
+            db,
+            registration=webauth_settings.registration,
+            invite_codes=webauth_settings.invite_codes,
+        )
+    if webauth_settings.enabled:
+        logger.info(
+            "t1api: web accounts enabled (mode=%s, registration=%s, "
+            "secure_cookies=%s)",
+            webauth_settings.mode.name,
+            webauth_settings.registration,
+            webauth_settings.mode.secure_cookies,
+        )
+
     # T1 v1.0.26.8.0.1 subsystems. All three share the same backend as
     # everything else, so a HyperLink deployment is still one database
     # file (or one PostgreSQL URL) and nothing extra to back up.
@@ -406,10 +450,25 @@ def create_app(
     app.state.t1_sync_store = sync
     app.state.t1_notification_store = notifications
     app.state.t1_search_index = searching
+    # Streamed generations currently running in this worker. Stop is
+    # cooperative -- see hyperlink.generation -- so there has to be
+    # somewhere to look the running one up.
+    app.state.t1_generations = GenerationRegistry()
+    app.state.t1_memory_store = MemoryStore(db)
+    app.state.t1_preference_store = PreferenceStore(db)
+    # One llama.cpp process, owned by this server. Constructed
+    # unloaded: starting a model at boot would make a restart
+    # take minutes and would pick one nobody asked for.
+    app.state.t1_runner = ManagedRunner(port=cfg.runner_port)
     # T1 v1.0.26.8.1.0
     app.state.t1_auth_history = history
     app.state.t1_backup_store = backups
     app.state.t1_server_key_registry = server_keys
+    # T1 v1.0.26.9.2.3 -- web accounts. Built only when enabled: the
+    # store creates two tables on construction, and a deployment that
+    # does not use accounts should not grow them.
+    app.state.t1_webauth = webauth_settings
+    app.state.t1_accounts = account_store
 
     if cfg.cors_allow_origins:
         from fastapi.middleware.cors import CORSMiddleware

@@ -17,7 +17,12 @@ import Foundation
 /// One decoded frame from a `/chat/stream` response.
 enum ChatStreamEvent: Sendable {
     /// The turn was accepted and the user's message is persisted.
-    case start(userMessageID: String, seq: Int)
+    ///
+    /// `generationID` is what Stop names. Empty against a server too
+    /// old to send one, which is why the stop call treats it as
+    /// optional rather than required: "stop whatever is running in this
+    /// session" is still the right answer, it is just less precise.
+    case start(userMessageID: String, seq: Int, generationID: String)
     /// A piece of the assistant's reply.
     case delta(String)
     /// The reply is complete and persisted.
@@ -94,6 +99,7 @@ enum SSEStream {
             let type: String?
             let text: String?
             let user_message_id: String?
+            let generation_id: String?
             let message_id: String?
             let seq: Int?
             let model_id: String?
@@ -118,7 +124,11 @@ enum SSEStream {
         }
         switch frame.type {
         case "start":
-            return .start(userMessageID: frame.user_message_id ?? "", seq: frame.seq ?? 0)
+            return .start(
+                userMessageID: frame.user_message_id ?? "",
+                seq: frame.seq ?? 0,
+                generationID: frame.generation_id ?? ""
+            )
         case "delta":
             guard let text = frame.text, !text.isEmpty else { return nil }
             return .delta(text)

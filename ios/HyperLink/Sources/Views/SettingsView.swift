@@ -1,15 +1,35 @@
 //  SettingsView.swift
 //  Which PC this phone is talking to, and how to stop.
+//
+//  "Which PC" is now a choice rather than a fact: up to
+//  `SavedServers.maxServers` of them, switched from `ServersView`.
 
 import SwiftUI
 
 struct SettingsView: View {
     @Environment(AppState.self) private var state
+    @Environment(ThemeStore.self) private var themes
     @State private var confirmingUnpair = false
     /// Mirrors `AdminCredentialStore.persistsAcrossLaunches`. Held in
     /// view state only as a switch position — the credential itself
     /// never reaches a view.
     @State private var keepAdminCredentials = AdminCredentialStore.persistsAcrossLaunches
+
+    /// What the runner row says on its right-hand side. Never blank: a
+    /// row with nothing next to it reads as broken rather than idle.
+    /// Which backend a message would reach, in words.
+    private var answeringWith: String {
+        let active = state.backends.active
+        if active.isEmpty { return "nothing yet" }
+        return state.backends.backends
+            .first { $0.name == active }?.label ?? active
+    }
+
+    private var runnerSummary: String {
+        guard state.runnerAvailable else { return "not available" }
+        guard let model = state.runner.model else { return "nothing loaded" }
+        return shortModelName(model.modelID)
+    }
 
     var body: some View {
         List {
@@ -32,6 +52,92 @@ struct SettingsView: View {
                         "LM Studio bridge",
                         value: status.lmstudioBridgeEnabled ? "on" : "off"
                     )
+                }
+                if let uptime = state.uptime {
+                    // Worth a line because it answers a question people
+                    // actually ask: a conversation that lost its context
+                    // or a pairing that stopped working is usually a PC
+                    // that rebooted, and nothing here used to say so.
+                    LabeledContent("Server up for", value: uptime.serverDescription)
+                    LabeledContent("Machine up for", value: uptime.machineDescription)
+                }
+            }
+
+            Section {
+                NavigationLink {
+                    ServersView()
+                } label: {
+                    HStack {
+                        Text("Servers")
+                        Spacer()
+                        Text("\(state.savedServers.count)")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            } footer: {
+                Text(
+                    "HyperLink remembers up to \(SavedServers.maxServers) machines "
+                    + "and switches between them without re-pairing."
+                )
+            }
+
+            Section {
+                // What would actually answer a message right now. Worth
+                // a line because the two failures look identical from
+                // here and need opposite fixes: "no models on this
+                // server" is solved by downloading one, "a model is
+                // loaded but nothing is serving it" by turning
+                // something on.
+                LabeledContent("Answering with", value: answeringWith)
+                NavigationLink {
+                    RunnerView()
+                } label: {
+                    HStack {
+                        Label("Runner", systemImage: "bolt")
+                        Spacer()
+                        Text(runnerSummary)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                }
+                NavigationLink {
+                    HardwareView()
+                } label: {
+                    Label("Hardware", systemImage: "gauge.with.dots.needle.67percent")
+                }
+                NavigationLink {
+                    ServerUpdateView()
+                } label: {
+                    Label("Update the server", systemImage: "arrow.up.square")
+                }
+            } header: {
+                Text("This machine")
+            } footer: {
+                Text(
+                    "Load and unload models without touching the PC, see what its "
+                    + "hardware is doing, and get the exact update commands for "
+                    + "the Python it is actually running under."
+                )
+            }
+
+            Section("Appearance") {
+                NavigationLink {
+                    ThemePickerView()
+                } label: {
+                    HStack {
+                        Text("Theme")
+                        Spacer()
+                        Text(themes.theme.name)
+                            .foregroundStyle(.secondary)
+                        // The accent as a dot, so the current theme is
+                        // legible from the settings list without opening
+                        // the picker.
+                        Circle()
+                            .fill(themes.theme.accent)
+                            .frame(width: 11, height: 11)
+                            .accessibilityHidden(true)
+                    }
                 }
             }
 

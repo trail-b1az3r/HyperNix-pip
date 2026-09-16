@@ -37,11 +37,14 @@ from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile
 from fastapi.responses import Response, StreamingResponse
 
 from ...bridge.lmstudio import LMStudioBridge, LMStudioError
+from ...hyperlink.catalogue import collect
 from ...hyperlink.discovery import advertise
 from ...hyperlink.files import AttachmentStore
+from ...hyperlink.generation import GenerationRegistry
 from ...hyperlink.hfmerge import HFResolveError
 from ...hyperlink.hfmerge import resolve as hf_resolve
 from ...hyperlink.identity import fingerprint as server_fingerprint
+from ...hyperlink.memory import MemoryStore
 from ...hyperlink.notify import EventKind, NotificationStore
 from ...hyperlink.pairing import DeviceRegistry, pairing_payload
 from ...hyperlink.search import SearchIndex
@@ -56,27 +59,38 @@ from ..deps import (
     get_client_ip,
     get_config,
     get_device_registry,
+    get_generation_registry,
     get_hyperlink_principal,
     get_job_queue,
+    get_memory_store,
     get_notification_store,
     get_origin,
+    get_preference_store,
+    get_registry,
     get_request_id,
+    get_runner,
     get_search_index,
     get_session_store,
     get_sync_store,
     get_trust_policy,
     require_hyperlink_admin,
+    require_hyperlink_operator,
 )
 from ..errors import T1APIError, T1ErrorCode
+from ..registry import ModelRegistry
 from ..schemas import (
     AttachmentListResponse,
     AttachmentResponse,
     AttachmentSummary,
+    BackendsResponse,
     DeviceListResponse,
     DeviceResponse,
     DeviceSummary,
     DownloadedModelsResponse,
+    GenerationListResponse,
+    GenerationStopResponse,
     GenericOkResponse,
+    HardwareResponse,
     HFDownloadRequest,
     HFDownloadResponse,
     HFFile,
@@ -88,12 +102,17 @@ from ..schemas import (
     HyperLinkEndpointsResponse,
     HyperLinkPeer,
     HyperLinkPeersResponse,
+    MessageEditRequest,
+    MessageEditResponse,
     MessageListResponse,
     MessageSummary,
+    ModelCatalogueResponse,
     PairingCodeResponse,
     PairingCreateRequest,
     PairingRedeemRequest,
     PairingRedeemResponse,
+    PreferencesRequest,
+    PreferencesResponse,
     PushEventsRequest,
     PushRegisterRequest,
     PushRegistrationListResponse,
@@ -110,6 +129,8 @@ from ..schemas import (
     SyncClaimRequest,
     SyncClaimResponse,
     SyncPageResponse,
+    UpgradeResponse,
+    UptimeResponse,
 )
 from ..version import T1_VERSION
 
@@ -595,6 +616,84 @@ def delete_session(
     return GenericOkResponse(ok=True, detail="Session deleted", request_id=request_id)
 
 
+@router.patch(
+    "/sessions/{session_id}/messages/{message_id}",
+    response_model=MessageEditResponse,
+)
+def edit_message(
+    session_id: str,
+    message_id: str,
+    payload: MessageEditRequest,
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    store: ChatSessionStore = Depends(get_session_store),
+    config: T1APIConfig = Depends(get_config),
+    request_id: str = Depends(get_request_id),
+) -> MessageEditResponse:
+    """Rewrite one of your own messages, and drop what came after it.
+
+    The truncation is the feature rather than a side effect. Everything
+    below an edited message was written *in reply to the old text*:
+    leaving it makes the conversation read as the model answering a
+    question nobody asked, and that same transcript is what gets sent as
+    context on the next turn — so the model would be told it had said
+    things it never said.
+
+    Only ``user`` messages. Editing the assistant's would turn the
+    transcript into a record of something that did not happen, which is
+    a different feature and not one anybody asked for.
+    """
+    _require_enabled(config)
+    removed = store.edit_message(
+        session_id, message_id,
+        content=payload.content, owner=principal.owner, truncate=payload.truncate,
+    )
+    updated = next(
+        (m for m in store.messages(session_id, owner=principal.owner)
+         if m.message_id == message_id),
+        None,
+    )
+    if updated is None:  # pragma: no cover - edit_message raises first
+        raise T1APIError(
+            T1ErrorCode.NOT_FOUND, f"No message {message_id!r}.", http_status=404
+        )
+    return MessageEditResponse(
+        message=MessageSummary(**updated.to_dict()),
+        removed=[MessageSummary(**m.to_dict()) for m in removed],
+        removed_count=len(removed),
+        request_id=request_id,
+    )
+
+
+@router.delete(
+    "/sessions/{session_id}/messages/{message_id}",
+    response_model=GenericOkResponse,
+)
+def delete_message(
+    session_id: str,
+    message_id: str,
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    store: ChatSessionStore = Depends(get_session_store),
+    config: T1APIConfig = Depends(get_config),
+    request_id: str = Depends(get_request_id),
+) -> GenericOkResponse:
+    """Remove one message, leaving the rest of the conversation.
+
+    Deliberately not a truncation, unlike an edit: deleting is usually
+    about removing something that should not be stored — a pasted key, a
+    name — and taking the thread with it would make people keep the
+    secret rather than lose the conversation.
+    """
+    _require_enabled(config)
+    removed = store.delete_message(session_id, message_id, owner=principal.owner)
+    if not removed:
+        raise T1APIError(
+            T1ErrorCode.NOT_FOUND,
+            f"No message {message_id!r} in this conversation.",
+            http_status=404,
+        )
+    return GenericOkResponse(ok=True, request_id=request_id)
+
+
 @router.get("/sessions/{session_id}/messages", response_model=MessageListResponse)
 def list_messages(
     session_id: str,
@@ -624,6 +723,128 @@ def list_messages(
 
 def _msg_dict(message: ChatMessage) -> dict[str, Any]:
     return message.to_dict()
+
+
+def _with_memories(
+    wire: list[dict[str, Any]], block: str
+) -> list[dict[str, Any]]:
+    """Put what the assistant remembers in front of the conversation.
+
+    Merged into the existing system message rather than added as a second
+    one. Two system messages is not an error and is not reliably handled:
+    some backends concatenate them, some keep only the first, and one
+    that keeps only the first would silently drop either the session's
+    own instructions or everything the assistant knows about the person,
+    depending on the order. One message has one meaning.
+
+    Memories go *after* the session's instructions, because the
+    instructions are what the conversation is for and the memories are
+    context for carrying them out.
+    """
+    if not block:
+        return wire
+    for index, message in enumerate(wire):
+        if message.get("role") == "system" and isinstance(message.get("content"), str):
+            merged = dict(message)
+            merged["content"] = f"{message['content']}\n\n{block}".strip()
+            return [*wire[:index], merged, *wire[index + 1:]]
+    return [{"role": "system", "content": block}, *wire]
+
+
+def _chat_with_tools(bridge, wire, model, sampling, config, principal):
+    """One turn, with the model allowed to call noodle's tools.
+
+    Returns ``(envelope, rounds)``. The rounds are what it did, for the
+    message metadata — a thread that shows "wrote three files" is very
+    different to read tomorrow than one that shows only the summary.
+
+    The workspace is the same per-owner directory ``/noodle/*`` uses, so
+    a file the model writes here is one the person can list and download
+    through that endpoint. Two workspaces would mean the model writing
+    somewhere nobody could reach.
+    """
+    from ...hyperlink.toolloop import run_tool_loop
+    from .noodle import _context as noodle_context
+
+    context = noodle_context(config, principal)
+
+    def ask(messages, tools):
+        return bridge.chat(
+            messages,
+            model=model,
+            temperature=sampling["temperature"],
+            max_tokens=sampling["max_tokens"],
+            tools=tools or None,
+        )
+
+    _messages, envelope, rounds = run_tool_loop(
+        wire, context, ask=ask, extract=_extract_reply
+    )
+    return envelope, [r.to_dict() for r in rounds]
+
+
+def _apply_preferences(
+    wire: list[dict[str, Any]], preferences, session_prompt: str, memory_block: str
+) -> list[dict[str, Any]]:
+    """Put the person's own settings in front of the conversation.
+
+    Replaces the system message rather than adding one, for the same
+    reason :func:`_with_memories` merges: two system messages is not an
+    error and is not reliably handled — some backends concatenate them,
+    some keep only the first — so one message has one meaning.
+
+    The composed prompt is built by
+    :func:`hypernix.hyperlink.preferences.system_prompt_for`, which owns
+    the ordering: who the person is, how they want to be answered
+    generally, what this conversation is for, then what is known about
+    them.
+    """
+    from ...hyperlink.preferences import system_prompt_for
+
+    composed = system_prompt_for(
+        preferences, session_prompt=session_prompt, memory_block=memory_block
+    )
+    if not composed:
+        return wire
+    body = [m for m in wire if m.get("role") != "system"]
+    return [{"role": "system", "content": composed}, *body]
+
+
+def _effort_settings(preferences, payload) -> dict[str, Any]:
+    """Sampling for this turn: the request's numbers, then the person's.
+
+    An explicit temperature or max_tokens on the request wins. Somebody
+    who sent a number meant it, and silently replacing it with an effort
+    level's would make the API's own parameters decorative.
+    """
+    from ...hyperlink.preferences import sampling_for
+
+    settings = sampling_for(getattr(preferences, "effort", "") or "medium")
+    if getattr(payload, "temperature", None) is not None:
+        settings["temperature"] = payload.temperature
+    if getattr(payload, "max_tokens", None) is not None:
+        settings["max_tokens"] = payload.max_tokens
+    return settings
+
+
+def _token_budget(preferences, payload) -> int:
+    """How much history to send, inside the person's context bounds.
+
+    The minimum is a floor on the *budget*, not a guarantee about the
+    model: asking for at least 8k of history from a model with a 4k
+    window does not give it one, it just means the history is not
+    trimmed before the model gets its say. The maximum is the useful
+    half — it is how somebody stops a long thread from costing a full
+    context window on every turn.
+    """
+    budget = int(getattr(payload, "token_budget", 0) or 8000)
+    minimum = int(getattr(preferences, "context_minimum", 0) or 0)
+    maximum = int(getattr(preferences, "context_maximum", 0) or 0)
+    if minimum:
+        budget = max(budget, minimum)
+    if maximum:
+        budget = min(budget, maximum)
+    return budget
 
 
 def _wire_messages(
@@ -697,7 +918,41 @@ def _fence_language(filename: str) -> str:
     }.get(suffix, "")
 
 
+def _chat_backend(config: T1APIConfig, runner=None):
+    """What answers this turn: this server's own runner, or LM Studio.
+
+    The runner comes first, and deliberately. If somebody loaded a model
+    through ``/runner/load`` then that is the model they meant, it is
+    the thing holding the VRAM, and quietly answering from LM Studio
+    instead would answer as a different model than the one the status
+    screen is showing.
+
+    This used to be `_chat_bridge`, which went straight to LM Studio and
+    refused when it was off — so a server with no LM Studio installed
+    could load a 70B through its own runner and then reject every
+    message with "this server has no chat backend configured". The
+    runner was starting models nothing could talk to.
+    """
+    from ...hyperlink.inference import BackendUnavailable, resolve_backend
+
+    try:
+        return resolve_backend(config, runner)
+    except BackendUnavailable as exc:
+        raise T1APIError(
+            T1ErrorCode.NOT_SUPPORTED,
+            str(exc),
+            details={"remedies": exc.remedies},
+            http_status=501,
+        ) from exc
+
+
 def _chat_bridge(config: T1APIConfig) -> LMStudioBridge:
+    """The LM Studio bridge specifically, for the ``/bridge/*`` routes.
+
+    Kept separate from :func:`_chat_backend` on purpose: those routes
+    are *about* LM Studio, so falling back to the HyperNix runner there
+    would answer a question nobody asked.
+    """
     if not config.lmstudio_enabled:
         raise T1APIError(
             T1ErrorCode.NOT_SUPPORTED,
@@ -733,6 +988,9 @@ def chat_turn(
     principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
     store: ChatSessionStore = Depends(get_session_store),
     files: AttachmentStore = Depends(get_attachment_store),
+    memories: MemoryStore = Depends(get_memory_store),
+    preferences=Depends(get_preference_store),
+    runner=Depends(get_runner),
     config: T1APIConfig = Depends(get_config),
     request_id: str = Depends(get_request_id),
 ) -> HyperLinkChatResponse:
@@ -760,22 +1018,71 @@ def chat_turn(
         metadata={"device_id": principal.device_id} if principal.device_id else {},
     )
 
-    bridge = _chat_bridge(config)
+    backend = _chat_backend(config, runner)
+    bridge = backend.client
+    settings = preferences.get(owner=principal.owner)
     history = store.context_for(
-        session_id, owner=principal.owner, token_budget=payload.token_budget
+        session_id,
+        owner=principal.owner,
+        token_budget=_token_budget(settings, payload),
     )
-    wire = _wire_messages(history, files, principal.owner)
+    wire = _apply_preferences(
+        _wire_messages(history, files, principal.owner),
+        settings,
+        session.system_prompt,
+        memories.prompt_block(owner=principal.owner) if settings.auto_memory else "",
+    )
+    sampling = _effort_settings(settings, payload)
 
     started = time.monotonic()
+    # The runner serves exactly one model, and naming a different one at
+    # it gets a 404 from llama.cpp rather than the model that is
+    # actually loaded. So on that backend the loaded model wins: it is
+    # the only truthful answer available.
+    wanted = (
+        backend.model_id if backend.is_hypernix and backend.model_id
+        else (payload.model_id or session.model_id or None)
+    )
+    used_backup = False
+    tool_rounds: list[dict[str, Any]] = []
     try:
-        envelope = bridge.chat(
-            wire,
-            model=payload.model_id or session.model_id or None,
-            temperature=payload.temperature,
-            max_tokens=payload.max_tokens,
-        )
+        if settings.tools_enabled and getattr(config, "noodle_enabled", False):
+            envelope, tool_rounds = _chat_with_tools(
+                bridge, wire, wanted, sampling, config, principal
+            )
+        else:
+            envelope = bridge.chat(
+                wire,
+                model=wanted,
+                temperature=sampling["temperature"],
+                max_tokens=sampling["max_tokens"],
+            )
     except LMStudioError as exc:
-        raise _bridge_error(exc) from exc
+        # The backup model, if there is one and it is not the one that
+        # just failed. Trying the same model again would be a retry
+        # wearing a different name, and a retry of "nothing is loaded"
+        # fails identically.
+        fallback = (settings.backup_model or "").strip()
+        if not fallback or fallback == wanted:
+            raise _bridge_error(exc) from exc
+        logger.info(
+            "hyperlink: %s failed for %s, trying the backup model %s",
+            wanted or "the default model", principal.label, fallback,
+        )
+        try:
+            envelope = bridge.chat(
+                wire,
+                model=fallback,
+                temperature=sampling["temperature"],
+                max_tokens=sampling["max_tokens"],
+            )
+        except LMStudioError as second:
+            # Reported as the *original* failure. The backup failing is
+            # a detail; what the person needs to know is that the model
+            # they chose did not answer.
+            logger.info("hyperlink: the backup model failed too: %s", second)
+            raise _bridge_error(exc) from exc
+        used_backup = True
     elapsed = time.monotonic() - started
 
     content, finish = _extract_reply(envelope)
@@ -791,21 +1098,35 @@ def chat_turn(
         output_tokens=int(usage.get("completion_tokens") or 0),
         metadata={
             "finish_reason": finish,
-            "backend": "lmstudio",
-            "base_url": bridge.base_url,
+            "backend": backend.name,
+            "base_url": backend.base_url or bridge.base_url,
             "elapsed_seconds": round(elapsed, 3),
+            "effort": settings.effort,
+            # What the model did on the way to this answer. On the
+            # message rather than only in the response, so re-opening
+            # the thread tomorrow still shows that it ran three commands
+            # rather than just knowing something.
+            **({"tool_rounds": tool_rounds} if tool_rounds else {}),
+            # Recorded rather than hidden: an answer from a different
+            # model than the one asked for is the single most confusing
+            # thing that can happen in a thread, and the fix is to say
+            # so rather than to stop doing it.
+            **({"used_backup_model": True} if used_backup else {}),
         },
     )
     store.autotitle(session_id, owner=principal.owner)
     if model_id and not session.model_id:
-        store.update(session_id, owner=principal.owner, model_id=model_id, backend="lmstudio")
+        store.update(
+            session_id, owner=principal.owner, model_id=model_id,
+            backend=backend.name,
+        )
 
     return HyperLinkChatResponse(
         session_id=session_id,
         user_message=MessageSummary(**_msg_dict(user_message)),
         assistant_message=MessageSummary(**_msg_dict(assistant_message)),
         model_id=model_id,
-        backend="lmstudio",
+        backend=backend.name,
         request_id=request_id,
     )
 
@@ -817,6 +1138,10 @@ def chat_turn_stream(
     principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
     store: ChatSessionStore = Depends(get_session_store),
     files: AttachmentStore = Depends(get_attachment_store),
+    generations: GenerationRegistry = Depends(get_generation_registry),
+    memories: MemoryStore = Depends(get_memory_store),
+    preferences=Depends(get_preference_store),
+    runner=Depends(get_runner),
     config: T1APIConfig = Depends(get_config),
     request_id: str = Depends(get_request_id),
 ) -> StreamingResponse:
@@ -848,15 +1173,35 @@ def chat_turn_stream(
         attachment_ids=payload.attachment_ids,
         metadata={"device_id": principal.device_id} if principal.device_id else {},
     )
-    bridge = _chat_bridge(config)
+    backend = _chat_backend(config, runner)
+    bridge = backend.client
+    settings = preferences.get(owner=principal.owner)
     history = store.context_for(
-        session_id, owner=principal.owner, token_budget=payload.token_budget
+        session_id,
+        owner=principal.owner,
+        token_budget=_token_budget(settings, payload),
     )
-    wire = _wire_messages(history, files, principal.owner)
-    requested_model = payload.model_id or session.model_id or None
+    wire = _apply_preferences(
+        _wire_messages(history, files, principal.owner),
+        settings,
+        session.system_prompt,
+        memories.prompt_block(owner=principal.owner) if settings.auto_memory else "",
+    )
+    sampling = _effort_settings(settings, payload)
+    requested_model = (
+        backend.model_id if backend.is_hypernix and backend.model_id
+        else (payload.model_id or session.model_id or None)
+    )
 
     def _frame(kind: str, **fields: Any) -> bytes:
         return f"data: {json.dumps({'type': kind, **fields})}\n\n".encode()
+
+    # Registered before the first chunk so a Stop that arrives while the
+    # model is still thinking has something to find. The id goes out in
+    # the start frame: the app can then stop *this* generation rather
+    # than "whatever is running in this session", which is the same thing
+    # right up until somebody has two devices open.
+    active = generations.begin(session_id, principal.owner)
 
     def _events():
         yield _frame(
@@ -864,19 +1209,32 @@ def chat_turn_stream(
             session_id=session_id,
             user_message_id=user_message.message_id,
             seq=user_message.seq,
+            generation_id=active.generation_id,
         )
         collected: list[str] = []
         model_id = requested_model or ""
         finish = ""
         usage: dict[str, Any] = {}
         error: dict[str, Any] | None = None
+        cancelled = False
         try:
-            for chunk in bridge.chat_stream(
+            stream = bridge.chat_stream(
                 wire,
                 model=requested_model,
-                temperature=payload.temperature,
-                max_tokens=payload.max_tokens,
-            ):
+                temperature=sampling["temperature"],
+                max_tokens=sampling["max_tokens"],
+            )
+            for chunk in stream:
+                # The cooperative half of Stop. Breaking here closes
+                # `stream`, which closes the upstream response, which is
+                # what actually makes LM Studio stop generating —
+                # disconnecting the phone never did, because this
+                # generator runs in a threadpool and a thread blocked on
+                # a socket read cannot be cancelled.
+                if active.cancelled:
+                    cancelled = True
+                    stream.close()
+                    break
                 model_id = str(chunk.get("model") or model_id)
                 if isinstance(chunk.get("usage"), dict):
                     usage = chunk["usage"]
@@ -897,16 +1255,26 @@ def chat_turn_stream(
             # The phone closed the connection (backgrounded, tunnel
             # dropped). Persist what arrived, then let the exit
             # propagate — swallowing it would leak the generator.
+            generations.finish(active.generation_id)
             _persist(collected, model_id, finish or "disconnected", usage, truncated=True)
             raise
+        finally:
+            generations.finish(active.generation_id)
 
-        message = _persist(collected, model_id, finish, usage, truncated=bool(error))
+        if cancelled:
+            finish = "cancelled"
+        message = _persist(
+            collected, model_id, finish, usage, truncated=bool(error) or cancelled
+        )
         yield _frame(
             "done",
             message_id=message.message_id,
             seq=message.seq,
             model_id=model_id,
             finish_reason=finish,
+            # So the app can say "stopped" rather than showing a reply
+            # that simply ends, which reads as the model failing.
+            cancelled=cancelled,
             input_tokens=message.input_tokens,
             output_tokens=message.output_tokens,
         )
@@ -925,7 +1293,7 @@ def chat_turn_stream(
             output_tokens=int(usage.get("completion_tokens") or 0),
             metadata={
                 "finish_reason": finish,
-                "backend": "lmstudio",
+                "backend": backend.name,
                 "base_url": bridge.base_url,
                 "truncated": truncated,
                 "streamed": True,
@@ -942,6 +1310,265 @@ def chat_turn_stream(
             "X-Request-Id": request_id,
             "X-Accel-Buffering": "no",
         },
+    )
+
+
+@router.post("/sessions/{session_id}/chat/stop", response_model=GenerationStopResponse)
+def stop_generation(
+    session_id: str,
+    generation_id: str | None = Query(default=None),
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    generations: GenerationRegistry = Depends(get_generation_registry),
+    config: T1APIConfig = Depends(get_config),
+    request_id: str = Depends(get_request_id),
+) -> GenerationStopResponse:
+    """Stop a streamed reply that is still being generated.
+
+    Before this, Stop cancelled the client's read and nothing else: LM
+    Studio kept generating into a socket nobody was reading, for the full
+    length of the answer, on the GPU the person had just asked to stop
+    using.
+
+    Stopping nothing is a success, not an error. The model finishing a
+    quarter-second before the Stop arrives is the common race, and the
+    person got what they asked for either way — turning that into a 404
+    would put an error on screen for a button that worked.
+
+    Owner-scoped: a caller can only stop their own generations, so a
+    guessed session id reaches nothing.
+    """
+    _require_enabled(config)
+    stopped = generations.cancel(
+        owner=principal.owner,
+        session_id=session_id,
+        generation_id=generation_id,
+        by=principal.label,
+    )
+    return GenerationStopResponse(
+        stopped=stopped, count=len(stopped), request_id=request_id
+    )
+
+
+@router.get("/hardware", response_model=HardwareResponse)
+def server_hardware(
+    principal: HyperLinkPrincipal = Depends(require_hyperlink_operator),
+    config: T1APIConfig = Depends(get_config),
+    request_id: str = Depends(get_request_id),
+) -> HardwareResponse:
+    """What this machine is doing: CPU, memory, swap, disks, GPUs.
+
+    The question it answers is "is the server busy, or is my model just
+    slow?", which from six hundred miles away cannot be answered any
+    other way. The dashboards have sampled all of this for releases; this
+    is the same sampling with no terminal attached.
+
+    Admin or partial admin — it is a description of somebody's hardware,
+    so an ordinary read-only token is not enough.
+    """
+    _require_enabled(config)
+    from ...system.hardware import snapshot
+
+    paths = ["/"]
+    models_dir = config.hf_download_dir
+    if models_dir:
+        paths.append(str(models_dir))
+    data = snapshot(disk_paths=[p for p in paths if Path(p).exists()]).to_dict()
+    return HardwareResponse(**data, request_id=request_id)
+
+
+def _preferences_reply(settings, notes: list[str], request_id: str) -> PreferencesResponse:
+    from ...hyperlink.preferences import (
+        CONTEXT_CEILING,
+        CONTEXT_FLOOR,
+        EFFORT_LEVELS,
+        MAX_SYSTEM_PROMPT,
+    )
+
+    return PreferencesResponse(
+        preferences=settings.to_dict(),
+        effort_levels=list(EFFORT_LEVELS),
+        context_floor=CONTEXT_FLOOR,
+        context_ceiling=CONTEXT_CEILING,
+        max_system_prompt=MAX_SYSTEM_PROMPT,
+        notes=notes,
+        request_id=request_id,
+    )
+
+
+@router.get("/backends", response_model=BackendsResponse)
+def list_backends(
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    runner=Depends(get_runner),
+    config: T1APIConfig = Depends(get_config),
+    request_id: str = Depends(get_request_id),
+) -> BackendsResponse:
+    """What could answer a message, and what would answer one now.
+
+    Worth its own endpoint because the two failures look the same from
+    the app and need opposite fixes: "this server has no models" is
+    solved by downloading one, and "a model is loaded but nothing is
+    serving it" is solved by turning something on. A single empty list
+    could not tell them apart.
+    """
+    _require_enabled(config)
+    from ...hyperlink.inference import BackendUnavailable, describe_backends, resolve_backend
+
+    rows = describe_backends(config, runner)
+    try:
+        active = resolve_backend(config, runner).name
+    except BackendUnavailable:
+        active = ""
+    return BackendsResponse(backends=rows, active=active, request_id=request_id)
+
+
+@router.get("/preferences", response_model=PreferencesResponse)
+def read_preferences(
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    preferences=Depends(get_preference_store),
+    runner=Depends(get_runner),
+    config: T1APIConfig = Depends(get_config),
+    request_id: str = Depends(get_request_id),
+) -> PreferencesResponse:
+    """This person's settings, and the bounds the server will accept.
+
+    The limits come back with the values so the app does not carry its
+    own copy of a list the server owns — an effort level the phone
+    offers and the server rejects is a settings screen that cannot save,
+    and the phone has no way to know which levels this build has.
+    """
+    _require_enabled(config)
+    return _preferences_reply(
+        preferences.get(owner=principal.owner), [], request_id
+    )
+
+
+@router.patch("/preferences", response_model=PreferencesResponse)
+def write_preferences(
+    payload: PreferencesRequest,
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    preferences=Depends(get_preference_store),
+    runner=Depends(get_runner),
+    config: T1APIConfig = Depends(get_config),
+    request_id: str = Depends(get_request_id),
+) -> PreferencesResponse:
+    """Change some settings. Unsent fields are left alone.
+
+    ``notes`` names every clamp that was applied — a context maximum of
+    four million is not a preference, it is a number that makes every
+    reply fail two minutes later and somewhere unrelated, so it is
+    lowered and *said*.
+    """
+    _require_enabled(config)
+    changes = {
+        name: value
+        for name, value in payload.model_dump().items()
+        if value is not None
+    }
+    settings, notes = preferences.save(owner=principal.owner, **changes)
+    return _preferences_reply(settings, notes, request_id)
+
+
+@router.post("/preferences/reset", response_model=PreferencesResponse)
+def reset_preferences(
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    preferences=Depends(get_preference_store),
+    runner=Depends(get_runner),
+    config: T1APIConfig = Depends(get_config),
+    request_id: str = Depends(get_request_id),
+) -> PreferencesResponse:
+    """Back to the defaults."""
+    _require_enabled(config)
+    preferences.reset(owner=principal.owner)
+    return _preferences_reply(
+        preferences.get(owner=principal.owner), ["Settings reset."], request_id
+    )
+
+
+@router.get("/upgrade", response_model=UpgradeResponse)
+def server_upgrade(
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    config: T1APIConfig = Depends(get_config),
+    request_id: str = Depends(get_request_id),
+) -> UpgradeResponse:
+    """What is installed here, and the exact commands to update it.
+
+    Readable by any HyperLink caller, and deliberately so: "which
+    version is this server running, and how do I move it" is the
+    question behind most of the confusing behaviour people report, and
+    making it an admin secret means the person who needs the answer
+    cannot get it.
+
+    Nothing here runs anything. The commands are text to copy — which is
+    the right shape for this: updating the package under a running
+    server is a decision with a restart attached, and a phone button
+    that did it silently would be a phone button that takes a machine
+    down mid-conversation.
+
+    Every command names the interpreter this server is running under.
+    On a machine with a system Python, a pyenv and the service's own
+    venv, a bare ``pip install -U hypernix`` upgrades whichever comes
+    first on the path, prints success, and leaves the server on the
+    version it started with.
+    """
+    _require_enabled(config)
+    from ..upgrade import plan
+
+    prepared = plan()
+    return UpgradeResponse(
+        installation=prepared.installation.to_dict(),
+        commands=[command.to_dict() for command in prepared.commands],
+        warnings=list(prepared.warnings),
+        request_id=request_id,
+    )
+
+
+@router.get("/uptime", response_model=UptimeResponse)
+def server_uptime(
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    config: T1APIConfig = Depends(get_config),
+    request_id: str = Depends(get_request_id),
+) -> UptimeResponse:
+    """How long the server, and the machine under it, have been up.
+
+    Any HyperLink caller: this is not a description of the hardware, it
+    is the answer to "why did my session vanish". A process uptime of
+    four minutes explains that better than anything else the app could
+    show.
+    """
+    _require_enabled(config)
+    from ...system.hardware import process_uptime_seconds, uptime_seconds
+
+    process = process_uptime_seconds()
+    return UptimeResponse(
+        process_uptime_seconds=round(process, 2),
+        machine_uptime_seconds=uptime_seconds(),
+        started_at=time.time() - process,
+        server_name=config.server_name or "",
+        t1_version=T1_VERSION.short,
+        request_id=request_id,
+    )
+
+
+@router.get("/generations", response_model=GenerationListResponse)
+def list_generations(
+    session_id: str | None = Query(default=None),
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    generations: GenerationRegistry = Depends(get_generation_registry),
+    config: T1APIConfig = Depends(get_config),
+    request_id: str = Depends(get_request_id),
+) -> GenerationListResponse:
+    """What is generating right now, for this caller.
+
+    What lets a phone coming back from the background tell "still
+    running, reattach" from "finished while you were away, reload" —
+    which it currently cannot, and guesses.
+    """
+    _require_enabled(config)
+    active = generations.active(owner=principal.owner, session_id=session_id)
+    return GenerationListResponse(
+        generations=[record.to_dict() for record in active],
+        count=len(active),
+        request_id=request_id,
     )
 
 
@@ -1227,6 +1854,46 @@ def list_downloaded(
             )
     return DownloadedModelsResponse(
         models=models, count=len(models), directory=str(root), request_id=request_id
+    )
+
+
+@router.get("/models", response_model=ModelCatalogueResponse)
+def model_catalogue(
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    registry: ModelRegistry = Depends(get_registry),
+    config: T1APIConfig = Depends(get_config),
+    request_id: str = Depends(get_request_id),
+) -> ModelCatalogueResponse:
+    """Everything runnable here: the registry, LM Studio, and the disk.
+
+    The app used to ask `/bridge/lmstudio/models` and nothing else, so a
+    server without LM Studio had an empty model picker however many GGUFs
+    were sitting in ~/.hypernix/models, and `hypernix-t1 index` wrote a
+    registry the phone never saw.
+
+    Reachable by a device token, a T2S key, or keylessly on a trusted
+    network — the same principal every other HyperLink route takes. It is
+    a read of what exists; loading one is a separate, gated decision.
+    """
+    _require_enabled(config)
+
+    bridge = None
+    if getattr(config, "lmstudio_enabled", False):
+        from .bridge import _bridge_for
+
+        bridge = _bridge_for(config)
+
+    catalogue = collect(
+        registry=registry,
+        bridge=bridge,
+        local_dir=config.hf_download_dir or None,
+    )
+    data = catalogue.to_dict()
+    return ModelCatalogueResponse(
+        models=data["models"],
+        count=data["count"],
+        sources=data["sources"],
+        request_id=request_id,
     )
 
 

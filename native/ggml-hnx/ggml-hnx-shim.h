@@ -37,6 +37,8 @@ void hnx_ggml_to_float_int1  (const void *x, float *y, int64_t k);
 void hnx_ggml_to_float_hnx1375(const void *x, float *y, int64_t k);
 void hnx_ggml_to_float_int4  (const void *x, float *y, int64_t k);
 void hnx_ggml_to_float_fp2   (const void *x, float *y, int64_t k);
+void hnx_ggml_to_float_int8  (const void *x, float *y, int64_t k);
+void hnx_ggml_to_float_int2  (const void *x, float *y, int64_t k);
 
 void hnx_ggml_vec_dot_iq0_9 (int n, float *s, size_t bs, const void *x,
                              size_t bx, const void *y, size_t by, int nrc);
@@ -54,6 +56,10 @@ void hnx_ggml_vec_dot_int4(int n, float *s, size_t bs, const void *x,
                             size_t bx, const void *y, size_t by, int nrc);
 void hnx_ggml_vec_dot_fp2(int n, float *s, size_t bs, const void *x,
                            size_t bx, const void *y, size_t by, int nrc);
+void hnx_ggml_vec_dot_int8(int n, float *s, size_t bs, const void *x,
+                            size_t bx, const void *y, size_t by, int nrc);
+void hnx_ggml_vec_dot_int2(int n, float *s, size_t bs, const void *x,
+                            size_t bx, const void *y, size_t by, int nrc);
 
 #ifdef __cplusplus
 }

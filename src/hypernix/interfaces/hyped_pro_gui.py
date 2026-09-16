@@ -166,6 +166,7 @@ def try_launch_qt() -> bool:
 def _make_main_window_class():
     from PySide6.QtCore import QObject, QThread, Signal
     from PySide6.QtWidgets import (
+        QCheckBox,
         QComboBox,
         QFormLayout,
         QHBoxLayout,
@@ -232,9 +233,13 @@ def _make_main_window_class():
             self._chat_thread: QThread | None = None
             self._dl_thread: QThread | None = None
 
+            self._noodle_session: str | None = None
+            self._noodle_timer = None
+
             tabs = QTabWidget()
             self.setCentralWidget(tabs)
             tabs.addTab(self._build_chat_tab(), "Chat")
+            tabs.addTab(self._build_noodle_tab(), "Noodle")
             tabs.addTab(self._build_keys_tab(), "API Keys")
 
         # -- Chat tab ---------------------------------------------------
@@ -267,6 +272,159 @@ def _make_main_window_class():
             layout.addLayout(bottom)
 
             return w
+
+        # -- Noodle tab -------------------------------------------------
+        #
+        # The same session API the TUI drives over the bridge, called
+        # directly because the GUI is already a Python process. A QTimer
+        # polls for events rather than a thread: poll() is a lock and a
+        # deque drain, far too cheap to be worth a thread, and doing it
+        # on the UI thread keeps every widget update where Qt wants it.
+        def _build_noodle_tab(self) -> QWidget:
+            w = QWidget()
+            layout = QVBoxLayout(w)
+
+            layout.addWidget(QLabel(
+                "Noodle runs agents against a task. They get file tools rooted "
+                "at ./.noodle and nothing outside it."
+            ))
+
+            top = QHBoxLayout()
+            self.noodle_task = QLineEdit()
+            self.noodle_task.setPlaceholderText("What should the swarm do?")
+            self.noodle_task.returnPressed.connect(self._on_noodle_start)
+            self.noodle_start_btn = QPushButton("Run")
+            self.noodle_start_btn.clicked.connect(self._on_noodle_start)
+            self.noodle_stop_btn = QPushButton("Stop")
+            self.noodle_stop_btn.setEnabled(False)
+            self.noodle_stop_btn.clicked.connect(self._on_noodle_stop)
+            top.addWidget(self.noodle_task, stretch=1)
+            top.addWidget(self.noodle_start_btn)
+            top.addWidget(self.noodle_stop_btn)
+            layout.addLayout(top)
+
+            self.noodle_exec = QCheckBox(
+                "Allow shell execution (agents may run commands)"
+            )
+            layout.addWidget(self.noodle_exec)
+
+            self.noodle_log = QTextEdit()
+            self.noodle_log.setReadOnly(True)
+            layout.addWidget(self.noodle_log, stretch=1)
+
+            self.noodle_status = QLabel("")
+            layout.addWidget(self.noodle_status)
+
+            self._refresh_noodle_providers()
+            return w
+
+        def _refresh_noodle_providers(self) -> None:
+            from hypernix.interfaces.noodle import hyped as noodle
+
+            try:
+                info = noodle.providers()
+            except Exception as exc:  # noqa: BLE001 - a tab must still build
+                self.noodle_status.setText(f"Could not list providers: {exc}")
+                return
+            if info["any_ready"]:
+                self.noodle_status.setText(
+                    "Ready: " + ", ".join(info["ready"])
+                )
+            else:
+                self.noodle_status.setText(
+                    "No provider is usable yet — set a key in the API Keys tab, "
+                    "or start Ollama."
+                )
+
+        def _noodle_append(self, text: str) -> None:
+            self.noodle_log.append(text)
+
+        def _on_noodle_start(self) -> None:
+            from PySide6.QtCore import QTimer
+
+            from hypernix.interfaces.noodle import hyped as noodle
+
+            task = self.noodle_task.text().strip()
+            if not task:
+                return
+            self.noodle_log.clear()
+            try:
+                session = noodle.start(
+                    task, allow_execute=self.noodle_exec.isChecked()
+                )
+            except noodle.NoodleSessionError as exc:
+                self._noodle_append(
+                    f'<span style="color:#e05555">{exc}</span>'
+                )
+                return
+            self._noodle_session = session["session_id"]
+            self.noodle_start_btn.setEnabled(False)
+            self.noodle_stop_btn.setEnabled(True)
+            self.noodle_task.setEnabled(False)
+            self._noodle_append(
+                f'<i>session {session["session_id"]} · '
+                f'{", ".join(session["roster"])} · {session["root"]}</i>'
+            )
+            self._noodle_timer = QTimer(self)
+            self._noodle_timer.timeout.connect(self._on_noodle_tick)
+            self._noodle_timer.start(400)
+
+        def _on_noodle_tick(self) -> None:
+            from hypernix.interfaces.noodle import hyped as noodle
+
+            if not self._noodle_session:
+                return
+            try:
+                tick = noodle.poll(self._noodle_session)
+            except noodle.NoodleSessionError as exc:
+                self._noodle_append(f'<span style="color:#e05555">{exc}</span>')
+                self._noodle_finish()
+                return
+            for event in tick["events"]:
+                kind = str(event.get("kind") or event.get("type") or "event")
+                detail = str(
+                    event.get("message") or event.get("text")
+                    or event.get("tool") or event.get("task_id") or ""
+                )
+                self._noodle_append(f"<b>{kind}</b> {detail}")
+            if not tick["running"]:
+                if tick["error"]:
+                    self._noodle_append(
+                        f'<span style="color:#e05555">{tick["error"]}</span>'
+                    )
+                elif tick["report"]:
+                    ok = tick["report"].get("ok")
+                    self._noodle_append(
+                        f'<b>{"Done" if ok else "Finished with failures"}</b> '
+                        f'in {tick["elapsed"]}s'
+                    )
+                self._noodle_finish()
+
+        def _on_noodle_stop(self) -> None:
+            from hypernix.interfaces.noodle import hyped as noodle
+
+            if not self._noodle_session:
+                return
+            try:
+                result = noodle.stop(self._noodle_session)
+            except noodle.NoodleSessionError as exc:
+                self._noodle_append(f'<span style="color:#e05555">{exc}</span>')
+                return
+            self._noodle_append("<i>Stopping…</i>")
+            if not result["swarm_notified"]:
+                self._noodle_append(
+                    "<i>Turns already in flight will finish — they are paid "
+                    "for either way.</i>"
+                )
+
+        def _noodle_finish(self) -> None:
+            if self._noodle_timer is not None:
+                self._noodle_timer.stop()
+                self._noodle_timer = None
+            self._noodle_session = None
+            self.noodle_start_btn.setEnabled(True)
+            self.noodle_stop_btn.setEnabled(False)
+            self.noodle_task.setEnabled(True)
 
         def _current_model_short(self) -> str:
             return self.model_box.currentData()

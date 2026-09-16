@@ -31,8 +31,10 @@ hnx config path                      Print the path to the config file.
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
+from contextlib import suppress
 from pathlib import Path
 from typing import Any
 
@@ -113,6 +115,7 @@ def _load_config() -> dict[str, Any]:
     """Load config from disk, returning defaults for missing keys."""
     if not _CONFIG_FILE.exists():
         return dict(_DEFAULTS)
+    _tighten_permissions()
     try:
         with open(_CONFIG_FILE, encoding="utf-8") as fh:
             data = json.load(fh)
@@ -125,11 +128,84 @@ def _load_config() -> dict[str, Any]:
         return dict(_DEFAULTS)
 
 
+#: Permissions for the config file and its directory.
+#:
+#: This file holds ``provider_keys`` — the user's Anthropic, OpenAI,
+#: Moonshot and DashScope API keys — and ``hf_token``. It was written
+#: with the default umask, which on every mainstream distribution is
+#: 0644: world-readable, in a 0755 directory. Any other account on the
+#: machine, and anything running as nobody, could read every API key the
+#: user had set.
+#:
+#: Every other secret store in this package already did this right —
+#: keymaster.py, t2keys.py, waiter/local_config.py and
+#: hyperlink/identity.py all write 0600. This one was the exception.
+_CONFIG_MODE = 0o600
+_CONFIG_DIR_MODE = 0o700
+
+
 def _save_config(cfg: dict[str, Any]) -> None:
-    """Persist config to disk."""
+    """Persist config to disk, readable only by its owner.
+
+    Written to a temporary file and renamed, so an interrupted write
+    leaves the previous config intact rather than a truncated one — the
+    file holds the only copy of keys the user typed once, and half of a
+    JSON object is not recoverable.
+
+    The temporary file is created 0600 by ``os.open`` rather than chmod-ed
+    afterwards: between an ``open()`` and a ``chmod()`` there is a window
+    where the secret exists at the umask's permissions, and on a shared
+    machine that window is the whole vulnerability.
+    """
     _CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-    with open(_CONFIG_FILE, "w", encoding="utf-8") as fh:
-        json.dump(cfg, fh, indent=2, ensure_ascii=False)
+    try:
+        os.chmod(_CONFIG_DIR, _CONFIG_DIR_MODE)
+    except OSError:
+        # Windows has no POSIX modes, and a directory owned by someone
+        # else is their business. Neither is a reason not to write.
+        pass
+
+    payload = json.dumps(cfg, indent=2, ensure_ascii=False)
+    temporary = _CONFIG_FILE.with_name(_CONFIG_FILE.name + f".{os.getpid()}.tmp")
+    try:
+        handle = os.open(
+            temporary, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, _CONFIG_MODE
+        )
+        with os.fdopen(handle, "w", encoding="utf-8") as stream:
+            stream.write(payload)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, _CONFIG_FILE)
+    except OSError:
+        with suppress(OSError):
+            temporary.unlink()
+        raise
+    # os.replace keeps the *temporary* file's mode, which is already
+    # 0600. Re-applying it covers the one case that is not: a
+    # pre-existing config whose mode the rename did not change because
+    # the platform's replace semantics differ.
+    with suppress(OSError):
+        os.chmod(_CONFIG_FILE, _CONFIG_MODE)
+
+
+def _tighten_permissions() -> None:
+    """Fix a config file that an older version wrote world-readable.
+
+    Called on read rather than only on write. Somebody who set their keys
+    six months ago and has not changed one since would otherwise keep the
+    0644 file forever, and the upgrade that fixed this would not have
+    fixed anything for them.
+    """
+    try:
+        current = os.stat(_CONFIG_FILE).st_mode
+    except OSError:
+        return
+    if current & 0o077:
+        with suppress(OSError):
+            os.chmod(_CONFIG_FILE, _CONFIG_MODE)
+    with suppress(OSError):
+        if os.stat(_CONFIG_DIR).st_mode & 0o077:
+            os.chmod(_CONFIG_DIR, _CONFIG_DIR_MODE)
 
 
 def get_config_value(key: str) -> Any:
