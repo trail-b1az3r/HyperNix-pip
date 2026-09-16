@@ -719,3 +719,12 @@ timeline
         : ccf76868 - Update pyproject.toml
 ```
 
+## Release v0.72.5.dev3 (2026-09-16)
+
+```mermaid
+timeline
+    title Release v0.72.5.dev3 Commits
+    0.72.5.dev3
+        : 96ec0b03 - chore- update JSON stats (scheduled)
+```
+
