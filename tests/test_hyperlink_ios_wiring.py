@@ -994,6 +994,56 @@ class TestSwiftShapesThatDoNotCompile:
             "for them: " + ", ".join(offenders)
         )
 
+    def test_no_shortcut_phrase_interpolates_a_plain_parameter(self):
+        """An `AppShortcut` phrase may only name an `AppEntity` or an
+        `AppEnum` parameter.
+
+        Siri matches a phrase against a finite set of values, so a
+        `String` parameter has nothing for it to recognise. Interpolating
+        one is not a compile error -- the Swift builds and links, and
+        then `appintentsmetadataprocessor` refuses the whole target with
+        "Invalid parameter type. AppEntity and AppEnum are the only
+        allowed types for <name>" and exports no AppIntents metadata.
+        That lands at the bottom of the build, after every source file
+        has already compiled, which makes it read like an unrelated
+        toolchain failure.
+
+        This flags any phrase interpolation whose parameter is declared
+        `String`, `Int`, `Bool`, `Double` or `Date`, and would pass one
+        naming a real entity or enum.
+        """
+        import re
+
+        plain = {"String", "Int", "Bool", "Double", "Date"}
+        offenders = []
+        for path in self._swift_files():
+            text = path.read_text(encoding="utf-8")
+            if "AppShortcutsProvider" not in text:
+                continue
+            # Every `@Parameter` in the module, with the type it declares.
+            declared = dict(
+                re.findall(
+                    r"@Parameter\b[^\n]*(?:\n(?!\s*var\b)[^\n]*)*"
+                    r"\n\s*var\s+(\w+)\s*:\s*([A-Za-z_]\w*)",
+                    text,
+                )
+            )
+            for number, line in enumerate(text.splitlines(), 1):
+                if line.strip().startswith("//") or line.strip().startswith("///"):
+                    continue
+                for name in re.findall(r"\\\(\\\.\$(\w+)\)", line):
+                    kind = declared.get(name)
+                    if kind is None or kind in plain:
+                        offenders.append(
+                            f"{path.name}:{number} ${name} "
+                            f"({kind or 'not found in this file'})"
+                        )
+        assert not offenders, (
+            "these Siri phrases interpolate a parameter that is not an "
+            "AppEntity or AppEnum, which fails appintentsmetadataprocessor "
+            "after the build links: " + ", ".join(offenders)
+        )
+
     def test_no_string_literal_has_an_unescaped_quote(self):
         """Typographic quotes inside UI copy are fine; a bare `"` inside
         a `"..."` literal ends the literal and the rest of the line

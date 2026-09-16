@@ -431,15 +431,32 @@ enum Speech {
 /// the ways the same sentence is actually said, not synonyms for their
 /// own sake: somebody says "ask HyperLink", "ask HyperLink about" and
 /// "HyperLink, what is" and means the same thing all three times.
+///
+/// None of these interpolate a parameter, and that is a rule rather
+/// than a style: a phrase may only name a parameter whose type is an
+/// `AppEntity` or an `AppEnum`. `question`, `model` and `message` are
+/// all `String`, and a string has no finite set of values for Siri to
+/// match against, so there is nothing it could recognise in the
+/// sentence. Writing `\(\.$question)` anyway is not a compile error —
+/// it builds, and then `appintentsmetadataprocessor` refuses the target
+/// with "Invalid parameter type. AppEntity and AppEnum are the only
+/// allowed types", which fails the build after linking and exports no
+/// metadata at all.
+///
+/// Nothing is lost by dropping them. Every one of those parameters
+/// carries a `requestValueDialog`, so the phrase starts the intent and
+/// Siri asks for the value in the next breath — "Ask HyperLink" →
+/// "What would you like to ask?" — which is also the flow somebody
+/// gets when they trail off mid-sentence.
 struct HyperLinkShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         AppShortcut(
             intent: AskHyperLinkIntent(),
             phrases: [
-                "Ask \(.applicationName) \(\.$question)",
-                "Ask \(.applicationName) about \(\.$question)",
-                "\(.applicationName), \(\.$question)",
-                "Ask my PC on \(.applicationName) \(\.$question)",
+                "Ask \(.applicationName)",
+                "Ask \(.applicationName) a question",
+                "Ask \(.applicationName) something",
+                "Ask my PC on \(.applicationName)",
             ],
             shortTitle: "Ask",
             systemImageName: "bubble.left.and.text.bubble.right"
@@ -447,9 +464,9 @@ struct HyperLinkShortcuts: AppShortcutsProvider {
         AppShortcut(
             intent: LoadModelIntent(),
             phrases: [
-                "Load the model \(\.$model) on \(.applicationName)",
-                "Load \(\.$model) in \(.applicationName)",
-                "Switch \(.applicationName) to \(\.$model)",
+                "Load a model on \(.applicationName)",
+                "Load a model in \(.applicationName)",
+                "Switch the \(.applicationName) model",
             ],
             shortTitle: "Load a model",
             systemImageName: "shippingbox"
@@ -469,7 +486,7 @@ struct HyperLinkShortcuts: AppShortcutsProvider {
             intent: SendMessageIntent(),
             phrases: [
                 "Send a message in \(.applicationName)",
-                "Tell \(.applicationName) \(\.$message)",
+                "Send a message with \(.applicationName)",
             ],
             shortTitle: "Send a message",
             systemImageName: "paperplane"
