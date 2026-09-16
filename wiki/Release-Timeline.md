@@ -863,3 +863,15 @@ timeline
         : 6ab301e3 - Auto-update README header (hourly)
 ```
 
+## Release v0.72.5.post11 (2026-09-16)
+
+```mermaid
+timeline
+    title Release v0.72.5.post11 Commits
+    0.72.5.post11
+        : e9e53197 - chore- update JSON stats (scheduled)
+        : 46047fec - models- reconcile 'Models registered 44' with an empty picker
+        : a75a750b - t1api- add GET /version, and stop a stale process looking like a wrong number
+        : aad95131 - models- say where the scan looked and what was in there
+```
+
