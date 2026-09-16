@@ -45,7 +45,7 @@ set -euo pipefail
 # below replaces them whenever the script is run from a clone, and
 # tests/test_install_script.py fails if the fallback drifts from the
 # package again.
-VERSION="0.72.5.post4"
+VERSION="0.72.5.post5"
 T1_API_VERSION="1.0.26.9.2.3"
 
 # Replace the baked versions with the real ones, when they can be read.

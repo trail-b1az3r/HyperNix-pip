@@ -808,3 +808,13 @@ timeline
         : 561c8499 - ios- declare the CodingKeys that nothing was synthesising
 ```
 
+## Release v0.72.5.post5 (2026-09-16)
+
+```mermaid
+timeline
+    title Release v0.72.5.post5 Commits
+    0.72.5.post5
+        : e72a66ea - tests- the blanking tests described a session the code never saw
+        : d5612d45 - ios- a Siri phrase cannot name a String parameter
+```
+
