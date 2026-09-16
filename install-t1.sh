@@ -414,8 +414,12 @@ install_package() {
       ;;
     user)
       PIP_TARGET_DESC="user site-packages"
-      if [ "$DRY_RUN" = "1" ]; then dim "     would run: $PYTHON -m pip install --user $spec"; return; fi
-      "$PYTHON" -m pip install --quiet --user --break-system-packages "$spec" || die "pip install --user $spec failed"
+      if [ "$DRY_RUN" = "1" ]; then
+        dim "     would run: $PYTHON -m pip install --user --break-system-packages $spec"
+        return
+      fi
+      "$PYTHON" -m pip install --quiet --user --break-system-packages "$spec" \
+        || die "pip install --user --break-system-packages $spec failed"
       ;;
     system)
       PIP_TARGET_DESC="system site-packages"
