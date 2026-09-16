@@ -1323,3 +1323,220 @@ struct MessageEdit: Decodable, Equatable, Sendable {
         removedCount = try c.decodeIfPresent(Int.self, forKey: .removedCount) ?? 0
     }
 }
+
+// MARK: - Settings
+//
+// On the server rather than the phone, for two reasons and the second
+// decides it: a person with a phone and a tablet is one person, and
+// these are *inputs to generation* — the system prompt, the effort
+// level and the context bounds all have to be in the process that
+// builds the request.
+
+struct UserPreferences: Decodable, Equatable, Sendable {
+    let displayName: String
+    let bio: String
+    let systemPrompt: String
+    let effort: String
+    /// 0 for both means "no opinion", which is the right default: a
+    /// number here overrides what the model itself says it can do.
+    let contextMinimum: Int
+    let contextMaximum: Int
+    /// Tried when the main model fails. Empty means "fail honestly",
+    /// which beats silently answering as somebody else.
+    let backupModel: String
+    let backend: String
+    let toolsEnabled: Bool
+    let autoMemory: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case bio, effort, backend
+        case displayName = "display_name"
+        case systemPrompt = "system_prompt"
+        case contextMinimum = "context_minimum"
+        case contextMaximum = "context_maximum"
+        case backupModel = "backup_model"
+        case toolsEnabled = "tools_enabled"
+        case autoMemory = "auto_memory"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        displayName = try c.decodeIfPresent(String.self, forKey: .displayName) ?? ""
+        bio = try c.decodeIfPresent(String.self, forKey: .bio) ?? ""
+        systemPrompt = try c.decodeIfPresent(String.self, forKey: .systemPrompt) ?? ""
+        effort = try c.decodeIfPresent(String.self, forKey: .effort) ?? "medium"
+        contextMinimum = try c.decodeIfPresent(Int.self, forKey: .contextMinimum) ?? 0
+        contextMaximum = try c.decodeIfPresent(Int.self, forKey: .contextMaximum) ?? 0
+        backupModel = try c.decodeIfPresent(String.self, forKey: .backupModel) ?? ""
+        backend = try c.decodeIfPresent(String.self, forKey: .backend) ?? ""
+        toolsEnabled = try c.decodeIfPresent(Bool.self, forKey: .toolsEnabled) ?? false
+        autoMemory = try c.decodeIfPresent(Bool.self, forKey: .autoMemory) ?? true
+    }
+
+    static let defaults = UserPreferences()
+
+    private init() {
+        displayName = ""; bio = ""; systemPrompt = ""; effort = "medium"
+        contextMinimum = 0; contextMaximum = 0; backupModel = ""; backend = ""
+        toolsEnabled = false; autoMemory = true
+    }
+}
+
+/// The settings plus the bounds the *server* will accept.
+///
+/// The limits come with the values so the app does not carry its own
+/// copy of a list the server owns: an effort level the phone offers and
+/// the server rejects is a settings screen that cannot save, and the
+/// phone has no way to know which levels a given build has.
+struct PreferencesEnvelope: Decodable, Equatable, Sendable {
+    let preferences: UserPreferences
+    let effortLevels: [String]
+    let contextFloor: Int
+    let contextCeiling: Int
+    let maxSystemPrompt: Int
+    /// Every clamp the server applied, in words. Shown rather than
+    /// swallowed — silently storing something other than what somebody
+    /// typed is how a settings screen becomes untrustworthy.
+    let notes: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case preferences, notes
+        case effortLevels = "effort_levels"
+        case contextFloor = "context_floor"
+        case contextCeiling = "context_ceiling"
+        case maxSystemPrompt = "max_system_prompt"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        preferences = try c.decodeIfPresent(
+            UserPreferences.self, forKey: .preferences
+        ) ?? .defaults
+        effortLevels = try c.decodeIfPresent([String].self, forKey: .effortLevels)
+            ?? ["minimal", "low", "medium", "high", "maximum"]
+        contextFloor = try c.decodeIfPresent(Int.self, forKey: .contextFloor) ?? 1024
+        contextCeiling = try c.decodeIfPresent(Int.self, forKey: .contextCeiling)
+            ?? 1_048_576
+        maxSystemPrompt = try c.decodeIfPresent(Int.self, forKey: .maxSystemPrompt)
+            ?? 32_000
+        notes = try c.decodeIfPresent([String].self, forKey: .notes) ?? []
+    }
+
+    static let empty = PreferencesEnvelope()
+
+    private init() {
+        preferences = .defaults
+        effortLevels = ["minimal", "low", "medium", "high", "maximum"]
+        contextFloor = 1024
+        contextCeiling = 1_048_576
+        maxSystemPrompt = 32_000
+        notes = []
+    }
+}
+
+/// What the app sends. Every field optional: nil means "leave it alone",
+/// so a build that knows about six settings cannot blank the four it has
+/// never heard of.
+struct PreferencesPatch: Encodable, Sendable {
+    var display_name: String?
+    var bio: String?
+    var system_prompt: String?
+    var effort: String?
+    var context_minimum: Int?
+    var context_maximum: Int?
+    var backup_model: String?
+    var backend: String?
+    var tools_enabled: Bool?
+    var auto_memory: Bool?
+}
+
+// MARK: - What can answer
+
+/// One thing that could serve a message, and whether it can right now.
+///
+/// Worth showing because the two failures look identical from the app
+/// and need opposite fixes: "this server has no models" is solved by
+/// downloading one, "a model is loaded but nothing is serving it" by
+/// turning something on.
+struct InferenceBackend: Decodable, Identifiable, Equatable, Sendable {
+    let name: String
+    let label: String
+    let available: Bool
+    let modelID: String
+    let detail: String
+
+    var id: String { name }
+
+    enum CodingKeys: String, CodingKey {
+        case name, label, available, detail
+        case modelID = "model_id"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        name = try c.decodeIfPresent(String.self, forKey: .name) ?? ""
+        label = try c.decodeIfPresent(String.self, forKey: .label) ?? ""
+        available = try c.decodeIfPresent(Bool.self, forKey: .available) ?? false
+        modelID = try c.decodeIfPresent(String.self, forKey: .modelID) ?? ""
+        detail = try c.decodeIfPresent(String.self, forKey: .detail) ?? ""
+    }
+}
+
+struct BackendList: Decodable, Equatable, Sendable {
+    let backends: [InferenceBackend]
+    /// The one a message would go to right now, or "" when none would.
+    let active: String
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        backends = try c.decodeIfPresent([InferenceBackend].self, forKey: .backends) ?? []
+        active = try c.decodeIfPresent(String.self, forKey: .active) ?? ""
+    }
+
+    static let empty = BackendList()
+    private init() { backends = []; active = "" }
+}
+
+// MARK: - Memory
+
+struct MemoryItem: Decodable, Identifiable, Equatable, Sendable {
+    let memoryID: String
+    let content: String
+    let category: String
+    /// "manual" or "auto" — what the person wrote versus what the model
+    /// noticed. Shown, because "why does it think that about me" needs
+    /// an answer.
+    let source: String
+    let pinned: Bool
+    let updatedAt: Double
+
+    var id: String { memoryID }
+    var isAutomatic: Bool { source == "auto" }
+
+    enum CodingKeys: String, CodingKey {
+        case content, category, source, pinned
+        case memoryID = "memory_id"
+        case updatedAt = "updated_at"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        memoryID = try c.decodeIfPresent(String.self, forKey: .memoryID) ?? ""
+        content = try c.decodeIfPresent(String.self, forKey: .content) ?? ""
+        category = try c.decodeIfPresent(String.self, forKey: .category) ?? ""
+        source = try c.decodeIfPresent(String.self, forKey: .source) ?? "manual"
+        pinned = try c.decodeIfPresent(Bool.self, forKey: .pinned) ?? false
+        updatedAt = try c.decodeIfPresent(Double.self, forKey: .updatedAt) ?? 0
+    }
+}
+
+struct MemoryList: Decodable, Equatable, Sendable {
+    let memories: [MemoryItem]
+    let count: Int
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        memories = try c.decodeIfPresent([MemoryItem].self, forKey: .memories) ?? []
+        count = try c.decodeIfPresent(Int.self, forKey: .count) ?? 0
+    }
+}

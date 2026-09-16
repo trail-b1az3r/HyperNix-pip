@@ -17,6 +17,14 @@ struct SettingsView: View {
 
     /// What the runner row says on its right-hand side. Never blank: a
     /// row with nothing next to it reads as broken rather than idle.
+    /// Which backend a message would reach, in words.
+    private var answeringWith: String {
+        let active = state.backends.active
+        if active.isEmpty { return "nothing yet" }
+        return state.backends.backends
+            .first { $0.name == active }?.label ?? active
+    }
+
     private var runnerSummary: String {
         guard state.runnerAvailable else { return "not available" }
         guard let model = state.runner.model else { return "nothing loaded" }
@@ -74,6 +82,13 @@ struct SettingsView: View {
             }
 
             Section {
+                // What would actually answer a message right now. Worth
+                // a line because the two failures look identical from
+                // here and need opposite fixes: "no models on this
+                // server" is solved by downloading one, "a model is
+                // loaded but nothing is serving it" by turning
+                // something on.
+                LabeledContent("Answering with", value: answeringWith)
                 NavigationLink {
                     RunnerView()
                 } label: {

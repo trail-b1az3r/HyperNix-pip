@@ -259,7 +259,21 @@ class TestItActuallyStopsTheModel:
                 finally:
                     state["closed"].set()
 
-        monkeypatch.setattr(router, "_chat_bridge", lambda *a, **k: Endless())
+        # `_chat_backend`, not `_chat_bridge`. The chat path now picks
+        # between this server's own runner and LM Studio — see
+        # `hypernix.hyperlink.inference` — so the bridge is one of two
+        # things it might return rather than the only one. Patching the
+        # old name left the stub unused and the stream talking to a URL
+        # nothing serves.
+        from hypernix.hyperlink.inference import LMSTUDIO, Backend
+
+        monkeypatch.setattr(
+            router, "_chat_backend",
+            lambda *a, **k: Backend(
+                client=Endless(), name=LMSTUDIO,
+                base_url="http://fake", label="LM Studio",
+            ),
+        )
         return state
 
     def test_the_upstream_generator_is_closed(self, endless):

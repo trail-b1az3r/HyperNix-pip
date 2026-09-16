@@ -69,6 +69,7 @@ from ..hyperlink.managed import ManagedRunner
 from ..hyperlink.memory import MemoryStore
 from ..hyperlink.notify import NotificationStore
 from ..hyperlink.pairing import DeviceRegistry
+from ..hyperlink.preferences import PreferenceStore
 from ..hyperlink.search import SearchIndex
 from ..hyperlink.sessions import ChatSessionStore
 from ..hyperlink.sync import SyncStore
@@ -454,6 +455,7 @@ def create_app(
     # somewhere to look the running one up.
     app.state.t1_generations = GenerationRegistry()
     app.state.t1_memory_store = MemoryStore(db)
+    app.state.t1_preference_store = PreferenceStore(db)
     # One llama.cpp process, owned by this server. Constructed
     # unloaded: starting a model at boot would make a restart
     # take minutes and would pick one nobody asked for.

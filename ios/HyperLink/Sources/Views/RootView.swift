@@ -16,7 +16,7 @@ struct RootView: View {
         }
         // Animating the swap makes signing out and pairing read as one
         // app changing state rather than two screens fighting.
-        .animation(.easeInOut(duration: 0.25), value: state.isPaired)
+        .animation(Motion.deliberate, value: state.isPaired)
     }
 }
 
@@ -39,6 +39,15 @@ struct MainTabView: View {
                 SettingsView()
             }
             .tabItem { Label("Server", systemImage: "desktopcomputer") }
+
+            // Separate from "Server" on purpose: that tab is about the
+            // machine, this one is about the person. Burying a bio and
+            // a system prompt under a screen titled "Server" is how
+            // nobody finds them.
+            NavigationStack {
+                MySettingsView()
+            }
+            .tabItem { Label("You", systemImage: "person.crop.circle") }
         }
         .task { await state.refreshAll() }
     }

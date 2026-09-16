@@ -141,6 +141,7 @@ struct ChatView: View {
                     ForEach(state.messages.filter { !$0.isSystem }) { message in
                         MessageBubble(message: message)
                             .id(message.messageID)
+                            .messageArrival()
                             // Long press rather than a permanent edit
                             // button: a control on every bubble is a
                             // control in the way of reading, which is
@@ -175,6 +176,7 @@ struct ChatView: View {
                             isStreaming: true
                         )
                         .id("streaming")
+                        .messageArrival()
                     } else if state.isSending {
                         HStack(spacing: 8) {
                             ProgressView().controlSize(.small)
@@ -185,6 +187,11 @@ struct ChatView: View {
                     }
                 }
                 .padding()
+                // One place decides how this app moves — see Motion.swift.
+                // Views that each pick their own spring produce an app
+                // where two things doing the same thing move differently.
+                .animation(Motion.standard, value: state.messages.count)
+                .animation(Motion.token, value: state.streamingText)
             }
             .onChange(of: state.messages.count) { _, _ in scrollToEnd(proxy) }
             .onChange(of: state.streamingText) { _, _ in scrollToEnd(proxy) }

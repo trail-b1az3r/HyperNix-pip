@@ -545,6 +545,17 @@ def get_memory_store(request: Request):
     return request.app.state.t1_memory_store
 
 
+def get_preference_store(request: Request):
+    """Per-person settings: profile, system prompt, effort, bounds.
+
+    On the server rather than the phone because these are *inputs to
+    generation* — the prompt, the effort level and the context bounds
+    all have to be in the process that builds the request — and because
+    a person with a phone and a tablet is one person.
+    """
+    return request.app.state.t1_preference_store
+
+
 def get_generation_registry(request: Request):
     """In-flight streamed generations, so Stop has something to stop."""
     return request.app.state.t1_generations

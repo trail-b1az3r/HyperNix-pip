@@ -1596,6 +1596,56 @@ class GenerationListResponse(BaseModel):
     request_id: str
 
 
+class BackendsResponse(BaseModel):
+    """Every thing that could answer a message, and whether it can now.
+
+    "No models" and "a model is loaded but the thing that serves it is
+    switched off" look identical from outside and need completely
+    different actions.
+    """
+
+    backends: list[dict[str, Any]] = Field(default_factory=list)
+    #: The one a message would go to right now, or "" when none would.
+    active: str = ""
+    request_id: str
+
+
+class PreferencesRequest(BaseModel):
+    """A partial update. Every field optional, and that is the point.
+
+    ``None`` means "leave it alone", so a client that knows about six
+    settings cannot blank the four it has never heard of by sending them
+    as defaults — which is what a whole-object PUT does the first time
+    the app and the server disagree about the field list.
+    """
+
+    display_name: str | None = None
+    bio: str | None = None
+    system_prompt: str | None = None
+    effort: str | None = None
+    context_minimum: int | None = None
+    context_maximum: int | None = None
+    backup_model: str | None = None
+    backend: str | None = None
+    tools_enabled: bool | None = None
+    auto_memory: bool | None = None
+
+
+class PreferencesResponse(BaseModel):
+    preferences: dict[str, Any] = Field(default_factory=dict)
+    #: The effort levels and bounds this server accepts, so the app does
+    #: not carry its own copy of a list the server owns.
+    effort_levels: list[str] = Field(default_factory=list)
+    context_floor: int = 0
+    context_ceiling: int = 0
+    max_system_prompt: int = 0
+    #: Every clamp and correction applied, in words. Silently storing
+    #: something other than what somebody typed is how a settings screen
+    #: becomes untrustworthy.
+    notes: list[str] = Field(default_factory=list)
+    request_id: str
+
+
 class UpgradeResponse(BaseModel):
     """What this server is running, and the commands to change it.
 

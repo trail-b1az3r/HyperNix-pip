@@ -46,11 +46,12 @@ struct MessageBubble: View {
                 if isStreaming {
                     // A caret while the tokens arrive: cheaper to read
                     // than a spinner, and it disappears the moment the
-                    // real message replaces this bubble.
-                    Text("▌")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .accessibilityHidden(true)
+                    // real message replaces this bubble. It pulses
+                    // rather than spins, because a spinner says
+                    // "waiting" and this is the opposite — text is
+                    // arriving, and the caret is where the next
+                    // character will be.
+                    ThinkingCaret()
                 }
             }
             .padding(12)

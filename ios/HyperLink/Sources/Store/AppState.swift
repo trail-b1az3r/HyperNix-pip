@@ -76,6 +76,38 @@ final class AppState {
     /// What the last load or unload said when it refused.
     var runnerError: String?
 
+    /// Reload one conversation's history from the server.
+    ///
+    /// What makes backgrounding survivable. The server keeps generating
+    /// and persists the reply as it goes, so a phone that was suspended
+    /// mid-answer does not need the socket it lost — it needs to ask
+    /// again. See `BackgroundSession` for why that is the whole trick.
+    func reload(sessionID: String) async {
+        guard let refreshed = try? await client.messages(in: sessionID) else { return }
+        if openSessionID == sessionID {
+            messages = refreshed
+            // A stream that was cut off mid-flight leaves this set, and
+            // a live bubble next to the real persisted reply is the same
+            // text twice.
+            streamingText = ""
+            isSending = false
+        }
+        sessions = (try? await client.sessions()) ?? sessions
+    }
+
+    // MARK: - Settings
+
+    /// This person's settings and the bounds this server accepts.
+    ///
+    /// The bounds travel with the values so the app never carries its
+    /// own copy of a list the server owns — an effort level the phone
+    /// offers and the server rejects is a settings screen that cannot
+    /// save.
+    private(set) var settings: PreferencesEnvelope = .empty
+    /// What could answer a message here, and what would right now.
+    private(set) var backends: BackendList = .empty
+    private(set) var memories: [MemoryItem] = []
+
     // MARK: - Transient UI state
 
     private(set) var isSending = false
@@ -165,6 +197,9 @@ final class AppState {
         openSessionID = nil
         catalogue = .empty
         uptime = nil
+        settings = .empty
+        backends = .empty
+        memories = []
         runner = .unknown
         runnerAvailable = false
         runnerError = nil
@@ -207,6 +242,9 @@ final class AppState {
             openSessionID = nil
             catalogue = .empty
             uptime = nil
+            settings = .empty
+            backends = .empty
+            memories = []
             runner = .unknown
             runnerAvailable = false
             runnerError = nil
@@ -385,6 +423,9 @@ final class AppState {
         openSessionID = nil
         catalogue = .empty
         uptime = nil
+        settings = .empty
+        backends = .empty
+        memories = []
         runner = .unknown
         runnerAvailable = false
         runnerError = nil
@@ -412,7 +453,8 @@ final class AppState {
         async let identity: Void = verifyIdentity()
         async let clock: Void = refreshUptime()
         async let engine: Void = refreshRunner()
-        _ = await (status, list, models, identity, clock, engine)
+        async let mine: Void = refreshSettings()
+        _ = await (status, list, models, identity, clock, engine, mine)
     }
 
     /// Re-check that the address we reached is still the machine we
@@ -523,6 +565,100 @@ final class AppState {
     /// screen is worse than a spinner.
     func hardware() async throws -> ServerHardware {
         try await client.hardware()
+    }
+
+    // MARK: - Settings
+
+    /// Load the settings and what can answer.
+    ///
+    /// Silent on failure, like the other background refreshes: a server
+    /// too old for `/hyperlink/preferences` 404s, and a red line about
+    /// a feature nobody asked for is worse than the defaults.
+    func refreshSettings() async {
+        if let envelope = try? await client.preferences() {
+            settings = envelope
+        }
+        if let list = try? await client.backends() {
+            backends = list
+        }
+    }
+
+    /// Save some settings. Returns the notes the server sent back.
+    ///
+    /// The notes are the point of returning anything: a context maximum
+    /// of four million is lowered, and a settings screen that did not
+    /// say so would be one nobody could trust afterwards.
+    @discardableResult
+    func saveSettings(_ patch: PreferencesPatch) async -> [String] {
+        do {
+            settings = try await client.savePreferences(patch)
+            // What answers can change with them — switching backend, or
+            // naming a backup model, changes what a message would reach.
+            if let list = try? await client.backends() { backends = list }
+            return settings.notes
+        } catch {
+            handle(error)
+            return []
+        }
+    }
+
+    @discardableResult
+    func resetSettings() async -> Bool {
+        do {
+            settings = try await client.resetPreferences()
+            return true
+        } catch {
+            handle(error)
+            return false
+        }
+    }
+
+    // MARK: - Memory
+
+    func refreshMemories() async {
+        memories = (try? await client.memories())?.memories ?? memories
+    }
+
+    @discardableResult
+    func remember(_ content: String) async -> Bool {
+        let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return false }
+        do {
+            try await client.rememberFact(trimmed)
+            await refreshMemories()
+            return true
+        } catch {
+            handle(error)
+            return false
+        }
+    }
+
+    @discardableResult
+    func updateMemory(_ memoryID: String, content: String? = nil, pinned: Bool? = nil) async -> Bool {
+        do {
+            try await client.editMemory(memoryID, content: content, pinned: pinned)
+            await refreshMemories()
+            return true
+        } catch {
+            handle(error)
+            return false
+        }
+    }
+
+    @discardableResult
+    func forget(_ memoryID: String) async -> Bool {
+        do {
+            try await client.forgetMemory(memoryID)
+            // Removed locally first so the row goes immediately, then
+            // reconciled — a list that waits for a round trip before a
+            // delete looks stuck.
+            memories.removeAll { $0.memoryID == memoryID }
+            await refreshMemories()
+            return true
+        } catch {
+            handle(error)
+            return false
+        }
     }
 
     // MARK: - The runner

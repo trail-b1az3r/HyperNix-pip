@@ -507,3 +507,222 @@ class TestEditMode:
         body = code("Views", "EditMessageSheet.swift")
         assert "empty" in body
         assert "Delete it instead" in read("Views", "EditMessageSheet.swift")
+
+
+class TestTheSettingsScreen:
+    """Who you are, and how you want to be answered — as opposed to
+    `SettingsView`, which is about the machine."""
+
+    def test_the_client_reads_and_writes_them(self):
+        body = code("Networking", "HyperLinkClient.swift")
+        assert "func preferences(" in body
+        assert "func savePreferences(" in body
+
+    def test_it_is_a_patch_not_a_put(self):
+        """A build that knows about six settings must not blank the four
+        it has never heard of by sending them as defaults."""
+        body = code("Networking", "HyperLinkClient.swift")
+        start = body.index("func savePreferences(")
+        assert 'method: "PATCH"' in body[start:start + 400]
+
+    def test_every_patch_field_is_optional(self):
+        """nil has to mean "leave it alone" for the PATCH to be a patch."""
+        body = read("Models", "APITypes.swift")
+        start = body.index("struct PreferencesPatch")
+        block = body[start:body.index("}", start)]
+        declarations = [
+            line for line in block.splitlines() if line.strip().startswith("var ")
+        ]
+        assert declarations
+        for line in declarations:
+            assert line.rstrip().endswith("?"), f"not optional: {line.strip()}"
+
+    def test_there_is_a_screen_and_a_tab(self):
+        assert (SOURCES / "Views" / "MySettingsView.swift").is_file()
+        assert "MySettingsView()" in code("Views", "RootView.swift")
+
+    def test_it_is_not_buried_under_the_server_tab(self):
+        """A bio and a system prompt under a screen titled "Server" is
+        how nobody finds them."""
+        body = code("Views", "RootView.swift")
+        assert 'Label("You"' in body
+
+    def test_the_effort_levels_come_from_the_server(self):
+        """An effort level the phone offers and the server rejects is a
+        settings screen that cannot save, and the phone has no way to
+        know which levels a given build has."""
+        assert "state.settings.effortLevels" in code("Views", "MySettingsView.swift")
+
+    def test_the_context_bounds_come_from_the_server_too(self):
+        body = code("Views", "MySettingsView.swift")
+        assert "contextFloor" in body
+        assert "contextCeiling" in body
+
+    def test_the_clamp_notes_are_shown(self):
+        """Silently storing something other than what somebody typed is
+        how a settings screen becomes untrustworthy."""
+        body = code("Views", "MySettingsView.swift")
+        assert "notes" in body
+        assert "adjusted" in read("Views", "MySettingsView.swift")
+
+    def test_the_system_prompt_has_its_own_screen(self):
+        assert "SystemPromptView" in code("Views", "MySettingsView.swift")
+
+    def test_every_setting_the_request_named_is_there(self):
+        body = read("Views", "MySettingsView.swift")
+        for wanted in ("Name", "bio", "System prompt", "Effort", "Context",
+                       "Backup model", "tools", "Remember"):
+            assert wanted.lower() in body.lower(), f"no sign of {wanted}"
+
+
+class TestMemoryInTheApp:
+    def test_the_client_can_read_and_change_them(self):
+        body = code("Networking", "HyperLinkClient.swift")
+        for call in ("func memories(", "func rememberFact(", "func forgetMemory("):
+            assert call in body
+
+    def test_there_is_a_screen(self):
+        assert (SOURCES / "Views" / "MemoryView.swift").is_file()
+        assert "MemoryView()" in code("Views", "MySettingsView.swift")
+
+    def test_automatic_memories_are_marked(self):
+        """The first question about a fact you did not write is where it
+        came from."""
+        body = code("Views", "MemoryView.swift")
+        assert "isAutomatic" in body
+
+    def test_they_can_be_deleted(self):
+        """A model that remembers things about you and gives you no way
+        to see them is a model you cannot correct."""
+        assert "state.forget(" in code("Views", "MemoryView.swift")
+
+
+class TestToolCallingReachesTheModel:
+    def test_the_loop_exists(self):
+        from hypernix.hyperlink.toolloop import run_tool_loop
+
+        assert run_tool_loop
+
+    def test_it_is_off_until_switched_on(self):
+        """Letting a model write files on somebody's machine is not a
+        default."""
+        from hypernix.hyperlink.preferences import Preferences
+
+        assert Preferences().tools_enabled is False
+
+    def test_the_app_can_switch_it_on(self):
+        assert "tools_enabled" in code("Views", "MySettingsView.swift")
+
+    def test_what_it_did_is_recorded_on_the_message(self):
+        """A thread that shows "wrote three files" is very different to
+        read tomorrow than one that shows only the summary."""
+        body = (ROOT / "src" / "hypernix" / "t1api" / "routers" / "hyperlink.py").read_text(
+            encoding="utf-8"
+        )
+        assert "tool_rounds" in body
+
+
+class TestACustomRunnerNotJustTheBridge:
+    """`/runner/load` used to start a model that nothing could talk to:
+    the chat path went straight to LM Studio and refused when it was
+    off."""
+
+    def test_the_chat_path_chooses(self):
+        body = (ROOT / "src" / "hypernix" / "t1api" / "routers" / "hyperlink.py").read_text(
+            encoding="utf-8"
+        )
+        assert "_chat_backend" in body
+
+    def test_nothing_in_the_chat_path_hard_codes_lmstudio(self):
+        """`backend: "lmstudio"` on a machine with no LM Studio is the
+        kind of small lie that costs somebody an afternoon."""
+        import ast
+
+        source = (
+            ROOT / "src" / "hypernix" / "t1api" / "routers" / "hyperlink.py"
+        ).read_text(encoding="utf-8")
+        tree = ast.parse(source)
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.FunctionDef):
+                continue
+            if node.name not in ("chat_turn", "chat_turn_stream"):
+                continue
+            body = ast.unparse(node)
+            assert "'lmstudio'" not in body, f"{node.name} still hard-codes the backend"
+
+    def test_the_app_shows_what_would_answer(self):
+        body = code("Views", "SettingsView.swift")
+        assert "answeringWith" in body
+
+    def test_the_client_can_ask(self):
+        body = code("Networking", "HyperLinkClient.swift")
+        assert "func backends(" in body
+        assert '"/hyperlink/backends"' in body
+
+
+class TestAnimations:
+    def test_there_is_one_vocabulary(self):
+        """Views that each pick their own spring produce an app where
+        two things doing the same thing move differently."""
+        assert (SOURCES / "Theme" / "Motion.swift").is_file()
+
+    def test_the_chat_uses_it(self):
+        body = code("Views", "ChatView.swift")
+        assert "Motion." in body
+        assert "messageArrival()" in body
+
+    def test_reduce_motion_is_honoured(self):
+        """Somebody who turns it on gets vestibular symptoms from
+        parallax and scale. It is not a suggestion."""
+        body = code("Theme", "Motion.swift")
+        assert "accessibilityReduceMotion" in body
+
+    def test_reduced_motion_still_shows_the_change(self):
+        """"Reduce motion" means no movement, not no feedback — a change
+        that simply appears with no transition is one people miss."""
+        body = code("Theme", "Motion.swift")
+        assert ".opacity" in body
+
+    def test_no_view_invents_its_own_spring(self):
+        """The check that keeps the vocabulary a vocabulary."""
+        import re
+
+        offenders = []
+        for path in sorted((SOURCES / "Views").glob("*.swift")):
+            text = "\n".join(
+                line for line in path.read_text(encoding="utf-8").splitlines()
+                if not line.strip().startswith("//")
+            )
+            for match in re.finditer(r"Animation\.spring\(|\.spring\(response:", text):
+                offenders.append(f"{path.name}:{text[:match.start()].count(chr(10)) + 1}")
+        assert not offenders, (
+            "these declare their own spring instead of using Motion: "
+            + ", ".join(offenders)
+        )
+
+
+class TestTheBackgroundWindow:
+    """The request asked for 2.5 hours. iOS grants about 30 seconds, and
+    an app that claims otherwise is one that gets terminated and does not
+    notice."""
+
+    def test_there_is_a_background_session(self):
+        assert (SOURCES / "Store" / "BackgroundSession.swift").is_file()
+
+    def test_the_window_is_two_and_a_half_hours(self):
+        body = code("Store", "BackgroundSession.swift")
+        assert "2.5 * 60 * 60" in body
+
+    def test_it_does_not_pretend_ios_grants_that(self):
+        """The honest part: the promise is kept because the *server*
+        keeps generating and persists as it goes, so the phone does not
+        need to stay connected at all."""
+        body = read("Store", "BackgroundSession.swift")
+        assert "systemGrant" in body
+        assert "30 seconds" in body
+
+    def test_coming_back_reloads_the_conversation(self):
+        assert "state.reload(" in code("HyperLinkApp.swift")
+
+    def test_the_store_can_reload_one_thread(self):
+        assert "func reload(sessionID:" in code("Store", "AppState.swift")

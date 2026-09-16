@@ -635,6 +635,91 @@ actor HyperLinkClient {
         try await get("/bridge/lmstudio/models", as: BridgeModelsResponse.self, timeout: 30)
     }
 
+    // MARK: - Settings
+
+    /// This person's settings, and the bounds this server accepts.
+    func preferences() async throws -> PreferencesEnvelope {
+        try await get("/hyperlink/preferences", as: PreferencesEnvelope.self, timeout: 20)
+    }
+
+    /// Change some settings. Unsent fields are left alone — which is
+    /// why this is a PATCH and the patch type is all-optional: a build
+    /// that knows about six settings must not blank the four it has
+    /// never heard of.
+    func savePreferences(_ patch: PreferencesPatch) async throws -> PreferencesEnvelope {
+        let data = try await send(
+            path: "/hyperlink/preferences", method: "PATCH",
+            body: try encoder.encode(patch), timeout: 20
+        )
+        return try decode(PreferencesEnvelope.self, from: data)
+    }
+
+    func resetPreferences() async throws -> PreferencesEnvelope {
+        struct Empty: Encodable {}
+        return try await post(
+            "/hyperlink/preferences/reset", body: Empty(),
+            as: PreferencesEnvelope.self, timeout: 20
+        )
+    }
+
+    /// What could answer a message on this server, and what would now.
+    func backends() async throws -> BackendList {
+        try await get("/hyperlink/backends", as: BackendList.self, timeout: 20)
+    }
+
+    // MARK: - Memory
+
+    func memories(limit: Int = 200) async throws -> MemoryList {
+        try await get("/memory/list?limit=\(limit)", as: MemoryList.self, timeout: 20)
+    }
+
+    @discardableResult
+    func rememberFact(_ content: String, category: String = "") async throws -> Bool {
+        struct Body: Encodable {
+            let content: String
+            let category: String
+            let source: String
+        }
+        _ = try await send(
+            path: "/memory/create", method: "POST",
+            body: try encoder.encode(
+                Body(content: content, category: category, source: "manual")
+            ),
+            timeout: 20
+        )
+        return true
+    }
+
+    @discardableResult
+    func editMemory(
+        _ memoryID: String, content: String? = nil, pinned: Bool? = nil
+    ) async throws -> Bool {
+        struct Body: Encodable {
+            let memory_id: String
+            let content: String?
+            let pinned: Bool?
+        }
+        _ = try await send(
+            path: "/memory/edit", method: "POST",
+            body: try encoder.encode(
+                Body(memory_id: memoryID, content: content, pinned: pinned)
+            ),
+            timeout: 20
+        )
+        return true
+    }
+
+    func forgetMemory(_ memoryID: String) async throws {
+        let escaped = memoryID.addingPercentEncoding(
+            withAllowedCharacters: .urlQueryAllowed
+        ) ?? memoryID
+        struct Empty: Encodable {}
+        _ = try await send(
+            path: "/memory/delete?memory_id=\(escaped)", method: "POST",
+            body: try encoder.encode(Empty()), timeout: 20
+        )
+    }
+
     // MARK: - Editing what was said
 
     /// Rewrite one of your own messages, dropping what came after it.

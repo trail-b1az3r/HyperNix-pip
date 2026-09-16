@@ -26,6 +26,163 @@ next release header.
 - 𖥔 minor new feature
 
 
+## 0.72.5 pt3b — a HyperNix runner, not just a bridge
+
+### 𖢥 The runner was starting models nothing could talk to ๋࣭⭑
+
+pt2 gave the server its own llama.cpp process. The chat path did not
+know about it:
+
+```python
+def _chat_bridge(config):
+    if not config.lmstudio_enabled:
+        raise T1APIError(..., "This server has no chat backend configured")
+```
+
+So a machine with no LM Studio installed could load a 70B through
+`/runner/load`, watch the status screen report it as serving, and have
+every single message refused. The runner worked. The conversation was
+impossible.
+
+`hypernix.hyperlink.inference` is the choice that was missing. It picks:
+
+1. **the HyperNix runner**, when it has a model loaded — it is this
+   server's own process, it was started deliberately, and it is holding
+   the VRAM;
+2. **the LM Studio bridge**, when it is enabled;
+3. neither — and the refusal names *both* ways out, rather than the one
+   that happens to be checked first. Naming only LM Studio is how
+   somebody ends up installing it on a machine that did not need it.
+
+The runner wins even when both are available: somebody who loaded a
+model meant that model, and quietly answering from LM Studio would
+answer as a different model than the one on screen.
+
+The same OpenAI client talks to both, because `llama-server` and LM
+Studio both speak that API and a second client would be a second set of
+retry and timeout decisions to keep in step. What is *not* borrowed is
+the label — a reply from this server's own llama.cpp is recorded as
+`hypernix`, because `"lmstudio"` on a machine with no LM Studio is the
+kind of small lie that costs somebody an afternoon.
+
+`GET /hyperlink/backends` reports both and which one would answer now,
+because "this server has no models" and "a model is loaded but nothing
+is serving it" look identical from the app and need opposite fixes.
+
+### Settings, and the bounds that come with them ๋࣭⭑
+
+A new **You** tab — separate from **Server**, because that one is about
+the machine and this one is about the person. Profile, bio, a system
+prompt every conversation starts with, effort level, context bounds, a
+backup model, tools, and memory.
+
+All of it on the server. Two reasons, and the second decides it: a
+person with a phone and a tablet is one person, and these are *inputs to
+generation* — the prompt, the effort level and the context bounds all
+have to be in the process that builds the request.
+
+**The limits come back with the values.** The effort levels in the
+picker and the context bounds are the server's, sent with the settings.
+An effort level the phone offers and the server rejects is a settings
+screen that cannot save, with no way for the phone to know why.
+
+**Clamps are reported, not applied silently.** A context maximum of four
+million is not a preference — it is a number that makes every reply fail
+with an out-of-memory two minutes later and somewhere unrelated, so it
+reads as the model being broken. It is lowered, and the screen says so.
+A minimum above the maximum is swapped rather than refused, because
+somebody who typed them the wrong way round meant the range.
+
+### The system prompt, composed in scope order 𖥔
+
+Who the person is, then how they want to be answered generally, then
+what this conversation is for, then what is known about them. The
+session's own prompt comes *after* the global one so a conversation can
+override the default rather than fight it — the later instruction is the
+one a model follows when two conflict.
+
+### Effort levels ✨
+
+`minimal` through `maximum`. A backend with a real reasoning-effort
+control is given the level by name; one without gets a matching
+temperature and answer length. That second part is an approximation and
+is documented as one — it is scheduling, not thinking. An explicit
+`temperature` on the request still wins, because somebody who sent a
+number meant it.
+
+### A backup model ✨
+
+Tried once when the model you asked for does not answer, and never the
+same model twice — a retry of "nothing is loaded" fails identically.
+When it is used the message records it, because an answer from a
+different model than the one you chose is the single most confusing
+thing that can happen in a thread.
+
+Empty by default: failing honestly beats silently answering as somebody
+else.
+
+### Full tool calling ๋࣭⭑
+
+`/noodle/run` let a *caller* run one tool. Now the model can: it asks,
+the server runs it, and the result goes back into the conversation — so
+"zip the logs and tell me what is in them" is one message rather than
+five. Files, edits, fish commands and archives, in the same per-owner
+workspace `/noodle/*` uses, so anything it writes is something you can
+list and download.
+
+Three rules, each a designed-out failure:
+
+* **Bounded.** Eight rounds, and the model is *told* when it runs out —
+  one that does not know writes its last reply as if it were about to do
+  more, and you get half a sentence about what it was going to check.
+* **Every call is answered.** A missing tool, a raising tool and a
+  switched-off tool all produce a tool message saying so. A `tool_calls`
+  with no matching reply is a malformed conversation, and the *next*
+  turn is built from it.
+* **A refusal is a result.** `allow_execute` off is the operator's
+  answer, not an error — handed back as a normal result so the model can
+  say so, rather than the turn dying with a stack trace.
+
+Off until switched on, because letting a model write files on your
+machine is not a default.
+
+### Memory you can read ✨
+
+Facts carried between conversations — some you wrote, some the model
+noticed. Both shown, both editable, both deletable, and the automatic
+ones marked as such. A model that remembers things about you and gives
+you no way to see them is a model you cannot correct.
+
+### Animations, in one vocabulary 𖥔
+
+`Motion.swift` names every duration and curve. Springs rather than ease
+curves, because chat is all interruptions — a message lands while the
+list is still settling from the last one, and a spring continues from
+where it is where an `easeInOut` restarts.
+
+Reduce Motion collapses every one of them to a cross-fade. That setting
+means "no movement", not "no feedback", so the change is still shown —
+it just does not move.
+
+### ❗ Two and a half hours in the background, honestly
+
+The request asked for the connection to survive 2.5 hours of
+backgrounding. **iOS does not sell that.** `beginBackgroundTask` grants
+about 30 seconds on a modern release — it used to be three minutes — and
+an app that claims otherwise is one that gets terminated and does not
+notice.
+
+So the promise is kept a different way, and it is a better way: *the
+work does not live on the phone*. The server is generating and persists
+the reply as it goes, including when the client disconnects half way.
+The phone uses its ~30 seconds to let go cleanly, remembers which
+conversation was in flight, and reconciles on the way back.
+
+A conversation picked up three hours later is then indistinguishable
+from one that never stopped — which is what was being asked for. The
+2.5-hour window is how long the phone keeps caring; past it the reply is
+still on the server, it is simply no longer treated as in flight.
+
 ## 0.72.5 pt3 — the phone can drive the machine
 
 pt2 gave the server the operations. pt3 is the app that uses them, plus

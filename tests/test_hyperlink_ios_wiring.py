@@ -465,6 +465,7 @@ class TestTheSwiftReferencesResolve:
         "PairingStore", "IntentBridge", "Speech", "Dictation",
         "TokenStore", "AdminCredentialStore",
         "SavedServers", "SavedServer", "MarkdownBlock", "ServerUptime",
+        "Motion", "BackgroundSession", "UserPreferences", "PreferencesEnvelope",
         "ModelMatch", "ChatMatch",
         "HyperLinkTheme", "ThemeStore",
         "HyperLinkClient", "HyperLinkError",
