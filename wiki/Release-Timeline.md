@@ -884,3 +884,14 @@ timeline
         : f49a394b - hyperlink- settings that could not be saved
 ```
 
+## Release v0.72.5.post13 (2026-09-17)
+
+```mermaid
+timeline
+    title Release v0.72.5.post13 Commits
+    0.72.5.post13
+        : 6c8fe0fa - tests- the refusal names a command that exists
+        : 4182dabd - Auto-update README header (hourly)
+        : 792c5d27 - hyperlink- add and re-port a server; hypernix-t1 built-in-runner start
+```
+
