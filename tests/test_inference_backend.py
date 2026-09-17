@@ -112,8 +112,35 @@ class TestWhenNothingCanAnswer:
         with pytest.raises(BackendUnavailable) as refused:
             resolve_backend(Config(lmstudio=False), Runner(None))
         joined = " ".join(refused.value.remedies)
-        assert "runner load" in joined
+        assert "built-in-runner start" in joined
         assert "LM Studio" in joined
+
+    def test_the_command_it_names_is_one_that_exists(self):
+        """This used to say `runner load <model>`, which stopped being
+        the shortest way to do it. A remedy is only a remedy if the
+        thing it tells you to type runs — and a string in a refusal has
+        nothing else keeping it honest."""
+        import argparse
+        import re
+
+        from hypernix.t1api import runner_cli
+
+        with pytest.raises(BackendUnavailable) as refused:
+            resolve_backend(Config(lmstudio=False), Runner(None))
+        named = re.findall(
+            r"`hypernix-t1 ([a-z-]+) ([a-z-]+)", " ".join(refused.value.remedies)
+        )
+        assert named, "the refusal names no command at all"
+
+        known: set[str] = set()
+        for action in runner_cli.build_parser()._actions:
+            if isinstance(action, argparse._SubParsersAction):
+                known |= set(action.choices)
+        assert known, "the parser has no subcommands to check against"
+
+        for group, subcommand in named:
+            assert group in ("built-in-runner", "runner"), group
+            assert subcommand in known, f"{group} has no {subcommand!r} subcommand"
 
     def test_it_says_the_server_needs_no_other_software(self):
         with pytest.raises(BackendUnavailable) as refused:
@@ -173,7 +200,7 @@ class TestThroughTheAPI:
         )
         assert response.status_code == 501
         remedies = response.json()["error"]["details"]["remedies"]
-        assert any("runner load" in r for r in remedies)
+        assert any("built-in-runner start" in r for r in remedies)
 
     def test_a_loaded_runner_answers_the_turn(self, app_and_client, monkeypatch):
         """The end-to-end shape of the fix: LM Studio off, a model
