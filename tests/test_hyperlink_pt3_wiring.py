@@ -733,3 +733,154 @@ class TestTheBackgroundWindow:
 
     def test_the_store_can_reload_one_thread(self):
         assert "func reload(sessionID:" in code("Store", "AppState.swift")
+
+
+class TestEverySettingCanActuallyBeSet:
+    """A setting the app can never send is indistinguishable from one
+    that does not save.
+
+    Three were in that state at once and the report was simply "the
+    settings don't save":
+
+    * `bio` was bound to a TextField, loaded on appear, and sent
+      nowhere. There was no `save` call naming it anywhere in the app.
+    * `display_name` was sent only from `.onSubmit`, which is the Return
+      key. Typing a name and tapping Back lost it.
+    * `backend` had a field on the patch type and an accepting endpoint,
+      and no screen offered it at all.
+
+    So the check is against the patch type rather than against a list
+    written by hand: every field it declares has to be sent from
+    somewhere, or it is a setting nobody can change.
+
+    Matching is deliberately strict. A loose `\\bbackend\\s*:` matched
+    `let backend: String` on an unrelated struct and passed `backend` as
+    "sent" while it was the broken one -- which is the same lesson as
+    every other guard in this repo: a check that matches the wrong thing
+    reads as coverage.
+    """
+
+    @staticmethod
+    def _sources() -> str:
+        return "\n".join(
+            path.read_text(encoding="utf-8")
+            for path in sorted((IOS / "HyperLink" / "Sources").rglob("*.swift"))
+        )
+
+    @staticmethod
+    def _patch_fields(source: str) -> list[str]:
+        import re
+
+        body = re.search(r"struct PreferencesPatch[^{]*\{(.*?)\n\}", source, re.S)
+        assert body, "PreferencesPatch not found"
+        fields = re.findall(r"var (\w+):", body.group(1))
+        assert fields, "PreferencesPatch has no fields"
+        return fields
+
+    @staticmethod
+    def _labels_in_patch_literals(source: str) -> set[str]:
+        """Argument labels of every `.init(...)` / `PreferencesPatch(...)`.
+
+        Balanced parens rather than a character class. The first version
+        used `\\([^)]*\\b<field>\\s*:` and reported `context_maximum`
+        as never sent -- it is sent, from a call spanning four lines
+        whose *first* argument is `Int(contextMinimum) ?? 0`, so the
+        class stopped at that inner `)` before reaching the second
+        label. A matcher that cannot read the code it guards produces
+        exactly the false alarm that teaches people to delete it.
+        """
+        import re
+
+        labels: set[str] = set()
+        for opening in re.finditer(r"(?:\.init|PreferencesPatch)\s*\(", source):
+            i = opening.end()
+            depth = 1
+            while i < len(source) and depth:
+                if source[i] == "(":
+                    depth += 1
+                elif source[i] == ")":
+                    depth -= 1
+                i += 1
+            args = source[opening.end():i - 1]
+            # Only top-level labels: `Int(x) ?? 0` must not contribute.
+            depth = 0
+            current = []
+            pieces = []
+            for ch in args:
+                if ch == "(":
+                    depth += 1
+                elif ch == ")":
+                    depth -= 1
+                if ch == "," and depth == 0:
+                    pieces.append("".join(current))
+                    current = []
+                else:
+                    current.append(ch)
+            pieces.append("".join(current))
+            for piece in pieces:
+                found = re.match(r"\s*(\w+)\s*:", piece)
+                if found:
+                    labels.add(found.group(1))
+        return labels
+
+    def test_every_patch_field_is_sent_from_somewhere(self):
+        import re
+
+        source = self._sources()
+        labels = self._labels_in_patch_literals(source)
+        missing = []
+        for field in self._patch_fields(source):
+            assigned = re.search(rf"\w*[Pp]atch\.{field}\s*=", source)
+            if field not in labels and not assigned:
+                missing.append(field)
+        assert not missing, (
+            "these settings exist on PreferencesPatch and nothing in the app "
+            "ever sends them, so they cannot be changed from the phone: "
+            + ", ".join(missing)
+        )
+
+    def test_the_matcher_reads_a_multi_line_call(self):
+        """The false alarm that nearly deleted this test, pinned.
+
+        A call whose first argument contains its own parentheses must
+        not hide the labels after it.
+        """
+        sample = (
+            "await save(.init(\n"
+            "    context_minimum: Int(a) ?? 0,\n"
+            "    context_maximum: Int(b) ?? 0\n"
+            "))\n"
+        )
+        labels = self._labels_in_patch_literals(sample)
+        assert labels == {"context_minimum", "context_maximum"}, labels
+
+    def test_the_strict_matcher_rejects_a_bare_declaration(self):
+        """The false pass that hid `backend`, pinned.
+
+        `let backend: String` is a declaration, not a send. If this
+        stops being rejected, the test above is matching type
+        declarations again and will pass with the UI missing.
+        """
+        import re
+
+        decoy = "struct Thing {\n    let backend: String\n}\n"
+        literal = re.search(
+            r"(?:\.init|PreferencesPatch)\s*\([^)]*\bbackend\s*:", decoy, re.S
+        )
+        assigned = re.search(r"\w*[Pp]atch\.backend\s*=", decoy)
+        assert not literal and not assigned
+
+    def test_the_free_text_fields_commit_when_they_lose_focus(self):
+        """Everything else on that screen commits on change -- a toggle,
+        a picker, a button. Text fields have no such moment, so leaving
+        one has to be it."""
+        view = (
+            IOS / "HyperLink" / "Sources" / "Views" / "MySettingsView.swift"
+        ).read_text(encoding="utf-8")
+        assert "@FocusState" in view, "nothing tracks which field is being edited"
+        assert "onChange(of: focused)" in view, (
+            "leaving a field does not commit it"
+        )
+        assert "onDisappear" in view, (
+            "leaving the screen with the keyboard up does not commit"
+        )
