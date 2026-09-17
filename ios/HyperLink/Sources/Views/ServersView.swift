@@ -17,6 +17,8 @@ struct ServersView: View {
     @Environment(AppState.self) private var state
     @State private var switching: String?
     @State private var confirmingForget: SavedServer?
+    @State private var addingServer = false
+    @State private var editingPort: SavedServer?
 
     var body: some View {
         List {
@@ -43,6 +45,19 @@ struct ServersView: View {
                             Label("Forget", systemImage: "trash")
                         }
                     }
+                    // Swiping right. The port is the one part of a
+                    // pairing that changes for ordinary reasons — the
+                    // server restarted somewhere else, or moved behind a
+                    // different forward — and changing it used to mean
+                    // re-pairing, which means finding a key again.
+                    .swipeActions(edge: .leading) {
+                        Button {
+                            editingPort = server
+                        } label: {
+                            Label("Port", systemImage: "number")
+                        }
+                        .tint(.blue)
+                    }
                 }
             } header: {
                 Text("Paired machines")
@@ -59,6 +74,31 @@ struct ServersView: View {
         }
         .navigationTitle("Servers")
         .refreshable { await state.refreshAll() }
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    addingServer = true
+                } label: {
+                    Label("Add a server", systemImage: "plus")
+                }
+                .disabled(state.savedServers.count >= SavedServers.maxServers)
+            }
+        }
+        .sheet(isPresented: $addingServer) {
+            // The pairing screen, the same one shown when nothing is
+            // paired at all. Reached from here it is an addition rather
+            // than a replacement: PairingView goes through
+            // SavedServers.remember, which keeps the others.
+            //
+            // No NavigationStack around it — PairingView brings its own,
+            // and two would mean two navigation bars. `onDone` is what
+            // tells it it is a sheet: it titles itself accordingly, puts
+            // a Cancel in its own bar, and closes when a pairing lands.
+            PairingView { addingServer = false }
+        }
+        .sheet(item: $editingPort) { server in
+            PortEditor(server: server)
+        }
         .confirmationDialog(
             confirmingForget.map { "Forget \($0.displayName)?" } ?? "",
             isPresented: Binding(
@@ -129,6 +169,102 @@ private struct ServerRow: View {
                     .foregroundStyle(.tint)
                     .accessibilityLabel("current server")
             }
+        }
+    }
+}
+
+/// Change the port on one saved machine.
+///
+/// Shows what every endpoint will become before committing, because a
+/// pairing carries more than one — a LAN address and a tailnet name,
+/// typically — and "change the port" has to mean all of them or the
+/// failover list ends up half pointing at nothing.
+private struct PortEditor: View {
+    @Environment(AppState.self) private var state
+    @Environment(\.dismiss) private var dismiss
+
+    let server: SavedServer
+
+    @State private var port = ""
+    @State private var saving = false
+    @State private var problem = ""
+
+    private var parsed: Int? {
+        guard let value = Int(port.trimmingCharacters(in: .whitespaces)) else {
+            return nil
+        }
+        return (1...65535).contains(value) ? value : nil
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextField("Port", text: $port)
+                        .keyboardType(.numberPad)
+                } header: {
+                    Text(server.displayName)
+                } footer: {
+                    Text(
+                        "The machine is the same one — its key and its pinned "
+                        + "identity are kept. Only where this phone looks for "
+                        + "it changes."
+                    )
+                }
+
+                if let wanted = parsed {
+                    Section {
+                        ForEach(server.connection.endpoints, id: \.self) { endpoint in
+                            Text(SavedServers.replacingPort(in: endpoint, with: wanted))
+                                .font(.caption.monospaced())
+                                .foregroundStyle(.secondary)
+                        }
+                    } header: {
+                        Text("Endpoints after this change")
+                    }
+                }
+
+                if !problem.isEmpty {
+                    Section {
+                        Label(problem, systemImage: "exclamationmark.triangle")
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                    }
+                }
+            }
+            .navigationTitle("Port")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") { Task { await save() } }
+                        .disabled(parsed == nil || saving)
+                }
+            }
+            .task {
+                // Blank when the endpoints disagree, rather than showing
+                // one of them: a field prefilled with 8080 for a record
+                // whose tailnet endpoint is on 9000 would misstate what
+                // Save is about to do.
+                if let common = SavedServers.commonPort(of: server) {
+                    port = "\(common)"
+                }
+            }
+        }
+    }
+
+    @MainActor
+    private func save() async {
+        guard let wanted = parsed else { return }
+        saving = true
+        defer { saving = false }
+        if await state.setPort(serverID: server.id, port: wanted) {
+            dismiss()
+        } else {
+            problem = "That port could not be applied. It has to be between "
+                + "1 and 65535, and the machine has to still be in this list."
         }
     }
 }

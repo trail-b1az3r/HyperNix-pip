@@ -745,17 +745,37 @@ Doing it anyway is the worst of both: the machine looks unlocked and the
 keyboard looks dead. `--force` is there for someone who wants the
 wake-word prompt regardless.
 
-## `hypernix-t1 runner`
+## `hypernix-t1 built-in-runner`
 
 Load, unload and inspect the model the server is serving — without LM
-Studio, and without walking over to the machine.
+Studio, and without walking over to the machine. Also spelled
+`hypernix-t1 runner`; the two are the same command.
 
 ```bash
-hypernix-t1 runner status
-hypernix-t1 runner plan qwen3-8b
-hypernix-t1 runner load qwen3-8b --gpu-layers 24 --backend cuda
-hypernix-t1 runner unload
+hypernix-t1 built-in-runner start
+hypernix-t1 built-in-runner start qwen3-8b --gpu-layers 24 --backend cuda
+hypernix-t1 built-in-runner status
+hypernix-t1 built-in-runner plan qwen3-8b
+hypernix-t1 built-in-runner stop
 ```
+
+**`start` does not make you name a model when there is only one.**
+`load` always did, which is right on a machine with forty of them and
+wrong on the commonest machine there is: one GGUF on disk and nothing
+serving it, where the name is not a decision anybody has to make and
+asking for it is a lookup they have to do first.
+
+With more than one it refuses to guess, and lists them — guessing wrong
+is not a typo, it is a minute of loading and the VRAM of a model nobody
+asked for. With none it says which sources answered, because "no
+models" and "LM Studio is not running" produce the same empty list and
+want completely different things doing about them.
+
+Running it twice leaves the model that is already serving alone and
+says so, rather than charging a reload — and an evicted conversation —
+for a command that was meant to be a no-op. `--restart` reloads it
+anyway. `stop` is `unload` under a name somebody who just typed `start`
+will reach for.
 
 `plan` says where a model's layers would go and changes nothing.
 Loading evicts whatever people are currently talking to, so seeing the

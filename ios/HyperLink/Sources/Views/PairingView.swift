@@ -27,6 +27,16 @@ private enum ConnectMethod: String, CaseIterable, Identifiable {
 struct PairingView: View {
     @Environment(AppState.self) private var state
 
+    /// Non-nil when this is a sheet over the Servers screen rather than
+    /// the app's first-run root.
+    ///
+    /// The root version needs no way out: pairing flips `isPaired` and
+    /// `RootView` swaps the whole screen. Reached from Servers that swap
+    /// has already happened — `isPaired` was true before the sheet
+    /// opened — so a successful pairing would leave this form sitting on
+    /// top of the app it had just added a machine to, with no way back.
+    var onDone: (() -> Void)?
+
     @State private var address = ""
     @State private var code = ""
     @State private var key = ""
@@ -167,21 +177,27 @@ struct PairingView: View {
                     Button {
                         Task {
                             isPairing = true
+                            let paired: Bool
                             switch method {
                             case .code:
-                                _ = await state.pair(
+                                paired = await state.pair(
                                     address: address, code: code, deviceName: deviceName
                                 )
                             case .key:
-                                _ = await state.connect(
+                                paired = await state.connect(
                                     address: address, key: key, deviceName: deviceName
                                 )
                             case .trusted:
-                                _ = await state.connectKeyless(
+                                paired = await state.connectKeyless(
                                     address: address, deviceName: deviceName
                                 )
                             }
                             isPairing = false
+                            // A failure leaves the form up with
+                            // `state.connectionError` showing, which is
+                            // the whole reason it is not dismissed
+                            // unconditionally.
+                            if paired { onDone?() }
                         }
                     } label: {
                         HStack {
@@ -193,7 +209,14 @@ struct PairingView: View {
                     .disabled(!canConnect)
                 }
             }
-            .navigationTitle("HyperLink")
+            .navigationTitle(onDone == nil ? "HyperLink" : "Add a server")
+            .toolbar {
+                if onDone != nil {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") { onDone?() }
+                    }
+                }
+            }
         }
     }
 

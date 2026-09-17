@@ -124,7 +124,7 @@ def resolve_backend(config: Any, runner: Any = None) -> Backend:
     raise BackendUnavailable(
         "Nothing on this server can answer a message yet.",
         remedies=[
-            "Load a model with `hypernix-t1 runner load <model>`, or from the "
+            "Load a model with `hypernix-t1 built-in-runner start`, or from the "
             "Runner screen in HyperLink — this server runs models itself and "
             "needs no other software.",
             "Or start LM Studio, load a model there, and set "

@@ -274,3 +274,247 @@ class TestAgainstARealServer:
         })
         assert missing.status_code == 404
         assert "no-such-model" in missing.json()["error"]["message"]
+
+
+class TestStart:
+    """``built-in-runner start`` — the verb for a machine with one model.
+
+    ``load`` makes you name a model. That is right when there are forty
+    of them and wrong on the commonest machine there is: one GGUF on
+    disk and nothing serving it, where the name is not a decision the
+    person has to make and asking for it is just a lookup they have to
+    do first.
+
+    So ``start`` names it for them when there is exactly one, and
+    refuses to guess when there is not — because guessing wrong is not a
+    typo, it is a minute of loading and the VRAM of a model nobody
+    asked for.
+    """
+
+    def test_it_loads_the_only_loadable_model(self, calls):
+        calls.replies.append((200, {"loaded": False}))
+        calls.replies.append((200, {"models": [
+            {"model_id": "qwen3-8b", "path": "/models/qwen3-8b.gguf"},
+        ]}))
+        calls.replies.append((200, {"loaded": True, "model": {"model_id": "qwen3-8b"}}))
+
+        assert runner_cli.main(["start"]) == 0
+
+        assert calls.recorded[0][1].endswith("/runner/status")
+        assert calls.recorded[1][1].endswith("/hyperlink/models")
+        method, url, _key, payload = calls.recorded[2]
+        assert method == "POST"
+        assert url.endswith("/runner/load")
+        assert payload["model_id"] == "qwen3-8b"
+
+    def test_a_model_with_no_file_is_not_a_candidate(self, calls):
+        """An LM Studio entry or a registry row with no GGUF cannot be
+        loaded, so it must not make the choice ambiguous either."""
+        calls.replies.append((200, {"loaded": False}))
+        calls.replies.append((200, {"models": [
+            {"model_id": "remote-only", "path": ""},
+            {"model_id": "on-disk", "path": "/models/on-disk.gguf"},
+        ]}))
+        calls.replies.append((200, {"loaded": True, "model": {"model_id": "on-disk"}}))
+
+        assert runner_cli.main(["start"]) == 0
+        assert calls.recorded[2][3]["model_id"] == "on-disk"
+
+    def test_two_models_stops_and_lists_them(self, calls, capsys):
+        calls.replies.append((200, {"loaded": False}))
+        calls.replies.append((200, {"models": [
+            {"model_id": "qwen3-8b", "path": "/a.gguf", "size_bytes": 4_900_000_000},
+            {"model_id": "llama-70b", "path": "/b.gguf"},
+        ]}))
+
+        assert runner_cli.main(["start"]) == 1
+
+        # Nothing was loaded — the refusal is the whole point.
+        assert not any(u.endswith("/runner/load") for _m, u, _k, _p in calls.recorded)
+        err = capsys.readouterr().err
+        assert "qwen3-8b" in err and "llama-70b" in err
+
+    def test_no_models_says_what_to_do_about_it(self, calls, capsys):
+        calls.replies.append((200, {"loaded": False}))
+        calls.replies.append((200, {"models": []}))
+
+        assert runner_cli.main(["start"]) == 1
+        err = capsys.readouterr().err
+        assert "hypernix-t1 index" in err
+
+    def test_no_models_names_which_source_was_silent(self, calls, capsys):
+        """"No models" and "LM Studio is not running" produce the same
+        empty list and want completely different things doing about
+        them. That is why the catalogue reports its sources at all, and
+        printing the list without them throws the answer away."""
+        calls.replies.append((200, {"loaded": False}))
+        calls.replies.append((200, {"models": [], "sources": [
+            {"name": "registry", "available": True, "count": 0, "detail": ""},
+            {"name": "lmstudio", "available": False, "count": 0,
+             "detail": "Connection refused on 127.0.0.1:1234"},
+        ]}))
+
+        assert runner_cli.main(["start"]) == 1
+        err = capsys.readouterr().err
+        assert "lmstudio: unavailable" in err
+        assert "Connection refused on 127.0.0.1:1234" in err
+        assert "registry: 0" in err
+
+    def test_naming_a_model_skips_the_catalogue(self, calls):
+        calls.replies.append((200, {"loaded": False}))
+        calls.replies.append((200, {"loaded": True, "model": {"model_id": "m"}}))
+
+        assert runner_cli.main(["start", "m"]) == 0
+        assert not any(
+            u.endswith("/hyperlink/models") for _m, u, _k, _p in calls.recorded
+        )
+        assert calls.recorded[1][3]["model_id"] == "m"
+
+    def test_starting_what_is_already_running_changes_nothing(self, calls, capsys):
+        """Running it twice is a thing people do when they are not sure
+        the first one took. Charging them a reload for that would evict
+        the conversation the first one was serving."""
+        calls.replies.append((200, {
+            "loaded": True, "model": {"model_id": "qwen3-8b", "base_url": "http://x"},
+        }))
+
+        assert runner_cli.main(["start"]) == 0
+        assert len(calls.recorded) == 1
+        assert "Already running" in capsys.readouterr().out
+
+    def test_restart_reloads_it_anyway(self, calls):
+        calls.replies.append((200, {"loaded": True, "model": {"model_id": "qwen3-8b"}}))
+        calls.replies.append((200, {"loaded": True, "model": {"model_id": "qwen3-8b"}}))
+
+        assert runner_cli.main(["start", "--restart"]) == 0
+        assert calls.recorded[1][1].endswith("/runner/load")
+        assert calls.recorded[1][3]["model_id"] == "qwen3-8b"
+
+    def test_naming_a_different_model_switches(self, calls, capsys):
+        calls.replies.append((200, {"loaded": True, "model": {"model_id": "old"}}))
+        calls.replies.append((200, {"loaded": True, "model": {"model_id": "new"}}))
+
+        assert runner_cli.main(["start", "new"]) == 0
+        assert calls.recorded[1][3]["model_id"] == "new"
+        assert "Replacing old" in capsys.readouterr().err
+
+    def test_it_sends_the_tuning_fields(self, calls):
+        calls.replies.append((200, {"loaded": False}))
+        calls.replies.append((200, {"loaded": True, "model": {"model_id": "m"}}))
+
+        runner_cli.main([
+            "start", "m", "--gpu-layers", "24", "--total-layers", "33",
+            "--context-length", "8192", "--backend", "cuda",
+        ])
+        assert calls.recorded[1][3] == {
+            "model_id": "m", "gpu_layers": 24, "backend": "cuda",
+            "context_length": 8192, "total_layers": 33,
+        }
+
+    def test_a_refusal_reading_the_catalogue_is_printed(self, calls, capsys):
+        calls.replies.append((200, {"loaded": False}))
+        calls.replies.append((403, {"error": {"message": "HyperLink is off."}}))
+
+        assert runner_cli.main(["start"]) == 1
+        assert "HyperLink is off." in capsys.readouterr().err
+
+    def test_a_refusal_loading_is_printed(self, calls, capsys):
+        calls.replies.append((200, {"loaded": False}))
+        calls.replies.append((400, {"error": {
+            "message": "No llama.cpp build on this machine.",
+            "details": {"remedy": "Build it, or use hnx-cpu."},
+        }}))
+
+        assert runner_cli.main(["start", "m"]) == 1
+        err = capsys.readouterr().err
+        assert "No llama.cpp build" in err
+        assert "Build it, or use hnx-cpu." in err
+
+
+class TestStopIsUnload:
+    """``start``'s opposite has to be typeable. `unload` is the verb the
+    API uses and stays, but nobody who just typed `start` reaches for
+    it, and a start with no stop is a half-finished command."""
+
+    def test_stop_posts_unload(self, calls, capsys):
+        calls.replies.append((200, {"loaded": False, "was_running": True}))
+        assert runner_cli.main(["stop"]) == 0
+        assert calls.recorded[0][1].endswith("/runner/unload")
+        assert "Unloaded." in capsys.readouterr().out
+
+    def test_stopping_nothing_is_a_success(self, calls, capsys):
+        calls.replies.append((200, {"loaded": False, "was_running": False}))
+        assert runner_cli.main(["stop"]) == 0
+        assert "Nothing was running." in capsys.readouterr().out
+
+
+class TestTheWrapperReachesIt:
+    """`hypernix-t1 built-in-runner ...` — the spelling the request
+    asked for, and the one the help has to describe."""
+
+    @staticmethod
+    def _wrapper() -> str:
+        from pathlib import Path
+
+        return (Path(__file__).resolve().parents[1] / "bin" / "hypernix-t1").read_text()
+
+    def test_both_spellings_dispatch(self):
+        text = self._wrapper()
+        assert "built-in-runner|builtin-runner)" in text
+        assert "cmd_runner built-in-runner" in text
+        assert 'runner)            cmd_runner runner "$@" ;;' in text
+
+    def test_the_help_lists_it(self):
+        assert "built-in-runner [start [MODEL]" in self._wrapper()
+
+    def test_the_spelling_reaches_the_help_text(self):
+        """Someone who typed `built-in-runner --help` must not be told
+        to type `runner`."""
+        assert 'HNX_RUNNER_PROG="hypernix-t1 $spelling"' in self._wrapper()
+
+        import os
+
+        os.environ["HNX_RUNNER_PROG"] = "hypernix-t1 built-in-runner"
+        try:
+            assert runner_cli.build_parser().prog == "hypernix-t1 built-in-runner"
+        finally:
+            del os.environ["HNX_RUNNER_PROG"]
+
+
+class TestStartAgainstARealServer:
+    """`start` invented a second path — it asks the catalogue which
+    model to load — and the mocks above cannot tell one that exists from
+    one that does not. A typo there is a 404 that reads to the person at
+    the keyboard exactly like "this server has no models"."""
+
+    def test_start_reaches_real_paths(self, tmp_path, monkeypatch, capsys):
+        pytest.importorskip("fastapi")
+        from fastapi.testclient import TestClient
+
+        clear_t1_config(monkeypatch)
+        monkeypatch.setenv("T1_DB_PATH", str(tmp_path / "t.sqlite3"))
+        monkeypatch.setenv("T1_CONFIG_DIR", str(tmp_path))
+        monkeypatch.setenv("T1_HF_DOWNLOAD_DIR", str(tmp_path / "models"))
+        monkeypatch.setenv("T1_TRUSTED_NETWORK", "1")
+        monkeypatch.setenv("T1_TRUSTED_NETWORK_PARTIAL_ADMIN", "1")
+
+        from hypernix.t1api.app import create_app
+
+        client = TestClient(create_app(), client=("192.168.1.9", 5000))
+
+        def through_the_app(method, url, key, payload=None):
+            path = url[url.index("/", len("http://")):]
+            response = (
+                client.get(path) if method == "GET"
+                else client.post(path, json=payload)
+            )
+            return response.status_code, response.json()
+
+        monkeypatch.setattr(runner_cli, "_request", through_the_app)
+
+        # No models on disk, so it stops — but it stops having reached
+        # /runner/status and /hyperlink/models, not on a 404.
+        assert runner_cli.main(["start"]) == 1
+        err = capsys.readouterr().err
+        assert "hypernix-t1 index" in err
+        assert "Refused" not in err

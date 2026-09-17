@@ -1549,8 +1549,8 @@ summary() {
   # is the state this installer leaves a machine in when --index-models
   # found some. Worth naming here rather than leaving it to be found.
   if [ "$INDEX_MODELS" = "1" ]; then
-    say "    hypernix-t1 runner status  ${C_DIM}# what is serving, and where its layers are${C_OFF}"
-    say "    hypernix-t1 runner load <model>  ${C_DIM}# serve one without LM Studio${C_OFF}"
+    say "    hypernix-t1 built-in-runner start  ${C_DIM}# serve a model without LM Studio${C_OFF}"
+    say "    hypernix-t1 built-in-runner status  ${C_DIM}# what is serving, and where its layers are${C_OFF}"
   fi
   [ "$WANT_HYPERLINK" = "1" ] && say "    waiter hyperlink pair   ${C_DIM}# connect the phone app${C_OFF}"
   [ "$WANT_SYSTEMD" = "1" ] && say "    sudo cp $CONFIG_DIR/hypernix-t1api.service /etc/systemd/system/"

@@ -884,3 +884,120 @@ class TestEverySettingCanActuallyBeSet:
         assert "onDisappear" in view, (
             "leaving the screen with the keyboard up does not commit"
         )
+
+
+class TestAddingAndEditingAServerFromTheList:
+    """The Servers screen could switch and forget, and nothing else.
+
+    Adding a machine meant unpairing the current one first — the pairing
+    screen was only reachable when nothing was paired at all — and a
+    server that had moved to a different port could not be followed
+    without pairing again, which means finding a key again and throwing
+    away the pinned fingerprint that says it is the same machine.
+    """
+
+    def test_there_is_a_button_to_add_one(self):
+        body = code("Views", "ServersView.swift")
+        assert ".toolbar {" in body
+        assert "Add a server" in body
+
+    def test_the_button_opens_the_pairing_screen(self):
+        """Not a second pairing flow. `PairingView` goes through
+        `SavedServers.remember`, which is what keeps the others."""
+        body = code("Views", "ServersView.swift")
+        assert "PairingView {" in body
+        assert ".sheet(isPresented: $addingServer)" in body
+
+    def test_the_sheet_closes_when_the_pairing_lands(self):
+        """`isPaired` is already true here, so the root swap that
+        dismisses the first-run pairing screen never happens — the form
+        would sit on top of the app it had just added a machine to."""
+        pairing = code("Views", "PairingView.swift")
+        assert "var onDone: (() -> Void)?" in pairing
+        assert "if paired { onDone?() }" in pairing
+        assert "addingServer = false" in code("Views", "ServersView.swift")
+
+    def test_a_failed_pairing_keeps_the_form_up(self):
+        """Dismissing unconditionally would take `connectionError` off
+        screen with it — the one thing that says what went wrong."""
+        pairing = code("Views", "PairingView.swift")
+        start = pairing.index("let paired: Bool")
+        block = pairing[start:start + 900]
+        assert "if paired { onDone?() }" in block
+        assert "onDone?()\n" not in block.replace("if paired { onDone?() }", "")
+
+    def test_there_is_only_one_navigation_stack(self):
+        """PairingView brings its own. Wrapping the sheet in another
+        gives two navigation bars."""
+        body = code("Views", "ServersView.swift")
+        start = body.index(".sheet(isPresented: $addingServer)")
+        assert "NavigationStack" not in body[start:start + 300]
+
+    def test_the_sheet_has_a_way_out(self):
+        pairing = code("Views", "PairingView.swift")
+        assert 'Button("Cancel") { onDone?() }' in pairing
+        assert "if onDone != nil {" in pairing
+
+    def test_the_button_stops_at_the_limit(self):
+        """Past 32, pairing silently drops the least recently used
+        machine. Offering the button anyway makes that a surprise."""
+        body = code("Views", "ServersView.swift")
+        assert "state.savedServers.count >= SavedServers.maxServers" in body
+        start = body.index("Add a server")
+        assert ".disabled(" in body[start:start + 200]
+
+    def test_swiping_right_edits_the_port(self):
+        body = code("Views", "ServersView.swift")
+        assert ".swipeActions(edge: .leading)" in body
+        assert "editingPort = server" in body
+
+    def test_forgetting_is_still_the_other_way(self):
+        """Destructive on the leading edge, one thumb away from the
+        edit, is how you forget a machine you meant to re-port."""
+        body = code("Views", "ServersView.swift")
+        trailing = body.index(".swipeActions(edge: .trailing)")
+        leading = body.index(".swipeActions(edge: .leading)")
+        assert "role: .destructive" in body[trailing:leading]
+        assert "role: .destructive" not in body[leading:leading + 400]
+
+    def test_the_editor_previews_every_endpoint(self):
+        """A pairing carries a LAN address and a tailnet name. "Change
+        the port" has to mean all of them, and showing what they become
+        is how somebody sees that it did."""
+        body = code("Views", "ServersView.swift")
+        assert "struct PortEditor" in body
+        assert "ForEach(server.connection.endpoints" in body
+        assert "SavedServers.replacingPort(in: endpoint, with: wanted)" in body
+
+    def test_the_store_applies_it(self):
+        body = code("Store", "AppState.swift")
+        assert "func setPort(serverID: String, port: Int) async -> Bool" in body
+
+    def test_changing_the_current_machines_port_reconnects(self):
+        """Editing the machine you are talking to and then still talking
+        to the old port is the one outcome that makes this useless."""
+        body = code("Store", "AppState.swift")
+        start = body.index("func setPort(serverID:")
+        block = body[start:body.index("func forget(serverID:")]
+        assert "client.configure(" in block
+        assert "refreshAll()" in block
+
+    def test_the_rewrite_is_in_the_model_not_the_view(self):
+        """So the CarPlay scene and the intents read the same endpoints
+        the phone does."""
+        body = code("Networking", "SavedServers.swift")
+        assert "static func setPort(" in body
+        assert "static func replacingPort(" in body
+        assert "static func commonPort(" in body
+
+    def test_an_impossible_port_is_refused_before_anything_is_written(self):
+        body = code("Networking", "SavedServers.swift")
+        start = body.index("static func setPort(")
+        block = body[start:start + 700]
+        assert "(1...65535).contains(port)" in block
+        assert block.index("guard (1...65535)") < block.index("write(")
+
+    def test_it_is_tested_on_the_mac_too(self):
+        body = (TESTS / "SavedServersTests.swift").read_text(encoding="utf-8")
+        assert "func testTheNewPortReachesEveryEndpoint()" in body
+        assert "func testTheMachineIsStillTheSameMachine()" in body

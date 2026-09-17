@@ -303,4 +303,142 @@ final class SavedServersTests: XCTestCase {
         let empty = SavedServer(connection: .empty, keyless: true)
         XCTAssertFalse(empty.displayName.isEmpty)
     }
+
+    // MARK: - Changing the port
+
+    //  The port is the one part of a pairing that changes for ordinary
+    //  reasons: the server restarted somewhere else, or moved behind a
+    //  different forward. Before this, the only way to follow it was to
+    //  pair again — which means finding a key again, and which threw
+    //  away the fingerprint that says this is the same machine.
+
+    private func multiHomed(name: String) -> ServerConnection {
+        ServerConnection(
+            endpoints: ["http://192.168.1.10:8000", "http://desktop.tail1234.ts.net:8000"],
+            serverName: name, t1Version: "1.0.26.9.2.3",
+            deviceID: "dev-\(name)", deviceName: "iPhone",
+            serverFingerprint: "fp-\(name)"
+        )
+    }
+
+    func testTheNewPortReachesEveryEndpoint() {
+        // A pairing carries a LAN address *and* a tailnet name. Changing
+        // one of them leaves the failover list half pointing at nothing,
+        // and the half that still works is whichever one is tried first.
+        SavedServers.remember(
+            connection: multiHomed(name: "desktop"), keyless: false,
+            token: "tok", defaults: defaults
+        )
+        let id = SavedServers.all(defaults: defaults)[0].id
+
+        XCTAssertTrue(SavedServers.setPort(id: id, port: 9000, defaults: defaults))
+
+        let endpoints = SavedServers.all(defaults: defaults)[0].connection.endpoints
+        XCTAssertEqual(endpoints, [
+            "http://192.168.1.10:9000",
+            "http://desktop.tail1234.ts.net:9000",
+        ])
+    }
+
+    func testTheMachineIsStillTheSameMachine() {
+        // The point of editing rather than re-pairing: the fingerprint
+        // and the keychain account survive, so the pinned identity is
+        // not thrown away and the token is not asked for again.
+        SavedServers.remember(
+            connection: multiHomed(name: "desktop"), keyless: false,
+            token: "tok", defaults: defaults
+        )
+        let before = SavedServers.all(defaults: defaults)[0]
+
+        XCTAssertTrue(SavedServers.setPort(id: before.id, port: 9000, defaults: defaults))
+
+        let after = SavedServers.all(defaults: defaults)[0]
+        XCTAssertEqual(after.id, before.id)
+        XCTAssertEqual(after.tokenAccount, before.tokenAccount)
+        XCTAssertEqual(after.connection.serverFingerprint, before.connection.serverFingerprint)
+        XCTAssertEqual(after.connection.serverName, before.connection.serverName)
+    }
+
+    func testTheOtherServersAreUntouched() {
+        SavedServers.remember(
+            connection: connection(name: "desktop", address: "http://192.168.1.10:8000"),
+            keyless: false, token: "a", defaults: defaults
+        )
+        SavedServers.remember(
+            connection: connection(name: "laptop", address: "http://192.168.1.11:8000"),
+            keyless: false, token: "b", defaults: defaults
+        )
+        let desktop = SavedServers.all(defaults: defaults).first { $0.displayName == "desktop" }!
+
+        XCTAssertTrue(SavedServers.setPort(id: desktop.id, port: 9000, defaults: defaults))
+
+        let laptop = SavedServers.all(defaults: defaults).first { $0.displayName == "laptop" }!
+        XCTAssertEqual(laptop.connection.endpoints, ["http://192.168.1.11:8000"])
+    }
+
+    func testAnImpossiblePortIsRefused() {
+        SavedServers.remember(
+            connection: connection(name: "desktop", address: "http://192.168.1.10:8000"),
+            keyless: false, token: "a", defaults: defaults
+        )
+        let id = SavedServers.all(defaults: defaults)[0].id
+
+        XCTAssertFalse(SavedServers.setPort(id: id, port: 0, defaults: defaults))
+        XCTAssertFalse(SavedServers.setPort(id: id, port: 65_536, defaults: defaults))
+        XCTAssertEqual(
+            SavedServers.all(defaults: defaults)[0].connection.endpoints,
+            ["http://192.168.1.10:8000"]
+        )
+    }
+
+    func testAMachineThatIsNotThereFails() {
+        XCTAssertFalse(SavedServers.setPort(id: "no-such-id", port: 9000, defaults: defaults))
+    }
+
+    func testTheCommonPortIsOfferedAsTheStartingPoint() {
+        SavedServers.remember(
+            connection: multiHomed(name: "desktop"), keyless: false,
+            token: "tok", defaults: defaults
+        )
+        let server = SavedServers.all(defaults: defaults)[0]
+        XCTAssertEqual(SavedServers.commonPort(of: server), 8000)
+    }
+
+    func testEndpointsThatDisagreeOfferNothing() {
+        // A field prefilled with 8080 for a record whose tailnet
+        // endpoint is on 9000 would misstate what Save is about to do.
+        let mixed = ServerConnection(
+            endpoints: ["http://192.168.1.10:8080", "http://desktop.ts.net:9000"],
+            serverName: "desktop", t1Version: "1", deviceID: "d",
+            deviceName: "iPhone", serverFingerprint: ""
+        )
+        SavedServers.remember(
+            connection: mixed, keyless: false, token: "tok", defaults: defaults
+        )
+        let server = SavedServers.all(defaults: defaults)[0]
+        XCTAssertNil(SavedServers.commonPort(of: server))
+    }
+
+    func testARewriteKeepsTheSchemeAndThePath() {
+        XCTAssertEqual(
+            SavedServers.replacingPort(in: "https://desktop.ts.net:8000", with: 9000),
+            "https://desktop.ts.net:9000"
+        )
+    }
+
+    func testSomethingThatIsNotAURLIsLeftAlone() {
+        // Better a record that still points where it did than one
+        // rewritten into a string nothing can parse.
+        XCTAssertEqual(
+            SavedServers.replacingPort(in: "not a url", with: 9000),
+            "not a url"
+        )
+    }
+
+    func testAnEndpointWithNoPortGainsOne() {
+        XCTAssertEqual(
+            SavedServers.replacingPort(in: "http://192.168.1.10", with: 9000),
+            "http://192.168.1.10:9000"
+        )
+    }
 }
