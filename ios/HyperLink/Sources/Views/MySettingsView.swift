@@ -40,6 +40,16 @@ struct MySettingsView: View {
     @State private var saving = false
     @State private var confirmingReset = false
 
+    /// Which profile field is being edited, so leaving one can commit it.
+    ///
+    /// Everything else on this screen commits the moment it changes — a
+    /// toggle, a picker, a button. The two free-text fields had nothing:
+    /// the name saved only `.onSubmit`, which is the Return key, and the
+    /// bio was never sent anywhere at all. Typing either and tapping
+    /// Back lost it, which is what "the settings don't save" means.
+    private enum ProfileField: Hashable { case name, bio }
+    @FocusState private var focused: ProfileField?
+
     private var preferences: UserPreferences { state.settings.preferences }
 
     var body: some View {
@@ -49,6 +59,7 @@ struct MySettingsView: View {
             effortSection
             contextSection
             reliabilitySection
+            backendSection
             capabilitySection
             memorySection
 
@@ -73,6 +84,15 @@ struct MySettingsView: View {
         .navigationTitle("You")
         .refreshable { await load() }
         .task { await load() }
+        // Leaving a field commits it. Tapping from the name to the bio,
+        // dismissing the keyboard, or moving anywhere else all land here.
+        .onChange(of: focused) { previous, _ in
+            guard previous != nil else { return }
+            Task { await commitProfile() }
+        }
+        // And leaving the screen with the keyboard still up, which does
+        // not change focus first.
+        .onDisappear { Task { await commitProfile() } }
         .confirmationDialog(
             "Reset all your settings?",
             isPresented: $confirmingReset, titleVisibility: .visible
@@ -94,9 +114,15 @@ struct MySettingsView: View {
     private var profileSection: some View {
         Section {
             TextField("Name", text: $displayName)
-                .onSubmit { Task { await save(.init(display_name: displayName)) } }
+                .focused($focused, equals: .name)
+                .onSubmit { Task { await commitProfile() } }
+            // No `.onSubmit` here on purpose: this one is `axis:
+            // .vertical`, so Return inserts a newline rather than
+            // submitting. Losing focus and leaving the screen are the
+            // only two moments it can be committed on.
             TextField("A little about you", text: $bio, axis: .vertical)
                 .lineLimit(3...8)
+                .focused($focused, equals: .bio)
         } header: {
             Text("Profile")
         } footer: {
@@ -182,6 +208,33 @@ struct MySettingsView: View {
         }
     }
 
+    /// Which engine answers.
+    ///
+    /// The server has had this preference since the runner landed and
+    /// nothing ever sent it: `PreferencesPatch.backend` existed, the
+    /// PATCH accepted it, and no screen offered it. A setting that
+    /// cannot be set is indistinguishable from one that does not save.
+    private var backendSection: some View {
+        Section {
+            Picker("Answer with", selection: Binding(
+                get: { preferences.backend },
+                set: { name in Task { await save(.init(backend: name)) } }
+            )) {
+                Text("Whichever is available").tag("")
+                ForEach(state.backends.backends) { backend in
+                    Text(backend.available
+                         ? backend.label
+                         : "\(backend.label) — not available now")
+                        .tag(backend.name)
+                }
+            }
+        } header: {
+            Text("Which engine answers")
+        } footer: {
+            Text("Pinning one means a message fails rather than quietly going somewhere else. Leave it on whichever is available unless you have a reason — the HyperNix runner and LM Studio do not always have the same model loaded.")
+        }
+    }
+
     private var capabilitySection: some View {
         Section {
             Toggle("Let the model use tools", isOn: Binding(
@@ -239,6 +292,29 @@ struct MySettingsView: View {
     /// @MainActor because it mutates `@State`. `View.body` carries the
     /// annotation; the rest of the struct does not, so an async helper
     /// is nonisolated unless it says otherwise.
+    /// Send whichever of the two text fields has actually changed.
+    ///
+    /// Compared against what the server last returned rather than a
+    /// separate "dirty" flag: focus moves for reasons that are not
+    /// edits, and a PATCH on every one of them would write the same
+    /// values back repeatedly and flash the "the server adjusted this"
+    /// notes for no reason.
+    @MainActor
+    private func commitProfile() async {
+        var patch = PreferencesPatch()
+        var changed = false
+        if displayName != preferences.displayName {
+            patch.display_name = displayName
+            changed = true
+        }
+        if bio != preferences.bio {
+            patch.bio = bio
+            changed = true
+        }
+        guard changed else { return }
+        await save(patch)
+    }
+
     @MainActor
     private func save(_ patch: PreferencesPatch) async {
         saving = true
