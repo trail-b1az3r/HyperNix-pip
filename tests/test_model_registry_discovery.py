@@ -313,3 +313,118 @@ class TestIndexingThenServingNeedsNoConfiguration:
         index_main(["--dir", str(models), "-o", str(tmp_path / "elsewhere.json")])
 
         assert "T1_MODEL_REGISTRY_PATH" in capsys.readouterr().out
+
+
+class TestAWorkingDirectoryThatIsGone:
+    """A process can outlive the directory it was started in.
+
+    The shell was in a tree that got deleted or moved; a service was
+    started from one. `Path.cwd()` raises `FileNotFoundError` there —
+    and it was being called from inside a list of *candidate* roots, so
+    losing the least important one took down the whole command:
+
+        hypernix-t1 index
+          File ".../registry.py", line 76, in registry_locations
+            roots.append(Path.cwd())
+        FileNotFoundError: [Errno 2] No such file or directory
+
+    It took the server with it too, since `ModelRegistry.load` goes
+    through `discover` — so a service started from a directory that
+    later went away could not come up, and said this instead of why.
+
+    Every other root is absolute and unaffected. Losing this one should
+    cost a candidate, not the command.
+
+    These tests restore the working directory before asserting
+    anything: pytest formats a failure by reading files, which is not
+    something it can do from a directory that does not exist.
+    """
+
+    @staticmethod
+    def _in_a_deleted_directory(work):
+        """Run *work* with no working directory, and give back its result."""
+        import os
+        import shutil
+        import tempfile
+
+        home = os.getcwd()
+        gone = tempfile.mkdtemp(prefix="hypernix-gone-")
+        try:
+            os.chdir(gone)
+            shutil.rmtree(gone)
+            try:
+                return ("ok", work())
+            except BaseException as exc:  # noqa: BLE001 - reported, not swallowed
+                return ("raised", f"{type(exc).__name__}: {exc}")
+        finally:
+            os.chdir(home)
+
+    def test_the_candidate_list_survives_it(self):
+        outcome, result = self._in_a_deleted_directory(registry_locations)
+        assert outcome == "ok", result
+        assert result, "no candidates at all is not degrading gracefully"
+
+    def test_discovery_survives_it(self, tmp_path, monkeypatch):
+        """The one that stopped the server coming up."""
+        (tmp_path / "models.json").write_text(json.dumps([entry("m")]))
+        monkeypatch.setenv("T1_CONFIG_DIR", str(tmp_path))
+
+        outcome, result = self._in_a_deleted_directory(discover)
+        assert outcome == "ok", result
+        assert result == tmp_path / "models.json"
+
+    def test_the_server_still_loads_its_registry(self, tmp_path, monkeypatch):
+        (tmp_path / "models.json").write_text(json.dumps([entry("qwen3-8b")]))
+        monkeypatch.setenv("T1_CONFIG_DIR", str(tmp_path))
+
+        outcome, result = self._in_a_deleted_directory(
+            lambda: [e.model_id for e in ModelRegistry.load().list()]
+        )
+        assert outcome == "ok", result
+        assert result == ["qwen3-8b"]
+
+    def test_indexing_survives_it(self, tmp_path, monkeypatch):
+        """`hypernix-t1 index` is what the report came in on. It has a
+        second one of these: it resolves the output path against the
+        candidates to say whether the server will find it, and
+        resolving a *relative* path needs a working directory too."""
+        from hypernix.t1api.modelindex_cli import main as index_main
+
+        monkeypatch.setenv("T1_CONFIG_DIR", str(tmp_path))
+        models = tmp_path / "models"
+        models.mkdir()
+
+        outcome, result = self._in_a_deleted_directory(
+            lambda: index_main(["--dir", str(models), "--dry-run"])
+        )
+        assert outcome == "ok", result
+        assert result == 0
+
+    def test_a_relative_path_is_returned_as_it_was(self):
+        """Not resolvable is not a reason to raise, and not a reason to
+        invent an answer either."""
+        from hypernix.t1api.registry import resolve_best_effort
+
+        outcome, result = self._in_a_deleted_directory(
+            lambda: resolve_best_effort("./hypernix/models/models.json")
+        )
+        assert outcome == "ok", result
+        assert result == Path("./hypernix/models/models.json")
+
+    def test_an_absolute_path_still_resolves_normally(self, tmp_path):
+        """The guard must not cost the ordinary case its resolution —
+        symlinks and `..` still have to collapse."""
+        from hypernix.t1api.registry import resolve_best_effort
+
+        nested = tmp_path / "a" / ".." / "b"
+        (tmp_path / "b").mkdir(parents=True)
+        assert resolve_best_effort(nested) == (tmp_path / "b").resolve()
+
+    def test_the_working_directory_is_still_a_candidate_normally(self, tmp_path, monkeypatch):
+        """Guarding it must not quietly drop it: a registry sitting in
+        the directory you are standing in is found, and that is the
+        behaviour the guard is protecting, not replacing."""
+        monkeypatch.chdir(tmp_path)
+        assert any(
+            candidate.parent == tmp_path for candidate in registry_locations()
+        ), "the working directory stopped being looked in"

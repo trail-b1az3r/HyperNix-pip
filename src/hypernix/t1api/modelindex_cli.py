@@ -9,7 +9,6 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from pathlib import Path
 from typing import Any
 
 from .modelindex import (
@@ -195,10 +194,13 @@ def main(argv: list[str] | None = None) -> int:
             availability=args.availability, routing_priority=args.priority,
         ))
 
-    from .registry import registry_locations
+    from .registry import registry_locations, resolve_best_effort
 
-    discoverable = Path(output).resolve() in {
-        p.resolve() for p in registry_locations()
+    # Best-effort: comparing paths must not be the thing that fails.
+    # Several of these are relative, and resolving a relative path needs
+    # a working directory this process may no longer have.
+    discoverable = resolve_best_effort(output) in {
+        resolve_best_effort(p) for p in registry_locations()
     }
 
     if args.dry_run:
