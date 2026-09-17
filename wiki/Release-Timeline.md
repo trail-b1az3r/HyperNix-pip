@@ -875,3 +875,12 @@ timeline
         : aad95131 - models- say where the scan looked and what was in there
 ```
 
+## Release v0.72.5.post12 (2026-09-17)
+
+```mermaid
+timeline
+    title Release v0.72.5.post12 Commits
+    0.72.5.post12
+        : f49a394b - hyperlink- settings that could not be saved
+```
+
