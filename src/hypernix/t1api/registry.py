@@ -55,6 +55,37 @@ _EXAMPLE_REGISTRY_PATH = _DATA_DIR / "model_registry.example.json"
 REGISTRY_NAMES = ("models.json", "models.jsonl")
 
 
+def _cwd() -> Path | None:
+    """The working directory, or ``None`` when there is not one.
+
+    A process outliving its own directory is ordinary: the shell was in
+    a tree that got deleted or moved, or a service was started from one.
+    ``Path.cwd()`` raises ``FileNotFoundError`` there, and it did so
+    from inside a list of *candidate* roots — so losing the least
+    important one took down the whole command, and took the server's
+    startup with it, since ``ModelRegistry.load`` goes through
+    ``discover``. Every other root here is absolute and unaffected.
+    """
+    try:
+        return Path.cwd()
+    except OSError:
+        return None
+
+
+def resolve_best_effort(path: str | Path) -> Path:
+    """``Path.resolve()`` that survives a missing working directory.
+
+    Resolving a *relative* path needs one, so the same deleted-directory
+    case turns an ordinary comparison into a traceback. A path that
+    cannot be resolved comes back as it was: two of those still compare
+    as themselves, which is what the caller was asking.
+    """
+    try:
+        return Path(path).resolve()
+    except OSError:
+        return Path(path)
+
+
 def registry_locations(config_dir: str | Path | None = None) -> list[Path]:
     """Where a registry is looked for, in order, most specific first.
 
@@ -73,7 +104,9 @@ def registry_locations(config_dir: str | Path | None = None) -> list[Path]:
         roots.append(Path(env_dir))
     roots.append(Path.home() / ".hypernix" / "t1api")
     roots.append(Path("./hypernix/models"))
-    roots.append(Path.cwd())
+    cwd = _cwd()
+    if cwd is not None:
+        roots.append(cwd)
 
     seen: set[Path] = set()
     found: list[Path] = []
