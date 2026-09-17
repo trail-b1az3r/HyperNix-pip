@@ -280,7 +280,22 @@ def launch(
     store = store or JobStore()
     job_id = uuid.uuid4().hex[:12]
     label = _slug(name or path.stem)
-    working = str(Path(cwd).expanduser().resolve()) if cwd else os.getcwd()
+    if cwd:
+        working = str(Path(cwd).expanduser().resolve())
+    else:
+        # The shell that is launching this can be sitting in a directory
+        # that has been deleted or moved — over SSH, on a tree that a
+        # deploy replaced, this is ordinary. `os.getcwd()` raises there,
+        # and the very next line is already the right answer for it, so
+        # the traceback bought nothing.
+        try:
+            working = os.getcwd()
+        except OSError:
+            raise LaunchError(
+                "This shell has no working directory any more — the one it "
+                "started in was deleted or moved. Pass --cwd, or cd somewhere "
+                "that exists."
+            ) from None
     if not Path(working).is_dir():
         raise LaunchError(f"No such working directory: {working}")
 

@@ -412,6 +412,37 @@ class TestRefusals:
         with pytest.raises(LaunchError, match="working directory"):
             launch(work, cwd=tmp_path / "nope", store=JobStore(tmp_path / "jobs"))
 
+    def test_no_working_directory_at_all_is_a_refusal_not_a_traceback(self, tmp_path):
+        """Launching over SSH from a tree a deploy replaced. `os.getcwd()`
+        raises there, and the check right after it was already the right
+        answer — so the traceback bought nothing. Asserts after putting
+        the directory back: pytest formats a failure by reading files."""
+        import os
+        import shutil
+        import tempfile
+
+        work = script(tmp_path, "exit 0\n")
+        store = JobStore(tmp_path / "jobs")
+
+        home = os.getcwd()
+        gone = tempfile.mkdtemp(prefix="hypernix-gone-")
+        try:
+            os.chdir(gone)
+            shutil.rmtree(gone)
+            try:
+                launch(work, store=store)
+                outcome = "launched"
+            except LaunchError as exc:
+                outcome = f"refused: {exc}"
+            except BaseException as exc:  # noqa: BLE001 - reported, not swallowed
+                outcome = f"{type(exc).__name__}: {exc}"
+        finally:
+            os.chdir(home)
+
+        assert outcome.startswith("refused:"), outcome
+        assert "no working directory" in outcome
+        assert "--cwd" in outcome
+
     def test_an_unrunnable_file_explains_the_two_ways_out(self, tmp_path):
         odd = tmp_path / "thing.xyz"
         odd.write_text("data", encoding="utf-8")
