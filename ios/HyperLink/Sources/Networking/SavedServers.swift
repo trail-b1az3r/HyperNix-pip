@@ -226,6 +226,59 @@ enum SavedServers {
         }
     }
 
+    /// Rewrite the port on every endpoint of one saved server.
+    ///
+    /// The port is the one part of a pairing that changes for ordinary
+    /// reasons — the server was started on a different one, or moved
+    /// behind a different forward — and re-pairing to change a number
+    /// means finding a key again. Everything else about the record, the
+    /// token included, is kept.
+    ///
+    /// Returns false when *id* is not there or the port is out of range.
+    @discardableResult
+    static func setPort(
+        id: String, port: Int, defaults: UserDefaults = .standard
+    ) -> Bool {
+        guard (1...65535).contains(port) else { return false }
+        var list = all(defaults: defaults)
+        guard let index = list.firstIndex(where: { $0.id == id }) else {
+            return false
+        }
+        let rewritten = list[index].connection.endpoints.map {
+            replacingPort(in: $0, with: port)
+        }
+        guard rewritten != list[index].connection.endpoints else { return true }
+        list[index].connection.endpoints = rewritten
+        write(list, defaults: defaults)
+        return true
+    }
+
+    /// The port every endpoint of this record agrees on, or nil.
+    ///
+    /// Nil rather than the first one when they disagree: showing 8080
+    /// for a record whose Tailscale endpoint is on 9000 would make the
+    /// edit field lie about what it is going to change.
+    static func commonPort(of server: SavedServer) -> Int? {
+        let ports = Set(server.connection.endpoints.compactMap {
+            URL(string: $0)?.port
+        })
+        return ports.count == 1 ? ports.first : nil
+    }
+
+    /// *endpoint* with its port replaced, keeping everything else.
+    ///
+    /// Built through URLComponents rather than by string surgery: an
+    /// endpoint can carry a path (a reverse proxy mount), IPv6 brackets,
+    /// or no port at all, and a regex over any of those is how a working
+    /// address becomes an unreachable one.
+    static func replacingPort(in endpoint: String, with port: Int) -> String {
+        guard var parts = URLComponents(string: endpoint), parts.host != nil else {
+            return endpoint
+        }
+        parts.port = port
+        return parts.string ?? endpoint
+    }
+
     /// Forget every server. What a full sign-out does.
     static func removeAll(defaults: UserDefaults = .standard) {
         for server in all(defaults: defaults) {

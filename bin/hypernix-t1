@@ -735,9 +735,14 @@ cmd_runner() {
   # llama.cpp from this script would take the VRAM the server's own
   # copy is using and the failure would land on the one that was
   # working.
+  #
+  # $1 is how the user spelled it, passed through so the --help they get
+  # back describes the command they actually typed.
+  local spelling="$1"; shift
   require_installed
   load_env
   local py; py="$(python_bin)"
+  HNX_RUNNER_PROG="hypernix-t1 $spelling" \
   T1_CONFIG_DIR="${T1_CONFIG_DIR:-$CONFIG_DIR}" \
     exec "$py" -m hypernix.t1api.runner_cli "$@"
 }
@@ -891,6 +896,11 @@ hypernix-t1 — manage a T1 API server
                         What training is doing on this machine, and the
                         controls. Runs launched with launch-script appear
                         here on their own.
+  built-in-runner [start [MODEL]|status|plan MODEL|stop]
+                        Serve a model out of this server's own llama.cpp
+                        instead of forwarding to LM Studio. \`start\` with
+                        no model named picks the one on this machine when
+                        there is only one. Also spelled \`runner\`.
   configure             Edit the configuration in \$EDITOR
   test                  Health, status, and a real end-to-end probe
   key ...               Run gkey against this server's key store
@@ -918,7 +928,9 @@ main() {
     test)              cmd_test "$@" ;;
     key|keys)          cmd_key "$@" ;;
     index)             cmd_index "$@" ;;
-    runner)            cmd_runner "$@" ;;
+    built-in-runner|builtin-runner)
+                       cmd_runner built-in-runner "$@" ;;
+    runner)            cmd_runner runner "$@" ;;
     launch-script)     cmd_launch_script "$@" ;;
     training)          cmd_training "$@" ;;
     autostart)         cmd_autostart "$@" ;;

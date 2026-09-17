@@ -1,6 +1,14 @@
-"""``hypernix-t1 runner`` — load, unload and inspect the served model.
+"""``hypernix-t1 built-in-runner`` — load, unload and inspect the served model.
 
-Also reachable as ``python -m hypernix.t1api.runner_cli``.
+Also spelled ``hypernix-t1 runner``, and reachable as
+``python -m hypernix.t1api.runner_cli``.
+
+"Built-in" is the distinction that matters to somebody at the keyboard:
+this server can answer out of its own llama.cpp, rather than forwarding
+to an LM Studio that a human started by hand. ``start`` is the verb for
+turning that on, and unlike ``load`` it does not make you name a model
+when the machine only has one — the commonest case by a distance is one
+GGUF on disk and nothing serving it.
 
 Why this talks HTTP to a server on the same machine
 ---------------------------------------------------
@@ -42,10 +50,14 @@ DEFAULT_URL = "http://127.0.0.1:8000"
 _EPILOG = """\
 Examples:
 
-  hypernix-t1 runner status
-  hypernix-t1 runner plan qwen3-8b
-  hypernix-t1 runner load qwen3-8b --gpu-layers 24
-  hypernix-t1 runner unload
+  hypernix-t1 built-in-runner start
+  hypernix-t1 built-in-runner start qwen3-8b --gpu-layers 24
+  hypernix-t1 built-in-runner status
+  hypernix-t1 built-in-runner plan qwen3-8b
+  hypernix-t1 built-in-runner stop
+
+`start` with no model named picks the one model on this machine that
+can be loaded, and refuses to guess when there is more than one.
 
 `plan` says where a model's layers would go and changes nothing.
 Loading evicts whatever people are currently talking to, so seeing the
@@ -175,9 +187,92 @@ def _print_status(body: dict[str, Any]) -> None:
         print(f"Up: {model['uptime_seconds']}s")
 
 
+def _catalogue(url: str, key: str) -> tuple[dict[str, Any], tuple[int, Any] | None]:
+    """The model catalogue, or the refusal that came back instead.
+
+    Asked of the catalogue rather than of the models directory, because
+    the catalogue is what the phone lists: a model somebody can see in
+    HyperLink is a model ``start`` can name, and the two disagreeing
+    about what exists is the bug this whole command is downstream of.
+    """
+    status, body = _request("GET", f"{url}/hyperlink/models", key)
+    if status >= 400:
+        return {}, (status, body)
+    return body or {}, None
+
+
+def _loadable(catalogue: dict[str, Any]) -> list[dict[str, Any]]:
+    """Only models with a file on this machine.
+
+    An LM Studio entry, or a registry row for something never
+    downloaded, has no path — and the runner cannot open what is not
+    there. They must not make the choice ambiguous either.
+    """
+    return [m for m in catalogue.get("models") or [] if m.get("path")]
+
+
+def _why_nothing(catalogue: dict[str, Any]) -> str:
+    """What to do about an empty list, from what the sources said.
+
+    "No models" and "LM Studio is not running" produce the same empty
+    list and want completely different things doing about them, which is
+    why the catalogue reports its sources at all.
+    """
+    lines = ["No model on this server has a file on disk to load."]
+    for source in catalogue.get("sources") or []:
+        detail = source.get("detail") or ""
+        state = f"{source.get('count', 0)}" if source.get("available") else "unavailable"
+        lines.append(f"  {source.get('name', '?')}: {state}{' — ' + detail if detail else ''}")
+    lines.append(
+        "\nPut a .gguf under ~/.hypernix/models and run `hypernix-t1 index`, "
+        "or download one from HyperLink."
+    )
+    return "\n".join(lines)
+
+
+def _pick(url: str, key: str) -> tuple[str, int]:
+    """``(model_id, exit_code)`` for a ``start`` that named no model.
+
+    One model is not a guess, so it starts. More than one is, and
+    guessing wrong costs the VRAM and the minutes of a load somebody
+    then has to undo — so it lists them and stops.
+    """
+    catalogue, refusal = _catalogue(url, key)
+    if refusal is not None:
+        return "", _fail(*refusal)
+    models = _loadable(catalogue)
+    if len(models) == 1:
+        return str(models[0].get("model_id") or ""), 0
+    if not models:
+        print(_why_nothing(catalogue), file=sys.stderr)
+        return "", 1
+    print(
+        f"{len(models)} models here, so name the one you mean:\n",
+        file=sys.stderr,
+    )
+    for model in models[:40]:
+        size = model.get("size_bytes") or 0
+        gb = f"  {size / 1e9:.1f} GB" if size else ""
+        print(f"  {model.get('model_id', '?')}{gb}", file=sys.stderr)
+    return "", 1
+
+
+def _load_payload(args: argparse.Namespace, model_id: str) -> dict[str, Any]:
+    return {
+        "model_id": model_id,
+        "gpu_layers": args.gpu_layers,
+        "backend": args.backend,
+        "context_length": args.context_length,
+        "total_layers": args.total_layers,
+    }
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="hypernix-t1 runner",
+        # However it was invoked — the wrapper passes this — so the help
+        # does not tell somebody who typed `built-in-runner` to type
+        # something else.
+        prog=os.environ.get("HNX_RUNNER_PROG") or "hypernix-t1 built-in-runner",
         description="Load, unload and inspect the model this server serves.",
         epilog=_EPILOG,
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -189,12 +284,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command")
     sub.add_parser("status", help="what is loaded, and where its layers are")
 
-    for name, help_text in (
-        ("plan", "where a model's layers would go — changes nothing"),
-        ("load", "load a model, replacing whatever is running"),
-    ):
-        action = sub.add_parser(name, help=help_text)
-        action.add_argument("model_id", help="the model to act on")
+    def _load_options(action: argparse.ArgumentParser) -> None:
         action.add_argument("--gpu-layers", type=int, default=None,
                             help="layers on the GPU (default: work it out)")
         action.add_argument("--total-layers", type=int, default=None,
@@ -204,7 +294,29 @@ def build_parser() -> argparse.ArgumentParser:
         action.add_argument("--backend", default="auto",
                             help="auto, cuda, vulkan, cpu, hnx-cuda, hnx-cpu")
 
+    # `start` takes the model as an optional argument and `load` requires
+    # it. Same request underneath; the difference is that `start` is what
+    # you type when the machine has one model and nothing serving it,
+    # which is the state every fresh install is in.
+    start = sub.add_parser(
+        "start", help="start serving — names the model for you when there is only one"
+    )
+    start.add_argument("model_id", nargs="?", default="",
+                       help="the model to serve (default: the only loadable one)")
+    start.add_argument("--restart", action="store_true",
+                       help="load again even if that model is already serving")
+    _load_options(start)
+
+    for name, help_text in (
+        ("plan", "where a model's layers would go — changes nothing"),
+        ("load", "load a model, replacing whatever is running"),
+    ):
+        action = sub.add_parser(name, help=help_text)
+        action.add_argument("model_id", help="the model to act on")
+        _load_options(action)
+
     sub.add_parser("unload", help="stop serving; unloading nothing is a success")
+    sub.add_parser("stop", help="the same as unload")
     return parser
 
 
@@ -216,19 +328,17 @@ def main(argv: list[str] | None = None) -> int:
     url = _base_url(args.url)
     key = _resolve_key(args.key)
 
+    if command == "start":
+        return _start(url, key, args)
+
     if command == "status":
         status, body = _request("GET", f"{url}/runner/status", key)
-    elif command == "unload":
+    elif command in ("unload", "stop"):
         status, body = _request("POST", f"{url}/runner/unload", key, {})
     elif command in ("plan", "load"):
-        payload = {
-            "model_id": args.model_id,
-            "gpu_layers": args.gpu_layers,
-            "backend": args.backend,
-            "context_length": args.context_length,
-            "total_layers": args.total_layers,
-        }
-        status, body = _request("POST", f"{url}/runner/{command}", key, payload)
+        status, body = _request(
+            "POST", f"{url}/runner/{command}", key, _load_payload(args, args.model_id)
+        )
     else:  # pragma: no cover - argparse rejects anything else
         parser.error(f"unknown command {command}")
 
@@ -246,10 +356,56 @@ def main(argv: list[str] | None = None) -> int:
         if placement:
             print(f"  {_describe_placement(placement)}")
         print("\nNothing has changed — this was a plan.")
-    elif command == "unload":
+    elif command in ("unload", "stop"):
         print("Unloaded." if body.get("was_running") else "Nothing was running.")
     else:
         _print_status(body)
+    return 0
+
+
+def _start(url: str, key: str, args: argparse.Namespace) -> int:
+    """``start`` — bring the built-in runner up, idempotently.
+
+    Running it twice is a thing people do, usually because they are not
+    sure the first one took. So a model that is already serving is
+    reported and left alone rather than reloaded: a reload is a minute
+    of downtime and an evicted conversation, which is a lot to charge
+    for a command that was supposed to be a no-op.
+    """
+    wanted = args.model_id
+    status, body = _request("GET", f"{url}/runner/status", key)
+    if status >= 400:
+        return _fail(status, body)
+
+    running = ((body or {}).get("model") or {}).get("model_id") if body.get("loaded") else None
+    if running and not args.restart and wanted in ("", running):
+        if args.json:
+            print(json.dumps(body, indent=2))
+            return 0
+        _print_status(body)
+        print("\nAlready running — nothing to do.")
+        return 0
+
+    # `--restart` with nothing named means the one that is running.
+    # Going to the catalogue here would restart a *different* model on a
+    # machine with several, which is not what the word says.
+    if not wanted and running:
+        wanted = running
+    if not wanted:
+        wanted, code = _pick(url, key)
+        if not wanted:
+            return code
+
+    if running and running != wanted:
+        print(f"Replacing {running}.", file=sys.stderr)
+
+    status, body = _request("POST", f"{url}/runner/load", key, _load_payload(args, wanted))
+    if status >= 400:
+        return _fail(status, body)
+    if args.json:
+        print(json.dumps(body, indent=2))
+        return 0
+    _print_status(body)
     return 0
 
 

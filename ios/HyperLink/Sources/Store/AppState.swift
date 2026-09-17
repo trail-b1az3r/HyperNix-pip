@@ -224,6 +224,31 @@ final class AppState {
         return true
     }
 
+    /// Follow one machine to a different port.
+    ///
+    /// The port is the only part of a pairing that changes for ordinary
+    /// reasons — the server restarted somewhere else, or moved behind a
+    /// different forward — and the only way to follow it used to be to
+    /// pair again, which means finding a key again and throwing away
+    /// the fingerprint that says this is the same machine.
+    ///
+    /// Editing the machine you are currently talking to has to
+    /// reconnect, or the app goes on using the old port and the change
+    /// looks like it did nothing.
+    @discardableResult
+    func setPort(serverID: String, port: Int) async -> Bool {
+        guard SavedServers.setPort(id: serverID, port: port) else { return false }
+        savedServers = SavedServers.all()
+        guard serverID == currentServerID else { return true }
+        guard let pairing = PairingStore.load() else { return true }
+        connection = pairing.connection
+        await client.configure(
+            endpoints: pairing.endpoints, token: pairing.token, keyless: pairing.keyless
+        )
+        await refreshAll()
+        return true
+    }
+
     /// Forget one machine without signing out of the others.
     ///
     /// Forgetting the one currently connected falls back to whichever
