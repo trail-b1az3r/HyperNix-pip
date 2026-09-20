@@ -36,6 +36,16 @@ EXCLUDED_DIRS = {
     ".git", "node_modules", "dist", "build", ".venv", "venv", "__pycache__", ".pytest_cache",
 }
 
+# Keep this compiled once and close to the source-data configuration. The
+# previous inline expression was accidentally double-escaped when generated,
+# which made Python reject it as an unterminated regex on GitHub Actions.
+API_CHANGE_RE = re.compile(
+    r"(?:^|\s)(?:async\s+)?(?:def|class)\s+"
+    r"|^@(?:router|app|[A-Za-z_][A-Za-z0-9_]*)\.(?:get|post|put|patch|delete|options|head)\("
+    r"|add_api_route\("
+    r"|deprecated_module\("
+)
+
 # Base and optional dependencies from pyproject.toml. This intentionally stays
 # small and explicit because the docs need package-level install instructions,
 # not every transitive module imported by a file.
@@ -389,7 +399,7 @@ def recent_history(path: Path, limit: int = 8) -> list[dict[str, Any]]:
             if not diff_line.startswith(("+", "-")):
                 continue
             text = diff_line[1:].strip()
-            if not re.search(r"(?:^|\\s)(?:async\\s+)?(?:def|class)\\s+|^@(?:router|app|[A-Za-z_][A-Za-z0-9_]*)\\.(?:get|post|put|patch|delete|options|head)\\(|add_api_route\\(|deprecated_module\\(", text):
+            if not API_CHANGE_RE.search(text):
                 continue
             changed.append({"kind": "added" if diff_line[0] == "+" else "removed", "text": text[:300]})
         out.append({"sha": sha, "date": date, "author": author, "subject": subject, "api_changes": changed[:24]})
