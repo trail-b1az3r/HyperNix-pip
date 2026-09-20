@@ -48,7 +48,7 @@ struct LoadOptions {
 };
 
 struct GenerateOptions {
-    int max_tokens = 512;
+    int max_tokens = 4096;
     float temperature = 0.7f;
     float top_p = 0.95f;
     int top_k = 40;
