@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { PageHeading, CountUp } from '../components/ui'
 
-function StatsPage({ downloads, olderDownloads, threeMonthDownloads, totalDownloads, statsUpdatedAt, ghStats, pypiInfo, pythonVersionStats, systemStats, releaseTimeline, version, statsError, codeStats }) {
+function StatsPage({ downloads, olderDownloads, threeMonthDownloads, totalDownloads, statsUpdatedAt, ghStats, pypiInfo, pythonVersionStats, systemStats, releaseTimeline, changelogEntries, version, statsError, codeStats }) {
   const windowBars = [
     { label: '24h', val: downloads.last_day },
     { label: '7d', val: downloads.last_week },
@@ -206,29 +206,46 @@ function StatsPage({ downloads, olderDownloads, threeMonthDownloads, totalDownlo
       )}
       {releaseTimeline.length > 0 && (
         <div style={{ background:'var(--surface-3)', border:'1px solid var(--border-strong)', borderRadius:10, padding:'22px', marginBottom:18 }}>
-          <h3 style={{ color:'var(--text)', margin:'0 0 14px', fontSize:14 }}>Release history</h3>
-          {releaseTimeline.map(r => (
-            <div key={r.version} style={{ display:'flex', gap:12, padding:'9px 6px',
-              margin:'0 -6px', borderRadius:6, borderBottom:'1px solid var(--surface-3)', alignItems:'flex-start',
-              transition:'background-color 0.18s ease' }}
-              onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--border)'}
-              onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
-              <div className={r.isPreRelease ? 'float-soft' : ''} style={{ width:7, height:7, borderRadius:'50%', marginTop:5, flexShrink:0,
-                background: r.isPreRelease ? '#e8960a' : '#34c759', transition:'transform 0.2s ease' }} />
-              <div style={{ flex:1 }}>
-                <div style={{ display:'flex', gap:10, alignItems:'center', flexWrap:'wrap' }}>
-                  <a href={r.url} target="_blank" rel="noreferrer" className="underline-grow"
-                    style={{ color:'var(--accent)', fontFamily:'monospace', fontSize:13, textDecoration:'none' }}>{r.version}</a>
-                  {r.isPreRelease && (
-                    <span style={{ background:'#e8960a22', border:'1px solid #e8960a44', color:'#e8960a',
-                      borderRadius:4, padding:'0 6px', fontSize:11 }}>pre</span>
-                  )}
-                  <span style={{ color:'var(--text-faint)', fontSize:12 }}>{r.date}</span>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', gap:10, flexWrap:'wrap', marginBottom:14 }}>
+            <h3 style={{ color:'var(--text)', margin:0, fontSize:14 }}>Release history</h3>
+            <span style={{ color:'var(--text-faint)', fontSize:10.5 }}>Summaries from <code>wiki/Changelog.md</code> when a version is documented there.</span>
+          </div>
+          {['stable','post','alpha','beta','rc','dev','patch','other'].map(kind => {
+            const labels = { stable:'Stable releases', post:'Post releases', alpha:'Alpha releases', beta:'Beta releases', rc:'Release candidates', dev:'Development releases', patch:'Patch / point releases', other:'Other release labels' }
+            const items = releaseTimeline.filter(r => (r.releaseKind || 'other') === kind)
+            if (!items.length) return null
+            return (
+              <div key={kind} style={{ marginBottom:16 }}>
+                <div style={{ display:'flex', alignItems:'center', gap:8, margin:'0 0 7px', paddingBottom:6, borderBottom:'1px solid var(--border)' }}>
+                  <span style={{ width:6, height:6, borderRadius:'50%', background: kind === 'stable' ? '#34c759' : kind === 'post' ? '#6f8cff' : '#e8960a' }} />
+                  <span style={{ color:'var(--text)', fontSize:11.5, fontWeight:700 }}>{labels[kind]}</span>
+                  <span style={{ color:'var(--text-faint)', fontSize:10 }}>({items.length})</span>
                 </div>
-                <p style={{ margin:'3px 0 0', fontSize:12, color:'var(--text-faint)' }}>{r.description}</p>
+                {items.slice(0, 20).map((r, index) => (
+                  <div key={`${kind}:${r.version}:${index}`} style={{ display:'flex', gap:12, padding:'9px 6px', margin:'0 -6px', borderRadius:6, borderBottom:'1px solid var(--surface-3)', alignItems:'flex-start', transition:'background-color 0.18s ease' }}
+                    onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--border)'}
+                    onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+                    <div style={{ width:7, height:7, borderRadius:'50%', marginTop:5, flexShrink:0, background: kind === 'stable' ? '#34c759' : kind === 'post' ? '#6f8cff' : '#e8960a' }} />
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ display:'flex', gap:10, alignItems:'center', flexWrap:'wrap' }}>
+                        {r.url ? (
+                          <a href={r.url} target="_blank" rel="noreferrer" className="underline-grow" style={{ color:'var(--accent)', fontFamily:'monospace', fontSize:13, textDecoration:'none' }}>{r.version}</a>
+                        ) : (
+                          <span style={{ color:'var(--accent)', fontFamily:'monospace', fontSize:13 }}>{r.version}</span>
+                        )}
+                        {r.changelogVersion && <span style={{ background:'var(--surface-1)', border:'1px solid var(--border)', borderRadius:4, padding:'0 6px', fontSize:10, color:'var(--text-faint)' }}>wiki {r.changelogVersion}</span>}
+                        {r.date && <span style={{ color:'var(--text-faint)', fontSize:12 }}>{r.date}</span>}
+                      </div>
+                      <p style={{ margin:'4px 0 0', fontSize:12, color:'var(--text-dim)', lineHeight:1.5 }}>{r.description}</p>
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
-          ))}
+            )
+          })}
+          {changelogEntries && changelogEntries.length > 0 && releaseTimeline.some(r => !r.changelogVersion) && (
+            <p style={{ margin:'2px 0 0', color:'var(--text-faint)', fontSize:10.5 }}>A release without a matching changelog heading falls back to the GitHub release notes.</p>
+          )}
         </div>
       )}
       {pypiInfo && (

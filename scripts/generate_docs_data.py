@@ -24,6 +24,8 @@ PUBLIC_ROOT = ROOT / "docs" / "public" / "v1"
 API_DEEP_PATH = PUBLIC_ROOT / "api-deep.json"
 T1_API_PATH = PUBLIC_ROOT / "t1-api.json"
 CODE_STATS_PATH = PUBLIC_ROOT / "code-stats.json"
+CHANGELOG_PATH = ROOT / "wiki" / "Changelog.md"
+CHANGELOG_DATA_PATH = PUBLIC_ROOT / "changelog.json"
 
 CODE_EXTENSIONS = {
     ".py", ".pyi", ".js", ".jsx", ".ts", ".tsx", ".c", ".cc", ".cpp", ".cxx",
@@ -92,6 +94,107 @@ CURATED_EXAMPLES = [
     },
 ]
 
+
+
+
+def clean_changelog_text(text: str, limit: int = 360) -> str:
+    text = re.sub(r"```.*?```", "", text, flags=re.S)
+    text = re.sub(r"`([^`]+)`", r"\1", text)
+    text = re.sub(r"[*_~]", "", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    if len(text) <= limit:
+        return text
+    return text[: limit - 1].rsplit(" ", 1)[0].rstrip() + "…"
+
+
+def release_kind(version: str) -> str:
+    """Classify releases so stable, post, alpha, beta, RC, and dev are distinct."""
+    v = version.strip().lower().lstrip("v")
+    base = re.match(r"^\d+\.\d+\.\d+", v)
+    tail = v[base.end():] if base else v
+    compact = re.sub(r"[._ -]+", "", tail)
+    if v.startswith("postv") or re.search(r"(?:post\d+|post)$", compact):
+        return "post"
+    if re.search(r"(?:a\d+|alpha\d*|pt\d*a)$", compact):
+        return "alpha"
+    if re.search(r"(?:b\d+|beta\d*|pt\d*b)$", compact):
+        return "beta"
+    if re.search(r"(?:rc\d+|releasecandidate\d*)$", compact):
+        return "rc"
+    if re.search(r"(?:dev\d*|development)$", compact):
+        return "dev"
+    if re.search(r"pt\d*", compact) or re.search(r"[-_]\d+$", tail):
+        return "patch"
+    if base and not tail.strip():
+        return "stable"
+    return "other"
+
+
+def normalize_release_label(value: str) -> str:
+    v = value.strip().lstrip("vV")
+    v = v.replace("–", "-").replace("—", "-")
+    v = re.sub(r"[\(].*?\]?$", "", v).strip()
+    v = re.sub(r"\s+", " ", v)
+    return v.lower()
+
+
+def changelog_aliases(version_label: str) -> set[str]:
+    """Return exact-ish forms used by Git tags and human changelog headings."""
+    v = normalize_release_label(version_label)
+    aliases = {v, v.replace(" ", "-")}
+    if " pt" in v:
+        aliases.add(v.replace(" pt", "-pt"))
+    if ".post" in v:
+        aliases.add(v.replace(".post", "-post"))
+    if re.search(r"[.]dev\d+$", v):
+        aliases.add(v.replace(".dev", "dev"))
+    return {a.lstrip("v") for a in aliases}
+
+
+def parse_changelog() -> dict[str, Any]:
+    if not CHANGELOG_PATH.exists():
+        return {"generated_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"), "entries": []}
+    text = CHANGELOG_PATH.read_text(encoding="utf-8", errors="replace")
+    matches = list(re.finditer(r"(?m)^##\s+(.+?)\s*$", text))
+    entries: list[dict[str, Any]] = []
+    for index, match in enumerate(matches):
+        raw_heading = match.group(1).strip()
+        body_end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
+        body = text[match.end():body_end].strip()
+        # Headings such as "0.72.5 pt3 — ..." use the text before an em dash
+        # as the actual release label. Parenthetical notes are retained only
+        # when they are part of the label (e.g. pt 4).
+        label = raw_heading.split("—", 1)[0].strip()
+        label = label.split(" – ", 1)[0].strip()
+        if not re.match(r"^v?\d+\.\d+\.\d+", label, re.I):
+            continue
+        title = ""
+        if "—" in raw_heading:
+            title = raw_heading.split("—", 1)[1].strip()
+        elif " - " in raw_heading and re.match(r"^v?\d+\.\d+\.\d+[^ ]* - ", raw_heading, re.I):
+            title = raw_heading.split(" - ", 1)[1].strip()
+        summary = clean_changelog_text(title) if title else ""
+        if not summary:
+            for candidate in body.splitlines():
+                candidate = candidate.strip()
+                if not candidate or candidate.startswith("#") or candidate.startswith("```"):
+                    continue
+                summary = clean_changelog_text(candidate)
+                if summary:
+                    break
+        entries.append({
+            "version": label,
+            "key": normalize_release_label(label),
+            "aliases": sorted(changelog_aliases(label)),
+            "kind": release_kind(label),
+            "heading": raw_heading,
+            "summary": summary or "Release notes in wiki/Changelog.md.",
+        })
+    return {
+        "generated_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "source": "wiki/Changelog.md",
+        "entries": entries,
+    }
 
 def run_git(*args: str) -> str:
     try:
@@ -568,8 +671,9 @@ def main() -> None:
     # The three writes are deterministic except for generated_at. We preserve
     # the timestamp only when the substantive content changed so the hourly
     # workflow can skip commits on no-op runs.
-    existing_paths = [API_DEEP_PATH, T1_API_PATH, CODE_STATS_PATH]
-    built = [api_deep, t1_api, stats]
+    changelog = parse_changelog()
+    existing_paths = [API_DEEP_PATH, T1_API_PATH, CODE_STATS_PATH, CHANGELOG_DATA_PATH]
+    built = [api_deep, t1_api, stats, changelog]
     for path, data in zip(existing_paths, built):
         if path.exists():
             try:
@@ -586,6 +690,7 @@ def main() -> None:
         "total_lines": stats["total_lines"],
         "code_files": stats["code_files"],
         "contributors": len(stats["contributors"]),
+        "changelog_entries": len(changelog["entries"]),
         "history_available": stats["history_available"],
     }, indent=2))
 

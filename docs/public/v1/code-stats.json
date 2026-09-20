@@ -1,6 +1,6 @@
 {
   "definition": "non-blank source lines across repository code roots: src, scripts, tests, examples, bin, native, docs/src",
-  "total_lines": 177589,
+  "total_lines": 177749,
   "code_files": 543,
   "top_files": [
     {

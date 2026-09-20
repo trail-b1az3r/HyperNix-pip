@@ -38,10 +38,10 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          if git diff --quiet -- docs/public/v1/api-deep.json docs/public/v1/t1-api.json docs/public/v1/code-stats.json; then
+          if git diff --quiet -- docs/public/v1/api-deep.json docs/public/v1/t1-api.json docs/public/v1/code-stats.json docs/public/v1/changelog.json; then
             echo "No API/code-stat changes — skipping commit."
             exit 0
           fi
-          git add docs/public/v1/api-deep.json docs/public/v1/t1-api.json docs/public/v1/code-stats.json
+          git add docs/public/v1/api-deep.json docs/public/v1/t1-api.json docs/public/v1/code-stats.json docs/public/v1/changelog.json
           git commit -m "chore: update generated API and code stats"
           git push

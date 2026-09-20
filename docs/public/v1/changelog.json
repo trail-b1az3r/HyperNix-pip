@@ -1,0 +1,1225 @@
+{
+  "generated_at": "2026-09-20T21:37:03Z",
+  "source": "wiki/Changelog.md",
+  "entries": [
+    {
+      "version": "0.72.5 pt3b",
+      "key": "0.72.5 pt3b",
+      "aliases": [
+        "0.72.5 pt3b",
+        "0.72.5-pt3b"
+      ],
+      "kind": "beta",
+      "heading": "0.72.5 pt3b \u2014 a HyperNix runner, not just a bridge",
+      "summary": "a HyperNix runner, not just a bridge"
+    },
+    {
+      "version": "0.72.5 pt3",
+      "key": "0.72.5 pt3",
+      "aliases": [
+        "0.72.5 pt3",
+        "0.72.5-pt3"
+      ],
+      "kind": "patch",
+      "heading": "0.72.5 pt3 \u2014 the phone can drive the machine",
+      "summary": "the phone can drive the machine"
+    },
+    {
+      "version": "0.72.5 pt2",
+      "key": "0.72.5 pt2",
+      "aliases": [
+        "0.72.5 pt2",
+        "0.72.5-pt2"
+      ],
+      "kind": "patch",
+      "heading": "0.72.5 pt2 \u2014 the server does the serving now",
+      "summary": "the server does the serving now"
+    },
+    {
+      "version": "0.72.5",
+      "key": "0.72.5",
+      "aliases": [
+        "0.72.5"
+      ],
+      "kind": "stable",
+      "heading": "0.72.5 \u2014 `hnx_1375bit`, and quantisation-aware training",
+      "summary": "hnx1375bit, and quantisation-aware training"
+    },
+    {
+      "version": "0.72.4.post21",
+      "key": "0.72.4.post21",
+      "aliases": [
+        "0.72.4-post21",
+        "0.72.4.post21"
+      ],
+      "kind": "post",
+      "heading": "0.72.4.post21 \u2014 why both tiers gave a 1.4 GB file",
+      "summary": "why both tiers gave a 1.4 GB file"
+    },
+    {
+      "version": "0.72.4.post20",
+      "key": "0.72.4.post20",
+      "aliases": [
+        "0.72.4-post20",
+        "0.72.4.post20"
+      ],
+      "kind": "post",
+      "heading": "0.72.4.post20 \u2014 `status` did not know about the autostart service",
+      "summary": "status did not know about the autostart service"
+    },
+    {
+      "version": "0.72.4.post19",
+      "key": "0.72.4.post19",
+      "aliases": [
+        "0.72.4-post19",
+        "0.72.4.post19"
+      ],
+      "kind": "post",
+      "heading": "0.72.4.post19 \u2014 `start` was reporting someone else's server",
+      "summary": "start was reporting someone else's server"
+    },
+    {
+      "version": "0.72.4.post18",
+      "key": "0.72.4.post18",
+      "aliases": [
+        "0.72.4-post18",
+        "0.72.4.post18"
+      ],
+      "kind": "post",
+      "heading": "0.72.4.post18 \u2014 Brewer attention was not causal",
+      "summary": "Brewer attention was not causal"
+    },
+    {
+      "version": "0.72.4.post17",
+      "key": "0.72.4.post17",
+      "aliases": [
+        "0.72.4-post17",
+        "0.72.4.post17"
+      ],
+      "kind": "post",
+      "heading": "0.72.4.post17 \u2014 a checker for the files already on disk",
+      "summary": "a checker for the files already on disk"
+    },
+    {
+      "version": "0.72.4.post16",
+      "key": "0.72.4.post16",
+      "aliases": [
+        "0.72.4-post16",
+        "0.72.4.post16"
+      ],
+      "kind": "post",
+      "heading": "0.72.4.post16 \u2014 `ne[0]`, not the element count",
+      "summary": "ne[0], not the element count"
+    },
+    {
+      "version": "0.72.4.post15",
+      "key": "0.72.4.post15",
+      "aliases": [
+        "0.72.4-post15",
+        "0.72.4.post15"
+      ],
+      "kind": "post",
+      "heading": "0.72.4.post15 \u2014 SecTask is macOS-only",
+      "summary": "SecTask is macOS-only"
+    },
+    {
+      "version": "0.72.4.post14",
+      "key": "0.72.4.post14",
+      "aliases": [
+        "0.72.4-post14",
+        "0.72.4.post14"
+      ],
+      "kind": "post",
+      "heading": "0.72.4.post14 \u2014 actor isolation, and the easy fix that was wrong",
+      "summary": "actor isolation, and the easy fix that was wrong"
+    },
+    {
+      "version": "0.72.4.post13",
+      "key": "0.72.4.post13",
+      "aliases": [
+        "0.72.4-post13",
+        "0.72.4.post13"
+      ],
+      "kind": "post",
+      "heading": "0.72.4.post13 \u2014 `optional: true` does not mean what I thought",
+      "summary": "optional: true does not mean what I thought"
+    },
+    {
+      "version": "0.72.4.post12",
+      "key": "0.72.4.post12",
+      "aliases": [
+        "0.72.4-post12",
+        "0.72.4.post12"
+      ],
+      "kind": "post",
+      "heading": "0.72.4.post12 \u2014 three tests that needed a server and never said so",
+      "summary": "three tests that needed a server and never said so"
+    },
+    {
+      "version": "0.72.4.post11",
+      "key": "0.72.4.post11",
+      "aliases": [
+        "0.72.4-post11",
+        "0.72.4.post11"
+      ],
+      "kind": "post",
+      "heading": "0.72.4.post11 \u2014 the engine is linked",
+      "summary": "the engine is linked"
+    },
+    {
+      "version": "0.72.4.post10",
+      "key": "0.72.4.post10",
+      "aliases": [
+        "0.72.4-post10",
+        "0.72.4.post10"
+      ],
+      "kind": "post",
+      "heading": "0.72.4.post10 \u2014 HyperLink runs models on the phone",
+      "summary": "HyperLink runs models on the phone"
+    },
+    {
+      "version": "0.72.4.post9",
+      "key": "0.72.4.post9",
+      "aliases": [
+        "0.72.4-post9",
+        "0.72.4.post9"
+      ],
+      "kind": "post",
+      "heading": "0.72.4.post9 \u2014 HyperLink learns to catch up, notify and search",
+      "summary": "HyperLink learns to catch up, notify and search"
+    },
+    {
+      "version": "0.72.4.post8",
+      "key": "0.72.4.post8",
+      "aliases": [
+        "0.72.4-post8",
+        "0.72.4.post8"
+      ],
+      "kind": "post",
+      "heading": "0.72.4.post8 \u2014 deprecated modules say so where it can be seen",
+      "summary": "deprecated modules say so where it can be seen"
+    },
+    {
+      "version": "0.72.4.post7",
+      "key": "0.72.4.post7",
+      "aliases": [
+        "0.72.4-post7",
+        "0.72.4.post7"
+      ],
+      "kind": "post",
+      "heading": "0.72.4.post7 \u2014 the subsystem map describes the tree that exists",
+      "summary": "the subsystem map describes the tree that exists"
+    },
+    {
+      "version": "0.72.4.post6",
+      "key": "0.72.4.post6",
+      "aliases": [
+        "0.72.4-post6",
+        "0.72.4.post6"
+      ],
+      "kind": "post",
+      "heading": "0.72.4.post6 \u2014 the release guard stopped refusing prepared releases",
+      "summary": "the release guard stopped refusing prepared releases"
+    },
+    {
+      "version": "0.72.4.post5",
+      "key": "0.72.4.post5",
+      "aliases": [
+        "0.72.4-post5",
+        "0.72.4.post5"
+      ],
+      "kind": "post",
+      "heading": "0.72.4.post5 \u2014 `hypernix-t1 start` left nothing running",
+      "summary": "hypernix-t1 start left nothing running"
+    },
+    {
+      "version": "0.72.4.post4",
+      "key": "0.72.4.post4",
+      "aliases": [
+        "0.72.4-post4",
+        "0.72.4.post4"
+      ],
+      "kind": "post",
+      "heading": "0.72.4.post4 \u2014 `hnx runtime`, and why `hnx gather` printed the usage table",
+      "summary": "hnx runtime, and why hnx gather printed the usage table"
+    },
+    {
+      "version": "0.72.4.post2",
+      "key": "0.72.4.post2",
+      "aliases": [
+        "0.72.4-post2",
+        "0.72.4.post2"
+      ],
+      "kind": "post",
+      "heading": "0.72.4.post2 \u2014 Studio runs models itself, and the pinned llama.cpp builds again",
+      "summary": "Studio runs models itself, and the pinned llama.cpp builds again"
+    },
+    {
+      "version": "0.72.4.dev11",
+      "key": "0.72.4.dev11",
+      "aliases": [
+        "0.72.4.dev11",
+        "0.72.4dev11"
+      ],
+      "kind": "dev",
+      "heading": "0.72.4.dev11 \u2014 beta 1 full: `fuse box`, and a claim that did not survive being measured",
+      "summary": "beta 1 full: fuse box, and a claim that did not survive being measured"
+    },
+    {
+      "version": "0.72.4.dev10",
+      "key": "0.72.4.dev10",
+      "aliases": [
+        "0.72.4.dev10",
+        "0.72.4dev10"
+      ],
+      "kind": "dev",
+      "heading": "0.72.4.dev10 \u2014 beta 1 pt 1: `gather`, and Neo oven learns the house architecture",
+      "summary": "beta 1 pt 1: gather, and Neo oven learns the house architecture"
+    },
+    {
+      "version": "0.72.4.dev9",
+      "key": "0.72.4.dev9",
+      "aliases": [
+        "0.72.4.dev9",
+        "0.72.4dev9"
+      ],
+      "kind": "dev",
+      "heading": "0.72.4.dev9 \u2014 a llama.cpp that reads sub-bit models, and a desktop app",
+      "summary": "a llama.cpp that reads sub-bit models, and a desktop app"
+    },
+    {
+      "version": "0.72.4.dev8",
+      "key": "0.72.4.dev8",
+      "aliases": [
+        "0.72.4.dev8",
+        "0.72.4dev8"
+      ],
+      "kind": "dev",
+      "heading": "0.72.4.dev8 \u2014 HyperLink knows which machine it is talking to",
+      "summary": "HyperLink knows which machine it is talking to"
+    },
+    {
+      "version": "0.72.4.dev7",
+      "key": "0.72.4.dev7",
+      "aliases": [
+        "0.72.4.dev7",
+        "0.72.4dev7"
+      ],
+      "kind": "dev",
+      "heading": "0.72.4.dev7 \u2014 what training is doing, and the controls for it",
+      "summary": "what training is doing, and the controls for it"
+    },
+    {
+      "version": "0.72.4.dev6",
+      "key": "0.72.4.dev6",
+      "aliases": [
+        "0.72.4.dev6",
+        "0.72.4dev6"
+      ],
+      "kind": "dev",
+      "heading": "0.72.4.dev6 \u2014 one way to ask about a GPU, whoever made it",
+      "summary": "one way to ask about a GPU, whoever made it"
+    },
+    {
+      "version": "0.72.4.dev5",
+      "key": "0.72.4.dev5",
+      "aliases": [
+        "0.72.4.dev5",
+        "0.72.4dev5"
+      ],
+      "kind": "dev",
+      "heading": "0.72.4.dev5 \u2014 `hypernix-t1 launch-script`",
+      "summary": "hypernix-t1 launch-script"
+    },
+    {
+      "version": "0.72.4.dev4",
+      "key": "0.72.4.dev4",
+      "aliases": [
+        "0.72.4.dev4",
+        "0.72.4dev4"
+      ],
+      "kind": "dev",
+      "heading": "0.72.4.dev4 \u2014 trusted-network mode",
+      "summary": "trusted-network mode"
+    },
+    {
+      "version": "0.72.4.dev3",
+      "key": "0.72.4.dev3",
+      "aliases": [
+        "0.72.4.dev3",
+        "0.72.4dev3"
+      ],
+      "kind": "dev",
+      "heading": "0.72.4.dev3 \u2014 one answer to \"where did this come from\"",
+      "summary": "one answer to \"where did this come from\""
+    },
+    {
+      "version": "0.72.4.dev2",
+      "key": "0.72.4.dev2",
+      "aliases": [
+        "0.72.4.dev2",
+        "0.72.4dev2"
+      ],
+      "kind": "dev",
+      "heading": "0.72.4.dev2 \u2014 the registry the server actually reads",
+      "summary": "the registry the server actually reads"
+    },
+    {
+      "version": "0.72.4.dev1",
+      "key": "0.72.4.dev1",
+      "aliases": [
+        "0.72.4.dev1",
+        "0.72.4dev1"
+      ],
+      "kind": "dev",
+      "heading": "0.72.4.dev1 \u2014 HyperLink says why it cannot reach a server",
+      "summary": "HyperLink says why it cannot reach a server"
+    },
+    {
+      "version": "0.72.3.post7",
+      "key": "0.72.3.post7",
+      "aliases": [
+        "0.72.3-post7",
+        "0.72.3.post7"
+      ],
+      "kind": "post",
+      "heading": "0.72.3.post7 \u2014 \"it is installed already\", and it was",
+      "summary": "\"it is installed already\", and it was"
+    },
+    {
+      "version": "0.72.3.post6",
+      "key": "0.72.3.post6",
+      "aliases": [
+        "0.72.3-post6",
+        "0.72.3.post6"
+      ],
+      "kind": "post",
+      "heading": "0.72.3.post6 \u2014 `hypernix-t1 index`, and three more from the field",
+      "summary": "hypernix-t1 index, and three more from the field"
+    },
+    {
+      "version": "0.72.3.post5",
+      "key": "0.72.3.post5",
+      "aliases": [
+        "0.72.3-post5",
+        "0.72.3.post5"
+      ],
+      "kind": "post",
+      "heading": "0.72.3.post5 \u2014 three things found by running the commands on a real machine",
+      "summary": "three things found by running the commands on a real machine"
+    },
+    {
+      "version": "0.72.3.post4",
+      "key": "0.72.3.post4",
+      "aliases": [
+        "0.72.3-post4",
+        "0.72.3.post4"
+      ],
+      "kind": "post",
+      "heading": "0.72.3.post4 \u2014 the accelerator path, actually on an accelerator",
+      "summary": "the accelerator path, actually on an accelerator"
+    },
+    {
+      "version": "0.72.3.post3",
+      "key": "0.72.3.post3",
+      "aliases": [
+        "0.72.3-post3",
+        "0.72.3.post3"
+      ],
+      "kind": "post",
+      "heading": "0.72.3.post3 \u2014 CUDA, ROCm, Metal, Intel; and the Vulkan answer",
+      "summary": "CUDA, ROCm, Metal, Intel; and the Vulkan answer"
+    },
+    {
+      "version": "0.72.3.post2",
+      "key": "0.72.3.post2",
+      "aliases": [
+        "0.72.3-post2",
+        "0.72.3.post2"
+      ],
+      "kind": "post",
+      "heading": "0.72.3.post2 \u2014 new quant types, hyprslug-headers, tvtoppro",
+      "summary": "new quant types, hyprslug-headers, tvtoppro"
+    },
+    {
+      "version": "0.72.3.post1 (\"pt 4\")",
+      "key": "0.72.3.post1",
+      "aliases": [
+        "0.72.3-post1",
+        "0.72.3.post1"
+      ],
+      "kind": "patch",
+      "heading": "0.72.3.post1 (\"pt 4\") \u2014 the sub-bit models actually run",
+      "summary": "the sub-bit models actually run"
+    },
+    {
+      "version": "0.72.3 pt 3",
+      "key": "0.72.3 pt 3",
+      "aliases": [
+        "0.72.3 pt 3",
+        "0.72.3-pt 3",
+        "0.72.3-pt-3"
+      ],
+      "kind": "patch",
+      "heading": "0.72.3 pt 3 \u2014 hyprslug grows up",
+      "summary": "hyprslug grows up"
+    },
+    {
+      "version": "0.72.3 pt 2",
+      "key": "0.72.3 pt 2",
+      "aliases": [
+        "0.72.3 pt 2",
+        "0.72.3-pt 2",
+        "0.72.3-pt-2"
+      ],
+      "kind": "patch",
+      "heading": "0.72.3 pt 2 \u2014 T1 v1.0.2026.9.2.1",
+      "summary": "T1 v1.0.2026.9.2.1"
+    },
+    {
+      "version": "0.72.3",
+      "key": "0.72.3",
+      "aliases": [
+        "0.72.3"
+      ],
+      "kind": "stable",
+      "heading": "0.72.3 \u2014 T1 v1.0.2026.8.1.1",
+      "summary": "T1 v1.0.2026.8.1.1"
+    },
+    {
+      "version": "0.72.2.post5",
+      "key": "0.72.2.post5",
+      "aliases": [
+        "0.72.2-post5",
+        "0.72.2.post5"
+      ],
+      "kind": "post",
+      "heading": "0.72.2.post5 \u2014 T1 v1.0.2026.8.1.1",
+      "summary": "T1 v1.0.2026.8.1.1"
+    },
+    {
+      "version": "0.72.2.post4",
+      "key": "0.72.2.post4",
+      "aliases": [
+        "0.72.2-post4",
+        "0.72.2.post4"
+      ],
+      "kind": "post",
+      "heading": "0.72.2.post4 \u2014 T2S keys that were refused for no good reason",
+      "summary": "T2S keys that were refused for no good reason"
+    },
+    {
+      "version": "0.72.2.post3",
+      "key": "0.72.2.post3",
+      "aliases": [
+        "0.72.2-post3",
+        "0.72.2.post3"
+      ],
+      "kind": "post",
+      "heading": "0.72.2.post3 \u2014 \"0.72.2-3\": waiter explains itself",
+      "summary": "\"0.72.2-3\": waiter explains itself"
+    },
+    {
+      "version": "0.72.2.post2",
+      "key": "0.72.2.post2",
+      "aliases": [
+        "0.72.2-post2",
+        "0.72.2.post2"
+      ],
+      "kind": "post",
+      "heading": "0.72.2.post2 \u2014 \"0.72.2-2\"",
+      "summary": "\"0.72.2-2\""
+    },
+    {
+      "version": "0.72.2",
+      "key": "0.72.2",
+      "aliases": [
+        "0.72.2"
+      ],
+      "kind": "stable",
+      "heading": "0.72.2 \u2014 the installer",
+      "summary": "the installer"
+    },
+    {
+      "version": "0.72.1",
+      "key": "0.72.1",
+      "aliases": [
+        "0.72.1"
+      ],
+      "kind": "stable",
+      "heading": "0.72.1 \u2014 T1 v1.0.26.8.1.0",
+      "summary": "T1 v1.0.26.8.1.0"
+    },
+    {
+      "version": "0.72.0",
+      "key": "0.72.0",
+      "aliases": [
+        "0.72.0"
+      ],
+      "kind": "stable",
+      "heading": "0.72.0 \u2014 T1 v1.0.26.8.0.1",
+      "summary": "T1 v1.0.26.8.0.1"
+    },
+    {
+      "version": "0.71.5rc2",
+      "key": "0.71.5rc2",
+      "aliases": [
+        "0.71.5rc2"
+      ],
+      "kind": "rc",
+      "heading": "0.71.5rc2",
+      "summary": "\ud81a\udca5 hyped-pro's Escape key cancelled nothing. It set a flag that made the TUI discard the answer when it eventually arrived \u2014 the model kept generating, a cloud call kept billing, and the prompt stayed locked the whole time. The cause was one layer down: the bridge dispatched every request inline off its stdin loop, so a ninety-second chat held that loop for\u2026"
+    },
+    {
+      "version": "0.71.5.post1",
+      "key": "0.71.5.post1",
+      "aliases": [
+        "0.71.5-post1",
+        "0.71.5.post1"
+      ],
+      "kind": "post",
+      "heading": "0.71.5.post1",
+      "summary": "Everything between Beta 3 and the release candidate: three modules that didn't work, and the documentation site."
+    },
+    {
+      "version": "0.71.5b3",
+      "key": "0.71.5b3",
+      "aliases": [
+        "0.71.5b3"
+      ],
+      "kind": "beta",
+      "heading": "0.71.5b3",
+      "summary": "\u2728 T1 API \u2014 Beta 3: production hardening. The T1 API is now feature-complete against its spec. PostgreSQL, a durable audit log, mTLS, advanced rate limiting, IP allow/blocklists, real remote multi-server module transport, the key directory, usage cost/estimates/forecasts, the complete SDK, the full waiter TUI, and production configuration validation. Full\u2026"
+    },
+    {
+      "version": "0.71.5b2",
+      "key": "0.71.5b2",
+      "aliases": [
+        "0.71.5b2"
+      ],
+      "kind": "beta",
+      "heading": "0.71.5b2",
+      "summary": "\u2728 T1 API \u2014 Beta 2 \u2014 Module registry, server registry, async jobs, event streaming, the model routing/quota-cascade engine, and billing/payment-token support. Matches the spec's Beta 2 scope; full contract in wiki/T1-API.md."
+    },
+    {
+      "version": "0.71.5b1",
+      "key": "0.71.5b1",
+      "aliases": [
+        "0.71.5b1"
+      ],
+      "kind": "beta",
+      "heading": "0.71.5b1",
+      "summary": "\u2728 T1 API (hypernix.t1api) \u2014 Beta 1 \u2014 Controlled HTTP gateway into HyperNix-pip, built as a mountable FastAPI module (hypernix.t1api.createapp). Implements the spec's Beta 1 scope exactly: core FastAPI server, T1 authentication + scoped tokens, model registry, basic per-key/per-model usage tracking, /health /status /models + auth/usage/config endpoints,\u2026"
+    },
+    {
+      "version": "0.71.5a2",
+      "key": "0.71.5a2",
+      "aliases": [
+        "0.71.5a2"
+      ],
+      "kind": "alpha",
+      "heading": "0.71.5a2",
+      "summary": "\u2728 neooven \u2014 Unified Model Management Module \u2014 New hypernix.neooven module replaces oldoven, oldfridge, mediocrefridge, and newfridge as the single, production-ready entry point for model loading, generation, training, and evaluation."
+    },
+    {
+      "version": "0.71.5A1",
+      "key": "0.71.5a1",
+      "aliases": [
+        "0.71.5a1"
+      ],
+      "kind": "alpha",
+      "heading": "0.71.5A1",
+      "summary": "\u2728 Vera Redesign \u2014 Transformed Vera from an AI assistant into a robust smoke-testing and linting tool (hnx vera). Added support for ast/ruff linting, argument testing (-FT), dry-runs (-dr), full-runs (-C), timeout tracking, and pytest fallbacks."
+    },
+    {
+      "version": "0.71.4-3",
+      "key": "0.71.4-3",
+      "aliases": [
+        "0.71.4-3"
+      ],
+      "kind": "patch",
+      "heading": "0.71.4-3",
+      "summary": "\u2702\ufe0f removed the web ui due to it being full of lies and incomplete information and features"
+    },
+    {
+      "version": "0.71.4b10",
+      "key": "0.71.4b10",
+      "aliases": [
+        "0.71.4b10"
+      ],
+      "kind": "beta",
+      "heading": "0.71.4b10",
+      "summary": "\u2728 Public release workflow: accurate \"commits since\" for stable releases \u2014 public-release.yml used git describe --tags --abbrev=0 to find the changelog baseline, which returns the immediately preceding tag regardless of whether it was a prerelease. Cutting a stable release after several betas (e.g. v0.71.4b6 \u2192 b7 \u2192 b8 \u2192 b9 \u2192 stable) meant the changelog only\u2026"
+    },
+    {
+      "version": "0.71.4b9",
+      "key": "0.71.4b9",
+      "aliases": [
+        "0.71.4b9"
+      ],
+      "kind": "beta",
+      "heading": "0.71.4b9",
+      "summary": "\ud83d\udc1b More catalog fixes \u2014 qwable-3.6-27b-mtp (Mia-AiLab/Qwable-3.6-27b-MTP) wasn't just wrong format (safetensors \u2192 gguf) \u2014 the community has reported llama.cpp failing to load it entirely (\"missing tensor 'blk.64.attnnorm.weight'\") and the repo owner's own comment confirms it was mid-fix, not stable. Swapped to the same publisher's plain (non-MTP)\u2026"
+    },
+    {
+      "version": "0.71.4b8",
+      "key": "0.71.4b8",
+      "aliases": [
+        "0.71.4b8"
+      ],
+      "kind": "beta",
+      "heading": "0.71.4b8",
+      "summary": "\ud83d\udc1b Nanbeige fix \u2014 nanbeige4.2-3b-gguf's filename had the wrong case (nanbeige4.2-3b-Q4KM.gguf vs the repo's actual Nanbeige4.2-3B-Q4KM.gguf, a 404), and \u2014 the bigger issue \u2014 it was wired to the vanilla backend when Nanbeige4.2 uses a looped-transformer architecture (general.architecture=nanbeige) not in upstream llama.cpp at all, confirmed on the model\u2026"
+    },
+    {
+      "version": "0.71.4b7",
+      "key": "0.71.4b7",
+      "aliases": [
+        "0.71.4b7"
+      ],
+      "kind": "beta",
+      "heading": "0.71.4b7",
+      "summary": "\u2728 New module: hypernix.multilama \u2014 Unified interface over several llama.cpp variants, since one GGUF-publishing fork doesn't necessarily load on another's binaries. Backends: vanilla (upstream ggml-org/llama.cpp via the existing llama-cpp-python in-process bindings), ik (ikawrakow/ikllama.cpp \u2014 newer SOTA quant types, faster MoE offload), prismml\u2026"
+    },
+    {
+      "version": "0.71.4b6",
+      "key": "0.71.4b6",
+      "aliases": [
+        "0.71.4b6"
+      ],
+      "kind": "beta",
+      "heading": "0.71.4b6",
+      "summary": "\u2728 hyped+/hyped-pro real provider dispatch \u2014 Replaced the mocked chat reply with real dispatch through a shared Python layer (hypernix.hypedprocore, called from the Node TUI via a persistent hypernix.hypedprobridge worker): real Anthropic Messages / OpenAI-compatible HTTP calls for cloud models, real local inference via hypernix.oldoven for HuggingFace\u2026"
+    },
+    {
+      "version": "0.71.4b2",
+      "key": "0.71.4b2",
+      "aliases": [
+        "0.71.4b2"
+      ],
+      "kind": "beta",
+      "heading": "0.71.4b2",
+      "summary": "\u2728 hyped+ (hyped-pro) Node.js TUI \u2014 Standalone Node.js interactive CLI (hyped+ / hyped-pro) featuring a locked multi-panel layout inspired by OpenClaw, Qwen Code CLI, Claude Desktop, and Claude CLI. Includes quick 2D pixel art coffee mascot startup animation, 256-color Hyped theme, and instant execution."
+    },
+    {
+      "version": "0.71.1",
+      "key": "0.71.1",
+      "aliases": [
+        "0.71.1"
+      ],
+      "kind": "stable",
+      "heading": "0.71.1",
+      "summary": "\u2728 hnx map \u2014 a new steampunk schematic TUI. Dials represent parameter"
+    },
+    {
+      "version": "0.70.6-3",
+      "key": "0.70.6-3",
+      "aliases": [
+        "0.70.6-3"
+      ],
+      "kind": "patch",
+      "heading": "0.70.6-3",
+      "summary": "\u2728 all imports are now lazy, speeding the intire package up."
+    },
+    {
+      "version": "0.70.6",
+      "key": "0.70.6",
+      "aliases": [
+        "0.70.6"
+      ],
+      "kind": "stable",
+      "heading": "0.70.6",
+      "summary": "\u2728 Pressure Cooker v5S. Added new oscillation resistant cosin 3d, pressure diffusion low power optimizer PressureCookerV5S. It targets a 2.1x speedup over AdamW while using less RAM."
+    },
+    {
+      "version": "0.70.5b2",
+      "key": "0.70.5b2",
+      "aliases": [
+        "0.70.5b2"
+      ],
+      "kind": "beta",
+      "heading": "0.70.5b2",
+      "summary": "\u2728 Net Module. New hypernix.net module for distributed network operations and Tailscale integration. Features: config, auto-setup, m-setup, connect, status, m-ip, a-il (auto-connect), mutli-a-port, ex-port, s-storage (distributed storage sharing), onef-all, tail acheck (automatic Python script checks over Tailscale SSH), and tail stop. Accessible via hnx\u2026"
+    },
+    {
+      "version": "0.70.5b1",
+      "key": "0.70.5b1",
+      "aliases": [
+        "0.70.5b1"
+      ],
+      "kind": "beta",
+      "heading": "0.70.5b1",
+      "summary": "\u2728 Brewer Module. New hypernix.brewer module for building fully custom transformer architectures from scratch with no base model. Features: BrewerConfig dataclass, BrewerModel (RMSNorm + RoPE + GQA + SwiGLU + optional sliding-window), the hyperNix0x-v2 preset family (Small 9L/ctx=20482, Medium 18L/ctx=40964, Large 36L/ctx=103724), training loop with cosine\u2026"
+    },
+    {
+      "version": "0.70.5a2",
+      "key": "0.70.5a2",
+      "aliases": [
+        "0.70.5a2"
+      ],
+      "kind": "alpha",
+      "heading": "0.70.5a2",
+      "summary": "\u2728 Massive Model Support Expansion. Added support for GLM 5.2, Nex-N2, more Nemo models, LFM 2.5, SmolLM 3, Z Image, all Whisper models, DeepSeekV4, Kimi K2.5+, more Gemma 4, more Qwen, and Mimo models. Added explicit support for \"Model Families\" grouping."
+    },
+    {
+      "version": "0.70.4b11",
+      "key": "0.70.4b11",
+      "aliases": [
+        "0.70.4b11"
+      ],
+      "kind": "beta",
+      "heading": "0.70.4b11",
+      "summary": "\u2728 qa \u2014 Q&A dataset formatter. New module (hypernix.qa.QAProcessor)"
+    },
+    {
+      "version": "0.70.5b2",
+      "key": "0.70.5b2",
+      "aliases": [
+        "0.70.5b2"
+      ],
+      "kind": "beta",
+      "heading": "0.70.5b2",
+      "summary": "\u2728 Net Module. New hypernix.net module for distributed network operations and Tailscale integration. Features: config, auto-setup, m-setup, connect, status, m-ip, a-il (auto-connect), mutli-a-port, ex-port, s-storage (distributed storage sharing), onef-all, tail acheck (automatic Python script checks over Tailscale SSH), and tail stop. Accessible via hnx\u2026"
+    },
+    {
+      "version": "0.70.5b1",
+      "key": "0.70.5b1",
+      "aliases": [
+        "0.70.5b1"
+      ],
+      "kind": "beta",
+      "heading": "0.70.5b1",
+      "summary": "\u2728 hnx CLI Shortcut. Added a new CLI shortcut alias hnx which matches all capability of the main hypernix command."
+    },
+    {
+      "version": "0.70.3b2",
+      "key": "0.70.3b2",
+      "aliases": [
+        "0.70.3b2"
+      ],
+      "kind": "beta",
+      "heading": "0.70.3b2",
+      "summary": "\u2728 Web UI ground-up rebuild. Replaced the monolithic inline HTML dashboard with a modular static frontend (webuistatic/) served by a threaded HTTP server. Tailscale is now opt-in only via -T / --tailscale; local-only is the default. Fixed the WebUIServer constructor mismatch that broke CLI launches."
+    },
+    {
+      "version": "0.70.3",
+      "key": "0.70.3",
+      "aliases": [
+        "0.70.3"
+      ],
+      "kind": "stable",
+      "heading": "0.70.3",
+      "summary": "\u2728 lazysuzan \u2014 High-efficiency decentralized multi-GPU linking. A new module allowing linking of multiple GPUs without a physical NVLink, utilizing fp8/int8/topk gradient compression, overlapped backward-pass communication, and a custom P2P ring topology to bypass standard NCCL bottlenecks."
+    },
+    {
+      "version": "0.70.1",
+      "key": "0.70.1",
+      "aliases": [
+        "0.70.1"
+      ],
+      "kind": "stable",
+      "heading": "0.70.1",
+      "summary": "\u2728 WebUI Design Rewrite. Completely rebuilt the webui.py frontend using a premium glassmorphism aesthetic. Removed generic styles in favor of vibrant gradients, deep blurred backgrounds, dynamic hover animations, and a sleek dark mode. The UI now looks strictly modern and state-of-the-art."
+    },
+    {
+      "version": "0.70.0",
+      "key": "0.70.0",
+      "aliases": [
+        "0.70.0"
+      ],
+      "kind": "stable",
+      "heading": "0.70.0",
+      "summary": "\u2728 abbicus \u2014 Automatic token regulation and curriculum tuning. New"
+    },
+    {
+      "version": "0.61.4",
+      "key": "0.61.4",
+      "aliases": [
+        "0.61.4"
+      ],
+      "kind": "stable",
+      "heading": "0.61.4",
+      "summary": "\ud83d\udda5\ufe0f tvtop btop-style multi-panel rewrite. Reported on a"
+    },
+    {
+      "version": "0.61.1",
+      "key": "0.61.1",
+      "aliases": [
+        "0.61.1"
+      ],
+      "kind": "stable",
+      "heading": "0.61.1",
+      "summary": "\u2728 hyped chat CLI. New high-quality TUI chat CLI registered"
+    },
+    {
+      "version": "0.61.0",
+      "key": "0.61.0",
+      "aliases": [
+        "0.61.0"
+      ],
+      "kind": "stable",
+      "heading": "0.61.0",
+      "summary": "\ud83d\udc0d Python 3.14 support. `requires-python` bumped to"
+    },
+    {
+      "version": "0.60.0",
+      "key": "0.60.0",
+      "aliases": [
+        "0.60.0"
+      ],
+      "kind": "stable",
+      "heading": "0.60.0",
+      "summary": "\u2728 Eight new modules \u2014 four headline + four multi-tier."
+    },
+    {
+      "version": "0.52.6",
+      "key": "0.52.6",
+      "aliases": [
+        "0.52.6"
+      ],
+      "kind": "stable",
+      "heading": "0.52.6",
+      "summary": "\ud83d\udc1b More forgiving smokealarm kwargs. Continuation of the"
+    },
+    {
+      "version": "0.52.5",
+      "key": "0.52.5",
+      "aliases": [
+        "0.52.5"
+      ],
+      "kind": "stable",
+      "heading": "0.52.5",
+      "summary": "\ud83d\udc1b smokealarm is forgiving about kwargs. Reported by a"
+    },
+    {
+      "version": "0.52.4",
+      "key": "0.52.4",
+      "aliases": [
+        "0.52.4"
+      ],
+      "kind": "stable",
+      "heading": "0.52.4",
+      "summary": "\ud83d\udc1b CodeOven.chat no longer crashes with ``ValueError: too many"
+    },
+    {
+      "version": "0.52.3",
+      "key": "0.52.3",
+      "aliases": [
+        "0.52.3"
+      ],
+      "kind": "stable",
+      "heading": "0.52.3",
+      "summary": "\ud83d\udd27 Auto version bump from CI (no code changes vs 0.51.3)."
+    },
+    {
+      "version": "0.51.3",
+      "key": "0.51.3",
+      "aliases": [
+        "0.51.3"
+      ],
+      "kind": "stable",
+      "heading": "0.51.3",
+      "summary": "\u2728 hypernix.quantize rewrite \u2014 full llama.cpp catalog."
+    },
+    {
+      "version": "0.51.2.1",
+      "key": "0.51.2.1",
+      "aliases": [
+        "0.51.2.1"
+      ],
+      "kind": "other",
+      "heading": "0.51.2.1",
+      "summary": "\ud83d\udc1b PyPI logo broken-image fix (carried over from 0.51.1.2). The 0.51.1 / 0.51.1.1"
+    },
+    {
+      "version": "0.51.1.1",
+      "key": "0.51.1.1",
+      "aliases": [
+        "0.51.1.1"
+      ],
+      "kind": "other",
+      "heading": "0.51.1.1",
+      "summary": "\ud83c\udfa8 Logo file landed. `assets/logo.png` (1408 \u00d7 768 RGBA,"
+    },
+    {
+      "version": "0.51.1",
+      "key": "0.51.1",
+      "aliases": [
+        "0.51.1"
+      ],
+      "kind": "stable",
+      "heading": "0.51.1",
+      "summary": "\ud83d\udc1b Five bug-fix patches across three review passes \u2014 one"
+    },
+    {
+      "version": "0.51.0",
+      "key": "0.51.0",
+      "aliases": [
+        "0.51.0"
+      ],
+      "kind": "stable",
+      "heading": "0.51.0",
+      "summary": "\u2728 Chat-first release. Five new modules + first-class support"
+    },
+    {
+      "version": "0.50.0",
+      "key": "0.50.0",
+      "aliases": [
+        "0.50.0"
+      ],
+      "kind": "stable",
+      "heading": "0.50.0",
+      "summary": "\u2728 Four new kitchen modules."
+    },
+    {
+      "version": "0.49.0",
+      "key": "0.49.0",
+      "aliases": [
+        "0.49.0"
+      ],
+      "kind": "stable",
+      "heading": "0.49.0",
+      "summary": "\u2728 hypernix.lunchbox \u2014 consistent-schema dataset packager."
+    },
+    {
+      "version": "0.48.0",
+      "key": "0.48.0",
+      "aliases": [
+        "0.48.0"
+      ],
+      "kind": "stable",
+      "heading": "0.48.0",
+      "summary": "\u2728 pressurecooker rewrite \u2014 4 device-tuned tiers + universal"
+    },
+    {
+      "version": "0.47.0",
+      "key": "0.47.0",
+      "aliases": [
+        "0.47.0"
+      ],
+      "kind": "stable",
+      "heading": "0.47.0",
+      "summary": "\u2728 deepfryer \u2014 2-tier model-weight perturbation. LightFry"
+    },
+    {
+      "version": "0.46.1",
+      "key": "0.46.1",
+      "aliases": [
+        "0.46.1"
+      ],
+      "kind": "stable",
+      "heading": "0.46.1",
+      "summary": "\ud83d\udee1\ufe0f nix short-name fallback chain."
+    },
+    {
+      "version": "0.46.0",
+      "key": "0.46.0",
+      "aliases": [
+        "0.46.0"
+      ],
+      "kind": "stable",
+      "heading": "0.46.0",
+      "summary": "\u2728 saltshaker \u2014 3-tier gentle data augmentation."
+    },
+    {
+      "version": "0.45.3",
+      "key": "0.45.3",
+      "aliases": [
+        "0.45.3"
+      ],
+      "kind": "stable",
+      "heading": "0.45.3",
+      "summary": "\ud83d\udee1\ufe0f smokealarm.GasAlarm accepts preset=. One-string shortcut"
+    },
+    {
+      "version": "0.45.2",
+      "key": "0.45.2",
+      "aliases": [
+        "0.45.2"
+      ],
+      "kind": "stable",
+      "heading": "0.45.2",
+      "summary": "\ud83d\udc1b Every pan accepts contextlength= and maxchars=. Reported:"
+    },
+    {
+      "version": "0.45.1",
+      "key": "0.45.1",
+      "aliases": [
+        "0.45.1"
+      ],
+      "kind": "stable",
+      "heading": "0.45.1",
+      "summary": "\ud83d\udc1b Pan positional-argument fix. Pan inherited name: str as a"
+    },
+    {
+      "version": "0.45.0",
+      "key": "0.45.0",
+      "aliases": [
+        "0.45.0"
+      ],
+      "kind": "stable",
+      "heading": "0.45.0",
+      "summary": "\u2728 Espresso, blender, toaster, foodprocessor, smoker \u2014 five new"
+    },
+    {
+      "version": "0.44.0",
+      "key": "0.44.0",
+      "aliases": [
+        "0.44.0"
+      ],
+      "kind": "stable",
+      "heading": "0.44.0",
+      "summary": "\u2728 Kitchen modules + pressurecooker optimizer. Seven new"
+    },
+    {
+      "version": "0.43.0",
+      "key": "0.43.0",
+      "aliases": [
+        "0.43.0"
+      ],
+      "kind": "stable",
+      "heading": "0.43.0",
+      "summary": "\u2728 smokealarm \u2014 four-tier training-step planner + mid-run"
+    },
+    {
+      "version": "0.42.0",
+      "key": "0.42.0",
+      "aliases": [
+        "0.42.0"
+      ],
+      "kind": "stable",
+      "heading": "0.42.0",
+      "summary": "\u2728 newrange / oldrange / industrialrange \u2014 three"
+    },
+    {
+      "version": "0.41.0",
+      "key": "0.41.0",
+      "aliases": [
+        "0.41.0"
+      ],
+      "kind": "stable",
+      "heading": "0.41.0",
+      "summary": "\u2728 CUDA 6.1 / Pascal support. computecapability, ispascal,"
+    },
+    {
+      "version": "0.40.0",
+      "key": "0.40.0",
+      "aliases": [
+        "0.40.0"
+      ],
+      "kind": "stable",
+      "heading": "0.40.0",
+      "summary": "\u2728 freezer module \u2014 VRAM manager. OldFreezer (8 \u2013 10 GB,"
+    },
+    {
+      "version": "0.36.0",
+      "key": "0.36.0",
+      "aliases": [
+        "0.36.0"
+      ],
+      "kind": "stable",
+      "heading": "0.36.0",
+      "summary": "\u2728 oldfridge / mediocrefridge / newfridge \u2014 memory"
+    },
+    {
+      "version": "0.35.0",
+      "key": "0.35.0",
+      "aliases": [
+        "0.35.0"
+      ],
+      "kind": "stable",
+      "heading": "0.35.0",
+      "summary": "\u2728 Gemma 4, Qwen 3.5 & 3.6, GLM 5.x, Nix collection presets. New"
+    },
+    {
+      "version": "0.34.0",
+      "key": "0.34.0",
+      "aliases": [
+        "0.34.0"
+      ],
+      "kind": "stable",
+      "heading": "0.34.0",
+      "summary": "\u2728 AutoModel fallback. loadsnapshot routes any non-HyperNix"
+    },
+    {
+      "version": "0.33.0",
+      "key": "0.33.0",
+      "aliases": [
+        "0.33.0"
+      ],
+      "kind": "stable",
+      "heading": "0.33.0",
+      "summary": "\u2728 Windows + macOS support. Cross-platform doctor, path"
+    },
+    {
+      "version": "0.32.1",
+      "key": "0.32.1",
+      "aliases": [
+        "0.32.1"
+      ],
+      "kind": "stable",
+      "heading": "0.32.1",
+      "summary": "\ud83d\udc1b Fall back to the slow tokenizer when the tokenizers crate is too"
+    },
+    {
+      "version": "0.32.0",
+      "key": "0.32.0",
+      "aliases": [
+        "0.32.0"
+      ],
+      "kind": "stable",
+      "heading": "0.32.0",
+      "summary": "\u2728 torch 2.7+ (incl. CUDA 11.8 builds)."
+    },
+    {
+      "version": "0.31.0",
+      "key": "0.31.0",
+      "aliases": [
+        "0.31.0"
+      ],
+      "kind": "stable",
+      "heading": "0.31.0",
+      "summary": "\u2728 Chat REPL. hypernix chat --repo-id <short-name> plus"
+    },
+    {
+      "version": "0.30.0",
+      "key": "0.30.0",
+      "aliases": [
+        "0.30.0"
+      ],
+      "kind": "stable",
+      "heading": "0.30.0",
+      "summary": "\u2728 oldoven code-generation wrapper. preheat, CodeOven,"
+    },
+    {
+      "version": "0.21.0",
+      "key": "0.21.0",
+      "aliases": [
+        "0.21.0"
+      ],
+      "kind": "stable",
+      "heading": "0.21.0",
+      "summary": "\u2728 Download every file the model needs \u2014 not just weights \u2014 so the"
+    },
+    {
+      "version": "0.2.0",
+      "key": "0.2.0",
+      "aliases": [
+        "0.2.0"
+      ],
+      "kind": "stable",
+      "heading": "0.2.0",
+      "summary": "\u2728 First subcommand-based CLI. train module scaffold. Fixed"
+    },
+    {
+      "version": "0.61.4",
+      "key": "0.61.4",
+      "aliases": [
+        "0.61.4"
+      ],
+      "kind": "stable",
+      "heading": "0.61.4",
+      "summary": "\ud83d\udda5\ufe0f Interactive TUI/CLI (hypernix-cli) \u2014 Rich-based interactive menu system with fallback mode for all major operations: model management, training control, ASR/TTS pipelines, AI assistant, and Web UI launcher. Commands include models, train, asr, tts, pipeline, assistant, and webui."
+    }
+  ]
+}

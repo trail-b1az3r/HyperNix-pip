@@ -40,6 +40,7 @@ export default function App() {
   const [systemStats, setSystemStats] = useState([])
   const [codeStats, setCodeStats] = useState(null)
   const [releaseTimeline, setReleaseTimeline] = useState([])
+  const [changelogEntries, setChangelogEntries] = useState([])
   // Surfaces best-effort data-fetch failures in the UI instead of silently
   // showing stale zeroes forever — StatsPage reads this to show a small
   // inline notice rather than pretending the numbers are current.
@@ -155,19 +156,68 @@ export default function App() {
         setGhStats({ stars: d.stargazers_count, forks: d.forks_count, issues: d.open_issues_count })
     }).catch(() => {})
 
-    fetch('https://api.github.com/repos/trail-b1az3r/HyperNix-pip/releases').then(r => r.json()).then(d => {
-      if (!Array.isArray(d)) return
-      setReleaseTimeline(d.slice(0, 15).map(r => ({
-        version: r.tag_name,
-        date: new Date(r.published_at).toLocaleDateString(),
-        description: r.body ? r.body.split('\n')[0] : 'Release',
-        isPreRelease: r.prerelease,
-        url: r.html_url,
-      })))
+    Promise.all([
+      fetch('./v1/changelog.json').then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('https://api.github.com/repos/trail-b1az3r/HyperNix-pip/releases?per_page=100').then(r => r.json()).catch(() => []),
+    ]).then(([changelog, releases]) => {
+      const entries = Array.isArray(changelog?.entries) ? changelog.entries : []
+      setChangelogEntries(entries)
+      if (!Array.isArray(releases)) return
+
+      const byAlias = new Map()
+      for (const entry of entries) {
+        for (const alias of (entry.aliases || [entry.key])) byAlias.set(String(alias).toLowerCase(), entry)
+      }
+      const normalize = value => String(value || '').trim().toLowerCase().replace(/^v/, '').replace(/_/g, '-').replace(/\s+/g, '-')
+      const kindFor = (version, fallbackPre = false) => {
+        const v = String(version || '').toLowerCase().replace(/^v/, '')
+        const base = v.match(/^\d+\.\d+\.\d+/)
+        const tail = base ? v.slice(base[0].length) : v
+        const c = tail.replace(/[._ -]+/g, '')
+        if (/post\d*$/.test(c)) return 'post'
+        if (/(a\d+|alpha\d*|pt\d*a)$/.test(c)) return 'alpha'
+        if (/(b\d+|beta\d*|pt\d*b)$/.test(c)) return 'beta'
+        if (/(rc\d+|releasecandidate\d*)$/.test(c)) return 'rc'
+        if (/(dev\d*|development)$/.test(c)) return 'dev'
+        if (/pt\d*/.test(c) || /[-_]\d+$/.test(tail)) return 'patch'
+        if (base && !tail.trim() && !fallbackPre) return 'stable'
+        return fallbackPre ? 'pre' : 'other'
+      }
+      const findEntry = tag => {
+        const n = normalize(tag)
+        const candidates = [n, n.replace(/-/g, ' '), n.replace(/-pt/g, ' pt'), n.replace(/-post/g, '.post'), n.replace(/dev(?=\d*$)/, '.dev')]
+        return candidates.map(x => byAlias.get(x) || byAlias.get(x.replace(/^v/, ''))).find(Boolean) || null
+      }
+      const timeline = releases.map(r => {
+        const entry = findEntry(r.tag_name)
+        const version = r.tag_name || r.name || 'unknown'
+        return {
+          version,
+          date: r.published_at ? new Date(r.published_at).toLocaleDateString() : '',
+          description: entry?.summary || (r.body ? r.body.split('\n').find(line => line.trim()) : 'Release'),
+          isPreRelease: r.prerelease,
+          releaseKind: entry?.kind || kindFor(version, r.prerelease),
+          changelogVersion: entry?.version || null,
+          url: r.html_url,
+        }
+      })
+      if (timeline.length) {
+        setReleaseTimeline(timeline)
+      } else {
+        setReleaseTimeline(entries.slice(0, 80).map(entry => ({
+          version: entry.version,
+          date: '',
+          description: entry.summary,
+          isPreRelease: entry.kind !== 'stable' && entry.kind !== 'post',
+          releaseKind: entry.kind,
+          changelogVersion: entry.version,
+          url: '',
+        })))
+      }
     }).catch(() => {})
   }, [])
 
-  const common = { downloads, olderDownloads, threeMonthDownloads, totalDownloads, statsUpdatedAt, ghStats, pypiInfo, pythonVersionStats, systemStats, releaseTimeline, version, statsError, codeStats }
+  const common = { downloads, olderDownloads, threeMonthDownloads, totalDownloads, statsUpdatedAt, ghStats, pypiInfo, pythonVersionStats, systemStats, releaseTimeline, changelogEntries, version, statsError, codeStats }
 
   if (aprilFoolsActive) {
     return <AprilFoolsPage />
