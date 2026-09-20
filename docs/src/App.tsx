@@ -5,11 +5,13 @@ import { EventBanner, AprilFoolsPage, getActiveSiteEvent, BANNER_HEIGHT } from '
 import { HomePage } from './pages/Home'
 import { DocsPage } from './pages/Docs'
 import { ApiPage } from './pages/Api'
+import { ApiDeepPage } from './pages/ApiDeep'
+import { T1ApiPage } from './pages/T1Api'
 import { StatsPage } from './pages/Stats'
 import { AboutPage } from './pages/About'
 import { LearnPage } from './pages/Learn'
 
-const PAGES = ['home', 'docs', 'api', 'learn', 'stats', 'about']
+const PAGES = ['home', 'docs', 'api', 'learn', 'stats', 'about', 'api-deep', 't1-api']
 
 export default function App() {
   const [page, setPage] = useState('home')
@@ -36,6 +38,7 @@ export default function App() {
   const [pypiInfo, setPypiInfo] = useState(null)
   const [pythonVersionStats, setPythonVersionStats] = useState([])
   const [systemStats, setSystemStats] = useState([])
+  const [codeStats, setCodeStats] = useState(null)
   const [releaseTimeline, setReleaseTimeline] = useState([])
   // Surfaces best-effort data-fetch failures in the UI instead of silently
   // showing stale zeroes forever — StatsPage reads this to show a small
@@ -76,6 +79,7 @@ export default function App() {
           if (d.downloads && d.downloads.older) setOlderDownloads(d.downloads.older)
           if (d.downloads && d.downloads.three_month) setThreeMonthDownloads(d.downloads.three_month)
           if (d.updated_at) setStatsUpdatedAt(d.updated_at)
+          if (d.total_lines !== undefined || d.contributors) setCodeStats(d)
           // Accept either a pre-aggregated array (python_versions / operating_systems,
           // matching the common "pypi-package-stats" action schema) or the raw
           // pypistats-style { data: [{category, downloads}, ...] } shape, since
@@ -140,6 +144,8 @@ export default function App() {
       }
     })
 
+    fetch('./v1/code-stats.json').then(r => r.ok ? r.json() : null).then(d => { if (d) setCodeStats(d) }).catch(() => {})
+
     fetch('https://pypi.org/pypi/hypernix/json').then(r => r.json()).then(d => {
       if (d.info) { setVersion(d.info.version); setPypiInfo(d.info) }
     }).catch(() => {})
@@ -161,7 +167,7 @@ export default function App() {
     }).catch(() => {})
   }, [])
 
-  const common = { downloads, olderDownloads, threeMonthDownloads, totalDownloads, statsUpdatedAt, ghStats, pypiInfo, pythonVersionStats, systemStats, releaseTimeline, version, statsError }
+  const common = { downloads, olderDownloads, threeMonthDownloads, totalDownloads, statsUpdatedAt, ghStats, pypiInfo, pythonVersionStats, systemStats, releaseTimeline, version, statsError, codeStats }
 
   if (aprilFoolsActive) {
     return <AprilFoolsPage />
@@ -172,11 +178,13 @@ export default function App() {
       fontFamily: 'var(--font-sans)' }}>
       <a href="#main-content" className="skip-link">Skip to content</a>
       <EventBanner event={activeEvent} dismissed={bannerDismissed} onDismiss={() => setBannerDismissed(true)} version={version} />
-      <Nav page={page} setPage={setPage} scrolled={scrolled} topOffset={bannerVisible ? BANNER_HEIGHT : 0} pages={PAGES} />
+      <Nav page={page} setPage={setPage} scrolled={scrolled} topOffset={bannerVisible ? BANNER_HEIGHT : 0} pages={PAGES.slice(0, 6)} />
       <main id="main-content" style={{ paddingTop: bannerVisible ? BANNER_HEIGHT : 0, transition: 'padding-top 0.2s ease' }}>
         {page === 'home' && <HomePage setPage={setPage} {...common} />}
         {page === 'docs' && <DocsPage />}
-        {page === 'api' && <ApiPage />}
+        {page === 'api' && <ApiPage setPage={setPage} />}
+        {page === 'api-deep' && <ApiDeepPage />}
+        {page === 't1-api' && <T1ApiPage />}
         {page === 'learn' && <LearnPage />}
         {page === 'stats' && <StatsPage {...common} />}
         {page === 'about' && <AboutPage />}

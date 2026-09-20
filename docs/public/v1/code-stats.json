@@ -1,0 +1,131 @@
+{
+  "definition": "non-blank source lines across repository code roots: src, scripts, tests, examples, bin, native, docs/src",
+  "total_lines": 177589,
+  "code_files": 543,
+  "top_files": [
+    {
+      "path": "src/hypernix/interfaces/hyped.py",
+      "lines": 2135
+    },
+    {
+      "path": "src/hypernix/hyped_pro.js",
+      "lines": 1921
+    },
+    {
+      "path": "src/hypernix/waiter/cli.py",
+      "lines": 1907
+    },
+    {
+      "path": "src/hypernix/t1api/routers/hyperlink.py",
+      "lines": 1887
+    },
+    {
+      "path": "src/hypernix/hyped_pro.ts",
+      "lines": 1796
+    },
+    {
+      "path": "src/hypernix/t1api/schemas.py",
+      "lines": 1597
+    },
+    {
+      "path": "src/hypernix/interfaces/cli.py",
+      "lines": 1394
+    },
+    {
+      "path": "src/hypernix/models/neo_oven.py",
+      "lines": 1389
+    },
+    {
+      "path": "src/hypernix/monitoring/tv.py",
+      "lines": 1337
+    },
+    {
+      "path": "src/hypernix/system/fusebox.py",
+      "lines": 1174
+    },
+    {
+      "path": "src/hypernix/monitoring/map.py",
+      "lines": 1122
+    },
+    {
+      "path": "docs/src/lib/data/learn-lessons.ts",
+      "lines": 1112
+    },
+    {
+      "path": "src/hypernix/quant/hyprslug.py",
+      "lines": 1107
+    },
+    {
+      "path": "src/hypernix/interfaces/hyped_pro_core.py",
+      "lines": 1102
+    },
+    {
+      "path": "tests/test_hypernix_t1_service.py",
+      "lines": 1100
+    },
+    {
+      "path": "src/hypernix/training/brewer.py",
+      "lines": 1083
+    },
+    {
+      "path": "tests/test_hyperlink_ios_wiring.py",
+      "lines": 1065
+    },
+    {
+      "path": "src/hypernix/monitoring/tvtoppro.py",
+      "lines": 1063
+    },
+    {
+      "path": "src/hypernix/models/hnxrun.py",
+      "lines": 1050
+    },
+    {
+      "path": "src/hypernix/security/gkey_cli.py",
+      "lines": 1024
+    },
+    {
+      "path": "tests/test_install_script.py",
+      "lines": 1024
+    },
+    {
+      "path": "src/hypernix/optimizers/pressure_cooker_v5s.py",
+      "lines": 1016
+    },
+    {
+      "path": "src/hypernix/data/gather.py",
+      "lines": 980
+    },
+    {
+      "path": "src/hypernix/models/old_oven.py",
+      "lines": 955
+    },
+    {
+      "path": "src/hypernix/security/t2keys.py",
+      "lines": 953
+    },
+    {
+      "path": "src/hypernix/security/keymaster.py",
+      "lines": 952
+    },
+    {
+      "path": "src/hypernix/training/train.py",
+      "lines": 917
+    },
+    {
+      "path": "src/hypernix/__init__.py",
+      "lines": 910
+    },
+    {
+      "path": "tests/test_v0710_gatekeeper_keymaster.py",
+      "lines": 910
+    },
+    {
+      "path": "tests/test_fusebox.py",
+      "lines": 897
+    }
+  ],
+  "contributors": [],
+  "history_available": false,
+  "commit": null,
+  "generated_at": null
+}

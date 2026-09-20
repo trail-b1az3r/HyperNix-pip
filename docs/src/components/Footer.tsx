@@ -1,5 +1,7 @@
 import { LogoMark } from './Logo'
 
+const PAGE_LABELS = { home:'Home', docs:'Docs', api:'API', 'api-deep':'API Deep', 't1-api':'T1 API', learn:'Learn', stats:'Stats', about:'About' }
+
 export function Footer({ page, setPage, version, pages }) {
   return (
     <footer style={{ borderTop: '1px solid var(--surface-2)', padding: '40px var(--space-gutter) 34px',

@@ -468,3 +468,16 @@ input:focus, textarea:focus { border-color: var(--accent) !important;
     overscroll-behavior-inline: contain;
   }
 }
+
+
+/* Source-generated expanded API reference pages */
+.reference-layout {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+@media (max-width: 720px) {
+  .reference-layout { grid-template-columns: 1fr; }
+  .reference-sidebar { position: static !important; max-height: none !important; overflow: visible !important; }
+}

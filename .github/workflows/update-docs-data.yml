@@ -1,0 +1,47 @@
+name: Update API and Code Stats
+
+# Full-history source scan for the docs site. This runs independently of the
+# PyPI download stats job because API/code data comes from the repository itself.
+# If the generated files are unchanged, no commit is created.
+
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-docs-data
+  cancel-in-progress: false
+
+jobs:
+  update:
+    name: regenerate source-derived docs data
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Generate API reference and code stats
+        run: python scripts/generate_docs_data.py
+
+      - name: Commit only when generated data changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- docs/public/v1/api-deep.json docs/public/v1/t1-api.json docs/public/v1/code-stats.json; then
+            echo "No API/code-stat changes — skipping commit."
+            exit 0
+          fi
+          git add docs/public/v1/api-deep.json docs/public/v1/t1-api.json docs/public/v1/code-stats.json
+          git commit -m "chore: update generated API and code stats"
+          git push

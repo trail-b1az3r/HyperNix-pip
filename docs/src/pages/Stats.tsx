@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { PageHeading, CountUp } from '../components/ui'
 
-function StatsPage({ downloads, olderDownloads, threeMonthDownloads, totalDownloads, statsUpdatedAt, ghStats, pypiInfo, pythonVersionStats, systemStats, releaseTimeline, version, statsError }) {
+function StatsPage({ downloads, olderDownloads, threeMonthDownloads, totalDownloads, statsUpdatedAt, ghStats, pypiInfo, pythonVersionStats, systemStats, releaseTimeline, version, statsError, codeStats }) {
   const windowBars = [
     { label: '24h', val: downloads.last_day },
     { label: '7d', val: downloads.last_week },
@@ -156,6 +156,52 @@ function StatsPage({ downloads, olderDownloads, threeMonthDownloads, totalDownlo
               </div>
             ))}
           </div>
+        </div>
+      )}
+      {codeStats && (
+        <div style={{ background:'var(--surface-3)', border:'1px solid var(--border-strong)', borderRadius:10, padding:'22px', marginBottom:18 }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', flexWrap:'wrap', gap:8, marginBottom:14 }}>
+            <h3 style={{ color:'var(--text)', margin:0, fontSize:14 }}>Codebase footprint & contributions</h3>
+            {codeStats.commit && <span style={{ color:'var(--text-faint)', fontSize:10.5, fontFamily:'var(--font-mono)' }}>at {String(codeStats.commit).slice(0,8)}</span>}
+          </div>
+          <div className="anim-stagger" style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))', gap:10, marginBottom:16 }}>
+            <div className="lift-card" style={{ background:'var(--surface-1)', border:'1px solid var(--border)', borderRadius:8, padding:'14px 12px', textAlign:'center' }}>
+              <div style={{ fontSize:23, fontWeight:800, color:'var(--accent)' }}><CountUp value={codeStats.total_lines || 0} /></div>
+              <div style={{ fontSize:11, color:'var(--text-faint)', marginTop:4 }}>Total lines of code</div>
+            </div>
+            <div className="lift-card" style={{ background:'var(--surface-1)', border:'1px solid var(--border)', borderRadius:8, padding:'14px 12px', textAlign:'center' }}>
+              <div style={{ fontSize:23, fontWeight:800, color:'var(--accent)' }}><CountUp value={codeStats.code_files || 0} /></div>
+              <div style={{ fontSize:11, color:'var(--text-faint)', marginTop:4 }}>Code files</div>
+            </div>
+            <div className="lift-card" style={{ background:'var(--surface-1)', border:'1px solid var(--border)', borderRadius:8, padding:'14px 12px', textAlign:'center' }}>
+              <div style={{ fontSize:23, fontWeight:800, color:'var(--accent)' }}><CountUp value={(codeStats.contributors || []).length} /></div>
+              <div style={{ fontSize:11, color:'var(--text-faint)', marginTop:4 }}>Contributors in history</div>
+            </div>
+          </div>
+          {!codeStats.history_available && <div style={{ background:'#1a1304', border:'1px solid #7a5a10', borderRadius:8, padding:'10px 12px', color:'#e8b04a', fontSize:11.5, lineHeight:1.55, marginBottom:12 }}>This uploaded archive has no .git history, so contributor additions/deletions are empty here. The hourly GitHub workflow checks out full history and fills this table automatically.</div>}
+          {(codeStats.contributors || []).length > 0 ? (
+            <div style={{ overflowX:'auto' }}>
+              <table style={{ width:'100%', borderCollapse:'collapse', fontSize:11.5 }}>
+                <thead><tr>
+                  {['Contributor','Added','Deleted','Net','Changes','Commits','Files'].map(h => <th key={h} style={{ textAlign:'left', padding:'8px 7px', borderBottom:'1px solid var(--border-strong)', color:'var(--text-faint)', fontSize:10 }}>{h}</th>)}
+                </tr></thead>
+                <tbody>{codeStats.contributors.map(c => (
+                  <tr key={c.author}>
+                    <td style={{ padding:'8px 7px', borderBottom:'1px solid var(--border)', color:'var(--text)' }}>{c.author}</td>
+                    <td style={{ padding:'8px 7px', borderBottom:'1px solid var(--border)', color:'#5ad47a', fontFamily:'var(--font-mono)' }}>+{c.additions.toLocaleString()}</td>
+                    <td style={{ padding:'8px 7px', borderBottom:'1px solid var(--border)', color:'#e8b04a', fontFamily:'var(--font-mono)' }}>-{c.deletions.toLocaleString()}</td>
+                    <td style={{ padding:'8px 7px', borderBottom:'1px solid var(--border)', color:'var(--text)', fontFamily:'var(--font-mono)' }}>{c.net.toLocaleString()}</td>
+                    <td style={{ padding:'8px 7px', borderBottom:'1px solid var(--border)', color:'var(--text-dim)', fontFamily:'var(--font-mono)' }}>{c.changes.toLocaleString()}</td>
+                    <td style={{ padding:'8px 7px', borderBottom:'1px solid var(--border)', color:'var(--text-muted)', fontFamily:'var(--font-mono)' }}>{c.commits.toLocaleString()}</td>
+                    <td style={{ padding:'8px 7px', borderBottom:'1px solid var(--border)', color:'var(--text-muted)', fontFamily:'var(--font-mono)' }}>{c.files.toLocaleString()}</td>
+                  </tr>
+                ))}</tbody>
+              </table>
+              <p style={{ margin:'10px 0 0', color:'var(--text-faint)', fontSize:10.5 }}>Sorted by added lines, then deletions. “Changes” = additions + deletions.</p>
+            </div>
+          ) : (
+            <p style={{ color:'var(--text-muted)', fontSize:11.5, margin:0 }}>No Git contributor history is available in this archive yet.</p>
+          )}
         </div>
       )}
       {releaseTimeline.length > 0 && (

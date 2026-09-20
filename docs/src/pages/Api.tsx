@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { CLI_COMMANDS, COMPANION_SCRIPTS, MODULES } from '../lib/data/api-reference'
 import { PageHeading, CodeBlock, CopyButton } from '../components/ui'
 
-function ApiPage() {
+function ApiPage({ setPage }) {
   const HYPERNIX_REPO_BRANCH = 'main'
   const HYPERNIX_REPO_URL = `https://github.com/trail-b1az3r/HyperNix-pip`
   const srcUrl = (path) => `${HYPERNIX_REPO_URL}/blob/${HYPERNIX_REPO_BRANCH}/${path}`
@@ -22,6 +22,14 @@ function ApiPage() {
     <div className="anim-fade" style={{ maxWidth:860, margin:'0 auto', padding:'90px 20px 60px' }}>
       <PageHeading kicker="Reference" title="API Reference"
         lede="Every CLI subcommand and every public Python entry point, cross-checked against the installed source." />
+      <div style={{ display:'flex', flexWrap:'wrap', gap:8, margin:'-8px 0 24px' }}>
+        <button onClick={() => setPage('api-deep')} className="press-btn" style={{ background:'var(--accent)', color:'#fff', border:'none', borderRadius:6, padding:'8px 12px', cursor:'pointer', fontSize:11.5, fontWeight:700 }}>
+          Open in-depth API →
+        </button>
+        <button onClick={() => setPage('t1-api')} className="press-btn" style={{ background:'var(--surface-3)', color:'var(--accent)', border:'1px solid var(--border-strong)', borderRadius:6, padding:'8px 12px', cursor:'pointer', fontSize:11.5, fontWeight:700 }}>
+          Open T1 API docs →
+        </button>
+      </div>
       <p className="anim-fade-up" style={{ color:'var(--text-faint)', fontSize:12, marginBottom:24, animationDelay:'0.08s' }}>
         Sourced from{' '}
         <a href={HYPERNIX_REPO_URL} target="_blank" rel="noreferrer" className="underline-grow" style={{ color:'#4a9eff' }}>
