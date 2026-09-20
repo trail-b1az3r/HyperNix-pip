@@ -124,8 +124,72 @@
       "lines": 897
     }
   ],
-  "contributors": [],
-  "history_available": false,
-  "commit": null,
+  "contributors": [
+    {
+      "author": "Claude",
+      "additions": 140784,
+      "deletions": 9053,
+      "net": 131731,
+      "changes": 149837,
+      "commits": 155,
+      "files": 1007
+    },
+    {
+      "author": "minerofthesoal",
+      "additions": 85347,
+      "deletions": 11712,
+      "net": 73635,
+      "changes": 97059,
+      "commits": 51,
+      "files": 489
+    },
+    {
+      "author": "Ray0ffire",
+      "additions": 38220,
+      "deletions": 30435,
+      "net": 7785,
+      "changes": 68655,
+      "commits": 64,
+      "files": 50
+    },
+    {
+      "author": "Mason",
+      "additions": 11658,
+      "deletions": 216,
+      "net": 11442,
+      "changes": 11874,
+      "commits": 7,
+      "files": 48
+    },
+    {
+      "author": "qwen.ai[bot]",
+      "additions": 947,
+      "deletions": 126,
+      "net": 821,
+      "changes": 1073,
+      "commits": 12,
+      "files": 407
+    },
+    {
+      "author": "github-actions[bot]",
+      "additions": 46,
+      "deletions": 46,
+      "net": 0,
+      "changes": 92,
+      "commits": 46,
+      "files": 1
+    },
+    {
+      "author": "Rayla",
+      "additions": 0,
+      "deletions": 0,
+      "net": 0,
+      "changes": 0,
+      "commits": 9,
+      "files": 0
+    }
+  ],
+  "history_available": true,
+  "commit": "716547972d6e0a249ee4dc55da6399e844e5d08b",
   "generated_at": null
 }

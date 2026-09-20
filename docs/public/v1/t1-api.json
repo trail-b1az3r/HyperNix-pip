@@ -1,8 +1,8 @@
 {
   "kind": "hypernix-t1-api",
   "generated_at": "2026-09-20T21:20:58Z",
-  "commit": null,
-  "history_available": false,
+  "commit": "716547972d6e0a249ee4dc55da6399e844e5d08b",
+  "history_available": true,
   "server_extra": "pip install 'hypernix[t1api]'",
   "client_install": "pip install hypernix",
   "mount_prefix": "T1_MOUNT_PREFIX environment variable (default: empty); routes below are router-relative paths.",
@@ -25,7 +25,48 @@
           "requirement": "pip install 'hypernix[t1api]'"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "c7eabfd7",
+          "date": "2026-08-23",
+          "author": "Claude",
+          "subject": "T1 v1.0.26.8.0.1: the LM Studio bridge and HyperLink",
+          "api_changes": []
+        },
+        {
+          "sha": "879b000b",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5rc2 \u2014 T1 API Beta 4, hyped-pro, and PATH setup",
+          "api_changes": []
+        },
+        {
+          "sha": "604a8342",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
+          "api_changes": []
+        },
+        {
+          "sha": "604ec86f",
+          "date": "2026-08-20",
+          "author": "minerofthesoal",
+          "subject": "b2",
+          "api_changes": []
+        },
+        {
+          "sha": "f836d298",
+          "date": "2026-08-18",
+          "author": "minerofthesoal",
+          "subject": "0.71.5b1-part one of four for the api",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def __getattr__(name: str) -> Any:"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.accounts",
@@ -253,7 +294,112 @@
           "requirement": "pip install 'hypernix[t1api]'"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "2324f0fa",
+          "date": "2026-09-15",
+          "author": "Mason",
+          "subject": "t1 v1.0.26.9.2.3: sign up for a key without already having one",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class AccountError(Exception):"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, message: str, *, code: str = \"account_error\") -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def hash_password(password: str, *, n: int = _SCRYPT_N) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def verify_password(password: str, stored: str) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def needs_rehash(stored: str, *, n: int = _SCRYPT_N) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "class Account:"
+            },
+            {
+              "kind": "added",
+              "text": "def locked(self) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_dict(self, *, include_private: bool = False) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "class Session:"
+            },
+            {
+              "kind": "added",
+              "text": "def expired(self) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def _token_hash(token: str) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "class AccountStore:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__("
+            },
+            {
+              "kind": "added",
+              "text": "def _init_schema(self) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _row_to_account(row: Any) -> Account:"
+            },
+            {
+              "kind": "added",
+              "text": "def get(self, account_id: str) -> Account | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def by_username(self, username: str) -> Account | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def count(self) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def list_accounts(self, limit: int = 100) -> list[Account]:"
+            },
+            {
+              "kind": "added",
+              "text": "def normalise_username(username: str) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _check_username(self, username: str) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _check_password(password: str) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def can_register(self, invite_code: str = \"\") -> tuple[bool, str]:"
+            },
+            {
+              "kind": "added",
+              "text": "def create("
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.accounts_cli",
@@ -285,7 +431,79 @@
           "requirement": "pip install 'hypernix[t1api]'"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "a97d518a",
+          "date": "2026-09-15",
+          "author": "Claude",
+          "subject": "docs: a README that describes this release, and two claims made true",
+          "api_changes": []
+        },
+        {
+          "sha": "2324f0fa",
+          "date": "2026-09-15",
+          "author": "Mason",
+          "subject": "t1 v1.0.26.9.2.3: sign up for a key without already having one",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _store(args) -> Any:"
+            },
+            {
+              "kind": "added",
+              "text": "def _ask_password(confirm: bool = True) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _fmt_time(when: float) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _cmd_list(args) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def _cmd_create(args) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def _cmd_reset(args) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def _cmd_enable(args, active: bool) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def _cmd_unlock(args) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def _cmd_sessions(args) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def _cmd_purge(args) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def _cmd_modes(_args) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def _wrap(text: str, width: int) -> list[str]:"
+            },
+            {
+              "kind": "added",
+              "text": "def main(argv: list[str] | None = None) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def cli_main() -> None:"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.app",
@@ -313,7 +531,64 @@
           "requirement": "fastapi>=0.110,<1"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "faee5534",
+          "date": "2026-09-16",
+          "author": "Claude",
+          "subject": "A HyperNix model runner, settings, memory and tool calling",
+          "api_changes": []
+        },
+        {
+          "sha": "cc94bf5a",
+          "date": "2026-09-16",
+          "author": "Claude",
+          "subject": "t1: run a model without LM Studio, and switch it from the API",
+          "api_changes": []
+        },
+        {
+          "sha": "6c58a994",
+          "date": "2026-09-16",
+          "author": "Claude",
+          "subject": "Fix the CI build break, and ship an IPA that can run a model",
+          "api_changes": []
+        },
+        {
+          "sha": "030bf41b",
+          "date": "2026-09-15",
+          "author": "Claude",
+          "subject": "hyperlink: one model list from every source, and a Stop that stops",
+          "api_changes": []
+        },
+        {
+          "sha": "2324f0fa",
+          "date": "2026-09-15",
+          "author": "Mason",
+          "subject": "t1 v1.0.26.9.2.3: sign up for a key without already having one",
+          "api_changes": []
+        },
+        {
+          "sha": "8bba7d55",
+          "date": "2026-09-15",
+          "author": "Mason",
+          "subject": "security: API keys were world-readable; key auth leaked which key you sent",
+          "api_changes": []
+        },
+        {
+          "sha": "46f59011",
+          "date": "2026-09-10",
+          "author": "Claude",
+          "subject": "0.72.4.post9 \u2014 HyperLink catches up, notifies, and searches",
+          "api_changes": []
+        },
+        {
+          "sha": "931c893f",
+          "date": "2026-09-02",
+          "author": "Claude",
+          "subject": "SSPKID that outlives its process, and gkey create -Con",
+          "api_changes": []
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.audit",
@@ -415,7 +690,91 @@
           "requirement": "pip install 'hypernix[t1api]'"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "7efe5548",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "Fix the CI failures on macOS and Windows",
+          "api_changes": []
+        },
+        {
+          "sha": "604a8342",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class AuditCategory(StrEnum):"
+            },
+            {
+              "kind": "added",
+              "text": "class AuditOutcome(StrEnum):"
+            },
+            {
+              "kind": "added",
+              "text": "def mask_identifier(value: str | None, keep: int = 8) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _looks_secret(name: str) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def scrub_details(details: dict[str, Any] | None) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _cap(value: Any, limit: int = 500) -> Any:"
+            },
+            {
+              "kind": "added",
+              "text": "class AuditRecord:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_dict(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "class AuditLog:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, backend: SQLBackend | None = None, *, enabled: bool = True) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def record("
+            },
+            {
+              "kind": "added",
+              "text": "def record_strict(self, action: str, **kwargs: Any) -> AuditRecord | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _write("
+            },
+            {
+              "kind": "added",
+              "text": "def query("
+            },
+            {
+              "kind": "added",
+              "text": "def count(self) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def purge_before(self, ts: float) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def _row_to_record(row: Any) -> AuditRecord:"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.auth",
@@ -522,7 +881,153 @@
           "requirement": "pip install 'hypernix[t1api]'"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "55378e12",
+          "date": "2026-09-01",
+          "author": "Claude",
+          "subject": "T2P billing keys, and a server's right to refuse them",
+          "api_changes": []
+        },
+        {
+          "sha": "8af94c41",
+          "date": "2026-08-27",
+          "author": "Claude",
+          "subject": "T2S keys: fix the refusal, and let the phone actually enter one",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _authenticate_with_reload(self, key_str: str) -> AuthContext:"
+            }
+          ]
+        },
+        {
+          "sha": "56a9e0b3",
+          "date": "2026-08-26",
+          "author": "Claude",
+          "subject": "install-t1.sh: an interactive installer, and two bugs it exposed",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _accepted_families(self) -> list[str]:"
+            }
+          ]
+        },
+        {
+          "sha": "370119db",
+          "date": "2026-08-26",
+          "author": "Claude",
+          "subject": "T1 v1.0.26.8.1.0: T2 recognition, auth undo/redo, and backups",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def via_t2(self) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def meets_access_level(self, required: int) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def _validate_t2(self, key_str: str) -> AuthContext:"
+            }
+          ]
+        },
+        {
+          "sha": "7a624da3",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3: two bugs found by running against a real server",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _maybe_reload_keys(self) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def _validate_uncached(self, key_str: str) -> AuthContext:"
+            }
+          ]
+        },
+        {
+          "sha": "8c25846c",
+          "date": "2026-08-21",
+          "author": "Claude",
+          "subject": "Group hypernix modules into category packages",
+          "api_changes": []
+        },
+        {
+          "sha": "bccc73ec",
+          "date": "2026-08-20",
+          "author": "minerofthesoal",
+          "subject": "fixes",
+          "api_changes": []
+        },
+        {
+          "sha": "f836d298",
+          "date": "2026-08-18",
+          "author": "minerofthesoal",
+          "subject": "0.71.5b1-part one of four for the api",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _b64url_encode(raw: bytes) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _b64url_decode(s: str) -> bytes:"
+            },
+            {
+              "kind": "added",
+              "text": "class AuthContext:"
+            },
+            {
+              "kind": "added",
+              "text": "def key_id(self) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def is_admin(self) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "class ScopedToken:"
+            },
+            {
+              "kind": "added",
+              "text": "class T1AuthService:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__("
+            },
+            {
+              "kind": "added",
+              "text": "def validate_key(self, key_str: str) -> AuthContext:"
+            },
+            {
+              "kind": "added",
+              "text": "def issue_scoped_token("
+            },
+            {
+              "kind": "added",
+              "text": "def verify_scoped_token(self, token: str) -> AuthContext:"
+            },
+            {
+              "kind": "added",
+              "text": "def check_quota(self, key_id: str, *, endpoint: str = \"\", model: str = \"\", tokens_requested: int = 0) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def rotate_own_key(self, key_id: str) -> KeyMeta:"
+            },
+            {
+              "kind": "added",
+              "text": "def admin_rotate(self, *, requester: AuthContext, target_key_id: str, promote_to_admin: bool = False) -> KeyMeta:"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.authhistory",
@@ -622,7 +1127,92 @@
           "requirement": "pip install 'hypernix[t1api]'"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "370119db",
+          "date": "2026-08-26",
+          "author": "Claude",
+          "subject": "T1 v1.0.26.8.1.0: T2 recognition, auth undo/redo, and backups",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class AuthOp(StrEnum):"
+            },
+            {
+              "kind": "added",
+              "text": "class AuthHistoryEntry:"
+            },
+            {
+              "kind": "added",
+              "text": "def undone(self) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def describe(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "class AuthHistory:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__("
+            },
+            {
+              "kind": "added",
+              "text": "def record("
+            },
+            {
+              "kind": "added",
+              "text": "def _prune(self, conn: Any, now: float) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def peek_undo(self) -> AuthHistoryEntry | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def peek_redo(self) -> AuthHistoryEntry | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _latest(self, *, undone: bool, order: str) -> AuthHistoryEntry | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def undo(self, applier: Any) -> AuthHistoryEntry:"
+            },
+            {
+              "kind": "added",
+              "text": "what actually mutates the key store \u2014 this class owns the history"
+            },
+            {
+              "kind": "added",
+              "text": "def redo(self, applier: Any) -> AuthHistoryEntry:"
+            },
+            {
+              "kind": "added",
+              "text": "def list_entries(self, *, limit: int = 50, include_undone: bool = True) -> list[AuthHistoryEntry]:"
+            },
+            {
+              "kind": "added",
+              "text": "def describe(self, *, limit: int = 50) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _encrypt(self, payload: dict[str, Any]) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _decrypt(self, stored: str) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _from_row(self, row: Any) -> AuthHistoryEntry:"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.backup",
@@ -730,7 +1320,80 @@
           "requirement": "pip install 'hypernix[t1api]'"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "370119db",
+          "date": "2026-08-26",
+          "author": "Claude",
+          "subject": "T1 v1.0.26.8.1.0: T2 recognition, auth undo/redo, and backups",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class BackupManifest:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_dict(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def from_dict(cls, data: dict[str, Any]) -> BackupManifest:"
+            },
+            {
+              "kind": "added",
+              "text": "class BackupRecord:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_dict(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "class BackupStore:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, root: str | Path | None = None, *, max_backups: int = 20) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def create("
+            },
+            {
+              "kind": "added",
+              "text": "def _prune(self) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def list_backups(self) -> list[BackupRecord]:"
+            },
+            {
+              "kind": "added",
+              "text": "def get(self, backup_id: str) -> BackupRecord:"
+            },
+            {
+              "kind": "added",
+              "text": "def _read_manifest(self, path: Path) -> BackupManifest:"
+            },
+            {
+              "kind": "added",
+              "text": "def read_sections(self, backup_id: str) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def restore("
+            },
+            {
+              "kind": "added",
+              "text": "def delete(self, backup_id: str) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def export_to(self, backup_id: str, destination: str | Path) -> Path:"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.billing",
@@ -839,7 +1502,95 @@
           "requirement": "pip install 'hypernix[t1api]'"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "bccc73ec",
+          "date": "2026-08-20",
+          "author": "minerofthesoal",
+          "subject": "fixes",
+          "api_changes": []
+        },
+        {
+          "sha": "604ec86f",
+          "date": "2026-08-20",
+          "author": "minerofthesoal",
+          "subject": "b2",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "There is no method anywhere in this class that returns a previously-"
+            },
+            {
+              "kind": "added",
+              "text": "class TransactionKind(StrEnum):"
+            },
+            {
+              "kind": "added",
+              "text": "class Transaction:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_dict(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _from_row(cls, row: Any) -> Transaction:"
+            },
+            {
+              "kind": "added",
+              "text": "class PaymentTokenRecord:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_dict(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _hash_token(raw_token: str) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "class BillingLedger:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, backend: SQLiteBackend | None = None) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def get_balance(self, account_type: str, account_id: str) -> float:"
+            },
+            {
+              "kind": "added",
+              "text": "def _apply_delta("
+            },
+            {
+              "kind": "added",
+              "text": "def add_balance("
+            },
+            {
+              "kind": "added",
+              "text": "def charge("
+            },
+            {
+              "kind": "added",
+              "text": "def transactions(self, account_type: str, account_id: str, *, limit: int = 50) -> list[Transaction]:"
+            },
+            {
+              "kind": "added",
+              "text": "def mint_payment_token("
+            },
+            {
+              "kind": "added",
+              "text": "def redeem("
+            },
+            {
+              "kind": "added",
+              "text": "def get_payment_token_record(self, payment_token_id: str) -> PaymentTokenRecord | None:"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.billingkeys",
@@ -965,7 +1716,96 @@
           "requirement": "pip install 'hypernix[t1api]'"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "4dbd9e24",
+          "date": "2026-09-01",
+          "author": "Claude",
+          "subject": "Docs modernization, billing-binding lifecycle, and 348 untracked .pyc",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def transfer(self, old_key_id: str, new_key_id: str) -> BillingBinding | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def attach_to(self, keymaster: Any) -> None:"
+            }
+          ]
+        },
+        {
+          "sha": "55378e12",
+          "date": "2026-09-01",
+          "author": "Claude",
+          "subject": "T2P billing keys, and a server's right to refuse them",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class BillingKeyPolicy(StrEnum):"
+            },
+            {
+              "kind": "added",
+              "text": "class PaymentRequired(T1APIError):"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, message: str, *, details: dict[str, Any] | None = None) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "class BillingBinding:"
+            },
+            {
+              "kind": "added",
+              "text": "def remaining(self) -> float | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def exhausted(self) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def public_dict(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "class BillingBindingStore:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, backend: SQLiteBackend | None = None) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def bind("
+            },
+            {
+              "kind": "added",
+              "text": "def get(self, key_id: str) -> BillingBinding | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def release(self, key_id: str) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def record_spend(self, key_id: str, amount: float) -> BillingBinding | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def assert_within_cap(self, key_id: str, estimated: float = 0.0) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def list_bindings(self) -> list[BillingBinding]:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_json(self) -> str:"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.bootstrap",
@@ -1026,7 +1866,44 @@
           "requirement": "pip install 'hypernix[t1api]'"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "5d516951",
+          "date": "2026-09-01",
+          "author": "Claude",
+          "subject": "A new server issues itself a local, three-day admin key",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class BootstrapKey:"
+            },
+            {
+              "kind": "added",
+              "text": "def expires_in_hours(self) -> float:"
+            },
+            {
+              "kind": "added",
+              "text": "def is_loopback(address: str) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def _existing(keymaster: Any) -> Any | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def ensure_bootstrap_key(keymaster: Any, *, ttl_seconds: int = BOOTSTRAP_TTL_SECONDS) -> BootstrapKey | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def is_bootstrap_key(meta: Any) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def bootstrap_banner(key: BootstrapKey, *, base_url: str = \"\") -> str:"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.config",
@@ -1109,7 +1986,64 @@
           "requirement": "pip install 'hypernix[t1api]'"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "cc94bf5a",
+          "date": "2026-09-16",
+          "author": "Claude",
+          "subject": "t1: run a model without LM Studio, and switch it from the API",
+          "api_changes": []
+        },
+        {
+          "sha": "88c9024f",
+          "date": "2026-09-16",
+          "author": "Claude",
+          "subject": "t1: noodle over the API \u2014 files, edits, fish and archives",
+          "api_changes": []
+        },
+        {
+          "sha": "5dce819b",
+          "date": "2026-09-15",
+          "author": "Claude",
+          "subject": "t1: HyperLink could not connect over a trusted network at all",
+          "api_changes": []
+        },
+        {
+          "sha": "ec285420",
+          "date": "2026-09-08",
+          "author": "Claude",
+          "subject": "0.72.4.dev4 \u2014 trusted-network mode",
+          "api_changes": []
+        },
+        {
+          "sha": "55378e12",
+          "date": "2026-09-01",
+          "author": "Claude",
+          "subject": "T2P billing keys, and a server's right to refuse them",
+          "api_changes": []
+        },
+        {
+          "sha": "e392ac00",
+          "date": "2026-09-01",
+          "author": "Claude",
+          "subject": "HyperLink: fix the three separate reasons it could not reach a server",
+          "api_changes": []
+        },
+        {
+          "sha": "5d516951",
+          "date": "2026-09-01",
+          "author": "Claude",
+          "subject": "A new server issues itself a local, three-day admin key",
+          "api_changes": []
+        },
+        {
+          "sha": "56a9e0b3",
+          "date": "2026-08-26",
+          "author": "Claude",
+          "subject": "install-t1.sh: an interactive installer, and two bugs it exposed",
+          "api_changes": []
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.cost",
@@ -1213,7 +2147,76 @@
           "requirement": "pip install 'hypernix[t1api]'"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "604a8342",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class CostLine:"
+            },
+            {
+              "kind": "added",
+              "text": "def total_cost(self) -> float:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_dict(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "class CostReport:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_dict(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "class Forecast:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_dict(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "class CostCalculator:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, store: UsageStore, registry: ModelRegistry) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def price_tokens(self, model_id: str, input_tokens: int, output_tokens: int) -> tuple[float, float, str]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _price_or_zero(self, model_id: str, input_tokens: int, output_tokens: int) -> tuple[float, float, str, bool]:"
+            },
+            {
+              "kind": "added",
+              "text": "def cost_report("
+            },
+            {
+              "kind": "added",
+              "text": "def _line(self, dimension: str, value: str, row: dict[str, Any], currency: str) -> CostLine:"
+            },
+            {
+              "kind": "added",
+              "text": "def estimate("
+            },
+            {
+              "kind": "added",
+              "text": "def forecast("
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.db",
@@ -1325,7 +2328,143 @@
           "requirement": "pip install 'hypernix[t1api]'"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "47fd89e3",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3: Beta 3 test suite, and four bugs it found",
+          "api_changes": []
+        },
+        {
+          "sha": "604a8342",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def to_pg_placeholders(sql: str) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def translate_ddl(sql: str, dialect: str) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "class _Connection:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, raw: Any, dialect: str) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def execute(self, sql: str, params: tuple | list = ()) -> Any:"
+            },
+            {
+              "kind": "added",
+              "text": "def executescript(self, sql: str) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def commit(self) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def rollback(self) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def close(self) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def __enter__(self) -> _Connection:"
+            },
+            {
+              "kind": "added",
+              "text": "def __exit__(self, exc_type, exc, tb) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "class SQLBackend:"
+            },
+            {
+              "kind": "added",
+              "text": "def connect(self) -> _Connection:  # pragma: no cover - abstract"
+            },
+            {
+              "kind": "added",
+              "text": "def executescript(self, sql: str) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def describe(self) -> str:  # pragma: no cover - cosmetic"
+            },
+            {
+              "kind": "removed",
+              "text": "class SQLiteBackend:"
+            },
+            {
+              "kind": "added",
+              "text": "class SQLiteBackend(SQLBackend):"
+            },
+            {
+              "kind": "removed",
+              "text": "def connect(self) -> sqlite3.Connection:"
+            },
+            {
+              "kind": "added",
+              "text": "def connect(self) -> _Connection:"
+            },
+            {
+              "kind": "removed",
+              "text": "def executescript(self, sql: str) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def describe(self) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "class PostgresBackend(SQLBackend):"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, dsn: str, *, pool_min: int = 1, pool_max: int = 10) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _get_pool(self) -> Any:"
+            }
+          ]
+        },
+        {
+          "sha": "604ec86f",
+          "date": "2026-08-20",
+          "author": "minerofthesoal",
+          "subject": "b2",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class SQLiteBackend:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, db_path: str | Path | None = None) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def connect(self) -> sqlite3.Connection:"
+            },
+            {
+              "kind": "added",
+              "text": "def executescript(self, sql: str) -> None:"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.deploy",
@@ -1378,7 +2517,48 @@
           "requirement": "pip install 'hypernix[t1api]'"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "604a8342",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class DeploymentCoordinator:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__("
+            },
+            {
+              "kind": "added",
+              "text": "def push_to_server(self, module_id: str, server_id: str, *, actor_key_id: str = \"\") -> TransferResult:"
+            },
+            {
+              "kind": "added",
+              "text": "def fetch_remote_source(self, module_id: str, *, actor_key_id: str = \"\") -> TransferResult:"
+            },
+            {
+              "kind": "added",
+              "text": "def module_sync_handler(self, payload: dict[str, Any], cancel_event: Any) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def module_fetch_handler(self, payload: dict[str, Any], cancel_event: Any) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _audit(self, action: str, **kwargs: Any) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _target_servers(payload: dict[str, Any]) -> list[str]:"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.deps",
@@ -1713,7 +2893,107 @@
           "requirement": "fastapi>=0.110,<1"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "faee5534",
+          "date": "2026-09-16",
+          "author": "Claude",
+          "subject": "A HyperNix model runner, settings, memory and tool calling",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def get_preference_store(request: Request):"
+            }
+          ]
+        },
+        {
+          "sha": "cc94bf5a",
+          "date": "2026-09-16",
+          "author": "Claude",
+          "subject": "t1: run a model without LM Studio, and switch it from the API",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def get_runner(request: Request):"
+            }
+          ]
+        },
+        {
+          "sha": "6c58a994",
+          "date": "2026-09-16",
+          "author": "Claude",
+          "subject": "Fix the CI build break, and ship an IPA that can run a model",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def get_memory_store(request: Request):"
+            }
+          ]
+        },
+        {
+          "sha": "1803aaab",
+          "date": "2026-09-15",
+          "author": "Claude",
+          "subject": "t1: what the server's hardware is doing, and how long it has been up",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def require_hyperlink_operator("
+            }
+          ]
+        },
+        {
+          "sha": "030bf41b",
+          "date": "2026-09-15",
+          "author": "Claude",
+          "subject": "hyperlink: one model list from every source, and a Stop that stops",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def get_generation_registry(request: Request):"
+            }
+          ]
+        },
+        {
+          "sha": "5dce819b",
+          "date": "2026-09-15",
+          "author": "Claude",
+          "subject": "t1: HyperLink could not connect over a trusted network at all",
+          "api_changes": []
+        },
+        {
+          "sha": "46f59011",
+          "date": "2026-09-10",
+          "author": "Claude",
+          "subject": "0.72.4.post9 \u2014 HyperLink catches up, notifies, and searches",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def get_sync_store(request: Request):"
+            },
+            {
+              "kind": "added",
+              "text": "def get_notification_store(request: Request):"
+            },
+            {
+              "kind": "added",
+              "text": "def get_search_index(request: Request):"
+            }
+          ]
+        },
+        {
+          "sha": "3cd859b2",
+          "date": "2026-09-08",
+          "author": "Claude",
+          "subject": "0.72.4.dev7 \u2014 what training is doing, and the controls for it",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def get_training_monitor(request: Request):"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.errors",
@@ -1749,7 +3029,49 @@
           "requirement": "pip install 'hypernix[t1api]'"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "55378e12",
+          "date": "2026-09-01",
+          "author": "Claude",
+          "subject": "T2P billing keys, and a server's right to refuse them",
+          "api_changes": []
+        },
+        {
+          "sha": "604a8342",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
+          "api_changes": []
+        },
+        {
+          "sha": "604ec86f",
+          "date": "2026-08-20",
+          "author": "minerofthesoal",
+          "subject": "b2",
+          "api_changes": []
+        },
+        {
+          "sha": "f836d298",
+          "date": "2026-08-18",
+          "author": "minerofthesoal",
+          "subject": "0.71.5b1-part one of four for the api",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class T1ErrorCode(StrEnum):"
+            },
+            {
+              "kind": "added",
+              "text": "class T1APIError(Exception):"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__("
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.events",
@@ -1842,7 +3164,79 @@
           "requirement": "pip install 'hypernix[t1api]'"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "bccc73ec",
+          "date": "2026-08-20",
+          "author": "minerofthesoal",
+          "subject": "fixes",
+          "api_changes": []
+        },
+        {
+          "sha": "604ec86f",
+          "date": "2026-08-20",
+          "author": "minerofthesoal",
+          "subject": "b2",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class Event:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_dict(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "class Subscriber:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, maxsize: int = 256) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _push(self, event: Event) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def iter(self, *, timeout: float | None = None) -> Iterator[Event]:"
+            },
+            {
+              "kind": "added",
+              "text": "def close(self) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "class EventBus:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, *, history_size: int = 1000) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def publish(self, event_type: str, data: dict[str, Any], *, source: str = \"\") -> Event:"
+            },
+            {
+              "kind": "added",
+              "text": "def subscribe(self, *, maxsize: int = 256) -> Subscriber:"
+            },
+            {
+              "kind": "added",
+              "text": "def unsubscribe(self, sub: Subscriber) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def recent(self, *, limit: int = 50, since_id: str | None = None, event_type: str | None = None) -> list[Event]:"
+            },
+            {
+              "kind": "added",
+              "text": "def subscriber_count(self) -> int:"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.jobs",
@@ -1936,7 +3330,99 @@
           "requirement": "pip install 'hypernix[t1api]'"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "bccc73ec",
+          "date": "2026-08-20",
+          "author": "minerofthesoal",
+          "subject": "fixes",
+          "api_changes": []
+        },
+        {
+          "sha": "604ec86f",
+          "date": "2026-08-20",
+          "author": "minerofthesoal",
+          "subject": "b2",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class JobStatus(StrEnum):"
+            },
+            {
+              "kind": "added",
+              "text": "class JobEntry:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_dict(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _from_row(cls, row: Any) -> JobEntry:"
+            },
+            {
+              "kind": "added",
+              "text": "class JobQueue:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__("
+            },
+            {
+              "kind": "added",
+              "text": "def _publish(self, job_id: str, kind: str, status: JobStatus, **extra: Any) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def register_handler(self, kind: str, handler: JobHandler) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def shutdown(self, *, wait: bool = True) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def submit(self, kind: str, payload: dict[str, Any], *, created_by: str) -> JobEntry:"
+            },
+            {
+              "kind": "added",
+              "text": "def _run(self, job_id: str, kind: str, payload: dict[str, Any], cancel_event: threading.Event) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def get(self, job_id: str) -> JobEntry | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def require(self, job_id: str) -> JobEntry:"
+            },
+            {
+              "kind": "added",
+              "text": "def list(self, *, status: JobStatus | None = None, created_by: str | None = None) -> list[JobEntry]:"
+            },
+            {
+              "kind": "added",
+              "text": "def cancel(self, job_id: str) -> JobEntry:"
+            },
+            {
+              "kind": "added",
+              "text": "def _set_status(self, job_id: str, status: JobStatus, *, started: bool = False, finished: bool = False) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _set_result(self, job_id: str, result: dict[str, Any]) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _set_error(self, job_id: str, error: str) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _insert(self, entry: JobEntry) -> None:"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.keys",
@@ -2056,7 +3542,92 @@
           "requirement": "pip install 'hypernix[t1api]'"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "604a8342",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class KeyAssignment:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_dict(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def mask_key_id(key_id: str, keep: int = 12) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "class KeySummary:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_dict(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "class KeyDirectory:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__("
+            },
+            {
+              "kind": "added",
+              "text": "def list_keys("
+            },
+            {
+              "kind": "added",
+              "text": "def get_key(self, key_id: str, *, requester_key_id: str, is_admin: bool) -> KeySummary:"
+            },
+            {
+              "kind": "added",
+              "text": "def _summarize(self, meta: KeyMeta) -> KeySummary:"
+            },
+            {
+              "kind": "added",
+              "text": "def import_payload(self, payload: dict[str, Any], *, imported_by: str) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def assign("
+            },
+            {
+              "kind": "added",
+              "text": "def get_assignment(self, key_id: str) -> KeyAssignment | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def list_assignments(self, *, account_id: str | None = None) -> list[KeyAssignment]:"
+            },
+            {
+              "kind": "added",
+              "text": "def resolve_plan(self, key_id: str, *, requested_plan: str | None = None) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def assert_model_allowed(self, key_id: str, model_id: str) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def usage_identity(self, key_id: str) -> tuple[str, str]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _pick(new: str | None, existing: str) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _row_to_assignment(row: Any) -> KeyAssignment:"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.launchscript_cli",
@@ -2106,7 +3677,52 @@
           "requirement": "pip install 'hypernix[t1api]'"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "a8aca686",
+          "date": "2026-09-08",
+          "author": "Claude",
+          "subject": "0.72.4.dev5 \u2014 hypernix-t1 launch-script",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class AuthError(RuntimeError):"
+            },
+            {
+              "kind": "added",
+              "text": "def _configured_key() -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _admin_password_matches(supplied: str) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def authenticate(args) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _parse_env(pairs: list[str]) -> dict[str, str]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _describe(job, *, as_json: bool) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def main(argv: list[str] | None = None) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def _dispatch(args, store: JobStore, who: str, parser) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def cli_main() -> None:"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.modelindex",
@@ -2188,7 +3804,72 @@
           "requirement": "pip install 'hypernix[t1api]'"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "182b1efc",
+          "date": "2026-09-16",
+          "author": "Claude",
+          "subject": "t1: index the models this machine has, and estimate what they cost",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _as_int(value: Any) -> int:"
+            }
+          ]
+        },
+        {
+          "sha": "ac0053d7",
+          "date": "2026-09-03",
+          "author": "Claude",
+          "subject": "0.72.3.post6 \u2014 hypernix-t1 index, and three more from the field",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class IndexError_(RuntimeError):"
+            },
+            {
+              "kind": "added",
+              "text": "class IndexedModel:"
+            },
+            {
+              "kind": "added",
+              "text": "def readable(self) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_dict(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def model_id_for(path: str | Path) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _read_gguf(path: Path) -> tuple[dict, list, str]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _elements(tensor) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def inspect(path: str | Path) -> IndexedModel:"
+            },
+            {
+              "kind": "added",
+              "text": "def build_entry("
+            },
+            {
+              "kind": "added",
+              "text": "def index_directory("
+            },
+            {
+              "kind": "added",
+              "text": "def write_registry("
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.modelindex_cli",
@@ -2220,7 +3901,46 @@
           "requirement": "pip install 'hypernix[t1api]'"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "182b1efc",
+          "date": "2026-09-16",
+          "author": "Claude",
+          "subject": "t1: index the models this machine has, and estimate what they cost",
+          "api_changes": []
+        },
+        {
+          "sha": "fe580bc9",
+          "date": "2026-09-08",
+          "author": "Claude",
+          "subject": "0.72.4.dev2 \u2014 the registry the server actually reads",
+          "api_changes": []
+        },
+        {
+          "sha": "ac0053d7",
+          "date": "2026-09-03",
+          "author": "Claude",
+          "subject": "0.72.3.post6 \u2014 hypernix-t1 index, and three more from the field",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _parameters(billions: float) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _human(result: dict, rows: list, *, dry_run: bool) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def main(argv: list[str] | None = None) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def cli_main() -> None:"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.modules",
@@ -2352,7 +4072,104 @@
           "requirement": "pip install 'hypernix[t1api]'"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "604a8342",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def stage_fetched("
+            },
+            {
+              "kind": "added",
+              "text": "def receive_transfer("
+            }
+          ]
+        },
+        {
+          "sha": "604ec86f",
+          "date": "2026-08-20",
+          "author": "minerofthesoal",
+          "subject": "b2",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class ModuleStatus(StrEnum):"
+            },
+            {
+              "kind": "added",
+              "text": "class SourceType(StrEnum):"
+            },
+            {
+              "kind": "added",
+              "text": "class ModuleEntry:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_dict(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _from_row(cls, row: Any) -> ModuleEntry:"
+            },
+            {
+              "kind": "added",
+              "text": "class ModuleRegistry:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, backend: SQLiteBackend | None = None, *, storage_dir: str | Path | None = None) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def create("
+            },
+            {
+              "kind": "added",
+              "text": "def get(self, module_id: str) -> ModuleEntry | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def require(self, module_id: str) -> ModuleEntry:"
+            },
+            {
+              "kind": "added",
+              "text": "def list("
+            },
+            {
+              "kind": "added",
+              "text": "def upload_local(self, module_id: str, content: bytes, *, filename: str) -> ModuleEntry:"
+            },
+            {
+              "kind": "added",
+              "text": "def register_remote_source("
+            },
+            {
+              "kind": "added",
+              "text": "def read_content(self, module_id: str) -> bytes:"
+            },
+            {
+              "kind": "added",
+              "text": "def update("
+            },
+            {
+              "kind": "added",
+              "text": "def mark_synced(self, module_id: str, server_id: str) -> ModuleEntry:"
+            },
+            {
+              "kind": "added",
+              "text": "def delete(self, module_id: str) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _persist(self, entry: ModuleEntry) -> None:"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.mtls",
@@ -2453,7 +4270,80 @@
           "requirement": "pip install 'hypernix[t1api]'"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "604a8342",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class TLSSettings:"
+            },
+            {
+              "kind": "added",
+              "text": "def tls_enabled(self) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def mtls_enabled(self) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def validation_errors(self) -> list[str]:"
+            },
+            {
+              "kind": "added",
+              "text": "def uvicorn_kwargs(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def public_dict(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _normalize_fingerprint(value: str) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "class ClientCertificate:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_dict(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "class ClientCertVerifier:"
+            },
+            {
+              "kind": "added",
+              "text": "def __post_init__(self) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def is_trusted_proxy(self, peer_ip: str | None) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def extract("
+            },
+            {
+              "kind": "added",
+              "text": "def require(self, cert: ClientCertificate, *, path: str = \"/\") -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _dn_matches(pattern: str, subject_dn: str) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def _format_dn(rdns: Any) -> str:"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.netpolicy",
@@ -2614,7 +4504,112 @@
           "requirement": "pip install 'hypernix[t1api]'"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "604a8342",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class EntryKind(StrEnum):"
+            },
+            {
+              "kind": "added",
+              "text": "class Decision(StrEnum):"
+            },
+            {
+              "kind": "added",
+              "text": "def allowed(self) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "class PolicyEntry:"
+            },
+            {
+              "kind": "added",
+              "text": "def is_expired(self) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_dict(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "class ForcedLimit:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_dict(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def parse_cidr(value: str) -> ipaddress.IPv4Network | ipaddress.IPv6Network:"
+            },
+            {
+              "kind": "added",
+              "text": "class NetworkPolicy:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__("
+            },
+            {
+              "kind": "added",
+              "text": "def _refresh(self, *, force: bool = False) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def evaluate(self, client_ip: str | None) -> tuple[Decision, str | None]:"
+            },
+            {
+              "kind": "added",
+              "text": "def require_allowed(self, client_ip: str | None) -> Decision:"
+            },
+            {
+              "kind": "added",
+              "text": "def _upsert("
+            },
+            {
+              "kind": "added",
+              "text": "def block("
+            },
+            {
+              "kind": "added",
+              "text": "def allow("
+            },
+            {
+              "kind": "added",
+              "text": "def remove(self, cidr: str) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def list_entries(self, *, kind: EntryKind | None = None) -> list[PolicyEntry]:"
+            },
+            {
+              "kind": "added",
+              "text": "def set_allow_unlisted(self, value: bool) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def set_limit("
+            },
+            {
+              "kind": "added",
+              "text": "def get_limit(self, subject_type: str, subject_id: str) -> ForcedLimit | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def clear_limit(self, subject_type: str, subject_id: str) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def list_limits(self) -> list[ForcedLimit]:"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.pricing",
@@ -2667,7 +4662,40 @@
           "requirement": "pip install 'hypernix[t1api]'"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "182b1efc",
+          "date": "2026-09-16",
+          "author": "Claude",
+          "subject": "t1: index the models this machine has, and estimate what they cost",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class PriceEstimate:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_dict(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def describe(self) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _vram_bytes() -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def estimate("
+            },
+            {
+              "kind": "added",
+              "text": "def estimate_for_indexed(model: Any, *, vram_bytes: int | None = None) -> PriceEstimate:"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.ratelimit",
@@ -2769,7 +4797,136 @@
           "requirement": "pip install 'hypernix[t1api]'"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "47fd89e3",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3: Beta 3 test suite, and four bugs it found",
+          "api_changes": [
+            {
+              "kind": "removed",
+              "text": "def take(self, cost: float, rule: RateRule, now: float) -> tuple[bool, float]:"
+            },
+            {
+              "kind": "added",
+              "text": "def take(self, cost: float, rule: RateRule, now: float) -> tuple[bool, float | None]:"
+            },
+            {
+              "kind": "removed",
+              "text": "def _take(self, rule: RateRule, subject: Subject, cost: float, now: float) -> tuple[bool, float]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _take("
+            }
+          ]
+        },
+        {
+          "sha": "604a8342",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class Subject:"
+            },
+            {
+              "kind": "added",
+              "text": "def __str__(self) -> str:  # pragma: no cover - cosmetic"
+            },
+            {
+              "kind": "added",
+              "text": "class RateRule:"
+            },
+            {
+              "kind": "added",
+              "text": "def matches(self, subject: Subject, path: str, method: str) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def from_dict(cls, d: dict[str, Any]) -> RateRule:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_dict(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "class _Bucket:"
+            },
+            {
+              "kind": "added",
+              "text": "def take(self, cost: float, rule: RateRule, now: float) -> tuple[bool, float]:"
+            },
+            {
+              "kind": "added",
+              "text": "class _SlidingWindow:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def add(self, amount: float, now: float) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def trim(self, window_seconds: float, now: float) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def retry_after(self, window_seconds: float, now: float) -> float:"
+            },
+            {
+              "kind": "added",
+              "text": "def endpoint_cost(path: str, costs: dict[str, float] | None = None) -> float:"
+            },
+            {
+              "kind": "added",
+              "text": "class RateLimiter:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__("
+            },
+            {
+              "kind": "added",
+              "text": "def check("
+            },
+            {
+              "kind": "added",
+              "text": "def record_tokens(self, subjects: list[Subject], tokens: int) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _check_forced(self, subject: Subject, *, now: float, tokens: int) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _forced(self, subject: Subject) -> Any:"
+            },
+            {
+              "kind": "added",
+              "text": "def _window(self, subject: Subject, dimension: str) -> _SlidingWindow:"
+            },
+            {
+              "kind": "added",
+              "text": "def _take(self, rule: RateRule, subject: Subject, cost: float, now: float) -> tuple[bool, float]:"
+            },
+            {
+              "kind": "added",
+              "text": "def snapshot(self, subject: Subject) -> list[dict[str, Any]]:"
+            },
+            {
+              "kind": "added",
+              "text": "def reset(self) -> None:"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.registry",
@@ -2925,7 +5082,139 @@
           "requirement": "pip install 'hypernix[t1api]'"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "fe580bc9",
+          "date": "2026-09-08",
+          "author": "Claude",
+          "subject": "0.72.4.dev2 \u2014 the registry the server actually reads",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def registry_locations(config_dir: str | Path | None = None) -> list[Path]:"
+            },
+            {
+              "kind": "added",
+              "text": "def discover(config_dir: str | Path | None = None) -> Path | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def read_entries(path: str | Path) -> tuple[list[ModelEntry], list[str]]:"
+            }
+          ]
+        },
+        {
+          "sha": "47fd89e3",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3: Beta 3 test suite, and four bugs it found",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def __post_init__(self) -> None:"
+            }
+          ]
+        },
+        {
+          "sha": "bccc73ec",
+          "date": "2026-08-20",
+          "author": "minerofthesoal",
+          "subject": "fixes",
+          "api_changes": []
+        },
+        {
+          "sha": "f836d298",
+          "date": "2026-08-18",
+          "author": "minerofthesoal",
+          "subject": "0.71.5b1-part one of four for the api",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class ModelStatus(StrEnum):"
+            },
+            {
+              "kind": "added",
+              "text": "class ModelAvailabilityFlag(StrEnum):"
+            },
+            {
+              "kind": "added",
+              "text": "class ModelPricing:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_dict(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def from_dict(cls, d: dict[str, Any] | None) -> ModelPricing:"
+            },
+            {
+              "kind": "added",
+              "text": "class ModelEntry:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_dict(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def from_dict(cls, d: dict[str, Any]) -> ModelEntry:"
+            },
+            {
+              "kind": "added",
+              "text": "def is_routable(self) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "class ModelRegistry:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__("
+            },
+            {
+              "kind": "added",
+              "text": "def load("
+            },
+            {
+              "kind": "added",
+              "text": "def to_json_file(self, path: str | Path) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def register(self, entry: ModelEntry) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def deregister(self, model_id: str) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _visible(self, entry: ModelEntry) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def get(self, model_id: str) -> ModelEntry | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def require(self, model_id: str) -> ModelEntry:"
+            },
+            {
+              "kind": "added",
+              "text": "def list("
+            },
+            {
+              "kind": "added",
+              "text": "def __len__(self) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def __repr__(self) -> str:  # pragma: no cover - cosmetic"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.routers",
@@ -2942,7 +5231,64 @@
           "requirement": "pip install 'hypernix[t1api]'"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "cc94bf5a",
+          "date": "2026-09-16",
+          "author": "Claude",
+          "subject": "t1: run a model without LM Studio, and switch it from the API",
+          "api_changes": []
+        },
+        {
+          "sha": "88c9024f",
+          "date": "2026-09-16",
+          "author": "Claude",
+          "subject": "t1: noodle over the API \u2014 files, edits, fish and archives",
+          "api_changes": []
+        },
+        {
+          "sha": "087a6cf0",
+          "date": "2026-09-16",
+          "author": "Claude",
+          "subject": "t1: /chat/compact/* \u2014 making a long conversation fit again",
+          "api_changes": []
+        },
+        {
+          "sha": "6c58a994",
+          "date": "2026-09-16",
+          "author": "Claude",
+          "subject": "Fix the CI build break, and ship an IPA that can run a model",
+          "api_changes": []
+        },
+        {
+          "sha": "2324f0fa",
+          "date": "2026-09-15",
+          "author": "Mason",
+          "subject": "t1 v1.0.26.9.2.3: sign up for a key without already having one",
+          "api_changes": []
+        },
+        {
+          "sha": "3cd859b2",
+          "date": "2026-09-08",
+          "author": "Claude",
+          "subject": "0.72.4.dev7 \u2014 what training is doing, and the controls for it",
+          "api_changes": []
+        },
+        {
+          "sha": "547dfa47",
+          "date": "2026-09-02",
+          "author": "Claude",
+          "subject": "T1 v1.0.2026.9.2.1: the governed inference surface",
+          "api_changes": []
+        },
+        {
+          "sha": "370119db",
+          "date": "2026-08-26",
+          "author": "Claude",
+          "subject": "T1 v1.0.26.8.1.0: T2 recognition, auth undo/redo, and backups",
+          "api_changes": []
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.routers.accounts",
@@ -3074,7 +5420,112 @@
           "requirement": "fastapi>=0.110,<1"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "2324f0fa",
+          "date": "2026-09-15",
+          "author": "Mason",
+          "subject": "t1 v1.0.26.9.2.3: sign up for a key without already having one",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def get_settings(request: Request) -> WebAuthSettings:"
+            },
+            {
+              "kind": "added",
+              "text": "def get_store(request: Request) -> AccountStore:"
+            },
+            {
+              "kind": "added",
+              "text": "def _peer_ip(request: Request, settings: WebAuthSettings) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def current_session("
+            },
+            {
+              "kind": "added",
+              "text": "def require_write("
+            },
+            {
+              "kind": "added",
+              "text": "def _account_error(exc: AccountError) -> T1APIError:"
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/config\")"
+            },
+            {
+              "kind": "added",
+              "text": "def account_config(settings: WebAuthSettings = Depends(get_settings)) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/register\")"
+            },
+            {
+              "kind": "added",
+              "text": "async def register("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/login\")"
+            },
+            {
+              "kind": "added",
+              "text": "async def login("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/logout\")"
+            },
+            {
+              "kind": "added",
+              "text": "def logout("
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/me\")"
+            },
+            {
+              "kind": "added",
+              "text": "def whoami("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/password\")"
+            },
+            {
+              "kind": "added",
+              "text": "async def change_password("
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/keys\")"
+            },
+            {
+              "kind": "added",
+              "text": "def list_keys("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/keys\")"
+            },
+            {
+              "kind": "added",
+              "text": "async def mint_key("
+            },
+            {
+              "kind": "added",
+              "text": "@router.delete(\"/keys/{key_id}\")"
+            },
+            {
+              "kind": "added",
+              "text": "def revoke_key("
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.routers.audit",
@@ -3099,7 +5550,24 @@
           "requirement": "fastapi>=0.110,<1"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "604a8342",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "@router.get(\"\", response_model=AuditListResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def list_audit_events("
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.routers.auth",
@@ -3145,7 +5613,60 @@
           "requirement": "fastapi>=0.110,<1"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "eab30655",
+          "date": "2026-08-27",
+          "author": "Claude",
+          "subject": "T1 v1.0.2026.8.1.1: server IDs advance, and undo/redo actually works",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _record_rotation("
+            }
+          ]
+        },
+        {
+          "sha": "f836d298",
+          "date": "2026-08-18",
+          "author": "minerofthesoal",
+          "subject": "0.71.5b1-part one of four for the api",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "@router.post(\"/t1/validate\", response_model=ValidateKeyResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def validate("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/token\", response_model=TokenResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def issue_token("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/t1/rotate\", response_model=RotateResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def rotate_own_key("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/t1/admin/rotate\", response_model=RotateResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def admin_rotate("
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.routers.authundo",
@@ -3193,7 +5714,80 @@
           "requirement": "fastapi>=0.110,<1"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "eab30655",
+          "date": "2026-08-27",
+          "author": "Claude",
+          "subject": "T1 v1.0.2026.8.1.1: server IDs advance, and undo/redo actually works",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _apply_inner(entry: Any, *, direction: str) -> None:"
+            }
+          ]
+        },
+        {
+          "sha": "370119db",
+          "date": "2026-08-26",
+          "author": "Claude",
+          "subject": "T1 v1.0.26.8.1.0: T2 recognition, auth undo/redo, and backups",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def get_auth_history(request: Request) -> AuthHistory:"
+            },
+            {
+              "kind": "added",
+              "text": "def _applier(request: Request):"
+            },
+            {
+              "kind": "added",
+              "text": "def apply(entry: Any, *, direction: str) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _run(request: Request, ctx: AuthContext, history: AuthHistory, audit: Any,"
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/undo\", response_model=AuthUndoResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def undo("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/redo\", response_model=AuthUndoResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def redo("
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/history\", response_model=AuthHistoryResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def history_view("
+            },
+            {
+              "kind": "added",
+              "text": "alias_router.add_api_route(\"/undo\", undo, methods=[\"POST\"], response_model=AuthUndoResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "alias_router.add_api_route(\"/redo\", redo, methods=[\"POST\"], response_model=AuthUndoResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "alias_router.add_api_route("
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.routers.backup",
@@ -3246,7 +5840,64 @@
           "requirement": "fastapi>=0.110,<1"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "370119db",
+          "date": "2026-08-26",
+          "author": "Claude",
+          "subject": "T1 v1.0.26.8.1.0: T2 recognition, auth undo/redo, and backups",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def get_backup_store(request: Request) -> BackupStore:"
+            },
+            {
+              "kind": "added",
+              "text": "def _collect(request: Request, ctx: AuthContext) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/list\", response_model=BackupListResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def list_backups("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"\", response_model=BackupSummary)"
+            },
+            {
+              "kind": "added",
+              "text": "def create_backup("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/restore\", response_model=BackupRestoreResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def restore_backup("
+            },
+            {
+              "kind": "added",
+              "text": "def _make_applier(request: Request):"
+            },
+            {
+              "kind": "added",
+              "text": "def apply(name: str, payload: Any) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "@router.delete(\"/{backup_id}\")"
+            },
+            {
+              "kind": "added",
+              "text": "def delete_backup("
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.routers.billing",
@@ -3299,7 +5950,56 @@
           "requirement": "fastapi>=0.110,<1"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "604ec86f",
+          "date": "2026-08-20",
+          "author": "minerofthesoal",
+          "subject": "b2",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "@router.get(\"/balance\", response_model=BillingBalanceResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def get_balance("
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/transactions\", response_model=TransactionListResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def get_transactions("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/payment-token\", response_model=PaymentTokenMintResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def mint_payment_token("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/redeem\", response_model=BillingBalanceResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def redeem("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/add-balance\", response_model=BillingBalanceResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def add_balance("
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.routers.bridge",
@@ -3347,7 +6047,72 @@
           "requirement": "fastapi>=0.110,<1"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "c7eabfd7",
+          "date": "2026-08-23",
+          "author": "Claude",
+          "subject": "T1 v1.0.26.8.0.1: the LM Studio bridge and HyperLink",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _require_enabled(config: T1APIConfig) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _bridge_for(config: T1APIConfig, override: str | None = None) -> LMStudioBridge:"
+            },
+            {
+              "kind": "added",
+              "text": "def _check_override(ctx: AuthContext, override: str | None) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _as_t1_error(exc: LMStudioError) -> T1APIError:"
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/status\", response_model=BridgeStatusResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def bridge_status("
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/models\", response_model=BridgeModelsResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def bridge_models("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/chat\", response_model=BridgeChatResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def bridge_chat("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/chat/stream\")"
+            },
+            {
+              "kind": "added",
+              "text": "def bridge_chat_stream("
+            },
+            {
+              "kind": "added",
+              "text": "def _events():"
+            },
+            {
+              "kind": "added",
+              "text": "def _first_choice(envelope: dict) -> tuple[str, str]:"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.routers.compact",
@@ -3400,7 +6165,64 @@
           "requirement": "fastapi>=0.110,<1"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "087a6cf0",
+          "date": "2026-09-16",
+          "author": "Claude",
+          "subject": "t1: /chat/compact/* \u2014 making a long conversation fit again",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _summarise(config: T1APIConfig, messages: list) -> tuple[str, str]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _compact("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/prompts\", response_model=CompactResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def compact_prompts("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/prompts/system\", response_model=CompactResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def compact_system_prompt("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/responses\", response_model=CompactResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def compact_responses("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/all\", response_model=CompactResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def compact_all("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/dynamic\", response_model=CompactResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def compact_dynamic("
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.routers.config",
@@ -3425,7 +6247,24 @@
           "requirement": "fastapi>=0.110,<1"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "f836d298",
+          "date": "2026-08-18",
+          "author": "minerofthesoal",
+          "subject": "0.71.5b1-part one of four for the api",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "@router.get(\"/config\", response_model=ConfigResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def get_public_config("
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.routers.events",
@@ -3457,7 +6296,40 @@
           "requirement": "fastapi>=0.110,<1"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "604ec86f",
+          "date": "2026-08-20",
+          "author": "minerofthesoal",
+          "subject": "b2",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _to_item(event) -> EventItem:"
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"\", response_model=EventListResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def list_events("
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/stream\")"
+            },
+            {
+              "kind": "added",
+              "text": "async def stream_events("
+            },
+            {
+              "kind": "added",
+              "text": "async def _gen():"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.routers.health",
@@ -3503,7 +6375,87 @@
           "requirement": "fastapi>=0.110,<1"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "46047fec",
+          "date": "2026-09-16",
+          "author": "Claude",
+          "subject": "models: reconcile \"Models registered 44\" with an empty picker",
+          "api_changes": []
+        },
+        {
+          "sha": "a75a750b",
+          "date": "2026-09-16",
+          "author": "Claude",
+          "subject": "t1api: add GET /version, and stop a stale process looking like a wrong number",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def installed_version() -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/version\", response_model=VersionResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def version(request_id: str = Depends(get_request_id)) -> VersionResponse:"
+            }
+          ]
+        },
+        {
+          "sha": "d91c43ef",
+          "date": "2026-08-26",
+          "author": "Claude",
+          "subject": "waiter -F: find a server, and never run what it tells you to",
+          "api_changes": []
+        },
+        {
+          "sha": "c7eabfd7",
+          "date": "2026-08-23",
+          "author": "Claude",
+          "subject": "T1 v1.0.26.8.0.1: the LM Studio bridge and HyperLink",
+          "api_changes": []
+        },
+        {
+          "sha": "879b000b",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5rc2 \u2014 T1 API Beta 4, hyped-pro, and PATH setup",
+          "api_changes": []
+        },
+        {
+          "sha": "604a8342",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
+          "api_changes": []
+        },
+        {
+          "sha": "f836d298",
+          "date": "2026-08-18",
+          "author": "minerofthesoal",
+          "subject": "0.71.5b1-part one of four for the api",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "@router.get(\"/health\", response_model=HealthResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def health(request_id: str = Depends(get_request_id)) -> HealthResponse:"
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/status\", response_model=StatusResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def status("
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.routers.hyperlink",
@@ -3831,7 +6783,288 @@
           "requirement": "fastapi>=0.110,<1"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "faee5534",
+          "date": "2026-09-16",
+          "author": "Claude",
+          "subject": "A HyperNix model runner, settings, memory and tool calling",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _chat_with_tools(bridge, wire, model, sampling, config, principal):"
+            },
+            {
+              "kind": "added",
+              "text": "def ask(messages, tools):"
+            },
+            {
+              "kind": "added",
+              "text": "def _apply_preferences("
+            },
+            {
+              "kind": "added",
+              "text": "def _effort_settings(preferences, payload) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _token_budget(preferences, payload) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def _chat_backend(config: T1APIConfig, runner=None):"
+            },
+            {
+              "kind": "added",
+              "text": "def _preferences_reply(settings, notes: list[str], request_id: str) -> PreferencesResponse:"
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/backends\", response_model=BackendsResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def list_backends("
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/preferences\", response_model=PreferencesResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def read_preferences("
+            },
+            {
+              "kind": "added",
+              "text": "@router.patch(\"/preferences\", response_model=PreferencesResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def write_preferences("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/preferences/reset\", response_model=PreferencesResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def reset_preferences("
+            }
+          ]
+        },
+        {
+          "sha": "3f05aaf6",
+          "date": "2026-09-16",
+          "author": "Claude",
+          "subject": "The version it actually is, the runner from the phone, and edit mode",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "@router.patch("
+            },
+            {
+              "kind": "added",
+              "text": "def edit_message("
+            },
+            {
+              "kind": "added",
+              "text": "@router.delete("
+            },
+            {
+              "kind": "added",
+              "text": "def delete_message("
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/upgrade\", response_model=UpgradeResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def server_upgrade("
+            }
+          ]
+        },
+        {
+          "sha": "6c58a994",
+          "date": "2026-09-16",
+          "author": "Claude",
+          "subject": "Fix the CI build break, and ship an IPA that can run a model",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _with_memories("
+            }
+          ]
+        },
+        {
+          "sha": "1803aaab",
+          "date": "2026-09-15",
+          "author": "Claude",
+          "subject": "t1: what the server's hardware is doing, and how long it has been up",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "@router.get(\"/hardware\", response_model=HardwareResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def server_hardware("
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/uptime\", response_model=UptimeResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def server_uptime("
+            }
+          ]
+        },
+        {
+          "sha": "030bf41b",
+          "date": "2026-09-15",
+          "author": "Claude",
+          "subject": "hyperlink: one model list from every source, and a Stop that stops",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "@router.post(\"/sessions/{session_id}/chat/stop\", response_model=GenerationStopResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def stop_generation("
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/generations\", response_model=GenerationListResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def list_generations("
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/models\", response_model=ModelCatalogueResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def model_catalogue("
+            }
+          ]
+        },
+        {
+          "sha": "46f59011",
+          "date": "2026-09-10",
+          "author": "Claude",
+          "subject": "0.72.4.post9 \u2014 HyperLink catches up, notifies, and searches",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "@router.get(\"/sync\", response_model=SyncPageResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def sync_changes("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/sync/claim\", response_model=SyncClaimResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def claim_client_message("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/push\", response_model=PushRegistrationResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def register_push("
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/push\", response_model=PushRegistrationListResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def list_push("
+            },
+            {
+              "kind": "added",
+              "text": "@router.patch(\"/push/{registration_id}\", response_model=PushRegistrationResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def set_push_events("
+            },
+            {
+              "kind": "added",
+              "text": "@router.delete(\"/push/{registration_id}\", response_model=GenericOkResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def unregister_push("
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/push/events\", response_model=dict)"
+            },
+            {
+              "kind": "added",
+              "text": "def list_push_events("
+            },
+            {
+              "kind": "added",
+              "text": "def _require_own_registration("
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/search\", response_model=SearchResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def search_history("
+            }
+          ]
+        },
+        {
+          "sha": "9b956c33",
+          "date": "2026-09-08",
+          "author": "Claude",
+          "subject": "0.72.4.dev8 \u2014 HyperLink knows which machine it is talking to",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "@router.get(\"/peers\", response_model=HyperLinkPeersResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def list_peers("
+            }
+          ]
+        },
+        {
+          "sha": "e392ac00",
+          "date": "2026-09-01",
+          "author": "Claude",
+          "subject": "HyperLink: fix the three separate reasons it could not reach a server",
+          "api_changes": [
+            {
+              "kind": "removed",
+              "text": "def _endpoints(config: T1APIConfig) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _advertised_port(config: T1APIConfig, request: Request | None) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def _endpoints(config: T1APIConfig, request: Request | None = None) -> dict[str, Any]:"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.routers.inference",
@@ -3893,7 +7126,100 @@
           "requirement": "fastapi>=0.110,<1"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "547dfa47",
+          "date": "2026-09-02",
+          "author": "Claude",
+          "subject": "T1 v1.0.2026.9.2.1: the governed inference surface",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _estimate_tokens(text: str) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def _messages_text(messages: list[InferenceMessage]) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _require_backend(config: T1APIConfig) -> LMStudioBridge:"
+            },
+            {
+              "kind": "added",
+              "text": "def _as_t1_error(exc: LMStudioError) -> T1APIError:"
+            },
+            {
+              "kind": "added",
+              "text": "def _resolve("
+            },
+            {
+              "kind": "added",
+              "text": "def _first_choice(envelope: dict) -> tuple[str, str]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _run_chat("
+            },
+            {
+              "kind": "added",
+              "text": "def _complete("
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/backends\", response_model=InferenceBackendsResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def list_backends("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/chat\", response_model=InferenceResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def inference_chat("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/completions\", response_model=InferenceResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def inference_completions("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/chat/stream\")"
+            },
+            {
+              "kind": "added",
+              "text": "def inference_chat_stream("
+            },
+            {
+              "kind": "added",
+              "text": "def _events():"
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/embeddings\", response_model=InferenceEmbeddingsResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def inference_embeddings("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/tokens\", response_model=InferenceTokenCountResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def inference_token_count("
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.routers.jobs",
@@ -3932,7 +7258,51 @@
           "requirement": "fastapi>=0.110,<1"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "bccc73ec",
+          "date": "2026-08-20",
+          "author": "minerofthesoal",
+          "subject": "fixes",
+          "api_changes": []
+        },
+        {
+          "sha": "604ec86f",
+          "date": "2026-08-20",
+          "author": "minerofthesoal",
+          "subject": "b2",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _to_item(entry) -> JobItem:"
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"\", response_model=JobDetailResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def create_job("
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/{job_id}\", response_model=JobDetailResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def get_job("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/{job_id}/cancel\", response_model=JobDetailResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def cancel_job("
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.routers.keys",
@@ -3971,7 +7341,44 @@
           "requirement": "fastapi>=0.110,<1"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "604a8342",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _to_item(summary) -> KeyItem:"
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"\", response_model=KeyListResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def list_keys("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/import\", response_model=KeyImportResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def import_keys("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/assign\", response_model=KeyAssignResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def assign_key("
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.routers.memory",
@@ -4024,7 +7431,56 @@
           "requirement": "fastapi>=0.110,<1"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "6c58a994",
+          "date": "2026-09-16",
+          "author": "Claude",
+          "subject": "Fix the CI build break, and ship an IPA that can run a model",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "@router.post(\"/create\", response_model=MemoryResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def create_memory("
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/get\", response_model=MemoryResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def get_memory("
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/list\", response_model=MemoryListResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def list_memories("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/edit\", response_model=MemoryResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def edit_memory("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/delete\", response_model=GenericOkResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def delete_memory("
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.routers.models",
@@ -4077,7 +7533,93 @@
           "requirement": "fastapi>=0.110,<1"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "3e60ff82",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3 (part 2/3): complete SDK, full waiter TUI, smoke tool",
+          "api_changes": []
+        },
+        {
+          "sha": "604a8342",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
+          "api_changes": []
+        },
+        {
+          "sha": "bccc73ec",
+          "date": "2026-08-20",
+          "author": "minerofthesoal",
+          "subject": "fixes",
+          "api_changes": []
+        },
+        {
+          "sha": "604ec86f",
+          "date": "2026-08-20",
+          "author": "minerofthesoal",
+          "subject": "b2",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "@router.post(\"/route\", response_model=RouteResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def route_model("
+            }
+          ]
+        },
+        {
+          "sha": "f836d298",
+          "date": "2026-08-18",
+          "author": "minerofthesoal",
+          "subject": "0.71.5b1-part one of four for the api",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _to_summary(entry) -> ModelSummary:"
+            },
+            {
+              "kind": "added",
+              "text": "def _to_detail(entry) -> ModelDetail:"
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"\", response_model=ModelListResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def list_models("
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/{model_id}\", response_model=ModelDetailResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def get_model("
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/{model_id}/availability\", response_model=ModelAvailabilityResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def model_availability("
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/{model_id}/usage\", response_model=ModelUsageResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def model_usage("
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.routers.modules",
@@ -4174,7 +7716,120 @@
           "requirement": "fastapi>=0.110,<1"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "604a8342",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "@router.post(\"/{module_id}/deploy\", response_model=ModuleDeployResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def deploy_module("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/{module_id}/fetch\", response_model=ModuleFetchResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def fetch_module_source("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/receive\", response_model=ModuleReceiveResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "async def receive_module("
+            }
+          ]
+        },
+        {
+          "sha": "604ec86f",
+          "date": "2026-08-20",
+          "author": "minerofthesoal",
+          "subject": "b2",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _to_item(entry) -> ModuleItem:"
+            },
+            {
+              "kind": "added",
+              "text": "def _owns_or_admin(ctx: AuthContext, owner_key_id: str) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"\", response_model=ModuleListResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def list_modules("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/create\", response_model=ModuleDetailResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def create_module("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/upload/local\", response_model=ModuleDetailResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "async def upload_local("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/upload/remote\", response_model=ModuleDetailResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def upload_remote("
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/{module_id}\", response_model=ModuleDetailResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def get_module("
+            },
+            {
+              "kind": "added",
+              "text": "@router.patch(\"/{module_id}\", response_model=ModuleDetailResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def update_module("
+            },
+            {
+              "kind": "added",
+              "text": "@router.delete(\"/{module_id}\", response_model=ModuleDetailResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def delete_module("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/{module_id}/sync\", response_model=ModuleSyncResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def sync_module("
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.routers.noodle",
@@ -4215,7 +7870,52 @@
           "requirement": "fastapi>=0.110,<1"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "88c9024f",
+          "date": "2026-09-16",
+          "author": "Claude",
+          "subject": "t1: noodle over the API \u2014 files, edits, fish and archives",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _require_enabled(config: T1APIConfig) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _safe_slug(owner: str) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _context(config: T1APIConfig, principal: HyperLinkPrincipal) -> ToolContext:"
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/tools\", response_model=NoodleToolsResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def list_tools("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/run\", response_model=dict)"
+            },
+            {
+              "kind": "added",
+              "text": "def run_one_tool("
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/workspace\", response_model=NoodleWorkspaceResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def show_workspace("
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.routers.runner",
@@ -4270,7 +7970,60 @@
           "requirement": "fastapi>=0.110,<1"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "cc94bf5a",
+          "date": "2026-09-16",
+          "author": "Claude",
+          "subject": "t1: run a model without LM Studio, and switch it from the API",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _access_level(principal: HyperLinkPrincipal) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def require_switch("
+            },
+            {
+              "kind": "added",
+              "text": "def _resolve(model_id: str, config: T1APIConfig, registry) -> tuple[str, dict]:"
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/status\", response_model=RunnerStatusResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def runner_status("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/plan\", response_model=RunnerPlanResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def runner_plan("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/load\", response_model=RunnerStatusResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def runner_load("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/unload\", response_model=RunnerStatusResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def runner_unload("
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.routers.security",
@@ -4353,7 +8106,96 @@
           "requirement": "fastapi>=0.110,<1"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "604a8342",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _audit("
+            },
+            {
+              "kind": "added",
+              "text": "def _policy_response(policy: NetworkPolicy, config, request_id: str, kind: EntryKind | None = None):"
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/network\", response_model=NetworkPolicyResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def get_network_policy_entries("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/network/blacklist\", response_model=NetworkPolicyResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def add_to_blacklist("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/network/whitelist\", response_model=NetworkPolicyResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def add_to_whitelist("
+            },
+            {
+              "kind": "added",
+              "text": "@router.delete(\"/network/{cidr:path}\", response_model=NetworkPolicyResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def appeal_network_entry("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/network/allow-unlisted\", response_model=NetworkPolicyResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def set_allow_unlisted("
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/limits\", response_model=ForcedLimitListResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def list_forced_limits("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/limits\", response_model=ForcedLimitResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def set_forced_limit("
+            },
+            {
+              "kind": "added",
+              "text": "@router.delete(\"/limits/{subject_type}/{subject_id}\", response_model=GenericOkResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def clear_forced_limit("
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/rate-limits\", response_model=RateLimitStatusResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def rate_limit_status("
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.routers.servers",
@@ -4399,7 +8241,66 @@
           "requirement": "fastapi>=0.110,<1"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "604a8342",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
+          "api_changes": []
+        },
+        {
+          "sha": "bccc73ec",
+          "date": "2026-08-20",
+          "author": "minerofthesoal",
+          "subject": "fixes",
+          "api_changes": []
+        },
+        {
+          "sha": "604ec86f",
+          "date": "2026-08-20",
+          "author": "minerofthesoal",
+          "subject": "b2",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _to_item(entry) -> ServerItem:"
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"\", response_model=ServerListResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def list_servers("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/register\", response_model=ServerDetailResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def register_server("
+            },
+            {
+              "kind": "added",
+              "text": "@router.patch(\"/{server_id}\", response_model=ServerDetailResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def update_server("
+            },
+            {
+              "kind": "added",
+              "text": "@router.delete(\"/{server_id}\", response_model=ServerDetailResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def delete_server("
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.routers.training",
@@ -4489,7 +8390,108 @@
           "requirement": "fastapi>=0.110,<1"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "3cd859b2",
+          "date": "2026-09-08",
+          "author": "Claude",
+          "subject": "0.72.4.dev7 \u2014 what training is doing, and the controls for it",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _deny(what: str, reason: str) -> T1APIError:"
+            },
+            {
+              "kind": "added",
+              "text": "def require_training_read("
+            },
+            {
+              "kind": "added",
+              "text": "def require_training_control("
+            },
+            {
+              "kind": "added",
+              "text": "def _audit("
+            },
+            {
+              "kind": "added",
+              "text": "def _item(run) -> TrainingRunItem:"
+            },
+            {
+              "kind": "added",
+              "text": "def _require_run(monitor, run_id: str):"
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/runs\", response_model=TrainingRunListResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def list_runs("
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/resources\", response_model=TrainingResourcesResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def training_resources("
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/runs/{run_id}\", response_model=TrainingRunResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def get_run("
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/runs/{run_id}/logs\", response_model=TrainingLogResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def get_run_logs("
+            },
+            {
+              "kind": "added",
+              "text": "@router.get("
+            },
+            {
+              "kind": "added",
+              "text": "def get_run_checkpoints("
+            },
+            {
+              "kind": "added",
+              "text": "def _control(monitor, run, action: str):"
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/runs/{run_id}/pause\", response_model=TrainingControlResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def pause_run("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/runs/{run_id}/resume\", response_model=TrainingControlResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def resume_run("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/runs/{run_id}/stop\", response_model=TrainingControlResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def stop_run("
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.routers.usage",
@@ -4558,7 +8560,96 @@
           "requirement": "fastapi>=0.110,<1"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "879b000b",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5rc2 \u2014 T1 API Beta 4, hyped-pro, and PATH setup",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "@router.post(\"/report\", response_model=UsageReportResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def usage_report("
+            }
+          ]
+        },
+        {
+          "sha": "604a8342",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _resolve_window("
+            },
+            {
+              "kind": "added",
+              "text": "def _scope_filters("
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/history\", response_model=UsageHistoryResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def usage_history("
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/by\", response_model=UsageAggregateResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def usage_by("
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/cost\", response_model=UsageCostResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def usage_cost("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/estimate\", response_model=UsageEstimateResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def usage_estimate("
+            }
+          ]
+        },
+        {
+          "sha": "f836d298",
+          "date": "2026-08-18",
+          "author": "minerofthesoal",
+          "subject": "0.71.5b1-part one of four for the api",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "@router.get(\"/current\", response_model=UsageCurrentResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def usage_current("
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/remaining\", response_model=UsageRemainingResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def usage_remaining("
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.routing",
@@ -4689,7 +8780,103 @@
           "requirement": "pip install 'hypernix[t1api]'"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "bccc73ec",
+          "date": "2026-08-20",
+          "author": "minerofthesoal",
+          "subject": "fixes",
+          "api_changes": []
+        },
+        {
+          "sha": "604ec86f",
+          "date": "2026-08-20",
+          "author": "minerofthesoal",
+          "subject": "b2",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class CascadeStep:"
+            },
+            {
+              "kind": "added",
+              "text": "def matches_size(self, input_tokens: int) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "class RoutingPolicy:"
+            },
+            {
+              "kind": "added",
+              "text": "def from_dict(cls, d: dict[str, Any]) -> RoutingPolicy:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_dict(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "class RoutingTable:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__("
+            },
+            {
+              "kind": "added",
+              "text": "def load(cls, path: str | Path | None = None) -> RoutingTable:"
+            },
+            {
+              "kind": "added",
+              "text": "def register_policy(self, policy: RoutingPolicy) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def set_plan_policy(self, plan: str, policy_name: str) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def policy_for_plan(self, plan: str) -> RoutingPolicy | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def get_policy(self, name: str) -> RoutingPolicy | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def __len__(self) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "class RoutingDecision:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_dict(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "class RoutingEngine:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, table: RoutingTable, registry: ModelRegistry, meter: UsageMeter) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _eligible_steps(self, policy: RoutingPolicy, *, input_tokens: int) -> list[CascadeStep]:"
+            },
+            {
+              "kind": "added",
+              "text": "def route_automatic("
+            },
+            {
+              "kind": "added",
+              "text": "def route_manual("
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.runner_cli",
@@ -4728,7 +8915,96 @@
           "requirement": "pip install 'hypernix[t1api]'"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "792c5d27",
+          "date": "2026-09-17",
+          "author": "Claude",
+          "subject": "hyperlink: add and re-port a server; hypernix-t1 built-in-runner start",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _catalogue(url: str, key: str) -> tuple[dict[str, Any], tuple[int, Any] | None]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _loadable(catalogue: dict[str, Any]) -> list[dict[str, Any]]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _why_nothing(catalogue: dict[str, Any]) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _pick(url: str, key: str) -> tuple[str, int]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _load_payload(args: argparse.Namespace, model_id: str) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _load_options(action: argparse.ArgumentParser) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _start(url: str, key: str, args: argparse.Namespace) -> int:"
+            }
+          ]
+        },
+        {
+          "sha": "3f05aaf6",
+          "date": "2026-09-16",
+          "author": "Claude",
+          "subject": "The version it actually is, the runner from the phone, and edit mode",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _config_dir() -> Path:"
+            },
+            {
+              "kind": "added",
+              "text": "def _key_from_env_file() -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _resolve_key(explicit: str) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _base_url(explicit: str) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _request("
+            },
+            {
+              "kind": "added",
+              "text": "def _fail(status: int, body: Any) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def _describe_placement(placement: dict[str, Any]) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _print_status(body: dict[str, Any]) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def build_parser() -> argparse.ArgumentParser:"
+            },
+            {
+              "kind": "added",
+              "text": "def main(argv: list[str] | None = None) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def cli_main(argv: list[str] | None = None) -> int:"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.schemas",
@@ -6162,7 +10438,147 @@
           "requirement": "pydantic>=2,<3"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "46047fec",
+          "date": "2026-09-16",
+          "author": "Claude",
+          "subject": "models: reconcile \"Models registered 44\" with an empty picker",
+          "api_changes": []
+        },
+        {
+          "sha": "a75a750b",
+          "date": "2026-09-16",
+          "author": "Claude",
+          "subject": "t1api: add GET /version, and stop a stale process looking like a wrong number",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class VersionResponse(BaseModel):"
+            }
+          ]
+        },
+        {
+          "sha": "faee5534",
+          "date": "2026-09-16",
+          "author": "Claude",
+          "subject": "A HyperNix model runner, settings, memory and tool calling",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class BackendsResponse(BaseModel):"
+            },
+            {
+              "kind": "added",
+              "text": "class PreferencesRequest(BaseModel):"
+            },
+            {
+              "kind": "added",
+              "text": "class PreferencesResponse(BaseModel):"
+            }
+          ]
+        },
+        {
+          "sha": "3f05aaf6",
+          "date": "2026-09-16",
+          "author": "Claude",
+          "subject": "The version it actually is, the runner from the phone, and edit mode",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class MessageEditRequest(BaseModel):"
+            },
+            {
+              "kind": "added",
+              "text": "class MessageEditResponse(BaseModel):"
+            },
+            {
+              "kind": "added",
+              "text": "class UpgradeResponse(BaseModel):"
+            }
+          ]
+        },
+        {
+          "sha": "cc94bf5a",
+          "date": "2026-09-16",
+          "author": "Claude",
+          "subject": "t1: run a model without LM Studio, and switch it from the API",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class RunnerLoadRequest(BaseModel):"
+            },
+            {
+              "kind": "added",
+              "text": "class RunnerStatusResponse(BaseModel):"
+            },
+            {
+              "kind": "added",
+              "text": "class RunnerPlanResponse(BaseModel):"
+            }
+          ]
+        },
+        {
+          "sha": "88c9024f",
+          "date": "2026-09-16",
+          "author": "Claude",
+          "subject": "t1: noodle over the API \u2014 files, edits, fish and archives",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class NoodleRunRequest(BaseModel):"
+            },
+            {
+              "kind": "added",
+              "text": "class NoodleToolsResponse(BaseModel):"
+            },
+            {
+              "kind": "added",
+              "text": "class NoodleWorkspaceResponse(BaseModel):"
+            }
+          ]
+        },
+        {
+          "sha": "087a6cf0",
+          "date": "2026-09-16",
+          "author": "Claude",
+          "subject": "t1: /chat/compact/* \u2014 making a long conversation fit again",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class CompactRequest(BaseModel):"
+            },
+            {
+              "kind": "added",
+              "text": "class CompactResponse(BaseModel):"
+            }
+          ]
+        },
+        {
+          "sha": "6c58a994",
+          "date": "2026-09-16",
+          "author": "Claude",
+          "subject": "Fix the CI build break, and ship an IPA that can run a model",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class MemoryCreateRequest(BaseModel):"
+            },
+            {
+              "kind": "added",
+              "text": "class MemoryUpdateRequest(BaseModel):"
+            },
+            {
+              "kind": "added",
+              "text": "class MemoryResponse(BaseModel):"
+            },
+            {
+              "kind": "added",
+              "text": "class MemoryListResponse(BaseModel):"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.security",
@@ -6196,7 +10612,28 @@
           "requirement": "pip install 'hypernix[t1api]'"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "604ec86f",
+          "date": "2026-08-20",
+          "author": "minerofthesoal",
+          "subject": "b2",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _is_private_or_local(host: str) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def validate_remote_address(address: str, *, allow_private: bool = False) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def sanitize_module_path(relative_path: str, base_dir: Path) -> Path:"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.servers",
@@ -6298,7 +10735,79 @@
           "requirement": "pip install 'hypernix[t1api]'"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "bccc73ec",
+          "date": "2026-08-20",
+          "author": "minerofthesoal",
+          "subject": "fixes",
+          "api_changes": []
+        },
+        {
+          "sha": "604ec86f",
+          "date": "2026-08-20",
+          "author": "minerofthesoal",
+          "subject": "b2",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class TrustLevel(StrEnum):"
+            },
+            {
+              "kind": "added",
+              "text": "class ServerStatus(StrEnum):"
+            },
+            {
+              "kind": "added",
+              "text": "class ServerEntry:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_dict(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _from_row(cls, row: Any) -> ServerEntry:"
+            },
+            {
+              "kind": "added",
+              "text": "class ServerRegistry:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, backend: SQLiteBackend | None = None) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def register("
+            },
+            {
+              "kind": "added",
+              "text": "def get(self, server_id: str) -> ServerEntry | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def require(self, server_id: str) -> ServerEntry:"
+            },
+            {
+              "kind": "added",
+              "text": "def require_trusted(self, server_id: str) -> ServerEntry:"
+            },
+            {
+              "kind": "added",
+              "text": "def list(self, *, trust_level: TrustLevel | None = None, status: ServerStatus | None = None) -> list[ServerEntry]:"
+            },
+            {
+              "kind": "added",
+              "text": "def update("
+            },
+            {
+              "kind": "added",
+              "text": "def delete(self, server_id: str) -> None:"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.storage",
@@ -6375,7 +10884,108 @@
           "requirement": "pip install 'hypernix[t1api]'"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "604a8342",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
+          "api_changes": [
+            {
+              "kind": "removed",
+              "text": "def __init__(self, db_path: str | Path | None = None) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__("
+            },
+            {
+              "kind": "removed",
+              "text": "def _connect(self) -> sqlite3.Connection:"
+            },
+            {
+              "kind": "added",
+              "text": "def _existing_columns(self, conn: Any) -> set[str]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _ensure_columns(self) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _where("
+            },
+            {
+              "kind": "added",
+              "text": "def totals("
+            },
+            {
+              "kind": "removed",
+              "text": "def breakdown_by_model(self, key_id: str, *, since: float | None = None) -> list[dict[str, Any]]:"
+            },
+            {
+              "kind": "added",
+              "text": "def aggregate("
+            },
+            {
+              "kind": "added",
+              "text": "def breakdown_by_model(self, key_id: str, *, since: float | None = None) -> list[dict[str, Any]]:"
+            },
+            {
+              "kind": "added",
+              "text": "def history("
+            },
+            {
+              "kind": "added",
+              "text": "def first_event_ts(self, **filters: str | None) -> float | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _totals_row(row: Any) -> dict[str, Any]:"
+            }
+          ]
+        },
+        {
+          "sha": "f836d298",
+          "date": "2026-08-18",
+          "author": "minerofthesoal",
+          "subject": "0.71.5b1-part one of four for the api",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class UsageStore:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, db_path: str | Path | None = None) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _connect(self) -> sqlite3.Connection:"
+            },
+            {
+              "kind": "added",
+              "text": "def _init_schema(self) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def record("
+            },
+            {
+              "kind": "added",
+              "text": "def totals_for_key("
+            },
+            {
+              "kind": "added",
+              "text": "def breakdown_by_model(self, key_id: str, *, since: float | None = None) -> list[dict[str, Any]]:"
+            },
+            {
+              "kind": "added",
+              "text": "def event_count(self) -> int:"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.training_cli",
@@ -6407,7 +11017,48 @@
           "requirement": "pip install 'hypernix[t1api]'"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "3cd859b2",
+          "date": "2026-09-08",
+          "author": "Claude",
+          "subject": "0.72.4.dev7 \u2014 what training is doing, and the controls for it",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _duration(seconds: float | None) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _progress(run) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _list(monitor: TrainingMonitor, runs, *, active_only: bool = False) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _show(run) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _resources(payload: dict) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _require(monitor: TrainingMonitor, run_id: str):"
+            },
+            {
+              "kind": "added",
+              "text": "def main(argv: list[str] | None = None) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def cli_main() -> None:"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.transport",
@@ -6477,7 +11128,68 @@
           "requirement": "pip install 'hypernix[t1api]'"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "604a8342",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def compute_signature(secret: str, *, method: str, path: str, timestamp: str, body_digest: str) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def verify_signature("
+            },
+            {
+              "kind": "added",
+              "text": "class TransferResult:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_dict(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "class ModuleTransport:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__("
+            },
+            {
+              "kind": "added",
+              "text": "def push_module("
+            },
+            {
+              "kind": "added",
+              "text": "def fetch_source("
+            },
+            {
+              "kind": "added",
+              "text": "class _NoRedirect(urllib.request.HTTPRedirectHandler):"
+            },
+            {
+              "kind": "added",
+              "text": "def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: D102, ANN001"
+            },
+            {
+              "kind": "added",
+              "text": "def _redact(url: str) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _safe_error_detail(exc: urllib.error.HTTPError, limit: int = 300) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _extract_checksum(body: bytes) -> str | None:"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.upgrade",
@@ -6554,7 +11266,56 @@
           "requirement": "pip install 'hypernix[t1api]'"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "3f05aaf6",
+          "date": "2026-09-16",
+          "author": "Claude",
+          "subject": "The version it actually is, the runner from the phone, and edit mode",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class Installation:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_dict(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "class Command:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_dict(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "class UpgradePlan:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_dict(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _editable_install() -> tuple[bool, str]:"
+            },
+            {
+              "kind": "added",
+              "text": "def describe() -> Installation:"
+            },
+            {
+              "kind": "added",
+              "text": "def _service_hint() -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def plan(installation: Installation | None = None) -> UpgradePlan:"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.usage",
@@ -6652,7 +11413,72 @@
           "requirement": "pip install 'hypernix[t1api]'"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "f836d298",
+          "date": "2026-08-18",
+          "author": "minerofthesoal",
+          "subject": "0.71.5b1-part one of four for the api",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class ModelUsageSnapshot:"
+            },
+            {
+              "kind": "added",
+              "text": "def input_remaining(self) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def output_remaining(self) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def is_exhausted(self) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_dict(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "class UsageMeter:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__("
+            },
+            {
+              "kind": "added",
+              "text": "def _since(self) -> float:"
+            },
+            {
+              "kind": "added",
+              "text": "def record("
+            },
+            {
+              "kind": "added",
+              "text": "def snapshot_for_model(self, key_id: str, model_id: str) -> ModelUsageSnapshot:"
+            },
+            {
+              "kind": "added",
+              "text": "def assert_not_exhausted(self, key_id: str, model_id: str) -> ModelUsageSnapshot:"
+            },
+            {
+              "kind": "added",
+              "text": "def current(self, key_id: str) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def remaining(self, key_id: str, model_id: str) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def assert_not_exhausted_safe(self, key_id: str, model_id: str) -> ModelUsageSnapshot:"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.version",
@@ -6748,7 +11574,132 @@
           "requirement": "pip install 'hypernix[t1api]'"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "2324f0fa",
+          "date": "2026-09-15",
+          "author": "Mason",
+          "subject": "t1 v1.0.26.9.2.3: sign up for a key without already having one",
+          "api_changes": []
+        },
+        {
+          "sha": "547dfa47",
+          "date": "2026-09-02",
+          "author": "Claude",
+          "subject": "T1 v1.0.2026.9.2.1: the governed inference surface",
+          "api_changes": []
+        },
+        {
+          "sha": "eab30655",
+          "date": "2026-08-27",
+          "author": "Claude",
+          "subject": "T1 v1.0.2026.8.1.1: server IDs advance, and undo/redo actually works",
+          "api_changes": []
+        },
+        {
+          "sha": "370119db",
+          "date": "2026-08-26",
+          "author": "Claude",
+          "subject": "T1 v1.0.26.8.1.0: T2 recognition, auth undo/redo, and backups",
+          "api_changes": []
+        },
+        {
+          "sha": "c7eabfd7",
+          "date": "2026-08-23",
+          "author": "Claude",
+          "subject": "T1 v1.0.26.8.0.1: the LM Studio bridge and HyperLink",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class T1Version:"
+            },
+            {
+              "kind": "added",
+              "text": "def parse(cls, text: str) -> T1Version:"
+            },
+            {
+              "kind": "added",
+              "text": "def short(self) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def long(self) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def display(self) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def generation(self) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def release(self) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def __str__(self) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def __repr__(self) -> str:  # pragma: no cover - debugging aid"
+            },
+            {
+              "kind": "added",
+              "text": "def key(self) -> tuple[int, int, int, int, int, int]:"
+            },
+            {
+              "kind": "added",
+              "text": "def __eq__(self, other: object) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def __hash__(self) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def __lt__(self, other: T1Version | str) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def __le__(self, other: T1Version | str) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def __gt__(self, other: T1Version | str) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def __ge__(self, other: T1Version | str) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def compatible_with(self, other: T1Version | str) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def bump("
+            },
+            {
+              "kind": "added",
+              "text": "def to_dict(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _normalise_year(year: int, source: str) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def _coerce(value: T1Version | str) -> T1Version:"
+            },
+            {
+              "kind": "added",
+              "text": "def parse_version(text: str) -> T1Version:"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1api.webauth",
@@ -6854,7 +11805,75 @@
           "requirement": "pip install 'hypernix[t1api]'"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "a97d518a",
+          "date": "2026-09-15",
+          "author": "Claude",
+          "subject": "docs: a README that describes this release, and two claims made true",
+          "api_changes": []
+        },
+        {
+          "sha": "2324f0fa",
+          "date": "2026-09-15",
+          "author": "Mason",
+          "subject": "t1 v1.0.26.9.2.3: sign up for a key without already having one",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class WebAuthError(Exception):"
+            },
+            {
+              "kind": "added",
+              "text": "class WebAuthMode:"
+            },
+            {
+              "kind": "added",
+              "text": "def needs_tls(self) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "class WebAuthSettings:"
+            },
+            {
+              "kind": "added",
+              "text": "def allowed_origins(self) -> tuple[str, ...]:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_dict(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def resolve_mode(name: str | None = None) -> WebAuthMode:"
+            },
+            {
+              "kind": "added",
+              "text": "def settings_from_env(mode_name: str | None = None) -> WebAuthSettings:"
+            },
+            {
+              "kind": "added",
+              "text": "def validate(settings: WebAuthSettings) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "with a hole or a dead login in it, which is exactly the class of"
+            },
+            {
+              "kind": "added",
+              "text": "def cookie_kwargs(mode: WebAuthMode, *, max_age: int) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def client_ip(headers: Any, peer: str, mode: WebAuthMode) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def is_origin_allowed(origin: str, settings: WebAuthSettings) -> bool:"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1sdk",
@@ -6871,7 +11890,43 @@
           "requirement": "pip install 'hypernix[t1api]'"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "eab30655",
+          "date": "2026-08-27",
+          "author": "Claude",
+          "subject": "T1 v1.0.2026.8.1.1: server IDs advance, and undo/redo actually works",
+          "api_changes": []
+        },
+        {
+          "sha": "370119db",
+          "date": "2026-08-26",
+          "author": "Claude",
+          "subject": "T1 v1.0.26.8.1.0: T2 recognition, auth undo/redo, and backups",
+          "api_changes": []
+        },
+        {
+          "sha": "c7eabfd7",
+          "date": "2026-08-23",
+          "author": "Claude",
+          "subject": "T1 v1.0.26.8.0.1: the LM Studio bridge and HyperLink",
+          "api_changes": []
+        },
+        {
+          "sha": "879b000b",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5rc2 \u2014 T1 API Beta 4, hyped-pro, and PATH setup",
+          "api_changes": []
+        },
+        {
+          "sha": "3e60ff82",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3 (part 2/3): complete SDK, full waiter TUI, smoke tool",
+          "api_changes": []
+        }
+      ]
     },
     {
       "module": "hypernix.t1sdk.client",
@@ -7382,7 +12437,184 @@
           "requirement": "pip install 'hypernix[t1api]'"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "797be9d8",
+          "date": "2026-08-23",
+          "author": "Claude",
+          "subject": "HyperLink for iOS, the waiter commands, and the release plumbing",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def lmstudio_status(self, *, discover: bool = False) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def lmstudio_models(self, *, base_url: str | None = None) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def lmstudio_chat("
+            },
+            {
+              "kind": "added",
+              "text": "def hyperlink_endpoints(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def hyperlink_pair("
+            },
+            {
+              "kind": "added",
+              "text": "def hyperlink_redeem("
+            },
+            {
+              "kind": "added",
+              "text": "def hyperlink_devices(self, *, include_revoked: bool = False) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def hyperlink_revoke_device(self, device_id: str) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def hyperlink_sessions(self, *, include_archived: bool = False, limit: int = 50) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def hyperlink_create_session("
+            },
+            {
+              "kind": "added",
+              "text": "def hyperlink_messages(self, session_id: str, *, after_seq: int = 0) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def hyperlink_chat("
+            },
+            {
+              "kind": "added",
+              "text": "def hyperlink_resolve_model("
+            }
+          ]
+        },
+        {
+          "sha": "879b000b",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5rc2 \u2014 T1 API Beta 4, hyped-pro, and PATH setup",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def report_usage("
+            }
+          ]
+        },
+        {
+          "sha": "3e60ff82",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3 (part 2/3): complete SDK, full waiter TUI, smoke tool",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _q(value: str) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "class T1Client:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__("
+            },
+            {
+              "kind": "added",
+              "text": "def base_url(self) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def credential(self) -> str | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def credential(self, value: str | None) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def __repr__(self) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def call("
+            },
+            {
+              "kind": "added",
+              "text": "def _get(self, path: str, **kwargs: Any) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _post(self, path: str, **kwargs: Any) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def health(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def status(self) -> ServerStatus:"
+            },
+            {
+              "kind": "added",
+              "text": "def config(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def ping(self) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def validate(self, key: str | None = None) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def whoami(self) -> KeyInfo:"
+            },
+            {
+              "kind": "added",
+              "text": "def issue_token("
+            },
+            {
+              "kind": "added",
+              "text": "def rotate(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def admin_rotate(self, target_key_id: str, *, promote_to_admin: bool = False) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def list_models(self) -> list[Model]:"
+            },
+            {
+              "kind": "added",
+              "text": "def list_models_raw(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def get_model(self, model_id: str) -> Model:"
+            },
+            {
+              "kind": "added",
+              "text": "def model_availability(self, model_id: str) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def model_usage(self, model_id: str) -> ModelUsage:"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1sdk.errors",
@@ -7480,7 +12712,68 @@
           "requirement": "pip install 'hypernix[t1api]'"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "3e60ff82",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3 (part 2/3): complete SDK, full waiter TUI, smoke tool",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class T1Error(Exception):"
+            },
+            {
+              "kind": "added",
+              "text": "\"\"\"Base class for every SDK failure."
+            },
+            {
+              "kind": "added",
+              "text": "def __init__("
+            },
+            {
+              "kind": "added",
+              "text": "def __str__(self) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "class T1TransportError(T1Error):"
+            },
+            {
+              "kind": "added",
+              "text": "class T1AuthError(T1Error):"
+            },
+            {
+              "kind": "added",
+              "text": "class T1NotFoundError(T1Error):"
+            },
+            {
+              "kind": "added",
+              "text": "class T1ValidationError(T1Error):"
+            },
+            {
+              "kind": "added",
+              "text": "class T1QuotaError(T1Error):"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, message: str, *, retry_after: float | None = None, **kwargs: Any) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "class T1ServerError(T1Error):"
+            },
+            {
+              "kind": "added",
+              "text": "class T1NotSupportedError(T1Error):"
+            },
+            {
+              "kind": "added",
+              "text": "def exception_for("
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1sdk.models",
@@ -7684,7 +12977,112 @@
           "requirement": "pip install 'hypernix[t1api]'"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "3e60ff82",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3 (part 2/3): complete SDK, full waiter TUI, smoke tool",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "Every class here is a thin, forgiving wrapper: :meth:`from_dict` reads"
+            },
+            {
+              "kind": "added",
+              "text": "def _f(data: dict[str, Any], key: str, default: Any = None) -> Any:"
+            },
+            {
+              "kind": "added",
+              "text": "class Model:"
+            },
+            {
+              "kind": "added",
+              "text": "def is_routable(self) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def from_dict(cls, data: dict[str, Any]) -> Model:"
+            },
+            {
+              "kind": "added",
+              "text": "class ModelUsage:"
+            },
+            {
+              "kind": "added",
+              "text": "def from_dict(cls, data: dict[str, Any]) -> ModelUsage:"
+            },
+            {
+              "kind": "added",
+              "text": "class RoutingDecision:"
+            },
+            {
+              "kind": "added",
+              "text": "def from_dict(cls, data: dict[str, Any]) -> RoutingDecision:"
+            },
+            {
+              "kind": "added",
+              "text": "class Job:"
+            },
+            {
+              "kind": "added",
+              "text": "def is_terminal(self) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def succeeded(self) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def from_dict(cls, data: dict[str, Any]) -> Job:"
+            },
+            {
+              "kind": "added",
+              "text": "class Module:"
+            },
+            {
+              "kind": "added",
+              "text": "def from_dict(cls, data: dict[str, Any]) -> Module:"
+            },
+            {
+              "kind": "added",
+              "text": "class Server:"
+            },
+            {
+              "kind": "added",
+              "text": "def is_trusted(self) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def from_dict(cls, data: dict[str, Any]) -> Server:"
+            },
+            {
+              "kind": "added",
+              "text": "class Event:"
+            },
+            {
+              "kind": "added",
+              "text": "def from_dict(cls, data: dict[str, Any]) -> Event:"
+            },
+            {
+              "kind": "added",
+              "text": "class KeyInfo:"
+            },
+            {
+              "kind": "added",
+              "text": "def plan(self) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def is_admin(self) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def from_dict(cls, data: dict[str, Any]) -> KeyInfo:"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.t1sdk.transport",
@@ -7776,7 +13174,88 @@
           "requirement": "pip install 'hypernix[t1api]'"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "3e60ff82",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3 (part 2/3): complete SDK, full waiter TUI, smoke tool",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class RetryPolicy:"
+            },
+            {
+              "kind": "added",
+              "text": "def delay_for(self, attempt: int, retry_after: float | None = None) -> float:"
+            },
+            {
+              "kind": "added",
+              "text": "class TLSConfig:"
+            },
+            {
+              "kind": "added",
+              "text": "def build_context(self) -> ssl.SSLContext | None:"
+            },
+            {
+              "kind": "added",
+              "text": "class Response:"
+            },
+            {
+              "kind": "added",
+              "text": "def request_id(self) -> str | None:"
+            },
+            {
+              "kind": "added",
+              "text": "class HTTPTransport:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__("
+            },
+            {
+              "kind": "added",
+              "text": "def url_for(self, path: str, query: dict[str, Any] | None = None) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def request("
+            },
+            {
+              "kind": "added",
+              "text": "def _attempt(self, method: str, url: str, data: bytes | None, headers: dict[str, str]) -> Response:"
+            },
+            {
+              "kind": "added",
+              "text": "def _urlopen(self, request: urllib.request.Request):"
+            },
+            {
+              "kind": "added",
+              "text": "def upload_file("
+            },
+            {
+              "kind": "added",
+              "text": "class _RetryableFailure(Exception):"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, error: Exception, *, reason: str, retry_after: float | None = None) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _parse_json(raw: bytes, method: str, url: str) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _parse_retry_after(value: str | None) -> float | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _safe_path(url: str) -> str:"
+            }
+          ]
+        }
+      ]
     }
   ],
   "routes": [
