@@ -80,7 +80,6 @@ class OverclockResult:
 
 def _level_to_offsets(level: int) -> tuple[int, int, int]:
     """Map ``level`` 0..30 to ``(core_mhz, mem_mhz, power_pct)``.
-Matthew 7:15-29 
     Linear ramp; level 0 is full stock, level 30 hits the hard
     ceilings declared at module level.  Levels above 30 are
     clamped to 30 (rather than rejected) to keep the helpers
