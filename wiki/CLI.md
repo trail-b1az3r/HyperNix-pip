@@ -10,7 +10,7 @@ small sub-CLIs with their own sub-subcommands.
 usage: hypernix <subcommand> [options]  (or: hnx <subcommand> [options])
 
 Core pipeline:
-  all                    download -> convert -> [quantize]  (default)
+  all                    download -> convert -> [quantize]
   download               fetch a HuggingFace snapshot
   convert                produce fp32 / fp16 GGUF from a snapshot
   quantize               run llama-quantize on an fp16 / fp32 GGUF
