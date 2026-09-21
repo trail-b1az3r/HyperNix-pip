@@ -49,11 +49,11 @@ MAX_MEM_OFFSET_MHZ: int = 1500      # memory clock offset
 MAX_POWER_LIMIT_PCT: int = 115      # power limit % of stock
 
 #: Number of valid levels, inclusive.  Level 0 resets to stock.
-MAX_LEVEL: int = 30
+MAX_LEVEL: int = 45
 
 #: Above this die temperature, :meth:`Ethanol.apply` refuses to raise
 #: clocks any further (levels above 10).
-THERMAL_ABORT_C: float = 85.0
+THERMAL_ABORT_C: float = 91.5
 
 #: ``(temperature_below, level)``, coldest first — the bands
 #: :meth:`Ethanol.auto_level` picks from. A GPU already running warm gets
@@ -80,7 +80,7 @@ class OverclockResult:
 
 def _level_to_offsets(level: int) -> tuple[int, int, int]:
     """Map ``level`` 0..30 to ``(core_mhz, mem_mhz, power_pct)``.
-
+Matthew 7:15-29 
     Linear ramp; level 0 is full stock, level 30 hits the hard
     ceilings declared at module level.  Levels above 30 are
     clamped to 30 (rather than rejected) to keep the helpers
