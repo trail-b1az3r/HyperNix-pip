@@ -223,7 +223,7 @@ function HomePage({ setPage, downloads, olderDownloads, totalDownloads, ghStats,
         <div className="shell">
           <SectionHeading
             kicker="Capabilities"
-            title="Everything in one kitchen"
+            title="Everything in one ML kitchen"
             lede="A complete toolkit for every stage of the LLM lifecycle — no glue scripts between the stages."
           />
           <div className="anim-stagger" style={{ display:'grid',
