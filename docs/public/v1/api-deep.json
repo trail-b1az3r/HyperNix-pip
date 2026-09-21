@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-api-deep",
   "generated_at": "2026-09-20T21:20:57Z",
-  "commit": "d23cfffcd97cfc34568f3b3e11c1d424ba287ba3",
+  "commit": "b21d4c29562f5c22ddac363876d3d723d1d3eddc",
   "history_available": true,
   "source_root": "src/hypernix",
   "modules": [
@@ -28040,49 +28040,49 @@
           "kind": "class",
           "name": "Ethanol",
           "signature": "class Ethanol",
-          "line": 173,
+          "line": 172,
           "doc": "Overclock helper. Construct with a level, call :meth:`apply`.",
           "methods": [
             {
               "name": "offsets",
               "signature": "def offsetsself -> tuple[int, int, int]",
-              "line": 185,
+              "line": 184,
               "doc": ""
             },
             {
               "name": "plan",
               "signature": "def planself -> OverclockResult",
-              "line": 188,
+              "line": 187,
               "doc": ""
             },
             {
               "name": "read_temperature",
               "signature": "def read_temperatureself -> float | None",
-              "line": 200,
+              "line": 199,
               "doc": "Current GPU temperature in \u00b0C, or None if it can't be read."
             },
             {
               "name": "auto_level",
               "signature": "def auto_levelself -> tuple[int, str]",
-              "line": 236,
+              "line": 235,
               "doc": "Pick a level from the *measured* temperature."
             },
             {
               "name": "apply",
               "signature": "def applyself, *, confirm: bool=False, auto_throttle: bool=True -> OverclockResult",
-              "line": 268,
+              "line": 267,
               "doc": "Apply the offsets via the detected vendor tool."
             },
             {
               "name": "reset",
               "signature": "def resetself, *, confirm: bool=False -> OverclockResult",
-              "line": 316,
+              "line": 315,
               "doc": "Convenience: same as ``Ethanol(level=0).apply(...)``."
             },
             {
               "name": "status",
               "signature": "def statusself -> dict[str, Any]",
-              "line": 423,
+              "line": 422,
               "doc": "Current GPU state: clocks, power, temperature, utilisation."
             }
           ]
@@ -28091,21 +28091,21 @@
           "kind": "function",
           "name": "ethanol",
           "signature": "def ethanollevel: int=0, **kw: Any -> Ethanol",
-          "line": 485,
+          "line": 484,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "overclock",
           "signature": "def overclocklevel: int, *, confirm: bool=False, gpu_index: int=0 -> OverclockResult",
-          "line": 489,
+          "line": 488,
           "doc": "One-shot helper. Equivalent to ``Ethanol(level=level, gpu_index=gpu_index).apply(confirm=...)``."
         },
         {
           "kind": "function",
           "name": "cli_main",
           "signature": "def cli_mainargv: list[str] | None=None -> int",
-          "line": 545,
+          "line": 544,
           "doc": ""
         }
       ],
@@ -28115,6 +28115,20 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "0f3f85c8",
+          "date": "2026-09-21",
+          "author": "Rayla",
+          "subject": "Remove irrelevant comment from _level_to_offsets",
+          "api_changes": []
+        },
+        {
+          "sha": "3b7b1e18",
+          "date": "2026-09-21",
+          "author": "Rayla",
+          "subject": "Update MAX_LEVEL and THERMAL_ABORT_C constants",
+          "api_changes": []
+        },
         {
           "sha": "3d07cc0e",
           "date": "2026-09-09",
