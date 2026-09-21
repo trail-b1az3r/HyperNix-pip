@@ -140,7 +140,7 @@ rest — see [T1-API.md#known-limitation](T1-API.md#known-limitation).
   against a fake model, and delete every key they made. Nothing publishes
   until both are green.
 
-## 0.72.4 — beta 1 (Shipped)
+## 0.72.4 (Shipped)
 
 Cut across `dev1`–`dev13` and `post1`–`post5`; see the
 [Changelog](Changelog.md) for the full list.
