@@ -450,6 +450,51 @@ class TestPipeline:
         assert dbfs(peak(out)) <= -1.0 + 0.05           # limited
         assert float(np.mean(out.samples)) == pytest.approx(0.0, abs=0.01)
 
+    def test_the_speech_preset_removes_mains_hum(self):
+        """Found by running the example rather than by reading it.
+
+        An 80 Hz high-pass is 0.7 of an octave above 50 Hz, so it takes
+        about 10 dB off the hum and leaves the rest — enough to sit
+        *above* the -45 dB gate, which then never closes. The silences
+        stop being silent and everything that looks for them finds one
+        continuous region.
+        """
+        rate = 44_100
+        t = np.linspace(0.0, 4.0, rate * 4, endpoint=False)
+        speech = 0.08 * np.sin(2 * np.pi * 220 * t) * ((t > 1.0) & (t < 3.0))
+        hum = 0.05 * np.sin(2 * np.pi * 50 * t)
+        noisy = Audio((speech + hum).astype(np.float32), rate)
+
+        with_notch = Pipeline.for_speech(16_000, mains=50.0).run(noisy)
+        without = Pipeline.for_speech(16_000, mains=0).run(noisy)
+
+        # The lead-in is silence in the source. With the hum removed it
+        # gates to nothing; with the hum left in it does not.
+        def lead_in(audio: Audio) -> float:
+            return rms(Audio(audio.samples[: int(0.8 * audio.sample_rate)],
+                             audio.sample_rate))
+
+        # The consequence that actually matters, and the unambiguous
+        # one: with the hum notched, the silences are silent and the
+        # speech is found where it is. Without, the whole recording
+        # reads as one continuous region.
+        found = detect_speech(with_notch, threshold_db=-45.0)
+        missed = detect_speech(without, threshold_db=-45.0)
+
+        assert found, "no speech found at all"
+        assert found[-1][1] < 3.5, found
+        assert missed == [(0.0, without.duration)], missed
+
+        # Supporting: about 10 dB, measured rather than guessed. The
+        # first version of this asserted a factor of four picked out of
+        # the air and the real figure is three.
+        assert lead_in(with_notch) < lead_in(without) / 2
+
+    def test_the_preset_can_skip_the_notch(self):
+        """60 Hz elsewhere, and 0 for a recording with no mains in it."""
+        assert "notch" not in Pipeline.for_speech(16_000, mains=0).describe()
+        assert "60" in Pipeline.for_speech(16_000, mains=60.0).describe()
+
     def test_order_is_data_so_it_can_be_written_down(self):
         """Gate-then-compress and compress-then-gate are different
         processors, and which one you have is not obvious from the
