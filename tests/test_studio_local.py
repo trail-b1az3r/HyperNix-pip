@@ -42,29 +42,56 @@ _POSIX_ONLY = pytest.mark.skipif(
 )
 
 
-def _compiler() -> str | None:
+def _compilers() -> list[str]:
+    """Every distinct C++ compiler on this machine, not just the first.
+
+    This used to return one, `c++` before the others -- which is g++ on
+    Linux and clang on macOS. So the two CI platforms compiled Studio
+    with different compilers and *only* macOS and Windows ever saw a
+    clang diagnostic. `-Wunused-private-field` is one of those: it does
+    not exist in GCC at all, so the unused `state_` in the stub build
+    compiled clean on every Linux job and broke both other platforms,
+    with nothing on the green side able to say why.
+
+    Compiling with all of them means a clang-only error fails on Linux
+    too. `c++` usually resolves to one of the others, so they are
+    de-duplicated by realpath rather than by name.
+    """
+    found: dict[str, str] = {}
     for name in ("c++", "g++", "clang++"):
-        found = shutil.which(name)
-        if found:
-            return found
-    return None
+        path = shutil.which(name)
+        if path:
+            found.setdefault(str(Path(path).resolve()), path)
+    return list(found.values())
 
 
 def _build(name: str, sources: list[str], tmp_path: Path) -> Path:
-    compiler = _compiler()
-    if compiler is None:
+    """Compile *name* with every compiler here; return the first binary.
+
+    Every one of them has to succeed. Returning early on the first
+    success would put back exactly the blind spot above.
+    """
+    compilers = _compilers()
+    if not compilers:
         pytest.skip("no C++ compiler on this machine")
-    out = tmp_path / name
-    result = subprocess.run(
-        [compiler, "-std=c++17", "-O1", "-Wall", "-Wextra", "-Werror",
-         str(TESTS / f"{name}.cpp"),
-         *[str(SRC / s) for s in sources],
-         "-pthread", "-o", str(out)],
-        capture_output=True, text=True, check=False,
-    )
-    if result.returncode != 0:
-        pytest.fail(f"{name} does not compile cleanly:\n{result.stderr}")
-    return out
+
+    binaries: list[Path] = []
+    for index, compiler in enumerate(compilers):
+        out = tmp_path / f"{name}.{index}"
+        result = subprocess.run(
+            [compiler, "-std=c++17", "-O1", "-Wall", "-Wextra", "-Werror",
+             str(TESTS / f"{name}.cpp"),
+             *[str(SRC / s) for s in sources],
+             "-pthread", "-o", str(out)],
+            capture_output=True, text=True, check=False,
+        )
+        if result.returncode != 0:
+            pytest.fail(
+                f"{name} does not compile cleanly with {compiler}:\n"
+                f"{result.stderr}"
+            )
+        binaries.append(out)
+    return binaries[0]
 
 
 @_POSIX_ONLY
