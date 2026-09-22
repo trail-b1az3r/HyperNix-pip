@@ -42,6 +42,7 @@ Symbol	Meaning
 ❌	Deprecation
 ๋࣭⭑	Major new feature
 𖥔	Minor new feature
+⚠️      error code updating/creation/editing
 
 ⸻
 
