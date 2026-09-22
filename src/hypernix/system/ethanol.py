@@ -49,11 +49,11 @@ MAX_MEM_OFFSET_MHZ: int = 1500      # memory clock offset
 MAX_POWER_LIMIT_PCT: int = 115      # power limit % of stock
 
 #: Number of valid levels, inclusive.  Level 0 resets to stock.
-MAX_LEVEL: int = 45
+MAX_LEVEL: int = 30
 
 #: Above this die temperature, :meth:`Ethanol.apply` refuses to raise
 #: clocks any further (levels above 10).
-THERMAL_ABORT_C: float = 91.5
+THERMAL_ABORT_C: float = 60
 
 #: ``(temperature_below, level)``, coldest first — the bands
 #: :meth:`Ethanol.auto_level` picks from. A GPU already running warm gets
