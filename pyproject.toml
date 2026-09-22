@@ -131,7 +131,11 @@ eth = "hypernix.system.ethanol:cli_main"
 # nothing could run.
 ups = "hypernix.system.ups:cli_main"
 # v0.61.1: high-quality TUI chat CLI with a configurator.
-hyped = "hypernix.interfaces.hyped:cli_main"
+# `hyped` is the simple one: a local model, a prompt, and dots for
+# everything else. The agentic TUI it used to be is `hyped-agent`, and
+# `hyped-pro` is the one with the tools.
+hyped = "hypernix.interfaces.hyped_basic:cli_main"
+hyped-agent = "hypernix.interfaces.hyped:cli_main"
 hyped-pro = "hypernix.interfaces.hyped_pro:cli_main"
 hyped-plus = "hypernix.interfaces.hyped_pro:cli_main"
 # v0.71.4b6: hyped-pro's desktop GUI (Qt6 X11/Wayland, GTK4 fallback).
