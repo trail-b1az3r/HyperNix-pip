@@ -790,22 +790,43 @@ class Pipeline:
 
     steps: list[tuple[str, dict]] = field(default_factory=list)
 
-    #: Sensible default for getting speech into a model: remove rumble,
-    #: even out the level, gate the room, land at a known loudness.
     @classmethod
-    def for_speech(cls, sample_rate: int = 16000) -> Pipeline:
-        return cls(
-            steps=[
-                ("dc_offset_removed", {}),
-                ("high_pass", {"cutoff": 80.0}),
-                ("resample", {"rate": sample_rate}),
-                ("to_mono", {}),
-                ("noise_gate", {"threshold_db": -45.0}),
-                ("compress", {"threshold_db": -20.0, "ratio": 3.0}),
-                ("normalise_rms", {"target_db": -20.0}),
-                ("limit", {"ceiling_db": -1.0}),
-            ]
-        )
+    def for_speech(cls, sample_rate: int = 16000, mains: float = 50.0) -> Pipeline:
+        """Getting speech into a model: rumble out, level even, known loudness.
+
+        *mains* is the local supply frequency — 50 Hz across most of the
+        world, 60 Hz in North America and parts of Japan and Brazil.
+        Pass 0 to skip the notch.
+
+        It is here because leaving it out was wrong in a way that only
+        showed up when the pipeline was run against a recording with
+        hum in it. An 80 Hz high-pass is 0.7 of an octave above 50 Hz,
+        so it takes about 10 dB off and leaves the rest: enough to sit
+        *above* a -45 dB noise gate, which then never closes, so the
+        silences are not silent and everything downstream that looks
+        for them — trimming, splitting into utterances — finds one
+        continuous region. The step-by-step version of the same chain
+        notched it and trimmed correctly; the preset did not and did
+        not.
+        """
+        steps: list[tuple[str, dict]] = [
+            ("dc_offset_removed", {}),
+            ("high_pass", {"cutoff": 80.0}),
+        ]
+        if mains > 0:
+            # Before the resample, because a 50 Hz notch is the same
+            # 50 Hz at any rate but a high-Q filter is better behaved
+            # further from Nyquist.
+            steps.append(("notch", {"frequency": mains, "q": 30.0}))
+        steps.extend([
+            ("resample", {"rate": sample_rate}),
+            ("to_mono", {}),
+            ("noise_gate", {"threshold_db": -45.0}),
+            ("compress", {"threshold_db": -20.0, "ratio": 3.0}),
+            ("normalise_rms", {"target_db": -20.0}),
+            ("limit", {"ceiling_db": -1.0}),
+        ])
+        return cls(steps=steps)
 
     def then(self, name: str, **options) -> Pipeline:
         self.steps.append((name, options))

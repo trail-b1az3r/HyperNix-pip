@@ -26,6 +26,98 @@ next release header.
 - 𖥔 minor new feature
 
 
+## 0.72.5.post14 — 2026-09-22
+
+First entry written to the format in `Changelog-guide.md`: dated
+header, the guide's categories, one legend symbol per line. Earlier
+entries keep their own shape — the guide says corrections are made
+explicitly rather than by silently rewriting history, and restyling a
+thousand lines of it would be exactly that.
+
+### Added
+
+๋࣭⭑ `hypernix.neuron` — a module for training small networks that *act*
+rather than predict: supervised, imitation (behaviour cloning and
+DAgger), and reinforcement learning (REINFORCE and DQN), with
+evaluation as a separate call rather than a number the trainer reports
+about itself. Aimed at game automation, quick image recognition and
+robotics. `hypernix neuron {demo,clone,dagger,rl,eval}`.
+๋࣭⭑ `hypernix.audio.processor` — the signal processing between reading a
+file and using it. Windowed-sinc resampling, Audio EQ Cookbook biquads,
+envelope-follower gate and compressor, silence detection and splitting,
+spectral noise reduction, and a `Pipeline` so the order can be written
+down once.
+๋࣭⭑ `auto-scan` workflow — a Monday/Thursday sweep that scans for Python
+bugs, tests the API over two jobs, scans for security problems, applies
+the safe automatic fixes, and asks for a `.post` release only when four
+independent clauses agree.
+๋࣭⭑ `arch-map` workflow — regenerates the architecture chart on every
+published release and updates it **in place**, with a second smaller
+chart for the beta surface (dotted = beta, red = declared but not
+built). Stage is read from the source, not from a list beside it.
+𖥔 Studio settings: two shells (`fish` interactive, `bash` for generated
+scripts) and an allowed context, persisted and validated.
+𖥔 `hypernix.neuron.envs` — two real environments with known optima, so
+the trainers are tested by reaching a score rather than by mocks.
+📚 `wiki/Architecture.md` — generated, with the markers the workflow
+writes between.
+
+### Fixed
+
+𖢥 Studio would not build on macOS or Windows. `LocalEngine.h`'s
+`state_` is unused in the stub build and clang rejects it under
+`-Werror`; GCC has no such warning, so every Linux job was green and
+both other platforms had been red for days.
+𖢥 `registry_locations` crashed when the working directory no longer
+existed — `Path.cwd()` raised from inside a list of *candidate* roots,
+so losing the least important one took down `hypernix-t1 index` and the
+server's own startup with it.
+🐛 `hypernix-t1 launch-script` raised instead of refusing when the shell
+had no working directory, one line above a check that already produced
+the right message for that case.
+🐛 The `BackendUnavailable` remedy named `hypernix-t1 runner load`,
+which had stopped being the shortest way to do it.
+
+### Changed
+
+🔁 Studio's C++ tests compile with **every** compiler on the machine
+rather than the first one found. `c++` is g++ on Linux and clang on
+macOS, so the platforms were compiling Studio with different compilers
+and a clang-only diagnostic could only ever fail where nobody develops.
+
+### Security
+
+🛡️ The security scanner reports `torch.load(..., weights_only=False)`,
+`shell=True`, disabled TLS, `eval`/`exec` and `mktemp`, and an
+unresolved finding **blocks** a release rather than justifying one.
+🛡️ Studio shell settings reject anything carrying a path separator, an
+argument or a shell operator — the value is written into generated
+scripts that run elsewhere, even though Studio executes nothing itself.
+
+### Tests
+
+🧪 `neuron`: 51 tests, every trainer run end to end against a real
+environment until it reaches a known score.
+🧪 `audio.processor`: 58 tests measuring the DSP — -3.0 dB at cutoff,
+40 dB/decade, 48 dB of alias rejection against naive decimation.
+🧪 `autoscan`/`archmap`: 65 tests, every gate clause tested for saying
+no.
+🧪 Studio: `SettingsRules.h` has no Qt in it so its 38 checks compile
+and run anywhere, under g++ and clang++.
+🧪 A guard that every `Theme.X` in every `.qml` resolves — QML turns a
+missing singleton property into `undefined` and carries on.
+🧪 A guard that the sidebar and the `StackLayout` stay the same length,
+since `StackLayout` picks by index.
+
+### Known Issues
+
+❗ `silent-except` reports 83 findings on `src/` — exceptions swallowed
+with `pass` and nothing saying why. Reported, not auto-fixed.
+❗ Two `torch.load(..., weights_only=False)` calls remain in
+`models/old_oven.py` and `quant/convert.py`.
+
+⸻
+
 ## 0.72.5 pt3b — a HyperNix runner, not just a bridge
 
 ### 𖢥 The runner was starting models nothing could talk to ๋࣭⭑
