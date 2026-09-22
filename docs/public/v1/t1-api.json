@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-t1-api",
   "generated_at": "2026-09-20T21:20:58Z",
-  "commit": "14019f33c1415d3042c4c68a517be17f83918115",
+  "commit": "f969fc28306aae9e1469a614115f497385f835e9",
   "history_available": true,
   "server_extra": "pip install 'hypernix[t1api]'",
   "client_install": "pip install hypernix",
@@ -1908,7 +1908,7 @@
     {
       "module": "hypernix.t1api.config",
       "source": "src/hypernix/t1api/config.py",
-      "line_count": 577,
+      "line_count": 583,
       "summary": "t1api.config \u2014 environment-variable configuration for the T1 API.",
       "api": [
         {
@@ -1921,55 +1921,55 @@
             {
               "name": "from_env",
               "signature": "def from_envcls, *, load_dotenv: bool=True, dotenv_path: str | Path='.env' -> T1APIConfig",
-              "line": 438,
+              "line": 443,
               "doc": ""
             },
             {
               "name": "is_production",
               "signature": "def is_productionself -> bool",
-              "line": 448,
+              "line": 453,
               "doc": ""
             },
             {
               "name": "storage_backend",
               "signature": "def storage_backendself -> str",
-              "line": 452,
+              "line": 457,
               "doc": ""
             },
             {
               "name": "tls_settings",
               "signature": "def tls_settingsself -> TLSSettings",
-              "line": 455,
+              "line": 460,
               "doc": ""
             },
             {
               "name": "rate_limit_rules",
               "signature": "def rate_limit_rulesself -> Any",
-              "line": 467,
+              "line": 472,
               "doc": "Parsed rate-limit rules, or None to use the defaults."
             },
             {
               "name": "describe_secrets",
               "signature": "def describe_secretsself -> dict[str, bool]",
-              "line": 485,
+              "line": 490,
               "doc": "Which secrets are set. Values never included \u2014 this is what ``GET /status`` uses to tell an operator what's missing without telling anyone what it is."
             },
             {
               "name": "public_dict",
               "signature": "def public_dictself -> dict[str, object]",
-              "line": 499,
+              "line": 504,
               "doc": "Explicit allowlist of config surfaced by GET /config. Never includes ``token_secret``, ``deploy_secret``, ``database_url``, or any future secret field."
             },
             {
               "name": "production_problems",
               "signature": "def production_problemsself -> list[str]",
-              "line": 536,
+              "line": 542,
               "doc": "Every reason this config is unsafe for production, as text."
             },
             {
               "name": "validate_for_production",
               "signature": "def validate_for_productionself, *, strict: bool | None=None -> None",
-              "line": 628,
+              "line": 634,
               "doc": "Raise ``CONFIG_INVALID`` if this config is unsafe for production."
             }
           ]
@@ -1987,6 +1987,13 @@
         }
       ],
       "changes": [
+        {
+          "sha": "3bd1c25d",
+          "date": "2026-09-22",
+          "author": "Claude",
+          "subject": "t1api: MCP server support, with plugins",
+          "api_changes": []
+        },
         {
           "sha": "cc94bf5a",
           "date": "2026-09-16",
@@ -2034,13 +2041,6 @@
           "date": "2026-09-01",
           "author": "Claude",
           "subject": "A new server issues itself a local, three-day admin key",
-          "api_changes": []
-        },
-        {
-          "sha": "56a9e0b3",
-          "date": "2026-08-26",
-          "author": "Claude",
-          "subject": "install-t1.sh: an interactive installer, and two bugs it exposed",
           "api_changes": []
         }
       ]
@@ -3725,6 +3725,356 @@
       ]
     },
     {
+      "module": "hypernix.t1api.mcp",
+      "source": "src/hypernix/t1api/mcp.py",
+      "line_count": 420,
+      "summary": "t1api.mcp \u2014 the T1 API as an MCP server, and the plugins that extend it.",
+      "api": [
+        {
+          "kind": "class",
+          "name": "ToolError",
+          "signature": "class ToolError",
+          "line": 80,
+          "doc": "A tool failed in a way the *model* should be told about.",
+          "methods": []
+        },
+        {
+          "kind": "function",
+          "name": "text_content",
+          "signature": "def text_contenttext: str -> list[dict[str, Any]]",
+          "line": 89,
+          "doc": ""
+        },
+        {
+          "kind": "function",
+          "name": "error_result",
+          "signature": "def error_resultmessage: str -> dict[str, Any]",
+          "line": 93,
+          "doc": ""
+        },
+        {
+          "kind": "class",
+          "name": "MCPTool",
+          "signature": "class MCPTool",
+          "line": 98,
+          "doc": "One thing the server can do, described so a model can choose it.",
+          "methods": [
+            {
+              "name": "describe",
+              "signature": "def describeself -> dict[str, Any]",
+              "line": 117,
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "kind": "class",
+          "name": "MCPResource",
+          "signature": "class MCPResource",
+          "line": 130,
+          "doc": "Something readable by URI. Context rather than action.",
+          "methods": [
+            {
+              "name": "describe",
+              "signature": "def describeself -> dict[str, Any]",
+              "line": 140,
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "kind": "class",
+          "name": "MCPPlugin",
+          "signature": "class MCPPlugin",
+          "line": 150,
+          "doc": "What a plugin has to be.",
+          "methods": [
+            {
+              "name": "tools",
+              "signature": "def toolsself -> Iterable[MCPTool]",
+              "line": 161,
+              "doc": ""
+            },
+            {
+              "name": "resources",
+              "signature": "def resourcesself -> Iterable[MCPResource]",
+              "line": 164,
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "kind": "class",
+          "name": "MCPServer",
+          "signature": "class MCPServer",
+          "line": 169,
+          "doc": "The protocol, over a registry of tools and resources.",
+          "methods": [
+            {
+              "name": "add_tool",
+              "signature": "def add_toolself, tool: MCPTool -> None",
+              "line": 182,
+              "doc": ""
+            },
+            {
+              "name": "add_resource",
+              "signature": "def add_resourceself, resource: MCPResource -> None",
+              "line": 192,
+              "doc": ""
+            },
+            {
+              "name": "add_plugin",
+              "signature": "def add_pluginself, plugin: MCPPlugin -> None",
+              "line": 197,
+              "doc": "Take a plugin's tools and resources."
+            },
+            {
+              "name": "plugins",
+              "signature": "def pluginsself -> list[str]",
+              "line": 225,
+              "doc": ""
+            },
+            {
+              "name": "tool_names",
+              "signature": "def tool_namesself -> list[str]",
+              "line": 229,
+              "doc": ""
+            },
+            {
+              "name": "handle",
+              "signature": "def handleself, message: Any, *, scopes: Iterable[str]=(), is_admin: bool=False -> dict[str, Any] | None",
+              "line": 234,
+              "doc": "One JSON-RPC message in, one response out \u2014 or None."
+            },
+            {
+              "name": "handle_text",
+              "signature": "def handle_textself, body: str, **kwargs -> dict[str, Any] | list | None",
+              "line": 295,
+              "doc": "A raw body in, for the transport. Handles batches."
+            }
+          ]
+        }
+      ],
+      "errors": [
+        "ToolError",
+        "ValueError"
+      ],
+      "deprecations": [],
+      "required_modules": [
+        {
+          "module": "fastapi / uvicorn / pydantic",
+          "extra": "t1api",
+          "requirement": "pip install 'hypernix[t1api]'"
+        }
+      ],
+      "changes": [
+        {
+          "sha": "3bd1c25d",
+          "date": "2026-09-22",
+          "author": "Claude",
+          "subject": "t1api: MCP server support, with plugins",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class ToolError(Exception):"
+            },
+            {
+              "kind": "added",
+              "text": "def text_content(text: str) -> list[dict[str, Any]]:"
+            },
+            {
+              "kind": "added",
+              "text": "def error_result(message: str) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "class MCPTool:"
+            },
+            {
+              "kind": "added",
+              "text": "def describe(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "class MCPResource:"
+            },
+            {
+              "kind": "added",
+              "text": "def describe(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "class MCPPlugin(Protocol):"
+            },
+            {
+              "kind": "added",
+              "text": "satisfying this shape works \u2014 there is no base class to inherit and"
+            },
+            {
+              "kind": "added",
+              "text": "def tools(self) -> Iterable[MCPTool]:"
+            },
+            {
+              "kind": "added",
+              "text": "def resources(self) -> Iterable[MCPResource]:"
+            },
+            {
+              "kind": "added",
+              "text": "class MCPServer:"
+            },
+            {
+              "kind": "added",
+              "text": "def add_tool(self, tool: MCPTool) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def add_resource(self, resource: MCPResource) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def add_plugin(self, plugin: MCPPlugin) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def plugins(self) -> list[str]:"
+            },
+            {
+              "kind": "added",
+              "text": "def tool_names(self) -> list[str]:"
+            },
+            {
+              "kind": "added",
+              "text": "def handle("
+            },
+            {
+              "kind": "added",
+              "text": "def handle_text(self, body: str, **kwargs) -> dict[str, Any] | list | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _call(self, method: str, params: dict, scopes: set[str], is_admin: bool):"
+            },
+            {
+              "kind": "added",
+              "text": "def _initialize(self, params: dict) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _visible_tools(self, scopes: set[str], is_admin: bool) -> list[MCPTool]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _call_tool(self, params: dict, scopes: set[str], is_admin: bool):"
+            },
+            {
+              "kind": "added",
+              "text": "def _read_resource(self, params: dict, scopes: set[str], is_admin: bool):"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "module": "hypernix.t1api.mcptools",
+      "source": "src/hypernix/t1api/mcptools.py",
+      "line_count": 229,
+      "summary": "t1api.mcptools \u2014 the T1 capabilities, described for a model.",
+      "api": [
+        {
+          "kind": "class",
+          "name": "ServerContext",
+          "signature": "class ServerContext",
+          "line": 36,
+          "doc": "What the tools need, gathered once.",
+          "methods": []
+        },
+        {
+          "kind": "function",
+          "name": "build_server",
+          "signature": "def build_servercontext: ServerContext, *, instructions: str='' -> MCPServer",
+          "line": 167,
+          "doc": "Every built-in tool, on a fresh server."
+        }
+      ],
+      "errors": [
+        "ToolError"
+      ],
+      "deprecations": [],
+      "required_modules": [
+        {
+          "module": "fastapi / uvicorn / pydantic",
+          "extra": "t1api",
+          "requirement": "pip install 'hypernix[t1api]'"
+        }
+      ],
+      "changes": [
+        {
+          "sha": "3bd1c25d",
+          "date": "2026-09-22",
+          "author": "Claude",
+          "subject": "t1api: MCP server support, with plugins",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class ServerContext:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, *, config=None, registry=None, runner=None, version: str = \"\"):"
+            },
+            {
+              "kind": "added",
+              "text": "def _catalogue(context: ServerContext):"
+            },
+            {
+              "kind": "added",
+              "text": "def _list_models(context: ServerContext) -> Callable[..., Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def handler(runnable_only: bool = False) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _runner_status(context: ServerContext) -> Callable[..., Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def handler() -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _runner_load(context: ServerContext) -> Callable[..., Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def handler(model_id: str, gpu_layers: int | None = None,"
+            },
+            {
+              "kind": "added",
+              "text": "def _hardware(context: ServerContext) -> Callable[..., Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def handler() -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _server_version(context: ServerContext) -> Callable[..., Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def handler() -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def build_server(context: ServerContext, *, instructions: str = \"\") -> MCPServer:"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "module": "hypernix.t1api.modelindex",
       "source": "src/hypernix/t1api/modelindex.py",
       "line_count": 361,
@@ -3874,21 +4224,21 @@
     {
       "module": "hypernix.t1api.modelindex_cli",
       "source": "src/hypernix/t1api/modelindex_cli.py",
-      "line_count": 210,
+      "line_count": 212,
       "summary": "``hypernix-t1 index`` \u2014 the command line over :mod:`modelindex`.",
       "api": [
         {
           "kind": "function",
           "name": "main",
           "signature": "def mainargv: list[str] | None=None -> int",
-          "line": 111,
+          "line": 110,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "cli_main",
           "signature": "def cli_main -> None",
-          "line": 240,
+          "line": 242,
           "doc": ""
         }
       ],
@@ -3902,6 +4252,13 @@
         }
       ],
       "changes": [
+        {
+          "sha": "8bb54a39",
+          "date": "2026-09-17",
+          "author": "Claude",
+          "subject": "registry: a working directory that is gone is not a crash",
+          "api_changes": []
+        },
         {
           "sha": "182b1efc",
           "date": "2026-09-16",
@@ -4931,35 +5288,42 @@
     {
       "module": "hypernix.t1api.registry",
       "source": "src/hypernix/t1api/registry.py",
-      "line_count": 399,
+      "line_count": 426,
       "summary": "t1api.registry \u2014 the Model Registry service.",
       "api": [
         {
           "kind": "function",
+          "name": "resolve_best_effort",
+          "signature": "def resolve_best_effortpath: str | Path -> Path",
+          "line": 75,
+          "doc": "``Path.resolve()`` that survives a missing working directory."
+        },
+        {
+          "kind": "function",
           "name": "registry_locations",
           "signature": "def registry_locationsconfig_dir: str | Path | None=None -> list[Path]",
-          "line": 58,
+          "line": 89,
           "doc": "Where a registry is looked for, in order, most specific first."
         },
         {
           "kind": "function",
           "name": "discover",
           "signature": "def discoverconfig_dir: str | Path | None=None -> Path | None",
-          "line": 89,
+          "line": 122,
           "doc": "The first registry file that exists, or None."
         },
         {
           "kind": "function",
           "name": "read_entries",
           "signature": "def read_entriespath: str | Path -> tuple[list[ModelEntry], list[str]]",
-          "line": 100,
+          "line": 133,
           "doc": "Entries from *path*, plus a list of what could not be read."
         },
         {
           "kind": "class",
           "name": "ModelStatus",
           "signature": "class ModelStatus",
-          "line": 167,
+          "line": 200,
           "doc": "Lifecycle status of a registry entry.",
           "methods": []
         },
@@ -4967,7 +5331,7 @@
           "kind": "class",
           "name": "ModelAvailabilityFlag",
           "signature": "class ModelAvailabilityFlag",
-          "line": 177,
+          "line": 210,
           "doc": "Coarse availability classification, independent of per-plan gating.",
           "methods": []
         },
@@ -4975,19 +5339,19 @@
           "kind": "class",
           "name": "ModelPricing",
           "signature": "class ModelPricing",
-          "line": 187,
+          "line": 220,
           "doc": "Pricing metadata. All fields optional \u2014 a free/local-only model can leave everything at 0.",
           "methods": [
             {
               "name": "to_dict",
               "signature": "def to_dictself -> dict[str, Any]",
-              "line": 195,
+              "line": 228,
               "doc": ""
             },
             {
               "name": "from_dict",
               "signature": "def from_dictcls, d: dict[str, Any] | None -> ModelPricing",
-              "line": 199,
+              "line": 232,
               "doc": ""
             }
           ]
@@ -4996,25 +5360,25 @@
           "kind": "class",
           "name": "ModelEntry",
           "signature": "class ModelEntry",
-          "line": 209,
+          "line": 242,
           "doc": "One explicit, admin-controlled model registry entry.",
           "methods": [
             {
               "name": "to_dict",
               "signature": "def to_dictself -> dict[str, Any]",
-              "line": 261,
+              "line": 294,
               "doc": ""
             },
             {
               "name": "from_dict",
               "signature": "def from_dictcls, d: dict[str, Any] -> ModelEntry",
-              "line": 269,
+              "line": 302,
               "doc": ""
             },
             {
               "name": "is_routable",
               "signature": "def is_routableself -> bool",
-              "line": 300,
+              "line": 333,
               "doc": "True if this entry may ever be selected (manually or by the router) \u2014 excludes example/disabled/deprecated entries."
             }
           ]
@@ -5023,49 +5387,49 @@
           "kind": "class",
           "name": "ModelRegistry",
           "signature": "class ModelRegistry",
-          "line": 306,
+          "line": 339,
           "doc": "Thread-safe, in-memory model registry backed by a JSON file.",
           "methods": [
             {
               "name": "load",
               "signature": "def loadcls, path: str | Path | None=None, *, include_examples: bool=False -> ModelRegistry",
-              "line": 329,
+              "line": 362,
               "doc": "Load a registry, from *path* or from the conventional places."
             },
             {
               "name": "to_json_file",
               "signature": "def to_json_fileself, path: str | Path -> None",
-              "line": 375,
+              "line": 408,
               "doc": ""
             },
             {
               "name": "register",
               "signature": "def registerself, entry: ModelEntry -> None",
-              "line": 385,
+              "line": 418,
               "doc": "Add or replace a registry entry. Admin-only at the API layer."
             },
             {
               "name": "deregister",
               "signature": "def deregisterself, model_id: str -> None",
-              "line": 391,
+              "line": 424,
               "doc": ""
             },
             {
               "name": "get",
               "signature": "def getself, model_id: str -> ModelEntry | None",
-              "line": 405,
+              "line": 438,
               "doc": "Return the entry for *model_id*, or None. Does NOT raise \u2014 use :meth:`require` when an unregistered model should be a hard error (e.g. in an API handler)."
             },
             {
               "name": "require",
               "signature": "def requireself, model_id: str -> ModelEntry",
-              "line": 415,
+              "line": 448,
               "doc": "Return the entry for *model_id* or raise ``MODEL_NOT_SUPPORTED``."
             },
             {
               "name": "list",
               "signature": "def listself, *, status: ModelStatus | None=None, plan: str | None=None, routable_only: bool=False -> list[ModelEntry]",
-              "line": 432,
+              "line": 465,
               "doc": ""
             }
           ]
@@ -5083,6 +5447,22 @@
         }
       ],
       "changes": [
+        {
+          "sha": "8bb54a39",
+          "date": "2026-09-17",
+          "author": "Claude",
+          "subject": "registry: a working directory that is gone is not a crash",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _cwd() -> Path | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def resolve_best_effort(path: str | Path) -> Path:"
+            }
+          ]
+        },
         {
           "sha": "fe580bc9",
           "date": "2026-09-08",
@@ -5219,7 +5599,7 @@
     {
       "module": "hypernix.t1api.routers",
       "source": "src/hypernix/t1api/routers/__init__.py",
-      "line_count": 126,
+      "line_count": 131,
       "summary": "t1api.routers \u2014 one module per resource group, matching the spec's 'PRIMARY ENDPOINT SET'.",
       "api": [],
       "errors": [],
@@ -5232,6 +5612,13 @@
         }
       ],
       "changes": [
+        {
+          "sha": "3bd1c25d",
+          "date": "2026-09-22",
+          "author": "Claude",
+          "subject": "t1api: MCP server support, with plugins",
+          "api_changes": []
+        },
         {
           "sha": "cc94bf5a",
           "date": "2026-09-16",
@@ -5279,13 +5666,6 @@
           "date": "2026-09-02",
           "author": "Claude",
           "subject": "T1 v1.0.2026.9.2.1: the governed inference surface",
-          "api_changes": []
-        },
-        {
-          "sha": "370119db",
-          "date": "2026-08-26",
-          "author": "Claude",
-          "subject": "T1 v1.0.26.8.1.0: T2 recognition, auth undo/redo, and backups",
           "api_changes": []
         }
       ]
@@ -7375,6 +7755,73 @@
             {
               "kind": "added",
               "text": "def assign_key("
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "module": "hypernix.t1api.routers.mcp",
+      "source": "src/hypernix/t1api/routers/mcp.py",
+      "line_count": 131,
+      "summary": "``/mcp`` \u2014 the T1 API described so an assistant can read it itself.",
+      "api": [
+        {
+          "kind": "function",
+          "name": "mcp_endpoint",
+          "signature": "async def mcp_endpointrequest: Request, principal: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id)",
+          "line": 93,
+          "doc": "One JSON-RPC message (or a batch) in, one response out."
+        },
+        {
+          "kind": "function",
+          "name": "mcp_description",
+          "signature": "async def mcp_descriptionprincipal: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), request: Request=None, request_id: str=Depends(get_request_id)",
+          "line": 127,
+          "doc": "What this server offers, for a human looking at it in a browser."
+        }
+      ],
+      "errors": [
+        "T1APIError"
+      ],
+      "deprecations": [],
+      "required_modules": [
+        {
+          "module": "fastapi",
+          "extra": "t1api",
+          "requirement": "fastapi>=0.110,<1"
+        }
+      ],
+      "changes": [
+        {
+          "sha": "3bd1c25d",
+          "date": "2026-09-22",
+          "author": "Claude",
+          "subject": "t1api: MCP server support, with plugins",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _require_enabled(config: T1APIConfig) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _server_for(request: Request, config: T1APIConfig) -> MCPServer:"
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"\")"
+            },
+            {
+              "kind": "added",
+              "text": "async def mcp_endpoint("
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"\")"
+            },
+            {
+              "kind": "added",
+              "text": "async def mcp_description("
             }
           ]
         }
@@ -14240,6 +14687,26 @@
       "tag": "keys"
     },
     {
+      "method": "GET",
+      "router": "router",
+      "path": "/mcp/",
+      "handler": "mcp_description",
+      "response_model": null,
+      "source": "src/hypernix/t1api/routers/mcp.py",
+      "line": 126,
+      "tag": "mcp"
+    },
+    {
+      "method": "POST",
+      "router": "router",
+      "path": "/mcp/",
+      "handler": "mcp_endpoint",
+      "response_model": null,
+      "source": "src/hypernix/t1api/routers/mcp.py",
+      "line": 92,
+      "tag": "mcp"
+    },
+    {
       "method": "POST",
       "router": "router",
       "path": "/memory/create",
@@ -14977,6 +15444,10 @@
     },
     {
       "name": "T1APIError",
+      "module": "hypernix.t1api.routers.mcp"
+    },
+    {
+      "name": "T1APIError",
       "module": "hypernix.t1api.routers.modules"
     },
     {
@@ -15108,6 +15579,14 @@
       "base": "T1Error"
     },
     {
+      "name": "ToolError",
+      "module": "hypernix.t1api.mcp"
+    },
+    {
+      "name": "ToolError",
+      "module": "hypernix.t1api.mcptools"
+    },
+    {
       "name": "ValueError",
       "module": "hypernix.t1api.app"
     },
@@ -15118,6 +15597,10 @@
     {
       "name": "ValueError",
       "module": "hypernix.t1api.db"
+    },
+    {
+      "name": "ValueError",
+      "module": "hypernix.t1api.mcp"
     },
     {
       "name": "ValueError",

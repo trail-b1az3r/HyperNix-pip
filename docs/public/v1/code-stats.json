@@ -1,7 +1,7 @@
 {
   "definition": "non-blank source lines across repository code roots: src, scripts, tests, examples, bin, native, docs/src",
-  "total_lines": 177758,
-  "code_files": 543,
+  "total_lines": 185607,
+  "code_files": 570,
   "top_files": [
     {
       "path": "src/hypernix/interfaces/hyped.py",
@@ -29,7 +29,7 @@
     },
     {
       "path": "src/hypernix/interfaces/cli.py",
-      "lines": 1394
+      "lines": 1403
     },
     {
       "path": "src/hypernix/models/neo_oven.py",
@@ -113,7 +113,7 @@
     },
     {
       "path": "src/hypernix/__init__.py",
-      "lines": 910
+      "lines": 912
     },
     {
       "path": "tests/test_v0710_gatekeeper_keymaster.py",
@@ -127,12 +127,12 @@
   "contributors": [
     {
       "author": "Claude",
-      "additions": 140784,
-      "deletions": 9053,
-      "net": 131731,
-      "changes": 149837,
-      "commits": 155,
-      "files": 1007
+      "additions": 150362,
+      "deletions": 9157,
+      "net": 141205,
+      "changes": 159519,
+      "commits": 165,
+      "files": 1036
     },
     {
       "author": "minerofthesoal",
@@ -185,11 +185,11 @@
       "deletions": 7,
       "net": -1,
       "changes": 13,
-      "commits": 13,
+      "commits": 14,
       "files": 2
     }
   ],
   "history_available": true,
-  "commit": "14019f33c1415d3042c4c68a517be17f83918115",
+  "commit": "f969fc28306aae9e1469a614115f497385f835e9",
   "generated_at": null
 }
