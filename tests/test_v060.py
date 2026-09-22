@@ -86,17 +86,46 @@ class TestEthanol:
         core, mem, power = e.offsets()
         assert core == 0 and mem == 0 and power == 100
 
-    def test_level_30_hits_ceilings(self) -> None:
-        e = ethanol.Ethanol(level=30)
-        core, mem, power = e.offsets()
+    def test_the_top_level_hits_the_ceilings(self) -> None:
+        """Follows MAX_LEVEL rather than pinning 30.
+
+        It said 30, and MAX_LEVEL moved to 45 — so the test asserted
+        that two-thirds of the way up was the top, and failed. The
+        behaviour worth pinning is "the top level reaches the declared
+        ceilings", which is true at whatever the top happens to be.
+        """
+        core, mem, power = ethanol.Ethanol(level=ethanol.MAX_LEVEL).offsets()
         assert core == ethanol.MAX_CORE_OFFSET_MHZ
         assert mem == ethanol.MAX_MEM_OFFSET_MHZ
         assert power == ethanol.MAX_POWER_LIMIT_PCT
 
-    def test_level_above_30_is_clamped(self) -> None:
-        a = ethanol.Ethanol(level=30).offsets()
-        b = ethanol.Ethanol(level=999).offsets()
-        assert a == b
+    def test_above_the_top_level_is_clamped(self) -> None:
+        top = ethanol.Ethanol(level=ethanol.MAX_LEVEL).offsets()
+        assert ethanol.Ethanol(level=ethanol.MAX_LEVEL + 1).offsets() == top
+        assert ethanol.Ethanol(level=999).offsets() == top
+
+    def test_nothing_writes_the_ceiling_out_as_a_literal(self) -> None:
+        """MAX_LEVEL moved from 30 to 45 and left three things behind:
+        this test file, `_level_to_offsets`' docstring, and the `eth`
+        help — which went on telling people the maximum was a level
+        two-thirds of the way up. All three now read the constant."""
+        import re
+        from pathlib import Path as _Path
+
+        source = _Path(ethanol.__file__).read_text(encoding="utf-8")
+        stale = [
+            line.strip()
+            for line in source.splitlines()
+            # A bare "30" in prose or usage text, not in code that is
+            # allowed to contain the number (offsets, temperatures).
+            if re.search(r"\b(level|levels)\b[^\n]*\b30\b", line, re.I)
+            or re.search(r"0\.\.30|0…30", line)
+        ]
+        assert not stale, f"the old ceiling is still written out: {stale}"
+
+    def test_the_help_names_the_real_maximum(self) -> None:
+        assert f"0..{ethanol.MAX_LEVEL}" in ethanol._USAGE
+        assert f"eth {ethanol.MAX_LEVEL}" in ethanol._USAGE
 
     def test_negative_level_raises(self) -> None:
         with pytest.raises(ValueError):

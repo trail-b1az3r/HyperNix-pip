@@ -14,7 +14,7 @@ function Metric({ label, value }) {
 
 function Badge({ children, tone = 'normal' }) {
   const color = tone === 'warn' ? '#e8b04a' : tone === 'ok' ? '#5ad47a' : 'var(--accent)'
-  return <span style={{ border:`1px solid ${color}44`, color, background:`${color}12`, borderRadius:4, padding:'2px 6px', fontSize:10.5, fontFamily:'var(--font-mono)' }}>{children}</span>
+  return <span style={{ border:`1px solid ${color}44`, color, background:`${color}12`, borderRadius:4, padding:'2px 6px', fontSize:11, fontFamily:'var(--font-mono)' }}>{children}</span>
 }
 
 function SectionCard({ title, children, id }) {
@@ -35,7 +35,7 @@ function ApiMember({ item }) {
         <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
           <Badge>{item.kind}</Badge>
           <code style={{ color:'var(--text)', fontSize:12.5 }}>{item.name}</code>
-          <span style={{ color:'var(--text-faint)', fontSize:10 }}>L{item.line}</span>
+          <span style={{ color:'var(--text-faint)', fontSize:11 }}>L{item.line}</span>
           {hasMethods && <span style={{ marginLeft:'auto', color:'var(--accent)', fontSize:11 }}>{open ? 'collapse' : `${item.methods.length} methods`}</span>}
         </div>
         <code style={{ display:'block', color:'var(--accent)', fontSize:11.5, lineHeight:1.55, marginTop:6, whiteSpace:'pre-wrap', overflowWrap:'anywhere' }}>{item.signature}</code>
@@ -47,7 +47,7 @@ function ApiMember({ item }) {
             <div key={`${m.name}-${m.line}`} style={{ padding:'9px 0', borderBottom:'1px solid var(--border)' }}>
               <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                 <code style={{ color:'var(--text)', fontSize:11.5 }}>{m.name}</code>
-                <span style={{ color:'var(--text-faint)', fontSize:10 }}>L{m.line}</span>
+                <span style={{ color:'var(--text-faint)', fontSize:11 }}>L{m.line}</span>
               </div>
               <code style={{ display:'block', color:'var(--accent)', fontSize:11, lineHeight:1.55, marginTop:4, whiteSpace:'pre-wrap', overflowWrap:'anywhere' }}>{m.signature}</code>
               {m.doc && <div style={{ color:'var(--text-muted)', fontSize:11.5, lineHeight:1.55, marginTop:4 }}>{m.doc}</div>}
@@ -83,7 +83,7 @@ function ModuleView({ module }) {
             {module.required_modules.map(d => (
               <div key={`${d.module}-${d.extra}`} style={{ background:'var(--surface-1)', border:'1px solid var(--border)', borderRadius:7, padding:'10px 11px' }}>
                 <code style={{ color:'var(--text)', fontSize:11.5 }}>{d.module}</code>
-                <div style={{ color:'var(--text-faint)', fontSize:10.5, marginTop:4 }}>extra: {d.extra} · {d.requirement}</div>
+                <div style={{ color:'var(--text-faint)', fontSize:11, marginTop:4 }}>extra: {d.extra} · {d.requirement}</div>
               </div>
             ))}
           </div>
@@ -96,8 +96,8 @@ function ModuleView({ module }) {
             <div key={`${d.name}-${i}`} style={{ background:'#1a1304', border:'1px solid #7a5a10', borderRadius:8, padding:'10px 12px', marginBottom:8 }}>
               <div style={{ display:'flex', flexWrap:'wrap', gap:7, alignItems:'center' }}>
                 <Badge tone="warn">{d.name}</Badge>
-                {d.since && <span style={{ color:'var(--text-faint)', fontSize:10.5 }}>since {d.since}</span>}
-                {d.removed_in && <span style={{ color:'#e8b04a', fontSize:10.5 }}>removal target: {d.removed_in}</span>}
+                {d.since && <span style={{ color:'var(--text-faint)', fontSize:11 }}>since {d.since}</span>}
+                {d.removed_in && <span style={{ color:'#e8b04a', fontSize:11 }}>removal target: {d.removed_in}</span>}
               </div>
               {d.instead && <div style={{ color:'var(--text)', fontSize:12, marginTop:6 }}>Replacement: <code style={{ color:'var(--accent)' }}>{d.instead}</code></div>}
               {d.extra && <div style={{ color:'var(--text-muted)', fontSize:11.5, lineHeight:1.55, marginTop:5 }}>{d.extra}</div>}
@@ -120,14 +120,14 @@ function ModuleView({ module }) {
         <SectionCard title="Recent repository changes affecting this file">
           {module.changes.map(c => (
             <div key={`${c.sha}-${c.date}`} style={{ display:'flex', gap:10, padding:'9px 0', borderBottom:'1px solid var(--border)', alignItems:'flex-start' }}>
-              <code style={{ color:'var(--accent)', fontSize:10.5, flexShrink:0 }}>{c.sha}</code>
+              <code style={{ color:'var(--accent)', fontSize:11, flexShrink:0 }}>{c.sha}</code>
               <div style={{ flex:1 }}>
                 <div style={{ color:'var(--text)', fontSize:11.5 }}>{c.subject}</div>
-                <div style={{ color:'var(--text-faint)', fontSize:10.5, marginTop:3 }}>{c.date} · {c.author}</div>
+                <div style={{ color:'var(--text-faint)', fontSize:11, marginTop:3 }}>{c.date} · {c.author}</div>
                 {c.api_changes?.length > 0 && (
                   <div style={{ marginTop:6, display:'flex', flexDirection:'column', gap:3 }}>
                     {c.api_changes.map((change, i) => (
-                      <code key={`${change.kind}-${i}`} style={{ color:change.kind === 'added' ? '#5ad47a' : '#e8b04a', fontSize:10.5, whiteSpace:'pre-wrap', overflowWrap:'anywhere' }}>
+                      <code key={`${change.kind}-${i}`} style={{ color:change.kind === 'added' ? '#5ad47a' : '#e8b04a', fontSize:11, whiteSpace:'pre-wrap', overflowWrap:'anywhere' }}>
                         {change.kind === 'added' ? '+' : '−'} {change.text}
                       </code>
                     ))}
@@ -157,7 +157,7 @@ function ExampleCard({ example }) {
       </div>
       <p style={{ color:'var(--text-muted)', fontSize:11.5, lineHeight:1.6, margin:'7px 0 8px' }}>{example.description}</p>
       <CodeBlock code={example.code} />
-      <div style={{ color:'var(--text-faint)', fontSize:10.5, marginTop:6 }}>source: {example.source}</div>
+      <div style={{ color:'var(--text-faint)', fontSize:11, marginTop:6 }}>source: {example.source}</div>
     </div>
   )
 }
@@ -167,7 +167,7 @@ function RouteList({ routes }) {
     <div style={{ overflowX:'auto' }}>
       <table style={{ width:'100%', borderCollapse:'collapse', fontSize:11.5 }}>
         <thead><tr>
-          {['Method', 'Path', 'Handler', 'Response', 'Source'].map(h => <th key={h} style={{ textAlign:'left', padding:'8px 7px', borderBottom:'1px solid var(--border-strong)', color:'var(--text-faint)', fontSize:10 }}>{h}</th>)}
+          {['Method', 'Path', 'Handler', 'Response', 'Source'].map(h => <th key={h} style={{ textAlign:'left', padding:'8px 7px', borderBottom:'1px solid var(--border-strong)', color:'var(--text-faint)', fontSize:11 }}>{h}</th>)}
         </tr></thead>
         <tbody>{routes.map((r, i) => (
           <tr key={`${r.method}-${r.path}-${r.source}-${i}`}>
@@ -225,9 +225,9 @@ export function ReferenceDocsPage({ dataUrl, kicker, title, lede, mode = 'deep' 
             style={{ width:'100%', boxSizing:'border-box', background:'var(--surface-3)', border:'1px solid var(--border-strong)', borderRadius:7, padding:'9px 10px', color:'var(--text)', fontFamily:'var(--font-mono)', fontSize:11.5, outline:'none', marginBottom:10 }} />
           <button onClick={() => { setActiveModule(null); setActiveSection('overview') }} style={{ width:'100%', textAlign:'left', background:activeSection === 'overview' && !activeModule ? 'var(--surface-2)' : 'transparent', border:'1px solid var(--border)', borderRadius:6, color:'var(--text)', padding:'7px 9px', cursor:'pointer', fontSize:11.5, marginBottom:7 }}>Overview</button>
           {mode === 't1' && <button onClick={() => { setActiveModule(null); setActiveSection('routes') }} style={{ width:'100%', textAlign:'left', background:activeSection === 'routes' ? 'var(--surface-2)' : 'transparent', border:'1px solid var(--border)', borderRadius:6, color:'var(--text)', padding:'7px 9px', cursor:'pointer', fontSize:11.5, marginBottom:7 }}>HTTP routes</button>}
-          <div style={{ color:'var(--text-faint)', fontSize:10, letterSpacing:'.12em', textTransform:'uppercase', fontWeight:700, margin:'12px 0 7px' }}>Modules · {filtered.length}</div>
+          <div style={{ color:'var(--text-faint)', fontSize:11, letterSpacing:'.12em', textTransform:'uppercase', fontWeight:700, margin:'12px 0 7px' }}>Modules · {filtered.length}</div>
           {filtered.map(m => (
-            <button key={m.module} onClick={() => { setActiveModule(m.module); setActiveSection('module') }} style={{ display:'block', width:'100%', textAlign:'left', background:activeModule === m.module ? 'var(--surface-2)' : 'transparent', border:'none', borderLeft:activeModule === m.module ? '2px solid var(--accent)' : '2px solid transparent', color:activeModule === m.module ? 'var(--accent-text)' : 'var(--text-dim)', padding:'5px 6px 5px 8px', cursor:'pointer', fontFamily:'var(--font-mono)', fontSize:10.5, lineHeight:1.45, overflowWrap:'anywhere' }}>
+            <button key={m.module} onClick={() => { setActiveModule(m.module); setActiveSection('module') }} style={{ display:'block', width:'100%', textAlign:'left', background:activeModule === m.module ? 'var(--surface-2)' : 'transparent', border:'none', borderLeft:activeModule === m.module ? '2px solid var(--accent)' : '2px solid transparent', color:activeModule === m.module ? 'var(--accent-text)' : 'var(--text-dim)', padding:'5px 6px 5px 8px', cursor:'pointer', fontFamily:'var(--font-mono)', fontSize:11, lineHeight:1.45, overflowWrap:'anywhere' }}>
               {m.module}
             </button>
           ))}
@@ -262,7 +262,7 @@ export function ReferenceDocsPage({ dataUrl, kicker, title, lede, mode = 'deep' 
                 <SectionCard title="Deprecation warnings and replacements">
                   {deprecations.map((d, i) => (
                     <div key={`${d.module}-${i}`} style={{ background:'#1a1304', border:'1px solid #7a5a10', borderRadius:8, padding:'10px 12px', marginBottom:8 }}>
-                      <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}><Badge tone="warn">{d.module}</Badge>{d.since && <span style={{ color:'var(--text-faint)', fontSize:10.5 }}>since {d.since}</span>}</div>
+                      <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}><Badge tone="warn">{d.module}</Badge>{d.since && <span style={{ color:'var(--text-faint)', fontSize:11 }}>since {d.since}</span>}</div>
                       {d.instead && <div style={{ color:'var(--text)', fontSize:12, marginTop:6 }}>Use <code style={{ color:'var(--accent)' }}>{d.instead}</code> instead.</div>}
                       {d.extra && <div style={{ color:'var(--text-muted)', fontSize:11.5, lineHeight:1.55, marginTop:4 }}>{d.extra}</div>}
                     </div>
@@ -274,7 +274,7 @@ export function ReferenceDocsPage({ dataUrl, kicker, title, lede, mode = 'deep' 
 
               {mode === 't1' && data.errors?.length > 0 && (
                 <SectionCard title="T1 error types">
-                  <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(210px,1fr))', gap:8 }}>{data.errors.map((e, i) => <div key={`${e.name}-${i}`} style={{ background:'var(--surface-1)', border:'1px solid var(--border)', borderRadius:7, padding:'9px 10px' }}><code style={{ color:'var(--accent)', fontSize:11 }}>{e.name}</code><div style={{ color:'var(--text-faint)', fontSize:10, marginTop:4 }}>{e.module}{e.base ? ` · ${e.base}` : ''}</div></div>)}</div>
+                  <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(210px,1fr))', gap:8 }}>{data.errors.map((e, i) => <div key={`${e.name}-${i}`} style={{ background:'var(--surface-1)', border:'1px solid var(--border)', borderRadius:7, padding:'9px 10px' }}><code style={{ color:'var(--accent)', fontSize:11 }}>{e.name}</code><div style={{ color:'var(--text-faint)', fontSize:11, marginTop:4 }}>{e.module}{e.base ? ` · ${e.base}` : ''}</div></div>)}</div>
                 </SectionCard>
               )}
 
