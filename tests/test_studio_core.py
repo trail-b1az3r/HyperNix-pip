@@ -19,6 +19,7 @@ workspace pointing out of it passes every string test there is.
 """
 from __future__ import annotations
 
+import re
 import shutil
 import subprocess
 import sys
@@ -29,6 +30,7 @@ import pytest
 DESKTOP = Path(__file__).resolve().parent.parent / "desktop"
 SRC = DESKTOP / "src"
 TESTS = DESKTOP / "tests"
+QML = DESKTOP / "qml"
 
 #: Studio targets Linux desktops -- Qt 6 on Ubuntu 24.04 and Debian 12 --
 #: and ``ToolRunner`` is written against POSIX path semantics throughout.
@@ -66,6 +68,29 @@ def _compilers() -> list[str]:
         if path:
             found.setdefault(str(Path(path).resolve()), path)
     return list(found.values())
+
+
+def _build_headers_only(name: str, tmp_path: Path) -> Path:
+    """Compile a test that needs only headers, with every compiler here."""
+    compilers = _compilers()
+    if not compilers:
+        pytest.skip("no C++ compiler on this machine")
+
+    binaries: list[Path] = []
+    for index, compiler in enumerate(compilers):
+        out = tmp_path / f"{name}.{index}"
+        result = subprocess.run(
+            [compiler, "-std=c++17", "-O1", "-Wall", "-Wextra", "-Werror",
+             str(TESTS / f"{name}.cpp"), "-o", str(out)],
+            capture_output=True, text=True, check=False,
+        )
+        if result.returncode != 0:
+            pytest.fail(
+                f"{name} does not compile cleanly with {compiler}:\n"
+                f"{result.stderr}"
+            )
+        binaries.append(out)
+    return binaries[0]
 
 
 def _build(name: str, tmp_path: Path) -> Path:
@@ -107,6 +132,39 @@ class TestTheToolPolicy:
 
         assert result.returncode == 0, result.stdout + result.stderr
         assert "0 failures" in result.stdout
+
+
+@_POSIX_ONLY
+class TestTheSettingsRules:
+    """The context clamp and the shell name, under every compiler here.
+
+    The shell name looks cosmetic and is not: the value is written into
+    generated scripts that get committed, run by CI and pasted into
+    Dockerfiles, so a "name" carrying an argument or an operator is a
+    setting being turned into an execution somewhere Studio cannot see.
+
+    SettingsRules.h has no Qt in it for the same reason ToolPolicy does
+    not: a rule that needs an event loop to exercise gets tested by
+    hand once and then never again.
+    """
+
+    def test_it_compiles_and_every_check_passes(self, tmp_path):
+        binary = _build_headers_only("settings_rules_test", tmp_path)
+        result = subprocess.run(
+            [str(binary)], capture_output=True, text=True, check=False
+        )
+
+        assert result.returncode == 0, result.stdout + result.stderr
+        assert "0 failures" in result.stdout
+
+    def test_the_two_shell_defaults_are_what_the_request_asked_for(self, tmp_path):
+        """fish where a person types, bash where a machine runs it."""
+        binary = _build_headers_only("settings_rules_test", tmp_path)
+        out = subprocess.run(
+            [str(binary)], capture_output=True, text=True, check=False
+        ).stdout
+        assert "interactive shell is fish" in out
+        assert "coding shell is bash" in out
 
 
 @_POSIX_ONLY
@@ -219,3 +277,83 @@ class TestTheApprovalDialogHasNoShortcuts:
         # the Allow branch (reads only) and approveTool().
         assert bridge.count("runApproved(") == 3  # definition + 2 calls
         assert "void StudioBridge::approveTool()" in bridge
+
+
+class TestEveryThemeColourExists:
+    """`Theme.subtext` is not a compile error — it is `undefined`.
+
+    QML resolves a missing property on a singleton to `undefined` and
+    carries on, so a typo in a colour name produces an element with no
+    colour rather than a build failure. The first draft of
+    SettingsView.qml used `Theme.subtext` and `Theme.warning`; the real
+    names are `textDim` and `warn`, and nothing would have said so until
+    somebody looked at the panel and wondered why the help text was
+    black on black.
+    """
+
+    @staticmethod
+    def _declared() -> set[str]:
+        theme = (QML / "Theme.qml").read_text(encoding="utf-8")
+        return set(re.findall(r"property\s+\w+\s+(\w+)\s*:", theme))
+
+    def test_every_reference_resolves(self):
+        declared = self._declared()
+        assert declared, "no properties found in Theme.qml"
+
+        missing: list[str] = []
+        for path in sorted(QML.glob("*.qml")):
+            if path.name == "Theme.qml":
+                continue
+            text = path.read_text(encoding="utf-8")
+            # Strip comments: the prose in these files names colours.
+            code = "\n".join(
+                line for line in text.splitlines()
+                if not line.strip().startswith("//")
+            )
+            for name in sorted(set(re.findall(r"\bTheme\.(\w+)", code))):
+                if name not in declared:
+                    missing.append(f"{path.name}: Theme.{name}")
+
+        assert not missing, "undefined theme colours: " + ", ".join(missing)
+
+    def test_the_settings_panel_uses_real_colours(self):
+        """The specific file the rule was written for."""
+        declared = self._declared()
+        text = (QML / "SettingsView.qml").read_text(encoding="utf-8")
+        used = set(re.findall(r"\bTheme\.(\w+)", text))
+        assert used, "the settings panel references no theme colours at all"
+        assert used <= declared, sorted(used - declared)
+
+
+class TestTheSettingsPanelIsReachable:
+    """A view that is not in the qrc, the nav stack and the sidebar is
+    a file nobody can open. All three, or it does not exist."""
+
+    def test_it_is_in_the_resource_file(self):
+        qrc = (DESKTOP / "resources" / "studio.qrc").read_text(encoding="utf-8")
+        assert "qml/SettingsView.qml" in qrc
+
+    def test_it_is_in_the_navigation_stack(self):
+        assert "SettingsView {}" in (QML / "Main.qml").read_text(encoding="utf-8")
+
+    def test_the_sidebar_offers_it(self):
+        assert '"Settings"' in (QML / "Sidebar.qml").read_text(encoding="utf-8")
+
+    def test_the_stack_and_the_sidebar_are_the_same_length(self):
+        """StackLayout picks by index, so a sidebar entry without a
+        matching view shows whatever happens to be at that index —
+        silently, and usually the wrong screen."""
+        main = (QML / "Main.qml").read_text(encoding="utf-8")
+        sidebar = (QML / "Sidebar.qml").read_text(encoding="utf-8")
+        views = re.findall(r"^\s+(\w+View)\s*\{\}", main, re.M)
+        labels = re.findall(r'\{\s*label:\s*"([^"]+)"', sidebar)
+        assert len(views) == len(labels), f"{views} vs {labels}"
+
+    def test_the_settings_are_exposed_to_qml(self):
+        header = (DESKTOP / "src" / "StudioBridge.h").read_text(encoding="utf-8")
+        assert "Q_PROPERTY(hnx::StudioSettings* settings" in header
+        assert "contextNote" in header
+
+    def test_the_settings_source_is_built(self):
+        cmake = (DESKTOP / "CMakeLists.txt").read_text(encoding="utf-8")
+        assert "src/StudioSettings.cpp" in cmake

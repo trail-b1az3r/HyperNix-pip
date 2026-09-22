@@ -142,6 +142,7 @@ qt_add_executable(hypernix-studio
     src/HyperLinkClient.cpp
     src/LocalSession.cpp
     src/StudioBridge.cpp
+    src/StudioSettings.cpp
 )
 
 qt_add_resources(hypernix-studio "studio"
