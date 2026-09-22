@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-api-deep",
   "generated_at": "2026-09-20T21:20:57Z",
-  "commit": "e69934468a02674e60bfe92de6fd533ca7b9c5dd",
+  "commit": "14019f33c1415d3042c4c68a517be17f83918115",
   "history_available": true,
   "source_root": "src/hypernix",
   "modules": [
@@ -28115,6 +28115,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "14019f33",
+          "date": "2026-09-22",
+          "author": "Rayla",
+          "subject": "Update ethanol.py",
+          "api_changes": []
+        },
         {
           "sha": "0f3f85c8",
           "date": "2026-09-21",
