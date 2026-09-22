@@ -73,7 +73,8 @@ Rectangle {
                 { label: "Chat",    hint: "talk to a model" },
                 { label: "Code",    hint: "work on a folder" },
                 { label: "Models",  hint: "switch and download" },
-                { label: "Machine", hint: "GPU, CPU, memory" }
+                { label: "Machine", hint: "GPU, CPU, memory" },
+                { label: "Settings", hint: "shells, context" }
             ]
 
             delegate: Rectangle {

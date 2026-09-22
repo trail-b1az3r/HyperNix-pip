@@ -66,6 +66,7 @@ ApplicationWindow {
                 CodeView {}
                 ModelsView {}
                 MachineView {}
+                SettingsView {}
             }
         }
     }
