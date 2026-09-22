@@ -4,9 +4,9 @@
 and on consumer cards may permanently damage hardware.**  This
 module wraps the *standard* vendor tools (``nvidia-smi`` /
 ``nvidia-settings`` / ``rocm-smi`` / ``intel_gpu_frequency``) and
-maps a single integer "level" 0…30 to bounded clock + memory
-offsets.  Level 0 resets to defaults; level 30 is the maximum
-offset we'll ever apply (and it's still well below typical
+maps a single integer "level" 0…:data:`MAX_LEVEL` to bounded clock +
+memory offsets.  Level 0 resets to defaults; :data:`MAX_LEVEL` is the
+maximum offset we'll ever apply (and it's still well below typical
 manual-overclocker limits).  The helpers refuse to run unless
 ``confirm=True`` is passed (or the ``HYPERNIX_ETHANOL_CONFIRM=1``
 env var is set), so a mistyped script can't accidentally crank
@@ -79,11 +79,16 @@ class OverclockResult:
 
 
 def _level_to_offsets(level: int) -> tuple[int, int, int]:
-    """Map ``level`` 0..30 to ``(core_mhz, mem_mhz, power_pct)``.
-    Linear ramp; level 0 is full stock, level 30 hits the hard
-    ceilings declared at module level.  Levels above 30 are
-    clamped to 30 (rather than rejected) to keep the helpers
-    forgiving — but the CLI rejects out-of-range input.
+    """Map ``level`` 0..:data:`MAX_LEVEL` to ``(core, mem, power)``.
+
+    Linear ramp; level 0 is full stock and :data:`MAX_LEVEL` hits the
+    hard ceilings declared at module level. Anything above it is
+    clamped rather than rejected, to keep the helpers forgiving — the
+    CLI rejects out-of-range input.
+
+    The bound is named rather than written out because it moves:
+    MAX_LEVEL went from 30 to 45 and left this docstring, and two
+    tests, describing a ceiling that was no longer the ceiling.
     """
     if level < 0:
         raise ValueError("level must be >= 0")
@@ -495,14 +500,17 @@ def overclock(level: int, *, confirm: bool = False, gpu_index: int = 0) -> Overc
 # CLI entry point — installed as ``eth``
 # ---------------------------------------------------------------------------
 
-_USAGE = """\
-usage: eth <level 0..30 | auto | status | reset> [--confirm] [--gpu N]
+# Built from MAX_LEVEL rather than written out. The literal said 30
+# after the ceiling moved to 45, so the help told people the maximum
+# was a level two-thirds of the way up.
+_USAGE = f"""\
+usage: eth <level 0..{MAX_LEVEL} | auto | status | reset> [--confirm] [--gpu N]
 
   eth status     show the GPU's current clocks, power, and temperature
   eth 0          reset to stock
   eth reset      same as `eth 0`
   eth 5          mild bump
-  eth 30         max-supported offset
+  eth {MAX_LEVEL}         max-supported offset
   eth auto       pick a level from the GPU's measured temperature
 
 Applying requires --confirm or HYPERNIX_ETHANOL_CONFIRM=1; without one,

@@ -162,7 +162,7 @@ function StatsPage({ downloads, olderDownloads, threeMonthDownloads, totalDownlo
         <div style={{ background:'var(--surface-3)', border:'1px solid var(--border-strong)', borderRadius:10, padding:'22px', marginBottom:18 }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', flexWrap:'wrap', gap:8, marginBottom:14 }}>
             <h3 style={{ color:'var(--text)', margin:0, fontSize:14 }}>Codebase footprint & contributions</h3>
-            {codeStats.commit && <span style={{ color:'var(--text-faint)', fontSize:10.5, fontFamily:'var(--font-mono)' }}>at {String(codeStats.commit).slice(0,8)}</span>}
+            {codeStats.commit && <span style={{ color:'var(--text-faint)', fontSize:11, fontFamily:'var(--font-mono)' }}>at {String(codeStats.commit).slice(0,8)}</span>}
           </div>
           <div className="anim-stagger" style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))', gap:10, marginBottom:16 }}>
             <div className="lift-card" style={{ background:'var(--surface-1)', border:'1px solid var(--border)', borderRadius:8, padding:'14px 12px', textAlign:'center' }}>
@@ -183,7 +183,7 @@ function StatsPage({ downloads, olderDownloads, threeMonthDownloads, totalDownlo
             <div style={{ overflowX:'auto' }}>
               <table style={{ width:'100%', borderCollapse:'collapse', fontSize:11.5 }}>
                 <thead><tr>
-                  {['Contributor','Added','Deleted','Net','Changes','Commits','Files'].map(h => <th key={h} style={{ textAlign:'left', padding:'8px 7px', borderBottom:'1px solid var(--border-strong)', color:'var(--text-faint)', fontSize:10 }}>{h}</th>)}
+                  {['Contributor','Added','Deleted','Net','Changes','Commits','Files'].map(h => <th key={h} style={{ textAlign:'left', padding:'8px 7px', borderBottom:'1px solid var(--border-strong)', color:'var(--text-faint)', fontSize:11 }}>{h}</th>)}
                 </tr></thead>
                 <tbody>{codeStats.contributors.map(c => (
                   <tr key={c.author}>
@@ -197,7 +197,7 @@ function StatsPage({ downloads, olderDownloads, threeMonthDownloads, totalDownlo
                   </tr>
                 ))}</tbody>
               </table>
-              <p style={{ margin:'10px 0 0', color:'var(--text-faint)', fontSize:10.5 }}>Sorted by added lines, then deletions. “Changes” = additions + deletions.</p>
+              <p style={{ margin:'10px 0 0', color:'var(--text-faint)', fontSize:11 }}>Sorted by added lines, then deletions. “Changes” = additions + deletions.</p>
             </div>
           ) : (
             <p style={{ color:'var(--text-muted)', fontSize:11.5, margin:0 }}>No Git contributor history is available in this archive yet.</p>
@@ -208,7 +208,7 @@ function StatsPage({ downloads, olderDownloads, threeMonthDownloads, totalDownlo
         <div style={{ background:'var(--surface-3)', border:'1px solid var(--border-strong)', borderRadius:10, padding:'22px', marginBottom:18 }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', gap:10, flexWrap:'wrap', marginBottom:14 }}>
             <h3 style={{ color:'var(--text)', margin:0, fontSize:14 }}>Release history</h3>
-            <span style={{ color:'var(--text-faint)', fontSize:10.5 }}>Summaries from <code>wiki/Changelog.md</code> when a version is documented there.</span>
+            <span style={{ color:'var(--text-faint)', fontSize:11 }}>Summaries from <code>wiki/Changelog.md</code> when a version is documented there.</span>
           </div>
           {['stable','post','alpha','beta','rc','dev','patch','other'].map(kind => {
             const labels = { stable:'Stable releases', post:'Post releases', alpha:'Alpha releases', beta:'Beta releases', rc:'Release candidates', dev:'Development releases', patch:'Patch / point releases', other:'Other release labels' }
@@ -219,7 +219,7 @@ function StatsPage({ downloads, olderDownloads, threeMonthDownloads, totalDownlo
                 <div style={{ display:'flex', alignItems:'center', gap:8, margin:'0 0 7px', paddingBottom:6, borderBottom:'1px solid var(--border)' }}>
                   <span style={{ width:6, height:6, borderRadius:'50%', background: kind === 'stable' ? '#34c759' : kind === 'post' ? '#6f8cff' : '#e8960a' }} />
                   <span style={{ color:'var(--text)', fontSize:11.5, fontWeight:700 }}>{labels[kind]}</span>
-                  <span style={{ color:'var(--text-faint)', fontSize:10 }}>({items.length})</span>
+                  <span style={{ color:'var(--text-faint)', fontSize:11 }}>({items.length})</span>
                 </div>
                 {items.slice(0, 20).map((r, index) => (
                   <div key={`${kind}:${r.version}:${index}`} style={{ display:'flex', gap:12, padding:'9px 6px', margin:'0 -6px', borderRadius:6, borderBottom:'1px solid var(--surface-3)', alignItems:'flex-start', transition:'background-color 0.18s ease' }}
@@ -233,7 +233,7 @@ function StatsPage({ downloads, olderDownloads, threeMonthDownloads, totalDownlo
                         ) : (
                           <span style={{ color:'var(--accent)', fontFamily:'monospace', fontSize:13 }}>{r.version}</span>
                         )}
-                        {r.changelogVersion && <span style={{ background:'var(--surface-1)', border:'1px solid var(--border)', borderRadius:4, padding:'0 6px', fontSize:10, color:'var(--text-faint)' }}>wiki {r.changelogVersion}</span>}
+                        {r.changelogVersion && <span style={{ background:'var(--surface-1)', border:'1px solid var(--border)', borderRadius:4, padding:'0 6px', fontSize:11, color:'var(--text-faint)' }}>wiki {r.changelogVersion}</span>}
                         {r.date && <span style={{ color:'var(--text-faint)', fontSize:12 }}>{r.date}</span>}
                       </div>
                       <p style={{ margin:'4px 0 0', fontSize:12, color:'var(--text-dim)', lineHeight:1.5 }}>{r.description}</p>
@@ -244,7 +244,7 @@ function StatsPage({ downloads, olderDownloads, threeMonthDownloads, totalDownlo
             )
           })}
           {changelogEntries && changelogEntries.length > 0 && releaseTimeline.some(r => !r.changelogVersion) && (
-            <p style={{ margin:'2px 0 0', color:'var(--text-faint)', fontSize:10.5 }}>A release without a matching changelog heading falls back to the GitHub release notes.</p>
+            <p style={{ margin:'2px 0 0', color:'var(--text-faint)', fontSize:11 }}>A release without a matching changelog heading falls back to the GitHub release notes.</p>
           )}
         </div>
       )}
