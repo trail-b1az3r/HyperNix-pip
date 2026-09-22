@@ -53,31 +53,46 @@ _POSIX_ONLY = pytest.mark.skipif(
 )
 
 
-def _compiler() -> str | None:
+def _compilers() -> list[str]:
+    """Every distinct C++ compiler here. See test_studio_local for why.
+
+    Short version: `c++` is g++ on Linux and clang on macOS, so picking
+    one meant the platforms compiled Studio with different compilers and
+    a clang-only diagnostic could only ever fail on macOS and Windows.
+    """
+    found: dict[str, str] = {}
     for name in ("c++", "g++", "clang++"):
-        found = shutil.which(name)
-        if found:
-            return found
-    return None
+        path = shutil.which(name)
+        if path:
+            found.setdefault(str(Path(path).resolve()), path)
+    return list(found.values())
 
 
 def _build(name: str, tmp_path: Path) -> Path:
-    compiler = _compiler()
-    if compiler is None:
+    """Compile with every compiler here; all must succeed."""
+    compilers = _compilers()
+    if not compilers:
         pytest.skip("no C++ compiler on this machine")
-    out = tmp_path / name
-    result = subprocess.run(
-        [
-            compiler, "-std=c++17", "-O1", "-Wall", "-Wextra", "-Werror",
-            str(TESTS / f"{name}.cpp"),
-            str(SRC / "ToolPolicy.cpp"), str(SRC / "ToolRunner.cpp"),
-            "-o", str(out),
-        ],
-        capture_output=True, text=True, check=False,
-    )
-    if result.returncode != 0:
-        pytest.fail(f"{name} does not compile cleanly:\n{result.stderr}")
-    return out
+
+    binaries: list[Path] = []
+    for index, compiler in enumerate(compilers):
+        out = tmp_path / f"{name}.{index}"
+        result = subprocess.run(
+            [
+                compiler, "-std=c++17", "-O1", "-Wall", "-Wextra", "-Werror",
+                str(TESTS / f"{name}.cpp"),
+                str(SRC / "ToolPolicy.cpp"), str(SRC / "ToolRunner.cpp"),
+                "-o", str(out),
+            ],
+            capture_output=True, text=True, check=False,
+        )
+        if result.returncode != 0:
+            pytest.fail(
+                f"{name} does not compile cleanly with {compiler}:\n"
+                f"{result.stderr}"
+            )
+        binaries.append(out)
+    return binaries[0]
 
 
 @_POSIX_ONLY
