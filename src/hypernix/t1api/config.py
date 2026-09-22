@@ -303,6 +303,11 @@ class T1APIConfig:
     # surface beyond the pairing redemption endpoint, which needs a code
     # an operator minted by hand.
     hyperlink_enabled: bool = field(default_factory=lambda: _bool_env("T1_HYPERLINK_ENABLED", True))
+    # MCP: this server described so an assistant can read it for itself.
+    # Off by default. It is a second, differently-shaped way in to the
+    # same capabilities, and a surface nobody asked for is a surface
+    # nobody is watching.
+    mcp_enabled: bool = field(default_factory=lambda: _bool_env("T1_MCP_ENABLED", False))
     hyperlink_public_url: str = field(
         default_factory=lambda: os.environ.get("T1_HYPERLINK_PUBLIC_URL", "")
     )
@@ -524,6 +529,7 @@ class T1APIConfig:
             "lmstudio_url": self.lmstudio_url,
             "lmstudio_discovery": self.lmstudio_discovery,
             "hyperlink_enabled": self.hyperlink_enabled,
+            "mcp_enabled": self.mcp_enabled,
             "hyperlink_public_url": self.hyperlink_public_url,
             "hyperlink_max_upload_bytes": self.hyperlink_max_upload_bytes,
             **self.tls_settings().public_dict(),

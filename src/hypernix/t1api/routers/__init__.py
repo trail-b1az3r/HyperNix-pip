@@ -55,6 +55,7 @@ from . import (
     inference,
     jobs,
     keys,
+    mcp,
     memory,
     models,
     modules,
@@ -101,6 +102,9 @@ ALL_ROUTERS = (
     noodle.router,
     # Loading, unloading and switching the served model.
     runner.router,
+    # This server described so an assistant can read it for
+    # itself. Off unless T1_MCP_ENABLED.
+    mcp.router,
 )
 
 __all__ = [
@@ -120,6 +124,7 @@ __all__ = [
     "inference",
     "jobs",
     "keys",
+    "mcp",
     "memory",
     "models",
     "modules",
