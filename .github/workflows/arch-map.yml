@@ -1,0 +1,86 @@
+name: arch-map
+
+# Rebuild the architecture chart when a public release goes out, and
+# update it **in place**.
+#
+# In place is the requirement, not a detail. A workflow that appends
+# produces a page with eleven charts, ten of them wrong, and no way to
+# tell which is current — which is worse than the hand-drawn diagram it
+# replaced, because at least that one was only wrong once.
+#
+# The chart is read out of the source tree rather than maintained: see
+# `hypernix.system.archmap`. Imports become edges, packages become
+# nodes, and a module is beta because it says `__beta__ = True`, not
+# because somebody remembered to update a list.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: "Commit the regenerated chart (off = just show the diff)."
+        type: boolean
+        default: true
+
+concurrency:
+  group: arch-map
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  regenerate:
+    name: regenerate the chart
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The default branch, not the tag: a release is published from
+          # a tag, and committing the chart back onto a detached tag
+          # would land it nowhere anybody reads.
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Regenerate
+        run: |
+          python -m hypernix.system.archmap --write wiki/Architecture.md
+        env:
+          PYTHONPATH: src
+
+      - name: What changed
+        id: diff
+        run: |
+          git diff --stat wiki/Architecture.md
+          echo "changed=$(git diff --name-only wiki/Architecture.md | wc -l)" >> "$GITHUB_OUTPUT"
+
+      - name: Show it in the run summary
+        run: |
+          {
+            echo "## Architecture chart"
+            echo
+            echo "Release: \`${{ github.event.release.tag_name || 'manual' }}\`"
+            echo
+            sed -n '/ARCHMAP:START/,/ARCHMAP:END/p' wiki/Architecture.md
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Commit it
+        if: steps.diff.outputs.changed != '0' && inputs.commit != false
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add wiki/Architecture.md
+          git commit -m "docs: architecture chart for ${{ github.event.release.tag_name || 'the current tree' }} [skip ci]"
+          # Rebase rather than force: this workflow is not the only thing
+          # that pushes to the default branch, and a release can coincide
+          # with anything else that lands.
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin "${{ github.event.repository.default_branch }}" && \
+            git push origin HEAD:"${{ github.event.repository.default_branch }}" && break
+            sleep $((attempt * 2))
+          done

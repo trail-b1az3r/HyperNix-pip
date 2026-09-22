@@ -1,0 +1,298 @@
+name: auto-scan
+
+# The twice-weekly sweep: read the repository, report what is wrong,
+# fix what is safe to fix, and — only when the findings justify it and
+# the release train is in a state where a patch makes sense — publish a
+# .post release.
+#
+# The interesting design question is "when may this act on its own",
+# and the answer lives in `hypernix.system.autoscan.should_release`
+# rather than in this file. A gate written in YAML is a gate nobody
+# tests; that one has tests for every clause that says no.
+#
+# Four things have to agree before anything is published:
+#
+#   1. the sweep found and fixed enough to be worth a version,
+#   2. no unresolved security finding (shipping faster is not the
+#      correct response to finding a vulnerability),
+#   3. the most recent release is a plain stable version — a .post of a
+#      pre-release sorts *below* the real release and reaches nobody,
+#   4. Claude reviewed the actual diff and said yes.
+#
+# Any of them failing means no release and a printed reason. Nothing
+# here is silent.
+#
+# Secrets this needs:
+#   ANTHROPIC_API_KEY  — the review step. Without it the review returns
+#                        "unreviewed" and the release does not happen,
+#                        which is the correct failure direction.
+
+on:
+  schedule:
+    # Monday and Thursday, 04:17 UTC. Not on the hour: every scheduled
+    # workflow on GitHub fires at :00 and the queue is worst there.
+    - cron: "17 4 * * 1,4"
+  workflow_dispatch:
+    inputs:
+      release:
+        description: "Allow this run to publish a .post release if the gate agrees."
+        type: boolean
+        default: false
+      apply_fixes:
+        description: "Apply safe automatic fixes and commit them."
+        type: boolean
+        default: true
+
+concurrency:
+  group: auto-scan
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  # ---------------------------------------------------------------
+  # 1. Bugs
+  # ---------------------------------------------------------------
+  bugs:
+    name: python bugs
+    runs-on: ubuntu-latest
+    outputs:
+      count: ${{ steps.scan.outputs.count }}
+      report: ${{ steps.scan.outputs.report }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install "ruff>=0.5"
+      - id: scan
+        run: |
+          python - <<'PY' | tee bugs.txt
+          import json, sys
+          sys.path.insert(0, "src")
+          from pathlib import Path
+          from hypernix.system.autoscan import scan_python
+          findings = scan_python(Path("src"))
+          for f in findings:
+              print(f)
+          Path("bugs.json").write_text(json.dumps([str(f) for f in findings], indent=2))
+          print(f"\n{len(findings)} bug finding(s)")
+          PY
+          echo "count=$(python -c "import json;print(len(json.load(open('bugs.json'))))")" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bug-report
+          path: bugs.json
+
+  # ---------------------------------------------------------------
+  # 2. The API, over two jobs
+  # ---------------------------------------------------------------
+  #
+  # Split in two on purpose rather than for speed: the halves exercise
+  # genuinely different things, and a single job that runs both reports
+  # one red X for two unrelated causes.
+  api:
+    name: api (${{ matrix.half }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - half: "1 of 2 — routes and schemas"
+            target: "tests/test_t1api_http.py tests/test_t1api_beta3_http.py tests/test_version_endpoint.py tests/test_inference_endpoints.py"
+          - half: "2 of 2 — auth and limits"
+            target: "tests/test_trusted_network.py tests/test_t2s_errors.py tests/test_billing_keys.py tests/test_bootstrap_key.py"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install with the server extra
+        run: |
+          python -m pip install --upgrade pip
+          pip install --index-url https://download.pytorch.org/whl/cpu torch
+          pip install -e ".[dev,t1api,security]"
+      - name: Run this half
+        run: python -m pytest ${{ matrix.target }} -q
+
+  # ---------------------------------------------------------------
+  # 3. Security
+  # ---------------------------------------------------------------
+  security:
+    name: security
+    runs-on: ubuntu-latest
+    outputs:
+      count: ${{ steps.scan.outputs.count }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - id: scan
+        run: |
+          python - <<'PY'
+          import json, sys
+          sys.path.insert(0, "src")
+          from pathlib import Path
+          from hypernix.system.autoscan import scan_security
+          findings = scan_security(Path("src"))
+          for f in findings:
+              print(f)
+          Path("security.json").write_text(json.dumps([str(f) for f in findings], indent=2))
+          print(f"\n{len(findings)} security finding(s)")
+          PY
+          echo "count=$(python -c "import json;print(len(json.load(open('security.json'))))")" >> "$GITHUB_OUTPUT"
+      - name: Dependency audit
+        continue-on-error: true
+        run: |
+          pip install pip-audit
+          pip-audit --desc --strict || echo "::warning::pip-audit reported findings"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: security-report
+          path: security.json
+
+  # ---------------------------------------------------------------
+  # 4. Maintenance, review, and (maybe) a release
+  # ---------------------------------------------------------------
+  maintain:
+    name: maintain and decide
+    needs: [bugs, api, security]
+    # `always()` so a red API half still produces the report; the gate
+    # below is what decides whether anything is published, and it knows
+    # about the failure.
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: |
+          python -m pip install --upgrade pip
+          pip install "ruff>=0.5" anthropic
+
+      - name: Apply the safe fixes
+        if: inputs.apply_fixes != false
+        run: ruff check --fix src/ tests/ || true
+
+      - name: What changed
+        id: diff
+        run: |
+          git diff > sweep.diff || true
+          echo "changed=$(git diff --name-only | wc -l)" >> "$GITHUB_OUTPUT"
+          cat sweep.diff
+
+      - name: The most recent release
+        id: latest
+        run: |
+          latest=$(git tag --list 'v*' --sort=-v:refname | head -1 | sed 's/^v//')
+          [ -n "$latest" ] || latest=$(python -c "import re,pathlib;print(re.search(r'version\s*=\s*\"([^\"]+)\"',pathlib.Path('pyproject.toml').read_text()).group(1))")
+          echo "version=$latest" >> "$GITHUB_OUTPUT"
+          echo "Most recent release: $latest"
+
+      - name: The gate
+        id: gate
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          API_RESULT: ${{ needs.api.result }}
+          SECURITY_COUNT: ${{ needs.security.outputs.count }}
+          LATEST: ${{ steps.latest.outputs.version }}
+          CHANGED: ${{ steps.diff.outputs.changed }}
+          ALLOW_RELEASE: ${{ inputs.release }}
+        run: |
+          python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json, os, subprocess, sys
+          sys.path.insert(0, "src")
+          from pathlib import Path
+          from hypernix.system.autoscan import (
+              Finding, ScanReport, ReleaseDecision, advise, should_release,
+          )
+
+          report = ScanReport()
+          for count in range(int(os.environ.get("SECURITY_COUNT") or 0)):
+              report.findings.append(
+                  Finding("security", "reported", "see artifact", 0,
+                          "reported by the security job")
+              )
+          changed = subprocess.run(
+              ["git", "diff", "--name-only"], capture_output=True, text=True
+          ).stdout.split()
+          report.fixed = changed
+
+          latest = os.environ["LATEST"]
+          decision = should_release(report, latest)
+
+          print("## Auto-scan\n")
+          print(f"- most recent release: `{latest}`")
+          print(f"- files changed by the sweep: {len(changed)}")
+          print(f"- security findings: {len(report.security)}")
+          print(f"- API jobs: `{os.environ.get('API_RESULT')}`")
+          print(f"- gate: **{decision}**\n")
+
+          publish = decision.release
+          if os.environ.get("API_RESULT") not in ("success", ""):
+              publish = False
+              print("- the API jobs did not pass, so nothing is published.\n")
+
+          verdict = {"publish": False, "reasoning": "not asked"}
+          if publish:
+              diff = Path("sweep.diff").read_text(encoding="utf-8", errors="replace")
+              verdict = advise(report, diff, decision)
+              print(f"- review: **{'yes' if verdict['publish'] else 'no'}** "
+                    f"({verdict.get('confidence', '?')}) — "
+                    f"{verdict.get('reasoning', '')}\n")
+              publish = bool(verdict["publish"])
+
+          if os.environ.get("ALLOW_RELEASE") != "true":
+              publish = False
+              print("- this run was not asked to release "
+                    "(`release` input is off), so it did not.\n")
+
+          Path("gate.json").write_text(json.dumps({
+              "publish": publish,
+              "version": decision.version,
+              "reason": decision.reason,
+              "verdict": verdict,
+          }, indent=2))
+          with open(os.environ["GITHUB_OUTPUT"], "a") as handle:
+              handle.write(f"publish={'true' if publish else 'false'}\n")
+              handle.write(f"version={decision.version}\n")
+          PY
+
+      - name: Commit the fixes
+        if: steps.diff.outputs.changed != '0' && inputs.apply_fixes != false
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "auto-scan/$(date +%Y-%m-%d)"
+          git add -A
+          git commit -m "chore: automated maintenance sweep
+
+          Safe fixes only (ruff, no --unsafe-fixes). Bugs and security
+          findings from this sweep are in the run's artifacts; they are
+          reported rather than auto-fixed, because 'obviously
+          equivalent' is how a behaviour change lands unreviewed."
+          git push -u origin HEAD
+
+      - name: Ask for the release
+        if: steps.gate.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Dispatching public-release for ${{ steps.gate.outputs.version }}"
+          gh workflow run public-release.yml \
+            -f version="${{ steps.gate.outputs.version }}" \
+            -f dry_run=false
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sweep
+          path: |
+            sweep.diff
+            gate.json
