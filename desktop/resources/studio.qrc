@@ -13,6 +13,7 @@
         <file>qml/CodeView.qml</file>
         <file>qml/ModelsView.qml</file>
         <file>qml/MachineView.qml</file>
+        <file>qml/SettingsView.qml</file>
         <file>qml/Meter.qml</file>
         <file>qml/ToolApproval.qml</file>
         <file>qml/StudioButton.qml</file>

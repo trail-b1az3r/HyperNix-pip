@@ -36,6 +36,7 @@
 
 #include "HyperLinkClient.h"
 #include "LocalSession.h"
+#include "StudioSettings.h"
 #include "ToolRunner.h"
 
 namespace hnx {
@@ -79,6 +80,17 @@ class StudioBridge : public QObject {
     // binds to, so it does not have to know which mode it is in.
     Q_PROPERTY(bool ready READ ready NOTIFY readyChanged)
 
+    // What Studio remembers between launches: which shell a person
+    // types in, which shell generated scripts target, and how much
+    // context to ask a model for. See StudioSettings.h for why the two
+    // shells are separate settings rather than one.
+    Q_PROPERTY(hnx::StudioSettings* settings READ settings CONSTANT)
+    // Why the last load got a different context than it asked for, or
+    // empty. Shown rather than silently applied: a person who typed
+    // 32768 and got 8192 needs to be told which of the two ceilings
+    // they hit.
+    Q_PROPERTY(QString contextNote READ contextNote NOTIFY localChanged)
+
 public:
     explicit StudioBridge(QObject* parent = nullptr);
     ~StudioBridge() override;
@@ -110,6 +122,8 @@ public:
     QVariantMap localInfo() const { return local_.info(); }
     QStringList modelFolders() const { return modelFolders_; }
     bool ready() const;
+    StudioSettings* settings() { return &settings_; }
+    QString contextNote() const { return contextNote_; }
 
 public slots:
     // Connection. `key` is a T2S key; Studio never asks for an admin
@@ -136,6 +150,8 @@ public slots:
     void scanLocalModels();
     void addModelFolder(const QString& path);
     void removeModelFolder(const QString& path);
+    // contextLength <= 0 means "use the setting", which is what every
+    // caller that has not been told otherwise should pass.
     void loadLocalModel(const QString& path, int gpuLayers, int contextLength);
     void unloadLocalModel();
     void stopGenerating();
@@ -182,6 +198,9 @@ private:
 
     void sendToServer(const QString& text);
     void sendToLocal(const QString& text);
+
+    StudioSettings settings_;
+    QString contextNote_;
     QString localPrompt() const;
     void loadModelFolders();
     void saveModelFolders();

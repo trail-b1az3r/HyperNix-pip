@@ -2,6 +2,8 @@
 
 #include "StudioBridge.h"
 
+#include <QtCore/QVariantMap>
+
 #include <QtCore/QDir>
 #include <QtCore/QFileInfo>
 #include <QtCore/QJsonDocument>
@@ -457,10 +459,27 @@ void StudioBridge::loadLocalModel(const QString& path, int gpuLayers,
         emit error("No local inference", LocalSession::unavailableReason());
         return;
     }
+
+    // <= 0 means "use the setting". Callers that have not been told a
+    // context should not have to invent one, and the setting is the
+    // whole reason it exists.
+    const int wanted =
+        contextLength > 0 ? contextLength : settings_.contextLimit();
+
+    // Clamped against the model's own ceiling, with the reason kept.
+    // Asking a model for more context than it has fails at load with a
+    // message about the KV cache, which reads as a bug rather than as a
+    // setting — so it is reduced here and the reduction is reported.
+    const QVariantMap info = local_.info();
+    const int modelMaximum = info.value("context_length").toInt();
+    QString why;
+    const int applied = StudioSettings::clampContext(wanted, modelMaximum, &why);
+    contextNote_ = why;
+
     setSource("local");
     setStatus("Loading " + QFileInfo(path).fileName());
     setBusy(true);
-    local_.load(path, gpuLayers, contextLength);
+    local_.load(path, gpuLayers, applied);
 }
 
 void StudioBridge::unloadLocalModel() {

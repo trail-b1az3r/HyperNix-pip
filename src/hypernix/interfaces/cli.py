@@ -95,6 +95,7 @@ _SUBCOMMANDS = {
     "net",
     "wiki",
     "vera",
+    "neuron",
     "scavenger",
     "config",
     "gather",
@@ -236,6 +237,7 @@ def _print_usage() -> None:
         table.add_row("[green]prot[/]", "Hardware health and monitor protection module")
         table.add_row("[green]wiki[/]", "HyperNix documentation wiki CLI")
         table.add_row("[green]vera[/]", "Vera assistant CLI")
+        table.add_row("[green]neuron[/]", "Train small networks that act: RL, imitation, supervised")
         table.add_row("[green]scavenger[/]", "Scavenger tools")
         table.add_row("[green]gather[/]", "Crawl a site into a corpus (robots-aware)")
         table.add_row("[green]fusebox[/]", "GPU thermal governor: pace a run, trip on heat, underclock")
@@ -298,6 +300,7 @@ def _print_usage() -> None:
             "  prot                   Hardware health & monitor protection\n"
             "  wiki                   HyperNix documentation wiki CLI\n"
             "  vera                   Vera assistant CLI\n"
+            "  neuron                 Train small networks that act (RL, imitation)\n"
             "  scavenger              Scavenger tools\n"
             "  gather                 crawl a site into a corpus (robots-aware)\n"
             "  fusebox                GPU thermal governor for a training run\n"
@@ -1258,6 +1261,8 @@ def main(argv: list[str] | None = None) -> int:
         return _run_wiki(rest)
     if cmd == "vera":
         return _run_vera(rest)
+    if cmd == "neuron":
+        return _run_neuron(rest)
     if cmd == "scavenger":
         return _run_scavenger(rest)
     if cmd == "config":
@@ -1293,6 +1298,11 @@ def _run_wiki(raw: list[str]) -> int:
 def _run_vera(raw: list[str]) -> int:
     from hypernix.evaluation.vera import cli_main as vera_main
     return vera_main(raw)
+
+def _run_neuron(raw: list[str]) -> int:
+    """`hypernix neuron` — train small networks that act: RL, imitation."""
+    from hypernix.neuron.cli import cli_main as neuron_main
+    return neuron_main(raw)
 
 def _run_scavenger(raw: list[str]) -> int:
     from hypernix.data.scavenger import cli_main as scavenger_main
