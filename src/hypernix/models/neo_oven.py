@@ -95,40 +95,117 @@ JUDGE_LABEL_SEP = "<JUDGE_LABEL>"
 LABEL_GOOD = "GOOD"
 LABEL_BAD = "BAD"
 
-# Architecture presets — full set from old_oven, all in one place.
+# Architecture presets.
+#
+# `model_type` is the one field here that is not a preference. It goes
+# into config.json and it is what `AutoModel` dispatches on, so a preset
+# that says "llama" for a Gemma builds Gemma-shaped weights and then
+# declares them to be a Llama. Nothing complains at build time; it fails
+# later, at load, somewhere that looks like a checkpoint problem.
+#
+# Most of this table said "llama" or "qwen2" for architectures that have
+# had their own model_type in transformers for years — gemma, gemma2,
+# gemma3, phi3, glm, glm4, qwen3, llama4, nemotron, gpt_oss. Each one
+# below is now the type transformers actually registers, and
+# `test_neo_oven_presets.py` checks that against the live CONFIG_MAPPING
+# rather than against this comment.
+#
+# The numeric fields are the defaults the real config classes carry.
+# GLM's rms_norm_eps is the one worth pointing at: 1.5625e-07, not the
+# 1e-5 that was here, which is two orders of magnitude of normalisation.
 ARCH_PRESETS: dict[str, dict[str, Any]] = {
+    # -- HyperNix's own ------------------------------------------------
     "hypernix": {"attention_bias": False, "model_type": "hypernix", "rope_theta": 10000.0, "rms_norm_eps": 1e-5, "tie_word_embeddings": False},
     "hypernix2": {"attention_bias": False, "model_type": "hypernix", "rope_theta": 10000.0, "rms_norm_eps": 1e-5, "tie_word_embeddings": False},
     "hyper-nix.2": {"attention_bias": False, "model_type": "hypernix", "rope_theta": 10000.0, "rms_norm_eps": 1e-5, "tie_word_embeddings": False},
+
+    # -- Llama ---------------------------------------------------------
     "llama": {"attention_bias": False, "model_type": "llama", "rope_theta": 10000.0, "rms_norm_eps": 1e-5, "tie_word_embeddings": False},
     "llama3": {"attention_bias": False, "model_type": "llama", "rope_theta": 500000.0, "rms_norm_eps": 1e-5, "tie_word_embeddings": False},
     "llama3.1": {"attention_bias": False, "model_type": "llama", "rope_theta": 500000.0, "rms_norm_eps": 1e-5, "tie_word_embeddings": False},
+    # 1B and 3B tie their embeddings; 8B and up do not.
     "llama3.2": {"attention_bias": False, "model_type": "llama", "rope_theta": 500000.0, "rms_norm_eps": 1e-5, "tie_word_embeddings": True},
     "llama3.3": {"attention_bias": False, "model_type": "llama", "rope_theta": 500000.0, "rms_norm_eps": 1e-5, "tie_word_embeddings": False},
-    "llama4": {"attention_bias": False, "model_type": "llama", "rope_theta": 500000.0, "rms_norm_eps": 1e-5, "tie_word_embeddings": True},
+    # Llama 4 is its own type — MoE with interleaved attention.
+    "llama4": {"attention_bias": False, "model_type": "llama4", "rope_theta": 500000.0, "rms_norm_eps": 1e-5, "tie_word_embeddings": True},
+
+    # -- Qwen ----------------------------------------------------------
+    # Qwen2 puts bias on q/k/v; Qwen3 drops it and adds QK-norm, which
+    # is why they are different types rather than one with a flag.
     "qwen2": {"attention_bias": True, "model_type": "qwen2", "rope_theta": 1000000.0, "rms_norm_eps": 1e-6, "tie_word_embeddings": True},
     "qwen2.5": {"attention_bias": True, "model_type": "qwen2", "rope_theta": 1000000.0, "rms_norm_eps": 1e-6, "tie_word_embeddings": True},
-    "qwen3": {"attention_bias": False, "model_type": "qwen2", "rope_theta": 1000000.0, "rms_norm_eps": 1e-6, "tie_word_embeddings": True},
-    "qwen3.5": {"attention_bias": False, "model_type": "qwen2", "rope_theta": 10000000.0, "rms_norm_eps": 1e-6, "tie_word_embeddings": True},
-    "qwen3.6": {"attention_bias": False, "model_type": "qwen2", "rope_theta": 10000000.0, "rms_norm_eps": 1e-6, "tie_word_embeddings": False},
+    "qwen3": {"attention_bias": False, "model_type": "qwen3", "rope_theta": 1000000.0, "rms_norm_eps": 1e-6, "tie_word_embeddings": True},
+    "qwen3.5": {"attention_bias": False, "model_type": "qwen3", "rope_theta": 10000000.0, "rms_norm_eps": 1e-6, "tie_word_embeddings": True},
+    "qwen3.6": {"attention_bias": False, "model_type": "qwen3", "rope_theta": 10000000.0, "rms_norm_eps": 1e-6, "tie_word_embeddings": False},
+    # 0.72.6 pt2. Family conventions, not verified against a released
+    # config — see FAMILY_ASSUMED below.
+    "qwen3.8": {"attention_bias": False, "model_type": "qwen3", "rope_theta": 10000000.0, "rms_norm_eps": 1e-6, "tie_word_embeddings": False},
+    "qwen3.8-flash": {"attention_bias": False, "model_type": "qwen3", "rope_theta": 10000000.0, "rms_norm_eps": 1e-6, "tie_word_embeddings": True},
+
+    # -- Mistral -------------------------------------------------------
     "mistral": {"attention_bias": False, "model_type": "mistral", "rope_theta": 1000000.0, "rms_norm_eps": 1e-5, "tie_word_embeddings": False},
+
+    # -- DeepSeek ------------------------------------------------------
+    # The R1 *distills* really are Llama and Qwen underneath — that is
+    # what a distill is — so this one stays llama on purpose.
     "deepseek-r1": {"attention_bias": False, "model_type": "llama", "rope_theta": 500000.0, "rms_norm_eps": 1e-5, "tie_word_embeddings": False},
-    "deepseek": {"attention_bias": False, "model_type": "llama", "rope_theta": 500000.0, "rms_norm_eps": 1e-5, "tie_word_embeddings": False},
-    "gemma": {"attention_bias": False, "model_type": "llama", "rope_theta": 10000.0, "rms_norm_eps": 1e-6, "tie_word_embeddings": True},
-    "gemma2": {"attention_bias": False, "model_type": "llama", "rope_theta": 10000.0, "rms_norm_eps": 1e-6, "tie_word_embeddings": True},
-    "gemma3": {"attention_bias": False, "model_type": "llama", "rope_theta": 1000000.0, "rms_norm_eps": 1e-6, "tie_word_embeddings": True},
-    "gemma4": {"attention_bias": False, "model_type": "llama", "rope_theta": 1000000.0, "rms_norm_eps": 1e-6, "tie_word_embeddings": True},
-    "phi3": {"attention_bias": False, "model_type": "llama", "rope_theta": 10000.0, "rms_norm_eps": 1e-5, "tie_word_embeddings": False},
-    "phi4": {"attention_bias": False, "model_type": "llama", "rope_theta": 250000.0, "rms_norm_eps": 1e-5, "tie_word_embeddings": False},
-    "glm4": {"attention_bias": True, "model_type": "qwen2", "rope_theta": 10000.0, "rms_norm_eps": 1e-5, "tie_word_embeddings": False},
-    "glm5": {"attention_bias": False, "model_type": "llama", "rope_theta": 1000000.0, "rms_norm_eps": 1e-5, "tie_word_embeddings": False},
-    "glm5.1": {"attention_bias": False, "model_type": "llama", "rope_theta": 1000000.0, "rms_norm_eps": 1e-5, "tie_word_embeddings": False},
-    "nemotron": {"attention_bias": False, "model_type": "llama", "rope_theta": 500000.0, "rms_norm_eps": 1e-5, "tie_word_embeddings": False},
-    "gpt-oss": {"attention_bias": False, "model_type": "llama", "rope_theta": 500000.0, "rms_norm_eps": 1e-5, "tie_word_embeddings": False},
-    "gptoss": {"attention_bias": False, "model_type": "llama", "rope_theta": 500000.0, "rms_norm_eps": 1e-5, "tie_word_embeddings": False},
+    # DeepSeek proper is MLA + MoE and has its own type.
+    "deepseek": {"attention_bias": False, "model_type": "deepseek_v3", "rope_theta": 10000.0, "rms_norm_eps": 1e-6, "tie_word_embeddings": False},
+
+    # -- Gemma ---------------------------------------------------------
+    # GeGLU, head_dim 256, tied embeddings. Not a Llama.
+    "gemma": {"attention_bias": False, "model_type": "gemma", "rope_theta": 10000.0, "rms_norm_eps": 1e-6, "tie_word_embeddings": True},
+    "gemma2": {"attention_bias": False, "model_type": "gemma2", "rope_theta": 10000.0, "rms_norm_eps": 1e-6, "tie_word_embeddings": True},
+    "gemma3": {"attention_bias": False, "model_type": "gemma3", "rope_theta": 1000000.0, "rms_norm_eps": 1e-6, "tie_word_embeddings": True},
+    # No gemma4 in transformers yet; built on the gemma3 shape.
+    "gemma4": {"attention_bias": False, "model_type": "gemma3", "rope_theta": 1000000.0, "rms_norm_eps": 1e-6, "tie_word_embeddings": True},
+
+    # -- Phi -----------------------------------------------------------
+    # Phi-3 fuses qkv and gate_up. Phi-4 is the same architecture.
+    "phi3": {"attention_bias": False, "model_type": "phi3", "rope_theta": 10000.0, "rms_norm_eps": 1e-5, "tie_word_embeddings": False},
+    "phi4": {"attention_bias": False, "model_type": "phi3", "rope_theta": 250000.0, "rms_norm_eps": 1e-5, "tie_word_embeddings": False},
+
+    # -- GLM -----------------------------------------------------------
+    # Partial RoPE and bias on qkv. The eps really is 1.5625e-07.
+    "glm4": {"attention_bias": True, "model_type": "glm4", "rope_theta": 10000.0, "rms_norm_eps": 1.5625e-07, "tie_word_embeddings": False},
+    "glm5": {"attention_bias": True, "model_type": "glm4", "rope_theta": 1000000.0, "rms_norm_eps": 1.5625e-07, "tie_word_embeddings": False},
+    "glm5.1": {"attention_bias": True, "model_type": "glm4", "rope_theta": 1000000.0, "rms_norm_eps": 1.5625e-07, "tie_word_embeddings": False},
+    # 0.72.6 pt2. Family conventions — see FAMILY_ASSUMED.
+    "glm5.3": {"attention_bias": True, "model_type": "glm4", "rope_theta": 1000000.0, "rms_norm_eps": 1.5625e-07, "tie_word_embeddings": False},
+
+    # -- NVIDIA / OpenAI open weights ----------------------------------
+    # Nemotron is squared-ReLU with no gate; gpt-oss is MoE with
+    # attention sinks and bias on qkv.
+    "nemotron": {"attention_bias": False, "model_type": "nemotron", "rope_theta": 500000.0, "rms_norm_eps": 1e-5, "tie_word_embeddings": False},
+    "gpt-oss": {"attention_bias": True, "model_type": "gpt_oss", "rope_theta": 150000.0, "rms_norm_eps": 1e-5, "tie_word_embeddings": False},
+    "gptoss": {"attention_bias": True, "model_type": "gpt_oss", "rope_theta": 150000.0, "rms_norm_eps": 1e-5, "tie_word_embeddings": False},
+
+    # -- Nix -----------------------------------------------------------
     "nix": {"attention_bias": False, "model_type": "qwen2", "rope_theta": 1000000.0, "rms_norm_eps": 1e-6, "tie_word_embeddings": True},
     "nix2": {"attention_bias": False, "model_type": "qwen2", "rope_theta": 1000000.0, "rms_norm_eps": 1e-6, "tie_word_embeddings": True},
+
+    # -- Spark / Muse (0.72.6 pt2) -------------------------------------
+    # Family conventions — see FAMILY_ASSUMED.
+    "muse-spark": {"attention_bias": False, "model_type": "qwen3", "rope_theta": 1000000.0, "rms_norm_eps": 1e-6, "tie_word_embeddings": True},
+    "spark-x2.5-1.7b": {"attention_bias": False, "model_type": "qwen3", "rope_theta": 1000000.0, "rms_norm_eps": 1e-6, "tie_word_embeddings": True},
+    "spark-x2.5-4b": {"attention_bias": False, "model_type": "qwen3", "rope_theta": 1000000.0, "rms_norm_eps": 1e-6, "tie_word_embeddings": True},
 }
+
+#: Presets whose architecture is inferred from their family rather than
+#: read off a released config.
+#:
+#: These were added by name before their configs were available here, so
+#: the model_type is the family's and the numbers are the family's
+#: defaults. That is a reasonable starting point and it is not a
+#: verified one — which is worth saying out loud, because every other
+#: entry in the table above *is* checkable against transformers'
+#: CONFIG_MAPPING and these are the ones a test cannot catch being
+#: wrong. Correct them against the real config.json when there is one.
+FAMILY_ASSUMED: frozenset[str] = frozenset({
+    "qwen3.8", "qwen3.8-flash", "glm5.3",
+    "muse-spark", "spark-x2.5-1.7b", "spark-x2.5-4b",
+    "gemma4",
+})
 
 
 # ---------------------------------------------------------------------------

@@ -42,7 +42,7 @@ final class SavedServersTests: XCTestCase {
         name: String, address: String, fingerprint: String = ""
     ) -> ServerConnection {
         ServerConnection(
-            endpoints: [address], serverName: name, t1Version: "1.0.26.9.2.3",
+            endpoints: [address], serverName: name, t1Version: "1.1.26.9.0.0",
             deviceID: "dev-\(name)", deviceName: "iPhone",
             serverFingerprint: fingerprint
         )
@@ -315,7 +315,7 @@ final class SavedServersTests: XCTestCase {
     private func multiHomed(name: String) -> ServerConnection {
         ServerConnection(
             endpoints: ["http://192.168.1.10:8000", "http://desktop.tail1234.ts.net:8000"],
-            serverName: name, t1Version: "1.0.26.9.2.3",
+            serverName: name, t1Version: "1.1.26.9.0.0",
             deviceID: "dev-\(name)", deviceName: "iPhone",
             serverFingerprint: "fp-\(name)"
         )

@@ -762,7 +762,13 @@ class TestTheCLI:
         from hypernix.data.gather_cli import default_output_dir
 
         assert default_output_dir() != Path.cwd()
-        assert "hypernix-gather" in str(default_output_dir())
+        assert Path.cwd() not in default_output_dir().parents
+        # It moved to ~/.hypernix/data/<site>/<session>/ so that a second
+        # crawl of the same site does not silently overwrite the first.
+        # The intent of this test is "not the working directory"; the old
+        # `hypernix-gather` name was incidental to that.
+        assert ".hypernix" in default_output_dir().parts
+        assert "data" in default_output_dir().parts
 
 
 class TestTheProbe:

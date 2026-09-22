@@ -11,8 +11,18 @@ Options:
     -C               Fully run the file
     -FT              Test each argument one at a time
     -q <1-10>        Argument testing depth (default 1)
-    -t <time>        Timeout
-    -T <unit>        Timeout unit (s, M, ml). Default ml (milliseconds)
+    -t <time>        Timeout for one stage
+    -T <unit>        Timeout unit: ml (default), s, M, h
+    -tt <seconds>    Total run timeout — the whole verification, not one stage
+    -Na, --no-ai     Skip the model entirely; print the raw error
+    -m, --pick-model Choose a GGUF from ~/.hypernix/models to explain with
+
+Why -tt exists alongside -t
+---------------------------
+`-t` bounds one stage. A file with a slow import and six argument
+combinations can sit inside every per-stage limit and still run for
+twenty minutes, which is the case people actually hit — so `-tt` bounds
+the whole thing and stops between stages rather than killing one.
 """
 from __future__ import annotations
 
@@ -20,6 +30,7 @@ import argparse
 import ast
 import subprocess
 import sys
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -95,11 +106,21 @@ class HyperNixVerifier:
         return result
 
 
-def get_ai_explanation(error_text: str, source_code: str) -> str:
-    """Use a small qwen3.5 model to explain the error without crashing."""
+#: What -Na prints instead of an explanation. Not empty: somebody who
+#: passed -Na still wants to know the model was skipped rather than
+#: unavailable, because those need different things doing about them.
+NO_AI_NOTE = (
+    "(-Na: no model was asked. The raw error is above.)"
+)
+
+
+def get_ai_explanation(
+    error_text: str, source_code: str, model: str = "qwen3.5-4b"
+) -> str:
+    """Use a small model to explain the error without crashing."""
     try:
         from hypernix.models.neo_oven import preheat
-        oven = preheat("qwen3.5-4b", quiet=True)
+        oven = preheat(model, quiet=True)
         
         prompt = (
             f"An error occurred while testing a Python script.\n\n"
@@ -112,6 +133,55 @@ def get_ai_explanation(error_text: str, source_code: str) -> str:
         return reply
     except Exception as e:
         return f"[AI Explanation Unavailable]: Failed to load AI model: {e}"
+
+
+def local_gguf_models(directory: Path | None = None) -> list[Path]:
+    """Every .gguf under the models directory, largest last.
+
+    Sorted by size rather than name so the picker's first entry is the
+    one most likely to load on a small machine — the opposite order is
+    how somebody's first choice OOMs.
+    """
+    root = directory or (Path.home() / ".hypernix" / "models")
+    if not root.is_dir():
+        return []
+    found = [p for p in root.rglob("*.gguf") if p.is_file()]
+    return sorted(found, key=lambda p: (p.stat().st_size, p.name))
+
+
+def pick_model(directory: Path | None = None, *, stream=None) -> str:
+    """Show the local GGUFs and return the chosen path, or "".
+
+    Returns "" for "carry on with the default", which is what an empty
+    line, a Ctrl-C and an empty directory all mean — three ways of
+    saying the same thing, and none of them should be an error.
+    """
+    models = local_gguf_models(directory)
+    if not models:
+        console.print(
+            "[yellow]No .gguf files in "
+            f"{directory or Path.home() / '.hypernix' / 'models'}[/]"
+        )
+        return ""
+
+    console.print("[bold]Models here:[/]")
+    for index, path in enumerate(models, start=1):
+        size = path.stat().st_size / 1e9
+        console.print(f"  [cyan]{index:2}[/] {path.name}  [dim]{size:.1f} GB[/]")
+
+    try:
+        answer = input("Which? (enter for the default) ").strip()
+    except (EOFError, KeyboardInterrupt):
+        console.print()
+        return ""
+    if not answer:
+        return ""
+    try:
+        chosen = models[int(answer) - 1]
+    except (ValueError, IndexError):
+        console.print(f"[yellow]{answer!r} is not one of those; using the default[/]")
+        return ""
+    return str(chosen)
 
 
 def run_command(cmd: list[str], timeout_s: float | None = None) -> tuple[bool, str, str]:
@@ -229,6 +299,43 @@ def test_arguments(file_path: Path, depth: int, timeout_s: float | None) -> Vera
     return result
 
 
+#: Timeout unit -> seconds. `h` is the addition; the rest were already
+#: here. Kept as data so the CLI's `choices` and the conversion cannot
+#: disagree — which they did when `h` was added to one and not the other.
+TIMEOUT_UNITS: dict[str, float] = {
+    "ml": 0.001,
+    "s": 1.0,
+    "M": 60.0,
+    "h": 3600.0,
+}
+
+
+def to_seconds(value: float | None, unit: str) -> float | None:
+    """A timeout in its unit, as seconds. None stays None."""
+    if value is None:
+        return None
+    try:
+        return value * TIMEOUT_UNITS[unit]
+    except KeyError:
+        raise ValueError(
+            f"unknown timeout unit {unit!r}; try one of "
+            f"{', '.join(TIMEOUT_UNITS)}"
+        ) from None
+
+
+def _with_stage_timeout(stage, remaining: float) -> VeraResult:
+    """Run *stage*, turning an overrun into a result rather than a raise."""
+    started = time.monotonic()
+    result = stage()
+    if time.monotonic() - started >= remaining:
+        # The stage itself may have finished either way; what matters is
+        # that the loop stops now rather than starting another.
+        result.output += (
+            "\n(this stage used the rest of the total timeout)"
+        )
+    return result
+
+
 def cli_main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="hnx vera",
@@ -240,24 +347,48 @@ def cli_main(argv: list[str] | None = None) -> int:
     parser.add_argument("-FT", "--function-test", action="store_true", help="Test each argument one at a time")
     parser.add_argument("-q", "--depth", type=int, default=1, help="Argument testing depth (1-10)")
     parser.add_argument("-t", "--timeout", type=float, default=None, help="Timeout value")
-    parser.add_argument("-T", "--timeout-unit", choices=["s", "M", "ml"], default="ml", help="Timeout unit (s, M, ml)")
-    
-    # Allow unknown args to pass? No, just parse known.
+    parser.add_argument("-T", "--timeout-unit", choices=list(TIMEOUT_UNITS),
+                        default="ml",
+                        help="Timeout unit: ml (default), s, M (minutes), h (hours)")
+    parser.add_argument("-tt", "--total-timeout", type=float, default=None,
+                        help="Seconds for the WHOLE run, not one stage. A slow "
+                             "import plus six argument combinations sits inside "
+                             "every per-stage limit and still takes twenty "
+                             "minutes.")
+    parser.add_argument("-Na", "--no-ai", action="store_true",
+                        help="Do not load a model; print the raw error.")
+    parser.add_argument("-m", "--pick-model", action="store_true",
+                        help="Choose a GGUF from ~/.hypernix/models to explain with.")
+    parser.add_argument("--models-dir", default="",
+                        help="Where -m looks (default ~/.hypernix/models).")
+
     args = parser.parse_args(argv if argv is not None else sys.argv[1:])
     file_path = Path(args.file)
-    
+
     if not file_path.exists():
         console.print(f"[red]Error:[/] File not found: {file_path}")
         return 1
 
-    timeout_s = None
-    if args.timeout is not None:
-        if args.timeout_unit == "ml":
-            timeout_s = args.timeout / 1000.0
-        elif args.timeout_unit == "s":
-            timeout_s = args.timeout
-        elif args.timeout_unit == "M":
-            timeout_s = args.timeout * 60.0
+    timeout_s = to_seconds(args.timeout, args.timeout_unit)
+
+    # -Na and -m are contradictory: one says do not load a model, the
+    # other asks which one to load. Saying so beats silently honouring
+    # whichever happens to be checked first.
+    if args.no_ai and args.pick_model:
+        console.print("[red]-Na and -m contradict each other:[/] one says not "
+                      "to load a model, the other asks which one to load.")
+        return 2
+
+    explain_with = "qwen3.5-4b"
+    if args.pick_model:
+        chosen = pick_model(Path(args.models_dir) if args.models_dir else None)
+        if chosen:
+            explain_with = chosen
+
+    deadline = (
+        time.monotonic() + args.total_timeout
+        if args.total_timeout is not None else None
+    )
 
     console.print(f"[bold cyan]Vera:[/] Analyzing {file_path} ...\n")
     
@@ -279,16 +410,40 @@ def cli_main(argv: list[str] | None = None) -> int:
     source_code = file_path.read_text(encoding="utf-8", errors="ignore")
     
     for stage_name, stage_fn in stages:
+        # Checked between stages rather than by killing one: a stage cut
+        # off part-way reports a failure that is the clock's, not the
+        # file's, and that is the confusing kind.
+        if deadline is not None and time.monotonic() >= deadline:
+            console.print(
+                f"[yellow]Stopping before {stage_name}:[/] the total timeout "
+                f"({args.total_timeout}s) is up. What ran up to here passed."
+            )
+            return 3
+
         console.print(f"Running [bold]{stage_name}[/] ...")
-        res = stage_fn()
+        if deadline is not None:
+            # Never let one stage outlast the whole run.
+            remaining = max(0.1, deadline - time.monotonic())
+            res = _with_stage_timeout(stage_fn, remaining)
+        else:
+            res = stage_fn()
+
         if not res.passed:
             console.print(f"[red]✗ {stage_name} Failed![/]")
             if res.output:
                 console.print(f"[dim]{res.output}[/]")
-            
-            console.print("\n[bold yellow]Vera AI Analysis:[/] (Using qwen3.5-4b)")
+
+            if args.no_ai:
+                console.print(f"\n[dim]{NO_AI_NOTE}[/]")
+                return 1
+
+            console.print(
+                f"\n[bold yellow]Vera AI Analysis:[/] (Using {explain_with})"
+            )
             with console.status("Generating explanation..."):
-                explanation = get_ai_explanation(res.error_context, source_code)
+                explanation = get_ai_explanation(
+                    res.error_context, source_code, explain_with
+                )
             console.print(f"[green]{explanation}[/]")
             return 1
         else:

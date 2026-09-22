@@ -76,9 +76,15 @@ class TestVersion:
         assert body["t1_api_version"] == T1_VERSION.short
         assert body["t1_api_version_long"] == T1_VERSION.long
 
-    def test_it_is_the_same_generation_as_the_previous_release(self):
+    def test_the_generation_moved_in_0_72_6_pt2(self):
+        """It asserted the generation had *not* moved. It has.
 
-        assert T1_VERSION.compatible_with("1.0.26.8.0.1")
+        `api.major` went 1.0 -> 1.1, which is what makes a 1.0 client
+        out of generation and told to upgrade rather than left to fail
+        on a field that is not there.
+        """
+        assert not T1_VERSION.compatible_with("1.0.26.8.0.1")
+        assert T1_VERSION.compatible_with("1.1.26.9.0.0")
 
     def test_status_reports_an_identity_for_discovery(self, client):
         # Without a name to match on, `waiter -F <name>` is silently

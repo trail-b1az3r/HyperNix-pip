@@ -29,7 +29,9 @@ import argparse
 import json
 import logging
 import os
+import re
 import sys
+import time
 from pathlib import Path
 
 from .gather import (
@@ -37,6 +39,7 @@ from .gather import (
     DEFAULT_DELAY,
     FORMATS,
     MAX_PAGES,
+    MAX_SECONDS,
     CrawlPlan,
     GatherError,
     crawl,
@@ -54,6 +57,7 @@ formats (-f)
   text               tags stripped, one file per page
   jsonl              one JSON object per page — the training default
   parquet            columnar, for a datasets pipeline (needs pyarrow)
+  sqlite             one database, one row per page, queryable
   js                 the JavaScript a page references, saved as files
 
 compression (-C, needs one of)
@@ -71,17 +75,55 @@ come back nearly empty, and that is reported rather than hidden.
 """
 
 
-def default_output_dir() -> Path:
+def _site_slug(site: str) -> str:
+    """A host as a directory name. ``https://docs.example.com/x`` -> ``docs.example.com``.
+
+    The host alone, not the path: a crawl of a site is a crawl of a
+    site, and putting the seed path in the directory name means two
+    crawls of the same host land somewhere different for no reason
+    anybody remembers a week later.
+    """
+    from urllib.parse import urlparse
+
+    host = (urlparse(site if "://" in site else f"http://{site}").hostname or "")
+    cleaned = re.sub(r"[^A-Za-z0-9._-]", "_", host).strip("._-")
+    return cleaned or "site"
+
+
+def session_name(when: float | None = None) -> str:
+    """The session directory's name: a sortable timestamp.
+
+    Sortable rather than pretty, because the thing people do with these
+    is `ls` and take the last one.
+    """
+    return time.strftime("%Y%m%d-%H%M%S", time.localtime(when or time.time()))
+
+
+def default_output_dir(site: str = "", when: float | None = None) -> Path:
     """Where output goes with no ``-o``.
 
-    The user's home, not the working directory: a crawl writes many files
-    and dropping them into whatever directory the shell happened to be in
-    is how a repository ends up with four hundred stray .html files. On
-    Windows this lands under the profile directory, which is the
-    equivalent of the documented ``/C:`` intent -- writing to a drive
-    root needs administrator rights on any modern Windows and would fail.
+    ``~/.hypernix/data/<site>/<session>/``. Three things that each
+    stopped being true of a single flat directory:
+
+    * under ``.hypernix`` with the models and the config, rather than a
+      ``hypernix-gather`` folder in the home directory that looks like
+      something a person made;
+    * per **site**, so two crawls of different hosts do not interleave
+      their files and leave you diffing filenames to work out which is
+      which;
+    * per **session**, so re-running a crawl does not overwrite the last
+      one. That was the real problem: the second run of the same site
+      silently replaced the first, and the only way to keep both was to
+      remember ``-o`` before starting.
+
+    Not the working directory, for the original reason: a crawl writes
+    many files and dropping them where the shell happened to be is how a
+    repository ends up with four hundred stray .html files.
     """
-    return Path(os.path.expanduser("~")) / "hypernix-gather"
+    base = Path(os.path.expanduser("~")) / ".hypernix" / "data"
+    if not site:
+        return base / "site" / session_name(when)
+    return base / _site_slug(site) / session_name(when)
 
 
 def _plan_from(args: argparse.Namespace) -> CrawlPlan:
@@ -126,12 +168,20 @@ def _plan_from(args: argparse.Namespace) -> CrawlPlan:
         threads=args.threads,
         delay=args.pause,
         fmt=args.format,
-        output=Path(args.output).expanduser() if args.output else default_output_dir(),
+        output=(
+            Path(args.output).expanduser() if args.output
+            else default_output_dir(sites[0] if sites else "")
+        ),
         header=args.header or "",
         compress=compress,
         respect_robots=not args.no_robots,
         same_host=not args.any_host,
         max_pages=args.max_pages,
+        # getattr, not args.max_seconds: `_plan_from` takes a
+        # Namespace and several callers build one by hand. Requiring
+        # every caller to know every flag makes adding a flag a
+        # breaking change to this function's contract.
+        max_seconds=getattr(args, "max_seconds", MAX_SECONDS),
         include=args.include or "",
         exclude=args.exclude or "",
         timeout=args.timeout,
@@ -155,7 +205,10 @@ def _add_crawl_flags(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("-f", "--format", default="jsonl", choices=FORMATS,
                         help="Output format (default jsonl).")
     parser.add_argument("-o", "--output", default="",
-                        help=f"Where to write (default {default_output_dir()}).")
+                        help="Where to write. The default is a fresh session "
+                             "directory under ~/.hypernix/data/<site>/, so "
+                             "re-running a crawl does not overwrite the last "
+                             "one.")
     parser.add_argument("-O", "--header", default="",
                         help="A provenance line written into the output. With "
                              "-C this names the archive instead.")
@@ -181,6 +234,12 @@ def _add_crawl_flags(parser: argparse.ArgumentParser) -> None:
                         help="Only fetch URLs matching this regex.")
     parser.add_argument("--exclude", default="",
                         help="Never fetch URLs matching this regex.")
+    parser.add_argument("--max-seconds", type=float, default=MAX_SECONDS,
+                        help=f"Wall-clock ceiling (default {MAX_SECONDS}s; 0 "
+                             f"removes it). A page ceiling alone is not a "
+                             f"stopping condition anybody can feel — "
+                             f"{MAX_PAGES} pages at the default politeness is "
+                             f"over an hour.")
     parser.add_argument("--max-pages", type=int, default=MAX_PAGES,
                         help=f"Hard ceiling on pages (default {MAX_PAGES}).")
     parser.add_argument("--timeout", type=float, default=20.0,

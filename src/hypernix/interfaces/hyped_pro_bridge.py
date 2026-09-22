@@ -43,7 +43,7 @@ from typing import Any
 
 from hypernix.interfaces import hyped_pro_core as core
 
-BRIDGE_VERSION = "1.0.26.9.2.3"
+BRIDGE_VERSION = "1.1.26.9.0.0"
 
 
 # ---------------------------------------------------------------------------

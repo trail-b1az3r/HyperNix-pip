@@ -275,15 +275,34 @@ def parse_version(text: str) -> T1Version:
 #: that ``/bridge/lmstudio/*`` passes straight through. Also in this
 #: release: the SSPKID stops being carried in memory alongside the key,
 #: and ``gkey create -Con`` takes identity from a configuration source.
-T1_VERSION = T1Version(api=1, major=0, year=2026, month=9, feature=2, fix=3)
-T1_VERSION_SHORT = T1_VERSION.short   # "1.0.26.9.2.3"
-T1_VERSION_LONG = T1_VERSION.long     # "1.0.2026.9.2.3"
+# 0.72.6 pt2 — the major goes 0 -> 1.
+#
+# Read `compatible_with` before changing this again. Compatibility here
+# is by *generation*, which is `api.major` — so moving the major is not
+# a bigger-sounding number, it is a statement that clients from the
+# previous generation are no longer the same protocol. Every 1.0 client
+# is now out of generation and will be told to upgrade rather than left
+# to fail on a missing field, which is the whole point of having the
+# check.
+#
+# MIN_CLIENT_VERSION moves with it. It has to: the invariant is that the
+# oldest client we accept is one we are compatible with, and leaving it
+# on the 1.0 line would assert that a client we reject is a client we
+# accept.
+T1_VERSION = T1Version(api=1, major=1, year=2026, month=9, feature=0, fix=0)
+T1_VERSION_SHORT = T1_VERSION.short   # "1.1.26.9.0.0"
+T1_VERSION_LONG = T1_VERSION.long     # "1.1.2026.9.0.0"
 
 #: Oldest client this server still answers without a compatibility
 #: warning. Same generation, first release of it — everything from the
-#: 1.0 line is accepted, and a 0.71.x client is told to upgrade rather
-#: than being left to fail on a missing field.
-MIN_CLIENT_VERSION = T1Version(api=1, major=0, year=2026, month=8, feature=0, fix=0)
+#: 1.1 line is accepted, and a 1.0 client is told to upgrade rather than
+#: being left to fail on a missing field.
+#:
+#: Moved from 1.0.26.8.0.0 when the major went to 1. It is not
+#: independent of T1_VERSION: `compatible_with` is by generation, so an
+#: out-of-generation minimum claims the server accepts clients it
+#: refuses.
+MIN_CLIENT_VERSION = T1Version(api=1, major=1, year=2026, month=9, feature=0, fix=0)
 
 #: The release that added T2 key recognition, /t1/auth/undo, /t1/auth/redo,
 #: /backup/list and /backup/restore. A client that needs any of those can
