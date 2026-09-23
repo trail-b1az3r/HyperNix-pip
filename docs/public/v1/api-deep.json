@@ -1,14 +1,14 @@
 {
   "kind": "hypernix-api-deep",
   "generated_at": "2026-09-20T21:20:57Z",
-  "commit": "14019f33c1415d3042c4c68a517be17f83918115",
+  "commit": "9e112b6afee381367cc7b52042d19c567112c1b1",
   "history_available": true,
   "source_root": "src/hypernix",
   "modules": [
     {
       "module": "hypernix",
       "source": "src/hypernix/__init__.py",
-      "line_count": 910,
+      "line_count": 912,
       "summary": "hypernix \u2014 end-to-end toolkit for HyperNix-family PyTorch models.",
       "api": [],
       "errors": [
@@ -17,6 +17,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "d2b5f5f1",
+          "date": "2026-09-22",
+          "author": "Claude",
+          "subject": "hyped: remade simple, with dots for everything else",
+          "api_changes": []
+        },
         {
           "sha": "e6fbccec",
           "date": "2026-09-17",
@@ -65,13 +72,6 @@
           "author": "github-actions[bot]",
           "subject": "hypernix v0.72.5.post6 [skip ci]",
           "api_changes": []
-        },
-        {
-          "sha": "cef5cfc8",
-          "date": "2026-09-16",
-          "author": "github-actions[bot]",
-          "subject": "hypernix v0.72.5.post5 [skip ci]",
-          "api_changes": []
         }
       ]
     },
@@ -111,7 +111,7 @@
     {
       "module": "hypernix.audio",
       "source": "src/hypernix/audio/__init__.py",
-      "line_count": 15,
+      "line_count": 21,
       "summary": "hypernix.audio \u2014 audio subsystems.",
       "api": [],
       "errors": [
@@ -120,6 +120,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "1da9068c",
+          "date": "2026-09-22",
+          "author": "Claude",
+          "subject": "audio: the signal processing between reading a file and using it",
+          "api_changes": []
+        },
         {
           "sha": "260385ea",
           "date": "2026-09-02",
@@ -370,6 +377,394 @@
             {
               "kind": "added",
               "text": "def log_mel_frames("
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "module": "hypernix.audio.processor",
+      "source": "src/hypernix/audio/processor.py",
+      "line_count": 698,
+      "summary": "hypernix.audio.processor \u2014 the DSP that everything else assumed.",
+      "api": [
+        {
+          "kind": "class",
+          "name": "Audio",
+          "signature": "class Audio",
+          "line": 85,
+          "doc": "Samples plus the one fact you cannot recover from them.",
+          "methods": [
+            {
+              "name": "channels",
+              "signature": "def channelsself -> int",
+              "line": 109,
+              "doc": ""
+            },
+            {
+              "name": "frames",
+              "signature": "def framesself -> int",
+              "line": 113,
+              "doc": ""
+            },
+            {
+              "name": "duration",
+              "signature": "def durationself -> float",
+              "line": 117,
+              "doc": "Seconds."
+            },
+            {
+              "name": "with_samples",
+              "signature": "def with_samplesself, samples: np.ndarray -> Audio",
+              "line": 124,
+              "doc": "A new Audio at the same rate. Keeps the rate attached."
+            },
+            {
+              "name": "describe",
+              "signature": "def describeself -> str",
+              "line": 128,
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "peak",
+          "signature": "def peakaudio: Audio -> float",
+          "line": 141,
+          "doc": "Largest absolute sample."
+        },
+        {
+          "kind": "function",
+          "name": "rms",
+          "signature": "def rmsaudio: Audio -> float",
+          "line": 148,
+          "doc": "Root mean square \u2014 loudness, roughly, and what normalising uses."
+        },
+        {
+          "kind": "function",
+          "name": "dbfs",
+          "signature": "def dbfsamplitude: float -> float",
+          "line": 159,
+          "doc": "Amplitude to dB relative to full scale. Silence is -inf, honestly."
+        },
+        {
+          "kind": "function",
+          "name": "clipping_fraction",
+          "signature": "def clipping_fractionaudio: Audio, threshold: float=0.999 -> float",
+          "line": 166,
+          "doc": "How much of this is pinned at full scale."
+        },
+        {
+          "kind": "function",
+          "name": "to_mono",
+          "signature": "def to_monoaudio: Audio -> Audio",
+          "line": 183,
+          "doc": "Average the channels."
+        },
+        {
+          "kind": "function",
+          "name": "resample",
+          "signature": "def resampleaudio: Audio, rate: int -> Audio",
+          "line": 195,
+          "doc": "Change the sample rate with a windowed-sinc interpolator."
+        },
+        {
+          "kind": "function",
+          "name": "apply_gain",
+          "signature": "def apply_gainaudio: Audio, db: float -> Audio",
+          "line": 258,
+          "doc": "Multiply by a decibel amount. Does not clamp \u2014 see :func:`limit`."
+        },
+        {
+          "kind": "function",
+          "name": "normalise_peak",
+          "signature": "def normalise_peakaudio: Audio, target_db: float=-1.0 -> Audio",
+          "line": 263,
+          "doc": "Scale so the loudest sample sits at *target_db*."
+        },
+        {
+          "kind": "function",
+          "name": "normalise_rms",
+          "signature": "def normalise_rmsaudio: Audio, target_db: float=-20.0 -> Audio",
+          "line": 277,
+          "doc": "Scale so the *average* level sits at *target_db*."
+        },
+        {
+          "kind": "function",
+          "name": "dc_offset_removed",
+          "signature": "def dc_offset_removedaudio: Audio -> Audio",
+          "line": 293,
+          "doc": "Subtract the mean."
+        },
+        {
+          "kind": "function",
+          "name": "fade",
+          "signature": "def fadeaudio: Audio, seconds_in: float=0.01, seconds_out: float=0.01 -> Audio",
+          "line": 307,
+          "doc": "Ramp the start and end."
+        },
+        {
+          "kind": "function",
+          "name": "biquad",
+          "signature": "def biquadaudio: Audio, b: Sequence[float], a: Sequence[float] -> Audio",
+          "line": 336,
+          "doc": "Run a second-order section. ``a[0]`` is assumed normalised to 1."
+        },
+        {
+          "kind": "function",
+          "name": "low_pass",
+          "signature": "def low_passaudio: Audio, cutoff: float, q: float=0.7071 -> Audio",
+          "line": 401,
+          "doc": "Keep what is below *cutoff*. Default Q is Butterworth."
+        },
+        {
+          "kind": "function",
+          "name": "high_pass",
+          "signature": "def high_passaudio: Audio, cutoff: float, q: float=0.7071 -> Audio",
+          "line": 406,
+          "doc": "Keep what is above *cutoff*."
+        },
+        {
+          "kind": "function",
+          "name": "band_pass",
+          "signature": "def band_passaudio: Audio, centre: float, q: float=1.0 -> Audio",
+          "line": 416,
+          "doc": "Keep a band around *centre*."
+        },
+        {
+          "kind": "function",
+          "name": "notch",
+          "signature": "def notchaudio: Audio, frequency: float, q: float=30.0 -> Audio",
+          "line": 421,
+          "doc": "Remove one narrow frequency. Mains hum is 50 Hz or 60 Hz."
+        },
+        {
+          "kind": "function",
+          "name": "pre_emphasis",
+          "signature": "def pre_emphasisaudio: Audio, coefficient: float=0.97 -> Audio",
+          "line": 430,
+          "doc": "``y[n] = x[n] - k*x[n-1]`` \u2014 lift the high end before features."
+        },
+        {
+          "kind": "function",
+          "name": "noise_gate",
+          "signature": "def noise_gateaudio: Audio, threshold_db: float=-45.0, attack: float=0.005, release: float=0.08 -> Audio",
+          "line": 473,
+          "doc": "Silence anything quieter than *threshold_db*."
+        },
+        {
+          "kind": "function",
+          "name": "compress",
+          "signature": "def compressaudio: Audio, threshold_db: float=-20.0, ratio: float=4.0, attack: float=0.005, release: float=0.1, makeup_db: float | None=None -> Audio",
+          "line": 510,
+          "doc": "Pull loud parts down so the quiet parts can come up."
+        },
+        {
+          "kind": "function",
+          "name": "limit",
+          "signature": "def limitaudio: Audio, ceiling_db: float=-0.3 -> Audio",
+          "line": 554,
+          "doc": "Hard ceiling. Nothing comes out above *ceiling_db*."
+        },
+        {
+          "kind": "function",
+          "name": "detect_speech",
+          "signature": "def detect_speechaudio: Audio, threshold_db: float=-40.0, frame_ms: float=20.0, hop_ms: float=10.0 -> list[tuple[float, float]]",
+          "line": 586,
+          "doc": "Where something is happening. ``[(start_s, end_s), ...]``."
+        },
+        {
+          "kind": "function",
+          "name": "trim_silence",
+          "signature": "def trim_silenceaudio: Audio, threshold_db: float=-40.0, pad: float=0.05 -> Audio",
+          "line": 627,
+          "doc": "Cut the quiet from both ends, keeping *pad* seconds of it."
+        },
+        {
+          "kind": "function",
+          "name": "split_on_silence",
+          "signature": "def split_on_silenceaudio: Audio, threshold_db: float=-40.0, min_silence: float=0.3, pad: float=0.05 -> list[Audio]",
+          "line": 646,
+          "doc": "Cut into pieces wherever it goes quiet for *min_silence*."
+        },
+        {
+          "kind": "function",
+          "name": "reduce_noise",
+          "signature": "def reduce_noiseaudio: Audio, noise_seconds: float=0.5, reduction_db: float=12.0, frame: int=1024 -> Audio",
+          "line": 677,
+          "doc": "Spectral subtraction against a noise profile from the opening."
+        },
+        {
+          "kind": "function",
+          "name": "chunks",
+          "signature": "def chunksaudio: Audio, seconds: float, overlap: float=0.0 -> Iterator[Audio]",
+          "line": 749,
+          "doc": "Fixed-length pieces, optionally overlapping."
+        },
+        {
+          "kind": "class",
+          "name": "Pipeline",
+          "signature": "class Pipeline",
+          "line": 780,
+          "doc": "An ordered chain, so a preset is a value you can save and compare.",
+          "methods": [
+            {
+              "name": "for_speech",
+              "signature": "def for_speechcls, sample_rate: int=16000, mains: float=50.0 -> Pipeline",
+              "line": 794,
+              "doc": "Getting speech into a model: rumble out, level even, known loudness."
+            },
+            {
+              "name": "then",
+              "signature": "def thenself, name: str, **options -> Pipeline",
+              "line": 831,
+              "doc": ""
+            },
+            {
+              "name": "run",
+              "signature": "def runself, audio: Audio -> Audio",
+              "line": 835,
+              "doc": ""
+            },
+            {
+              "name": "describe",
+              "signature": "def describeself -> str",
+              "line": 847,
+              "doc": ""
+            }
+          ]
+        }
+      ],
+      "errors": [
+        "ValueError"
+      ],
+      "deprecations": [],
+      "required_modules": [
+        {
+          "module": "numpy",
+          "extra": "base",
+          "requirement": "numpy>=1.26,<3"
+        }
+      ],
+      "changes": [
+        {
+          "sha": "35184d00",
+          "date": "2026-09-22",
+          "author": "Claude",
+          "subject": "examples + changelog: three runnable scripts, and a format that is checked",
+          "api_changes": [
+            {
+              "kind": "removed",
+              "text": "def for_speech(cls, sample_rate: int = 16000) -> Pipeline:"
+            },
+            {
+              "kind": "added",
+              "text": "def for_speech(cls, sample_rate: int = 16000, mains: float = 50.0) -> Pipeline:"
+            }
+          ]
+        },
+        {
+          "sha": "1da9068c",
+          "date": "2026-09-22",
+          "author": "Claude",
+          "subject": "audio: the signal processing between reading a file and using it",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class Audio:"
+            },
+            {
+              "kind": "added",
+              "text": "def __post_init__(self) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def channels(self) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def frames(self) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def duration(self) -> float:"
+            },
+            {
+              "kind": "added",
+              "text": "def __len__(self) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def with_samples(self, samples: np.ndarray) -> Audio:"
+            },
+            {
+              "kind": "added",
+              "text": "def describe(self) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def peak(audio: Audio) -> float:"
+            },
+            {
+              "kind": "added",
+              "text": "def rms(audio: Audio) -> float:"
+            },
+            {
+              "kind": "added",
+              "text": "def dbfs(amplitude: float) -> float:"
+            },
+            {
+              "kind": "added",
+              "text": "def clipping_fraction(audio: Audio, threshold: float = 0.999) -> float:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_mono(audio: Audio) -> Audio:"
+            },
+            {
+              "kind": "added",
+              "text": "def resample(audio: Audio, rate: int) -> Audio:"
+            },
+            {
+              "kind": "added",
+              "text": "def apply_gain(audio: Audio, db: float) -> Audio:"
+            },
+            {
+              "kind": "added",
+              "text": "def normalise_peak(audio: Audio, target_db: float = -1.0) -> Audio:"
+            },
+            {
+              "kind": "added",
+              "text": "def normalise_rms(audio: Audio, target_db: float = -20.0) -> Audio:"
+            },
+            {
+              "kind": "added",
+              "text": "def dc_offset_removed(audio: Audio) -> Audio:"
+            },
+            {
+              "kind": "added",
+              "text": "def fade(audio: Audio, seconds_in: float = 0.01, seconds_out: float = 0.01) -> Audio:"
+            },
+            {
+              "kind": "added",
+              "text": "def biquad("
+            },
+            {
+              "kind": "added",
+              "text": "def _cookbook(kind: str, rate: int, frequency: float, q: float):"
+            },
+            {
+              "kind": "added",
+              "text": "def low_pass(audio: Audio, cutoff: float, q: float = 0.7071) -> Audio:"
+            },
+            {
+              "kind": "added",
+              "text": "def high_pass(audio: Audio, cutoff: float, q: float = 0.7071) -> Audio:"
+            },
+            {
+              "kind": "added",
+              "text": "def band_pass(audio: Audio, centre: float, q: float = 1.0) -> Audio:"
             }
           ]
         }
@@ -8977,14 +9372,14 @@
     {
       "module": "hypernix.interfaces.cli",
       "source": "src/hypernix/interfaces/cli.py",
-      "line_count": 1394,
+      "line_count": 1403,
       "summary": "Command-line interface for the hypernix package.",
       "api": [
         {
           "kind": "function",
           "name": "main",
           "signature": "def mainargv: list[str] | None=None -> int",
-          "line": 1140,
+          "line": 1143,
           "doc": ""
         }
       ],
@@ -8995,6 +9390,18 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "db90fa99",
+          "date": "2026-09-22",
+          "author": "Claude",
+          "subject": "neuron: a module for training small networks that act",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _run_neuron(raw: list[str]) -> int:"
+            }
+          ]
+        },
         {
           "sha": "2ced462d",
           "date": "2026-09-15",
@@ -9062,13 +9469,183 @@
               "text": "def _parse_size(text: str) -> int:"
             }
           ]
+        }
+      ]
+    },
+    {
+      "module": "hypernix.interfaces.dots",
+      "source": "src/hypernix/interfaces/dots.py",
+      "line_count": 288,
+      "summary": "interfaces.dots \u2014 configuration as Python, with nothing required.",
+      "api": [
+        {
+          "kind": "class",
+          "name": "DotError",
+          "signature": "class DotError",
+          "line": 65,
+          "doc": "A dot file failed. Carries the path so the message can name it.",
+          "methods": []
         },
         {
-          "sha": "25691710",
-          "date": "2026-09-02",
+          "kind": "class",
+          "name": "Theme",
+          "signature": "class Theme",
+          "line": 70,
+          "doc": "Colours, as ANSI or hex. Everything has a default that works.",
+          "methods": []
+        },
+        {
+          "kind": "class",
+          "name": "Settings",
+          "signature": "class Settings",
+          "line": 86,
+          "doc": "What a single turn runs with.",
+          "methods": []
+        },
+        {
+          "kind": "class",
+          "name": "Config",
+          "signature": "class Config",
+          "line": 105,
+          "doc": "Everything hyped reads. Every field has a working default.",
+          "methods": [
+            {
+              "name": "on_prompt",
+              "signature": "def on_promptself, function: Callable[[str, Settings], None]",
+              "line": 157,
+              "doc": "Register a hook that runs before each turn."
+            },
+            {
+              "name": "on_reply",
+              "signature": "def on_replyself, function: Callable[[str], None]",
+              "line": 162,
+              "doc": ""
+            },
+            {
+              "name": "command",
+              "signature": "def commandself, name: str",
+              "line": 166,
+              "doc": "Register a slash command. ``@config.command(\"weather\")``."
+            },
+            {
+              "name": "settings_for",
+              "signature": "def settings_forself, text: str -> Settings",
+              "line": 180,
+              "doc": "The settings for one turn, after the hooks have had a look."
+            },
+            {
+              "name": "announce_reply",
+              "signature": "def announce_replyself, text: str -> None",
+              "line": 206,
+              "doc": ""
+            },
+            {
+              "name": "to_dict",
+              "signature": "def to_dictself -> dict[str, Any]",
+              "line": 214,
+              "doc": "The plain values, for `/config` and for tests."
+            }
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "dot_paths",
+          "signature": "def dot_pathsexplicit: str | Path | None=None -> list[Path]",
+          "line": 252,
+          "doc": "Where dots are looked for, in load order."
+        },
+        {
+          "kind": "function",
+          "name": "load_dot",
+          "signature": "def load_dotpath: Path, config: Config -> None",
+          "line": 285,
+          "doc": "Run one dot against *config*."
+        },
+        {
+          "kind": "function",
+          "name": "load",
+          "signature": "def loadexplicit: str | Path | None=None, *, strict: bool=False -> Config",
+          "line": 314,
+          "doc": "The config, after every dot that exists has had a go."
+        }
+      ],
+      "errors": [
+        "DotError"
+      ],
+      "deprecations": [],
+      "required_modules": [],
+      "changes": [
+        {
+          "sha": "d2b5f5f1",
+          "date": "2026-09-22",
           "author": "Claude",
-          "subject": "wake-up: train a wake word, then listen for it",
-          "api_changes": []
+          "subject": "hyped: remade simple, with dots for everything else",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def bigger_model_for_long_questions(text, settings):"
+            },
+            {
+              "kind": "added",
+              "text": "class DotError(Exception):"
+            },
+            {
+              "kind": "added",
+              "text": "class Theme:"
+            },
+            {
+              "kind": "added",
+              "text": "class Settings:"
+            },
+            {
+              "kind": "added",
+              "text": "class Config:"
+            },
+            {
+              "kind": "added",
+              "text": "def on_prompt(self, function: Callable[[str, Settings], None]):"
+            },
+            {
+              "kind": "added",
+              "text": "def on_reply(self, function: Callable[[str], None]):"
+            },
+            {
+              "kind": "added",
+              "text": "def command(self, name: str):"
+            },
+            {
+              "kind": "added",
+              "text": "def register(function: Callable[[str], Any]):"
+            },
+            {
+              "kind": "added",
+              "text": "def settings_for(self, text: str) -> Settings:"
+            },
+            {
+              "kind": "added",
+              "text": "def announce_reply(self, text: str) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_dict(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def dot_paths(explicit: str | Path | None = None) -> list[Path]:"
+            },
+            {
+              "kind": "added",
+              "text": "def load_dot(path: Path, config: Config) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def load("
+            },
+            {
+              "kind": "added",
+              "text": "def _last_dot_error(path: Path) -> str:"
+            }
+          ]
         }
       ]
     },
@@ -9377,6 +9954,337 @@
             {
               "kind": "added",
               "text": "def register(self, name: str, description: str, func: Callable[..., str], schema: dict[str, Any]) -> None:"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "module": "hypernix.interfaces.hyped_basic",
+      "source": "src/hypernix/interfaces/hyped_basic.py",
+      "line_count": 538,
+      "summary": "hyped \u2014 a local AI you can talk to, and nothing you have to set up.",
+      "api": [
+        {
+          "kind": "class",
+          "name": "Paint",
+          "signature": "class Paint",
+          "line": 78,
+          "doc": "Colour, or not.",
+          "methods": [
+            {
+              "name": "accent",
+              "signature": "def accentself, text: str -> str",
+              "line": 104,
+              "doc": ""
+            },
+            {
+              "name": "dim",
+              "signature": "def dimself, text: str -> str",
+              "line": 107,
+              "doc": ""
+            },
+            {
+              "name": "ok",
+              "signature": "def okself, text: str -> str",
+              "line": 110,
+              "doc": ""
+            },
+            {
+              "name": "warn",
+              "signature": "def warnself, text: str -> str",
+              "line": 113,
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "kind": "class",
+          "name": "Backend",
+          "signature": "class Backend",
+          "line": 123,
+          "doc": "Where the words come from, and what to say if there is nowhere.",
+          "methods": [
+            {
+              "name": "available",
+              "signature": "def availableself -> bool",
+              "line": 133,
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "discover_backend",
+          "signature": "def discover_backendconfig: Config, *, timeout: float=2.0 -> Backend",
+          "line": 137,
+          "doc": "A T1 server on this machine, or a local GGUF, or neither."
+        },
+        {
+          "kind": "function",
+          "name": "models_dir",
+          "signature": "def models_dirconfig: Config -> Path",
+          "line": 173,
+          "doc": ""
+        },
+        {
+          "kind": "function",
+          "name": "search_huggingface",
+          "signature": "def search_huggingfacequery: str, *, token: str='', limit: int=20, timeout: float=15.0 -> list[dict[str, Any]]",
+          "line": 192,
+          "doc": "GGUF repositories matching *query*, most downloaded first."
+        },
+        {
+          "kind": "function",
+          "name": "list_gguf_files",
+          "signature": "def list_gguf_filesrepo: str, *, token: str='', timeout: float=15.0 -> list[str]",
+          "line": 237,
+          "doc": "The .gguf files in a repository, smallest name first."
+        },
+        {
+          "kind": "function",
+          "name": "download_gguf",
+          "signature": "def download_ggufrepo: str, filename: str, destination: Path, *, token: str='', on_progress: Callable[[int, int], None] | None=None -> Path",
+          "line": 258,
+          "doc": "Fetch one file. Returns where it landed."
+        },
+        {
+          "kind": "class",
+          "name": "Session",
+          "signature": "class Session",
+          "line": 303,
+          "doc": "One conversation, and the commands that act on it.",
+          "methods": [
+            {
+              "name": "say",
+              "signature": "def sayself, text: str='' -> None",
+              "line": 317,
+              "doc": ""
+            },
+            {
+              "name": "warn",
+              "signature": "def warnself, text: str -> None",
+              "line": 320,
+              "doc": ""
+            },
+            {
+              "name": "builtin_commands",
+              "signature": "def builtin_commandsself -> dict[str, Callable[[str], None]]",
+              "line": 325,
+              "doc": ""
+            },
+            {
+              "name": "handle_command",
+              "signature": "def handle_commandself, line: str -> bool",
+              "line": 339,
+              "doc": "True if *line* was a command. False means it is a message."
+            },
+            {
+              "name": "cmd_help",
+              "signature": "def cmd_helpself, _argument: str='' -> None",
+              "line": 368,
+              "doc": ""
+            },
+            {
+              "name": "cmd_quit",
+              "signature": "def cmd_quitself, _argument: str='' -> None",
+              "line": 388,
+              "doc": ""
+            },
+            {
+              "name": "cmd_clear",
+              "signature": "def cmd_clearself, _argument: str='' -> None",
+              "line": 391,
+              "doc": ""
+            },
+            {
+              "name": "cmd_where",
+              "signature": "def cmd_whereself, _argument: str='' -> None",
+              "line": 395,
+              "doc": ""
+            },
+            {
+              "name": "cmd_config",
+              "signature": "def cmd_configself, _argument: str='' -> None",
+              "line": 398,
+              "doc": ""
+            },
+            {
+              "name": "cmd_model",
+              "signature": "def cmd_modelself, argument: str -> None",
+              "line": 409,
+              "doc": ""
+            },
+            {
+              "name": "cmd_models",
+              "signature": "def cmd_modelsself, _argument: str='' -> None",
+              "line": 416,
+              "doc": ""
+            },
+            {
+              "name": "cmd_search",
+              "signature": "def cmd_searchself, argument: str -> None",
+              "line": 427,
+              "doc": ""
+            },
+            {
+              "name": "cmd_download",
+              "signature": "def cmd_downloadself, argument: str -> None",
+              "line": 451,
+              "doc": ""
+            },
+            {
+              "name": "send",
+              "signature": "def sendself, text: str -> str",
+              "line": 505,
+              "doc": "One exchange. Returns the reply."
+            }
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "banner",
+          "signature": "def bannersession: Session -> Iterator[str]",
+          "line": 565,
+          "doc": ""
+        },
+        {
+          "kind": "function",
+          "name": "main",
+          "signature": "def mainargv: list[str] | None=None -> int",
+          "line": 574,
+          "doc": ""
+        },
+        {
+          "kind": "function",
+          "name": "cli_main",
+          "signature": "def cli_mainargv: list[str] | None=None -> int",
+          "line": 638,
+          "doc": ""
+        }
+      ],
+      "errors": [
+        "RuntimeError"
+      ],
+      "deprecations": [
+        {
+          "name": "warnings.warn",
+          "instead": null,
+          "since": null,
+          "removed_in": null,
+          "extra": "/search needs something to search for"
+        },
+        {
+          "name": "warnings.warn",
+          "instead": null,
+          "since": null,
+          "removed_in": null,
+          "extra": "/download needs a repository, e.g. /download Qwen/Qwen3-8B-GGUF"
+        }
+      ],
+      "required_modules": [],
+      "changes": [
+        {
+          "sha": "d2b5f5f1",
+          "date": "2026-09-22",
+          "author": "Claude",
+          "subject": "hyped: remade simple, with dots for everything else",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _hex_to_ansi(value: str) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "class Paint:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, config: Config, stream=None):"
+            },
+            {
+              "kind": "added",
+              "text": "def __call__(self, text: str, colour: str) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def accent(self, text: str) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def dim(self, text: str) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def ok(self, text: str) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def warn(self, text: str) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "class Backend:"
+            },
+            {
+              "kind": "added",
+              "text": "def available(self) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def discover_backend(config: Config, *, timeout: float = 2.0) -> Backend:"
+            },
+            {
+              "kind": "added",
+              "text": "def models_dir(config: Config) -> Path:"
+            },
+            {
+              "kind": "added",
+              "text": "def _first_local_model(config: Config) -> Path | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def search_huggingface("
+            },
+            {
+              "kind": "added",
+              "text": "def list_gguf_files("
+            },
+            {
+              "kind": "added",
+              "text": "def download_gguf("
+            },
+            {
+              "kind": "added",
+              "text": "class Session:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, config: Config, backend: Backend | None = None,"
+            },
+            {
+              "kind": "added",
+              "text": "def say(self, text: str = \"\") -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def warn(self, text: str) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def builtin_commands(self) -> dict[str, Callable[[str], None]]:"
+            },
+            {
+              "kind": "added",
+              "text": "def handle_command(self, line: str) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def cmd_help(self, _argument: str = \"\") -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def cmd_quit(self, _argument: str = \"\") -> None:"
             }
           ]
         }
@@ -18040,6 +18948,1182 @@
             {
               "kind": "added",
               "text": "def __init__(self) -> None:"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "module": "hypernix.neuron",
+      "source": "src/hypernix/neuron/__init__.py",
+      "line_count": 68,
+      "summary": "hypernix.neuron \u2014 train small networks that act, not just predict.",
+      "api": [],
+      "errors": [
+        "AttributeError"
+      ],
+      "deprecations": [],
+      "required_modules": [],
+      "changes": [
+        {
+          "sha": "db90fa99",
+          "date": "2026-09-22",
+          "author": "Claude",
+          "subject": "neuron: a module for training small networks that act",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def __getattr__(name: str) -> Any:"
+            },
+            {
+              "kind": "added",
+              "text": "def __dir__() -> list[str]:"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "module": "hypernix.neuron.cli",
+      "source": "src/hypernix/neuron/cli.py",
+      "line_count": 205,
+      "summary": "``hypernix neuron`` \u2014 train a small policy from the command line.",
+      "api": [
+        {
+          "kind": "function",
+          "name": "build_parser",
+          "signature": "def build_parser -> argparse.ArgumentParser",
+          "line": 52,
+          "doc": ""
+        },
+        {
+          "kind": "function",
+          "name": "main",
+          "signature": "def mainargv: list[str] | None=None -> int",
+          "line": 106,
+          "doc": ""
+        },
+        {
+          "kind": "function",
+          "name": "cli_main",
+          "signature": "def cli_mainargv: list[str] | None=None -> int",
+          "line": 238,
+          "doc": ""
+        }
+      ],
+      "errors": [],
+      "deprecations": [],
+      "required_modules": [],
+      "changes": [
+        {
+          "sha": "db90fa99",
+          "date": "2026-09-22",
+          "author": "Claude",
+          "subject": "neuron: a module for training small networks that act",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _env(name: str, max_steps: int | None = None):"
+            },
+            {
+              "kind": "added",
+              "text": "def build_parser() -> argparse.ArgumentParser:"
+            },
+            {
+              "kind": "added",
+              "text": "def common(action: argparse.ArgumentParser) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def main(argv: list[str] | None = None) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def _print(payload: dict, as_json: bool, text: str) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def cli_main(argv: list[str] | None = None) -> int:"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "module": "hypernix.neuron.data",
+      "source": "src/hypernix/neuron/data.py",
+      "line_count": 268,
+      "summary": "neuron.data \u2014 what gets recorded, and what gets sampled from it.",
+      "api": [
+        {
+          "kind": "class",
+          "name": "Transition",
+          "signature": "class Transition",
+          "line": 44,
+          "doc": "One step. The unit an off-policy learner samples.",
+          "methods": []
+        },
+        {
+          "kind": "class",
+          "name": "Trajectory",
+          "signature": "class Trajectory",
+          "line": 58,
+          "doc": "One episode, in order.",
+          "methods": [
+            {
+              "name": "total_reward",
+              "signature": "def total_rewardself -> float",
+              "line": 70,
+              "doc": ""
+            },
+            {
+              "name": "transitions",
+              "signature": "def transitionsself -> list[Transition]",
+              "line": 73,
+              "doc": "Split into steps, pairing each observation with its successor."
+            }
+          ]
+        },
+        {
+          "kind": "class",
+          "name": "Demonstrations",
+          "signature": "class Demonstrations",
+          "line": 104,
+          "doc": "(observation, action) pairs. What behaviour cloning trains on.",
+          "methods": [
+            {
+              "name": "add",
+              "signature": "def addself, observation, action: int -> None",
+              "line": 113,
+              "doc": ""
+            },
+            {
+              "name": "extend",
+              "signature": "def extendself, other: Demonstrations -> None",
+              "line": 117,
+              "doc": ""
+            },
+            {
+              "name": "from_trajectories",
+              "signature": "def from_trajectoriescls, trajectories: Iterable[Trajectory] -> Demonstrations",
+              "line": 122,
+              "doc": ""
+            },
+            {
+              "name": "tensors",
+              "signature": "def tensorsself -> tuple[torch.Tensor, torch.Tensor]",
+              "line": 134,
+              "doc": ""
+            },
+            {
+              "name": "split",
+              "signature": "def splitself, holdout: float=0.2, *, seed: int=0 -> tuple[Demonstrations, Demonstrations]",
+              "line": 144,
+              "doc": "Train and held-out halves, shuffled."
+            },
+            {
+              "name": "save",
+              "signature": "def saveself, path: str | Path -> Path",
+              "line": 166,
+              "doc": ""
+            },
+            {
+              "name": "load",
+              "signature": "def loadcls, path: str | Path -> Demonstrations",
+              "line": 179,
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "kind": "class",
+          "name": "ReplayBuffer",
+          "signature": "class ReplayBuffer",
+          "line": 189,
+          "doc": "A fixed-size store of transitions, sampled at random.",
+          "methods": [
+            {
+              "name": "add",
+              "signature": "def addself, transition: Transition -> None",
+              "line": 211,
+              "doc": ""
+            },
+            {
+              "name": "extend",
+              "signature": "def extendself, transitions: Iterable[Transition] -> None",
+              "line": 214,
+              "doc": ""
+            },
+            {
+              "name": "sample",
+              "signature": "def sampleself, size: int -> list[Transition]",
+              "line": 218,
+              "doc": "*size* transitions, with replacement when the buffer is small."
+            },
+            {
+              "name": "batch",
+              "signature": "def batchself, size: int -> tuple[torch.Tensor, ...]",
+              "line": 235,
+              "doc": "A sample as stacked tensors, ready for a loss."
+            }
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "record_expert",
+          "signature": "def record_expertenv, expert: Callable[[Any], int] | None=None, *, episodes: int=20, seed: int=0 -> tuple[Demonstrations, list[Trajectory]]",
+          "line": 256,
+          "doc": "Watch something that already plays well, and write it down."
+        },
+        {
+          "kind": "function",
+          "name": "discounted_returns",
+          "signature": "def discounted_returnsrewards: Sequence[float], gamma: float=0.99 -> np.ndarray",
+          "line": 304,
+          "doc": "Reward-to-go for each step, discounted."
+        }
+      ],
+      "errors": [
+        "ValueError"
+      ],
+      "deprecations": [],
+      "required_modules": [
+        {
+          "module": "numpy",
+          "extra": "base",
+          "requirement": "numpy>=1.26,<3"
+        },
+        {
+          "module": "torch",
+          "extra": "base",
+          "requirement": "torch>=1.13,<3"
+        }
+      ],
+      "changes": [
+        {
+          "sha": "db90fa99",
+          "date": "2026-09-22",
+          "author": "Claude",
+          "subject": "neuron: a module for training small networks that act",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class Transition:"
+            },
+            {
+              "kind": "added",
+              "text": "class Trajectory:"
+            },
+            {
+              "kind": "added",
+              "text": "def __len__(self) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def total_reward(self) -> float:"
+            },
+            {
+              "kind": "added",
+              "text": "def transitions(self) -> list[Transition]:"
+            },
+            {
+              "kind": "added",
+              "text": "class Demonstrations:"
+            },
+            {
+              "kind": "added",
+              "text": "def __len__(self) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def add(self, observation, action: int) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def extend(self, other: Demonstrations) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def from_trajectories(cls, trajectories: Iterable[Trajectory]) -> Demonstrations:"
+            },
+            {
+              "kind": "added",
+              "text": "def tensors(self) -> tuple[torch.Tensor, torch.Tensor]:"
+            },
+            {
+              "kind": "added",
+              "text": "def split("
+            },
+            {
+              "kind": "added",
+              "text": "def save(self, path: str | Path) -> Path:"
+            },
+            {
+              "kind": "added",
+              "text": "def load(cls, path: str | Path) -> Demonstrations:"
+            },
+            {
+              "kind": "added",
+              "text": "class ReplayBuffer:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, capacity: int = 10_000, *, seed: int = 0):"
+            },
+            {
+              "kind": "added",
+              "text": "def __len__(self) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def __iter__(self) -> Iterator[Transition]:"
+            },
+            {
+              "kind": "added",
+              "text": "def add(self, transition: Transition) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def extend(self, transitions: Iterable[Transition]) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def sample(self, size: int) -> list[Transition]:"
+            },
+            {
+              "kind": "added",
+              "text": "def batch(self, size: int) -> tuple[torch.Tensor, ...]:"
+            },
+            {
+              "kind": "added",
+              "text": "def record_expert("
+            },
+            {
+              "kind": "added",
+              "text": "def discounted_returns(rewards: Sequence[float], gamma: float = 0.99) -> np.ndarray:"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "module": "hypernix.neuron.envs",
+      "source": "src/hypernix/neuron/envs.py",
+      "line_count": 292,
+      "summary": "neuron.envs \u2014 the smallest thing a trainer can be pointed at.",
+      "api": [
+        {
+          "kind": "class",
+          "name": "Space",
+          "signature": "class Space",
+          "line": 45,
+          "doc": "What an observation or action looks like.",
+          "methods": [
+            {
+              "name": "discrete",
+              "signature": "def discreteself -> bool",
+              "line": 61,
+              "doc": ""
+            },
+            {
+              "name": "size",
+              "signature": "def sizeself -> int",
+              "line": 65,
+              "doc": "Flat element count \u2014 what a network's first layer needs."
+            }
+          ]
+        },
+        {
+          "kind": "class",
+          "name": "Env",
+          "signature": "class Env",
+          "line": 83,
+          "doc": "What the trainers require. Gymnasium environments satisfy it.",
+          "methods": [
+            {
+              "name": "reset",
+              "signature": "def resetself, *, seed: int | None=None -> tuple[np.ndarray, dict[str, Any]]",
+              "line": 89,
+              "doc": ""
+            },
+            {
+              "name": "step",
+              "signature": "def stepself, action: int | np.ndarray -> tuple[np.ndarray, float, bool, bool, dict[str, Any]]",
+              "line": 92,
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "kind": "class",
+          "name": "GridWorld",
+          "signature": "class GridWorld",
+          "line": 104,
+          "doc": "Reach the goal on an ``size``x``size`` grid without hitting a wall.",
+          "methods": [
+            {
+              "name": "reset",
+              "signature": "def resetself, *, seed: int | None=None -> tuple[np.ndarray, dict[str, Any]]",
+              "line": 151,
+              "doc": ""
+            },
+            {
+              "name": "step",
+              "signature": "def stepself, action: int | np.ndarray -> tuple[np.ndarray, float, bool, bool, dict[str, Any]]",
+              "line": 174,
+              "doc": ""
+            },
+            {
+              "name": "optimal_steps",
+              "signature": "def optimal_stepsself -> int",
+              "line": 214,
+              "doc": "Manhattan distance \u2014 exact when there are no walls between."
+            },
+            {
+              "name": "expert_action",
+              "signature": "def expert_actionself -> int",
+              "line": 220,
+              "doc": "The move an optimal player makes. Used to generate demos."
+            }
+          ]
+        },
+        {
+          "kind": "class",
+          "name": "BalanceBeam",
+          "signature": "class BalanceBeam",
+          "line": 245,
+          "doc": "Keep a mass balanced by pushing left or right. Continuous state.",
+          "methods": [
+            {
+              "name": "reset",
+              "signature": "def resetself, *, seed: int | None=None -> tuple[np.ndarray, dict[str, Any]]",
+              "line": 278,
+              "doc": ""
+            },
+            {
+              "name": "step",
+              "signature": "def stepself, action: int | np.ndarray -> tuple[np.ndarray, float, bool, bool, dict[str, Any]]",
+              "line": 289,
+              "doc": ""
+            },
+            {
+              "name": "expert_action",
+              "signature": "def expert_actionself -> int",
+              "line": 311,
+              "doc": "Push against the way it is going, or the way it is leaning."
+            }
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "rollout",
+          "signature": "def rolloutenv: Env, policy, *, seed: int | None=None, max_steps: int | None=None -> tuple[list[np.ndarray], list[int], list[float], bool]",
+          "line": 320,
+          "doc": "Run one episode. ``(observations, actions, rewards, terminated)``."
+        }
+      ],
+      "errors": [
+        "ValueError"
+      ],
+      "deprecations": [],
+      "required_modules": [
+        {
+          "module": "numpy",
+          "extra": "base",
+          "requirement": "numpy>=1.26,<3"
+        }
+      ],
+      "changes": [
+        {
+          "sha": "db90fa99",
+          "date": "2026-09-22",
+          "author": "Claude",
+          "subject": "neuron: a module for training small networks that act",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class Space:"
+            },
+            {
+              "kind": "added",
+              "text": "Deliberately not Gymnasium's ``Box``/``Discrete`` class tree: this"
+            },
+            {
+              "kind": "added",
+              "text": "def discrete(self) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def size(self) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def __post_init__(self) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "class Env(Protocol):"
+            },
+            {
+              "kind": "added",
+              "text": "def reset(self, *, seed: int | None = None) -> tuple[np.ndarray, dict[str, Any]]:"
+            },
+            {
+              "kind": "added",
+              "text": "def step("
+            },
+            {
+              "kind": "added",
+              "text": "class GridWorld:"
+            },
+            {
+              "kind": "added",
+              "text": "def __post_init__(self) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def reset(self, *, seed: int | None = None) -> tuple[np.ndarray, dict[str, Any]]:"
+            },
+            {
+              "kind": "added",
+              "text": "def step("
+            },
+            {
+              "kind": "added",
+              "text": "def _observe(self) -> np.ndarray:"
+            },
+            {
+              "kind": "added",
+              "text": "def optimal_steps(self) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def expert_action(self) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "class BalanceBeam:"
+            },
+            {
+              "kind": "added",
+              "text": "def reset(self, *, seed: int | None = None) -> tuple[np.ndarray, dict[str, Any]]:"
+            },
+            {
+              "kind": "added",
+              "text": "def step("
+            },
+            {
+              "kind": "added",
+              "text": "def _observe(self) -> np.ndarray:"
+            },
+            {
+              "kind": "added",
+              "text": "def expert_action(self) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def rollout("
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "module": "hypernix.neuron.evaluate",
+      "source": "src/hypernix/neuron/evaluate.py",
+      "line_count": 121,
+      "summary": "neuron.evaluate \u2014 does it work when you run it?",
+      "api": [
+        {
+          "kind": "class",
+          "name": "EvalReport",
+          "signature": "class EvalReport",
+          "line": 42,
+          "doc": "What running a policy actually produced.",
+          "methods": [
+            {
+              "name": "summary",
+              "signature": "def summaryself -> str",
+              "line": 56,
+              "doc": ""
+            },
+            {
+              "name": "to_dict",
+              "signature": "def to_dictself -> dict[str, object]",
+              "line": 65,
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "evaluate_policy",
+          "signature": "def evaluate_policyenv: Env, policy: Callable, *, episodes: int=20, seed: int=0 -> EvalReport",
+          "line": 79,
+          "doc": "Run *policy* for *episodes* and report what happened."
+        },
+        {
+          "kind": "function",
+          "name": "compare",
+          "signature": "def compareenv: Env, policies: dict[str, Callable], *, episodes: int=20, seed: int=0 -> dict[str, EvalReport]",
+          "line": 126,
+          "doc": "Several policies on identical episodes."
+        }
+      ],
+      "errors": [
+        "ValueError"
+      ],
+      "deprecations": [],
+      "required_modules": [
+        {
+          "module": "numpy",
+          "extra": "base",
+          "requirement": "numpy>=1.26,<3"
+        }
+      ],
+      "changes": [
+        {
+          "sha": "db90fa99",
+          "date": "2026-09-22",
+          "author": "Claude",
+          "subject": "neuron: a module for training small networks that act",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class EvalReport:"
+            },
+            {
+              "kind": "added",
+              "text": "def summary(self) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_dict(self) -> dict[str, object]:"
+            },
+            {
+              "kind": "added",
+              "text": "def evaluate_policy("
+            },
+            {
+              "kind": "added",
+              "text": "def compare("
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "module": "hypernix.neuron.imitation",
+      "source": "src/hypernix/neuron/imitation.py",
+      "line_count": 192,
+      "summary": "neuron.imitation \u2014 learn by copying somebody who can already do it.",
+      "api": [
+        {
+          "kind": "class",
+          "name": "CloneResult",
+          "signature": "class CloneResult",
+          "line": 43,
+          "doc": "Both numbers. See the module docstring for why one is not enough.",
+          "methods": [
+            {
+              "name": "summary",
+              "signature": "def summaryself -> str",
+              "line": 53,
+              "doc": ""
+            },
+            {
+              "name": "looks_like_compounding_error",
+              "signature": "def looks_like_compounding_errorself -> bool",
+              "line": 62,
+              "doc": "High accuracy, poor return \u2014 the failure this module exists for."
+            }
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "clone",
+          "signature": "def cloneenv: Env, demonstrations: Demonstrations, *, hidden: tuple[int, ...]=(64, 64), epochs: int=100, batch_size: int=32, learning_rate: float=0.001, holdout: float=0.2, evaluate_episodes: int=20, seed: int=0, model: nn.Module | None=None -> tuple[nn.Module, CloneResult]",
+          "line": 71,
+          "doc": "Behaviour cloning: supervised learning on (observation, action)."
+        },
+        {
+          "kind": "function",
+          "name": "dagger",
+          "signature": "def daggerenv: Env, *, expert: Callable[[Any], int] | None=None, rounds: int=5, episodes_per_round: int=10, seed: int=0, hidden: tuple[int, ...]=(64, 64), epochs: int=60, evaluate_episodes: int=20, initial: Demonstrations | None=None -> tuple[nn.Module, CloneResult]",
+          "line": 126,
+          "doc": "DAgger \u2014 ask the expert about the states the *policy* reaches."
+        }
+      ],
+      "errors": [
+        "ValueError"
+      ],
+      "deprecations": [],
+      "required_modules": [
+        {
+          "module": "torch",
+          "extra": "base",
+          "requirement": "torch>=1.13,<3"
+        }
+      ],
+      "changes": [
+        {
+          "sha": "db90fa99",
+          "date": "2026-09-22",
+          "author": "Claude",
+          "subject": "neuron: a module for training small networks that act",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class CloneResult:"
+            },
+            {
+              "kind": "added",
+              "text": "def summary(self) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def looks_like_compounding_error(self) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def clone("
+            },
+            {
+              "kind": "added",
+              "text": "def dagger("
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "module": "hypernix.neuron.nets",
+      "source": "src/hypernix/neuron/nets.py",
+      "line_count": 239,
+      "summary": "neuron.nets \u2014 small networks, built from a description.",
+      "api": [
+        {
+          "kind": "class",
+          "name": "NetSpec",
+          "signature": "class NetSpec",
+          "line": 56,
+          "doc": "Everything needed to rebuild a network. Saved beside the weights.",
+          "methods": [
+            {
+              "name": "to_dict",
+              "signature": "def to_dictself -> dict[str, Any]",
+              "line": 68,
+              "doc": ""
+            },
+            {
+              "name": "from_dict",
+              "signature": "def from_dictcls, data: dict[str, Any] -> NetSpec",
+              "line": 72,
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "mlp",
+          "signature": "def mlpinputs: int, outputs: int, hidden: tuple[int, ...]=(64, 64), activation: str='relu' -> nn.Sequential",
+          "line": 99,
+          "doc": "A plain stack. The right answer for anything that is not an image."
+        },
+        {
+          "kind": "function",
+          "name": "small_cnn",
+          "signature": "def small_cnnimage: tuple[int, int, int], outputs: int, channels: tuple[int, ...]=(16, 32, 64), activation: str='relu' -> nn.Sequential",
+          "line": 123,
+          "doc": "Strided convolutions into global average pooling."
+        },
+        {
+          "kind": "function",
+          "name": "build",
+          "signature": "def buildspec: NetSpec -> nn.Module",
+          "line": 155,
+          "doc": "A network from its description."
+        },
+        {
+          "kind": "function",
+          "name": "for_env",
+          "signature": "def for_envenv: Env, hidden: tuple[int, ...]=(64, 64) -> tuple[nn.Module, NetSpec]",
+          "line": 166,
+          "doc": "A network shaped for *env*, and the spec that rebuilds it."
+        },
+        {
+          "kind": "function",
+          "name": "save",
+          "signature": "def savemodel: nn.Module, spec: NetSpec, path: str | Path -> Path",
+          "line": 204,
+          "doc": "Weights and architecture together, in one file."
+        },
+        {
+          "kind": "function",
+          "name": "load",
+          "signature": "def loadpath: str | Path -> tuple[nn.Module, NetSpec]",
+          "line": 220,
+          "doc": "Rebuild what :func:`save` wrote."
+        },
+        {
+          "kind": "function",
+          "name": "save_json",
+          "signature": "def save_jsonspec: NetSpec, path: str | Path -> Path",
+          "line": 240,
+          "doc": "The spec alone, readable. For inspecting what a run produced."
+        },
+        {
+          "kind": "function",
+          "name": "greedy",
+          "signature": "def greedymodel: nn.Module",
+          "line": 258,
+          "doc": "Always the highest-scoring action. What you evaluate and ship."
+        },
+        {
+          "kind": "function",
+          "name": "stochastic",
+          "signature": "def stochasticmodel: nn.Module, *, generator: torch.Generator | None=None",
+          "line": 275,
+          "doc": "Sample from the softmax. What you explore with while training."
+        },
+        {
+          "kind": "function",
+          "name": "count_parameters",
+          "signature": "def count_parametersmodel: nn.Module -> int",
+          "line": 290,
+          "doc": "How big this actually is. Printed by every trainer for a reason."
+        }
+      ],
+      "errors": [
+        "ValueError"
+      ],
+      "deprecations": [],
+      "required_modules": [
+        {
+          "module": "numpy",
+          "extra": "base",
+          "requirement": "numpy>=1.26,<3"
+        },
+        {
+          "module": "torch",
+          "extra": "base",
+          "requirement": "torch>=1.13,<3"
+        }
+      ],
+      "changes": [
+        {
+          "sha": "db90fa99",
+          "date": "2026-09-22",
+          "author": "Claude",
+          "subject": "neuron: a module for training small networks that act",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class NetSpec:"
+            },
+            {
+              "kind": "added",
+              "text": "outputs: int = 0                       # action count / class count"
+            },
+            {
+              "kind": "added",
+              "text": "def to_dict(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def from_dict(cls, data: dict[str, Any]) -> NetSpec:"
+            },
+            {
+              "kind": "added",
+              "text": "def _activation(name: str) -> nn.Module:"
+            },
+            {
+              "kind": "added",
+              "text": "def mlp("
+            },
+            {
+              "kind": "added",
+              "text": "class _Flatten(nn.Module):"
+            },
+            {
+              "kind": "added",
+              "text": "def forward(self, x: torch.Tensor) -> torch.Tensor:  # noqa: D102"
+            },
+            {
+              "kind": "added",
+              "text": "def small_cnn("
+            },
+            {
+              "kind": "added",
+              "text": "def build(spec: NetSpec) -> nn.Module:"
+            },
+            {
+              "kind": "added",
+              "text": "def for_env("
+            },
+            {
+              "kind": "added",
+              "text": "def save(model: nn.Module, spec: NetSpec, path: str | Path) -> Path:"
+            },
+            {
+              "kind": "added",
+              "text": "def load(path: str | Path) -> tuple[nn.Module, NetSpec]:"
+            },
+            {
+              "kind": "added",
+              "text": "def save_json(spec: NetSpec, path: str | Path) -> Path:"
+            },
+            {
+              "kind": "added",
+              "text": "def _as_batch(observation) -> torch.Tensor:"
+            },
+            {
+              "kind": "added",
+              "text": "def greedy(model: nn.Module):"
+            },
+            {
+              "kind": "added",
+              "text": "def policy(observation) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def stochastic(model: nn.Module, *, generator: torch.Generator | None = None):"
+            },
+            {
+              "kind": "added",
+              "text": "def policy(observation) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def count_parameters(model: nn.Module) -> int:"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "module": "hypernix.neuron.rl",
+      "source": "src/hypernix/neuron/rl.py",
+      "line_count": 323,
+      "summary": "neuron.rl \u2014 learning from outcomes, when there is nothing to copy.",
+      "api": [
+        {
+          "kind": "function",
+          "name": "td_target",
+          "signature": "def td_targetrewards: torch.Tensor, next_values: torch.Tensor, terminated: torch.Tensor, gamma: float -> torch.Tensor",
+          "line": 59,
+          "doc": "``r + gamma * V(s') * (1 - terminated)`` \u2014 the bootstrap, alone."
+        },
+        {
+          "kind": "class",
+          "name": "TrainResult",
+          "signature": "class TrainResult",
+          "line": 90,
+          "doc": "What a run did, per checkpoint, so a flat line is visible.",
+          "methods": [
+            {
+              "name": "summary",
+              "signature": "def summaryself -> str",
+              "line": 99,
+              "doc": ""
+            },
+            {
+              "name": "improved",
+              "signature": "def improvedself -> bool",
+              "line": 107,
+              "doc": "Did the score move between the first checkpoint and the best?"
+            },
+            {
+              "name": "reached",
+              "signature": "def reachedself, target: float -> bool",
+              "line": 125,
+              "doc": "Did the policy ever score at least *target*?"
+            },
+            {
+              "name": "best_success_rate",
+              "signature": "def best_success_rateself -> float",
+              "line": 136,
+              "doc": "The best success rate at any checkpoint, or 0.0 if unevaluated."
+            }
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "reinforce",
+          "signature": "def reinforceenv: Env, *, episodes: int=600, batch_episodes: int=10, gamma: float=0.99, learning_rate: float=0.003, hidden: tuple[int, ...]=(64, 64), seed: int=0, evaluate_every: int=10, evaluate_episodes: int=10, model: nn.Module | None=None -> tuple[nn.Module, TrainResult]",
+          "line": 161,
+          "doc": "Policy gradient. Returns the policy network and the run."
+        },
+        {
+          "kind": "function",
+          "name": "dqn",
+          "signature": "def dqnenv: Env, *, steps: int=20000, gamma: float=0.99, learning_rate: float=0.001, batch_size: int=64, buffer_size: int=10000, warmup: int=500, target_sync: int=250, epsilon_start: float=1.0, epsilon_end: float=0.05, epsilon_decay_steps: int=5000, hidden: tuple[int, ...]=(64, 64), seed: int=0, evaluate_every: int=2000, evaluate_episodes: int=10, model: nn.Module | None=None -> tuple[nn.Module, TrainResult]",
+          "line": 264,
+          "doc": "Deep Q-learning with a replay buffer and a target network."
+        }
+      ],
+      "errors": [
+        "ValueError"
+      ],
+      "deprecations": [],
+      "required_modules": [
+        {
+          "module": "numpy",
+          "extra": "base",
+          "requirement": "numpy>=1.26,<3"
+        },
+        {
+          "module": "torch",
+          "extra": "base",
+          "requirement": "torch>=1.13,<3"
+        }
+      ],
+      "changes": [
+        {
+          "sha": "db90fa99",
+          "date": "2026-09-22",
+          "author": "Claude",
+          "subject": "neuron: a module for training small networks that act",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def td_target("
+            },
+            {
+              "kind": "added",
+              "text": "class TrainResult:"
+            },
+            {
+              "kind": "added",
+              "text": "def summary(self) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def improved(self) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def reached(self, target: float) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def best_success_rate(self) -> float:"
+            },
+            {
+              "kind": "added",
+              "text": "def _returns_batch("
+            },
+            {
+              "kind": "added",
+              "text": "def reinforce("
+            },
+            {
+              "kind": "added",
+              "text": "def dqn("
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "module": "hypernix.neuron.supervised",
+      "source": "src/hypernix/neuron/supervised.py",
+      "line_count": 195,
+      "summary": "neuron.supervised \u2014 labels in, classifier out.",
+      "api": [
+        {
+          "kind": "class",
+          "name": "FitResult",
+          "signature": "class FitResult",
+          "line": 54,
+          "doc": "What a run did. Printed, asserted on, and saved beside the model.",
+          "methods": [
+            {
+              "name": "validation_is_small",
+              "signature": "def validation_is_smallself -> bool",
+              "line": 74,
+              "doc": ""
+            },
+            {
+              "name": "summary",
+              "signature": "def summaryself -> str",
+              "line": 77,
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "accuracy",
+          "signature": "def accuracymodel: nn.Module, x: torch.Tensor, y: torch.Tensor -> float",
+          "line": 94,
+          "doc": "Fraction correct. The metric for a classifier, evaluated properly."
+        },
+        {
+          "kind": "function",
+          "name": "predict",
+          "signature": "def predictmodel: nn.Module, x -> np.ndarray",
+          "line": 104,
+          "doc": "Class indices for a batch, as numpy. For use outside torch."
+        },
+        {
+          "kind": "function",
+          "name": "fit",
+          "signature": "def fitmodel: nn.Module, x: torch.Tensor, y: torch.Tensor, *, validation: tuple[torch.Tensor, torch.Tensor] | None=None, epochs: int=50, batch_size: int=32, learning_rate: float=0.001, weight_decay: float=0.0, patience: int=20, seed: int=0, on_epoch: Callable[[int, dict[str, float]], None] | None=None -> FitResult",
+          "line": 115,
+          "doc": "Train *model* on (x, y). Returns the run, leaves the best weights."
+        }
+      ],
+      "errors": [
+        "ValueError"
+      ],
+      "deprecations": [],
+      "required_modules": [
+        {
+          "module": "numpy",
+          "extra": "base",
+          "requirement": "numpy>=1.26,<3"
+        },
+        {
+          "module": "torch",
+          "extra": "base",
+          "requirement": "torch>=1.13,<3"
+        }
+      ],
+      "changes": [
+        {
+          "sha": "db90fa99",
+          "date": "2026-09-22",
+          "author": "Claude",
+          "subject": "neuron: a module for training small networks that act",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class FitResult:"
+            },
+            {
+              "kind": "added",
+              "text": "def validation_is_small(self) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def summary(self) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def accuracy(model: nn.Module, x: torch.Tensor, y: torch.Tensor) -> float:"
+            },
+            {
+              "kind": "added",
+              "text": "def predict(model: nn.Module, x) -> np.ndarray:"
+            },
+            {
+              "kind": "added",
+              "text": "def fit("
+            },
+            {
+              "kind": "added",
+              "text": "def _loss_on("
             }
           ]
         }
@@ -27191,6 +29275,383 @@
       ]
     },
     {
+      "module": "hypernix.system.archmap",
+      "source": "src/hypernix/system/archmap.py",
+      "line_count": 283,
+      "summary": "hypernix.system.archmap \u2014 the architecture chart, generated from the tree.",
+      "api": [
+        {
+          "kind": "class",
+          "name": "Edge",
+          "signature": "class Edge",
+          "line": 69,
+          "doc": "One module depending on another, and how settled that is.",
+          "methods": [
+            {
+              "name": "arrow",
+              "signature": "def arrowself -> str",
+              "line": 76,
+              "doc": "Mermaid link syntax carrying the stage in the line style."
+            }
+          ]
+        },
+        {
+          "kind": "class",
+          "name": "Module",
+          "signature": "class Module",
+          "line": 86,
+          "doc": "",
+          "methods": []
+        },
+        {
+          "kind": "class",
+          "name": "Architecture",
+          "signature": "class Architecture",
+          "line": 94,
+          "doc": "",
+          "methods": [
+            {
+              "name": "beta_modules",
+              "signature": "def beta_modulesself -> list[str]",
+              "line": 101,
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "read_architecture",
+          "signature": "def read_architectureroot: Path, package: str='hypernix' -> Architecture",
+          "line": 120,
+          "doc": "Walk the package and work out what depends on what."
+        },
+        {
+          "kind": "function",
+          "name": "render_mermaid",
+          "signature": "def render_mermaidarchitecture: Architecture, *, max_modules: int=28 -> str",
+          "line": 194,
+          "doc": "Both charts, as Mermaid, ready to drop into Markdown."
+        },
+        {
+          "kind": "function",
+          "name": "update_in_place",
+          "signature": "def update_in_placedocument: Path, chart: str -> bool",
+          "line": 272,
+          "doc": "Replace the chart between the markers. ``True`` if it changed."
+        },
+        {
+          "kind": "function",
+          "name": "main",
+          "signature": "def mainargv: list[str] | None=None -> int",
+          "line": 302,
+          "doc": "``python -m hypernix.system.archmap [--write PATH]``."
+        }
+      ],
+      "errors": [
+        "FileNotFoundError",
+        "ValueError"
+      ],
+      "deprecations": [],
+      "required_modules": [],
+      "changes": [
+        {
+          "sha": "c8dfa2f4",
+          "date": "2026-09-22",
+          "author": "Claude",
+          "subject": "autoscan + archmap: the twice-weekly sweep, and a chart that stays true",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class Edge:"
+            },
+            {
+              "kind": "added",
+              "text": "def arrow(self) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "class Module:"
+            },
+            {
+              "kind": "added",
+              "text": "class Architecture:"
+            },
+            {
+              "kind": "added",
+              "text": "def beta_modules(self) -> list[str]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _top_level(module: str, package: str = \"hypernix\") -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def read_architecture(root: Path, package: str = \"hypernix\") -> Architecture:"
+            },
+            {
+              "kind": "added",
+              "text": "def _identifier(name: str) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def render_mermaid(architecture: Architecture, *, max_modules: int = 28) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def update_in_place(document: Path, chart: str) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def main(argv: list[str] | None = None) -> int:"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "module": "hypernix.system.autoscan",
+      "source": "src/hypernix/system/autoscan.py",
+      "line_count": 600,
+      "summary": "hypernix.system.autoscan \u2014 the twice-weekly sweep, and its release gate.",
+      "api": [
+        {
+          "kind": "class",
+          "name": "Finding",
+          "signature": "class Finding",
+          "line": 103,
+          "doc": "One thing that is wrong, and how sure we are it is wrong.",
+          "methods": []
+        },
+        {
+          "kind": "class",
+          "name": "ScanReport",
+          "signature": "class ScanReport",
+          "line": 117,
+          "doc": "",
+          "methods": [
+            {
+              "name": "of",
+              "signature": "def ofself, kind: str -> list[Finding]",
+              "line": 122,
+              "doc": ""
+            },
+            {
+              "name": "bugs",
+              "signature": "def bugsself -> list[Finding]",
+              "line": 126,
+              "doc": ""
+            },
+            {
+              "name": "security",
+              "signature": "def securityself -> list[Finding]",
+              "line": 130,
+              "doc": ""
+            },
+            {
+              "name": "cosmetic",
+              "signature": "def cosmeticself -> list[Finding]",
+              "line": 134,
+              "doc": ""
+            },
+            {
+              "name": "summary",
+              "signature": "def summaryself -> str",
+              "line": 137,
+              "doc": ""
+            },
+            {
+              "name": "to_dict",
+              "signature": "def to_dictself -> dict",
+              "line": 143,
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "scan_python",
+          "signature": "def scan_pythonroot: Path, *, skip: Sequence[str]=() -> list[Finding]",
+          "line": 240,
+          "doc": "AST bug checks over every .py file under *root*."
+        },
+        {
+          "kind": "function",
+          "name": "scan_security",
+          "signature": "def scan_securityroot: Path, *, skip: Sequence[str]=() -> list[Finding]",
+          "line": 354,
+          "doc": "Pattern scan for the handful of things that are never fine."
+        },
+        {
+          "kind": "function",
+          "name": "apply_maintenance",
+          "signature": "def apply_maintenanceroot: Path, *, dry_run: bool=False -> tuple[list[str], list[str]]",
+          "line": 388,
+          "doc": "Run the safe automatic fixes. ``(fixed, errors)``."
+        },
+        {
+          "kind": "function",
+          "name": "ruff_findings",
+          "signature": "def ruff_findingsroot: Path -> list[Finding]",
+          "line": 431,
+          "doc": "Whatever ruff still reports, as cosmetic findings."
+        },
+        {
+          "kind": "function",
+          "name": "is_stable_version",
+          "signature": "def is_stable_versionversion: str -> bool",
+          "line": 469,
+          "doc": "True for a plain release, false for anything pre-release."
+        },
+        {
+          "kind": "function",
+          "name": "next_post_version",
+          "signature": "def next_post_versionversion: str -> str",
+          "line": 480,
+          "doc": "``1.2.3`` -> ``1.2.3.post1``; ``1.2.3.post4`` -> ``1.2.3.post5``."
+        },
+        {
+          "kind": "class",
+          "name": "ReleaseDecision",
+          "signature": "class ReleaseDecision",
+          "line": 495,
+          "doc": "Whether to release, and \u2014 always \u2014 why not.",
+          "methods": []
+        },
+        {
+          "kind": "function",
+          "name": "should_release",
+          "signature": "def should_releasereport: ScanReport, latest_version: str, *, minimum_fixes: int=MINIMUM_FIXES_FOR_RELEASE -> ReleaseDecision",
+          "line": 508,
+          "doc": "The gate. Every clause here is a way to say no."
+        },
+        {
+          "kind": "function",
+          "name": "advise",
+          "signature": "def advisereport: ScanReport, diff: str, decision: ReleaseDecision, *, api_key: str | None=None, max_diff_chars: int=60000 -> dict",
+          "line": 572,
+          "doc": "Ask Claude whether the sweep's changes are safe to publish."
+        },
+        {
+          "kind": "function",
+          "name": "run",
+          "signature": "def runroot: Path, *, fix: bool=True -> ScanReport",
+          "line": 700,
+          "doc": "A whole sweep: scan, optionally fix, scan again."
+        }
+      ],
+      "errors": [
+        "ValueError"
+      ],
+      "deprecations": [],
+      "required_modules": [],
+      "changes": [
+        {
+          "sha": "c8dfa2f4",
+          "date": "2026-09-22",
+          "author": "Claude",
+          "subject": "autoscan + archmap: the twice-weekly sweep, and a chart that stays true",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class Finding:"
+            },
+            {
+              "kind": "added",
+              "text": "def __str__(self) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "class ScanReport:"
+            },
+            {
+              "kind": "added",
+              "text": "def of(self, kind: str) -> list[Finding]:"
+            },
+            {
+              "kind": "added",
+              "text": "def bugs(self) -> list[Finding]:"
+            },
+            {
+              "kind": "added",
+              "text": "def security(self) -> list[Finding]:"
+            },
+            {
+              "kind": "added",
+              "text": "def cosmetic(self) -> list[Finding]:"
+            },
+            {
+              "kind": "added",
+              "text": "def summary(self) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_dict(self) -> dict:"
+            },
+            {
+              "kind": "added",
+              "text": "class _BugVisitor(ast.NodeVisitor):"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, path: str, source: str = \"\"):"
+            },
+            {
+              "kind": "added",
+              "text": "def _explained(self, node: ast.AST) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def _add(self, node: ast.AST, rule: str, message: str) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def visit_ExceptHandler(self, node: ast.ExceptHandler) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _check_defaults(self, node) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def visit_FunctionDef(self, node: ast.FunctionDef) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def visit_Compare(self, node: ast.Compare) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def scan_python(root: Path, *, skip: Sequence[str] = ()) -> list[Finding]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _string_spans(source: str) -> dict[int, list[tuple[int, int]]]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _inside_string(spans: dict[int, list[tuple[int, int]]], line: int, column: int) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def scan_security(root: Path, *, skip: Sequence[str] = ()) -> list[Finding]:"
+            },
+            {
+              "kind": "added",
+              "text": "def apply_maintenance(root: Path, *, dry_run: bool = False) -> tuple[list[str], list[str]]:"
+            },
+            {
+              "kind": "added",
+              "text": "unsafe is exactly the class this must not apply unattended."
+            }
+          ]
+        }
+      ]
+    },
+    {
       "module": "hypernix.system.blanking",
       "source": "src/hypernix/system/blanking.py",
       "line_count": 254,
@@ -28025,7 +30486,7 @@
     {
       "module": "hypernix.system.ethanol",
       "source": "src/hypernix/system/ethanol.py",
-      "line_count": 533,
+      "line_count": 539,
       "summary": "ethanol \u2014 turn the GPU clock up.",
       "api": [
         {
@@ -28040,49 +30501,49 @@
           "kind": "class",
           "name": "Ethanol",
           "signature": "class Ethanol",
-          "line": 172,
+          "line": 177,
           "doc": "Overclock helper. Construct with a level, call :meth:`apply`.",
           "methods": [
             {
               "name": "offsets",
               "signature": "def offsetsself -> tuple[int, int, int]",
-              "line": 184,
+              "line": 189,
               "doc": ""
             },
             {
               "name": "plan",
               "signature": "def planself -> OverclockResult",
-              "line": 187,
+              "line": 192,
               "doc": ""
             },
             {
               "name": "read_temperature",
               "signature": "def read_temperatureself -> float | None",
-              "line": 199,
+              "line": 204,
               "doc": "Current GPU temperature in \u00b0C, or None if it can't be read."
             },
             {
               "name": "auto_level",
               "signature": "def auto_levelself -> tuple[int, str]",
-              "line": 235,
+              "line": 240,
               "doc": "Pick a level from the *measured* temperature."
             },
             {
               "name": "apply",
               "signature": "def applyself, *, confirm: bool=False, auto_throttle: bool=True -> OverclockResult",
-              "line": 267,
+              "line": 272,
               "doc": "Apply the offsets via the detected vendor tool."
             },
             {
               "name": "reset",
               "signature": "def resetself, *, confirm: bool=False -> OverclockResult",
-              "line": 315,
+              "line": 320,
               "doc": "Convenience: same as ``Ethanol(level=0).apply(...)``."
             },
             {
               "name": "status",
               "signature": "def statusself -> dict[str, Any]",
-              "line": 422,
+              "line": 427,
               "doc": "Current GPU state: clocks, power, temperature, utilisation."
             }
           ]
@@ -28091,21 +30552,21 @@
           "kind": "function",
           "name": "ethanol",
           "signature": "def ethanollevel: int=0, **kw: Any -> Ethanol",
-          "line": 484,
+          "line": 489,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "overclock",
           "signature": "def overclocklevel: int, *, confirm: bool=False, gpu_index: int=0 -> OverclockResult",
-          "line": 488,
+          "line": 493,
           "doc": "One-shot helper. Equivalent to ``Ethanol(level=level, gpu_index=gpu_index).apply(confirm=...)``."
         },
         {
           "kind": "function",
           "name": "cli_main",
           "signature": "def cli_mainargv: list[str] | None=None -> int",
-          "line": 544,
+          "line": 552,
           "doc": ""
         }
       ],
@@ -28115,6 +30576,20 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "f969fc28",
+          "date": "2026-09-22",
+          "author": "Rayla",
+          "subject": "Merge pull request #134 from trail-b1az3r/claude/issue-templates-training-guide-vassdu",
+          "api_changes": []
+        },
+        {
+          "sha": "e7d3cbb7",
+          "date": "2026-09-22",
+          "author": "Claude",
+          "subject": "fix the three tests that came in from main",
+          "api_changes": []
+        },
         {
           "sha": "14019f33",
           "date": "2026-09-22",
@@ -29514,7 +31989,7 @@
     {
       "module": "hypernix.system.launcher",
       "source": "src/hypernix/system/launcher.py",
-      "line_count": 525,
+      "line_count": 540,
       "summary": "Run a script so it outlives the terminal that started it.",
       "api": [
         {
@@ -29626,21 +32101,21 @@
           "kind": "function",
           "name": "refresh",
           "signature": "def refreshjob: Job, store: JobStore | None=None -> Job",
-          "line": 483,
+          "line": 498,
           "doc": "Update *job*'s status from the system, and persist any change."
         },
         {
           "kind": "function",
           "name": "stop",
           "signature": "def stopjob: Job, store: JobStore | None=None, *, timeout: float=10.0 -> Job",
-          "line": 581,
+          "line": 596,
           "doc": "Ask the job to stop, then insist."
         },
         {
           "kind": "function",
           "name": "read_logs",
           "signature": "def read_logsjob: Job, *, tail: int=200 -> str",
-          "line": 609,
+          "line": 624,
           "doc": ""
         }
       ],
@@ -29650,6 +32125,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "8bb54a39",
+          "date": "2026-09-17",
+          "author": "Claude",
+          "subject": "registry: a working directory that is gone is not a crash",
+          "api_changes": []
+        },
         {
           "sha": "73920818",
           "date": "2026-09-09",
@@ -33930,7 +36412,7 @@
     {
       "module": "hypernix.t1api.config",
       "source": "src/hypernix/t1api/config.py",
-      "line_count": 577,
+      "line_count": 583,
       "summary": "t1api.config \u2014 environment-variable configuration for the T1 API.",
       "api": [
         {
@@ -33943,55 +36425,55 @@
             {
               "name": "from_env",
               "signature": "def from_envcls, *, load_dotenv: bool=True, dotenv_path: str | Path='.env' -> T1APIConfig",
-              "line": 438,
+              "line": 443,
               "doc": ""
             },
             {
               "name": "is_production",
               "signature": "def is_productionself -> bool",
-              "line": 448,
+              "line": 453,
               "doc": ""
             },
             {
               "name": "storage_backend",
               "signature": "def storage_backendself -> str",
-              "line": 452,
+              "line": 457,
               "doc": ""
             },
             {
               "name": "tls_settings",
               "signature": "def tls_settingsself -> TLSSettings",
-              "line": 455,
+              "line": 460,
               "doc": ""
             },
             {
               "name": "rate_limit_rules",
               "signature": "def rate_limit_rulesself -> Any",
-              "line": 467,
+              "line": 472,
               "doc": "Parsed rate-limit rules, or None to use the defaults."
             },
             {
               "name": "describe_secrets",
               "signature": "def describe_secretsself -> dict[str, bool]",
-              "line": 485,
+              "line": 490,
               "doc": "Which secrets are set. Values never included \u2014 this is what ``GET /status`` uses to tell an operator what's missing without telling anyone what it is."
             },
             {
               "name": "public_dict",
               "signature": "def public_dictself -> dict[str, object]",
-              "line": 499,
+              "line": 504,
               "doc": "Explicit allowlist of config surfaced by GET /config. Never includes ``token_secret``, ``deploy_secret``, ``database_url``, or any future secret field."
             },
             {
               "name": "production_problems",
               "signature": "def production_problemsself -> list[str]",
-              "line": 536,
+              "line": 542,
               "doc": "Every reason this config is unsafe for production, as text."
             },
             {
               "name": "validate_for_production",
               "signature": "def validate_for_productionself, *, strict: bool | None=None -> None",
-              "line": 628,
+              "line": 634,
               "doc": "Raise ``CONFIG_INVALID`` if this config is unsafe for production."
             }
           ]
@@ -34003,6 +36485,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "3bd1c25d",
+          "date": "2026-09-22",
+          "author": "Claude",
+          "subject": "t1api: MCP server support, with plugins",
+          "api_changes": []
+        },
         {
           "sha": "cc94bf5a",
           "date": "2026-09-16",
@@ -34050,13 +36539,6 @@
           "date": "2026-09-01",
           "author": "Claude",
           "subject": "A new server issues itself a local, three-day admin key",
-          "api_changes": []
-        },
-        {
-          "sha": "56a9e0b3",
-          "date": "2026-08-26",
-          "author": "Claude",
-          "subject": "install-t1.sh: an interactive installer, and two bugs it exposed",
           "api_changes": []
         }
       ]
@@ -35693,6 +38175,344 @@
       ]
     },
     {
+      "module": "hypernix.t1api.mcp",
+      "source": "src/hypernix/t1api/mcp.py",
+      "line_count": 420,
+      "summary": "t1api.mcp \u2014 the T1 API as an MCP server, and the plugins that extend it.",
+      "api": [
+        {
+          "kind": "class",
+          "name": "ToolError",
+          "signature": "class ToolError",
+          "line": 80,
+          "doc": "A tool failed in a way the *model* should be told about.",
+          "methods": []
+        },
+        {
+          "kind": "function",
+          "name": "text_content",
+          "signature": "def text_contenttext: str -> list[dict[str, Any]]",
+          "line": 89,
+          "doc": ""
+        },
+        {
+          "kind": "function",
+          "name": "error_result",
+          "signature": "def error_resultmessage: str -> dict[str, Any]",
+          "line": 93,
+          "doc": ""
+        },
+        {
+          "kind": "class",
+          "name": "MCPTool",
+          "signature": "class MCPTool",
+          "line": 98,
+          "doc": "One thing the server can do, described so a model can choose it.",
+          "methods": [
+            {
+              "name": "describe",
+              "signature": "def describeself -> dict[str, Any]",
+              "line": 117,
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "kind": "class",
+          "name": "MCPResource",
+          "signature": "class MCPResource",
+          "line": 130,
+          "doc": "Something readable by URI. Context rather than action.",
+          "methods": [
+            {
+              "name": "describe",
+              "signature": "def describeself -> dict[str, Any]",
+              "line": 140,
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "kind": "class",
+          "name": "MCPPlugin",
+          "signature": "class MCPPlugin",
+          "line": 150,
+          "doc": "What a plugin has to be.",
+          "methods": [
+            {
+              "name": "tools",
+              "signature": "def toolsself -> Iterable[MCPTool]",
+              "line": 161,
+              "doc": ""
+            },
+            {
+              "name": "resources",
+              "signature": "def resourcesself -> Iterable[MCPResource]",
+              "line": 164,
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "kind": "class",
+          "name": "MCPServer",
+          "signature": "class MCPServer",
+          "line": 169,
+          "doc": "The protocol, over a registry of tools and resources.",
+          "methods": [
+            {
+              "name": "add_tool",
+              "signature": "def add_toolself, tool: MCPTool -> None",
+              "line": 182,
+              "doc": ""
+            },
+            {
+              "name": "add_resource",
+              "signature": "def add_resourceself, resource: MCPResource -> None",
+              "line": 192,
+              "doc": ""
+            },
+            {
+              "name": "add_plugin",
+              "signature": "def add_pluginself, plugin: MCPPlugin -> None",
+              "line": 197,
+              "doc": "Take a plugin's tools and resources."
+            },
+            {
+              "name": "plugins",
+              "signature": "def pluginsself -> list[str]",
+              "line": 225,
+              "doc": ""
+            },
+            {
+              "name": "tool_names",
+              "signature": "def tool_namesself -> list[str]",
+              "line": 229,
+              "doc": ""
+            },
+            {
+              "name": "handle",
+              "signature": "def handleself, message: Any, *, scopes: Iterable[str]=(), is_admin: bool=False -> dict[str, Any] | None",
+              "line": 234,
+              "doc": "One JSON-RPC message in, one response out \u2014 or None."
+            },
+            {
+              "name": "handle_text",
+              "signature": "def handle_textself, body: str, **kwargs -> dict[str, Any] | list | None",
+              "line": 295,
+              "doc": "A raw body in, for the transport. Handles batches."
+            }
+          ]
+        }
+      ],
+      "errors": [
+        "ToolError",
+        "ValueError"
+      ],
+      "deprecations": [],
+      "required_modules": [],
+      "changes": [
+        {
+          "sha": "3bd1c25d",
+          "date": "2026-09-22",
+          "author": "Claude",
+          "subject": "t1api: MCP server support, with plugins",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class ToolError(Exception):"
+            },
+            {
+              "kind": "added",
+              "text": "def text_content(text: str) -> list[dict[str, Any]]:"
+            },
+            {
+              "kind": "added",
+              "text": "def error_result(message: str) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "class MCPTool:"
+            },
+            {
+              "kind": "added",
+              "text": "def describe(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "class MCPResource:"
+            },
+            {
+              "kind": "added",
+              "text": "def describe(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "class MCPPlugin(Protocol):"
+            },
+            {
+              "kind": "added",
+              "text": "satisfying this shape works \u2014 there is no base class to inherit and"
+            },
+            {
+              "kind": "added",
+              "text": "def tools(self) -> Iterable[MCPTool]:"
+            },
+            {
+              "kind": "added",
+              "text": "def resources(self) -> Iterable[MCPResource]:"
+            },
+            {
+              "kind": "added",
+              "text": "class MCPServer:"
+            },
+            {
+              "kind": "added",
+              "text": "def add_tool(self, tool: MCPTool) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def add_resource(self, resource: MCPResource) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def add_plugin(self, plugin: MCPPlugin) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def plugins(self) -> list[str]:"
+            },
+            {
+              "kind": "added",
+              "text": "def tool_names(self) -> list[str]:"
+            },
+            {
+              "kind": "added",
+              "text": "def handle("
+            },
+            {
+              "kind": "added",
+              "text": "def handle_text(self, body: str, **kwargs) -> dict[str, Any] | list | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _call(self, method: str, params: dict, scopes: set[str], is_admin: bool):"
+            },
+            {
+              "kind": "added",
+              "text": "def _initialize(self, params: dict) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _visible_tools(self, scopes: set[str], is_admin: bool) -> list[MCPTool]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _call_tool(self, params: dict, scopes: set[str], is_admin: bool):"
+            },
+            {
+              "kind": "added",
+              "text": "def _read_resource(self, params: dict, scopes: set[str], is_admin: bool):"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "module": "hypernix.t1api.mcptools",
+      "source": "src/hypernix/t1api/mcptools.py",
+      "line_count": 229,
+      "summary": "t1api.mcptools \u2014 the T1 capabilities, described for a model.",
+      "api": [
+        {
+          "kind": "class",
+          "name": "ServerContext",
+          "signature": "class ServerContext",
+          "line": 36,
+          "doc": "What the tools need, gathered once.",
+          "methods": []
+        },
+        {
+          "kind": "function",
+          "name": "build_server",
+          "signature": "def build_servercontext: ServerContext, *, instructions: str='' -> MCPServer",
+          "line": 167,
+          "doc": "Every built-in tool, on a fresh server."
+        }
+      ],
+      "errors": [
+        "ToolError"
+      ],
+      "deprecations": [],
+      "required_modules": [],
+      "changes": [
+        {
+          "sha": "3bd1c25d",
+          "date": "2026-09-22",
+          "author": "Claude",
+          "subject": "t1api: MCP server support, with plugins",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class ServerContext:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, *, config=None, registry=None, runner=None, version: str = \"\"):"
+            },
+            {
+              "kind": "added",
+              "text": "def _catalogue(context: ServerContext):"
+            },
+            {
+              "kind": "added",
+              "text": "def _list_models(context: ServerContext) -> Callable[..., Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def handler(runnable_only: bool = False) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _runner_status(context: ServerContext) -> Callable[..., Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def handler() -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _runner_load(context: ServerContext) -> Callable[..., Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def handler(model_id: str, gpu_layers: int | None = None,"
+            },
+            {
+              "kind": "added",
+              "text": "def _hardware(context: ServerContext) -> Callable[..., Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def handler() -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _server_version(context: ServerContext) -> Callable[..., Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def handler() -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def build_server(context: ServerContext, *, instructions: str = \"\") -> MCPServer:"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "module": "hypernix.t1api.modelindex",
       "source": "src/hypernix/t1api/modelindex.py",
       "line_count": 361,
@@ -35836,21 +38656,21 @@
     {
       "module": "hypernix.t1api.modelindex_cli",
       "source": "src/hypernix/t1api/modelindex_cli.py",
-      "line_count": 210,
+      "line_count": 212,
       "summary": "``hypernix-t1 index`` \u2014 the command line over :mod:`modelindex`.",
       "api": [
         {
           "kind": "function",
           "name": "main",
           "signature": "def mainargv: list[str] | None=None -> int",
-          "line": 111,
+          "line": 110,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "cli_main",
           "signature": "def cli_main -> None",
-          "line": 240,
+          "line": 242,
           "doc": ""
         }
       ],
@@ -35858,6 +38678,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "8bb54a39",
+          "date": "2026-09-17",
+          "author": "Claude",
+          "subject": "registry: a working directory that is gone is not a crash",
+          "api_changes": []
+        },
         {
           "sha": "182b1efc",
           "date": "2026-09-16",
@@ -36857,35 +39684,42 @@
     {
       "module": "hypernix.t1api.registry",
       "source": "src/hypernix/t1api/registry.py",
-      "line_count": 399,
+      "line_count": 426,
       "summary": "t1api.registry \u2014 the Model Registry service.",
       "api": [
         {
           "kind": "function",
+          "name": "resolve_best_effort",
+          "signature": "def resolve_best_effortpath: str | Path -> Path",
+          "line": 75,
+          "doc": "``Path.resolve()`` that survives a missing working directory."
+        },
+        {
+          "kind": "function",
           "name": "registry_locations",
           "signature": "def registry_locationsconfig_dir: str | Path | None=None -> list[Path]",
-          "line": 58,
+          "line": 89,
           "doc": "Where a registry is looked for, in order, most specific first."
         },
         {
           "kind": "function",
           "name": "discover",
           "signature": "def discoverconfig_dir: str | Path | None=None -> Path | None",
-          "line": 89,
+          "line": 122,
           "doc": "The first registry file that exists, or None."
         },
         {
           "kind": "function",
           "name": "read_entries",
           "signature": "def read_entriespath: str | Path -> tuple[list[ModelEntry], list[str]]",
-          "line": 100,
+          "line": 133,
           "doc": "Entries from *path*, plus a list of what could not be read."
         },
         {
           "kind": "class",
           "name": "ModelStatus",
           "signature": "class ModelStatus",
-          "line": 167,
+          "line": 200,
           "doc": "Lifecycle status of a registry entry.",
           "methods": []
         },
@@ -36893,7 +39727,7 @@
           "kind": "class",
           "name": "ModelAvailabilityFlag",
           "signature": "class ModelAvailabilityFlag",
-          "line": 177,
+          "line": 210,
           "doc": "Coarse availability classification, independent of per-plan gating.",
           "methods": []
         },
@@ -36901,19 +39735,19 @@
           "kind": "class",
           "name": "ModelPricing",
           "signature": "class ModelPricing",
-          "line": 187,
+          "line": 220,
           "doc": "Pricing metadata. All fields optional \u2014 a free/local-only model can leave everything at 0.",
           "methods": [
             {
               "name": "to_dict",
               "signature": "def to_dictself -> dict[str, Any]",
-              "line": 195,
+              "line": 228,
               "doc": ""
             },
             {
               "name": "from_dict",
               "signature": "def from_dictcls, d: dict[str, Any] | None -> ModelPricing",
-              "line": 199,
+              "line": 232,
               "doc": ""
             }
           ]
@@ -36922,25 +39756,25 @@
           "kind": "class",
           "name": "ModelEntry",
           "signature": "class ModelEntry",
-          "line": 209,
+          "line": 242,
           "doc": "One explicit, admin-controlled model registry entry.",
           "methods": [
             {
               "name": "to_dict",
               "signature": "def to_dictself -> dict[str, Any]",
-              "line": 261,
+              "line": 294,
               "doc": ""
             },
             {
               "name": "from_dict",
               "signature": "def from_dictcls, d: dict[str, Any] -> ModelEntry",
-              "line": 269,
+              "line": 302,
               "doc": ""
             },
             {
               "name": "is_routable",
               "signature": "def is_routableself -> bool",
-              "line": 300,
+              "line": 333,
               "doc": "True if this entry may ever be selected (manually or by the router) \u2014 excludes example/disabled/deprecated entries."
             }
           ]
@@ -36949,49 +39783,49 @@
           "kind": "class",
           "name": "ModelRegistry",
           "signature": "class ModelRegistry",
-          "line": 306,
+          "line": 339,
           "doc": "Thread-safe, in-memory model registry backed by a JSON file.",
           "methods": [
             {
               "name": "load",
               "signature": "def loadcls, path: str | Path | None=None, *, include_examples: bool=False -> ModelRegistry",
-              "line": 329,
+              "line": 362,
               "doc": "Load a registry, from *path* or from the conventional places."
             },
             {
               "name": "to_json_file",
               "signature": "def to_json_fileself, path: str | Path -> None",
-              "line": 375,
+              "line": 408,
               "doc": ""
             },
             {
               "name": "register",
               "signature": "def registerself, entry: ModelEntry -> None",
-              "line": 385,
+              "line": 418,
               "doc": "Add or replace a registry entry. Admin-only at the API layer."
             },
             {
               "name": "deregister",
               "signature": "def deregisterself, model_id: str -> None",
-              "line": 391,
+              "line": 424,
               "doc": ""
             },
             {
               "name": "get",
               "signature": "def getself, model_id: str -> ModelEntry | None",
-              "line": 405,
+              "line": 438,
               "doc": "Return the entry for *model_id*, or None. Does NOT raise \u2014 use :meth:`require` when an unregistered model should be a hard error (e.g. in an API handler)."
             },
             {
               "name": "require",
               "signature": "def requireself, model_id: str -> ModelEntry",
-              "line": 415,
+              "line": 448,
               "doc": "Return the entry for *model_id* or raise ``MODEL_NOT_SUPPORTED``."
             },
             {
               "name": "list",
               "signature": "def listself, *, status: ModelStatus | None=None, plan: str | None=None, routable_only: bool=False -> list[ModelEntry]",
-              "line": 432,
+              "line": 465,
               "doc": ""
             }
           ]
@@ -37003,6 +39837,22 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "8bb54a39",
+          "date": "2026-09-17",
+          "author": "Claude",
+          "subject": "registry: a working directory that is gone is not a crash",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _cwd() -> Path | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def resolve_best_effort(path: str | Path) -> Path:"
+            }
+          ]
+        },
         {
           "sha": "fe580bc9",
           "date": "2026-09-08",
@@ -37139,13 +39989,20 @@
     {
       "module": "hypernix.t1api.routers",
       "source": "src/hypernix/t1api/routers/__init__.py",
-      "line_count": 126,
+      "line_count": 131,
       "summary": "t1api.routers \u2014 one module per resource group, matching the spec's 'PRIMARY ENDPOINT SET'.",
       "api": [],
       "errors": [],
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "3bd1c25d",
+          "date": "2026-09-22",
+          "author": "Claude",
+          "subject": "t1api: MCP server support, with plugins",
+          "api_changes": []
+        },
         {
           "sha": "cc94bf5a",
           "date": "2026-09-16",
@@ -37193,13 +40050,6 @@
           "date": "2026-09-02",
           "author": "Claude",
           "subject": "T1 v1.0.2026.9.2.1: the governed inference surface",
-          "api_changes": []
-        },
-        {
-          "sha": "370119db",
-          "date": "2026-08-26",
-          "author": "Claude",
-          "subject": "T1 v1.0.26.8.1.0: T2 recognition, auth undo/redo, and backups",
           "api_changes": []
         }
       ]
@@ -39289,6 +42139,73 @@
             {
               "kind": "added",
               "text": "def assign_key("
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "module": "hypernix.t1api.routers.mcp",
+      "source": "src/hypernix/t1api/routers/mcp.py",
+      "line_count": 131,
+      "summary": "``/mcp`` \u2014 the T1 API described so an assistant can read it itself.",
+      "api": [
+        {
+          "kind": "function",
+          "name": "mcp_endpoint",
+          "signature": "async def mcp_endpointrequest: Request, principal: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id)",
+          "line": 93,
+          "doc": "One JSON-RPC message (or a batch) in, one response out."
+        },
+        {
+          "kind": "function",
+          "name": "mcp_description",
+          "signature": "async def mcp_descriptionprincipal: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), request: Request=None, request_id: str=Depends(get_request_id)",
+          "line": 127,
+          "doc": "What this server offers, for a human looking at it in a browser."
+        }
+      ],
+      "errors": [
+        "T1APIError"
+      ],
+      "deprecations": [],
+      "required_modules": [
+        {
+          "module": "fastapi",
+          "extra": "t1api",
+          "requirement": "fastapi>=0.110,<1"
+        }
+      ],
+      "changes": [
+        {
+          "sha": "3bd1c25d",
+          "date": "2026-09-22",
+          "author": "Claude",
+          "subject": "t1api: MCP server support, with plugins",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _require_enabled(config: T1APIConfig) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _server_for(request: Request, config: T1APIConfig) -> MCPServer:"
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"\")"
+            },
+            {
+              "kind": "added",
+              "text": "async def mcp_endpoint("
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"\")"
+            },
+            {
+              "kind": "added",
+              "text": "async def mcp_description("
             }
           ]
         }
@@ -50239,6 +53156,24 @@
       "extra": null,
       "module": "hypernix.evaluation.new_fridge",
       "source": "src/hypernix/evaluation/new_fridge.py"
+    },
+    {
+      "name": "warnings.warn",
+      "instead": null,
+      "since": null,
+      "removed_in": null,
+      "extra": "/search needs something to search for",
+      "module": "hypernix.interfaces.hyped_basic",
+      "source": "src/hypernix/interfaces/hyped_basic.py"
+    },
+    {
+      "name": "warnings.warn",
+      "instead": null,
+      "since": null,
+      "removed_in": null,
+      "extra": "/download needs a repository, e.g. /download Qwen/Qwen3-8B-GGUF",
+      "module": "hypernix.interfaces.hyped_basic",
+      "source": "src/hypernix/interfaces/hyped_basic.py"
     },
     {
       "name": "hypernix.models.old_oven",
