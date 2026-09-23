@@ -5,6 +5,7 @@
 
 import {
   BoxRenderable,
+  DiffRenderable,
   InputRenderable,
   InputRenderableEvents,
   MarkdownRenderable,
@@ -13,6 +14,7 @@ import {
   SelectRenderableEvents,
   SyntaxStyle,
   TextAttributes,
+  TextareaRenderable,
   TextRenderable,
   type CliRenderer,
   type KeyEvent,
@@ -21,6 +23,8 @@ import {
 
 import { Bridge, BridgeError } from "./bridge.ts"
 import { COMMANDS, completions, parseInput } from "./commands.ts"
+import { EditorState, listingOptions, lineCount, type Listing } from "./files.ts"
+import { branchBadge, diffStats, GIT_USAGE, logLines, parseGit, splitDiff, statusLines, type RepoStatus } from "./git.ts"
 import { loadPrefs, savePrefs, type Prefs } from "./prefs.ts"
 import {
   describeNoodleEvent,
@@ -58,6 +62,13 @@ export class App {
   private showThinking = false
   private enableTools = true
   private lastLog = ""
+  private git: RepoStatus | null = null
+  private pickerMode: "models" | "files" = "models"
+  private editor: { state: EditorState; box: BoxRenderable; area: TextareaRenderable; status: TextRenderable; armed: boolean } | null = null
+  private questions: { text: string; detail: string; answer: (allow: boolean) => void }[] = []
+  private consentBox!: BoxRenderable
+  private consentText!: TextRenderable
+  private headerGit!: TextRenderable
   private quitting = false
 
   private readonly markdownStyle: SyntaxStyle
@@ -100,6 +111,7 @@ export class App {
       type: { fg: theme.textDim },
     })
     this.bridge.onLog = (line) => this.onBridgeLog(line)
+    this.bridge.onEvent = (event) => this.onBridgeEvent(event)
   }
 
   async start(): Promise<void> {
@@ -109,6 +121,15 @@ export class App {
     this.welcome()
     this.input.focus()
     await this.loadCatalog()
+    try {
+      // Tell the bridge this client can answer consent questions and show
+      // tool activity. An older bridge answers "unknown command"; then
+      // gated tools are refused there, which is the safe way round.
+      await this.bridge.call("hello", { features: ["consent", "events"] })
+    } catch {
+      // older bridge
+    }
+    await this.refreshGit()
   }
 
   // -- layout -------------------------------------------------------------
@@ -138,6 +159,8 @@ export class App {
     header.add(this.header)
     header.add(new TextRenderable(r, { id: "header-version", content: `  v${VERSION}`, fg: theme.hint }))
     header.add(spacer)
+    this.headerGit = new TextRenderable(r, { id: "header-git", content: "", fg: theme.accentText })
+    header.add(this.headerGit)
     header.add(this.headerModel)
 
     this.transcript = new ScrollBoxRenderable(r, {
@@ -178,6 +201,16 @@ export class App {
       wrapSelection: true,
     })
     this.picker.on(SelectRenderableEvents.ITEM_SELECTED, (_index: number, option: { value?: any }) => {
+      if (this.pickerMode === "files") {
+        const value = option?.value as { path: string; dir: boolean } | undefined
+        if (!value) return
+        if (value.dir) void this.browse(value.path)
+        else {
+          this.closePicker()
+          void this.openEditor(value.path)
+        }
+        return
+      }
       if (option?.value) this.selectModel(option.value as ModelInfo)
       this.closePicker()
     })
@@ -225,8 +258,26 @@ export class App {
     footer.add(this.footerRight)
 
     root.add(header)
+    this.consentBox = new BoxRenderable(r, {
+      id: "consent",
+      border: true,
+      borderStyle: "rounded",
+      borderColor: theme.accent,
+      title: " allow? ",
+      titleColor: theme.accentText,
+      backgroundColor: theme.panel,
+      flexShrink: 0,
+      marginTop: 1,
+      paddingLeft: 1,
+      paddingRight: 1,
+      visible: false,
+    })
+    this.consentText = new TextRenderable(r, { id: "consent-text", content: "", fg: theme.text, wrapMode: "word" })
+    this.consentBox.add(this.consentText)
+
     root.add(this.transcript)
     root.add(this.pickerBox)
+    root.add(this.consentBox)
     root.add(this.promptBox)
     root.add(this.hint)
     root.add(footer)
@@ -401,6 +452,27 @@ export class App {
       this.quit()
       return
     }
+    if (this.questions.length) {
+      // Only y answers yes. Anything else that could be an answer is a no.
+      if (key.name === "y") this.answer(true)
+      else if (key.name === "n" || key.name === "escape" || key.name === "return") this.answer(false)
+      return
+    }
+    if (this.editor) {
+      if (key.ctrl && key.name === "s") {
+        void this.saveEditor()
+        return
+      }
+      if (key.name === "escape") {
+        this.closeEditor()
+        return
+      }
+      if (this.editor.armed && key.name !== "escape") {
+        this.editor.armed = false
+        this.refreshEditorStatus()
+      }
+      return
+    }
     if (key.ctrl && key.name === "p") {
       this.pickerBox.visible ? this.closePicker() : this.openPicker()
       return
@@ -420,6 +492,8 @@ export class App {
 
   private openPicker(): void {
     if (!this.catalog) return
+    this.pickerMode = "models"
+    this.pickerBox.title = " models "
     const models = this.catalog.models
     this.picker.options = models.map((m) => ({
       name: `${m.short}${m.badge ? `  ${m.badge}` : ""}`,
@@ -564,6 +638,22 @@ export class App {
         await this.reply()
         return
       }
+      case "git":
+        await this.gitCommand(rest)
+        return
+      case "diff":
+        await this.gitCommand(`diff ${rest}`)
+        return
+      case "files":
+        await this.browse(rest || ".")
+        return
+      case "edit":
+        if (!rest) {
+          this.error("Usage: /edit <path> — /files to browse")
+          return
+        }
+        await this.openEditor(rest)
+        return
       case "quit":
         this.quit()
     }
@@ -656,6 +746,7 @@ export class App {
       this.error(err.message, err.code)
     } finally {
       this.setBusy(null)
+      void this.refreshGit()
     }
   }
 
@@ -717,6 +808,305 @@ export class App {
       const err = e as BridgeError
       this.error(err.message, err.code)
     }
+  }
+
+  // -- events from the bridge ---------------------------------------------------
+
+  private onBridgeEvent(event: Record<string, any>): void {
+    if (event.event === "tool") {
+      const mark = event.ok ? "✎" : "✗"
+      const detail = String(event.detail ?? "").split("\n")[0].slice(0, 100)
+      this.note(`${mark} ${event.tool}  ${detail}${event.ok ? "" : `\n  ${event.error ?? ""}`}`)
+      return
+    }
+    if (event.event === "consent") {
+      const consentId = event.consent_id
+      this.ask(`The model wants to run ${event.tool}`, String(event.detail ?? ""), (allow) => {
+        void this.bridge.call("consent_reply", { consent_id: consentId, allow }).catch(() => {})
+        this.note(`${allow ? "Allowed" : "Refused"}: ${event.tool}`)
+      })
+    }
+  }
+
+  // A yes/no question in the box above the prompt. Questions queue, so a
+  // model asking twice in a row gets two answers, in order.
+  private ask(text: string, detail: string, answer: (allow: boolean) => void): void {
+    this.questions.push({ text, detail, answer })
+    if (this.questions.length === 1) this.showQuestion()
+  }
+
+  private confirm(text: string, detail = ""): Promise<boolean> {
+    return new Promise((resolve) => this.ask(text, detail, resolve))
+  }
+
+  private showQuestion(): void {
+    const next = this.questions[0]
+    if (!next) {
+      this.consentBox.visible = false
+      if (this.editor) this.editor.area.focus()
+      else this.input.focus()
+      return
+    }
+    const detail = next.detail.length > 1200 ? next.detail.slice(0, 1200) + "…" : next.detail
+    this.consentText.content = `${next.text}\n\n${detail}\n\ny allow · n refuse`
+    this.consentBox.visible = true
+    // Nothing else takes keys while a question is open: a "y" typed into
+    // the prompt must not be read as consent, or the other way round.
+    this.input.blur()
+    this.editor?.area.blur()
+  }
+
+  private answer(allow: boolean): void {
+    const current = this.questions.shift()
+    current?.answer(allow)
+    this.showQuestion()
+  }
+
+  // -- git --------------------------------------------------------------------
+
+  private async refreshGit(): Promise<void> {
+    try {
+      const got = await this.bridge.call<{ repository: boolean } & RepoStatus>("git", { op: "status" })
+      this.git = got.repository ? got : null
+    } catch {
+      this.git = null
+    }
+    this.headerGit.content = this.git ? `${branchBadge(this.git)}   ` : ""
+  }
+
+  private async gitCommand(rest: string): Promise<void> {
+    const command = parseGit(rest)
+    try {
+      switch (command.kind) {
+        case "help":
+          this.note(GIT_USAGE.join("\n"))
+          return
+        case "error":
+          this.error(command.message)
+          return
+        case "status": {
+          const got = await this.bridge.call<{ repository: boolean } & RepoStatus>("git", { op: "status" })
+          if (!got.repository) this.note("Not inside a git repository.")
+          else this.note(statusLines(got).join("\n"))
+          break
+        }
+        case "diff": {
+          const got = await this.bridge.call<{ diff: string }>("git", { op: "diff", path: command.path, staged: command.staged })
+          this.showDiff(got.diff, command.staged)
+          break
+        }
+        case "log": {
+          const got = await this.bridge.call<{ commits: any[] }>("git", { op: "log", count: command.count, path: command.path })
+          this.note(logLines(got.commits).join("\n"))
+          break
+        }
+        case "branches": {
+          const got = await this.bridge.call<{ branches: { name: string; current: boolean; upstream: string }[] }>("git", { op: "branches" })
+          this.note(got.branches.map((b) => `${b.current ? "*" : " "} ${b.name}${b.upstream ? `  → ${b.upstream}` : ""}`).join("\n") || "No branches yet.")
+          break
+        }
+        case "restore": {
+          const sure = await this.confirm("Discard unstaged changes? This cannot be undone.", command.paths.join("\n"))
+          if (!sure) {
+            this.note("Kept the changes.")
+            return
+          }
+          const got = await this.bridge.call<{ message: string }>("git", { op: "restore", paths: command.paths })
+          this.note(got.message)
+          break
+        }
+        case "push":
+        case "pull": {
+          const request = this.bridge.request<{ message: string }>("git", {
+            op: command.kind,
+            set_upstream: command.kind === "push" ? command.setUpstream : undefined,
+            rebase: command.kind === "pull" ? command.rebase : undefined,
+          })
+          this.setBusy(`git ${command.kind}`, request.id)
+          try {
+            this.note((await request.done).message)
+          } finally {
+            this.setBusy(null)
+          }
+          break
+        }
+        default: {
+          const fields: Record<string, unknown> = { op: command.kind }
+          if (command.kind === "add" || command.kind === "unstage") fields.paths = command.paths
+          if (command.kind === "commit") Object.assign(fields, { message: command.message, all: command.all })
+          if (command.kind === "switch") Object.assign(fields, { branch: command.branch, create: command.create })
+          const got = await this.bridge.call<{ message: string }>("git", fields)
+          this.note(got.message)
+        }
+      }
+    } catch (e) {
+      const err = e as BridgeError
+      this.error(err.message, err.code)
+    }
+    await this.refreshGit()
+  }
+
+  private showDiff(diff: string, staged: boolean): void {
+    if (!diff.trim()) {
+      this.note(staged ? "Nothing staged." : "No unstaged changes.")
+      return
+    }
+    const stats = diffStats(diff)
+    this.note(`${stats.files} file(s), +${stats.added} −${stats.removed}${staged ? " (staged)" : ""}`)
+    const r = this.renderer
+    for (const [i, file] of splitDiff(diff).entries()) {
+      const id = `diff-${Date.now()}-${i}`
+      const box = new BoxRenderable(r, {
+        id,
+        border: true,
+        borderStyle: "rounded",
+        borderColor: theme.border,
+        title: ` ${file.path} `,
+        titleColor: theme.textDim,
+        flexDirection: "column",
+      })
+      try {
+        box.add(new DiffRenderable(r, {
+          id: `${id}-body`,
+          diff: file.diff,
+          view: "unified",
+          showLineNumbers: true,
+          fg: theme.text,
+          lineNumberFg: theme.hint,
+          addedBg: "#12261a",
+          removedBg: "#2a1215",
+          addedSignColor: theme.ok,
+          removedSignColor: theme.accentText,
+          wrapMode: "none",
+        }))
+      } catch {
+        box.add(new TextRenderable(r, { id: `${id}-text`, content: file.diff, fg: theme.textDim }))
+      }
+      this.transcript.add(box)
+    }
+  }
+
+  // -- files ------------------------------------------------------------------
+
+  private async browse(path: string): Promise<void> {
+    try {
+      const listing = await this.bridge.call<Listing>("files_list", { path })
+      this.pickerMode = "files"
+      this.pickerBox.title = ` ${listing.path === "." ? "workspace" : listing.path} `
+      this.picker.options = listingOptions(listing)
+      this.picker.setSelectedIndex(0)
+      this.pickerBox.visible = true
+      this.picker.focus()
+    } catch (e) {
+      const err = e as BridgeError
+      this.error(err.message, err.code)
+    }
+  }
+
+  private async openEditor(path: string): Promise<void> {
+    if (this.editor) this.closeEditor(true)
+    let file: { path: string; content: string; hash: string; exists: boolean }
+    try {
+      file = await this.bridge.call("file_read", { path })
+    } catch (e) {
+      const err = e as BridgeError
+      this.error(err.message, err.code)
+      return
+    }
+    const r = this.renderer
+    const state = new EditorState(file.path, file.content, file.hash, file.exists)
+    state.current = file.content
+    const box = new BoxRenderable(r, {
+      id: `editor-${Date.now()}`,
+      border: true,
+      borderStyle: "rounded",
+      borderColor: theme.accent,
+      title: ` ${state.title} `,
+      titleColor: theme.accentText,
+      backgroundColor: theme.panel,
+      flexGrow: 1,
+      flexDirection: "column",
+      marginTop: 1,
+      paddingLeft: 1,
+      paddingRight: 1,
+    })
+    const area = new TextareaRenderable(r, {
+      id: `${box.id}-area`,
+      flexGrow: 1,
+      initialValue: file.content,
+      backgroundColor: theme.panel,
+      focusedBackgroundColor: theme.panel,
+      textColor: theme.text,
+      focusedTextColor: theme.text,
+      wrapMode: "none",
+      onContentChange: () => {
+        if (this.editor) {
+          this.editor.state.current = this.editor.area.plainText
+          this.refreshEditorStatus()
+        }
+      },
+    })
+    const status = new TextRenderable(r, { id: `${box.id}-status`, content: "", fg: theme.hint, height: 1 })
+    box.add(area)
+    box.add(status)
+    this.transcript.visible = false
+    this.pickerBox.visible = false
+    const root = this.transcript.parent
+    root?.add(box, root.getChildren().indexOf(this.transcript) + 1)
+    this.editor = { state, box, area, status, armed: false }
+    this.refreshEditorStatus()
+    area.focus()
+  }
+
+  private refreshEditorStatus(): void {
+    const editor = this.editor
+    if (!editor) return
+    const text = editor.state.current
+    const dirty = editor.state.isDirty(text)
+    editor.box.title = ` ${editor.state.title}${dirty ? " ●" : ""} `
+    editor.status.content = editor.armed
+      ? "unsaved changes — esc again to discard, ctrl+s to save"
+      : `${lineCount(text)} lines · ctrl+s save · esc close`
+    editor.status.fg = editor.armed ? theme.accentText : theme.hint
+  }
+
+  private async saveEditor(): Promise<void> {
+    const editor = this.editor
+    if (!editor) return
+    const text = editor.area.plainText
+    try {
+      const got = await this.bridge.call<{ message: string; hash: string }>("file_write", {
+        path: editor.state.path,
+        content: text,
+        expected_hash: editor.state.hash,
+      })
+      editor.state.saved(text, got.hash)
+      editor.armed = false
+      this.refreshEditorStatus()
+      editor.status.content = `saved · ${got.message}`
+      void this.refreshGit()
+    } catch (e) {
+      const err = e as BridgeError
+      editor.status.content = `not saved: ${err.message}`
+      editor.status.fg = theme.error
+    }
+  }
+
+  private closeEditor(force = false): void {
+    const editor = this.editor
+    if (!editor) return
+    editor.state.current = editor.area.plainText
+    if (!force && editor.state.isDirty() && !editor.armed) {
+      // First esc on unsaved work only warns.
+      editor.armed = true
+      this.refreshEditorStatus()
+      return
+    }
+    editor.box.parent?.remove(editor.box)
+    editor.box.destroyRecursively()
+    this.editor = null
+    this.transcript.visible = true
+    this.input.focus()
   }
 
   quit(): void {

@@ -119,6 +119,24 @@ a reply, `/noodle`, `/t1`, `/key` and `/retry`. It drives the same
 Python bridge as before, so models, keys and T1 settings carry over. The
 first run installs `@opentui/core` with `bun install`, into the package
 or, when that is read-only, into `~/.hypernix/hyped-pro/<version>`.
+๋࣭⭑ `hyped-pro` works with git. `/git` shows status, `/diff` draws each
+changed file coloured with line numbers, and `/git add`, `commit`,
+`switch`, `restore`, `log`, `branches`, `push` and `pull` do what they
+say. The header shows the branch, how far it is ahead or behind, and how
+many files have changed. The model gets git tools too: reading (status, diff,
+log, show, branches) and staging are free, while committing, switching
+branch and discarding changes wait for the person to press `y`. It has no
+push, pull, reset or rebase at all.
+๋࣭⭑ `hyped-pro` edits files. `/files` browses the workspace, and `/edit`
+opens a file in a real multi-line editor (ctrl+s saves, esc closes, and
+the first esc on unsaved work only warns). A save refuses to overwrite a
+file that changed on disk after it was opened. The model gets
+`write_file`, `move_file` and `delete_file`, and deleting asks first.
+𖥔 Consent questions reach the person in hyped-pro. The bridge sends an
+event line and waits for the answer, so a question appears in a box above
+the prompt and no other key is taken while it is open. Tool calls show as
+they happen. hyped-plus never asks for these, so there a gated tool is
+refused unless `HYPERNIX_TOOL_POLICY=allow`, because nobody can answer.
 
 ### Changed
 
@@ -148,6 +166,10 @@ whose tiers warn on their own.
 
 ### Fixed
 
+𖢥 **No hyped-pro tool refused to write under `.git`.** `create_file` and
+`edit_file` checked that a path stayed inside the workspace, and `.git`
+is inside it: a model could write `.git/hooks/pre-commit` and have it run
+at the next commit. Nothing writes under `.git` now.
 𖢥 **Attaching magnesium to an oven reniced the machine before refusing.**
 `natural_gas.attach` activated each element and only then checked it may
 touch the oven, so asking for magnesium lowered every other process's
@@ -265,6 +287,13 @@ pytest cases for the launcher and packaging. The palette is read from
 `docs/src/index.css` and compared, so the two cannot drift, and the
 wheel and sdist are checked to carry the app and never its
 `node_modules`.
+🧪 hyped-pro git and files: 64 tests against real repositories, among
+them a commit message that looks like an option, a file named `-p`, the
+repository's own hooks still running, and a consent answered over a real
+bridge subprocess. Plus 29 bun tests for the git and file views. Each
+guard was checked by removing it: the `.git` refusal, the gate, the ref
+check, the `--` before paths, the stale-write check and cancellation
+during a question.
 
 ### Known Issues
 

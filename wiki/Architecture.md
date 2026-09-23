@@ -101,6 +101,7 @@ graph TD
     security --> t1api
     system --> models
     system --> quant
+    t1api --> data
     t1api --> interfaces
     t1api --> security
     timing --> system

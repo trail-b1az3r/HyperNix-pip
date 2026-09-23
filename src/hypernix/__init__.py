@@ -307,6 +307,7 @@ MODULE_CATEGORIES: dict[str, tuple[str, ...]] = {
         "hyped_pro",
         "hyped_pro_bridge",
         "hyped_pro_core",
+        "hyped_pro_git",
         "hyped_pro_gui",
         "hyped_pro_otui",
         "hyped_pro_tools",

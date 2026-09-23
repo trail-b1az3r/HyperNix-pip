@@ -46,6 +46,9 @@ export class Bridge {
   // Shown in the status bar instead of being printed over the screen.
   readonly log: string[] = []
   onLog: ((line: string) => void) | null = null
+  // Lines the bridge sends on its own during a request: a tool the model
+  // ran, or a question only the person can answer.
+  onEvent: ((event: Record<string, any>) => void) | null = null
 
   constructor(private transport: Transport) {}
 
@@ -106,6 +109,10 @@ export class Bridge {
       // Not ours: something in the bridge printed to stdout. Keep it
       // where it can be read rather than dropping it.
       this.feedLog(line)
+      return
+    }
+    if (message && typeof message === "object" && typeof message.event === "string") {
+      this.onEvent?.(message)
       return
     }
     const waiting = this.pending.get(message?.id)

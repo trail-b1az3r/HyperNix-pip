@@ -18,6 +18,10 @@ export const COMMANDS: readonly Command[] = [
   { name: "key", usage: "/key <vendor> [key|clear]", summary: "show, set or clear a provider key" },
   { name: "t1", usage: "/t1 [url]", summary: "T1 API status, or point at another server" },
   { name: "noodle", usage: "/noodle <task>", summary: "run a Noodle swarm on a task" },
+  { name: "git", usage: "/git [status|diff|log|add|commit|…]", summary: "git in this workspace (/git help)" },
+  { name: "diff", usage: "/diff [--staged] [path]", summary: "show changes, coloured" },
+  { name: "files", usage: "/files [dir]", summary: "browse the workspace and open a file" },
+  { name: "edit", usage: "/edit <path>", summary: "edit a file (ctrl+s save, esc close)" },
   { name: "retry", usage: "/retry", summary: "ask again for the last reply" },
   { name: "quit", usage: "/quit", summary: "leave hyped-pro (also ctrl+c)" },
 ]
@@ -28,6 +32,7 @@ const ALIASES: Record<string, string> = {
   clear: "new",
   m: "model",
   "?": "help",
+  open: "edit",
 }
 
 export type Parsed =
