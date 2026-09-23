@@ -225,10 +225,11 @@ ways in, and renaming.
   will allow one**, read from `CPSessionConfiguration.limitedUserInterfaces`
   on every use and rebuilt from its delegate, because the answer changes
   while the app is running.
-- "Siri, ask HyperLink what's the weather", "Siri, load the model Gemma 4
-  E2B on blazeindustries in HyperLink", "Siri, read me the HyperLink
-  chat". None of the four intents opens the app; the point of asking from
-  a car dock is that the phone stays where it is.
+- "Siri, ask HyperLink" (it then asks for your question), "Siri, load
+  Gemma 4 E2B in HyperLink", "Siri, read me the HyperLink chat". None of
+  the four intents opens the app; the point of asking from a car dock is
+  that the phone stays where it is. The question is never part of the
+  first sentence: see [Siri](ios/README.md#siri).
 - Every theme's text clears WCAG AA against its own bubble, the two
   bubbles are told apart by luminance, and so are "connected" and
   "failed" — checked in `tests/test_hyperlink_ios_wiring.py`, which found

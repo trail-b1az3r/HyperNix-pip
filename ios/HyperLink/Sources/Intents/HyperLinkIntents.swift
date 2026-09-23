@@ -4,10 +4,20 @@
 //  Four intents, and an AppShortcutsProvider that gives each one the
 //  phrases people will actually say:
 //
-//      "Siri, ask HyperLink what's the weather"
-//      "Siri, load the model Gemma 4 E2B on blazeindustries in HyperLink"
+//      "Siri, ask HyperLink"  ->  "What would you like to ask?"
+//      "Siri, load Gemma 4 E2B in HyperLink"
 //      "Siri, read me the HyperLink chat"
-//      "Siri, read me the most recent message in HyperLink from Mason"
+//      "Siri, send a message to Groceries in HyperLink"
+//
+//  Every one of those is a registered phrase, word for word, and
+//  tests/test_hyperlink_siri_phrases.py holds every Siri sentence in the
+//  docs to that. This header used to promise "ask HyperLink what's the
+//  weather" and "load the model Gemma 4 E2B on blazeindustries", neither
+//  of which any phrase matched: Siri can only hear an entity or an enum
+//  inside a sentence, never free text, so a question said in the same
+//  breath as "ask HyperLink" is heard as a request HyperLink never
+//  registered, and Siri answers "HyperLink hasn't added support for that".
+//  The question comes after, when Siri asks for it.
 //
 //  Entities: how Siri learns what "that chat" and "Gemma" are (0.72.6)
 //  --------------------------------------------------------------------
@@ -158,8 +168,15 @@ struct ModelEntity: AppEntity {
 
     let id: String
 
+    /// The title is the name as it is said -- "Gemma 4 E2B", not
+    /// `gemma-4-e2b-it-Q4_K_M` -- because it is what Siri matches the
+    /// sentence against. See `SpokenName`.
     var displayRepresentation: DisplayRepresentation {
-        DisplayRepresentation(title: "\(shortModelName(id))", subtitle: "\(id)")
+        DisplayRepresentation(
+            title: "\(SpokenName.model(id))",
+            subtitle: "\(id)",
+            synonyms: SpokenName.synonyms(id).map { name -> LocalizedStringResource in "\(name)" }
+        )
     }
 }
 
@@ -173,6 +190,11 @@ struct ModelEntityQuery: EntityStringQuery {
 
     func entities(matching string: String) async throws -> [ModelEntity] {
         let ids = try await Self.ids()
+        // What Siri heard is usually the spoken title it was offered.
+        let heard = ModelMatch.normalise(string)
+        if let spoken = ids.first(where: { ModelMatch.normalise(SpokenName.model($0)) == heard }) {
+            return [ModelEntity(id: spoken)]
+        }
         if let best = ModelMatch.best(spoken: string, owner: "", in: ids) {
             return [ModelEntity(id: best)]
         }
@@ -192,11 +214,10 @@ struct ModelEntityQuery: EntityStringQuery {
 
 // MARK: - Ask
 
-/// "Siri, ask HyperLink what's the weather"
+/// "Siri, ask HyperLink" -> "What would you like to ask?"
 ///
-/// The one people will use most, and the reason the phrase list below
-/// puts `${applicationName}` in the middle rather than at the front:
-/// "ask HyperLink <anything>" is how an English sentence wants to go.
+/// The one people will use most. The question cannot be part of the
+/// phrase -- see the header -- so Siri asks for it in the next breath.
 struct AskHyperLinkIntent: AppIntent {
     static let title: LocalizedStringResource = "Ask HyperLink"
     static let description = IntentDescription(
@@ -237,10 +258,10 @@ struct AskHyperLinkIntent: AppIntent {
 
 // MARK: - Load a model
 
-/// "Siri, load the model Gemma 4 E2B on blazeindustries in HyperLink"
+/// "Siri, load Gemma 4 E2B in HyperLink"
 ///
-/// Two parameters because that is how the sentence is said: a model and,
-/// optionally, whose it is. `blazeindustries/gemma-4-e2b` is the
+/// The model is an entity, titled the way it is said (`SpokenName`), so
+/// it can be named in the sentence. `blazeindustries/gemma-4-e2b` is the
 /// canonical form and nobody says a slash out loud.
 struct LoadModelIntent: AppIntent {
     static let title: LocalizedStringResource = "Load a model"
@@ -314,7 +335,7 @@ enum ModelMatch {
 // MARK: - Read a chat
 
 /// "Siri, read me the HyperLink chat"
-/// "Siri, read me the most recent message in HyperLink from Mason"
+/// "Siri, read Groceries in HyperLink"
 struct ReadChatIntent: AppIntent {
     static let title: LocalizedStringResource = "Read a chat"
     static let description = IntentDescription(
@@ -393,7 +414,7 @@ enum ChatMatch {
 
 // MARK: - Send
 
-/// "Siri, send a message in HyperLink" — dictation into the open chat.
+/// "Siri, send a message in HyperLink" -- dictation into the latest chat.
 struct SendMessageIntent: AppIntent {
     static let title: LocalizedStringResource = "Send a message"
     static let description = IntentDescription(
@@ -552,6 +573,8 @@ struct HyperLinkShortcuts: AppShortcutsProvider {
                 "Ask \(.applicationName) a question",
                 "Ask \(.applicationName) something",
                 "Ask my PC on \(.applicationName)",
+                "Talk to \(.applicationName)",
+                "Chat with \(.applicationName)",
             ],
             shortTitle: "Ask",
             systemImageName: "bubble.left.and.text.bubble.right"
