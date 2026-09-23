@@ -1,11 +1,15 @@
 {
   "definition": "non-blank source lines across repository code roots: src, scripts, tests, examples, bin, native, docs/src",
-  "total_lines": 185607,
-  "code_files": 570,
+  "total_lines": 202147,
+  "code_files": 636,
   "top_files": [
     {
       "path": "src/hypernix/interfaces/hyped.py",
       "lines": 2135
+    },
+    {
+      "path": "src/hypernix/t1api/routers/hyperlink.py",
+      "lines": 2122
     },
     {
       "path": "src/hypernix/hyped_pro.js",
@@ -16,28 +20,28 @@
       "lines": 1907
     },
     {
-      "path": "src/hypernix/t1api/routers/hyperlink.py",
-      "lines": 1887
-    },
-    {
       "path": "src/hypernix/hyped_pro.ts",
       "lines": 1796
     },
     {
       "path": "src/hypernix/t1api/schemas.py",
-      "lines": 1597
-    },
-    {
-      "path": "src/hypernix/interfaces/cli.py",
-      "lines": 1403
+      "lines": 1609
     },
     {
       "path": "src/hypernix/models/neo_oven.py",
-      "lines": 1389
+      "lines": 1474
+    },
+    {
+      "path": "src/hypernix/interfaces/cli.py",
+      "lines": 1424
     },
     {
       "path": "src/hypernix/monitoring/tv.py",
       "lines": 1337
+    },
+    {
+      "path": "src/hypernix/data/gather.py",
+      "lines": 1236
     },
     {
       "path": "src/hypernix/system/fusebox.py",
@@ -76,6 +80,10 @@
       "lines": 1063
     },
     {
+      "path": "src/hypernix/interfaces/hyped_pro_app/src/app.ts",
+      "lines": 1051
+    },
+    {
       "path": "src/hypernix/models/hnxrun.py",
       "lines": 1050
     },
@@ -92,12 +100,12 @@
       "lines": 1016
     },
     {
-      "path": "src/hypernix/data/gather.py",
-      "lines": 980
+      "path": "src/hypernix/models/old_oven.py",
+      "lines": 962
     },
     {
-      "path": "src/hypernix/models/old_oven.py",
-      "lines": 955
+      "path": "src/hypernix/training/train.py",
+      "lines": 956
     },
     {
       "path": "src/hypernix/security/t2keys.py",
@@ -108,31 +116,23 @@
       "lines": 952
     },
     {
-      "path": "src/hypernix/training/train.py",
-      "lines": 917
-    },
-    {
       "path": "src/hypernix/__init__.py",
-      "lines": 912
+      "lines": 935
     },
     {
       "path": "tests/test_v0710_gatekeeper_keymaster.py",
       "lines": 910
-    },
-    {
-      "path": "tests/test_fusebox.py",
-      "lines": 897
     }
   ],
   "contributors": [
     {
       "author": "Claude",
-      "additions": 150362,
-      "deletions": 9157,
-      "net": 141205,
-      "changes": 159519,
-      "commits": 165,
-      "files": 1036
+      "additions": 170640,
+      "deletions": 9555,
+      "net": 161085,
+      "changes": 180195,
+      "commits": 177,
+      "files": 1116
     },
     {
       "author": "minerofthesoal",
@@ -185,11 +185,11 @@
       "deletions": 7,
       "net": -1,
       "changes": 13,
-      "commits": 14,
+      "commits": 13,
       "files": 2
     }
   ],
   "history_available": true,
-  "commit": "23ae830bc6258e680152fa279489b4aeec8d26a7",
+  "commit": "1b7f59a4ba7fdd561dc6e7936d8b5695374fef2d",
   "generated_at": null
 }
