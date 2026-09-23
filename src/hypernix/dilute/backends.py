@@ -19,9 +19,10 @@ import json
 import logging
 import urllib.error
 import urllib.request
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -117,7 +118,7 @@ class LocalGenerator:
             except Exception:  # noqa: BLE001 - a failed teardown is not a failed run
                 logger.debug("dilute: close() raised", exc_info=True)
 
-    def __enter__(self) -> "LocalGenerator":
+    def __enter__(self) -> LocalGenerator:
         return self
 
     def __exit__(self, *_exc: Any) -> None:

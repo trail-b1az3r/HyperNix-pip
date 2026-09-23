@@ -42,6 +42,7 @@ import threading
 import time
 import urllib.error
 import urllib.request
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -546,3 +547,152 @@ class ManagedRunner:
             return process.stdout.read() or ""
         except Exception:  # noqa: BLE001
             return ""
+
+
+# ---------------------------------------------------------------------------
+# Several instances of one model
+# ---------------------------------------------------------------------------
+
+
+class ManagedPool:
+    """N copies of one model, on N consecutive ports.
+
+    :class:`ManagedRunner`'s one-at-a-time rule is the right default and
+    the docstring above says why. This is the opt-in exception, for the
+    case it does not cover: several people (or one person with several
+    tabs) waiting on one server, where the serialisation is the whole
+    of the latency.
+
+    Three things it has to get right, none of which a loop over
+    ``ManagedRunner`` gets for free.
+
+    **Ports.** Instances sit on ``port, port+1, …`` and none of them may
+    land on the T1 server's own port — a collision there does not fail
+    loudly, it takes the API down and leaves llama.cpp answering on it.
+
+    **All or nothing.** If instance three of four fails to start, the
+    two that did are orphans: holding VRAM, answering nothing, invisible
+    to the next load's placement arithmetic. A partial load unwinds
+    completely and reports the failure.
+
+    **Eviction is the same operation.** ``load`` replaces whatever the
+    pool was running, on every instance, exactly as the single runner
+    does — so "switch model" means the same thing whichever mode the
+    server is in.
+    """
+
+    def __init__(
+        self,
+        *,
+        instances: int = 2,
+        port: int = 8781,
+        host: str = "127.0.0.1",
+        avoid_ports: Iterable[int] = (),
+    ) -> None:
+        if instances < 1:
+            raise ValueError("a pool needs at least one instance")
+        self.host = host
+        self.base_port = port
+        self.avoid = {int(p) for p in avoid_ports}
+        self._lock = threading.Lock()
+        self._runners = [
+            ManagedRunner(port=p, host=host)
+            for p in allocate_ports(port, instances, avoid=self.avoid)
+        ]
+
+    @property
+    def instances(self) -> int:
+        return len(self._runners)
+
+    @property
+    def ports(self) -> list[int]:
+        return [r.port for r in self._runners]
+
+    @property
+    def current(self) -> ManagedModel | None:
+        """What the pool is serving, from the first live instance."""
+        for runner in self._runners:
+            found = runner.current
+            if found is not None:
+                return found
+        return None
+
+    @property
+    def live(self) -> list[ManagedRunner]:
+        return [r for r in self._runners if r.current is not None]
+
+    @property
+    def base_urls(self) -> list[str]:
+        return [r.base_url for r in self.live]
+
+    def load(self, path: str | Path, **kwargs: Any) -> list[ManagedModel]:
+        """Start every instance on *path*, or leave none of them running."""
+        with self._lock:
+            self._unload_all()
+            started: list[ManagedModel] = []
+            try:
+                for runner in self._runners:
+                    started.append(runner.load(path, **kwargs))
+            except Exception as exc:
+                # The unwind is the point. Without it a failed third
+                # instance leaves two holding VRAM that the next load's
+                # placement arithmetic cannot see and will not get.
+                logger.warning(
+                    "managed: instance %d of %d failed to start (%s); "
+                    "stopping the %d that did",
+                    len(started) + 1, len(self._runners), exc, len(started),
+                )
+                self._unload_all()
+                raise ManagedError(
+                    f"instance {len(started) + 1} of {len(self._runners)} "
+                    f"did not start: {exc}. The pool was rolled back, so "
+                    f"nothing is running and no memory is held."
+                ) from exc
+            return started
+
+    def unload(self) -> bool:
+        with self._lock:
+            return self._unload_all()
+
+    def _unload_all(self) -> bool:
+        stopped = False
+        for runner in self._runners:
+            stopped = runner.unload() or stopped
+        return stopped
+
+    def to_dict(self) -> dict[str, Any]:
+        current = self.current
+        return {
+            "mode": "pool",
+            "instances": self.instances,
+            "ports": self.ports,
+            "live": len(self.live),
+            "base_urls": self.base_urls,
+            "model": current.to_dict() if current else None,
+        }
+
+
+def allocate_ports(
+    start: int, count: int, *, avoid: Iterable[int] = (), ceiling: int = 65535
+) -> list[int]:
+    """*count* ports from *start* upwards, skipping *avoid*.
+
+    Skipping rather than failing: the port to avoid is normally the T1
+    server's own, and a pool that refuses to start because its third
+    instance would have landed on it is worse than one that takes the
+    next port up.
+    """
+    if count < 1:
+        raise ValueError("need at least one port")
+    blocked = {int(p) for p in avoid}
+    found: list[int] = []
+    port = int(start)
+    while len(found) < count:
+        if port > ceiling:
+            raise ManagedError(
+                f"ran out of ports above {start} before finding {count}"
+            )
+        if port not in blocked:
+            found.append(port)
+        port += 1
+    return found

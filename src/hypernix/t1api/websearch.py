@@ -36,12 +36,12 @@ that :mod:`hypernix.interfaces.websearch` already uses.
 from __future__ import annotations
 
 import logging
-import os
 import shutil
 import sys
+from collections.abc import Iterable
 from dataclasses import dataclass, field, replace
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 from urllib.parse import unquote_plus
 
 logger = logging.getLogger(__name__)

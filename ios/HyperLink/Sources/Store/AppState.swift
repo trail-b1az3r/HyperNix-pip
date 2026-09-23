@@ -583,7 +583,30 @@ final class AppState {
     /// extra detail off the Server page. The version already shown
     /// there comes from /status and does not depend on this.
     func refreshVersion() async {
-        serverVersion = try? await client.version()
+        let found = try? await client.version()
+        serverVersion = found
+        guard let found else { return }
+
+        // The version the *process* is running, not the one pip has on
+        // disk. A server upgraded and not restarted is still answering
+        // with the old code, and it is the old code the app has to be
+        // compatible with — showing the installed number would say the
+        // upgrade had taken effect when it has not.
+        let running = found.hypernix
+        guard !running.isEmpty else { return }
+        guard connection.hypernixVersion != running
+                || connection.hypernixStale != found.stale else { return }
+
+        connection.hypernixVersion = running
+        connection.hypernixStale = found.stale
+        // Persisted so the servers list shows it before the next
+        // connection has had a chance to ask — the list is the screen
+        // people check to see which machine is on which version, and it
+        // is usually opened while not connected to most of them.
+        SavedServers.remember(
+            connection: connection, keyless: isKeyless, token: nil
+        )
+        savedServers = SavedServers.all()
     }
 
     /// What the server is running, and how to update it.

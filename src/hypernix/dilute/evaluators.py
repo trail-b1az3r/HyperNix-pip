@@ -18,8 +18,9 @@ from __future__ import annotations
 
 import logging
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 logger = logging.getLogger(__name__)
 
@@ -86,19 +87,18 @@ def parse_score(reply: str, *, scale: float = 10.0) -> float | None:
         return None
     text = reply.strip()
 
-    marked = None
-    for marked in _MARKED.finditer(text):
-        pass  # the last marker wins; a judge that restates beats one that previews
-    if marked is not None:
-        value = float(marked.group(1))
-        out_of = float(marked.group(2)) if marked.group(2) else scale
+    # The *last* marker wins: a judge that restates its verdict at the
+    # end beats one that previewed the scale at the start.
+    markers = _MARKED.findall(text)
+    if markers:
+        marked = markers[-1]
+        value = float(marked[0])
+        out_of = float(marked[1]) if marked[1] else scale
         return _clamp(value, out_of)
 
-    fraction = None
-    for fraction in _FRACTION.finditer(text):
-        pass
-    if fraction is not None:
-        return _clamp(float(fraction.group(1)), float(fraction.group(2)))
+    fractions = _FRACTION.findall(text)
+    if fractions:
+        return _clamp(float(fractions[-1][0]), float(fractions[-1][1]))
 
     numbers = _NUMBER.findall(text)
     if numbers:

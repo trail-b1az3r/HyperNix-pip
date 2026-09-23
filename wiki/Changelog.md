@@ -54,8 +54,8 @@ remove it.
 the whole run rather than a stage.
 𖥔 `vera -Na` — run the checks with no AI at all.
 𖥔 `vera -m` — pick a GGUF from `~/.hypernix/models` interactively.
-𖥔 `hypernix.hubcompat` — signature-checked calls into `huggingface_hub`,
-so 0.x and 1.3.x both work.
+𖥔 `hypernix.system.hubcompat` — signature-checked calls into
+`huggingface_hub`, so 0.x and 1.3.x both work.
 𖥔 T1 API `v1.1.2026.9.0.0`.
 𖥔 Neo Oven presets for GLM-5.3, Qwen3.8, Qwen3.8-Flash, Muse Spark
 and Spark X2.5 at 1.7b and 4b.
@@ -68,6 +68,21 @@ key for people who have one. No key is needed for any of it.
 default, and not as a placeholder: a phone asking for the gist of a
 page should not wait for a model load, and a server that has not
 loaded one is the common case.
+๋࣭⭑ `hyperchat` — several prompts in flight, or a queue when they
+cannot be. With `T1_HYPERCHAT_MULTI` on, N copies of the model answer N
+prompts at once; with it off, prompts wait in the order they arrived
+and a client can ask how many are ahead of it. Callers do not branch on
+which: both are `Hyperchat`, both return a ticket, and the queue is the
+pool with one worker in it.
+𖥔 `ManagedPool` — N llama.cpp processes on consecutive ports, skipping
+the T1 server's own, loaded all-or-nothing.
+𖥔 `GET /runner/hyperchat` — the mode, the core budget and the live
+queue depth, readable by any HyperLink caller.
+𖥔 HyperLink: several photos in one pick, capped, uploaded in the order
+they were chosen, with the ones that worked kept when one cannot be read.
+𖥔 HyperLink: the servers list shows the hyperNix the machine is
+*running*, and says so in orange when a pip upgrade has landed but the
+server has not been restarted into it.
 
 ### Fixed
 
@@ -97,6 +112,22 @@ held 27,931 URLs. A level is not a unit of time; it is chunked now and
 the same trap stops at 4.1s.
 🐛 `huggingface_hub` 1.x removed `direction` from `list_models` and
 `list_datasets`, so `scavenger` raised `TypeError` on a current install.
+🐛 `hubcompat` landed at the top level of the package rather than in a
+category subpackage, which the layout table forbids — caught by the
+suite rather than by review, which is the point of having it.
+𖢥 A server row read `v1.1.26.9.0.0` — the T1 API generation, labelled
+as if it were the machine's hyperNix. It is the hyperNix version people
+upgrade and then check, and it is not the number that was on screen.
+𖢥 "Updated 2m ago" in the chat list meant "changed", not "said
+something". The store bumped `updated_at` on any write, so renaming
+eleven old conversations sent all eleven to the top of the list looking
+like they had just replied. There are two clocks now: `updated_at` for
+a prompt or a reply — including one that arrived in the background —
+and `touched_at` for everything else.
+𖢥 A second prompt arriving mid-answer had two fates and both happened
+by accident: it contended with the first inside one llama.cpp and both
+got slower, or it was dropped. HyperLink showed neither — it showed a
+spinner that did not move.
 𖢥 `eth auto` fell through to stock on a warm GPU. The auto-level table
 was three fixed temperatures and one derived from `THERMAL_ABORT_C`;
 lowering that threshold to 60 °C put the derived band *below* two of
@@ -124,6 +155,21 @@ flushing.
 trap, to tell "finished" from "hit a ceiling".
 🧪 `neo_oven`: every preset's `model_type` checked against what
 transformers actually registers, rather than against the table.
+🧪 `updated_at`: 18 tests pinning which write moves which clock, plus
+the migration — `CREATE TABLE IF NOT EXISTS` does not alter an existing
+table, so without the `ALTER` the first rename after upgrading is an
+OperationalError. Six mutations caught, two of which the first version
+of the tests missed because the read-side fallback hid them.
+🧪 HyperLink: 18 structural checks on the Swift, since there is no
+toolchain here. Chiefly that both new `Codable` types decode by hand —
+a synthesised decoder throws on a key that is missing from every record
+already on disk, the `try?` around `restore()` swallows it, and the
+update signs everybody out.
+🧪 `hyperchat`: 40 tests against real threads, asserting on the core
+budget and on *ordering* rather than on "the answer came back" — a pool
+that allocates every core still answers prompts, right up until the
+server stops accepting the next request. Eight mutations caught,
+including a LIFO queue and a pool that allocates the reserved core.
 🧪 `/web/v1`: 90 tests, most of them asserting a *refusal* — the
 failure mode of a hand-written grammar is that it accepts things, and a
 parser that shrugs at what it did not understand leaves a server

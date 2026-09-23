@@ -148,7 +148,7 @@ async def web_summarize(
                 T1ErrorCode.TRANSPORT_FAILED,
                 f"could not fetch {url}: {exc}"[:300],
                 http_status=502,
-            )
+            ) from exc
         text = str(fetched.get("text") or fetched.get("content") or "")
 
     if not text:
@@ -239,7 +239,7 @@ async def web_config_write(
         updated, changed = ws.apply_config(settings, raw)
     except ws.GrammarError as exc:
         logger.info("web: config refused: %s [%s]", exc, ws.redact(raw)[:120])
-        raise _grammar_error(exc, raw)
+        raise _grammar_error(exc, raw) from exc
 
     _store(request, updated)
     logger.info("web: config changed %s [%s]", changed or "nothing",

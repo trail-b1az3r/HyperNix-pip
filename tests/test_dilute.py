@@ -332,7 +332,7 @@ class TestWritingTraces:
             DiluteConfig(target_traces=3),
         )
         path = result.write_jsonl(tmp_path / "out" / "traces.jsonl")
-        lines = [json.loads(l) for l in path.read_text().splitlines()]
+        lines = [json.loads(line) for line in path.read_text().splitlines()]
         assert "_dilute" in lines[0]          # the run's own summary first
         assert len(lines) == 4
         assert lines[1]["chosen"]["text"].startswith("q")
@@ -374,7 +374,7 @@ class TestJitDistil:
         """The reason to use the streaming form is a million traces
         that do not fit in memory. Holding them defeats it."""
         seen = []
-        for trace in jit_distil(
+        for _ in jit_distil(
             [f"q{i}" for i in range(6)], echo_generator,
             lambda p, t: 1.0, DiluteConfig(target_traces=6),
             sink=seen.append,

@@ -375,6 +375,7 @@ MODULE_CATEGORIES: dict[str, tuple[str, ...]] = {
         "freezer",
         "gpus",
         "fusebox",
+        "hubcompat",
         "net",
         "nettrust",
         "old_fridge",

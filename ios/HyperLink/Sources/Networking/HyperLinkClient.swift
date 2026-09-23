@@ -65,6 +65,19 @@ struct ServerConnection: Codable, Equatable, Sendable {
     var endpoints: [String]
     var serverName: String
     var t1Version: String
+    /// The hyperNix the server is *running*, which is not the same
+    /// question as `t1Version` and was never stored. A server list
+    /// showing "1.1.26.9.0.0" was showing the API generation while
+    /// labelling it the server's version; somebody checking whether
+    /// their PC picked up an upgrade was reading a number that does not
+    /// move when it does. Filled from `/version` after connecting, so
+    /// it is empty until the first refresh and on servers too old to
+    /// have the endpoint.
+    var hypernixVersion: String = ""
+    /// `/version` says the running process and the installed
+    /// distribution disagree — the pip upgrade landed and the server
+    /// has not been restarted into it.
+    var hypernixStale: Bool = false
     var deviceID: String
     var deviceName: String
     /// The server's identity, pinned when this pairing was made. Not a
@@ -81,7 +94,8 @@ struct ServerConnection: Codable, Equatable, Sendable {
 
     init(
         endpoints: [String], serverName: String, t1Version: String,
-        deviceID: String, deviceName: String, serverFingerprint: String = ""
+        deviceID: String, deviceName: String, serverFingerprint: String = "",
+        hypernixVersion: String = "", hypernixStale: Bool = false
     ) {
         self.endpoints = endpoints
         self.serverName = serverName
@@ -89,6 +103,8 @@ struct ServerConnection: Codable, Equatable, Sendable {
         self.deviceID = deviceID
         self.deviceName = deviceName
         self.serverFingerprint = serverFingerprint
+        self.hypernixVersion = hypernixVersion
+        self.hypernixStale = hypernixStale
     }
 
     /// Written out by hand because the synthesised one would not do
@@ -112,6 +128,30 @@ struct ServerConnection: Codable, Equatable, Sendable {
         serverFingerprint = try container.decodeIfPresent(
             String.self, forKey: .serverFingerprint
         ) ?? ""
+        // Same reason as `serverFingerprint` above: every record on
+        // disk predates these two keys, and a synthesised decoder would
+        // throw on the missing key, `restore()`'s `try?` would swallow
+        // it, and the update would sign everybody out.
+        hypernixVersion = try container.decodeIfPresent(
+            String.self, forKey: .hypernixVersion
+        ) ?? ""
+        hypernixStale = try container.decodeIfPresent(
+            Bool.self, forKey: .hypernixStale
+        ) ?? false
+    }
+
+    /// What to show next to a server's name.
+    ///
+    /// The hyperNix version when it is known, because that is the one
+    /// people upgrade and watch. The T1 API generation otherwise, which
+    /// is what there used to be — an unknown version is better shown as
+    /// the older fact than as nothing.
+    var versionLabel: String {
+        if !hypernixVersion.isEmpty {
+            return hypernixStale ? "\(hypernixVersion) (restart pending)"
+                                 : hypernixVersion
+        }
+        return t1Version.isEmpty ? "" : "T1 \(t1Version)"
     }
 
     /// Enough of a record to reconnect with.

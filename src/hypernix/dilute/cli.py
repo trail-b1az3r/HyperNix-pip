@@ -57,7 +57,7 @@ def _prompts(path: str) -> list[str]:
     return [p for p in out if p]
 
 
-def _config(args) -> "object":
+def _config(args) -> object:
     from .core import DiluteConfig
 
     return DiluteConfig(
@@ -100,7 +100,7 @@ def _generator(args):
             max_tokens=args.max_tokens,
         )
     except GeneratorError as exc:
-        raise SystemExit(str(exc))
+        raise SystemExit(str(exc)) from exc
 
 
 def _run(args) -> int:
@@ -136,7 +136,7 @@ def _run(args) -> int:
 
 
 def _jit(args) -> int:
-    from .core import DiluteResult, jit_distil
+    from .core import jit_distil
 
     prompts = _prompts(args.prompts)
     if not prompts:

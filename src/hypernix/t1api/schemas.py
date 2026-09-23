@@ -1219,7 +1219,12 @@ class SessionSummary(BaseModel):
     backend: str = ""
     system_prompt: str = ""
     created_at: float
+    #: When the conversation last said anything — a prompt or a reply.
     updated_at: float
+    #: When anything about it last changed, a rename included. Defaulted
+    #: rather than required so a server reading rows written before the
+    #: column existed still validates.
+    touched_at: float = 0.0
     archived: bool = False
     message_count: int = 0
     metadata: dict[str, Any] = Field(default_factory=dict)

@@ -14,7 +14,7 @@ struct ChatView: View {
     @Environment(AppState.self) private var state
     @State private var draft = ""
     @State private var pendingAttachments: [Attachment] = []
-    @State private var photoItem: PhotosPickerItem?
+    @State private var photoItems: [PhotosPickerItem] = []
     @State private var showingFileImporter = false
     @State private var showingCodeImporter = false
     @State private var showingPhotoPicker = false
@@ -22,6 +22,10 @@ struct ChatView: View {
     @State private var showingModelPicker = false
     @State private var showingRename = false
     @State private var isUploading = false
+    /// `(done, total)` while several photos are going up. Shown instead
+    /// of a bare spinner: picking eight photos over a Tailscale relay
+    /// takes long enough that "is this working" is a real question.
+    @State private var uploadProgress: (done: Int, total: Int)?
     /// The message being edited, if any. Only ever one of yours: the
     /// assistant's words are a record of what happened, and rewriting
     /// them would make the transcript fiction — and the next turn's
@@ -94,7 +98,11 @@ struct ChatView: View {
         }
         .photosPicker(
             isPresented: $showingPhotoPicker,
-            selection: $photoItem,
+            selection: $photoItems,
+            // Capped rather than unlimited. The picker will happily
+            // hand back a whole camera roll, and every one of these is
+            // uploaded over whatever link the phone has to the PC.
+            maxSelectionCount: Self.maxPhotosAtOnce,
             // Videos as well: the server takes any attachment, and
             // "photo or video" is what the menu row promises.
             matching: .any(of: [.images, .videos])
@@ -115,9 +123,9 @@ struct ChatView: View {
             }
         }
         .task(id: sessionID) { await state.open(sessionID) }
-        .onChange(of: photoItem) { _, item in
-            guard let item else { return }
-            Task { await attachPhoto(item) }
+        .onChange(of: photoItems) { _, items in
+            guard !items.isEmpty else { return }
+            Task { await attachPhotos(items) }
         }
         .fileImporter(
             isPresented: $showingFileImporter,
@@ -291,7 +299,15 @@ struct ChatView: View {
             .padding(.bottom, 8)
 
             if isUploading {
-                ProgressView().controlSize(.small).padding(.bottom, 4)
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.small)
+                    if let progress = uploadProgress, progress.total > 1 {
+                        Text("Uploading \(progress.done + 1) of \(progress.total)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .padding(.bottom, 4)
             }
         }
         .background(.bar)
@@ -312,19 +328,57 @@ struct ChatView: View {
 
     // MARK: - Attachments
 
-    private func attachPhoto(_ item: PhotosPickerItem) async {
+    /// Most photos one pick can attach.
+    ///
+    /// The picker is happy to return a whole camera roll. Every item
+    /// here is read into memory and pushed over the link to the PC,
+    /// which on a Tailscale relay is neither fast nor free, so the
+    /// limit is what somebody plausibly means by "these photos".
+    static let maxPhotosAtOnce = 12
+
+    private func attachPhotos(_ items: [PhotosPickerItem]) async {
         isUploading = true
-        defer { isUploading = false; photoItem = nil }
-        guard let data = try? await item.loadTransferable(type: Data.self) else {
-            state.lastError = "That photo could not be read."
-            return
+        defer {
+            isUploading = false
+            uploadProgress = nil
+            // Cleared so picking the *same* photos again still fires
+            // `onChange`; SwiftUI compares the new selection with the
+            // old one and a repeat pick would otherwise do nothing.
+            photoItems = []
         }
-        // The picker does not reliably give a filename; the extension is
-        // cosmetic here anyway because the server sniffs the real type
-        // from the bytes.
-        let name = item.itemIdentifier.map { "photo-\($0.prefix(8)).jpg" } ?? "photo.jpg"
-        if let attachment = await state.upload(data: data, filename: name, contentType: "image/jpeg") {
-            pendingAttachments.append(attachment)
+
+        var failed = 0
+        for (index, item) in items.enumerated() {
+            uploadProgress = (done: index, total: items.count)
+            guard let data = try? await item.loadTransferable(type: Data.self) else {
+                failed += 1
+                continue
+            }
+            // The picker does not reliably give a filename; the extension is
+            // cosmetic here anyway because the server sniffs the real type
+            // from the bytes.
+            let name = item.itemIdentifier.map { "photo-\($0.prefix(8)).jpg" }
+                ?? "photo-\(index + 1).jpg"
+            if let attachment = await state.upload(
+                data: data, filename: name, contentType: "image/jpeg"
+            ) {
+                // Appended as each finishes, so the order matches the
+                // order they were picked in.
+                pendingAttachments.append(attachment)
+            } else {
+                failed += 1
+            }
+        }
+
+        // One message at the end rather than one per failure, and the
+        // ones that worked are kept: losing seven good uploads because
+        // the eighth could not be read is not a better outcome.
+        if failed == items.count {
+            state.lastError = items.count == 1
+                ? "That photo could not be attached."
+                : "None of those \(items.count) photos could be attached."
+        } else if failed > 0 {
+            state.lastError = "\(failed) of \(items.count) photos could not be attached; the rest are ready."
         }
     }
 

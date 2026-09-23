@@ -183,7 +183,17 @@ struct ChatSession: Decodable, Identifiable, Hashable, Sendable {
     let modelID: String
     let backend: String
     let createdAt: Double
+    /// When this conversation last *said* something — a prompt sent or
+    /// a reply received, including one that arrived in the background.
+    ///
+    /// Not when its title or model changed. Renaming eleven old chats
+    /// used to send all eleven to the top of the list reading "updated
+    /// 2m ago", which is the app telling you something happened in
+    /// conversations where nothing did.
     let updatedAt: Double
+    /// When anything about it last changed, housekeeping included.
+    /// Here for a client that wants it; the list does not show it.
+    let touchedAt: Double
     let archived: Bool
     let messageCount: Int
 
@@ -196,8 +206,29 @@ struct ChatSession: Decodable, Identifiable, Hashable, Sendable {
         case backend
         case createdAt = "created_at"
         case updatedAt = "updated_at"
+        case touchedAt = "touched_at"
         case archived
         case messageCount = "message_count"
+    }
+
+    /// Written by hand so a server too old to send `touched_at` still
+    /// decodes. The synthesised decoder calls `decode(_:forKey:)` and
+    /// throws on a missing key however the property is defaulted, and a
+    /// throw here empties the chat list.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        sessionID = try c.decode(String.self, forKey: .sessionID)
+        title = try c.decodeIfPresent(String.self, forKey: .title) ?? "Chat"
+        modelID = try c.decodeIfPresent(String.self, forKey: .modelID) ?? ""
+        backend = try c.decodeIfPresent(String.self, forKey: .backend) ?? ""
+        createdAt = try c.decodeIfPresent(Double.self, forKey: .createdAt) ?? 0
+        updatedAt = try c.decodeIfPresent(Double.self, forKey: .updatedAt) ?? 0
+        // Falls back to `updatedAt`, which is what the one column meant
+        // before it was split in two.
+        touchedAt = try c.decodeIfPresent(Double.self, forKey: .touchedAt)
+            ?? updatedAt
+        archived = try c.decodeIfPresent(Bool.self, forKey: .archived) ?? false
+        messageCount = try c.decodeIfPresent(Int.self, forKey: .messageCount) ?? 0
     }
 }
 
