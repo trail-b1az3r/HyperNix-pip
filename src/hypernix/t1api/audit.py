@@ -291,6 +291,14 @@ class AuditLog:
     ) -> AuditRecord | None:
         if not self.enabled:
             return None
+        # A concealed key's address is kept as its network, except on
+        # security records — see hypernix.t1api.privacy.
+        conceal = getattr(self, "conceal", None)
+        if (client_ip and conceal is not None and category is not AuditCategory.SECURITY
+                and conceal.is_concealed(actor_key_id)):
+            from .privacy import mask_address
+
+            client_ip = mask_address(client_ip)
         record = AuditRecord(
             audit_id=uuid.uuid4().hex,
             ts=time.time(),
