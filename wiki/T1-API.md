@@ -1301,15 +1301,17 @@ what says whether it found what it was looking for.
 | `POST /memory/categories/rename` | `{"from", "to"}` — moves a category, merging into an existing one. |
 | `POST /memory/organise` | Files loose and model-written memories under topics; `dry_run` previews. A category a person chose is left alone. |
 | `GET /hyperlink/models` | Each model now carries `supports_images`: true, false, or null when nothing says. |
-| `GET /hyperlink/shell` | Whether the shell is enabled here, and how to enable it. |
-| `POST /hyperlink/shell` | `{"command", "cwd"}` — runs one command, returns stdout, stderr, exit code and timing. |
+| `GET /hyperlink/shell` | Whether the shell is enabled here, how to enable it, and its `root`. |
+| `POST /hyperlink/shell` | `{"command", "cwd"}` — runs one command, returns stdout, stderr, exit code and timing. `cwd` must be inside the root. |
 
 The shell is **off** unless `T1_HYPERLINK_SHELL=1`. A paired phone is never
 an admin, and this is the one route that makes it more than a chat client,
 so it is the operator's decision. Commands run as the server's user through
 `bash -lc`, are written to the audit log before they run, have their output
-capped, and are killed with their whole process group at the timeout. The
-model is never given a shell tool.
+capped, and are killed with their whole process group at the timeout. A
+command starts inside `T1_HYPERLINK_SHELL_ROOT` (the server user's home by
+default): a relative `cwd` is taken from there, and a path that leaves it,
+including through a symlink, is refused. The model is never given a shell tool.
 
 ## Hugging Face link merging
 
@@ -1791,6 +1793,7 @@ T1 v1.0.26.8.0.1 added:
 | `T1_HYPERLINK_ENABLED` | `1` | the phone-facing surface |
 | `T1_HYPERLINK_SHELL` | `0` | let paired phones run shell commands here (see below) |
 | `T1_HYPERLINK_SHELL_TIMEOUT` | `60` | seconds before a shell command's process group is killed |
+| `T1_HYPERLINK_SHELL_ROOT` | home directory | a shell command's working directory must be inside this directory |
 | `T1_HYPERLINK_PUBLIC_URL` | — | a reverse proxy / tunnel address; ranked first |
 | `T1_HYPERLINK_PORT` | `8000` | the port advertised to clients |
 | `T1_HYPERLINK_FILES_DIR` | `~/.hypernix/hyperlink/files` | attachment blobs |

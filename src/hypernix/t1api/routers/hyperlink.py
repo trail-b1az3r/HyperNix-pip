@@ -1560,9 +1560,15 @@ def shell_status(
 ) -> dict[str, Any]:
     """Whether this server accepts shell commands, so the app can say why not."""
     _require_enabled(config)
+    from ...hyperlink.shell import shell_root
+
+    enabled = bool(getattr(config, "hyperlink_shell", False))
     return {
-        "enabled": bool(getattr(config, "hyperlink_shell", False)),
+        "enabled": enabled,
         "timeout_seconds": float(getattr(config, "hyperlink_shell_timeout", 60.0)),
+        # Where commands may start. Only said when the shell is on: a
+        # server that refuses commands has no reason to name a path.
+        "root": shell_root() if enabled else "",
         "how_to_enable": "set T1_HYPERLINK_SHELL=1 in the server's .env and restart it",
     }
 

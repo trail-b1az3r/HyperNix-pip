@@ -12,7 +12,10 @@ chat client, and this route makes it a terminal. When it is on:
 * output is capped, so ``cat`` of a large file cannot fill the phone's
   memory;
 * every command is written to the server log with the device that sent
-  it, before it runs.
+  it, before it runs;
+* the working directory must be inside one root — the server user's
+  home, or ``T1_HYPERLINK_SHELL_ROOT`` — so the phone chooses where in
+  that tree a command starts, not where on the disk.
 
 The model is never given this. Letting a person type a command on their
 own server is their choice; letting a model do it on text it read is a
@@ -32,7 +35,7 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["MAX_OUTPUT", "ShellResult", "run_command", "shell_binary"]
+__all__ = ["MAX_OUTPUT", "ShellResult", "run_command", "shell_binary", "shell_root", "working_directory"]
 
 #: Per stream. Enough for a build log's tail; not a way to move files.
 MAX_OUTPUT = 200_000
@@ -71,6 +74,29 @@ def shell_binary() -> list[str]:
     return [bash, "-lc"] if bash else ["/bin/sh", "-c"]
 
 
+def shell_root() -> str:
+    """The directory every command's working directory must be inside."""
+    configured = os.environ.get("T1_HYPERLINK_SHELL_ROOT", "").strip()
+    return os.path.realpath(os.path.expanduser(configured) if configured else str(Path.home()))
+
+
+def working_directory(cwd: str | None) -> str:
+    """*cwd* resolved inside :func:`shell_root`, or ValueError.
+
+    Relative paths are taken from the root. Symlinks are resolved before
+    the check, so a link inside the root that points out of it is
+    refused like the path it points to.
+    """
+    root = shell_root()
+    wanted = os.path.expanduser(cwd) if cwd else root
+    resolved = os.path.realpath(os.path.join(root, wanted))
+    if resolved != root and not resolved.startswith(root.rstrip(os.sep) + os.sep):
+        raise ValueError(f"the working directory must be inside {root}")
+    if not os.path.isdir(resolved):
+        raise ValueError(f"{resolved} is not a directory")
+    return resolved
+
+
 def _clip(data: bytes) -> tuple[str, bool]:
     text = data.decode("utf-8", errors="replace")
     if len(text) <= MAX_OUTPUT:
@@ -84,9 +110,7 @@ def run_command(command: str, *, cwd: str | None = None, timeout: float = 60.0, 
         raise ValueError("an empty command")
     if len(command) > MAX_COMMAND:
         raise ValueError(f"a command is at most {MAX_COMMAND} characters")
-    directory = Path(cwd).expanduser() if cwd else Path.home()
-    if not directory.is_dir():
-        raise ValueError(f"{directory} is not a directory")
+    directory = working_directory(cwd)
 
     logger.warning("hyperlink shell: %s runs %r in %s", actor or "a device", command, directory)
     started = time.monotonic()
@@ -95,7 +119,7 @@ def run_command(command: str, *, cwd: str | None = None, timeout: float = 60.0, 
         kwargs["start_new_session"] = True
     process = subprocess.Popen(  # noqa: S603 - the server operator enabled exactly this
         [*shell_binary(), command],
-        cwd=str(directory),
+        cwd=directory,
         stdin=subprocess.DEVNULL,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -112,7 +136,7 @@ def run_command(command: str, *, cwd: str | None = None, timeout: float = 60.0, 
     stderr, cut_err = _clip(err or b"")
     return ShellResult(
         command=command,
-        cwd=str(directory),
+        cwd=directory,
         exit_code=None if timed_out else process.returncode,
         stdout=stdout,
         stderr=stderr,

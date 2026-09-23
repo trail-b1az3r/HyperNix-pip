@@ -7,6 +7,7 @@ title or a compaction is what the app would actually receive.
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
 import sys
 import time
@@ -446,13 +447,38 @@ class TestShellThroughTheAPI:
 
     @pytest.mark.skipif(sys.platform == "win32", reason="POSIX shell")
     def test_on_it_runs_and_reports(self, api, tmp_path):
-        client = api(T1_HYPERLINK_SHELL="1")
+        client = api(T1_HYPERLINK_SHELL="1", T1_HYPERLINK_SHELL_ROOT=str(tmp_path))
         got = client.post("/hyperlink/shell", json={"command": "echo out; echo err >&2; exit 4",
                                                     "cwd": str(tmp_path)})
         body = got.json()
         assert got.status_code == 200, got.text
         assert (body["stdout"], body["stderr"], body["exit_code"]) == ("out\n", "err\n", 4)
-        assert body["cwd"] == str(tmp_path)
+        assert body["cwd"] == os.path.realpath(tmp_path)
+
+    def test_the_working_directory_stays_inside_the_root(self, api, tmp_path):
+        """The phone picks where in the tree a command starts, not where
+        on the disk: outside the root, `..` out of it, and a symlink out
+        of it are all refused before anything runs."""
+        root = tmp_path / "root"
+        (root / "inside").mkdir(parents=True)
+        (tmp_path / "outside").mkdir()
+        client = api(T1_HYPERLINK_SHELL="1", T1_HYPERLINK_SHELL_ROOT=str(root))
+        for cwd in (str(tmp_path / "outside"), "../outside", "inside/../../outside"):
+            got = client.post("/hyperlink/shell", json={"command": "echo x", "cwd": cwd})
+            assert got.status_code in (400, 422), cwd
+            assert "inside" in got.text
+        if sys.platform != "win32":
+            (root / "link").symlink_to(tmp_path / "outside")
+            got = client.post("/hyperlink/shell", json={"command": "echo x", "cwd": "link"})
+            assert got.status_code in (400, 422)
+
+    def test_relative_paths_start_at_the_root(self, tmp_path, monkeypatch):
+        from hypernix.hyperlink import shell
+
+        (tmp_path / "proj").mkdir()
+        monkeypatch.setenv("T1_HYPERLINK_SHELL_ROOT", str(tmp_path))
+        assert shell.working_directory("proj") == os.path.realpath(tmp_path / "proj")
+        assert shell.working_directory(None) == os.path.realpath(tmp_path)
 
     @pytest.mark.skipif(sys.platform == "win32", reason="POSIX process groups")
     def test_a_runaway_command_is_killed_with_its_children(self, api):
@@ -463,7 +489,7 @@ class TestShellThroughTheAPI:
         assert time.monotonic() - started < 10
 
     def test_bad_requests(self, api, tmp_path):
-        client = api(T1_HYPERLINK_SHELL="1")
+        client = api(T1_HYPERLINK_SHELL="1", T1_HYPERLINK_SHELL_ROOT=str(tmp_path))
         assert client.post("/hyperlink/shell", json={"command": "  "}).status_code in (400, 422)
         assert client.post("/hyperlink/shell", json={"command": "ls", "cwd": str(tmp_path / "nope")}).status_code in (400, 422)
 
