@@ -38,6 +38,7 @@ from fastapi.responses import Response, StreamingResponse
 
 from ...bridge.lmstudio import LMStudioBridge, LMStudioError
 from ...hyperlink.catalogue import collect
+from ...hyperlink.default_prompt import default_prompt_for
 from ...hyperlink.discovery import advertise
 from ...hyperlink.files import AttachmentStore
 from ...hyperlink.generation import GenerationRegistry
@@ -880,7 +881,8 @@ def _chat_with_tools(bridge, wire, model, sampling, config, principal, t1=None,
 
 
 def _apply_preferences(
-    wire: list[dict[str, Any]], preferences, session_prompt: str, memory_block: str
+    wire: list[dict[str, Any]], preferences, session_prompt: str, memory_block: str,
+    default_prompt: str = "",
 ) -> list[dict[str, Any]]:
     """Put the person's own settings in front of the conversation.
 
@@ -898,7 +900,8 @@ def _apply_preferences(
     from ...hyperlink.preferences import system_prompt_for
 
     composed = system_prompt_for(
-        preferences, session_prompt=session_prompt, memory_block=memory_block
+        preferences, session_prompt=session_prompt, memory_block=memory_block,
+        default=default_prompt,
     )
     if not composed:
         return wire
@@ -1197,6 +1200,7 @@ def chat_turn(
         settings,
         session.system_prompt,
         memories.prompt_block(owner=principal.owner) if settings.auto_memory else "",
+        default_prompt_for(config, backend),
     )
     sampling = _effort_settings(settings, payload)
 
@@ -1369,6 +1373,7 @@ def chat_turn_stream(
         settings,
         session.system_prompt,
         memories.prompt_block(owner=principal.owner) if settings.auto_memory else "",
+        default_prompt_for(config, backend),
     )
     sampling = _effort_settings(settings, payload)
     requested_model = (

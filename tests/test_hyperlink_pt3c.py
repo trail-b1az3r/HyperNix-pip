@@ -291,7 +291,9 @@ class ScriptedModel:
             self.calls.append("title")
             return self.title
         last = str(messages[-1].get("content", ""))
-        if "summar" in system.lower() or "summar" in last.lower()[:400]:
+        # The compaction request's own prompt, not any mention of the
+        # word: HyperLink's default prompt talks about summaries too.
+        if system.startswith("Summarise the conversation") or "summar" in last.lower()[:400]:
             self.calls.append("summary")
             return self.summary
         self.calls.append("chat")

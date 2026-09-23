@@ -14,6 +14,7 @@ recursive-include src/hypernix *.py *.json py.typed
 # hyped-pro's OpenTUI app: its sources, lockfile and tests (the tests
 # because the sdist ships tests). Never its node_modules.
 recursive-include src/hypernix/interfaces/hyped_pro_app *.ts *.json bun.lock
+recursive-include src/hypernix/monitoring/tvtop_max_app *.ts *.json bun.lock
 recursive-include tests *.py
 # The whole examples/ tree, not just *.py: the T1 API deployment
 # examples are Dockerfiles, compose files, nginx config and .env
@@ -40,5 +41,6 @@ prune .venv
 prune hypernix-gguf
 prune src/*.egg-info
 prune src/hypernix/interfaces/hyped_pro_app/node_modules
+prune src/hypernix/monitoring/tvtop_max_app/node_modules
 prune src/hypernix/node_modules
 prune *.egg-info

@@ -1,5 +1,10 @@
 # tvtoppro — tvtop++'s numbers, btop++'s presentation
 
+> **tvtop-max** (0.72.6.rc2) is this on OpenTUI, with panels for the run
+> itself: its script's modules and libraries, model architecture,
+> Pressure Cooker, logs and warnings, and a phone layout. See
+> [TvTopMax](TvTopMax.md). tvtoppro stays, and needs no Bun.
+
 ```bash
 tvtoppro
 tvtoppro --theme gruvbox-dark

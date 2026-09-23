@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hypernix"
-version = "0.72.6.rc1"
+version = "0.72.6.rc2"
 description = "Download and quantize the HyperNix PyTorch model to GGUF (fp32/fp16/Q8_0/Q6_K/Q4_K_M). and train models with a massive ai toolkit "
 readme = { file = "README.md", content-type = "text/markdown" }
 license = { text = "HOL-1.0" }
@@ -133,6 +133,11 @@ tvtoppp = "hypernix.monitoring.tvtop_plus_plus:cli_main"
 # built on cctvtop -- it takes TVTopPlusPlus as a stat source only.
 tvtoppro = "hypernix.monitoring.tvtoppro:cli_main"
 tvtop-pro = "hypernix.monitoring.tvtoppro:cli_main"
+# 0.72.6.rc2: tvtop-pro on OpenTUI (Bun), with panels for the run itself:
+# its script's HyperNix modules and libraries, model architecture,
+# Pressure Cooker, logs and warnings. -s lays it out for a phone.
+tvtop-max = "hypernix.monitoring.tvtop_max:cli_main"
+tvtopmax = "hypernix.monitoring.tvtop_max:cli_main"
 eth = "hypernix.system.ethanol:cli_main"
 # v0.71.5b3: ups had no entry point at all — a complete module that
 # nothing could run.
@@ -222,6 +227,11 @@ hypernix = [
     "interfaces/hyped_pro_app/bun.lock",
     "interfaces/hyped_pro_app/tsconfig.json",
     "interfaces/hyped_pro_app/src/*.ts",
+    # tvtop-max's, the same way.
+    "monitoring/tvtop_max_app/package.json",
+    "monitoring/tvtop_max_app/bun.lock",
+    "monitoring/tvtop_max_app/tsconfig.json",
+    "monitoring/tvtop_max_app/src/*.ts",
 ]
 
 # ---------------------------------------------------------------------------

@@ -1756,6 +1756,35 @@ instead, which is a real answer rather than a degraded one.
 | `T1_HYPERCHAT_MULTI` | off | several instances at once |
 | `T1_HYPERCHAT_INSTANCES` | `0` | how many; `0` is as many as the cores allow. A number here only ever lowers that |
 | `T1_HYPERCHAT_MAX_QUEUED` | `256` | prompts allowed to pile up before new ones are refused |
+| `T1_HYPERLINK_DEFAULT_PROMPT` | on | HyperLink's default system prompt on this backend (below) |
+
+#### The default system prompt (0.72.6.rc2)
+
+When a HyperLink reply comes from this server's own runner, which is
+where hyperchat serves prompts, a five-paragraph default system prompt
+goes first. It tells the model:
+- that it runs on the person's own computer, reached from their phone
+  through HyperLink, and should not claim to be a hosted assistant;
+- today's date;
+- that its reply is read on a phone, sometimes aloud, so it should lead
+  with the answer and keep Markdown and tables narrow;
+- to be accurate before agreeable, and never to invent output,
+  citations or file contents;
+- to use a tool only when one is offered, and to report what it
+  returned;
+- that the person's own instructions follow and win where they differ.
+
+LM Studio replies do not get it, because LM Studio's own preset already
+speaks for the model there.
+
+It sits *under* everything the person wrote. The composed system
+message is, in order: the default, who the person is, their own system
+prompt, the conversation's prompt, then their memories. A model follows
+the later instruction when two conflict, so the person's settings
+override it without having to argue with it. It is composed per turn
+and never stored in the chat, so changing it never rewrites history.
+The text is `hypernix.hyperlink.default_prompt.DEFAULT_PROMPT`, and
+`T1_HYPERLINK_DEFAULT_PROMPT=0` turns it off.
 
 ## Trusted network mode
 
