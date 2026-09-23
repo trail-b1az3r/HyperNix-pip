@@ -1,4 +1,8 @@
-"""hyped_pro: Python entry point and launcher for hyped+ (hyped-pro) Node.js TUI.
+"""hyped_pro: Python entry point and launcher for hyped-plus, the Node.js TUI.
+
+Since 0.72.5.post16 this is ``hyped-plus`` only. ``hyped-pro`` is the
+OpenTUI client in :mod:`hypernix.interfaces.hyped_pro_otui`; the module
+keeps its name because the bridge, the GUI and the tests import it.
 
 Launches ``src/hypernix/hyped_pro.js`` via Node.js if present, or falls back to
 the Python TUI engine in ``hypernix.hyped``.

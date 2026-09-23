@@ -714,7 +714,8 @@ than a step in the pipeline:
 
 | Command | What it is |
 |---|---|
-| `hyped` / `hyped-pro` | The TUI agent CLI. `/gui` for a desktop window, `/t1api` to route through a T1 server, `/noodle` for the autonomous executor. |
+| `hyped-pro` | The terminal client, an [OpenTUI](https://opentui.com/docs/) app on Bun in the site's colours. ctrl+p picks a model, `/noodle` runs the autonomous executor, `/t1` routes through a T1 server. |
+| `hyped-plus` | The previous hyped-pro, the readline TUI. `/gui` for a desktop window, `/t1api` to route through a T1 server, `/noodle` for the autonomous executor. |
 | `hyprslug` (`doomslug`, `dstd`) | The quantiser, including the sub-bit tiers. |
 | `dflash2` / `dflash1` | Speculative-decoding drafts: embedded in the base GGUF, or standalone for `--model-draft`. |
 | `hnx-bundle` (`multiquant`) | Several quantisations in one GGUF. |

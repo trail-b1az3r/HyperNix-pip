@@ -136,7 +136,10 @@ ups = "hypernix.system.ups:cli_main"
 # `hyped-pro` is the one with the tools.
 hyped = "hypernix.interfaces.hyped_basic:cli_main"
 hyped-agent = "hypernix.interfaces.hyped:cli_main"
-hyped-pro = "hypernix.interfaces.hyped_pro:cli_main"
+# 0.72.5.post16: `hyped-pro` is the OpenTUI client (TypeScript on Bun,
+# the same stack as opencode's TUI). The readline TUI that was called
+# hyped-pro until now is `hyped-plus`, and only `hyped-plus`.
+hyped-pro = "hypernix.interfaces.hyped_pro_otui:cli_main"
 hyped-plus = "hypernix.interfaces.hyped_pro:cli_main"
 # v0.71.4b6: hyped-pro's desktop GUI (Qt6 X11/Wayland, GTK4 fallback).
 hyped-pro-gui = "hypernix.interfaces.hyped_pro_gui:cli_main"
@@ -204,7 +207,15 @@ where = ["src"]
 include = ["hypernix*"]
 
 [tool.setuptools.package-data]
-hypernix = ["py.typed", "webui_static/*", "*.js", "t1api/data/*.json"]
+hypernix = [
+    "py.typed", "webui_static/*", "*.js", "t1api/data/*.json",
+    # hyped-pro's OpenTUI app. Sources only: its node_modules hold a
+    # platform-specific native library and are installed on first run.
+    "interfaces/hyped_pro_app/package.json",
+    "interfaces/hyped_pro_app/bun.lock",
+    "interfaces/hyped_pro_app/tsconfig.json",
+    "interfaces/hyped_pro_app/src/*.ts",
+]
 
 # ---------------------------------------------------------------------------
 # Ruff / pytest defaults (also duplicated in ruff.toml / pytest.ini so

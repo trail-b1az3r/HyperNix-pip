@@ -28,7 +28,7 @@ next release header.
 
 ## 0.72.5.post16 — 2026-09-23
 
-The 0.72.6 third batch, first half. Element modules, error codes, and
+The 0.72.6 third batch. Element modules, error codes, and
 the Pressure Cooker deprecation — which turned out to be the smaller
 part of its own change: moving a default off the deprecated V3 meant
 moving it onto V4, and V4 had never trained through `NeoOven.train`.
@@ -110,6 +110,15 @@ settings on exit), and moves existing models only with `--move-files`.
 𖥔 `hypernix elements {list,info,plan,run,new}`. `run` holds until
 Ctrl-C and restores on the way out — an element that changes other
 programs and then exits leaves nobody to change them back.
+๋࣭⭑ `hyped-pro` is an OpenTUI app — TypeScript on Bun, the stack
+opencode's terminal UI is built on — in the site's colours: the
+`#0d0d0d` page, the red accent, the same greys. A header, the
+conversation, a bordered prompt and a line of keys, laid out the way
+opencode's is; markdown replies, a model picker on ctrl+p, esc to stop
+a reply, `/noodle`, `/t1`, `/key` and `/retry`. It drives the same
+Python bridge as before, so models, keys and T1 settings carry over. The
+first run installs `@opentui/core` with `bun install`, into the package
+or, when that is read-only, into `~/.hypernix/hyped-pro/<version>`.
 
 ### Changed
 
@@ -119,6 +128,9 @@ is the multimodal composite and has no language-model shape fields.
 🔁 `instant_pot` trains with Pressure Cooker V4 by default. It was V3,
 and a default HyperNix chose must not produce a deprecation warning the
 user has to act on. `use_pressure_cooker_v3: true` still selects V3.
+🔁 `hyped-plus` is the readline TUI that was called `hyped-pro` until
+now, and `hyped-pro` no longer starts it. Both commands ran the same
+program before.
 
 ### Deprecated
 
@@ -217,6 +229,12 @@ passed for the wrong reason and were rewritten — a process already at
 nice 0 cannot tell "restored" from "reset to 0", and a user element
 claiming a built-in symbol is refused as a duplicate before the rule
 under test is reached.
+🧪 hyped-pro: 56 `bun test` cases for the bridge protocol, commands,
+conversation and preferences, run in CI with the type check, and 33
+pytest cases for the launcher and packaging. The palette is read from
+`docs/src/index.css` and compared, so the two cannot drift, and the
+wheel and sdist are checked to carry the app and never its
+`node_modules`.
 
 ### Known Issues
 
@@ -224,6 +242,9 @@ under test is reached.
 models, data, quantisation, training and the system layer. Most older
 modules still raise their own exception types; they adopt codes as they
 are next changed rather than in one sweep.
+❗ `hyped-pro` needs Bun 1.3 or later, and network access once to fetch
+`@opentui/core`. Without Bun it says how to install it and exits;
+`hyped-plus` needs only Node.js.
 
 ⸻
 
