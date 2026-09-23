@@ -895,3 +895,26 @@ timeline
         : 792c5d27 - hyperlink- add and re-port a server; hypernix-t1 built-in-runner start
 ```
 
+## Release v0.72.6.rc1 (2026-09-23)
+
+```mermaid
+timeline
+    title Release v0.72.6.rc1 Commits
+    0.72.6.rc1
+        : 848cfa6a - 0.72.6.rc1- prepare the tree, and fix what the first release run hit
+        : 8b5c6781 - chore- update generated API and code stats
+        : 4e0dfcb8 - 0.72.6 pt4 docs- every page current, and a test that keeps them so
+        : fd74589c - HyperLink- Siri on App Intents entities, so chats and models can be named
+        : 4d38d85a - waiter serv- grouped letters, -b, and -u -k -c -T -Y -S -e
+        : c76677db - t1sdk- server info, conceal, and v2.1 kits as a credential
+        : 0068bbf2 - T1- conceal mode with 36-hour retention, and a public /server/info
+        : 1869a8b9 - hyped-pro finds the T1 server, and says what to do when nothing answers
+        : 541d7839 - HyperLink shell- the root check is one plain prefix test
+        : f0e4ce13 - desktop- one SettingsView entry, not two
+        : 6576f39d - Windows- the editor keeps line endings, the disk panel works, tvtop++ stops rescanning processes
+        : 2ad71b99 - chore- update generated API and code stats
+        : 5a1c0713 - Update CMakeLists.txt
+        : 462b479d - v2.1 (T2C) keys, sealed with Rotorvault
+        : 0d427c97 - ci- Studio embeds SettingsView; public-only fetches connect to the checked address
+```
+
