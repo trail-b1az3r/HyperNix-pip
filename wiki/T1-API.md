@@ -5,8 +5,9 @@ mountable into any Python server. The client requests an operation; the
 server decides what exists, what's available, and how much is left — see
 [Design principle](#design-principle).
 
-**Status: released — T1 v1.0.26.8.1.1** (long form `1.0.2026.8.1.1`).
-The betas ended here. This page is the living contract for what's actually
+**Status: released — T1 v1.1.26.9.0.0** (long form `1.1.2026.9.0.0`),
+the first of the 1.1 generation, shipped in `0.72.5.post15`. The betas
+ended at v1.0.26.8.0.1. This page is the living contract for what's actually
 implemented vs. planned; cross-reference against the
 [Roadmap](#roadmap) before assuming an endpoint exists.
 
@@ -24,6 +25,9 @@ could never derive one from `0.71.5rc2`. See
 - [Architecture](#architecture)
 - [Model registry](#model-registry)
 - [Authentication](#authentication)
+- [v2.1 (T2C) keys and Rotorvault](#v21-t2c-keys-and-rotorvault)
+- [Conceal mode and 36-hour retention](#conceal-mode-and-36-hour-retention)
+- [Server info](#server-info)
 - [Quota & usage](#quota--usage)
 - [Model routing & quota cascade](#model-routing--quota-cascade)
 - [Keys, plans, and assignment](#keys-plans-and-assignment)
@@ -79,7 +83,7 @@ waiter models
 The T1 API has its own version, in six parts:
 
 ```
-1   .   0    .   2026  .  8    .   0     .  1
+1   .   1    .   2026  .  9    .   0     .  0
 │       │        │        │        │        │
 │       │        │        │        │        └── bug fix + assorted minor features
 │       │        │        │        └─────────── new feature
@@ -93,8 +97,8 @@ Two spellings of the same version:
 
 | | | |
 |---|---|---|
-| **short** | `1.0.26.8.1.1` | two-digit year. The wire form — what `__t1api_version__`, `GET /status`, `waiter --version` and every response carry, because it is the form people type. |
-| **long** | `1.0.2026.8.1.1` | four-digit year. The changelog form. |
+| **short** | `1.1.26.9.0.0` | two-digit year. The wire form — what `__t1api_version__`, `GET /status`, `waiter --version` and every response carry, because it is the form people type. |
+| **long** | `1.1.2026.9.0.0` | four-digit year. The changelog form. |
 
 Both parse, with or without a `v` / `t1 v` prefix, and they compare
 equal:
@@ -102,10 +106,10 @@ equal:
 ```python
 from hypernix.t1api.version import T1Version, T1_VERSION
 
-T1Version.parse("t1 v1.0.2026.8.1.1") == T1Version.parse("1.0.26.8.1.1")   # True
-T1Version.parse("1.0.26.8.1.1") < "1.0.26.9.0.0"                            # True
-T1_VERSION.generation                                                        # "1.0"
-T1_VERSION.release                                                           # "2026-08"
+T1Version.parse("t1 v1.1.2026.9.0.0") == T1Version.parse("1.1.26.9.0.0")   # True
+T1Version.parse("1.1.26.9.0.0") < "1.1.26.10.0.0"                           # True
+T1_VERSION.generation                                                        # "1.1"
+T1_VERSION.release                                                           # "2026-09"
 ```
 
 A three-digit year (`1.0.202.8.0.1`) raises rather than being guessed at:
@@ -119,20 +123,22 @@ it may remove. `T1Version.compatible_with()` is that check.
 
 ```json
 {
-  "t1_api_version": "1.0.26.8.1.1",
-  "t1_api_version_long": "1.0.2026.8.1.1",
+  "t1_api_version": "1.1.26.9.0.0",
+  "t1_api_version_long": "1.1.2026.9.0.0",
   "beta": "t1-1.0",
-  "t1_version": {"generation": "1.0", "release": "2026-08", "year": 2026, "month": 8}
+  "t1_version": {"generation": "1.1", "release": "2026-09", "year": 2026, "month": 9, "...": "..."}
 }
 ```
 
-The `beta` field keeps its name — it used to say `beta4` and now says
-`t1-1.0` — because Beta 3 clients read it, and renaming a field is a
-breaking change for a cosmetic win.
+The `beta` field keeps its name, and its value: it used to say `beta4`,
+has said `t1-1.0` since the betas ended, and still does on the 1.1
+generation. Beta 3 clients read it, and changing it is a breaking change
+for a cosmetic win. Read `t1_version.generation` for the generation.
 
 **Package version.** The pip package (`hypernix`) versions
-independently: `0.72.3` ships T1 v1.0.26.8.1.1. `GET /status` reports
-both.
+independently: `0.72.3` shipped T1 v1.0.26.8.1.1, and `0.72.5.post15`
+onward ship T1 v1.1.26.9.0.0. `GET /status` reports both, as
+`t1_api_version` and `hypernix_version`.
 
 ## Installation
 
@@ -390,6 +396,7 @@ gkey create -v v1                       # T1_…            (default)
 gkey create -v v2 --level 5             # T2_…-5
 gkey create -v v2 --type admin          # T2_<password>_…-9
 gkey create -v v2short                  # T2S_…-1         for HyperLink
+gkey create -v v2.1 --level 4           # T2C_…-4 and its T2CK_… kit
 gkey version                            # package, T1 API, and key formats
 ```
 
@@ -398,9 +405,7 @@ gkey version                            # package, T1 API, and key formats
 | `v1` | `T1_` | The long-standing key. Accepted everywhere. |
 | `v2` | `T2_` | Access level 1–9, optional admin password, SSPKID. |
 | `v2short` | `T2S_` | A 26-character body so it can be typed. Never an admin. |
-
-`v2.1` (T2C) is named but not issuable, and asking for it says so rather
-than reporting an unknown version.
+| `v2.1` | `T2C_` | A v2 key sealed with Rotorvault; the key sent changes daily. See [v2.1 keys](#v21-t2c-keys-and-rotorvault). |
 
 The mechanism is worth stating because it explains the constraints: **a
 v2 key is a spelling of a v1 key, not a separate credential.** `gkey`
@@ -595,6 +600,100 @@ Recording is best-effort: a rotation that succeeds is not failed
 afterwards because the history could not be written. The new key is
 already in the response, and reporting a failure that did not happen
 would lose it.
+
+## v2.1 (T2C) keys and Rotorvault
+
+A **v2.1** key (0.72.6) is a v2 key that is never written down in the
+clear. The client keeps a **kit**; what it sends is that day's **key**:
+
+```text
+kit   T2CK_<base64 json>            kept by the client, never sent
+key   T2C_<device>.<seal>-<level>   sent, and different every UTC day
+```
+
+**Getting one.** Either `gkey create -v v2.1` on the server, which prints
+today's key and the kit, or let a client seal a key it already holds:
+`waiter serv -E` (or `T1Client.seal_key()` in the SDK) fetches the
+server's public key, registers a device and keeps only the kit.
+
+**How a key is built.** Two layers, both sealed with **Rotorvault**:
+
+1. *Inner* (stable): the T2 key sealed for the server's RSA public key —
+   RSA-OAEP-SHA256 wraps a fresh content key. Only the server can open
+   it, and a client can make it without the server's help.
+2. *Outer* (daily): the inner sealed again under the device's key for the
+   day — HMAC-SHA256 of the device secret and the UTC date.
+
+The server opens a key with the device's secret for today, then
+yesterday, then tomorrow (clock skew), then its RSA private key, then
+looks the T2 key up exactly like every other spelling. A device is bound
+to the key it was registered with, and the visible access level must
+match the one sealed inside.
+
+**Rotorvault** seals in six stages: Blowfish (CTR), Twofish (CTR), an
+Enigma-style rotor stage — three stepping rotors and a plugboard, wired by
+xoshiro256++ — then AES-256-GCM (Rijndael), inversion (every bit flipped,
+byte order reversed) and base64url. Every stage has its own key from
+HKDF-SHA256 and a fresh salt. Said plainly: **the security is the
+AES-256-GCM stage**, which is confidential and authenticated on its own.
+Blowfish and Twofish add a little depth; the rotor stage and the
+inversion add none. xoshiro256++ only wires the rotors from key material
+HKDF already made secret — it never makes a secret. Blowfish and Twofish
+are pure Python and checked against their published test vectors.
+
+**What it protects against.** A leaked config file or shell history no
+longer holds a key that works forever; a key read off the wire works for
+at most three calendar days. It is still a bearer credential inside that
+window, and the kit makes keys, so protect it (`waiter serv -e` locks the
+config with a password). Revoke a device to end it at once.
+
+| Endpoint | |
+| --- | --- |
+| `GET /auth/t2c/public-key` | The server's RSA public key and fingerprint. No credential. |
+| `POST /auth/t2c/devices` | `{key, wrapped_secret, label, access_level}` — register a device for the key in the body. The secret is RSA-OAEP encrypted for the public key. Not a token, not a T2C key. |
+| `GET /auth/t2c/devices` | The caller's devices. |
+| `DELETE /auth/t2c/devices/{id}` | Revoke one of the caller's devices (an admin may revoke any). |
+
+A kit sent as a credential is refused with a message saying it is a kit:
+it should never leave the client. The server's RSA key and device secrets
+are kept in `<keymaster dir>/t2c/`, owner-only, created on first use.
+They are not encrypted at rest, because the key to decrypt them would
+have to live on the same disk.
+
+## Conceal mode and 36-hour retention
+
+`POST /privacy/conceal` (`waiter serv -c`) conceals the calling key. It
+needs access level 3 or more — a T2 or v2.1 key at level 3+, or a T1 key,
+which predates levels. While it is on:
+
+- **The key's address is not kept.** Its audit records store a masked
+  address (`203.0.113.0/24`, `2001:db8:1::/48`). Security records keep
+  the full address, because they are what the operator blocks abuse with.
+  Nothing else the server stores or shows carries a client's address.
+- **What it makes is kept 36 hours.** A sweep — when conceal is turned
+  on, then every ten minutes while the server runs — deletes chat
+  messages and the sessions they empty, uploaded files, finished jobs and
+  non-security audit records older than 36 hours.
+- **What stays:** memories and preferences (the profile), usage counts
+  (token numbers only; deleting them would reset the quota), and security
+  audit records.
+
+What conceal cannot do: every server sees the address a connection comes
+from. Conceal stops this server keeping or showing it; it is not a proxy.
+`GET /privacy/conceal` reports the state; `DELETE /privacy/conceal` turns
+it off (nothing already deleted comes back).
+
+## Server info
+
+`GET /server/info` (`waiter serv -Y`) is a server's public card, no
+credential needed: `name`, `description`, `owner`, `url`, `public`,
+`environment`, the hypernix and T1 versions, ids, and `features`
+(v2.1 keys, conceal and its minimum level, retention hours, accounts,
+HyperLink). Set them with `T1_SERVER_NAME`, `T1_SERVER_DESCRIPTION`,
+`T1_SERVER_OWNER` and `T1_SERVER_URL`. Nothing here should be secret.
+
+`POST /auth/t1/validate` also returns `key_family` (`T1`, `T2`, `T2S`,
+`T2P`, `T2C`) and `access_level`, which `waiter serv -T` uses.
 
 ## Quota & usage
 
@@ -1406,6 +1505,17 @@ client = T1Client("https://t1.internal", credential=key, tls=TLSConfig(
 ))
 ```
 
+0.72.6 adds `server_info()`, `conceal()` / `conceal_status()`,
+`t2c_public_key()`, `t2c_devices()`, `t2c_revoke_device()` and
+`seal_key()`, which turns a T1 or T2 key into a registered v2.1 kit. A
+kit given as the `credential` is never sent: the transport derives the
+day's `T2C_` key from it for every request.
+
+```python
+kit = T1Client(url, credential="T1_…").seal_key(label="laptop")
+client = T1Client(url, credential=kit.to_text())   # sends T2C_… keys from now on
+```
+
 `client.call(method, path, ...)` is an escape hatch for an endpoint a
 given SDK version doesn't wrap, with the same error handling and retries —
 so a deployment running a newer server is never blocked on an SDK release.
@@ -1794,6 +1904,9 @@ T1 v1.0.26.8.0.1 added:
 | `T1_HYPERLINK_SHELL` | `0` | let paired phones run shell commands here (see below) |
 | `T1_HYPERLINK_SHELL_TIMEOUT` | `60` | seconds before a shell command's process group is killed |
 | `T1_HYPERLINK_SHELL_ROOT` | home directory | a shell command's working directory must be inside this directory |
+| `T1_SERVER_DESCRIPTION` | — | 0.72.6: shown by `GET /server/info` (`waiter serv -Y`) |
+| `T1_SERVER_OWNER` | — | 0.72.6: who runs this server, for `/server/info` |
+| `T1_SERVER_URL` | `T1_HYPERLINK_PUBLIC_URL` | 0.72.6: this server's public address, for `/server/info` |
 | `T1_HYPERLINK_PUBLIC_URL` | — | a reverse proxy / tunnel address; ranked first |
 | `T1_HYPERLINK_PORT` | `8000` | the port advertised to clients |
 | `T1_HYPERLINK_FILES_DIR` | `~/.hypernix/hyperlink/files` | attachment blobs |
@@ -1893,6 +2006,8 @@ six-part scheme in [Versioning](#versioning) rather than a beta number.
 |---|---|---|
 | **1.0.26.8.0.1** | The [LM Studio bridge](#the-lm-studio-bridge); [HyperLink](#hyperlink) pairing, sessions, attachments and endpoint advertisement; [Hugging Face link merging](#hugging-face-link-merging); the [HyperLink iOS app](../ios/README.md) | **Shipped** |
 | **1.0.26.8.1.1** | The [bootstrap admin key](#the-first-key-a-new-server-has) a fresh server issues itself; [T2P billing keys](#billing-keys-t2p-and-refusing-them) and the server-side policy that can refuse them; the three HyperLink reachability fixes (advertised port, tailnet ATS, Tailscale diagnosis) and [T2S key](#using-a-t2s-key) entry from the app; [undoable](#undoing-an-authentication-change) auth changes and durable server ids | **Shipped** |
+| **1.0.26.9.2.3** | Web accounts: sign-up and browser sign-in in four deployment modes (`t1-accounts`), with a keyless caller never an administrator | **Shipped** (0.72.5) |
+| **1.1.26.9.0.0** | The 1.1 generation, first shipped in `0.72.5.post15`; a 1.0 client is told to upgrade. The package releases after it added [HyperLink](#hyperlink) titles, compression, memory, images and the shell, [web search](#web-search), [v2.1 keys](#v21-t2c-keys-and-rotorvault), [conceal mode](#conceal-mode-and-36-hour-retention) and [server info](#server-info) — see the [Changelog](Changelog.md) | **Shipped** |
 
 ## Design principle
 

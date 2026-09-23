@@ -372,6 +372,13 @@ class T1APIConfig:
     # `waiter -F <name>` has something to match; falls back to the
     # hostname, which is what an operator would have typed anyway.
     server_name: str = field(default_factory=lambda: os.environ.get("T1_SERVER_NAME", ""))
+    # 0.72.6: what GET /server/info (waiter serv -Y) says about this
+    # server. All optional, all public — nothing here should be secret.
+    server_description: str = field(
+        default_factory=lambda: os.environ.get("T1_SERVER_DESCRIPTION", "")
+    )
+    server_owner: str = field(default_factory=lambda: os.environ.get("T1_SERVER_OWNER", ""))
+    server_url: str = field(default_factory=lambda: os.environ.get("T1_SERVER_URL", ""))
     # The 54-character Host ID, when this deployment has been issued one.
     # Distinct from a V1 Server ID and from an SSPKID by construction —
     # see hypernix.security.t2keys.

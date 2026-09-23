@@ -1,6 +1,6 @@
 """Key format versions — the registry behind ``gkey create -v`` and ``gkey version``.
 
-Three formats are issuable today:
+Four formats are issuable (0.72.6):
 
 ===========  ========  ==========================================================
 ``v1``       ``T1_``   The long-standing key. No access level, no password slot.
@@ -8,12 +8,13 @@ Three formats are issuable today:
                        the prefix, and an SSPKID. Converts to and from ``v1``.
 ``v2short``  ``T2S_``  HyperLink's key: a body of exactly 26 characters so it can
                        be typed on a phone, and never an administrator.
+``v2.1``     ``T2C_``  A v2 key sealed with Rotorvault. The client keeps a kit
+                       (``T2CK_``) and sends a key that changes every day — see
+                       :mod:`hypernix.security.t2c`.
 ===========  ========  ==========================================================
 
-``v2.1`` is named here on purpose. It is not issuable, and asking for it
-gets a refusal that says so rather than "unknown version" — the two are
-different facts and an operator planning a migration needs to know which
-one they are looking at.
+:data:`RESERVED_KEY_VERSIONS` stays, empty, so the next named-but-not-yet
+format has a place to be refused with a reason rather than as a typo.
 
 One thing worth stating plainly, because it drives the whole design of
 ``gkey create -v``: **a T2 key is a spelling of a T1 key, not a separate
@@ -98,30 +99,26 @@ V2_SHORT = KeyVersion(
     supports_access_level=True,
 )
 
-#: Issuable today, in the order ``gkey version`` lists them.
-KEY_VERSIONS: tuple[KeyVersion, ...] = (V1, V2, V2_SHORT)
-
 V2_1 = KeyVersion(
     name="v2.1",
     family="T2C",
     prefix="T2C_",
-    summary="Reserved. Not issuable.",
+    summary="A v2 key sealed with Rotorvault; the key sent changes daily.",
     aliases=("2.1", "t2c", "v2c"),
-    issuable=False,
-    unavailable_reason=(
-        "v2.1 keys are not issued yet. The T2C derivation — the holder's "
-        "public IP, shuffled — is not a secret, so the format is reserved "
-        "until it has one that is."
-    ),
+    supports_admin=True,
+    supports_access_level=True,
 )
 
+#: Issuable today, in the order ``gkey version`` lists them.
+KEY_VERSIONS: tuple[KeyVersion, ...] = (V1, V2, V2_SHORT, V2_1)
+
 #: Named so a request for one is refused with a reason rather than
-#: treated as a typo.
-RESERVED_KEY_VERSIONS: tuple[KeyVersion, ...] = (V2_1,)
+#: treated as a typo. Empty since v2.1 shipped in 0.72.6.
+RESERVED_KEY_VERSIONS: tuple[KeyVersion, ...] = ()
 
 #: The newest issuable format. v2short is a *variant* of v2 for a
 #: constrained client, not a later version, so it is not "latest".
-LATEST_KEY_VERSION = V2
+LATEST_KEY_VERSION = V2_1
 
 #: What ``gkey create`` mints when told nothing. Stays v1: changing the
 #: default output format of a key-minting command is the kind of surprise

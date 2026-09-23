@@ -447,8 +447,23 @@ class TVTopPlusPlus:
 
         return Panel(content, title="Recent Log Tail", box=ROUNDED, title_align="left", style="white")
 
+    #: Seconds a process table is reused. Walking every process with its
+    #: owner and command line costs about a second on Windows, and the
+    #: layout is rebuilt every refresh — so without this the dashboard
+    #: spent most of its time listing processes that had not changed.
+    PROCESS_REFRESH_SECONDS = 5.0
+
     def _get_active_processes(self) -> list[dict[str, Any]]:
-        """Fetch active hypernix or python training processes."""
+        """Active hypernix or python training processes, refreshed every few seconds."""
+        now = time.monotonic()
+        cached = getattr(self, "_process_cache", None)
+        if cached is not None and now - cached[0] < self.PROCESS_REFRESH_SECONDS:
+            return cached[1]
+        processes = self._scan_processes()
+        self._process_cache = (now, processes)
+        return processes
+
+    def _scan_processes(self) -> list[dict[str, Any]]:
         processes = []
         try:
             import psutil

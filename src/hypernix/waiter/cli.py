@@ -22,13 +22,14 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
 import time
 from typing import Any
 
 from .client import T1Client, T1ClientError
-from .local_config import WaiterConfigStore, WaiterLocalConfig
+from .local_config import WaiterConfigLocked, WaiterConfigStore, WaiterLocalConfig
 
 # ---------------------------------------------------------------------------
 # Rich helpers (graceful degradation — mirrors hypernix.gkey_cli)
@@ -182,9 +183,21 @@ def _add_common_connection_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--json", dest="as_json", action="store_true", help="Print raw JSON instead of a table")
 
 
+def _ask_password() -> str | None:
+    """For a locked config (waiter serv -e): the environment, or a prompt."""
+    env = os.environ.get("HNX_WAITER_PASSWORD")
+    if env:
+        return env
+    if sys.stdin.isatty():
+        import getpass
+
+        return getpass.getpass("waiter config password: ") or None
+    return None
+
+
 def _load_store(args: argparse.Namespace, *, encrypt: bool | None = None) -> WaiterConfigStore:
     enc = encrypt if encrypt is not None else bool(getattr(args, "encrypt", False))
-    return WaiterConfigStore(args.config_file, encrypt=enc)
+    return WaiterConfigStore(args.config_file, encrypt=enc, password_provider=_ask_password)
 
 
 #: Where the server address in the last resolved config came from. Set by
@@ -194,9 +207,9 @@ def _load_store(args: argparse.Namespace, *, encrypt: bool | None = None) -> Wai
 _ADDRESS_SOURCE = ""
 
 
-def _resolve_config(args: argparse.Namespace) -> WaiterLocalConfig:
+def _resolve_config(args: argparse.Namespace, *, store: WaiterConfigStore | None = None) -> WaiterLocalConfig:
     global _ADDRESS_SOURCE
-    store = _load_store(args)
+    store = store or _load_store(args)
     saved = store.load() or WaiterLocalConfig()
     _ADDRESS_SOURCE = f"the saved config ({store.path})" if saved.server else ""
     if args.server:
@@ -237,15 +250,28 @@ def _client_for(args: argparse.Namespace) -> tuple[T1Client, WaiterLocalConfig]:
 # ---------------------------------------------------------------------------
 
 _SERV_HELP = """\
-waiter serv — configure and (re)validate this machine's connection to a T1
-API server. One-shot automatic setup:
+waiter serv — set up, check and manage this machine's connection to a T1
+API server.
 
-    waiter serv -A -I <server> -K <T1_TOKEN> -E
+    waiter serv -A -I <server> -K <key>          set up
+    waiter serv -ArEK <key> -I <server>          set up, refresh, seal the key, check it
+    waiter serv -bAE <server> <key>              the same, strings worked out by -b
 
-Every flag is wired as of Beta 3. -B/-W/-a/-r apply to the server (admin
-key required) and are also saved locally; -G opens the full TUI; -Rf does
-a complete refresh across models, servers, modules and events; -y
-synchronizes local config against the server's /config and /models.
+Letters can be grouped in any order. A letter that takes a value (-I -K
+-F -P -H -B -W -a -C -k, and a lone -r) ends its group, and the value is
+the next word; inside a group r means refresh. -Rf is a full refresh and
+-ud updates to exactly the server's version.
+
+  -A  set up: check the key and save      -E  seal the key as a v2.1 key
+  -R  refresh   -Rf full refresh           -y  sync settings from the server
+  -Y  show the server's public details    -S  security check, client then server
+  -u  update hypernix to at least the server's version   (-ud: exactly it)
+  -c  conceal this key (address masked, data kept 36 hours; level 3+)
+  -k  install a kit (a folder or .zip with a kit.json)
+  -e  lock this config with a password    -T  control screen (level-9 T2 admin)
+  -b  give bare strings to the options they look like
+  -s  save   -L  local only   -G  dashboard   -g  prompt
+  -B/-W/-a/-r  block / allow / remove / limit on the server (admin)
 """
 
 
@@ -253,7 +279,7 @@ def _build_serv_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="waiter serv", description=_SERV_HELP, formatter_class=argparse.RawDescriptionHelpFormatter)
     _add_common_connection_args(p)
     p.add_argument("-A", "--auto", action="store_true", help="Automatic configuration: validate + save in one step")
-    p.add_argument("-E", "--encrypt", action="store_true", help="Encrypt the local config/secrets at rest")
+    p.add_argument("-E", "--encrypt", action="store_true", help="Seal the key as a v2.1 (T2C) key when the server supports it, and encrypt the config at rest")
     p.add_argument("-s", "--save", action="store_true", help="Save current server/local configuration to a .jsonl file")
     p.add_argument("-L", "--local-only", action="store_true", help="Local/Tailscale/localhost-only mode")
     p.add_argument("-B", "--blacklist", action="append", default=[], metavar="IP_OR_CIDR", help="Blacklist an IP or CIDR range on the server (repeatable; admin key required)")
@@ -267,6 +293,19 @@ def _build_serv_parser() -> argparse.ArgumentParser:
     p.add_argument("-Rf", "--force-refresh", dest="force_refresh", action="store_true", help="Force a full refresh: models, servers, modules, events, and config")
     p.add_argument("-y", "--sync", action="store_true", help="Synchronize local config against the server's current /config + /models")
     p.add_argument("--promote-admin", dest="promote_admin", action="store_true", help="After validating, request admin promotion for this key (requires the authenticating key to already be admin-scoped — see POST /auth/t1/admin/rotate)")
+    # 0.72.6
+    p.add_argument("-b", "--bundle", action="store_true", help="Give bare strings to the options they look like")
+    p.add_argument("-u", "--update", action="store_true", help="Update hypernix to at least the server's version")
+    p.add_argument("--update-exact", dest="update_exact", action="store_true", help="(-ud) Update hypernix to exactly the server's version")
+    p.add_argument("--dry-run", dest="dry_run", action="store_true", help="With -u: print the pip command instead of running it")
+    p.add_argument("-k", "--kit-install", dest="kit_install", action="append", default=[], metavar="PATH", help="Install a kit: a folder or .zip with a kit.json")
+    p.add_argument("-c", "--conceal", action="store_true", help="Conceal this key on the server: address masked, data kept 36 hours (access level 3+)")
+    p.add_argument("--no-conceal", dest="no_conceal", action="store_true", help="Stop concealing this key")
+    p.add_argument("-T", "--control", action="store_true", help="Open the control screen (a verified level-9 T2 administrator key)")
+    p.add_argument("-Y", "--info", action="store_true", help="Show the server's public details: name, description, owner, url")
+    p.add_argument("-S", "--security-check", dest="security_check", action="store_true", help="Check this client, then the server, for security problems")
+    p.add_argument("-e", "--lock", action="store_true", help="Lock this config with a password (Rotorvault)")
+    p.add_argument("--unlock", action="store_true", help="Remove the password lock from this config")
     return p
 
 
@@ -393,14 +432,80 @@ def _apply_network_policy(client: T1Client, args: argparse.Namespace) -> None:
             report(exc, f"Could not force a limit for {spec}")
 
 
-def _cmd_serv(rest: list[str]) -> int:
-    args = _build_serv_parser().parse_args(rest)
+_SERV_ACTIONS = (
+    "auto", "save", "refresh", "force_refresh", "sync", "cli", "gui", "update", "update_exact",
+    "kit_install", "conceal", "no_conceal", "control", "info", "security_check", "lock",
+    "unlock", "encrypt",
+)
 
-    if not (args.auto or args.save or args.refresh or args.force_refresh or args.sync or args.cli or args.gui):
-        _warn("No action flag given (-A/-s/-R/-Rf/-y/-g/-G). Nothing to do — see 'waiter serv --help'.")
+
+def _seal_key(client: T1Client, cfg: WaiterLocalConfig) -> None:
+    """-E: replace a plain key with a v2.1 kit, when the server has them."""
+    key = cfg.key or ""
+    if not key or key.startswith(("T2CK_", "T2C_", "T1S.")):
+        return
+    try:
+        import socket
+
+        kit = client.seal_key(key, label=socket.gethostname()[:40])
+    except ImportError:
+        _warn('-E: v2.1 keys need the cryptography package (pip install "hypernix[security]"); '
+              "the key is saved encrypted at rest instead.")
+        return
+    except T1ClientError as exc:
+        if getattr(exc, "status", None) == 404:
+            _warn("-E: this server has no v2.1 keys; the key is saved encrypted at rest instead.")
+            return
+        raise
+    except ValueError as exc:
+        # A scoped token or a key in no standard format has no T2 form to
+        # seal. It is still saved, encrypted at rest.
+        _warn(f"-E: this key cannot be sealed as a v2.1 key ({exc}); it is saved encrypted at rest instead.")
+        return
+    cfg.key = kit.to_text()
+    client.credential = cfg.key
+    _ok(f"Sealed the key as a v2.1 key (device {kit.device_id}); only the kit is kept, and "
+        "each day's key is made from it.")
+
+
+def _new_password() -> str | None:
+    env = os.environ.get("HNX_WAITER_PASSWORD")
+    if env:
+        return env
+    if not sys.stdin.isatty():
+        _err("-e needs a password: run in a terminal to be asked, or set HNX_WAITER_PASSWORD.")
+        return None
+    import getpass
+
+    first = getpass.getpass("Password to lock this config: ")
+    if len(first) < 8:
+        _err("Use at least 8 characters.")
+        return None
+    if getpass.getpass("Again: ") != first:
+        _err("The two did not match.")
+        return None
+    return first
+
+
+def _cmd_serv(rest: list[str]) -> int:
+    from .servargs import ServArgsError, expand
+
+    try:
+        expanded = expand(rest)
+    except ServArgsError as exc:
+        _err(str(exc))
+        return 2
+    for text, option in expanded.assigned:
+        shown = _mask(text) if option == "--key" else text
+        _info(f"-b: read {shown!r} as {option}")
+    args = _build_serv_parser().parse_args(expanded.argv)
+
+    if not any(getattr(args, name) for name in _SERV_ACTIONS):
+        _warn("No action flag given (-A/-s/-R/-Rf/-y/-g/-G/-u/-k/-c/-T/-Y/-S/-e). Nothing to do — see 'waiter serv --help'.")
         return 1
 
-    cfg = _resolve_config(args)
+    store = _load_store(args, encrypt=args.encrypt)
+    cfg = _resolve_config(args, store=store)
     cfg.local_only = cfg.local_only or args.local_only
     if args.blacklist:
         cfg.blacklist = sorted(set(cfg.blacklist) | set(args.blacklist))
@@ -418,20 +523,61 @@ def _cmd_serv(rest: list[str]) -> int:
     if args.force_limit:
         cfg.forced_limits = sorted(set(cfg.forced_limits) | set(args.force_limit))
 
-    store = _load_store(args, encrypt=args.encrypt)
     policy_flags = bool(args.blacklist or args.whitelist or args.appeal or args.force_limit)
+    exit_code = 0
+    changed = False
+
+    def client() -> T1Client:
+        return T1Client(base_url=_base_url(cfg), credential=cfg.key)
+
+    # -S and -Y look before anything authenticates: "check the server you
+    # are about to connect to" means before the key is sent to it.
+    if args.security_check:
+        from .servops import security_check
+
+        if not cfg.server:
+            _err("-S needs a server: -I <server>.")
+            return 1
+        findings = security_check(client(), cfg, store_path=store.path, locked=store.is_locked())
+        marks = {"high": "✗", "medium": "!", "low": "·", "ok": "✓"}
+        for finding in findings:
+            line = f"  {marks.get(finding.level, '?')} [{finding.where}] {finding.message}"
+            print(line + (f"\n      fix: {finding.fix}" if finding.fix else ""))
+        if any(f.level == "high" for f in findings):
+            _warn("Security check: at least one serious problem (✗) above.")
+            exit_code = 1
+        else:
+            _ok("Security check: nothing serious found.")
+
+    if args.info:
+        from .servops import format_info
+
+        if not cfg.server:
+            _err("-Y needs a server: -I <server>.")
+            return 1
+        try:
+            info = client().server_info()
+        except T1ClientError as exc:
+            _err_connection(exc, "Server info")
+            return 1
+        print("\n".join(format_info(info)))
 
     if args.auto:
         if not cfg.server or not cfg.key:
             _err("-A requires both -I <server> and -K <T1_TOKEN>.")
             return 1
-        client = T1Client(base_url=_base_url(cfg), credential=cfg.key)
+        c = client()
+        if args.encrypt:
+            _seal_key(c, cfg)
         try:
-            validated = client.validate()
+            validated = c.validate()
         except T1ClientError as exc:
             _err_connection(exc, "Automatic setup failed")
             return 1
-        _ok(f"Connected to {cfg.server} — key {_mask(validated.get('key_id'))} ({validated.get('key_type')})")
+        family = validated.get("key_family") or "T1"
+        level = validated.get("access_level")
+        _ok(f"Connected to {cfg.server} — key {_mask(validated.get('key_id'))} ({validated.get('key_type')}"
+            + (f", {family} level {level}" if family != "T1" else "") + ")")
         if validated.get("scopes"):
             _info(f"  scopes: {', '.join(validated['scopes'])}")
 
@@ -440,20 +586,14 @@ def _cmd_serv(rest: list[str]) -> int:
                 _warn("--promote-admin requested, but the authenticating key is not admin-scoped — skipped.")
             else:
                 try:
-                    promoted = client.admin_rotate(validated["key_id"], promote_to_admin=True)
+                    promoted = c.admin_rotate(validated["key_id"], promote_to_admin=True)
                     cfg.key = promoted["key"]
-                    client.credential = promoted["key"]
                     _ok(f"Promoted to admin key {_mask(promoted['key_id'])}")
                 except T1ClientError as exc:
                     _err_connection(exc, "Admin promotion failed")
 
-        if policy_flags:
-            _apply_network_policy(client, args)
-
-        # Show the operator what the server thinks of its own setup —
-        # the single most useful thing to surface right after connecting.
         try:
-            status = client.status()
+            status = c.status()
             if not status.get("production_ready", True) and status.get("environment") == "production":
                 _warn(
                     f"Server reports {len(status.get('production_warnings', []))} production "
@@ -461,61 +601,51 @@ def _cmd_serv(rest: list[str]) -> int:
                 )
         except T1ClientError:
             pass
+        changed = True
+    elif args.encrypt and cfg.server and cfg.key:
+        _seal_key(client(), cfg)
+        changed = True
 
-        path = store.save(cfg)
-        _ok(f"Saved config to {path}" + (" (encrypted)" if args.encrypt else ""))
-        if args.gui:
-            return _launch_tui(cfg)
-        return 0
-
-    if args.save:
-        path = store.save(cfg)
-        _ok(f"Saved config to {path}" + (" (encrypted)" if args.encrypt else ""))
-
-    if policy_flags and not args.auto:
+    if policy_flags:
         if not cfg.server or not cfg.key:
             _warn("-B/-W/-a/-r were saved locally, but there's no configured server+key to apply them to.")
         else:
-            _apply_network_policy(T1Client(base_url=_base_url(cfg), credential=cfg.key), args)
-            store.save(cfg)
+            _apply_network_policy(client(), args)
+        changed = True
 
     if args.refresh or args.force_refresh:
         try:
-            client = T1Client(base_url=_base_url(cfg), credential=cfg.key)
-            validated = client.validate()
-            models = client.list_models()
+            c = client()
+            validated = c.validate()
+            models = c.list_models()
         except T1ClientError as exc:
             _err_connection(exc, "Refresh failed")
             return 1
         _ok(f"Refreshed — key {_mask(validated.get('key_id'))} still valid, {models.get('count', 0)} model(s) visible.")
         if args.force_refresh:
-            # -Rf: everything, not just identity + models.
             for label, fetch in (
-                ("servers", lambda: client.list_servers().get("count", 0)),
-                ("modules", lambda: client.list_modules().get("count", 0)),
-                ("events", lambda: client.list_events(limit=50).get("count", 0)),
+                ("servers", lambda: c.list_servers().get("count", 0)),
+                ("modules", lambda: c.list_modules().get("count", 0)),
+                ("events", lambda: c.list_events(limit=50).get("count", 0)),
             ):
                 try:
                     _info(f"  {label}: {fetch()}")
                 except T1ClientError as exc:
                     _warn(f"  {label}: unavailable ({exc.code or exc})")
             try:
-                remote_config = client.config()["config"]
+                remote_config = c.config()["config"]
                 _info(f"  server config: {len(remote_config)} setting(s) visible")
             except T1ClientError as exc:
                 _warn(f"  server config: unavailable ({exc.code or exc})")
 
     if args.sync:
         try:
-            client = T1Client(base_url=_base_url(cfg), credential=cfg.key)
-            remote_config = client.config()["config"]
-            models = client.list_models()
+            c = client()
+            remote_config = c.config()["config"]
+            models = c.list_models()
         except T1ClientError as exc:
             _err_connection(exc, "Sync failed")
             return 1
-        # Mirror the server's own view of the settings a client cares
-        # about, so `waiter config` reflects the server rather than
-        # whatever was typed weeks ago.
         cfg.extra_config.update(
             {
                 "server_environment": str(remote_config.get("environment", "")),
@@ -528,7 +658,91 @@ def _cmd_serv(rest: list[str]) -> int:
             f"plan '{remote_config.get('default_plan', '?')}'.")
         if args.as_json:
             _print_json(remote_config)
-        store.save(cfg)
+        changed = True
+
+    if args.update or args.update_exact:
+        from .servops import local_version, run_update, update_plan
+
+        try:
+            server_version = str(client().status().get("hypernix_version") or "")
+        except T1ClientError as exc:
+            _err_connection(exc, "Update")
+            return 1
+        requirement, why = update_plan(local_version(), server_version, exact=args.update_exact)
+        if requirement is None:
+            _ok(f"Update: nothing to do — {why}.")
+        else:
+            _info(f"Update: {why}")
+            code = run_update(requirement, dry_run=args.dry_run)
+            if code != 0:
+                _err(f"pip exited with {code}; hypernix was not updated.")
+                exit_code = code
+            elif not args.dry_run:
+                _ok("Updated. Restart anything that has hypernix loaded to use it.")
+
+    if args.conceal or args.no_conceal:
+        if not cfg.server or not cfg.key:
+            _err("-c needs a server and a key: -I <server> -K <key>.")
+            return 1
+        try:
+            result = client().conceal(not args.no_conceal)
+        except T1ClientError as exc:
+            _err_connection(exc, "Conceal")
+            return 1
+        cfg.concealed = bool(result.get("concealed"))
+        if cfg.concealed:
+            swept = result.get("swept") or {}
+            _ok(f"Concealed: the server keeps your address as its network only, and what this "
+                f"key makes for {result.get('retention_hours', 36)} hours (memories, preferences "
+                "and usage counts excepted).")
+            if any(swept.values()):
+                _info("  deleted now: " + ", ".join(f"{v} {k}" for k, v in swept.items() if v))
+        else:
+            _ok("No longer concealed. Nothing already deleted comes back.")
+        changed = True
+
+    for source in args.kit_install:
+        from .kits import KitError, install
+
+        try:
+            kit = install(source)
+        except KitError as exc:
+            _err(f"-k {source}: {exc}")
+            return 1
+        _ok(f"Installed kit {kit.name} {kit.version} ({kit.kind}) to {kit.path}")
+        _warn("A kit is code that runs as you. Keep only kits you would run yourself (waiter kits remove <name>).")
+
+    if args.unlock:
+        store.password = None
+        changed = True
+    if args.lock:
+        password = _new_password()
+        if password is None:
+            return 1
+        store.password = password
+        changed = True
+
+    if changed or args.save:
+        path = store.save(cfg)
+        how = " (locked)" if store.password else (" (encrypted)" if args.encrypt else "")
+        _ok(f"Saved config to {path}{how}")
+
+    if args.control:
+        from .servops import control_allowed
+
+        try:
+            validated = client().validate()
+        except T1ClientError as exc:
+            _err_connection(exc, "Control")
+            return 1
+        allowed, why = control_allowed(validated)
+        if not allowed:
+            _err(f"-T: {why}.")
+            return 1
+        _ok(f"-T: {why}.")
+        from .tui import run as run_tui
+
+        return run_tui(client(), control=True)
 
     if args.gui:
         return _launch_tui(cfg)
@@ -536,7 +750,39 @@ def _cmd_serv(rest: list[str]) -> int:
     if args.cli:
         return _interactive_session(cfg, store)
 
-    return 0
+    return exit_code
+
+
+def _cmd_kits(rest: list[str]) -> int:
+    """``waiter kits [list | remove NAME | run NAME COMMAND [ARGS...]]`` (0.72.6)."""
+    from .kits import KitError, installed, remove, run_command
+
+    action = rest[0] if rest else "list"
+    try:
+        if action in ("list", "ls"):
+            kits = installed()
+            if "--json" in rest:
+                _print_json([k.to_dict() for k in kits])
+            elif not kits:
+                _info("No kits installed. Install one with: waiter serv -k <folder-or-zip>")
+            else:
+                _print_table(["Kit", "Version", "Kind", "Commands", "Description"],
+                             [[k.name, k.version, k.kind, ", ".join(sorted(k.commands)) or "—",
+                               k.description or "—"] for k in kits], title="Installed kits")
+            return 0
+        if action in ("remove", "rm") and len(rest) == 2:
+            if remove(rest[1]):
+                _ok(f"Removed kit {rest[1]}")
+                return 0
+            _err(f"No kit called {rest[1]!r} is installed.")
+            return 1
+        if action == "run" and len(rest) >= 3:
+            return run_command(rest[1], rest[2], rest[3:])
+    except KitError as exc:
+        _err(str(exc))
+        return 1
+    _err("usage: waiter kits [list [--json] | remove NAME | run NAME COMMAND [ARGS...]]")
+    return 2
 
 
 def _launch_tui(cfg: WaiterLocalConfig) -> int:
@@ -1953,7 +2199,7 @@ _USAGE = """\
 waiter — the official T1 API TUI/CLI
 
 Usage:
-  waiter serv     One-shot automatic setup: waiter serv -A -I <server> -K <T1_TOKEN> -E
+  waiter serv     Setup and more: waiter serv -AE -I <server> -K <key>  (see waiter serv --help)
   waiter models   List models visible in the server's registry
   waiter model    Show detail/availability/usage for one model
   waiter route    Ask the routing engine which model to use (--plan, --model, --auto-fallback)
@@ -1975,6 +2221,7 @@ Usage:
   waiter smoke    Run smoke tests against a server
   waiter tui      Open the full curses dashboard (same as `waiter serv -G`)
   waiter config   Show the locally saved config
+  waiter kits     Installed kits: list, remove NAME, run NAME COMMAND (install: serv -k)
 
   waiter -F       Find a server by name / Host ID / api.jsonl (-l for local only)
   waiter version  Package, T1 API and key format versions
@@ -2147,6 +2394,7 @@ def main(argv: list[str] | None = None) -> int:
     cmd, rest = raw[0], raw[1:]
     dispatch = {
         "serv": _cmd_serv,
+        "kits": _cmd_kits,
         "models": _cmd_models,
         "model": _cmd_model,
         "status": _cmd_status,
@@ -2188,6 +2436,9 @@ def main(argv: list[str] | None = None) -> int:
         return exc.code if isinstance(exc.code, int) else 1
     except T1ClientError as exc:
         _err_connection(exc)
+        return 1
+    except WaiterConfigLocked as exc:
+        _err(str(exc))
         return 1
     except Exception as exc:  # noqa: BLE001
         print(f"[waiter {cmd}] Error: {exc}", file=sys.stderr)

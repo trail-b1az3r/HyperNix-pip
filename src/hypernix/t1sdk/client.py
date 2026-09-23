@@ -160,7 +160,79 @@ class T1Client:
     # ------------------------------------------------------------------
 
     def validate(self, key: str | None = None) -> dict[str, Any]:
-        return self._post("/auth/t1/validate", body={"key": key or self.credential})
+        if key is None:
+            key = self.transport.wire_credential()
+        elif key.startswith("T2CK_"):
+            from ..security.t2c import T2CKit
+
+            key = T2CKit.from_text(key).key_for()
+        return self._post("/auth/t1/validate", body={"key": key})
+
+    # ------------------------------------------------------------------
+    # 0.72.6: server info, privacy, v2.1 (T2C) keys
+    # ------------------------------------------------------------------
+
+    def server_info(self) -> dict[str, Any]:
+        """Name, description, owner, url, versions and features. Public."""
+        return self._get("/server/info")
+
+    def conceal_status(self) -> dict[str, Any]:
+        return self._get("/privacy/conceal", auth=True)
+
+    def conceal(self, enabled: bool = True) -> dict[str, Any]:
+        """Turn conceal mode (masked address, 36-hour retention) on or off."""
+        if enabled:
+            return self._post("/privacy/conceal", auth=True)
+        return self.transport.request("DELETE", "/privacy/conceal", auth=True).body
+
+    def t2c_public_key(self) -> dict[str, Any]:
+        return self._get("/auth/t2c/public-key")
+
+    def t2c_devices(self) -> list[dict[str, Any]]:
+        return list(self._get("/auth/t2c/devices", auth=True).get("devices", []))
+
+    def t2c_revoke_device(self, device_id: str) -> dict[str, Any]:
+        return self.transport.request("DELETE", f"/auth/t2c/devices/{_q(device_id)}", auth=True).body
+
+    def seal_key(self, key: str | None = None, *, label: str = "", access_level: int = 1):
+        """Turn a T1 or T2 key into a v2.1 kit, registered with this server.
+
+        The secret crosses the network only encrypted for the server's
+        public key, and the key itself only as the credential that proves
+        the device is its to register. Returns a
+        :class:`~hypernix.security.t2c.T2CKit`; keep its ``to_text()`` in
+        place of the key, and use it as this client's credential.
+        """
+        import os as _os
+
+        from ..security.t2c import T2CKit, build_inner, wrap_device_secret
+        from ..security.t2keys import T2KeyGenerator, looks_like_t2
+
+        key = key or self.credential
+        if not key:
+            raise ValueError("seal_key needs a T1 or T2 key")
+        if key.startswith(("T2C_", "T2CK_")):
+            raise ValueError("that key is already a v2.1 key")
+        if looks_like_t2(key):
+            t2 = T2KeyGenerator.parse(key)
+        else:
+            t2 = T2KeyGenerator.from_t1(key, access_level=access_level)
+        published = self.t2c_public_key()
+        secret = _os.urandom(32)
+        registered = self._post("/auth/t2c/devices", body={
+            "key": key,
+            "wrapped_secret": wrap_device_secret(published["public_key_pem"], secret),
+            "label": label,
+            "access_level": t2.access_level,
+        })
+        return T2CKit(
+            device_id=registered["device_id"],
+            secret=secret,
+            inner=build_inner(published["public_key_pem"], t2.raw),
+            access_level=t2.access_level,
+            server_fingerprint=published.get("fingerprint", ""),
+            label=label,
+        )
 
     def whoami(self) -> KeyInfo:
         """Identity of the configured credential, as a typed object."""

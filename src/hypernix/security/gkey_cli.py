@@ -466,9 +466,12 @@ def _cmd_create(args: list[str]) -> int:
     # authenticates as nothing.
     issued_key = meta.key
     admin_password = ""
+    t2c_kit = None
     if version is not DEFAULT_KEY_VERSION:
         from hypernix.security.t2keys import T2KeyGenerator, T2Type
 
+        # v2.1 seals a v2 spelling, so the key underneath is always T2.
+        family = T2Type.T2 if version.family == "T2C" else T2Type(version.family)
         if wants_admin:
             # Guarded by the store's own record, not by the flag that was
             # typed: from_t1_admin's precondition is that the key really
@@ -490,9 +493,23 @@ def _cmd_create(args: list[str]) -> int:
             t2 = T2KeyGenerator.from_t1(
                 meta.key,
                 access_level=access_level,
-                family=T2Type(version.family),
+                family=family,
             )
         issued_key = t2.raw
+        if version.family == "T2C":
+            from hypernix.security.t2c import T2CAuthority, T2CError
+
+            try:
+                t2c_kit = T2CAuthority(Path(km.store_dir) / "t2c").issue_kit(
+                    t2.raw, bound_key=meta.key, access_level=access_level,
+                    label=ns.prefix or meta.key_id[:8],
+                )
+            except (T2CError, ValueError) as exc:
+                print(f"[gkey create] Could not seal the key as v2.1: {exc}\n"
+                      f"              The key exists as {meta.key_id}; revoke it or "
+                      f"present it as v2.", file=sys.stderr)
+                return 1
+            issued_key = t2c_kit.key_for()
 
     content_lines = [
         "[bold green]Key created successfully![/bold green]",
@@ -522,7 +539,19 @@ def _cmd_create(args: list[str]) -> int:
         content_lines.append(f"[dim]             from {key_config.source}[/dim]")
     if tags:
         content_lines.append(f"[bold]Tags:[/bold]       {_literal(json.dumps(tags))}")
-    if version is not DEFAULT_KEY_VERSION:
+    if t2c_kit is not None:
+        # Hundreds of characters each: boxed, they wrap inside the border
+        # and cannot be copied. They are printed plainly below the panel.
+        content_lines[3] = "[bold]Sealed:[/bold]     key and kit printed below the panel"
+        content_lines.append(f"[bold]Device:[/bold]     {_literal(t2c_kit.device_id)}")
+        content_lines.append("")
+        content_lines.append(
+            "[dim]The key above is today's. Give the kit to the client instead —\n"
+            "'waiter serv -A -I <server> -K <kit>' keeps it and makes each day's key.\n"
+            "Revoke the device with DELETE /auth/t2c/devices/"
+            f"{t2c_kit.device_id}.[/dim]"
+        )
+    elif version is not DEFAULT_KEY_VERSION:
         content_lines.append("")
         content_lines.append(
             f"[dim]This is the {version.name} spelling of a v1 key that is in the "
@@ -533,6 +562,9 @@ def _cmd_create(args: list[str]) -> int:
 
     if _HAS_RICH:
         _print_panel("\n".join(content_lines), title="gkey create")
+        if t2c_kit is not None:
+            print(f"Key: {issued_key}")
+            print(f"Kit: {t2c_kit.to_text()}")
     else:
         print("Key created successfully!")
         print(f"  Key ID:    {meta.key_id}")
@@ -546,7 +578,10 @@ def _cmd_create(args: list[str]) -> int:
         print(f"  Server ID: {meta.server_id}")
         if admin_password:
             print(f"  Password:  {admin_password}")
-        if version is not DEFAULT_KEY_VERSION:
+        if t2c_kit is not None:
+            print(f"  Kit:       {t2c_kit.to_text()}")
+            print(f"  Device:    {t2c_kit.device_id}")
+        elif version is not DEFAULT_KEY_VERSION:
             print(f"  v1 form:   {meta.key}")
 
     return 0

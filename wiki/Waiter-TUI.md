@@ -82,10 +82,20 @@ waiter route --plan free --input-tokens 2000
 ```
 
 `-A` validates the key against the server and saves the config in one
-step; `-E` encrypts it at rest (Fernet, same pattern as
-`hypernix.keymaster`'s own key-storage encryption — falls back to plain
-JSON with a warning if `cryptography` isn't installed;
-`pip install hypernix[security]` to enable it).
+step. `-E` seals the key as a [v2.1 key](T1-API.md#v21-t2c-keys-and-rotorvault)
+when the server supports it, so the config holds a kit and the wire only
+ever carries that day's key. It also encrypts the config at rest (Fernet,
+the same pattern as `hypernix.keymaster`'s own key-storage encryption).
+Against an older server, or with a key format that cannot be sealed, `-E`
+keeps the key as it is and still encrypts at rest. Without
+`cryptography`, waiter falls back to plain JSON with a warning, and
+`pip install hypernix[security]` enables it.
+
+The letters can be grouped (0.72.6), so the same setup is:
+
+```bash
+waiter serv -AEK "T1_..." -I "https://myserver.ts.net:8000"
+```
 
 Config is saved to `~/.hypernix/waiter/waiter.config.jsonl` by default;
 override with `-F <path>`.
@@ -117,6 +127,7 @@ override with `-F <path>`.
 | `waiter doctor` | Check a server's configuration; exits non-zero on production warnings |
 | `waiter smoke` | Run smoke tests against a server (`--write` for a self-cleaning write test) |
 | `waiter version` | Package, waiter, T1 API and key format versions; `--json` |
+| `waiter kits` | Installed kits: `list [--json]`, `remove NAME`, `run NAME COMMAND [ARGS...]` — install with `serv -k` |
 | `waiter help <topic>` | Longer help — `connect`, `keys`, `hyperlink`, `find` |
 
 Every subcommand accepts `-I`/`-K`/`-F`/`-P`/`-H` to override the saved
@@ -151,6 +162,15 @@ curious how; it was tested against a real HTTP server, not mocked.
 | `-a <ip\|cidr>` | Appeal: remove an entry from the server's lists | ✅ full |
 | `-C <key>=<value>` | Additional configuration settings (repeatable) | ✅ stored locally; `-y` populates it from the server's own settings |
 | `--promote-admin` | After validating, request admin promotion for this key | ✅ full — requires the *authenticating* key to already be admin-scoped (`POST /auth/t1/admin/rotate`); not in the original flag list, added as the operational hook for the "-K supports conversion to admin" requirement |
+| `-b` | Give bare strings to the options they look like — see [grouping and `-b`](#grouping-letters-and--b) | ✅ full (0.72.6) |
+| `-u` | Update hypernix to at least the server's version (`pip install --upgrade`) | ✅ full (0.72.6); `--dry-run` prints the command |
+| `-ud` | Update hypernix to exactly the server's version, down as well as up | ✅ full (0.72.6) |
+| `-k <path>` | Install a kit: a folder or `.zip` with a `kit.json` — see [Kits](#kits) | ✅ full (0.72.6) |
+| `-c` / `--no-conceal` | Turn the server's [conceal mode](T1-API.md#conceal-mode-and-36-hour-retention) on or off for this key: address masked, data kept 36 hours (access level 3+) | ✅ full (0.72.6) |
+| `-T` | Open the TUI with the [control pane](#control-mode--t) | ✅ full (0.72.6) — a verified administrator holding a level-9 T2 or v2.1 key |
+| `-Y` | Print the server's public card (`GET /server/info`) | ✅ full (0.72.6) |
+| `-S` | Check this client, then the server, for security problems | ✅ full (0.72.6) — public endpoints only |
+| `-e` / `--unlock` | Lock the config with a password (Rotorvault + scrypt), or remove the lock | ✅ full (0.72.6) — every command then asks, or reads `HNX_WAITER_PASSWORD` |
 | `-h` | Help | ✅ (argparse default) |
 
 `-B`/`-W`/`-a`/`-r` write to the server **and** to the local config. That
@@ -159,6 +179,70 @@ config` shows and what a re-run of `waiter serv -A` re-applies against a
 rebuilt server, and it is the only record available when your key is not
 admin — in which case the server call is refused and the CLI says so
 plainly instead of pretending it worked.
+
+### Grouping letters and `-b`
+
+Single letters can be run together in any order (0.72.6):
+`waiter serv -ArEK T2C_… -I 100.64.0.7` is `-A -R -E -K T2C_… -I
+100.64.0.7`. A letter that takes a value (`I K F P H B W r a C k`) must
+end its group, because its value is the next word, or stand on its own.
+waiter refuses `-AKE key` and says how to write it, rather than guessing.
+
+Inside a group, `r` means refresh (`-R`). On its own, `-r` keeps its
+old meaning, `-r SUBJECT=LIMIT`, because only a lone `-r` has room for
+its value. `Rf` and `ud` inside a group are the full refresh and the
+exact update.
+
+Without `-b`, a word with no option in front of it is an error. With
+`-b`, waiter works out which option each one belongs to and prints what
+it decided:
+
+| Looks like | Goes to |
+|---|---|
+| `T1_…`, `T2_…`, `T2C_…`, `T2CK_…` and the other key prefixes | `-K` |
+| `http(s)://…`, an IP address, a host name | `-I` |
+| a whole number from 1 to 65535 | `-P` |
+| `key:…=N/Ns` or `N/Ns` | `-r` |
+| `KEY=VALUE` | `-C` |
+| a `.zip`, or a folder with a `kit.json` | `-k` |
+| any other existing file | `-F` |
+
+```bash
+waiter serv -Ab T1_abc123 https://myserver.ts.net 8000
+```
+
+A CIDR range is refused, because it could be `-B`, `-W` or `-a`, and
+blocking an address is not something to guess. Two strings that look
+like the same option are refused too, as is a string for an option that
+is already given.
+
+## Kits
+
+A kit is a user-made mod: a folder, or a `.zip` of one, with a
+`kit.json` at its top.
+
+```json
+{
+  "name": "fancy-status",
+  "version": "1.2.0",
+  "kind": "waiter",
+  "description": "A status line with colours",
+  "commands": {"status": "fancy_status:main"}
+}
+```
+
+`kind` is `waiter`, `t1api-client`, `hyped-pro` or `other`, and only a
+`waiter` kit has `commands` (`module:function`, called with the
+arguments). `waiter serv -k PATH` installs one to
+`~/.hypernix/waiter/kits/<name>/`, replacing a kit with the same name.
+`waiter kits` lists them, `waiter kits remove NAME` removes one, and
+`waiter kits run NAME COMMAND [ARGS...]` runs a command.
+
+waiter checks that an archive is well-formed, unpacks to no more than
+50 MB, contains no symbolic links and writes nothing outside the kit's
+folder. It does nothing else to vet the contents. **A kit is code, and
+it runs as you**: installing one is the same trust decision as
+`pip install`.
 
 ## Interactive session (`-g`)
 
@@ -180,7 +264,8 @@ back.
 waiter tui                 # or: waiter serv -G
 ```
 
-Eight panes, `TAB` between them, everything sourced from the API:
+Eight panes, `TAB` between them, everything sourced from the API (nine
+in [control mode](#control-mode--t)):
 
 | Pane | Shows |
 |---|---|
@@ -215,13 +300,42 @@ stale data with an error banner rather than freezing the terminal.
 says so and points at the one-shot subcommands, which work everywhere;
 `pip install windows-curses` enables the TUI.
 
+### Control mode (`-T`)
+
+```bash
+waiter serv -T -K "T2_..."        # a level-9 T2 or v2.1 administrator key
+```
+
+`-T` opens the TUI with a **Control** pane first. The pane shows the
+server's configuration warnings, the network policy (blocked and allowed
+ranges, and whether unlisted clients are let in), the keys, and recent
+security events. `b`, `w` and `x` block,
+allow or remove an address or range, and `l` toggles unlisted clients.
+
+It opens only after the server confirms the key is an administrator key
+of the T2 or v2.1 family at access level 9. A T1 admin key, a level-8
+admin key and a level-9 key that is not an admin are all refused. The
+pane only decides what the screen offers: the server checks every action
+on its own. Without `-T` there is no Control pane and none of its keys
+do anything.
+
 ## Checking a server
 
 ```bash
+waiter serv -Y     # the server's public card: name, owner, versions, features
+waiter serv -S     # this client, then the server, for security problems
 waiter doctor      # configuration: what would block a production start
 waiter smoke       # behaviour: auth enforced, registry gated, limits on
 waiter smoke --write   # also creates and removes a scratch module
 ```
+
+`-S` checks this client first: the config file's mode, a key stored as
+itself rather than sealed, whether the config is locked, whether
+`cryptography` is installed, and the hypernix version. Then it checks the
+server: plain HTTP on a public address, production warnings, missing
+security headers, whether it answers without a key, and whether this
+client is older than the server. It uses only the endpoints any client
+can see. It checks your own setup and does not scan the server.
 
 `doctor` reads `GET /status` and prints every production warning the
 server reports, exiting non-zero on a production server with warnings — so

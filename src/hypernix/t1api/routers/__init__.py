@@ -22,6 +22,9 @@ T1 v1.0.26.9.2.1 adds: inference — the governed generation surface.
 ``/bridge/lmstudio/*`` is a pass-through that never consults the
 registry, the cascade or the quota; ``/inference/*`` is the same
 capability with every one of those applied.
+0.72.6 adds: t2c — ``/auth/t2c/*``, the public key and device
+registration behind v2.1 (T2C) keys — and privacy: ``/privacy/conceal``
+(conceal mode, 36-hour retention) and the public ``/server/info``.
 0.72.4 adds: training — progress, logs, checkpoints, machine
 resources and the stop/pause/resume controls, admin-gated unless the
 server is explicitly in trusted-network mode.
@@ -60,9 +63,11 @@ from . import (
     models,
     modules,
     noodle,
+    privacy,
     runner,
     security,
     servers,
+    t2c,
     training,
     usage,
     web,
@@ -71,6 +76,8 @@ from . import (
 ALL_ROUTERS = (
     health.router,
     auth.router,
+    t2c.router,
+    privacy.router,
     models.router,
     usage.router,
     config.router,

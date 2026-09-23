@@ -21,6 +21,32 @@ happens on the machine with the GPU, which is the whole point.
 | **Models** | See what is loaded in LM Studio on the PC and switch between them per conversation. |
 | **Hugging Face** | Paste a model page, a direct download link, or both. Split GGUFs are expanded to the full set of parts; vision projectors are included; a mismatch between the two links is reported rather than guessed at. |
 | **Away from home** | The app tries every address the server advertises, Tailscale first, and keeps the one that answers. Nothing to switch when you leave the house. |
+| **On the iPhone** | Search Hugging Face, check a model fits this phone, download it and chat with it with no PC at all (the *On iPhone* tab). |
+| **Siri and CarPlay** | Ask a question, load a model, read a chat or send a message without opening the app — see [Siri](#siri). CarPlay shows your chats and takes dictation. |
+
+---
+
+## Siri
+
+HyperLink's four intents use App Intents. None of them opens the app,
+because asking from a car dock or a lock screen is the point. Chats and
+models are App Intents entities (`ChatEntity` and `ModelEntity`), each
+with a query that asks the paired server. That is what lets a phrase
+name one: Siri can only hear an entity or an enum inside a sentence,
+never a free-form string.
+
+| Say | Does |
+|---|---|
+| "Ask HyperLink" | Asks for the question, then speaks the reply |
+| "Load ‹model› in HyperLink", "Switch HyperLink to ‹model›" | Loads that model on the PC |
+| "Read ‹chat› in HyperLink", "Read me the HyperLink chat" | Reads a chat's latest messages, or the most recent chat's |
+| "Send a message to ‹chat› in HyperLink", "Send a message in HyperLink" | Asks what to send, sends it to that chat (or the most recent one), and speaks the reply. With no chat to send to, it starts one called "Siri" |
+
+The app updates Siri's list of names (`updateAppShortcutParameters()`)
+whenever it refreshes chats or models. A chat or model created since the
+app last refreshed is not a name Siri knows yet. Open the app once, or
+use the phrase without a name. The question itself is never part of a
+phrase: Siri asks for it.
 
 ---
 
@@ -197,6 +223,8 @@ instead of an unsigned one. Leave them unset and the build still works.
 ```
 Sources/
   HyperLinkApp.swift        the App entry point
+  CarPlay/                  the CarPlay scene: chat list, dictation, replies
+  Intents/                  Siri: the four App Intents and their entities
   Models/APITypes.swift     the wire types, mirroring t1api/schemas.py
   Networking/
     HyperLinkClient.swift   one actor; endpoint failover lives here
@@ -205,7 +233,9 @@ Sources/
     AdminCredentialStore.swift  admin credentials, forgotten on restart
     ServerIdentity.swift    is this the machine I paired with?
     AddressAdvice.swift     the addresses that cannot work, and why
+  OnDevice/                 on-iPhone models: search, fit, download, llama.cpp
   Store/AppState.swift      one @Observable object, on the main actor
+  Theme/                    the themes and motion
   Views/                    SwiftUI, one file per screen
 scripts/
   app_version.py            the marketing version, from the T1 API's

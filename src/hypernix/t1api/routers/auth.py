@@ -37,6 +37,8 @@ def validate(
         is_admin=ctx.is_admin,
         expires_at=ctx.key_meta.expires_at,
         request_id=request_id,
+        key_family=ctx.t2_family or "T1",
+        access_level=ctx.t2_access_level if ctx.t2_family else None,
     )
 
 

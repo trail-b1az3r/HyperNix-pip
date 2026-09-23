@@ -62,6 +62,18 @@ REFRESH_INTERVAL = 5.0
 
 PANES = ("models", "quota", "usage", "jobs", "servers", "modules", "events", "settings")
 
+#: The extra pane `waiter serv -T` opens with (0.72.6). Only in control
+#: mode, which only a verified level-9 T2 administrator reaches — see
+#: waiter.servops.control_allowed. The server checks every action anyway.
+CONTROL_PANE = "control"
+
+CONTROL_HELP = [
+    "b                 block an address or range (Control pane)",
+    "w                 allow an address or range (Control pane)",
+    "x                 remove an address from both lists (Control pane)",
+    "l                 let unlisted addresses in, or not (Control pane)",
+]
+
 HELP_LINES = [
     "TAB / shift-TAB   next / previous pane",
     "UP DOWN           move selection",
@@ -100,6 +112,10 @@ class DashboardState:
     status: dict[str, Any] = field(default_factory=dict)
     identity: dict[str, Any] = field(default_factory=dict)
     routing: dict[str, Any] = field(default_factory=dict)
+    # Control mode (waiter serv -T) only.
+    network: dict[str, Any] = field(default_factory=dict)
+    keys: list[dict[str, Any]] = field(default_factory=list)
+    security_events: list[dict[str, Any]] = field(default_factory=list)
 
     selected_model: str | None = None
     automatic_routing: bool = True
@@ -128,10 +144,16 @@ class DashboardState:
 class DashboardController:
     """Fetches state and applies user actions. No curses dependency."""
 
-    def __init__(self, client: T1Client, *, state: DashboardState | None = None) -> None:
+    def __init__(self, client: T1Client, *, state: DashboardState | None = None,
+                 control: bool = False) -> None:
         self.client = client
         self.state = state or DashboardState()
+        self.control = control
         self._lock = threading.Lock()
+
+    @property
+    def panes(self) -> tuple[str, ...]:
+        return (CONTROL_PANE, *PANES) if self.control else PANES
 
     # ------------------------------------------------------------------
     # Refresh
@@ -191,6 +213,17 @@ class DashboardController:
         )
         status = attempt("status", self.client.status, {})
         identity = attempt("whoami", self.client.validate, {}) if authed else {}
+        if self.control:
+            network = attempt("network policy", self.client.network_policy, {})
+            keys = [
+                {"key_id": k.key_id, "key_type": k.key_type, "active": k.active,
+                 "scopes": list(k.scopes)}
+                for k in attempt("keys", self.client.list_keys, [])
+            ]
+            security = attempt(
+                "security events",
+                lambda: self.client.audit_events(category="security", limit=20), {},
+            ).get("events", [])
 
         with self._lock:
             state = self.state
@@ -206,6 +239,10 @@ class DashboardController:
             state.events = events or state.events
             state.status = status or state.status
             state.identity = identity or state.identity
+            if self.control:
+                state.network = network or state.network
+                state.keys = keys or state.keys
+                state.security_events = security or state.security_events
             state.last_refresh = time.time()
             # Only report a banner when something actually failed, and cap
             # it — a screen full of per-model errors helps nobody.
@@ -273,6 +310,39 @@ class DashboardController:
         self.state.selected_model = decision["model_id"]
         self.state.notice = f"Automatic routing ON — server chose {decision['model_id']}."
         return self.state.notice
+
+    # -- control mode (waiter serv -T) ---------------------------------
+
+    def _control_action(self, label: str, fn) -> str:
+        if not self.control:
+            return self._note("control actions need waiter serv -T")
+        try:
+            fn()
+        except T1ClientError as exc:
+            return self._note(f"{label} refused: {exc}")
+        self.refresh()
+        return self._note(f"{label}: done")
+
+    def block_address(self, cidr: str) -> str:
+        return self._control_action(f"block {cidr}",
+                                    lambda: self.client.blacklist_ip(cidr, reason="waiter -T"))
+
+    def allow_address(self, cidr: str) -> str:
+        return self._control_action(f"allow {cidr}",
+                                    lambda: self.client.whitelist_ip(cidr, reason="waiter -T"))
+
+    def appeal_address(self, cidr: str) -> str:
+        return self._control_action(f"remove {cidr}", lambda: self.client.appeal_ip(cidr))
+
+    def toggle_allow_unlisted(self) -> str:
+        current = bool(self.state.network.get("allow_unlisted_clients", True))
+        label = "let unlisted addresses in" if not current else "refuse unlisted addresses"
+        return self._control_action(label, lambda: self.client.set_allow_unlisted(not current))
+
+    def _note(self, text: str) -> str:
+        with self._lock:
+            self.state.notice = text
+        return text
 
     def cancel_job(self, job_id: str) -> str:
         try:
@@ -351,6 +421,8 @@ def render_pane(state: DashboardState, pane: str, width: int = 100) -> list[str]
     asserted in a test without a terminal, and so a future non-curses
     front end (a plain ``--watch`` mode, say) can reuse it verbatim.
     """
+    if pane == CONTROL_PANE:
+        return _render_control(state)
     if pane == "models":
         lines = [f"{'model_id':<26}{'status':<11}{'avail':<7}{'in':>9}{'out':>9}  plan"]
         for model in state.models:
@@ -514,6 +586,35 @@ def render_pane(state: DashboardState, pane: str, width: int = 100) -> list[str]
     return [f"  (unknown pane: {pane})"]
 
 
+def _render_control(state: DashboardState) -> list[str]:
+    status, network = state.status, state.network
+    lines = ["SERVER"]
+    lines.append(f"  {status.get('server_name', '?')}  hypernix {status.get('hypernix_version', '?')}  "
+                 f"environment {status.get('environment', '?')}")
+    warnings = status.get("production_warnings") or []
+    lines.append(f"  {len(warnings)} configuration warning(s)" if warnings else "  no configuration warnings")
+    lines.extend(f"    - {w}" for w in warnings[:5])
+    lines.append("")
+    lines.append("NETWORK POLICY  (b block · w allow · x remove · l unlisted)")
+    lines.append(f"  unlisted addresses: {'allowed' if network.get('allow_unlisted_clients', True) else 'refused'}")
+    for entry in (network.get("entries") or [])[:12]:
+        lines.append(f"  {entry.get('kind', '?'):<10}{entry.get('cidr', '?'):<22}{entry.get('reason', '')}")
+    lines.append("")
+    lines.append(f"KEYS  {len(state.keys)}")
+    for key in state.keys[:10]:
+        flag = "" if key.get("active", True) else "  (inactive)"
+        lines.append(f"  {key.get('key_id', '?')[:12]:<14}{key.get('key_type', '?'):<10}"
+                     f"{','.join(key.get('scopes') or [])}{flag}")
+    lines.append("")
+    lines.append("RECENT SECURITY EVENTS")
+    if not state.security_events:
+        lines.append("  none")
+    for event in state.security_events[:10]:
+        lines.append(f"  {event.get('action', '?'):<34}{event.get('outcome', '?'):<9}"
+                     f"{event.get('client_ip', '')}")
+    return lines
+
+
 def _job_progress(job: dict[str, Any]) -> str:
     result = job.get("result") or {}
     delivered = result.get("delivered")
@@ -548,7 +649,7 @@ def render_header(state: DashboardState, base_url: str) -> str:
 # ---------------------------------------------------------------------------
 
 
-def run(client: T1Client, *, refresh_interval: float = REFRESH_INTERVAL) -> int:
+def run(client: T1Client, *, refresh_interval: float = REFRESH_INTERVAL, control: bool = False) -> int:
     """Run the TUI. Returns a process exit code.
 
     Returns 1 with an explanation when curses isn't available (notably on
@@ -567,7 +668,7 @@ def run(client: T1Client, *, refresh_interval: float = REFRESH_INTERVAL) -> int:
         )
         return 1
 
-    controller = DashboardController(client)
+    controller = DashboardController(client, control=control)
     return curses.wrapper(lambda stdscr: _loop(stdscr, controller, client, refresh_interval))
 
 
@@ -585,6 +686,7 @@ def _loop(stdscr, controller: DashboardController, client: T1Client, refresh_int
         curses.init_pair(3, curses.COLOR_RED, -1)  # errors / exhausted
         curses.init_pair(4, curses.COLOR_YELLOW, -1)  # notices
 
+    panes = controller.panes
     pane_index = 0
     selection = 0
     show_help = False
@@ -605,7 +707,7 @@ def _loop(stdscr, controller: DashboardController, client: T1Client, refresh_int
     try:
         while True:
             state = controller.state
-            pane = PANES[pane_index]
+            pane = panes[pane_index]
             stdscr.erase()
             height, width = stdscr.getmaxyx()
 
@@ -613,7 +715,7 @@ def _loop(stdscr, controller: DashboardController, client: T1Client, refresh_int
                            curses.color_pair(1) | curses.A_REVERSE)
 
             tabs = "  ".join(
-                f"[{name.upper()}]" if i == pane_index else f" {name} " for i, name in enumerate(PANES)
+                f"[{name.upper()}]" if i == pane_index else f" {name} " for i, name in enumerate(panes)
             )
             stdscr.addnstr(1, 0, tabs, width, curses.color_pair(1))
 
@@ -645,7 +747,8 @@ def _loop(stdscr, controller: DashboardController, client: T1Client, refresh_int
                 stdscr.addnstr(footer_row, 0, "  TAB panes · ENTER select · a auto-route · r refresh · ? help · q quit"[: width - 1], width - 1)
 
             if show_help:
-                _draw_help(stdscr, curses, height, width)
+                _draw_help(stdscr, curses, height, width,
+                           HELP_LINES + CONTROL_HELP if controller.control else HELP_LINES)
 
             stdscr.refresh()
 
@@ -657,10 +760,10 @@ def _loop(stdscr, controller: DashboardController, client: T1Client, refresh_int
             if key == ord("?"):
                 show_help = not show_help
             elif key == ord("\t"):
-                pane_index = (pane_index + 1) % len(PANES)
+                pane_index = (pane_index + 1) % len(panes)
                 selection = 0
             elif key == curses.KEY_BTAB:
-                pane_index = (pane_index - 1) % len(PANES)
+                pane_index = (pane_index - 1) % len(panes)
                 selection = 0
             elif key == curses.KEY_DOWN:
                 selection = min(selection + 1, max(0, len(body) - 1))
@@ -673,6 +776,14 @@ def _loop(stdscr, controller: DashboardController, client: T1Client, refresh_int
                 controller.toggle_automatic_routing()
             elif key in (curses.KEY_ENTER, 10, 13):
                 _activate(controller, pane, selection, state)
+            elif pane == CONTROL_PANE and key in (ord("b"), ord("w"), ord("x")):
+                label = {ord("b"): "Block", ord("w"): "Allow", ord("x"): "Remove"}[key]
+                cidr = _prompt(stdscr, curses, height, width, f"{label} address or range: ")
+                if cidr:
+                    {ord("b"): controller.block_address, ord("w"): controller.allow_address,
+                     ord("x"): controller.appeal_address}[key](cidr)
+            elif pane == CONTROL_PANE and key == ord("l"):
+                controller.toggle_allow_unlisted()
             elif key == ord("c") and pane == "jobs":
                 job = _row_item(state.jobs, selection)
                 if job:
@@ -714,15 +825,16 @@ def _activate(controller: DashboardController, pane: str, selection: int, state:
             controller.select_model(model["model_id"])
 
 
-def _draw_help(stdscr, curses, height: int, width: int) -> None:
-    box_height = len(HELP_LINES) + 4
+def _draw_help(stdscr, curses, height: int, width: int, lines: list[str] | None = None) -> None:
+    lines = lines or HELP_LINES
+    box_height = len(lines) + 4
     box_width = min(width - 4, 74)
     top = max(1, (height - box_height) // 2)
     left = max(0, (width - box_width) // 2)
     for row in range(box_height):
         stdscr.addnstr(top + row, left, " " * box_width, box_width, curses.A_REVERSE)
     stdscr.addnstr(top + 1, left + 2, "waiter TUI — keys", box_width - 4, curses.A_REVERSE | curses.A_BOLD)
-    for row, line in enumerate(HELP_LINES):
+    for row, line in enumerate(lines):
         stdscr.addnstr(top + 3 + row, left + 2, line, box_width - 4, curses.A_REVERSE)
 
 

@@ -513,6 +513,21 @@ class TestPerformance:
         # Should generate 10 frames in under 1 second
         assert elapsed < 1.0
 
+    def test_the_process_table_is_not_rescanned_every_frame(self, tmp_path: Path, monkeypatch):
+        """Listing every process costs about a second on Windows; the
+        layout is rebuilt every refresh, so it reuses the last scan."""
+        log_file = tmp_path / "train.log"
+        log_file.write_text("loss=0.5\n", encoding="utf-8")
+        tvt = TVTopPlusPlus(log_path=log_file)
+        scans = []
+        monkeypatch.setattr(tvt, "_scan_processes", lambda: scans.append(1) or [])
+        for _ in range(5):
+            tvt._get_active_processes()
+        assert len(scans) == 1
+        monkeypatch.setattr(tvt, "PROCESS_REFRESH_SECONDS", 0.0)
+        tvt._get_active_processes()
+        assert len(scans) == 2
+
     def test_layout_build_speed(self, tmp_path: Path):
         """Test that layout building is fast."""
         log_file = tmp_path / "train.log"

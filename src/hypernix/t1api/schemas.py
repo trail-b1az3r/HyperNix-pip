@@ -139,6 +139,11 @@ class ValidateKeyResponse(BaseModel):
     is_admin: bool
     expires_at: float | None
     request_id: str
+    # 0.72.6: the T2 facts a T1 key has no field for. Empty for a T1 key.
+    # `waiter serv -T` needs the family and level to decide whether a key
+    # may open the control screen.
+    key_family: str = "T1"
+    access_level: int | None = None
 
 
 class TokenRequest(BaseModel):

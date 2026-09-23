@@ -283,6 +283,23 @@ class TestDiscovery:
 
 
 class TestBuiltinModules:
+    def test_disk_needs_no_statvfs(self, monkeypatch):
+        """Windows has no os.statvfs. The module used to test for it, and
+        once psutil made it look available it crashed on its first poll."""
+        import types
+
+        from hypernix.monitoring import tvtoppro_modules
+
+        # The module's own view of `os`, minus statvfs — shutil keeps the
+        # real one, as it has its own implementation on each platform.
+        windows_like = types.ModuleType("os")
+        windows_like.__dict__.update({k: v for k, v in vars(os).items() if k != "statvfs"})
+        monkeypatch.setattr(tvtoppro_modules, "os", windows_like)
+        module = BUILTIN["disk"]()
+        assert module.available()
+        module.poll()
+        module.poll()
+
     @pytest.mark.parametrize("name", sorted(BUILTIN))
     def test_it_polls_without_raising(self, name):
         module = BUILTIN[name]()

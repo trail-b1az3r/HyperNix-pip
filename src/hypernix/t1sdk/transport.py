@@ -163,6 +163,20 @@ class HTTPTransport:
         self._opener = opener
         self._ssl_context = self.tls.build_context()
 
+    def wire_credential(self) -> str | None:
+        """What goes in the Authorization header.
+
+        The credential itself, except a v2.1 kit (``T2CK_``): a kit is
+        what makes keys and never leaves this machine, so today's key is
+        derived from it for each request instead (0.72.6).
+        """
+        credential = self.credential
+        if credential and credential.startswith("T2CK_"):
+            from ..security.t2c import T2CKit
+
+            return T2CKit.from_text(credential).key_for()
+        return credential
+
     # ------------------------------------------------------------------
 
     def url_for(self, path: str, query: dict[str, Any] | None = None) -> str:
@@ -216,7 +230,7 @@ class HTTPTransport:
                     code="AUTH_MISSING_CREDENTIALS",
                     status=401,
                 )
-            headers["Authorization"] = f"Bearer {self.credential}"
+            headers["Authorization"] = f"Bearer {self.wire_credential()}"
 
         last_error: Exception | None = None
         for attempt in range(1, self.retry.max_attempts + 1):

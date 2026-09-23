@@ -50,6 +50,7 @@ and a stage that is off says so in ``GET /status``.
 """
 from __future__ import annotations
 
+import contextlib
 import logging
 import math
 import sys
@@ -455,6 +456,27 @@ def create_app(
     # somewhere to look the running one up.
     app.state.t1_generations = GenerationRegistry()
     app.state.t1_memory_store = MemoryStore(db)
+    # 0.72.6 -- conceal mode and 36-hour retention (t1api.privacy). The
+    # sweeper thread starts with the server, not with create_app, so an
+    # app built by a test does not start a thread nobody stops.
+    from .privacy import ConcealStore, RetentionSweeper
+
+    app.state.t1_conceal = ConcealStore(db)
+    audit.conceal = app.state.t1_conceal
+    app.state.t1_retention = RetentionSweeper(db, app.state.t1_conceal, attachments=attachments)
+    retention = app.state.t1_retention
+    previous_lifespan = app.router.lifespan_context
+
+    @contextlib.asynccontextmanager
+    async def _lifespan(lifespan_app):
+        retention.start()
+        try:
+            async with previous_lifespan(lifespan_app) as state:
+                yield state
+        finally:
+            retention.stop()
+
+    app.router.lifespan_context = _lifespan
     app.state.t1_preference_store = PreferenceStore(db)
     # One llama.cpp process, owned by this server. Constructed
     # unloaded: starting a model at boot would make a restart
