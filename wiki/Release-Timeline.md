@@ -918,3 +918,14 @@ timeline
         : 0d427c97 - ci- Studio embeds SettingsView; public-only fetches connect to the checked address
 ```
 
+## Release v0.72.6.rc2 (2026-09-23)
+
+```mermaid
+timeline
+    title Release v0.72.6.rc2 Commits
+    0.72.6.rc2
+        : dfb2baef - chore- update JSON stats (scheduled)
+        : c81b29d2 - 0.72.6.rc2- tvtop-max, and HyperLink's default system prompt
+        : 25d5540b - HyperLink Siri- say what the phrases match, and name models as they are said
+```
+
