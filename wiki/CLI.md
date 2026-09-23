@@ -516,6 +516,8 @@ interrupted. Full documentation in [Gather](Gather.md).
 
 ## `fusebox`
 
+`fuse-box` is the same command.
+
 ```bash
 hnx fusebox status                    # what the cards are doing now
 hnx fusebox watch --target 78         # hold 78 °C by pacing the run
@@ -588,6 +590,7 @@ Distributed network manager built on Tailscale — mainly for driving
 gkey create --type service --scopes download,upload --expires 2027-01-01
 gkey create -v v2 --level 5            # a T2 key:  T2_…-5
 gkey create -v v2short                 # a T2S key: T2S_…   (HyperLink)
+gkey create -v v2.1 --level 4          # a v2.1 key: T2C_…-4, and the T2CK_ kit that makes it
 gkey list                              # `gkey list id <key-id>` for detail
 gkey revoke <key_id>
 gkey version                           # what this build can issue
@@ -607,11 +610,20 @@ nothing.
 | `v1` (default) | `T1_…` | servers, admin, everything |
 | `v2` | `T2_…-N` | a client key with an access level `--level N` |
 | `v2short` | `T2S_…` | HyperLink and the iOS app; 26-character body; **never** an administrator |
+| `v2.1` | `T2C_…-N` and a `T2CK_…` kit | a v2 key sealed with Rotorvault: the client keeps the kit, and the key it sends changes every day |
 
-`v2.1` is recognised and refused with the reason — it is reserved, not
-unknown. `--password` / `--word` set the human-carried half where the
-format has one; without them one is generated, and it is never a
-predictable sequence.
+**v2.1 (0.72.6).** `gkey create -v v2.1` mints the key, registers a device
+for it and prints two things below the panel (each is too long to box):
+today's `T2C_` key and the `T2CK_` **kit**. Give the kit to the client —
+`waiter serv -A -I <server> -K <kit>` — and it makes each day's key from
+it; the key itself is never written down in the clear. A day's key is
+accepted on its UTC day and one day either side. Revoke a device with
+`DELETE /auth/t2c/devices/{id}`. How the sealing works, and what it does
+and does not protect, is in [T1 API → v2.1 keys](T1-API.md#v21-t2c-keys-and-rotorvault).
+
+`--password` / `--word` set the human-carried half where the format has
+one; without them one is generated, and it is never a predictable
+sequence.
 
 **`gkey version`** prints the four numbers that move independently — the
 `hypernix` package, the T1 API contract (short and long spellings), the
@@ -625,6 +637,7 @@ the server could not see, and both halves would appear to work.
 ## `hypernix-t1`
 
 ```bash
+hnx-t1 status                            # hnx-t1 is the same program, shorter
 hypernix-t1 create                       # set up a server (hands off to install-t1.sh)
 hypernix-t1 create --non-interactive     # …or unattended, accepting every default
 hypernix-t1 start                        # start / stop / kill / restart / status
@@ -635,6 +648,9 @@ hypernix-t1 configure                    # open the config in $EDITOR
 hypernix-t1 autostart on                 # install a systemd user service
 hypernix-t1 remove                       # tear it back down
 ```
+
+`hnx-t1` (0.72.6) is an alias, not a copy: it runs the `hypernix-t1` next
+to it, so every subcommand, flag and exit code is the same.
 
 A single dependency-free shell program covering the whole lifecycle of a
 [T1 API](T1-API.md) server, so running one does not mean remembering a
@@ -806,6 +822,113 @@ with no key at all.
 A refusal is printed rather than raised, because a refusal is
 information: a 403 names the three ways to be allowed, and a 404 lists
 what this server *can* load.
+
+## `wakeup`
+
+```bash
+hypernix wakeup record "hey nix" -o ./takes               # capture takes from the microphone
+hypernix wakeup train "hey nix" --positives ./takes --negatives ./ambient
+hypernix wakeup check clip.wav --model hey-nix.pt         # score one clip
+hypernix wakeup listen --model hey-nix.pt                 # listen on the microphone
+```
+
+Train a wake word and listen for it. The full guide — where examples come
+from, how the classifier works, how to tune it — is [Wake-up](WakeUp.md).
+
+## `dilute`
+
+```bash
+hypernix dilute run  --prompts prompts.txt -o traces.jsonl --traces 200
+hypernix dilute jit  --prompts prompts.txt -o traces.jsonl --judge-model qwen3
+hypernix dilute inspect traces.jsonl
+```
+
+Best-of-n sampling: several answers per prompt, keep the best. `run`
+writes at the end, `jit` streams traces as they are made, `inspect` says
+whether a trace file is worth training on. The evaluator decides what you
+get: `--judge` uses a model and is the honest default; `--length` is a
+smoke test and will teach a model to ramble if you train on what it picks.
+
+## `neuron`
+
+```bash
+hypernix neuron demo   --env grid --episodes 50 -o demos.npz
+hypernix neuron clone  --env grid --demos demos.npz -o policy.pt
+hypernix neuron dagger --env grid --rounds 5 -o policy.pt
+hypernix neuron rl     --env beam --algorithm reinforce -o policy.pt
+hypernix neuron eval   --env grid --policy policy.pt
+```
+
+Train small networks that act: imitation (`clone`, `dagger`),
+reinforcement learning (`rl`), and evaluation. Reach for `clone` before
+`rl` — if you can demonstrate the task, cloning gets a working policy in
+minutes.
+
+## `errors`
+
+```bash
+hypernix errors explain S1-00060.b3     # what a code means and what to do
+hypernix errors list                    # every code, or one domain's
+```
+
+HyperNix error codes have the shape `L#-NNNNN.kS`: domain, tier, number,
+kind (a-f) and severity (1-5). The T1 API returns one beside every error
+as `hx_code`.
+
+## `elements`
+
+```bash
+hypernix elements list                  # every element, built-in and yours
+hypernix elements info magnesium        # one element's spec
+hypernix elements plan magnesium        # what it would change, changing nothing
+hypernix elements run magnesium         # activate until Ctrl-C
+hypernix elements new Na                # scaffold a user element (a real symbol)
+```
+
+Addons named after the periodic table (hydrogen, carbon, magnesium, and
+your own). Periods 6 and 7 — element 55 onward — need `--experimental`.
+Magnesium needs `psutil` (`pip install "hypernix[elements]"`).
+
+## `hyprslug-headers`
+
+```bash
+hypernix hyprslug-headers status
+hypernix hyprslug-headers scan ~/.hypernix/models
+hypernix hyprslug-headers show model.gguf
+hypernix hyprslug-headers serve model.gguf          # OpenAI-compatible endpoint
+```
+
+Self-describing headers for GGUFs that carry HyperNix extension types, and
+the runtime that executes them: `install`, `status`, `uninstall`, `scan`,
+`show`, `stamp`, `wrap` (re-encode to a type stock llama.cpp reads),
+`install-model` and `serve`. `--json` on every subcommand. See
+[HyprSlug headers](HyprSlug-Headers.md).
+
+## `path`
+
+```bash
+hypernix path                 # --check: report what would happen (the default)
+hypernix path --apply         # write the PATH block into your shell's startup file
+hypernix path --undo          # remove it
+hypernix path --print         # just the snippet
+```
+
+Put HyperNix's console scripts (`hypernix`, `hnx`, `hyped`, `waiter`, …)
+on your PATH. `--shell` and `--profile` override detection. Inside a
+virtualenv `--apply` is refused unless `--force` is given.
+
+## `wiki`
+
+```bash
+hnx wiki                      # table of contents
+hnx wiki pressure_cooker_v5   # one module's documentation
+hnx wiki -q freezer           # stream it section by section
+hnx wiki workshop -b          # open it in a browser
+hnx wiki --search QAT         # search every module
+```
+
+A documentation browser that reads docstrings from the installed source,
+so it describes the version you have.
 
 ## Environment variables
 

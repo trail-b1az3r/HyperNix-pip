@@ -127,7 +127,7 @@ reachable if you already knew the filename. Fixed.)
 
 | Guide | Covers |
 |---|---|
-| [T1-API](T1-API.md) | `hypernix.t1api` — controlled HTTP gateway into HyperNix-pip (model registry, auth, routing, modules, servers, jobs, events, billing, the LM Studio bridge, HyperLink). Released: **T1 v1.0.26.8.1.1**. |
+| [T1-API](T1-API.md) | `hypernix.t1api` — controlled HTTP gateway into HyperNix-pip (model registry, auth, routing, modules, servers, jobs, events, billing, the LM Studio bridge, HyperLink). Released: **T1 v1.1.26.9.0.0**. |
 | [T1-API Security Checklist](T1-API-Security-Checklist.md) | What to check before exposing a deployment — one page, per-item, with the config field each maps to. |
 | [Waiter-TUI](Waiter-TUI.md) | `waiter` — the official T1 API client CLI/TUI (`waiter serv`, `models`, `usage`, `hyperlink`, `version`, `help`). Beta 3 complete: every spec flag wired, full curses TUI (`-G`). |
 
@@ -247,7 +247,7 @@ still importable: `system.old_fridge` (memory), `data.mediocre_fridge`
                            Studio and friends can   │  never renumbered │
                            read a sub-bit model     └─────────┬─────────┘
                                                               │
-   bridge.lmstudio  ── `waiter bridge`, outward to a server ───┘
+   bridge.lmstudio  ── `waiter lmstudio`, outward to a server ───┘
                        HyperNix does not run
 ```
 

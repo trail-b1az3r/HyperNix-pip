@@ -14,13 +14,16 @@
 
 ## What's fixed in this update
 
-The section below covers what 0.72.5 adds.
-[`wiki/Changelog.md`](wiki/Changelog.md) is the canonical per-release
-history, and [`wiki/Roadmap.md`](wiki/Roadmap.md) says what is next.
+The first section below covers what the 0.72.6 line has added so far
+(published as `0.72.5.post14` to `post17`), and the one after it covers
+0.72.5. [`wiki/Changelog.md`](wiki/Changelog.md) is the canonical
+per-release history, and [`wiki/Roadmap.md`](wiki/Roadmap.md) says what
+is next.
 
 ## Table of contents
 
 - [What's fixed in this update](#whats-fixed-in-this-update)
+- [What's new: 0.72.6 — daily keys, conceal, and a quicker waiter](#whats-new-0726--daily-keys-conceal-and-a-quicker-waiter)
 - [What's new: 0.72.5 — drafts, bundles, accounts, and a car](#whats-new-0725--drafts-bundles-accounts-and-a-car)
 - [What's new: 0.72.3.post2 — sub-bit models you can actually run](#whats-new-0723post2--sub-bit-models-you-can-actually-run)
 - [What's new: 0.72.3 — T1 v1.0.2026.8.1.1](#whats-new-0723--t1-v102026811)
@@ -44,6 +47,60 @@ history, and [`wiki/Roadmap.md`](wiki/Roadmap.md) says what is next.
 
 
 Cross-platform: Linux, macOS, Windows. Python 3.10 - 3.14.
+
+## What's new: 0.72.6 — daily keys, conceal, and a quicker waiter
+
+**v2.1 keys change every day.** `gkey create -v v2.1` mints a `T2C_` key
+and a `T2CK_` *kit*. The client keeps the kit and sends only that day's
+key, sealed for the server's RSA key and again under a per-device daily
+key. The server accepts the day either side and nothing else, and binds
+each device to one key. The sealing is Rotorvault
+(`hypernix.security.rotorvault`): Blowfish, Twofish, an Enigma-style
+rotor stage wired by xoshiro256++, AES-256-GCM, inversion and base64url.
+Its security comes from the AES-GCM stage, and the module says so.
+[T1 API → v2.1 keys](wiki/T1-API.md#v21-t2c-keys-and-rotorvault).
+
+```bash
+gkey create -v v2.1 --level 4          # T2C_…-4, and the T2CK_ kit that makes it
+waiter serv -AEK "T2_…" -I https://myserver.ts.net   # seal an existing key as v2.1
+```
+
+**Conceal mode.** `waiter serv -c` (a key at access level 3 or higher)
+asks the server to keep less about you. Your address is kept only as a
+/24 or /48, except on security records. What you made more than 36 hours
+ago (messages, files, finished jobs, ordinary audit records) is deleted.
+Memories, preferences and usage counts stay. It limits what the T1
+server keeps, not what the network or a proxy in front of it records.
+[T1 API → Conceal mode](wiki/T1-API.md#conceal-mode-and-36-hour-retention).
+
+**`waiter serv` letters group.** `waiter serv -ArEK <key> -I <ip>` sets
+up, refreshes, seals and checks in one go. `-b` works out bare strings
+(`waiter serv -Ab T1_… https://host 8000`) and refuses to guess between
+blocking and allowing a range. There are new letters too:
+
+| Letter | Does |
+|---|---|
+| `-u` / `-ud` | Update hypernix to the server's version (`-ud` to exactly that version) |
+| `-k` | Install a kit, a user-made mod |
+| `-T` | Open the admin control pane (a level-9 T2 or v2.1 administrator key) |
+| `-Y` | Show the server's public card |
+| `-S` | Run a security check of this client and the server |
+| `-e` | Lock waiter's config with a password |
+
+[Waiter TUI → `serv` flags](wiki/Waiter-TUI.md#serv-flags).
+
+**Also in 0.72.6:**
+- **Siri can name chats and models.** "Load Gemma 4 in HyperLink" and
+  "Read Groceries in HyperLink" work, because the app now has App
+  Intents entities.
+- **`hnx-t1`** is the short name for `hypernix-t1`.
+- **hyped-pro finds your T1 server.** It looks through waiter's saved
+  server and hypernix-t1's `.env` before giving up. If nothing answers,
+  it says where the address came from and what to run.
+- **Earlier 0.72.6 batches:** elements (`magnesium`, `carbon`), error
+  codes, tool calling for local models, HyperLink on-device models, and
+  hyped-pro on OpenTUI with git and a file editor. See the
+  [Changelog](wiki/Changelog.md).
 
 ## What's new: 0.72.5 — drafts, bundles, accounts, and a car
 
@@ -272,8 +329,8 @@ outright and point at its own payment page, or require payment on a
 *separate* key, so the credential that identifies a caller and the one
 that spends money have different lifetimes.
 
-**`gkey` mints every format.** `-v v1|v2|v2short`, plus `gkey version`
-for what this build can issue.
+**`gkey` mints every format.** `-v v1|v2|v2short` (and, since 0.72.6,
+`v2.1`), plus `gkey version` for what this build can issue.
 
 ```bash
 gkey create -v v2 --level 5            # T2_…-5
@@ -724,7 +781,8 @@ than a step in the pipeline:
 | `tvtoppro` / `cctvtop` / `tvtop-old` / `tvtop-older` | The dashboards, newest to oldest. |
 | `hnx-map` | The steampunk schematic TUI. |
 | `hnx-scriptgen` | The training-script builder. |
-| `waiter` | The T1 API's client TUI/CLI. Needs no server extra. |
+| `waiter` | The T1 API's client TUI/CLI. Needs no server extra. `waiter serv` letters can be grouped (`-ArEK <key> -I <ip>`). |
+| `hypernix-t1` (`hnx-t1`) | Runs a T1 server: `start`, `stop`, `status`, `logs`, `test`, `autostart`, `launch-script`, `override`. |
 | `t1-accounts` | Web accounts for a T1 server: create, reset, unlock, and the four deployment modes. |
 | `gkey` | Gatekeeper + Keymaster, in one place. |
 | `multilama` | One interface over vanilla llama.cpp, ik_llama.cpp, PrismML and KoboldCpp. |

@@ -12,8 +12,8 @@ the same optimizer wired for CUDA graph capture and (optional)
 `torch.compile`.
 
 This page documents what's actually implemented in
-[`pressure_cooker_v6.py`](../src/hypernix/pressure_cooker_v6.py) and
-[`pressure_cooker_v6v.py`](../src/hypernix/pressure_cooker_v6v.py) — see
+[`pressure_cooker_v6.py`](../src/hypernix/optimizers/pressure_cooker_v6.py) and
+[`pressure_cooker_v6v.py`](../src/hypernix/optimizers/pressure_cooker_v6v.py) — see
 those module docstrings for the full derivation.
 
 ## Why V6 is faster than AdamW (and V5) — the actual mechanism

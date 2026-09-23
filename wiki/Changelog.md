@@ -26,6 +26,183 @@ next release header.
 - 𖥔 minor new feature
 
 
+## 0.72.5.post17 — 2026-09-23
+
+The 0.72.6 fourth batch. v2.1 keys and the cipher that seals them,
+conceal mode, a `waiter serv` whose letters can be grouped, Siri that
+can hear a chat's name, and `hnx-t1`.
+
+### Added
+
+๋࣭⭑ **v2.1 (T2C) keys.** A v2 key sealed twice: once for the server's
+RSA key, which is stable, and again under a per-device key that changes
+every UTC day (an HMAC of the device secret and the date). The client
+keeps a *kit* (`T2CK_…`) and sends only the day's key
+(`T2C_<device>.<seal>-<level>`). The server accepts the day either side
+and nothing else, binds each device to one key, refuses an edited access
+level, and refuses the kit itself if it is ever sent. `gkey create -v
+v2.1` mints one, and v2.1 is now the latest format.
+๋࣭⭑ **Rotorvault** (`hypernix.security.rotorvault`) seals in six
+stages: Blowfish-CTR, Twofish-CTR, an Enigma-style rotor stage wired by
+xoshiro256++, AES-256-GCM, inversion, and base64url, each keyed through
+HKDF from a fresh salt. Blowfish and Twofish are pure Python and checked
+against their published test vectors. `seal_for()` fronts it with
+RSA-OAEP and `seal_with_password()` with scrypt. The security comes from
+the AES-GCM stage; the module says so, and treats the rest as defence in
+depth at best.
+𖥔 `/auth/t2c/public-key` and `/auth/t2c/devices` (register, list,
+revoke), so a client can seal an existing key without a secret crossing
+in the clear. The server's RSA key and device secrets live in
+`<keymaster>/t2c/`, readable only by their owner and created on first
+use. `cryptography` joins the `t1api` extra.
+๋࣭⭑ **Conceal mode.** `POST /privacy/conceal` (access level 3 or higher)
+marks the calling key as concealed. Its audit records then keep its
+address only as a /24 (IPv4) or /48 (IPv6). Security records keep the
+full address, because the operator needs it to block abuse. A sweep runs
+on the request and then every 10 minutes while the server is up. It
+deletes what the key made more than **36 hours** ago: chat messages and
+the sessions they leave empty, files, finished jobs, and non-security
+audit records. Memories, preferences and usage counts are kept. The
+first two are the person's profile, and deleting usage counts would
+reset their quota. `DELETE` turns conceal off and `GET` reports it.
+𖥔 `GET /server/info` is public and describes the server: name,
+description, owner, URL, versions and features. It reads
+`T1_SERVER_NAME`, `T1_SERVER_DESCRIPTION`, `T1_SERVER_OWNER` and
+`T1_SERVER_URL`. `POST /auth/t1/validate` also returns the key's family
+and access level.
+๋࣭⭑ **`waiter serv` letters group in any order.** `waiter serv -ArEK
+<key> -I <ip>` sets the server up, refreshes it, seals the key and
+checks it. A letter that takes a value ends its group or stands alone,
+and waiter refuses `-AKE key` instead of guessing. Inside a group, `r`
+is refresh, and `Rf` and `ud` keep their meanings.
+𖥔 `-b` gives each bare string to the option it looks like: a key, a
+server, a port, `KEY=VALUE`, a limit, a kit or a config file. waiter
+prints what it decided. A CIDR range, or two strings that look like the
+same thing, is refused rather than guessed.
+𖥔 `-u` updates hypernix to at least the server's version, and `-ud` to
+exactly that version. `--dry-run` prints the pip command without running
+it.
+𖥔 `-k` installs a kit, which is a folder or `.zip` with a `kit.json`, to
+`~/.hypernix/waiter/kits/`. `waiter kits` lists, removes and runs
+them. Archives are checked for paths that escape the kit's folder and
+for symlinks. A kit is code that runs as you, so it is the same trust
+decision as `pip install`.
+𖥔 `-c` turns the server's conceal mode on and `--no-conceal` turns it
+off.
+𖥔 `-T` opens the TUI's control pane: network policy, keys and security
+events, with actions to block, allow, remove and set unlisted. It opens
+only for a verified administrator holding a level-9 T2 or v2.1 key, and
+the server still checks every action.
+𖥔 `-Y` prints the server's public card.
+𖥔 `-S` checks this client (file mode, a key stored as plain text,
+`cryptography`, version), then the server (TLS, configuration warnings,
+headers, keyless access), using public endpoints only.
+𖥔 `-e` locks waiter's config with a password (Rotorvault and
+scrypt). Every command then asks for the password or reads
+`HNX_WAITER_PASSWORD`, and `--unlock` removes the lock.
+𖥔 `-E` seals the key as a v2.1 kit when the server supports it. When it
+does not, `-E` falls back to encryption at rest as before.
+๋࣭⭑ **Siri can name chats and models.** HyperLink has `ChatEntity` and
+`ModelEntity`, each with an `EntityStringQuery` that asks the paired
+server. New phrases: "Load ‹model› in HyperLink", "Switch HyperLink to
+‹model›", "Read ‹chat› in HyperLink" and "Send a message to ‹chat› in
+HyperLink". The phrases without a name still work. The app calls
+`updateAppShortcutParameters()` whenever chats or models refresh, which
+is how Siri learns the names.
+𖥔 The T1 SDK gains `T1Client.server_info()`, `conceal()`,
+`conceal_status()`, `t2c_public_key()`, `t2c_devices()`,
+`t2c_revoke_device()`, and `seal_key()`, which turns a T1 or T2 key into
+a registered v2.1 kit. A kit given as the credential is never sent: the
+transport derives the day's key from it for each request.
+𖥔 `hnx-t1` is the short name for `hypernix-t1`. It runs the
+`hypernix-t1` installed next to it, so the two cannot drift.
+𖥔 hyped-pro finds the T1 server. After `HNX_T1_API_URL` and its own
+`/t1api` setting, it reads waiter's saved server and then hypernix-t1's
+`.env` (`T1_HOST`/`T1_PORT`, with 0.0.0.0 reached on loopback). It reads
+waiter's config only when that config is plain JSON, because decrypting
+it would create waiter's master key. `/t1api` shows where the address
+came from.
+
+### Fixed
+
+𖢥 **hyped-pro said "connection refused" to anyone whose server was not
+on 127.0.0.1:8000.** It knew only its environment variable, its own
+setting and that default, so a server on another port, or one waiter was
+already pointed at, could not be reached. See above. A refused
+connection now also says where the address came from and what to run
+(`hnx-t1 status`, `hnx-t1 start` or `/t1api <url>`), including when the
+SDK wraps the refusal in its own error.
+𖢥 **A public-only fetch could be steered to a private address.** The
+fetch resolved the name to check it, then let urllib resolve it again to
+connect, so a name that answered differently the second time (DNS
+rebinding) reached an address that was never checked. It now connects to
+the checked address, sends the real `Host` header, and verifies TLS
+against the name. Each redirect is checked and pinned the same
+way. Found by CodeQL.
+🐛 The HyperLink shell's working directory, which comes from the phone,
+is resolved (symlinks included) against `T1_HYPERLINK_SHELL_ROOT` and
+refused if it leaves it. The root defaults to the server user's
+home. Relative paths start at the root, and `GET /hyperlink/shell`
+reports it. Found by CodeQL.
+🐛 Studio failed on start with "SettingsView is not a
+type". `qt_add_resources` listed every QML view except that one, on
+`main` too.
+🐛 `hypernix-t1 help` printed "override: command not found". A pair of
+unescaped backticks in the usage text ran it as a command.
+🐛 On Windows, hyped-pro's editor saved a CRLF file back as `\r\r\n`, and
+its stale-write check never matched. Both now read and write bytes.
+🐛 tvtoppro's disk panel crashed on its first poll on Windows, because
+`os.statvfs` does not exist there. It uses `shutil.disk_usage`.
+🐛 tvtop++ scanned every process with its owner and command line on every
+frame, which takes about a second on Windows. It reuses the table for 5
+seconds.
+
+### Tests
+
+🧪 Rotorvault: 31 tests, including the published Blowfish and Twofish
+vectors, a flip of every byte of a sealed message, and the wrong key,
+RSA key or password.
+🧪 v2.1 keys: 22 tests through the real app. Yesterday's and tomorrow's
+key are accepted and nothing older. The kit is refused as a
+credential. An edited level is refused, and one device's key cannot bind
+a second key.
+🧪 Conceal and retention: 13 tests. A level-2 key is refused. The address
+is masked everywhere except on security records. A sweep keeps memories,
+a fresh session, security records and another person's data. The sweeper
+thread starts and stops with the server.
+🧪 `waiter serv`: 37 tests of grouping, `-b` and every new letter against
+the real app through the SDK, among them a kit whose archive tries to
+escape its folder, and a control pane refused to a T1 admin key, a
+level-8 T2 admin key and a level-9 key that is not an admin.
+🧪 SDK: 6. Siri: 5 structural checks on the Swift. hyped-pro
+discovery: 5, covering each source in order, an encrypted waiter config
+left untouched, and the advice when the SDK reports a refusal.
+🧪 Documentation: `tests/test_docs_current.py` checks that every relative
+link and anchor in the README, the iOS README and the wiki resolves. It
+also checks that `wiki/CLI.md` covers every `hypernix` subcommand, that
+every `waiter serv` letter has a row in its flag table, that every `T1_`
+setting is in `examples/t1api/.env.example`, and that every `hypernix.…`
+module a current page names imports.
+📚 `wiki/CLI.md` gains the commands it never had (`wakeup`, `dilute`,
+`neuron`, `errors`, `elements`, `hyprslug-headers`, `path`, `wiki`),
+with examples run against the real parsers.
+📚 `examples/t1api/.env.example` documents the 31 server settings it
+lacked.
+📚 The T1 API pages give the current version, v1.1.26.9.0.0, and links to
+moved modules are fixed.
+📚 The Roadmap's 0.72.6 list is marked with what has shipped.
+
+### Known Issues
+
+❗ Siri's new phrases have been checked by structural tests and the CI's
+iOS build, not on a device.
+❗ Conceal limits what the server *keeps*. It cannot change what the
+network, a reverse proxy, or the operator's own logs record before a
+request reaches the T1 API.
+
+⸻
+
+
 ## 0.72.5.post16 — 2026-09-23
 
 The 0.72.6 third batch. Element modules, error codes, and

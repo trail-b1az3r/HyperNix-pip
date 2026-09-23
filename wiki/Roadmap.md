@@ -54,7 +54,7 @@ rest — see [T1-API.md#known-limitation](T1-API.md#known-limitation).
 
 ## 0.72.0 — T1 v1.0.26.8.0.1 (Shipped)
 
-- The `waiter bridge` LM Studio bridge (localhost, LAN with CORS, or
+- The `waiter lmstudio` LM Studio bridge (localhost, LAN with CORS, or
   Tailscale) and `hyped-pro` over it
 - **HyperLink**, the iOS client: chat, images, file upload, code, and
   Hugging Face GGUF downloads from a model page merged with a direct
@@ -236,34 +236,47 @@ Cut across `dev1`–`dev13` and `post1`–`post5`; see the
   the server has taken a title on `PATCH` since HyperLink shipped and
   nothing on the phone ever sent one.
 
-## 0.72.6 — planned
+## 0.72.6 — in progress
 
-- **HyperNix Studio picks a shell.** `fish` by default, `bash` for
-  coding.
-- **`neuron`** — a module for training small neural networks for
-  concrete jobs rather than language: game automation, fast image
-  analysis and recognition, robotics, and similar.
-- **A code scanner on a schedule.** Twice a week: Python bug hunt, the
-  API exercised across two jobs, a security pass, and basic maintenance
-  applied automatically where it is safe to. Where the run finds enough
-  to be worth shipping, it cuts a public `.postN` release — using the
-  Claude API on the owner's account (Sonnet 5+ at high or extra effort,
-  the newest Opus at medium or high as an advisor). It releases only
-  when the most recent release is not a prerelease, a `.dev` commit, or
-  a beta.
-- **A flow chart that updates itself.** A GitHub Action on public
-  release that *updates* the existing chart rather than adding another:
-  major dependencies, features, and which module links to what. Beta
-  features go in a second, smaller chart below it — solid lines for
-  shipped, dotted for added in the beta, red for not yet built.
-- **A real audio processor.** The current one is a stub.
-- **More example scripts.**
-- **`hyped-pro`: git support, full local file editing**, and more.
-- **Basic `hyped`, rebuilt.** No custom configuration in the box — out
-  of the box it is a plain local-AI TUI with T1 support and a Hugging
-  Face key for searching and downloading GGUF models. Underneath,
-  everything is configurable, and every config is a **dot**: a file
-  written in Python (or Lua — pick one and commit to it).
+Published so far as `0.72.5.post14` to `post17`; the
+[Changelog](Changelog.md) has each batch.
+
+- **HyperNix Studio picks a shell.** *Done* (0.72.5.post14): `fish`
+  interactive, `bash` for the scripts it writes, persisted and
+  validated.
+- **`neuron`** *Done* (0.72.5.post14). Trains small networks that act
+  rather than predict (supervised, imitation and reinforcement
+  learning) for game automation, fast image recognition and robotics.
+  `hypernix neuron {demo,clone,dagger,rl,eval}`.
+- **A code scanner on a schedule.** *Done* (0.72.5.post14): the
+  `auto-scan` workflow, Monday and Thursday. It publishes a `.post`
+  release only when four independent checks agree, among them that the
+  last release is a plain stable version and that Claude reviewed the
+  diff.
+- **A flow chart that updates itself.** *Done* (0.72.5.post14): the
+  `arch-map` workflow rewrites [Architecture](Architecture.md) in place
+  on each public release. It has a second chart for the beta surface,
+  with dotted lines for beta and red for declared but not built.
+- **A real audio processor.** *Done* (0.72.5.post14):
+  `hypernix.audio.processor` does resampling, filters, a gate and
+  compressor, silence splitting, noise reduction and a `Pipeline`.
+- **More example scripts.** *Done*: `examples/neuron/` and
+  `examples/audio/`.
+- **`hyped-pro`: git support, full local file editing.** *Done*
+  (0.72.5.post16), with `hyped-pro` rebuilt on OpenTUI and the readline
+  TUI kept as `hyped-plus`.
+- **Basic `hyped`, rebuilt.** *Done*. Out of the box it is a plain
+  local-AI TUI, and everything else is a Python *dot*
+  (`hypernix.interfaces.dots`).
+- **Added along the way:**
+  - elements (`hydrogen`, `magnesium`, `carbon`), error codes, and
+    tool calling for local models (post16);
+  - HyperLink on-device models, web search, memories and the shell
+    (post16);
+  - v2.1 keys and Rotorvault, conceal mode with 36-hour retention, and
+    `/server/info` (post17);
+  - `waiter serv` letter groups with `-b -u -k -c -T -Y -S -e` (post17);
+  - Siri on App Intents entities and `hnx-t1` (post17).
 
 ## 0.72.7 — planned: Python 3.12 → 3.15
 

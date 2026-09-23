@@ -221,9 +221,9 @@ native path.
 ## Adding new entries
 
 `KNOWN_MODELS` lives in
-[`src/hypernix/download.py`](../src/hypernix/download.py).
+[`src/hypernix/models/download.py`](../src/hypernix/models/download.py).
 `ARCH_PRESETS` lives in
-[`src/hypernix/old_oven.py`](../src/hypernix/old_oven.py). Both are plain
+[`src/hypernix/models/old_oven.py`](../src/hypernix/models/old_oven.py). Both are plain
 Python dicts — add an entry, run the tests, open a PR.
 
 For a KNOWN_MODELS entry, confirm the HF repo with a quick
