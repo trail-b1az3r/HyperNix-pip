@@ -204,7 +204,7 @@ include-package-data = true
 # console scripts, which is what the documentation promises — without it,
 # `pip install hypernix` gives you every other companion script and not
 # this one.
-script-files = ["bin/hypernix-t1"]
+script-files = ["bin/hypernix-t1", "bin/hnx-t1"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

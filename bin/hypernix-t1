@@ -884,7 +884,7 @@ cmd_remove() {
 
 usage() {
   cat <<USAGE
-hypernix-t1 — manage a T1 API server
+hypernix-t1 — manage a T1 API server (also installed as hnx-t1)
 
   start                 Start it in the background
   stop                  Ask it to stop, and wait
@@ -905,7 +905,7 @@ hypernix-t1 — manage a T1 API server
   launch-script -$ 'CMD' [--shell bash|fish]  (fish: quote it, '-$')
   override lms move-dir [FOLDER] [--move-files]
                         Point LM Studio's models folder at FOLDER
-                        (default ~/.hypernix/models); `override lms revert` undoes it
+                        (default ~/.hypernix/models); \`override lms revert\` undoes it
   launch-script PATH [-k KEY] [--name N] [--detach] [--status|--logs|--stop N]
                         Run a script so it survives an SSH disconnect. The
                         job is supervised, its logs and exit status are
