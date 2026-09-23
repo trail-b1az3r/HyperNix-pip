@@ -43,8 +43,8 @@ graph TD
     dep_torch([PyTorch])
     dep_uvicorn([uvicorn])
     t1api["t1api"]
-    quant["quant"]
     system["system"]
+    quant["quant"]
     interfaces["interfaces"]
     hyperlink["hyperlink"]
     data["data"]
@@ -54,6 +54,7 @@ graph TD
     optimizers["optimizers"]
     neuron["neuron"]
     waiter["waiter"]
+    elements["elements"]
     evaluation["evaluation"]
     scriptgen["scriptgen"]
     security["security"]
@@ -64,10 +65,8 @@ graph TD
     t1sdk["t1sdk"]
     bridge["bridge"]
     hypernix["hypernix"]
-    hubcompat["hubcompat"]
     chat --> security
     chat --> timing
-    data --> hubcompat
     data --> system
     dilute --> models
     evaluation --> models
@@ -78,6 +77,7 @@ graph TD
     interfaces --> chat
     interfaces --> data
     interfaces --> dilute
+    interfaces --> elements
     interfaces --> evaluation
     interfaces --> models
     interfaces --> monitoring

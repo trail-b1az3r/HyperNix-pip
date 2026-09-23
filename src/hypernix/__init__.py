@@ -63,7 +63,7 @@ import importlib.util
 import sys
 from typing import TYPE_CHECKING, Any
 
-__version__ = "0.72.5.post15"
+__version__ = "0.72.5.post16"
 DEFAULT_REPO_ID = "ray0rf1re/hyper-Nix.2"
 DEFAULT_MODEL = "qwen3.5-4b"  # New default model
 
@@ -342,6 +342,7 @@ MODULE_CATEGORIES: dict[str, tuple[str, ...]] = {
     ),
     # The Pressure Cooker optimizer family and optimizer plumbing.
     "optimizers": (
+        "deprecation",
         "optimizer_framework",
         "pressure_cooker",
         "pressure_cooker_v3",
@@ -375,6 +376,9 @@ MODULE_CATEGORIES: dict[str, tuple[str, ...]] = {
         "freezer",
         "gpus",
         "fusebox",
+        "errorcatalogue",
+        "errorcodes",
+        "errors_cli",
         "hubcompat",
         "net",
         "nettrust",
@@ -387,6 +391,16 @@ MODULE_CATEGORIES: dict[str, tuple[str, ...]] = {
         "ups",
         "utils",
         "vram",
+    ),
+    # Addons named after the periodic table: hydrogen is the framework,
+    # natural gas attaches them to an oven, the rest are elements.
+    "elements": (
+        "builtins",
+        "carbon",
+        "elements_cli",
+        "hydrogen",
+        "magnesium",
+        "natural_gas",
     ),
     # Timers, alarms, cadence control and progress animation.
     "timing": (

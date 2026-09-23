@@ -9,6 +9,7 @@ v0.70.4b14:
 """
 from __future__ import annotations
 
+import dataclasses
 import math
 import warnings
 from collections.abc import Iterable
@@ -62,8 +63,22 @@ class PressureCookerV4(OptimizerBase):
         lars_adaptation: bool = False,
         mpt_support: bool = True,
         fused: bool | None = None,
+        lr: float | None = None,
+        peak_lr: float | None = None,
         **kwargs: Any,
     ) -> None:
+        # `lr` / `peak_lr` accepted directly. V4 used to take a learning
+        # rate only inside `schedule=ScheduleConfig(lr=...)`, and
+        # `NeoOven.train(optimizer_class=...)` passes a bare `lr` or
+        # `peak_lr` — so V4 raised TypeError the moment it was used the
+        # way every other optimizer in the package is used. An explicit
+        # rate overrides the schedule's; the schedule keeps its shape.
+        if lr is not None and peak_lr is not None and lr != peak_lr:
+            raise ValueError(f"lr={lr} and peak_lr={peak_lr} disagree; pass one")
+        rate = lr if lr is not None else peak_lr
+        if rate is not None:
+            schedule = (dataclasses.replace(schedule, lr=rate)
+                        if schedule is not None else ScheduleConfig(lr=rate))
         materialized_params = _flatten_optimizer_params(params)
         self.cuda_capability = _params_cuda_capability(materialized_params)
         self.cuda_61_compatible = _is_cuda_61_or_older(self.cuda_capability)

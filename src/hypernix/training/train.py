@@ -68,6 +68,17 @@ class HyperNixConfig:
         d = asdict(self)
         if d["num_key_value_heads"] is None:
             d["num_key_value_heads"] = self.num_attention_heads
+        if self.model_type in ROPE_PARAMETERS_MODEL_TYPES:
+            # Written in the shape that `model_type`'s own config class
+            # reads. `from_dict` has always accepted both spellings; the
+            # writer only ever emitted the flat one, so a snapshot
+            # declaring one of these types carried a `rope_theta` that
+            # its config class ignores — and the rope silently fell back
+            # to a default nobody chose.
+            d["rope_parameters"] = {
+                "rope_type": "default",
+                "rope_theta": d["rope_theta"],
+            }
         return d
 
     @classmethod
@@ -169,11 +180,45 @@ def _rope_cache(seq_len: int, head_dim: int, theta: float, device, dtype) -> tup
     return freqs.cos().to(dtype), freqs.sin().to(dtype)
 
 
+#: HF ``model_type`` values whose checkpoints use the GPT-NeoX/GPT-J
+#: *interleaved* RoPE convention (cos/sin over ``::2`` / ``1::2``) rather
+#: than the Llama-family half-rotate one. HyperNix's own snapshots are
+#: interleaved; almost nothing else current is.
+INTERLEAVED_MODEL_TYPES: frozenset[str] = frozenset({
+    "hypernix", "gpt_neox", "gptj", "gpt_neox_japanese",
+})
+
+
 def _default_rope_style(model_type: str) -> str:
-    """Pick the RoPE convention a given HF ``model_type`` trains with."""
-    if model_type in {"llama", "qwen2", "mistral"}:
-        return "half-rotate"
-    return "interleaved"
+    """Pick the RoPE convention a given HF ``model_type`` trains with.
+
+    An allowlist of *interleaved* types with half-rotate as the default,
+    which is the opposite of how this was written and is the way round
+    that fails safe.
+
+    It used to name three half-rotate types — ``llama``, ``qwen2``,
+    ``mistral`` — and send everything else to interleaved. That was
+    survivable only while the preset table lied about `model_type` and
+    called every Qwen3 a `qwen2`. Correcting those types in 0.72.6 pt2
+    moved twenty-three presets — every Qwen3, GLM4, Gemma, Gemma2,
+    Gemma3, Phi3, Llama4, Nemotron, DeepSeek-V3 and GPT-OSS entry — onto
+    the interleaved branch in the same breath, and a wrong RoPE
+    convention does not raise: the model loads, runs, and emits fluent
+    nonsense. An allowlist cannot fail that way, because a type nobody
+    has thought about lands on the convention that almost everything
+    current actually uses.
+    """
+    return "interleaved" if model_type in INTERLEAVED_MODEL_TYPES else "half-rotate"
+
+
+#: ``model_type`` values whose transformers config takes RoPE settings as
+#: a ``rope_parameters`` dict instead of a flat ``rope_theta``.
+#: ``from_dict`` has always read both; this is what makes the *writer*
+#: emit the shape the reader on the other side expects.
+ROPE_PARAMETERS_MODEL_TYPES: frozenset[str] = frozenset({
+    "qwen3_5", "qwen3_5_text", "qwen3_5_moe", "qwen3_5_moe_text",
+    "qwen3_next", "qwen4_exp", "qwen4_exp_text",
+})
 
 
 def _apply_rope(

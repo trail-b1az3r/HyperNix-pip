@@ -718,6 +718,21 @@ cmd_launch_script() {
     exec "$py" -m hypernix.t1api.launchscript_cli "$@"
 }
 
+cmd_override() {
+  # `override lms ...` edits LM Studio's own settings. Needs neither the
+  # server nor the [t1api] extra, like launch-script.
+  local what="${1:-}"
+  if [ $# -gt 0 ]; then shift; fi
+  case "$what" in
+    lms|lmstudio)
+      local py; py="$(python_bin)"
+      exec "$py" -m hypernix.t1api.lmsoverride "$@" ;;
+    *)
+      err "override: expected 'lms' (e.g. hypernix-t1 override lms move-dir ~/models)"
+      exit 2 ;;
+  esac
+}
+
 cmd_training() {
   # No require_installed: the monitor reads JSON files and signals
   # processes this user already owns. It needs neither the server to be
@@ -887,6 +902,10 @@ hypernix-t1 — manage a T1 API server
                         and write the model registry from what the files
                         say. Entries you have already edited are left
                         alone unless --refresh.
+  launch-script -$ 'CMD' [--shell bash|fish]  (fish: quote it, '-$')
+  override lms move-dir [FOLDER] [--move-files]
+                        Point LM Studio's models folder at FOLDER
+                        (default ~/.hypernix/models); `override lms revert` undoes it
   launch-script PATH [-k KEY] [--name N] [--detach] [--status|--logs|--stop N]
                         Run a script so it survives an SSH disconnect. The
                         job is supervised, its logs and exit status are
@@ -932,6 +951,7 @@ main() {
                        cmd_runner built-in-runner "$@" ;;
     runner)            cmd_runner runner "$@" ;;
     launch-script)     cmd_launch_script "$@" ;;
+    override)          cmd_override "$@" ;;
     training)          cmd_training "$@" ;;
     autostart)         cmd_autostart "$@" ;;
     remove|uninstall)  cmd_remove "$@" ;;

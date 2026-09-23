@@ -57,8 +57,15 @@ class TestEveryPresetNamesARealArchitecture:
             ("glm5", "glm4"),
             ("glm5.1", "glm4"),
             ("qwen3", "qwen3"),
-            ("qwen3.5", "qwen3"),
-            ("qwen3.6", "qwen3"),
+            # 3.5 onward is the Qwen3.5 architecture, which transformers
+            # registers separately because it is a different model. The
+            # *text* type, not `qwen3_5`: that one is the multimodal
+            # composite and carries text_config/vision_config rather
+            # than the shape fields a language model needs.
+            ("qwen3.5", "qwen3_5_text"),
+            ("qwen3.6", "qwen3_5_text"),
+            ("qwen3.8", "qwen3_5_text"),
+            ("qwen3.8-flash", "qwen3_5_text"),
             ("llama4", "llama4"),
             ("nemotron", "nemotron"),
             ("gpt-oss", "gpt_oss"),
@@ -145,3 +152,114 @@ class TestTheNewOnes:
         """Otherwise the marker means nothing."""
         for name in ("llama", "qwen2", "gemma", "phi3", "glm4", "mistral"):
             assert name not in FAMILY_ASSUMED
+
+
+# ---------------------------------------------------------------------------
+# The RoPE convention every preset ends up with
+# ---------------------------------------------------------------------------
+
+
+class TestRopeStyle:
+    """The half of the pt2 preset fix that pt2 got wrong.
+
+    `model_type` decides more than which class loads the weights: it is
+    what `_default_rope_style` derives the RoPE convention from. That
+    function named three half-rotate types and sent everything else to
+    interleaved, which was survivable only while the preset table
+    claimed every Qwen3 was a `qwen2`. Correcting those types moved
+    twenty-three presets onto the interleaved branch in the same commit.
+
+    A wrong RoPE convention does not raise. The model loads, runs, and
+    produces fluent nonsense — so this is the kind of thing that has to
+    be asserted rather than noticed.
+    """
+
+    def test_every_preset_that_is_not_ours_is_half_rotate(self):
+        from hypernix.training.train import (
+            INTERLEAVED_MODEL_TYPES,
+            _default_rope_style,
+        )
+
+        wrong = [
+            (name, preset["model_type"])
+            for name, preset in ARCH_PRESETS.items()
+            if preset["model_type"] not in INTERLEAVED_MODEL_TYPES
+            and _default_rope_style(preset["model_type"]) != "half-rotate"
+        ]
+        assert wrong == []
+
+    def test_our_own_snapshots_stay_interleaved(self):
+        """HyperNix trains GPT-NeoX-style. Flipping this one would make
+        every existing HyperNix checkpoint decode wrong."""
+        from hypernix.training.train import _default_rope_style
+
+        for name in ("hypernix", "hypernix2", "hyper-nix.2"):
+            assert ARCH_PRESETS[name]["model_type"] == "hypernix"
+        assert _default_rope_style("hypernix") == "interleaved"
+
+    def test_an_unknown_model_type_defaults_to_half_rotate(self):
+        """An allowlist of interleaved types, not of half-rotate ones.
+
+        This is the way round that fails safe: a type nobody has thought
+        about lands on the convention almost everything current uses,
+        rather than on ours.
+        """
+        from hypernix.training.train import _default_rope_style
+
+        assert _default_rope_style("some_model_released_next_year") == "half-rotate"
+
+    @pytest.mark.parametrize(
+        "model_type",
+        ["qwen3", "qwen3_5_text", "glm4", "gemma3", "phi3", "llama4",
+         "nemotron", "gpt_oss", "deepseek_v3"],
+    )
+    def test_the_types_pt2_introduced(self, model_type):
+        """Named individually because each one was a preset that used to
+        say `llama` or `qwen2` and got its RoPE convention right by
+        accident."""
+        from hypernix.training.train import _default_rope_style
+
+        assert _default_rope_style(model_type) == "half-rotate"
+
+
+class TestRopeParameters:
+    """Qwen3.5's config takes `rope_parameters`, not `rope_theta`."""
+
+    def test_the_written_config_uses_the_shape_that_type_reads(self):
+        """`from_dict` has always accepted both spellings. The *writer*
+        only emitted the flat one, so a snapshot declaring one of these
+        types carried a `rope_theta` its config class ignores, and the
+        rope fell back to a default nobody chose."""
+        from hypernix.training.train import HyperNixConfig
+
+        written = HyperNixConfig(model_type="qwen3_5_text",
+                                 rope_theta=1e7).to_dict()
+        assert written["rope_parameters"]["rope_theta"] == 1e7
+
+    def test_a_flat_type_is_left_flat(self):
+        from hypernix.training.train import HyperNixConfig
+
+        written = HyperNixConfig(model_type="llama", rope_theta=5e5).to_dict()
+        assert "rope_parameters" not in written
+        assert written["rope_theta"] == 5e5
+
+    def test_it_round_trips(self):
+        from hypernix.training.train import HyperNixConfig
+
+        original = HyperNixConfig(model_type="qwen3_5_text", rope_theta=1e7)
+        assert HyperNixConfig.from_dict(original.to_dict()).rope_theta == 1e7
+
+    def test_the_flat_key_is_kept_beside_it(self):
+        """Readers that only know the old spelling — this codebase's own
+        `from_dict` among them — still find what they are looking for."""
+        from hypernix.training.train import HyperNixConfig
+
+        written = HyperNixConfig(model_type="qwen3_5_text",
+                                 rope_theta=1e7).to_dict()
+        assert written["rope_theta"] == 1e7
+
+    def test_the_qwen35_presets_take_that_path(self):
+        from hypernix.training.train import ROPE_PARAMETERS_MODEL_TYPES
+
+        for name in ("qwen3.5", "qwen3.6", "qwen3.8", "qwen3.8-flash"):
+            assert ARCH_PRESETS[name]["model_type"] in ROPE_PARAMETERS_MODEL_TYPES

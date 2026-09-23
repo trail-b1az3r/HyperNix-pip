@@ -175,8 +175,15 @@ class OptimizerBase(torch.optim.Optimizer):
         grad_clip_mode: str = "norm",  # "norm" | "value"
         enable_profiling: bool = False,
     ) -> None:
+        schedule = schedule or ScheduleConfig()
+        # Every param group gets an `lr`, seeded with the configured rate.
+        # PyTorch's schedulers read `group["lr"]` at construction and raise
+        # KeyError without it — so every OptimizerBase optimizer failed
+        # the moment `NeoOven.train` wrapped it in CosineAnnealingLR, which
+        # it always does. `_apply_lr_schedule` still sets the per-step value.
+        defaults = {"lr": schedule.lr, **defaults}
         super().__init__(params, defaults)
-        self._schedule = schedule or ScheduleConfig()
+        self._schedule = schedule
         self._grad_clip = grad_clip
         self._grad_clip_mode = grad_clip_mode
         self._global_step: int = 0

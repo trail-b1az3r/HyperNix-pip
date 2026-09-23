@@ -135,12 +135,24 @@ ARCH_PRESETS: dict[str, dict[str, Any]] = {
     "qwen2": {"attention_bias": True, "model_type": "qwen2", "rope_theta": 1000000.0, "rms_norm_eps": 1e-6, "tie_word_embeddings": True},
     "qwen2.5": {"attention_bias": True, "model_type": "qwen2", "rope_theta": 1000000.0, "rms_norm_eps": 1e-6, "tie_word_embeddings": True},
     "qwen3": {"attention_bias": False, "model_type": "qwen3", "rope_theta": 1000000.0, "rms_norm_eps": 1e-6, "tie_word_embeddings": True},
-    "qwen3.5": {"attention_bias": False, "model_type": "qwen3", "rope_theta": 10000000.0, "rms_norm_eps": 1e-6, "tie_word_embeddings": True},
-    "qwen3.6": {"attention_bias": False, "model_type": "qwen3", "rope_theta": 10000000.0, "rms_norm_eps": 1e-6, "tie_word_embeddings": False},
+    # 3.5, 3.6 and 3.8 are all the Qwen3.5 architecture, not Qwen3.
+    # transformers registers it separately (`qwen3_5`, and `qwen3_5_text`
+    # for the text-only tower) because it is a different model, and
+    # calling them `qwen3` built 3.5-shaped weights and then declared
+    # them to be a 3. The text type is the one to write: `qwen3_5` is
+    # the multimodal composite and carries a `text_config`/`vision_config`
+    # pair rather than the shape fields a language model needs.
+    #
+    # It also takes its RoPE settings as a `rope_parameters` dict rather
+    # than a flat `rope_theta` — see ROPE_PARAMETERS_MODEL_TYPES in
+    # training/train.py, which is what makes the written config.json the
+    # shape the config class on the other side reads.
+    "qwen3.5": {"attention_bias": False, "model_type": "qwen3_5_text", "rope_theta": 10000000.0, "rms_norm_eps": 1e-6, "tie_word_embeddings": False},
+    "qwen3.6": {"attention_bias": False, "model_type": "qwen3_5_text", "rope_theta": 10000000.0, "rms_norm_eps": 1e-6, "tie_word_embeddings": False},
     # 0.72.6 pt2. Family conventions, not verified against a released
     # config — see FAMILY_ASSUMED below.
-    "qwen3.8": {"attention_bias": False, "model_type": "qwen3", "rope_theta": 10000000.0, "rms_norm_eps": 1e-6, "tie_word_embeddings": False},
-    "qwen3.8-flash": {"attention_bias": False, "model_type": "qwen3", "rope_theta": 10000000.0, "rms_norm_eps": 1e-6, "tie_word_embeddings": True},
+    "qwen3.8": {"attention_bias": False, "model_type": "qwen3_5_text", "rope_theta": 10000000.0, "rms_norm_eps": 1e-6, "tie_word_embeddings": False},
+    "qwen3.8-flash": {"attention_bias": False, "model_type": "qwen3_5_text", "rope_theta": 10000000.0, "rms_norm_eps": 1e-6, "tie_word_embeddings": True},
 
     # -- Mistral -------------------------------------------------------
     "mistral": {"attention_bias": False, "model_type": "mistral", "rope_theta": 1000000.0, "rms_norm_eps": 1e-5, "tie_word_embeddings": False},
@@ -1319,6 +1331,13 @@ class NeoOven:
             optimizer_kwargs["lr" if "lr" in sig else "peak_lr"] = lr
             if "grad_clip" in sig:
                 optimizer_kwargs["grad_clip"] = grad_clip
+            # `betas` is AdamW's. Pass it only to an optimizer that names it:
+            # V5/V5S/V6 have their own (momentum_beta, slow_beta, ...) and a
+            # `**kwargs` that forwards to OptimizerBase, which rejects it -- so
+            # "accepts **kwargs" is the wrong test, and every one of them
+            # raised TypeError through train().
+            if "betas" not in sig:
+                optimizer_kwargs.pop("betas", None)
             opt = optimizer_class(core.parameters(), **optimizer_kwargs)
         else:
             opt = torch.optim.AdamW(core.parameters(), lr=lr, **optimizer_kwargs)

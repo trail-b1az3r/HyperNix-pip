@@ -97,6 +97,8 @@ _SUBCOMMANDS = {
     "vera",
     "neuron",
     "dilute",
+    "errors",
+    "elements",
     "scavenger",
     "config",
     "gather",
@@ -240,6 +242,8 @@ def _print_usage() -> None:
         table.add_row("[green]vera[/]", "Vera assistant CLI")
         table.add_row("[green]neuron[/]", "Train small networks that act: RL, imitation, supervised")
         table.add_row("[green]dilute[/]", "Best-of-n sampling: many answers per prompt, keep the good ones")
+        table.add_row("[green]errors[/]", "Look up an error code (L#-NNNNN.kS)")
+        table.add_row("[green]elements[/]", "Addons: hydrogen, carbon, magnesium, and your own")
         table.add_row("[green]scavenger[/]", "Scavenger tools")
         table.add_row("[green]gather[/]", "Crawl a site into a corpus (robots-aware)")
         table.add_row("[green]fusebox[/]", "GPU thermal governor: pace a run, trip on heat, underclock")
@@ -304,6 +308,8 @@ def _print_usage() -> None:
             "  vera                   Vera assistant CLI\n"
             "  neuron                 Train small networks that act (RL, imitation)\n"
             "  dilute                 Best-of-n sampling: keep the best answer of several\n"
+            "  errors                 Look up an error code (L#-NNNNN.kS)\n"
+            "  elements               Addons: hydrogen, carbon, magnesium, and your own\n"
             "  scavenger              Scavenger tools\n"
             "  gather                 crawl a site into a corpus (robots-aware)\n"
             "  fusebox                GPU thermal governor for a training run\n"
@@ -1268,6 +1274,12 @@ def main(argv: list[str] | None = None) -> int:
         return _run_neuron(rest)
     if cmd == "dilute":
         return _run_dilute(rest)
+    if cmd == "elements":
+        from hypernix.elements.elements_cli import cli_main as elements_main
+        return elements_main(rest)
+    if cmd == "errors":
+        from hypernix.system.errors_cli import cli_main as errors_main
+        return errors_main(rest)
     if cmd == "scavenger":
         return _run_scavenger(rest)
     if cmd == "config":

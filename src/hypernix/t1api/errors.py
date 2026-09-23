@@ -93,6 +93,20 @@ class T1ErrorCode(StrEnum):
     CONFIG_INVALID = "CONFIG_INVALID"  # production configuration validation failed
 
 
+def hx_code_for(code: T1ErrorCode) -> str:
+    """The ``L#-NNNNN.kS`` code for a T1 error member.
+
+    Imported lazily because the catalogue registers codes at import and
+    this module must stay importable from the zero-dependency core.
+    """
+    from ..system.errorcatalogue import T1_CODES
+
+    found = T1_CODES.get(code.name)
+    # INTERNAL_ERROR's code rather than an empty string: a member added
+    # without a mapping is our fault, and saying so beats a blank field.
+    return (found or T1_CODES["INTERNAL_ERROR"]).code
+
+
 class T1APIError(Exception):
     """Raised anywhere in the T1 API stack; carries a stable error code.
 
@@ -117,6 +131,7 @@ class T1APIError(Exception):
         self.message = message
         self.details = details or {}
         self.http_status = http_status
+        self.hx_code = hx_code_for(code)
         super().__init__(f"[{code.value}] {message}")
 
 

@@ -26,6 +26,137 @@ next release header.
 - 𖥔 minor new feature
 
 
+## 0.72.5.post16 — 2026-09-23
+
+The 0.72.6 third batch, first half. Element modules, error codes, and
+the Pressure Cooker deprecation — which turned out to be the smaller
+part of its own change: moving a default off the deprecated V3 meant
+moving it onto V4, and V4 had never trained through `NeoOven.train`.
+Neither had V5, V5S or V6.
+
+### Added
+
+๋࣭⭑ `hypernix.elements` — addons named after the periodic table, with
+`hydrogen` (H, 1) as the framework: a spec per element, a registry, and
+permissions that are checked at the moment of use rather than listed for
+humans to read. `natural_gas` attaches elements to a Neo Oven so they
+run around each generation, per instance and reversibly. Periods 6 and 7
+(element 55 onward) are experimental, decided from the atomic number so
+nothing added there later escapes the gate.
+๋࣭⭑ `magnesium` (Mg, 12) — lowers other apps' priority while a model
+runs, and optionally confines their cores. Never touches terminals,
+shells, Python, HyperNix, llama.cpp, the desktop's compositor and audio,
+kernel threads, this process's tree, or other users' processes. Plans
+before it acts, and puts back each process's *original* priority rather
+than "normal".
+๋࣭⭑ `carbon` (C, 6) — tidies model output (never inside a code fence),
+expands `::snippet` shortcuts, and loads elements you write yourself
+from `~/.hypernix/elements/`. `hypernix elements new Na` scaffolds one.
+๋࣭⭑ Error codes: `L#-NNNNN.kS` — a domain letter, a tier, five digits,
+a kind `a`–`f` saying whose problem it is, and a severity 1–5. Every
+code is declared in one catalogue with a one-line explanation and a
+remedy, and an unregistered code cannot be raised. `hypernix errors
+explain R3-00020.a3` looks one up.
+𖥔 The T1 API's error envelope carries `hx_code` beside `code`. `code` is
+a published contract and stays; each of its 42 values maps 1:1 onto its
+own new code.
+𖥔 `hypernix-t1 launch-script -$ 'CMD'` — a bash or fish command as a
+job, with everything a script job gets: it survives the SSH connection
+closing, has logs and a status, and restarts as a command rather than
+as a missing script. `--shell` picks the shell; `auto` is bash first,
+because a launched job is scripting and most copied snippets are bash;
+fish cannot type a bare `$`, so there fish users write `'-$'` or
+`--shell-command`.
+𖥔 `hypernix-t1 override lms move-dir [FOLDER]` — points LM Studio's
+models folder somewhere else, `~/.hypernix/models` by default, so LM
+Studio and HyperNix share one copy of every GGUF. Backs the settings file
+up first (`override lms revert` restores it), writes atomically keeping
+every other key, refuses while LM Studio is running (it can rewrite its
+settings on exit), and moves existing models only with `--move-files`.
+𖥔 `hypernix elements {list,info,plan,run,new}`. `run` holds until
+Ctrl-C and restores on the way out — an element that changes other
+programs and then exits leaves nobody to change them back.
+
+### Changed
+
+🔁 Qwen 3.5, 3.6, 3.8 and 3.8-Flash presets are the Qwen3.5 architecture
+(`qwen3_5_text`), not Qwen3. The text type rather than `qwen3_5`, which
+is the multimodal composite and has no language-model shape fields.
+🔁 `instant_pot` trains with Pressure Cooker V4 by default. It was V3,
+and a default HyperNix chose must not produce a deprecation warning the
+user has to act on. `use_pressure_cooker_v3: true` still selects V3.
+
+### Deprecated
+
+❌ Pressure Cooker V1 (`PressureCooker` and its tiers) and V3
+(`PressureCookerV3` and subclasses). They warn on construction, never on
+import — V4 imports V3's helpers, and an import-time warning would reach
+every V4 user. `FutureWarning`, because `DeprecationWarning` is hidden
+unless raised from `__main__`. V4 is kept.
+❌ There is no V2 to deprecate: no `PressureCookerV2` has ever existed
+in this codebase. The original V1 docstring listed one by mistake, which
+`wiki/Optimizers.md` already records.
+❌ `UniversalCooker` is not deprecated. It routes, and its default sends
+people to the current V5 family; only `variant="legacy"` reaches V1,
+whose tiers warn on their own.
+
+### Fixed
+
+𖢥 **0.72.6 pt2's preset fix broke RoPE for twenty-three presets.**
+Correcting `model_type` also changed the RoPE convention derived from
+it: `_default_rope_style` named three half-rotate types and sent the
+rest to interleaved, which had only worked while the table called every
+Qwen3 a `qwen2`. Every Qwen3, GLM4, Gemma, Phi3, Llama4, Nemotron,
+DeepSeek-V3 and GPT-OSS preset moved to the wrong convention in the same
+commit. A wrong RoPE convention does not raise; the model loads and
+produces fluent nonsense. It is now an allowlist of *interleaved* types
+(HyperNix's own, and GPT-NeoX-style) with half-rotate as the default,
+which is the direction that fails safe.
+𖢥 **Pressure Cooker V4 never trained through `NeoOven.train`.** It took
+a learning rate only inside a `ScheduleConfig`, and `train` passes a bare
+`lr`, so it raised `TypeError`. It accepts `lr`/`peak_lr` now.
+𖢥 **Nor did V5, V5S or V6** — twice over. `OptimizerBase` never put an
+`lr` in its param groups, and every PyTorch scheduler reads one at
+construction; `train` always wraps the optimizer in `CosineAnnealingLR`
+— and `train` hardcoded AdamW's `betas`, which these three do not take,
+so it is now passed only to an optimizer that names it — not merely
+one that accepts `**kwargs`, since theirs forwards to a base that
+rejects it.
+🐛 Qwen3.5-family snapshots wrote a flat `rope_theta` that their config
+class ignores; they write `rope_parameters` now. Reading always handled
+both spellings.
+🐛 Magnesium's plan put kernel threads (`kworker`, `ksoftirqd`, …) in
+the "limit" column when run as root, which is how it reaches other
+users' apps. Found by running it against a real process table; kernel
+threads are now told apart by their empty command line.
+🐛 The error registry accepted a code re-declared with a *different*
+explanation, which is two meanings behind one searchable number.
+
+### Tests
+
+🧪 `elements`: 111 tests, magnesium's against a real process outside this
+one's tree — reniced, then restored to its exact original priority.
+🧪 `errorcodes`: 55, most asserting a refusal.
+🧪 Pressure Cooker: 23, including V4, V5, V5S and V6 each trained end to
+end through `NeoOven.train` — a constructor test passed while every one
+of them was broken there.
+🧪 RoPE: every preset's convention asserted; the pt2 regression would
+have failed eleven of them.
+🧪 Every guard above mutation-checked. Four first attempts at tests
+passed for the wrong reason and were rewritten — a process already at
+nice 0 cannot tell "restored" from "reset to 0", and a user element
+claiming a built-in symbol is refused as a duplicate before the rule
+under test is reached.
+
+### Known Issues
+
+❗ The error-code catalogue covers the T1 API, the runtime, elements,
+models, data, quantisation, training and the system layer. Most older
+modules still raise their own exception types; they adopt codes as they
+are next changed rather than in one sweep.
+
+⸻
+
 ## 0.72.5.post15 — 2026-09-22
 
 The 0.72.6 second batch. Two of these are fixes for things that were
