@@ -41,11 +41,13 @@ from __future__ import annotations
 import gzip
 import hashlib
 import html
+import http.client
 import ipaddress
 import json
 import logging
 import re
 import socket
+import ssl
 import threading
 import time
 import urllib.error
@@ -439,43 +441,119 @@ def public_address_problem(url: str) -> str | None:
     can. Every address the host resolves to must be a public one; a name
     that resolves to a private address is refused like the address.
     """
+    return _public_addresses(url)[1]
+
+
+def _public_addresses(url: str) -> tuple[list[str], str | None]:
+    """The addresses *url*'s host resolves to, and why they are refused.
+
+    Returns ``(addresses, None)`` when every address is public, and
+    ``([], problem)`` otherwise. :func:`fetch` connects to one of these
+    addresses rather than resolving the name again: a second lookup
+    could answer differently (DNS rebinding), and then the check would
+    have been about a different machine from the one fetched.
+    """
     if not _is_http(url):
-        return "not an http(s) URL"
+        return [], "not an http(s) URL"
     parts = urllib.parse.urlsplit(url)
     host = parts.hostname
     if not host:
-        return "the URL has no host"
+        return [], "the URL has no host"
     try:
         port = parts.port or (443 if parts.scheme == "https" else 80)
     except ValueError:
-        return "the URL's port is not a number"
+        return [], "the URL's port is not a number"
     try:
         infos = socket.getaddrinfo(host, port, proto=socket.IPPROTO_TCP)
     except (socket.gaierror, UnicodeError):
-        return f"{host} does not resolve"
+        return [], f"{host} does not resolve"
     if not infos:
-        return f"{host} does not resolve"
+        return [], f"{host} does not resolve"
+    addresses: list[str] = []
     for info in infos:
         address = str(info[4][0]).split("%", 1)[0]
         try:
             ip = ipaddress.ip_address(address)
         except ValueError:
-            return f"{host} resolves to {address}, which is not an address this can check"
+            return [], f"{host} resolves to {address}, which is not an address this can check"
         if _not_public(ip):
-            return f"{host} resolves to {ip}, which is not a public address"
-    return None
+            return [], f"{host} resolves to {ip}, which is not a public address"
+        if ip.version == 6 and ip.ipv4_mapped is not None:
+            ip = ip.ipv4_mapped
+        if str(ip) not in addresses:
+            addresses.append(str(ip))
+    return addresses, None
 
 
-class _PublicOnlyRedirects(urllib.request.HTTPRedirectHandler):
-    """Follow a redirect only to somewhere :func:`public_address_problem`
-    accepts — a public page that answers with a redirect to
-    http://127.0.0.1/ is the same request as asking for it directly."""
+class _PinnedHTTPConnection(http.client.HTTPConnection):
+    """An HTTP connection to an address already checked, not to a name."""
 
-    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: ANN001, D102
-        problem = public_address_problem(newurl)
+
+class _PinnedHTTPSConnection(http.client.HTTPSConnection):
+    """HTTPS to a checked address, verified against the URL's host name.
+
+    The socket goes to the address; the certificate and SNI use the name,
+    so a certificate for the name is still required — pinning the address
+    does not weaken TLS.
+    """
+
+    def __init__(self, address: str, port: int, *, server_name: str, timeout: float) -> None:
+        super().__init__(address, port, timeout=timeout, context=ssl.create_default_context())
+        self._server_name = server_name
+
+    def connect(self) -> None:  # noqa: D102
+        sock = socket.create_connection((self.host, self.port), self.timeout)
+        self.sock = self._context.wrap_socket(sock, server_hostname=self._server_name)
+
+
+class _Refused(Exception):
+    """A public-only fetch reached an address it may not connect to."""
+
+
+#: Redirects a public-only fetch follows before giving up.
+MAX_REDIRECTS = 5
+
+
+def _open_pinned(url: str, headers: dict[str, str], timeout: float):
+    """GET *url* over a connection to an address checked to be public.
+
+    Each redirect is checked and pinned the same way. Returns the open
+    ``http.client.HTTPResponse``; raises ``urllib.error.HTTPError`` for an
+    error status, as urllib would, and :class:`_Refused` for an address
+    that is not public.
+    """
+    current = url
+    for _ in range(MAX_REDIRECTS + 1):
+        addresses, problem = _public_addresses(current)
         if problem is not None:
-            raise urllib.error.URLError(f"refused a redirect: {problem}")
-        return super().redirect_request(req, fp, code, msg, headers, newurl)
+            raise _Refused(f"refused: {problem}" if current == url else f"refused a redirect: {problem}")
+        parts = urllib.parse.urlsplit(current)
+        port = parts.port or (443 if parts.scheme == "https" else 80)
+        if parts.scheme == "https":
+            connection: http.client.HTTPConnection = _PinnedHTTPSConnection(
+                addresses[0], port, server_name=parts.hostname or "", timeout=timeout)
+        else:
+            connection = _PinnedHTTPConnection(addresses[0], port, timeout=timeout)
+        target = urllib.parse.urlunsplit(("", "", parts.path or "/", parts.query, ""))
+        try:
+            connection.request("GET", target, headers={**headers, "Host": parts.netloc.rsplit("@", 1)[-1]})
+            response = connection.getresponse()
+        except Exception:
+            connection.close()
+            raise
+        location = response.getheader("Location")
+        if response.status in (301, 302, 303, 307, 308) and location:
+            response.close()
+            connection.close()
+            current = urllib.parse.urljoin(current, location)
+            continue
+        if response.status >= 400:
+            status, reason, response_headers = response.status, response.reason, response.headers
+            response.close()
+            connection.close()
+            raise urllib.error.HTTPError(current, status, reason, response_headers, None)
+        return response
+    raise urllib.error.URLError(f"more than {MAX_REDIRECTS} redirects")
 
 
 def fetch(
@@ -520,10 +598,9 @@ def fetch(
         },
     )
     try:
-        opener = urllib.request.build_opener(_PublicOnlyRedirects) if public_only else None
         opened = (
-            opener.open(request, timeout=timeout)
-            if opener is not None
+            _open_pinned(url, dict(request.header_items()), timeout)
+            if public_only
             else urllib.request.urlopen(request, timeout=timeout)  # noqa: S310
         )
         with opened as response:
@@ -557,6 +634,9 @@ def fetch(
                 # A Retry-After can be an HTTP date rather than seconds.
                 # Backing off a fixed minute beats parsing dates wrong.
                 limiter.note_retry_after(host, 60.0)
+        return page
+    except _Refused as exc:
+        page.error = str(exc)
         return page
     except Exception as exc:  # noqa: BLE001 - one page must not stop a crawl
         page.error = str(exc) or exc.__class__.__name__

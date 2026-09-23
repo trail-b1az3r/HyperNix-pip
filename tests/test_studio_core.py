@@ -357,3 +357,14 @@ class TestTheSettingsPanelIsReachable:
     def test_the_settings_source_is_built(self):
         cmake = (DESKTOP / "CMakeLists.txt").read_text(encoding="utf-8")
         assert "src/StudioSettings.cpp" in cmake
+
+    def test_every_qml_file_is_compiled_in(self):
+        """CMake's qt_add_resources, not resources/studio.qrc, is what
+        the build embeds. SettingsView was in the .qrc and missing here,
+        and Studio failed on start with "SettingsView is not a type"."""
+        cmake = (DESKTOP / "CMakeLists.txt").read_text(encoding="utf-8")
+        block = cmake[cmake.index("qt_add_resources(hypernix-studio"):]
+        block = block[:block.index(")")]
+        listed = set(re.findall(r"qml/\S+", block))
+        on_disk = {f"qml/{p.name}" for p in QML.iterdir() if p.suffix == ".qml" or p.name == "qmldir"}
+        assert on_disk - listed == set()

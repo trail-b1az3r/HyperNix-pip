@@ -772,16 +772,119 @@ class TestServerSideFetchIsPublicOnly:
 
         assert public_address_problem(url) is not None
 
-    def test_a_redirect_to_a_private_address_is_refused(self):
-        import urllib.error
-        import urllib.request
+    @pytest.fixture
+    def pinned_server(self, monkeypatch):
+        """A real HTTP server on 127.0.0.1 that `public.test` "resolves" to.
 
-        from hypernix.data.gather import _PublicOnlyRedirects
+        Everything else goes through the real check, so a redirect to
+        127.0.0.1 by address is refused exactly as it would be in use.
+        """
+        import http.server
+        import threading
 
-        handler = _PublicOnlyRedirects()
-        request = urllib.request.Request("https://example.com/")
-        with pytest.raises(urllib.error.URLError, match="redirect"):
-            handler.redirect_request(request, None, 302, "Found", {}, "http://127.0.0.1/secret")
+        from hypernix.data import gather
+
+        seen = []
+
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):  # noqa: N802
+                seen.append((self.path, self.headers.get("Host")))
+                if self.path.startswith("/hop"):
+                    self.send_response(302)
+                    self.send_header("Location", self.path.split("?to=", 1)[1])
+                    self.end_headers()
+                    return
+                if self.path == "/missing":
+                    self.send_response(404)
+                    self.end_headers()
+                    return
+                body = b"<html><title>ok</title><body>pinned</body></html>"
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, *a):
+                pass
+
+        server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        real = gather._public_addresses
+
+        def fake(url):
+            if gather.urllib.parse.urlsplit(url).hostname == "public.test":
+                return ["127.0.0.1"], None
+            return real(url)
+
+        monkeypatch.setattr(gather, "_public_addresses", fake)
+        monkeypatch.setattr(gather, "public_address_problem", lambda url: fake(url)[1])
+        yield f"http://public.test:{server.server_address[1]}", seen
+        server.shutdown()
+        server.server_close()
+
+    def test_a_pinned_fetch_reaches_the_checked_address_with_the_real_host(self, pinned_server):
+        from hypernix.data import gather
+
+        base, seen = pinned_server
+        page = gather.fetch(f"{base}/page?q=1", public_only=True)
+        assert page.error is None or page.error == "", page.error
+        assert page.title == "ok"
+        # The name, not the address, is what the server was asked for.
+        assert seen == [("/page?q=1", base.split("//", 1)[1])]
+
+    def test_a_redirect_to_a_private_address_is_refused(self, pinned_server):
+        from hypernix.data import gather
+
+        base, seen = pinned_server
+        page = gather.fetch(f"{base}/hop?to=http://127.0.0.1:9/secret", public_only=True)
+        assert page.error.startswith("refused"), page.error
+        assert [path for path, _ in seen] == ["/hop?to=http://127.0.0.1:9/secret"]
+
+    def test_a_redirect_to_a_public_name_is_followed(self, pinned_server):
+        from hypernix.data import gather
+
+        base, seen = pinned_server
+        page = gather.fetch(f"{base}/hop?to={base}/page", public_only=True)
+        assert page.title == "ok"
+        assert [path for path, _ in seen] == [f"/hop?to={base}/page", "/page"]
+
+    def test_an_error_status_is_reported_as_one(self, pinned_server):
+        from hypernix.data import gather
+
+        base, _ = pinned_server
+        page = gather.fetch(f"{base}/missing", public_only=True)
+        assert (page.status, page.error) == (404, "HTTP 404")
+
+    def test_a_name_that_rebinds_after_the_check_is_not_connected_to(self, monkeypatch):
+        """DNS rebinding: public when checked, private when fetched. The
+        address that connects is always one that was checked."""
+        from hypernix.data import gather
+
+        answers = iter([
+            [(2, 1, 6, "", ("93.184.216.34", 80))],
+            [(2, 1, 6, "", ("127.0.0.1", 80))],
+        ])
+        monkeypatch.setattr(gather.socket, "getaddrinfo", lambda *a, **k: next(answers))
+        monkeypatch.setattr(gather.socket, "create_connection",
+                            lambda *a, **k: (_ for _ in ()).throw(AssertionError("connected")))
+        page = gather.fetch("http://rebind.test/", public_only=True)
+        assert page.error.startswith("refused"), page.error
+
+    def test_the_connection_goes_to_the_checked_address(self, monkeypatch):
+        from hypernix.data import gather
+
+        dialled = []
+        monkeypatch.setattr(gather.socket, "getaddrinfo",
+                            lambda *a, **k: [(2, 1, 6, "", ("93.184.216.34", 443))])
+
+        def dial(address, *a, **k):
+            dialled.append(address)
+            raise OSError("no network in tests")
+
+        monkeypatch.setattr(gather.socket, "create_connection", dial)
+        gather.fetch("https://example.com/x", public_only=True)
+        assert dialled == [("93.184.216.34", 443)]
 
     def test_public_only_fetch_does_not_connect(self, monkeypatch):
         from hypernix.data import gather
