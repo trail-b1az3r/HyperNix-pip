@@ -49,6 +49,7 @@ import os
 import re
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -884,21 +885,92 @@ T1_API_URL_CONFIG_KEY = "t1_api_url"
 
 
 def t1_api_url() -> str:
-    """The configured T1 API base URL.
+    """The T1 API base URL hyped-pro talks to. See :func:`t1_api_url_source`."""
+    return t1_api_url_source()[0]
 
-    ``HNX_T1_API_URL`` wins over the persisted setting, matching how every
-    other credential and endpoint in this module resolves.
+
+def t1_api_url_source() -> tuple[str, str]:
+    """``(url, where it came from)``, first match wins:
+
+    1. ``HNX_T1_API_URL``;
+    2. hyped-pro's own setting (``/t1api <url>``);
+    3. the server waiter was pointed at (``waiter serv -A -I ...``);
+    4. the server ``hypernix-t1`` runs on this machine (its ``.env``);
+    5. ``http://127.0.0.1:8000``.
+
+    3 and 4 are new in 0.72.6. hyped-pro used to know only 1, 2 and 5, so
+    a server installed on another port, or on another machine that waiter
+    already knew about, got "connection refused" at 127.0.0.1:8000 —
+    an address nothing had ever been told to listen on.
     """
     from hypernix.system.config import get_config_value
 
     env = os.environ.get("HNX_T1_API_URL")
     if env:
-        return env.rstrip("/")
+        return env.rstrip("/"), "HNX_T1_API_URL"
     try:
         stored = get_config_value(T1_API_URL_CONFIG_KEY)
     except KeyError:
         stored = None
-    return (stored or T1_API_DEFAULT_URL).rstrip("/")
+    if stored:
+        return str(stored).rstrip("/"), "hyped-pro's /t1api setting"
+    for finder in (_t1_url_from_waiter, _t1_url_from_local_server):
+        try:
+            found = finder()
+        except Exception:  # noqa: BLE001 - a hint that fails is just no hint
+            found = None
+        if found:
+            return found
+    return T1_API_DEFAULT_URL, "the default"
+
+
+def _t1_url_from_waiter() -> tuple[str, str] | None:
+    """The server waiter saved, read as plain JSON only.
+
+    An encrypted waiter config is skipped rather than decrypted: opening
+    it would create waiter's master key as a side effect of asking where
+    the server is.
+    """
+    from hypernix.waiter.local_config import _DEFAULT_CONFIG_PATH, WaiterLocalConfig
+
+    path = _DEFAULT_CONFIG_PATH
+    if not path.is_file():
+        return None
+    try:
+        cfg = WaiterLocalConfig.from_dict(json.loads(path.read_text(encoding="utf-8")))
+    except (ValueError, TypeError):
+        return None
+    if not cfg.server:
+        return None
+    from hypernix.waiter.cli import _base_url
+
+    return _base_url(cfg).rstrip("/"), f"waiter's saved server ({path})"
+
+
+def _t1_url_from_local_server() -> tuple[str, str] | None:
+    """Where ``hypernix-t1`` binds on this machine, from its ``.env``."""
+    config_dir = os.environ.get("T1_CONFIG_DIR") or str(Path.home() / ".hypernix" / "t1api")
+    env_file = Path(config_dir) / ".env"
+    if not env_file.is_file():
+        return None
+    values: dict[str, str] = {}
+    for line in env_file.read_text(encoding="utf-8", errors="replace").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        values[key.strip()] = value.strip().strip("'\"")
+    host = values.get("T1_HOST", "127.0.0.1")
+    port = values.get("T1_PORT", "8000")
+    if not port.isdigit():
+        return None
+    # A server bound to every interface is reachable on loopback, and
+    # "0.0.0.0" is not an address a client can connect to.
+    if host in ("", "0.0.0.0", "::", "[::]"):
+        host = "127.0.0.1"
+    if ":" in host and not host.startswith("["):
+        host = f"[{host}]"
+    return f"http://{host}:{port}", f"hypernix-t1's config ({env_file})"
 
 
 def set_t1_api_url(url: str) -> None:
@@ -969,13 +1041,43 @@ def _t1_api_call(what: str, fn):
     except T1Error as exc:
         code = getattr(exc, "code", "") or ""
         detail = f"[{code}] {exc}" if code else str(exc)
+        # The SDK wraps a refused connection in its own error, so this
+        # branch, not the one below, is where "nothing is listening" lands.
+        if _is_refused(exc):
+            detail += _refused_advice(*t1_api_url_source())
         raise HypedProError("HPC-T1API-002", f"{what}: {detail}") from exc
     except Exception as exc:  # noqa: BLE001 - transport/OS errors reach here
-        raise HypedProError(
-            "HPC-T1API-002",
-            f"{what}: could not reach the T1 API at {t1_api_url()} "
-            f"({type(exc).__name__}: {exc})",
-        ) from exc
+        url, source = t1_api_url_source()
+        message = (f"{what}: could not reach the T1 API at {url} "
+                   f"({type(exc).__name__}: {exc})")
+        if _is_refused(exc):
+            message += _refused_advice(url, source)
+        raise HypedProError("HPC-T1API-002", message) from exc
+
+
+def _is_refused(exc: BaseException) -> bool:
+    seen: set[int] = set()
+    while exc is not None and id(exc) not in seen:
+        seen.add(id(exc))
+        if isinstance(exc, ConnectionRefusedError):
+            return True
+        text = str(exc).lower()
+        if "connection refused" in text or "errno 111" in text or "10061" in text:
+            return True
+        exc = exc.__cause__ or exc.__context__ or getattr(exc, "reason", None)
+        if not isinstance(exc, BaseException):
+            return False
+    return False
+
+
+def _refused_advice(url: str, source: str) -> str:
+    """What to do about "connection refused": nothing is listening there."""
+    host = urllib.parse.urlsplit(url).hostname or ""
+    lines = [f"\n  Nothing is listening at {url} (from {source})."]
+    if host in ("127.0.0.1", "localhost", "::1"):
+        lines.append("  If the server runs on this machine: hnx-t1 status, then hnx-t1 start.")
+    lines.append("  If it runs somewhere else, point hyped-pro at it: /t1api http://<host>:<port>")
+    return "\n".join(lines)
 
 
 def t1_api_status(*, api_key: str | None = None, url: str | None = None) -> dict[str, Any]:
@@ -990,6 +1092,7 @@ def t1_api_status(*, api_key: str | None = None, url: str | None = None) -> dict
     models = _t1_api_call("T1 API model list", client.list_models)
     return {
         "url": client.base_url,
+        "url_source": t1_api_url_source()[1] if url is None else "given",
         "reachable": True,
         "t1_api_version": getattr(status, "t1_api_version", None),
         "hypernix_version": getattr(status, "hypernix_version", None),

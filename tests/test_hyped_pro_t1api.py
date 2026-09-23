@@ -18,9 +18,14 @@ from hypernix.interfaces import hyped_pro_core as core
 def isolated_config(tmp_path, monkeypatch):
     """Point every config read at a scratch file, and clear the env keys."""
     import hypernix.system.config as config
+    import hypernix.waiter.local_config as waiter_config
 
     monkeypatch.setattr(config, "_CONFIG_DIR", tmp_path)
     monkeypatch.setattr(config, "_CONFIG_FILE", tmp_path / "config.json")
+    # The other two places a T1 address is recorded, so the person
+    # running the suite does not have their own server found.
+    monkeypatch.setattr(waiter_config, "_DEFAULT_CONFIG_PATH", tmp_path / "waiter" / "waiter.config.jsonl")
+    monkeypatch.setenv("T1_CONFIG_DIR", str(tmp_path / "t1api"))
     for var in ("HNX_T1_API_KEY", "HNX_T1_API_URL"):
         monkeypatch.delenv(var, raising=False)
     return tmp_path
@@ -80,6 +85,48 @@ class TestConfiguration:
     def test_trailing_slash_is_normalized(self):
         core.set_t1_api_url("http://server.example:8000/")
         assert core.t1_api_url() == "http://server.example:8000"
+
+    def _waiter(self, tmp_path, **fields):
+        import json
+
+        path = tmp_path / "waiter" / "waiter.config.jsonl"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(fields), encoding="utf-8")
+        return path
+
+    def _t1_env(self, tmp_path, text):
+        (tmp_path / "t1api").mkdir(exist_ok=True)
+        (tmp_path / "t1api" / ".env").write_text(text, encoding="utf-8")
+
+    def test_the_local_server_is_found_where_hypernix_t1_put_it(self, isolated_config):
+        """The bug: a server on any other port was 'connection refused'."""
+        self._t1_env(isolated_config, "# comment\nT1_HOST=0.0.0.0\nT1_PORT='8123'\n")
+        url, source = core.t1_api_url_source()
+        assert url == "http://127.0.0.1:8123"
+        assert "hypernix-t1" in source
+
+    def test_waiters_server_is_found(self, isolated_config):
+        self._waiter(isolated_config, server="100.64.0.7", port=8000, local_only=True)
+        url, source = core.t1_api_url_source()
+        assert url == "http://100.64.0.7:8000"
+        assert "waiter" in source
+
+    def test_the_order_is_env_setting_waiter_local_default(self, isolated_config, monkeypatch):
+        self._t1_env(isolated_config, "T1_HOST=127.0.0.1\nT1_PORT=8200\n")
+        assert core.t1_api_url() == "http://127.0.0.1:8200"
+        self._waiter(isolated_config, server="http://waiter.example:9000")
+        assert core.t1_api_url() == "http://waiter.example:9000"
+        core.set_t1_api_url("http://mine.example:1")
+        assert core.t1_api_url() == "http://mine.example:1"
+        monkeypatch.setenv("HNX_T1_API_URL", "http://env.example:2")
+        assert core.t1_api_url() == "http://env.example:2"
+
+    def test_an_encrypted_waiter_config_is_skipped_untouched(self, isolated_config):
+        """Decrypting it would create waiter's master key as a side effect."""
+        path = self._waiter(isolated_config)
+        path.write_text("gAAAAABnotjson", encoding="utf-8")
+        assert core.t1_api_url() == core.T1_API_DEFAULT_URL
+        assert sorted(p.name for p in path.parent.iterdir()) == [path.name]
 
     def test_client_without_a_key_names_the_fix(self):
         with pytest.raises(core.HypedProError) as excinfo:
@@ -280,6 +327,28 @@ class TestDispatch:
             core.send_t1_api_chat([{"role": "user", "content": "hi"}])
         assert excinfo.value.code == "HPC-T1API-002"
         assert core.t1_api_url() in excinfo.value.message
+        # Refused means nothing is listening: say where the address came
+        # from and what to run, not just the errno.
+        assert "Nothing is listening" in excinfo.value.message
+        assert "hnx-t1 start" in excinfo.value.message
+        assert "the default" in excinfo.value.message
+
+    def test_a_refusal_through_the_sdk_gets_the_advice_too(self, isolated_config, monkeypatch):
+        """The real path: the SDK's transport error, not a bare OSError."""
+        import socket
+
+        from hypernix.t1sdk import T1Client
+
+        with socket.socket() as probe:
+            probe.bind(("127.0.0.1", 0))
+            port = probe.getsockname()[1]
+        core.set_t1_api_url(f"http://127.0.0.1:{port}")
+        monkeypatch.setenv("HNX_T1_API_KEY", "T1_whatever")
+        assert T1Client  # the real client, no fakes
+        with pytest.raises(core.HypedProError) as excinfo:
+            core.t1_api_status()
+        assert "Nothing is listening" in excinfo.value.message
+        assert "/t1api setting" in excinfo.value.message
 
     def test_send_chat_message_routes_the_pseudo_model_here(
         self, fake_client, stub_local_inference

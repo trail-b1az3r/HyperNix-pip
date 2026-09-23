@@ -601,7 +601,7 @@ class TestTheMintedKeyReachesTheServer:
         with pytest.raises(T1APIError) as excinfo:
             auth.validate_key(minted.key)
         assert "T2" in excinfo.value.message
-        assert excinfo.value.details.get("accepted") == ["T2", "T2S"]
+        assert excinfo.value.details.get("accepted") == ["T2", "T2S", "T2C"]
 
 
 class TestAllowlistSeeding:
