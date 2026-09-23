@@ -9,6 +9,21 @@
 //      "Siri, read me the HyperLink chat"
 //      "Siri, read me the most recent message in HyperLink from Mason"
 //
+//  Entities: how Siri learns what "that chat" and "Gemma" are (0.72.6)
+//  --------------------------------------------------------------------
+//  The first version had only `String` parameters, and Siri cannot hear
+//  a string inside a sentence: only an `AppEntity` or `AppEnum` can be
+//  named in a phrase. So "read me the chat called Groceries" was never
+//  one sentence -- Siri started the intent, then asked which chat. The
+//  newer Siri goes further and reasons over an app's entities, which a
+//  string parameter gives it nothing to reason over.
+//
+//  Chats and models are now `ChatEntity` and `ModelEntity`, each with a
+//  query that asks the paired server, and the phrases name them:
+//  "Read Groceries in HyperLink", "Load Gemma 4 in HyperLink". The app
+//  calls `updateAppShortcutParameters()` whenever its chats or models
+//  change, which is how Siri learns the names it should listen for.
+//
 //  App Intents, not SiriKit
 //  ------------------------
 //  SiriKit is a fixed set of domains — messaging, payments, workouts —
@@ -82,6 +97,99 @@ enum IntentBridge {
         "HyperLink is not paired with a PC yet. Open the app on your phone to set it up."
 }
 
+// MARK: - Entities
+
+/// A conversation on the paired server, as Siri knows it.
+struct ChatEntity: AppEntity {
+    static let typeDisplayRepresentation: TypeDisplayRepresentation = "Chat"
+    static let defaultQuery = ChatEntityQuery()
+
+    let id: String
+    let title: String
+
+    var displayRepresentation: DisplayRepresentation {
+        DisplayRepresentation(title: "\(title)")
+    }
+
+    init(id: String, title: String) {
+        self.id = id
+        self.title = title
+    }
+
+    init(_ session: ChatSession) {
+        self.init(id: session.sessionID, title: session.title.isEmpty ? "Untitled chat" : session.title)
+    }
+}
+
+/// Finds chats by id, by what was said, or offers the recent ones.
+///
+/// Every answer comes from the server. Nothing is cached here, because
+/// an intent runs in whatever process Siri starts, and a stale list of
+/// chats would offer one that has been deleted.
+struct ChatEntityQuery: EntityStringQuery {
+    func entities(for identifiers: [ChatEntity.ID]) async throws -> [ChatEntity] {
+        let wanted = Set(identifiers)
+        return try await Self.all().filter { wanted.contains($0.id) }
+    }
+
+    func entities(matching string: String) async throws -> [ChatEntity] {
+        let wanted = ModelMatch.normalise(string)
+        let chats = try await Self.all()
+        guard !wanted.isEmpty else { return chats }
+        return chats.filter { ModelMatch.normalise($0.title).contains(wanted) }
+    }
+
+    func suggestedEntities() async throws -> [ChatEntity] {
+        Array(try await Self.all().prefix(10))
+    }
+
+    static func all() async throws -> [ChatEntity] {
+        guard let client = await PairingStore.client() else { return [] }
+        return try await client.sessions()
+            .sorted { $0.updatedAt > $1.updatedAt }
+            .map(ChatEntity.init)
+    }
+}
+
+/// A model the paired server can load, as Siri knows it.
+struct ModelEntity: AppEntity {
+    static let typeDisplayRepresentation: TypeDisplayRepresentation = "Model"
+    static let defaultQuery = ModelEntityQuery()
+
+    let id: String
+
+    var displayRepresentation: DisplayRepresentation {
+        DisplayRepresentation(title: "\(shortModelName(id))", subtitle: "\(id)")
+    }
+}
+
+/// Finds models by id or by what was said. "gemma 4 e2b" matches
+/// `blazeindustries/gemma-4-e2b` the way `ModelMatch` always has.
+struct ModelEntityQuery: EntityStringQuery {
+    func entities(for identifiers: [ModelEntity.ID]) async throws -> [ModelEntity] {
+        let known = Set(try await Self.ids())
+        return identifiers.filter { known.contains($0) }.map(ModelEntity.init)
+    }
+
+    func entities(matching string: String) async throws -> [ModelEntity] {
+        let ids = try await Self.ids()
+        if let best = ModelMatch.best(spoken: string, owner: "", in: ids) {
+            return [ModelEntity(id: best)]
+        }
+        let wanted = ModelMatch.normalise(string)
+        return ids.filter { ModelMatch.normalise($0).contains(wanted) }.map(ModelEntity.init)
+    }
+
+    func suggestedEntities() async throws -> [ModelEntity] {
+        Array(try await Self.ids().prefix(20)).map(ModelEntity.init)
+    }
+
+    static func ids() async throws -> [String] {
+        guard let client = await PairingStore.client() else { return [] }
+        return try await client.modelCatalogue().models.map(\.modelID)
+    }
+}
+
 // MARK: - Ask
 
 /// "Siri, ask HyperLink what's the weather"
@@ -142,19 +250,15 @@ struct LoadModelIntent: AppIntent {
     )
     static let openAppWhenRun = false
 
+    /// An entity, so the model can be named in the sentence itself:
+    /// "Load Gemma 4 in HyperLink". The query does the matching that
+    /// used to happen here on a free-text string.
     @Parameter(
         title: "Model",
-        description: "The model's name, e.g. Gemma 4 E2B.",
+        description: "The model to load, e.g. Gemma 4 E2B.",
         requestValueDialog: "Which model?"
     )
-    var model: String
-
-    @Parameter(
-        title: "Owner",
-        description: "Who publishes it, e.g. blazeindustries.",
-        default: ""
-    )
-    var owner: String
+    var model: ModelEntity
 
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
@@ -162,24 +266,10 @@ struct LoadModelIntent: AppIntent {
             return .result(dialog: IntentDialog(stringLiteral: IntentBridge.notPaired))
         }
         do {
-            // The catalogue, not the LM Studio bridge. Asking Siri to
-            // switch to a model sitting in ~/.hypernix/models used to
-            // get back "your PC has no models loaded", because the only
-            // thing this looked at was what LM Studio had open.
-            let available = try await client.modelCatalogue().models
-            guard let match = ModelMatch.best(
-                spoken: model, owner: owner, in: available.map(\.modelID)
-            ) else {
-                let names = available.prefix(3).map { shortModelName($0.modelID) }
-                let suggestion = names.isEmpty
-                    ? "Your PC has no models."
-                    : "I could not find that one. You have \(Speech.list(names))."
-                return .result(dialog: IntentDialog(stringLiteral: suggestion))
-            }
-            let session = try await client.createSession(title: "Siri", modelID: match)
+            let session = try await client.createSession(title: "Siri", modelID: model.id)
             _ = session
             return .result(dialog: IntentDialog(
-                stringLiteral: "\(shortModelName(match)) is ready."
+                stringLiteral: "\(shortModelName(model.id)) is ready."
             ))
         } catch {
             return .result(dialog: IntentDialog(stringLiteral: IntentBridge.explain(error)))
@@ -235,10 +325,9 @@ struct ReadChatIntent: AppIntent {
 
     @Parameter(
         title: "Chat",
-        description: "Which conversation. Leave empty for the most recent.",
-        default: ""
+        description: "Which conversation. Leave empty for the most recent."
     )
-    var chat: String
+    var chat: ChatEntity?
 
     @Parameter(
         title: "Only the last message",
@@ -254,11 +343,11 @@ struct ReadChatIntent: AppIntent {
         }
         do {
             let sessions = try await client.sessions()
-            guard let session = ChatMatch.best(spoken: chat, in: sessions) else {
+            guard let session = ChatMatch.chosen(chat, in: sessions) else {
                 return .result(dialog: IntentDialog(
-                    stringLiteral: chat.isEmpty
+                    stringLiteral: chat == nil
                         ? "You have no conversations yet."
-                        : "I could not find a chat called \(chat)."
+                        : "I could not find the chat \(chat?.title ?? "")."
                 ))
             }
             let history = try await client.messages(in: session.sessionID)
@@ -280,6 +369,12 @@ struct ReadChatIntent: AppIntent {
 }
 
 enum ChatMatch {
+    /// The chat Siri resolved, or the most recent one when none was said.
+    static func chosen(_ entity: ChatEntity?, in sessions: [ChatSession]) -> ChatSession? {
+        guard let entity else { return best(spoken: "", in: sessions) }
+        return sessions.first { $0.sessionID == entity.id }
+    }
+
     static func best(spoken: String, in sessions: [ChatSession]) -> ChatSession? {
         let wanted = ModelMatch.normalise(spoken)
         // No name said: the most recently updated one, which is what
@@ -313,8 +408,8 @@ struct SendMessageIntent: AppIntent {
     )
     var message: String
 
-    @Parameter(title: "Chat", default: "")
-    var chat: String
+    @Parameter(title: "Chat")
+    var chat: ChatEntity?
 
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
@@ -330,7 +425,7 @@ struct SendMessageIntent: AppIntent {
             // call in an autoclosure that does not support concurrency" —
             // and no amount of parenthesising fixes it.
             let session: ChatSession
-            if let existing = ChatMatch.best(spoken: chat, in: sessions) {
+            if let existing = ChatMatch.chosen(chat, in: sessions) {
                 session = existing
             } else {
                 session = try await client.createSession(title: "Siri")
@@ -432,9 +527,9 @@ enum Speech {
 /// own sake: somebody says "ask HyperLink", "ask HyperLink about" and
 /// "HyperLink, what is" and means the same thing all three times.
 ///
-/// None of these interpolate a parameter, and that is a rule rather
-/// than a style: a phrase may only name a parameter whose type is an
-/// `AppEntity` or an `AppEnum`. `question`, `model` and `message` are
+/// Only the chat and model parameters appear in phrases, and that is a
+/// rule rather than a style: a phrase may only name a parameter whose
+/// type is an `AppEntity` or an `AppEnum`. `question`, `model` and `message` are
 /// all `String`, and a string has no finite set of values for Siri to
 /// match against, so there is nothing it could recognise in the
 /// sentence. Writing `\(\.$question)` anyway is not a compile error —
@@ -467,6 +562,9 @@ struct HyperLinkShortcuts: AppShortcutsProvider {
                 "Load a model on \(.applicationName)",
                 "Load a model in \(.applicationName)",
                 "Switch the \(.applicationName) model",
+                "Load \(\.$model) in \(.applicationName)",
+                "Load \(\.$model) on \(.applicationName)",
+                "Switch \(.applicationName) to \(\.$model)",
             ],
             shortTitle: "Load a model",
             systemImageName: "shippingbox"
@@ -478,6 +576,8 @@ struct HyperLinkShortcuts: AppShortcutsProvider {
                 "Read me my \(.applicationName) messages",
                 "Read the latest \(.applicationName) message",
                 "What did \(.applicationName) say",
+                "Read \(\.$chat) in \(.applicationName)",
+                "Read me \(\.$chat) on \(.applicationName)",
             ],
             shortTitle: "Read a chat",
             systemImageName: "speaker.wave.2"
@@ -487,6 +587,7 @@ struct HyperLinkShortcuts: AppShortcutsProvider {
             phrases: [
                 "Send a message in \(.applicationName)",
                 "Send a message with \(.applicationName)",
+                "Send a message to \(\.$chat) in \(.applicationName)",
             ],
             shortTitle: "Send a message",
             systemImageName: "paperplane"

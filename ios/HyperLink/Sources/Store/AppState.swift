@@ -8,6 +8,7 @@
 //  seconds and must survive the user scrolling, rotating, or switching
 //  tabs, none of which a view's lifetime does.
 
+import AppIntents
 import Foundation
 import Observation
 
@@ -548,6 +549,9 @@ final class AppState {
         defer { isLoadingSessions = false }
         do {
             sessions = try await client.sessions()
+            // Siri learns chat names from ChatEntityQuery; this is what
+            // tells it the list changed (see HyperLinkIntents.swift).
+            HyperLinkShortcuts.updateAppShortcutParameters()
         } catch {
             handle(error)
         }
@@ -563,6 +567,7 @@ final class AppState {
         // error: the picker shows the reason instead of a red line.
         if let merged = try? await client.modelCatalogue() {
             catalogue = merged
+            HyperLinkShortcuts.updateAppShortcutParameters()
         }
     }
 
