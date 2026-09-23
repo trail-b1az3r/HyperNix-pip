@@ -3,6 +3,17 @@
   "source": "wiki/Changelog.md",
   "entries": [
     {
+      "version": "0.72.5.post17",
+      "key": "0.72.5.post17",
+      "aliases": [
+        "0.72.5-post17",
+        "0.72.5.post17"
+      ],
+      "kind": "post",
+      "heading": "0.72.5.post17 \u2014 2026-09-23",
+      "summary": "2026-09-23"
+    },
+    {
       "version": "0.72.5.post16",
       "key": "0.72.5.post16",
       "aliases": [

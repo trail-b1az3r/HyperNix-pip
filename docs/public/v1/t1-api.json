@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-t1-api",
   "generated_at": "2026-09-20T21:20:58Z",
-  "commit": "1b7f59a4ba7fdd561dc6e7936d8b5695374fef2d",
+  "commit": "d01b23b7f26335a069f391f917ebf8189600ec8d",
   "history_available": true,
   "server_extra": "pip install 'hypernix[t1api]'",
   "client_install": "pip install hypernix",
@@ -508,14 +508,14 @@
     {
       "module": "hypernix.t1api.app",
       "source": "src/hypernix/t1api/app.py",
-      "line_count": 646,
+      "line_count": 665,
       "summary": "t1api.app \u2014 ``create_app()``, the T1 API's FastAPI factory.",
       "api": [
         {
           "kind": "function",
           "name": "create_app",
           "signature": "def create_app*, config: T1APIConfig | None=None, keymaster: Keymaster | None=None, gatekeeper: Gatekeeper | None=None, registry: ModelRegistry | None=None, usage_store: UsageStore | None=None, routing_table: RoutingTable | None=None, server_registry: ServerRegistry | None=None, module_registry: ModuleRegistry | None=None, job_queue: JobQueue | None=None, event_bus: EventBus | None=None, billing_ledger: BillingLedger | None=None, backend: SQLBackend | None=None, audit_log: AuditLog | None=None, network_policy: NetworkPolicy | None=None, rate_limiter: RateLimiter | None=None, key_directory: KeyDirectory | None=None, transport: ModuleTransport | None=None, device_registry: DeviceRegistry | None=None, session_store: ChatSessionStore | None=None, attachment_store: AttachmentStore | None=None, sync_store: SyncStore | None=None, notification_store: NotificationStore | None=None, search_index: SearchIndex | None=None, auth_history: AuthHistory | None=None, backup_store: BackupStore | None=None, server_key_registry: ServerKeyRegistry | None=None, accounts: AccountStore | None=None, webauth: WebAuthSettings | None=None, mount_prefix: str | None=None, validate_production: bool | None=None -> FastAPI",
-          "line": 216,
+          "line": 217,
           "doc": "Build a fully-wired T1 API FastAPI app."
         }
       ],
@@ -532,6 +532,18 @@
         }
       ],
       "changes": [
+        {
+          "sha": "0068bbf2",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "T1: conceal mode with 36-hour retention, and a public /server/info",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "async def _lifespan(lifespan_app):"
+            }
+          ]
+        },
         {
           "sha": "589ebbdc",
           "date": "2026-09-23",
@@ -580,20 +592,13 @@
           "author": "Mason",
           "subject": "security: API keys were world-readable; key auth leaked which key you sent",
           "api_changes": []
-        },
-        {
-          "sha": "46f59011",
-          "date": "2026-09-10",
-          "author": "Claude",
-          "subject": "0.72.4.post9 \u2014 HyperLink catches up, notifies, and searches",
-          "api_changes": []
         }
       ]
     },
     {
       "module": "hypernix.t1api.audit",
       "source": "src/hypernix/t1api/audit.py",
-      "line_count": 379,
+      "line_count": 386,
       "summary": "t1api.audit \u2014 the audit log.",
       "api": [
         {
@@ -663,19 +668,19 @@
             {
               "name": "query",
               "signature": "def queryself, *, category: str | None=None, action: str | None=None, outcome: str | None=None, actor_key_id: str | None=None, resource_type: str | None=None, since: float | None=None, until: float | None=None, limit: int=100, offset: int=0 -> list[AuditRecord]",
-              "line": 335,
+              "line": 343,
               "doc": ""
             },
             {
               "name": "count",
               "signature": "def countself -> int",
-              "line": 378,
+              "line": 386,
               "doc": ""
             },
             {
               "name": "purge_before",
               "signature": "def purge_beforeself, ts: float -> int",
-              "line": 383,
+              "line": 391,
               "doc": "Delete records older than *ts*, returning how many went."
             }
           ]
@@ -691,6 +696,13 @@
         }
       ],
       "changes": [
+        {
+          "sha": "0068bbf2",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "T1: conceal mode with 36-hour retention, and a public /server/info",
+          "api_changes": []
+        },
         {
           "sha": "7efe5548",
           "date": "2026-08-22",
@@ -779,7 +791,7 @@
     {
       "module": "hypernix.t1api.auth",
       "source": "src/hypernix/t1api/auth.py",
-      "line_count": 448,
+      "line_count": 489,
       "summary": "t1api.auth \u2014 the T1 API's authentication/authorization glue.",
       "api": [
         {
@@ -792,25 +804,25 @@
             {
               "name": "key_id",
               "signature": "def key_idself -> str",
-              "line": 78,
+              "line": 80,
               "doc": ""
             },
             {
               "name": "is_admin",
               "signature": "def is_adminself -> bool",
-              "line": 82,
+              "line": 84,
               "doc": ""
             },
             {
               "name": "via_t2",
               "signature": "def via_t2self -> bool",
-              "line": 86,
+              "line": 88,
               "doc": ""
             },
             {
               "name": "meets_access_level",
               "signature": "def meets_access_levelself, required: int -> bool",
-              "line": 89,
+              "line": 91,
               "doc": "Does this context clear access level *required* (1-9)?"
             }
           ]
@@ -819,7 +831,7 @@
           "kind": "class",
           "name": "ScopedToken",
           "signature": "class ScopedToken",
-          "line": 102,
+          "line": 104,
           "doc": "",
           "methods": []
         },
@@ -827,43 +839,49 @@
           "kind": "class",
           "name": "T1AuthService",
           "signature": "class T1AuthService",
-          "line": 109,
+          "line": 111,
           "doc": "Adapter over Keymaster + Gatekeeper for the T1 API HTTP layer.",
           "methods": [
             {
+              "name": "t2c",
+              "signature": "def t2cself",
+              "line": 204,
+              "doc": "The :class:`~hypernix.security.t2c.T2CAuthority` for this key store."
+            },
+            {
               "name": "validate_key",
               "signature": "def validate_keyself, key_str: str -> AuthContext",
-              "line": 205,
+              "line": 239,
               "doc": "Validate a raw T1 **or T2** key string."
             },
             {
               "name": "issue_scoped_token",
               "signature": "def issue_scoped_tokenself, key_str: str, *, ttl_seconds: int | None=None, scopes: list[str] | None=None -> ScopedToken",
-              "line": 373,
+              "line": 419,
               "doc": "Exchange a validated raw T1 key for a short-lived scoped token."
             },
             {
               "name": "verify_scoped_token",
               "signature": "def verify_scoped_tokenself, token: str -> AuthContext",
-              "line": 406,
+              "line": 452,
               "doc": ""
             },
             {
               "name": "check_quota",
               "signature": "def check_quotaself, key_id: str, *, endpoint: str='', model: str='', tokens_requested: int=0 -> None",
-              "line": 441,
+              "line": 487,
               "doc": ""
             },
             {
               "name": "rotate_own_key",
               "signature": "def rotate_own_keyself, key_id: str -> KeyMeta",
-              "line": 453,
+              "line": 499,
               "doc": ""
             },
             {
               "name": "admin_rotate",
               "signature": "def admin_rotateself, *, requester: AuthContext, target_key_id: str, promote_to_admin: bool=False -> KeyMeta",
-              "line": 459,
+              "line": 505,
               "doc": "POST /auth/t1/admin/rotate \u2014 admin-only. Rotates *target_key_id* and, if requested, promotes the newly-issued key to an admin key."
             }
           ]
@@ -882,6 +900,22 @@
         }
       ],
       "changes": [
+        {
+          "sha": "462b479d",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "v2.1 (T2C) keys, sealed with Rotorvault",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def t2c(self):"
+            },
+            {
+              "kind": "added",
+              "text": "def _validate_t2c(self, key_str: str) -> AuthContext:"
+            }
+          ]
+        },
         {
           "sha": "55378e12",
           "date": "2026-09-01",
@@ -962,70 +996,6 @@
           "author": "minerofthesoal",
           "subject": "fixes",
           "api_changes": []
-        },
-        {
-          "sha": "f836d298",
-          "date": "2026-08-18",
-          "author": "minerofthesoal",
-          "subject": "0.71.5b1-part one of four for the api",
-          "api_changes": [
-            {
-              "kind": "added",
-              "text": "def _b64url_encode(raw: bytes) -> str:"
-            },
-            {
-              "kind": "added",
-              "text": "def _b64url_decode(s: str) -> bytes:"
-            },
-            {
-              "kind": "added",
-              "text": "class AuthContext:"
-            },
-            {
-              "kind": "added",
-              "text": "def key_id(self) -> str:"
-            },
-            {
-              "kind": "added",
-              "text": "def is_admin(self) -> bool:"
-            },
-            {
-              "kind": "added",
-              "text": "class ScopedToken:"
-            },
-            {
-              "kind": "added",
-              "text": "class T1AuthService:"
-            },
-            {
-              "kind": "added",
-              "text": "def __init__("
-            },
-            {
-              "kind": "added",
-              "text": "def validate_key(self, key_str: str) -> AuthContext:"
-            },
-            {
-              "kind": "added",
-              "text": "def issue_scoped_token("
-            },
-            {
-              "kind": "added",
-              "text": "def verify_scoped_token(self, token: str) -> AuthContext:"
-            },
-            {
-              "kind": "added",
-              "text": "def check_quota(self, key_id: str, *, endpoint: str = \"\", model: str = \"\", tokens_requested: int = 0) -> None:"
-            },
-            {
-              "kind": "added",
-              "text": "def rotate_own_key(self, key_id: str) -> KeyMeta:"
-            },
-            {
-              "kind": "added",
-              "text": "def admin_rotate(self, *, requester: AuthContext, target_key_id: str, promote_to_admin: bool = False) -> KeyMeta:"
-            }
-          ]
         }
       ]
     },
@@ -1908,7 +1878,7 @@
     {
       "module": "hypernix.t1api.config",
       "source": "src/hypernix/t1api/config.py",
-      "line_count": 613,
+      "line_count": 620,
       "summary": "t1api.config \u2014 environment-variable configuration for the T1 API.",
       "api": [
         {
@@ -1921,55 +1891,55 @@
             {
               "name": "from_env",
               "signature": "def from_envcls, *, load_dotenv: bool=True, dotenv_path: str | Path='.env' -> T1APIConfig",
-              "line": 470,
+              "line": 477,
               "doc": ""
             },
             {
               "name": "is_production",
               "signature": "def is_productionself -> bool",
-              "line": 480,
+              "line": 487,
               "doc": ""
             },
             {
               "name": "storage_backend",
               "signature": "def storage_backendself -> str",
-              "line": 484,
+              "line": 491,
               "doc": ""
             },
             {
               "name": "tls_settings",
               "signature": "def tls_settingsself -> TLSSettings",
-              "line": 487,
+              "line": 494,
               "doc": ""
             },
             {
               "name": "rate_limit_rules",
               "signature": "def rate_limit_rulesself -> Any",
-              "line": 499,
+              "line": 506,
               "doc": "Parsed rate-limit rules, or None to use the defaults."
             },
             {
               "name": "describe_secrets",
               "signature": "def describe_secretsself -> dict[str, bool]",
-              "line": 517,
+              "line": 524,
               "doc": "Which secrets are set. Values never included \u2014 this is what ``GET /status`` uses to tell an operator what's missing without telling anyone what it is."
             },
             {
               "name": "public_dict",
               "signature": "def public_dictself -> dict[str, object]",
-              "line": 531,
+              "line": 538,
               "doc": "Explicit allowlist of config surfaced by GET /config. Never includes ``token_secret``, ``deploy_secret``, ``database_url``, or any future secret field."
             },
             {
               "name": "production_problems",
               "signature": "def production_problemsself -> list[str]",
-              "line": 572,
+              "line": 579,
               "doc": "Every reason this config is unsafe for production, as text."
             },
             {
               "name": "validate_for_production",
               "signature": "def validate_for_productionself, *, strict: bool | None=None -> None",
-              "line": 664,
+              "line": 671,
               "doc": "Raise ``CONFIG_INVALID`` if this config is unsafe for production."
             }
           ]
@@ -1987,6 +1957,13 @@
         }
       ],
       "changes": [
+        {
+          "sha": "0068bbf2",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "T1: conceal mode with 36-hour retention, and a public /server/info",
+          "api_changes": []
+        },
         {
           "sha": "e26841fc",
           "date": "2026-09-23",
@@ -2034,13 +2011,6 @@
           "date": "2026-09-08",
           "author": "Claude",
           "subject": "0.72.4.dev4 \u2014 trusted-network mode",
-          "api_changes": []
-        },
-        {
-          "sha": "55378e12",
-          "date": "2026-09-01",
-          "author": "Claude",
-          "subject": "T2P billing keys, and a server's right to refuse them",
           "api_changes": []
         }
       ]
@@ -5327,6 +5297,195 @@
       ]
     },
     {
+      "module": "hypernix.t1api.privacy",
+      "source": "src/hypernix/t1api/privacy.py",
+      "line_count": 220,
+      "summary": "t1api.privacy \u2014 conceal mode and 36-hour retention (0.72.6).",
+      "api": [
+        {
+          "kind": "function",
+          "name": "mask_address",
+          "signature": "def mask_addressaddress: str -> str",
+          "line": 73,
+          "doc": "The network an address is in, not the address: /24 or /48."
+        },
+        {
+          "kind": "class",
+          "name": "ConcealStore",
+          "signature": "class ConcealStore",
+          "line": 83,
+          "doc": "Which keys asked to be concealed. One row per key.",
+          "methods": [
+            {
+              "name": "set",
+              "signature": "def setself, key_id: str, enabled: bool -> dict[str, Any]",
+              "line": 92,
+              "doc": ""
+            },
+            {
+              "name": "is_concealed",
+              "signature": "def is_concealedself, key_id: str -> bool",
+              "line": 110,
+              "doc": ""
+            },
+            {
+              "name": "status",
+              "signature": "def statusself, key_id: str -> dict[str, Any]",
+              "line": 124,
+              "doc": ""
+            },
+            {
+              "name": "concealed_keys",
+              "signature": "def concealed_keysself -> list[str]",
+              "line": 139,
+              "doc": ""
+            },
+            {
+              "name": "mark_swept",
+              "signature": "def mark_sweptself, key_id: str, when: float -> None",
+              "line": 144,
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "kind": "class",
+          "name": "SweepResult",
+          "signature": "class SweepResult",
+          "line": 150,
+          "doc": "",
+          "methods": [
+            {
+              "name": "to_dict",
+              "signature": "def to_dictself -> dict[str, Any]",
+              "line": 158,
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "kind": "class",
+          "name": "RetentionSweeper",
+          "signature": "class RetentionSweeper",
+          "line": 165,
+          "doc": "Deletes what concealed keys made more than 36 hours ago.",
+          "methods": [
+            {
+              "name": "sweep_key",
+              "signature": "def sweep_keyself, key_id: str, *, now: float | None=None -> SweepResult",
+              "line": 178,
+              "doc": ""
+            },
+            {
+              "name": "sweep",
+              "signature": "def sweepself, *, now: float | None=None -> list[SweepResult]",
+              "line": 232,
+              "doc": ""
+            },
+            {
+              "name": "start",
+              "signature": "def startself -> None",
+              "line": 243,
+              "doc": ""
+            },
+            {
+              "name": "stop",
+              "signature": "def stopself -> None",
+              "line": 250,
+              "doc": ""
+            }
+          ]
+        }
+      ],
+      "errors": [],
+      "deprecations": [],
+      "required_modules": [
+        {
+          "module": "fastapi / uvicorn / pydantic",
+          "extra": "t1api",
+          "requirement": "pip install 'hypernix[t1api]'"
+        }
+      ],
+      "changes": [
+        {
+          "sha": "0068bbf2",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "T1: conceal mode with 36-hour retention, and a public /server/info",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def mask_address(address: str) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "class ConcealStore:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, backend: SQLBackend) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def set(self, key_id: str, enabled: bool) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def is_concealed(self, key_id: str) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def status(self, key_id: str) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def concealed_keys(self) -> list[str]:"
+            },
+            {
+              "kind": "added",
+              "text": "def mark_swept(self, key_id: str, when: float) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "class SweepResult:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_dict(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "class RetentionSweeper:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, backend: SQLBackend, conceal: ConcealStore, *, attachments: Any = None) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def sweep_key(self, key_id: str, *, now: float | None = None) -> SweepResult:"
+            },
+            {
+              "kind": "added",
+              "text": "def sweep(self, *, now: float | None = None) -> list[SweepResult]:"
+            },
+            {
+              "kind": "added",
+              "text": "def start(self) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def stop(self) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _run(self) -> None:"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "module": "hypernix.t1api.ratelimit",
       "source": "src/hypernix/t1api/ratelimit.py",
       "line_count": 419,
@@ -5871,7 +6030,7 @@
     {
       "module": "hypernix.t1api.routers",
       "source": "src/hypernix/t1api/routers/__init__.py",
-      "line_count": 134,
+      "line_count": 141,
       "summary": "t1api.routers \u2014 one module per resource group, matching the spec's 'PRIMARY ENDPOINT SET'.",
       "api": [],
       "errors": [],
@@ -5884,6 +6043,20 @@
         }
       ],
       "changes": [
+        {
+          "sha": "0068bbf2",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "T1: conceal mode with 36-hour retention, and a public /server/info",
+          "api_changes": []
+        },
+        {
+          "sha": "462b479d",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "v2.1 (T2C) keys, sealed with Rotorvault",
+          "api_changes": []
+        },
         {
           "sha": "53a7eec3",
           "date": "2026-09-23",
@@ -5924,20 +6097,6 @@
           "date": "2026-09-16",
           "author": "Claude",
           "subject": "Fix the CI build break, and ship an IPA that can run a model",
-          "api_changes": []
-        },
-        {
-          "sha": "2324f0fa",
-          "date": "2026-09-15",
-          "author": "Mason",
-          "subject": "t1 v1.0.26.9.2.3: sign up for a key without already having one",
-          "api_changes": []
-        },
-        {
-          "sha": "3cd859b2",
-          "date": "2026-09-08",
-          "author": "Claude",
-          "subject": "0.72.4.dev7 \u2014 what training is doing, and the controls for it",
           "api_changes": []
         }
       ]
@@ -6224,7 +6383,7 @@
     {
       "module": "hypernix.t1api.routers.auth",
       "source": "src/hypernix/t1api/routers/auth.py",
-      "line_count": 140,
+      "line_count": 142,
       "summary": "",
       "api": [
         {
@@ -6238,21 +6397,21 @@
           "kind": "function",
           "name": "issue_token",
           "signature": "def issue_tokenbody: TokenRequest, svc: T1AuthService=Depends(get_auth_service), request_id: str=Depends(get_request_id) -> TokenResponse",
-          "line": 44,
+          "line": 46,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "rotate_own_key",
           "signature": "def rotate_own_keyrequest: Request, ctx: AuthContext=Depends(get_auth_context), svc: T1AuthService=Depends(get_auth_service), request_id: str=Depends(get_request_id) -> RotateResponse",
-          "line": 104,
+          "line": 106,
           "doc": "A caller may always rotate the key/token they authenticated with."
         },
         {
           "kind": "function",
           "name": "admin_rotate",
           "signature": "def admin_rotaterequest: Request, body: AdminRotateRequest, ctx: AuthContext=Depends(get_auth_context), svc: T1AuthService=Depends(get_auth_service), request_id: str=Depends(get_request_id) -> RotateResponse",
-          "line": 127,
+          "line": 129,
           "doc": ""
         }
       ],
@@ -6266,6 +6425,13 @@
         }
       ],
       "changes": [
+        {
+          "sha": "0068bbf2",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "T1: conceal mode with 36-hour retention, and a public /server/info",
+          "api_changes": []
+        },
         {
           "sha": "eab30655",
           "date": "2026-08-27",
@@ -8701,6 +8867,99 @@
       ]
     },
     {
+      "module": "hypernix.t1api.routers.privacy",
+      "source": "src/hypernix/t1api/routers/privacy.py",
+      "line_count": 87,
+      "summary": "``/privacy/*`` and ``/server/info`` (0.72.6).",
+      "api": [
+        {
+          "kind": "function",
+          "name": "conceal_status",
+          "signature": "def conceal_statusrequest: Request, ctx: AuthContext=Depends(get_auth_context), request_id: str=Depends(get_request_id) -> dict[str, Any]",
+          "line": 28,
+          "doc": ""
+        },
+        {
+          "kind": "function",
+          "name": "conceal_on",
+          "signature": "def conceal_onrequest: Request, ctx: AuthContext=Depends(get_auth_context), request_id: str=Depends(get_request_id) -> dict[str, Any]",
+          "line": 37,
+          "doc": "Conceal the calling key. Needs access level 3 or more."
+        },
+        {
+          "kind": "function",
+          "name": "conceal_off",
+          "signature": "def conceal_offrequest: Request, ctx: AuthContext=Depends(get_auth_context), request_id: str=Depends(get_request_id) -> dict[str, Any]",
+          "line": 59,
+          "doc": "Stop concealing. Nothing already deleted comes back."
+        },
+        {
+          "kind": "function",
+          "name": "server_info",
+          "signature": "def server_inforequest: Request, config=Depends(get_config), request_id: str=Depends(get_request_id) -> dict[str, Any]",
+          "line": 69,
+          "doc": "Who runs this server and what it offers. Public by design."
+        }
+      ],
+      "errors": [
+        "T1APIError"
+      ],
+      "deprecations": [],
+      "required_modules": [
+        {
+          "module": "fastapi",
+          "extra": "t1api",
+          "requirement": "fastapi>=0.110,<1"
+        }
+      ],
+      "changes": [
+        {
+          "sha": "0068bbf2",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "T1: conceal mode with 36-hour retention, and a public /server/info",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _conceal(request: Request):"
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/privacy/conceal\")"
+            },
+            {
+              "kind": "added",
+              "text": "def conceal_status("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/privacy/conceal\")"
+            },
+            {
+              "kind": "added",
+              "text": "def conceal_on("
+            },
+            {
+              "kind": "added",
+              "text": "@router.delete(\"/privacy/conceal\")"
+            },
+            {
+              "kind": "added",
+              "text": "def conceal_off("
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/server/info\")"
+            },
+            {
+              "kind": "added",
+              "text": "def server_info("
+            }
+          ]
+        }
+      ]
+    },
+    {
       "module": "hypernix.t1api.routers.runner",
       "source": "src/hypernix/t1api/routers/runner.py",
       "line_count": 260,
@@ -9103,6 +9362,120 @@
             {
               "kind": "added",
               "text": "def delete_server("
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "module": "hypernix.t1api.routers.t2c",
+      "source": "src/hypernix/t1api/routers/t2c.py",
+      "line_count": 122,
+      "summary": "``/auth/t2c/*`` \u2014 v2.1 (T2C) keys: the server's public key and devices (0.72.6).",
+      "api": [
+        {
+          "kind": "class",
+          "name": "T2CDeviceRequest",
+          "signature": "class T2CDeviceRequest",
+          "line": 32,
+          "doc": "",
+          "methods": []
+        },
+        {
+          "kind": "function",
+          "name": "public_key",
+          "signature": "def public_keysvc: T1AuthService=Depends(get_auth_service), request_id: str=Depends(get_request_id) -> dict[str, Any]",
+          "line": 52,
+          "doc": "The key a client seals for. Public by design; no credential needed."
+        },
+        {
+          "kind": "function",
+          "name": "register_device",
+          "signature": "def register_devicebody: T2CDeviceRequest, svc: T1AuthService=Depends(get_auth_service), request_id: str=Depends(get_request_id) -> dict[str, Any]",
+          "line": 83,
+          "doc": "Register a device for the key in the body. The key itself, not a token or a T2C key: the device is bound to exactly that key."
+        },
+        {
+          "kind": "function",
+          "name": "list_devices",
+          "signature": "def list_devicesctx: AuthContext=Depends(get_auth_context), svc: T1AuthService=Depends(get_auth_service), request_id: str=Depends(get_request_id) -> dict[str, Any]",
+          "line": 125,
+          "doc": ""
+        },
+        {
+          "kind": "function",
+          "name": "revoke_device",
+          "signature": "def revoke_devicedevice_id: str, ctx: AuthContext=Depends(get_auth_context), svc: T1AuthService=Depends(get_auth_service), request_id: str=Depends(get_request_id) -> dict[str, Any]",
+          "line": 135,
+          "doc": "Revoke one of the caller's devices; an administrator may revoke any."
+        }
+      ],
+      "errors": [
+        "T1APIError"
+      ],
+      "deprecations": [],
+      "required_modules": [
+        {
+          "module": "fastapi",
+          "extra": "t1api",
+          "requirement": "fastapi>=0.110,<1"
+        },
+        {
+          "module": "pydantic",
+          "extra": "t1api",
+          "requirement": "pydantic>=2,<3"
+        }
+      ],
+      "changes": [
+        {
+          "sha": "462b479d",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "v2.1 (T2C) keys, sealed with Rotorvault",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class T2CDeviceRequest(BaseModel):"
+            },
+            {
+              "kind": "added",
+              "text": "def _unavailable(exc: Exception) -> T1APIError:"
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/public-key\")"
+            },
+            {
+              "kind": "added",
+              "text": "def public_key("
+            },
+            {
+              "kind": "added",
+              "text": "def _t1_equivalent(key: str) -> tuple[str, int | None]:"
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/devices\")"
+            },
+            {
+              "kind": "added",
+              "text": "def register_device("
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/devices\")"
+            },
+            {
+              "kind": "added",
+              "text": "def list_devices("
+            },
+            {
+              "kind": "added",
+              "text": "@router.delete(\"/devices/{device_id}\")"
+            },
+            {
+              "kind": "added",
+              "text": "def revoke_device("
             }
           ]
         }
@@ -9973,7 +10346,7 @@
     {
       "module": "hypernix.t1api.schemas",
       "source": "src/hypernix/t1api/schemas.py",
-      "line_count": 1609,
+      "line_count": 1614,
       "summary": "t1api.schemas \u2014 Pydantic v2 request/response models for the T1 API.",
       "api": [
         {
@@ -10036,7 +10409,7 @@
           "kind": "class",
           "name": "TokenRequest",
           "signature": "class TokenRequest",
-          "line": 144,
+          "line": 149,
           "doc": "",
           "methods": []
         },
@@ -10044,7 +10417,7 @@
           "kind": "class",
           "name": "TokenResponse",
           "signature": "class TokenResponse",
-          "line": 152,
+          "line": 157,
           "doc": "",
           "methods": []
         },
@@ -10052,7 +10425,7 @@
           "kind": "class",
           "name": "RotateResponse",
           "signature": "class RotateResponse",
-          "line": 160,
+          "line": 165,
           "doc": "",
           "methods": []
         },
@@ -10060,7 +10433,7 @@
           "kind": "class",
           "name": "AdminRotateRequest",
           "signature": "class AdminRotateRequest",
-          "line": 169,
+          "line": 174,
           "doc": "",
           "methods": []
         },
@@ -10068,7 +10441,7 @@
           "kind": "class",
           "name": "ModelSummary",
           "signature": "class ModelSummary",
-          "line": 179,
+          "line": 184,
           "doc": "",
           "methods": []
         },
@@ -10076,7 +10449,7 @@
           "kind": "class",
           "name": "ModelDetail",
           "signature": "class ModelDetail",
-          "line": 200,
+          "line": 205,
           "doc": "",
           "methods": []
         },
@@ -10084,7 +10457,7 @@
           "kind": "class",
           "name": "ModelListResponse",
           "signature": "class ModelListResponse",
-          "line": 214,
+          "line": 219,
           "doc": "",
           "methods": []
         },
@@ -10092,7 +10465,7 @@
           "kind": "class",
           "name": "ModelDetailResponse",
           "signature": "class ModelDetailResponse",
-          "line": 220,
+          "line": 225,
           "doc": "",
           "methods": []
         },
@@ -10100,7 +10473,7 @@
           "kind": "class",
           "name": "ModelAvailabilityResponse",
           "signature": "class ModelAvailabilityResponse",
-          "line": 225,
+          "line": 230,
           "doc": "",
           "methods": []
         },
@@ -10108,7 +10481,7 @@
           "kind": "class",
           "name": "ModelUsageResponse",
           "signature": "class ModelUsageResponse",
-          "line": 233,
+          "line": 238,
           "doc": "",
           "methods": []
         },
@@ -10116,7 +10489,7 @@
           "kind": "class",
           "name": "UsageCurrentResponse",
           "signature": "class UsageCurrentResponse",
-          "line": 251,
+          "line": 256,
           "doc": "",
           "methods": []
         },
@@ -10124,7 +10497,7 @@
           "kind": "class",
           "name": "UsageRemainingResponse",
           "signature": "class UsageRemainingResponse",
-          "line": 260,
+          "line": 265,
           "doc": "",
           "methods": []
         },
@@ -10132,7 +10505,7 @@
           "kind": "class",
           "name": "ConfigResponse",
           "signature": "class ConfigResponse",
-          "line": 273,
+          "line": 278,
           "doc": "",
           "methods": []
         },
@@ -10140,7 +10513,7 @@
           "kind": "class",
           "name": "RouteRequest",
           "signature": "class RouteRequest",
-          "line": 283,
+          "line": 288,
           "doc": "",
           "methods": []
         },
@@ -10148,7 +10521,7 @@
           "kind": "class",
           "name": "RouteResponse",
           "signature": "class RouteResponse",
-          "line": 306,
+          "line": 311,
           "doc": "",
           "methods": []
         },
@@ -10156,7 +10529,7 @@
           "kind": "class",
           "name": "ServerRegisterRequest",
           "signature": "class ServerRegisterRequest",
-          "line": 323,
+          "line": 328,
           "doc": "",
           "methods": []
         },
@@ -10164,7 +10537,7 @@
           "kind": "class",
           "name": "ServerUpdateRequest",
           "signature": "class ServerUpdateRequest",
-          "line": 333,
+          "line": 338,
           "doc": "",
           "methods": []
         },
@@ -10172,7 +10545,7 @@
           "kind": "class",
           "name": "ServerItem",
           "signature": "class ServerItem",
-          "line": 341,
+          "line": 346,
           "doc": "",
           "methods": []
         },
@@ -10180,7 +10553,7 @@
           "kind": "class",
           "name": "ServerListResponse",
           "signature": "class ServerListResponse",
-          "line": 355,
+          "line": 360,
           "doc": "",
           "methods": []
         },
@@ -10188,7 +10561,7 @@
           "kind": "class",
           "name": "ServerDetailResponse",
           "signature": "class ServerDetailResponse",
-          "line": 361,
+          "line": 366,
           "doc": "",
           "methods": []
         },
@@ -10196,7 +10569,7 @@
           "kind": "class",
           "name": "ModuleCreateRequest",
           "signature": "class ModuleCreateRequest",
-          "line": 371,
+          "line": 376,
           "doc": "",
           "methods": []
         },
@@ -10204,7 +10577,7 @@
           "kind": "class",
           "name": "ModuleUpdateRequest",
           "signature": "class ModuleUpdateRequest",
-          "line": 377,
+          "line": 382,
           "doc": "",
           "methods": []
         },
@@ -10212,7 +10585,7 @@
           "kind": "class",
           "name": "ModuleUploadRemoteRequest",
           "signature": "class ModuleUploadRemoteRequest",
-          "line": 382,
+          "line": 387,
           "doc": "",
           "methods": []
         },
@@ -10220,7 +10593,7 @@
           "kind": "class",
           "name": "ModuleSyncRequest",
           "signature": "class ModuleSyncRequest",
-          "line": 387,
+          "line": 392,
           "doc": "",
           "methods": []
         },
@@ -10228,7 +10601,7 @@
           "kind": "class",
           "name": "ModuleItem",
           "signature": "class ModuleItem",
-          "line": 391,
+          "line": 396,
           "doc": "",
           "methods": []
         },
@@ -10236,7 +10609,7 @@
           "kind": "class",
           "name": "ModuleListResponse",
           "signature": "class ModuleListResponse",
-          "line": 407,
+          "line": 412,
           "doc": "",
           "methods": []
         },
@@ -10244,7 +10617,7 @@
           "kind": "class",
           "name": "ModuleDetailResponse",
           "signature": "class ModuleDetailResponse",
-          "line": 413,
+          "line": 418,
           "doc": "",
           "methods": []
         },
@@ -10252,7 +10625,7 @@
           "kind": "class",
           "name": "ModuleSyncResponse",
           "signature": "class ModuleSyncResponse",
-          "line": 418,
+          "line": 423,
           "doc": "",
           "methods": []
         },
@@ -10260,7 +10633,7 @@
           "kind": "class",
           "name": "JobCreateRequest",
           "signature": "class JobCreateRequest",
-          "line": 429,
+          "line": 434,
           "doc": "",
           "methods": []
         },
@@ -10268,7 +10641,7 @@
           "kind": "class",
           "name": "JobItem",
           "signature": "class JobItem",
-          "line": 434,
+          "line": 439,
           "doc": "",
           "methods": []
         },
@@ -10276,7 +10649,7 @@
           "kind": "class",
           "name": "JobListResponse",
           "signature": "class JobListResponse",
-          "line": 447,
+          "line": 452,
           "doc": "",
           "methods": []
         },
@@ -10284,7 +10657,7 @@
           "kind": "class",
           "name": "JobDetailResponse",
           "signature": "class JobDetailResponse",
-          "line": 453,
+          "line": 458,
           "doc": "",
           "methods": []
         },
@@ -10292,7 +10665,7 @@
           "kind": "class",
           "name": "EventItem",
           "signature": "class EventItem",
-          "line": 463,
+          "line": 468,
           "doc": "",
           "methods": []
         },
@@ -10300,7 +10673,7 @@
           "kind": "class",
           "name": "EventListResponse",
           "signature": "class EventListResponse",
-          "line": 471,
+          "line": 476,
           "doc": "",
           "methods": []
         },
@@ -10308,7 +10681,7 @@
           "kind": "class",
           "name": "BillingBalanceResponse",
           "signature": "class BillingBalanceResponse",
-          "line": 482,
+          "line": 487,
           "doc": "",
           "methods": []
         },
@@ -10316,7 +10689,7 @@
           "kind": "class",
           "name": "TransactionItem",
           "signature": "class TransactionItem",
-          "line": 489,
+          "line": 494,
           "doc": "",
           "methods": []
         },
@@ -10324,7 +10697,7 @@
           "kind": "class",
           "name": "TransactionListResponse",
           "signature": "class TransactionListResponse",
-          "line": 501,
+          "line": 506,
           "doc": "",
           "methods": []
         },
@@ -10332,7 +10705,7 @@
           "kind": "class",
           "name": "PaymentTokenMintRequest",
           "signature": "class PaymentTokenMintRequest",
-          "line": 507,
+          "line": 512,
           "doc": "",
           "methods": []
         },
@@ -10340,7 +10713,7 @@
           "kind": "class",
           "name": "PaymentTokenMintResponse",
           "signature": "class PaymentTokenMintResponse",
-          "line": 513,
+          "line": 518,
           "doc": "",
           "methods": []
         },
@@ -10348,7 +10721,7 @@
           "kind": "class",
           "name": "RedeemRequest",
           "signature": "class RedeemRequest",
-          "line": 521,
+          "line": 526,
           "doc": "",
           "methods": []
         },
@@ -10356,7 +10729,7 @@
           "kind": "class",
           "name": "AddBalanceRequest",
           "signature": "class AddBalanceRequest",
-          "line": 529,
+          "line": 534,
           "doc": "",
           "methods": []
         },
@@ -10364,7 +10737,7 @@
           "kind": "class",
           "name": "UsageHistoryItem",
           "signature": "class UsageHistoryItem",
-          "line": 624,
+          "line": 629,
           "doc": "",
           "methods": []
         },
@@ -10372,7 +10745,7 @@
           "kind": "class",
           "name": "UsageHistoryResponse",
           "signature": "class UsageHistoryResponse",
-          "line": 639,
+          "line": 644,
           "doc": "",
           "methods": []
         },
@@ -10380,7 +10753,7 @@
           "kind": "class",
           "name": "UsageAggregateRow",
           "signature": "class UsageAggregateRow",
-          "line": 649,
+          "line": 654,
           "doc": "",
           "methods": []
         },
@@ -10388,7 +10761,7 @@
           "kind": "class",
           "name": "UsageAggregateResponse",
           "signature": "class UsageAggregateResponse",
-          "line": 658,
+          "line": 663,
           "doc": "",
           "methods": []
         },
@@ -10396,7 +10769,7 @@
           "kind": "class",
           "name": "CostLineItem",
           "signature": "class CostLineItem",
-          "line": 667,
+          "line": 672,
           "doc": "",
           "methods": []
         },
@@ -10404,7 +10777,7 @@
           "kind": "class",
           "name": "ForecastItem",
           "signature": "class ForecastItem",
-          "line": 680,
+          "line": 685,
           "doc": "",
           "methods": []
         },
@@ -10412,7 +10785,7 @@
           "kind": "class",
           "name": "UsageCostResponse",
           "signature": "class UsageCostResponse",
-          "line": 691,
+          "line": 696,
           "doc": "",
           "methods": []
         },
@@ -10420,7 +10793,7 @@
           "kind": "class",
           "name": "UsageEstimateRequest",
           "signature": "class UsageEstimateRequest",
-          "line": 713,
+          "line": 718,
           "doc": "",
           "methods": []
         },
@@ -10428,7 +10801,7 @@
           "kind": "class",
           "name": "UsageReportRequest",
           "signature": "class UsageReportRequest",
-          "line": 723,
+          "line": 728,
           "doc": "Tokens a client actually consumed running a model the server routed it to.",
           "methods": []
         },
@@ -10436,7 +10809,7 @@
           "kind": "class",
           "name": "UsageReportResponse",
           "signature": "class UsageReportResponse",
-          "line": 741,
+          "line": 746,
           "doc": "",
           "methods": []
         },
@@ -10444,7 +10817,7 @@
           "kind": "class",
           "name": "UsageEstimateResponse",
           "signature": "class UsageEstimateResponse",
-          "line": 755,
+          "line": 760,
           "doc": "",
           "methods": []
         },
@@ -10452,7 +10825,7 @@
           "kind": "class",
           "name": "KeyAssignmentItem",
           "signature": "class KeyAssignmentItem",
-          "line": 778,
+          "line": 783,
           "doc": "",
           "methods": []
         },
@@ -10460,7 +10833,7 @@
           "kind": "class",
           "name": "KeyItem",
           "signature": "class KeyItem",
-          "line": 789,
+          "line": 794,
           "doc": "Credential-free view of a key. No endpoint ever returns the raw key string for an existing key \u2014 only key rotation, which mints a new one, hands a secret back.",
           "methods": []
         },
@@ -10468,7 +10841,7 @@
           "kind": "class",
           "name": "KeyListResponse",
           "signature": "class KeyListResponse",
-          "line": 810,
+          "line": 815,
           "doc": "",
           "methods": []
         },
@@ -10476,7 +10849,7 @@
           "kind": "class",
           "name": "KeyImportRequest",
           "signature": "class KeyImportRequest",
-          "line": 820,
+          "line": 825,
           "doc": "",
           "methods": []
         },
@@ -10484,7 +10857,7 @@
           "kind": "class",
           "name": "KeyImportResponse",
           "signature": "class KeyImportResponse",
-          "line": 828,
+          "line": 833,
           "doc": "",
           "methods": []
         },
@@ -10492,7 +10865,7 @@
           "kind": "class",
           "name": "KeyAssignRequest",
           "signature": "class KeyAssignRequest",
-          "line": 836,
+          "line": 841,
           "doc": "",
           "methods": []
         },
@@ -10500,7 +10873,7 @@
           "kind": "class",
           "name": "KeyAssignResponse",
           "signature": "class KeyAssignResponse",
-          "line": 850,
+          "line": 855,
           "doc": "",
           "methods": []
         },
@@ -10508,7 +10881,7 @@
           "kind": "class",
           "name": "AuditItem",
           "signature": "class AuditItem",
-          "line": 860,
+          "line": 865,
           "doc": "",
           "methods": []
         },
@@ -10516,7 +10889,7 @@
           "kind": "class",
           "name": "AuditListResponse",
           "signature": "class AuditListResponse",
-          "line": 875,
+          "line": 880,
           "doc": "",
           "methods": []
         },
@@ -10524,7 +10897,7 @@
           "kind": "class",
           "name": "NetworkPolicyEntryItem",
           "signature": "class NetworkPolicyEntryItem",
-          "line": 889,
+          "line": 894,
           "doc": "",
           "methods": []
         },
@@ -10532,7 +10905,7 @@
           "kind": "class",
           "name": "NetworkPolicyResponse",
           "signature": "class NetworkPolicyResponse",
-          "line": 900,
+          "line": 905,
           "doc": "",
           "methods": []
         },
@@ -10540,7 +10913,7 @@
           "kind": "class",
           "name": "NetworkPolicyEntryRequest",
           "signature": "class NetworkPolicyEntryRequest",
-          "line": 908,
+          "line": 913,
           "doc": "",
           "methods": []
         },
@@ -10548,7 +10921,7 @@
           "kind": "class",
           "name": "ForcedLimitItem",
           "signature": "class ForcedLimitItem",
-          "line": 916,
+          "line": 921,
           "doc": "",
           "methods": []
         },
@@ -10556,7 +10929,7 @@
           "kind": "class",
           "name": "ForcedLimitRequest",
           "signature": "class ForcedLimitRequest",
-          "line": 926,
+          "line": 931,
           "doc": "",
           "methods": []
         },
@@ -10564,7 +10937,7 @@
           "kind": "class",
           "name": "ForcedLimitListResponse",
           "signature": "class ForcedLimitListResponse",
-          "line": 935,
+          "line": 940,
           "doc": "",
           "methods": []
         },
@@ -10572,7 +10945,7 @@
           "kind": "class",
           "name": "ForcedLimitResponse",
           "signature": "class ForcedLimitResponse",
-          "line": 941,
+          "line": 946,
           "doc": "",
           "methods": []
         },
@@ -10580,7 +10953,7 @@
           "kind": "class",
           "name": "RateLimitStatusResponse",
           "signature": "class RateLimitStatusResponse",
-          "line": 946,
+          "line": 951,
           "doc": "",
           "methods": []
         },
@@ -10588,7 +10961,7 @@
           "kind": "class",
           "name": "ModuleDeployRequest",
           "signature": "class ModuleDeployRequest",
-          "line": 957,
+          "line": 962,
           "doc": "",
           "methods": []
         },
@@ -10596,7 +10969,7 @@
           "kind": "class",
           "name": "ModuleDeployResponse",
           "signature": "class ModuleDeployResponse",
-          "line": 963,
+          "line": 968,
           "doc": "",
           "methods": []
         },
@@ -10604,7 +10977,7 @@
           "kind": "class",
           "name": "ModuleFetchResponse",
           "signature": "class ModuleFetchResponse",
-          "line": 970,
+          "line": 975,
           "doc": "",
           "methods": []
         },
@@ -10612,7 +10985,7 @@
           "kind": "class",
           "name": "ModuleReceiveResponse",
           "signature": "class ModuleReceiveResponse",
-          "line": 976,
+          "line": 981,
           "doc": "Response to an inbound server-to-server push. The pusher compares ``checksum`` against what it sent \u2014 a mismatch means the bytes changed in flight, and it fails the deployment rather than trusting the 200.",
           "methods": []
         },
@@ -10620,7 +10993,7 @@
           "kind": "class",
           "name": "GenericOkResponse",
           "signature": "class GenericOkResponse",
-          "line": 988,
+          "line": 993,
           "doc": "",
           "methods": []
         },
@@ -10628,7 +11001,7 @@
           "kind": "class",
           "name": "BridgeModel",
           "signature": "class BridgeModel",
-          "line": 999,
+          "line": 1004,
           "doc": "",
           "methods": []
         },
@@ -10636,7 +11009,7 @@
           "kind": "class",
           "name": "BridgeProbe",
           "signature": "class BridgeProbe",
-          "line": 1012,
+          "line": 1017,
           "doc": "",
           "methods": []
         },
@@ -10644,7 +11017,7 @@
           "kind": "class",
           "name": "BridgeStatusResponse",
           "signature": "class BridgeStatusResponse",
-          "line": 1026,
+          "line": 1031,
           "doc": "",
           "methods": []
         },
@@ -10652,7 +11025,7 @@
           "kind": "class",
           "name": "BridgeModelsResponse",
           "signature": "class BridgeModelsResponse",
-          "line": 1034,
+          "line": 1039,
           "doc": "",
           "methods": []
         },
@@ -10660,7 +11033,7 @@
           "kind": "class",
           "name": "BridgeChatMessage",
           "signature": "class BridgeChatMessage",
-          "line": 1042,
+          "line": 1047,
           "doc": "",
           "methods": []
         },
@@ -10668,7 +11041,7 @@
           "kind": "class",
           "name": "BridgeChatRequest",
           "signature": "class BridgeChatRequest",
-          "line": 1051,
+          "line": 1056,
           "doc": "",
           "methods": []
         },
@@ -10676,7 +11049,7 @@
           "kind": "class",
           "name": "BridgeChatResponse",
           "signature": "class BridgeChatResponse",
-          "line": 1062,
+          "line": 1067,
           "doc": "",
           "methods": []
         },
@@ -10684,7 +11057,7 @@
           "kind": "class",
           "name": "HyperLinkEndpoint",
           "signature": "class HyperLinkEndpoint",
-          "line": 1078,
+          "line": 1083,
           "doc": "",
           "methods": []
         },
@@ -10692,7 +11065,7 @@
           "kind": "class",
           "name": "HyperLinkEndpointsResponse",
           "signature": "class HyperLinkEndpointsResponse",
-          "line": 1085,
+          "line": 1090,
           "doc": "",
           "methods": []
         },
@@ -10700,7 +11073,7 @@
           "kind": "class",
           "name": "HyperLinkPeer",
           "signature": "class HyperLinkPeer",
-          "line": 1107,
+          "line": 1112,
           "doc": "One machine on the tailnet. A candidate, never a trusted server.",
           "methods": []
         },
@@ -10708,7 +11081,7 @@
           "kind": "class",
           "name": "HyperLinkPeersResponse",
           "signature": "class HyperLinkPeersResponse",
-          "line": 1128,
+          "line": 1133,
           "doc": "",
           "methods": []
         },
@@ -10716,7 +11089,7 @@
           "kind": "class",
           "name": "PairingCreateRequest",
           "signature": "class PairingCreateRequest",
-          "line": 1137,
+          "line": 1142,
           "doc": "",
           "methods": []
         },
@@ -10724,7 +11097,7 @@
           "kind": "class",
           "name": "PairingCodeResponse",
           "signature": "class PairingCodeResponse",
-          "line": 1143,
+          "line": 1148,
           "doc": "",
           "methods": []
         },
@@ -10732,7 +11105,7 @@
           "kind": "class",
           "name": "PairingRedeemRequest",
           "signature": "class PairingRedeemRequest",
-          "line": 1154,
+          "line": 1159,
           "doc": "",
           "methods": []
         },
@@ -10740,7 +11113,7 @@
           "kind": "class",
           "name": "PairingRedeemResponse",
           "signature": "class PairingRedeemResponse",
-          "line": 1161,
+          "line": 1166,
           "doc": "The one and only time the device token is transmitted.",
           "methods": []
         },
@@ -10748,7 +11121,7 @@
           "kind": "class",
           "name": "DeviceSummary",
           "signature": "class DeviceSummary",
-          "line": 1173,
+          "line": 1178,
           "doc": "",
           "methods": []
         },
@@ -10756,7 +11129,7 @@
           "kind": "class",
           "name": "DeviceListResponse",
           "signature": "class DeviceListResponse",
-          "line": 1187,
+          "line": 1192,
           "doc": "",
           "methods": []
         },
@@ -10764,7 +11137,7 @@
           "kind": "class",
           "name": "DeviceResponse",
           "signature": "class DeviceResponse",
-          "line": 1193,
+          "line": 1198,
           "doc": "",
           "methods": []
         },
@@ -10772,7 +11145,7 @@
           "kind": "class",
           "name": "SessionCreateRequest",
           "signature": "class SessionCreateRequest",
-          "line": 1198,
+          "line": 1203,
           "doc": "",
           "methods": []
         },
@@ -10780,7 +11153,7 @@
           "kind": "class",
           "name": "SessionUpdateRequest",
           "signature": "class SessionUpdateRequest",
-          "line": 1205,
+          "line": 1210,
           "doc": "",
           "methods": []
         },
@@ -10788,7 +11161,7 @@
           "kind": "class",
           "name": "SessionSummary",
           "signature": "class SessionSummary",
-          "line": 1213,
+          "line": 1218,
           "doc": "",
           "methods": []
         },
@@ -10796,7 +11169,7 @@
           "kind": "class",
           "name": "SessionListResponse",
           "signature": "class SessionListResponse",
-          "line": 1233,
+          "line": 1238,
           "doc": "",
           "methods": []
         },
@@ -10804,7 +11177,7 @@
           "kind": "class",
           "name": "SessionResponse",
           "signature": "class SessionResponse",
-          "line": 1239,
+          "line": 1244,
           "doc": "",
           "methods": []
         },
@@ -10812,7 +11185,7 @@
           "kind": "class",
           "name": "MessageSummary",
           "signature": "class MessageSummary",
-          "line": 1244,
+          "line": 1249,
           "doc": "",
           "methods": []
         },
@@ -10820,7 +11193,7 @@
           "kind": "class",
           "name": "MessageListResponse",
           "signature": "class MessageListResponse",
-          "line": 1258,
+          "line": 1263,
           "doc": "",
           "methods": []
         },
@@ -10828,7 +11201,7 @@
           "kind": "class",
           "name": "MessageEditRequest",
           "signature": "class MessageEditRequest",
-          "line": 1265,
+          "line": 1270,
           "doc": "",
           "methods": []
         },
@@ -10836,7 +11209,7 @@
           "kind": "class",
           "name": "MessageEditResponse",
           "signature": "class MessageEditResponse",
-          "line": 1275,
+          "line": 1280,
           "doc": "",
           "methods": []
         },
@@ -10844,7 +11217,7 @@
           "kind": "class",
           "name": "HyperLinkChatRequest",
           "signature": "class HyperLinkChatRequest",
-          "line": 1284,
+          "line": 1289,
           "doc": "",
           "methods": []
         },
@@ -10852,7 +11225,7 @@
           "kind": "class",
           "name": "HyperLinkChatResponse",
           "signature": "class HyperLinkChatResponse",
-          "line": 1300,
+          "line": 1305,
           "doc": "",
           "methods": []
         },
@@ -10860,7 +11233,7 @@
           "kind": "class",
           "name": "AttachmentSummary",
           "signature": "class AttachmentSummary",
-          "line": 1309,
+          "line": 1314,
           "doc": "",
           "methods": []
         },
@@ -10868,7 +11241,7 @@
           "kind": "class",
           "name": "AttachmentResponse",
           "signature": "class AttachmentResponse",
-          "line": 1324,
+          "line": 1329,
           "doc": "",
           "methods": []
         },
@@ -10876,7 +11249,7 @@
           "kind": "class",
           "name": "AttachmentListResponse",
           "signature": "class AttachmentListResponse",
-          "line": 1329,
+          "line": 1334,
           "doc": "",
           "methods": []
         },
@@ -10884,7 +11257,7 @@
           "kind": "class",
           "name": "HFResolveRequest",
           "signature": "class HFResolveRequest",
-          "line": 1336,
+          "line": 1341,
           "doc": "Either link, or both. That is the whole point of the endpoint.",
           "methods": []
         },
@@ -10892,7 +11265,7 @@
           "kind": "class",
           "name": "HFFile",
           "signature": "class HFFile",
-          "line": 1346,
+          "line": 1351,
           "doc": "",
           "methods": []
         },
@@ -10900,7 +11273,7 @@
           "kind": "class",
           "name": "HFResolveResponse",
           "signature": "class HFResolveResponse",
-          "line": 1356,
+          "line": 1361,
           "doc": "",
           "methods": []
         },
@@ -10908,7 +11281,7 @@
           "kind": "class",
           "name": "AuthUndoResponse",
           "signature": "class AuthUndoResponse",
-          "line": 1382,
+          "line": 1387,
           "doc": "",
           "methods": []
         },
@@ -10916,7 +11289,7 @@
           "kind": "class",
           "name": "AuthHistoryResponse",
           "signature": "class AuthHistoryResponse",
-          "line": 1390,
+          "line": 1395,
           "doc": "",
           "methods": []
         },
@@ -10924,7 +11297,7 @@
           "kind": "class",
           "name": "BackupSummary",
           "signature": "class BackupSummary",
-          "line": 1400,
+          "line": 1405,
           "doc": "",
           "methods": []
         },
@@ -10932,7 +11305,7 @@
           "kind": "class",
           "name": "BackupListResponse",
           "signature": "class BackupListResponse",
-          "line": 1416,
+          "line": 1421,
           "doc": "",
           "methods": []
         },
@@ -10940,7 +11313,7 @@
           "kind": "class",
           "name": "BackupCreateRequest",
           "signature": "class BackupCreateRequest",
-          "line": 1423,
+          "line": 1428,
           "doc": "",
           "methods": []
         },
@@ -10948,7 +11321,7 @@
           "kind": "class",
           "name": "BackupRestoreRequest",
           "signature": "class BackupRestoreRequest",
-          "line": 1427,
+          "line": 1432,
           "doc": "",
           "methods": []
         },
@@ -10956,7 +11329,7 @@
           "kind": "class",
           "name": "BackupRestoreResponse",
           "signature": "class BackupRestoreResponse",
-          "line": 1435,
+          "line": 1440,
           "doc": "",
           "methods": []
         },
@@ -10964,7 +11337,7 @@
           "kind": "class",
           "name": "HFDownloadRequest",
           "signature": "class HFDownloadRequest",
-          "line": 1451,
+          "line": 1456,
           "doc": "Either a ``repo_id``, or links to resolve into one.",
           "methods": []
         },
@@ -10972,7 +11345,7 @@
           "kind": "class",
           "name": "HFDownloadResponse",
           "signature": "class HFDownloadResponse",
-          "line": 1463,
+          "line": 1468,
           "doc": "",
           "methods": []
         },
@@ -10980,7 +11353,7 @@
           "kind": "class",
           "name": "DownloadedModelsResponse",
           "signature": "class DownloadedModelsResponse",
-          "line": 1472,
+          "line": 1477,
           "doc": "",
           "methods": []
         },
@@ -10988,7 +11361,7 @@
           "kind": "class",
           "name": "RunnerLoadRequest",
           "signature": "class RunnerLoadRequest",
-          "line": 1479,
+          "line": 1484,
           "doc": "",
           "methods": []
         },
@@ -10996,7 +11369,7 @@
           "kind": "class",
           "name": "RunnerStatusResponse",
           "signature": "class RunnerStatusResponse",
-          "line": 1492,
+          "line": 1497,
           "doc": "",
           "methods": []
         },
@@ -11004,7 +11377,7 @@
           "kind": "class",
           "name": "RunnerPlanResponse",
           "signature": "class RunnerPlanResponse",
-          "line": 1503,
+          "line": 1508,
           "doc": "",
           "methods": []
         },
@@ -11012,7 +11385,7 @@
           "kind": "class",
           "name": "NoodleRunRequest",
           "signature": "class NoodleRunRequest",
-          "line": 1511,
+          "line": 1516,
           "doc": "",
           "methods": []
         },
@@ -11020,7 +11393,7 @@
           "kind": "class",
           "name": "NoodleToolsResponse",
           "signature": "class NoodleToolsResponse",
-          "line": 1516,
+          "line": 1521,
           "doc": "",
           "methods": []
         },
@@ -11028,7 +11401,7 @@
           "kind": "class",
           "name": "NoodleWorkspaceResponse",
           "signature": "class NoodleWorkspaceResponse",
-          "line": 1529,
+          "line": 1534,
           "doc": "",
           "methods": []
         },
@@ -11036,7 +11409,7 @@
           "kind": "class",
           "name": "CompactRequest",
           "signature": "class CompactRequest",
-          "line": 1537,
+          "line": 1542,
           "doc": "",
           "methods": []
         },
@@ -11044,7 +11417,7 @@
           "kind": "class",
           "name": "CompactResponse",
           "signature": "class CompactResponse",
-          "line": 1548,
+          "line": 1553,
           "doc": "",
           "methods": []
         },
@@ -11052,7 +11425,7 @@
           "kind": "class",
           "name": "MemoryCreateRequest",
           "signature": "class MemoryCreateRequest",
-          "line": 1565,
+          "line": 1570,
           "doc": "",
           "methods": []
         },
@@ -11060,7 +11433,7 @@
           "kind": "class",
           "name": "MemoryUpdateRequest",
           "signature": "class MemoryUpdateRequest",
-          "line": 1578,
+          "line": 1583,
           "doc": "",
           "methods": []
         },
@@ -11068,7 +11441,7 @@
           "kind": "class",
           "name": "MemoryResponse",
           "signature": "class MemoryResponse",
-          "line": 1586,
+          "line": 1591,
           "doc": "",
           "methods": []
         },
@@ -11076,7 +11449,7 @@
           "kind": "class",
           "name": "MemoryListResponse",
           "signature": "class MemoryListResponse",
-          "line": 1591,
+          "line": 1596,
           "doc": "",
           "methods": []
         },
@@ -11084,7 +11457,7 @@
           "kind": "class",
           "name": "HardwareResponse",
           "signature": "class HardwareResponse",
-          "line": 1601,
+          "line": 1606,
           "doc": "One sample of what the machine is doing.",
           "methods": []
         },
@@ -11092,7 +11465,7 @@
           "kind": "class",
           "name": "UptimeResponse",
           "signature": "class UptimeResponse",
-          "line": 1623,
+          "line": 1628,
           "doc": "How long the server and the machine have been up.",
           "methods": []
         },
@@ -11100,7 +11473,7 @@
           "kind": "class",
           "name": "GenerationStopResponse",
           "signature": "class GenerationStopResponse",
-          "line": 1639,
+          "line": 1644,
           "doc": "What Stop actually stopped. An empty list is a success.",
           "methods": []
         },
@@ -11108,7 +11481,7 @@
           "kind": "class",
           "name": "GenerationListResponse",
           "signature": "class GenerationListResponse",
-          "line": 1647,
+          "line": 1652,
           "doc": "",
           "methods": []
         },
@@ -11116,7 +11489,7 @@
           "kind": "class",
           "name": "BackendsResponse",
           "signature": "class BackendsResponse",
-          "line": 1653,
+          "line": 1658,
           "doc": "Every thing that could answer a message, and whether it can now.",
           "methods": []
         },
@@ -11124,7 +11497,7 @@
           "kind": "class",
           "name": "PreferencesRequest",
           "signature": "class PreferencesRequest",
-          "line": 1667,
+          "line": 1672,
           "doc": "A partial update. Every field optional, and that is the point.",
           "methods": []
         },
@@ -11132,7 +11505,7 @@
           "kind": "class",
           "name": "PreferencesResponse",
           "signature": "class PreferencesResponse",
-          "line": 1690,
+          "line": 1695,
           "doc": "",
           "methods": []
         },
@@ -11140,7 +11513,7 @@
           "kind": "class",
           "name": "UpgradeResponse",
           "signature": "class UpgradeResponse",
-          "line": 1705,
+          "line": 1710,
           "doc": "What this server is running, and the commands to change it.",
           "methods": []
         },
@@ -11148,7 +11521,7 @@
           "kind": "class",
           "name": "ModelCatalogueResponse",
           "signature": "class ModelCatalogueResponse",
-          "line": 1720,
+          "line": 1725,
           "doc": "Every model this server can offer, from every source it has.",
           "methods": []
         },
@@ -11156,7 +11529,7 @@
           "kind": "class",
           "name": "InferenceMessage",
           "signature": "class InferenceMessage",
-          "line": 1748,
+          "line": 1753,
           "doc": "",
           "methods": []
         },
@@ -11164,7 +11537,7 @@
           "kind": "class",
           "name": "InferenceChatRequest",
           "signature": "class InferenceChatRequest",
-          "line": 1753,
+          "line": 1758,
           "doc": "",
           "methods": []
         },
@@ -11172,7 +11545,7 @@
           "kind": "class",
           "name": "InferenceCompletionRequest",
           "signature": "class InferenceCompletionRequest",
-          "line": 1766,
+          "line": 1771,
           "doc": "",
           "methods": []
         },
@@ -11180,7 +11553,7 @@
           "kind": "class",
           "name": "InferenceResponse",
           "signature": "class InferenceResponse",
-          "line": 1776,
+          "line": 1781,
           "doc": "",
           "methods": []
         },
@@ -11188,7 +11561,7 @@
           "kind": "class",
           "name": "InferenceEmbeddingsRequest",
           "signature": "class InferenceEmbeddingsRequest",
-          "line": 1794,
+          "line": 1799,
           "doc": "",
           "methods": []
         },
@@ -11196,7 +11569,7 @@
           "kind": "class",
           "name": "InferenceEmbeddingsResponse",
           "signature": "class InferenceEmbeddingsResponse",
-          "line": 1799,
+          "line": 1804,
           "doc": "",
           "methods": []
         },
@@ -11204,7 +11577,7 @@
           "kind": "class",
           "name": "InferenceTokenCountRequest",
           "signature": "class InferenceTokenCountRequest",
-          "line": 1808,
+          "line": 1813,
           "doc": "",
           "methods": []
         },
@@ -11212,7 +11585,7 @@
           "kind": "class",
           "name": "InferenceTokenCountResponse",
           "signature": "class InferenceTokenCountResponse",
-          "line": 1816,
+          "line": 1821,
           "doc": "",
           "methods": []
         },
@@ -11220,7 +11593,7 @@
           "kind": "class",
           "name": "InferenceBackend",
           "signature": "class InferenceBackend",
-          "line": 1829,
+          "line": 1834,
           "doc": "",
           "methods": []
         },
@@ -11228,7 +11601,7 @@
           "kind": "class",
           "name": "InferenceBackendsResponse",
           "signature": "class InferenceBackendsResponse",
-          "line": 1837,
+          "line": 1842,
           "doc": "",
           "methods": []
         },
@@ -11236,7 +11609,7 @@
           "kind": "class",
           "name": "TrainingRunItem",
           "signature": "class TrainingRunItem",
-          "line": 1848,
+          "line": 1853,
           "doc": "One run, as ``training.monitor`` reconciled it.",
           "methods": []
         },
@@ -11244,7 +11617,7 @@
           "kind": "class",
           "name": "TrainingRunListResponse",
           "signature": "class TrainingRunListResponse",
-          "line": 1879,
+          "line": 1884,
           "doc": "",
           "methods": []
         },
@@ -11252,7 +11625,7 @@
           "kind": "class",
           "name": "TrainingRunResponse",
           "signature": "class TrainingRunResponse",
-          "line": 1887,
+          "line": 1892,
           "doc": "",
           "methods": []
         },
@@ -11260,7 +11633,7 @@
           "kind": "class",
           "name": "TrainingLogResponse",
           "signature": "class TrainingLogResponse",
-          "line": 1892,
+          "line": 1897,
           "doc": "",
           "methods": []
         },
@@ -11268,7 +11641,7 @@
           "kind": "class",
           "name": "TrainingCheckpointItem",
           "signature": "class TrainingCheckpointItem",
-          "line": 1904,
+          "line": 1909,
           "doc": "",
           "methods": []
         },
@@ -11276,7 +11649,7 @@
           "kind": "class",
           "name": "TrainingCheckpointListResponse",
           "signature": "class TrainingCheckpointListResponse",
-          "line": 1911,
+          "line": 1916,
           "doc": "",
           "methods": []
         },
@@ -11284,7 +11657,7 @@
           "kind": "class",
           "name": "TrainingResourcesResponse",
           "signature": "class TrainingResourcesResponse",
-          "line": 1918,
+          "line": 1923,
           "doc": "",
           "methods": []
         },
@@ -11292,7 +11665,7 @@
           "kind": "class",
           "name": "TrainingControlResponse",
           "signature": "class TrainingControlResponse",
-          "line": 1927,
+          "line": 1932,
           "doc": "",
           "methods": []
         },
@@ -11300,7 +11673,7 @@
           "kind": "class",
           "name": "SyncChange",
           "signature": "class SyncChange",
-          "line": 1939,
+          "line": 1944,
           "doc": "",
           "methods": []
         },
@@ -11308,7 +11681,7 @@
           "kind": "class",
           "name": "SyncPageResponse",
           "signature": "class SyncPageResponse",
-          "line": 1950,
+          "line": 1955,
           "doc": "",
           "methods": []
         },
@@ -11316,7 +11689,7 @@
           "kind": "class",
           "name": "SyncClaimRequest",
           "signature": "class SyncClaimRequest",
-          "line": 1962,
+          "line": 1967,
           "doc": "",
           "methods": []
         },
@@ -11324,7 +11697,7 @@
           "kind": "class",
           "name": "SyncClaimResponse",
           "signature": "class SyncClaimResponse",
-          "line": 1966,
+          "line": 1971,
           "doc": "",
           "methods": []
         },
@@ -11332,7 +11705,7 @@
           "kind": "class",
           "name": "PushRegisterRequest",
           "signature": "class PushRegisterRequest",
-          "line": 1976,
+          "line": 1981,
           "doc": "",
           "methods": []
         },
@@ -11340,7 +11713,7 @@
           "kind": "class",
           "name": "PushRegistrationSummary",
           "signature": "class PushRegistrationSummary",
-          "line": 1986,
+          "line": 1991,
           "doc": "",
           "methods": []
         },
@@ -11348,7 +11721,7 @@
           "kind": "class",
           "name": "PushRegistrationResponse",
           "signature": "class PushRegistrationResponse",
-          "line": 2001,
+          "line": 2006,
           "doc": "",
           "methods": []
         },
@@ -11356,7 +11729,7 @@
           "kind": "class",
           "name": "PushRegistrationListResponse",
           "signature": "class PushRegistrationListResponse",
-          "line": 2006,
+          "line": 2011,
           "doc": "",
           "methods": []
         },
@@ -11364,7 +11737,7 @@
           "kind": "class",
           "name": "PushEventsRequest",
           "signature": "class PushEventsRequest",
-          "line": 2013,
+          "line": 2018,
           "doc": "",
           "methods": []
         },
@@ -11372,7 +11745,7 @@
           "kind": "class",
           "name": "SearchSnippet",
           "signature": "class SearchSnippet",
-          "line": 2017,
+          "line": 2022,
           "doc": "",
           "methods": []
         },
@@ -11380,7 +11753,7 @@
           "kind": "class",
           "name": "SearchHit",
           "signature": "class SearchHit",
-          "line": 2025,
+          "line": 2030,
           "doc": "",
           "methods": []
         },
@@ -11388,7 +11761,7 @@
           "kind": "class",
           "name": "SearchResponse",
           "signature": "class SearchResponse",
-          "line": 2037,
+          "line": 2042,
           "doc": "",
           "methods": []
         }
@@ -11403,6 +11776,13 @@
         }
       ],
       "changes": [
+        {
+          "sha": "0068bbf2",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "T1: conceal mode with 36-hour retention, and a public /server/info",
+          "api_changes": []
+        },
         {
           "sha": "e26841fc",
           "date": "2026-09-23",
@@ -11480,26 +11860,6 @@
             {
               "kind": "added",
               "text": "class UpgradeResponse(BaseModel):"
-            }
-          ]
-        },
-        {
-          "sha": "cc94bf5a",
-          "date": "2026-09-16",
-          "author": "Claude",
-          "subject": "t1: run a model without LM Studio, and switch it from the API",
-          "api_changes": [
-            {
-              "kind": "added",
-              "text": "class RunnerLoadRequest(BaseModel):"
-            },
-            {
-              "kind": "added",
-              "text": "class RunnerStatusResponse(BaseModel):"
-            },
-            {
-              "kind": "added",
-              "text": "class RunnerPlanResponse(BaseModel):"
             }
           ]
         }
@@ -13139,7 +13499,7 @@
     {
       "module": "hypernix.t1sdk.client",
       "source": "src/hypernix/t1sdk/client.py",
-      "line_count": 773,
+      "line_count": 833,
       "summary": "t1sdk.client \u2014 :class:`T1Client`, the complete T1 API SDK.",
       "api": [
         {
@@ -13204,429 +13564,471 @@
               "doc": ""
             },
             {
+              "name": "server_info",
+              "signature": "def server_infoself -> dict[str, Any]",
+              "line": 175,
+              "doc": "Name, description, owner, url, versions and features. Public."
+            },
+            {
+              "name": "conceal_status",
+              "signature": "def conceal_statusself -> dict[str, Any]",
+              "line": 179,
+              "doc": ""
+            },
+            {
+              "name": "conceal",
+              "signature": "def concealself, enabled: bool=True -> dict[str, Any]",
+              "line": 182,
+              "doc": "Turn conceal mode (masked address, 36-hour retention) on or off."
+            },
+            {
+              "name": "t2c_public_key",
+              "signature": "def t2c_public_keyself -> dict[str, Any]",
+              "line": 188,
+              "doc": ""
+            },
+            {
+              "name": "t2c_devices",
+              "signature": "def t2c_devicesself -> list[dict[str, Any]]",
+              "line": 191,
+              "doc": ""
+            },
+            {
+              "name": "t2c_revoke_device",
+              "signature": "def t2c_revoke_deviceself, device_id: str -> dict[str, Any]",
+              "line": 194,
+              "doc": ""
+            },
+            {
+              "name": "seal_key",
+              "signature": "def seal_keyself, key: str | None=None, *, label: str='', access_level: int=1",
+              "line": 197,
+              "doc": "Turn a T1 or T2 key into a v2.1 kit, registered with this server."
+            },
+            {
               "name": "whoami",
               "signature": "def whoamiself -> KeyInfo",
-              "line": 165,
+              "line": 237,
               "doc": "Identity of the configured credential, as a typed object."
             },
             {
               "name": "issue_token",
               "signature": "def issue_tokenself, key: str | None=None, *, ttl_seconds: int | None=None, scopes: list[str] | None=None -> dict[str, Any]",
-              "line": 169,
+              "line": 241,
               "doc": "Exchange a raw T1 key for a short-lived scoped token."
             },
             {
               "name": "rotate",
               "signature": "def rotateself -> dict[str, Any]",
-              "line": 188,
+              "line": 260,
               "doc": "Rotate the credential in use. The response carries the new raw key \u2014 the only place in the API where one is returned. Store it before discarding the response; the old key stops working."
             },
             {
               "name": "admin_rotate",
               "signature": "def admin_rotateself, target_key_id: str, *, promote_to_admin: bool=False -> dict[str, Any]",
-              "line": 194,
+              "line": 266,
               "doc": "Rotate another key, optionally promoting it to admin. Requires the caller to already be admin \u2014 the permission check the spec asks for around admin-token conversion."
             },
             {
               "name": "list_models",
               "signature": "def list_modelsself -> list[Model]",
-              "line": 209,
+              "line": 281,
               "doc": ""
             },
             {
               "name": "list_models_raw",
               "signature": "def list_models_rawself -> dict[str, Any]",
-              "line": 212,
+              "line": 284,
               "doc": ""
             },
             {
               "name": "get_model",
               "signature": "def get_modelself, model_id: str -> Model",
-              "line": 215,
+              "line": 287,
               "doc": ""
             },
             {
               "name": "model_availability",
               "signature": "def model_availabilityself, model_id: str -> dict[str, Any]",
-              "line": 218,
+              "line": 290,
               "doc": ""
             },
             {
               "name": "model_usage",
               "signature": "def model_usageself, model_id: str -> ModelUsage",
-              "line": 221,
+              "line": 293,
               "doc": ""
             },
             {
               "name": "route",
               "signature": "def routeself, *, model_id: str | None=None, input_tokens: int=0, automatic_fallback: bool=False, plan: str | None=None -> RoutingDecision",
-              "line": 224,
+              "line": 296,
               "doc": "Ask the server which model to use."
             },
             {
               "name": "usage_current",
               "signature": "def usage_currentself -> dict[str, Any]",
-              "line": 262,
+              "line": 334,
               "doc": ""
             },
             {
               "name": "usage_remaining",
               "signature": "def usage_remainingself, model_id: str -> ModelUsage",
-              "line": 265,
+              "line": 337,
               "doc": ""
             },
             {
               "name": "usage_history",
               "signature": "def usage_historyself, *, range: str | None=None, since: float | None=None, until: float | None=None, limit: int=100, offset: int=0, **filters: Any -> dict[str, Any]",
-              "line": 270,
+              "line": 342,
               "doc": ""
             },
             {
               "name": "iter_usage_history",
               "signature": "def iter_usage_historyself, *, page_size: int=200, max_events: int | None=None, **kwargs: Any -> Iterator[dict[str, Any]]",
-              "line": 284,
+              "line": 356,
               "doc": "Walk usage history transparently across pages."
             },
             {
               "name": "usage_by",
               "signature": "def usage_byself, group_by: str, **kwargs: Any -> dict[str, Any]",
-              "line": 307,
+              "line": 379,
               "doc": "Usage grouped along one dimension: ``model_id``, ``key_id``, ``server_id``, ``module_id``, ``user_id``, ``account_id``, ``endpoint``."
             },
             {
               "name": "usage_cost",
               "signature": "def usage_costself, *, group_by: str='model_id', forecast: bool=False, **kwargs: Any -> CostReport",
-              "line": 313,
+              "line": 385,
               "doc": ""
             },
             {
               "name": "estimate_cost",
               "signature": "def estimate_costself, *, model_id: str, input_tokens: int, output_tokens: int | None=None, requests: int=1 -> dict[str, Any]",
-              "line": 320,
+              "line": 392,
               "doc": "What an operation would cost. Records nothing, reserves nothing. Omitting *output_tokens* gives an upper bound based on the model's output limit."
             },
             {
               "name": "report_usage",
               "signature": "def report_usageself, *, model_id: str, input_tokens: int=0, output_tokens: int=0, requests: int=1, endpoint: str='', server_id: str='', module_id: str='' -> dict[str, Any]",
-              "line": 340,
+              "line": 412,
               "doc": "Report tokens actually consumed, so the server's quota advances."
             },
             {
               "name": "list_keys",
               "signature": "def list_keysself, *, key_type: str | None=None, include_inactive: bool=False -> list[KeyInfo]",
-              "line": 381,
+              "line": 453,
               "doc": "List keys. A non-admin caller sees only their own."
             },
             {
               "name": "import_keys",
               "signature": "def import_keysself, payload: dict[str, Any] -> dict[str, Any]",
-              "line": 388,
+              "line": 460,
               "doc": "Import a Keymaster export. Admin-only. The response carries counts and masked ids \u2014 never key material."
             },
             {
               "name": "assign_key",
               "signature": "def assign_keyself, key_id: str, **fields: Any -> dict[str, Any]",
-              "line": 393,
+              "line": 465,
               "doc": "Bind a key to a plan / account / user / servers / model subset."
             },
             {
               "name": "list_servers",
               "signature": "def list_serversself -> list[Server]",
-              "line": 405,
+              "line": 477,
               "doc": ""
             },
             {
               "name": "register_server",
               "signature": "def register_serverself, *, name: str, address: str, capabilities: list[str] | None=None, tags: dict[str, str] | None=None, allow_private_address: bool=False -> Server",
-              "line": 408,
+              "line": 480,
               "doc": "Register a server. It starts *untrusted*; only an admin can promote it, and only a trusted server can receive a module."
             },
             {
               "name": "update_server",
               "signature": "def update_serverself, server_id: str, **fields: Any -> Server",
-              "line": 434,
+              "line": 506,
               "doc": ""
             },
             {
               "name": "trust_server",
               "signature": "def trust_serverself, server_id: str -> Server",
-              "line": 440,
+              "line": 512,
               "doc": "Promote a server to ``trusted``. Admin-only, audited, and the gate every module push checks."
             },
             {
               "name": "delete_server",
               "signature": "def delete_serverself, server_id: str, *, confirm: bool=False -> dict[str, Any]",
-              "line": 445,
+              "line": 517,
               "doc": "Deregister a server. Destructive, so *confirm* must be True \u2014 the SDK surfaces the requirement as an argument rather than letting the server reject the call."
             },
             {
               "name": "list_modules",
               "signature": "def list_modulesself -> list[Module]",
-              "line": 462,
+              "line": 534,
               "doc": ""
             },
             {
               "name": "create_module",
               "signature": "def create_moduleself, *, name: str, version: str, metadata: dict[str, Any] | None=None -> Module",
-              "line": 465,
+              "line": 537,
               "doc": ""
             },
             {
               "name": "get_module",
               "signature": "def get_moduleself, module_id: str -> Module",
-              "line": 471,
+              "line": 543,
               "doc": ""
             },
             {
               "name": "upload_module",
               "signature": "def upload_moduleself, module_id: str, file_path: str | Path -> Module",
-              "line": 474,
+              "line": 546,
               "doc": "Upload local content. The server checksums it and stores it as an opaque blob \u2014 it is never executed, imported, or interpreted."
             },
             {
               "name": "register_remote_source",
               "signature": "def register_remote_sourceself, module_id: str, source_url: str, *, allow_private: bool=False -> Module",
-              "line": 482,
+              "line": 554,
               "doc": "Register (not fetch) a remote source URL. Validated against the SSRF guard now; call :meth:`fetch_module` to actually stage it."
             },
             {
               "name": "update_module",
               "signature": "def update_moduleself, module_id: str, **fields: Any -> Module",
-              "line": 496,
+              "line": 568,
               "doc": ""
             },
             {
               "name": "delete_module",
               "signature": "def delete_moduleself, module_id: str, *, confirm: bool=False -> dict[str, Any]",
-              "line": 502,
+              "line": 574,
               "doc": ""
             },
             {
               "name": "sync_module",
               "signature": "def sync_moduleself, module_id: str, server_id: str -> dict[str, Any]",
-              "line": 512,
+              "line": 584,
               "doc": "Queue a push of this module to one trusted server."
             },
             {
               "name": "deploy_module",
               "signature": "def deploy_moduleself, module_id: str, server_ids: list[str] -> dict[str, Any]",
-              "line": 518,
+              "line": 590,
               "doc": "Queue a push to several trusted servers as one job."
             },
             {
               "name": "fetch_module",
               "signature": "def fetch_moduleself, module_id: str -> dict[str, Any]",
-              "line": 527,
+              "line": 599,
               "doc": "Queue a fetch of this module's registered remote source."
             },
             {
               "name": "deploy_and_wait",
               "signature": "def deploy_and_waitself, module_id: str, server_ids: list[str], *, timeout: float=300.0 -> Job",
-              "line": 531,
+              "line": 603,
               "doc": "Deploy to several servers and block until the job settles."
             },
             {
               "name": "submit_job",
               "signature": "def submit_jobself, kind: str, payload: dict[str, Any] | None=None -> Job",
-              "line": 555,
+              "line": 627,
               "doc": ""
             },
             {
               "name": "get_job",
               "signature": "def get_jobself, job_id: str -> Job",
-              "line": 560,
+              "line": 632,
               "doc": ""
             },
             {
               "name": "cancel_job",
               "signature": "def cancel_jobself, job_id: str -> Job",
-              "line": 563,
+              "line": 635,
               "doc": ""
             },
             {
               "name": "wait_for_job",
               "signature": "def wait_for_jobself, job_id: str, *, timeout: float=300.0, poll_interval: float=0.5 -> Job",
-              "line": 568,
+              "line": 640,
               "doc": "Poll a job until it reaches a terminal state."
             },
             {
               "name": "list_events",
               "signature": "def list_eventsself, *, limit: int=50, since_id: str | None=None, event_type: str | None=None -> list[Event]",
-              "line": 594,
+              "line": 666,
               "doc": ""
             },
             {
               "name": "stream_events",
               "signature": "def stream_eventsself, *, event_type: str | None=None, timeout: float=300.0 -> Iterator[Event]",
-              "line": 602,
+              "line": 674,
               "doc": "Live tail over Server-Sent Events."
             },
             {
               "name": "balance",
               "signature": "def balanceself -> dict[str, Any]",
-              "line": 635,
+              "line": 707,
               "doc": ""
             },
             {
               "name": "transactions",
               "signature": "def transactionsself -> list[dict[str, Any]]",
-              "line": 638,
+              "line": 710,
               "doc": ""
             },
             {
               "name": "mint_payment_token",
               "signature": "def mint_payment_tokenself, amount: float, *, currency: str='USD', ttl_seconds: int | None=None -> dict[str, Any]",
-              "line": 641,
+              "line": 713,
               "doc": "Admin-only. The raw token is returned **once** and never retrievable again \u2014 the server stores only its hash. Capture it from the response or it is gone."
             },
             {
               "name": "redeem_payment_token",
               "signature": "def redeem_payment_tokenself, token: str, *, account_type: str='user', account_id: str | None=None -> dict[str, Any]",
-              "line": 652,
+              "line": 724,
               "doc": "Redeem a payment token. Single-use, and never retried by the transport \u2014 a replay after a timeout could look like a double redemption from the caller's side."
             },
             {
               "name": "add_balance",
               "signature": "def add_balanceself, *, account_type: str, account_id: str, amount: float, note: str='' -> dict[str, Any]",
-              "line": 663,
+              "line": 735,
               "doc": "Admin-only direct credit, with no payment-token trail."
             },
             {
               "name": "audit_events",
               "signature": "def audit_eventsself, **filters: Any -> dict[str, Any]",
-              "line": 683,
+              "line": 755,
               "doc": ""
             },
             {
               "name": "network_policy",
               "signature": "def network_policyself, *, kind: str | None=None -> dict[str, Any]",
-              "line": 686,
+              "line": 758,
               "doc": ""
             },
             {
               "name": "blacklist_ip",
               "signature": "def blacklist_ipself, cidr: str, *, reason: str='', ttl_seconds: float | None=None -> dict[str, Any]",
-              "line": 689,
+              "line": 761,
               "doc": ""
             },
             {
               "name": "whitelist_ip",
               "signature": "def whitelist_ipself, cidr: str, *, reason: str='', ttl_seconds: float | None=None -> dict[str, Any]",
-              "line": 697,
+              "line": 769,
               "doc": ""
             },
             {
               "name": "appeal_ip",
               "signature": "def appeal_ipself, cidr: str -> dict[str, Any]",
-              "line": 705,
+              "line": 777,
               "doc": "Remove an allow or block entry \u2014 the appeal path."
             },
             {
               "name": "set_allow_unlisted",
               "signature": "def set_allow_unlistedself, enabled: bool -> dict[str, Any]",
-              "line": 709,
+              "line": 781,
               "doc": ""
             },
             {
               "name": "list_forced_limits",
               "signature": "def list_forced_limitsself -> list[dict[str, Any]]",
-              "line": 714,
+              "line": 786,
               "doc": ""
             },
             {
               "name": "set_forced_limit",
               "signature": "def set_forced_limitself, *, subject_type: str, subject_id: str, requests_per_window: int | None=None, tokens_per_window: int | None=None, window_seconds: float=60.0, reason: str='' -> dict[str, Any]",
-              "line": 717,
+              "line": 789,
               "doc": "Force a ceiling on one key or server. Only ever tightens."
             },
             {
               "name": "clear_forced_limit",
               "signature": "def clear_forced_limitself, subject_type: str, subject_id: str -> dict[str, Any]",
-              "line": 742,
+              "line": 814,
               "doc": ""
             },
             {
               "name": "rate_limit_status",
               "signature": "def rate_limit_statusself -> dict[str, Any]",
-              "line": 747,
+              "line": 819,
               "doc": "The caller's own remaining budget per rule \u2014 enough to back off before hitting a 429 rather than after."
             },
             {
               "name": "lmstudio_status",
               "signature": "def lmstudio_statusself, *, discover: bool=False -> dict[str, Any]",
-              "line": 757,
+              "line": 829,
               "doc": "Is the server's LM Studio reachable, and is anything loaded?"
             },
             {
               "name": "lmstudio_models",
               "signature": "def lmstudio_modelsself, *, base_url: str | None=None -> dict[str, Any]",
-              "line": 763,
+              "line": 835,
               "doc": "Every model LM Studio has, with the loaded ones marked."
             },
             {
               "name": "lmstudio_chat",
               "signature": "def lmstudio_chatself, messages: list[dict[str, Any]], *, model: str | None=None, temperature: float | None=None, max_tokens: int | None=None, base_url: str | None=None -> dict[str, Any]",
-              "line": 771,
+              "line": 843,
               "doc": "One completion through the bridge, with the reply lifted out."
             },
             {
               "name": "hyperlink_endpoints",
               "signature": "def hyperlink_endpointsself -> dict[str, Any]",
-              "line": 797,
+              "line": 869,
               "doc": "Addresses this server answers on, ranked best-first."
             },
             {
               "name": "hyperlink_pair",
               "signature": "def hyperlink_pairself, *, label: str='', scopes: list[str] | None=None, ttl_seconds: float | None=None -> dict[str, Any]",
-              "line": 801,
+              "line": 873,
               "doc": "Mint a pairing code for a phone. Admin only."
             },
             {
               "name": "hyperlink_redeem",
               "signature": "def hyperlink_redeemself, code: str, *, device_name: str, platform: str='ios', app_version: str='' -> dict[str, Any]",
-              "line": 811,
+              "line": 883,
               "doc": "Redeem a pairing code. Unauthenticated \u2014 the code is the credential."
             },
             {
               "name": "hyperlink_devices",
               "signature": "def hyperlink_devicesself, *, include_revoked: bool=False -> dict[str, Any]",
-              "line": 825,
+              "line": 897,
               "doc": ""
             },
             {
               "name": "hyperlink_revoke_device",
               "signature": "def hyperlink_revoke_deviceself, device_id: str -> dict[str, Any]",
-              "line": 830,
+              "line": 902,
               "doc": ""
             },
             {
               "name": "hyperlink_sessions",
               "signature": "def hyperlink_sessionsself, *, include_archived: bool=False, limit: int=50 -> dict[str, Any]",
-              "line": 835,
+              "line": 907,
               "doc": ""
             },
             {
               "name": "hyperlink_create_session",
               "signature": "def hyperlink_create_sessionself, *, title: str='', model_id: str='', system_prompt: str='' -> dict[str, Any]",
-              "line": 842,
+              "line": 914,
               "doc": ""
             },
             {
               "name": "hyperlink_messages",
               "signature": "def hyperlink_messagesself, session_id: str, *, after_seq: int=0 -> dict[str, Any]",
-              "line": 851,
+              "line": 923,
               "doc": ""
             },
             {
               "name": "hyperlink_chat",
               "signature": "def hyperlink_chatself, session_id: str, content: str, *, attachment_ids: list[str] | None=None, model_id: str | None=None, max_tokens: int | None=None -> dict[str, Any]",
-              "line": 858,
+              "line": 930,
               "doc": "One chat turn. Both messages are persisted server-side."
             },
             {
               "name": "hyperlink_resolve_model",
               "signature": "def hyperlink_resolve_modelself, *, page_url: str='', file_url: str='', prefer: str='strict', include_vision: bool=True, offline: bool=False -> dict[str, Any]",
-              "line": 879,
+              "line": 951,
               "doc": "Merge a Hugging Face page link and/or file link into a plan."
             }
           ]
@@ -13635,7 +14037,8 @@
       "errors": [
         "T1Error",
         "T1TransportError",
-        "T1ValidationError"
+        "T1ValidationError",
+        "ValueError"
       ],
       "deprecations": [],
       "required_modules": [
@@ -13646,6 +14049,42 @@
         }
       ],
       "changes": [
+        {
+          "sha": "c76677db",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "t1sdk: server info, conceal, and v2.1 kits as a credential",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def server_info(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def conceal_status(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def conceal(self, enabled: bool = True) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def t2c_public_key(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def t2c_devices(self) -> list[dict[str, Any]]:"
+            },
+            {
+              "kind": "added",
+              "text": "def t2c_revoke_device(self, device_id: str) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def seal_key(self, key: str | None = None, *, label: str = \"\", access_level: int = 1):"
+            }
+          ]
+        },
         {
           "sha": "797be9d8",
           "date": "2026-08-23",
@@ -14295,7 +14734,7 @@
     {
       "module": "hypernix.t1sdk.transport",
       "source": "src/hypernix/t1sdk/transport.py",
-      "line_count": 321,
+      "line_count": 332,
       "summary": "t1sdk.transport \u2014 the SDK's HTTP layer.",
       "api": [
         {
@@ -14351,21 +14790,27 @@
           "doc": "Issues requests against one T1 server.",
           "methods": [
             {
+              "name": "wire_credential",
+              "signature": "def wire_credentialself -> str | None",
+              "line": 166,
+              "doc": "What goes in the Authorization header."
+            },
+            {
               "name": "url_for",
               "signature": "def url_forself, path: str, query: dict[str, Any] | None=None -> str",
-              "line": 168,
+              "line": 182,
               "doc": ""
             },
             {
               "name": "request",
               "signature": "def requestself, method: str, path: str, *, body: dict[str, Any] | None=None, query: dict[str, Any] | None=None, auth: bool=False, idempotent: bool | None=None, raw_body: bytes | None=None, content_type: str | None=None, extra_headers: dict[str, str] | None=None -> Response",
-              "line": 178,
+              "line": 192,
               "doc": "Issue one request, retrying per the policy."
             },
             {
               "name": "upload_file",
               "signature": "def upload_fileself, path: str, file_path: str | Path, *, field_name: str='file', query: dict[str, Any] | None=None -> Response",
-              "line": 282,
+              "line": 296,
               "doc": "Multipart file upload."
             }
           ]
@@ -14383,6 +14828,18 @@
         }
       ],
       "changes": [
+        {
+          "sha": "c76677db",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "t1sdk: server info, conceal, and v2.1 kits as a credential",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def wire_credential(self) -> str | None:"
+            }
+          ]
+        },
         {
           "sha": "3e60ff82",
           "date": "2026-08-22",
@@ -14614,7 +15071,7 @@
       "handler": "admin_rotate",
       "response_model": "RotateResponse",
       "source": "src/hypernix/t1api/routers/auth.py",
-      "line": 126,
+      "line": 128,
       "tag": "auth"
     },
     {
@@ -14634,7 +15091,7 @@
       "handler": "rotate_own_key",
       "response_model": "RotateResponse",
       "source": "src/hypernix/t1api/routers/auth.py",
-      "line": 103,
+      "line": 105,
       "tag": "auth"
     },
     {
@@ -14658,13 +15115,53 @@
       "tag": "auth"
     },
     {
+      "method": "GET",
+      "router": "router",
+      "path": "/auth/t2c/devices",
+      "handler": "list_devices",
+      "response_model": null,
+      "source": "src/hypernix/t1api/routers/t2c.py",
+      "line": 124,
+      "tag": "auth"
+    },
+    {
+      "method": "POST",
+      "router": "router",
+      "path": "/auth/t2c/devices",
+      "handler": "register_device",
+      "response_model": null,
+      "source": "src/hypernix/t1api/routers/t2c.py",
+      "line": 82,
+      "tag": "auth"
+    },
+    {
+      "method": "DELETE",
+      "router": "router",
+      "path": "/auth/t2c/devices/{device_id}",
+      "handler": "revoke_device",
+      "response_model": null,
+      "source": "src/hypernix/t1api/routers/t2c.py",
+      "line": 134,
+      "tag": "auth"
+    },
+    {
+      "method": "GET",
+      "router": "router",
+      "path": "/auth/t2c/public-key",
+      "handler": "public_key",
+      "response_model": null,
+      "source": "src/hypernix/t1api/routers/t2c.py",
+      "line": 51,
+      "tag": "auth"
+    },
+    {
       "method": "POST",
       "router": "router",
       "path": "/auth/token",
       "handler": "issue_token",
       "response_model": "TokenResponse",
       "source": "src/hypernix/t1api/routers/auth.py",
-      "line": 43,
+      "line": 45,
       "tag": "auth"
     },
     {
@@ -15768,6 +16265,36 @@
       "tag": "noodle"
     },
     {
+      "method": "DELETE",
+      "router": "router",
+      "path": "/privacy/conceal",
+      "handler": "conceal_off",
+      "response_model": null,
+      "source": "src/hypernix/t1api/routers/privacy.py",
+      "line": 58,
+      "tag": "privacy"
+    },
+    {
+      "method": "GET",
+      "router": "router",
+      "path": "/privacy/conceal",
+      "handler": "conceal_status",
+      "response_model": null,
+      "source": "src/hypernix/t1api/routers/privacy.py",
+      "line": 27,
+      "tag": "privacy"
+    },
+    {
+      "method": "POST",
+      "router": "router",
+      "path": "/privacy/conceal",
+      "handler": "conceal_on",
+      "response_model": null,
+      "source": "src/hypernix/t1api/routers/privacy.py",
+      "line": 36,
+      "tag": "privacy"
+    },
+    {
       "method": "GET",
       "router": "router",
       "path": "/runner/hyperchat",
@@ -15906,6 +16433,16 @@
       "source": "src/hypernix/t1api/routers/security.py",
       "line": 341,
       "tag": "security"
+    },
+    {
+      "method": "GET",
+      "router": "router",
+      "path": "/server/info",
+      "handler": "server_info",
+      "response_model": null,
+      "source": "src/hypernix/t1api/routers/privacy.py",
+      "line": 68,
+      "tag": "privacy"
     },
     {
       "method": "GET",
@@ -16365,11 +16902,19 @@
     },
     {
       "name": "T1APIError",
+      "module": "hypernix.t1api.routers.privacy"
+    },
+    {
+      "name": "T1APIError",
       "module": "hypernix.t1api.routers.runner"
     },
     {
       "name": "T1APIError",
       "module": "hypernix.t1api.routers.security"
+    },
+    {
+      "name": "T1APIError",
+      "module": "hypernix.t1api.routers.t2c"
     },
     {
       "name": "T1APIError",
@@ -16522,6 +17067,10 @@
     {
       "name": "ValueError",
       "module": "hypernix.t1api.version"
+    },
+    {
+      "name": "ValueError",
+      "module": "hypernix.t1sdk.client"
     },
     {
       "name": "WebAuthError",

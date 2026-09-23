@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-api-deep",
   "generated_at": "2026-09-20T21:20:57Z",
-  "commit": "1b7f59a4ba7fdd561dc6e7936d8b5695374fef2d",
+  "commit": "d01b23b7f26335a069f391f917ebf8189600ec8d",
   "history_available": true,
   "source_root": "src/hypernix",
   "modules": [
@@ -17,6 +17,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "4e0dfcb8",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "0.72.6 pt4 docs: every page current, and a test that keeps them so",
+          "api_changes": []
+        },
         {
           "sha": "73dd59fd",
           "date": "2026-09-23",
@@ -64,13 +71,6 @@
           "date": "2026-09-22",
           "author": "Claude",
           "subject": "hyped: remade simple, with dots for everything else",
-          "api_changes": []
-        },
-        {
-          "sha": "e6fbccec",
-          "date": "2026-09-17",
-          "author": "github-actions[bot]",
-          "subject": "hypernix v0.72.5.post13 [skip ci]",
           "api_changes": []
         }
       ]
@@ -2738,14 +2738,14 @@
     {
       "module": "hypernix.data.gather",
       "source": "src/hypernix/data/gather.py",
-      "line_count": 1236,
+      "line_count": 1302,
       "summary": "gather \u2014 crawl a site into a dataset.",
       "api": [
         {
           "kind": "class",
           "name": "GatherError",
           "signature": "class GatherError",
-          "line": 83,
+          "line": 85,
           "doc": "A crawl could not be started, or an output could not be written.",
           "methods": []
         },
@@ -2753,19 +2753,19 @@
           "kind": "class",
           "name": "Page",
           "signature": "class Page",
-          "line": 146,
+          "line": 148,
           "doc": "One fetched page.",
           "methods": [
             {
               "name": "ok",
               "signature": "def okself -> bool",
-              "line": 164,
+              "line": 166,
               "doc": ""
             },
             {
               "name": "to_dict",
               "signature": "def to_dictself -> dict[str, Any]",
-              "line": 167,
+              "line": 169,
               "doc": ""
             }
           ]
@@ -2774,13 +2774,13 @@
           "kind": "class",
           "name": "CrawlPlan",
           "signature": "class CrawlPlan",
-          "line": 183,
+          "line": 185,
           "doc": "Everything the CLI's flags resolve to.",
           "methods": [
             {
               "name": "validate",
               "signature": "def validateself -> None",
-              "line": 213,
+              "line": 215,
               "doc": ""
             }
           ]
@@ -2789,31 +2789,31 @@
           "kind": "class",
           "name": "CrawlResult",
           "signature": "class CrawlResult",
-          "line": 244,
+          "line": 246,
           "doc": "",
           "methods": [
             {
               "name": "complete",
               "signature": "def completeself -> bool",
-              "line": 267,
+              "line": 269,
               "doc": "Did the crawl actually finish, or was it cut off?"
             },
             {
               "name": "fetched",
               "signature": "def fetchedself -> int",
-              "line": 272,
+              "line": 274,
               "doc": ""
             },
             {
               "name": "duration",
               "signature": "def durationself -> float",
-              "line": 276,
+              "line": 278,
               "doc": ""
             },
             {
               "name": "to_dict",
               "signature": "def to_dictself -> dict[str, Any]",
-              "line": 279,
+              "line": 281,
               "doc": ""
             }
           ]
@@ -2822,19 +2822,19 @@
           "kind": "class",
           "name": "RateLimiter",
           "signature": "class RateLimiter",
-          "line": 300,
+          "line": 302,
           "doc": "One delay per host, enforced across threads.",
           "methods": [
             {
               "name": "wait",
               "signature": "def waitself, host: str -> float",
-              "line": 318,
+              "line": 320,
               "doc": "Block until *host* may be contacted. Returns seconds waited."
             },
             {
               "name": "note_retry_after",
               "signature": "def note_retry_afterself, host: str, seconds: float -> None",
-              "line": 335,
+              "line": 337,
               "doc": "Honour a server's own ``Retry-After``."
             }
           ]
@@ -2843,19 +2843,19 @@
           "kind": "class",
           "name": "RobotsCache",
           "signature": "class RobotsCache",
-          "line": 350,
+          "line": 352,
           "doc": "``robots.txt`` per host, fetched once.",
           "methods": [
             {
               "name": "allows",
               "signature": "def allowsself, url: str -> bool",
-              "line": 389,
+              "line": 391,
               "doc": ""
             },
             {
               "name": "crawl_delay",
               "signature": "def crawl_delayself, url: str -> float | None",
-              "line": 397,
+              "line": 399,
               "doc": "What the host asked for, if it asked."
             }
           ]
@@ -2864,80 +2864,125 @@
           "kind": "function",
           "name": "public_address_problem",
           "signature": "def public_address_problemurl: str -> str | None",
-          "line": 433,
+          "line": 435,
           "doc": "Why *url* may not be fetched on someone else's behalf, or None."
         },
         {
           "kind": "function",
           "name": "fetch",
           "signature": "def fetchurl: str, *, timeout: float=20.0, max_bytes: int=MAX_PAGE_BYTES, limiter: RateLimiter | None=None, user_agent: str=_USER_AGENT, public_only: bool=False -> Page",
-          "line": 481,
+          "line": 559,
           "doc": "One page. Never raises."
         },
         {
           "kind": "function",
           "name": "extract_title",
           "signature": "def extract_titlemarkup: str -> str",
-          "line": 614,
+          "line": 694,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "extract_text",
           "signature": "def extract_textmarkup: str -> str",
-          "line": 619,
+          "line": 699,
           "doc": "Tags stripped, whitespace collapsed."
         },
         {
           "kind": "function",
           "name": "extract_links",
           "signature": "def extract_linksmarkup: str, base_url: str -> list[str]",
-          "line": 639,
+          "line": 719,
           "doc": "Absolute http(s) links, deduplicated, fragments dropped."
         },
         {
           "kind": "function",
           "name": "extract_assets",
           "signature": "def extract_assetsmarkup: str, base_url: str, tag: str, attribute: str -> list[str]",
-          "line": 664,
+          "line": 744,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "safe_output_path",
           "signature": "def safe_output_pathroot: Path, url: str, suffix: str -> Path",
-          "line": 689,
+          "line": 769,
           "doc": "A file under *root* named after *url*, and never outside it."
         },
         {
           "kind": "function",
           "name": "crawl",
           "signature": "def crawlplan: CrawlPlan, *, on_page=None -> CrawlResult",
-          "line": 745,
+          "line": 825,
           "doc": "Breadth-first, bounded, and polite."
         },
         {
           "kind": "function",
           "name": "probe_rate_limit",
           "signature": "def probe_rate_limiturl: str, *, requests: int=5, delay: float=0.5, timeout: float=15.0 -> dict[str, Any]",
-          "line": 945,
+          "line": 1025,
           "doc": "Find out what a host will tolerate, before a long crawl does."
         },
         {
           "kind": "function",
           "name": "write_output",
           "signature": "def write_outputplan: CrawlPlan, result: CrawlResult -> list[Path]",
-          "line": 1161,
+          "line": 1241,
           "doc": "Write *result* in ``plan.fmt``. Returns what it wrote."
         }
       ],
       "errors": [
         "GatherError",
+        "HTTPError",
         "URLError"
       ],
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "0d427c97",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "ci: Studio embeds SettingsView; public-only fetches connect to the checked address",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _public_addresses(url: str) -> tuple[list[str], str | None]:"
+            },
+            {
+              "kind": "added",
+              "text": "class _PinnedHTTPConnection(http.client.HTTPConnection):"
+            },
+            {
+              "kind": "added",
+              "text": "class _PinnedHTTPSConnection(http.client.HTTPSConnection):"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, address: str, port: int, *, server_name: str, timeout: float) -> None:"
+            },
+            {
+              "kind": "removed",
+              "text": "class _PublicOnlyRedirects(urllib.request.HTTPRedirectHandler):"
+            },
+            {
+              "kind": "added",
+              "text": "def connect(self) -> None:  # noqa: D102"
+            },
+            {
+              "kind": "removed",
+              "text": "def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: ANN001, D102"
+            },
+            {
+              "kind": "added",
+              "text": "class _Refused(Exception):"
+            },
+            {
+              "kind": "added",
+              "text": "def _open_pinned(url: str, headers: dict[str, str], timeout: float):"
+            }
+          ]
+        },
         {
           "sha": "6066ce53",
           "date": "2026-09-23",
@@ -11052,7 +11097,7 @@
     {
       "module": "hypernix.hyperlink.shell",
       "source": "src/hypernix/hyperlink/shell.py",
-      "line_count": 132,
+      "line_count": 139,
       "summary": "hyperlink.shell \u2014 run a command on the server from the phone.",
       "api": [
         {
@@ -11095,7 +11140,7 @@
           "kind": "function",
           "name": "run_command",
           "signature": "def run_commandcommand: str, *, cwd: str | None=None, timeout: float=60.0, actor: str='' -> ShellResult",
-          "line": 107,
+          "line": 114,
           "doc": ""
         }
       ],
@@ -11105,6 +11150,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "541d7839",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "HyperLink shell: the root check is one plain prefix test",
+          "api_changes": []
+        },
         {
           "sha": "848aac65",
           "date": "2026-09-23",
@@ -13065,14 +13117,14 @@
     {
       "module": "hypernix.interfaces.hyped_pro_core",
       "source": "src/hypernix/interfaces/hyped_pro_core.py",
-      "line_count": 1102,
+      "line_count": 1191,
       "summary": "hyped_pro_core \u2014 shared provider/model registry and real dispatch logic for hyped+ (hyped-pro).",
       "api": [
         {
           "kind": "class",
           "name": "HypedProError",
           "signature": "class HypedProError",
-          "line": 65,
+          "line": 66,
           "doc": "A real, coded failure \u2014 never silently swallowed into a fake reply.",
           "methods": []
         },
@@ -13080,7 +13132,7 @@
           "kind": "class",
           "name": "ProviderInfo",
           "signature": "class ProviderInfo",
-          "line": 84,
+          "line": 85,
           "doc": "",
           "methods": []
         },
@@ -13088,13 +13140,13 @@
           "kind": "class",
           "name": "ModelDef",
           "signature": "class ModelDef",
-          "line": 180,
+          "line": 181,
           "doc": "",
           "methods": [
             {
               "name": "kind",
               "signature": "def kindself -> str",
-              "line": 204,
+              "line": 205,
               "doc": ""
             }
           ]
@@ -13103,126 +13155,133 @@
           "kind": "function",
           "name": "get_model",
           "signature": "def get_modelshort: str -> ModelDef",
-          "line": 335,
+          "line": 336,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "local_snapshot_dir",
           "signature": "def local_snapshot_dirmodel: ModelDef -> Path",
-          "line": 375,
+          "line": 376,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "is_downloaded",
           "signature": "def is_downloadedmodel: ModelDef -> tuple[bool, Path]",
-          "line": 403,
+          "line": 404,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "ensure_downloaded",
           "signature": "def ensure_downloadedmodel: ModelDef, quiet: bool=False -> Path",
-          "line": 419,
+          "line": 420,
           "doc": "Download ``model``'s weights if they aren't already cached."
         },
         {
           "kind": "function",
           "name": "send_cloud_chat",
           "signature": "def send_cloud_chatmodel: ModelDef, messages: list[dict[str, str]], system: str | None=None, api_key: str | None=None, max_tokens: int=1024, temperature: float=0.7, max_thinking_tokens: int | None=None, enable_tools: bool=True, max_tool_rounds: int=8 -> str",
-          "line": 504,
+          "line": 505,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "send_local_chat",
           "signature": "def send_local_chatmodel: ModelDef, messages: list[dict[str, str]], system: str | None=None, max_new_tokens: int=256, temperature: float=0.7, should_stop: Callable[[], bool] | None=None -> str",
-          "line": 670,
+          "line": 671,
           "doc": "One chat turn against a local safetensors snapshot."
         },
         {
           "kind": "function",
           "name": "send_local_chat_gguf",
           "signature": "def send_local_chat_ggufmodel: ModelDef, messages: list[dict[str, str]], system: str | None=None, max_tokens: int=512, temperature: float=0.7, enable_tools: bool=True, max_tool_rounds: int=8 -> str",
-          "line": 747,
+          "line": 748,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "send_t1_chat",
           "signature": "def send_t1_chatmodel: ModelDef, messages: list[dict[str, str]], t1_key: str | None=None, system: str | None=None, max_tokens: int | None=None -> str",
-          "line": 811,
+          "line": 812,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "t1_api_url",
           "signature": "def t1_api_url -> str",
-          "line": 886,
-          "doc": "The configured T1 API base URL."
+          "line": 887,
+          "doc": "The T1 API base URL hyped-pro talks to. See :func:`t1_api_url_source`."
+        },
+        {
+          "kind": "function",
+          "name": "t1_api_url_source",
+          "signature": "def t1_api_url_source -> tuple[str, str]",
+          "line": 892,
+          "doc": "``(url, where it came from)``, first match wins:"
         },
         {
           "kind": "function",
           "name": "set_t1_api_url",
           "signature": "def set_t1_api_urlurl: str -> None",
-          "line": 904,
+          "line": 976,
           "doc": "Persist the T1 API base URL to ``~/.hypernix/config.json``."
         },
         {
           "kind": "function",
           "name": "t1_api_model_map",
           "signature": "def t1_api_model_map -> dict[str, str]",
-          "line": 911,
+          "line": 983,
           "doc": "Server ``model_id`` -> local catalog ``short``, from config."
         },
         {
           "kind": "function",
           "name": "t1_api_client",
           "signature": "def t1_api_client*, api_key: str | None=None, url: str | None=None",
-          "line": 933,
+          "line": 1005,
           "doc": "A configured :class:`hypernix.t1sdk.T1Client`."
         },
         {
           "kind": "function",
           "name": "t1_api_status",
           "signature": "def t1_api_status*, api_key: str | None=None, url: str | None=None -> dict[str, Any]",
-          "line": 981,
+          "line": 1083,
           "doc": "Server identity, this key's identity, and its plan \u2014 for ``/t1api``."
         },
         {
           "kind": "function",
           "name": "send_t1_api_chat",
           "signature": "def send_t1_api_chatmessages: list[dict[str, str]], *, system: str | None=None, api_key: str | None=None, url: str | None=None, max_tokens: int | None=None, enable_tools: bool=True, model_id: str | None=None, should_stop: Callable[[], bool] | None=None -> str",
-          "line": 1038,
+          "line": 1141,
           "doc": "One chat turn routed by a T1 API server and run locally."
         },
         {
           "kind": "function",
           "name": "extract_thinking",
           "signature": "def extract_thinkingtext: str -> tuple[str, str | None]",
-          "line": 1145,
+          "line": 1248,
           "doc": "Split a reply into (visible_text, thinking_text_or_None)."
         },
         {
           "kind": "function",
           "name": "strip_thinking",
           "signature": "def strip_thinkingtext: str -> str",
-          "line": 1170,
+          "line": 1273,
           "doc": "Remove inline <think>/<thinking>/<reasoning> blocks from a reply."
         },
         {
           "kind": "function",
           "name": "send_chat_message",
           "signature": "def send_chat_messagemodel_short: str, messages: list[dict[str, str]], system: str | None=None, api_key: str | None=None, max_tokens: int | None=None, max_thinking_tokens: int | None=None, hide_thinking: bool=True, enable_tools: bool=True, t1_api_model_id: str | None=None, should_stop: Callable[[], bool] | None=None -> dict[str, str | None]",
-          "line": 1183,
+          "line": 1286,
           "doc": "Returns {\"content\": <visible reply>, \"thinking\": <extracted thinking or None>}. When hide_thinking is True, thinking is always None (and simply removed from content, same as before) \u2014 when False, it's extracted rather than discarded, so a caller that wants to *show* thinking (e.g. hyped_pro.ts's /settings thinking-display, in its own color) has real content to render, not just a flag."
         },
         {
           "kind": "function",
           "name": "catalog_json",
           "signature": "def catalog_json -> dict[str, Any]",
-          "line": 1241,
+          "line": 1344,
           "doc": "Serializable view of MODELS + PROVIDERS for the bridge's `catalog` cmd."
         }
       ],
@@ -13232,6 +13291,34 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "1869a8b9",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "hyped-pro finds the T1 server, and says what to do when nothing answers",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def t1_api_url_source() -> tuple[str, str]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _t1_url_from_waiter() -> tuple[str, str] | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _t1_url_from_local_server() -> tuple[str, str] | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _is_refused(exc: BaseException) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def _refused_advice(url: str, source: str) -> str:"
+            }
+          ]
+        },
         {
           "sha": "166ce53e",
           "date": "2026-09-06",
@@ -14035,7 +14122,7 @@
     {
       "module": "hypernix.interfaces.hyped_pro_tools",
       "source": "src/hypernix/interfaces/hyped_pro_tools.py",
-      "line_count": 473,
+      "line_count": 478,
       "summary": "hypernix.hyped_pro_tools \u2014 real file creation/editing/search tools for hyped-pro's agentic chat loop.",
       "api": [
         {
@@ -14092,42 +14179,42 @@
           "kind": "function",
           "name": "delete_file",
           "signature": "def delete_filepath: str -> str",
-          "line": 193,
+          "line": 198,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "move_file",
           "signature": "def move_filesource: str, destination: str -> str",
-          "line": 204,
+          "line": 209,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "dest_repr",
           "signature": "def dest_reprp: Path -> str",
-          "line": 217,
+          "line": 222,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "list_directory",
           "signature": "def list_directorypath: str='.' -> str",
-          "line": 224,
+          "line": 229,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "search_files",
           "signature": "def search_filesquery: str, path: str='.', mode: str='content', glob: str | None=None -> str",
-          "line": 242,
+          "line": 247,
           "doc": ""
         },
         {
           "kind": "class",
           "name": "ToolDef",
           "signature": "class ToolDef",
-          "line": 310,
+          "line": 315,
           "doc": "",
           "methods": []
         },
@@ -14135,42 +14222,42 @@
           "kind": "function",
           "name": "hooks",
           "signature": "def hooksconsent: ConsentFn | None=None, progress: ProgressFn | None=None -> Iterator[None]",
-          "line": 453,
+          "line": 458,
           "doc": "Route consent questions and progress for tool calls made on this thread."
         },
         {
           "kind": "function",
           "name": "consent_policy",
           "signature": "def consent_policy -> str",
-          "line": 468,
+          "line": 473,
           "doc": "HYPERNIX_TOOL_POLICY, as hyped uses it: ask (default), deny, allow."
         },
         {
           "kind": "function",
           "name": "describe_call",
           "signature": "def describe_callname: str, arguments: dict[str, Any] -> str",
-          "line": 474,
+          "line": 479,
           "doc": "The call as the person has to see it to decide: the real arguments."
         },
         {
           "kind": "function",
           "name": "execute_tool",
           "signature": "def execute_toolname: str, arguments: dict[str, Any] -> str",
-          "line": 508,
+          "line": 513,
           "doc": "Run a tool by name with the given arguments, returning its result as a string (always \u2014 this is what gets fed back to the model as the tool result message). Raises ToolError on failure; callers should catch it and feed .message back to the model as an error result rather than aborting the whole turn, so the model can see what went wrong and adjust \u2014 same as how a real coding agent would surface a failed edit."
         },
         {
           "kind": "function",
           "name": "anthropic_tools_schema",
           "signature": "def anthropic_tools_schema -> list[dict[str, Any]]",
-          "line": 547,
+          "line": 552,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "openai_tools_schema",
           "signature": "def openai_tools_schema -> list[dict[str, Any]]",
-          "line": 551,
+          "line": 556,
           "doc": ""
         }
       ],
@@ -14180,6 +14267,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "6576f39d",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "Windows: the editor keeps line endings, the disk panel works, tvtop++ stops rescanning processes",
+          "api_changes": []
+        },
         {
           "sha": "73dd59fd",
           "date": "2026-09-23",
@@ -21396,7 +21490,7 @@
     {
       "module": "hypernix.monitoring.tvtop_plus_plus",
       "source": "src/hypernix/monitoring/tvtop_plus_plus.py",
-      "line_count": 494,
+      "line_count": 507,
       "summary": "tvtop++ \u2014 The ultimate live training dashboard (btop++ style).",
       "api": [
         {
@@ -21415,7 +21509,7 @@
             {
               "name": "run",
               "signature": "def runself -> None",
-              "line": 478,
+              "line": 493,
               "doc": "Run the tvtop++ dashboard using Rich Live."
             }
           ]
@@ -21424,7 +21518,7 @@
           "kind": "function",
           "name": "cli_main",
           "signature": "def cli_mainargv: list[str] | None=None -> int",
-          "line": 504,
+          "line": 519,
           "doc": ""
         }
       ],
@@ -21438,6 +21532,18 @@
         }
       ],
       "changes": [
+        {
+          "sha": "6576f39d",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "Windows: the editor keeps line endings, the disk panel works, tvtop++ stops rescanning processes",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _scan_processes(self) -> list[dict[str, Any]]:"
+            }
+          ]
+        },
         {
           "sha": "8c25846c",
           "date": "2026-08-21",
@@ -21794,14 +21900,14 @@
     {
       "module": "hypernix.monitoring.tvtoppro_modules",
       "source": "src/hypernix/monitoring/tvtoppro_modules.py",
-      "line_count": 607,
+      "line_count": 612,
       "summary": "hypernix.monitoring.tvtoppro_modules \u2014 extra panels for tvtoppro.",
       "api": [
         {
           "kind": "class",
           "name": "ModuleError",
           "signature": "class ModuleError",
-          "line": 88,
+          "line": 89,
           "doc": "A module could not be loaded or polled.",
           "methods": []
         },
@@ -21809,7 +21915,7 @@
           "kind": "class",
           "name": "Reading",
           "signature": "class Reading",
-          "line": 93,
+          "line": 94,
           "doc": "One line in a panel.",
           "methods": []
         },
@@ -21817,7 +21923,7 @@
           "kind": "class",
           "name": "Panel",
           "signature": "class Panel",
-          "line": 122,
+          "line": 123,
           "doc": "What one module contributes: a titled box of readings.",
           "methods": []
         },
@@ -21825,25 +21931,25 @@
           "kind": "class",
           "name": "Module",
           "signature": "class Module",
-          "line": 136,
+          "line": 137,
           "doc": "A source of extra statistics for tvtoppro.",
           "methods": [
             {
               "name": "available",
               "signature": "def availableself -> bool",
-              "line": 151,
+              "line": 152,
               "doc": "Whether this machine has what the module reads."
             },
             {
               "name": "unavailable_reason",
               "signature": "def unavailable_reasonself -> str",
-              "line": 160,
+              "line": 161,
               "doc": "Why :meth:`available` said no. Shown by ``--list-modules``."
             },
             {
               "name": "poll",
               "signature": "def pollself -> Panel",
-              "line": 165,
+              "line": 166,
               "doc": "Collect one frame's numbers."
             }
           ]
@@ -21852,25 +21958,25 @@
           "kind": "class",
           "name": "DiskModule",
           "signature": "class DiskModule",
-          "line": 241,
+          "line": 242,
           "doc": "Filesystem usage and read/write throughput.",
           "methods": [
             {
               "name": "available",
               "signature": "def availableself -> bool",
-              "line": 260,
+              "line": 261,
               "doc": ""
             },
             {
               "name": "unavailable_reason",
               "signature": "def unavailable_reasonself -> str",
-              "line": 263,
+              "line": 267,
               "doc": ""
             },
             {
               "name": "poll",
               "signature": "def pollself -> Panel",
-              "line": 266,
+              "line": 270,
               "doc": ""
             }
           ]
@@ -21879,25 +21985,25 @@
           "kind": "class",
           "name": "NetworkModule",
           "signature": "class NetworkModule",
-          "line": 312,
+          "line": 317,
           "doc": "Per-interface receive and transmit rates, from /proc/net/dev.",
           "methods": [
             {
               "name": "available",
               "signature": "def availableself -> bool",
-              "line": 330,
+              "line": 335,
               "doc": ""
             },
             {
               "name": "unavailable_reason",
               "signature": "def unavailable_reasonself -> str",
-              "line": 333,
+              "line": 338,
               "doc": ""
             },
             {
               "name": "poll",
               "signature": "def pollself -> Panel",
-              "line": 357,
+              "line": 362,
               "doc": ""
             }
           ]
@@ -21906,25 +22012,25 @@
           "kind": "class",
           "name": "TemperatureModule",
           "signature": "class TemperatureModule",
-          "line": 370,
+          "line": 375,
           "doc": "Thermal zones, from /sys/class/thermal.",
           "methods": [
             {
               "name": "available",
               "signature": "def availableself -> bool",
-              "line": 384,
+              "line": 389,
               "doc": ""
             },
             {
               "name": "unavailable_reason",
               "signature": "def unavailable_reasonself -> str",
-              "line": 387,
+              "line": 392,
               "doc": ""
             },
             {
               "name": "poll",
               "signature": "def pollself -> Panel",
-              "line": 390,
+              "line": 395,
               "doc": ""
             }
           ]
@@ -21933,25 +22039,25 @@
           "kind": "class",
           "name": "LoadModule",
           "signature": "class LoadModule",
-          "line": 416,
+          "line": 421,
           "doc": "Load average and process counts.",
           "methods": [
             {
               "name": "available",
               "signature": "def availableself -> bool",
-              "line": 423,
+              "line": 428,
               "doc": ""
             },
             {
               "name": "unavailable_reason",
               "signature": "def unavailable_reasonself -> str",
-              "line": 426,
+              "line": 431,
               "doc": ""
             },
             {
               "name": "poll",
               "signature": "def pollself -> Panel",
-              "line": 429,
+              "line": 434,
               "doc": ""
             }
           ]
@@ -21960,25 +22066,25 @@
           "kind": "class",
           "name": "SwapModule",
           "signature": "class SwapModule",
-          "line": 454,
+          "line": 459,
           "doc": "Swap usage. Its own box because swapping during training is fatal.",
           "methods": [
             {
               "name": "available",
               "signature": "def availableself -> bool",
-              "line": 466,
+              "line": 471,
               "doc": ""
             },
             {
               "name": "unavailable_reason",
               "signature": "def unavailable_reasonself -> str",
-              "line": 469,
+              "line": 474,
               "doc": ""
             },
             {
               "name": "poll",
               "signature": "def pollself -> Panel",
-              "line": 472,
+              "line": 477,
               "doc": ""
             }
           ]
@@ -21987,28 +22093,28 @@
           "kind": "function",
           "name": "user_module_dir",
           "signature": "def user_module_dir -> Path",
-          "line": 522,
+          "line": 527,
           "doc": "Where a user drops a ``.py`` file to add a panel."
         },
         {
           "kind": "function",
           "name": "discover",
           "signature": "def discover*, user_dir: Path | None=None -> dict[str, Module | str]",
-          "line": 617,
+          "line": 622,
           "doc": "Every module this machine offers, by name."
         },
         {
           "kind": "function",
           "name": "load_modules",
           "signature": "def load_modulesnames: list[str] | str | None, *, user_dir: Path | None=None -> tuple[list[Module], list[tuple[str, str]]]",
-          "line": 639,
+          "line": 644,
           "doc": "Resolve *names* to modules. Returns ``(loaded, problems)``."
         },
         {
           "kind": "function",
           "name": "poll_all",
           "signature": "def poll_allmodules: list[Module] -> list[Panel]",
-          "line": 688,
+          "line": 693,
           "doc": "Poll each module, turning a failure into a panel that says so."
         }
       ],
@@ -22018,6 +22124,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "6576f39d",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "Windows: the editor keeps line endings, the disk panel works, tvtop++ stops rescanning processes",
+          "api_changes": []
+        },
         {
           "sha": "e46529b8",
           "date": "2026-09-15",
@@ -31453,14 +31566,14 @@
     {
       "module": "hypernix.security.gkey_cli",
       "source": "src/hypernix/security/gkey_cli.py",
-      "line_count": 1024,
+      "line_count": 1058,
       "summary": "gkey_cli \u2014 Unified CLI for Gatekeeper and Keymaster.",
       "api": [
         {
           "kind": "function",
           "name": "main",
           "signature": "def mainargv: list[str] | None=None -> int",
-          "line": 1127,
+          "line": 1162,
           "doc": "Entry point for the `gkey` console script."
         }
       ],
@@ -31468,6 +31581,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "462b479d",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "v2.1 (T2C) keys, sealed with Rotorvault",
+          "api_changes": []
+        },
         {
           "sha": "3c9b555a",
           "date": "2026-09-02",
@@ -32203,20 +32323,20 @@
     {
       "module": "hypernix.security.keyversions",
       "source": "src/hypernix/security/keyversions.py",
-      "line_count": 133,
+      "line_count": 130,
       "summary": "Key format versions \u2014 the registry behind ``gkey create -v`` and ``gkey version``.",
       "api": [
         {
           "kind": "class",
           "name": "KeyVersion",
           "signature": "class KeyVersion",
-          "line": 42,
+          "line": 43,
           "doc": "One issuable key format.",
           "methods": [
             {
               "name": "label",
               "signature": "def labelself -> str",
-              "line": 66,
+              "line": 67,
               "doc": ""
             }
           ]
@@ -32225,14 +32345,14 @@
           "kind": "function",
           "name": "key_version_names",
           "signature": "def key_version_names -> list[str]",
-          "line": 138,
+          "line": 135,
           "doc": "Canonical names of the issuable formats, for help text and choices."
         },
         {
           "kind": "function",
           "name": "resolve_key_version",
           "signature": "def resolve_key_versionname: str -> KeyVersion",
-          "line": 143,
+          "line": 140,
           "doc": "Look up a key version by name or alias."
         }
       ],
@@ -32242,6 +32362,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "462b479d",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "v2.1 (T2C) keys, sealed with Rotorvault",
+          "api_changes": []
+        },
         {
           "sha": "2218c14e",
           "date": "2026-08-27",
@@ -32269,6 +32396,580 @@
       ]
     },
     {
+      "module": "hypernix.security.rotorvault",
+      "source": "src/hypernix/security/rotorvault.py",
+      "line_count": 614,
+      "summary": "hypernix.security.rotorvault \u2014 the layered cipher behind v2.1 (T2C) keys.",
+      "api": [
+        {
+          "kind": "class",
+          "name": "RotorvaultError",
+          "signature": "class RotorvaultError",
+          "line": 83,
+          "doc": "A seal that cannot be opened: wrong key, wrong password, or altered.",
+          "methods": []
+        },
+        {
+          "kind": "class",
+          "name": "Xoshiro256PlusPlus",
+          "signature": "class Xoshiro256PlusPlus",
+          "line": 96,
+          "doc": "Blackman and Vigna's xoshiro256++ (sometimes written xoroshiro256++).",
+          "methods": [
+            {
+              "name": "next",
+              "signature": "def nextself -> int",
+              "line": 116,
+              "doc": ""
+            },
+            {
+              "name": "below",
+              "signature": "def belowself, bound: int -> int",
+              "line": 128,
+              "doc": "Uniform in [0, bound), by rejection rather than a biased modulo."
+            },
+            {
+              "name": "permutation",
+              "signature": "def permutationself, n: int=256 -> list[int]",
+              "line": 138,
+              "doc": "A Fisher-Yates shuffle of range(n)."
+            }
+          ]
+        },
+        {
+          "kind": "class",
+          "name": "Blowfish",
+          "signature": "class Blowfish",
+          "line": 185,
+          "doc": "Blowfish with a 4- to 56-byte key, one 8-byte block at a time.",
+          "methods": [
+            {
+              "name": "encrypt_block",
+              "signature": "def encrypt_blockself, block: bytes -> bytes",
+              "line": 239,
+              "doc": ""
+            },
+            {
+              "name": "decrypt_block",
+              "signature": "def decrypt_blockself, block: bytes -> bytes",
+              "line": 243,
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "kind": "class",
+          "name": "Twofish",
+          "signature": "class Twofish",
+          "line": 351,
+          "doc": "Twofish with a 16-, 24- or 32-byte key, one 16-byte block at a time.",
+          "methods": [
+            {
+              "name": "encrypt_block",
+              "signature": "def encrypt_blockself, block: bytes -> bytes",
+              "line": 405,
+              "doc": ""
+            },
+            {
+              "name": "decrypt_block",
+              "signature": "def decrypt_blockself, block: bytes -> bytes",
+              "line": 419,
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "kind": "class",
+          "name": "RotorMachine",
+          "signature": "class RotorMachine",
+          "line": 453,
+          "doc": "Three stepping 256-position rotors between two passes of a plugboard.",
+          "methods": [
+            {
+              "name": "encrypt",
+              "signature": "def encryptself, data: bytes -> bytes",
+              "line": 491,
+              "doc": ""
+            },
+            {
+              "name": "decrypt",
+              "signature": "def decryptself, data: bytes -> bytes",
+              "line": 502,
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "seal",
+          "signature": "def sealkey: bytes, plaintext: bytes, *, context: str | bytes=b'' -> str",
+          "line": 608,
+          "doc": "Seal *plaintext* under *key* (at least 16 bytes). Returns text."
+        },
+        {
+          "kind": "function",
+          "name": "open_sealed",
+          "signature": "def open_sealedkey: bytes, token: str, *, context: str | bytes=b'' -> bytes",
+          "line": 618,
+          "doc": "Open what :func:`seal` made, or raise :class:`RotorvaultError`."
+        },
+        {
+          "kind": "function",
+          "name": "generate_rsa_private_key",
+          "signature": "def generate_rsa_private_keybits: int=3072",
+          "line": 628,
+          "doc": "A new RSA private key object."
+        },
+        {
+          "kind": "function",
+          "name": "public_key_pem",
+          "signature": "def public_key_pemprivate_or_public -> str",
+          "line": 636,
+          "doc": ""
+        },
+        {
+          "kind": "function",
+          "name": "public_key_fingerprint",
+          "signature": "def public_key_fingerprintprivate_or_public -> str",
+          "line": 645,
+          "doc": "SHA-256 of the DER public key, as ``SHA256:<hex, 32 chars>``."
+        },
+        {
+          "kind": "function",
+          "name": "load_private_key",
+          "signature": "def load_private_keypem: bytes | str",
+          "line": 656,
+          "doc": ""
+        },
+        {
+          "kind": "function",
+          "name": "load_public_key",
+          "signature": "def load_public_keypem: bytes | str",
+          "line": 664,
+          "doc": ""
+        },
+        {
+          "kind": "function",
+          "name": "seal_for",
+          "signature": "def seal_forpublic_key, plaintext: bytes, *, context: str | bytes=b'' -> str",
+          "line": 679,
+          "doc": "Seal so that only the holder of *public_key*'s private half can open."
+        },
+        {
+          "kind": "function",
+          "name": "open_sealed_for",
+          "signature": "def open_sealed_forprivate_key, token: str, *, context: str | bytes=b'' -> bytes",
+          "line": 694,
+          "doc": ""
+        },
+        {
+          "kind": "function",
+          "name": "seal_with_password",
+          "signature": "def seal_with_passwordpassword: str, plaintext: bytes, *, context: str | bytes=b'' -> str",
+          "line": 719,
+          "doc": "Seal under a password, stretched with scrypt (N=2^15, r=8, p=1)."
+        },
+        {
+          "kind": "function",
+          "name": "open_with_password",
+          "signature": "def open_with_passwordpassword: str, token: str, *, context: str | bytes=b'' -> bytes",
+          "line": 729,
+          "doc": ""
+        },
+        {
+          "kind": "function",
+          "name": "daily_key",
+          "signature": "def daily_keydevice_secret: bytes, device_id: str, day: date -> bytes",
+          "line": 747,
+          "doc": "The key a device uses on *day* (UTC), derived from its secret."
+        }
+      ],
+      "errors": [
+        "RotorvaultError",
+        "ValueError"
+      ],
+      "deprecations": [],
+      "required_modules": [],
+      "changes": [
+        {
+          "sha": "462b479d",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "v2.1 (T2C) keys, sealed with Rotorvault",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class RotorvaultError(ValueError):"
+            },
+            {
+              "kind": "added",
+              "text": "def _rotl64(x: int, k: int) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "class Xoshiro256PlusPlus:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, seed: bytes | tuple[int, int, int, int]) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def next(self) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def below(self, bound: int) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def permutation(self, n: int = 256) -> list[int]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _pi_words() -> tuple[int, ...]:"
+            },
+            {
+              "kind": "added",
+              "text": "def arctan_inverse(x: int) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "class Blowfish:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, key: bytes) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _f(self, x: int) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def _encrypt_words(self, left: int, right: int) -> tuple[int, int]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _decrypt_words(self, left: int, right: int) -> tuple[int, int]:"
+            },
+            {
+              "kind": "added",
+              "text": "def encrypt_block(self, block: bytes) -> bytes:"
+            },
+            {
+              "kind": "added",
+              "text": "def decrypt_block(self, block: bytes) -> bytes:"
+            },
+            {
+              "kind": "added",
+              "text": "def _ror4(x: int, n: int) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def _build_q(tables: tuple[tuple[int, ...], ...]) -> tuple[int, ...]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _gf_mult(a: int, b: int, modulus: int) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def _rotl32(x: int, n: int) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def _rotr32(x: int, n: int) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def _mds_column(column: int, value: int) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def _h(x: int, words: list[int]) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "class Twofish:"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "module": "hypernix.security.t2c",
+      "source": "src/hypernix/security/t2c.py",
+      "line_count": 355,
+      "summary": "hypernix.security.t2c \u2014 v2.1 keys: T2C, sealed with Rotorvault.",
+      "api": [
+        {
+          "kind": "class",
+          "name": "T2CError",
+          "signature": "class T2CError",
+          "line": 93,
+          "doc": "A T2C key or kit that cannot be used, with the reason.",
+          "methods": []
+        },
+        {
+          "kind": "function",
+          "name": "today_utc",
+          "signature": "def today_utc -> date",
+          "line": 97,
+          "doc": ""
+        },
+        {
+          "kind": "function",
+          "name": "looks_like_t2c",
+          "signature": "def looks_like_t2cvalue: str -> bool",
+          "line": 101,
+          "doc": ""
+        },
+        {
+          "kind": "function",
+          "name": "looks_like_kit",
+          "signature": "def looks_like_kitvalue: str -> bool",
+          "line": 105,
+          "doc": ""
+        },
+        {
+          "kind": "function",
+          "name": "build_inner",
+          "signature": "def build_innerserver_public_key, t2_raw: str -> str",
+          "line": 116,
+          "doc": "The stable half: the T2 key, sealed for the server's public key."
+        },
+        {
+          "kind": "function",
+          "name": "compose_key",
+          "signature": "def compose_keydevice_id: str, secret: bytes, inner: str, level: int, day: date -> str",
+          "line": 121,
+          "doc": "That day's key for a device."
+        },
+        {
+          "kind": "function",
+          "name": "split_key",
+          "signature": "def split_keykey: str -> tuple[str, str, int]",
+          "line": 128,
+          "doc": "``(device_id, sealed, level)`` of a T2C key, or :class:`T2CError`."
+        },
+        {
+          "kind": "function",
+          "name": "wrap_device_secret",
+          "signature": "def wrap_device_secretserver_public_key, secret: bytes -> str",
+          "line": 143,
+          "doc": "A device secret encrypted for the server (RSA-OAEP-SHA256), base64."
+        },
+        {
+          "kind": "class",
+          "name": "T2CKit",
+          "signature": "class T2CKit",
+          "line": 165,
+          "doc": "What a client keeps in place of a key. Makes each day's key.",
+          "methods": [
+            {
+              "name": "key_for",
+              "signature": "def key_forself, day: date | None=None -> str",
+              "line": 175,
+              "doc": ""
+            },
+            {
+              "name": "to_text",
+              "signature": "def to_textself -> str",
+              "line": 179,
+              "doc": ""
+            },
+            {
+              "name": "from_text",
+              "signature": "def from_textcls, text: str -> T2CKit",
+              "line": 194,
+              "doc": ""
+            },
+            {
+              "name": "describe",
+              "signature": "def describeself -> dict[str, Any]",
+              "line": 216,
+              "doc": "Everything but the secret parts."
+            }
+          ]
+        },
+        {
+          "kind": "class",
+          "name": "T2CAuthority",
+          "signature": "class T2CAuthority",
+          "line": 232,
+          "doc": "The server side: its RSA key, and the devices it has registered.",
+          "methods": [
+            {
+              "name": "private_key",
+              "signature": "def private_keyself",
+              "line": 273,
+              "doc": ""
+            },
+            {
+              "name": "public_key_pem",
+              "signature": "def public_key_pemself -> str",
+              "line": 291,
+              "doc": ""
+            },
+            {
+              "name": "fingerprint",
+              "signature": "def fingerprintself -> str",
+              "line": 294,
+              "doc": ""
+            },
+            {
+              "name": "register_device",
+              "signature": "def register_deviceself, *, bound_key: str, secret: bytes | None=None, label: str='', access_level: int=1 -> tuple[str, bytes]",
+              "line": 310,
+              "doc": "Register a device for the T1 key *bound_key*. Returns (id, secret)."
+            },
+            {
+              "name": "register_wrapped",
+              "signature": "def register_wrappedself, *, bound_key: str, wrapped_secret: str, label: str='', access_level: int=1 -> str",
+              "line": 332,
+              "doc": "Register a device whose secret the client encrypted for us."
+            },
+            {
+              "name": "devices_for",
+              "signature": "def devices_forself, bound_key: str -> list[dict[str, Any]]",
+              "line": 350,
+              "doc": ""
+            },
+            {
+              "name": "revoke",
+              "signature": "def revokeself, device_id: str, *, bound_key: str | None=None -> bool",
+              "line": 360,
+              "doc": "Revoke a device. With *bound_key*, only one bound to that key."
+            },
+            {
+              "name": "issue_kit",
+              "signature": "def issue_kitself, t2_raw: str, *, bound_key: str, access_level: int, label: str='' -> T2CKit",
+              "line": 374,
+              "doc": "Everything a client needs, made on the server (``gkey create -v v2.1``)."
+            },
+            {
+              "name": "open",
+              "signature": "def openself, key: str, *, today: date | None=None -> tuple[str, str]",
+              "line": 383,
+              "doc": "The T2 key inside *key*, and the device it came from."
+            }
+          ]
+        }
+      ],
+      "errors": [
+        "T2CError"
+      ],
+      "deprecations": [],
+      "required_modules": [],
+      "changes": [
+        {
+          "sha": "462b479d",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "v2.1 (T2C) keys, sealed with Rotorvault",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class T2CError(ValueError):"
+            },
+            {
+              "kind": "added",
+              "text": "def today_utc() -> date:"
+            },
+            {
+              "kind": "added",
+              "text": "def looks_like_t2c(value: str) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def looks_like_kit(value: str) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def _outer_context(device_id: str, day: date) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def build_inner(server_public_key, t2_raw: str) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def compose_key(device_id: str, secret: bytes, inner: str, level: int, day: date) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def split_key(key: str) -> tuple[str, str, int]:"
+            },
+            {
+              "kind": "added",
+              "text": "def wrap_device_secret(server_public_key, secret: bytes) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "class T2CKit:"
+            },
+            {
+              "kind": "added",
+              "text": "def key_for(self, day: date | None = None) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_text(self) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def from_text(cls, text: str) -> T2CKit:"
+            },
+            {
+              "kind": "added",
+              "text": "def describe(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _binding(t1_key: str) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "class T2CAuthority:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, directory: str | Path) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _key_path(self) -> Path:"
+            },
+            {
+              "kind": "added",
+              "text": "def _devices_path(self) -> Path:"
+            },
+            {
+              "kind": "added",
+              "text": "def _write_private(self, path: Path, data: bytes) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def private_key(self):"
+            },
+            {
+              "kind": "added",
+              "text": "def public_key_pem(self) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def fingerprint(self) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _load_devices(self) -> dict[str, dict[str, Any]]:"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "module": "hypernix.security.t2keys",
       "source": "src/hypernix/security/t2keys.py",
       "line_count": 953,
@@ -32278,7 +32979,7 @@
           "kind": "function",
           "name": "default_sspkid_store_dir",
           "signature": "def default_sspkid_store_dir -> Path",
-          "line": 77,
+          "line": 76,
           "doc": "Where SSPKID assignments live when nobody says otherwise."
         },
         {
@@ -32526,6 +33227,13 @@
       "required_modules": [],
       "changes": [
         {
+          "sha": "462b479d",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "v2.1 (T2C) keys, sealed with Rotorvault",
+          "api_changes": []
+        },
+        {
           "sha": "931c893f",
           "date": "2026-09-02",
           "author": "Claude",
@@ -32611,110 +33319,6 @@
             {
               "kind": "removed",
               "text": "def _remap_special(char: str, allowed: str) -> str:"
-            }
-          ]
-        },
-        {
-          "sha": "c58beaad",
-          "date": "2026-08-26",
-          "author": "Claude",
-          "subject": "T2 keys, the quantisation registry, steamroller, and Pascal tuning",
-          "api_changes": [
-            {
-              "kind": "added",
-              "text": "def t2_api_available(hypernix_version: str | None = None) -> bool:"
-            },
-            {
-              "kind": "added",
-              "text": "def _version_tuple(text: str) -> tuple[int, ...]:"
-            },
-            {
-              "kind": "added",
-              "text": "class T2Type(StrEnum):"
-            },
-            {
-              "kind": "added",
-              "text": "def generate_admin_password("
-            },
-            {
-              "kind": "added",
-              "text": "def validate_admin_password(password: str) -> tuple[bool, str]:"
-            },
-            {
-              "kind": "added",
-              "text": "def _strip_known_word(password: str) -> str:"
-            },
-            {
-              "kind": "added",
-              "text": "def _has_run(text: str, length: int) -> bool:"
-            },
-            {
-              "kind": "added",
-              "text": "def _max_repeat(text: str) -> int:"
-            },
-            {
-              "kind": "added",
-              "text": "class SSPKIDCollision(ValueError):"
-            },
-            {
-              "kind": "added",
-              "text": "def encode_sspkid_index(index: int) -> str:"
-            },
-            {
-              "kind": "added",
-              "text": "def decode_sspkid_index(encoded: str) -> int:"
-            },
-            {
-              "kind": "added",
-              "text": "class SSPKID:"
-            },
-            {
-              "kind": "added",
-              "text": "def __post_init__(self) -> None:"
-            },
-            {
-              "kind": "added",
-              "text": "def encoded_index(self) -> str:"
-            },
-            {
-              "kind": "added",
-              "text": "def __str__(self) -> str:"
-            },
-            {
-              "kind": "added",
-              "text": "def parse(cls, text: str) -> SSPKID:"
-            },
-            {
-              "kind": "added",
-              "text": "def is_sspkid(text: str) -> bool:"
-            },
-            {
-              "kind": "added",
-              "text": "class ServerKeyRegistry:"
-            },
-            {
-              "kind": "added",
-              "text": "def __init__(self) -> None:"
-            },
-            {
-              "kind": "added",
-              "text": "def assign(self, key_id: str, sspkid: SSPKID) -> SSPKID:"
-            },
-            {
-              "kind": "added",
-              "text": "def allocate(self, key_id: str, server_id: str) -> SSPKID:"
-            },
-            {
-              "kind": "added",
-              "text": "def resolve(self, sspkid: SSPKID | str) -> str | None:"
-            },
-            {
-              "kind": "added",
-              "text": "def sspkid_for(self, key_id: str) -> SSPKID | None:"
-            },
-            {
-              "kind": "added",
-              "text": "def keys_on(self, server_id: str) -> list[str]:"
             }
           ]
         }
@@ -39006,14 +39610,14 @@
     {
       "module": "hypernix.t1api.app",
       "source": "src/hypernix/t1api/app.py",
-      "line_count": 646,
+      "line_count": 665,
       "summary": "t1api.app \u2014 ``create_app()``, the T1 API's FastAPI factory.",
       "api": [
         {
           "kind": "function",
           "name": "create_app",
           "signature": "def create_app*, config: T1APIConfig | None=None, keymaster: Keymaster | None=None, gatekeeper: Gatekeeper | None=None, registry: ModelRegistry | None=None, usage_store: UsageStore | None=None, routing_table: RoutingTable | None=None, server_registry: ServerRegistry | None=None, module_registry: ModuleRegistry | None=None, job_queue: JobQueue | None=None, event_bus: EventBus | None=None, billing_ledger: BillingLedger | None=None, backend: SQLBackend | None=None, audit_log: AuditLog | None=None, network_policy: NetworkPolicy | None=None, rate_limiter: RateLimiter | None=None, key_directory: KeyDirectory | None=None, transport: ModuleTransport | None=None, device_registry: DeviceRegistry | None=None, session_store: ChatSessionStore | None=None, attachment_store: AttachmentStore | None=None, sync_store: SyncStore | None=None, notification_store: NotificationStore | None=None, search_index: SearchIndex | None=None, auth_history: AuthHistory | None=None, backup_store: BackupStore | None=None, server_key_registry: ServerKeyRegistry | None=None, accounts: AccountStore | None=None, webauth: WebAuthSettings | None=None, mount_prefix: str | None=None, validate_production: bool | None=None -> FastAPI",
-          "line": 216,
+          "line": 217,
           "doc": "Build a fully-wired T1 API FastAPI app."
         }
       ],
@@ -39030,6 +39634,18 @@
         }
       ],
       "changes": [
+        {
+          "sha": "0068bbf2",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "T1: conceal mode with 36-hour retention, and a public /server/info",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "async def _lifespan(lifespan_app):"
+            }
+          ]
+        },
         {
           "sha": "589ebbdc",
           "date": "2026-09-23",
@@ -39078,20 +39694,13 @@
           "author": "Mason",
           "subject": "security: API keys were world-readable; key auth leaked which key you sent",
           "api_changes": []
-        },
-        {
-          "sha": "46f59011",
-          "date": "2026-09-10",
-          "author": "Claude",
-          "subject": "0.72.4.post9 \u2014 HyperLink catches up, notifies, and searches",
-          "api_changes": []
         }
       ]
     },
     {
       "module": "hypernix.t1api.audit",
       "source": "src/hypernix/t1api/audit.py",
-      "line_count": 379,
+      "line_count": 386,
       "summary": "t1api.audit \u2014 the audit log.",
       "api": [
         {
@@ -39161,19 +39770,19 @@
             {
               "name": "query",
               "signature": "def queryself, *, category: str | None=None, action: str | None=None, outcome: str | None=None, actor_key_id: str | None=None, resource_type: str | None=None, since: float | None=None, until: float | None=None, limit: int=100, offset: int=0 -> list[AuditRecord]",
-              "line": 335,
+              "line": 343,
               "doc": ""
             },
             {
               "name": "count",
               "signature": "def countself -> int",
-              "line": 378,
+              "line": 386,
               "doc": ""
             },
             {
               "name": "purge_before",
               "signature": "def purge_beforeself, ts: float -> int",
-              "line": 383,
+              "line": 391,
               "doc": "Delete records older than *ts*, returning how many went."
             }
           ]
@@ -39183,6 +39792,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "0068bbf2",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "T1: conceal mode with 36-hour retention, and a public /server/info",
+          "api_changes": []
+        },
         {
           "sha": "7efe5548",
           "date": "2026-08-22",
@@ -39271,7 +39887,7 @@
     {
       "module": "hypernix.t1api.auth",
       "source": "src/hypernix/t1api/auth.py",
-      "line_count": 448,
+      "line_count": 489,
       "summary": "t1api.auth \u2014 the T1 API's authentication/authorization glue.",
       "api": [
         {
@@ -39284,25 +39900,25 @@
             {
               "name": "key_id",
               "signature": "def key_idself -> str",
-              "line": 78,
+              "line": 80,
               "doc": ""
             },
             {
               "name": "is_admin",
               "signature": "def is_adminself -> bool",
-              "line": 82,
+              "line": 84,
               "doc": ""
             },
             {
               "name": "via_t2",
               "signature": "def via_t2self -> bool",
-              "line": 86,
+              "line": 88,
               "doc": ""
             },
             {
               "name": "meets_access_level",
               "signature": "def meets_access_levelself, required: int -> bool",
-              "line": 89,
+              "line": 91,
               "doc": "Does this context clear access level *required* (1-9)?"
             }
           ]
@@ -39311,7 +39927,7 @@
           "kind": "class",
           "name": "ScopedToken",
           "signature": "class ScopedToken",
-          "line": 102,
+          "line": 104,
           "doc": "",
           "methods": []
         },
@@ -39319,43 +39935,49 @@
           "kind": "class",
           "name": "T1AuthService",
           "signature": "class T1AuthService",
-          "line": 109,
+          "line": 111,
           "doc": "Adapter over Keymaster + Gatekeeper for the T1 API HTTP layer.",
           "methods": [
             {
+              "name": "t2c",
+              "signature": "def t2cself",
+              "line": 204,
+              "doc": "The :class:`~hypernix.security.t2c.T2CAuthority` for this key store."
+            },
+            {
               "name": "validate_key",
               "signature": "def validate_keyself, key_str: str -> AuthContext",
-              "line": 205,
+              "line": 239,
               "doc": "Validate a raw T1 **or T2** key string."
             },
             {
               "name": "issue_scoped_token",
               "signature": "def issue_scoped_tokenself, key_str: str, *, ttl_seconds: int | None=None, scopes: list[str] | None=None -> ScopedToken",
-              "line": 373,
+              "line": 419,
               "doc": "Exchange a validated raw T1 key for a short-lived scoped token."
             },
             {
               "name": "verify_scoped_token",
               "signature": "def verify_scoped_tokenself, token: str -> AuthContext",
-              "line": 406,
+              "line": 452,
               "doc": ""
             },
             {
               "name": "check_quota",
               "signature": "def check_quotaself, key_id: str, *, endpoint: str='', model: str='', tokens_requested: int=0 -> None",
-              "line": 441,
+              "line": 487,
               "doc": ""
             },
             {
               "name": "rotate_own_key",
               "signature": "def rotate_own_keyself, key_id: str -> KeyMeta",
-              "line": 453,
+              "line": 499,
               "doc": ""
             },
             {
               "name": "admin_rotate",
               "signature": "def admin_rotateself, *, requester: AuthContext, target_key_id: str, promote_to_admin: bool=False -> KeyMeta",
-              "line": 459,
+              "line": 505,
               "doc": "POST /auth/t1/admin/rotate \u2014 admin-only. Rotates *target_key_id* and, if requested, promotes the newly-issued key to an admin key."
             }
           ]
@@ -39368,6 +39990,22 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "462b479d",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "v2.1 (T2C) keys, sealed with Rotorvault",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def t2c(self):"
+            },
+            {
+              "kind": "added",
+              "text": "def _validate_t2c(self, key_str: str) -> AuthContext:"
+            }
+          ]
+        },
         {
           "sha": "55378e12",
           "date": "2026-09-01",
@@ -39448,70 +40086,6 @@
           "author": "minerofthesoal",
           "subject": "fixes",
           "api_changes": []
-        },
-        {
-          "sha": "f836d298",
-          "date": "2026-08-18",
-          "author": "minerofthesoal",
-          "subject": "0.71.5b1-part one of four for the api",
-          "api_changes": [
-            {
-              "kind": "added",
-              "text": "def _b64url_encode(raw: bytes) -> str:"
-            },
-            {
-              "kind": "added",
-              "text": "def _b64url_decode(s: str) -> bytes:"
-            },
-            {
-              "kind": "added",
-              "text": "class AuthContext:"
-            },
-            {
-              "kind": "added",
-              "text": "def key_id(self) -> str:"
-            },
-            {
-              "kind": "added",
-              "text": "def is_admin(self) -> bool:"
-            },
-            {
-              "kind": "added",
-              "text": "class ScopedToken:"
-            },
-            {
-              "kind": "added",
-              "text": "class T1AuthService:"
-            },
-            {
-              "kind": "added",
-              "text": "def __init__("
-            },
-            {
-              "kind": "added",
-              "text": "def validate_key(self, key_str: str) -> AuthContext:"
-            },
-            {
-              "kind": "added",
-              "text": "def issue_scoped_token("
-            },
-            {
-              "kind": "added",
-              "text": "def verify_scoped_token(self, token: str) -> AuthContext:"
-            },
-            {
-              "kind": "added",
-              "text": "def check_quota(self, key_id: str, *, endpoint: str = \"\", model: str = \"\", tokens_requested: int = 0) -> None:"
-            },
-            {
-              "kind": "added",
-              "text": "def rotate_own_key(self, key_id: str) -> KeyMeta:"
-            },
-            {
-              "kind": "added",
-              "text": "def admin_rotate(self, *, requester: AuthContext, target_key_id: str, promote_to_admin: bool = False) -> KeyMeta:"
-            }
-          ]
         }
       ]
     },
@@ -40364,7 +40938,7 @@
     {
       "module": "hypernix.t1api.config",
       "source": "src/hypernix/t1api/config.py",
-      "line_count": 613,
+      "line_count": 620,
       "summary": "t1api.config \u2014 environment-variable configuration for the T1 API.",
       "api": [
         {
@@ -40377,55 +40951,55 @@
             {
               "name": "from_env",
               "signature": "def from_envcls, *, load_dotenv: bool=True, dotenv_path: str | Path='.env' -> T1APIConfig",
-              "line": 470,
+              "line": 477,
               "doc": ""
             },
             {
               "name": "is_production",
               "signature": "def is_productionself -> bool",
-              "line": 480,
+              "line": 487,
               "doc": ""
             },
             {
               "name": "storage_backend",
               "signature": "def storage_backendself -> str",
-              "line": 484,
+              "line": 491,
               "doc": ""
             },
             {
               "name": "tls_settings",
               "signature": "def tls_settingsself -> TLSSettings",
-              "line": 487,
+              "line": 494,
               "doc": ""
             },
             {
               "name": "rate_limit_rules",
               "signature": "def rate_limit_rulesself -> Any",
-              "line": 499,
+              "line": 506,
               "doc": "Parsed rate-limit rules, or None to use the defaults."
             },
             {
               "name": "describe_secrets",
               "signature": "def describe_secretsself -> dict[str, bool]",
-              "line": 517,
+              "line": 524,
               "doc": "Which secrets are set. Values never included \u2014 this is what ``GET /status`` uses to tell an operator what's missing without telling anyone what it is."
             },
             {
               "name": "public_dict",
               "signature": "def public_dictself -> dict[str, object]",
-              "line": 531,
+              "line": 538,
               "doc": "Explicit allowlist of config surfaced by GET /config. Never includes ``token_secret``, ``deploy_secret``, ``database_url``, or any future secret field."
             },
             {
               "name": "production_problems",
               "signature": "def production_problemsself -> list[str]",
-              "line": 572,
+              "line": 579,
               "doc": "Every reason this config is unsafe for production, as text."
             },
             {
               "name": "validate_for_production",
               "signature": "def validate_for_productionself, *, strict: bool | None=None -> None",
-              "line": 664,
+              "line": 671,
               "doc": "Raise ``CONFIG_INVALID`` if this config is unsafe for production."
             }
           ]
@@ -40437,6 +41011,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "0068bbf2",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "T1: conceal mode with 36-hour retention, and a public /server/info",
+          "api_changes": []
+        },
         {
           "sha": "e26841fc",
           "date": "2026-09-23",
@@ -40484,13 +41065,6 @@
           "date": "2026-09-08",
           "author": "Claude",
           "subject": "0.72.4.dev4 \u2014 trusted-network mode",
-          "api_changes": []
-        },
-        {
-          "sha": "55378e12",
-          "date": "2026-09-01",
-          "author": "Claude",
-          "subject": "T2P billing keys, and a server's right to refuse them",
           "api_changes": []
         }
       ]
@@ -43675,6 +44249,189 @@
       ]
     },
     {
+      "module": "hypernix.t1api.privacy",
+      "source": "src/hypernix/t1api/privacy.py",
+      "line_count": 220,
+      "summary": "t1api.privacy \u2014 conceal mode and 36-hour retention (0.72.6).",
+      "api": [
+        {
+          "kind": "function",
+          "name": "mask_address",
+          "signature": "def mask_addressaddress: str -> str",
+          "line": 73,
+          "doc": "The network an address is in, not the address: /24 or /48."
+        },
+        {
+          "kind": "class",
+          "name": "ConcealStore",
+          "signature": "class ConcealStore",
+          "line": 83,
+          "doc": "Which keys asked to be concealed. One row per key.",
+          "methods": [
+            {
+              "name": "set",
+              "signature": "def setself, key_id: str, enabled: bool -> dict[str, Any]",
+              "line": 92,
+              "doc": ""
+            },
+            {
+              "name": "is_concealed",
+              "signature": "def is_concealedself, key_id: str -> bool",
+              "line": 110,
+              "doc": ""
+            },
+            {
+              "name": "status",
+              "signature": "def statusself, key_id: str -> dict[str, Any]",
+              "line": 124,
+              "doc": ""
+            },
+            {
+              "name": "concealed_keys",
+              "signature": "def concealed_keysself -> list[str]",
+              "line": 139,
+              "doc": ""
+            },
+            {
+              "name": "mark_swept",
+              "signature": "def mark_sweptself, key_id: str, when: float -> None",
+              "line": 144,
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "kind": "class",
+          "name": "SweepResult",
+          "signature": "class SweepResult",
+          "line": 150,
+          "doc": "",
+          "methods": [
+            {
+              "name": "to_dict",
+              "signature": "def to_dictself -> dict[str, Any]",
+              "line": 158,
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "kind": "class",
+          "name": "RetentionSweeper",
+          "signature": "class RetentionSweeper",
+          "line": 165,
+          "doc": "Deletes what concealed keys made more than 36 hours ago.",
+          "methods": [
+            {
+              "name": "sweep_key",
+              "signature": "def sweep_keyself, key_id: str, *, now: float | None=None -> SweepResult",
+              "line": 178,
+              "doc": ""
+            },
+            {
+              "name": "sweep",
+              "signature": "def sweepself, *, now: float | None=None -> list[SweepResult]",
+              "line": 232,
+              "doc": ""
+            },
+            {
+              "name": "start",
+              "signature": "def startself -> None",
+              "line": 243,
+              "doc": ""
+            },
+            {
+              "name": "stop",
+              "signature": "def stopself -> None",
+              "line": 250,
+              "doc": ""
+            }
+          ]
+        }
+      ],
+      "errors": [],
+      "deprecations": [],
+      "required_modules": [],
+      "changes": [
+        {
+          "sha": "0068bbf2",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "T1: conceal mode with 36-hour retention, and a public /server/info",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def mask_address(address: str) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "class ConcealStore:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, backend: SQLBackend) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def set(self, key_id: str, enabled: bool) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def is_concealed(self, key_id: str) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def status(self, key_id: str) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def concealed_keys(self) -> list[str]:"
+            },
+            {
+              "kind": "added",
+              "text": "def mark_swept(self, key_id: str, when: float) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "class SweepResult:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_dict(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "class RetentionSweeper:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, backend: SQLBackend, conceal: ConcealStore, *, attachments: Any = None) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def sweep_key(self, key_id: str, *, now: float | None = None) -> SweepResult:"
+            },
+            {
+              "kind": "added",
+              "text": "def sweep(self, *, now: float | None = None) -> list[SweepResult]:"
+            },
+            {
+              "kind": "added",
+              "text": "def start(self) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def stop(self) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _run(self) -> None:"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "module": "hypernix.t1api.ratelimit",
       "source": "src/hypernix/t1api/ratelimit.py",
       "line_count": 419,
@@ -44207,13 +44964,27 @@
     {
       "module": "hypernix.t1api.routers",
       "source": "src/hypernix/t1api/routers/__init__.py",
-      "line_count": 134,
+      "line_count": 141,
       "summary": "t1api.routers \u2014 one module per resource group, matching the spec's 'PRIMARY ENDPOINT SET'.",
       "api": [],
       "errors": [],
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "0068bbf2",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "T1: conceal mode with 36-hour retention, and a public /server/info",
+          "api_changes": []
+        },
+        {
+          "sha": "462b479d",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "v2.1 (T2C) keys, sealed with Rotorvault",
+          "api_changes": []
+        },
         {
           "sha": "53a7eec3",
           "date": "2026-09-23",
@@ -44254,20 +45025,6 @@
           "date": "2026-09-16",
           "author": "Claude",
           "subject": "Fix the CI build break, and ship an IPA that can run a model",
-          "api_changes": []
-        },
-        {
-          "sha": "2324f0fa",
-          "date": "2026-09-15",
-          "author": "Mason",
-          "subject": "t1 v1.0.26.9.2.3: sign up for a key without already having one",
-          "api_changes": []
-        },
-        {
-          "sha": "3cd859b2",
-          "date": "2026-09-08",
-          "author": "Claude",
-          "subject": "0.72.4.dev7 \u2014 what training is doing, and the controls for it",
           "api_changes": []
         }
       ]
@@ -44554,7 +45311,7 @@
     {
       "module": "hypernix.t1api.routers.auth",
       "source": "src/hypernix/t1api/routers/auth.py",
-      "line_count": 140,
+      "line_count": 142,
       "summary": "",
       "api": [
         {
@@ -44568,21 +45325,21 @@
           "kind": "function",
           "name": "issue_token",
           "signature": "def issue_tokenbody: TokenRequest, svc: T1AuthService=Depends(get_auth_service), request_id: str=Depends(get_request_id) -> TokenResponse",
-          "line": 44,
+          "line": 46,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "rotate_own_key",
           "signature": "def rotate_own_keyrequest: Request, ctx: AuthContext=Depends(get_auth_context), svc: T1AuthService=Depends(get_auth_service), request_id: str=Depends(get_request_id) -> RotateResponse",
-          "line": 104,
+          "line": 106,
           "doc": "A caller may always rotate the key/token they authenticated with."
         },
         {
           "kind": "function",
           "name": "admin_rotate",
           "signature": "def admin_rotaterequest: Request, body: AdminRotateRequest, ctx: AuthContext=Depends(get_auth_context), svc: T1AuthService=Depends(get_auth_service), request_id: str=Depends(get_request_id) -> RotateResponse",
-          "line": 127,
+          "line": 129,
           "doc": ""
         }
       ],
@@ -44596,6 +45353,13 @@
         }
       ],
       "changes": [
+        {
+          "sha": "0068bbf2",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "T1: conceal mode with 36-hour retention, and a public /server/info",
+          "api_changes": []
+        },
         {
           "sha": "eab30655",
           "date": "2026-08-27",
@@ -47031,6 +47795,99 @@
       ]
     },
     {
+      "module": "hypernix.t1api.routers.privacy",
+      "source": "src/hypernix/t1api/routers/privacy.py",
+      "line_count": 87,
+      "summary": "``/privacy/*`` and ``/server/info`` (0.72.6).",
+      "api": [
+        {
+          "kind": "function",
+          "name": "conceal_status",
+          "signature": "def conceal_statusrequest: Request, ctx: AuthContext=Depends(get_auth_context), request_id: str=Depends(get_request_id) -> dict[str, Any]",
+          "line": 28,
+          "doc": ""
+        },
+        {
+          "kind": "function",
+          "name": "conceal_on",
+          "signature": "def conceal_onrequest: Request, ctx: AuthContext=Depends(get_auth_context), request_id: str=Depends(get_request_id) -> dict[str, Any]",
+          "line": 37,
+          "doc": "Conceal the calling key. Needs access level 3 or more."
+        },
+        {
+          "kind": "function",
+          "name": "conceal_off",
+          "signature": "def conceal_offrequest: Request, ctx: AuthContext=Depends(get_auth_context), request_id: str=Depends(get_request_id) -> dict[str, Any]",
+          "line": 59,
+          "doc": "Stop concealing. Nothing already deleted comes back."
+        },
+        {
+          "kind": "function",
+          "name": "server_info",
+          "signature": "def server_inforequest: Request, config=Depends(get_config), request_id: str=Depends(get_request_id) -> dict[str, Any]",
+          "line": 69,
+          "doc": "Who runs this server and what it offers. Public by design."
+        }
+      ],
+      "errors": [
+        "T1APIError"
+      ],
+      "deprecations": [],
+      "required_modules": [
+        {
+          "module": "fastapi",
+          "extra": "t1api",
+          "requirement": "fastapi>=0.110,<1"
+        }
+      ],
+      "changes": [
+        {
+          "sha": "0068bbf2",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "T1: conceal mode with 36-hour retention, and a public /server/info",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _conceal(request: Request):"
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/privacy/conceal\")"
+            },
+            {
+              "kind": "added",
+              "text": "def conceal_status("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/privacy/conceal\")"
+            },
+            {
+              "kind": "added",
+              "text": "def conceal_on("
+            },
+            {
+              "kind": "added",
+              "text": "@router.delete(\"/privacy/conceal\")"
+            },
+            {
+              "kind": "added",
+              "text": "def conceal_off("
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/server/info\")"
+            },
+            {
+              "kind": "added",
+              "text": "def server_info("
+            }
+          ]
+        }
+      ]
+    },
+    {
       "module": "hypernix.t1api.routers.runner",
       "source": "src/hypernix/t1api/routers/runner.py",
       "line_count": 260,
@@ -47433,6 +48290,120 @@
             {
               "kind": "added",
               "text": "def delete_server("
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "module": "hypernix.t1api.routers.t2c",
+      "source": "src/hypernix/t1api/routers/t2c.py",
+      "line_count": 122,
+      "summary": "``/auth/t2c/*`` \u2014 v2.1 (T2C) keys: the server's public key and devices (0.72.6).",
+      "api": [
+        {
+          "kind": "class",
+          "name": "T2CDeviceRequest",
+          "signature": "class T2CDeviceRequest",
+          "line": 32,
+          "doc": "",
+          "methods": []
+        },
+        {
+          "kind": "function",
+          "name": "public_key",
+          "signature": "def public_keysvc: T1AuthService=Depends(get_auth_service), request_id: str=Depends(get_request_id) -> dict[str, Any]",
+          "line": 52,
+          "doc": "The key a client seals for. Public by design; no credential needed."
+        },
+        {
+          "kind": "function",
+          "name": "register_device",
+          "signature": "def register_devicebody: T2CDeviceRequest, svc: T1AuthService=Depends(get_auth_service), request_id: str=Depends(get_request_id) -> dict[str, Any]",
+          "line": 83,
+          "doc": "Register a device for the key in the body. The key itself, not a token or a T2C key: the device is bound to exactly that key."
+        },
+        {
+          "kind": "function",
+          "name": "list_devices",
+          "signature": "def list_devicesctx: AuthContext=Depends(get_auth_context), svc: T1AuthService=Depends(get_auth_service), request_id: str=Depends(get_request_id) -> dict[str, Any]",
+          "line": 125,
+          "doc": ""
+        },
+        {
+          "kind": "function",
+          "name": "revoke_device",
+          "signature": "def revoke_devicedevice_id: str, ctx: AuthContext=Depends(get_auth_context), svc: T1AuthService=Depends(get_auth_service), request_id: str=Depends(get_request_id) -> dict[str, Any]",
+          "line": 135,
+          "doc": "Revoke one of the caller's devices; an administrator may revoke any."
+        }
+      ],
+      "errors": [
+        "T1APIError"
+      ],
+      "deprecations": [],
+      "required_modules": [
+        {
+          "module": "fastapi",
+          "extra": "t1api",
+          "requirement": "fastapi>=0.110,<1"
+        },
+        {
+          "module": "pydantic",
+          "extra": "t1api",
+          "requirement": "pydantic>=2,<3"
+        }
+      ],
+      "changes": [
+        {
+          "sha": "462b479d",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "v2.1 (T2C) keys, sealed with Rotorvault",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class T2CDeviceRequest(BaseModel):"
+            },
+            {
+              "kind": "added",
+              "text": "def _unavailable(exc: Exception) -> T1APIError:"
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/public-key\")"
+            },
+            {
+              "kind": "added",
+              "text": "def public_key("
+            },
+            {
+              "kind": "added",
+              "text": "def _t1_equivalent(key: str) -> tuple[str, int | None]:"
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/devices\")"
+            },
+            {
+              "kind": "added",
+              "text": "def register_device("
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/devices\")"
+            },
+            {
+              "kind": "added",
+              "text": "def list_devices("
+            },
+            {
+              "kind": "added",
+              "text": "@router.delete(\"/devices/{device_id}\")"
+            },
+            {
+              "kind": "added",
+              "text": "def revoke_device("
             }
           ]
         }
@@ -48291,7 +49262,7 @@
     {
       "module": "hypernix.t1api.schemas",
       "source": "src/hypernix/t1api/schemas.py",
-      "line_count": 1609,
+      "line_count": 1614,
       "summary": "t1api.schemas \u2014 Pydantic v2 request/response models for the T1 API.",
       "api": [
         {
@@ -48354,7 +49325,7 @@
           "kind": "class",
           "name": "TokenRequest",
           "signature": "class TokenRequest",
-          "line": 144,
+          "line": 149,
           "doc": "",
           "methods": []
         },
@@ -48362,7 +49333,7 @@
           "kind": "class",
           "name": "TokenResponse",
           "signature": "class TokenResponse",
-          "line": 152,
+          "line": 157,
           "doc": "",
           "methods": []
         },
@@ -48370,7 +49341,7 @@
           "kind": "class",
           "name": "RotateResponse",
           "signature": "class RotateResponse",
-          "line": 160,
+          "line": 165,
           "doc": "",
           "methods": []
         },
@@ -48378,7 +49349,7 @@
           "kind": "class",
           "name": "AdminRotateRequest",
           "signature": "class AdminRotateRequest",
-          "line": 169,
+          "line": 174,
           "doc": "",
           "methods": []
         },
@@ -48386,7 +49357,7 @@
           "kind": "class",
           "name": "ModelSummary",
           "signature": "class ModelSummary",
-          "line": 179,
+          "line": 184,
           "doc": "",
           "methods": []
         },
@@ -48394,7 +49365,7 @@
           "kind": "class",
           "name": "ModelDetail",
           "signature": "class ModelDetail",
-          "line": 200,
+          "line": 205,
           "doc": "",
           "methods": []
         },
@@ -48402,7 +49373,7 @@
           "kind": "class",
           "name": "ModelListResponse",
           "signature": "class ModelListResponse",
-          "line": 214,
+          "line": 219,
           "doc": "",
           "methods": []
         },
@@ -48410,7 +49381,7 @@
           "kind": "class",
           "name": "ModelDetailResponse",
           "signature": "class ModelDetailResponse",
-          "line": 220,
+          "line": 225,
           "doc": "",
           "methods": []
         },
@@ -48418,7 +49389,7 @@
           "kind": "class",
           "name": "ModelAvailabilityResponse",
           "signature": "class ModelAvailabilityResponse",
-          "line": 225,
+          "line": 230,
           "doc": "",
           "methods": []
         },
@@ -48426,7 +49397,7 @@
           "kind": "class",
           "name": "ModelUsageResponse",
           "signature": "class ModelUsageResponse",
-          "line": 233,
+          "line": 238,
           "doc": "",
           "methods": []
         },
@@ -48434,7 +49405,7 @@
           "kind": "class",
           "name": "UsageCurrentResponse",
           "signature": "class UsageCurrentResponse",
-          "line": 251,
+          "line": 256,
           "doc": "",
           "methods": []
         },
@@ -48442,7 +49413,7 @@
           "kind": "class",
           "name": "UsageRemainingResponse",
           "signature": "class UsageRemainingResponse",
-          "line": 260,
+          "line": 265,
           "doc": "",
           "methods": []
         },
@@ -48450,7 +49421,7 @@
           "kind": "class",
           "name": "ConfigResponse",
           "signature": "class ConfigResponse",
-          "line": 273,
+          "line": 278,
           "doc": "",
           "methods": []
         },
@@ -48458,7 +49429,7 @@
           "kind": "class",
           "name": "RouteRequest",
           "signature": "class RouteRequest",
-          "line": 283,
+          "line": 288,
           "doc": "",
           "methods": []
         },
@@ -48466,7 +49437,7 @@
           "kind": "class",
           "name": "RouteResponse",
           "signature": "class RouteResponse",
-          "line": 306,
+          "line": 311,
           "doc": "",
           "methods": []
         },
@@ -48474,7 +49445,7 @@
           "kind": "class",
           "name": "ServerRegisterRequest",
           "signature": "class ServerRegisterRequest",
-          "line": 323,
+          "line": 328,
           "doc": "",
           "methods": []
         },
@@ -48482,7 +49453,7 @@
           "kind": "class",
           "name": "ServerUpdateRequest",
           "signature": "class ServerUpdateRequest",
-          "line": 333,
+          "line": 338,
           "doc": "",
           "methods": []
         },
@@ -48490,7 +49461,7 @@
           "kind": "class",
           "name": "ServerItem",
           "signature": "class ServerItem",
-          "line": 341,
+          "line": 346,
           "doc": "",
           "methods": []
         },
@@ -48498,7 +49469,7 @@
           "kind": "class",
           "name": "ServerListResponse",
           "signature": "class ServerListResponse",
-          "line": 355,
+          "line": 360,
           "doc": "",
           "methods": []
         },
@@ -48506,7 +49477,7 @@
           "kind": "class",
           "name": "ServerDetailResponse",
           "signature": "class ServerDetailResponse",
-          "line": 361,
+          "line": 366,
           "doc": "",
           "methods": []
         },
@@ -48514,7 +49485,7 @@
           "kind": "class",
           "name": "ModuleCreateRequest",
           "signature": "class ModuleCreateRequest",
-          "line": 371,
+          "line": 376,
           "doc": "",
           "methods": []
         },
@@ -48522,7 +49493,7 @@
           "kind": "class",
           "name": "ModuleUpdateRequest",
           "signature": "class ModuleUpdateRequest",
-          "line": 377,
+          "line": 382,
           "doc": "",
           "methods": []
         },
@@ -48530,7 +49501,7 @@
           "kind": "class",
           "name": "ModuleUploadRemoteRequest",
           "signature": "class ModuleUploadRemoteRequest",
-          "line": 382,
+          "line": 387,
           "doc": "",
           "methods": []
         },
@@ -48538,7 +49509,7 @@
           "kind": "class",
           "name": "ModuleSyncRequest",
           "signature": "class ModuleSyncRequest",
-          "line": 387,
+          "line": 392,
           "doc": "",
           "methods": []
         },
@@ -48546,7 +49517,7 @@
           "kind": "class",
           "name": "ModuleItem",
           "signature": "class ModuleItem",
-          "line": 391,
+          "line": 396,
           "doc": "",
           "methods": []
         },
@@ -48554,7 +49525,7 @@
           "kind": "class",
           "name": "ModuleListResponse",
           "signature": "class ModuleListResponse",
-          "line": 407,
+          "line": 412,
           "doc": "",
           "methods": []
         },
@@ -48562,7 +49533,7 @@
           "kind": "class",
           "name": "ModuleDetailResponse",
           "signature": "class ModuleDetailResponse",
-          "line": 413,
+          "line": 418,
           "doc": "",
           "methods": []
         },
@@ -48570,7 +49541,7 @@
           "kind": "class",
           "name": "ModuleSyncResponse",
           "signature": "class ModuleSyncResponse",
-          "line": 418,
+          "line": 423,
           "doc": "",
           "methods": []
         },
@@ -48578,7 +49549,7 @@
           "kind": "class",
           "name": "JobCreateRequest",
           "signature": "class JobCreateRequest",
-          "line": 429,
+          "line": 434,
           "doc": "",
           "methods": []
         },
@@ -48586,7 +49557,7 @@
           "kind": "class",
           "name": "JobItem",
           "signature": "class JobItem",
-          "line": 434,
+          "line": 439,
           "doc": "",
           "methods": []
         },
@@ -48594,7 +49565,7 @@
           "kind": "class",
           "name": "JobListResponse",
           "signature": "class JobListResponse",
-          "line": 447,
+          "line": 452,
           "doc": "",
           "methods": []
         },
@@ -48602,7 +49573,7 @@
           "kind": "class",
           "name": "JobDetailResponse",
           "signature": "class JobDetailResponse",
-          "line": 453,
+          "line": 458,
           "doc": "",
           "methods": []
         },
@@ -48610,7 +49581,7 @@
           "kind": "class",
           "name": "EventItem",
           "signature": "class EventItem",
-          "line": 463,
+          "line": 468,
           "doc": "",
           "methods": []
         },
@@ -48618,7 +49589,7 @@
           "kind": "class",
           "name": "EventListResponse",
           "signature": "class EventListResponse",
-          "line": 471,
+          "line": 476,
           "doc": "",
           "methods": []
         },
@@ -48626,7 +49597,7 @@
           "kind": "class",
           "name": "BillingBalanceResponse",
           "signature": "class BillingBalanceResponse",
-          "line": 482,
+          "line": 487,
           "doc": "",
           "methods": []
         },
@@ -48634,7 +49605,7 @@
           "kind": "class",
           "name": "TransactionItem",
           "signature": "class TransactionItem",
-          "line": 489,
+          "line": 494,
           "doc": "",
           "methods": []
         },
@@ -48642,7 +49613,7 @@
           "kind": "class",
           "name": "TransactionListResponse",
           "signature": "class TransactionListResponse",
-          "line": 501,
+          "line": 506,
           "doc": "",
           "methods": []
         },
@@ -48650,7 +49621,7 @@
           "kind": "class",
           "name": "PaymentTokenMintRequest",
           "signature": "class PaymentTokenMintRequest",
-          "line": 507,
+          "line": 512,
           "doc": "",
           "methods": []
         },
@@ -48658,7 +49629,7 @@
           "kind": "class",
           "name": "PaymentTokenMintResponse",
           "signature": "class PaymentTokenMintResponse",
-          "line": 513,
+          "line": 518,
           "doc": "",
           "methods": []
         },
@@ -48666,7 +49637,7 @@
           "kind": "class",
           "name": "RedeemRequest",
           "signature": "class RedeemRequest",
-          "line": 521,
+          "line": 526,
           "doc": "",
           "methods": []
         },
@@ -48674,7 +49645,7 @@
           "kind": "class",
           "name": "AddBalanceRequest",
           "signature": "class AddBalanceRequest",
-          "line": 529,
+          "line": 534,
           "doc": "",
           "methods": []
         },
@@ -48682,7 +49653,7 @@
           "kind": "class",
           "name": "UsageHistoryItem",
           "signature": "class UsageHistoryItem",
-          "line": 624,
+          "line": 629,
           "doc": "",
           "methods": []
         },
@@ -48690,7 +49661,7 @@
           "kind": "class",
           "name": "UsageHistoryResponse",
           "signature": "class UsageHistoryResponse",
-          "line": 639,
+          "line": 644,
           "doc": "",
           "methods": []
         },
@@ -48698,7 +49669,7 @@
           "kind": "class",
           "name": "UsageAggregateRow",
           "signature": "class UsageAggregateRow",
-          "line": 649,
+          "line": 654,
           "doc": "",
           "methods": []
         },
@@ -48706,7 +49677,7 @@
           "kind": "class",
           "name": "UsageAggregateResponse",
           "signature": "class UsageAggregateResponse",
-          "line": 658,
+          "line": 663,
           "doc": "",
           "methods": []
         },
@@ -48714,7 +49685,7 @@
           "kind": "class",
           "name": "CostLineItem",
           "signature": "class CostLineItem",
-          "line": 667,
+          "line": 672,
           "doc": "",
           "methods": []
         },
@@ -48722,7 +49693,7 @@
           "kind": "class",
           "name": "ForecastItem",
           "signature": "class ForecastItem",
-          "line": 680,
+          "line": 685,
           "doc": "",
           "methods": []
         },
@@ -48730,7 +49701,7 @@
           "kind": "class",
           "name": "UsageCostResponse",
           "signature": "class UsageCostResponse",
-          "line": 691,
+          "line": 696,
           "doc": "",
           "methods": []
         },
@@ -48738,7 +49709,7 @@
           "kind": "class",
           "name": "UsageEstimateRequest",
           "signature": "class UsageEstimateRequest",
-          "line": 713,
+          "line": 718,
           "doc": "",
           "methods": []
         },
@@ -48746,7 +49717,7 @@
           "kind": "class",
           "name": "UsageReportRequest",
           "signature": "class UsageReportRequest",
-          "line": 723,
+          "line": 728,
           "doc": "Tokens a client actually consumed running a model the server routed it to.",
           "methods": []
         },
@@ -48754,7 +49725,7 @@
           "kind": "class",
           "name": "UsageReportResponse",
           "signature": "class UsageReportResponse",
-          "line": 741,
+          "line": 746,
           "doc": "",
           "methods": []
         },
@@ -48762,7 +49733,7 @@
           "kind": "class",
           "name": "UsageEstimateResponse",
           "signature": "class UsageEstimateResponse",
-          "line": 755,
+          "line": 760,
           "doc": "",
           "methods": []
         },
@@ -48770,7 +49741,7 @@
           "kind": "class",
           "name": "KeyAssignmentItem",
           "signature": "class KeyAssignmentItem",
-          "line": 778,
+          "line": 783,
           "doc": "",
           "methods": []
         },
@@ -48778,7 +49749,7 @@
           "kind": "class",
           "name": "KeyItem",
           "signature": "class KeyItem",
-          "line": 789,
+          "line": 794,
           "doc": "Credential-free view of a key. No endpoint ever returns the raw key string for an existing key \u2014 only key rotation, which mints a new one, hands a secret back.",
           "methods": []
         },
@@ -48786,7 +49757,7 @@
           "kind": "class",
           "name": "KeyListResponse",
           "signature": "class KeyListResponse",
-          "line": 810,
+          "line": 815,
           "doc": "",
           "methods": []
         },
@@ -48794,7 +49765,7 @@
           "kind": "class",
           "name": "KeyImportRequest",
           "signature": "class KeyImportRequest",
-          "line": 820,
+          "line": 825,
           "doc": "",
           "methods": []
         },
@@ -48802,7 +49773,7 @@
           "kind": "class",
           "name": "KeyImportResponse",
           "signature": "class KeyImportResponse",
-          "line": 828,
+          "line": 833,
           "doc": "",
           "methods": []
         },
@@ -48810,7 +49781,7 @@
           "kind": "class",
           "name": "KeyAssignRequest",
           "signature": "class KeyAssignRequest",
-          "line": 836,
+          "line": 841,
           "doc": "",
           "methods": []
         },
@@ -48818,7 +49789,7 @@
           "kind": "class",
           "name": "KeyAssignResponse",
           "signature": "class KeyAssignResponse",
-          "line": 850,
+          "line": 855,
           "doc": "",
           "methods": []
         },
@@ -48826,7 +49797,7 @@
           "kind": "class",
           "name": "AuditItem",
           "signature": "class AuditItem",
-          "line": 860,
+          "line": 865,
           "doc": "",
           "methods": []
         },
@@ -48834,7 +49805,7 @@
           "kind": "class",
           "name": "AuditListResponse",
           "signature": "class AuditListResponse",
-          "line": 875,
+          "line": 880,
           "doc": "",
           "methods": []
         },
@@ -48842,7 +49813,7 @@
           "kind": "class",
           "name": "NetworkPolicyEntryItem",
           "signature": "class NetworkPolicyEntryItem",
-          "line": 889,
+          "line": 894,
           "doc": "",
           "methods": []
         },
@@ -48850,7 +49821,7 @@
           "kind": "class",
           "name": "NetworkPolicyResponse",
           "signature": "class NetworkPolicyResponse",
-          "line": 900,
+          "line": 905,
           "doc": "",
           "methods": []
         },
@@ -48858,7 +49829,7 @@
           "kind": "class",
           "name": "NetworkPolicyEntryRequest",
           "signature": "class NetworkPolicyEntryRequest",
-          "line": 908,
+          "line": 913,
           "doc": "",
           "methods": []
         },
@@ -48866,7 +49837,7 @@
           "kind": "class",
           "name": "ForcedLimitItem",
           "signature": "class ForcedLimitItem",
-          "line": 916,
+          "line": 921,
           "doc": "",
           "methods": []
         },
@@ -48874,7 +49845,7 @@
           "kind": "class",
           "name": "ForcedLimitRequest",
           "signature": "class ForcedLimitRequest",
-          "line": 926,
+          "line": 931,
           "doc": "",
           "methods": []
         },
@@ -48882,7 +49853,7 @@
           "kind": "class",
           "name": "ForcedLimitListResponse",
           "signature": "class ForcedLimitListResponse",
-          "line": 935,
+          "line": 940,
           "doc": "",
           "methods": []
         },
@@ -48890,7 +49861,7 @@
           "kind": "class",
           "name": "ForcedLimitResponse",
           "signature": "class ForcedLimitResponse",
-          "line": 941,
+          "line": 946,
           "doc": "",
           "methods": []
         },
@@ -48898,7 +49869,7 @@
           "kind": "class",
           "name": "RateLimitStatusResponse",
           "signature": "class RateLimitStatusResponse",
-          "line": 946,
+          "line": 951,
           "doc": "",
           "methods": []
         },
@@ -48906,7 +49877,7 @@
           "kind": "class",
           "name": "ModuleDeployRequest",
           "signature": "class ModuleDeployRequest",
-          "line": 957,
+          "line": 962,
           "doc": "",
           "methods": []
         },
@@ -48914,7 +49885,7 @@
           "kind": "class",
           "name": "ModuleDeployResponse",
           "signature": "class ModuleDeployResponse",
-          "line": 963,
+          "line": 968,
           "doc": "",
           "methods": []
         },
@@ -48922,7 +49893,7 @@
           "kind": "class",
           "name": "ModuleFetchResponse",
           "signature": "class ModuleFetchResponse",
-          "line": 970,
+          "line": 975,
           "doc": "",
           "methods": []
         },
@@ -48930,7 +49901,7 @@
           "kind": "class",
           "name": "ModuleReceiveResponse",
           "signature": "class ModuleReceiveResponse",
-          "line": 976,
+          "line": 981,
           "doc": "Response to an inbound server-to-server push. The pusher compares ``checksum`` against what it sent \u2014 a mismatch means the bytes changed in flight, and it fails the deployment rather than trusting the 200.",
           "methods": []
         },
@@ -48938,7 +49909,7 @@
           "kind": "class",
           "name": "GenericOkResponse",
           "signature": "class GenericOkResponse",
-          "line": 988,
+          "line": 993,
           "doc": "",
           "methods": []
         },
@@ -48946,7 +49917,7 @@
           "kind": "class",
           "name": "BridgeModel",
           "signature": "class BridgeModel",
-          "line": 999,
+          "line": 1004,
           "doc": "",
           "methods": []
         },
@@ -48954,7 +49925,7 @@
           "kind": "class",
           "name": "BridgeProbe",
           "signature": "class BridgeProbe",
-          "line": 1012,
+          "line": 1017,
           "doc": "",
           "methods": []
         },
@@ -48962,7 +49933,7 @@
           "kind": "class",
           "name": "BridgeStatusResponse",
           "signature": "class BridgeStatusResponse",
-          "line": 1026,
+          "line": 1031,
           "doc": "",
           "methods": []
         },
@@ -48970,7 +49941,7 @@
           "kind": "class",
           "name": "BridgeModelsResponse",
           "signature": "class BridgeModelsResponse",
-          "line": 1034,
+          "line": 1039,
           "doc": "",
           "methods": []
         },
@@ -48978,7 +49949,7 @@
           "kind": "class",
           "name": "BridgeChatMessage",
           "signature": "class BridgeChatMessage",
-          "line": 1042,
+          "line": 1047,
           "doc": "",
           "methods": []
         },
@@ -48986,7 +49957,7 @@
           "kind": "class",
           "name": "BridgeChatRequest",
           "signature": "class BridgeChatRequest",
-          "line": 1051,
+          "line": 1056,
           "doc": "",
           "methods": []
         },
@@ -48994,7 +49965,7 @@
           "kind": "class",
           "name": "BridgeChatResponse",
           "signature": "class BridgeChatResponse",
-          "line": 1062,
+          "line": 1067,
           "doc": "",
           "methods": []
         },
@@ -49002,7 +49973,7 @@
           "kind": "class",
           "name": "HyperLinkEndpoint",
           "signature": "class HyperLinkEndpoint",
-          "line": 1078,
+          "line": 1083,
           "doc": "",
           "methods": []
         },
@@ -49010,7 +49981,7 @@
           "kind": "class",
           "name": "HyperLinkEndpointsResponse",
           "signature": "class HyperLinkEndpointsResponse",
-          "line": 1085,
+          "line": 1090,
           "doc": "",
           "methods": []
         },
@@ -49018,7 +49989,7 @@
           "kind": "class",
           "name": "HyperLinkPeer",
           "signature": "class HyperLinkPeer",
-          "line": 1107,
+          "line": 1112,
           "doc": "One machine on the tailnet. A candidate, never a trusted server.",
           "methods": []
         },
@@ -49026,7 +49997,7 @@
           "kind": "class",
           "name": "HyperLinkPeersResponse",
           "signature": "class HyperLinkPeersResponse",
-          "line": 1128,
+          "line": 1133,
           "doc": "",
           "methods": []
         },
@@ -49034,7 +50005,7 @@
           "kind": "class",
           "name": "PairingCreateRequest",
           "signature": "class PairingCreateRequest",
-          "line": 1137,
+          "line": 1142,
           "doc": "",
           "methods": []
         },
@@ -49042,7 +50013,7 @@
           "kind": "class",
           "name": "PairingCodeResponse",
           "signature": "class PairingCodeResponse",
-          "line": 1143,
+          "line": 1148,
           "doc": "",
           "methods": []
         },
@@ -49050,7 +50021,7 @@
           "kind": "class",
           "name": "PairingRedeemRequest",
           "signature": "class PairingRedeemRequest",
-          "line": 1154,
+          "line": 1159,
           "doc": "",
           "methods": []
         },
@@ -49058,7 +50029,7 @@
           "kind": "class",
           "name": "PairingRedeemResponse",
           "signature": "class PairingRedeemResponse",
-          "line": 1161,
+          "line": 1166,
           "doc": "The one and only time the device token is transmitted.",
           "methods": []
         },
@@ -49066,7 +50037,7 @@
           "kind": "class",
           "name": "DeviceSummary",
           "signature": "class DeviceSummary",
-          "line": 1173,
+          "line": 1178,
           "doc": "",
           "methods": []
         },
@@ -49074,7 +50045,7 @@
           "kind": "class",
           "name": "DeviceListResponse",
           "signature": "class DeviceListResponse",
-          "line": 1187,
+          "line": 1192,
           "doc": "",
           "methods": []
         },
@@ -49082,7 +50053,7 @@
           "kind": "class",
           "name": "DeviceResponse",
           "signature": "class DeviceResponse",
-          "line": 1193,
+          "line": 1198,
           "doc": "",
           "methods": []
         },
@@ -49090,7 +50061,7 @@
           "kind": "class",
           "name": "SessionCreateRequest",
           "signature": "class SessionCreateRequest",
-          "line": 1198,
+          "line": 1203,
           "doc": "",
           "methods": []
         },
@@ -49098,7 +50069,7 @@
           "kind": "class",
           "name": "SessionUpdateRequest",
           "signature": "class SessionUpdateRequest",
-          "line": 1205,
+          "line": 1210,
           "doc": "",
           "methods": []
         },
@@ -49106,7 +50077,7 @@
           "kind": "class",
           "name": "SessionSummary",
           "signature": "class SessionSummary",
-          "line": 1213,
+          "line": 1218,
           "doc": "",
           "methods": []
         },
@@ -49114,7 +50085,7 @@
           "kind": "class",
           "name": "SessionListResponse",
           "signature": "class SessionListResponse",
-          "line": 1233,
+          "line": 1238,
           "doc": "",
           "methods": []
         },
@@ -49122,7 +50093,7 @@
           "kind": "class",
           "name": "SessionResponse",
           "signature": "class SessionResponse",
-          "line": 1239,
+          "line": 1244,
           "doc": "",
           "methods": []
         },
@@ -49130,7 +50101,7 @@
           "kind": "class",
           "name": "MessageSummary",
           "signature": "class MessageSummary",
-          "line": 1244,
+          "line": 1249,
           "doc": "",
           "methods": []
         },
@@ -49138,7 +50109,7 @@
           "kind": "class",
           "name": "MessageListResponse",
           "signature": "class MessageListResponse",
-          "line": 1258,
+          "line": 1263,
           "doc": "",
           "methods": []
         },
@@ -49146,7 +50117,7 @@
           "kind": "class",
           "name": "MessageEditRequest",
           "signature": "class MessageEditRequest",
-          "line": 1265,
+          "line": 1270,
           "doc": "",
           "methods": []
         },
@@ -49154,7 +50125,7 @@
           "kind": "class",
           "name": "MessageEditResponse",
           "signature": "class MessageEditResponse",
-          "line": 1275,
+          "line": 1280,
           "doc": "",
           "methods": []
         },
@@ -49162,7 +50133,7 @@
           "kind": "class",
           "name": "HyperLinkChatRequest",
           "signature": "class HyperLinkChatRequest",
-          "line": 1284,
+          "line": 1289,
           "doc": "",
           "methods": []
         },
@@ -49170,7 +50141,7 @@
           "kind": "class",
           "name": "HyperLinkChatResponse",
           "signature": "class HyperLinkChatResponse",
-          "line": 1300,
+          "line": 1305,
           "doc": "",
           "methods": []
         },
@@ -49178,7 +50149,7 @@
           "kind": "class",
           "name": "AttachmentSummary",
           "signature": "class AttachmentSummary",
-          "line": 1309,
+          "line": 1314,
           "doc": "",
           "methods": []
         },
@@ -49186,7 +50157,7 @@
           "kind": "class",
           "name": "AttachmentResponse",
           "signature": "class AttachmentResponse",
-          "line": 1324,
+          "line": 1329,
           "doc": "",
           "methods": []
         },
@@ -49194,7 +50165,7 @@
           "kind": "class",
           "name": "AttachmentListResponse",
           "signature": "class AttachmentListResponse",
-          "line": 1329,
+          "line": 1334,
           "doc": "",
           "methods": []
         },
@@ -49202,7 +50173,7 @@
           "kind": "class",
           "name": "HFResolveRequest",
           "signature": "class HFResolveRequest",
-          "line": 1336,
+          "line": 1341,
           "doc": "Either link, or both. That is the whole point of the endpoint.",
           "methods": []
         },
@@ -49210,7 +50181,7 @@
           "kind": "class",
           "name": "HFFile",
           "signature": "class HFFile",
-          "line": 1346,
+          "line": 1351,
           "doc": "",
           "methods": []
         },
@@ -49218,7 +50189,7 @@
           "kind": "class",
           "name": "HFResolveResponse",
           "signature": "class HFResolveResponse",
-          "line": 1356,
+          "line": 1361,
           "doc": "",
           "methods": []
         },
@@ -49226,7 +50197,7 @@
           "kind": "class",
           "name": "AuthUndoResponse",
           "signature": "class AuthUndoResponse",
-          "line": 1382,
+          "line": 1387,
           "doc": "",
           "methods": []
         },
@@ -49234,7 +50205,7 @@
           "kind": "class",
           "name": "AuthHistoryResponse",
           "signature": "class AuthHistoryResponse",
-          "line": 1390,
+          "line": 1395,
           "doc": "",
           "methods": []
         },
@@ -49242,7 +50213,7 @@
           "kind": "class",
           "name": "BackupSummary",
           "signature": "class BackupSummary",
-          "line": 1400,
+          "line": 1405,
           "doc": "",
           "methods": []
         },
@@ -49250,7 +50221,7 @@
           "kind": "class",
           "name": "BackupListResponse",
           "signature": "class BackupListResponse",
-          "line": 1416,
+          "line": 1421,
           "doc": "",
           "methods": []
         },
@@ -49258,7 +50229,7 @@
           "kind": "class",
           "name": "BackupCreateRequest",
           "signature": "class BackupCreateRequest",
-          "line": 1423,
+          "line": 1428,
           "doc": "",
           "methods": []
         },
@@ -49266,7 +50237,7 @@
           "kind": "class",
           "name": "BackupRestoreRequest",
           "signature": "class BackupRestoreRequest",
-          "line": 1427,
+          "line": 1432,
           "doc": "",
           "methods": []
         },
@@ -49274,7 +50245,7 @@
           "kind": "class",
           "name": "BackupRestoreResponse",
           "signature": "class BackupRestoreResponse",
-          "line": 1435,
+          "line": 1440,
           "doc": "",
           "methods": []
         },
@@ -49282,7 +50253,7 @@
           "kind": "class",
           "name": "HFDownloadRequest",
           "signature": "class HFDownloadRequest",
-          "line": 1451,
+          "line": 1456,
           "doc": "Either a ``repo_id``, or links to resolve into one.",
           "methods": []
         },
@@ -49290,7 +50261,7 @@
           "kind": "class",
           "name": "HFDownloadResponse",
           "signature": "class HFDownloadResponse",
-          "line": 1463,
+          "line": 1468,
           "doc": "",
           "methods": []
         },
@@ -49298,7 +50269,7 @@
           "kind": "class",
           "name": "DownloadedModelsResponse",
           "signature": "class DownloadedModelsResponse",
-          "line": 1472,
+          "line": 1477,
           "doc": "",
           "methods": []
         },
@@ -49306,7 +50277,7 @@
           "kind": "class",
           "name": "RunnerLoadRequest",
           "signature": "class RunnerLoadRequest",
-          "line": 1479,
+          "line": 1484,
           "doc": "",
           "methods": []
         },
@@ -49314,7 +50285,7 @@
           "kind": "class",
           "name": "RunnerStatusResponse",
           "signature": "class RunnerStatusResponse",
-          "line": 1492,
+          "line": 1497,
           "doc": "",
           "methods": []
         },
@@ -49322,7 +50293,7 @@
           "kind": "class",
           "name": "RunnerPlanResponse",
           "signature": "class RunnerPlanResponse",
-          "line": 1503,
+          "line": 1508,
           "doc": "",
           "methods": []
         },
@@ -49330,7 +50301,7 @@
           "kind": "class",
           "name": "NoodleRunRequest",
           "signature": "class NoodleRunRequest",
-          "line": 1511,
+          "line": 1516,
           "doc": "",
           "methods": []
         },
@@ -49338,7 +50309,7 @@
           "kind": "class",
           "name": "NoodleToolsResponse",
           "signature": "class NoodleToolsResponse",
-          "line": 1516,
+          "line": 1521,
           "doc": "",
           "methods": []
         },
@@ -49346,7 +50317,7 @@
           "kind": "class",
           "name": "NoodleWorkspaceResponse",
           "signature": "class NoodleWorkspaceResponse",
-          "line": 1529,
+          "line": 1534,
           "doc": "",
           "methods": []
         },
@@ -49354,7 +50325,7 @@
           "kind": "class",
           "name": "CompactRequest",
           "signature": "class CompactRequest",
-          "line": 1537,
+          "line": 1542,
           "doc": "",
           "methods": []
         },
@@ -49362,7 +50333,7 @@
           "kind": "class",
           "name": "CompactResponse",
           "signature": "class CompactResponse",
-          "line": 1548,
+          "line": 1553,
           "doc": "",
           "methods": []
         },
@@ -49370,7 +50341,7 @@
           "kind": "class",
           "name": "MemoryCreateRequest",
           "signature": "class MemoryCreateRequest",
-          "line": 1565,
+          "line": 1570,
           "doc": "",
           "methods": []
         },
@@ -49378,7 +50349,7 @@
           "kind": "class",
           "name": "MemoryUpdateRequest",
           "signature": "class MemoryUpdateRequest",
-          "line": 1578,
+          "line": 1583,
           "doc": "",
           "methods": []
         },
@@ -49386,7 +50357,7 @@
           "kind": "class",
           "name": "MemoryResponse",
           "signature": "class MemoryResponse",
-          "line": 1586,
+          "line": 1591,
           "doc": "",
           "methods": []
         },
@@ -49394,7 +50365,7 @@
           "kind": "class",
           "name": "MemoryListResponse",
           "signature": "class MemoryListResponse",
-          "line": 1591,
+          "line": 1596,
           "doc": "",
           "methods": []
         },
@@ -49402,7 +50373,7 @@
           "kind": "class",
           "name": "HardwareResponse",
           "signature": "class HardwareResponse",
-          "line": 1601,
+          "line": 1606,
           "doc": "One sample of what the machine is doing.",
           "methods": []
         },
@@ -49410,7 +50381,7 @@
           "kind": "class",
           "name": "UptimeResponse",
           "signature": "class UptimeResponse",
-          "line": 1623,
+          "line": 1628,
           "doc": "How long the server and the machine have been up.",
           "methods": []
         },
@@ -49418,7 +50389,7 @@
           "kind": "class",
           "name": "GenerationStopResponse",
           "signature": "class GenerationStopResponse",
-          "line": 1639,
+          "line": 1644,
           "doc": "What Stop actually stopped. An empty list is a success.",
           "methods": []
         },
@@ -49426,7 +50397,7 @@
           "kind": "class",
           "name": "GenerationListResponse",
           "signature": "class GenerationListResponse",
-          "line": 1647,
+          "line": 1652,
           "doc": "",
           "methods": []
         },
@@ -49434,7 +50405,7 @@
           "kind": "class",
           "name": "BackendsResponse",
           "signature": "class BackendsResponse",
-          "line": 1653,
+          "line": 1658,
           "doc": "Every thing that could answer a message, and whether it can now.",
           "methods": []
         },
@@ -49442,7 +50413,7 @@
           "kind": "class",
           "name": "PreferencesRequest",
           "signature": "class PreferencesRequest",
-          "line": 1667,
+          "line": 1672,
           "doc": "A partial update. Every field optional, and that is the point.",
           "methods": []
         },
@@ -49450,7 +50421,7 @@
           "kind": "class",
           "name": "PreferencesResponse",
           "signature": "class PreferencesResponse",
-          "line": 1690,
+          "line": 1695,
           "doc": "",
           "methods": []
         },
@@ -49458,7 +50429,7 @@
           "kind": "class",
           "name": "UpgradeResponse",
           "signature": "class UpgradeResponse",
-          "line": 1705,
+          "line": 1710,
           "doc": "What this server is running, and the commands to change it.",
           "methods": []
         },
@@ -49466,7 +50437,7 @@
           "kind": "class",
           "name": "ModelCatalogueResponse",
           "signature": "class ModelCatalogueResponse",
-          "line": 1720,
+          "line": 1725,
           "doc": "Every model this server can offer, from every source it has.",
           "methods": []
         },
@@ -49474,7 +50445,7 @@
           "kind": "class",
           "name": "InferenceMessage",
           "signature": "class InferenceMessage",
-          "line": 1748,
+          "line": 1753,
           "doc": "",
           "methods": []
         },
@@ -49482,7 +50453,7 @@
           "kind": "class",
           "name": "InferenceChatRequest",
           "signature": "class InferenceChatRequest",
-          "line": 1753,
+          "line": 1758,
           "doc": "",
           "methods": []
         },
@@ -49490,7 +50461,7 @@
           "kind": "class",
           "name": "InferenceCompletionRequest",
           "signature": "class InferenceCompletionRequest",
-          "line": 1766,
+          "line": 1771,
           "doc": "",
           "methods": []
         },
@@ -49498,7 +50469,7 @@
           "kind": "class",
           "name": "InferenceResponse",
           "signature": "class InferenceResponse",
-          "line": 1776,
+          "line": 1781,
           "doc": "",
           "methods": []
         },
@@ -49506,7 +50477,7 @@
           "kind": "class",
           "name": "InferenceEmbeddingsRequest",
           "signature": "class InferenceEmbeddingsRequest",
-          "line": 1794,
+          "line": 1799,
           "doc": "",
           "methods": []
         },
@@ -49514,7 +50485,7 @@
           "kind": "class",
           "name": "InferenceEmbeddingsResponse",
           "signature": "class InferenceEmbeddingsResponse",
-          "line": 1799,
+          "line": 1804,
           "doc": "",
           "methods": []
         },
@@ -49522,7 +50493,7 @@
           "kind": "class",
           "name": "InferenceTokenCountRequest",
           "signature": "class InferenceTokenCountRequest",
-          "line": 1808,
+          "line": 1813,
           "doc": "",
           "methods": []
         },
@@ -49530,7 +50501,7 @@
           "kind": "class",
           "name": "InferenceTokenCountResponse",
           "signature": "class InferenceTokenCountResponse",
-          "line": 1816,
+          "line": 1821,
           "doc": "",
           "methods": []
         },
@@ -49538,7 +50509,7 @@
           "kind": "class",
           "name": "InferenceBackend",
           "signature": "class InferenceBackend",
-          "line": 1829,
+          "line": 1834,
           "doc": "",
           "methods": []
         },
@@ -49546,7 +50517,7 @@
           "kind": "class",
           "name": "InferenceBackendsResponse",
           "signature": "class InferenceBackendsResponse",
-          "line": 1837,
+          "line": 1842,
           "doc": "",
           "methods": []
         },
@@ -49554,7 +50525,7 @@
           "kind": "class",
           "name": "TrainingRunItem",
           "signature": "class TrainingRunItem",
-          "line": 1848,
+          "line": 1853,
           "doc": "One run, as ``training.monitor`` reconciled it.",
           "methods": []
         },
@@ -49562,7 +50533,7 @@
           "kind": "class",
           "name": "TrainingRunListResponse",
           "signature": "class TrainingRunListResponse",
-          "line": 1879,
+          "line": 1884,
           "doc": "",
           "methods": []
         },
@@ -49570,7 +50541,7 @@
           "kind": "class",
           "name": "TrainingRunResponse",
           "signature": "class TrainingRunResponse",
-          "line": 1887,
+          "line": 1892,
           "doc": "",
           "methods": []
         },
@@ -49578,7 +50549,7 @@
           "kind": "class",
           "name": "TrainingLogResponse",
           "signature": "class TrainingLogResponse",
-          "line": 1892,
+          "line": 1897,
           "doc": "",
           "methods": []
         },
@@ -49586,7 +50557,7 @@
           "kind": "class",
           "name": "TrainingCheckpointItem",
           "signature": "class TrainingCheckpointItem",
-          "line": 1904,
+          "line": 1909,
           "doc": "",
           "methods": []
         },
@@ -49594,7 +50565,7 @@
           "kind": "class",
           "name": "TrainingCheckpointListResponse",
           "signature": "class TrainingCheckpointListResponse",
-          "line": 1911,
+          "line": 1916,
           "doc": "",
           "methods": []
         },
@@ -49602,7 +50573,7 @@
           "kind": "class",
           "name": "TrainingResourcesResponse",
           "signature": "class TrainingResourcesResponse",
-          "line": 1918,
+          "line": 1923,
           "doc": "",
           "methods": []
         },
@@ -49610,7 +50581,7 @@
           "kind": "class",
           "name": "TrainingControlResponse",
           "signature": "class TrainingControlResponse",
-          "line": 1927,
+          "line": 1932,
           "doc": "",
           "methods": []
         },
@@ -49618,7 +50589,7 @@
           "kind": "class",
           "name": "SyncChange",
           "signature": "class SyncChange",
-          "line": 1939,
+          "line": 1944,
           "doc": "",
           "methods": []
         },
@@ -49626,7 +50597,7 @@
           "kind": "class",
           "name": "SyncPageResponse",
           "signature": "class SyncPageResponse",
-          "line": 1950,
+          "line": 1955,
           "doc": "",
           "methods": []
         },
@@ -49634,7 +50605,7 @@
           "kind": "class",
           "name": "SyncClaimRequest",
           "signature": "class SyncClaimRequest",
-          "line": 1962,
+          "line": 1967,
           "doc": "",
           "methods": []
         },
@@ -49642,7 +50613,7 @@
           "kind": "class",
           "name": "SyncClaimResponse",
           "signature": "class SyncClaimResponse",
-          "line": 1966,
+          "line": 1971,
           "doc": "",
           "methods": []
         },
@@ -49650,7 +50621,7 @@
           "kind": "class",
           "name": "PushRegisterRequest",
           "signature": "class PushRegisterRequest",
-          "line": 1976,
+          "line": 1981,
           "doc": "",
           "methods": []
         },
@@ -49658,7 +50629,7 @@
           "kind": "class",
           "name": "PushRegistrationSummary",
           "signature": "class PushRegistrationSummary",
-          "line": 1986,
+          "line": 1991,
           "doc": "",
           "methods": []
         },
@@ -49666,7 +50637,7 @@
           "kind": "class",
           "name": "PushRegistrationResponse",
           "signature": "class PushRegistrationResponse",
-          "line": 2001,
+          "line": 2006,
           "doc": "",
           "methods": []
         },
@@ -49674,7 +50645,7 @@
           "kind": "class",
           "name": "PushRegistrationListResponse",
           "signature": "class PushRegistrationListResponse",
-          "line": 2006,
+          "line": 2011,
           "doc": "",
           "methods": []
         },
@@ -49682,7 +50653,7 @@
           "kind": "class",
           "name": "PushEventsRequest",
           "signature": "class PushEventsRequest",
-          "line": 2013,
+          "line": 2018,
           "doc": "",
           "methods": []
         },
@@ -49690,7 +50661,7 @@
           "kind": "class",
           "name": "SearchSnippet",
           "signature": "class SearchSnippet",
-          "line": 2017,
+          "line": 2022,
           "doc": "",
           "methods": []
         },
@@ -49698,7 +50669,7 @@
           "kind": "class",
           "name": "SearchHit",
           "signature": "class SearchHit",
-          "line": 2025,
+          "line": 2030,
           "doc": "",
           "methods": []
         },
@@ -49706,7 +50677,7 @@
           "kind": "class",
           "name": "SearchResponse",
           "signature": "class SearchResponse",
-          "line": 2037,
+          "line": 2042,
           "doc": "",
           "methods": []
         }
@@ -49721,6 +50692,13 @@
         }
       ],
       "changes": [
+        {
+          "sha": "0068bbf2",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "T1: conceal mode with 36-hour retention, and a public /server/info",
+          "api_changes": []
+        },
         {
           "sha": "e26841fc",
           "date": "2026-09-23",
@@ -49798,26 +50776,6 @@
             {
               "kind": "added",
               "text": "class UpgradeResponse(BaseModel):"
-            }
-          ]
-        },
-        {
-          "sha": "cc94bf5a",
-          "date": "2026-09-16",
-          "author": "Claude",
-          "subject": "t1: run a model without LM Studio, and switch it from the API",
-          "api_changes": [
-            {
-              "kind": "added",
-              "text": "class RunnerLoadRequest(BaseModel):"
-            },
-            {
-              "kind": "added",
-              "text": "class RunnerStatusResponse(BaseModel):"
-            },
-            {
-              "kind": "added",
-              "text": "class RunnerPlanResponse(BaseModel):"
             }
           ]
         }
@@ -51391,7 +52349,7 @@
     {
       "module": "hypernix.t1sdk.client",
       "source": "src/hypernix/t1sdk/client.py",
-      "line_count": 773,
+      "line_count": 833,
       "summary": "t1sdk.client \u2014 :class:`T1Client`, the complete T1 API SDK.",
       "api": [
         {
@@ -51456,429 +52414,471 @@
               "doc": ""
             },
             {
+              "name": "server_info",
+              "signature": "def server_infoself -> dict[str, Any]",
+              "line": 175,
+              "doc": "Name, description, owner, url, versions and features. Public."
+            },
+            {
+              "name": "conceal_status",
+              "signature": "def conceal_statusself -> dict[str, Any]",
+              "line": 179,
+              "doc": ""
+            },
+            {
+              "name": "conceal",
+              "signature": "def concealself, enabled: bool=True -> dict[str, Any]",
+              "line": 182,
+              "doc": "Turn conceal mode (masked address, 36-hour retention) on or off."
+            },
+            {
+              "name": "t2c_public_key",
+              "signature": "def t2c_public_keyself -> dict[str, Any]",
+              "line": 188,
+              "doc": ""
+            },
+            {
+              "name": "t2c_devices",
+              "signature": "def t2c_devicesself -> list[dict[str, Any]]",
+              "line": 191,
+              "doc": ""
+            },
+            {
+              "name": "t2c_revoke_device",
+              "signature": "def t2c_revoke_deviceself, device_id: str -> dict[str, Any]",
+              "line": 194,
+              "doc": ""
+            },
+            {
+              "name": "seal_key",
+              "signature": "def seal_keyself, key: str | None=None, *, label: str='', access_level: int=1",
+              "line": 197,
+              "doc": "Turn a T1 or T2 key into a v2.1 kit, registered with this server."
+            },
+            {
               "name": "whoami",
               "signature": "def whoamiself -> KeyInfo",
-              "line": 165,
+              "line": 237,
               "doc": "Identity of the configured credential, as a typed object."
             },
             {
               "name": "issue_token",
               "signature": "def issue_tokenself, key: str | None=None, *, ttl_seconds: int | None=None, scopes: list[str] | None=None -> dict[str, Any]",
-              "line": 169,
+              "line": 241,
               "doc": "Exchange a raw T1 key for a short-lived scoped token."
             },
             {
               "name": "rotate",
               "signature": "def rotateself -> dict[str, Any]",
-              "line": 188,
+              "line": 260,
               "doc": "Rotate the credential in use. The response carries the new raw key \u2014 the only place in the API where one is returned. Store it before discarding the response; the old key stops working."
             },
             {
               "name": "admin_rotate",
               "signature": "def admin_rotateself, target_key_id: str, *, promote_to_admin: bool=False -> dict[str, Any]",
-              "line": 194,
+              "line": 266,
               "doc": "Rotate another key, optionally promoting it to admin. Requires the caller to already be admin \u2014 the permission check the spec asks for around admin-token conversion."
             },
             {
               "name": "list_models",
               "signature": "def list_modelsself -> list[Model]",
-              "line": 209,
+              "line": 281,
               "doc": ""
             },
             {
               "name": "list_models_raw",
               "signature": "def list_models_rawself -> dict[str, Any]",
-              "line": 212,
+              "line": 284,
               "doc": ""
             },
             {
               "name": "get_model",
               "signature": "def get_modelself, model_id: str -> Model",
-              "line": 215,
+              "line": 287,
               "doc": ""
             },
             {
               "name": "model_availability",
               "signature": "def model_availabilityself, model_id: str -> dict[str, Any]",
-              "line": 218,
+              "line": 290,
               "doc": ""
             },
             {
               "name": "model_usage",
               "signature": "def model_usageself, model_id: str -> ModelUsage",
-              "line": 221,
+              "line": 293,
               "doc": ""
             },
             {
               "name": "route",
               "signature": "def routeself, *, model_id: str | None=None, input_tokens: int=0, automatic_fallback: bool=False, plan: str | None=None -> RoutingDecision",
-              "line": 224,
+              "line": 296,
               "doc": "Ask the server which model to use."
             },
             {
               "name": "usage_current",
               "signature": "def usage_currentself -> dict[str, Any]",
-              "line": 262,
+              "line": 334,
               "doc": ""
             },
             {
               "name": "usage_remaining",
               "signature": "def usage_remainingself, model_id: str -> ModelUsage",
-              "line": 265,
+              "line": 337,
               "doc": ""
             },
             {
               "name": "usage_history",
               "signature": "def usage_historyself, *, range: str | None=None, since: float | None=None, until: float | None=None, limit: int=100, offset: int=0, **filters: Any -> dict[str, Any]",
-              "line": 270,
+              "line": 342,
               "doc": ""
             },
             {
               "name": "iter_usage_history",
               "signature": "def iter_usage_historyself, *, page_size: int=200, max_events: int | None=None, **kwargs: Any -> Iterator[dict[str, Any]]",
-              "line": 284,
+              "line": 356,
               "doc": "Walk usage history transparently across pages."
             },
             {
               "name": "usage_by",
               "signature": "def usage_byself, group_by: str, **kwargs: Any -> dict[str, Any]",
-              "line": 307,
+              "line": 379,
               "doc": "Usage grouped along one dimension: ``model_id``, ``key_id``, ``server_id``, ``module_id``, ``user_id``, ``account_id``, ``endpoint``."
             },
             {
               "name": "usage_cost",
               "signature": "def usage_costself, *, group_by: str='model_id', forecast: bool=False, **kwargs: Any -> CostReport",
-              "line": 313,
+              "line": 385,
               "doc": ""
             },
             {
               "name": "estimate_cost",
               "signature": "def estimate_costself, *, model_id: str, input_tokens: int, output_tokens: int | None=None, requests: int=1 -> dict[str, Any]",
-              "line": 320,
+              "line": 392,
               "doc": "What an operation would cost. Records nothing, reserves nothing. Omitting *output_tokens* gives an upper bound based on the model's output limit."
             },
             {
               "name": "report_usage",
               "signature": "def report_usageself, *, model_id: str, input_tokens: int=0, output_tokens: int=0, requests: int=1, endpoint: str='', server_id: str='', module_id: str='' -> dict[str, Any]",
-              "line": 340,
+              "line": 412,
               "doc": "Report tokens actually consumed, so the server's quota advances."
             },
             {
               "name": "list_keys",
               "signature": "def list_keysself, *, key_type: str | None=None, include_inactive: bool=False -> list[KeyInfo]",
-              "line": 381,
+              "line": 453,
               "doc": "List keys. A non-admin caller sees only their own."
             },
             {
               "name": "import_keys",
               "signature": "def import_keysself, payload: dict[str, Any] -> dict[str, Any]",
-              "line": 388,
+              "line": 460,
               "doc": "Import a Keymaster export. Admin-only. The response carries counts and masked ids \u2014 never key material."
             },
             {
               "name": "assign_key",
               "signature": "def assign_keyself, key_id: str, **fields: Any -> dict[str, Any]",
-              "line": 393,
+              "line": 465,
               "doc": "Bind a key to a plan / account / user / servers / model subset."
             },
             {
               "name": "list_servers",
               "signature": "def list_serversself -> list[Server]",
-              "line": 405,
+              "line": 477,
               "doc": ""
             },
             {
               "name": "register_server",
               "signature": "def register_serverself, *, name: str, address: str, capabilities: list[str] | None=None, tags: dict[str, str] | None=None, allow_private_address: bool=False -> Server",
-              "line": 408,
+              "line": 480,
               "doc": "Register a server. It starts *untrusted*; only an admin can promote it, and only a trusted server can receive a module."
             },
             {
               "name": "update_server",
               "signature": "def update_serverself, server_id: str, **fields: Any -> Server",
-              "line": 434,
+              "line": 506,
               "doc": ""
             },
             {
               "name": "trust_server",
               "signature": "def trust_serverself, server_id: str -> Server",
-              "line": 440,
+              "line": 512,
               "doc": "Promote a server to ``trusted``. Admin-only, audited, and the gate every module push checks."
             },
             {
               "name": "delete_server",
               "signature": "def delete_serverself, server_id: str, *, confirm: bool=False -> dict[str, Any]",
-              "line": 445,
+              "line": 517,
               "doc": "Deregister a server. Destructive, so *confirm* must be True \u2014 the SDK surfaces the requirement as an argument rather than letting the server reject the call."
             },
             {
               "name": "list_modules",
               "signature": "def list_modulesself -> list[Module]",
-              "line": 462,
+              "line": 534,
               "doc": ""
             },
             {
               "name": "create_module",
               "signature": "def create_moduleself, *, name: str, version: str, metadata: dict[str, Any] | None=None -> Module",
-              "line": 465,
+              "line": 537,
               "doc": ""
             },
             {
               "name": "get_module",
               "signature": "def get_moduleself, module_id: str -> Module",
-              "line": 471,
+              "line": 543,
               "doc": ""
             },
             {
               "name": "upload_module",
               "signature": "def upload_moduleself, module_id: str, file_path: str | Path -> Module",
-              "line": 474,
+              "line": 546,
               "doc": "Upload local content. The server checksums it and stores it as an opaque blob \u2014 it is never executed, imported, or interpreted."
             },
             {
               "name": "register_remote_source",
               "signature": "def register_remote_sourceself, module_id: str, source_url: str, *, allow_private: bool=False -> Module",
-              "line": 482,
+              "line": 554,
               "doc": "Register (not fetch) a remote source URL. Validated against the SSRF guard now; call :meth:`fetch_module` to actually stage it."
             },
             {
               "name": "update_module",
               "signature": "def update_moduleself, module_id: str, **fields: Any -> Module",
-              "line": 496,
+              "line": 568,
               "doc": ""
             },
             {
               "name": "delete_module",
               "signature": "def delete_moduleself, module_id: str, *, confirm: bool=False -> dict[str, Any]",
-              "line": 502,
+              "line": 574,
               "doc": ""
             },
             {
               "name": "sync_module",
               "signature": "def sync_moduleself, module_id: str, server_id: str -> dict[str, Any]",
-              "line": 512,
+              "line": 584,
               "doc": "Queue a push of this module to one trusted server."
             },
             {
               "name": "deploy_module",
               "signature": "def deploy_moduleself, module_id: str, server_ids: list[str] -> dict[str, Any]",
-              "line": 518,
+              "line": 590,
               "doc": "Queue a push to several trusted servers as one job."
             },
             {
               "name": "fetch_module",
               "signature": "def fetch_moduleself, module_id: str -> dict[str, Any]",
-              "line": 527,
+              "line": 599,
               "doc": "Queue a fetch of this module's registered remote source."
             },
             {
               "name": "deploy_and_wait",
               "signature": "def deploy_and_waitself, module_id: str, server_ids: list[str], *, timeout: float=300.0 -> Job",
-              "line": 531,
+              "line": 603,
               "doc": "Deploy to several servers and block until the job settles."
             },
             {
               "name": "submit_job",
               "signature": "def submit_jobself, kind: str, payload: dict[str, Any] | None=None -> Job",
-              "line": 555,
+              "line": 627,
               "doc": ""
             },
             {
               "name": "get_job",
               "signature": "def get_jobself, job_id: str -> Job",
-              "line": 560,
+              "line": 632,
               "doc": ""
             },
             {
               "name": "cancel_job",
               "signature": "def cancel_jobself, job_id: str -> Job",
-              "line": 563,
+              "line": 635,
               "doc": ""
             },
             {
               "name": "wait_for_job",
               "signature": "def wait_for_jobself, job_id: str, *, timeout: float=300.0, poll_interval: float=0.5 -> Job",
-              "line": 568,
+              "line": 640,
               "doc": "Poll a job until it reaches a terminal state."
             },
             {
               "name": "list_events",
               "signature": "def list_eventsself, *, limit: int=50, since_id: str | None=None, event_type: str | None=None -> list[Event]",
-              "line": 594,
+              "line": 666,
               "doc": ""
             },
             {
               "name": "stream_events",
               "signature": "def stream_eventsself, *, event_type: str | None=None, timeout: float=300.0 -> Iterator[Event]",
-              "line": 602,
+              "line": 674,
               "doc": "Live tail over Server-Sent Events."
             },
             {
               "name": "balance",
               "signature": "def balanceself -> dict[str, Any]",
-              "line": 635,
+              "line": 707,
               "doc": ""
             },
             {
               "name": "transactions",
               "signature": "def transactionsself -> list[dict[str, Any]]",
-              "line": 638,
+              "line": 710,
               "doc": ""
             },
             {
               "name": "mint_payment_token",
               "signature": "def mint_payment_tokenself, amount: float, *, currency: str='USD', ttl_seconds: int | None=None -> dict[str, Any]",
-              "line": 641,
+              "line": 713,
               "doc": "Admin-only. The raw token is returned **once** and never retrievable again \u2014 the server stores only its hash. Capture it from the response or it is gone."
             },
             {
               "name": "redeem_payment_token",
               "signature": "def redeem_payment_tokenself, token: str, *, account_type: str='user', account_id: str | None=None -> dict[str, Any]",
-              "line": 652,
+              "line": 724,
               "doc": "Redeem a payment token. Single-use, and never retried by the transport \u2014 a replay after a timeout could look like a double redemption from the caller's side."
             },
             {
               "name": "add_balance",
               "signature": "def add_balanceself, *, account_type: str, account_id: str, amount: float, note: str='' -> dict[str, Any]",
-              "line": 663,
+              "line": 735,
               "doc": "Admin-only direct credit, with no payment-token trail."
             },
             {
               "name": "audit_events",
               "signature": "def audit_eventsself, **filters: Any -> dict[str, Any]",
-              "line": 683,
+              "line": 755,
               "doc": ""
             },
             {
               "name": "network_policy",
               "signature": "def network_policyself, *, kind: str | None=None -> dict[str, Any]",
-              "line": 686,
+              "line": 758,
               "doc": ""
             },
             {
               "name": "blacklist_ip",
               "signature": "def blacklist_ipself, cidr: str, *, reason: str='', ttl_seconds: float | None=None -> dict[str, Any]",
-              "line": 689,
+              "line": 761,
               "doc": ""
             },
             {
               "name": "whitelist_ip",
               "signature": "def whitelist_ipself, cidr: str, *, reason: str='', ttl_seconds: float | None=None -> dict[str, Any]",
-              "line": 697,
+              "line": 769,
               "doc": ""
             },
             {
               "name": "appeal_ip",
               "signature": "def appeal_ipself, cidr: str -> dict[str, Any]",
-              "line": 705,
+              "line": 777,
               "doc": "Remove an allow or block entry \u2014 the appeal path."
             },
             {
               "name": "set_allow_unlisted",
               "signature": "def set_allow_unlistedself, enabled: bool -> dict[str, Any]",
-              "line": 709,
+              "line": 781,
               "doc": ""
             },
             {
               "name": "list_forced_limits",
               "signature": "def list_forced_limitsself -> list[dict[str, Any]]",
-              "line": 714,
+              "line": 786,
               "doc": ""
             },
             {
               "name": "set_forced_limit",
               "signature": "def set_forced_limitself, *, subject_type: str, subject_id: str, requests_per_window: int | None=None, tokens_per_window: int | None=None, window_seconds: float=60.0, reason: str='' -> dict[str, Any]",
-              "line": 717,
+              "line": 789,
               "doc": "Force a ceiling on one key or server. Only ever tightens."
             },
             {
               "name": "clear_forced_limit",
               "signature": "def clear_forced_limitself, subject_type: str, subject_id: str -> dict[str, Any]",
-              "line": 742,
+              "line": 814,
               "doc": ""
             },
             {
               "name": "rate_limit_status",
               "signature": "def rate_limit_statusself -> dict[str, Any]",
-              "line": 747,
+              "line": 819,
               "doc": "The caller's own remaining budget per rule \u2014 enough to back off before hitting a 429 rather than after."
             },
             {
               "name": "lmstudio_status",
               "signature": "def lmstudio_statusself, *, discover: bool=False -> dict[str, Any]",
-              "line": 757,
+              "line": 829,
               "doc": "Is the server's LM Studio reachable, and is anything loaded?"
             },
             {
               "name": "lmstudio_models",
               "signature": "def lmstudio_modelsself, *, base_url: str | None=None -> dict[str, Any]",
-              "line": 763,
+              "line": 835,
               "doc": "Every model LM Studio has, with the loaded ones marked."
             },
             {
               "name": "lmstudio_chat",
               "signature": "def lmstudio_chatself, messages: list[dict[str, Any]], *, model: str | None=None, temperature: float | None=None, max_tokens: int | None=None, base_url: str | None=None -> dict[str, Any]",
-              "line": 771,
+              "line": 843,
               "doc": "One completion through the bridge, with the reply lifted out."
             },
             {
               "name": "hyperlink_endpoints",
               "signature": "def hyperlink_endpointsself -> dict[str, Any]",
-              "line": 797,
+              "line": 869,
               "doc": "Addresses this server answers on, ranked best-first."
             },
             {
               "name": "hyperlink_pair",
               "signature": "def hyperlink_pairself, *, label: str='', scopes: list[str] | None=None, ttl_seconds: float | None=None -> dict[str, Any]",
-              "line": 801,
+              "line": 873,
               "doc": "Mint a pairing code for a phone. Admin only."
             },
             {
               "name": "hyperlink_redeem",
               "signature": "def hyperlink_redeemself, code: str, *, device_name: str, platform: str='ios', app_version: str='' -> dict[str, Any]",
-              "line": 811,
+              "line": 883,
               "doc": "Redeem a pairing code. Unauthenticated \u2014 the code is the credential."
             },
             {
               "name": "hyperlink_devices",
               "signature": "def hyperlink_devicesself, *, include_revoked: bool=False -> dict[str, Any]",
-              "line": 825,
+              "line": 897,
               "doc": ""
             },
             {
               "name": "hyperlink_revoke_device",
               "signature": "def hyperlink_revoke_deviceself, device_id: str -> dict[str, Any]",
-              "line": 830,
+              "line": 902,
               "doc": ""
             },
             {
               "name": "hyperlink_sessions",
               "signature": "def hyperlink_sessionsself, *, include_archived: bool=False, limit: int=50 -> dict[str, Any]",
-              "line": 835,
+              "line": 907,
               "doc": ""
             },
             {
               "name": "hyperlink_create_session",
               "signature": "def hyperlink_create_sessionself, *, title: str='', model_id: str='', system_prompt: str='' -> dict[str, Any]",
-              "line": 842,
+              "line": 914,
               "doc": ""
             },
             {
               "name": "hyperlink_messages",
               "signature": "def hyperlink_messagesself, session_id: str, *, after_seq: int=0 -> dict[str, Any]",
-              "line": 851,
+              "line": 923,
               "doc": ""
             },
             {
               "name": "hyperlink_chat",
               "signature": "def hyperlink_chatself, session_id: str, content: str, *, attachment_ids: list[str] | None=None, model_id: str | None=None, max_tokens: int | None=None -> dict[str, Any]",
-              "line": 858,
+              "line": 930,
               "doc": "One chat turn. Both messages are persisted server-side."
             },
             {
               "name": "hyperlink_resolve_model",
               "signature": "def hyperlink_resolve_modelself, *, page_url: str='', file_url: str='', prefer: str='strict', include_vision: bool=True, offline: bool=False -> dict[str, Any]",
-              "line": 879,
+              "line": 951,
               "doc": "Merge a Hugging Face page link and/or file link into a plan."
             }
           ]
@@ -51887,11 +52887,48 @@
       "errors": [
         "T1Error",
         "T1TransportError",
-        "T1ValidationError"
+        "T1ValidationError",
+        "ValueError"
       ],
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "c76677db",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "t1sdk: server info, conceal, and v2.1 kits as a credential",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def server_info(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def conceal_status(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def conceal(self, enabled: bool = True) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def t2c_public_key(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def t2c_devices(self) -> list[dict[str, Any]]:"
+            },
+            {
+              "kind": "added",
+              "text": "def t2c_revoke_device(self, device_id: str) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def seal_key(self, key: str | None = None, *, label: str = \"\", access_level: int = 1):"
+            }
+          ]
+        },
         {
           "sha": "797be9d8",
           "date": "2026-08-23",
@@ -52529,7 +53566,7 @@
     {
       "module": "hypernix.t1sdk.transport",
       "source": "src/hypernix/t1sdk/transport.py",
-      "line_count": 321,
+      "line_count": 332,
       "summary": "t1sdk.transport \u2014 the SDK's HTTP layer.",
       "api": [
         {
@@ -52585,21 +53622,27 @@
           "doc": "Issues requests against one T1 server.",
           "methods": [
             {
+              "name": "wire_credential",
+              "signature": "def wire_credentialself -> str | None",
+              "line": 166,
+              "doc": "What goes in the Authorization header."
+            },
+            {
               "name": "url_for",
               "signature": "def url_forself, path: str, query: dict[str, Any] | None=None -> str",
-              "line": 168,
+              "line": 182,
               "doc": ""
             },
             {
               "name": "request",
               "signature": "def requestself, method: str, path: str, *, body: dict[str, Any] | None=None, query: dict[str, Any] | None=None, auth: bool=False, idempotent: bool | None=None, raw_body: bytes | None=None, content_type: str | None=None, extra_headers: dict[str, str] | None=None -> Response",
-              "line": 178,
+              "line": 192,
               "doc": "Issue one request, retrying per the policy."
             },
             {
               "name": "upload_file",
               "signature": "def upload_fileself, path: str, file_path: str | Path, *, field_name: str='file', query: dict[str, Any] | None=None -> Response",
-              "line": 282,
+              "line": 296,
               "doc": "Multipart file upload."
             }
           ]
@@ -52611,6 +53654,18 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "c76677db",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "t1sdk: server info, conceal, and v2.1 kits as a credential",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def wire_credential(self) -> str | None:"
+            }
+          ]
+        },
         {
           "sha": "3e60ff82",
           "date": "2026-08-22",
@@ -56329,14 +57384,14 @@
     {
       "module": "hypernix.waiter.cli",
       "source": "src/hypernix/waiter/cli.py",
-      "line_count": 1907,
+      "line_count": 2130,
       "summary": "waiter.cli \u2014 argparse-based CLI for the ``waiter`` console script.",
       "api": [
         {
           "kind": "function",
           "name": "main",
           "signature": "def mainargv: list[str] | None=None -> int",
-          "line": 2127,
+          "line": 2374,
           "doc": "Entry point for the `waiter` console script."
         }
       ],
@@ -56346,6 +57401,42 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "4d38d85a",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "waiter serv: grouped letters, -b, and -u -k -c -T -Y -S -e",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _ask_password() -> str | None:"
+            },
+            {
+              "kind": "removed",
+              "text": "def _resolve_config(args: argparse.Namespace) -> WaiterLocalConfig:"
+            },
+            {
+              "kind": "added",
+              "text": "def _resolve_config(args: argparse.Namespace, *, store: WaiterConfigStore | None = None) -> WaiterLocalConfig:"
+            },
+            {
+              "kind": "added",
+              "text": "def _seal_key(client: T1Client, cfg: WaiterLocalConfig) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _new_password() -> str | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def client() -> T1Client:"
+            },
+            {
+              "kind": "added",
+              "text": "def _cmd_kits(rest: list[str]) -> int:"
+            }
+          ]
+        },
         {
           "sha": "ac0053d7",
           "date": "2026-09-03",
@@ -56523,38 +57614,6 @@
           "author": "minerofthesoal",
           "subject": "fixes",
           "api_changes": []
-        },
-        {
-          "sha": "604ec86f",
-          "date": "2026-08-20",
-          "author": "minerofthesoal",
-          "subject": "b2",
-          "api_changes": [
-            {
-              "kind": "added",
-              "text": "def _cmd_route(rest: list[str]) -> int:"
-            },
-            {
-              "kind": "added",
-              "text": "def _cmd_servers(rest: list[str]) -> int:"
-            },
-            {
-              "kind": "added",
-              "text": "def _cmd_modules(rest: list[str]) -> int:"
-            },
-            {
-              "kind": "added",
-              "text": "def _cmd_jobs(rest: list[str]) -> int:"
-            },
-            {
-              "kind": "added",
-              "text": "def _cmd_events(rest: list[str]) -> int:"
-            },
-            {
-              "kind": "added",
-              "text": "def _cmd_billing(rest: list[str]) -> int:"
-            }
-          ]
         }
       ]
     },
@@ -57330,9 +58389,130 @@
       ]
     },
     {
+      "module": "hypernix.waiter.kits",
+      "source": "src/hypernix/waiter/kits.py",
+      "line_count": 193,
+      "summary": "waiter.kits \u2014 installing user-made mods (``waiter serv -k``, 0.72.6).",
+      "api": [
+        {
+          "kind": "class",
+          "name": "KitError",
+          "signature": "class KitError",
+          "line": 56,
+          "doc": "A kit that cannot be installed or run, with the reason.",
+          "methods": []
+        },
+        {
+          "kind": "class",
+          "name": "Kit",
+          "signature": "class Kit",
+          "line": 61,
+          "doc": "",
+          "methods": [
+            {
+              "name": "to_dict",
+              "signature": "def to_dictself -> dict[str, Any]",
+              "line": 69,
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "kits_dir",
+          "signature": "def kits_dir -> Path",
+          "line": 75,
+          "doc": ""
+        },
+        {
+          "kind": "function",
+          "name": "install",
+          "signature": "def installsource: str | Path, *, destination: Path | None=None -> Kit",
+          "line": 137,
+          "doc": "Install a kit from a folder or a ``.zip``. Replaces the same name."
+        },
+        {
+          "kind": "function",
+          "name": "installed",
+          "signature": "def installed*, kind: str | None=None, root: Path | None=None -> list[Kit]",
+          "line": 162,
+          "doc": ""
+        },
+        {
+          "kind": "function",
+          "name": "remove",
+          "signature": "def removename: str, *, root: Path | None=None -> bool",
+          "line": 179,
+          "doc": ""
+        },
+        {
+          "kind": "function",
+          "name": "run_command",
+          "signature": "def run_commandname: str, command: str, argv: list[str], *, root: Path | None=None -> int",
+          "line": 189,
+          "doc": "Run a waiter kit's command: import ``module`` from the kit, call ``function(argv)``, return its exit code."
+        }
+      ],
+      "errors": [
+        "KitError"
+      ],
+      "deprecations": [],
+      "required_modules": [],
+      "changes": [
+        {
+          "sha": "4d38d85a",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "waiter serv: grouped letters, -b, and -u -k -c -T -Y -S -e",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class KitError(ValueError):"
+            },
+            {
+              "kind": "added",
+              "text": "class Kit:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_dict(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def kits_dir() -> Path:"
+            },
+            {
+              "kind": "added",
+              "text": "def _read_manifest(folder: Path) -> Kit:"
+            },
+            {
+              "kind": "added",
+              "text": "def _safe_extract(archive: Path, into: Path) -> Path:"
+            },
+            {
+              "kind": "added",
+              "text": "def install(source: str | Path, *, destination: Path | None = None) -> Kit:"
+            },
+            {
+              "kind": "added",
+              "text": "def installed(*, kind: str | None = None, root: Path | None = None) -> list[Kit]:"
+            },
+            {
+              "kind": "added",
+              "text": "def remove(name: str, *, root: Path | None = None) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def run_command(name: str, command: str, argv: list[str], *, root: Path | None = None) -> int:"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "module": "hypernix.waiter.local_config",
       "source": "src/hypernix/waiter/local_config.py",
-      "line_count": 154,
+      "line_count": 201,
       "summary": "waiter.local_config \u2014 the waiter TUI's local config file.",
       "api": [
         {
@@ -57345,34 +58525,48 @@
             {
               "name": "to_dict",
               "signature": "def to_dictself -> dict[str, Any]",
-              "line": 78,
+              "line": 81,
               "doc": ""
             },
             {
               "name": "from_dict",
               "signature": "def from_dictcls, d: dict[str, Any] -> WaiterLocalConfig",
-              "line": 82,
+              "line": 85,
               "doc": ""
             }
           ]
         },
         {
           "kind": "class",
+          "name": "WaiterConfigLocked",
+          "signature": "class WaiterConfigLocked",
+          "line": 95,
+          "doc": "The config is locked and no (or the wrong) password was given.",
+          "methods": []
+        },
+        {
+          "kind": "class",
           "name": "WaiterConfigStore",
           "signature": "class WaiterConfigStore",
-          "line": 87,
+          "line": 99,
           "doc": "Load/save a :class:`WaiterLocalConfig` to a ``.jsonl``-style file (one JSON object per line is overkill for a single config record, but matches the ``-s`` flag's \".jsonl\" naming from the spec \u2014 we write exactly one line so it's trivially `tail -f`-able if you're debugging a live rewrite).",
           "methods": [
             {
+              "name": "is_locked",
+              "signature": "def is_lockedself -> bool",
+              "line": 154,
+              "doc": ""
+            },
+            {
               "name": "save",
               "signature": "def saveself, config: WaiterLocalConfig -> Path",
-              "line": 131,
+              "line": 161,
               "doc": ""
             },
             {
               "name": "load",
               "signature": "def loadself -> WaiterLocalConfig | None",
-              "line": 143,
+              "line": 178,
               "doc": ""
             }
           ]
@@ -57404,6 +58598,34 @@
       ],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "4d38d85a",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "waiter serv: grouped letters, -b, and -u -k -c -T -Y -S -e",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class WaiterConfigLocked(Exception):"
+            },
+            {
+              "kind": "removed",
+              "text": "def __init__(self, path: str | Path | None = None, *, encrypt: bool = False) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__("
+            },
+            {
+              "kind": "added",
+              "text": "def is_locked(self) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def _unlock(self, token: str) -> WaiterLocalConfig:"
+            }
+          ]
+        },
         {
           "sha": "3e60ff82",
           "date": "2026-08-22",
@@ -57456,6 +58678,202 @@
             {
               "kind": "added",
               "text": "def load(self) -> WaiterLocalConfig | None:"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "module": "hypernix.waiter.servargs",
+      "source": "src/hypernix/waiter/servargs.py",
+      "line_count": 213,
+      "summary": "waiter.servargs \u2014 how ``waiter serv`` reads its letters (0.72.6).",
+      "api": [
+        {
+          "kind": "class",
+          "name": "ServArgsError",
+          "signature": "class ServArgsError",
+          "line": 48,
+          "doc": "The command line cannot be read. The message says why and how.",
+          "methods": []
+        },
+        {
+          "kind": "class",
+          "name": "Expanded",
+          "signature": "class Expanded",
+          "line": 99,
+          "doc": "",
+          "methods": []
+        },
+        {
+          "kind": "function",
+          "name": "expand",
+          "signature": "def expandargv: list[str] -> Expanded",
+          "line": 185,
+          "doc": "Rewrite ``waiter serv`` arguments into what argparse can read."
+        }
+      ],
+      "errors": [
+        "ServArgsError"
+      ],
+      "deprecations": [],
+      "required_modules": [],
+      "changes": [
+        {
+          "sha": "4d38d85a",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "waiter serv: grouped letters, -b, and -u -k -c -T -Y -S -e",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class ServArgsError(ValueError):"
+            },
+            {
+              "kind": "added",
+              "text": "class Expanded:"
+            },
+            {
+              "kind": "added",
+              "text": "def _is_option(token: str) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def _expand_cluster(token: str) -> list[str]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _takes_value(option: str) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def _classify(text: str) -> str | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def expand(argv: list[str]) -> Expanded:"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "module": "hypernix.waiter.servops",
+      "source": "src/hypernix/waiter/servops.py",
+      "line_count": 201,
+      "summary": "waiter.servops \u2014 what ``-u``, ``-S``, ``-Y`` and ``-T`` do (0.72.6).",
+      "api": [
+        {
+          "kind": "function",
+          "name": "local_version",
+          "signature": "def local_version -> str",
+          "line": 43,
+          "doc": "The hypernix this client runs."
+        },
+        {
+          "kind": "function",
+          "name": "update_plan",
+          "signature": "def update_planlocal: str, server: str, *, exact: bool -> tuple[str | None, str]",
+          "line": 50,
+          "doc": "``(pip requirement or None, what and why)``."
+        },
+        {
+          "kind": "function",
+          "name": "run_update",
+          "signature": "def run_updaterequirement: str, *, dry_run: bool=False -> int",
+          "line": 71,
+          "doc": ""
+        },
+        {
+          "kind": "class",
+          "name": "Finding",
+          "signature": "class Finding",
+          "line": 85,
+          "doc": "",
+          "methods": [
+            {
+              "name": "to_dict",
+              "signature": "def to_dictself -> dict[str, str]",
+              "line": 91,
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "security_check",
+          "signature": "def security_checkclient: Any, cfg: Any, *, store_path: Path, locked: bool -> list[Finding]",
+          "line": 135,
+          "doc": "Look for problems in this client, then in the server it points at."
+        },
+        {
+          "kind": "function",
+          "name": "format_info",
+          "signature": "def format_infoinfo: dict[str, Any] -> list[str]",
+          "line": 203,
+          "doc": ""
+        },
+        {
+          "kind": "function",
+          "name": "control_allowed",
+          "signature": "def control_allowedvalidated: dict[str, Any] -> tuple[bool, str]",
+          "line": 231,
+          "doc": "A verified administrator holding a level-9 T2 (or v2.1) key."
+        }
+      ],
+      "errors": [],
+      "deprecations": [],
+      "required_modules": [],
+      "changes": [
+        {
+          "sha": "4d38d85a",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "waiter serv: grouped letters, -b, and -u -k -c -T -Y -S -e",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _version(text: str):"
+            },
+            {
+              "kind": "added",
+              "text": "def local_version() -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def update_plan(local: str, server: str, *, exact: bool) -> tuple[str | None, str]:"
+            },
+            {
+              "kind": "added",
+              "text": "def run_update(requirement: str, *, dry_run: bool = False) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "class Finding:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_dict(self) -> dict[str, str]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _is_private_host(host: str) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def _client_findings(cfg: Any, store_path: Path, locked: bool, local_version: str) -> list[Finding]:"
+            },
+            {
+              "kind": "added",
+              "text": "def security_check(client: Any, cfg: Any, *, store_path: Path, locked: bool) -> list[Finding]:"
+            },
+            {
+              "kind": "added",
+              "text": "def format_info(info: dict[str, Any]) -> list[str]:"
+            },
+            {
+              "kind": "added",
+              "text": "def control_allowed(validated: dict[str, Any]) -> tuple[bool, str]:"
             }
           ]
         }
@@ -57650,26 +59068,26 @@
     {
       "module": "hypernix.waiter.tui",
       "source": "src/hypernix/waiter/tui.py",
-      "line_count": 663,
+      "line_count": 763,
       "summary": "waiter.tui \u2014 the full curses TUI behind ``waiter serv -G``.",
       "api": [
         {
           "kind": "class",
           "name": "DashboardState",
           "signature": "class DashboardState",
-          "line": 80,
+          "line": 92,
           "doc": "Everything the TUI draws, refreshed as one snapshot.",
           "methods": [
             {
               "name": "fallback_chain",
               "signature": "def fallback_chainself -> list[dict[str, Any]]",
-              "line": 111,
+              "line": 127,
               "doc": "The cascade the server walked on the last routing decision."
             },
             {
               "name": "model_row",
               "signature": "def model_rowself, model_id: str -> dict[str, Any] | None",
-              "line": 121,
+              "line": 137,
               "doc": ""
             }
           ]
@@ -57678,49 +59096,79 @@
           "kind": "class",
           "name": "DashboardController",
           "signature": "class DashboardController",
-          "line": 128,
+          "line": 144,
           "doc": "Fetches state and applies user actions. No curses dependency.",
           "methods": [
             {
+              "name": "panes",
+              "signature": "def panesself -> tuple[str, ...]",
+              "line": 155,
+              "doc": ""
+            },
+            {
               "name": "refresh",
               "signature": "def refreshself -> DashboardState",
-              "line": 140,
+              "line": 162,
               "doc": "Pull one full snapshot."
             },
             {
               "name": "select_model",
               "signature": "def select_modelself, model_id: str -> str",
-              "line": 229,
+              "line": 266,
               "doc": "Manually select a model, asking the server whether it's usable."
             },
             {
               "name": "toggle_automatic_routing",
               "signature": "def toggle_automatic_routingself -> str",
-              "line": 255,
+              "line": 292,
               "doc": "Turn automatic routing on or off."
+            },
+            {
+              "name": "block_address",
+              "signature": "def block_addressself, cidr: str -> str",
+              "line": 326,
+              "doc": ""
+            },
+            {
+              "name": "allow_address",
+              "signature": "def allow_addressself, cidr: str -> str",
+              "line": 330,
+              "doc": ""
+            },
+            {
+              "name": "appeal_address",
+              "signature": "def appeal_addressself, cidr: str -> str",
+              "line": 334,
+              "doc": ""
+            },
+            {
+              "name": "toggle_allow_unlisted",
+              "signature": "def toggle_allow_unlistedself -> str",
+              "line": 337,
+              "doc": ""
             },
             {
               "name": "cancel_job",
               "signature": "def cancel_jobself, job_id: str -> str",
-              "line": 277,
+              "line": 347,
               "doc": ""
             },
             {
               "name": "upload_module",
               "signature": "def upload_moduleself, module_id: str, file_path: str -> str",
-              "line": 286,
+              "line": 356,
               "doc": ""
             },
             {
               "name": "deploy_module",
               "signature": "def deploy_moduleself, module_id: str, server_id: str -> str",
-              "line": 297,
+              "line": 367,
               "doc": ""
             },
             {
               "name": "track_jobs",
               "signature": "def track_jobsself -> list[dict[str, Any]]",
-              "line": 306,
+              "line": 376,
               "doc": "Refresh the job list from recent job events."
             }
           ]
@@ -57729,21 +59177,21 @@
           "kind": "function",
           "name": "render_pane",
           "signature": "def render_panestate: DashboardState, pane: str, width: int=100 -> list[str]",
-          "line": 347,
+          "line": 417,
           "doc": "Render one pane to plain text lines."
         },
         {
           "kind": "function",
           "name": "render_header",
           "signature": "def render_headerstate: DashboardState, base_url: str -> str",
-          "line": 537,
+          "line": 638,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "run",
-          "signature": "def runclient: T1Client, *, refresh_interval: float=REFRESH_INTERVAL -> int",
-          "line": 551,
+          "signature": "def runclient: T1Client, *, refresh_interval: float=REFRESH_INTERVAL, control: bool=False -> int",
+          "line": 652,
           "doc": "Run the TUI. Returns a process exit code."
         }
       ],
@@ -57751,6 +59199,70 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "4d38d85a",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "waiter serv: grouped letters, -b, and -u -k -c -T -Y -S -e",
+          "api_changes": [
+            {
+              "kind": "removed",
+              "text": "def __init__(self, client: T1Client, *, state: DashboardState | None = None) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, client: T1Client, *, state: DashboardState | None = None,"
+            },
+            {
+              "kind": "added",
+              "text": "def panes(self) -> tuple[str, ...]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _control_action(self, label: str, fn) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def block_address(self, cidr: str) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def allow_address(self, cidr: str) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def appeal_address(self, cidr: str) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def toggle_allow_unlisted(self) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _note(self, text: str) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _render_control(state: DashboardState) -> list[str]:"
+            },
+            {
+              "kind": "removed",
+              "text": "def run(client: T1Client, *, refresh_interval: float = REFRESH_INTERVAL) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def run(client: T1Client, *, refresh_interval: float = REFRESH_INTERVAL, control: bool = False) -> int:"
+            },
+            {
+              "kind": "removed",
+              "text": "def _draw_help(stdscr, curses, height: int, width: int) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _draw_help(stdscr, curses, height: int, width: int, lines: list[str] | None = None) -> None:"
+            }
+          ]
+        },
         {
           "sha": "3e60ff82",
           "date": "2026-08-22",

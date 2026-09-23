@@ -1,11 +1,15 @@
 {
   "definition": "non-blank source lines across repository code roots: src, scripts, tests, examples, bin, native, docs/src",
-  "total_lines": 202147,
-  "code_files": 636,
+  "total_lines": 206289,
+  "code_files": 652,
   "top_files": [
     {
       "path": "src/hypernix/interfaces/hyped.py",
       "lines": 2135
+    },
+    {
+      "path": "src/hypernix/waiter/cli.py",
+      "lines": 2130
     },
     {
       "path": "src/hypernix/t1api/routers/hyperlink.py",
@@ -16,16 +20,12 @@
       "lines": 1921
     },
     {
-      "path": "src/hypernix/waiter/cli.py",
-      "lines": 1907
-    },
-    {
       "path": "src/hypernix/hyped_pro.ts",
       "lines": 1796
     },
     {
       "path": "src/hypernix/t1api/schemas.py",
-      "lines": 1609
+      "lines": 1614
     },
     {
       "path": "src/hypernix/models/neo_oven.py",
@@ -41,7 +41,11 @@
     },
     {
       "path": "src/hypernix/data/gather.py",
-      "lines": 1236
+      "lines": 1302
+    },
+    {
+      "path": "src/hypernix/interfaces/hyped_pro_core.py",
+      "lines": 1191
     },
     {
       "path": "src/hypernix/system/fusebox.py",
@@ -60,10 +64,6 @@
       "lines": 1107
     },
     {
-      "path": "src/hypernix/interfaces/hyped_pro_core.py",
-      "lines": 1102
-    },
-    {
       "path": "tests/test_hypernix_t1_service.py",
       "lines": 1100
     },
@@ -80,16 +80,16 @@
       "lines": 1063
     },
     {
+      "path": "src/hypernix/security/gkey_cli.py",
+      "lines": 1058
+    },
+    {
       "path": "src/hypernix/interfaces/hyped_pro_app/src/app.ts",
       "lines": 1051
     },
     {
       "path": "src/hypernix/models/hnxrun.py",
       "lines": 1050
-    },
-    {
-      "path": "src/hypernix/security/gkey_cli.py",
-      "lines": 1024
     },
     {
       "path": "tests/test_install_script.py",
@@ -127,12 +127,12 @@
   "contributors": [
     {
       "author": "Claude",
-      "additions": 170640,
-      "deletions": 9555,
-      "net": 161085,
-      "changes": 180195,
-      "commits": 177,
-      "files": 1116
+      "additions": 175919,
+      "deletions": 9748,
+      "net": 166171,
+      "changes": 185667,
+      "commits": 187,
+      "files": 1136
     },
     {
       "author": "minerofthesoal",
@@ -190,6 +190,6 @@
     }
   ],
   "history_available": true,
-  "commit": "1b7f59a4ba7fdd561dc6e7936d8b5695374fef2d",
+  "commit": "d01b23b7f26335a069f391f917ebf8189600ec8d",
   "generated_at": null
 }
