@@ -148,39 +148,7 @@ async def web_summarize(
         sentences = 5
 
     if not text and url:
-        from hypernix.data.gather import public_address_problem
-        from hypernix.interfaces.websearch import fetch_web_page
-
-        # The server fetches on the caller's behalf, so it must not be
-        # a way into places only the server can reach: itself, the LAN,
-        # a cloud metadata service. Checked before anything is fetched,
-        # robots.txt included, and again on every redirect.
-        problem = public_address_problem(url)
-        if problem is not None:
-            raise T1APIError(
-                T1ErrorCode.VALIDATION_ERROR,
-                f"will not fetch that URL: {problem}"[:300],
-                http_status=400,
-            )
-        try:
-            fetched = fetch_web_page(url, max_length=MAX_SUMMARIZE_CHARS, public_only=True)
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("web: fetching %s for a summary failed", url, exc_info=True)
-            raise T1APIError(
-                T1ErrorCode.TRANSPORT_FAILED,
-                f"could not fetch {url} ({type(exc).__name__})"[:300],
-                http_status=502,
-            ) from exc
-        status = str(fetched.get("status") or "")
-        if status.startswith("error"):
-            # The fetcher's own description, not an exception's text; and
-            # not something to summarise as if it were the page.
-            raise T1APIError(
-                T1ErrorCode.TRANSPORT_FAILED,
-                f"could not fetch {url}: {status[len('error: '):]}"[:300],
-                http_status=502,
-            )
-        text = str(fetched.get("text") or fetched.get("content") or "")
+        text = _fetch_for_summary(url)
 
     if not text:
         raise T1APIError(
@@ -196,6 +164,59 @@ async def web_summarize(
     result["request_id"] = request_id
     result["chars_in"] = len(text)
     return JSONResponse(result)
+
+
+def _fetch_failure(page) -> str:
+    """Why a fetch failed, in this server's words only.
+
+    Never the exception's text: a network error's message can carry
+    addresses, paths and internals the caller has no need for. The
+    specific cause is in the server log.
+    """
+    if page.status and page.status >= 400:
+        return f"the page answered HTTP {int(page.status)}"
+    if page.error.startswith("refused"):
+        return "it leads to an address that is not public"
+    if page.error.startswith("not text"):
+        return "it is not a text page"
+    if page.error.startswith("gzip"):
+        return "its compressed body was damaged"
+    return "the page could not be reached"
+
+
+def _fetch_for_summary(url: str) -> str:
+    """The text of a public page, fetched on a caller's behalf.
+
+    The server must not be a way into places only it can reach: itself,
+    the LAN, a cloud metadata service. The address is checked before
+    anything is fetched — robots.txt included — and again on every
+    redirect (``public_only``).
+    """
+    from hypernix.data import gather
+    from hypernix.interfaces import websearch as iw
+
+    problem = gather.public_address_problem(url)
+    if problem is not None:
+        raise T1APIError(
+            T1ErrorCode.VALIDATION_ERROR,
+            f"will not fetch that URL: {problem}"[:300],
+            http_status=400,
+        )
+    if not iw._shared_robots().allows(url):
+        raise T1APIError(
+            T1ErrorCode.VALIDATION_ERROR,
+            "that site's robots.txt asks not to be fetched",
+            http_status=400,
+        )
+    page = gather.fetch(url, timeout=15.0, limiter=iw._shared_limiter(), public_only=True)
+    if not page.ok:
+        logger.info("web: fetching %s for a summary failed: %s", url, page.error or page.status)
+        raise T1APIError(
+            T1ErrorCode.TRANSPORT_FAILED,
+            f"could not fetch {url}: {_fetch_failure(page)}"[:300],
+            http_status=502,
+        )
+    return page.text[:MAX_SUMMARIZE_CHARS]
 
 
 def _model_for(request: Request):

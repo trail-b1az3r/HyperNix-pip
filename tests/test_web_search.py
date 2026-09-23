@@ -819,25 +819,58 @@ class TestServerSideFetchIsPublicOnly:
         assert seen["url"] == "http://127.0.0.1:9/"
 
     def test_the_summarise_route_refuses_before_fetching(self, client, user_key, monkeypatch):
+        from hypernix.data import gather
         from hypernix.interfaces import websearch as iw
 
         called = {}
-        monkeypatch.setattr(iw, "fetch_web_page", lambda *a, **k: called.setdefault("fetched", {}))
+        monkeypatch.setattr(gather, "fetch", lambda *a, **k: called.setdefault("fetched", {}))
+        monkeypatch.setattr(iw, "_shared_robots", lambda: called.setdefault("robots", {}))
         response = client.post("/web/v1/summarise", json={"url": "http://127.0.0.1:8000/"},
                                headers=_auth(user_key))
         assert response.status_code == 400
         assert "public" in response.text
         assert called == {}
 
-    def test_a_failed_fetch_is_an_error_not_a_summary_of_the_error(self, client, user_key, monkeypatch):
+    def _stub_fetch(self, monkeypatch, page):
         from hypernix.data import gather
         from hypernix.interfaces import websearch as iw
 
+        class Robots:
+            def allows(self, url):
+                return True
+
         monkeypatch.setattr(gather, "public_address_problem", lambda url: None)
-        monkeypatch.setattr(iw, "fetch_web_page", lambda *a, **k: {
-            "url": "u", "title": "", "text": "Error fetching URL 'u': HTTP 404", "links": [],
-            "status": "error: HTTP 404"})
+        monkeypatch.setattr(iw, "_shared_robots", lambda: Robots())
+        monkeypatch.setattr(gather, "fetch", lambda *a, **k: page)
+
+    def test_a_failed_fetch_is_an_error_not_a_summary_of_the_error(self, client, user_key, monkeypatch):
+        from hypernix.data.gather import Page
+
+        page = Page(url="https://example.com/gone", status=404, error="HTTP 404")
+        self._stub_fetch(monkeypatch, page)
         response = client.post("/web/v1/summarise", json={"url": "https://example.com/gone"},
                                headers=_auth(user_key))
         assert response.status_code == 502
         assert "404" in response.text
+
+    def test_a_network_errors_own_text_is_not_returned(self, client, user_key, monkeypatch):
+        from hypernix.data.gather import Page
+
+        page = Page(url="https://example.com/", error="<urlopen error [Errno 111] /secret/internal/path>")
+        self._stub_fetch(monkeypatch, page)
+        response = client.post("/web/v1/summarise", json={"url": "https://example.com/"},
+                               headers=_auth(user_key))
+        assert response.status_code == 502
+        assert "secret" not in response.text and "Errno" not in response.text
+        assert "could not be reached" in response.text
+
+    def test_a_good_page_is_summarised(self, client, user_key, monkeypatch):
+        from hypernix.data.gather import Page
+
+        page = Page(url="https://example.com/", status=200,
+                    text="Lisbon is the capital of Portugal. It is built on seven hills. Trams climb them.")
+        self._stub_fetch(monkeypatch, page)
+        response = client.post("/web/v1/summarise", json={"url": "https://example.com/"},
+                               headers=_auth(user_key))
+        assert response.status_code == 200, response.text
+        assert "Lisbon" in response.json()["summary"]
