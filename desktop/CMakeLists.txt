@@ -165,7 +165,6 @@ qt_add_resources(hypernix-studio "studio"
         qml/StudioButton.qml
         qml/StudioField.qml
         qml/ErrorBanner.qml
-        qml/SettingsView.qml
 )
 
 target_link_libraries(hypernix-studio PRIVATE
