@@ -28,8 +28,8 @@ next release header.
 
 ## 0.72.6.rc1 — 2026-09-23
 
-The release candidate for 0.72.6, and the two fixes its first release
-run needed.
+The release candidate for 0.72.6, the two fixes its first release run
+needed, and Siri phrases that match what the docs say to say.
 
 ### Changed
 
@@ -49,6 +49,19 @@ hyped-pro's `package.json` and `app.ts`, so the app still called itself
 on the release runner. `hypernix.t1api.create_app` re-raises the missing
 package as a plain ImportError with install advice, and the check looked
 only at that error, never at its cause.
+𖢥 **Siri answered "HyperLink hasn't added support for that".** The
+README and the intents file told people to say "ask HyperLink what's the
+weather" and "load the model Gemma 4 E2B on blazeindustries in
+HyperLink", and no registered phrase matched either: a phrase can name
+only an entity, never free text, so the question has to come after "Ask
+HyperLink", when Siri asks for it. Every Siri sentence in the docs is
+now a real phrase, and "Talk to HyperLink" and "Chat with HyperLink" are
+added.
+𖢥 A model was offered to Siri under its file name, such as
+`gemma-4-e2b-it-Q4_K_M`, which is not what anyone says, so "Load Gemma 4
+E2B in HyperLink" had no title to match. `SpokenName` titles each model
+the way it is said ("Gemma 4 E2B"), keeps the fuller forms as synonyms,
+and the model query accepts the spoken title.
 
 ### Tests
 
@@ -57,6 +70,12 @@ only at that error, never at its cause.
 bumping and committing both, and the documentation check run with
 fastapi blocked. It failed twice there before the fix and passes after
 it.
+🧪 `tests/test_hyperlink_siri_phrases.py` holds every Siri sentence in
+the README, the iOS README and the intents file to a phrase the app
+registers, read from its AppShortcutsProvider. Run against the old
+README it fails on exactly the two sentences Siri
+refused. `SpokenNameTests.swift` covers the spoken names on the
+simulator.
 
 ⸻
 

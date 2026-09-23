@@ -37,16 +37,39 @@ never a free-form string.
 
 | Say | Does |
 |---|---|
-| "Ask HyperLink" | Asks for the question, then speaks the reply |
+| "Ask HyperLink", "Talk to HyperLink" | Asks for the question, then speaks the reply |
 | "Load ‹model› in HyperLink", "Switch HyperLink to ‹model›" | Loads that model on the PC |
 | "Read ‹chat› in HyperLink", "Read me the HyperLink chat" | Reads a chat's latest messages, or the most recent chat's |
 | "Send a message to ‹chat› in HyperLink", "Send a message in HyperLink" | Asks what to send, sends it to that chat (or the most recent one), and speaks the reply. With no chat to send to, it starts one called "Siri" |
 
+**Say "Ask HyperLink", then the question.** Siri can only hear a chat
+or a model inside a sentence, never free text. "Ask HyperLink what's the
+weather" in one breath is heard as a request HyperLink never registered,
+and Siri answers *"Sorry, HyperLink hasn't added support for that with
+Siri."* Say "Ask HyperLink" (or "Talk to HyperLink"), wait for *"What
+would you like to ask?"*, then ask.
+
+Models are named the way they are said: `gemma-4-e2b-it-Q4_K_M.gguf` is
+"Gemma 4 E2B". The quantisation, the file format and a trailing "it",
+"instruct" or "chat" are left out, and the fuller forms are accepted
+too.
+
 The app updates Siri's list of names (`updateAppShortcutParameters()`)
 whenever it refreshes chats or models. A chat or model created since the
 app last refreshed is not a name Siri knows yet. Open the app once, or
-use the phrase without a name. The question itself is never part of a
-phrase: Siri asks for it.
+use the phrase without a name.
+
+If Siri still says HyperLink hasn't added support:
+- **Open the app once after installing or updating it.** iOS registers
+  an app's Siri phrases when it first runs.
+- **Check Siri may use HyperLink**, in Settings › Apps › HyperLink ›
+  Siri.
+- **Use English.** The phrases are English only, so Siri set to another
+  language will not match them.
+- **Check the app appears in Shortcuts.** Search for "HyperLink" when
+  adding an action. If it is missing there too, iOS has not registered
+  the app's intents at all and the phrasing is not the cause. Reinstall
+  the app, open it once, and try again.
 
 ---
 
