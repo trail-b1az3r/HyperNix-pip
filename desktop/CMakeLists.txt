@@ -150,6 +150,7 @@ qt_add_resources(hypernix-studio "studio"
     BASE "."
     FILES
         qml/Main.qml
+        qml/SettingsView.qml
         qml/Theme.qml
         qml/qmldir
         qml/Sidebar.qml
