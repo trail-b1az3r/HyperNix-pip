@@ -55,15 +55,38 @@ MAX_LEVEL: int = 30
 #: clocks any further (levels above 10).
 THERMAL_ABORT_C: float = 60
 
-#: ``(temperature_below, level)``, coldest first — the bands
+#: ``(fraction_of_abort_temperature, level)``, coldest first — the bands
 #: :meth:`Ethanol.auto_level` picks from. A GPU already running warm gets
 #: a smaller bump, and one running hot gets none.
-_AUTO_LEVEL_BANDS: tuple[tuple[float, int], ...] = (
-    (50.0, 20),
-    (65.0, 15),
-    (75.0, 10),
-    (THERMAL_ABORT_C, 5),
+#:
+#: Fractions rather than degrees, and that is a fix rather than a style
+#: choice. The table used to be ``(50.0, 20), (65.0, 15), (75.0, 10),
+#: (THERMAL_ABORT_C, 5)`` — three absolute temperatures and one derived
+#: one. Lowering ``THERMAL_ABORT_C`` to 60 put the last band *below* two
+#: of the fixed ones, so the table stopped ascending, the level-5 band
+#: became unreachable, and a GPU at 80 °C fell off the end to stock
+#: instead of getting the small bump it was meant to. Nothing raised:
+#: the table was simply wrong from the moment the threshold moved.
+_AUTO_LEVEL_FRACTIONS: tuple[tuple[float, int], ...] = (
+    (0.55, 20),
+    (0.72, 15),
+    (0.83, 10),
+    (1.00, 5),
 )
+
+
+def auto_level_bands(abort_c: float = THERMAL_ABORT_C) -> tuple[tuple[float, int], ...]:
+    """The bands in degrees, for the abort temperature in force.
+
+    At the historical 91.5 °C this is (50.3, 20), (65.9, 15), (75.9, 10),
+    (91.5, 5) — the table it replaces, to within rounding.
+    """
+    return tuple((round(abort_c * f, 1), level)
+                 for f, level in _AUTO_LEVEL_FRACTIONS)
+
+
+#: Kept under its old name because it is read elsewhere.
+_AUTO_LEVEL_BANDS: tuple[tuple[float, int], ...] = auto_level_bands()
 
 
 @dataclass
@@ -253,7 +276,7 @@ class Ethanol:
                 "could not read GPU temperature — staying at stock. "
                 "Pass an explicit level to override."
             )
-        for ceiling, level in _AUTO_LEVEL_BANDS:
+        for ceiling, level in auto_level_bands(THERMAL_ABORT_C):
             if temp < ceiling:
                 return level, f"GPU at {temp:.0f}°C -> level {level}"
         return 0, f"GPU at {temp:.0f}°C is too hot to overclock — staying at stock"

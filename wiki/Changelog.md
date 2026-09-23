@@ -26,6 +26,120 @@ next release header.
 - 𖥔 minor new feature
 
 
+## 0.72.5.post15 — 2026-09-22
+
+The 0.72.6 second batch. Two of these are fixes for things that were
+working exactly as written and wrong anyway: gather did stop, an hour
+after it looked like it should, and Neo Oven's presets were complete,
+internally consistent, and describing the wrong architectures.
+
+### Added
+
+๋࣭⭑ `hypernix.dilute` — best-of-n sampling and self-distillation. One
+model answers each prompt four to six times across a **temperature
+ladder**, an evaluator scores them, and the winner is kept as a
+training trace. `run` collects and writes at the end; `jit` streams
+each trace to the file as it is made, so a run killed at hour three
+leaves three hours of traces rather than nothing; `inspect` reads a
+trace file back and says whether it is worth training on.
+๋࣭⭑ `dilute` evaluators — a second model as judge (or the generating
+model judging its own samples, which needs nothing else in memory), a
+plain Python function for a task with a checkable answer, and a length
+heuristic for smoke-testing a pipeline.
+𖥔 `gather -f sqlite` — one database, one row per page, full text in it
+and the link graph beside it, for a corpus too big to hold as files.
+𖥔 `gather --max-seconds` — a wall clock, 20 minutes by default, `0` to
+remove it.
+𖥔 `vera -T h` — hours as a timeout unit, and `-tt/--total-timeout` for
+the whole run rather than a stage.
+𖥔 `vera -Na` — run the checks with no AI at all.
+𖥔 `vera -m` — pick a GGUF from `~/.hypernix/models` interactively.
+𖥔 `hypernix.hubcompat` — signature-checked calls into `huggingface_hub`,
+so 0.x and 1.3.x both work.
+𖥔 T1 API `v1.1.2026.9.0.0`.
+𖥔 Neo Oven presets for GLM-5.3, Qwen3.8, Qwen3.8-Flash, Muse Spark
+and Spark X2.5 at 1.7b and 4b.
+๋࣭⭑ `/web/v1` — keyless web search for HyperLink and hyperchat. Search,
+summarise, and three settings written in the request's own grammar —
+`s1` the browser family to present as, `s2` the engine (DuckDuckGo,
+Google, Wikipedia, or `allowlist` for no engine at all), `s3` an API
+key for people who have one. No key is needed for any of it.
+𖥔 `/web/v1/summarize` works with no model loaded — extractive by
+default, and not as a placeholder: a phone asking for the gist of a
+page should not wait for a model load, and a server that has not
+loaded one is the common case.
+
+### Fixed
+
+𖢥 **gather looked like it never stopped.** The loop was correct — it
+ends when the queue empties or the page ceiling is hit — but a calendar,
+a session id or a faceted search produces unique URLs faster than a
+crawl consumes them, so the queue never empties and it ran to
+MAX_PAGES: 5000 pages at one second of politeness is eighty-three
+minutes past the last page worth having. There is now a wall clock, a
+"several levels produced nothing new" stop, and `stopped_because` on
+the result — "it finished" and "it hit a ceiling with 810,000 URLs
+queued" look identical from outside and mean opposite things about
+whether the data is complete.
+𖢥 **Neo Oven's presets named the wrong architectures.** `gemma`,
+`gemma2`, `gemma3`, `phi3`, `glm`, `glm4`, `qwen3`, `llama4`,
+`nemotron` and `gpt_oss` are all registered separately in transformers
+and all of them were mapped to `llama` or `qwen2`. The `model_type`
+goes into `config.json` and is what `AutoModel` dispatches on, so the
+file was wrong from the moment it was written. Thirty-seven presets
+rewritten against the real registry and the real config defaults —
+GLM's `rms_norm_eps` is `1.5625e-07`, not the `1e-5` that was there.
+𖢥 A crawl of a site twice silently overwrote the first run. Output now
+goes to `~/.hypernix/data/<site>/<session>/`.
+🐛 The first version of gather's clock checked between levels and
+overshot a 4-second budget by 33 seconds — one level of a faceted trap
+held 27,931 URLs. A level is not a unit of time; it is chunked now and
+the same trap stops at 4.1s.
+🐛 `huggingface_hub` 1.x removed `direction` from `list_models` and
+`list_datasets`, so `scavenger` raised `TypeError` on a current install.
+𖢥 `eth auto` fell through to stock on a warm GPU. The auto-level table
+was three fixed temperatures and one derived from `THERMAL_ABORT_C`;
+lowering that threshold to 60 °C put the derived band *below* two of
+the fixed ones, so the table stopped ascending, the level-5 band became
+unreachable, and a GPU at 80 °C got nothing instead of the small bump
+it was meant to. The bands are fractions of the abort temperature now,
+which reproduce the old table exactly at the old threshold, and a test
+asserts the ladder ascends at any threshold.
+
+### Tests
+
+🧪 `dilute`: 89 tests. The assertions are on *spread* and *separation* —
+did the warm end of the ladder ever win, did the evaluator actually
+separate the samples — because best-of-n's failure mode is that it
+keeps working: break the ladder or the tie-break and the run still
+finishes, still writes a file, and still reports a trace count that
+looks right.
+🧪 Eight mutations reintroduced by hand and all eight caught: ties going
+to `max()`, the ladder collapsing to one temperature, the judge's score
+read as the first number in the reply, "longer is better" length
+scoring, an unreadable judge reply scoring zero, the judge sampled
+warm, the model reloaded per call, and `jit` buffering instead of
+flushing.
+🧪 `gather`: 57 tests including a real local HTTP server and a faceted
+trap, to tell "finished" from "hit a ceiling".
+🧪 `neo_oven`: every preset's `model_type` checked against what
+transformers actually registers, rather than against the table.
+🧪 `/web/v1`: 90 tests, most of them asserting a *refusal* — the
+failure mode of a hand-written grammar is that it accepts things, and a
+parser that shrugs at what it did not understand leaves a server
+configured one way and an operator certain it is another. Eight
+mutations reintroduced and all eight caught, including the allowlist
+matching by suffix without the dot (`nota.test` passing for `a.test`)
+and the API key reaching a log line intact.
+
+### Known Issues
+
+❗ `dilute`'s tie-break is seeded per attempt, so two runs with the same
+seed and the same prompts agree — but a run resumed from a different
+prompt offset will not reproduce the first run's picks.
+
+⸻
+
 ## 0.72.5.post14 — 2026-09-22
 
 First entry written to the format in `Changelog-guide.md`: dated

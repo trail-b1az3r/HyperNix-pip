@@ -70,14 +70,52 @@ class TestAutoLevel:
     claim it had."""
 
     @pytest.mark.parametrize(
-        ("temp", "expected"),
-        [(35.0, 20), (55.0, 15), (70.0, 10), (80.0, 5), (95.0, 0)],
+        ("fraction", "expected"),
+        [(0.40, 20), (0.65, 15), (0.78, 10), (0.95, 5), (1.10, 0)],
     )
-    def test_level_follows_temperature(self, monkeypatch, temp, expected):
+    def test_level_follows_temperature(self, monkeypatch, fraction, expected):
+        """Stated as a fraction of the abort temperature, not in degrees.
+
+        The absolute version of this test passed for a year and then
+        started asserting the wrong thing the moment somebody lowered
+        `THERMAL_ABORT_C` — because the bands were three fixed degrees
+        and one derived one, and lowering the threshold put the derived
+        band below two of the fixed ones. A test written in degrees
+        cannot notice that; one written in fractions fails the moment
+        the ladder stops being a ladder.
+        """
+        temp = eth.THERMAL_ABORT_C * fraction
         monkeypatch.setattr(eth.Ethanol, "read_temperature", lambda self: temp)
         level, reason = eth.Ethanol(level=0, backend="nvidia").auto_level()
         assert level == expected
-        assert str(int(temp)) in reason
+        assert f"{temp:.0f}" in reason
+
+    def test_the_bands_ascend(self):
+        """The bug itself. A table that does not ascend has a dead band
+        in it, and every temperature past the out-of-order entry falls
+        off the end to stock instead of matching."""
+        for abort in (40.0, 60.0, 75.0, 91.5, 105.0):
+            ceilings = [c for c, _ in eth.auto_level_bands(abort)]
+            assert ceilings == sorted(ceilings), f"out of order at {abort}"
+            assert len(set(ceilings)) == len(ceilings)
+
+    def test_the_top_band_is_the_abort_temperature(self):
+        """Above it, `apply` refuses anyway — a band that reached past
+        it would be picking a level the next call would not apply."""
+        assert eth.auto_level_bands(60.0)[-1][0] == 60.0
+
+    def test_it_never_picks_a_level_apply_would_refuse(self, monkeypatch):
+        """`_check_temperature_safe` refuses levels above 10 once the GPU
+        is past the abort temperature. `auto_level` choosing 15 or 20
+        there would be the two halves of the module disagreeing."""
+        for fraction in (0.1, 0.3, 0.5, 0.7, 0.9, 1.0, 1.2):
+            temp = eth.THERMAL_ABORT_C * fraction
+            monkeypatch.setattr(eth.Ethanol, "read_temperature",
+                                lambda self, t=temp: t)
+            level, _ = eth.Ethanol(level=0, backend="nvidia").auto_level()
+            machine = eth.Ethanol(level=level, backend="nvidia")
+            safe, _, why = machine._check_temperature_safe()
+            assert safe, f"auto picked {level} at {temp:.0f}C but apply says: {why}"
 
     def test_a_hot_gpu_gets_no_overclock(self, monkeypatch):
         monkeypatch.setattr(eth.Ethanol, "read_temperature", lambda self: 99.0)

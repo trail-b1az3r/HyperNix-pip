@@ -65,6 +65,7 @@ from . import (
     servers,
     training,
     usage,
+    web,
 )
 
 ALL_ROUTERS = (
@@ -105,6 +106,8 @@ ALL_ROUTERS = (
     # This server described so an assistant can read it for
     # itself. Off unless T1_MCP_ENABLED.
     mcp.router,
+    # 0.72.6 pt2 -- keyless web search for HyperLink and hyperchat.
+    web.router,
 )
 
 __all__ = [

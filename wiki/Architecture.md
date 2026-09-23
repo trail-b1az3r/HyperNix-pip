@@ -45,8 +45,8 @@ graph TD
     t1api["t1api"]
     quant["quant"]
     system["system"]
-    hyperlink["hyperlink"]
     interfaces["interfaces"]
+    hyperlink["hyperlink"]
     data["data"]
     models["models"]
     training["training"]
@@ -60,12 +60,16 @@ graph TD
     audio["audio"]
     chat["chat"]
     timing["timing"]
+    dilute["dilute"]
     t1sdk["t1sdk"]
     bridge["bridge"]
     hypernix["hypernix"]
+    hubcompat["hubcompat"]
     chat --> security
     chat --> timing
+    data --> hubcompat
     data --> system
+    dilute --> models
     evaluation --> models
     evaluation --> system
     hypernix --> interfaces
@@ -73,6 +77,7 @@ graph TD
     interfaces --> audio
     interfaces --> chat
     interfaces --> data
+    interfaces --> dilute
     interfaces --> evaluation
     interfaces --> models
     interfaces --> monitoring
