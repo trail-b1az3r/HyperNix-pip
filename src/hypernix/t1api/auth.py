@@ -73,6 +73,8 @@ class AuthContext:
     t2_access_level: int = 0
     t2_is_admin: bool = False
     t2_sspkid: str = ""
+    #: The registered device a T2C (v2.1) key came from (0.72.6).
+    t2c_device_id: str = ""
 
     @property
     def key_id(self) -> str:
@@ -118,9 +120,13 @@ class T1AuthService:
         default_ttl_seconds: int = 3600,
         accept_t2_keys: bool = True,
         accept_t1_keys: bool = True,
+        t2c_authority=None,
     ) -> None:
         self.keymaster = keymaster
         self.gatekeeper = gatekeeper
+        #: Opens T2C (v2.1) keys. Made on first use, beside the key store,
+        #: so a server that never sees one never writes an RSA key.
+        self._t2c_authority = t2c_authority
         #: Recognise T2 keys (T1 v1.0.26.8.1.0). Configurable so a
         #: deployment can stay strictly T1 during a migration.
         self.accept_t2_keys = accept_t2_keys
@@ -194,12 +200,40 @@ class T1AuthService:
             return False
         return True
 
+    @property
+    def t2c(self):
+        """The :class:`~hypernix.security.t2c.T2CAuthority` for this key store."""
+        if self._t2c_authority is None:
+            from pathlib import Path
+
+            from ..security.t2c import T2CAuthority
+
+            self._t2c_authority = T2CAuthority(Path(self.keymaster.store_dir) / "t2c")
+        return self._t2c_authority
+
+    def _validate_t2c(self, key_str: str) -> AuthContext:
+        """Open a T2C key and authenticate the T2 key sealed inside it."""
+        from ..security.rotorvault import RotorvaultError
+        from ..security.t2c import T2CError
+
+        try:
+            t2_raw, device_id = self.t2c.open(key_str)
+        except (T2CError, RotorvaultError) as exc:
+            raise T1APIError(
+                T1ErrorCode.AUTH_INVALID_KEY, str(exc),
+                details={"key_family": "T2C"}, http_status=401,
+            ) from exc
+        context = self._validate_t2(t2_raw)
+        context.t2_family = "T2C"
+        context.t2c_device_id = device_id
+        return context
+
     def _accepted_families(self) -> list[str]:
         families = []
         if self.accept_t1_keys:
             families.append("T1")
         if self.accept_t2_keys:
-            families.extend(["T2", "T2S"])
+            families.extend(["T2", "T2S", "T2C"])
         return families
 
     def validate_key(self, key_str: str) -> AuthContext:
@@ -224,7 +258,19 @@ class T1AuthService:
                     details={"key_family": "T2", "accepted": self._accepted_families()},
                     http_status=401,
                 )
+            if key_str.startswith("T2C_"):
+                return self._validate_t2c(key_str)
             return self._validate_t2(key_str)
+        if key_str.startswith("T2CK_"):
+            # The kit is what makes keys, not a key. Sending it means it
+            # has left the machine it was meant to stay on.
+            raise T1APIError(
+                T1ErrorCode.AUTH_INVALID_KEY,
+                "That is a T2C kit, not a key. Keep the kit on the client and send the "
+                "day's key it makes (waiter does this for you); if the kit was sent "
+                "somewhere it should not have been, revoke its device.",
+                details={"key_family": "T2CK"}, http_status=401,
+            )
         if not self.accept_t1_keys:
             # Deliberately says what to present rather than just refusing:
             # the holder of a T1 key that has been wrapped as T2 has a

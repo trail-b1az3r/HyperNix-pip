@@ -17,7 +17,7 @@ Four types, three of which exist today::
 
     T2   — the general key.        T2_<prefix>_<body><t1suffix>-<level>
     T2S  — the HyperLink key.      Exactly 26 body characters.
-    T2C  — the encrypted key.      Defined, refused: see below.
+    T2C  — the sealed key.         See hypernix.security.t2c (0.72.6).
 
 ``T2S`` exists because HyperLink is a phone talking to a home PC, and the
 general T2 key is too long to be a fallback when a QR scan fails. Its body
@@ -26,14 +26,13 @@ is fixed at 26 characters — short enough to type once, long enough that
 is deliberately weak: read, and non-admin write. Nothing else. That is
 what makes it safe to type into a phone in a coffee shop.
 
-``T2C`` is specified here but :func:`generate` refuses to mint one. It
-belongs to the 1.x line, its encryption envelope is not designed yet, and
-the described key-derivation — the holder's public IP, shuffled — is not
-a secret: a public IP is observable by every server the client talks to,
-changes without warning, and is shared by everyone behind the same NAT.
-Shipping that as though it were encryption would be worse than shipping
-nothing. The type is reserved so the wire format has a place for it; see
-:class:`T2Type` and the note on :data:`T2C_UNAVAILABLE_REASON`.
+``T2C`` does not use the pattern below and :func:`generate` does not
+mint one. A T2C key is a T2 key *sealed*: the underlying T2 key encrypted
+for the server's RSA key and again under a per-device key that changes
+daily (Rotorvault). It was held back until it had a real key-agreement
+step — the first specification derived it from the holder's public IP,
+which is no secret. :mod:`hypernix.security.t2c` builds and opens them;
+this module only recognises the prefix.
 
 Release gating
 --------------
@@ -118,11 +117,12 @@ __all__ = [
 #: :func:`t2_api_available`.
 T2_API_RELEASE_VERSION = "1.0.0"
 
+#: What generate() and parse() say to a T2C request: the family exists
+#: (0.72.6) but is sealed, not spelled, so this module is the wrong door.
 T2C_UNAVAILABLE_REASON = (
-    "T2C is reserved, not implemented. Its specified key derivation — the holder's "
-    "public IP, shuffled — is not a secret: a public IP is observable by every server "
-    "the client contacts, changes without notice, and is shared across a NAT. T2C will "
-    "ship with a real key-agreement step in the 1.x line."
+    "A T2C (v2.1) key is sealed, not spelled like other T2 keys: mint one with "
+    "'gkey create -v v2.1', or let waiter seal an existing key with 'waiter serv -E'. "
+    "hypernix.security.t2c opens and builds them."
 )
 
 
@@ -186,7 +186,7 @@ class T2Type(StrEnum):
     T2 = "T2"        # general purpose
     T2S = "T2S"      # HyperLink; 26-character body, restricted outside HyperLink
     T2P = "T2P"      # carries a billing binding — see hypernix.t1api.billingkeys
-    T2C = "T2C"      # reserved for 1.x — see T2C_UNAVAILABLE_REASON
+    T2C = "T2C"      # sealed with Rotorvault — see hypernix.security.t2c
 
 
 #: Valid access levels. Level is carried in the suffix and validated on

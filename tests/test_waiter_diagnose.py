@@ -253,8 +253,8 @@ class TestVersionCommand:
         code, text = run_cli("version", "--json")
         assert code == 0
         data = json.loads(text)
-        assert data["key_versions"]["available"] == ["v1", "v2", "v2short"]
-        assert data["key_versions"]["reserved"] == ["v2.1"]
+        assert data["key_versions"]["available"] == ["v1", "v2", "v2short", "v2.1"]
+        assert data["key_versions"]["reserved"] == []
         assert data["t1_api"]["min_client"]
 
     def test_it_omits_the_server_line_rather_than_guessing(self, waiter_home):

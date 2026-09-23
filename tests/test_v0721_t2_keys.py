@@ -73,8 +73,10 @@ class TestT2Generation:
             ok, reason = validate_admin_password(password)
             assert ok, reason
 
-    def test_t2c_is_reserved_and_refused(self):
-        with pytest.raises(NotImplementedError, match="not a secret"):
+    def test_t2c_is_not_minted_here(self):
+        """A T2C key is sealed, not spelled: this generator points at the
+        module and the command that make one (0.72.6)."""
+        with pytest.raises(NotImplementedError, match="gkey create -v v2.1"):
             T2KeyGenerator.generate(family=T2Type.T2C)
 
 

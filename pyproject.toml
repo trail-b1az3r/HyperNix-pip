@@ -82,6 +82,9 @@ t1api = [
     # used by POST /modules/upload/local. Not imported directly anywhere
     # in hypernix, but FastAPI raises at request time without it installed.
     "python-multipart>=0.0.9,<1",
+    # 0.72.6: v2.1 (T2C) keys — the server's RSA key and Rotorvault's
+    # AES-GCM stage. Also what Keymaster's encrypted storage uses.
+    "cryptography>=42",
 ]
 # v0.71.5b3: PostgreSQL backend for production T1 API deployments
 # (T1_DATABASE_URL). SQLite stays the zero-config development default and

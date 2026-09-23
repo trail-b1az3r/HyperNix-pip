@@ -92,16 +92,16 @@ def auth_service() -> T1AuthService:
 
 
 class TestTheRegistry:
-    def test_the_three_issuable_versions(self):
-        assert key_version_names() == ["v1", "v2", "v2short"]
+    def test_the_four_issuable_versions(self):
+        assert key_version_names() == ["v1", "v2", "v2short", "v2.1"]
 
-    def test_latest_is_v2_not_v2short(self):
+    def test_latest_is_v2_1_not_v2short(self):
         """v2short is a variant for a constrained client, not a later version.
 
         Calling it "latest" would push HyperLink's deliberately restricted
-        key at everyone as the newest thing.
+        key at everyone as the newest thing. v2.1 is the newer format.
         """
-        assert LATEST_KEY_VERSION.name == "v2"
+        assert LATEST_KEY_VERSION.name == "v2.1"
 
     def test_the_default_stays_v1(self):
         """Changing what a bare `gkey create` mints is a breaking surprise."""
@@ -115,17 +115,15 @@ class TestTheRegistry:
     def test_aliases_resolve(self, alias, expected):
         assert resolve_key_version(alias).name == expected
 
-    def test_v2_1_is_refused_with_a_reason_not_as_a_typo(self):
-        """"Unknown version" and "not released yet" are different facts.
-
-        Someone planning a migration needs to know which one they hit.
-        """
-        assert [v.name for v in RESERVED_KEY_VERSIONS] == ["v2.1"]
-        with pytest.raises(ValueError, match="not issued yet"):
-            resolve_key_version("v2.1")
+    def test_v2_1_is_issuable(self):
+        """Reserved until 0.72.6, when it got a real key-agreement step."""
+        assert RESERVED_KEY_VERSIONS == ()
+        version = resolve_key_version("v2.1")
+        assert (version.family, version.prefix, version.issuable) == ("T2C", "T2C_", True)
+        assert resolve_key_version("t2c") is version
 
     def test_an_unknown_version_lists_what_exists(self):
-        with pytest.raises(ValueError, match="v1, v2, v2short"):
+        with pytest.raises(ValueError, match="v1, v2, v2short, v2.1"):
             resolve_key_version("v9")
 
     def test_only_v2short_pins_a_body_length(self):
@@ -292,7 +290,6 @@ class TestRefusalsLeaveNothingBehind:
         "argv,expected",
         [
             (["-v", "v2short", "--type", "admin"], "cannot be an administrator"),
-            (["-v", "v2.1"], "not issued yet"),
             (["-v", "v9"], "Unknown key version"),
             (["-v", "v1", "--level", "5"], "does not apply"),
             (["-v", "v2", "--level", "12"], "must be 1-9"),
@@ -309,7 +306,6 @@ class TestRefusalsLeaveNothingBehind:
     def test_no_key_is_minted_by_a_refused_request(self, store):
         for argv in (
             ["-v", "v2short", "--type", "admin"],
-            ["-v", "v2.1"],
             ["-v", "v1", "--level", "5"],
             ["-v", "v2", "--level", "12"],
         ):
@@ -362,11 +358,10 @@ class TestVersionCommand:
             assert version.name in text
             assert version.prefix in text
 
-    def test_it_says_v2_1_is_not_available(self, store):
-        """Named on purpose: "not yet" is the answer people are looking for."""
+    def test_it_lists_v2_1_as_the_latest(self, store):
         _, text = run("version")
         assert "v2.1" in text
-        assert "not issuable" in text or "not issued" in text
+        assert "T2C_" in text
 
     def test_json_output(self, store):
         import hypernix
@@ -378,12 +373,12 @@ class TestVersionCommand:
         assert data["hypernix"] == hypernix.__version__
         assert data["t1_api"]["short"] == T1_VERSION_SHORT
         assert data["t1_api"]["long"] == T1_VERSION_LONG
-        assert data["key_versions"]["latest"] == "v2"
+        assert data["key_versions"]["latest"] == "v2.1"
         assert data["key_versions"]["default"] == "v1"
         assert [v["name"] for v in data["key_versions"]["available"]] == [
-            "v1", "v2", "v2short"
+            "v1", "v2", "v2short", "v2.1"
         ]
-        assert [v["name"] for v in data["key_versions"]["reserved"]] == ["v2.1"]
+        assert data["key_versions"]["reserved"] == []
 
     def test_it_is_in_the_help(self, store):
         _, text = run("--help")
