@@ -197,6 +197,17 @@ jobs:
               re.sub(r'^VERSION="[^"]+"$', f'VERSION="{v}"',
                      installer.read_text(), count=1, flags=re.M)
           )
+
+          # The fifth and sixth: hyped-pro's package.json and app.ts,
+          # in semver (0.72.6.rc1 -> 0.72.6-rc1). The spelling lives in
+          # one function the tests use too; it is loaded from its file so
+          # nothing else in hypernix is imported here.
+          import importlib.util
+          spec = importlib.util.spec_from_file_location(
+              "hyped_pro_otui", "src/hypernix/interfaces/hyped_pro_otui.py")
+          launcher = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(launcher)
+          print("hyped-pro app version:", launcher.sync_app_version(v))
           PY
           echo "--- pyproject.toml version line"
           grep '^version' pyproject.toml
@@ -361,6 +372,8 @@ jobs:
             setup.cfg \
             src/hypernix/__init__.py \
             install-t1.sh \
+            src/hypernix/interfaces/hyped_pro_app/package.json \
+            src/hypernix/interfaces/hyped_pro_app/src/app.ts \
             wiki/Release-Timeline.md
 
           if git diff --cached --quiet; then

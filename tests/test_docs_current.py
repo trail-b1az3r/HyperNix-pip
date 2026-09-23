@@ -9,6 +9,7 @@ prose; they catch the page that still points at something renamed.
 from __future__ import annotations
 
 import collections
+import functools
 import importlib
 import importlib.util
 import re
@@ -118,11 +119,23 @@ def test_every_waiter_serv_letter_is_in_the_flag_table():
 
 def _optional_missing(exc: BaseException) -> bool:
     """An optional dependency (torch, fastapi, ...) is not installed here,
-    which says nothing about whether the doc is right."""
-    name = getattr(exc, "name", None) or ""
-    return isinstance(exc, ModuleNotFoundError) and bool(name) and not name.startswith("hypernix")
+    which says nothing about whether the doc is right.
+
+    The missing module can be a cause rather than the error itself:
+    ``hypernix.t1api.create_app`` re-raises fastapi's absence as a
+    plain ImportError with install advice, chained ``from`` it.
+    """
+    seen: set[int] = set()
+    while exc is not None and id(exc) not in seen:
+        seen.add(id(exc))
+        name = getattr(exc, "name", None) or ""
+        if isinstance(exc, ModuleNotFoundError) and name and not name.startswith("hypernix"):
+            return True
+        exc = exc.__cause__ or exc.__context__
+    return False
 
 
+@functools.cache   # a failed import is retried every time otherwise
 def _importable(dotted: str) -> bool:
     parts = dotted.split(".")
     for i in range(len(parts), 0, -1):

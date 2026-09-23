@@ -7,6 +7,7 @@ packaging, which decide whether the app ever starts.
 """
 from __future__ import annotations
 
+import json
 import os
 import re
 import shutil
@@ -297,8 +298,38 @@ def test_a_missing_app_says_reinstall(tmp_path: Path) -> None:
 
 
 def test_app_version_matches_the_package() -> None:
-    expected = hypernix.__version__.replace(".post", "-post")
-    assert launcher.app_version() == expected
+    assert launcher.app_version() == launcher.semver_of(hypernix.__version__)
+
+
+@pytest.mark.parametrize("version, expected", [
+    ("0.72.5.post17", "0.72.5-post17"),
+    ("0.72.6.rc1", "0.72.6-rc1"),
+    ("0.72.6rc1", "0.72.6-rc1"),
+    ("0.72.6-rc1", "0.72.6-rc1"),
+    ("0.72.6", "0.72.6"),
+    ("0.72.6a2", "0.72.6-a2"),
+    ("0.72.6postr1", "0.72.6-post1"),
+    ("0.70.6-2", "0.70.6-post2"),
+    ("v0.72.6", "0.72.6"),
+    ("not a version", "not a version"),
+])
+def test_semver_of_spells_every_release_input_as_semver(version: str, expected: str) -> None:
+    assert launcher.semver_of(version) == expected
+
+
+def test_sync_app_version_writes_both_places(tmp_path: Path) -> None:
+    app = tmp_path / "app"
+    (app / "src").mkdir(parents=True)
+    shutil.copy(APP / "package.json", app / "package.json")
+    shutil.copy(APP / "src" / "app.ts", app / "src" / "app.ts")
+    assert launcher.sync_app_version("0.72.6.rc1", app) == "0.72.6-rc1"
+    assert launcher.app_version(app) == "0.72.6-rc1"
+    assert 'export const VERSION = "0.72.6-rc1"' in (app / "src" / "app.ts").read_text(encoding="utf-8")
+    # Nothing else in package.json moved.
+    before = json.loads((APP / "package.json").read_text(encoding="utf-8"))
+    after = json.loads((app / "package.json").read_text(encoding="utf-8"))
+    assert {k: v for k, v in after.items() if k != "version"} == {
+        k: v for k, v in before.items() if k != "version"}
 
 
 def test_app_and_launcher_agree_on_version() -> None:
@@ -387,3 +418,21 @@ def test_ctrl_c_goes_through_quit() -> None:
     assert re.search(r'key\.ctrl && key\.name === "c"\) \{\s*this\.quit\(\)', app)
     quit_body = app[app.index("  quit(): void {") :]
     assert "this.bridge.close()" in quit_body and "process.exit(0)" in quit_body
+
+
+def test_the_release_workflow_bumps_and_commits_the_app_version() -> None:
+    """A release that bumped the package and not the app shipped
+    0.72.6.rc1 with an app still calling itself 0.72.5-post17, and
+    failed its own test run over it. The bump must write both files
+    and the commit must stage both, or they are written and discarded."""
+    workflow = (Path(__file__).resolve().parents[1] / ".github" / "workflows"
+                / "public-release.yml").read_text(encoding="utf-8")
+    bump = workflow[workflow.index("Bump versions in source"):]
+    bump = bump[:bump.index("- name: Lint")]
+    assert "sync_app_version(v)" in bump
+    assert "src/hypernix/interfaces/hyped_pro_otui.py" in bump
+    commit = workflow[workflow.index("- name: Commit version bump"):]
+    staged = commit[commit.index("git add"):commit.index("git diff --cached")]
+    for path in ("src/hypernix/interfaces/hyped_pro_app/package.json",
+                 "src/hypernix/interfaces/hyped_pro_app/src/app.ts"):
+        assert path in staged, f"the release bumps {path} and never commits it"

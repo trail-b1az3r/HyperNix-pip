@@ -134,6 +134,56 @@ def app_version(app_dir: Path = APP_DIR) -> str:
         return "unknown"
 
 
+_PEP440 = re.compile(
+    r"^v?(\d+\.\d+\.\d+)"
+    r"(?:[._-]?(postr|post|rc|pre|alpha|beta|a|b|dev)[._-]?(\d*))?"
+    r"(?:-(\d+))?$"
+)
+
+
+def semver_of(version: str) -> str:
+    """The app's spelling of a package version.
+
+    ``package.json`` wants semver, which has no ``.post`` or ``.rc``:
+    ``0.72.5.post17`` is ``0.72.5-post17`` and ``0.72.6.rc1`` (or
+    ``0.72.6rc1``) is ``0.72.6-rc1``. A release's ``-N`` rebuild suffix
+    is PEP 440's ``.postN``, so it becomes ``-postN`` too. Anything else
+    is returned as it is rather than guessed at.
+    """
+    match = _PEP440.match(version.strip())
+    if match is None:
+        return version
+    base, tag, number, rebuild = match.groups()
+    if rebuild:
+        return f"{base}-post{rebuild}"
+    if tag is None:
+        return base
+    return f"{base}-{'post' if tag == 'postr' else tag}{number}"
+
+
+def sync_app_version(version: str, app_dir: Path = APP_DIR) -> str:
+    """Write *version* into the app's ``package.json`` and ``app.ts``.
+
+    The release workflow calls this beside the other version strings it
+    bumps; without it a release left the app announcing the last one.
+    Returns what was written.
+    """
+    wanted = semver_of(version)
+    package = app_dir / "package.json"
+    package.write_text(
+        re.sub(r'^(\s*"version":\s*)"[^"]*"', rf'\g<1>"{wanted}"',
+               package.read_text(encoding="utf-8"), count=1, flags=re.M),
+        encoding="utf-8",
+    )
+    app_ts = app_dir / "src" / "app.ts"
+    app_ts.write_text(
+        re.sub(r'^export const VERSION = "[^"]*"', f'export const VERSION = "{wanted}"',
+               app_ts.read_text(encoding="utf-8"), count=1, flags=re.M),
+        encoding="utf-8",
+    )
+    return wanted
+
+
 def runtime_root(env: dict[str, str] | None = None) -> Path:
     env = os.environ if env is None else env
     base = env.get("HYPERNIX_HOME") or str(Path(env.get("HOME") or Path.home()) / ".hypernix")
