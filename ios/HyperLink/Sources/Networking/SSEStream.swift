@@ -30,6 +30,11 @@ enum ChatStreamEvent: Sendable {
     /// The model backend failed part-way. The text already delivered is
     /// still valid and is still saved server-side.
     case failed(code: String, message: String)
+    /// Sent after `done` for a new chat: what the model named it.
+    case title(String)
+    /// The oldest part of the thread was summarised before this turn,
+    /// replacing this many messages in what the model is sent.
+    case compacted(messages: Int)
 }
 
 enum SSEStream {
@@ -106,6 +111,8 @@ enum SSEStream {
             let finish_reason: String?
             let output_tokens: Int?
             let error: ErrorBody?
+            let title: String?
+            let messages: Int?
 
             struct ErrorBody: Decodable {
                 let code: String?
@@ -140,6 +147,11 @@ enum SSEStream {
                 finishReason: frame.finish_reason ?? "",
                 outputTokens: frame.output_tokens ?? 0
             )
+        case "title":
+            guard let title = frame.title, !title.isEmpty else { return nil }
+            return .title(title)
+        case "compacted":
+            return .compacted(messages: frame.messages ?? 0)
         default:
             return nil
         }

@@ -103,13 +103,12 @@ public:
 
 private:
     struct State;
-    // [[maybe_unused]] because the stub build genuinely does not read it:
-    // there is no llama.cpp to hold, so `State` is empty and every method
-    // returns the unavailable answer without consulting it. GCC has no
-    // -Wunused-private-field, so the stub compiled clean on Linux and
-    // failed under clang on macOS and Windows -- where the warning is
-    // right about this build and wrong about the other one.
-    [[maybe_unused]] State* state_;
+    // Read by the stub build too (its loaded() checks it), so clang's
+    // -Wunused-private-field is satisfied without an attribute. The
+    // attribute was the first fix, and GCC 11 -- ubuntu-22.04's -- does
+    // not accept [[maybe_unused]] on a data member and, under -Werror,
+    // failed the build it was meant to fix.
+    State* state_;
     std::atomic<bool> cancel_{false};
 };
 

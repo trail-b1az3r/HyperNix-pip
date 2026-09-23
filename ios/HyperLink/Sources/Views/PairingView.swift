@@ -208,6 +208,23 @@ struct PairingView: View {
                     }
                     .disabled(!canConnect)
                 }
+
+                // Only on the first-run screen, not when adding a second
+                // server. Models on the phone are for having no server at
+                // all — and until now this screen was the whole app for
+                // somebody without one, so there was no way to reach them.
+                if onDone == nil {
+                    Section {
+                        NavigationLink {
+                            OnDeviceModelsView()
+                        } label: {
+                            Label("Run a model on this iPhone instead",
+                                  systemImage: "iphone.gen3")
+                        }
+                    } footer: {
+                        Text("No PC needed. Small models (1–4B) run well on recent iPhones.")
+                    }
+                }
             }
             .navigationTitle(onDone == nil ? "HyperLink" : "Add a server")
             .toolbar {

@@ -183,7 +183,17 @@ struct ChatSession: Decodable, Identifiable, Hashable, Sendable {
     let modelID: String
     let backend: String
     let createdAt: Double
+    /// When this conversation last *said* something — a prompt sent or
+    /// a reply received, including one that arrived in the background.
+    ///
+    /// Not when its title or model changed. Renaming eleven old chats
+    /// used to send all eleven to the top of the list reading "updated
+    /// 2m ago", which is the app telling you something happened in
+    /// conversations where nothing did.
     let updatedAt: Double
+    /// When anything about it last changed, housekeeping included.
+    /// Here for a client that wants it; the list does not show it.
+    let touchedAt: Double
     let archived: Bool
     let messageCount: Int
 
@@ -196,8 +206,29 @@ struct ChatSession: Decodable, Identifiable, Hashable, Sendable {
         case backend
         case createdAt = "created_at"
         case updatedAt = "updated_at"
+        case touchedAt = "touched_at"
         case archived
         case messageCount = "message_count"
+    }
+
+    /// Written by hand so a server too old to send `touched_at` still
+    /// decodes. The synthesised decoder calls `decode(_:forKey:)` and
+    /// throws on a missing key however the property is defaulted, and a
+    /// throw here empties the chat list.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        sessionID = try c.decode(String.self, forKey: .sessionID)
+        title = try c.decodeIfPresent(String.self, forKey: .title) ?? "Chat"
+        modelID = try c.decodeIfPresent(String.self, forKey: .modelID) ?? ""
+        backend = try c.decodeIfPresent(String.self, forKey: .backend) ?? ""
+        createdAt = try c.decodeIfPresent(Double.self, forKey: .createdAt) ?? 0
+        updatedAt = try c.decodeIfPresent(Double.self, forKey: .updatedAt) ?? 0
+        // Falls back to `updatedAt`, which is what the one column meant
+        // before it was split in two.
+        touchedAt = try c.decodeIfPresent(Double.self, forKey: .touchedAt)
+            ?? updatedAt
+        archived = try c.decodeIfPresent(Bool.self, forKey: .archived) ?? false
+        messageCount = try c.decodeIfPresent(Int.self, forKey: .messageCount) ?? 0
     }
 }
 
@@ -219,6 +250,10 @@ struct ChatMessage: Decodable, Identifiable, Hashable, Sendable {
     let createdAt: Double
     let inputTokens: Int
     let outputTokens: Int
+    /// A system message the server wrote in place of older ones it
+    /// summarised to keep the thread inside the model's context. Shown
+    /// as a marker, not as a message: the originals are still above it.
+    var isCompactionSummary: Bool = false
 
     var id: String { messageID }
     var isUser: Bool { role == "user" }
@@ -234,6 +269,7 @@ struct ChatMessage: Decodable, Identifiable, Hashable, Sendable {
         case createdAt = "created_at"
         case inputTokens = "input_tokens"
         case outputTokens = "output_tokens"
+        case metadata
     }
 
     /// A locally-constructed message, for the bubble shown while the
@@ -251,6 +287,31 @@ struct ChatMessage: Decodable, Identifiable, Hashable, Sendable {
             createdAt: Date().timeIntervalSince1970,
             inputTokens: 0,
             outputTokens: 0
+        )
+    }
+}
+
+extension ChatMessage {
+    /// Decoded by hand only to read one flag out of `metadata`, whose
+    /// other values are of every type and would not decode as a whole.
+    init(from decoder: Decoder) throws {
+        struct Metadata: Decodable {
+            let compaction_summary: Bool?
+        }
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            messageID: try c.decode(String.self, forKey: .messageID),
+            sessionID: try c.decodeIfPresent(String.self, forKey: .sessionID) ?? "",
+            seq: try c.decodeIfPresent(Int.self, forKey: .seq) ?? 0,
+            role: try c.decodeIfPresent(String.self, forKey: .role) ?? "assistant",
+            content: try c.decodeIfPresent(String.self, forKey: .content) ?? "",
+            modelID: try c.decodeIfPresent(String.self, forKey: .modelID) ?? "",
+            attachmentIDs: try c.decodeIfPresent([String].self, forKey: .attachmentIDs) ?? [],
+            createdAt: try c.decodeIfPresent(Double.self, forKey: .createdAt) ?? 0,
+            inputTokens: try c.decodeIfPresent(Int.self, forKey: .inputTokens) ?? 0,
+            outputTokens: try c.decodeIfPresent(Int.self, forKey: .outputTokens) ?? 0,
+            isCompactionSummary: ((try? c.decodeIfPresent(Metadata.self, forKey: .metadata)) ?? nil)?
+                .compaction_summary ?? false
         )
     }
 }
@@ -769,11 +830,16 @@ struct CatalogueModel: Decodable, Identifiable, Equatable, Sendable {
     /// The other sources that also know this model. A GGUF on disk that
     /// LM Studio also has loaded is one model, not two.
     let alsoIn: [String]
+    /// Whether this model can look at a photo: true, false, or nil when
+    /// nothing says either way. The composer hides the photo options for
+    /// false and warns for nil rather than guessing.
+    let supportsImages: Bool?
 
     var id: String { modelID }
 
     enum CodingKeys: String, CodingKey {
         case modelID = "model_id"
+        case supportsImages = "supports_images"
         case name, source, path, quant, loaded, runnable, detail
         case sizeBytes = "size_bytes"
         case architecture
@@ -803,6 +869,7 @@ struct CatalogueModel: Decodable, Identifiable, Equatable, Sendable {
         runnable = try c.decodeIfPresent(Bool.self, forKey: .runnable) ?? false
         detail = try c.decodeIfPresent(String.self, forKey: .detail) ?? ""
         alsoIn = try c.decodeIfPresent([String].self, forKey: .alsoIn) ?? []
+        supportsImages = try c.decodeIfPresent(Bool.self, forKey: .supportsImages)
     }
 
     /// Where this came from, in words for a label.
@@ -1426,9 +1493,15 @@ struct UserPreferences: Decodable, Equatable, Sendable {
     let backend: String
     let toolsEnabled: Bool
     let autoMemory: Bool
+    /// Summarise the oldest part of a thread once it no longer fits.
+    let autoCompact: Bool
+    /// Let the model name a new chat after its first reply.
+    let modelTitles: Bool
 
     enum CodingKeys: String, CodingKey {
         case bio, effort, backend
+        case autoCompact = "auto_compact"
+        case modelTitles = "model_titles"
         case displayName = "display_name"
         case systemPrompt = "system_prompt"
         case contextMinimum = "context_minimum"
@@ -1450,6 +1523,8 @@ struct UserPreferences: Decodable, Equatable, Sendable {
         backend = try c.decodeIfPresent(String.self, forKey: .backend) ?? ""
         toolsEnabled = try c.decodeIfPresent(Bool.self, forKey: .toolsEnabled) ?? false
         autoMemory = try c.decodeIfPresent(Bool.self, forKey: .autoMemory) ?? true
+        autoCompact = try c.decodeIfPresent(Bool.self, forKey: .autoCompact) ?? true
+        modelTitles = try c.decodeIfPresent(Bool.self, forKey: .modelTitles) ?? true
     }
 
     static let defaults = UserPreferences()
@@ -1458,6 +1533,7 @@ struct UserPreferences: Decodable, Equatable, Sendable {
         displayName = ""; bio = ""; systemPrompt = ""; effort = "medium"
         contextMinimum = 0; contextMaximum = 0; backupModel = ""; backend = ""
         toolsEnabled = false; autoMemory = true
+        autoCompact = true; modelTitles = true
     }
 }
 
@@ -1533,6 +1609,8 @@ struct PreferencesPatch: Encodable, Sendable {
     var backend: String? = nil
     var tools_enabled: Bool? = nil
     var auto_memory: Bool? = nil
+    var auto_compact: Bool? = nil
+    var model_titles: Bool? = nil
 }
 
 // MARK: - What can answer
@@ -1598,12 +1676,15 @@ struct MemoryItem: Decodable, Identifiable, Equatable, Sendable {
     let source: String
     let pinned: Bool
     let updatedAt: Double
+    /// The model's name for the fact ("favourite editor"). Empty for one a
+    /// person wrote.
+    let key: String
 
     var id: String { memoryID }
     var isAutomatic: Bool { source == "auto" }
 
     enum CodingKeys: String, CodingKey {
-        case content, category, source, pinned
+        case content, category, source, pinned, metadata
         case memoryID = "memory_id"
         case updatedAt = "updated_at"
     }
@@ -1616,6 +1697,95 @@ struct MemoryItem: Decodable, Identifiable, Equatable, Sendable {
         source = try c.decodeIfPresent(String.self, forKey: .source) ?? "manual"
         pinned = try c.decodeIfPresent(Bool.self, forKey: .pinned) ?? false
         updatedAt = try c.decodeIfPresent(Double.self, forKey: .updatedAt) ?? 0
+        struct Metadata: Decodable { let key: String? }
+        key = ((try? c.decodeIfPresent(Metadata.self, forKey: .metadata)) ?? nil)?.key ?? ""
+    }
+}
+
+/// One category and how much is in it.
+struct MemoryCategory: Decodable, Identifiable, Equatable, Sendable {
+    let name: String
+    let count: Int
+    let pinned: Int
+    let auto: Int
+    var id: String { name }
+}
+
+struct MemoryCategoryList: Decodable, Sendable {
+    let categories: [MemoryCategory]
+}
+
+/// What "Organise" moved, or would move.
+struct MemoryMove: Decodable, Equatable, Sendable {
+    let memoryID: String
+    let from: String
+    let to: String
+
+    enum CodingKeys: String, CodingKey {
+        case from, to
+        case memoryID = "memory_id"
+    }
+}
+
+struct MemoryOrganiseResult: Decodable, Sendable {
+    let changes: [MemoryMove]
+    let applied: Bool
+}
+
+// MARK: - Shell
+
+/// Whether the server takes shell commands from this phone. Off unless
+/// the person running it set T1_HYPERLINK_SHELL=1.
+struct ShellStatus: Decodable, Equatable, Sendable {
+    let enabled: Bool
+    let timeoutSeconds: Double
+    let howToEnable: String
+
+    enum CodingKeys: String, CodingKey {
+        case enabled
+        case timeoutSeconds = "timeout_seconds"
+        case howToEnable = "how_to_enable"
+    }
+}
+
+struct ShellResult: Decodable, Identifiable, Equatable, Sendable {
+    let command: String
+    let cwd: String
+    let exitCode: Int?
+    let stdout: String
+    let stderr: String
+    let elapsedSeconds: Double
+    let timedOut: Bool
+    let truncated: Bool
+    var id: String { "\(command)-\(elapsedSeconds)-\(stdout.count)" }
+
+    enum CodingKeys: String, CodingKey {
+        case command, cwd, stdout, stderr, truncated
+        case exitCode = "exit_code"
+        case elapsedSeconds = "elapsed_seconds"
+        case timedOut = "timed_out"
+    }
+}
+
+/// The server's answer to "compress this conversation".
+struct CompactResult: Decodable, Sendable {
+    let applied: Bool
+    let summary: String
+    let messagesCompacted: Int
+    let summarisedBy: String
+
+    enum CodingKeys: String, CodingKey {
+        case applied, summary
+        case messagesCompacted = "messages_compacted"
+        case summarisedBy = "summarised_by"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        applied = try c.decodeIfPresent(Bool.self, forKey: .applied) ?? false
+        summary = try c.decodeIfPresent(String.self, forKey: .summary) ?? ""
+        messagesCompacted = try c.decodeIfPresent(Int.self, forKey: .messagesCompacted) ?? 0
+        summarisedBy = try c.decodeIfPresent(String.self, forKey: .summarisedBy) ?? ""
     }
 }
 

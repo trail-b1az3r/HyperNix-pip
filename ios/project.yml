@@ -118,6 +118,8 @@ targets:
           Attach photos from your library to a conversation so the model can look at them.
         NSCameraUsageDescription: >-
           Take a photo to send straight into a conversation.
+        NSFaceIDUsageDescription: >-
+          Face ID opens the chats you have hidden as private on this iPhone.
         NSBonjourServices:
           - _hypernix._tcp
         # Siri dictation, in CarPlay and in the app's hands-free mode.
@@ -202,7 +204,7 @@ targets:
         # by a test, because a stale default here is exactly what shipped
         # the wrong version before -- and a default nobody checks goes
         # stale the first time the T1 version moves.
-        MARKETING_VERSION: "1.0.26.9.2.3"
+        MARKETING_VERSION: "1.1.26.9.0.0"
         TARGETED_DEVICE_FAMILY: "1,2"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor

@@ -276,10 +276,100 @@ def launch(
         raise LaunchError(f"No such script: {path}")
     if path.is_dir():
         raise LaunchError(f"{path} is a directory, not a script.")
+    return _start(
+        _interpreter_for(path) + list(args or []),
+        label=_slug(name or path.stem), cwd=cwd, env=env, timeout=timeout,
+        log_file=log_file, priority=priority, gpu=gpu, cpu=cpu, store=store,
+        supervisor=supervisor,
+    )
 
+
+#: What `--shell auto` picks, in order. Bash first, deliberately: a
+#: launched job is scripting, and a command written in the syntax nearly
+#: every snippet online uses — `export X=1 && ...`, `$(...)` — fails in
+#: fish. Fish is used when named, or when there is no bash at all.
+SHELL_PREFERENCE: tuple[str, ...] = ("bash", "fish", "sh")
+
+
+def resolve_shell(shell: str = "auto") -> str:
+    """The path of the shell to run a command with."""
+    choice = (shell or "auto").strip().lower()
+    candidates = SHELL_PREFERENCE if choice == "auto" else (choice,)
+    if choice not in ("auto", "bash", "fish", "sh", "zsh"):
+        raise LaunchError(
+            f"--shell {shell}: pick fish, bash, zsh, sh or auto"
+        )
+    for name in candidates:
+        found = shutil.which(name)
+        if found:
+            return found
+    raise LaunchError(
+        f"{choice} is not installed here"
+        + ("" if choice == "auto" else "; --shell auto uses whatever is")
+    )
+
+
+def launch_shell(
+    command_text: str,
+    *,
+    shell: str = "auto",
+    name: str = "",
+    cwd: str | Path | None = None,
+    env: dict[str, str] | None = None,
+    timeout: int = 0,
+    log_file: str | Path | None = None,
+    priority: int = 0,
+    gpu: str = "",
+    cpu: str = "",
+    store: JobStore | None = None,
+    supervisor: Supervisor | None = None,
+) -> Job:
+    """Start a shell command detached — ``launch-script -$ '...'``.
+
+    The same job as a script gets: it survives the SSH connection
+    closing, has logs, a status, and can be stopped. The command is
+    passed to the shell as one ``-c`` argument, never re-split, so its
+    own quoting and pipes are the shell's to interpret.
+    """
+    _require_posix()
+    if not (command_text or "").strip():
+        raise LaunchError("-$ needs a command, e.g. -$ 'make -j8 && ./run'")
+    binary = resolve_shell(shell)
+    return _start(
+        [binary, "-c", command_text],
+        label=_slug(name or Path(binary).name + "-command"), cwd=cwd, env=env,
+        timeout=timeout, log_file=log_file, priority=priority, gpu=gpu,
+        cpu=cpu, store=store, supervisor=supervisor,
+    )
+
+
+def shell_command_of(job: Job) -> tuple[str, str] | None:
+    """``(shell, command)`` if *job* was started by :func:`launch_shell`."""
+    cmd = list(job.command)
+    if len(cmd) == 3 and cmd[1] == "-c" and Path(cmd[0]).name in (
+        "bash", "fish", "sh", "zsh"
+    ):
+        return Path(cmd[0]).name, cmd[2]
+    return None
+
+
+def _start(
+    command: list[str],
+    *,
+    label: str,
+    cwd: str | Path | None,
+    env: dict[str, str] | None,
+    timeout: int,
+    log_file: str | Path | None,
+    priority: int,
+    gpu: str,
+    cpu: str,
+    store: JobStore | None,
+    supervisor: Supervisor | None,
+) -> Job:
+    """Detach *command* under a supervisor. Shared by script and shell jobs."""
     store = store or JobStore()
     job_id = uuid.uuid4().hex[:12]
-    label = _slug(name or path.stem)
     if cwd:
         working = str(Path(cwd).expanduser().resolve())
     else:
@@ -306,7 +396,6 @@ def launch(
     )
     log_path.parent.mkdir(parents=True, exist_ok=True)
 
-    command = _interpreter_for(path) + list(args or [])
     child_env = dict(os.environ)
     child_env.update(env or {})
     if gpu:

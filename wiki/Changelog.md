@@ -26,6 +26,493 @@ next release header.
 - 𖥔 minor new feature
 
 
+## 0.72.5.post16 — 2026-09-23
+
+The 0.72.6 third batch. Element modules, error codes, and
+the Pressure Cooker deprecation — which turned out to be the smaller
+part of its own change: moving a default off the deprecated V3 meant
+moving it onto V4, and V4 had never trained through `NeoOven.train`.
+Neither had V5, V5S or V6.
+
+### Added
+
+๋࣭⭑ `hypernix.elements` — addons named after the periodic table, with
+`hydrogen` (H, 1) as the framework: a spec per element, a registry, and
+permissions that are checked at the moment of use rather than listed for
+humans to read. `natural_gas` attaches elements to a Neo Oven so they
+run around each generation, per instance and reversibly. Periods 6 and 7
+(element 55 onward) are experimental, decided from the atomic number so
+nothing added there later escapes the gate.
+๋࣭⭑ `magnesium` (Mg, 12) — lowers other apps' priority while a model
+runs, and optionally confines their cores. Never touches terminals,
+shells, Python, HyperNix, llama.cpp, the desktop's compositor and audio,
+kernel threads, this process's tree, or other users' processes. Plans
+before it acts, and puts back each process's *original* priority rather
+than "normal".
+๋࣭⭑ `carbon` (C, 6) — tidies model output (never inside a code fence),
+expands `::snippet` shortcuts, and loads elements you write yourself
+from `~/.hypernix/elements/`. `hypernix elements new Na` scaffolds one.
+๋࣭⭑ Error codes: `L#-NNNNN.kS` — a domain letter, a tier, five digits,
+a kind `a`–`f` saying whose problem it is, and a severity 1–5. Every
+code is declared in one catalogue with a one-line explanation and a
+remedy, and an unregistered code cannot be raised. `hypernix errors
+explain R3-00020.a3` looks one up.
+𖥔 The T1 API's error envelope carries `hx_code` beside `code`. `code` is
+a published contract and stays; each of its 42 values maps 1:1 onto its
+own new code.
+๋࣭⭑ Models call tools the way they were trained to. A hosted model
+returns structured `tool_calls`; a local GGUF usually writes the call as
+text — `<tool_call>` (Hermes, Qwen), `<|python_tag|>` (Llama 3.1+),
+`[TOOL_CALLS]` (Mistral), or a fenced JSON block — and when nothing reads
+those, the call is shown to the person as the answer and nothing runs —
+which, more than the model's reasoning, is most of why local models looked
+bad at calling API endpoints. `hypernix.runtime.toolcalls` reads all of
+them, repairs the JSON mistakes models make, and checks arguments against
+the tool's schema with an error naming the exact field, so the model can
+correct itself.
+๋࣭⭑ The T1 API as tools. A model under HyperLink can ask the server what
+is loaded, how busy the GPU is, what it remembers, or search the web — each
+tool one real route, called with **the caller's own credential**, so it can
+never do more than the person could by hand. Keyless callers get none (the
+server calling itself comes from loopback, which can be a more trusted
+network than the phone's), and loading or unloading models is offered only
+to someone who could do it themselves.
+𖥔 On the built-in runner, HyperLink teaches the model the tool format in
+one system message with a worked example built from a real tool.
+๋࣭⭑ HyperLink: models on the iPhone itself, reachable. Search Hugging
+Face, see whether a model fits this phone before downloading it, download
+with progress and pause, load it, and chat with it — from a new *On
+iPhone* tab, and from the pairing screen for somebody with no PC at all;
+the search, fit estimate, download manager and llama.cpp runner already
+existed, about 1,800 lines of them, and no screen created any of it.
+𖥔 HyperLink: swipe left on a message to edit or resend it; on a reply,
+to retry. Editing now asks again — it used to rewrite the message and
+stop, leaving the thread ending on an unanswered question. Resend is an
+edit with the same text, so the new answer replaces the old one rather
+than stacking under it, and it confirms first when it would remove more
+than that one reply. VoiceOver gets the same actions without the swipe.
+𖥔 `POST /hyperlink/sessions/{id}/chat` (and `/chat/stream`) take
+`regenerate: true` to answer the thread's last message without adding a
+copy of it.
+𖥔 `hypernix-t1 launch-script -$ 'CMD'` — a bash or fish command as a
+job, with everything a script job gets: it survives the SSH connection
+closing, has logs and a status, and restarts as a command rather than
+as a missing script. `--shell` picks the shell; `auto` is bash first,
+because a launched job is scripting and most copied snippets are bash;
+fish cannot type a bare `$`, so there fish users write `'-$'` or
+`--shell-command`.
+𖥔 `hypernix-t1 override lms move-dir [FOLDER]` — points LM Studio's
+models folder somewhere else, `~/.hypernix/models` by default, so LM
+Studio and HyperNix share one copy of every GGUF. Backs the settings file
+up first (`override lms revert` restores it), writes atomically keeping
+every other key, refuses while LM Studio is running (it can rewrite its
+settings on exit), and moves existing models only with `--move-files`.
+𖥔 `hypernix elements {list,info,plan,run,new}`. `run` holds until
+Ctrl-C and restores on the way out — an element that changes other
+programs and then exits leaves nobody to change them back.
+๋࣭⭑ `hyped-pro` is an OpenTUI app — TypeScript on Bun, the stack
+opencode's terminal UI is built on — in the site's colours: the
+`#0d0d0d` page, the red accent, the same greys. A header, the
+conversation, a bordered prompt and a line of keys, laid out the way
+opencode's is; markdown replies, a model picker on ctrl+p, esc to stop
+a reply, `/noodle`, `/t1`, `/key` and `/retry`. It drives the same
+Python bridge as before, so models, keys and T1 settings carry over. The
+first run installs `@opentui/core` with `bun install`, into the package
+or, when that is read-only, into `~/.hypernix/hyped-pro/<version>`.
+๋࣭⭑ `hyped-pro` works with git. `/git` shows status, `/diff` draws each
+changed file coloured with line numbers, and `/git add`, `commit`,
+`switch`, `restore`, `log`, `branches`, `push` and `pull` do what they
+say. The header shows the branch, how far it is ahead or behind, and how
+many files have changed. The model gets git tools too: reading (status, diff,
+log, show, branches) and staging are free, while committing, switching
+branch and discarding changes wait for the person to press `y`. It has no
+push, pull, reset or rebase at all.
+๋࣭⭑ `hyped-pro` edits files. `/files` browses the workspace, and `/edit`
+opens a file in a real multi-line editor (ctrl+s saves, esc closes, and
+the first esc on unsaved work only warns). A save refuses to overwrite a
+file that changed on disk after it was opened. The model gets
+`write_file`, `move_file` and `delete_file`, and deleting asks first.
+𖥔 Consent questions reach the person in hyped-pro. The bridge sends an
+event line and waits for the answer, so a question appears in a box above
+the prompt and no other key is taken while it is open. Tool calls show as
+they happen. hyped-plus never asks for these, so there a gated tool is
+refused unless `HYPERNIX_TOOL_POLICY=allow`, because nobody can answer.
+๋࣭⭑ HyperLink names chats with the model. After the first reply the model
+is asked for a two-to-six-word title, the answer is cleaned (models
+write `Title: "…"` as often as the title), and anything unusable falls
+back to the first line. The stream sends it after `done`, so the reply
+is never held up. "Rename with AI" asks again; a setting turns it off.
+๋࣭⭑ HyperLink compresses long conversations instead of forgetting their
+start. When a thread reaches 85% of the context budget its oldest part
+is summarised once, before it would have been dropped. Every message
+stays in the transcript, where a marker shows the summary the model is
+now sent, and "Compress conversation" does it on request.
+๋࣭⭑ Private chats. A chat hidden with Face ID leaves the list and opens
+behind Face ID, Touch ID or the passcode, and locks again whenever the
+app leaves the foreground. Hiding is per phone and per server; the chat
+itself stays on the PC.
+๋࣭⭑ Memories are organised. The model's memory tool filed every fact under
+its own key, so the screen grew one category per fact. Facts now go
+under topics (About you, Preferences, Work, Projects, Tech, Health,
+Places, Schedule) with the key kept. "Organise" refiles older ones and
+leaves a category a person chose where it is. Categories can be renamed
+or merged, memories moved, and the screen searched.
+𖥔 The photo options follow the model. Each model in `/hyperlink/models`
+says whether it can see images, from LM Studio's own `vlm` flag, a GGUF's
+`mmproj` projector, or the family's name. The photo options are hidden
+for a model that cannot, and offered with a warning when nothing says.
+𖥔 A shell on the server from the phone, off unless the server's operator
+sets `T1_HYPERLINK_SHELL=1`. It runs one command at a time with a
+timeout that kills the whole process group, caps the output, and writes
+each command to the audit log before it runs. The model is never given
+it.
+𖥔 Chat bubbles have tails, as in Messages, on the last bubble of each run
+from one speaker.
+
+### Changed
+
+🔁 Qwen 3.5, 3.6, 3.8 and 3.8-Flash presets are the Qwen3.5 architecture
+(`qwen3_5_text`), not Qwen3. The text type rather than `qwen3_5`, which
+is the multimodal composite and has no language-model shape fields.
+🔁 `instant_pot` trains with Pressure Cooker V4 by default. It was V3,
+and a default HyperNix chose must not produce a deprecation warning the
+user has to act on. `use_pressure_cooker_v3: true` still selects V3.
+🔁 `hyped-plus` is the readline TUI that was called `hyped-pro` until
+now, and `hyped-pro` no longer starts it. Both commands ran the same
+program before.
+
+### Deprecated
+
+❌ Pressure Cooker V1 (`PressureCooker` and its tiers) and V3
+(`PressureCookerV3` and subclasses). They warn on construction, never on
+import — V4 imports V3's helpers, and an import-time warning would reach
+every V4 user. `FutureWarning`, because `DeprecationWarning` is hidden
+unless raised from `__main__`. V4 is kept.
+❌ There is no V2 to deprecate: no `PressureCookerV2` has ever existed
+in this codebase. The original V1 docstring listed one by mistake, which
+`wiki/Optimizers.md` already records.
+❌ `UniversalCooker` is not deprecated. It routes, and its default sends
+people to the current V5 family; only `variant="legacy"` reaches V1,
+whose tiers warn on their own.
+
+### Fixed
+
+🐛 Studio's stub engine failed to build on ubuntu-22.04. The
+`[[maybe_unused]]` that quieted clang about an unused member is not
+accepted on a data member by GCC 11, and under `-Werror` that is an
+error; the stub now reads the member instead, which satisfies both.
+🛡️ `/web/v1/summarise` reports a failed fetch in its own words (the HTTP
+status, "not public", "not text", "could not be reached") and never the
+network exception's text, which can carry paths and internals. The cause
+is in the server log.
+𖢥 **No hyped-pro tool refused to write under `.git`.** `create_file` and
+`edit_file` checked that a path stayed inside the workspace, and `.git`
+is inside it: a model could write `.git/hooks/pre-commit` and have it run
+at the next commit. Nothing writes under `.git` now.
+𖢥 **Attaching magnesium to an oven reniced the machine before refusing.**
+`natural_gas.attach` activated each element and only then checked it may
+touch the oven, so asking for magnesium lowered every other process's
+priority and then raised the permission error. Every element is checked
+before any is started, and a failure part-way stops the ones already
+started.
+𖢥 **Magnesium promised to put priorities back and could not, unless root.**
+An ordinary user may raise another of their processes' niceness but not
+lower it again (Linux allows it only down to `20 - RLIMIT_NICE`, macOS not
+at all). Magnesium now works that out first and leaves a process alone,
+marked `irreversible`, when it could not undo the change;
+`allow_irreversible` in its config opts in. The test that restored a real
+process had only ever run as root, because CI had no psutil.
+𖢥 **The server could be made to fetch its own network.**
+`/web/v1/summarise` fetches a URL the caller names, and paired phones and
+models (through `web_summarize`) can call it. Nothing stopped that URL
+being `127.0.0.1`, the LAN, or a cloud metadata address. Only public
+addresses are fetched for a caller now, checked after DNS, before
+robots.txt, and again on every redirect. Local tools such as hyped's
+`read_web_page` are unchanged. Found by CodeQL.
+🛡️ A failed summariser model or page fetch no longer returns the
+exception's text to the caller; it goes to the server log.
+🐛 The summariser's sentence splitter could backtrack on long runs of
+spaces. It splits on the single space the text is normalised to.
+🐛 Magnesium without psutil raised "the operating system refused". Nothing
+refused: a package is missing. New code `S1-00060.b3` says so, and
+`pip install 'hypernix[elements]'` installs it (the dev extra too, so CI
+runs magnesium against real processes).
+🐛 `hyped-pro` looked for `~/.bun/bin/bun` on Windows, where the
+installer writes `bun.exe`.
+𖢥 **0.72.6 pt2's preset fix broke RoPE for twenty-three presets.**
+Correcting `model_type` also changed the RoPE convention derived from
+it: `_default_rope_style` named three half-rotate types and sent the
+rest to interleaved, which had only worked while the table called every
+Qwen3 a `qwen2`. Every Qwen3, GLM4, Gemma, Phi3, Llama4, Nemotron,
+DeepSeek-V3 and GPT-OSS preset moved to the wrong convention in the same
+commit. A wrong RoPE convention does not raise; the model loads and
+produces fluent nonsense. It is now an allowlist of *interleaved* types
+(HyperNix's own, and GPT-NeoX-style) with half-rotate as the default,
+which is the direction that fails safe.
+𖢥 **Pressure Cooker V4 never trained through `NeoOven.train`.** It took
+a learning rate only inside a `ScheduleConfig`, and `train` passes a bare
+`lr`, so it raised `TypeError`. It accepts `lr`/`peak_lr` now.
+𖢥 **Nor did V5, V5S or V6** — twice over. `OptimizerBase` never put an
+`lr` in its param groups, and every PyTorch scheduler reads one at
+construction; `train` always wraps the optimizer in `CosineAnnealingLR`
+— and `train` hardcoded AdamW's `betas`, which these three do not take,
+so it is now passed only to an optimizer that names it — not merely
+one that accepts `**kwargs`, since theirs forwards to a base that
+rejects it.
+🐛 Qwen3.5-family snapshots wrote a flat `rope_theta` that their config
+class ignores; they write `rope_parameters` now. Reading always handled
+both spellings.
+𖢥 **HyperLink could not use web search at all.** `/web/v1` authenticated
+with the T1-key dependency, which checks a paired phone's `HLNK_` device
+token as a T1 key and refuses it — so the client these endpoints were
+built for got a 401 on every one, while every test, all using T1 keys,
+passed. It takes device tokens now, like every other HyperLink route.
+𖢥 **What the model remembered never reached the Memories screen.** Its
+memory tool wrote a JSON file in the tool workspace, which nothing reads,
+so it said "I'll remember that" and the screen stayed empty. In a
+HyperLink chat it now writes the person's real memories, marked as the
+model's, updating rather than duplicating, never deleting one the person
+wrote — and only when that person's auto-memory setting is on.
+𖢥 **Web search from HyperLink found almost nothing.** The model's search
+tool used DuckDuckGo's instant-answer API, which answers "capital of
+France" and comes back empty for nearly every real question. It uses the
+keyless `/web/v1` engine now, with instant answers as the fallback.
+𖢥 **An HTTP error page could be installed as an on-device model.**
+URLSession delivers a 401 or 404 body as a finished download, and its
+size matched its own Content-Length — so a gated repository's "access
+restricted" page landed in the installed list and failed to load like a
+broken GGUF. The status and the `GGUF` magic bytes are checked first,
+and a 401/403 says to accept the licence and add a token.
+🐛 An on-device download that finished while the app was suspended was
+never installed: the background session was created only on the first
+download, so there was nothing for iOS to deliver the result to.
+🐛 A misspelt tool name is answered with the nearest real ones, never
+auto-corrected — correcting `delete_model` to `delete_models` is how a
+typo becomes an action.
+🐛 Magnesium's plan put kernel threads (`kworker`, `ksoftirqd`, …) in
+the "limit" column when run as root, which is how it reaches other
+users' apps. Found by running it against a real process table; kernel
+threads are now told apart by their empty command line.
+🐛 The error registry accepted a code re-declared with a *different*
+explanation, which is two meanings behind one searchable number.
+
+### Tests
+
+🧪 Tool calls: 53 tests across every format and every refusal — a JSON
+answer the person asked for is not executed, a mutating tool is refused
+even when named. Plus an end-to-end test under a real uvicorn: a paired
+phone sends a message, the model writes `<tool_call>` as a GGUF does, the
+server calls itself with the phone's token, and the phone gets the answer.
+🧪 HyperLink: 13 tests through the API for regenerate, model memories and
+search, and 29 structural checks on the Swift — chiefly that every
+on-device piece is reached by a screen, following the chain from app to
+hub to view, since that it was not is what the bug was.
+🧪 `elements`: 111 tests, magnesium's against a real process outside this
+one's tree — reniced, then restored to its exact original priority.
+🧪 `errorcodes`: 55, most asserting a refusal.
+🧪 Pressure Cooker: 23, including V4, V5, V5S and V6 each trained end to
+end through `NeoOven.train` — a constructor test passed while every one
+of them was broken there.
+🧪 RoPE: every preset's convention asserted; the pt2 regression would
+have failed eleven of them.
+🧪 Every guard above mutation-checked. Four first attempts at tests
+passed for the wrong reason and were rewritten — a process already at
+nice 0 cannot tell "restored" from "reset to 0", and a user element
+claiming a built-in symbol is refused as a duplicate before the rule
+under test is reached.
+🧪 hyped-pro: 56 `bun test` cases for the bridge protocol, commands,
+conversation and preferences, run in CI with the type check, and 33
+pytest cases for the launcher and packaging. The palette is read from
+`docs/src/index.css` and compared, so the two cannot drift, and the
+wheel and sdist are checked to carry the app and never its
+`node_modules`.
+🧪 hyped-pro git and files: 64 tests against real repositories, among
+them a commit message that looks like an option, a file named `-p`, the
+repository's own hooks still running, and a consent answered over a real
+bridge subprocess. Plus 29 bun tests for the git and file views. Each
+guard was checked by removing it: the `.git` refusal, the gate, the ref
+check, the `--` before paths, the stale-write check and cancellation
+during a question.
+🧪 HyperLink titles, compression, shell, memory and images: 68 tests
+through the real API with a scripted model, among them an upgraded
+database missing the new preference columns and a shell pipeline killed
+on timeout, and 21 structural checks on the Swift, which follow each new
+screen back to a route the server really has.
+
+### Known Issues
+
+❗ The error-code catalogue covers the T1 API, the runtime, elements,
+models, data, quantisation, training and the system layer. Most older
+modules still raise their own exception types; they adopt codes as they
+are next changed rather than in one sweep.
+❗ `hyped-pro` needs Bun 1.3 or later, and network access once to fetch
+`@opentui/core`. Without Bun it says how to install it and exits;
+`hyped-plus` needs only Node.js.
+❗ The HyperLink Swift for these features has been checked by those
+structural tests and by the CI's iOS build, not on a device.
+
+⸻
+
+## 0.72.5.post15 — 2026-09-22
+
+The 0.72.6 second batch. Two of these are fixes for things that were
+working exactly as written and wrong anyway: gather did stop, an hour
+after it looked like it should, and Neo Oven's presets were complete,
+internally consistent, and describing the wrong architectures.
+
+### Added
+
+๋࣭⭑ `hypernix.dilute` — best-of-n sampling and self-distillation. One
+model answers each prompt four to six times across a **temperature
+ladder**, an evaluator scores them, and the winner is kept as a
+training trace. `run` collects and writes at the end; `jit` streams
+each trace to the file as it is made, so a run killed at hour three
+leaves three hours of traces rather than nothing; `inspect` reads a
+trace file back and says whether it is worth training on.
+๋࣭⭑ `dilute` evaluators — a second model as judge (or the generating
+model judging its own samples, which needs nothing else in memory), a
+plain Python function for a task with a checkable answer, and a length
+heuristic for smoke-testing a pipeline.
+𖥔 `gather -f sqlite` — one database, one row per page, full text in it
+and the link graph beside it, for a corpus too big to hold as files.
+𖥔 `gather --max-seconds` — a wall clock, 20 minutes by default, `0` to
+remove it.
+𖥔 `vera -T h` — hours as a timeout unit, and `-tt/--total-timeout` for
+the whole run rather than a stage.
+𖥔 `vera -Na` — run the checks with no AI at all.
+𖥔 `vera -m` — pick a GGUF from `~/.hypernix/models` interactively.
+𖥔 `hypernix.system.hubcompat` — signature-checked calls into
+`huggingface_hub`, so 0.x and 1.3.x both work.
+𖥔 T1 API `v1.1.2026.9.0.0`.
+𖥔 Neo Oven presets for GLM-5.3, Qwen3.8, Qwen3.8-Flash, Muse Spark
+and Spark X2.5 at 1.7b and 4b.
+๋࣭⭑ `/web/v1` — keyless web search for HyperLink and hyperchat. Search,
+summarise, and three settings written in the request's own grammar —
+`s1` the browser family to present as, `s2` the engine (DuckDuckGo,
+Google, Wikipedia, or `allowlist` for no engine at all), `s3` an API
+key for people who have one. No key is needed for any of it.
+𖥔 `/web/v1/summarize` works with no model loaded — extractive by
+default, and not as a placeholder: a phone asking for the gist of a
+page should not wait for a model load, and a server that has not
+loaded one is the common case.
+๋࣭⭑ `hyperchat` — several prompts in flight, or a queue when they
+cannot be. With `T1_HYPERCHAT_MULTI` on, N copies of the model answer N
+prompts at once; with it off, prompts wait in the order they arrived
+and a client can ask how many are ahead of it. Callers do not branch on
+which: both are `Hyperchat`, both return a ticket, and the queue is the
+pool with one worker in it.
+𖥔 `ManagedPool` — N llama.cpp processes on consecutive ports, skipping
+the T1 server's own, loaded all-or-nothing.
+𖥔 `GET /runner/hyperchat` — the mode, the core budget and the live
+queue depth, readable by any HyperLink caller.
+𖥔 HyperLink: several photos in one pick, capped, uploaded in the order
+they were chosen, with the ones that worked kept when one cannot be read.
+𖥔 HyperLink: the servers list shows the hyperNix the machine is
+*running*, and says so in orange when a pip upgrade has landed but the
+server has not been restarted into it.
+
+### Fixed
+
+𖢥 **gather looked like it never stopped.** The loop was correct — it
+ends when the queue empties or the page ceiling is hit — but a calendar,
+a session id or a faceted search produces unique URLs faster than a
+crawl consumes them, so the queue never empties and it ran to
+MAX_PAGES: 5000 pages at one second of politeness is eighty-three
+minutes past the last page worth having. There is now a wall clock, a
+"several levels produced nothing new" stop, and `stopped_because` on
+the result — "it finished" and "it hit a ceiling with 810,000 URLs
+queued" look identical from outside and mean opposite things about
+whether the data is complete.
+𖢥 **Neo Oven's presets named the wrong architectures.** `gemma`,
+`gemma2`, `gemma3`, `phi3`, `glm`, `glm4`, `qwen3`, `llama4`,
+`nemotron` and `gpt_oss` are all registered separately in transformers
+and all of them were mapped to `llama` or `qwen2`. The `model_type`
+goes into `config.json` and is what `AutoModel` dispatches on, so the
+file was wrong from the moment it was written. Thirty-seven presets
+rewritten against the real registry and the real config defaults —
+GLM's `rms_norm_eps` is `1.5625e-07`, not the `1e-5` that was there.
+𖢥 A crawl of a site twice silently overwrote the first run. Output now
+goes to `~/.hypernix/data/<site>/<session>/`.
+🐛 The first version of gather's clock checked between levels and
+overshot a 4-second budget by 33 seconds — one level of a faceted trap
+held 27,931 URLs. A level is not a unit of time; it is chunked now and
+the same trap stops at 4.1s.
+🐛 `huggingface_hub` 1.x removed `direction` from `list_models` and
+`list_datasets`, so `scavenger` raised `TypeError` on a current install.
+🐛 `hubcompat` landed at the top level of the package rather than in a
+category subpackage, which the layout table forbids — caught by the
+suite rather than by review, which is the point of having it.
+𖢥 A server row read `v1.1.26.9.0.0` — the T1 API generation, labelled
+as if it were the machine's hyperNix. It is the hyperNix version people
+upgrade and then check, and it is not the number that was on screen.
+𖢥 "Updated 2m ago" in the chat list meant "changed", not "said
+something". The store bumped `updated_at` on any write, so renaming
+eleven old conversations sent all eleven to the top of the list looking
+like they had just replied. There are two clocks now: `updated_at` for
+a prompt or a reply — including one that arrived in the background —
+and `touched_at` for everything else.
+𖢥 A second prompt arriving mid-answer had two fates and both happened
+by accident: it contended with the first inside one llama.cpp and both
+got slower, or it was dropped. HyperLink showed neither — it showed a
+spinner that did not move.
+𖢥 `eth auto` fell through to stock on a warm GPU. The auto-level table
+was three fixed temperatures and one derived from `THERMAL_ABORT_C`;
+lowering that threshold to 60 °C put the derived band *below* two of
+the fixed ones, so the table stopped ascending, the level-5 band became
+unreachable, and a GPU at 80 °C got nothing instead of the small bump
+it was meant to. The bands are fractions of the abort temperature now,
+which reproduce the old table exactly at the old threshold, and a test
+asserts the ladder ascends at any threshold.
+
+### Tests
+
+🧪 `dilute`: 89 tests. The assertions are on *spread* and *separation* —
+did the warm end of the ladder ever win, did the evaluator actually
+separate the samples — because best-of-n's failure mode is that it
+keeps working: break the ladder or the tie-break and the run still
+finishes, still writes a file, and still reports a trace count that
+looks right.
+🧪 Eight mutations reintroduced by hand and all eight caught: ties going
+to `max()`, the ladder collapsing to one temperature, the judge's score
+read as the first number in the reply, "longer is better" length
+scoring, an unreadable judge reply scoring zero, the judge sampled
+warm, the model reloaded per call, and `jit` buffering instead of
+flushing.
+🧪 `gather`: 57 tests including a real local HTTP server and a faceted
+trap, to tell "finished" from "hit a ceiling".
+🧪 `neo_oven`: every preset's `model_type` checked against what
+transformers actually registers, rather than against the table.
+🧪 `updated_at`: 18 tests pinning which write moves which clock, plus
+the migration — `CREATE TABLE IF NOT EXISTS` does not alter an existing
+table, so without the `ALTER` the first rename after upgrading is an
+OperationalError. Six mutations caught, two of which the first version
+of the tests missed because the read-side fallback hid them.
+🧪 HyperLink: 18 structural checks on the Swift, since there is no
+toolchain here. Chiefly that both new `Codable` types decode by hand —
+a synthesised decoder throws on a key that is missing from every record
+already on disk, the `try?` around `restore()` swallows it, and the
+update signs everybody out.
+🧪 `hyperchat`: 40 tests against real threads, asserting on the core
+budget and on *ordering* rather than on "the answer came back" — a pool
+that allocates every core still answers prompts, right up until the
+server stops accepting the next request. Eight mutations caught,
+including a LIFO queue and a pool that allocates the reserved core.
+🧪 `/web/v1`: 90 tests, most of them asserting a *refusal* — the
+failure mode of a hand-written grammar is that it accepts things, and a
+parser that shrugs at what it did not understand leaves a server
+configured one way and an operator certain it is another. Eight
+mutations reintroduced and all eight caught, including the allowlist
+matching by suffix without the dot (`nota.test` passing for `a.test`)
+and the API key reaching a log line intact.
+
+### Known Issues
+
+❗ `dilute`'s tie-break is seeded per attempt, so two runs with the same
+seed and the same prompts agree — but a run resumed from a different
+prompt offset will not reproduce the first run's picks.
+
+⸻
+
 ## 0.72.5.post14 — 2026-09-22
 
 First entry written to the format in `Changelog-guide.md`: dated

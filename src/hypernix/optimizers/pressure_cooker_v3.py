@@ -469,3 +469,10 @@ __all__ = [
     "StovetopV3Cooker",
     "StovetopV3CookerPlus",
 ]
+
+
+# Pressure Cooker v3 is deprecated (0.72.6). Warns on construction only:
+# V4 imports this module's helpers and must not inherit the notice.
+from hypernix.optimizers.deprecation import deprecate as _deprecate  # noqa: E402
+
+_deprecate(PressureCookerV3, "v3")

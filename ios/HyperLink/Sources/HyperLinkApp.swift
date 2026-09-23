@@ -9,7 +9,12 @@ import SwiftUI
 
 @main
 struct HyperLinkApp: App {
+    @UIApplicationDelegateAdaptor(HyperLinkAppDelegate.self) private var appDelegate
     @State private var state = AppState()
+    /// Models on the phone itself. Created at launch so a download that
+    /// finished in the background is installed now, not the next time
+    /// somebody opens the screen.
+    @StateObject private var onDevice = OnDeviceHub()
     @State private var themes = ThemeStore()
     @State private var background = BackgroundSession()
     @Environment(\.scenePhase) private var scenePhase
@@ -27,6 +32,7 @@ struct HyperLinkApp: App {
             RootView()
                 .environment(state)
                 .environment(themes)
+                .environmentObject(onDevice)
                 // Replaces `.tint(.accentColor)`, which was the whole of
                 // HyperLink's colour: one accent, applied everywhere,
                 // saying nothing about which bubble is whose.

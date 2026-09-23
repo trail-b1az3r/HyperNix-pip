@@ -41,9 +41,11 @@ from __future__ import annotations
 import gzip
 import hashlib
 import html
+import ipaddress
 import json
 import logging
 import re
+import socket
 import threading
 import time
 import urllib.error
@@ -70,6 +72,8 @@ __all__ = [
     "fetch",
     "extract_links",
     "extract_text",
+    "MAX_SECONDS",
+    "BARREN_LEVELS",
     "safe_output_path",
     "probe_rate_limit",
     "write_output",
@@ -89,6 +93,7 @@ FORMATS = (
     "jsonl",             # one JSON object per page — the training default
     "parquet",           # columnar, for a datasets pipeline
     "js",                # the JavaScript files a page references, saved
+    "sqlite",            # one database, queryable, one row per page
 )
 
 #: What ``-C`` accepts, and the flag each needs.
@@ -106,6 +111,30 @@ MAX_PAGES = 5000
 #: Default politeness. 1 second is what most robots.txt asks for when it
 #: asks, and it is the value that keeps a crawl off an abuse list.
 DEFAULT_DELAY = 1.0
+
+#: Wall-clock ceiling, and the reason `gather` appeared not to stop.
+#:
+#: MAX_PAGES alone is not a stopping condition anybody can feel: 5000
+#: pages at the default 1s politeness is eighty-three minutes *minimum*,
+#: and a site with a calendar widget generates unique URLs faster than
+#: the crawl consumes them — so it runs the full ceiling, long after
+#: every page worth having has been fetched, and looks like it has hung.
+#:
+#: Twenty minutes is long enough for a real documentation site and short
+#: enough that a trap is noticed while somebody is still watching.
+#: `--max-seconds 0` removes it.
+MAX_SECONDS = 20 * 60
+
+#: Stop when this many consecutive levels add no new pages worth having.
+#: A trap keeps the queue full while producing nothing, so "the queue is
+#: empty" never arrives; "nothing new is coming out" does.
+BARREN_LEVELS = 2
+
+#: Pages fetched between clock checks. A level is not a unit of time:
+#: on a faceted-search trap one level held 27,931 URLs, so checking the
+#: deadline only between levels overshot a 4-second budget by 33
+#: seconds. Chunking makes the budget mean what it says.
+CLOCK_CHECK_EVERY = 64
 
 _USER_AGENT = (
     "HyperNixGather/1.0 (+https://github.com/minerofthesoal/hypernix-pip) "
@@ -175,6 +204,8 @@ class CrawlPlan:
     #: outbound link is a crawler that downloads the internet.
     same_host: bool = True
     max_pages: int = MAX_PAGES
+    #: Wall-clock ceiling in seconds; 0 removes it. See MAX_SECONDS.
+    max_seconds: float = MAX_SECONDS
     include: str = ""       # regex a URL must match
     exclude: str = ""       # regex a URL must not match
     timeout: float = 20.0
@@ -223,6 +254,19 @@ class CrawlResult:
     #: so without this the report would say one file was written while
     #: a hundred sat next to it on disk.
     retained: list[Path] = field(default_factory=list)
+    #: Why the crawl ended: "done", "max-pages", "max-seconds" or
+    #: "nothing-new". Reported rather than inferred, because "it
+    #: finished" and "it hit a ceiling with 40,000 URLs still queued"
+    #: look identical from the outside and mean opposite things about
+    #: whether the data is complete.
+    stopped_because: str = "done"
+    #: URLs still queued when it stopped. Zero for a real finish.
+    left_queued: int = 0
+
+    @property
+    def complete(self) -> bool:
+        """Did the crawl actually finish, or was it cut off?"""
+        return self.stopped_because == "done"
 
     @property
     def fetched(self) -> int:
@@ -239,6 +283,9 @@ class CrawlResult:
             "skipped": self.skipped,
             "robots_denied": self.robots_denied,
             "duration_seconds": round(self.duration, 2),
+            "stopped_because": self.stopped_because,
+            "complete": self.complete,
+            **({"left_queued": self.left_queued} if self.left_queued else {}),
             "outputs": [str(p) for p in self.outputs],
             **({"retained": [str(p) for p in self.retained]}
                if self.retained else {}),
@@ -377,6 +424,60 @@ def _is_http(url: str) -> bool:
         return False
 
 
+def _not_public(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
+    if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped is not None:
+        ip = ip.ipv4_mapped
+    return not ip.is_global or ip.is_multicast
+
+
+def public_address_problem(url: str) -> str | None:
+    """Why *url* may not be fetched on someone else's behalf, or None.
+
+    A server that fetches URLs its callers name can be pointed at itself,
+    at the LAN, or at a cloud provider's metadata service
+    (169.254.169.254) — places the caller cannot reach but the server
+    can. Every address the host resolves to must be a public one; a name
+    that resolves to a private address is refused like the address.
+    """
+    if not _is_http(url):
+        return "not an http(s) URL"
+    parts = urllib.parse.urlsplit(url)
+    host = parts.hostname
+    if not host:
+        return "the URL has no host"
+    try:
+        port = parts.port or (443 if parts.scheme == "https" else 80)
+    except ValueError:
+        return "the URL's port is not a number"
+    try:
+        infos = socket.getaddrinfo(host, port, proto=socket.IPPROTO_TCP)
+    except (socket.gaierror, UnicodeError):
+        return f"{host} does not resolve"
+    if not infos:
+        return f"{host} does not resolve"
+    for info in infos:
+        address = str(info[4][0]).split("%", 1)[0]
+        try:
+            ip = ipaddress.ip_address(address)
+        except ValueError:
+            return f"{host} resolves to {address}, which is not an address this can check"
+        if _not_public(ip):
+            return f"{host} resolves to {ip}, which is not a public address"
+    return None
+
+
+class _PublicOnlyRedirects(urllib.request.HTTPRedirectHandler):
+    """Follow a redirect only to somewhere :func:`public_address_problem`
+    accepts — a public page that answers with a redirect to
+    http://127.0.0.1/ is the same request as asking for it directly."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: ANN001, D102
+        problem = public_address_problem(newurl)
+        if problem is not None:
+            raise urllib.error.URLError(f"refused a redirect: {problem}")
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
 def fetch(
     url: str,
     *,
@@ -384,6 +485,7 @@ def fetch(
     max_bytes: int = MAX_PAGE_BYTES,
     limiter: RateLimiter | None = None,
     user_agent: str = _USER_AGENT,
+    public_only: bool = False,
 ) -> Page:
     """One page. Never raises.
 
@@ -396,6 +498,11 @@ def fetch(
     if not _is_http(url):
         page.error = "not an http(s) URL"
         return page
+    if public_only:
+        problem = public_address_problem(url)
+        if problem is not None:
+            page.error = f"refused: {problem}"
+            return page
 
     host = urllib.parse.urlsplit(url).netloc
     if limiter is not None:
@@ -413,7 +520,13 @@ def fetch(
         },
     )
     try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:  # noqa: S310
+        opener = urllib.request.build_opener(_PublicOnlyRedirects) if public_only else None
+        opened = (
+            opener.open(request, timeout=timeout)
+            if opener is not None
+            else urllib.request.urlopen(request, timeout=timeout)  # noqa: S310
+        )
+        with opened as response:
             page.status = response.status
             page.content_type = response.headers.get("Content-Type", "")
             raw = response.read(max_bytes + 1)
@@ -707,7 +820,26 @@ def crawl(plan: CrawlPlan, *, on_page=None) -> CrawlResult:
     # Level by level, so -Q means what it says and so each level's link
     # discovery is complete before the next starts.
     depth = 0
+    deadline = (
+        time.time() + plan.max_seconds if plan.max_seconds > 0 else None
+    )
+    barren = 0
     while queue and len(result.pages) < plan.max_pages:
+        # Checked here rather than only at the ceiling. A site with a
+        # calendar widget generates unique URLs faster than the crawl
+        # consumes them, so `queue` never empties and MAX_PAGES at the
+        # default politeness is eighty-three minutes away -- which is
+        # what "gather does not stop when it is done" actually was.
+        if deadline is not None and time.time() >= deadline:
+            result.stopped_because = "max-seconds"
+            logger.warning(
+                "gather: stopped after %.0fs with %d URL(s) still queued. "
+                "That is usually a crawler trap (a calendar, a session id, "
+                "a faceted search) rather than a site this large. Narrow it "
+                "with --exclude, or raise --max-seconds.",
+                plan.max_seconds, len(queue),
+            )
+            break
         level: list[tuple[str, int]] = []
         while queue and queue[0][1] == depth:
             level.append(queue.popleft())
@@ -715,6 +847,8 @@ def crawl(plan: CrawlPlan, *, on_page=None) -> CrawlResult:
             depth = queue[0][1] if queue else depth + 1
             continue
 
+        # The level, in chunks, so the deadline is honoured inside a
+        # level as well as between them.
         batch: list[tuple[str, int]] = []
         for url, url_depth in level:
             reason = admissible(url, url_depth)
@@ -728,42 +862,77 @@ def crawl(plan: CrawlPlan, *, on_page=None) -> CrawlResult:
                 break
 
         if not batch:
+            # A level that produced nothing admissible. One of those is
+            # ordinary; several in a row means the queue is full of
+            # things the filters reject, and draining it changes
+            # nothing except how long this takes.
+            barren += 1
+            if barren >= BARREN_LEVELS:
+                result.stopped_because = "nothing-new"
+                logger.info(
+                    "gather: %d level(s) produced nothing new; stopping with "
+                    "%d URL(s) queued that the filters would reject anyway.",
+                    barren, len(queue),
+                )
+                break
             depth += 1
             continue
+        barren = 0
 
-        if plan.threads > 1:
-            import concurrent.futures
+        out_of_time = False
+        for start in range(0, len(batch), CLOCK_CHECK_EVERY):
+            if deadline is not None and time.time() >= deadline:
+                out_of_time = True
+                break
+            chunk = batch[start : start + CLOCK_CHECK_EVERY]
 
-            with concurrent.futures.ThreadPoolExecutor(
-                max_workers=min(plan.threads, len(batch))
-            ) as pool:
-                pages = list(pool.map(lambda item: work(*item), batch))
-        else:
-            pages = [work(url, url_depth) for url, url_depth in batch]
+            if plan.threads > 1:
+                import concurrent.futures
 
-        for page in pages:
-            with lock:
-                result.pages.append(page)
-            if on_page is not None:
-                try:
-                    on_page(page)
-                except Exception:  # noqa: BLE001 - a callback must not stop a crawl
-                    logger.debug("gather: on_page callback raised", exc_info=True)
-            if not page.ok:
-                continue
-            for link in page.links:
-                if link not in seen:
-                    seen.add(link)
-                    queue.append((link, page.depth + 1))
+                with concurrent.futures.ThreadPoolExecutor(
+                    max_workers=min(plan.threads, len(chunk))
+                ) as pool:
+                    pages = list(pool.map(lambda item: work(*item), chunk))
+            else:
+                pages = [work(url, url_depth) for url, url_depth in chunk]
+
+            for page in pages:
+                with lock:
+                    result.pages.append(page)
+                if on_page is not None:
+                    try:
+                        on_page(page)
+                    except Exception:  # noqa: BLE001 - a callback must not stop a crawl
+                        logger.debug("gather: on_page callback raised",
+                                     exc_info=True)
+                if not page.ok:
+                    continue
+                for link in page.links:
+                    if link not in seen:
+                        seen.add(link)
+                        queue.append((link, page.depth + 1))
+
+        if out_of_time:
+            result.stopped_because = "max-seconds"
+            logger.warning(
+                "gather: stopped after %.0fs part-way through a level, with "
+                "%d URL(s) queued. That is usually a crawler trap (a "
+                "calendar, a session id, a faceted search). Narrow it with "
+                "--exclude, or raise --max-seconds.",
+                plan.max_seconds, len(queue),
+            )
+            break
 
         depth += 1
 
     if len(result.pages) >= plan.max_pages and queue:
+        result.stopped_because = "max-pages"
         logger.warning(
             "gather: stopped at the %d-page ceiling with %d URLs still "
             "queued. Raise --max-pages, or narrow the crawl with --include.",
             plan.max_pages, len(queue),
         )
+    result.left_queued = len(queue)
     result.finished_at = time.time()
     return result
 
@@ -880,6 +1049,115 @@ def _header_block(plan: CrawlPlan, result: CrawlResult) -> str:
     return "\n".join(lines)
 
 
+def _write_sqlite(root: Path, plan: CrawlPlan, result: CrawlResult,
+                  pages: list) -> Path:
+    """One database, one row per page, with the provenance in it.
+
+    Worth having over jsonl for the thing people actually do next:
+    "every page under /docs that mentions X" is a query here and a
+    script there. The full text is stored rather than a path, so the
+    database is the corpus and moving it moves everything.
+
+    Written through a temporary file and renamed, like every other
+    output here: an interrupted crawl must not leave a database that
+    opens and is missing the last half of the pages, because that one
+    fails much later and looks like a data problem.
+    """
+    import sqlite3
+
+    target = root / f"{_stem(plan)}.sqlite3"
+    partial = target.with_suffix(".sqlite3.part")
+    partial.unlink(missing_ok=True)
+
+    connection = sqlite3.connect(partial)
+    try:
+        connection.executescript(
+            """
+            PRAGMA journal_mode=WAL;
+            CREATE TABLE crawl (
+                key   TEXT PRIMARY KEY,
+                value TEXT
+            );
+            CREATE TABLE pages (
+                url        TEXT PRIMARY KEY,
+                depth      INTEGER NOT NULL,
+                status     INTEGER,
+                title      TEXT,
+                content_type TEXT,
+                bytes      INTEGER,
+                fetched_at REAL,
+                text       TEXT,
+                html       TEXT
+            );
+            CREATE TABLE links (
+                src TEXT NOT NULL,
+                dst TEXT NOT NULL
+            );
+            CREATE INDEX pages_depth ON pages(depth);
+            CREATE INDEX links_src   ON links(src);
+            """
+        )
+        connection.executemany(
+            "INSERT OR REPLACE INTO crawl (key, value) VALUES (?, ?)",
+            [
+                ("header", plan.header or ""),
+                ("sites", ", ".join(plan.sites)),
+                ("depth", str(plan.depth)),
+                ("robots_respected", str(plan.respect_robots).lower()),
+                ("stopped_because", result.stopped_because),
+                ("left_queued", str(result.left_queued)),
+                ("gathered_at",
+                 time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())),
+            ],
+        )
+
+        rows = []
+        link_rows = []
+        for page in pages:
+            data = page.to_dict()
+            rows.append((
+                data.get("url", ""),
+                int(data.get("depth") or 0),
+                data.get("status"),
+                data.get("title") or "",
+                data.get("content_type") or "",
+                int(data.get("bytes") or 0),
+                float(data.get("fetched_at") or 0.0),
+                data.get("text") or "",
+                data.get("html") or "",
+            ))
+            for link in getattr(page, "links", ()) or ():
+                link_rows.append((data.get("url", ""), link))
+
+        connection.executemany(
+            "INSERT OR REPLACE INTO pages "
+            "(url, depth, status, title, content_type, bytes, fetched_at, "
+            " text, html) VALUES (?,?,?,?,?,?,?,?,?)",
+            rows,
+        )
+        connection.executemany(
+            "INSERT INTO links (src, dst) VALUES (?, ?)", link_rows
+        )
+        connection.commit()
+    finally:
+        connection.close()
+
+    # WAL leaves sidecars; fold them in so the file moves as one.
+    for sidecar in (partial.with_name(partial.name + "-wal"),
+                    partial.with_name(partial.name + "-shm")):
+        if sidecar.exists():
+            tidy = sqlite3.connect(partial)
+            try:
+                tidy.execute("PRAGMA journal_mode=DELETE")
+                tidy.commit()
+            finally:
+                tidy.close()
+            break
+
+    partial.replace(target)
+    return target
+
+
 def write_output(plan: CrawlPlan, result: CrawlResult) -> list[Path]:
     """Write *result* in ``plan.fmt``. Returns what it wrote."""
     root = Path(plan.output).expanduser()
@@ -897,6 +1175,9 @@ def write_output(plan: CrawlPlan, result: CrawlResult) -> list[Path]:
             for page in pages:
                 handle.write(json.dumps(page.to_dict(), ensure_ascii=False) + "\n")
         written.append(target)
+
+    elif plan.fmt == "sqlite":
+        written.append(_write_sqlite(root, plan, result, pages))
 
     elif plan.fmt == "parquet":
         written.extend(_write_parquet(root, plan, result, pages))

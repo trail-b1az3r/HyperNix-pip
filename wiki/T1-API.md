@@ -1291,6 +1291,28 @@ path, names a file, or reaches a shell. A client that acts on a row
 still authenticates against it, and the fingerprint that comes back is
 what says whether it found what it was looking for.
 
+### Titles, compression, memory, images and the shell (0.72.5.post16)
+
+| Route | What it does |
+| --- | --- |
+| `POST /hyperlink/sessions/{id}/title` | Ask the model to name the chat again from its first exchange. New chats are named this way automatically unless `model_titles` is off; the stream sends a `title` frame after `done`. |
+| `POST /chat/compact/dynamic` | Summarise the older part of a session now. With `auto_compact` on (the default) chat does this itself at 85% of the context budget, sending a `compacted` frame. Messages are marked, never deleted. |
+| `GET /memory/categories` | Each memory category with its count. |
+| `POST /memory/categories/rename` | `{"from", "to"}` — moves a category, merging into an existing one. |
+| `POST /memory/organise` | Files loose and model-written memories under topics; `dry_run` previews. A category a person chose is left alone. |
+| `GET /hyperlink/models` | Each model now carries `supports_images`: true, false, or null when nothing says. |
+| `GET /hyperlink/shell` | Whether the shell is enabled here, how to enable it, and its `root`. |
+| `POST /hyperlink/shell` | `{"command", "cwd"}` — runs one command, returns stdout, stderr, exit code and timing. `cwd` must be inside the root. |
+
+The shell is **off** unless `T1_HYPERLINK_SHELL=1`. A paired phone is never
+an admin, and this is the one route that makes it more than a chat client,
+so it is the operator's decision. Commands run as the server's user through
+`bash -lc`, are written to the audit log before they run, have their output
+capped, and are killed with their whole process group at the timeout. A
+command starts inside `T1_HYPERLINK_SHELL_ROOT` (the server user's home by
+default): a relative `cwd` is taken from there, and a path that leaves it,
+including through a symlink, is refused. The model is never given a shell tool.
+
 ## Hugging Face link merging
 
 *New in T1 v1.0.26.8.0.1.* `POST /hyperlink/models/resolve`, and
@@ -1543,6 +1565,88 @@ need the second opt-in on top of that. See [Training](#training).
 | POST | `/training/runs/{run_id}/resume` | bearer, **admin or partial-admin** | SIGCONT |
 | POST | `/training/runs/{run_id}/stop` | bearer, **admin or partial-admin** | SIGTERM, so it can checkpoint |
 
+**0.72.6 pt2**
+
+*Keyless web search.* Search, summarise, and three settings written in
+the request's own grammar. No search-engine API key is needed for any of
+it — `s3` exists for people who have one and would rather use it. See
+[Web search](#web-search).
+
+| Method | Path | Auth | Notes |
+|---|---|---|---|
+| GET | `/web/v1/I?=query&q?=depth` | bearer | search; `/web/v1/i` and `/web/v1/search?q=` are the same route |
+| POST | `/web/v1/summarize` | bearer | `text` or `url`; extractive with no model loaded |
+| GET | `/web/v1/config` | bearer | the three settings — **never** the API key |
+| GET | `/web/v1/config/s1?=k\|s2?:=…` | bearer, **admin** | change them; see the grammar below |
+| GET | `/runner/hyperchat` | bearer | pool or queue, the core budget, and the live queue depth |
+
+### Web search
+
+The config grammar, in one line:
+
+```
+/web/v1/config/s1?=k|s2?:=duckduckgo|s3?:={key}?[brave]
+```
+
+* `|` divides the directives.
+* `?` marks a setting.
+* `=k` **keeps** the current value.
+* `?:=` — a colon before the `=` — **sets** it.
+* `?[...]` after a value is a hint; on `s3` it is the key's provider, or
+  `auto` to work it out from the key itself.
+
+The one thing to know: `s2?=google` does **not** set the engine to
+Google. Without the colon `=` is a keep, and `k` is the only value a
+keep takes. Silently discarding the `google` would leave you configured
+for DuckDuckGo and certain you were on Google, so that form is refused
+by name with the correct spelling in the message. It is the whole reason
+the colon is in the grammar.
+
+| Setting | What it chooses | Values |
+|---|---|---|
+| `s1` | which installed browser family to present as | `firefox`, `chromium`, `auto`, `none` |
+| `s2` | the engine | `duckduckgo`, `google`, `wikipedia`, `allowlist` |
+| `s3` | an API key, for people who have one | the key, `off` to go back to keyless |
+
+`s2?:=allowlist` means **no engine is contacted at all** — only the
+sites the deployment has allowed. That is a different promise from an
+engine with a filter on the end, and it is the point for a deployment
+that must not leak its queries.
+
+Neither documented form is a URL in the ordinary sense: everything after
+the first `?` is the query string as far as HTTP is concerned, so
+`config/s1?=k|s2?:=x` arrives as a path of `config/s1` and a query of
+`=k|s2?:=x`. Both are read from the raw query string and rejoined. The
+ordinary `?q=cats&depth=2` works too, because no client library will
+build a nameless query parameter for you.
+
+The API key arrives in the URL, which is the one part of a request that
+the access log, the error handler and the audit trail all record by
+default. It is redacted on the way into all three — by the grammar, not
+by comparison against a stored value, because a *refused* config string
+still carried a key and at that moment there is nothing to compare it
+to. No response ever contains it.
+
+### Several prompts at once
+
+`GET /runner/hyperchat` says whether prompts run side by side or wait in
+line. With `T1_HYPERCHAT_MULTI` on, N copies of the model answer N
+prompts at once; with it off, prompts wait in the order they arrived and
+a client can ask how many are ahead of it.
+
+Instances get two cores each and the machine keeps one for itself —
+`(cores - 1) // 2`, capped at eight. The reserved core is not a rounding
+convenience: llama.cpp takes every core it is given, and with all of
+them spoken for, the process that has to accept the *next* request does
+not get scheduled. A machine too small for two instances runs the queue
+instead, which is a real answer rather than a degraded one.
+
+| Setting | Default | What it does |
+|---|---|---|
+| `T1_HYPERCHAT_MULTI` | off | several instances at once |
+| `T1_HYPERCHAT_INSTANCES` | `0` | how many; `0` is as many as the cores allow. A number here only ever lowers that |
+| `T1_HYPERCHAT_MAX_QUEUED` | `256` | prompts allowed to pile up before new ones are refused |
+
 ## Trusted network mode
 
 Off by default, and that default is the whole feature. A private address
@@ -1687,6 +1791,9 @@ T1 v1.0.26.8.0.1 added:
 | `T1_LMSTUDIO_DISCOVERY` | `0` | allow admin-triggered tailnet sweeps |
 | `T1_LMSTUDIO_TIMEOUT` | `300` | read timeout, seconds |
 | `T1_HYPERLINK_ENABLED` | `1` | the phone-facing surface |
+| `T1_HYPERLINK_SHELL` | `0` | let paired phones run shell commands here (see below) |
+| `T1_HYPERLINK_SHELL_TIMEOUT` | `60` | seconds before a shell command's process group is killed |
+| `T1_HYPERLINK_SHELL_ROOT` | home directory | a shell command's working directory must be inside this directory |
 | `T1_HYPERLINK_PUBLIC_URL` | — | a reverse proxy / tunnel address; ranked first |
 | `T1_HYPERLINK_PORT` | `8000` | the port advertised to clients |
 | `T1_HYPERLINK_FILES_DIR` | `~/.hypernix/hyperlink/files` | attachment blobs |

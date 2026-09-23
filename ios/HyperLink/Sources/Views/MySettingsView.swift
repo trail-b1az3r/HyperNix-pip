@@ -61,6 +61,7 @@ struct MySettingsView: View {
             reliabilitySection
             backendSection
             capabilitySection
+            conversationSection
             memorySection
 
             if !notes.isEmpty {
@@ -245,6 +246,23 @@ struct MySettingsView: View {
             Text("Tools")
         } footer: {
             Text("The model can create and edit files, run fish commands and make archives in its own workspace on the server — so “zip the logs and tell me what is in them” is one message. Off by default, because letting a model write files on your machine is not a default. What it does is recorded on each reply.")
+        }
+    }
+
+    private var conversationSection: some View {
+        Section {
+            Toggle("Let the model name new chats", isOn: Binding(
+                get: { preferences.modelTitles },
+                set: { on in Task { await save(.init(model_titles: on)) } }
+            ))
+            Toggle("Compress long conversations", isOn: Binding(
+                get: { preferences.autoCompact },
+                set: { on in Task { await save(.init(auto_compact: on)) } }
+            ))
+        } header: {
+            Text("Conversations")
+        } footer: {
+            Text("A new chat is named from its first exchange; off, it is named after your first line. When a conversation outgrows the model's context, its oldest part is summarised rather than dropped — every message stays here to read, and you can compress one yourself from its menu.")
         }
     }
 

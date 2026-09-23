@@ -31,9 +31,10 @@ so being able to see the consequence first is not a nicety.
 from __future__ import annotations
 
 import logging
+from dataclasses import replace
 from pathlib import Path
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 
 from ...hyperlink.catalogue import collect
 from ...hyperlink.managed import BACKENDS, ManagedError, plan_placement
@@ -255,3 +256,43 @@ def runner_unload(
         loaded=False, model={}, base_url=runner.base_url,
         backends=list(BACKENDS), was_running=stopped, request_id=request_id,
     )
+
+
+@router.get("/hyperchat")
+def runner_hyperchat(
+    request: Request,
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    config: T1APIConfig = Depends(get_config),
+    request_id: str = Depends(get_request_id),
+) -> dict:
+    """Whether prompts run side by side or wait in line, and how deep.
+
+    Readable by any HyperLink caller for the same reason the status is:
+    a client that cannot tell shows a spinner that does not move, when
+    what it could be showing is "third in line". The queue depth is the
+    single most useful number on a shared server and there is nothing
+    secret about it.
+    """
+    from ...hyperlink.hyperchat import plan_cores
+
+    if config.hyperchat_multi:
+        budget = plan_cores(wanted=config.hyperchat_instances)
+    else:
+        # Not `plan_cores(wanted=1)`: that would report a one-instance
+        # *pool*, and "off" needs to say so, because an operator who set
+        # the flag and sees `instances: 1` should be able to tell
+        # "disabled" from "this machine only has the cores for one".
+        budget = replace(
+            plan_cores(wanted=1), instances=1,
+            note="multiple instances are off (T1_HYPERCHAT_MULTI). Prompts "
+                 "are answered one at a time, in the order they arrive.",
+        )
+
+    chat = getattr(request.app.state, "t1_hyperchat", None)
+    return {
+        "enabled": config.hyperchat_multi,
+        "max_queued": config.hyperchat_max_queued,
+        "cores": budget.to_dict(),
+        "live": chat.stats() if chat is not None else None,
+        "request_id": request_id,
+    }

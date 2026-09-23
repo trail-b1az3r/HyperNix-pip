@@ -23,9 +23,16 @@ struct ChatListView: View {
         }
     }
 
+    @Environment(\.scenePhase) private var scenePhase
+
+    private var server: String { state.currentServerID }
+    private var hiddenIDs: Set<String> { state.privateChats.hiddenIDs(server: server) }
+    private var visible: [ChatSession] { state.sessions.filter { !hiddenIDs.contains($0.sessionID) } }
+    private var hiddenSessions: [ChatSession] { state.sessions.filter { hiddenIDs.contains($0.sessionID) } }
+
     private var listBody: some View {
         List {
-            if state.sessions.isEmpty && !state.isLoadingSessions {
+            if visible.isEmpty && hiddenSessions.isEmpty && !state.isLoadingSessions {
                 ContentUnavailableView {
                     Label("No conversations", systemImage: "bubble.left.and.bubble.right")
                 } description: {
@@ -34,54 +41,11 @@ struct ChatListView: View {
                     Button("New chat") { Task { await startChat() } }
                 }
             }
-            ForEach(state.sessions) { session in
-                NavigationLink(value: session.sessionID) {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(session.title)
-                            .font(.body)
-                            .lineLimit(1)
-                        HStack(spacing: 6) {
-                            if !session.modelID.isEmpty {
-                                Text(shortModelName(session.modelID))
-                                    .lineLimit(1)
-                            }
-                            Text("·")
-                            Text("\(session.messageCount) message\(session.messageCount == 1 ? "" : "s")")
-                            Text("·")
-                            Text(relativeTime(session.updatedAt))
-                        }
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    }
-                }
-                .swipeActions(edge: .trailing) {
-                    Button(role: .destructive) {
-                        Task { await state.delete(session.sessionID) }
-                    } label: {
-                        Label("Delete", systemImage: "trash")
-                    }
-                    Button {
-                        renaming = session
-                    } label: {
-                        Label("Rename", systemImage: "pencil")
-                    }
-                    .tint(theme.accent)
-                }
-                // And by long-press, because a swipe is not discoverable
-                // and renaming is the one thing here somebody goes
-                // looking for.
-                .contextMenu {
-                    Button {
-                        renaming = session
-                    } label: {
-                        Label("Rename", systemImage: "pencil")
-                    }
-                    Button(role: .destructive) {
-                        Task { await state.delete(session.sessionID) }
-                    } label: {
-                        Label("Delete", systemImage: "trash")
-                    }
-                }
+            ForEach(visible) { session in
+                row(session, hidden: false)
+            }
+            if !hiddenSessions.isEmpty {
+                privateSection
             }
         }
         .navigationTitle("Chats")
@@ -107,6 +71,126 @@ struct ChatListView: View {
             if state.isLoadingSessions && state.sessions.isEmpty {
                 ProgressView()
             }
+        }
+        // Private stays private only while the phone is in the person's
+        // hand: leaving the app locks it again.
+        .onChange(of: scenePhase) { _, phase in
+            if phase != .active { state.privateChats.lock() }
+        }
+        .onChange(of: state.sessions) { _, sessions in
+            guard !state.isLoadingSessions, !sessions.isEmpty else { return }
+            state.privateChats.prune(existing: Set(sessions.map(\.sessionID)), server: server)
+        }
+    }
+
+    @ViewBuilder
+    private var privateSection: some View {
+        Section {
+            if state.privateChats.isUnlocked {
+                ForEach(hiddenSessions) { session in
+                    row(session, hidden: true)
+                }
+            } else {
+                Button {
+                    Task { await state.privateChats.unlock() }
+                } label: {
+                    Label(
+                        "\(hiddenSessions.count) private chat\(hiddenSessions.count == 1 ? "" : "s")",
+                        systemImage: "lock.fill"
+                    )
+                }
+                if let failure = state.privateChats.lastFailure {
+                    Text(failure).font(.caption).foregroundStyle(.secondary)
+                }
+            }
+        } header: {
+            HStack {
+                Text("Private")
+                Spacer()
+                if state.privateChats.isUnlocked {
+                    Button("Lock") { state.privateChats.lock() }
+                        .font(.caption)
+                }
+            }
+        } footer: {
+            Text("Hidden on this iPhone only, behind Face ID. The chat is still on your PC.")
+        }
+    }
+
+    private func row(_ session: ChatSession, hidden: Bool) -> some View {
+        NavigationLink(value: session.sessionID) {
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 6) {
+                    if hidden {
+                        Image(systemName: "lock.open").font(.caption).foregroundStyle(.secondary)
+                    }
+                    Text(session.title)
+                        .font(.body)
+                        .lineLimit(1)
+                }
+                HStack(spacing: 6) {
+                    if !session.modelID.isEmpty {
+                        Text(shortModelName(session.modelID))
+                            .lineLimit(1)
+                    }
+                    Text("·")
+                    Text("\(session.messageCount) message\(session.messageCount == 1 ? "" : "s")")
+                    Text("·")
+                    Text(relativeTime(session.updatedAt))
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+        }
+        .swipeActions(edge: .trailing) {
+            Button(role: .destructive) {
+                Task { await state.delete(session.sessionID) }
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+            Button {
+                renaming = session
+            } label: {
+                Label("Rename", systemImage: "pencil")
+            }
+            .tint(theme.accent)
+        }
+        .swipeActions(edge: .leading) {
+            privacyButton(session, hidden: hidden)
+                .tint(.indigo)
+        }
+        // And by long-press, because a swipe is not discoverable
+        // and renaming is the one thing here somebody goes
+        // looking for.
+        .contextMenu {
+            Button {
+                renaming = session
+            } label: {
+                Label("Rename", systemImage: "pencil")
+            }
+            Button {
+                Task { await state.retitle(session.sessionID) }
+            } label: {
+                Label("Rename with AI", systemImage: "sparkles")
+            }
+            privacyButton(session, hidden: hidden)
+            Button(role: .destructive) {
+                Task { await state.delete(session.sessionID) }
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+        }
+    }
+
+    private func privacyButton(_ session: ChatSession, hidden: Bool) -> some View {
+        Button {
+            if hidden {
+                state.privateChats.unhide(session.sessionID, server: server)
+            } else {
+                state.privateChats.hide(session.sessionID, server: server)
+            }
+        } label: {
+            Label(hidden ? "Unhide" : "Hide with Face ID", systemImage: hidden ? "eye" : "eye.slash")
         }
     }
 

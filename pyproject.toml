@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hypernix"
-version = "0.72.5.post13"
+version = "0.72.5.post16"
 description = "Download and quantize the HyperNix PyTorch model to GGUF (fp32/fp16/Q8_0/Q6_K/Q4_K_M). and train models with a massive ai toolkit "
 readme = { file = "README.md", content-type = "text/markdown" }
 license = { text = "HOL-1.0" }
@@ -57,7 +57,11 @@ dependencies = [
 [project.optional-dependencies]
 llama-cpp = ["llama-cpp-python>=0.2.90"]
 train = ["transformers>=4.44", "accelerate>=0.33"]
-dev = ["pytest>=8", "ruff>=0.5", "build>=1.2", "twine>=5"]
+dev = ["pytest>=8", "ruff>=0.5", "build>=1.2", "twine>=5", "psutil>=5.9"]
+# 0.72.5.post16: magnesium reads and renices other processes through
+# psutil. Every other psutil use in HyperNix is optional and degrades;
+# magnesium has nothing to degrade to.
+elements = ["psutil>=5.9"]
 # v0.71.0: optional encryption backend for Keymaster key storage.
 # When not installed, Keymaster falls back to plain JSON storage with
 # a warning. Install with: pip install hypernix[security]
@@ -136,7 +140,10 @@ ups = "hypernix.system.ups:cli_main"
 # `hyped-pro` is the one with the tools.
 hyped = "hypernix.interfaces.hyped_basic:cli_main"
 hyped-agent = "hypernix.interfaces.hyped:cli_main"
-hyped-pro = "hypernix.interfaces.hyped_pro:cli_main"
+# 0.72.5.post16: `hyped-pro` is the OpenTUI client (TypeScript on Bun,
+# the same stack as opencode's TUI). The readline TUI that was called
+# hyped-pro until now is `hyped-plus`, and only `hyped-plus`.
+hyped-pro = "hypernix.interfaces.hyped_pro_otui:cli_main"
 hyped-plus = "hypernix.interfaces.hyped_pro:cli_main"
 # v0.71.4b6: hyped-pro's desktop GUI (Qt6 X11/Wayland, GTK4 fallback).
 hyped-pro-gui = "hypernix.interfaces.hyped_pro_gui:cli_main"
@@ -197,14 +204,22 @@ include-package-data = true
 # console scripts, which is what the documentation promises — without it,
 # `pip install hypernix` gives you every other companion script and not
 # this one.
-script-files = ["bin/hypernix-t1"]
+script-files = ["bin/hypernix-t1", "bin/hnx-t1"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["hypernix*"]
 
 [tool.setuptools.package-data]
-hypernix = ["py.typed", "webui_static/*", "*.js", "t1api/data/*.json"]
+hypernix = [
+    "py.typed", "webui_static/*", "*.js", "t1api/data/*.json",
+    # hyped-pro's OpenTUI app. Sources only: its node_modules hold a
+    # platform-specific native library and are installed on first run.
+    "interfaces/hyped_pro_app/package.json",
+    "interfaces/hyped_pro_app/bun.lock",
+    "interfaces/hyped_pro_app/tsconfig.json",
+    "interfaces/hyped_pro_app/src/*.ts",
+]
 
 # ---------------------------------------------------------------------------
 # Ruff / pytest defaults (also duplicated in ruff.toml / pytest.ini so

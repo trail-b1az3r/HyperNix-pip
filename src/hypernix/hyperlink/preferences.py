@@ -88,6 +88,8 @@ CREATE TABLE IF NOT EXISTS hyperlink_preferences (
     backend TEXT NOT NULL DEFAULT '',
     tools_enabled INTEGER NOT NULL DEFAULT 0,
     auto_memory INTEGER NOT NULL DEFAULT 1,
+    auto_compact INTEGER NOT NULL DEFAULT 1,
+    model_titles INTEGER NOT NULL DEFAULT 1,
     created_at REAL NOT NULL,
     updated_at REAL NOT NULL,
     metadata TEXT NOT NULL DEFAULT '{}'
@@ -116,6 +118,11 @@ class Preferences:
     backend: str = ""
     tools_enabled: bool = False
     auto_memory: bool = True
+    #: Summarise the oldest part of a thread when it no longer fits,
+    #: rather than silently dropping it. See hyperlink.compaction.
+    auto_compact: bool = True
+    #: Let the model name a new chat after its first reply.
+    model_titles: bool = True
     created_at: float = 0.0
     updated_at: float = 0.0
     metadata: dict[str, Any] = field(default_factory=dict)
@@ -133,6 +140,8 @@ class Preferences:
             "backend": self.backend,
             "tools_enabled": self.tools_enabled,
             "auto_memory": self.auto_memory,
+            "auto_compact": self.auto_compact,
+            "model_titles": self.model_titles,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
             "metadata": dict(self.metadata),
@@ -177,6 +186,7 @@ class PreferenceStore:
         self.backend = backend or SQLiteBackend()
         self._lock = threading.Lock()
         self.backend.executescript(_SCHEMA)
+        self._migrate()
 
     def get(self, *, owner: str) -> Preferences:
         """This owner's settings, defaulted if they have never set any.
@@ -288,6 +298,10 @@ class PreferenceStore:
             current.tools_enabled = bool(changes["tools_enabled"])
         if "auto_memory" in changes:
             current.auto_memory = bool(changes["auto_memory"])
+        if "auto_compact" in changes:
+            current.auto_compact = bool(changes["auto_compact"])
+        if "model_titles" in changes:
+            current.model_titles = bool(changes["model_titles"])
         if "metadata" in changes and isinstance(changes["metadata"], dict):
             current.metadata = dict(changes["metadata"])
 
@@ -301,8 +315,9 @@ class PreferenceStore:
                 """INSERT INTO hyperlink_preferences
                    (owner, display_name, bio, system_prompt, effort,
                     context_minimum, context_maximum, backup_model, backend,
-                    tools_enabled, auto_memory, created_at, updated_at, metadata)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    tools_enabled, auto_memory, auto_compact, model_titles,
+                    created_at, updated_at, metadata)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                    ON CONFLICT(owner) DO UPDATE SET
                      display_name = excluded.display_name,
                      bio = excluded.bio,
@@ -314,6 +329,8 @@ class PreferenceStore:
                      backend = excluded.backend,
                      tools_enabled = excluded.tools_enabled,
                      auto_memory = excluded.auto_memory,
+                     auto_compact = excluded.auto_compact,
+                     model_titles = excluded.model_titles,
                      updated_at = excluded.updated_at,
                      metadata = excluded.metadata""",
                 (
@@ -321,11 +338,28 @@ class PreferenceStore:
                     current.effort, current.context_minimum, current.context_maximum,
                     current.backup_model, current.backend,
                     int(current.tools_enabled), int(current.auto_memory),
+                    int(current.auto_compact), int(current.model_titles),
                     current.created_at, current.updated_at,
                     json.dumps(current.metadata),
                 ),
             )
         return current, notes
+
+    def _migrate(self) -> None:
+        """Add columns a database written before them does not have.
+
+        ``CREATE TABLE IF NOT EXISTS`` leaves an existing table alone, so
+        a server upgraded in place would otherwise fail every write with
+        "no column named auto_compact". Both default on, which is what a
+        new person gets too.
+        """
+        with self._lock, self.backend.connect() as conn:
+            columns = {row[1] for row in conn.execute("PRAGMA table_info(hyperlink_preferences)").fetchall()}
+            for name in ("auto_compact", "model_titles"):
+                if name not in columns:
+                    conn.execute(
+                        f"ALTER TABLE hyperlink_preferences ADD COLUMN {name} INTEGER NOT NULL DEFAULT 1"
+                    )
 
     def reset(self, *, owner: str) -> None:
         """Back to the defaults. Deletes the row rather than blanking it,
@@ -386,6 +420,8 @@ def _from_row(row: Any) -> Preferences:
         backend=row["backend"],
         tools_enabled=bool(row["tools_enabled"]),
         auto_memory=bool(row["auto_memory"]),
+        auto_compact=bool(row["auto_compact"]) if "auto_compact" in row.keys() else True,
+        model_titles=bool(row["model_titles"]) if "model_titles" in row.keys() else True,
         created_at=float(row["created_at"] or 0.0),
         updated_at=float(row["updated_at"] or 0.0),
         metadata=metadata if isinstance(metadata, dict) else {},

@@ -603,6 +603,36 @@ def update_session(
     return SessionResponse(session=SessionSummary(**session.to_dict()), request_id=request_id)
 
 
+@router.post("/sessions/{session_id}/title", response_model=SessionResponse)
+def retitle_session(
+    session_id: str,
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    store: ChatSessionStore = Depends(get_session_store),
+    preferences=Depends(get_preference_store),
+    runner=Depends(get_runner),
+    config: T1APIConfig = Depends(get_config),
+    request_id: str = Depends(get_request_id),
+) -> SessionResponse:
+    """Ask the model to name this chat again, from its first exchange.
+
+    For a title that came out wrong, or one from before titles were the
+    model's. Falls back to the first line when no model answers.
+    """
+    _require_enabled(config)
+    store.get(session_id, owner=principal.owner)
+    store.update(session_id, owner=principal.owner, title="New chat")
+    settings = preferences.get(owner=principal.owner)
+    backend = _chat_backend(config, runner)
+    session = store.get(session_id, owner=principal.owner)
+    try:
+        _title_session(store, session_id, principal.owner, settings, backend.client,
+                       session.model_id or None)
+    except Exception:  # noqa: BLE001
+        store.autotitle(session_id, owner=principal.owner)
+    session = store.get(session_id, owner=principal.owner)
+    return SessionResponse(session=SessionSummary(**session.to_dict()), request_id=request_id)
+
+
 @router.delete("/sessions/{session_id}", response_model=GenericOkResponse)
 def delete_session(
     session_id: str,
@@ -751,7 +781,60 @@ def _with_memories(
     return [{"role": "system", "content": block}, *wire]
 
 
-def _chat_with_tools(bridge, wire, model, sampling, config, principal):
+def _last_user_message(store, session_id: str, owner: str):
+    """The message a regenerate answers: the thread's last, and it must be yours.
+
+    Refused when the thread ends in a reply. Answering that again would
+    silently stack a second reply under the first; a resend of a message
+    that already has an answer is an edit with the same text, which
+    removes the old reply first.
+    """
+    tail = store.messages(session_id, owner=owner, limit=1)
+    if not tail or tail[-1].role != "user":
+        raise T1APIError(
+            T1ErrorCode.CONFLICT,
+            "Nothing to answer: the conversation does not end with your "
+            "message. To ask something again, edit it (with the same text "
+            "to resend) — that removes the old reply first.",
+            http_status=409,
+        )
+    return tail[-1]
+
+
+def _t1_access(request: Request | None, principal):
+    """How the model reaches this server's own API, or None for no T1 tools.
+
+    None for a keyless caller. The server calling itself comes from
+    loopback, which trusted-network mode can treat as a *different*,
+    more trusted network than the phone's — the model would be acting as
+    somebody other than the person. With a credential, it is theirs.
+    """
+    if request is None:
+        return None
+    header = request.headers.get("authorization") or ""
+    if not header.lower().startswith("bearer "):
+        return None
+    from ...hyperlink.toolloop import T1Access
+
+    host, port = (request.scope.get("server") or ("127.0.0.1", 8000))[:2]
+    if host in ("0.0.0.0", "::", "", None):
+        host = "127.0.0.1"          # bound everywhere: loopback is one of them
+    if ":" in str(host):
+        host = f"[{host}]"
+    base = f"{request.url.scheme}://{host}:{port}{request.scope.get('root_path', '')}"
+    scopes = set(getattr(principal, "scopes", ()) or ())
+    return T1Access(
+        base, header.split(" ", 1)[1].strip(),
+        # Only for somebody who could do these by hand. The endpoints
+        # refuse anyway; hiding them saves the model rounds spent finding
+        # that out.
+        allow_mutating=bool(getattr(principal, "is_admin", False)) or "write" in scopes,
+    )
+
+
+def _chat_with_tools(bridge, wire, model, sampling, config, principal, t1=None,
+                     teach_format=False, memory_store=None, auto_memory=False,
+                     session_id=""):
     """One turn, with the model allowed to call noodle's tools.
 
     Returns ``(envelope, rounds)``. The rounds are what it did, for the
@@ -767,6 +850,18 @@ def _chat_with_tools(bridge, wire, model, sampling, config, principal):
     from .noodle import _context as noodle_context
 
     context = noodle_context(config, principal)
+    if memory_store is not None:
+        from ...hyperlink.memory import ToolMemoryBackend
+
+        # The model's memory tools write where the Memories screen reads.
+        # They used to write a JSON file in the tool workspace, so the
+        # assistant said "I'll remember that" and the screen never showed
+        # it. Switched by the person's own auto-memory setting rather
+        # than the server-wide noodle flag: whether an assistant keeps
+        # notes about you is yours to decide.
+        context.memory_backend = ToolMemoryBackend(
+            memory_store, principal.owner, session_id)
+        context.memory_enabled = bool(auto_memory)
 
     def ask(messages, tools):
         return bridge.chat(
@@ -778,7 +873,8 @@ def _chat_with_tools(bridge, wire, model, sampling, config, principal):
         )
 
     _messages, envelope, rounds = run_tool_loop(
-        wire, context, ask=ask, extract=_extract_reply
+        wire, context, ask=ask, extract=_extract_reply, t1=t1,
+        teach_format=teach_format,
     )
     return envelope, [r.to_dict() for r in rounds]
 
@@ -845,6 +941,69 @@ def _token_budget(preferences, payload) -> int:
     if maximum:
         budget = min(budget, maximum)
     return budget
+
+
+#: Compact when what the model would be sent reaches this share of the
+#: budget. Not 1.0: the reply needs room too, and summarising takes a turn.
+AUTO_COMPACT_AT = 0.85
+
+
+def _maybe_compact(store, config, session_id: str, owner: str, settings, budget: int) -> dict | None:
+    """Summarise the oldest part of a thread that no longer fits.
+
+    ``context_for`` already fits a long thread to the budget — by dropping
+    its oldest messages, silently, so a decision made at the start is the
+    first thing the model forgets. With ``auto_compact`` on (the default)
+    those messages are summarised instead, once, before they would fall
+    off. The transcript keeps them; only the model sees the summary.
+    """
+    if not getattr(settings, "auto_compact", True):
+        return None
+    from hypernix.hyperlink.sessions import estimate_tokens
+
+    live = [
+        m for m in store.messages(session_id, owner=owner)
+        if not (isinstance(m.metadata, dict) and m.metadata.get("compacted_by"))
+    ]
+    used = sum(estimate_tokens(m.content) for m in live)
+    if used < AUTO_COMPACT_AT * budget:
+        return None
+    try:
+        from .compact import compact_session
+
+        result = compact_session(store, config, session_id=session_id, owner=owner, scope="dynamic")
+    except Exception:  # noqa: BLE001 - never fail a chat because a summary failed
+        logger.warning("hyperlink: auto-compaction of %s failed", session_id, exc_info=True)
+        return None
+    return result if result.get("applied") else None
+
+
+def _title_session(store, session_id: str, owner: str, settings, bridge, model: str | None) -> str:
+    """Name an untitled session, by the model when allowed. Returns the title."""
+    from hypernix.hyperlink.titles import make_title
+
+    session = store.get(session_id, owner=owner)
+    if session.title not in ("", "New chat"):
+        return session.title
+    history = store.messages(session_id, owner=owner)
+    first_user = next((m.content for m in history if m.role == "user" and m.content.strip()), "")
+    first_reply = next((m.content for m in history if m.role == "assistant" and m.content.strip()), "")
+    if not first_user:
+        return session.title
+
+    complete = None
+    if getattr(settings, "model_titles", True) and bridge is not None and first_reply:
+        def complete(messages: list[dict[str, str]]) -> str:
+            envelope = bridge.chat(messages, model=model, temperature=0.3, max_tokens=32)
+            content, _finish = _extract_reply(envelope)
+            return content
+
+    title, how = make_title(first_user, first_reply, complete)
+    if not title:
+        return session.title
+    store.update(session_id, owner=owner, title=title)
+    logger.debug("hyperlink: titled %s by %s", session_id, how)
+    return title
 
 
 def _wire_messages(
@@ -993,6 +1152,7 @@ def chat_turn(
     runner=Depends(get_runner),
     config: T1APIConfig = Depends(get_config),
     request_id: str = Depends(get_request_id),
+    request: Request = None,
 ) -> HyperLinkChatResponse:
     """Append the user's message, run the model, append the reply.
 
@@ -1003,24 +1163,30 @@ def chat_turn(
     retyping it.
     """
     _require_enabled(config)
-    if not payload.content.strip() and not payload.attachment_ids:
-        raise T1APIError(
-            T1ErrorCode.VALIDATION_ERROR, "Send some text, an attachment, or both"
-        )
     session = store.get(session_id, owner=principal.owner)
 
-    user_message = store.append(
-        session_id,
-        role="user",
-        content=payload.content,
-        owner=principal.owner,
-        attachment_ids=payload.attachment_ids,
-        metadata={"device_id": principal.device_id} if principal.device_id else {},
-    )
+    if payload.regenerate:
+        user_message = _last_user_message(store, session_id, principal.owner)
+    else:
+        if not payload.content.strip() and not payload.attachment_ids:
+            raise T1APIError(
+                T1ErrorCode.VALIDATION_ERROR, "Send some text, an attachment, or both"
+            )
+        user_message = store.append(
+            session_id,
+            role="user",
+            content=payload.content,
+            owner=principal.owner,
+            attachment_ids=payload.attachment_ids,
+            metadata={"device_id": principal.device_id} if principal.device_id else {},
+        )
 
     backend = _chat_backend(config, runner)
     bridge = backend.client
     settings = preferences.get(owner=principal.owner)
+    compacted = _maybe_compact(
+        store, config, session_id, principal.owner, settings, _token_budget(settings, payload)
+    )
     history = store.context_for(
         session_id,
         owner=principal.owner,
@@ -1048,7 +1214,16 @@ def chat_turn(
     try:
         if settings.tools_enabled and getattr(config, "noodle_enabled", False):
             envelope, tool_rounds = _chat_with_tools(
-                bridge, wire, wanted, sampling, config, principal
+                bridge, wire, wanted, sampling, config, principal,
+                t1=_t1_access(request, principal),
+                # The built-in runner serves any GGUF, most of which were
+                # trained on a text tool format rather than structured
+                # calls. Teaching the format costs one system message and
+                # is what makes those models call tools at all.
+                teach_format=bool(backend.is_hypernix),
+                memory_store=memories,
+                auto_memory=settings.auto_memory,
+                session_id=session_id,
             )
         else:
             envelope = bridge.chat(
@@ -1112,9 +1287,10 @@ def chat_turn(
             # thing that can happen in a thread, and the fix is to say
             # so rather than to stop doing it.
             **({"used_backup_model": True} if used_backup else {}),
+            **({"compacted_before": compacted.get("messages_compacted", 0)} if compacted else {}),
         },
     )
-    store.autotitle(session_id, owner=principal.owner)
+    _title_session(store, session_id, principal.owner, settings, bridge, model_id or None)
     if model_id and not session.model_id:
         store.update(
             session_id, owner=principal.owner, model_id=model_id,
@@ -1161,21 +1337,28 @@ def chat_turn_stream(
     marked ``truncated`` is worth more than a lost one.
     """
     _require_enabled(config)
-    if not payload.content.strip() and not payload.attachment_ids:
-        raise T1APIError(T1ErrorCode.VALIDATION_ERROR, "Send some text, an attachment, or both")
     session = store.get(session_id, owner=principal.owner)
 
-    user_message = store.append(
-        session_id,
-        role="user",
-        content=payload.content,
-        owner=principal.owner,
-        attachment_ids=payload.attachment_ids,
-        metadata={"device_id": principal.device_id} if principal.device_id else {},
-    )
+    if payload.regenerate:
+        user_message = _last_user_message(store, session_id, principal.owner)
+    else:
+        if not payload.content.strip() and not payload.attachment_ids:
+            raise T1APIError(T1ErrorCode.VALIDATION_ERROR,
+                             "Send some text, an attachment, or both")
+        user_message = store.append(
+            session_id,
+            role="user",
+            content=payload.content,
+            owner=principal.owner,
+            attachment_ids=payload.attachment_ids,
+            metadata={"device_id": principal.device_id} if principal.device_id else {},
+        )
     backend = _chat_backend(config, runner)
     bridge = backend.client
     settings = preferences.get(owner=principal.owner)
+    compacted = _maybe_compact(
+        store, config, session_id, principal.owner, settings, _token_budget(settings, payload)
+    )
     history = store.context_for(
         session_id,
         owner=principal.owner,
@@ -1257,6 +1440,9 @@ def chat_turn_stream(
             # propagate — swallowing it would leak the generator.
             generations.finish(active.generation_id)
             _persist(collected, model_id, finish or "disconnected", usage, truncated=True)
+            # Nobody is listening for a model-written title any more; the
+            # first-line one costs nothing.
+            store.autotitle(session_id, owner=principal.owner)
             raise
         finally:
             generations.finish(active.generation_id)
@@ -1278,6 +1464,19 @@ def chat_turn_stream(
             input_tokens=message.input_tokens,
             output_tokens=message.output_tokens,
         )
+        # After `done`, so the reply is never held up by naming the chat.
+        # An app that stops reading at `done` still gets the title on its
+        # next session list; one that reads on gets it now.
+        if compacted:
+            yield _frame("compacted", messages=compacted.get("messages_compacted", 0),
+                         summary_message_id=compacted.get("summary_message_id", ""))
+        try:
+            title = _title_session(store, session_id, principal.owner, settings, bridge,
+                                   model_id or requested_model)
+            yield _frame("title", title=title)
+        except Exception:  # noqa: BLE001 - a title never fails a chat
+            logger.debug("hyperlink: titling %s failed", session_id, exc_info=True)
+            store.autotitle(session_id, owner=principal.owner)
         yield b"data: [DONE]\n\n"
 
     def _persist(
@@ -1297,9 +1496,9 @@ def chat_turn_stream(
                 "base_url": bridge.base_url,
                 "truncated": truncated,
                 "streamed": True,
+                **({"compacted_before": compacted.get("messages_compacted", 0)} if compacted else {}),
             },
         )
-        store.autotitle(session_id, owner=principal.owner)
         return message
 
     return StreamingResponse(
@@ -1347,6 +1546,73 @@ def stop_generation(
     return GenerationStopResponse(
         stopped=stopped, count=len(stopped), request_id=request_id
     )
+
+
+# ---------------------------------------------------------------------------
+# Shell (0.72.5.post16) — off unless the server's operator turns it on
+# ---------------------------------------------------------------------------
+
+
+@router.get("/shell")
+def shell_status(
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    config: T1APIConfig = Depends(get_config),
+) -> dict[str, Any]:
+    """Whether this server accepts shell commands, so the app can say why not."""
+    _require_enabled(config)
+    from ...hyperlink.shell import shell_root
+
+    enabled = bool(getattr(config, "hyperlink_shell", False))
+    return {
+        "enabled": enabled,
+        "timeout_seconds": float(getattr(config, "hyperlink_shell_timeout", 60.0)),
+        # Where commands may start. Only said when the shell is on: a
+        # server that refuses commands has no reason to name a path.
+        "root": shell_root() if enabled else "",
+        "how_to_enable": "set T1_HYPERLINK_SHELL=1 in the server's .env and restart it",
+    }
+
+
+@router.post("/shell")
+def run_shell(
+    request_body: dict[str, Any],
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    config: T1APIConfig = Depends(get_config),
+    audit=Depends(get_audit_log),
+    request_id: str = Depends(get_request_id),
+) -> dict[str, Any]:
+    """Run one command on this machine and return its output."""
+    _require_enabled(config)
+    if not getattr(config, "hyperlink_shell", False):
+        raise T1APIError(
+            T1ErrorCode.NOT_SUPPORTED,
+            "The shell is off on this server. Its operator can turn it on with "
+            "T1_HYPERLINK_SHELL=1.",
+            http_status=403,
+        )
+    from ...hyperlink.shell import run_command
+
+    command = str(request_body.get("command") or "")
+    cwd = request_body.get("cwd") or None
+    actor = principal.device_id or principal.owner or "keyless"
+    # Recorded before it runs, so a command that takes the server down is
+    # still in the log.
+    try:
+        audit.record(
+            "hyperlink.shell", category=AuditCategory.ADMIN, outcome=AuditOutcome.SUCCESS,
+            actor_key_id=actor, request_id=request_id, resource_type="shell",
+            details={"command": command[:500], "cwd": str(cwd or "")},
+        )
+    except Exception:  # noqa: BLE001 - the log line in run_command still records it
+        logger.debug("hyperlink: audit record for shell failed", exc_info=True)
+    try:
+        result = run_command(
+            command, cwd=str(cwd) if cwd else None,
+            timeout=float(getattr(config, "hyperlink_shell_timeout", 60.0)), actor=actor,
+        )
+    except ValueError as exc:
+        raise T1APIError(T1ErrorCode.VALIDATION_ERROR, str(exc)) from exc
+    return {**result.to_dict(), "request_id": request_id}
 
 
 @router.get("/hardware", response_model=HardwareResponse)

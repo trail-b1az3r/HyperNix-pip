@@ -779,6 +779,13 @@ class CodeOven:
                 optimizer_kwargs["peak_lr"] = lr
             if "grad_clip" in optimizer_params:
                 optimizer_kwargs["grad_clip"] = grad_clip
+            # `betas` is AdamW's. Pass it only to an optimizer that names it:
+            # V5/V5S/V6 have their own (momentum_beta, slow_beta, ...) and a
+            # `**kwargs` that forwards to OptimizerBase, which rejects it -- so
+            # "accepts **kwargs" is the wrong test, and every one of them
+            # raised TypeError through train().
+            if "betas" not in optimizer_params:
+                optimizer_kwargs.pop("betas", None)
             core = _unwrap_model_fn(self.model)
             opt = optimizer_class(core.parameters(), **optimizer_kwargs)
         else:

@@ -157,7 +157,13 @@ class Scavenger:
 
         api = HfApi()
         try:
-            results = api.list_datasets(
+            # Through hubcompat: `direction` was removed in
+            # huggingface-hub 1.0 and passing it raises TypeError at the
+            # moment somebody searches, which is the first thing they do.
+            from hypernix.system.hubcompat import list_datasets
+
+            results = list_datasets(
+                api,
                 search=query,
                 limit=limit,
                 sort="downloads",

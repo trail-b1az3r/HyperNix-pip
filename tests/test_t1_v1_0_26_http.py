@@ -141,7 +141,7 @@ class TestStatus:
         assert body["t1_api_version"] == T1_VERSION.short
         assert body["t1_api_version_long"] == T1_VERSION.long
         assert body["t1_version"]["year"] == 2026
-        assert body["t1_version"]["generation"] == "1.0"
+        assert body["t1_version"]["generation"] == "1.1"
 
     def test_the_beta_field_still_exists_for_beta_3_clients(self, client):
         # Renaming it would break every Beta 3 client for a cosmetic win.
@@ -664,7 +664,9 @@ class TestChatTurn:
         captured: dict[str, object] = {}
 
         def _chat(self, messages, **kwargs):  # noqa: ANN001, ARG001
-            captured["messages"] = messages
+            # The first call is the reply; a new chat is then titled by a
+            # second, shorter one (0.72.5.post16).
+            captured.setdefault("messages", messages)
             return {"model": "hot", "choices": [{"message": {"content": "an image"}}]}
 
         with mock.patch("hypernix.bridge.lmstudio.LMStudioBridge.chat", _chat):
@@ -694,7 +696,9 @@ class TestChatTurn:
         captured: dict[str, object] = {}
 
         def _chat(self, messages, **kwargs):  # noqa: ANN001, ARG001
-            captured["messages"] = messages
+            # The first call is the reply; a new chat is then titled by a
+            # second, shorter one (0.72.5.post16).
+            captured.setdefault("messages", messages)
             return {"model": "hot", "choices": [{"message": {"content": "it prints 1"}}]}
 
         with mock.patch("hypernix.bridge.lmstudio.LMStudioBridge.chat", _chat):

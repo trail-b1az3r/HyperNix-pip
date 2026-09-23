@@ -605,7 +605,7 @@ def create_app(
         return JSONResponse(
             status_code=status_code,
             content={
-                "error": {"code": exc.code.value, "message": exc.message, "details": exc.details},
+                "error": {"code": exc.code.value, "hx_code": exc.hx_code, "message": exc.message, "details": exc.details},
                 "request_id": request_id,
             },
             headers=headers,

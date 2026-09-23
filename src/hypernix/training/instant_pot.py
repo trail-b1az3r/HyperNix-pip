@@ -107,10 +107,19 @@ def brew(recipe: dict[str, Any]) -> Path:
         oven.model = compute_framework.prepare_model(oven.model)
 
     # 2) Train.
-    opt_class = None
-    if recipe.get("use_pressure_cooker_v3", True):
+    # V4 by default. This was V3, and V3 is deprecated as of 0.72.6 — a
+    # default HyperNix chose must not produce a warning the user has to
+    # act on. `use_pressure_cooker_v3: true` still selects V3 on purpose.
+    #
+    # V4 only works here because it now accepts a bare `lr`: before, it
+    # took a rate only inside a ScheduleConfig and raised TypeError the
+    # moment `train()` handed it one.
+    if recipe.get("use_pressure_cooker_v3", False):
         from hypernix.optimizers.pressure_cooker_v3 import PressureCookerV3
         opt_class = PressureCookerV3
+    else:
+        from hypernix.optimizers.pressure_cooker_v4 import PressureCookerV4
+        opt_class = PressureCookerV4
     trained = oven.train(
         dataset, out_dir,
         steps=recipe.get("steps", 500),

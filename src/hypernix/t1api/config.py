@@ -303,11 +303,38 @@ class T1APIConfig:
     # surface beyond the pairing redemption endpoint, which needs a code
     # an operator minted by hand.
     hyperlink_enabled: bool = field(default_factory=lambda: _bool_env("T1_HYPERLINK_ENABLED", True))
+    #: A shell on this machine from a paired phone. Off unless the person
+    #: running the server turns it on: a phone is never an admin, and this
+    #: is the one route that would make it more than one. See
+    #: hypernix.hyperlink.shell.
+    hyperlink_shell: bool = field(default_factory=lambda: _bool_env("T1_HYPERLINK_SHELL", False))
+    hyperlink_shell_timeout: float = field(
+        default_factory=lambda: _float_env("T1_HYPERLINK_SHELL_TIMEOUT", 60.0)
+    )
     # MCP: this server described so an assistant can read it for itself.
     # Off by default. It is a second, differently-shaped way in to the
     # same capabilities, and a surface nobody asked for is a surface
     # nobody is watching.
     mcp_enabled: bool = field(default_factory=lambda: _bool_env("T1_MCP_ENABLED", False))
+    # hyperchat: several copies of one model answering several prompts
+    # at once. Off by default, and deliberately an operator decision
+    # rather than a derived one -- N instances take N times the VRAM,
+    # and the server cannot tell whether that memory is spare or is the
+    # headroom something else on the machine depends on.
+    hyperchat_multi: bool = field(
+        default_factory=lambda: _bool_env("T1_HYPERCHAT_MULTI", False)
+    )
+    # How many, when it is on. 0 means "as many as the cores allow",
+    # which is `(cores - 1) // 2` -- see hyperlink/hyperchat.py for why
+    # one core is never allocated. A number here only ever lowers that.
+    hyperchat_instances: int = field(
+        default_factory=lambda: _int_env("T1_HYPERCHAT_INSTANCES", 0)
+    )
+    # Prompts allowed to pile up before new ones are refused. An
+    # unbounded queue is a memory leak with a waiting list attached.
+    hyperchat_max_queued: int = field(
+        default_factory=lambda: _int_env("T1_HYPERCHAT_MAX_QUEUED", 256)
+    )
     hyperlink_public_url: str = field(
         default_factory=lambda: os.environ.get("T1_HYPERLINK_PUBLIC_URL", "")
     )
@@ -530,6 +557,9 @@ class T1APIConfig:
             "lmstudio_discovery": self.lmstudio_discovery,
             "hyperlink_enabled": self.hyperlink_enabled,
             "mcp_enabled": self.mcp_enabled,
+            "hyperchat_multi": self.hyperchat_multi,
+            "hyperchat_instances": self.hyperchat_instances,
+            "hyperchat_max_queued": self.hyperchat_max_queued,
             "hyperlink_public_url": self.hyperlink_public_url,
             "hyperlink_max_upload_bytes": self.hyperlink_max_upload_bytes,
             **self.tls_settings().public_dict(),

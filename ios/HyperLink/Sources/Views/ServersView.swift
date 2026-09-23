@@ -153,9 +153,19 @@ private struct ServerRow: View {
                         Text("·")
                         Label("keyless", systemImage: "lock.open").labelStyle(.titleOnly)
                     }
-                    if !server.connection.t1Version.isEmpty {
+                    // The hyperNix the server is running, when the app
+                    // has been told. `v1.1.26.9.0.0` here used to be the
+                    // T1 API generation wearing a `v` — a number that
+                    // does not move when somebody upgrades hyperNix,
+                    // shown to people checking whether it had.
+                    if !server.connection.versionLabel.isEmpty {
                         Text("·")
-                        Text("v\(server.connection.t1Version)")
+                        Text(server.connection.versionLabel)
+                            .foregroundStyle(
+                                server.connection.hypernixStale
+                                    ? AnyShapeStyle(.orange)
+                                    : AnyShapeStyle(.secondary)
+                            )
                     }
                 }
                 .font(.caption)

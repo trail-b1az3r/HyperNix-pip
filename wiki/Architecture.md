@@ -43,10 +43,10 @@ graph TD
     dep_torch([PyTorch])
     dep_uvicorn([uvicorn])
     t1api["t1api"]
-    quant["quant"]
     system["system"]
-    interfaces["interfaces"]
+    quant["quant"]
     hyperlink["hyperlink"]
+    interfaces["interfaces"]
     data["data"]
     models["models"]
     training["training"]
@@ -54,18 +54,22 @@ graph TD
     optimizers["optimizers"]
     neuron["neuron"]
     waiter["waiter"]
+    elements["elements"]
     evaluation["evaluation"]
     scriptgen["scriptgen"]
     security["security"]
     audio["audio"]
     chat["chat"]
     timing["timing"]
+    dilute["dilute"]
     t1sdk["t1sdk"]
+    runtime["runtime"]
     bridge["bridge"]
     hypernix["hypernix"]
     chat --> security
     chat --> timing
     data --> system
+    dilute --> models
     evaluation --> models
     evaluation --> system
     hypernix --> interfaces
@@ -73,6 +77,8 @@ graph TD
     interfaces --> audio
     interfaces --> chat
     interfaces --> data
+    interfaces --> dilute
+    interfaces --> elements
     interfaces --> evaluation
     interfaces --> models
     interfaces --> monitoring
@@ -95,6 +101,9 @@ graph TD
     security --> t1api
     system --> models
     system --> quant
+    t1api --> data
+    t1api --> hyperlink
+    t1api --> interfaces
     t1api --> security
     timing --> system
     training --> evaluation

@@ -67,10 +67,10 @@ class TestT1Version:
         #
         # Deliberately a literal. This is the tripwire that makes a
         # version bump a decision rather than a side effect.
-        assert T1_VERSION.short == "1.0.26.9.2.3"
-        assert T1_VERSION.long == "1.0.2026.9.2.3"
-        assert T1_VERSION.display == "t1 v1.0.26.9.2.3"
-        assert T1_VERSION.generation == "1.0"
+        assert T1_VERSION.short == "1.1.26.9.0.0"
+        assert T1_VERSION.long == "1.1.2026.9.0.0"
+        assert T1_VERSION.display == "t1 v1.1.26.9.0.0"
+        assert T1_VERSION.generation == "1.1"
         assert T1_VERSION.release == "2026-09"
 
     @pytest.mark.parametrize(
@@ -124,8 +124,15 @@ class TestT1Version:
             T1Version.parse("1.0.26.99.0.1")
 
     def test_compatibility_is_by_generation(self):
-        assert T1_VERSION.compatible_with("1.0.26.12.4.0")
-        assert not T1_VERSION.compatible_with("1.1.26.8.0.0")
+        """Generation is `api.major`, and 0.72.6 pt2 moved it 1.0 -> 1.1.
+
+        That is the meaning of the bump rather than a side effect of it:
+        a 1.0 client is now out of generation and gets told to upgrade,
+        instead of being left to fail later on a field that is not
+        there.
+        """
+        assert T1_VERSION.compatible_with("1.1.26.12.4.0")
+        assert not T1_VERSION.compatible_with("1.0.26.9.2.3")
         assert not T1_VERSION.compatible_with("2.0.26.8.0.0")
 
     def test_min_client_is_in_this_generation_and_not_newer_than_us(self):

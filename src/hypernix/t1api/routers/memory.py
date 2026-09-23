@@ -12,10 +12,13 @@ desktop see the same set, which is the point of it being on the server.
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from fastapi import APIRouter, Depends, Query
 
-from ...hyperlink.memory import MemoryStore
+from ...hyperlink.memory import MemoryStore, rename_category
+from ...hyperlink.memory import categories as memory_categories
+from ...hyperlink.memory import organise as organise_memories
 from ..config import T1APIConfig
 from ..deps import (
     HyperLinkPrincipal,
@@ -148,3 +151,49 @@ def delete_memory(
         detail="Forgotten." if removed else "No such memory, so nothing to forget.",
         request_id=request_id,
     )
+
+
+# ---------------------------------------------------------------------------
+# Organising (0.72.5.post16)
+# ---------------------------------------------------------------------------
+
+
+@router.get("/categories")
+def list_categories(
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    store: MemoryStore = Depends(get_memory_store),
+    request_id: str = Depends(get_request_id),
+) -> dict[str, Any]:
+    """Each category with how many memories it holds."""
+    return {"categories": memory_categories(store, owner=principal.owner), "request_id": request_id}
+
+
+@router.post("/categories/rename")
+def rename_memory_category(
+    payload: dict[str, Any],
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    store: MemoryStore = Depends(get_memory_store),
+    request_id: str = Depends(get_request_id),
+) -> dict[str, Any]:
+    """Move every memory in one category to another; merges into an existing one."""
+    moved = rename_category(
+        store, owner=principal.owner, old=str(payload.get("from", "")), new=str(payload.get("to", ""))
+    )
+    return {"moved": moved, "request_id": request_id}
+
+
+@router.post("/organise")
+def organise(
+    payload: dict[str, Any] | None = None,
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    store: MemoryStore = Depends(get_memory_store),
+    request_id: str = Depends(get_request_id),
+) -> dict[str, Any]:
+    """File memories that are not under a topic under one.
+
+    Categories a person chose are left alone. ``dry_run`` shows the moves
+    without making them.
+    """
+    dry_run = bool((payload or {}).get("dry_run", False))
+    changes = organise_memories(store, owner=principal.owner, dry_run=dry_run)
+    return {"changes": changes, "applied": not dry_run, "request_id": request_id}

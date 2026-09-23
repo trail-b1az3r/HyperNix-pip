@@ -1219,7 +1219,12 @@ class SessionSummary(BaseModel):
     backend: str = ""
     system_prompt: str = ""
     created_at: float
+    #: When the conversation last said anything — a prompt or a reply.
     updated_at: float
+    #: When anything about it last changed, a rename included. Defaulted
+    #: rather than required so a server reading rows written before the
+    #: column existed still validates.
+    touched_at: float = 0.0
     archived: bool = False
     message_count: int = 0
     metadata: dict[str, Any] = Field(default_factory=dict)
@@ -1285,6 +1290,11 @@ class HyperLinkChatRequest(BaseModel):
     max_tokens: int | None = None
     token_budget: int = 8000
     stream: bool = False
+    #: Answer the conversation's last message instead of adding one.
+    #: What an edit or a resend needs: the edited message is already the
+    #: last one (everything after it was removed), and sending its text
+    #: again would put the same question in the thread twice.
+    regenerate: bool = False
 
 
 class HyperLinkChatResponse(BaseModel):
@@ -1673,6 +1683,8 @@ class PreferencesRequest(BaseModel):
     backend: str | None = None
     tools_enabled: bool | None = None
     auto_memory: bool | None = None
+    auto_compact: bool | None = None
+    model_titles: bool | None = None
 
 
 class PreferencesResponse(BaseModel):

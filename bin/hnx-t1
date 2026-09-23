@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+#
+# hnx-t1 — the short name for hypernix-t1.
+#
+# An alias, not a copy: every subcommand, flag and exit code is
+# hypernix-t1's, because this execs it. A second copy of a 900-line
+# service manager would drift from the first within a release.
+#
+# The sibling in this directory comes first, so a checkout's
+# `./bin/hnx-t1` runs that checkout's hypernix-t1 and not whichever one
+# pip put on PATH.
+
+set -euo pipefail
+
+here="$(cd "$(dirname "$0")" 2>/dev/null && pwd)" || here=""
+# Run through bash rather than relying on the executable bit, which a
+# Windows checkout or a zip download does not keep.
+if [ -n "$here" ] && [ -f "$here/hypernix-t1" ]; then
+  exec "${BASH:-bash}" "$here/hypernix-t1" "$@"
+fi
+if command -v hypernix-t1 >/dev/null 2>&1; then
+  exec hypernix-t1 "$@"
+fi
+printf 'hnx-t1: hypernix-t1 is not installed next to this script or on PATH.\n' >&2
+printf '  Install it with: pip install "hypernix[t1api]"\n' >&2
+exit 127

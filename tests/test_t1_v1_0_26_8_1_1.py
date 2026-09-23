@@ -92,11 +92,17 @@ class TestTheVersion:
         shipped_in = T1Version(api=1, major=0, year=2026, month=8, feature=1, fix=1)
         assert T1_VERSION >= shipped_in
 
-    def test_no_client_from_that_release_needs_to_change(self):
-        """Generation is the compatibility boundary; it has not moved."""
+    def test_that_release_is_now_a_generation_behind(self):
+        """It was "the generation has not moved". In 0.72.6 pt2 it did.
+
+        Compatibility here is by generation (`api.major`), so a client
+        shipped against 1.0.26.8.1.1 is no longer the same protocol as
+        this server and is told to upgrade — which is what the check
+        exists to do, rather than letting it fail on a missing field.
+        """
         shipped_in = T1Version(api=1, major=0, year=2026, month=8, feature=1, fix=1)
-        assert (T1_VERSION.api, T1_VERSION.major) == (shipped_in.api, shipped_in.major)
-        assert T1_VERSION.compatible_with(shipped_in)
+        assert (T1_VERSION.api, T1_VERSION.major) != (shipped_in.api, shipped_in.major)
+        assert not T1_VERSION.compatible_with(shipped_in)
 
     def test_every_shipped_component_derives_from_it(self):
         """Four packages carried the number as a literal and drifted.

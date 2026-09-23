@@ -270,7 +270,9 @@ bool LocalEngine::Load(const std::string&, const LoadOptions&,
 }
 
 void LocalEngine::Unload() {}
-bool LocalEngine::loaded() const { return false; }
+// Always null in this build; reading it is what keeps the member "used"
+// for clang without an attribute GCC 11 rejects on a data member.
+bool LocalEngine::loaded() const { return state_ != nullptr; }
 LoadedModel LocalEngine::info() const { return LoadedModel(); }
 
 bool LocalEngine::Generate(const std::string&, const GenerateOptions&,

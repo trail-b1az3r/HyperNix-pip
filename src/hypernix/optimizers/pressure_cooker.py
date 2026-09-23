@@ -656,3 +656,15 @@ def universal_cooker(
     selection).
     """
     return UniversalCooker.select(params, prefer_speed=prefer_speed, variant=variant, **kw)
+
+
+# Pressure Cooker v1 is deprecated (0.72.6). Constructing any of the
+# classes above warns; importing this module does not.
+from hypernix.optimizers.deprecation import deprecate as _deprecate  # noqa: E402
+
+_deprecate(PressureCooker, "v1")
+# UniversalCooker is deliberately not wrapped. It is a router: its default
+# `variant="v5s"` returns the current V5 family, and only
+# `variant="legacy"` reaches the V1 tiers — which are PressureCooker
+# subclasses and warn on their own. Wrapping the router would warn people
+# being sent to V5.

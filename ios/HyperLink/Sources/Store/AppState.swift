@@ -583,7 +583,30 @@ final class AppState {
     /// extra detail off the Server page. The version already shown
     /// there comes from /status and does not depend on this.
     func refreshVersion() async {
-        serverVersion = try? await client.version()
+        let found = try? await client.version()
+        serverVersion = found
+        guard let found else { return }
+
+        // The version the *process* is running, not the one pip has on
+        // disk. A server upgraded and not restarted is still answering
+        // with the old code, and it is the old code the app has to be
+        // compatible with — showing the installed number would say the
+        // upgrade had taken effect when it has not.
+        let running = found.hypernix
+        guard !running.isEmpty else { return }
+        guard connection.hypernixVersion != running
+                || connection.hypernixStale != found.stale else { return }
+
+        connection.hypernixVersion = running
+        connection.hypernixStale = found.stale
+        // Persisted so the servers list shows it before the next
+        // connection has had a chance to ask — the list is the screen
+        // people check to see which machine is on which version, and it
+        // is usually opened while not connected to most of them.
+        SavedServers.remember(
+            connection: connection, keyless: isKeyless, token: nil
+        )
+        savedServers = SavedServers.all()
     }
 
     /// What the server is running, and how to update it.
@@ -701,6 +724,125 @@ final class AppState {
             return false
         }
     }
+
+    // MARK: - Organising memory
+
+    private(set) var memoryCategories: [MemoryCategory] = []
+
+    func refreshMemoryCategories() async {
+        memoryCategories = (try? await client.memoryCategories()) ?? memoryCategories
+    }
+
+    /// File loose and model-written memories under topics. With
+    /// `dryRun` it only says what would move.
+    func organiseMemories(dryRun: Bool = false) async -> MemoryOrganiseResult? {
+        do {
+            let result = try await client.organiseMemories(dryRun: dryRun)
+            if !dryRun {
+                await refreshMemories()
+                await refreshMemoryCategories()
+            }
+            return result
+        } catch {
+            handle(error)
+            return nil
+        }
+    }
+
+    @discardableResult
+    func renameMemoryCategory(from old: String, to new: String) async -> Bool {
+        let trimmed = new.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, trimmed != old else { return false }
+        do {
+            try await client.renameMemoryCategory(from: old, to: trimmed)
+            await refreshMemories()
+            await refreshMemoryCategories()
+            return true
+        } catch {
+            handle(error)
+            return false
+        }
+    }
+
+    @discardableResult
+    func moveMemory(_ memoryID: String, to category: String) async -> Bool {
+        do {
+            try await client.moveMemory(memoryID, to: category)
+            await refreshMemories()
+            await refreshMemoryCategories()
+            return true
+        } catch {
+            handle(error)
+            return false
+        }
+    }
+
+    // MARK: - Titles and compression
+
+    /// Ask the model to name this chat again.
+    @discardableResult
+    func retitle(_ sessionID: String) async -> Bool {
+        do {
+            _ = try await client.retitle(sessionID)
+            await refreshSessionSummary()
+            return true
+        } catch {
+            handle(error)
+            return false
+        }
+    }
+
+    /// Summarise the older part of a conversation now. Every message
+    /// stays in the transcript; the model is sent the summary instead.
+    func compress(_ sessionID: String) async -> CompactResult? {
+        do {
+            let result = try await client.compress(sessionID)
+            messages = (try? await client.messages(in: sessionID)) ?? messages
+            return result
+        } catch {
+            handle(error)
+            return nil
+        }
+    }
+
+    // MARK: - Images
+
+    /// Whether the model a chat would use can see a photo: true, false,
+    /// or nil when nothing says either way. The session's model, or
+    /// whatever is loaded when the session has not picked one.
+    func modelSupportsImages(_ modelID: String) -> Bool? {
+        let wanted = modelID.isEmpty
+            ? catalogue.models.first(where: { $0.loaded })?.modelID ?? ""
+            : modelID
+        guard !wanted.isEmpty else { return nil }
+        return catalogue.models.first(where: { $0.modelID == wanted })?.supportsImages
+    }
+
+    // MARK: - Shell
+
+    /// Nil until asked, and on a server too old to have the route.
+    private(set) var shellStatus: ShellStatus?
+
+    func refreshShellStatus() async {
+        shellStatus = try? await client.shellStatus()
+    }
+
+    func runShell(_ command: String, cwd: String? = nil) async -> ShellResult? {
+        let trimmed = command.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        do {
+            return try await client.runShell(trimmed, cwd: cwd)
+        } catch {
+            handle(error)
+            return nil
+        }
+    }
+
+    // MARK: - Private chats
+
+    /// Chats hidden behind Face ID. Kept on this phone only — hiding is
+    /// about who can pick the phone up, not about the server.
+    let privateChats = PrivateChats()
 
     // MARK: - The runner
 
@@ -877,8 +1019,38 @@ final class AppState {
         }
     }
 
+    /// Ask the model to answer the thread's last message again.
+    ///
+    /// No optimistic bubble: the message being answered is already on
+    /// screen. Used after an edit and by resend, both of which leave the
+    /// thread ending on your message.
+    func regenerateLast(modelID: String? = nil) {
+        guard let sessionID = openSessionID, !isSending else { return }
+        isSending = true
+        streamingText = ""
+        lastError = nil
+        streamTask = Task { [weak self] in
+            await self?.runTurn(
+                sessionID: sessionID, text: "", attachmentIDs: [], modelID: modelID,
+                regenerate: true
+            )
+        }
+    }
+
+    /// Ask one of your messages again, as it is.
+    ///
+    /// An edit with the same text, then a regenerate: the edit removes
+    /// everything after the message — the old reply included — so the
+    /// new answer replaces it rather than stacking under it. Returns the
+    /// number of later messages removed, or nil when refused.
+    @discardableResult
+    func resendMessage(_ message: ChatMessage) async -> Int? {
+        await editMessage(message.messageID, to: message.content)
+    }
+
     private func runTurn(
-        sessionID: String, text: String, attachmentIDs: [String], modelID: String?
+        sessionID: String, text: String, attachmentIDs: [String], modelID: String?,
+        regenerate: Bool = false
     ) async {
         // Whatever happens below, the composer must come back. An early
         // return that leaves `isSending` true is a permanently stuck UI.
@@ -891,7 +1063,8 @@ final class AppState {
                 sessionID: sessionID,
                 content: text,
                 attachmentIDs: attachmentIDs,
-                modelID: modelID
+                modelID: modelID,
+                regenerate: regenerate
             )
             for try await event in SSEStream.events(for: request) {
                 switch event {
@@ -908,6 +1081,22 @@ final class AppState {
                     streamingText = ""
                     messages = (try? await client.messages(in: sessionID)) ?? messages
                     await refreshSessionSummary()
+                    // The model may have remembered something during
+                    // this turn. The Memories screen loads once when it
+                    // appears, so one kept alive in another tab would go
+                    // on showing what it knew before this conversation.
+                    if settings.preferences.autoMemory {
+                        await refreshMemories()
+                    }
+                case .title:
+                    // The server named a new chat after its first reply.
+                    // The list carries titles, so refresh it rather than
+                    // patching one entry and drifting from the server.
+                    await refreshSessionSummary()
+                case .compacted:
+                    // The summary is a message in the thread; the reload
+                    // at `done` has already brought it in.
+                    break
                 case let .failed(_, message):
                     streamingGenerationID = nil
                     lastError = message
@@ -1004,6 +1193,11 @@ final class AppState {
             // server does not have.
             messages = (try? await client.messages(in: sessionID)) ?? messages
             await refreshSessionSummary()
+            // An edit is a question asked differently, so it is asked.
+            // It used to stop here, leaving the thread ending on an
+            // unanswered message and the person wondering whether the
+            // edit had worked.
+            regenerateLast()
             return result.removedCount
         } catch {
             handle(error)

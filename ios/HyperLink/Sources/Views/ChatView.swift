@@ -14,7 +14,9 @@ struct ChatView: View {
     @Environment(AppState.self) private var state
     @State private var draft = ""
     @State private var pendingAttachments: [Attachment] = []
-    @State private var photoItem: PhotosPickerItem?
+    @State private var photoItems: [PhotosPickerItem] = []
+    /// What compressing did, shown once.
+    @State private var compressNote: String?
     @State private var showingFileImporter = false
     @State private var showingCodeImporter = false
     @State private var showingPhotoPicker = false
@@ -22,12 +24,21 @@ struct ChatView: View {
     @State private var showingModelPicker = false
     @State private var showingRename = false
     @State private var isUploading = false
+    /// `(done, total)` while several photos are going up. Shown instead
+    /// of a bare spinner: picking eight photos over a Tailscale relay
+    /// takes long enough that "is this working" is a real question.
+    @State private var uploadProgress: (done: Int, total: Int)?
     /// The message being edited, if any. Only ever one of yours: the
     /// assistant's words are a record of what happened, and rewriting
     /// them would make the transcript fiction — and the next turn's
     /// context along with it.
     @State private var editing: ChatMessage?
     @State private var deleting: ChatMessage?
+    /// The one message whose swipe actions are showing, if any.
+    @State private var openSwipeID: String?
+    /// A resend that would remove more than the reply it replaces, held
+    /// while the person confirms it.
+    @State private var resending: ChatMessage?
 
     private var session: ChatSession? {
         state.sessions.first { $0.sessionID == sessionID }
@@ -52,14 +63,33 @@ struct ChatView: View {
                         Label("Rename", systemImage: "pencil")
                     }
                     Button {
+                        Task { await state.retitle(sessionID) }
+                    } label: {
+                        Label("Rename with AI", systemImage: "sparkles")
+                    }
+                    Button {
                         showingModelPicker = true
                     } label: {
                         Label("Model", systemImage: "cpu")
                     }
+                    Button {
+                        Task { await compress() }
+                    } label: {
+                        Label("Compress conversation", systemImage: "rectangle.compress.vertical")
+                    }
+                    .disabled(state.isSending)
                 } label: {
                     Label("More", systemImage: "ellipsis.circle")
                 }
             }
+        }
+        .alert(
+            "Conversation compressed",
+            isPresented: Binding(get: { compressNote != nil }, set: { if !$0 { compressNote = nil } })
+        ) {
+            Button("OK", role: .cancel) { compressNote = nil }
+        } message: {
+            Text(compressNote ?? "")
         }
         .sheet(isPresented: $showingModelPicker) {
             ModelPickerSheet(sessionID: sessionID, currentModel: session?.modelID ?? "")
@@ -92,9 +122,34 @@ struct ChatView: View {
             // the thread with it would make people keep the secret.
             Text("The rest of the conversation stays. This removes it on the PC too.")
         }
+        .confirmationDialog(
+            "Resend this message?",
+            isPresented: Binding(
+                get: { resending != nil },
+                set: { if !$0 { resending = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Resend", role: .destructive) {
+                guard let message = resending else { return }
+                resending = nil
+                Task { await state.resendMessage(message) }
+            }
+            Button("Cancel", role: .cancel) { resending = nil }
+        } message: {
+            if let message = resending {
+                let later = state.editWouldRemove(message.messageID)
+                Text("The \(later) messages after it go, because they answered it. "
+                     + "It is then asked again.")
+            }
+        }
         .photosPicker(
             isPresented: $showingPhotoPicker,
-            selection: $photoItem,
+            selection: $photoItems,
+            // Capped rather than unlimited. The picker will happily
+            // hand back a whole camera roll, and every one of these is
+            // uploaded over whatever link the phone has to the PC.
+            maxSelectionCount: Self.maxPhotosAtOnce,
             // Videos as well: the server takes any attachment, and
             // "photo or video" is what the menu row promises.
             matching: .any(of: [.images, .videos])
@@ -115,9 +170,9 @@ struct ChatView: View {
             }
         }
         .task(id: sessionID) { await state.open(sessionID) }
-        .onChange(of: photoItem) { _, item in
-            guard let item else { return }
-            Task { await attachPhoto(item) }
+        .onChange(of: photoItems) { _, items in
+            guard !items.isEmpty else { return }
+            Task { await attachPhotos(items) }
         }
         .fileImporter(
             isPresented: $showingFileImporter,
@@ -138,33 +193,48 @@ struct ChatView: View {
                     // the server but is not something to read as a
                     // message, so it is filtered out here rather than
                     // omitted server-side (where the model needs it).
-                    ForEach(state.messages.filter { !$0.isSystem }) { message in
-                        MessageBubble(message: message)
-                            .id(message.messageID)
-                            .messageArrival()
-                            // Long press rather than a permanent edit
-                            // button: a control on every bubble is a
-                            // control in the way of reading, which is
-                            // what this screen is mostly for.
-                            .contextMenu {
-                                Button {
-                                    UIPasteboard.general.string = message.content
-                                } label: {
-                                    Label("Copy", systemImage: "doc.on.doc")
-                                }
-                                if message.isUser {
+                    ForEach(Array(shown.enumerated()), id: \.element.id) { index, message in
+                        if message.isCompactionSummary {
+                            CompactionMarker(message: message)
+                                .id(message.messageID)
+                        } else {
+                            MessageBubble(message: message, showsTail: tailAfter(index))
+                                .swipeToReveal(
+                                    id: message.messageID,
+                                    actions: swipeActions(for: message),
+                                    openRowID: $openSwipeID
+                                )
+                                .id(message.messageID)
+                                .messageArrival()
+                                // Long press rather than a permanent edit
+                                // button: a control on every bubble is a
+                                // control in the way of reading, which is
+                                // what this screen is mostly for.
+                                .contextMenu {
                                     Button {
-                                        editing = message
+                                        UIPasteboard.general.string = message.content
                                     } label: {
-                                        Label("Edit", systemImage: "pencil")
+                                        Label("Copy", systemImage: "doc.on.doc")
+                                    }
+                                    if message.isUser {
+                                        Button {
+                                            editing = message
+                                        } label: {
+                                            Label("Edit", systemImage: "pencil")
+                                        }
+                                        Button {
+                                            requestResend(message)
+                                        } label: {
+                                            Label("Resend", systemImage: "arrow.clockwise")
+                                        }
+                                    }
+                                    Button(role: .destructive) {
+                                        deleting = message
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
                                     }
                                 }
-                                Button(role: .destructive) {
-                                    deleting = message
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
-                                }
-                            }
+                        }
                     }
                     if !state.streamingText.isEmpty {
                         MessageBubble(
@@ -248,15 +318,28 @@ struct ChatView: View {
                 // camera, were both reachable by the server and by
                 // nothing on screen.
                 Menu {
-                    Button {
-                        showingPhotoPicker = true
-                    } label: {
-                        Label("Photo or video", systemImage: "photo.on.rectangle")
-                    }
-                    Button {
-                        showingCamera = true
-                    } label: {
-                        Label("Take a photo", systemImage: "camera")
+                    // Only for a model that can look at them. A photo sent
+                    // to a text model either fails on the message format
+                    // or, worse, gets an answer about a picture it never
+                    // saw. Unknown is offered, with a warning, because
+                    // hiding it would be guessing too.
+                    if imagesSupported != false {
+                        Button {
+                            showingPhotoPicker = true
+                        } label: {
+                            Label("Photo or video", systemImage: "photo.on.rectangle")
+                        }
+                        Button {
+                            showingCamera = true
+                        } label: {
+                            Label("Take a photo", systemImage: "camera")
+                        }
+                        if imagesSupported == nil {
+                            Text("This model may not see images")
+                        }
+                    } else {
+                        Label("This model can't see images", systemImage: "eye.slash")
+                            .foregroundStyle(.secondary)
                     }
                     Divider()
                     Button {
@@ -291,7 +374,15 @@ struct ChatView: View {
             .padding(.bottom, 8)
 
             if isUploading {
-                ProgressView().controlSize(.small).padding(.bottom, 4)
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.small)
+                    if let progress = uploadProgress, progress.total > 1 {
+                        Text("Uploading \(progress.done + 1) of \(progress.total)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .padding(.bottom, 4)
             }
         }
         .background(.bar)
@@ -310,21 +401,140 @@ struct ChatView: View {
         state.send(text: text, attachmentIDs: ids, modelID: model)
     }
 
+    // MARK: - Swipe actions
+
+    /// What swiping left on *message* offers.
+    ///
+    /// Yours: edit it, or ask it again as it is. The model's: retry,
+    /// which resends the message it was answering. Nothing while a reply
+    /// is streaming — a resend then would race the answer arriving — and
+    /// nothing on the optimistic bubble that has not reached the server.
+    private func swipeActions(for message: ChatMessage) -> [SwipeAction] {
+        guard !state.isSending, message.seq >= 0 else { return [] }
+        if message.isUser {
+            return [
+                SwipeAction(title: "Edit", systemImage: "pencil", tint: .blue) {
+                    editing = message
+                },
+                SwipeAction(title: "Resend", systemImage: "arrow.clockwise", tint: .indigo) {
+                    requestResend(message)
+                },
+            ]
+        }
+        guard let prompt = promptFor(message) else { return [] }
+        return [
+            SwipeAction(title: "Retry", systemImage: "arrow.clockwise", tint: .indigo) {
+                requestResend(prompt)
+            },
+        ]
+    }
+
+    /// The message of yours that *reply* was answering.
+    private func promptFor(_ reply: ChatMessage) -> ChatMessage? {
+        let visible = state.messages.filter { !$0.isSystem }
+        guard let index = visible.firstIndex(where: { $0.messageID == reply.messageID })
+        else { return nil }
+        return visible[..<index].last(where: { $0.isUser })
+    }
+
+    /// Resend, confirming first when it would remove more than the one
+    /// reply it replaces. Replacing that reply is the point of asking
+    /// again; losing a conversation's worth after it is not something
+    /// to do on a swipe without saying so.
+    private func requestResend(_ message: ChatMessage) {
+        if state.editWouldRemove(message.messageID) > 1 {
+            resending = message
+        } else {
+            Task { await state.resendMessage(message) }
+        }
+    }
+
     // MARK: - Attachments
 
-    private func attachPhoto(_ item: PhotosPickerItem) async {
-        isUploading = true
-        defer { isUploading = false; photoItem = nil }
-        guard let data = try? await item.loadTransferable(type: Data.self) else {
-            state.lastError = "That photo could not be read."
-            return
+    /// The thread as it is drawn: system messages are the model's, not the
+    /// reader's — except a compaction summary, which is shown as a marker.
+    private var shown: [ChatMessage] {
+        state.messages.filter { !$0.isSystem || $0.isCompactionSummary }
+    }
+
+    /// Whether the bubble at `index` ends a run from its speaker. The
+    /// streaming bubble, when there is one, continues the assistant's.
+    private func tailAfter(_ index: Int) -> Bool {
+        let list = shown
+        let message = list[index]
+        guard index + 1 < list.count else {
+            return !(message.isAssistant && (!state.streamingText.isEmpty || state.isSending))
         }
-        // The picker does not reliably give a filename; the extension is
-        // cosmetic here anyway because the server sniffs the real type
-        // from the bytes.
-        let name = item.itemIdentifier.map { "photo-\($0.prefix(8)).jpg" } ?? "photo.jpg"
-        if let attachment = await state.upload(data: data, filename: name, contentType: "image/jpeg") {
-            pendingAttachments.append(attachment)
+        let next = list[index + 1]
+        return next.isCompactionSummary || next.role != message.role
+    }
+
+    private var imagesSupported: Bool? {
+        state.modelSupportsImages(session?.modelID ?? "")
+    }
+
+    private func compress() async {
+        guard let result = await state.compress(sessionID) else { return }
+        if result.applied {
+            let how = result.summarisedBy == "model" ? "the model's summary" : "quotes from them"
+            compressNote = "\(result.messagesCompacted) older messages are now sent as \(how). "
+                + "They are all still here to read."
+        } else {
+            compressNote = "Nothing to compress yet — the conversation is short enough as it is."
+        }
+    }
+
+    /// Most photos one pick can attach.
+    ///
+    /// The picker is happy to return a whole camera roll. Every item
+    /// here is read into memory and pushed over the link to the PC,
+    /// which on a Tailscale relay is neither fast nor free, so the
+    /// limit is what somebody plausibly means by "these photos".
+    static let maxPhotosAtOnce = 12
+
+    private func attachPhotos(_ items: [PhotosPickerItem]) async {
+        isUploading = true
+        defer {
+            isUploading = false
+            uploadProgress = nil
+            // Cleared so picking the *same* photos again still fires
+            // `onChange`; SwiftUI compares the new selection with the
+            // old one and a repeat pick would otherwise do nothing.
+            photoItems = []
+        }
+
+        var failed = 0
+        for (index, item) in items.enumerated() {
+            uploadProgress = (done: index, total: items.count)
+            guard let data = try? await item.loadTransferable(type: Data.self) else {
+                failed += 1
+                continue
+            }
+            // The picker does not reliably give a filename; the extension is
+            // cosmetic here anyway because the server sniffs the real type
+            // from the bytes.
+            let name = item.itemIdentifier.map { "photo-\($0.prefix(8)).jpg" }
+                ?? "photo-\(index + 1).jpg"
+            if let attachment = await state.upload(
+                data: data, filename: name, contentType: "image/jpeg"
+            ) {
+                // Appended as each finishes, so the order matches the
+                // order they were picked in.
+                pendingAttachments.append(attachment)
+            } else {
+                failed += 1
+            }
+        }
+
+        // One message at the end rather than one per failure, and the
+        // ones that worked are kept: losing seven good uploads because
+        // the eighth could not be read is not a better outcome.
+        if failed == items.count {
+            state.lastError = items.count == 1
+                ? "That photo could not be attached."
+                : "None of those \(items.count) photos could be attached."
+        } else if failed > 0 {
+            state.lastError = "\(failed) of \(items.count) photos could not be attached; the rest are ready."
         }
     }
 

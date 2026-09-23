@@ -33,8 +33,10 @@ from ..system.launcher import (
     LaunchError,
     available_supervisor,
     launch,
+    launch_shell,
     read_logs,
     refresh,
+    shell_command_of,
     stop,
 )
 
@@ -195,6 +197,14 @@ def main(argv: list[str] | None = None) -> int:
                       help="Authenticate with the server's admin credential.")
 
     run = parser.add_argument_group("running")
+    run.add_argument(
+        "-$", "--shell-command", dest="shell_command", default="", metavar="CMD",
+        help="Run a shell command instead of a script: -$ 'make -j8 && ./train'. "
+             "Leave a space after -$ (bash reads -$'...' as one quoted word), "
+             "and in fish quote the flag: '-$' or use --shell-command.",
+    )
+    run.add_argument("--shell", default="auto", choices=["auto", "bash", "fish", "zsh", "sh"],
+                     help="Shell for -$. auto is bash, then fish, then sh.")
     run.add_argument("--name", default="", help="A name to refer to the job by.")
     run.add_argument("--env", action="append", default=[], metavar="NAME=VALUE",
                      help="Set a variable for the job. Repeatable.")
@@ -283,13 +293,37 @@ def _dispatch(args, store: JobStore, who: str, parser) -> int:
             return 0
         if flag == "restart":
             stop(job, store)
-            fresh = launch(
-                job.command[-1] if len(job.command) > 1 else job.command[0],
-                args=[], name=job.name, cwd=job.cwd, timeout=job.timeout,
-                priority=job.priority, gpu=job.gpu, cpu=job.cpu, store=store,
-            )
+            shell = shell_command_of(job)
+            if shell is not None:
+                # A -$ job. Its command[-1] is the command text, and
+                # relaunching that as a script path would fail with
+                # "No such script".
+                fresh = launch_shell(
+                    shell[1], shell=shell[0], name=job.name, cwd=job.cwd,
+                    timeout=job.timeout, priority=job.priority, gpu=job.gpu,
+                    cpu=job.cpu, store=store,
+                )
+            else:
+                fresh = launch(
+                    job.command[-1] if len(job.command) > 1 else job.command[0],
+                    args=[], name=job.name, cwd=job.cwd, timeout=job.timeout,
+                    priority=job.priority, gpu=job.gpu, cpu=job.cpu, store=store,
+                )
             print(f"restarted {fresh.name} ({fresh.job_id})")
             return 0
+
+    if args.shell_command:
+        if args.script:
+            raise LaunchError(
+                "give either a script or -$ 'command', not both"
+            )
+        job = launch_shell(
+            args.shell_command, shell=args.shell, name=args.name,
+            cwd=args.cwd or None, env=_parse_env(args.env),
+            timeout=args.timeout, log_file=args.log_file or None,
+            priority=args.priority, gpu=args.gpu, cpu=args.cpu, store=store,
+        )
+        return _report(job, who, args)
 
     if not args.script:
         parser.print_help()
@@ -308,6 +342,10 @@ def _dispatch(args, store: JobStore, who: str, parser) -> int:
         cpu=args.cpu,
         store=store,
     )
+    return _report(job, who, args)
+
+
+def _report(job, who: str, args) -> int:
     if args.as_json:
         print(json.dumps({**job.to_dict(), "launched_by": who}, indent=2))
         return 0

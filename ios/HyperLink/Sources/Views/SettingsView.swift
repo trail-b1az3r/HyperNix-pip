@@ -153,6 +153,11 @@ struct SettingsView: View {
                 } label: {
                     Label("Update the server", systemImage: "arrow.up.square")
                 }
+                NavigationLink {
+                    ShellView()
+                } label: {
+                    Label("Shell", systemImage: "terminal")
+                }
             } header: {
                 Text("This machine")
             } footer: {

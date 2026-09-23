@@ -79,7 +79,8 @@ authoritative list):
 * `tvtop-older` — Original single-panel dashboard.
 * `cctvtop` — Python training dashboard with hardware metrics and optional VNC (same as `hypernix cctvtop`).
 * `hyped` — Configurable high-quality chat TUI with a model/persona configurator.
-* `hyped+` / `hyped-pro` — Standalone Node.js TUI backed by a real Python dispatch layer (cloud APIs, auto-downloaded local models, Gatekeeper routing), slash autocompletion, price estimator, system prompt compactor, and a `/gui` desktop mode (Qt6 X11/Wayland, GTK4 fallback).
+* `hyped-pro` — The terminal client, built on [OpenTUI](https://opentui.com/docs/) (TypeScript on Bun, the stack opencode's TUI uses) in the site's colours. Markdown replies, a model picker (ctrl+p), esc to stop a reply, `/noodle`, `/t1`, `/key`, `/retry`. Git: `/git` (status, add, commit, switch, restore, log, push, pull — `/git help`), `/diff` coloured per file, and the branch in the header. Files: `/files` to browse, `/edit <path>` to edit (ctrl+s save; a file changed on disk since it was opened is not overwritten). The model's commits, branch switches, discards and deletions wait for a `y`. Needs Bun 1.3+; the first run installs `@opentui/core`. `--model <name>` picks the model; `HYPED_PRO_BUN` points at a bun that is not on PATH.
+* `hyped-plus` / `hyped+` — The previous hyped-pro: the Node.js readline TUI backed by the same Python dispatch layer (cloud APIs, auto-downloaded local models, Gatekeeper routing), slash autocompletion, price estimator, system prompt compactor, and a `/gui` desktop mode (Qt6 X11/Wayland, GTK4 fallback). Needs only Node.js.
 * `hyped-pro-gui` — Launch the hyped-pro desktop GUI directly, without the TUI.
 * `multilama` — Unified interface over multiple llama.cpp variants (vanilla, ik_llama.cpp, PrismML fork, KoboldCpp).
 * `eth` — Ethanol GPU overclock and VRAM helper. Refuses to apply changes without `--confirm`.

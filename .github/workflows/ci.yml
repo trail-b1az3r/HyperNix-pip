@@ -564,6 +564,42 @@ jobs:
               exit 1
             fi
           done
+      - name: Verify hyped-pro's app ships without node_modules
+        run: |
+          for archive in dist/*.tar.gz dist/*.whl; do
+            case "$archive" in
+              *.whl) python -m zipfile -l "$archive" > /tmp/listing ;;
+              *) tar tzf "$archive" > /tmp/listing ;;
+            esac
+            if ! grep -q "hyped_pro_app/src/index.ts" /tmp/listing; then
+              echo "::error::$archive is missing hyped-pro's app"
+              exit 1
+            fi
+            if grep -q "hyped_pro_app/node_modules" /tmp/listing; then
+              echo "::error::$archive ships node_modules"
+              exit 1
+            fi
+          done
+
+  # hyped-pro is a TypeScript app on OpenTUI, which runs on Bun. Its own
+  # tests and the type check run here; tests/test_hyped_pro_otui.py covers
+  # the Python launcher and the packaging in `test`, on every platform.
+  hyped-pro:
+    name: hyped-pro (bun test + tsc)
+    needs: triage
+    if: needs.triage.outputs.narrow != 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/hypernix/interfaces/hyped_pro_app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.11"
+      - run: bun install --frozen-lockfile
+      - run: bun x tsc --noEmit
+      - run: bun test
 
   # The narrow counterpart to `test`: one interpreter, one OS, and only the
   # tests the autofix commit named. `scripts/autofix_scope.py --list` is the

@@ -99,15 +99,42 @@ enum ModelStoreError: LocalizedError {
 /// Where models live, and how they get there.
 @MainActor
 final class ModelStore: NSObject, ObservableObject {
+    /// One per process, because the background session it owns is one
+    /// per process: iOS routes a finished download to the session with
+    /// that identifier, and two stores would be two sessions fighting
+    /// over it.
+    static let shared = ModelStore()
+
+    /// The identifier iOS relaunches the app with when a download
+    /// finishes while it is suspended.
+    static let sessionIdentifier = "com.hypernix.hyperlink.models"
+
     @Published private(set) var installed: [InstalledModel] = []
     @Published private(set) var state: [String: DownloadState] = [:]
+
+    /// Handed over by the app delegate when iOS wakes the app for this
+    /// session, and called once every pending event has been delivered.
+    /// iOS waits on it to snapshot the UI and suspend the app again.
+    var backgroundCompletion: (() -> Void)?
+
+    /// Re-create the background session at launch.
+    ///
+    /// It used to be created lazily, on the first `download()` — so a
+    /// download that finished while the app was suspended or killed had
+    /// no session to be delivered to, and the model it fetched was never
+    /// installed. iOS delivers pending events as soon as a session with
+    /// the same identifier exists; this makes one exist.
+    func reconnect() {
+        _ = session
+        load()
+    }
 
     private var tasks: [String: URLSessionDownloadTask] = [:]
     private var resumeData: [String: Data] = [:]
     private var token: String?
     private lazy var session: URLSession = {
         let config = URLSessionConfiguration.background(
-            withIdentifier: "com.hypernix.hyperlink.models"
+            withIdentifier: Self.sessionIdentifier
         )
         // A model download must survive the app being backgrounded;
         // that is the normal case for something that takes twenty
@@ -240,12 +267,20 @@ final class ModelStore: NSObject, ObservableObject {
         try? data.write(to: manifestURL, options: .atomic)
     }
 
-    fileprivate func finish(candidateID: String, temporary: URL, expected: Int64) {
+    fileprivate func finish(
+        candidateID: String, temporary: URL, expected: Int64, rejection: String? = nil
+    ) {
         let parts = candidateID.split(separator: "/")
         guard parts.count >= 3 else { return }
         let repoID = parts.dropLast().joined(separator: "/")
         let filename = String(parts.last!)
 
+        if let rejection {
+            try? FileManager.default.removeItem(at: temporary)
+            state[candidateID] = .failed(rejection)
+            tasks[candidateID] = nil
+            return
+        }
         state[candidateID] = .verifying
         let attributes = try? FileManager.default.attributesOfItem(atPath: temporary.path)
         let actual = (attributes?[.size] as? NSNumber)?.int64Value ?? 0
@@ -316,6 +351,15 @@ extension ModelStore: URLSessionDownloadDelegate {
     ) {
         guard let id = downloadTask.taskDescription else { return }
         let expected = downloadTask.countOfBytesExpectedToReceive
+        // Checked here, synchronously, before anything is moved. URLSession
+        // calls this for *every* completed response — a 401, 403 or 404
+        // included — with the error page saved as the "download". Its
+        // size matches its own Content-Length, so the truncation check
+        // below it passes, and a gated repository's few hundred bytes of
+        // "Access to model … is restricted" used to be installed as a
+        // model, then fail to load with an error that looked like a
+        // broken GGUF.
+        let rejection = Self.rejection(for: downloadTask.response, file: location)
         // The temporary file is deleted when this returns, so it has to
         // be moved somewhere durable synchronously — hopping to the
         // main actor first would race with that deletion.
@@ -323,7 +367,7 @@ extension ModelStore: URLSessionDownloadDelegate {
             .appendingPathComponent(UUID().uuidString)
         try? FileManager.default.moveItem(at: location, to: staged)
         Task { @MainActor in
-            finish(candidateID: id, temporary: staged, expected: expected)
+            finish(candidateID: id, temporary: staged, expected: expected, rejection: rejection)
         }
     }
 
@@ -344,5 +388,42 @@ extension ModelStore: URLSessionDownloadDelegate {
             }
             tasks[id] = nil
         }
+    }
+
+    nonisolated func urlSessionDidFinishEvents(forBackgroundURLSession session: URLSession) {
+        Task { @MainActor in
+            let completion = backgroundCompletion
+            backgroundCompletion = nil
+            completion?()
+        }
+    }
+
+    /// Why a finished download is not a model, or nil if it is one.
+    ///
+    /// The status first, then the first four bytes: every GGUF starts
+    /// with the ASCII magic `GGUF`. That catches what the status cannot
+    /// — a CDN that answers 200 with an HTML error page.
+    nonisolated static func rejection(for response: URLResponse?, file: URL) -> String? {
+        if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
+            switch http.statusCode {
+            case 401, 403:
+                return "Hugging Face refused this download (\(http.statusCode)). The model "
+                    + "is gated: accept its licence on huggingface.co, and add a token "
+                    + "with read access in On-device settings."
+            case 404:
+                return "That file is not in the repository any more (404)."
+            default:
+                return "The download failed: the server answered \(http.statusCode)."
+            }
+        }
+        guard let handle = try? FileHandle(forReadingFrom: file) else {
+            return "The downloaded file could not be read."
+        }
+        defer { try? handle.close() }
+        let magic = (try? handle.read(upToCount: 4)) ?? Data()
+        if magic != Data("GGUF".utf8) {
+            return "What arrived is not a GGUF model file. Nothing was installed."
+        }
+        return nil
     }
 }

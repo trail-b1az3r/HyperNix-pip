@@ -90,6 +90,18 @@ class CatalogueModel:
     #: lets the app say "on disk and in LM Studio" rather than picking
     #: one and hiding the other.
     also_in: list[str] = field(default_factory=list)
+    #: What the runtime itself said about images, when it said anything.
+    #: LM Studio lists a vision model as "vlm".
+    vision: bool | None = None
+
+    @property
+    def supports_images(self) -> bool | None:
+        from .capabilities import supports_images
+
+        return supports_images(
+            self.model_id, name=self.name, architecture=self.architecture,
+            path=self.path or None, runtime_says=self.vision,
+        )
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -107,6 +119,9 @@ class CatalogueModel:
             "runnable": self.runnable,
             "detail": self.detail,
             "also_in": list(self.also_in),
+            # True, False, or None for "nothing says either way" — the app
+            # shows the photo button, hides it, or shows it with a warning.
+            "supports_images": self.supports_images,
         }
 
 
@@ -371,6 +386,7 @@ def bridge_models(bridge: Any) -> tuple[list[CatalogueModel], SourceReport]:
                 data.get("context_length") or data.get("max_context_length") or 0
             ),
             quant=str(data.get("quantization") or ""),
+            vision=bool(data["supports_vision"]) if "supports_vision" in data else None,
         ))
     return models, SourceReport("lmstudio", available=True, count=len(models))
 

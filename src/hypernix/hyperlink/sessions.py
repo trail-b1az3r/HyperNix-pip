@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS hyperlink_sessions (
     system_prompt TEXT NOT NULL DEFAULT '',
     created_at REAL NOT NULL,
     updated_at REAL NOT NULL,
+    touched_at REAL NOT NULL DEFAULT 0,
     archived INTEGER NOT NULL DEFAULT 0,
     metadata TEXT NOT NULL DEFAULT '{}'
 );
@@ -127,7 +128,15 @@ class ChatSession:
     title: str
     owner: str
     created_at: float
+    #: When this conversation last *said* anything — a prompt sent or a
+    #: reply received. Not when its title or model changed.
     updated_at: float
+    #: When anything about the session last changed, metadata included.
+    #: Kept apart from ``updated_at`` because the phone shows the latter
+    #: as "updated 2m ago", and a rename is not the conversation moving.
+    #: Renaming eleven old chats used to send all eleven to the top of
+    #: the list looking like they had just replied.
+    touched_at: float = 0.0
     device_id: str = ""
     model_id: str = ""
     backend: str = ""
@@ -147,6 +156,7 @@ class ChatSession:
             "system_prompt": self.system_prompt,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
+            "touched_at": self.touched_at or self.updated_at,
             "archived": self.archived,
             "message_count": self.message_count,
             "metadata": dict(self.metadata),
@@ -160,6 +170,32 @@ class ChatSessionStore:
         self.backend = backend or SQLiteBackend()
         self._lock = threading.Lock()
         self.backend.executescript(_SCHEMA)
+        self._add_touched_at()
+
+    def _add_touched_at(self) -> None:
+        """Add ``touched_at`` to a database written before it existed.
+
+        ``CREATE TABLE IF NOT EXISTS`` does not alter an existing table,
+        so the column in ``_SCHEMA`` only reaches new databases. Seeded
+        from ``updated_at``, which before this change carried both
+        meanings — the best available answer for a row that predates the
+        distinction, and never zero, which would sort every old session
+        to the bottom of a list ordered by it.
+        """
+        with self._lock, self.backend.connect() as conn:
+            columns = {
+                row[1] for row in
+                conn.execute("PRAGMA table_info(hyperlink_sessions)").fetchall()
+            }
+            if "touched_at" in columns:
+                return
+            conn.execute(
+                "ALTER TABLE hyperlink_sessions ADD COLUMN "
+                "touched_at REAL NOT NULL DEFAULT 0"
+            )
+            conn.execute(
+                "UPDATE hyperlink_sessions SET touched_at = updated_at"
+            )
 
     # -- sessions -----------------------------------------------------
 
@@ -181,6 +217,7 @@ class ChatSessionStore:
             owner=owner,
             created_at=now,
             updated_at=now,
+            touched_at=now,
             device_id=device_id,
             model_id=model_id,
             backend=backend,
@@ -191,12 +228,13 @@ class ChatSessionStore:
             conn.execute(
                 """INSERT INTO hyperlink_sessions
                    (session_id, title, owner, device_id, model_id, backend, system_prompt,
-                    created_at, updated_at, archived, metadata)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)""",
+                    created_at, updated_at, touched_at, archived, metadata)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)""",
                 (
                     session.session_id, session.title, session.owner, session.device_id,
                     session.model_id, session.backend, session.system_prompt,
-                    session.created_at, session.updated_at, json.dumps(session.metadata),
+                    session.created_at, session.updated_at, session.touched_at,
+                    json.dumps(session.metadata),
                 ),
             )
         if system_prompt:
@@ -288,7 +326,12 @@ class ChatSessionStore:
             params.append(1 if archived else 0)
         if not fields:
             return session
-        fields.append("updated_at = ?")
+        # `touched_at`, not `updated_at`. A rename, a model switch or an
+        # archive is not the conversation saying anything, and the phone
+        # shows `updated_at` as "updated 2m ago" — renaming eleven old
+        # chats used to send all eleven to the top of the list looking
+        # like they had all just replied.
+        fields.append("touched_at = ?")
         params.extend([time.time(), session_id])
         with self._lock, self.backend.connect() as conn:
             conn.execute(
@@ -365,8 +408,9 @@ class ChatSessionStore:
                 ),
             )
             conn.execute(
-                "UPDATE hyperlink_sessions SET updated_at = ? WHERE session_id = ?",
-                (now, session_id),
+                "UPDATE hyperlink_sessions SET updated_at = ?, touched_at = ? "
+                "WHERE session_id = ?",
+                (now, now, session_id),
             )
         return message
 
@@ -478,8 +522,9 @@ class ChatSessionStore:
                 (content, json.dumps(metadata), message_id),
             )
             conn.execute(
-                "UPDATE hyperlink_sessions SET updated_at = ? WHERE session_id = ?",
-                (now, session_id),
+                "UPDATE hyperlink_sessions SET updated_at = ?, touched_at = ? "
+                "WHERE session_id = ?",
+                (now, now, session_id),
             )
         return removed
 
@@ -501,8 +546,13 @@ class ChatSessionStore:
             )
             removed = cursor.rowcount > 0
             if removed:
+                # `touched_at` only. Removing a pasted key from a chat
+                # from last Tuesday is housekeeping, not the chat
+                # replying, and sending it to the top of the list under
+                # "updated just now" is the opposite of discreet.
                 conn.execute(
-                    "UPDATE hyperlink_sessions SET updated_at = ? WHERE session_id = ?",
+                    "UPDATE hyperlink_sessions SET touched_at = ? "
+                    "WHERE session_id = ?",
                     (time.time(), session_id),
                 )
         return removed
@@ -648,6 +698,20 @@ class ChatSessionStore:
         }
 
 
+def _column(row: Any, name: str, default: Any = None) -> Any:
+    """One column, or *default* when the row does not have it.
+
+    A row read through a connection opened before the migration ran —
+    or from a query written against the older shape — has no
+    ``touched_at``, and ``row["touched_at"]`` raises rather than
+    returning None.
+    """
+    try:
+        return row[name]
+    except (IndexError, KeyError):
+        return default
+
+
 def _session_from_row(row: Any) -> ChatSession:
     return ChatSession(
         session_id=row["session_id"],
@@ -655,6 +719,7 @@ def _session_from_row(row: Any) -> ChatSession:
         owner=row["owner"],
         created_at=row["created_at"],
         updated_at=row["updated_at"],
+        touched_at=_column(row, "touched_at") or row["updated_at"],
         device_id=row["device_id"] or "",
         model_id=row["model_id"] or "",
         backend=row["backend"] or "",

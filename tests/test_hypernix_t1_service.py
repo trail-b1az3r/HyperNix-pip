@@ -549,7 +549,7 @@ class TestItIsActuallyInstalled:
         hypernix` does not provide.
         """
         text = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
-        assert 'script-files = ["bin/hypernix-t1"]' in text
+        assert 'script-files = ["bin/hypernix-t1", "bin/hnx-t1"]' in text
 
     def test_the_sdist_carries_it_and_the_installer(self):
         """tests/ ships in the sdist and runs both of these files."""

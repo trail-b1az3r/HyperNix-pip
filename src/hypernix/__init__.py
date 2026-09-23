@@ -63,7 +63,7 @@ import importlib.util
 import sys
 from typing import TYPE_CHECKING, Any
 
-__version__ = "0.72.5.post13"
+__version__ = "0.72.5.post16"
 DEFAULT_REPO_ID = "ray0rf1re/hyper-Nix.2"
 DEFAULT_MODEL = "qwen3.5-4b"  # New default model
 
@@ -307,7 +307,9 @@ MODULE_CATEGORIES: dict[str, tuple[str, ...]] = {
         "hyped_pro",
         "hyped_pro_bridge",
         "hyped_pro_core",
+        "hyped_pro_git",
         "hyped_pro_gui",
+        "hyped_pro_otui",
         "hyped_pro_tools",
         "version_launcher",
         "websearch",
@@ -342,6 +344,7 @@ MODULE_CATEGORIES: dict[str, tuple[str, ...]] = {
     ),
     # The Pressure Cooker optimizer family and optimizer plumbing.
     "optimizers": (
+        "deprecation",
         "optimizer_framework",
         "pressure_cooker",
         "pressure_cooker_v3",
@@ -375,6 +378,10 @@ MODULE_CATEGORIES: dict[str, tuple[str, ...]] = {
         "freezer",
         "gpus",
         "fusebox",
+        "errorcatalogue",
+        "errorcodes",
+        "errors_cli",
+        "hubcompat",
         "net",
         "nettrust",
         "old_fridge",
@@ -386,6 +393,22 @@ MODULE_CATEGORIES: dict[str, tuple[str, ...]] = {
         "ups",
         "utils",
         "vram",
+    ),
+    # Addons named after the periodic table: hydrogen is the framework,
+    # natural gas attaches them to an oven, the rest are elements.
+    "elements": (
+        "builtins",
+        "carbon",
+        "elements_cli",
+        "hydrogen",
+        "magnesium",
+        "natural_gas",
+    ),
+    # Letting a model use tools: reading calls out of whatever it wrote,
+    # and the T1 API's endpoints offered to it as tools.
+    "runtime": (
+        "t1tools",
+        "toolcalls",
     ),
     # Timers, alarms, cadence control and progress animation.
     "timing": (

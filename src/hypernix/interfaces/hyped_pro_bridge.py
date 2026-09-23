@@ -35,6 +35,7 @@ across turns instead of reloading every message.
 """
 from __future__ import annotations
 
+import itertools
 import json
 import sys
 import threading
@@ -43,7 +44,7 @@ from typing import Any
 
 from hypernix.interfaces import hyped_pro_core as core
 
-BRIDGE_VERSION = "1.0.26.9.2.3"
+BRIDGE_VERSION = "1.1.26.9.0.0"
 
 
 # ---------------------------------------------------------------------------
@@ -85,7 +86,7 @@ BRIDGE_VERSION = "1.0.26.9.2.3"
 #
 # noodle_start is not here. It spawns a thread and returns at once, so
 # backgrounding it would buy a thread to start a thread.
-BACKGROUND_COMMANDS = frozenset({"chat", "download", "t1api_status", "noodle_poll"})
+BACKGROUND_COMMANDS = frozenset({"chat", "download", "t1api_status", "noodle_poll", "git"})
 
 # Backends whose generation loop polls should_stop. Anything else can be
 # asked to cancel, but the request will finish first.
@@ -152,6 +153,93 @@ def _write(payload: dict[str, Any]) -> None:
             pass  # parent is gone; nothing to report to
 
 
+# ---------------------------------------------------------------------------
+# Events and consent (0.72.5.post16)
+#
+# A reply is one line per request, but a chat can need to say things while
+# it runs: that the model edited a file, and — for a tool that cannot be
+# edited back, like a commit — to ask the person first. The OpenTUI
+# hyped-pro owns the terminal, so the bridge cannot ask on stdin; it sends
+# an event line and waits for a `consent_reply`.
+#
+#   <- {"event": "tool", "id": 7, "tool": "edit_file", "detail": "...", "ok": true}
+#   <- {"event": "consent", "id": 7, "consent_id": 3, "tool": "git_commit", "detail": "..."}
+#   -> {"id": 8, "cmd": "consent_reply", "consent_id": 3, "allow": true}
+#
+# Only a client that said `hello` with these features gets them. hyped-plus
+# never does, so it sees no new lines, and a gated tool there is refused
+# unless HYPERNIX_TOOL_POLICY=allow — nobody is able to answer.
+# ---------------------------------------------------------------------------
+
+_client_features: set[str] = set()
+_consents: dict[int, dict[str, Any]] = {}
+_consent_lock = threading.Lock()
+_consent_ids = itertools.count(1)
+
+#: How long a question waits for the person before it counts as a no.
+CONSENT_TIMEOUT = 600.0
+
+
+def _event(payload: dict[str, Any]) -> None:
+    _write(payload)
+
+
+def _ask_person(request_id: Any, cancel: threading.Event | None, name: str, arguments: dict[str, Any]) -> tuple[bool, str]:
+    from hypernix.interfaces import hyped_pro_tools as tools
+
+    consent_id = next(_consent_ids)
+    entry: dict[str, Any] = {"event": threading.Event(), "allow": False}
+    with _consent_lock:
+        _consents[consent_id] = entry
+    try:
+        _event({
+            "event": "consent", "id": request_id, "consent_id": consent_id,
+            "tool": name, "detail": tools.describe_call(name, arguments),
+        })
+        waited = 0.0
+        while not entry["event"].wait(0.25):
+            waited += 0.25
+            if cancel is not None and cancel.is_set():
+                return False, "refused: the request was cancelled before the person answered."
+            if waited >= CONSENT_TIMEOUT:
+                return False, "refused: the person did not answer."
+        if entry["allow"]:
+            return True, ""
+        return False, "refused by the person. Ask them what they want instead."
+    finally:
+        with _consent_lock:
+            _consents.pop(consent_id, None)
+
+
+def _reply_consent(consent_id: Any, allow: bool) -> bool:
+    with _consent_lock:
+        entry = _consents.get(consent_id)
+    if entry is None:
+        return False
+    entry["allow"] = bool(allow)
+    entry["event"].set()
+    return True
+
+
+def _tool_hooks(request_id: Any, cancel: threading.Event | None):
+    """The hooks a chat runs its tools under, for this client."""
+    from hypernix.interfaces import hyped_pro_tools as tools
+
+    consent = None
+    progress = None
+    if "consent" in _client_features:
+        def consent(name: str, arguments: dict[str, Any]) -> tuple[bool, str]:
+            return _ask_person(request_id, cancel, name, arguments)
+    if "events" in _client_features:
+        def progress(name: str, arguments: dict[str, Any], result: str | None, error: str | None) -> None:
+            _event({
+                "event": "tool", "id": request_id, "tool": name,
+                "detail": tools.describe_call(name, arguments)[:300],
+                "ok": error is None, "error": error,
+            })
+    return tools.hooks(consent=consent, progress=progress)
+
+
 def _err(id_: Any, code: str, message: str) -> dict[str, Any]:
     return {"id": id_, "ok": False, "code": code, "error": message}
 
@@ -182,6 +270,20 @@ def dispatch(req: dict[str, Any], cancel: threading.Event | None = None) -> dict
             path = core.ensure_downloaded(model, quiet=False)
             print(f"[hyped-pro-bridge] {model.short} ready at {path}", file=sys.stderr)
             return _ok(id_, {"path": str(path)})
+
+        if cmd == "hello":
+            _client_features.clear()
+            _client_features.update(str(f) for f in req.get("features", []) if f in ("consent", "events"))
+            return _ok(id_, {"version": BRIDGE_VERSION, "features": sorted(_client_features)})
+
+        if cmd == "consent_reply":
+            return _ok(id_, {"delivered": _reply_consent(req.get("consent_id"), bool(req.get("allow")))})
+
+        if cmd == "git":
+            return _ok(id_, _git(req))
+
+        if cmd in ("files_list", "file_read", "file_write"):
+            return _ok(id_, _files(cmd, req))
 
         if cmd == "chat":
             result = core.send_chat_message(
@@ -308,6 +410,9 @@ def dispatch(req: dict[str, Any], cancel: threading.Event | None = None) -> dict
     except core.HypedProError as exc:
         print(f"[hyped-pro-bridge] ERROR {exc.code}: {exc.message}", file=sys.stderr)
         return _err(id_, exc.code, exc.message)
+    except _ToolError as exc:
+        # A git or file refusal: expected, reportable, not a crash.
+        return _err(id_, exc.code, exc.message)
     except KeyError as exc:
         msg = f"missing required field {exc}"
         print(f"[hyped-pro-bridge] ERROR HPB-PROTO-001: {msg}", file=sys.stderr)
@@ -318,11 +423,109 @@ def dispatch(req: dict[str, Any], cancel: threading.Event | None = None) -> dict
         return _err(id_, "HPB-INTERNAL-001", f"{type(exc).__name__}: {exc}")
 
 
+# ---------------------------------------------------------------------------
+# Git and files, for the person at the TUI (0.72.5.post16)
+#
+# What the person asks for directly runs without a consent question — they
+# are the person the question would go to. Everything is still scoped to
+# the workspace, and nothing writes under .git.
+# ---------------------------------------------------------------------------
+
+from hypernix.interfaces.hyped_pro_tools import ToolError as _ToolError  # noqa: E402
+
+#: Files larger than this open read-only in the editor's place: a 50 MB log
+#: is not something to edit in a terminal widget.
+MAX_EDIT_BYTES = 2_000_000
+
+
+def _git(req: dict[str, Any]) -> Any:
+    from hypernix.interfaces import hyped_pro_git as git
+
+    op = req.get("op", "status")
+    if op == "status":
+        if not git.is_repository():
+            return {"repository": False}
+        return {"repository": True, **git.status().to_dict()}
+    if op == "diff":
+        return {"diff": git.diff(req.get("path"), bool(req.get("staged")), req.get("rev"))}
+    if op == "log":
+        return {"commits": git.log(int(req.get("count", 20)), req.get("path"))}
+    if op == "branches":
+        return git.branches()
+    if op == "add":
+        return {"message": git.add(req.get("paths") or [])}
+    if op == "unstage":
+        return {"message": git.unstage(req.get("paths") or [])}
+    if op == "commit":
+        return {"message": git.commit(str(req.get("message", "")), bool(req.get("all")))}
+    if op == "switch":
+        return {"message": git.switch(str(req.get("branch", "")), bool(req.get("create")))}
+    if op == "restore":
+        return {"message": git.restore(req.get("paths") or [])}
+    if op == "push":
+        return {"message": git.push(set_upstream=bool(req.get("set_upstream")))}
+    if op == "pull":
+        return {"message": git.pull(bool(req.get("rebase")))}
+    raise _ToolError("TOOL-GIT-009", f"unknown git op {op!r}")
+
+
+def _files(cmd: str, req: dict[str, Any]) -> Any:
+    from hypernix.interfaces import hyped_pro_tools as tools
+
+    root = tools.workspace_root()
+    if cmd == "files_list":
+        directory = tools._resolve_safe_path(str(req.get("path") or "."))
+        if not directory.is_dir():
+            raise _ToolError("TOOL-LIST-002", f"{req.get('path')!r} is not a directory.")
+        entries = []
+        for entry in sorted(directory.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower())):
+            if entry.name in (".git", "__pycache__", "node_modules"):
+                continue
+            try:
+                size = 0 if entry.is_dir() else entry.stat().st_size
+            except OSError:
+                continue
+            entries.append({"name": entry.name, "dir": entry.is_dir(), "size": size})
+        relative = str(directory.relative_to(root)) if directory != root else "."
+        return {"root": str(root), "path": relative, "entries": entries}
+
+    if cmd == "file_read":
+        path = tools._resolve_safe_path(str(req.get("path", "")))
+        relative = str(path.relative_to(root))
+        if not path.exists():
+            # A new file: the editor opens it empty, and saving creates it.
+            return {"path": relative, "content": "", "hash": tools.content_hash(""), "exists": False}
+        if path.is_dir():
+            raise _ToolError("TOOL-READ-002", f"{relative!r} is a directory.")
+        size = path.stat().st_size
+        if size > MAX_EDIT_BYTES:
+            raise _ToolError("TOOL-READ-003", f"{relative!r} is {size} bytes; the editor opens files up to {MAX_EDIT_BYTES}.")
+        raw = path.read_bytes()
+        if b"\0" in raw[:8192]:
+            raise _ToolError("TOOL-READ-004", f"{relative!r} looks binary.")
+        try:
+            content = raw.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise _ToolError("TOOL-READ-004", f"{relative!r} isn't valid UTF-8 text.") from exc
+        return {"path": relative, "content": content, "hash": tools.content_hash(content), "exists": True}
+
+    # file_write
+    path = str(req.get("path", ""))
+    content = str(req.get("content", ""))
+    expected = req.get("expected_hash")
+    message = tools.write_file(path, content, expected_hash=None if expected is None else str(expected))
+    return {"message": message, "hash": tools.content_hash(content)}
+
+
 def _run_background(req: dict[str, Any], event: threading.Event) -> None:
     """Run one long command off the stdin loop and write its response."""
     id_ = req.get("id")
     try:
-        resp = dispatch(req, cancel=event)
+        if req.get("cmd") == "chat":
+            with _tool_hooks(id_, event):
+                resp = dispatch(req, cancel=event)
+        else:
+            resp = dispatch(req, cancel=event)
     except Exception as exc:  # noqa: BLE001 - a worker thread must never die silently
         traceback.print_exc(file=sys.stderr)
         resp = _err(id_, "HPB-INTERNAL-001", f"{type(exc).__name__}: {exc}")

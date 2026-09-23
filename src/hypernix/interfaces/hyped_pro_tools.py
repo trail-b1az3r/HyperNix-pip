@@ -23,11 +23,15 @@ logs to — so file operations a model makes are never silent.
 """
 from __future__ import annotations
 
+import contextlib
 import fnmatch
+import hashlib
+import json
 import os
 import re
 import sys
-from collections.abc import Callable
+import threading
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -71,6 +75,20 @@ def _resolve_safe_path(rel_path: str) -> Path:
     return candidate
 
 
+def _resolve_writable_path(rel_path: str) -> Path:
+    """A path the model may write to: inside the workspace and not in .git.
+
+    Writing under .git is how a file edit becomes code execution — a hook
+    runs on the next commit — so no tool that writes goes there, whatever
+    the workspace.
+    """
+    dest = _resolve_safe_path(rel_path)
+    rel = dest.relative_to(workspace_root())
+    if rel.parts and rel.parts[0] == ".git":
+        raise ToolError("TOOL-PATH-002", f"{rel_path!r} is inside .git — tools never write there.")
+    return dest
+
+
 # ---------------------------------------------------------------------------
 # Real implementations
 # ---------------------------------------------------------------------------
@@ -81,7 +99,7 @@ _MAX_SEARCH_FILES = 5000
 
 
 def create_file(path: str, content: str) -> str:
-    dest = _resolve_safe_path(path)
+    dest = _resolve_writable_path(path)
     if dest.exists():
         raise ToolError("TOOL-CREATE-001", f"{path!r} already exists — use edit_file to modify it, not create_file.")
     dest.parent.mkdir(parents=True, exist_ok=True)
@@ -91,7 +109,7 @@ def create_file(path: str, content: str) -> str:
 
 
 def edit_file(path: str, old_str: str, new_str: str) -> str:
-    dest = _resolve_safe_path(path)
+    dest = _resolve_writable_path(path)
     if not dest.exists():
         raise ToolError("TOOL-EDIT-001", f"{path!r} does not exist — use create_file for a new file.")
     if dest.is_dir():
@@ -135,6 +153,65 @@ def read_file(path: str, start_line: int | None = None, end_line: int | None = N
     _log(f"read_file: {dest_repr(src)} lines {s}-{e}")
     numbered = "\n".join(f"{i}\t{lines[i - 1]}" for i in range(s, e + 1))
     return numbered
+
+
+def content_hash(text: str) -> str:
+    """What the TUI's editor remembers about a file it opened, so a save
+    can tell whether someone else changed it in the meantime."""
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def write_file(path: str, content: str, expected_hash: str | None = None) -> str:
+    """Create or overwrite a whole file.
+
+    ``expected_hash`` is the :func:`content_hash` of the file as the caller
+    last saw it. When given, a file that has changed since is left alone —
+    the model (or the person's editor) is working from a stale copy.
+    """
+    dest = _resolve_writable_path(path)
+    if dest.is_dir():
+        raise ToolError("TOOL-WRITE-001", f"{path!r} is a directory, not a file.")
+    if expected_hash is not None:
+        current = dest.read_text(encoding="utf-8") if dest.exists() else ""
+        if content_hash(current) != expected_hash:
+            raise ToolError(
+                "TOOL-WRITE-002",
+                f"{path!r} changed on disk since it was read — read it again before writing.",
+            )
+    existed = dest.exists()
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    temporary = dest.with_name(f".{dest.name}.hyped-pro.tmp")
+    temporary.write_text(content, encoding="utf-8")
+    if existed:
+        with contextlib.suppress(OSError):
+            os.chmod(temporary, dest.stat().st_mode)
+    os.replace(temporary, dest)
+    _log(f"write_file: {'overwrote' if existed else 'created'} {dest_repr(dest)} ({len(content)} chars)")
+    return f"{'Wrote' if existed else 'Created'} {path} ({len(content)} chars)."
+
+
+def delete_file(path: str) -> str:
+    dest = _resolve_writable_path(path)
+    if not dest.exists():
+        raise ToolError("TOOL-DELETE-001", f"{path!r} does not exist.")
+    if dest.is_dir():
+        raise ToolError("TOOL-DELETE-002", f"{path!r} is a directory — delete_file removes single files only.")
+    dest.unlink()
+    _log(f"delete_file: removed {dest_repr(dest)}")
+    return f"Deleted {path}."
+
+
+def move_file(source: str, destination: str) -> str:
+    src = _resolve_writable_path(source)
+    dst = _resolve_writable_path(destination)
+    if not src.exists():
+        raise ToolError("TOOL-MOVE-001", f"{source!r} does not exist.")
+    if dst.exists():
+        raise ToolError("TOOL-MOVE-002", f"{destination!r} already exists — moving would overwrite it.")
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    os.replace(src, dst)
+    _log(f"move_file: {dest_repr(src)} -> {dest_repr(dst)}")
+    return f"Moved {source} to {destination}."
 
 
 def dest_repr(p: Path) -> str:
@@ -306,7 +383,126 @@ TOOLS: list[ToolDef] = [
     ),
 ]
 
+TOOLS.extend([
+    ToolDef(
+        name="write_file",
+        description="Write a whole file, creating it or replacing what is there. Prefer edit_file for small changes to a large file.",
+        parameters={
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "Path relative to the workspace root."},
+                "content": {"type": "string", "description": "The file's complete new content."},
+            },
+            "required": ["path", "content"],
+        },
+        fn=write_file,
+    ),
+    ToolDef(
+        name="move_file",
+        description="Move or rename a file. Refuses to overwrite an existing destination.",
+        parameters={
+            "type": "object",
+            "properties": {
+                "source": {"type": "string", "description": "Current path, relative to the workspace root."},
+                "destination": {"type": "string", "description": "New path, relative to the workspace root."},
+            },
+            "required": ["source", "destination"],
+        },
+        fn=move_file,
+    ),
+    ToolDef(
+        name="delete_file",
+        description="Delete one file. The person is asked to approve it first.",
+        parameters={
+            "type": "object",
+            "properties": {"path": {"type": "string", "description": "Path relative to the workspace root."}},
+            "required": ["path"],
+        },
+        fn=delete_file,
+    ),
+])
+
+# Git, for the model. Imported here rather than at the top because
+# hyped_pro_git builds on this module's path checks.
+from hypernix.interfaces import hyped_pro_git as _git  # noqa: E402
+
+TOOLS.extend(ToolDef(name=n, description=d, parameters=p, fn=f) for n, d, p, f in _git.tool_definitions())
+
 _TOOLS_BY_NAME: dict[str, ToolDef] = {t.name: t for t in TOOLS}
+
+
+# ---------------------------------------------------------------------------
+# Consent: which tools need a yes from the person, and how it is asked
+# ---------------------------------------------------------------------------
+
+#: Tools that change things in a way that cannot simply be edited back:
+#: a deleted file, a commit, a switched branch, discarded changes.
+#: create/edit/write/move are not here — they are the point of a coding
+#: model and every one of them shows up in `git diff`.
+GATED_TOOLS: frozenset[str] = frozenset({"delete_file"}) | _git.GATED_TOOLS
+
+#: (tool name, arguments) -> (allowed, reason when refused)
+ConsentFn = Callable[[str, dict[str, Any]], tuple[bool, str]]
+#: (tool name, arguments, result or None, error or None)
+ProgressFn = Callable[[str, dict[str, Any], str | None, str | None], None]
+
+_hooks = threading.local()
+
+
+@contextlib.contextmanager
+def hooks(consent: ConsentFn | None = None, progress: ProgressFn | None = None) -> Iterator[None]:
+    """Route consent questions and progress for tool calls made on this thread.
+
+    The bridge wraps each chat in this, so a tool the model calls during
+    that chat asks the person in the TUI rather than a terminal nobody is
+    reading.
+    """
+    previous = (getattr(_hooks, "consent", None), getattr(_hooks, "progress", None))
+    _hooks.consent, _hooks.progress = consent, progress
+    try:
+        yield
+    finally:
+        _hooks.consent, _hooks.progress = previous
+
+
+def consent_policy() -> str:
+    """HYPERNIX_TOOL_POLICY, as hyped uses it: ask (default), deny, allow."""
+    policy = os.environ.get("HYPERNIX_TOOL_POLICY", "ask").strip().lower()
+    return policy if policy in ("ask", "deny", "allow") else "ask"
+
+
+def describe_call(name: str, arguments: dict[str, Any]) -> str:
+    """The call as the person has to see it to decide: the real arguments."""
+    if name == "git_commit":
+        return str(arguments.get("message", ""))
+    if name in ("delete_file",):
+        return str(arguments.get("path", ""))
+    if name == "git_restore":
+        paths = arguments.get("paths", [])
+        return "discard changes to: " + (", ".join(paths) if isinstance(paths, list) else str(paths))
+    if name == "git_switch":
+        return ("create and switch to " if arguments.get("create") else "switch to ") + str(arguments.get("branch", ""))
+    return json.dumps(arguments, default=str)
+
+
+def _ask(name: str, arguments: dict[str, Any]) -> tuple[bool, str]:
+    policy = consent_policy()
+    if policy == "allow":
+        return True, ""
+    if policy == "deny":
+        return False, "refused: HYPERNIX_TOOL_POLICY=deny. Tell the person what you would have done instead."
+    hook = getattr(_hooks, "consent", None)
+    if hook is not None:
+        return hook(name, arguments)
+    if sys.stdin is not None and sys.stdin.isatty():
+        sys.stderr.write(f"\n  the model wants to run {name}:\n    {describe_call(name, arguments)}\n  allow? [y/N] ")
+        sys.stderr.flush()
+        answer = sys.stdin.readline().strip().lower()
+        if answer in ("y", "yes"):
+            return True, ""
+        return False, "refused by the person."
+    # Nobody to ask. "Don't" is the only safe answer.
+    return False, "refused: nobody is present to approve this. Tell the person what you would have done instead."
 
 
 def execute_tool(name: str, arguments: dict[str, Any]) -> str:
@@ -320,14 +516,32 @@ def execute_tool(name: str, arguments: dict[str, Any]) -> str:
     tool = _TOOLS_BY_NAME.get(name)
     if tool is None:
         raise ToolError("TOOL-CFG-001", f"unknown tool {name!r}. Available: {', '.join(_TOOLS_BY_NAME)}")
+    if not isinstance(arguments, dict):
+        raise ToolError("TOOL-CFG-002", f"arguments for {name} must be an object, not {type(arguments).__name__}.")
+    progress = getattr(_hooks, "progress", None)
     try:
-        return tool.fn(**arguments)
-    except ToolError:
+        if name in GATED_TOOLS:
+            allowed, reason = _ask(name, arguments)
+            if not allowed:
+                raise ToolError("TOOL-CONSENT-001", reason or "refused by the person.")
+        result = tool.fn(**arguments)
+    except ToolError as exc:
+        if progress is not None:
+            progress(name, arguments, None, exc.message)
         raise
     except TypeError as exc:
-        raise ToolError("TOOL-CFG-002", f"bad arguments for {name}: {exc}") from exc
+        error = ToolError("TOOL-CFG-002", f"bad arguments for {name}: {exc}")
+        if progress is not None:
+            progress(name, arguments, None, error.message)
+        raise error from exc
     except Exception as exc:  # noqa: BLE001
-        raise ToolError("TOOL-EXEC-001", f"{name} failed: {exc}") from exc
+        error = ToolError("TOOL-EXEC-001", f"{name} failed: {exc}")
+        if progress is not None:
+            progress(name, arguments, None, error.message)
+        raise error from exc
+    if progress is not None:
+        progress(name, arguments, result, None)
+    return result
 
 
 def anthropic_tools_schema() -> list[dict[str, Any]]:

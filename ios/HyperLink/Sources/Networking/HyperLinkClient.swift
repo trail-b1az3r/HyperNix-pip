@@ -65,6 +65,19 @@ struct ServerConnection: Codable, Equatable, Sendable {
     var endpoints: [String]
     var serverName: String
     var t1Version: String
+    /// The hyperNix the server is *running*, which is not the same
+    /// question as `t1Version` and was never stored. A server list
+    /// showing "1.1.26.9.0.0" was showing the API generation while
+    /// labelling it the server's version; somebody checking whether
+    /// their PC picked up an upgrade was reading a number that does not
+    /// move when it does. Filled from `/version` after connecting, so
+    /// it is empty until the first refresh and on servers too old to
+    /// have the endpoint.
+    var hypernixVersion: String = ""
+    /// `/version` says the running process and the installed
+    /// distribution disagree — the pip upgrade landed and the server
+    /// has not been restarted into it.
+    var hypernixStale: Bool = false
     var deviceID: String
     var deviceName: String
     /// The server's identity, pinned when this pairing was made. Not a
@@ -81,7 +94,8 @@ struct ServerConnection: Codable, Equatable, Sendable {
 
     init(
         endpoints: [String], serverName: String, t1Version: String,
-        deviceID: String, deviceName: String, serverFingerprint: String = ""
+        deviceID: String, deviceName: String, serverFingerprint: String = "",
+        hypernixVersion: String = "", hypernixStale: Bool = false
     ) {
         self.endpoints = endpoints
         self.serverName = serverName
@@ -89,6 +103,8 @@ struct ServerConnection: Codable, Equatable, Sendable {
         self.deviceID = deviceID
         self.deviceName = deviceName
         self.serverFingerprint = serverFingerprint
+        self.hypernixVersion = hypernixVersion
+        self.hypernixStale = hypernixStale
     }
 
     /// Written out by hand because the synthesised one would not do
@@ -112,6 +128,30 @@ struct ServerConnection: Codable, Equatable, Sendable {
         serverFingerprint = try container.decodeIfPresent(
             String.self, forKey: .serverFingerprint
         ) ?? ""
+        // Same reason as `serverFingerprint` above: every record on
+        // disk predates these two keys, and a synthesised decoder would
+        // throw on the missing key, `restore()`'s `try?` would swallow
+        // it, and the update would sign everybody out.
+        hypernixVersion = try container.decodeIfPresent(
+            String.self, forKey: .hypernixVersion
+        ) ?? ""
+        hypernixStale = try container.decodeIfPresent(
+            Bool.self, forKey: .hypernixStale
+        ) ?? false
+    }
+
+    /// What to show next to a server's name.
+    ///
+    /// The hyperNix version when it is known, because that is the one
+    /// people upgrade and watch. The T1 API generation otherwise, which
+    /// is what there used to be — an unknown version is better shown as
+    /// the older fact than as nothing.
+    var versionLabel: String {
+        if !hypernixVersion.isEmpty {
+            return hypernixStale ? "\(hypernixVersion) (restart pending)"
+                                 : hypernixVersion
+        }
+        return t1Version.isEmpty ? "" : "T1 \(t1Version)"
     }
 
     /// Enough of a record to reconnect with.
@@ -550,7 +590,8 @@ actor HyperLinkClient {
         sessionID: String,
         content: String,
         attachmentIDs: [String],
-        modelID: String?
+        modelID: String?,
+        regenerate: Bool = false
     ) throws -> URLRequest {
         guard let base = currentEndpoint else { throw HyperLinkError.notConfigured }
         struct Body: Encodable {
@@ -558,9 +599,14 @@ actor HyperLinkClient {
             let attachment_ids: [String]
             let model_id: String?
             let stream: Bool
+            /// Answer the thread's last message rather than adding one —
+            /// what an edit or a resend needs. Sending the text again
+            /// would put the same question in the thread twice.
+            let regenerate: Bool
         }
         let body = try encoder.encode(
-            Body(content: content, attachment_ids: attachmentIDs, model_id: modelID, stream: true)
+            Body(content: content, attachment_ids: attachmentIDs, model_id: modelID,
+                 stream: true, regenerate: regenerate)
         )
         var request = try makeRequest(
             base: base,
@@ -707,6 +753,69 @@ actor HyperLinkClient {
             timeout: 20
         )
         return true
+    }
+
+    /// Each category and how many memories it holds.
+    func memoryCategories() async throws -> [MemoryCategory] {
+        try await get("/memory/categories", as: MemoryCategoryList.self, timeout: 20).categories
+    }
+
+    /// Move a whole category into another (merging when it exists).
+    @discardableResult
+    func renameMemoryCategory(from old: String, to new: String) async throws -> Int {
+        struct Body: Encodable { let from: String; let to: String }
+        struct Reply: Decodable { let moved: Int }
+        return try await post("/memory/categories/rename", body: Body(from: old, to: new),
+                              as: Reply.self, timeout: 20).moved
+    }
+
+    /// File memories that are not under a topic under one. Categories a
+    /// person chose are left where they are.
+    func organiseMemories(dryRun: Bool = false) async throws -> MemoryOrganiseResult {
+        struct Body: Encodable { let dry_run: Bool }
+        return try await post("/memory/organise", body: Body(dry_run: dryRun),
+                              as: MemoryOrganiseResult.self, timeout: 30)
+    }
+
+    /// Move one memory to another category.
+    func moveMemory(_ memoryID: String, to category: String) async throws {
+        struct Body: Encodable { let memory_id: String; let category: String }
+        _ = try await send(
+            path: "/memory/edit", method: "POST",
+            body: try encoder.encode(Body(memory_id: memoryID, category: category)),
+            timeout: 20
+        )
+    }
+
+    // MARK: - Titles and compression
+
+    /// Ask the model to name a chat again from its first exchange.
+    func retitle(_ sessionID: String) async throws -> ChatSession {
+        struct Empty: Encodable {}
+        return try await post("/hyperlink/sessions/\(sessionID)/title", body: Empty(),
+                              as: SessionResponse.self, timeout: 120).session
+    }
+
+    /// Summarise the older part of a conversation now, rather than when
+    /// it next stops fitting. The transcript keeps every message.
+    func compress(_ sessionID: String) async throws -> CompactResult {
+        struct Body: Encodable { let session_id: String }
+        return try await post("/chat/compact/dynamic", body: Body(session_id: sessionID),
+                              as: CompactResult.self, timeout: 180)
+    }
+
+    // MARK: - Shell
+
+    func shellStatus() async throws -> ShellStatus {
+        try await get("/hyperlink/shell", as: ShellStatus.self, timeout: 15)
+    }
+
+    func runShell(_ command: String, cwd: String? = nil) async throws -> ShellResult {
+        struct Body: Encodable { let command: String; let cwd: String? }
+        // The server's own timeout is what bounds the command; this one
+        // only has to outlast it.
+        return try await post("/hyperlink/shell", body: Body(command: command, cwd: cwd),
+                              as: ShellResult.self, timeout: 600)
     }
 
     func forgetMemory(_ memoryID: String) async throws {
