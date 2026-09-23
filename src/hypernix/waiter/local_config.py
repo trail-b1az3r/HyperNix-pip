@@ -74,6 +74,9 @@ class WaiterLocalConfig:
     # rebuilt server, and `waiter config` shows what was actually asked
     # for instead of a normalized shape nobody typed.
     forced_limits: list[str] = field(default_factory=list)
+    # 0.72.6: -c asked the server to conceal this key. Kept so `waiter
+    # config` shows it and a rebuilt server can be told again.
+    concealed: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -82,6 +85,15 @@ class WaiterLocalConfig:
     def from_dict(cls, d: dict[str, Any]) -> WaiterLocalConfig:
         known = {f: d[f] for f in cls.__dataclass_fields__ if f in d}
         return cls(**known)
+
+
+#: What a password-locked config file (``waiter serv -e``) starts with.
+LOCK_PREFIX = "RVLOCK1:"
+_LOCK_CONTEXT = "waiter-config"
+
+
+class WaiterConfigLocked(Exception):
+    """The config is locked and no (or the wrong) password was given."""
 
 
 class WaiterConfigStore:
@@ -101,9 +113,20 @@ class WaiterConfigStore:
     configuration/secrets").
     """
 
-    def __init__(self, path: str | Path | None = None, *, encrypt: bool = False) -> None:
+    def __init__(
+        self,
+        path: str | Path | None = None,
+        *,
+        encrypt: bool = False,
+        password: str | None = None,
+        password_provider: Any = None,
+    ) -> None:
         self.path = Path(path) if path is not None else _DEFAULT_CONFIG_PATH
         self.encrypt = encrypt
+        #: Set, the file is written locked with it (Rotorvault + scrypt).
+        #: Loading a locked file sets it, so a later save stays locked.
+        self.password = password
+        self.password_provider = password_provider
         self._write_cipher: Any = None
         if encrypt:
             if _CRYPTO_AVAILABLE:
@@ -128,10 +151,22 @@ class WaiterConfigStore:
         master = _get_or_create_master_key(self.path.parent or _DEFAULT_CONFIG_DIR)
         return _make_fernet(master)
 
+    def is_locked(self) -> bool:
+        try:
+            with self.path.open(encoding="utf-8") as handle:
+                return handle.read(len(LOCK_PREFIX)) == LOCK_PREFIX
+        except OSError:
+            return False
+
     def save(self, config: WaiterLocalConfig) -> Path:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         payload = json.dumps(config.to_dict(), separators=(",", ":"))
-        if self._write_cipher is not None:
+        if self.password:
+            from ..security.rotorvault import seal_with_password
+
+            payload = LOCK_PREFIX + seal_with_password(
+                self.password, payload.encode("utf-8"), context=_LOCK_CONTEXT)
+        elif self._write_cipher is not None:
             payload = self._write_cipher.encrypt(payload.encode("utf-8")).decode("ascii")
         self.path.write_text(payload + "\n", encoding="utf-8")
         try:
@@ -146,6 +181,8 @@ class WaiterConfigStore:
         raw = self.path.read_text(encoding="utf-8").strip()
         if not raw:
             return None
+        if raw.startswith(LOCK_PREFIX):
+            return self._unlock(raw[len(LOCK_PREFIX):])
         try:
             return WaiterLocalConfig.from_dict(json.loads(raw))
         except json.JSONDecodeError:
@@ -175,4 +212,23 @@ class WaiterConfigStore:
         return WaiterLocalConfig.from_dict(json.loads(decrypted))
 
 
-__all__ = ["WaiterLocalConfig", "WaiterConfigStore"]
+    def _unlock(self, token: str) -> WaiterLocalConfig:
+        from ..security.rotorvault import RotorvaultError, open_with_password
+
+        password = self.password
+        if not password and self.password_provider is not None:
+            password = self.password_provider()
+        if not password:
+            raise WaiterConfigLocked(
+                f"{self.path} is locked (waiter serv -e). Give its password: run waiter "
+                "in a terminal to be asked, or set HNX_WAITER_PASSWORD."
+            )
+        try:
+            plain = open_with_password(password, token, context=_LOCK_CONTEXT)
+        except RotorvaultError as exc:
+            raise WaiterConfigLocked(f"wrong password for {self.path}") from exc
+        self.password = password
+        return WaiterLocalConfig.from_dict(json.loads(plain.decode("utf-8")))
+
+
+__all__ = ["LOCK_PREFIX", "WaiterConfigLocked", "WaiterLocalConfig", "WaiterConfigStore"]
