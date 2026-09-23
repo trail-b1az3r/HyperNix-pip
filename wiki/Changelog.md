@@ -26,6 +26,40 @@ next release header.
 - 𖥔 minor new feature
 
 
+## 0.72.6.rc1 — 2026-09-23
+
+The release candidate for 0.72.6, and the two fixes its first release
+run needed.
+
+### Changed
+
+🔧 This is the first release candidate of 0.72.6, and everything in it
+was published first as 0.72.5.post14 to post17; the entries below say
+what each of those added.
+
+### Fixed
+
+🐛 A release cut to a version the tree was not already carrying failed
+its own test run. The workflow bumped four version strings and not
+hyped-pro's `package.json` and `app.ts`, so the app still called itself
+0.72.5-post17. It now writes both through
+`hyped_pro_otui.sync_app_version`, which spells the version as semver
+(0.72.6.rc1 is 0.72.6-rc1), and the commit stages both files.
+🐛 The documentation check failed wherever fastapi is not installed, as
+on the release runner. `hypernix.t1api.create_app` re-raises the missing
+package as a plain ImportError with install advice, and the check looked
+only at that error, never at its cause.
+
+### Tests
+
+🧪 `semver_of` across every spelling the release workflow accepts,
+`sync_app_version` against copies of the real files, the workflow
+bumping and committing both, and the documentation check run with
+fastapi blocked. It failed twice there before the fix and passes after
+it.
+
+⸻
+
 ## 0.72.5.post17 — 2026-09-23
 
 The 0.72.6 fourth batch. v2.1 keys and the cipher that seals them,
