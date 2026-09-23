@@ -39,12 +39,20 @@ from collections.abc import Callable
 from typing import Any
 
 from ..interfaces.noodle.tools import TOOLS, ToolContext, run_tool
+from ..runtime import t1tools
+from ..runtime.toolcalls import (
+    ToolCall,
+    extract_calls,
+    tool_prompt,
+    validate_arguments,
+)
 
 logger = logging.getLogger(__name__)
 
 __all__ = [
     "MAX_ROUNDS",
     "MAX_RESULT_CHARS",
+    "T1Access",
     "ToolRound",
     "openai_tools",
     "run_tool_loop",
@@ -65,6 +73,23 @@ MAX_ROUNDS = 8
 #: not context, it is the whole context — the conversation gets evicted
 #: to make room for a listing nobody asked to see.
 MAX_RESULT_CHARS = 8_000
+
+
+class T1Access:
+    """How a model reaches the T1 API: the server, and the caller's key.
+
+    The caller's own key, never a server one — so a model can do exactly
+    what the person it is talking to could do by hand, and no more.
+    """
+
+    __slots__ = ("base_url", "token", "allow_mutating", "only")
+
+    def __init__(self, base_url: str, token: str = "", *,
+                 allow_mutating: bool = False, only: list[str] | None = None) -> None:
+        self.base_url = base_url
+        self.token = token
+        self.allow_mutating = allow_mutating
+        self.only = only
 
 
 class ToolRound:
@@ -157,6 +182,8 @@ def run_tool_loop(
     extract: Callable[[dict[str, Any]], tuple[str, str]],
     max_rounds: int = MAX_ROUNDS,
     on_round: Callable[[ToolRound], None] | None = None,
+    t1: T1Access | None = None,
+    teach_format: bool = False,
 ) -> tuple[list[dict[str, Any]], dict[str, Any], list[ToolRound]]:
     """Run the model until it answers rather than calls a tool.
 
@@ -173,20 +200,58 @@ def run_tool_loop(
     """
     messages = list(wire)
     tools = openai_tools(context)
+    t1_names: set[str] = set()
+    if t1 is not None:
+        # Existing tools win a name clash: noodle's `web_search` and the
+        # T1 one both exist, and a model shown two tools with one name
+        # calls whichever it saw last.
+        taken = {t["function"]["name"] for t in tools}
+        for tool in t1tools.openai_tools(allow_mutating=t1.allow_mutating, only=t1.only):
+            name = tool["function"]["name"]
+            if name not in taken:
+                tools.append(tool)
+                t1_names.add(name)
+    if teach_format and tools:
+        # For a model without native tool support: one format, one worked
+        # example. Prepended as system text so it survives templates that
+        # drop the `tools` field entirely.
+        messages.insert(0, {"role": "system", "content": tool_prompt(tools)})
     rounds: list[ToolRound] = []
     envelope: dict[str, Any] = {}
+    retried_format = False
 
     for round_number in range(max_rounds):
         envelope = ask(messages, tools)
-        calls = _calls_in(envelope)
+        calls, failures = _calls_in(envelope, tools)
         if not calls:
+            if failures and not retried_format:
+                # It tried to call a tool and the JSON was beyond repair.
+                # Told once, rather than the person being shown the raw
+                # markup as if it were the answer.
+                retried_format = True
+                messages.append(_assistant_message(envelope, []))
+                messages.append({
+                    "role": "system",
+                    "content": (
+                        "Your tool call could not be read: "
+                        + "; ".join(why for _, why in failures[:3])
+                        + ". Send it again as <tool_call>{\"name\": ..., "
+                          "\"arguments\": {...}}</tool_call> with valid JSON, "
+                          "or answer without a tool."
+                    ),
+                })
+                continue
             return messages, envelope, rounds
 
         assistant = _assistant_message(envelope, calls)
         messages.append(assistant)
 
         for call in calls:
-            record = _run_one(call, context)
+            name = (call.get("function") or {}).get("name", "")
+            if name in t1_names:
+                record = _run_t1(call, tools, t1)
+            else:
+                record = _run_one(call, context, tools)
             rounds.append(record)
             if on_round is not None:
                 try:
@@ -218,13 +283,27 @@ def run_tool_loop(
     return messages, envelope, rounds
 
 
-def _calls_in(envelope: dict[str, Any]) -> list[dict[str, Any]]:
+def _calls_in(
+    envelope: dict[str, Any], tools: list[dict[str, Any]] | None = None
+) -> tuple[list[dict[str, Any]], list[tuple[str, str]]]:
+    """Tool calls in *envelope*, structured or written as text.
+
+    Structured `tool_calls` first. When there are none, the reply's text
+    is read for the conventions local models actually use — Hermes/Qwen
+    `<tool_call>`, Llama's `<|python_tag|>`, Mistral's `[TOOL_CALLS]`, a
+    fenced JSON block. Without this, a GGUF that calls a tool the way it
+    was trained to has its call shown to the person as the answer, and
+    nothing runs. Returns ``(calls, unreadable)``.
+    """
     choices = envelope.get("choices") or []
     if not choices:
-        return []
+        return [], []
     message = (choices[0] or {}).get("message") or {}
-    calls = message.get("tool_calls") or []
-    return [c for c in calls if isinstance(c, dict)]
+    structured = [c for c in (message.get("tool_calls") or []) if isinstance(c, dict)]
+    if structured:
+        return structured, []
+    found = extract_calls(message, tools=tools)
+    return [c.to_openai() for c in found.calls], found.failures
 
 
 def _assistant_message(
@@ -242,15 +321,44 @@ def _assistant_message(
     }
 
 
-def _run_one(call: dict[str, Any], context: ToolContext) -> ToolRound:
-    """One call, with every failure turned into a result the model reads."""
+def _validated(call: dict[str, Any], tools: list[dict[str, Any]] | None):
+    """``(name, arguments, error_round)`` — error_round set when unusable."""
     function = call.get("function") or {}
     name = str(function.get("name") or "")
-
     try:
         arguments = _arguments(function.get("arguments"))
     except ValueError as exc:
-        return ToolRound(name, {}, False, str(exc), code="bad_arguments")
+        return name, {}, ToolRound(name, {}, False, str(exc), code="bad_arguments")
+    if tools:
+        arguments, problem = validate_arguments(ToolCall(name, arguments), tools)
+        if problem:
+            # `bad_arguments` means the JSON did not parse; this is JSON
+            # that parsed and does not fit the tool — a different thing
+            # for the model to fix, so a different code.
+            code = "no_such_tool" if "no tool called" in problem else "invalid_arguments"
+            return name, arguments, ToolRound(name, arguments, False, problem, code=code)
+    return name, arguments, None
+
+
+def _run_t1(call: dict[str, Any], tools: list[dict[str, Any]], t1: T1Access) -> ToolRound:
+    """A T1 endpoint, called with the caller's own key."""
+    name, arguments, failed = _validated(call, tools)
+    if failed is not None:
+        return failed
+    content = t1tools.call_tool(
+        name, arguments, base_url=t1.base_url, token=t1.token,
+        allow_mutating=t1.allow_mutating,
+    )
+    ok = not (content.startswith("HTTP ") or content[:2] in ("R2", "T1"))
+    return ToolRound(name, arguments, ok, content, code="" if ok else "t1_error")
+
+
+def _run_one(call: dict[str, Any], context: ToolContext,
+             tools: list[dict[str, Any]] | None = None) -> ToolRound:
+    """One call, with every failure turned into a result the model reads."""
+    name, arguments, failed = _validated(call, tools)
+    if failed is not None:
+        return failed
 
     if name not in TOOLS:
         return ToolRound(

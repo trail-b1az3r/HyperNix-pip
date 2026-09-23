@@ -590,7 +590,8 @@ actor HyperLinkClient {
         sessionID: String,
         content: String,
         attachmentIDs: [String],
-        modelID: String?
+        modelID: String?,
+        regenerate: Bool = false
     ) throws -> URLRequest {
         guard let base = currentEndpoint else { throw HyperLinkError.notConfigured }
         struct Body: Encodable {
@@ -598,9 +599,14 @@ actor HyperLinkClient {
             let attachment_ids: [String]
             let model_id: String?
             let stream: Bool
+            /// Answer the thread's last message rather than adding one —
+            /// what an edit or a resend needs. Sending the text again
+            /// would put the same question in the thread twice.
+            let regenerate: Bool
         }
         let body = try encoder.encode(
-            Body(content: content, attachment_ids: attachmentIDs, model_id: modelID, stream: true)
+            Body(content: content, attachment_ids: attachmentIDs, model_id: modelID,
+                 stream: true, regenerate: regenerate)
         )
         var request = try makeRequest(
             base: base,

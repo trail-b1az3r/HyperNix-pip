@@ -1290,6 +1290,11 @@ class HyperLinkChatRequest(BaseModel):
     max_tokens: int | None = None
     token_budget: int = 8000
     stream: bool = False
+    #: Answer the conversation's last message instead of adding one.
+    #: What an edit or a resend needs: the edited message is already the
+    #: last one (everything after it was removed), and sending its text
+    #: again would put the same question in the thread twice.
+    regenerate: bool = False
 
 
 class HyperLinkChatResponse(BaseModel):

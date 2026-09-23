@@ -32,6 +32,11 @@ struct ChatView: View {
     /// context along with it.
     @State private var editing: ChatMessage?
     @State private var deleting: ChatMessage?
+    /// The one message whose swipe actions are showing, if any.
+    @State private var openSwipeID: String?
+    /// A resend that would remove more than the reply it replaces, held
+    /// while the person confirms it.
+    @State private var resending: ChatMessage?
 
     private var session: ChatSession? {
         state.sessions.first { $0.sessionID == sessionID }
@@ -96,6 +101,27 @@ struct ChatView: View {
             // the thread with it would make people keep the secret.
             Text("The rest of the conversation stays. This removes it on the PC too.")
         }
+        .confirmationDialog(
+            "Resend this message?",
+            isPresented: Binding(
+                get: { resending != nil },
+                set: { if !$0 { resending = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Resend", role: .destructive) {
+                guard let message = resending else { return }
+                resending = nil
+                Task { await state.resendMessage(message) }
+            }
+            Button("Cancel", role: .cancel) { resending = nil }
+        } message: {
+            if let message = resending {
+                let later = state.editWouldRemove(message.messageID)
+                Text("The \(later) messages after it go, because they answered it. "
+                     + "It is then asked again.")
+            }
+        }
         .photosPicker(
             isPresented: $showingPhotoPicker,
             selection: $photoItems,
@@ -148,6 +174,11 @@ struct ChatView: View {
                     // omitted server-side (where the model needs it).
                     ForEach(state.messages.filter { !$0.isSystem }) { message in
                         MessageBubble(message: message)
+                            .swipeToReveal(
+                                id: message.messageID,
+                                actions: swipeActions(for: message),
+                                openRowID: $openSwipeID
+                            )
                             .id(message.messageID)
                             .messageArrival()
                             // Long press rather than a permanent edit
@@ -165,6 +196,11 @@ struct ChatView: View {
                                         editing = message
                                     } label: {
                                         Label("Edit", systemImage: "pencil")
+                                    }
+                                    Button {
+                                        requestResend(message)
+                                    } label: {
+                                        Label("Resend", systemImage: "arrow.clockwise")
                                     }
                                 }
                                 Button(role: .destructive) {
@@ -324,6 +360,54 @@ struct ChatView: View {
         pendingAttachments = []
         let model = (session?.modelID).flatMap { $0.isEmpty ? nil : $0 }
         state.send(text: text, attachmentIDs: ids, modelID: model)
+    }
+
+    // MARK: - Swipe actions
+
+    /// What swiping left on *message* offers.
+    ///
+    /// Yours: edit it, or ask it again as it is. The model's: retry,
+    /// which resends the message it was answering. Nothing while a reply
+    /// is streaming — a resend then would race the answer arriving — and
+    /// nothing on the optimistic bubble that has not reached the server.
+    private func swipeActions(for message: ChatMessage) -> [SwipeAction] {
+        guard !state.isSending, message.seq >= 0 else { return [] }
+        if message.isUser {
+            return [
+                SwipeAction(title: "Edit", systemImage: "pencil", tint: .blue) {
+                    editing = message
+                },
+                SwipeAction(title: "Resend", systemImage: "arrow.clockwise", tint: .indigo) {
+                    requestResend(message)
+                },
+            ]
+        }
+        guard let prompt = promptFor(message) else { return [] }
+        return [
+            SwipeAction(title: "Retry", systemImage: "arrow.clockwise", tint: .indigo) {
+                requestResend(prompt)
+            },
+        ]
+    }
+
+    /// The message of yours that *reply* was answering.
+    private func promptFor(_ reply: ChatMessage) -> ChatMessage? {
+        let visible = state.messages.filter { !$0.isSystem }
+        guard let index = visible.firstIndex(where: { $0.messageID == reply.messageID })
+        else { return nil }
+        return visible[..<index].last(where: { $0.isUser })
+    }
+
+    /// Resend, confirming first when it would remove more than the one
+    /// reply it replaces. Replacing that reply is the point of asking
+    /// again; losing a conversation's worth after it is not something
+    /// to do on a swipe without saying so.
+    private func requestResend(_ message: ChatMessage) {
+        if state.editWouldRemove(message.messageID) > 1 {
+            resending = message
+        } else {
+            Task { await state.resendMessage(message) }
+        }
     }
 
     // MARK: - Attachments

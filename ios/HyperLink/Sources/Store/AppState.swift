@@ -900,8 +900,38 @@ final class AppState {
         }
     }
 
+    /// Ask the model to answer the thread's last message again.
+    ///
+    /// No optimistic bubble: the message being answered is already on
+    /// screen. Used after an edit and by resend, both of which leave the
+    /// thread ending on your message.
+    func regenerateLast(modelID: String? = nil) {
+        guard let sessionID = openSessionID, !isSending else { return }
+        isSending = true
+        streamingText = ""
+        lastError = nil
+        streamTask = Task { [weak self] in
+            await self?.runTurn(
+                sessionID: sessionID, text: "", attachmentIDs: [], modelID: modelID,
+                regenerate: true
+            )
+        }
+    }
+
+    /// Ask one of your messages again, as it is.
+    ///
+    /// An edit with the same text, then a regenerate: the edit removes
+    /// everything after the message — the old reply included — so the
+    /// new answer replaces it rather than stacking under it. Returns the
+    /// number of later messages removed, or nil when refused.
+    @discardableResult
+    func resendMessage(_ message: ChatMessage) async -> Int? {
+        await editMessage(message.messageID, to: message.content)
+    }
+
     private func runTurn(
-        sessionID: String, text: String, attachmentIDs: [String], modelID: String?
+        sessionID: String, text: String, attachmentIDs: [String], modelID: String?,
+        regenerate: Bool = false
     ) async {
         // Whatever happens below, the composer must come back. An early
         // return that leaves `isSending` true is a permanently stuck UI.
@@ -914,7 +944,8 @@ final class AppState {
                 sessionID: sessionID,
                 content: text,
                 attachmentIDs: attachmentIDs,
-                modelID: modelID
+                modelID: modelID,
+                regenerate: regenerate
             )
             for try await event in SSEStream.events(for: request) {
                 switch event {
@@ -931,6 +962,13 @@ final class AppState {
                     streamingText = ""
                     messages = (try? await client.messages(in: sessionID)) ?? messages
                     await refreshSessionSummary()
+                    // The model may have remembered something during
+                    // this turn. The Memories screen loads once when it
+                    // appears, so one kept alive in another tab would go
+                    // on showing what it knew before this conversation.
+                    if settings.preferences.autoMemory {
+                        await refreshMemories()
+                    }
                 case let .failed(_, message):
                     streamingGenerationID = nil
                     lastError = message
@@ -1027,6 +1065,11 @@ final class AppState {
             // server does not have.
             messages = (try? await client.messages(in: sessionID)) ?? messages
             await refreshSessionSummary()
+            // An edit is a question asked differently, so it is asked.
+            // It used to stop here, leaving the thread ending on an
+            // unanswered message and the person wondering whether the
+            // edit had worked.
+            regenerateLast()
             return result.removedCount
         } catch {
             handle(error)

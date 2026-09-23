@@ -411,3 +411,54 @@ def _from_row(row: Any) -> Memory:
         updated_at=float(row["updated_at"]),
         metadata=metadata if isinstance(metadata, dict) else {},
     )
+
+
+class ToolMemoryBackend:
+    """The model's memory tools, writing into a person's real memories.
+
+    A model in a HyperLink chat calls `update_memory(key, value)`. Before
+    this, that went to a JSON file in the tool workspace which nothing
+    reads — so a person asked the assistant to remember something, it
+    said it had, and the Memories screen never showed it. This puts it
+    in the same store the screen lists, for the same owner, marked
+    `auto` so "where did it get that idea" still has an answer.
+
+    The key becomes the category and the value the content, which is
+    what the screen shows: `favourite editor` / `Helix`.
+    """
+
+    def __init__(self, store: MemoryStore, owner: str, session_id: str = "") -> None:
+        self.store = store
+        self.owner = owner
+        self.session_id = session_id
+
+    def _mine(self, key: str) -> list[Memory]:
+        return [m for m in self.store.list(owner=self.owner, category=key, limit=1000)
+                if m.source == "auto"]
+
+    def load(self) -> dict[str, Any]:
+        out: dict[str, Any] = {}
+        for memory in self.store.list(owner=self.owner, limit=1000):
+            key = memory.category or memory.memory_id
+            out[key] = {"value": memory.content, "updated_at": memory.updated_at,
+                        "source": memory.source}
+        return out
+
+    def set(self, key: str, value: Any) -> Memory:
+        content = value if isinstance(value, str) else json.dumps(value, default=str)
+        existing = self._mine(key)
+        if existing:
+            # Updated in place rather than added: a model that learns you
+            # moved from Vim to Helix should replace the fact, not keep both.
+            return self.store.edit(existing[0].memory_id, owner=self.owner, content=content)
+        return self.store.create(owner=self.owner, content=content, category=key,
+                                 source="auto", session_id=self.session_id)
+
+    def forget(self, key: str) -> bool:
+        # Only what the model wrote. A memory the person typed themselves
+        # is theirs to delete, not the model's.
+        removed = False
+        for memory in self._mine(key):
+            removed = self.store.delete(memory.memory_id, owner=self.owner) or removed
+        return removed
+

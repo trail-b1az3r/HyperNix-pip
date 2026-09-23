@@ -402,6 +402,12 @@ MODULE_CATEGORIES: dict[str, tuple[str, ...]] = {
         "magnesium",
         "natural_gas",
     ),
+    # Letting a model use tools: reading calls out of whatever it wrote,
+    # and the T1 API's endpoints offered to it as tools.
+    "runtime": (
+        "t1tools",
+        "toolcalls",
+    ),
     # Timers, alarms, cadence control and progress animation.
     "timing": (
         "bell",

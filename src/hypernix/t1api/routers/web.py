@@ -21,6 +21,11 @@ key and one value and hand over nothing. Conventional forms
 (``?q=cats&depth=2``) work too, because no HTTP client library will
 build the documented one for you.
 
+Authenticated the way every HyperLink route is: a paired device's
+``HLNK_`` token, a T2S key, or any T1 credential. It used to take only T1
+keys and scoped tokens, which meant a paired phone — the client these
+endpoints were built for — was refused on every one of them.
+
 The second is that an API key arrives **in the URL**, and a URL is the
 one part of a request that everything logs by default. Every path out
 of here redacts before logging, and no response ever contains the key.
@@ -33,9 +38,13 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 
 from .. import websearch as ws
-from ..auth import AuthContext
 from ..config import T1APIConfig
-from ..deps import get_auth_context, get_config, get_request_id
+from ..deps import (
+    HyperLinkPrincipal,
+    get_config,
+    get_hyperlink_principal,
+    get_request_id,
+)
 from ..errors import T1APIError, T1ErrorCode
 
 logger = logging.getLogger(__name__)
@@ -78,7 +87,7 @@ def _grammar_error(exc: ws.GrammarError, raw: str) -> T1APIError:
 @router.get("/search")
 async def web_search(
     request: Request,
-    principal: AuthContext = Depends(get_auth_context),
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
     config: T1APIConfig = Depends(get_config),
     request_id: str = Depends(get_request_id),
 ):
@@ -111,7 +120,7 @@ async def web_search(
 @router.post("/summarise")
 async def web_summarize(
     request: Request,
-    principal: AuthContext = Depends(get_auth_context),
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
     config: T1APIConfig = Depends(get_config),
     request_id: str = Depends(get_request_id),
 ):
@@ -187,7 +196,7 @@ def _model_for(request: Request):
 @router.get("/config")
 async def web_config_read(
     request: Request,
-    principal: AuthContext = Depends(get_auth_context),
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
     request_id: str = Depends(get_request_id),
 ):
     """The three settings, and the browsers actually installed.
@@ -209,7 +218,7 @@ async def web_config_read(
 async def web_config_write(
     directives: str,
     request: Request,
-    principal: AuthContext = Depends(get_auth_context),
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
     request_id: str = Depends(get_request_id),
 ):
     """``/web/v1/config/s1?=k|s2?:=wikipedia|s3?:={key}?[auto]``

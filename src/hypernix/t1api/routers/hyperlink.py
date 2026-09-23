@@ -751,7 +751,60 @@ def _with_memories(
     return [{"role": "system", "content": block}, *wire]
 
 
-def _chat_with_tools(bridge, wire, model, sampling, config, principal):
+def _last_user_message(store, session_id: str, owner: str):
+    """The message a regenerate answers: the thread's last, and it must be yours.
+
+    Refused when the thread ends in a reply. Answering that again would
+    silently stack a second reply under the first; a resend of a message
+    that already has an answer is an edit with the same text, which
+    removes the old reply first.
+    """
+    tail = store.messages(session_id, owner=owner, limit=1)
+    if not tail or tail[-1].role != "user":
+        raise T1APIError(
+            T1ErrorCode.CONFLICT,
+            "Nothing to answer: the conversation does not end with your "
+            "message. To ask something again, edit it (with the same text "
+            "to resend) — that removes the old reply first.",
+            http_status=409,
+        )
+    return tail[-1]
+
+
+def _t1_access(request: Request | None, principal):
+    """How the model reaches this server's own API, or None for no T1 tools.
+
+    None for a keyless caller. The server calling itself comes from
+    loopback, which trusted-network mode can treat as a *different*,
+    more trusted network than the phone's — the model would be acting as
+    somebody other than the person. With a credential, it is theirs.
+    """
+    if request is None:
+        return None
+    header = request.headers.get("authorization") or ""
+    if not header.lower().startswith("bearer "):
+        return None
+    from ...hyperlink.toolloop import T1Access
+
+    host, port = (request.scope.get("server") or ("127.0.0.1", 8000))[:2]
+    if host in ("0.0.0.0", "::", "", None):
+        host = "127.0.0.1"          # bound everywhere: loopback is one of them
+    if ":" in str(host):
+        host = f"[{host}]"
+    base = f"{request.url.scheme}://{host}:{port}{request.scope.get('root_path', '')}"
+    scopes = set(getattr(principal, "scopes", ()) or ())
+    return T1Access(
+        base, header.split(" ", 1)[1].strip(),
+        # Only for somebody who could do these by hand. The endpoints
+        # refuse anyway; hiding them saves the model rounds spent finding
+        # that out.
+        allow_mutating=bool(getattr(principal, "is_admin", False)) or "write" in scopes,
+    )
+
+
+def _chat_with_tools(bridge, wire, model, sampling, config, principal, t1=None,
+                     teach_format=False, memory_store=None, auto_memory=False,
+                     session_id=""):
     """One turn, with the model allowed to call noodle's tools.
 
     Returns ``(envelope, rounds)``. The rounds are what it did, for the
@@ -767,6 +820,18 @@ def _chat_with_tools(bridge, wire, model, sampling, config, principal):
     from .noodle import _context as noodle_context
 
     context = noodle_context(config, principal)
+    if memory_store is not None:
+        from ...hyperlink.memory import ToolMemoryBackend
+
+        # The model's memory tools write where the Memories screen reads.
+        # They used to write a JSON file in the tool workspace, so the
+        # assistant said "I'll remember that" and the screen never showed
+        # it. Switched by the person's own auto-memory setting rather
+        # than the server-wide noodle flag: whether an assistant keeps
+        # notes about you is yours to decide.
+        context.memory_backend = ToolMemoryBackend(
+            memory_store, principal.owner, session_id)
+        context.memory_enabled = bool(auto_memory)
 
     def ask(messages, tools):
         return bridge.chat(
@@ -778,7 +843,8 @@ def _chat_with_tools(bridge, wire, model, sampling, config, principal):
         )
 
     _messages, envelope, rounds = run_tool_loop(
-        wire, context, ask=ask, extract=_extract_reply
+        wire, context, ask=ask, extract=_extract_reply, t1=t1,
+        teach_format=teach_format,
     )
     return envelope, [r.to_dict() for r in rounds]
 
@@ -993,6 +1059,7 @@ def chat_turn(
     runner=Depends(get_runner),
     config: T1APIConfig = Depends(get_config),
     request_id: str = Depends(get_request_id),
+    request: Request = None,
 ) -> HyperLinkChatResponse:
     """Append the user's message, run the model, append the reply.
 
@@ -1003,20 +1070,23 @@ def chat_turn(
     retyping it.
     """
     _require_enabled(config)
-    if not payload.content.strip() and not payload.attachment_ids:
-        raise T1APIError(
-            T1ErrorCode.VALIDATION_ERROR, "Send some text, an attachment, or both"
-        )
     session = store.get(session_id, owner=principal.owner)
 
-    user_message = store.append(
-        session_id,
-        role="user",
-        content=payload.content,
-        owner=principal.owner,
-        attachment_ids=payload.attachment_ids,
-        metadata={"device_id": principal.device_id} if principal.device_id else {},
-    )
+    if payload.regenerate:
+        user_message = _last_user_message(store, session_id, principal.owner)
+    else:
+        if not payload.content.strip() and not payload.attachment_ids:
+            raise T1APIError(
+                T1ErrorCode.VALIDATION_ERROR, "Send some text, an attachment, or both"
+            )
+        user_message = store.append(
+            session_id,
+            role="user",
+            content=payload.content,
+            owner=principal.owner,
+            attachment_ids=payload.attachment_ids,
+            metadata={"device_id": principal.device_id} if principal.device_id else {},
+        )
 
     backend = _chat_backend(config, runner)
     bridge = backend.client
@@ -1048,7 +1118,16 @@ def chat_turn(
     try:
         if settings.tools_enabled and getattr(config, "noodle_enabled", False):
             envelope, tool_rounds = _chat_with_tools(
-                bridge, wire, wanted, sampling, config, principal
+                bridge, wire, wanted, sampling, config, principal,
+                t1=_t1_access(request, principal),
+                # The built-in runner serves any GGUF, most of which were
+                # trained on a text tool format rather than structured
+                # calls. Teaching the format costs one system message and
+                # is what makes those models call tools at all.
+                teach_format=bool(backend.is_hypernix),
+                memory_store=memories,
+                auto_memory=settings.auto_memory,
+                session_id=session_id,
             )
         else:
             envelope = bridge.chat(
@@ -1161,18 +1240,22 @@ def chat_turn_stream(
     marked ``truncated`` is worth more than a lost one.
     """
     _require_enabled(config)
-    if not payload.content.strip() and not payload.attachment_ids:
-        raise T1APIError(T1ErrorCode.VALIDATION_ERROR, "Send some text, an attachment, or both")
     session = store.get(session_id, owner=principal.owner)
 
-    user_message = store.append(
-        session_id,
-        role="user",
-        content=payload.content,
-        owner=principal.owner,
-        attachment_ids=payload.attachment_ids,
-        metadata={"device_id": principal.device_id} if principal.device_id else {},
-    )
+    if payload.regenerate:
+        user_message = _last_user_message(store, session_id, principal.owner)
+    else:
+        if not payload.content.strip() and not payload.attachment_ids:
+            raise T1APIError(T1ErrorCode.VALIDATION_ERROR,
+                             "Send some text, an attachment, or both")
+        user_message = store.append(
+            session_id,
+            role="user",
+            content=payload.content,
+            owner=principal.owner,
+            attachment_ids=payload.attachment_ids,
+            metadata={"device_id": principal.device_id} if principal.device_id else {},
+        )
     backend = _chat_backend(config, runner)
     bridge = backend.client
     settings = preferences.get(owner=principal.owner)

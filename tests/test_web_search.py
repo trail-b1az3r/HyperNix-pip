@@ -669,3 +669,47 @@ class TestTheEndpoints:
             assert client.get(path).status_code in (401, 403), path
         assert client.post("/web/v1/summarize",
                            json={"text": "a."}).status_code in (401, 403)
+
+
+class TestAPairedPhoneCanUseIt:
+    """The client these endpoints were built for.
+
+    `/web/v1` authenticated with the T1-key dependency, which validates a
+    device's `HLNK_` token as a T1 key and refuses it — so a paired
+    phone got a 401 on every web endpoint while every test here, all
+    using T1 keys, passed.
+    """
+
+    @pytest.fixture
+    def device_token(self, client, admin_key):
+        minted = client.post("/hyperlink/pair", json={"label": "phone"},
+                             headers=_auth(admin_key))
+        assert minted.status_code == 200, minted.text
+        redeemed = client.post("/hyperlink/pair/redeem", json={
+            "code": minted.json()["code"], "device_name": "iPhone",
+            "app_version": "1.0"})
+        assert redeemed.status_code == 200, redeemed.text
+        return redeemed.json()["device_token"]
+
+    def test_a_device_can_read_the_settings(self, client, device_token):
+        got = client.get("/web/v1/config", headers=_auth(device_token))
+        assert got.status_code == 200, got.text
+
+    def test_a_device_can_summarise(self, client, device_token):
+        got = client.post("/web/v1/summarize", json={"text": "One. Two. Three."},
+                          headers=_auth(device_token))
+        assert got.status_code == 200, got.text
+
+    def test_a_device_can_search(self, client, device_token, monkeypatch):
+        monkeypatch.setattr(
+            "hypernix.t1api.routers.web.ws.search",
+            lambda q, **k: ws.SearchOutcome(q, [], engine="duckduckgo"),
+        )
+        got = client.get("/web/v1/search?q=cats", headers=_auth(device_token))
+        assert got.status_code == 200, got.text
+
+    def test_a_device_still_cannot_change_them(self, client, device_token):
+        """A device token is never an admin credential — that rule is
+        about pairing, and it holds here too."""
+        got = client.get("/web/v1/config/s2?:=google", headers=_auth(device_token))
+        assert got.status_code == 403

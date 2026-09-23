@@ -60,6 +60,40 @@ explain R3-00020.a3` looks one up.
 𖥔 The T1 API's error envelope carries `hx_code` beside `code`. `code` is
 a published contract and stays; each of its 42 values maps 1:1 onto its
 own new code.
+๋࣭⭑ Models call tools the way they were trained to. A hosted model
+returns structured `tool_calls`; a local GGUF usually writes the call as
+text — `<tool_call>` (Hermes, Qwen), `<|python_tag|>` (Llama 3.1+),
+`[TOOL_CALLS]` (Mistral), or a fenced JSON block — and when nothing reads
+those, the call is shown to the person as the answer and nothing runs —
+which, more than the model's reasoning, is most of why local models looked
+bad at calling API endpoints. `hypernix.runtime.toolcalls` reads all of
+them, repairs the JSON mistakes models make, and checks arguments against
+the tool's schema with an error naming the exact field, so the model can
+correct itself.
+๋࣭⭑ The T1 API as tools. A model under HyperLink can ask the server what
+is loaded, how busy the GPU is, what it remembers, or search the web — each
+tool one real route, called with **the caller's own credential**, so it can
+never do more than the person could by hand. Keyless callers get none (the
+server calling itself comes from loopback, which can be a more trusted
+network than the phone's), and loading or unloading models is offered only
+to someone who could do it themselves.
+𖥔 On the built-in runner, HyperLink teaches the model the tool format in
+one system message with a worked example built from a real tool.
+๋࣭⭑ HyperLink: models on the iPhone itself, reachable. Search Hugging
+Face, see whether a model fits this phone before downloading it, download
+with progress and pause, load it, and chat with it — from a new *On
+iPhone* tab, and from the pairing screen for somebody with no PC at all;
+the search, fit estimate, download manager and llama.cpp runner already
+existed, about 1,800 lines of them, and no screen created any of it.
+𖥔 HyperLink: swipe left on a message to edit or resend it; on a reply,
+to retry. Editing now asks again — it used to rewrite the message and
+stop, leaving the thread ending on an unanswered question. Resend is an
+edit with the same text, so the new answer replaces the old one rather
+than stacking under it, and it confirms first when it would remove more
+than that one reply. VoiceOver gets the same actions without the swipe.
+𖥔 `POST /hyperlink/sessions/{id}/chat` (and `/chat/stream`) take
+`regenerate: true` to answer the thread's last message without adding a
+copy of it.
 𖥔 `hypernix-t1 launch-script -$ 'CMD'` — a bash or fish command as a
 job, with everything a script job gets: it survives the SSH connection
 closing, has logs and a status, and restarts as a command rather than
@@ -125,6 +159,33 @@ rejects it.
 🐛 Qwen3.5-family snapshots wrote a flat `rope_theta` that their config
 class ignores; they write `rope_parameters` now. Reading always handled
 both spellings.
+𖢥 **HyperLink could not use web search at all.** `/web/v1` authenticated
+with the T1-key dependency, which checks a paired phone's `HLNK_` device
+token as a T1 key and refuses it — so the client these endpoints were
+built for got a 401 on every one, while every test, all using T1 keys,
+passed. It takes device tokens now, like every other HyperLink route.
+𖢥 **What the model remembered never reached the Memories screen.** Its
+memory tool wrote a JSON file in the tool workspace, which nothing reads,
+so it said "I'll remember that" and the screen stayed empty. In a
+HyperLink chat it now writes the person's real memories, marked as the
+model's, updating rather than duplicating, never deleting one the person
+wrote — and only when that person's auto-memory setting is on.
+𖢥 **Web search from HyperLink found almost nothing.** The model's search
+tool used DuckDuckGo's instant-answer API, which answers "capital of
+France" and comes back empty for nearly every real question. It uses the
+keyless `/web/v1` engine now, with instant answers as the fallback.
+𖢥 **An HTTP error page could be installed as an on-device model.**
+URLSession delivers a 401 or 404 body as a finished download, and its
+size matched its own Content-Length — so a gated repository's "access
+restricted" page landed in the installed list and failed to load like a
+broken GGUF. The status and the `GGUF` magic bytes are checked first,
+and a 401/403 says to accept the licence and add a token.
+🐛 An on-device download that finished while the app was suspended was
+never installed: the background session was created only on the first
+download, so there was nothing for iOS to deliver the result to.
+🐛 A misspelt tool name is answered with the nearest real ones, never
+auto-corrected — correcting `delete_model` to `delete_models` is how a
+typo becomes an action.
 🐛 Magnesium's plan put kernel threads (`kworker`, `ksoftirqd`, …) in
 the "limit" column when run as root, which is how it reaches other
 users' apps. Found by running it against a real process table; kernel
@@ -134,6 +195,15 @@ explanation, which is two meanings behind one searchable number.
 
 ### Tests
 
+🧪 Tool calls: 53 tests across every format and every refusal — a JSON
+answer the person asked for is not executed, a mutating tool is refused
+even when named. Plus an end-to-end test under a real uvicorn: a paired
+phone sends a message, the model writes `<tool_call>` as a GGUF does, the
+server calls itself with the phone's token, and the phone gets the answer.
+🧪 HyperLink: 13 tests through the API for regenerate, model memories and
+search, and 29 structural checks on the Swift — chiefly that every
+on-device piece is reached by a screen, following the chain from app to
+hub to view, since that it was not is what the bug was.
 🧪 `elements`: 111 tests, magnesium's against a real process outside this
 one's tree — reniced, then restored to its exact original priority.
 🧪 `errorcodes`: 55, most asserting a refusal.

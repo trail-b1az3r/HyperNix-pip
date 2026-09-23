@@ -127,6 +127,15 @@ class ToolContext:
     max_writes: int = 200
     execute_timeout: float = 60.0
     memory_path: Path | None = None
+    #: Somewhere else to keep memory — HyperLink passes its own memory
+    #: store, so what the model remembers in a chat is what the person's
+    #: Memories screen shows. Without it, memory is the JSON file above,
+    #: which no screen reads. Anything with `load()`, `set(key, value)`
+    #: and `forget(key)`.
+    memory_backend: Any = None
+    #: How web_search searches. None is the keyless /web/v1 engine; a
+    #: test passes a callable ``(query) -> SearchOutcome``.
+    search_backend: Any = None
 
     writes_done: int = field(default=0, init=False)
     todos: dict[str, TodoItem] = field(default_factory=dict, init=False)
@@ -571,10 +580,19 @@ def _web_search(ctx: ToolContext, args: dict[str, Any]) -> ToolResult:
     if not query:
         raise ToolError("web_search needs a query", code="bad_args")
 
-    # DuckDuckGo's instant-answer endpoint: no key, no tracking, and a
-    # documented JSON shape. It is a weak search engine and the result
-    # says so rather than presenting thin results as though they were
-    # comprehensive.
+    # Real results first: the same keyless engine /web/v1 serves. This
+    # tool used to go straight to DuckDuckGo's *instant-answer* API, which
+    # answers "capital of France" and returns nothing for almost every
+    # real question — so a model asked to search came back with "no
+    # instant answer" nearly every time, and web search looked broken.
+    ranked = _ranked_search(ctx, query)
+    if ranked is not None:
+        return ranked
+
+    # DuckDuckGo's instant-answer endpoint, as the fallback: no key, no
+    # tracking, a documented JSON shape. It is a weak search engine and
+    # the result says so rather than presenting thin results as though
+    # they were comprehensive.
     url = "https://api.duckduckgo.com/?" + urllib.parse.urlencode(
         {"q": query, "format": "json", "no_html": 1, "skip_disambig": 1}
     )
@@ -601,7 +619,32 @@ def _web_search(ctx: ToolContext, args: dict[str, Any]) -> ToolResult:
     return ToolResult(True, "\n".join(lines), tool="web_search", data={"results": len(lines)})
 
 
+def _ranked_search(ctx: ToolContext, query: str) -> ToolResult | None:
+    """Ranked results from the keyless engine, or None to fall back."""
+    try:
+        if ctx.search_backend is not None:
+            outcome = ctx.search_backend(query)
+        else:
+            from ...t1api import websearch
+
+            outcome = websearch.search(query, depth=1)
+    except Exception as exc:  # noqa: BLE001 - fall back rather than fail
+        logger.debug("noodle: ranked search failed: %s", exc)
+        return None
+    hits = list(getattr(outcome, "hits", []) or [])
+    if getattr(outcome, "status", "ok") != "ok" or not hits:
+        return None
+    lines = []
+    for hit in hits[:8]:
+        snippet = (hit.snippet or "").strip().replace("\n", " ")
+        lines.append(f"- {hit.title}  ({hit.url})" + (f"\n  {snippet[:280]}" if snippet else ""))
+    return ToolResult(True, "\n".join(lines), tool="web_search",
+                      data={"results": len(lines), "engine": getattr(outcome, "engine", "")})
+
+
 def _load_memory(ctx: ToolContext) -> dict[str, Any]:
+    if ctx.memory_backend is not None:
+        return ctx.memory_backend.load()
     if not ctx.memory_path or not ctx.memory_path.exists():
         return {}
     try:
@@ -620,6 +663,16 @@ def _update_memory(ctx: ToolContext, args: dict[str, Any]) -> ToolResult:
     key = str(args.get("key", "")).strip()
     if not key:
         raise ToolError("update_memory needs a key", code="bad_args")
+    if ctx.memory_backend is not None:
+        if args.get("delete"):
+            existed = ctx.memory_backend.forget(key)
+            message = f"Forgot {key!r}" if existed else f"Nothing stored under {key!r}"
+        else:
+            ctx.memory_backend.set(key, args.get("value"))
+            message = f"Remembered {key!r}"
+        memory = ctx.memory_backend.load()
+        ctx.record("update_memory", {"key": key, "deleted": bool(args.get("delete"))})
+        return ToolResult(True, message, tool="update_memory", data={"keys": len(memory)})
     memory = _load_memory(ctx)
     if args.get("delete"):
         existed = memory.pop(key, None) is not None
