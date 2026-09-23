@@ -26,6 +26,81 @@ next release header.
 - 𖥔 minor new feature
 
 
+## 0.72.6.rc2 — 2026-09-23
+
+The second release candidate: tvtop-max, and a default system prompt for
+HyperLink replies from HyperNix's own runner.
+
+### Added
+
+๋࣭⭑ **`tvtop-max`**: tvtop-pro on OpenTUI, like hyped-pro, in the site's
+colours, with ten panels toggled by their number keys. Alongside cpu,
+memory, GPU, training progress with a loss graph, and processes, it has
+panels for the run itself: the HyperNix modules and libraries its script
+imports, with one-line summaries, installed versions and deprecations;
+the model architecture from `new_oven(arch=…)`, a `preheat()` snapshot
+or a `config.json`, with a parameter estimate; every Pressure Cooker the
+script uses, with its generation, arguments and the learning rate the
+log reports now; the log's last lines, coloured by what they are; and a
+warnings panel.
+𖥔 tvtop-max's warnings panel reads the script for missing and deprecated
+modules, deprecated Pressure Cooker generations, `torch.load` without
+`weights_only=True`, no seed and no checkpoint. It reads the log's tail
+for tracebacks, out-of-memory errors, NaN losses, the OOM killer and
+`…Warning:` lines, each message counted once however often it repeats.
+𖥔 `tvtop-max -s` lays it out for a phone: one scrolling column 40 to 56
+columns wide, with training and warnings first. It is chosen
+automatically below 72 columns, and `s` switches layout at any time.
+𖥔 With no options, tvtop-max finds the busiest Python run that is not
+itself, reads the script from its command line and finds its log. `-S`
+watches only a process that is actually running the named script, and no
+process at all rather than a guess.
+๋࣭⭑ **HyperLink's default system prompt.** When a reply comes from this
+server's own runner, which is where hyperchat serves prompts, five
+paragraphs go first. They say where the model runs, that it is read on a
+phone, today's date, to be accurate before agreeable, to use only the
+tools it is offered, and that the person's own instructions follow and
+win. It sits under everything the person wrote, is composed per turn and
+never stored, is not sent to LM Studio, and
+`T1_HYPERLINK_DEFAULT_PROMPT=0` turns it off.
+🔧 `hypernix.monitoring.run_inspect` reads a training script with `ast`
+and its log with patterns, and never imports or runs
+either. `hypernix.monitoring.tvtop_max_bridge` answers tvtop-max on
+hyped-pro's JSON-lines protocol, from the same statistics source as
+tvtop-pro.
+
+### Changed
+
+🔁 hyped-pro's installer (`prepare_app`, `runtime_root`) takes the app's
+name and fallback program, so tvtop-max installs the same way into
+`~/.hypernix/tvtop-max/`. The release workflow bumps and commits
+tvtop-max's version alongside hyped-pro's.
+
+### Tests
+
+🧪 tvtop-max: 48 Python tests for the script reader, bridge, process
+choice, launcher and packaging, and 71 `bun test` cases for the panels,
+layout, arguments and bridge client, in a new CI job with the type
+check. Every panel is held to its width and height at 24, 40 and 80
+columns, which caught the process table overflowing a phone. The process
+test caught the launcher's own `-S train.py` being read as the run.
+🧪 The default prompt: 17 tests, through the API for what the model is
+actually sent. The backend and off-switch guards were each removed to
+check that the tests fail without them. One HyperLink test fake guessed
+that any system message mentioning summaries was a compaction request;
+it now recognises the compaction prompt itself.
+
+### Known Issues
+
+❗ tvtop-max's GPU panel reads NVIDIA GPUs through `nvidia-smi`, as
+tvtop-pro does, and shows nothing for other vendors.
+❗ When the log does not report a speed, the training panel works it out
+as steps over the time tvtop-max has been watching, as tvtop-pro does,
+so it reads high for a run that was already under way when the dashboard
+started.
+
+⸻
+
 ## 0.72.6.rc1 — 2026-09-23
 
 The release candidate for 0.72.6, the two fixes its first release run

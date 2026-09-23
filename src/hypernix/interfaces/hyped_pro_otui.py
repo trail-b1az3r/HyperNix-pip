@@ -184,10 +184,10 @@ def sync_app_version(version: str, app_dir: Path = APP_DIR) -> str:
     return wanted
 
 
-def runtime_root(env: dict[str, str] | None = None) -> Path:
+def runtime_root(env: dict[str, str] | None = None, *, name: str = "hyped-pro") -> Path:
     env = os.environ if env is None else env
     base = env.get("HYPERNIX_HOME") or str(Path(env.get("HOME") or Path.home()) / ".hypernix")
-    return Path(base) / "hyped-pro"
+    return Path(base) / name
 
 
 def _is_ready(directory: Path) -> bool:
@@ -209,15 +209,21 @@ def prepare_app(
     bun: str,
     env: dict[str, str] | None = None,
     debug: bool = False,
+    name: str = "hyped-pro",
+    fallback: str = "hyped-plus",
 ) -> Path:
     """Return a directory the app can run from, installing it if needed.
 
     The packaged directory is used when it is ready or can be written to.
     Otherwise the sources go to a per-version directory in the user's
     home, so an upgrade never runs new code against old dependencies.
+
+    *name* and *fallback* let another OpenTUI app (tvtop-max) use the
+    same installer: its own runtime directory, and the non-OpenTUI
+    program to point at when the install fails.
     """
     if not (source / "src" / "index.ts").is_file():
-        raise LaunchError(f"hyped-pro's app is missing from {source} — reinstall hypernix.")
+        raise LaunchError(f"{name}'s app is missing from {source} — reinstall hypernix.")
     if _is_ready(source):
         _debug(debug, f"running from {source}")
         return source
@@ -225,7 +231,7 @@ def prepare_app(
     if os.access(source, os.W_OK):
         target = source
     else:
-        target = runtime_root(env) / app_version(source)
+        target = runtime_root(env, name=name) / app_version(source)
         # Always refresh the sources: they are small, and a reinstall of
         # the same version may have changed them.
         _copy_app(source, target)
@@ -233,15 +239,15 @@ def prepare_app(
             _debug(debug, f"running from {target}")
             return target
 
-    print(f"hyped-pro: installing OpenTUI into {target} (first run only) ...", file=sys.stderr)
+    print(f"{name}: installing OpenTUI into {target} (first run only) ...", file=sys.stderr)
     # --production: the dev dependencies are the type checker and its
     # types, which running the app does not need.
     result = subprocess.run([bun, "install", "--production"], cwd=str(target), check=False)
     if result.returncode != 0 or not _is_ready(target):
         raise LaunchError(
             f"`bun install` failed in {target} (exit {result.returncode}).\n"
-            "  hyped-pro needs network access once, to fetch @opentui/core.\n"
-            "  `hyped-plus` works without it.",
+            f"  {name} needs network access once, to fetch @opentui/core.\n"
+            f"  `{fallback}` works without it.",
             exit_code=result.returncode or 1,
         )
     return target

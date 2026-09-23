@@ -208,6 +208,9 @@ jobs:
           launcher = importlib.util.module_from_spec(spec)
           spec.loader.exec_module(launcher)
           print("hyped-pro app version:", launcher.sync_app_version(v))
+          # tvtop-max is the same kind of app, with the same two files.
+          print("tvtop-max app version:",
+                launcher.sync_app_version(v, Path("src/hypernix/monitoring/tvtop_max_app")))
           PY
           echo "--- pyproject.toml version line"
           grep '^version' pyproject.toml
@@ -374,6 +377,8 @@ jobs:
             install-t1.sh \
             src/hypernix/interfaces/hyped_pro_app/package.json \
             src/hypernix/interfaces/hyped_pro_app/src/app.ts \
+            src/hypernix/monitoring/tvtop_max_app/package.json \
+            src/hypernix/monitoring/tvtop_max_app/src/app.ts \
             wiki/Release-Timeline.md
 
           if git diff --cached --quiet; then

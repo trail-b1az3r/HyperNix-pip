@@ -15,8 +15,8 @@
 ## What's fixed in this update
 
 The first section below covers what the 0.72.6 line has added so far
-(published as `0.72.5.post14` to `post17`), and the one after it covers
-0.72.5. [`wiki/Changelog.md`](wiki/Changelog.md) is the canonical
+(published as `0.72.5.post14` to `post17`, then `0.72.6.rc1` and `rc2`),
+and the one after it covers 0.72.5. [`wiki/Changelog.md`](wiki/Changelog.md) is the canonical
 per-release history, and [`wiki/Roadmap.md`](wiki/Roadmap.md) says what
 is next.
 
@@ -89,7 +89,26 @@ blocking and allowing a range. There are new letters too:
 
 [Waiter TUI → `serv` flags](wiki/Waiter-TUI.md#serv-flags).
 
+**`tvtop-max`: the machine, and the run on it.** tvtop-pro on OpenTUI,
+with ten panels, each toggled by its number key. Besides CPU, memory,
+GPU and training progress, it shows:
+- which HyperNix modules and libraries the training script uses, with
+  versions and deprecations;
+- the model architecture it builds;
+- its Pressure Cooker and arguments;
+- the log;
+- a warnings panel covering the script and the log.
+
+It finds the busiest Python run, its script and its log by itself, and
+it reads the script without running it. `tvtop-max -s` lays it out for
+a phone. [TvTopMax](wiki/TvTopMax.md).
+
 **Also in 0.72.6:**
+- **HyperLink's default system prompt.** When a reply comes from
+  HyperNix's own runner (hyperchat), the model is told where it runs,
+  that it is read on a phone, and not to invent tool results. Anything
+  the person wrote comes after it and wins.
+  [T1 API](wiki/T1-API.md#the-default-system-prompt-0726rc2).
 - **Siri can name chats and models.** "Load Gemma 4 in HyperLink" and
   "Read Groceries in HyperLink" work, because the app now has App
   Intents entities.
@@ -779,6 +798,7 @@ than a step in the pipeline:
 | `hnx-bundle` (`multiquant`) | Several quantisations in one GGUF. |
 | `hnx-imatrix` | Importance matrices. |
 | `steamroller` | The descending llama.cpp quantiser. |
+| `tvtop-max` | tvtop-pro on OpenTUI, plus the run itself: script modules and libraries, model architecture, Pressure Cooker, logs and warnings. `-s` for a phone. |
 | `tvtoppro` / `cctvtop` / `tvtop-old` / `tvtop-older` | The dashboards, newest to oldest. |
 | `hnx-map` | The steampunk schematic TUI. |
 | `hnx-scriptgen` | The training-script builder. |
@@ -896,6 +916,7 @@ Topic-focused reference guides live in the `wiki/` directory:
 - [`wiki/LowBit.md`](wiki/LowBit.md) — the fixed-codebook tiers and the measurements behind them
 - [`wiki/Dflash2.md`](wiki/Dflash2.md) — speculative-decoding drafts
 - [`wiki/TvTopPro.md`](wiki/TvTopPro.md) — the dashboard, its themes and its modules
+- [`wiki/TvTopMax.md`](wiki/TvTopMax.md) — tvtop-max: the run's script, model, optimizer, logs and warnings
 - [`wiki/T1-API.md`](wiki/T1-API.md) — the T1 API server
 - [`wiki/HyperLink-Sync.md`](wiki/HyperLink-Sync.md) — the phone app and what it talks to
 - [`wiki/Roadmap.md`](wiki/Roadmap.md) — what is planned, and what landed

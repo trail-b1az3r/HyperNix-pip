@@ -81,6 +81,7 @@ reachable if you already knew the filename. Fixed.)
 | [Fridges](Fridges.md) | `old_fridge` (memory housekeeping), `mediocre_fridge` (judge-data synthesis), `new_fridge` (graphing). |
 | [Dashboards](Dashboards.md) | The three live btop++-style terminal training dashboards (`tvtop`/`cctvtop`/`tvtop++`). |
 | [TvTopPro](TvTopPro.md) | `tvtoppro` — tvtop++'s stats under a btop++ presentation, with themes. Not built on cctvtop. |
+| [TvTopMax](TvTopMax.md) | `tvtop-max` — tvtop-pro on OpenTUI, plus the run itself: its script's HyperNix modules and libraries, model architecture, Pressure Cooker, logs and warnings. `-s` for a phone. |
 | [HyperLog](HyperLog.md) | Premium training TUI logger, compatible with tvtop. |
 
 **Audio**

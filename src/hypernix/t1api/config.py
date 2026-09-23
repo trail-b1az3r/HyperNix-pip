@@ -335,6 +335,13 @@ class T1APIConfig:
     hyperchat_max_queued: int = field(
         default_factory=lambda: _int_env("T1_HYPERCHAT_MAX_QUEUED", 256)
     )
+    # The default system prompt HyperLink puts first when this server's
+    # own runner answers (hyperlink/default_prompt.py). On by default:
+    # without it a GGUF meets the person knowing nothing about where it
+    # is. The person's own prompt still comes after it and wins.
+    hyperlink_default_prompt: bool = field(
+        default_factory=lambda: _bool_env("T1_HYPERLINK_DEFAULT_PROMPT", True)
+    )
     hyperlink_public_url: str = field(
         default_factory=lambda: os.environ.get("T1_HYPERLINK_PUBLIC_URL", "")
     )
@@ -567,6 +574,7 @@ class T1APIConfig:
             "hyperchat_multi": self.hyperchat_multi,
             "hyperchat_instances": self.hyperchat_instances,
             "hyperchat_max_queued": self.hyperchat_max_queued,
+            "hyperlink_default_prompt": self.hyperlink_default_prompt,
             "hyperlink_public_url": self.hyperlink_public_url,
             "hyperlink_max_upload_bytes": self.hyperlink_max_upload_bytes,
             **self.tls_settings().public_dict(),

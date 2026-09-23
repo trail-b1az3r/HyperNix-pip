@@ -376,18 +376,23 @@ def system_prompt_for(
     *,
     session_prompt: str = "",
     memory_block: str = "",
+    default: str = "",
 ) -> str:
     """The system prompt a turn actually gets.
 
-    Order is deliberate and it is the order of *scope*: who the person
-    is, then how they want to be answered generally, then what this
-    particular conversation is for, then what is known about them.
+    Order is deliberate and it is the order of *scope*: the server's
+    default (where it applies -- see
+    :mod:`hypernix.hyperlink.default_prompt`), who the person is, then
+    how they want to be answered generally, then what this particular
+    conversation is for, then what is known about them.
 
     The session's own prompt comes after the global one so a
     conversation can override the default rather than fight it — the
     later instruction is the one a model follows when two conflict.
     """
     parts: list[str] = []
+    if default:
+        parts.append(default)
     if preferences.display_name or preferences.bio:
         who = preferences.display_name or "The person you are talking to"
         parts.append(

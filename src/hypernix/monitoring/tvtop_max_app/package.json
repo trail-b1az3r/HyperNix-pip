@@ -1,11 +1,11 @@
 {
-  "name": "hyped-pro",
+  "name": "tvtop-max",
   "version": "0.72.6-rc2",
-  "description": "hyped-pro: the HyperNix terminal client, built on OpenTUI",
+  "description": "tvtop-max: tvtop-pro on OpenTUI, with the run's script, model, optimizer, logs and warnings",
   "private": true,
   "type": "module",
   "bin": {
-    "hyped-pro": "src/index.ts"
+    "tvtop-max": "src/index.ts"
   },
   "scripts": {
     "start": "bun run src/index.ts",
