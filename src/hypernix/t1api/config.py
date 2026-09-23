@@ -303,6 +303,14 @@ class T1APIConfig:
     # surface beyond the pairing redemption endpoint, which needs a code
     # an operator minted by hand.
     hyperlink_enabled: bool = field(default_factory=lambda: _bool_env("T1_HYPERLINK_ENABLED", True))
+    #: A shell on this machine from a paired phone. Off unless the person
+    #: running the server turns it on: a phone is never an admin, and this
+    #: is the one route that would make it more than one. See
+    #: hypernix.hyperlink.shell.
+    hyperlink_shell: bool = field(default_factory=lambda: _bool_env("T1_HYPERLINK_SHELL", False))
+    hyperlink_shell_timeout: float = field(
+        default_factory=lambda: _float_env("T1_HYPERLINK_SHELL_TIMEOUT", 60.0)
+    )
     # MCP: this server described so an assistant can read it for itself.
     # Off by default. It is a second, differently-shaped way in to the
     # same capabilities, and a surface nobody asked for is a surface

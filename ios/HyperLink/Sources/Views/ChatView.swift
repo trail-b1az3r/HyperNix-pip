@@ -15,6 +15,8 @@ struct ChatView: View {
     @State private var draft = ""
     @State private var pendingAttachments: [Attachment] = []
     @State private var photoItems: [PhotosPickerItem] = []
+    /// What compressing did, shown once.
+    @State private var compressNote: String?
     @State private var showingFileImporter = false
     @State private var showingCodeImporter = false
     @State private var showingPhotoPicker = false
@@ -61,14 +63,33 @@ struct ChatView: View {
                         Label("Rename", systemImage: "pencil")
                     }
                     Button {
+                        Task { await state.retitle(sessionID) }
+                    } label: {
+                        Label("Rename with AI", systemImage: "sparkles")
+                    }
+                    Button {
                         showingModelPicker = true
                     } label: {
                         Label("Model", systemImage: "cpu")
                     }
+                    Button {
+                        Task { await compress() }
+                    } label: {
+                        Label("Compress conversation", systemImage: "rectangle.compress.vertical")
+                    }
+                    .disabled(state.isSending)
                 } label: {
                     Label("More", systemImage: "ellipsis.circle")
                 }
             }
+        }
+        .alert(
+            "Conversation compressed",
+            isPresented: Binding(get: { compressNote != nil }, set: { if !$0 { compressNote = nil } })
+        ) {
+            Button("OK", role: .cancel) { compressNote = nil }
+        } message: {
+            Text(compressNote ?? "")
         }
         .sheet(isPresented: $showingModelPicker) {
             ModelPickerSheet(sessionID: sessionID, currentModel: session?.modelID ?? "")
@@ -172,43 +193,48 @@ struct ChatView: View {
                     // the server but is not something to read as a
                     // message, so it is filtered out here rather than
                     // omitted server-side (where the model needs it).
-                    ForEach(state.messages.filter { !$0.isSystem }) { message in
-                        MessageBubble(message: message)
-                            .swipeToReveal(
-                                id: message.messageID,
-                                actions: swipeActions(for: message),
-                                openRowID: $openSwipeID
-                            )
-                            .id(message.messageID)
-                            .messageArrival()
-                            // Long press rather than a permanent edit
-                            // button: a control on every bubble is a
-                            // control in the way of reading, which is
-                            // what this screen is mostly for.
-                            .contextMenu {
-                                Button {
-                                    UIPasteboard.general.string = message.content
-                                } label: {
-                                    Label("Copy", systemImage: "doc.on.doc")
-                                }
-                                if message.isUser {
+                    ForEach(Array(shown.enumerated()), id: \.element.id) { index, message in
+                        if message.isCompactionSummary {
+                            CompactionMarker(message: message)
+                                .id(message.messageID)
+                        } else {
+                            MessageBubble(message: message, showsTail: tailAfter(index))
+                                .swipeToReveal(
+                                    id: message.messageID,
+                                    actions: swipeActions(for: message),
+                                    openRowID: $openSwipeID
+                                )
+                                .id(message.messageID)
+                                .messageArrival()
+                                // Long press rather than a permanent edit
+                                // button: a control on every bubble is a
+                                // control in the way of reading, which is
+                                // what this screen is mostly for.
+                                .contextMenu {
                                     Button {
-                                        editing = message
+                                        UIPasteboard.general.string = message.content
                                     } label: {
-                                        Label("Edit", systemImage: "pencil")
+                                        Label("Copy", systemImage: "doc.on.doc")
                                     }
-                                    Button {
-                                        requestResend(message)
+                                    if message.isUser {
+                                        Button {
+                                            editing = message
+                                        } label: {
+                                            Label("Edit", systemImage: "pencil")
+                                        }
+                                        Button {
+                                            requestResend(message)
+                                        } label: {
+                                            Label("Resend", systemImage: "arrow.clockwise")
+                                        }
+                                    }
+                                    Button(role: .destructive) {
+                                        deleting = message
                                     } label: {
-                                        Label("Resend", systemImage: "arrow.clockwise")
+                                        Label("Delete", systemImage: "trash")
                                     }
                                 }
-                                Button(role: .destructive) {
-                                    deleting = message
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
-                                }
-                            }
+                        }
                     }
                     if !state.streamingText.isEmpty {
                         MessageBubble(
@@ -292,15 +318,28 @@ struct ChatView: View {
                 // camera, were both reachable by the server and by
                 // nothing on screen.
                 Menu {
-                    Button {
-                        showingPhotoPicker = true
-                    } label: {
-                        Label("Photo or video", systemImage: "photo.on.rectangle")
-                    }
-                    Button {
-                        showingCamera = true
-                    } label: {
-                        Label("Take a photo", systemImage: "camera")
+                    // Only for a model that can look at them. A photo sent
+                    // to a text model either fails on the message format
+                    // or, worse, gets an answer about a picture it never
+                    // saw. Unknown is offered, with a warning, because
+                    // hiding it would be guessing too.
+                    if imagesSupported != false {
+                        Button {
+                            showingPhotoPicker = true
+                        } label: {
+                            Label("Photo or video", systemImage: "photo.on.rectangle")
+                        }
+                        Button {
+                            showingCamera = true
+                        } label: {
+                            Label("Take a photo", systemImage: "camera")
+                        }
+                        if imagesSupported == nil {
+                            Text("This model may not see images")
+                        }
+                    } else {
+                        Label("This model can't see images", systemImage: "eye.slash")
+                            .foregroundStyle(.secondary)
                     }
                     Divider()
                     Button {
@@ -411,6 +450,39 @@ struct ChatView: View {
     }
 
     // MARK: - Attachments
+
+    /// The thread as it is drawn: system messages are the model's, not the
+    /// reader's — except a compaction summary, which is shown as a marker.
+    private var shown: [ChatMessage] {
+        state.messages.filter { !$0.isSystem || $0.isCompactionSummary }
+    }
+
+    /// Whether the bubble at `index` ends a run from its speaker. The
+    /// streaming bubble, when there is one, continues the assistant's.
+    private func tailAfter(_ index: Int) -> Bool {
+        let list = shown
+        let message = list[index]
+        guard index + 1 < list.count else {
+            return !(message.isAssistant && (!state.streamingText.isEmpty || state.isSending))
+        }
+        let next = list[index + 1]
+        return next.isCompactionSummary || next.role != message.role
+    }
+
+    private var imagesSupported: Bool? {
+        state.modelSupportsImages(session?.modelID ?? "")
+    }
+
+    private func compress() async {
+        guard let result = await state.compress(sessionID) else { return }
+        if result.applied {
+            let how = result.summarisedBy == "model" ? "the model's summary" : "quotes from them"
+            compressNote = "\(result.messagesCompacted) older messages are now sent as \(how). "
+                + "They are all still here to read."
+        } else {
+            compressNote = "Nothing to compress yet — the conversation is short enough as it is."
+        }
+    }
 
     /// Most photos one pick can attach.
     ///

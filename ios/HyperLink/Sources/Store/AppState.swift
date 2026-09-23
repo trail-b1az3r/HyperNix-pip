@@ -725,6 +725,125 @@ final class AppState {
         }
     }
 
+    // MARK: - Organising memory
+
+    private(set) var memoryCategories: [MemoryCategory] = []
+
+    func refreshMemoryCategories() async {
+        memoryCategories = (try? await client.memoryCategories()) ?? memoryCategories
+    }
+
+    /// File loose and model-written memories under topics. With
+    /// `dryRun` it only says what would move.
+    func organiseMemories(dryRun: Bool = false) async -> MemoryOrganiseResult? {
+        do {
+            let result = try await client.organiseMemories(dryRun: dryRun)
+            if !dryRun {
+                await refreshMemories()
+                await refreshMemoryCategories()
+            }
+            return result
+        } catch {
+            handle(error)
+            return nil
+        }
+    }
+
+    @discardableResult
+    func renameMemoryCategory(from old: String, to new: String) async -> Bool {
+        let trimmed = new.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, trimmed != old else { return false }
+        do {
+            try await client.renameMemoryCategory(from: old, to: trimmed)
+            await refreshMemories()
+            await refreshMemoryCategories()
+            return true
+        } catch {
+            handle(error)
+            return false
+        }
+    }
+
+    @discardableResult
+    func moveMemory(_ memoryID: String, to category: String) async -> Bool {
+        do {
+            try await client.moveMemory(memoryID, to: category)
+            await refreshMemories()
+            await refreshMemoryCategories()
+            return true
+        } catch {
+            handle(error)
+            return false
+        }
+    }
+
+    // MARK: - Titles and compression
+
+    /// Ask the model to name this chat again.
+    @discardableResult
+    func retitle(_ sessionID: String) async -> Bool {
+        do {
+            _ = try await client.retitle(sessionID)
+            await refreshSessionSummary()
+            return true
+        } catch {
+            handle(error)
+            return false
+        }
+    }
+
+    /// Summarise the older part of a conversation now. Every message
+    /// stays in the transcript; the model is sent the summary instead.
+    func compress(_ sessionID: String) async -> CompactResult? {
+        do {
+            let result = try await client.compress(sessionID)
+            messages = (try? await client.messages(in: sessionID)) ?? messages
+            return result
+        } catch {
+            handle(error)
+            return nil
+        }
+    }
+
+    // MARK: - Images
+
+    /// Whether the model a chat would use can see a photo: true, false,
+    /// or nil when nothing says either way. The session's model, or
+    /// whatever is loaded when the session has not picked one.
+    func modelSupportsImages(_ modelID: String) -> Bool? {
+        let wanted = modelID.isEmpty
+            ? catalogue.models.first(where: { $0.loaded })?.modelID ?? ""
+            : modelID
+        guard !wanted.isEmpty else { return nil }
+        return catalogue.models.first(where: { $0.modelID == wanted })?.supportsImages
+    }
+
+    // MARK: - Shell
+
+    /// Nil until asked, and on a server too old to have the route.
+    private(set) var shellStatus: ShellStatus?
+
+    func refreshShellStatus() async {
+        shellStatus = try? await client.shellStatus()
+    }
+
+    func runShell(_ command: String, cwd: String? = nil) async -> ShellResult? {
+        let trimmed = command.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        do {
+            return try await client.runShell(trimmed, cwd: cwd)
+        } catch {
+            handle(error)
+            return nil
+        }
+    }
+
+    // MARK: - Private chats
+
+    /// Chats hidden behind Face ID. Kept on this phone only — hiding is
+    /// about who can pick the phone up, not about the server.
+    let privateChats = PrivateChats()
+
     // MARK: - The runner
 
     /// Ask what the server is running.
@@ -969,6 +1088,15 @@ final class AppState {
                     if settings.preferences.autoMemory {
                         await refreshMemories()
                     }
+                case .title:
+                    // The server named a new chat after its first reply.
+                    // The list carries titles, so refresh it rather than
+                    // patching one entry and drifting from the server.
+                    await refreshSessionSummary()
+                case .compacted:
+                    // The summary is a message in the thread; the reload
+                    // at `done` has already brought it in.
+                    break
                 case let .failed(_, message):
                     streamingGenerationID = nil
                     lastError = message

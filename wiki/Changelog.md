@@ -137,6 +137,37 @@ event line and waits for the answer, so a question appears in a box above
 the prompt and no other key is taken while it is open. Tool calls show as
 they happen. hyped-plus never asks for these, so there a gated tool is
 refused unless `HYPERNIX_TOOL_POLICY=allow`, because nobody can answer.
+๋࣭⭑ HyperLink names chats with the model. After the first reply the model
+is asked for a two-to-six-word title, the answer is cleaned (models
+write `Title: "…"` as often as the title), and anything unusable falls
+back to the first line. The stream sends it after `done`, so the reply
+is never held up. "Rename with AI" asks again; a setting turns it off.
+๋࣭⭑ HyperLink compresses long conversations instead of forgetting their
+start. When a thread reaches 85% of the context budget its oldest part
+is summarised once, before it would have been dropped. Every message
+stays in the transcript, where a marker shows the summary the model is
+now sent, and "Compress conversation" does it on request.
+๋࣭⭑ Private chats. A chat hidden with Face ID leaves the list and opens
+behind Face ID, Touch ID or the passcode, and locks again whenever the
+app leaves the foreground. Hiding is per phone and per server; the chat
+itself stays on the PC.
+๋࣭⭑ Memories are organised. The model's memory tool filed every fact under
+its own key, so the screen grew one category per fact. Facts now go
+under topics (About you, Preferences, Work, Projects, Tech, Health,
+Places, Schedule) with the key kept. "Organise" refiles older ones and
+leaves a category a person chose where it is. Categories can be renamed
+or merged, memories moved, and the screen searched.
+𖥔 The photo options follow the model. Each model in `/hyperlink/models`
+says whether it can see images, from LM Studio's own `vlm` flag, a GGUF's
+`mmproj` projector, or the family's name. The photo options are hidden
+for a model that cannot, and offered with a warning when nothing says.
+𖥔 A shell on the server from the phone, off unless the server's operator
+sets `T1_HYPERLINK_SHELL=1`. It runs one command at a time with a
+timeout that kills the whole process group, caps the output, and writes
+each command to the audit log before it runs. The model is never given
+it.
+𖥔 Chat bubbles have tails, as in Messages, on the last bubble of each run
+from one speaker.
 
 ### Changed
 
@@ -166,6 +197,14 @@ whose tiers warn on their own.
 
 ### Fixed
 
+🐛 Studio's stub engine failed to build on ubuntu-22.04. The
+`[[maybe_unused]]` that quieted clang about an unused member is not
+accepted on a data member by GCC 11, and under `-Werror` that is an
+error; the stub now reads the member instead, which satisfies both.
+🛡️ `/web/v1/summarise` reports a failed fetch in its own words (the HTTP
+status, "not public", "not text", "could not be reached") and never the
+network exception's text, which can carry paths and internals. The cause
+is in the server log.
 𖢥 **No hyped-pro tool refused to write under `.git`.** `create_file` and
 `edit_file` checked that a path stayed inside the workspace, and `.git`
 is inside it: a model could write `.git/hooks/pre-commit` and have it run
@@ -294,6 +333,11 @@ bridge subprocess. Plus 29 bun tests for the git and file views. Each
 guard was checked by removing it: the `.git` refusal, the gate, the ref
 check, the `--` before paths, the stale-write check and cancellation
 during a question.
+🧪 HyperLink titles, compression, shell, memory and images: 68 tests
+through the real API with a scripted model, among them an upgraded
+database missing the new preference columns and a shell pipeline killed
+on timeout, and 21 structural checks on the Swift, which follow each new
+screen back to a route the server really has.
 
 ### Known Issues
 
@@ -304,6 +348,8 @@ are next changed rather than in one sweep.
 ❗ `hyped-pro` needs Bun 1.3 or later, and network access once to fetch
 `@opentui/core`. Without Bun it says how to install it and exits;
 `hyped-plus` needs only Node.js.
+❗ The HyperLink Swift for these features has been checked by those
+structural tests and by the CI's iOS build, not on a device.
 
 ⸻
 

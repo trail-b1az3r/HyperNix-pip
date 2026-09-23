@@ -755,6 +755,69 @@ actor HyperLinkClient {
         return true
     }
 
+    /// Each category and how many memories it holds.
+    func memoryCategories() async throws -> [MemoryCategory] {
+        try await get("/memory/categories", as: MemoryCategoryList.self, timeout: 20).categories
+    }
+
+    /// Move a whole category into another (merging when it exists).
+    @discardableResult
+    func renameMemoryCategory(from old: String, to new: String) async throws -> Int {
+        struct Body: Encodable { let from: String; let to: String }
+        struct Reply: Decodable { let moved: Int }
+        return try await post("/memory/categories/rename", body: Body(from: old, to: new),
+                              as: Reply.self, timeout: 20).moved
+    }
+
+    /// File memories that are not under a topic under one. Categories a
+    /// person chose are left where they are.
+    func organiseMemories(dryRun: Bool = false) async throws -> MemoryOrganiseResult {
+        struct Body: Encodable { let dry_run: Bool }
+        return try await post("/memory/organise", body: Body(dry_run: dryRun),
+                              as: MemoryOrganiseResult.self, timeout: 30)
+    }
+
+    /// Move one memory to another category.
+    func moveMemory(_ memoryID: String, to category: String) async throws {
+        struct Body: Encodable { let memory_id: String; let category: String }
+        _ = try await send(
+            path: "/memory/edit", method: "POST",
+            body: try encoder.encode(Body(memory_id: memoryID, category: category)),
+            timeout: 20
+        )
+    }
+
+    // MARK: - Titles and compression
+
+    /// Ask the model to name a chat again from its first exchange.
+    func retitle(_ sessionID: String) async throws -> ChatSession {
+        struct Empty: Encodable {}
+        return try await post("/hyperlink/sessions/\(sessionID)/title", body: Empty(),
+                              as: SessionResponse.self, timeout: 120).session
+    }
+
+    /// Summarise the older part of a conversation now, rather than when
+    /// it next stops fitting. The transcript keeps every message.
+    func compress(_ sessionID: String) async throws -> CompactResult {
+        struct Body: Encodable { let session_id: String }
+        return try await post("/chat/compact/dynamic", body: Body(session_id: sessionID),
+                              as: CompactResult.self, timeout: 180)
+    }
+
+    // MARK: - Shell
+
+    func shellStatus() async throws -> ShellStatus {
+        try await get("/hyperlink/shell", as: ShellStatus.self, timeout: 15)
+    }
+
+    func runShell(_ command: String, cwd: String? = nil) async throws -> ShellResult {
+        struct Body: Encodable { let command: String; let cwd: String? }
+        // The server's own timeout is what bounds the command; this one
+        // only has to outlast it.
+        return try await post("/hyperlink/shell", body: Body(command: command, cwd: cwd),
+                              as: ShellResult.self, timeout: 600)
+    }
+
     func forgetMemory(_ memoryID: String) async throws {
         let escaped = memoryID.addingPercentEncoding(
             withAllowedCharacters: .urlQueryAllowed

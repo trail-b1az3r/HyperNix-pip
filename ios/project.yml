@@ -118,6 +118,8 @@ targets:
           Attach photos from your library to a conversation so the model can look at them.
         NSCameraUsageDescription: >-
           Take a photo to send straight into a conversation.
+        NSFaceIDUsageDescription: >-
+          Face ID opens the chats you have hidden as private on this iPhone.
         NSBonjourServices:
           - _hypernix._tcp
         # Siri dictation, in CarPlay and in the app's hands-free mode.

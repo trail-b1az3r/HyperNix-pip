@@ -38,6 +38,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import threading
 import time
 import uuid
@@ -413,6 +414,113 @@ def _from_row(row: Any) -> Memory:
     )
 
 
+# ---------------------------------------------------------------------------
+# Organising (0.72.5.post16)
+#
+# The model's memory tool used to file every fact under its own key, so
+# the Memories screen grew one "category" per fact — "favourite editor",
+# "home city", "dog's name" — which is a list, not an organisation. Facts
+# are filed under a small set of topics instead, the key kept alongside.
+# ---------------------------------------------------------------------------
+
+#: Topic -> words that suggest it. First topic with the most hits wins;
+#: order breaks ties, so the more personal topics come first.
+TOPICS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("About you", ("name", "age", "birthday", "born", "pronoun", "live", "lives", "from",
+                   "family", "married", "partner", "wife", "husband", "kid", "child",
+                   "pet", "dog", "cat", "language", "nationality")),
+    ("Preferences", ("prefer", "preference", "favourite", "favorite", "like", "likes",
+                     "love", "hate", "dislike", "style", "tone", "format", "always",
+                     "never", "theme", "diet", "vegetarian", "vegan")),
+    ("Work", ("work", "job", "role", "company", "employer", "team", "manager",
+              "colleague", "office", "career", "title", "client", "meeting")),
+    ("Projects", ("project", "repo", "repository", "building", "app", "codebase",
+                  "startup", "side project", "deadline", "launch", "roadmap")),
+    ("Tech", ("editor", "ide", "language", "python", "rust", "swift", "javascript",
+              "typescript", "linux", "mac", "windows", "gpu", "cuda", "server", "os",
+              "shell", "vim", "helix", "emacs", "docker", "model", "framework")),
+    ("Health", ("health", "allergy", "allergic", "medication", "doctor", "exercise",
+                "sleep", "condition")),
+    ("Places", ("city", "country", "home", "address", "travel", "trip", "timezone",
+                "time zone", "moved")),
+    ("Schedule", ("schedule", "every", "weekday", "weekend", "morning", "evening",
+                  "routine", "remind")),
+)
+
+#: Where a fact with no topic words goes.
+DEFAULT_TOPIC = "General"
+
+
+def suggest_category(text: str) -> str:
+    """The topic a fact belongs under, from the words in it."""
+    haystack = " " + " ".join(re.findall(r"[a-z]+", (text or "").lower())) + " "
+    best, best_hits = DEFAULT_TOPIC, 0
+    for topic, cues in TOPICS:
+        hits = sum(1 for cue in cues if f" {cue} " in haystack)
+        if hits > best_hits:
+            best, best_hits = topic, hits
+    return best
+
+
+def _is_topic(category: str) -> bool:
+    return category in {t for t, _ in TOPICS} or category == DEFAULT_TOPIC
+
+
+def categories(store: MemoryStore, *, owner: str) -> list[dict[str, Any]]:
+    """Each category with how many memories it holds, largest first."""
+    counts: dict[str, dict[str, Any]] = {}
+    for memory in store.list(owner=owner, limit=100_000):
+        name = memory.category or DEFAULT_TOPIC
+        entry = counts.setdefault(name, {"name": name, "count": 0, "pinned": 0, "auto": 0})
+        entry["count"] += 1
+        entry["pinned"] += int(memory.pinned)
+        entry["auto"] += int(memory.source == "auto")
+    return sorted(counts.values(), key=lambda c: (-c["count"], c["name"].lower()))
+
+
+def rename_category(store: MemoryStore, *, owner: str, old: str, new: str) -> int:
+    """Move every memory in *old* to *new*. Merges when *new* exists."""
+    new = (new or "").strip()
+    if not new:
+        raise T1APIError(T1ErrorCode.VALIDATION_ERROR, "A category needs a name.")
+    if len(new) > 60:
+        raise T1APIError(T1ErrorCode.VALIDATION_ERROR, "A category name is at most 60 characters.")
+    moved = 0
+    for memory in store.list(owner=owner, limit=100_000):
+        if (memory.category or DEFAULT_TOPIC) == old and memory.category != new:
+            store.edit(memory.memory_id, owner=owner, category=new)
+            moved += 1
+    return moved
+
+
+def organise(store: MemoryStore, *, owner: str, dry_run: bool = False) -> list[dict[str, str]]:
+    """File memories that are not under a topic under one.
+
+    What it touches: a memory with no category, and a model-written one
+    whose category is really a per-fact key (the old filing). A category
+    a person chose is theirs and is left exactly where it is.
+    """
+    changes = []
+    for memory in store.list(owner=owner, limit=100_000):
+        if _is_topic(memory.category):
+            continue
+        if memory.category and memory.source != "auto":
+            continue
+        key = memory.category or str(memory.metadata.get("key", ""))
+        topic = suggest_category(f"{key} {memory.content}")
+        changes.append({"memory_id": memory.memory_id, "from": memory.category, "to": topic})
+        if not dry_run:
+            metadata = dict(memory.metadata)
+            if key and "key" not in metadata:
+                metadata["key"] = key
+            content = memory.content
+            if key and memory.source == "auto" and not content.lower().startswith(key.lower()):
+                content = f"{key}: {content}"
+            store.edit(memory.memory_id, owner=owner, category=topic, content=content,
+                       metadata=metadata)
+    return changes
+
+
 class ToolMemoryBackend:
     """The model's memory tools, writing into a person's real memories.
 
@@ -423,8 +531,9 @@ class ToolMemoryBackend:
     in the same store the screen lists, for the same owner, marked
     `auto` so "where did it get that idea" still has an answer.
 
-    The key becomes the category and the value the content, which is
-    what the screen shows: `favourite editor` / `Helix`.
+    The fact is filed under a topic (see :func:`suggest_category`) with
+    its key kept in the memory's metadata, and the content reads as the
+    fact: "favourite editor: Helix", under Tech.
     """
 
     def __init__(self, store: MemoryStore, owner: str, session_id: str = "") -> None:
@@ -433,26 +542,42 @@ class ToolMemoryBackend:
         self.session_id = session_id
 
     def _mine(self, key: str) -> list[Memory]:
-        return [m for m in self.store.list(owner=self.owner, category=key, limit=1000)
-                if m.source == "auto"]
+        key = key.strip()
+        return [
+            m for m in self.store.list(owner=self.owner, limit=1000)
+            if m.source == "auto"
+            # The key in metadata, or — for a memory filed before topics —
+            # the key as its category.
+            and (m.metadata.get("key") == key or m.category == key)
+        ]
 
     def load(self) -> dict[str, Any]:
         out: dict[str, Any] = {}
         for memory in self.store.list(owner=self.owner, limit=1000):
-            key = memory.category or memory.memory_id
-            out[key] = {"value": memory.content, "updated_at": memory.updated_at,
-                        "source": memory.source}
+            key = str(memory.metadata.get("key") or "") or memory.category or memory.memory_id
+            value = memory.content
+            if value.lower().startswith(f"{key.lower()}: "):
+                value = value[len(key) + 2:]
+            out[key] = {"value": value, "updated_at": memory.updated_at,
+                        "source": memory.source, "category": memory.category}
         return out
 
     def set(self, key: str, value: Any) -> Memory:
-        content = value if isinstance(value, str) else json.dumps(value, default=str)
+        key = key.strip()
+        value_text = value if isinstance(value, str) else json.dumps(value, default=str)
+        content = f"{key}: {value_text}" if key else value_text
+        topic = suggest_category(f"{key} {value_text}")
         existing = self._mine(key)
         if existing:
             # Updated in place rather than added: a model that learns you
             # moved from Vim to Helix should replace the fact, not keep both.
-            return self.store.edit(existing[0].memory_id, owner=self.owner, content=content)
-        return self.store.create(owner=self.owner, content=content, category=key,
-                                 source="auto", session_id=self.session_id)
+            current = existing[0]
+            category = current.category if _is_topic(current.category) or current.source != "auto" else topic
+            return self.store.edit(current.memory_id, owner=self.owner, content=content,
+                                   category=category, metadata={**current.metadata, "key": key})
+        return self.store.create(owner=self.owner, content=content, category=topic,
+                                 source="auto", session_id=self.session_id,
+                                 metadata={"key": key})
 
     def forget(self, key: str) -> bool:
         # Only what the model wrote. A memory the person typed themselves

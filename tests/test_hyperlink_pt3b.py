@@ -177,8 +177,11 @@ class TestModelMemories:
         assert reply.status_code == 200, reply.text
 
         listed = client.get("/memory/list").json()["memories"]
-        found = [m for m in listed if m["category"] == "favourite editor"]
-        assert found and found[0]["content"] == "Helix"
+        # Filed under a topic with its key kept, not under a category of
+        # its own (0.72.5.post16).
+        found = [m for m in listed if m["metadata"].get("key") == "favourite editor"]
+        assert found and found[0]["content"] == "favourite editor: Helix"
+        assert found[0]["category"] != "favourite editor"
         # Marked as the model's, so "why does it think that" has an answer.
         assert found[0]["source"] == "auto"
 
@@ -193,8 +196,8 @@ class TestModelMemories:
         client.post(f"/hyperlink/sessions/{session}/chat", json={"content": "a"})
         client.post(f"/hyperlink/sessions/{session}/chat", json={"content": "b"})
         editors = [m for m in client.get("/memory/list").json()["memories"]
-                   if m["category"] == "editor"]
-        assert [m["content"] for m in editors] == ["Helix"]
+                   if m["metadata"].get("key") == "editor"]
+        assert [m["content"] for m in editors] == ["editor: Helix"]
 
     def test_the_person_switching_auto_memory_off_is_respected(self, app_client, monkeypatch):
         """Whether an assistant keeps notes about you is yours to decide."""

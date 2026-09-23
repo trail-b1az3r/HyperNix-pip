@@ -18,6 +18,7 @@ unchanged and only the model sees the shorter version.
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from fastapi import APIRouter, Depends
 
@@ -70,45 +71,41 @@ def _summarise(config: T1APIConfig, messages: list) -> tuple[str, str]:
     return summarise_extractively(messages), "extractive"
 
 
-def _compact(
-    scope: str,
-    payload: CompactRequest,
-    principal: HyperLinkPrincipal,
+def compact_session(
     store: ChatSessionStore,
     config: T1APIConfig,
-    request_id: str,
-) -> CompactResponse:
-    store.get(payload.session_id, owner=principal.owner)
-    history = store.messages(payload.session_id, owner=principal.owner)
-    proposed = plan(history, scope, keep_recent=payload.keep_recent)
+    *,
+    session_id: str,
+    owner: str,
+    scope: str = "dynamic",
+    keep_recent: int | None = None,
+    dry_run: bool = False,
+) -> dict[str, Any]:
+    """Compact one session. What both the endpoints and auto-compaction use.
 
-    if payload.dry_run or not proposed.viable:
-        return CompactResponse(
-            session_id=payload.session_id,
-            scope=proposed.scope,
-            plan=proposed.to_dict(),
-            applied=False,
-            request_id=request_id,
-        )
+    Returns what happened as a dict: ``applied`` is False when there was
+    nothing worth compacting, or ``dry_run`` was asked for.
+    """
+    store.get(session_id, owner=owner)
+    history = store.messages(session_id, owner=owner)
+    kwargs = {} if keep_recent is None else {"keep_recent": keep_recent}
+    proposed = plan(history, scope, **kwargs)
+    result: dict[str, Any] = {"scope": proposed.scope, "plan": proposed.to_dict(), "applied": False}
+    if dry_run or not proposed.viable:
+        return result
 
     text, how = _summarise(config, proposed.targets)
     if not text:
         # Nothing to write down. Not an error: an empty summary would
         # replace real messages with nothing, which is deletion wearing
         # compaction's name.
-        return CompactResponse(
-            session_id=payload.session_id,
-            scope=proposed.scope,
-            plan=proposed.to_dict(),
-            applied=False,
-            request_id=request_id,
-        )
+        return result
 
     summary = store.append(
-        payload.session_id,
+        session_id,
         role="system",
         content=text,
-        owner=principal.owner,
+        owner=owner,
         metadata={
             SUMMARY_MARKER: True,
             "scope": proposed.scope,
@@ -122,21 +119,34 @@ def _compact(
     # itself if the write failed in between.
     marked = store.mark_compacted(
         [m.message_id for m in proposed.targets],
-        session_id=payload.session_id,
-        owner=principal.owner,
+        session_id=session_id,
+        owner=owner,
         summary_id=summary.message_id,
     )
-    return CompactResponse(
-        session_id=payload.session_id,
-        scope=proposed.scope,
-        plan=proposed.to_dict(),
+    result.update(
         applied=True,
         summary_message_id=summary.message_id,
         summary=text,
         summarised_by=how,
         messages_compacted=marked,
-        request_id=request_id,
     )
+    return result
+
+
+def _compact(
+    scope: str,
+    payload: CompactRequest,
+    principal: HyperLinkPrincipal,
+    store: ChatSessionStore,
+    config: T1APIConfig,
+    request_id: str,
+) -> CompactResponse:
+    result = compact_session(
+        store, config,
+        session_id=payload.session_id, owner=principal.owner,
+        scope=scope, keep_recent=payload.keep_recent, dry_run=payload.dry_run,
+    )
+    return CompactResponse(session_id=payload.session_id, request_id=request_id, **result)
 
 
 @router.post("/prompts", response_model=CompactResponse)

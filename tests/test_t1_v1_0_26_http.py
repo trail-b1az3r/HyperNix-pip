@@ -664,7 +664,9 @@ class TestChatTurn:
         captured: dict[str, object] = {}
 
         def _chat(self, messages, **kwargs):  # noqa: ANN001, ARG001
-            captured["messages"] = messages
+            # The first call is the reply; a new chat is then titled by a
+            # second, shorter one (0.72.5.post16).
+            captured.setdefault("messages", messages)
             return {"model": "hot", "choices": [{"message": {"content": "an image"}}]}
 
         with mock.patch("hypernix.bridge.lmstudio.LMStudioBridge.chat", _chat):
@@ -694,7 +696,9 @@ class TestChatTurn:
         captured: dict[str, object] = {}
 
         def _chat(self, messages, **kwargs):  # noqa: ANN001, ARG001
-            captured["messages"] = messages
+            # The first call is the reply; a new chat is then titled by a
+            # second, shorter one (0.72.5.post16).
+            captured.setdefault("messages", messages)
             return {"model": "hot", "choices": [{"message": {"content": "it prints 1"}}]}
 
         with mock.patch("hypernix.bridge.lmstudio.LMStudioBridge.chat", _chat):

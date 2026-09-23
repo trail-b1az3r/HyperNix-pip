@@ -45,8 +45,8 @@ graph TD
     t1api["t1api"]
     system["system"]
     quant["quant"]
-    interfaces["interfaces"]
     hyperlink["hyperlink"]
+    interfaces["interfaces"]
     data["data"]
     models["models"]
     training["training"]
@@ -102,6 +102,7 @@ graph TD
     system --> models
     system --> quant
     t1api --> data
+    t1api --> hyperlink
     t1api --> interfaces
     t1api --> security
     timing --> system

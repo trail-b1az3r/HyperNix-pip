@@ -18,9 +18,35 @@ struct MemoryView: View {
     @State private var adding = false
     @State private var draft = ""
     @State private var editing: MemoryItem?
+    @State private var search = ""
+    /// The category being renamed, which also presents the prompt.
+    @State private var renaming: String?
+    @State private var renameDraft = ""
+    @State private var organiseNote: String?
+    @State private var organising = false
 
-    private var pinned: [MemoryItem] { state.memories.filter(\.pinned) }
-    private var loose: [MemoryItem] { state.memories.filter { !$0.pinned } }
+    private var filtered: [MemoryItem] {
+        let needle = search.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !needle.isEmpty else { return state.memories }
+        return state.memories.filter {
+            $0.content.lowercased().contains(needle) || $0.category.lowercased().contains(needle)
+        }
+    }
+    private var pinned: [MemoryItem] { filtered.filter(\.pinned) }
+    /// Everything not pinned, by category: a list of forty facts is a
+    /// pile, forty facts under Work, Tech and About you is an overview.
+    private var grouped: [(name: String, items: [MemoryItem])] {
+        let loose = filtered.filter { !$0.pinned }
+        let byName = Dictionary(grouping: loose) { $0.category.isEmpty ? "General" : $0.category }
+        return byName
+            .map { (name: $0.key, items: $0.value) }
+            .sorted { $0.items.count != $1.items.count ? $0.items.count > $1.items.count : $0.name < $1.name }
+    }
+    private var categoryNames: [String] {
+        let known = ["About you", "Preferences", "Work", "Projects", "Tech", "Health", "Places", "Schedule", "General"]
+        let used = Set(state.memories.map { $0.category.isEmpty ? "General" : $0.category })
+        return Array(used.union(known)).sorted()
+    }
 
     var body: some View {
         List {
@@ -48,9 +74,23 @@ struct MemoryView: View {
                 }
             }
 
-            if !loose.isEmpty {
-                Section(pinned.isEmpty ? "Remembered" : "Everything else") {
-                    ForEach(loose) { memory in row(memory) }
+            ForEach(grouped, id: \.name) { group in
+                Section {
+                    ForEach(group.items) { memory in row(memory) }
+                } header: {
+                    HStack {
+                        Text(group.name)
+                        Spacer()
+                        Text("\(group.items.count)")
+                    }
+                    .contextMenu {
+                        Button {
+                            renameDraft = group.name
+                            renaming = group.name
+                        } label: {
+                            Label("Rename category", systemImage: "pencil")
+                        }
+                    }
                 }
             }
 
@@ -66,6 +106,41 @@ struct MemoryView: View {
             }
         }
         .navigationTitle("Memory")
+        .searchable(text: $search, prompt: "Search memories")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Menu {
+                    Button {
+                        Task { await organise() }
+                    } label: {
+                        Label("Organise into topics", systemImage: "folder.badge.gearshape")
+                    }
+                    .disabled(organising)
+                } label: {
+                    Label("Organise", systemImage: "square.grid.3x1.folder.badge.plus")
+                }
+            }
+        }
+        .alert("Rename category", isPresented: Binding(
+            get: { renaming != nil }, set: { if !$0 { renaming = nil } }
+        )) {
+            TextField("Name", text: $renameDraft)
+            Button("Rename") {
+                guard let old = renaming else { return }
+                renaming = nil
+                Task { await state.renameMemoryCategory(from: old, to: renameDraft) }
+            }
+            Button("Cancel", role: .cancel) { renaming = nil }
+        } message: {
+            Text("Renaming to a category that exists merges the two.")
+        }
+        .alert("Memories organised", isPresented: Binding(
+            get: { organiseNote != nil }, set: { if !$0 { organiseNote = nil } }
+        )) {
+            Button("OK", role: .cancel) { organiseNote = nil }
+        } message: {
+            Text(organiseNote ?? "")
+        }
         .refreshable { await state.refreshMemories() }
         .task { await state.refreshMemories() }
         .sheet(isPresented: $adding) {
@@ -120,6 +195,41 @@ struct MemoryView: View {
                       systemImage: memory.pinned ? "pin.slash" : "pin")
             }
             .tint(.orange)
+        }
+        .contextMenu {
+            Menu {
+                ForEach(categoryNames, id: \.self) { name in
+                    Button(name) {
+                        Task { await state.moveMemory(memory.memoryID, to: name) }
+                    }
+                    .disabled(name == memory.category)
+                }
+            } label: {
+                Label("Move to", systemImage: "folder")
+            }
+            Button {
+                Task { await state.updateMemory(memory.memoryID, pinned: !memory.pinned) }
+            } label: {
+                Label(memory.pinned ? "Unpin" : "Pin", systemImage: memory.pinned ? "pin.slash" : "pin")
+            }
+            Button(role: .destructive) {
+                Task { await state.forget(memory.memoryID) }
+            } label: {
+                Label("Forget", systemImage: "trash")
+            }
+        }
+    }
+
+    private func organise() async {
+        organising = true
+        defer { organising = false }
+        guard let result = await state.organiseMemories() else { return }
+        if result.changes.isEmpty {
+            organiseNote = "Everything is already under a topic."
+        } else {
+            let topics = Set(result.changes.map(\.to)).sorted().joined(separator: ", ")
+            organiseNote = "Filed \(result.changes.count) memor\(result.changes.count == 1 ? "y" : "ies") under \(topics). "
+                + "Categories you chose were left alone."
         }
     }
 }

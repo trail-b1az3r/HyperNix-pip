@@ -1291,6 +1291,26 @@ path, names a file, or reaches a shell. A client that acts on a row
 still authenticates against it, and the fingerprint that comes back is
 what says whether it found what it was looking for.
 
+### Titles, compression, memory, images and the shell (0.72.5.post16)
+
+| Route | What it does |
+| --- | --- |
+| `POST /hyperlink/sessions/{id}/title` | Ask the model to name the chat again from its first exchange. New chats are named this way automatically unless `model_titles` is off; the stream sends a `title` frame after `done`. |
+| `POST /chat/compact/dynamic` | Summarise the older part of a session now. With `auto_compact` on (the default) chat does this itself at 85% of the context budget, sending a `compacted` frame. Messages are marked, never deleted. |
+| `GET /memory/categories` | Each memory category with its count. |
+| `POST /memory/categories/rename` | `{"from", "to"}` — moves a category, merging into an existing one. |
+| `POST /memory/organise` | Files loose and model-written memories under topics; `dry_run` previews. A category a person chose is left alone. |
+| `GET /hyperlink/models` | Each model now carries `supports_images`: true, false, or null when nothing says. |
+| `GET /hyperlink/shell` | Whether the shell is enabled here, and how to enable it. |
+| `POST /hyperlink/shell` | `{"command", "cwd"}` — runs one command, returns stdout, stderr, exit code and timing. |
+
+The shell is **off** unless `T1_HYPERLINK_SHELL=1`. A paired phone is never
+an admin, and this is the one route that makes it more than a chat client,
+so it is the operator's decision. Commands run as the server's user through
+`bash -lc`, are written to the audit log before they run, have their output
+capped, and are killed with their whole process group at the timeout. The
+model is never given a shell tool.
+
 ## Hugging Face link merging
 
 *New in T1 v1.0.26.8.0.1.* `POST /hyperlink/models/resolve`, and
@@ -1769,6 +1789,8 @@ T1 v1.0.26.8.0.1 added:
 | `T1_LMSTUDIO_DISCOVERY` | `0` | allow admin-triggered tailnet sweeps |
 | `T1_LMSTUDIO_TIMEOUT` | `300` | read timeout, seconds |
 | `T1_HYPERLINK_ENABLED` | `1` | the phone-facing surface |
+| `T1_HYPERLINK_SHELL` | `0` | let paired phones run shell commands here (see below) |
+| `T1_HYPERLINK_SHELL_TIMEOUT` | `60` | seconds before a shell command's process group is killed |
 | `T1_HYPERLINK_PUBLIC_URL` | — | a reverse proxy / tunnel address; ranked first |
 | `T1_HYPERLINK_PORT` | `8000` | the port advertised to clients |
 | `T1_HYPERLINK_FILES_DIR` | `~/.hypernix/hyperlink/files` | attachment blobs |

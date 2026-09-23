@@ -1683,6 +1683,8 @@ class PreferencesRequest(BaseModel):
     backend: str | None = None
     tools_enabled: bool | None = None
     auto_memory: bool | None = None
+    auto_compact: bool | None = None
+    model_titles: bool | None = None
 
 
 class PreferencesResponse(BaseModel):

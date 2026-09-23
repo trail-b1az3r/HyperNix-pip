@@ -16,6 +16,9 @@ import UIKit
 struct MessageBubble: View {
     let message: ChatMessage
     var isStreaming: Bool = false
+    /// Drawn on the last bubble of a run from one speaker, as Messages
+    /// does: a run of three replies reads as one turn, not three.
+    var showsTail: Bool = true
 
     @Environment(\.hyperLinkTheme) private var theme
 
@@ -61,8 +64,11 @@ struct MessageBubble: View {
             // thing separating the speakers was which side they were on.
             .background(
                 message.isUser ? theme.userBubble : theme.assistantBubble,
-                in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                in: BubbleShape(isUser: message.isUser, showsTail: showsTail)
             )
+            // Room for the tail, which is drawn outside the bubble's own
+            // rectangle and would otherwise be clipped by the screen edge.
+            .padding(message.isUser ? .trailing : .leading, 5)
             .foregroundStyle(
                 message.isUser ? theme.userBubbleText : theme.assistantBubbleText
             )
@@ -75,6 +81,77 @@ struct MessageBubble: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: message.isUser ? .trailing : .leading)
+    }
+}
+
+/// A rounded bubble with the tail Messages draws on the speaker's side.
+///
+/// The tail is part of the shape, not an overlay, so it takes the same
+/// fill, the same theme colour and the same accessibility contrast as
+/// the bubble it belongs to.
+struct BubbleShape: Shape {
+    var isUser: Bool
+    var showsTail: Bool
+    var radius: CGFloat = 17
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path(roundedRect: rect, cornerRadius: radius, style: .continuous)
+        guard showsTail, rect.height > radius else { return path }
+        // Drawn for the right-hand side and mirrored for the left, so the
+        // two speakers' tails are the same shape.
+        let bottom = rect.maxY
+        let edge = isUser ? rect.maxX : rect.minX
+        let out: CGFloat = isUser ? 1 : -1
+        var tail = Path()
+        tail.move(to: CGPoint(x: edge - out * 10, y: bottom - radius))
+        tail.addQuadCurve(
+            to: CGPoint(x: edge + out * 5, y: bottom),
+            control: CGPoint(x: edge - out * 1, y: bottom - 3)
+        )
+        tail.addQuadCurve(
+            to: CGPoint(x: edge - out * radius, y: bottom - 1),
+            control: CGPoint(x: edge - out * 6, y: bottom + 1)
+        )
+        tail.closeSubpath()
+        path.addPath(tail)
+        return path
+    }
+}
+
+/// Where the server summarised older messages to keep the thread inside
+/// the model's context. The originals are still above it; this says the
+/// model is now sent the summary instead, and shows it on request.
+struct CompactionMarker: View {
+    let message: ChatMessage
+    @State private var expanded = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        VStack(spacing: 6) {
+            Button {
+                withAnimation(Motion.respecting(reduceMotion, Motion.snappy)) { expanded.toggle() }
+            } label: {
+                HStack(spacing: 8) {
+                    Rectangle().frame(height: 1).foregroundStyle(.quaternary)
+                    Label("Earlier messages summarised", systemImage: "rectangle.compress.vertical")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize()
+                    Rectangle().frame(height: 1).foregroundStyle(.quaternary)
+                }
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint(expanded ? "Hides the summary" : "Shows what the model is now sent")
+            if expanded {
+                Text(message.content)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(10)
+                    .background(Color.secondary.opacity(0.12), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            }
+        }
+        .padding(.vertical, 4)
     }
 }
 
