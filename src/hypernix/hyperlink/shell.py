@@ -90,7 +90,14 @@ def working_directory(cwd: str | None) -> str:
     root = shell_root()
     wanted = os.path.expanduser(cwd) if cwd else root
     resolved = os.path.realpath(os.path.join(root, wanted))
-    if resolved != root and not resolved.startswith(root.rstrip(os.sep) + os.sep):
+    if resolved == root:
+        if not os.path.isdir(root):
+            raise ValueError(f"{root} is not a directory")
+        return root
+    # One plain prefix test, on its own: the form a path check has to
+    # take for a reader (and for CodeQL) to see that nothing outside the
+    # root reaches the filesystem calls below.
+    if not resolved.startswith(root.rstrip(os.sep) + os.sep):
         raise ValueError(f"the working directory must be inside {root}")
     if not os.path.isdir(resolved):
         raise ValueError(f"{resolved} is not a directory")
