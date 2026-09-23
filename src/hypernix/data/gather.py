@@ -41,9 +41,11 @@ from __future__ import annotations
 import gzip
 import hashlib
 import html
+import ipaddress
 import json
 import logging
 import re
+import socket
 import threading
 import time
 import urllib.error
@@ -422,6 +424,60 @@ def _is_http(url: str) -> bool:
         return False
 
 
+def _not_public(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
+    if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped is not None:
+        ip = ip.ipv4_mapped
+    return not ip.is_global or ip.is_multicast
+
+
+def public_address_problem(url: str) -> str | None:
+    """Why *url* may not be fetched on someone else's behalf, or None.
+
+    A server that fetches URLs its callers name can be pointed at itself,
+    at the LAN, or at a cloud provider's metadata service
+    (169.254.169.254) — places the caller cannot reach but the server
+    can. Every address the host resolves to must be a public one; a name
+    that resolves to a private address is refused like the address.
+    """
+    if not _is_http(url):
+        return "not an http(s) URL"
+    parts = urllib.parse.urlsplit(url)
+    host = parts.hostname
+    if not host:
+        return "the URL has no host"
+    try:
+        port = parts.port or (443 if parts.scheme == "https" else 80)
+    except ValueError:
+        return "the URL's port is not a number"
+    try:
+        infos = socket.getaddrinfo(host, port, proto=socket.IPPROTO_TCP)
+    except (socket.gaierror, UnicodeError):
+        return f"{host} does not resolve"
+    if not infos:
+        return f"{host} does not resolve"
+    for info in infos:
+        address = str(info[4][0]).split("%", 1)[0]
+        try:
+            ip = ipaddress.ip_address(address)
+        except ValueError:
+            return f"{host} resolves to {address}, which is not an address this can check"
+        if _not_public(ip):
+            return f"{host} resolves to {ip}, which is not a public address"
+    return None
+
+
+class _PublicOnlyRedirects(urllib.request.HTTPRedirectHandler):
+    """Follow a redirect only to somewhere :func:`public_address_problem`
+    accepts — a public page that answers with a redirect to
+    http://127.0.0.1/ is the same request as asking for it directly."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: ANN001, D102
+        problem = public_address_problem(newurl)
+        if problem is not None:
+            raise urllib.error.URLError(f"refused a redirect: {problem}")
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
 def fetch(
     url: str,
     *,
@@ -429,6 +485,7 @@ def fetch(
     max_bytes: int = MAX_PAGE_BYTES,
     limiter: RateLimiter | None = None,
     user_agent: str = _USER_AGENT,
+    public_only: bool = False,
 ) -> Page:
     """One page. Never raises.
 
@@ -441,6 +498,11 @@ def fetch(
     if not _is_http(url):
         page.error = "not an http(s) URL"
         return page
+    if public_only:
+        problem = public_address_problem(url)
+        if problem is not None:
+            page.error = f"refused: {problem}"
+            return page
 
     host = urllib.parse.urlsplit(url).netloc
     if limiter is not None:
@@ -458,7 +520,13 @@ def fetch(
         },
     )
     try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:  # noqa: S310
+        opener = urllib.request.build_opener(_PublicOnlyRedirects) if public_only else None
+        opened = (
+            opener.open(request, timeout=timeout)
+            if opener is not None
+            else urllib.request.urlopen(request, timeout=timeout)  # noqa: S310
+        )
+        with opened as response:
             page.status = response.status
             page.content_type = response.headers.get("Content-Type", "")
             raw = response.read(max_bytes + 1)

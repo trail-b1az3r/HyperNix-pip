@@ -227,9 +227,11 @@ class TestTheCli:
         assert (tmp_path / "new" / "x.gguf").exists()
 
     def test_show(self, lms_home, capsys):
+        from pathlib import Path
         write_settings(lms_home, {lo.SETTING_KEY: "/somewhere"})
         lo.main(["show"])
-        assert "/somewhere" in capsys.readouterr().out
+        # Printed as a path, so with the platform's separator.
+        assert str(Path("/somewhere")) in capsys.readouterr().out
 
     def test_the_bash_wrapper_routes_override(self):
         from pathlib import Path

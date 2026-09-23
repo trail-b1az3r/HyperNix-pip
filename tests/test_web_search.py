@@ -434,7 +434,9 @@ class TestSummarize:
         out = ws.summarize(self.TEXT, sentences=2, model=angry)
         assert out["method"] == "extractive"
         assert out["summary"]
-        assert "fell back" in out["note"]
+        assert "extractive" in out["note"]
+        # What went wrong is for the server log, not the caller.
+        assert "unloaded" not in out["note"]
 
     def test_a_model_returning_nothing_falls_back_too(self):
         out = ws.summarize(self.TEXT, sentences=2, model=lambda p: "   ")
@@ -713,3 +715,129 @@ class TestAPairedPhoneCanUseIt:
         about pairing, and it holds here too."""
         got = client.get("/web/v1/config/s2?:=google", headers=_auth(device_token))
         assert got.status_code == 403
+
+
+
+# ---------------------------------------------------------------------------
+# Fetching a URL for a caller: never somewhere only the server can reach
+# ---------------------------------------------------------------------------
+
+
+class TestServerSideFetchIsPublicOnly:
+    """/web/v1/summarise fetches a URL the caller names. Without this, a
+    paired phone — or a model steered by a page it read — could have the
+    server fetch itself, the LAN, or a cloud metadata endpoint."""
+
+    @pytest.mark.parametrize("url", [
+        "http://127.0.0.1:8000/admin",
+        "http://localhost/",
+        "http://10.0.0.5/",
+        "http://192.168.1.1/",
+        "http://169.254.169.254/latest/meta-data/",
+        "http://[::1]/",
+        "http://[::ffff:127.0.0.1]/",
+        "http://0.0.0.0/",
+    ])
+    def test_private_addresses_are_refused(self, url):
+        from hypernix.data.gather import public_address_problem
+
+        assert public_address_problem(url) is not None
+
+    def test_a_public_name_that_resolves_privately_is_refused(self, monkeypatch):
+        """DNS is where the trick is usually played."""
+        from hypernix.data import gather
+
+        monkeypatch.setattr(gather.socket, "getaddrinfo",
+                            lambda *a, **k: [(2, 1, 6, "", ("10.1.2.3", 80))])
+        problem = gather.public_address_problem("https://innocent.example/")
+        assert problem is not None and "10.1.2.3" in problem
+
+    def test_a_public_address_is_allowed(self, monkeypatch):
+        from hypernix.data import gather
+
+        monkeypatch.setattr(gather.socket, "getaddrinfo",
+                            lambda *a, **k: [(2, 1, 6, "", ("93.184.216.34", 443))])
+        assert gather.public_address_problem("https://example.com/") is None
+
+    def test_one_private_address_among_several_is_enough_to_refuse(self, monkeypatch):
+        from hypernix.data import gather
+
+        monkeypatch.setattr(gather.socket, "getaddrinfo", lambda *a, **k: [
+            (2, 1, 6, "", ("93.184.216.34", 443)), (2, 1, 6, "", ("127.0.0.1", 443))])
+        assert gather.public_address_problem("https://example.com/") is not None
+
+    @pytest.mark.parametrize("url", ["file:///etc/passwd", "ftp://example.com/", "http:///nohost"])
+    def test_non_http_and_hostless_urls_are_refused(self, url):
+        from hypernix.data.gather import public_address_problem
+
+        assert public_address_problem(url) is not None
+
+    def test_a_redirect_to_a_private_address_is_refused(self):
+        import urllib.error
+        import urllib.request
+
+        from hypernix.data.gather import _PublicOnlyRedirects
+
+        handler = _PublicOnlyRedirects()
+        request = urllib.request.Request("https://example.com/")
+        with pytest.raises(urllib.error.URLError, match="redirect"):
+            handler.redirect_request(request, None, 302, "Found", {}, "http://127.0.0.1/secret")
+
+    def test_public_only_fetch_does_not_connect(self, monkeypatch):
+        from hypernix.data import gather
+
+        def boom(*a, **k):
+            raise AssertionError("connected")
+
+        monkeypatch.setattr(gather.urllib.request, "urlopen", boom)
+        monkeypatch.setattr(gather.urllib.request, "build_opener", boom)
+        page = gather.fetch("http://127.0.0.1:9/", public_only=True)
+        assert page.error.startswith("refused")
+
+    def test_fetch_web_page_checks_before_robots(self, monkeypatch):
+        """robots.txt is fetched from the same host, so the check has to
+        come before it, not just before the page."""
+        from hypernix.interfaces import websearch as iw
+
+        monkeypatch.setattr(iw, "_shared_robots", lambda: (_ for _ in ()).throw(AssertionError("robots fetched")))
+        out = iw.fetch_web_page("http://169.254.169.254/", public_only=True)
+        assert out["status"].startswith("error: refused")
+
+    def test_local_callers_are_unchanged(self, monkeypatch):
+        """hyped's read_web_page runs on the person's own machine for them;
+        it keeps fetching whatever they point it at."""
+        from hypernix.data import gather
+
+        seen = {}
+
+        def fake_urlopen(request, timeout=0):
+            seen["url"] = request.full_url
+            raise gather.urllib.error.URLError("no server")
+
+        monkeypatch.setattr(gather.urllib.request, "urlopen", fake_urlopen)
+        gather.fetch("http://127.0.0.1:9/")
+        assert seen["url"] == "http://127.0.0.1:9/"
+
+    def test_the_summarise_route_refuses_before_fetching(self, client, user_key, monkeypatch):
+        from hypernix.interfaces import websearch as iw
+
+        called = {}
+        monkeypatch.setattr(iw, "fetch_web_page", lambda *a, **k: called.setdefault("fetched", {}))
+        response = client.post("/web/v1/summarise", json={"url": "http://127.0.0.1:8000/"},
+                               headers=_auth(user_key))
+        assert response.status_code == 400
+        assert "public" in response.text
+        assert called == {}
+
+    def test_a_failed_fetch_is_an_error_not_a_summary_of_the_error(self, client, user_key, monkeypatch):
+        from hypernix.data import gather
+        from hypernix.interfaces import websearch as iw
+
+        monkeypatch.setattr(gather, "public_address_problem", lambda url: None)
+        monkeypatch.setattr(iw, "fetch_web_page", lambda *a, **k: {
+            "url": "u", "title": "", "text": "Error fetching URL 'u': HTTP 404", "links": [],
+            "status": "error: HTTP 404"})
+        response = client.post("/web/v1/summarise", json={"url": "https://example.com/gone"},
+                               headers=_auth(user_key))
+        assert response.status_code == 502
+        assert "404" in response.text

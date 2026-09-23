@@ -181,6 +181,11 @@ NO_DISK_SPACE = _r(
     "S", 1, 1_050, "c", 4,
     "out of disk space",
 )
+PACKAGE_MISSING = _r(
+    "S", 1, 60, "b", 3,
+    "an optional Python package this needs is not installed",
+    "pip install the package, or the hypernix extra, named in the message",
+)
 
 # ---------------------------------------------------------------------------
 # T — the T1 API. One code per `T1ErrorCode` member, 1:1, so a search on

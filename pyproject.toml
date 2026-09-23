@@ -57,7 +57,11 @@ dependencies = [
 [project.optional-dependencies]
 llama-cpp = ["llama-cpp-python>=0.2.90"]
 train = ["transformers>=4.44", "accelerate>=0.33"]
-dev = ["pytest>=8", "ruff>=0.5", "build>=1.2", "twine>=5"]
+dev = ["pytest>=8", "ruff>=0.5", "build>=1.2", "twine>=5", "psutil>=5.9"]
+# 0.72.5.post16: magnesium reads and renices other processes through
+# psutil. Every other psutil use in HyperNix is optional and degrades;
+# magnesium has nothing to degrade to.
+elements = ["psutil>=5.9"]
 # v0.71.0: optional encryption backend for Keymaster key storage.
 # When not installed, Keymaster falls back to plain JSON storage with
 # a warning. Install with: pip install hypernix[security]

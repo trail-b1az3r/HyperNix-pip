@@ -35,6 +35,7 @@ reaches outside HyperNix.
 """
 from __future__ import annotations
 
+import os
 import sys
 from dataclasses import dataclass, field
 from typing import Any
@@ -87,7 +88,7 @@ def is_protected_name(name: str) -> bool:
 class Target:
     pid: int
     name: str
-    #: "limit" | "protected" | "not-ours" | "gone" | "denied"
+    #: "limit" | "protected" | "not-ours" | "gone" | "denied" | "irreversible"
     decision: str
     reason: str = ""
     original_nice: int | None = None
@@ -130,13 +131,44 @@ def _is_kernel_thread(info: dict[str, Any]) -> bool:
     return not cmdline or info.get("ppid") == 2
 
 
+def lowest_restorable_nice() -> int | None:
+    """The lowest niceness this process may set, or None for no limit.
+
+    Raising another process's niceness is always allowed for its owner;
+    lowering it again is not. Linux allows it down to 20 - RLIMIT_NICE
+    (0 by default, so not at all); macOS and the BSDs only for root.
+    Magnesium promises to put priorities back exactly, so it has to know
+    this before it changes anything, not find out on the way back.
+    """
+    if sys.platform == "win32":
+        return None          # a priority class goes back to normal freely
+    if hasattr(os, "geteuid") and os.geteuid() == 0:
+        return None
+    if sys.platform.startswith("linux"):
+        try:
+            import resource
+
+            soft, _hard = resource.getrlimit(resource.RLIMIT_NICE)
+        except (ImportError, AttributeError, OSError, ValueError):
+            return 20
+        if soft == resource.RLIM_INFINITY:
+            return -20
+        return 20 - int(soft)
+    return 20                # nothing can be lowered without root
+
+
+def can_restore(original_nice: int) -> bool:
+    floor = lowest_restorable_nice()
+    return floor is None or original_nice >= floor
+
+
 def _psutil():
     try:
         import psutil
     except ImportError:
         raise HyperNixError(
-            codes.NO_PERMISSION,
-            "magnesium needs psutil to see other processes",
+            codes.PACKAGE_MISSING,
+            "magnesium needs psutil to see other processes: pip install 'hypernix[elements]'",
         ) from None
     return psutil
 
@@ -214,8 +246,13 @@ class Magnesium(Element):
         nice = int(self.context.config.get("nice", DEFAULT_NICE))
         nice = max(1, min(nice, DEFAULT_NICE if sys.platform == "win32" else 15))
         cores = self.context.config.get("cores")
+        # Off by default: without root, a lowered priority usually cannot
+        # be raised again, and "put back exactly" is the promise.
+        allow_irreversible = bool(self.context.config.get("allow_irreversible", False))
 
-        for target in self.plan().of("limit"):
+        #: Kept so `status` and the CLI can say what happened to each one.
+        self.last_plan = self.plan()
+        for target in self.last_plan.of("limit"):
             try:
                 proc = psutil.Process(target.pid)
                 if proc.name() != target.name:
@@ -224,6 +261,13 @@ class Magnesium(Element):
                     target.decision, target.reason = "gone", "pid reused"
                     continue
                 target.original_nice = proc.nice()
+                if (sys.platform != "win32" and target.original_nice < nice
+                        and not allow_irreversible and not can_restore(target.original_nice)):
+                    target.decision = "irreversible"
+                    target.reason = ("its priority could not be put back without root "
+                                     "(set allow_irreversible to limit it anyway)")
+                    target.original_nice = None
+                    continue
                 if sys.platform == "win32":
                     proc.nice(psutil.BELOW_NORMAL_PRIORITY_CLASS)
                 elif target.original_nice < nice:

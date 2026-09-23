@@ -148,6 +148,36 @@ whose tiers warn on their own.
 
 ### Fixed
 
+𖢥 **Attaching magnesium to an oven reniced the machine before refusing.**
+`natural_gas.attach` activated each element and only then checked it may
+touch the oven, so asking for magnesium lowered every other process's
+priority and then raised the permission error. Every element is checked
+before any is started, and a failure part-way stops the ones already
+started.
+𖢥 **Magnesium promised to put priorities back and could not, unless root.**
+An ordinary user may raise another of their processes' niceness but not
+lower it again (Linux allows it only down to `20 - RLIMIT_NICE`, macOS not
+at all). Magnesium now works that out first and leaves a process alone,
+marked `irreversible`, when it could not undo the change;
+`allow_irreversible` in its config opts in. The test that restored a real
+process had only ever run as root, because CI had no psutil.
+𖢥 **The server could be made to fetch its own network.**
+`/web/v1/summarise` fetches a URL the caller names, and paired phones and
+models (through `web_summarize`) can call it. Nothing stopped that URL
+being `127.0.0.1`, the LAN, or a cloud metadata address. Only public
+addresses are fetched for a caller now, checked after DNS, before
+robots.txt, and again on every redirect. Local tools such as hyped's
+`read_web_page` are unchanged. Found by CodeQL.
+🛡️ A failed summariser model or page fetch no longer returns the
+exception's text to the caller; it goes to the server log.
+🐛 The summariser's sentence splitter could backtrack on long runs of
+spaces. It splits on the single space the text is normalised to.
+🐛 Magnesium without psutil raised "the operating system refused". Nothing
+refused: a package is missing. New code `S1-00060.b3` says so, and
+`pip install 'hypernix[elements]'` installs it (the dev extra too, so CI
+runs magnesium against real processes).
+🐛 `hyped-pro` looked for `~/.bun/bin/bun` on Windows, where the
+installer writes `bun.exe`.
 𖢥 **0.72.6 pt2's preset fix broke RoPE for twenty-three presets.**
 Correcting `model_type` also changed the RoPE convention derived from
 it: `_default_rope_style` named three half-rotate types and sent the

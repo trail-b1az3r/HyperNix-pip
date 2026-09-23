@@ -158,7 +158,7 @@ def search_web_non_api(
     return results
 
 
-def fetch_web_page(url: str, max_length: int = 4000) -> dict[str, Any]:
+def fetch_web_page(url: str, max_length: int = 4000, *, public_only: bool = False) -> dict[str, Any]:
     """Fetch a page and return clean text plus its links.
 
     Args:
@@ -175,6 +175,14 @@ def fetch_web_page(url: str, max_length: int = 4000) -> dict[str, Any]:
     """
     from hypernix.data import gather
 
+    # On a server, fetching for a caller: only public addresses, checked
+    # before robots.txt is fetched from the same host.
+    if public_only:
+        problem = gather.public_address_problem(url)
+        if problem is not None:
+            return {"url": url, "title": "", "text": f"Refused to fetch {url}: {problem}.", "links": [],
+                    "status": f"error: refused: {problem}"}
+
     # A module-level limiter, so an agent calling this in a loop is
     # paced. Created once: a fresh limiter per call would remember
     # nothing and pace nothing.
@@ -190,7 +198,7 @@ def fetch_web_page(url: str, max_length: int = 4000) -> dict[str, Any]:
             "status": "error: disallowed by robots.txt",
         }
 
-    page = gather.fetch(url, timeout=15.0, limiter=limiter)
+    page = gather.fetch(url, timeout=15.0, limiter=limiter, public_only=public_only)
     if not page.ok:
         return {
             "url": url,

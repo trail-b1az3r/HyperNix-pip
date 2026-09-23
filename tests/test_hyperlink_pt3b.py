@@ -18,6 +18,9 @@ lived in the seam between two pieces that were fine on their own.
 """
 from __future__ import annotations
 
+import re
+import urllib.parse
+
 import pytest
 from conftest import clear_t1_config
 
@@ -234,7 +237,8 @@ class TestWebSearchTool:
             [("Helix editor", "https://helix-editor.com", "A post-modern editor")]))
         result = run_tool(ctx, "web_search", {"query": "helix"})
         assert result.ok
-        assert "helix-editor.com" in result.content
+        urls = re.findall(r"\((https?://[^)\s]+)\)", result.content)
+        assert [urllib.parse.urlsplit(u).hostname for u in urls] == ["helix-editor.com"]
         assert "post-modern" in result.content
 
     def test_no_ranked_results_falls_back(self, tmp_path, monkeypatch):
@@ -256,7 +260,7 @@ class TestWebSearchTool:
         monkeypatch.setattr(tools.urllib.request, "urlopen", fake_urlopen)
         ctx = tools.ToolContext(root=tmp_path, search_backend=lambda q: self.outcome([], "failed"))
         result = tools.run_tool(ctx, "web_search", {"query": "capital of france"})
-        assert "api.duckduckgo.com" in called["url"]
+        assert urllib.parse.urlsplit(called["url"]).hostname == "api.duckduckgo.com"
         assert "Paris" in result.content
 
     def test_a_backend_that_raises_falls_back_too(self, tmp_path, monkeypatch):

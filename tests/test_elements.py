@@ -356,6 +356,52 @@ class TestNaturalGas:
         with raises(codes.ELEMENT_PERMISSION):
             natural_gas.attach(FakeOven(), ["Mg"], registry=registry(tmp_path))
 
+    def test_a_refused_element_is_never_activated(self, tmp_path):
+        """The check comes first. Attaching magnesium used to activate it —
+        renicing every process on the machine — and only then refuse."""
+        started = []
+
+        class Watched(Element):
+            spec = ElementSpec(symbol="Li", summary="x", permissions=frozenset({"processes"}))
+
+            def activate(self):
+                started.append(self.spec.symbol)
+
+        reg = registry(tmp_path)
+        reg.register(Watched)
+        with raises(codes.ELEMENT_PERMISSION):
+            natural_gas.attach(FakeOven(), ["Li"], registry=reg)
+        assert started == []
+        assert not reg.instance("Li").active
+
+    def test_attach_is_all_or_nothing(self, tmp_path):
+        """One element failing to start stops the ones already started."""
+        log = []
+
+        def make(symbol, fail):
+            class E(Element):
+                spec = ElementSpec(symbol=symbol, summary="x", permissions=frozenset({"oven"}))
+
+                def activate(self):
+                    if fail:
+                        raise RuntimeError("no")
+                    log.append(("on", symbol))
+
+                def deactivate(self):
+                    log.append(("off", symbol))
+            return E
+
+        reg = registry(tmp_path)
+        reg.register(make("Li", fail=False))
+        reg.register(make("Be", fail=True))
+        oven = FakeOven()
+        with pytest.raises(RuntimeError):
+            natural_gas.attach(oven, ["Be", "Li"], registry=reg)
+        assert log == [("on", "Li"), ("off", "Li")]
+        assert not reg.instance("Li").active
+        assert natural_gas.attached(oven) is None
+        assert oven.complete("x") == "out[x]"
+
     def test_chat_messages_are_copied_before_elements_see_them(self, tmp_path):
         """An element that edits in place must not reach back into the
         caller's conversation history."""
@@ -521,6 +567,19 @@ class FakeProc:
                      "cmdline": list(cmdline), "ppid": ppid}
 
 
+#: The plan reads this process's family through psutil even when handed
+#: fake processes. CI installs it (the dev extra); a bare checkout may not.
+def _have_psutil() -> bool:
+    try:
+        import psutil  # noqa: F401
+    except ImportError:
+        return False
+    return True
+
+
+needs_psutil = pytest.mark.skipif(not _have_psutil(), reason="magnesium needs psutil (pip install 'hypernix[elements]')")
+
+
 class TestMagnesiumPlan:
     @pytest.mark.parametrize("name", [
         "bash", "zsh", "fish", "tmux", "kitty", "alacritty",
@@ -531,6 +590,22 @@ class TestMagnesiumPlan:
     def test_the_never_touch_list(self, name):
         assert is_protected_name(name)
 
+    def test_without_psutil_it_says_what_to_install(self, tmp_path, monkeypatch):
+        """Not "the OS refused": nothing refused, a package is missing."""
+        import builtins
+
+        real_import = builtins.__import__
+
+        def no_psutil(name, *args, **kwargs):
+            if name == "psutil":
+                raise ImportError("No module named 'psutil'")
+            return real_import(name, *args, **kwargs)
+
+        monkeypatch.setattr(builtins, "__import__", no_psutil)
+        with raises(codes.PACKAGE_MISSING) as caught:
+            registry(tmp_path).instance("Mg").plan(processes=[])
+        assert "hypernix[elements]" in str(caught.value)
+
     @pytest.mark.parametrize("name", ["firefox", "chrome", "Discord", "steam", "code"])
     def test_ordinary_apps_are_not_protected(self, name):
         assert not is_protected_name(name)
@@ -538,6 +613,7 @@ class TestMagnesiumPlan:
     def test_a_nameless_process_is_protected(self):
         assert is_protected_name("")
 
+    @needs_psutil
     def test_the_plan_decides_each_one(self, tmp_path):
         mg = registry(tmp_path).instance("Mg")
         plan = mg.plan(processes=[
@@ -552,6 +628,7 @@ class TestMagnesiumPlan:
         assert decisions["firefox"] in ("limit", "not-ours")
 
     @pytest.mark.skipif(not sys.platform.startswith("linux"), reason="Linux signal")
+    @needs_psutil
     def test_kernel_threads_are_protected_by_command_line(self, tmp_path):
         """Found by running the plan against a real machine: kworker,
         ksoftirqd and friends came out as "limit". There are hundreds of
@@ -565,21 +642,53 @@ class TestMagnesiumPlan:
         ])
         assert {t.decision for t in plan.targets} == {"protected"}
 
+    @needs_psutil
     def test_this_process_and_its_parents_are_protected(self, tmp_path):
         mg = registry(tmp_path).instance("Mg")
         plan = mg.plan(processes=[FakeProc(os.getpid(), "firefox"),
                                   FakeProc(os.getppid(), "firefox")])
         assert {t.decision for t in plan.targets} == {"protected"}
 
+    @needs_psutil
     def test_an_extra_protect_list_from_config(self, tmp_path):
         mg = registry(tmp_path).instance("Mg", config={"protect": ["OBS"]})
         plan = mg.plan(processes=[FakeProc(5000, "obs")])
         assert plan.targets[0].decision == "protected"
 
+    @needs_psutil
     def test_the_plan_changes_nothing(self, tmp_path):
         mg = registry(tmp_path).instance("Mg")
         mg.plan()
         assert mg.changed == {}
+
+    def test_root_can_always_restore(self, monkeypatch):
+        from hypernix.elements import magnesium
+
+        monkeypatch.setattr(magnesium.sys, "platform", "linux")
+        monkeypatch.setattr(magnesium.os, "geteuid", lambda: 0, raising=False)
+        assert magnesium.lowest_restorable_nice() is None
+        assert magnesium.can_restore(-20)
+
+    @pytest.mark.skipif(not sys.platform.startswith("linux"), reason="RLIMIT_NICE is Linux")
+    def test_linux_follows_rlimit_nice(self, monkeypatch):
+        import resource
+
+        from hypernix.elements import magnesium
+
+        monkeypatch.setattr(magnesium.os, "geteuid", lambda: 1000)
+        monkeypatch.setattr(resource, "getrlimit", lambda which: (0, 0))
+        assert magnesium.lowest_restorable_nice() == 20
+        assert not magnesium.can_restore(3)
+        monkeypatch.setattr(resource, "getrlimit", lambda which: (20, 20))
+        assert magnesium.lowest_restorable_nice() == 0
+        assert magnesium.can_restore(3) and not magnesium.can_restore(-1)
+
+    def test_other_unixes_need_root(self, monkeypatch):
+        from hypernix.elements import magnesium
+
+        monkeypatch.setattr(magnesium.sys, "platform", "darwin")
+        monkeypatch.setattr(magnesium.os, "geteuid", lambda: 501, raising=False)
+        assert not magnesium.can_restore(0)
 
     def test_it_needs_the_processes_permission(self):
         assert "processes" in Magnesium.spec.permissions
@@ -620,12 +729,51 @@ class TestMagnesiumForReal:
         mg = registry(tmp_path).instance("Mg", config={"nice": target})
         mg.activate()
         if orphan not in mg.changed:
+            # Unprivileged, lowering it back would be impossible, so it is
+            # rightly left alone; the tests above cover that refusal.
             pytest.skip(f"not limitable here: "
-                        f"{[t.decision for t in mg.plan().targets if t.pid == orphan]}")
+                        f"{[t.decision for t in mg.last_plan.targets if t.pid == orphan]}")
         assert psutil.Process(orphan).nice() == target
         mg.deactivate()
         assert psutil.Process(orphan).nice() == before
         assert mg.changed == {}
+
+    def test_it_will_not_make_a_change_it_cannot_undo(self, tmp_path, orphan, monkeypatch):
+        """Without root, a raised niceness usually cannot be lowered again —
+        so limiting would break the "put back exactly" promise. Found when
+        CI first ran this as an ordinary user."""
+        import psutil
+
+        from hypernix.elements import magnesium
+
+        monkeypatch.setattr(magnesium, "lowest_restorable_nice", lambda: 20)
+        before = psutil.Process(orphan).nice()
+        if before >= 15:
+            pytest.skip(f"already at nice {before}")
+        mg = registry(tmp_path).instance("Mg", config={"nice": 15})
+        mg.activate()
+        assert orphan not in mg.changed
+        assert psutil.Process(orphan).nice() == before
+        [target] = [t for t in mg.last_plan.targets if t.pid == orphan]
+        assert target.decision == "irreversible"
+        assert "allow_irreversible" in target.reason
+
+    def test_allow_irreversible_is_an_explicit_choice(self, tmp_path, orphan, monkeypatch):
+        import psutil
+
+        from hypernix.elements import magnesium
+
+        monkeypatch.setattr(magnesium, "lowest_restorable_nice", lambda: 20)
+        before = psutil.Process(orphan).nice()
+        if before >= 15:
+            pytest.skip(f"already at nice {before}")
+        mg = registry(tmp_path).instance("Mg", config={"nice": 15, "allow_irreversible": True})
+        mg.activate()
+        try:
+            assert orphan in mg.changed
+            assert psutil.Process(orphan).nice() == 15
+        finally:
+            mg.deactivate()
 
     def test_a_process_that_exits_meanwhile_is_not_an_error(self, tmp_path, orphan):
         mg = registry(tmp_path).instance("Mg")

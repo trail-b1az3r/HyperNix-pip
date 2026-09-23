@@ -108,14 +108,33 @@ def attach(
     if attached(oven) is not None:
         detach(oven)
 
+    # Check every element before starting any. The framework asks on each
+    # element's behalf: one that did not declare `oven` does not get to
+    # touch one — and must be refused before it is activated, or asking
+    # for magnesium here would renice the machine and only then say no.
     live: list[Element] = []
     for item in elements:
-        element = item if isinstance(item, Element) else registry.activate(item)
-        # The framework asks on the element's behalf: an element that did
-        # not declare `oven` does not get to touch one.
+        element = item if isinstance(item, Element) else registry.instance(item)
         element.context.require("oven")
         live.append(element)
     live.sort(key=lambda e: e.spec.number)
+
+    started: list[Element] = []
+    try:
+        for element in live:
+            if not element.active:
+                element.activate()
+                element.active = True
+                started.append(element)
+    except BaseException:
+        # All or nothing: an attach that fails part-way leaves nothing it
+        # started still running.
+        for element in reversed(started):
+            try:
+                element.deactivate()
+            finally:
+                element.active = False
+        raise
 
     attachment = Attachment(elements=live)
     for name in _WRAPPED:

@@ -12,6 +12,7 @@ import re
 import shutil
 import stat
 import subprocess
+import sys
 import tomllib
 from pathlib import Path
 
@@ -24,20 +25,43 @@ REPO = Path(__file__).resolve().parents[1]
 APP = REPO / "src" / "hypernix" / "interfaces" / "hyped_pro_app"
 
 
+_FAKE_BUN = """
+import json, os, sys
+version, install_ok = {version!r}, {install_ok!r}
+args = sys.argv[1:]
+if args[:1] == ["--version"]:
+    print(version)
+    sys.exit(0)
+if args[:1] == ["install"]:
+    if not install_ok:
+        sys.exit(3)
+    marker = os.path.join("node_modules", "@opentui", "core")
+    os.makedirs(marker, exist_ok=True)
+    with open(os.path.join(marker, "package.json"), "w") as f:
+        f.write("{{}}")
+    with open(".install-args", "w") as f:
+        f.write(" ".join(args))
+    sys.exit(0)
+sys.exit(9)
+"""
+
+
 def _fake_bun(path: Path, version: str = "1.3.11", *, install_ok: bool = True) -> Path:
-    """A shell script that answers --version and fakes `bun install`."""
-    marker = "node_modules/@opentui/core"
-    install = (
-        f'mkdir -p {marker} && echo "{{}}" > {marker}/package.json && echo "$@" > .install-args'
-        if install_ok
-        else "exit 3"
-    )
-    path.write_text(
-        "#!/bin/sh\n"
-        f'if [ "$1" = "--version" ]; then echo "{version}"; exit 0; fi\n'
-        f'if [ "$1" = "install" ]; then {install}; exit 0; fi\n'
-        "exit 9\n"
-    )
+    """A stand-in for bun that answers --version and fakes `bun install`.
+
+    Python, so it runs everywhere. On POSIX it is the script itself with a
+    shebang; on Windows a script cannot be executed directly, so it is a
+    .cmd beside it — which is also what makes `shutil.which("bun")` find
+    it there, through PATHEXT.
+    """
+    body = _FAKE_BUN.format(version=version, install_ok=install_ok)
+    if sys.platform == "win32":
+        script = path.with_name(path.name + "-impl.py")
+        script.write_text(body, encoding="utf-8")
+        shim = path.with_name(path.name + ".cmd")
+        shim.write_text(f'@"{sys.executable}" "{script}" %*\r\n', encoding="utf-8")
+        return shim
+    path.write_text(f"#!{sys.executable}\n{body}", encoding="utf-8")
     path.chmod(path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
     return path
 
@@ -56,13 +80,13 @@ def _app_copy(tmp_path: Path) -> Path:
 
 
 def _css_palette() -> dict[str, str]:
-    css = (REPO / "docs" / "src" / "index.css").read_text()
+    css = (REPO / "docs" / "src" / "index.css").read_text(encoding="utf-8")
     root = css[css.index(":root") : css.index("}", css.index(":root"))]
     return {name: value.lower() for name, value in re.findall(r"--([a-z0-9-]+):\s*(#[0-9a-fA-F]{6})", root)}
 
 
 def _ts_palette() -> dict[str, str]:
-    theme = (APP / "src" / "theme.ts").read_text()
+    theme = (APP / "src" / "theme.ts").read_text(encoding="utf-8")
     body = theme[theme.index("export const palette") : theme.index("} as const")]
     found = dict(re.findall(r'(\w+):\s*"(#[0-9a-fA-F]{6})"', body))
     # camelCase in TypeScript, kebab-case in CSS.
@@ -85,9 +109,9 @@ def test_palette_parsers_are_not_vacuous() -> None:
 
 
 def test_app_is_opentui_not_readline() -> None:
-    package = (APP / "package.json").read_text()
+    package = (APP / "package.json").read_text(encoding="utf-8")
     assert '"@opentui/core"' in package
-    sources = "\n".join(p.read_text() for p in (APP / "src").glob("*.ts"))
+    sources = "\n".join(p.read_text(encoding="utf-8") for p in (APP / "src").glob("*.ts"))
     assert "createCliRenderer" in sources
     # Imports, not prose: a comment may mention the readline TUI.
     imports = re.findall(r'from\s+"([^"]+)"', sources)
@@ -99,7 +123,7 @@ def test_app_is_opentui_not_readline() -> None:
 
 
 def _scripts() -> dict[str, str]:
-    return tomllib.loads((REPO / "pyproject.toml").read_text())["project"]["scripts"]
+    return tomllib.loads((REPO / "pyproject.toml").read_text(encoding="utf-8"))["project"]["scripts"]
 
 
 def test_hyped_pro_runs_the_opentui_app() -> None:
@@ -119,7 +143,7 @@ def test_launcher_is_a_categorised_module() -> None:
 
 
 def test_every_app_source_is_packaged() -> None:
-    config = tomllib.loads((REPO / "pyproject.toml").read_text())
+    config = tomllib.loads((REPO / "pyproject.toml").read_text(encoding="utf-8"))
     patterns = config["tool"]["setuptools"]["package-data"]["hypernix"]
     pkg = REPO / "src" / "hypernix"
     packaged = {p for pattern in patterns for p in pkg.glob(pattern)}
@@ -129,14 +153,14 @@ def test_every_app_source_is_packaged() -> None:
 
 
 def test_sdist_never_ships_node_modules() -> None:
-    manifest = (REPO / "MANIFEST.in").read_text()
+    manifest = (REPO / "MANIFEST.in").read_text(encoding="utf-8")
     assert "prune src/hypernix/interfaces/hyped_pro_app/node_modules" in manifest
     assert "recursive-include src/hypernix/interfaces/hyped_pro_app" in manifest
 
 
 def test_lockfile_pins_the_same_opentui() -> None:
-    wanted = re.search(r'"@opentui/core":\s*"([^"]+)"', (APP / "package.json").read_text()).group(1)
-    assert f"@opentui/core@{wanted}" in (APP / "bun.lock").read_text()
+    wanted = re.search(r'"@opentui/core":\s*"([^"]+)"', (APP / "package.json").read_text(encoding="utf-8")).group(1)
+    assert f"@opentui/core@{wanted}" in (APP / "bun.lock").read_text(encoding="utf-8")
 
 
 # -- finding bun --------------------------------------------------------------
@@ -153,31 +177,34 @@ def test_parse_version(text: str, expected: tuple[int, int, int] | None) -> None
 def test_candidates_explicit_first_then_path_then_installer(tmp_path: Path) -> None:
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
-    on_path = _fake_bun(bin_dir / "bun")
+    _fake_bun(bin_dir / "bun")
     env = {"HYPED_PRO_BUN": "/opt/bun", "PATH": str(bin_dir), "HOME": str(tmp_path / "home")}
-    assert launcher.bun_candidates(env) == [
-        "/opt/bun",
-        str(on_path),
-        str(tmp_path / "home" / ".bun" / "bin" / "bun"),
-    ]
+    candidates = launcher.bun_candidates(env)
+    assert candidates[0] == "/opt/bun"
+    assert Path(candidates[1]).parent == bin_dir
+    assert Path(candidates[1]).stem.lower() == "bun"
+    assert candidates[2:] == [str(tmp_path / "home" / ".bun" / "bin" / launcher.BUN_EXECUTABLE)]
 
 
 def test_candidates_are_deduplicated(tmp_path: Path) -> None:
     bun = _fake_bun(tmp_path / "bun")
-    env = {"HYPED_PRO_BUN": str(bun), "PATH": str(tmp_path), "HOME": str(tmp_path)}
-    assert launcher.bun_candidates(env).count(str(bun)) == 1
+    on_path = shutil.which("bun", path=str(tmp_path))
+    assert on_path is not None
+    env = {"HYPED_PRO_BUN": on_path, "PATH": str(tmp_path), "HOME": str(tmp_path)}
+    assert launcher.bun_candidates(env).count(on_path) == 1
+    assert Path(on_path).parent == bun.parent
 
 
 def test_bun_install_env_is_honoured(tmp_path: Path) -> None:
     env = {"PATH": "", "HOME": str(tmp_path), "BUN_INSTALL": "/custom/bun"}
-    assert launcher.bun_candidates(env)[-1] == "/custom/bun/bin/bun"
+    assert launcher.bun_candidates(env)[-1] == str(Path("/custom/bun") / "bin" / launcher.BUN_EXECUTABLE)
 
 
 def test_find_bun_takes_the_first_new_enough(tmp_path: Path) -> None:
     old = _fake_bun(tmp_path / "old-bun", "1.2.9")
     new = _fake_bun(tmp_path / "bun", "1.3.0")
     env = {"HYPED_PRO_BUN": str(old), "PATH": str(tmp_path), "HOME": str(tmp_path)}
-    assert launcher.find_bun(env) == str(new)
+    assert Path(launcher.find_bun(env)).resolve() == new.resolve()
 
 
 def test_find_bun_too_old_says_so_and_names_hyped_plus(tmp_path: Path) -> None:
@@ -186,7 +213,8 @@ def test_find_bun_too_old_says_so_and_names_hyped_plus(tmp_path: Path) -> None:
     with pytest.raises(launcher.LaunchError) as caught:
         launcher.find_bun(env)
     assert caught.value.exit_code == 127
-    assert "1.3.0" in str(caught.value) and str(old) in str(caught.value)
+    # Case-folded: on Windows, which() spells the extension as PATHEXT does.
+    assert "1.3.0" in str(caught.value) and str(old).lower() in str(caught.value).lower()
     assert "hyped-plus" in str(caught.value)
 
 
@@ -200,12 +228,10 @@ def test_find_bun_missing_explains_how_to_get_it(tmp_path: Path) -> None:
 
 
 def test_find_bun_skips_a_broken_binary(tmp_path: Path) -> None:
-    broken = tmp_path / "broken"
-    broken.write_text("#!/bin/sh\nexit 1\n")
-    broken.chmod(0o755)
+    broken = _fake_bun(tmp_path / "broken", "not a version")
     good = _fake_bun(tmp_path / "bun")
     env = {"HYPED_PRO_BUN": str(broken), "PATH": str(tmp_path), "HOME": str(tmp_path)}
-    assert launcher.find_bun(env) == str(good)
+    assert Path(launcher.find_bun(env)).resolve() == good.resolve()
 
 
 # -- getting the app ready ------------------------------------------------------
@@ -226,7 +252,7 @@ def test_a_writable_app_is_installed_in_place(tmp_path: Path) -> None:
     assert launcher.prepare_app(source, bun=str(bun), env={"HOME": str(tmp_path)}) == source
     assert (source / launcher.DEPENDENCY_MARKER).is_file()
     # Only what running needs: no type checker.
-    assert (source / ".install-args").read_text().split() == ["install", "--production"]
+    assert (source / ".install-args").read_text(encoding="utf-8").split() == ["install", "--production"]
 
 
 def test_a_read_only_app_is_copied_home_by_version(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -253,7 +279,7 @@ def test_a_read_only_app_is_copied_home_by_version(tmp_path: Path, monkeypatch: 
     (source / "src" / "theme.ts").write_text("// changed\n")
     assert launcher.prepare_app(source, bun=str(bun), env={"HYPERNIX_HOME": str(home)}) == target
     assert not (target / ".install-args").exists()
-    assert (target / "src" / "theme.ts").read_text() == "// changed\n"
+    assert (target / "src" / "theme.ts").read_text(encoding="utf-8") == "// changed\n"
 
 
 def test_a_failed_install_is_an_error_not_a_crash_later(tmp_path: Path) -> None:
@@ -276,7 +302,7 @@ def test_app_version_matches_the_package() -> None:
 
 
 def test_app_and_launcher_agree_on_version() -> None:
-    app_ts = (APP / "src" / "app.ts").read_text()
+    app_ts = (APP / "src" / "app.ts").read_text(encoding="utf-8")
     assert f'export const VERSION = "{launcher.app_version()}"' in app_ts
 
 
@@ -300,8 +326,8 @@ def test_cli_main_without_bun_exits_127_with_advice(
 
 
 def test_cli_main_hands_over_with_the_bridge_interpreter(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    bun = _fake_bun(tmp_path / "bun")
-    monkeypatch.setenv("HYPED_PRO_BUN", str(bun))
+    bun = "/opt/bun/bin/bun"
+    monkeypatch.setattr(launcher, "find_bun", lambda **_: bun)
     monkeypatch.setenv("HYPED_PRO_PYTHON", "/opt/python3.12")
     monkeypatch.setattr(launcher, "prepare_app", lambda **_: tmp_path)
     seen: dict = {}
@@ -312,12 +338,12 @@ def test_cli_main_hands_over_with_the_bridge_interpreter(tmp_path: Path, monkeyp
 
     monkeypatch.setattr(launcher.subprocess, "call", call)
     assert launcher.cli_main(["--debug", "--model", "x"]) == 5
-    assert seen["command"] == [str(bun), "run", str(tmp_path / "src" / "index.ts"), "--model", "x"]
+    assert seen["command"] == [bun, "run", str(tmp_path / "src" / "index.ts"), "--model", "x"]
     assert seen["env"]["HYPED_PRO_PYTHON"] == "/opt/python3.12"
 
 
 def test_hyped_plus_launcher_is_unchanged_in_what_it_runs() -> None:
-    source = (REPO / "src" / "hypernix" / "interfaces" / "hyped_pro.py").read_text()
+    source = (REPO / "src" / "hypernix" / "interfaces" / "hyped_pro.py").read_text(encoding="utf-8")
     assert '"hyped_pro.js"' in source
     assert "hyped_pro_app" not in source
 
@@ -345,7 +371,7 @@ def test_bun_suite_passes() -> None:
 
 def test_python_is_what_runs_the_bridge() -> None:
     # The app spawns the bridge as a module of the interpreter it is given.
-    bridge = (APP / "src" / "bridge.ts").read_text()
+    bridge = (APP / "src" / "bridge.ts").read_text(encoding="utf-8")
     assert '"hypernix.interfaces.hyped_pro_bridge", "serve"' in bridge
     assert "HYPED_PRO_PYTHON" in bridge
 
@@ -354,8 +380,8 @@ def test_ctrl_c_goes_through_quit() -> None:
     # OpenTUI's exitOnCtrlC destroys the renderer and nothing else; the
     # bridge's pipes then keep Bun running behind a blank terminal. Found
     # by driving the app in a pty: Ctrl+C left the process alive.
-    index = (APP / "src" / "index.ts").read_text()
-    app = (APP / "src" / "app.ts").read_text()
+    index = (APP / "src" / "index.ts").read_text(encoding="utf-8")
+    app = (APP / "src" / "app.ts").read_text(encoding="utf-8")
     assert "exitOnCtrlC: false" in index
     assert 'process.on("SIGINT", () => app.quit())' in index
     assert re.search(r'key\.ctrl && key\.name === "c"\) \{\s*this\.quit\(\)', app)

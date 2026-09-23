@@ -35,6 +35,9 @@ from pathlib import Path
 #: OpenTUI's own floor: it runs on Bun 1.3.0 or later.
 MIN_BUN = (1, 3, 0)
 
+#: What the Bun installer calls the binary on this platform.
+BUN_EXECUTABLE = "bun.exe" if sys.platform == "win32" else "bun"
+
 #: The app's directory inside the installed package.
 APP_DIR = Path(__file__).resolve().parent / "hyped_pro_app"
 
@@ -82,9 +85,9 @@ def bun_candidates(env: dict[str, str] | None = None) -> list[str]:
     if on_path:
         found.append(on_path)
     # The official installer puts bun here and only adds it to PATH for
-    # shells started after the install.
-    home = env.get("BUN_INSTALL") or str(Path(env.get("HOME") or Path.home()) / ".bun")
-    found.append(str(Path(home) / "bin" / "bun"))
+    # shells started after the install. On Windows it is bun.exe.
+    home = env.get("BUN_INSTALL") or str(Path(env.get("HOME") or env.get("USERPROFILE") or Path.home()) / ".bun")
+    found.append(str(Path(home) / "bin" / BUN_EXECUTABLE))
     seen: set[str] = set()
     return [c for c in found if not (c in seen or seen.add(c))]
 

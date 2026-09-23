@@ -576,7 +576,9 @@ def split_sentences(text: str) -> list[str]:
         r"\b(Mr|Mrs|Ms|Dr|Prof|St|vs|etc|e\.g|i\.e|Inc|Ltd|No|Fig)\.",
         lambda m: m.group(0).replace(".", "\x00"), text,
     )
-    parts = re.split(r"(?<=[.!?])\s+(?=[A-Z0-9\"'(])", guarded)
+    # One literal space, not \s+: the text was collapsed to single spaces
+    # above, and a single space cannot backtrack however long the input.
+    parts = re.split(r"(?<=[.!?]) (?=[A-Z0-9\"'(])", guarded)
     return [p.replace("\x00", ".").strip() for p in parts if p.strip()]
 
 
@@ -621,10 +623,12 @@ def summarize(
     try:
         written = str(model(prompt)).strip()
     except Exception as exc:  # noqa: BLE001
-        logger.warning("web: summarizer model failed: %s", exc)
+        # The details go to the server log, not the caller: an exception's
+        # text can carry paths and internals the caller has no need for.
+        logger.warning("web: summarizer model failed (%s)", type(exc).__name__, exc_info=True)
         return {"summary": extractive, "sentences": picked,
                 "method": "extractive",
-                "note": f"model failed, fell back: {exc}"[:200]}
+                "note": "the model failed, so this is the extractive summary"}
     if not written:
         return {"summary": extractive, "sentences": picked,
                 "method": "extractive", "note": "model returned nothing"}
