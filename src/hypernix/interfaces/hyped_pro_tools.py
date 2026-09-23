@@ -172,7 +172,10 @@ def write_file(path: str, content: str, expected_hash: str | None = None) -> str
     if dest.is_dir():
         raise ToolError("TOOL-WRITE-001", f"{path!r} is a directory, not a file.")
     if expected_hash is not None:
-        current = dest.read_text(encoding="utf-8") if dest.exists() else ""
+        # Bytes, as file_read sent them: a text-mode read turns CRLF into
+        # LF on Windows, and the hash of that never matches what the
+        # editor was given, so every save of a CRLF file looked stale.
+        current = dest.read_bytes().decode("utf-8", errors="replace") if dest.exists() else ""
         if content_hash(current) != expected_hash:
             raise ToolError(
                 "TOOL-WRITE-002",
@@ -181,7 +184,9 @@ def write_file(path: str, content: str, expected_hash: str | None = None) -> str
     existed = dest.exists()
     dest.parent.mkdir(parents=True, exist_ok=True)
     temporary = dest.with_name(f".{dest.name}.hyped-pro.tmp")
-    temporary.write_text(content, encoding="utf-8")
+    # Bytes too: write_text would turn each "\n" into "\r\n" on Windows,
+    # so a CRLF file came back with "\r\r\n".
+    temporary.write_bytes(content.encode("utf-8"))
     if existed:
         with contextlib.suppress(OSError):
             os.chmod(temporary, dest.stat().st_mode)

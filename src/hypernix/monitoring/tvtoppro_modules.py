@@ -53,6 +53,7 @@ from __future__ import annotations
 
 import logging
 import os
+import shutil
 import time
 from abc import ABC, abstractmethod
 from collections import deque
@@ -258,22 +259,26 @@ class DiskModule(Module):
         self._peak = 1.0
 
     def available(self) -> bool:
-        return hasattr(os, "statvfs") or _psutil() is not None
+        # shutil.disk_usage works everywhere; os.statvfs is POSIX-only, and
+        # testing for it hid the module on Windows until psutil was
+        # installed — and then it was shown and crashed on its first poll.
+        return True
 
     def unavailable_reason(self) -> str:
-        return "no os.statvfs and no psutil"
+        return ""
 
     def poll(self) -> Panel:
         readings: list[Reading] = []
         for path in self.paths:
             try:
-                stat = os.statvfs(path)
+                usage = shutil.disk_usage(path)
             except OSError as exc:
                 readings.append(Reading(path, f"unreadable: {exc.strerror}"))
                 continue
-            total = stat.f_blocks * stat.f_frsize
-            free = stat.f_bavail * stat.f_frsize
-            used = total - free
+            # used + free, not usage.total: what a non-root user can
+            # actually fill, which is what statvfs's f_bavail gave before.
+            total = usage.used + usage.free
+            used = usage.used
             readings.append(Reading(
                 label=path,
                 value=f"{_fmt_bytes(used)}/{_fmt_bytes(total)}",

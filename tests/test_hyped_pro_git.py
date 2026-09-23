@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import io
 import json
+import os
 import queue
 import shutil
 import subprocess
@@ -36,8 +37,10 @@ def repo(tmp_path, monkeypatch) -> Path:
     sh(root, "config", "user.email", "t@example.com")
     sh(root, "config", "user.name", "Test")
     sh(root, "config", "commit.gpgsign", "false")
-    (root / "a.py").write_text("one\n", encoding="utf-8")
-    (root / "b.txt").write_text("bee\n", encoding="utf-8")
+    # Bytes, not write_text: on Windows write_text writes CRLF, and the
+    # editor rightly hands back what is on disk.
+    (root / "a.py").write_bytes(b"one\n")
+    (root / "b.txt").write_bytes(b"bee\n")
     sh(root, "add", "-A")
     sh(root, "commit", "-qm", "first")
     monkeypatch.setenv("HYPED_PRO_WORKSPACE", str(root))
@@ -237,7 +240,8 @@ class TestFileTools:
         script.chmod(0o755)
         tools.write_file("run.sh", "new")
         assert script.read_text(encoding="utf-8") == "new"
-        assert script.stat().st_mode & 0o111
+        if os.name != "nt":   # Windows has no execute bit to keep
+            assert script.stat().st_mode & 0o111
 
     def test_a_stale_write_is_refused(self, repo):
         seen = tools.content_hash((repo / "a.py").read_text(encoding="utf-8"))
@@ -480,6 +484,17 @@ class TestBridge:
         stale = bridge.dispatch({"id": 4, "cmd": "file_write", "path": "a.py", "content": "again",
                                  "expected_hash": read["hash"]})
         assert stale["ok"] is False and stale["code"] == "TOOL-WRITE-002"
+
+    def test_line_endings_come_back_as_they_are(self, repo, wire):
+        """A CRLF file is shown and saved as CRLF: an editor that
+        normalised them would rewrite every line of a Windows file."""
+        (repo / "win.txt").write_bytes(b"one\r\ntwo\r\n")
+        read = bridge.dispatch({"id": 1, "cmd": "file_read", "path": "win.txt"})["data"]
+        assert read["content"] == "one\r\ntwo\r\n"
+        wrote = bridge.dispatch({"id": 2, "cmd": "file_write", "path": "win.txt",
+                                 "content": "one\r\nthree\r\n", "expected_hash": read["hash"]})
+        assert wrote["ok"], wrote
+        assert (repo / "win.txt").read_bytes() == b"one\r\nthree\r\n"
 
     def test_a_new_file_opens_empty(self, repo, wire):
         read = bridge.dispatch({"id": 1, "cmd": "file_read", "path": "later.md"})["data"]
