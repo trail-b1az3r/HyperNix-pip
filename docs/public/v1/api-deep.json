@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-api-deep",
   "generated_at": "2026-09-20T21:20:57Z",
-  "commit": "d01b23b7f26335a069f391f917ebf8189600ec8d",
+  "commit": "982f0924a8dc30fe73c5482f220124963c077ff6",
   "history_available": true,
   "source_root": "src/hypernix",
   "modules": [
@@ -17,6 +17,20 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "c81b29d2",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "0.72.6.rc2: tvtop-max, and HyperLink's default system prompt",
+          "api_changes": []
+        },
+        {
+          "sha": "848cfa6a",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "0.72.6.rc1: prepare the tree, and fix what the first release run hit",
+          "api_changes": []
+        },
         {
           "sha": "4e0dfcb8",
           "date": "2026-09-23",
@@ -57,20 +71,6 @@
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "0.72.6 pt2: hyperchat, and three things HyperLink was showing wrong",
-          "api_changes": []
-        },
-        {
-          "sha": "53a7eec3",
-          "date": "2026-09-23",
-          "author": "Claude",
-          "subject": "0.72.6 pt2: dilute, /web/v1 keyless search, and eth's dead band",
-          "api_changes": []
-        },
-        {
-          "sha": "0317a54c",
-          "date": "2026-09-22",
-          "author": "Claude",
-          "subject": "hyped: remade simple, with dots for everything else",
           "api_changes": []
         }
       ]
@@ -7618,6 +7618,49 @@
       ]
     },
     {
+      "module": "hypernix.hyperlink.default_prompt",
+      "source": "src/hypernix/hyperlink/default_prompt.py",
+      "line_count": 76,
+      "summary": "The system prompt HyperLink starts from when hyperchat answers (0.72.6).",
+      "api": [
+        {
+          "kind": "function",
+          "name": "default_prompt",
+          "signature": "def default_prompt*, today: _dt.date | None=None -> str",
+          "line": 74,
+          "doc": "The default prompt, with today's date filled in."
+        },
+        {
+          "kind": "function",
+          "name": "default_prompt_for",
+          "signature": "def default_prompt_forconfig: Any, backend: Any, *, today: _dt.date | None=None -> str",
+          "line": 80,
+          "doc": "The default prompt for a turn, or ``\"\"`` when it does not apply."
+        }
+      ],
+      "errors": [],
+      "deprecations": [],
+      "required_modules": [],
+      "changes": [
+        {
+          "sha": "c81b29d2",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "0.72.6.rc2: tvtop-max, and HyperLink's default system prompt",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def default_prompt(*, today: _dt.date | None = None) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def default_prompt_for(config: Any, backend: Any, *, today: _dt.date | None = None) -> str:"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "module": "hypernix.hyperlink.discovery",
       "source": "src/hypernix/hyperlink/discovery.py",
       "line_count": 237,
@@ -10530,7 +10573,7 @@
     {
       "module": "hypernix.hyperlink.preferences",
       "source": "src/hypernix/hyperlink/preferences.py",
-      "line_count": 381,
+      "line_count": 386,
       "summary": "Per-person settings: who they are, and how they want to be answered.",
       "api": [
         {
@@ -10585,7 +10628,7 @@
         {
           "kind": "function",
           "name": "system_prompt_for",
-          "signature": "def system_prompt_forpreferences: Preferences, *, session_prompt: str='', memory_block: str='' -> str",
+          "signature": "def system_prompt_forpreferences: Preferences, *, session_prompt: str='', memory_block: str='', default: str='' -> str",
           "line": 374,
           "doc": "The system prompt a turn actually gets."
         }
@@ -10596,6 +10639,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "c81b29d2",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "0.72.6.rc2: tvtop-max, and HyperLink's default system prompt",
+          "api_changes": []
+        },
         {
           "sha": "e26841fc",
           "date": "2026-09-23",
@@ -13965,7 +14015,7 @@
     {
       "module": "hypernix.interfaces.hyped_pro_otui",
       "source": "src/hypernix/interfaces/hyped_pro_otui.py",
-      "line_count": 188,
+      "line_count": 235,
       "summary": "hyped-pro: launcher for the OpenTUI terminal client.",
       "api": [
         {
@@ -14013,30 +14063,44 @@
         },
         {
           "kind": "function",
+          "name": "semver_of",
+          "signature": "def semver_ofversion: str -> str",
+          "line": 144,
+          "doc": "The app's spelling of a package version."
+        },
+        {
+          "kind": "function",
+          "name": "sync_app_version",
+          "signature": "def sync_app_versionversion: str, app_dir: Path=APP_DIR -> str",
+          "line": 164,
+          "doc": "Write *version* into the app's ``package.json`` and ``app.ts``."
+        },
+        {
+          "kind": "function",
           "name": "runtime_root",
-          "signature": "def runtime_rootenv: dict[str, str] | None=None -> Path",
-          "line": 137,
+          "signature": "def runtime_rootenv: dict[str, str] | None=None, *, name: str='hyped-pro' -> Path",
+          "line": 187,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "prepare_app",
-          "signature": "def prepare_appsource: Path=APP_DIR, *, bun: str, env: dict[str, str] | None=None, debug: bool=False -> Path",
-          "line": 156,
+          "signature": "def prepare_appsource: Path=APP_DIR, *, bun: str, env: dict[str, str] | None=None, debug: bool=False, name: str='hyped-pro', fallback: str='hyped-plus' -> Path",
+          "line": 206,
           "doc": "Return a directory the app can run from, installing it if needed."
         },
         {
           "kind": "function",
           "name": "command_for",
           "signature": "def command_forbun: str, app: Path, argv: list[str] -> list[str]",
-          "line": 200,
+          "line": 256,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "cli_main",
           "signature": "def cli_mainargv: list[str] | None=None -> int",
-          "line": 207,
+          "line": 263,
           "doc": ""
         }
       ],
@@ -14046,6 +14110,38 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "c81b29d2",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "0.72.6.rc2: tvtop-max, and HyperLink's default system prompt",
+          "api_changes": [
+            {
+              "kind": "removed",
+              "text": "def runtime_root(env: dict[str, str] | None = None) -> Path:"
+            },
+            {
+              "kind": "added",
+              "text": "def runtime_root(env: dict[str, str] | None = None, *, name: str = \"hyped-pro\") -> Path:"
+            }
+          ]
+        },
+        {
+          "sha": "848cfa6a",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "0.72.6.rc1: prepare the tree, and fix what the first release run hit",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def semver_of(version: str) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def sync_app_version(version: str, app_dir: Path = APP_DIR) -> str:"
+            }
+          ]
+        },
         {
           "sha": "6066ce53",
           "date": "2026-09-23",
@@ -20614,6 +20710,212 @@
       ]
     },
     {
+      "module": "hypernix.monitoring.run_inspect",
+      "source": "src/hypernix/monitoring/run_inspect.py",
+      "line_count": 501,
+      "summary": "hypernix.monitoring.run_inspect \u2014 what a training run is made of.",
+      "api": [
+        {
+          "kind": "class",
+          "name": "ImportInfo",
+          "signature": "class ImportInfo",
+          "line": 55,
+          "doc": "",
+          "methods": []
+        },
+        {
+          "kind": "class",
+          "name": "Finding",
+          "signature": "class Finding",
+          "line": 68,
+          "doc": "",
+          "methods": []
+        },
+        {
+          "kind": "class",
+          "name": "ArchInfo",
+          "signature": "class ArchInfo",
+          "line": 79,
+          "doc": "",
+          "methods": []
+        },
+        {
+          "kind": "class",
+          "name": "CookerInfo",
+          "signature": "class CookerInfo",
+          "line": 93,
+          "doc": "",
+          "methods": []
+        },
+        {
+          "kind": "class",
+          "name": "ScriptReport",
+          "signature": "class ScriptReport",
+          "line": 103,
+          "doc": "",
+          "methods": [
+            {
+              "name": "to_dict",
+              "signature": "def to_dictself -> dict[str, Any]",
+              "line": 111,
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "script_from_command",
+          "signature": "def script_from_commandcommand: str | list[str], cwd: str | Path | None=None -> Path | None",
+          "line": 128,
+          "doc": "The ``.py`` file a command line runs, or ``None``."
+        },
+        {
+          "kind": "function",
+          "name": "hypernix_module_info",
+          "signature": "def hypernix_module_infodotted: str -> tuple[str, str] | None",
+          "line": 217,
+          "doc": "``(summary, deprecated_instead)`` for a ``hypernix.*`` module, or ``None`` when there is no such file."
+        },
+        {
+          "kind": "function",
+          "name": "cooker_catalogue",
+          "signature": "def cooker_catalogue -> dict[str, tuple[str, str]]",
+          "line": 260,
+          "doc": "Every Pressure Cooker class: ``name -> (generation, summary)``."
+        },
+        {
+          "kind": "function",
+          "name": "analyze_script",
+          "signature": "def analyze_scriptpath: str | Path -> ScriptReport",
+          "line": 504,
+          "doc": "Everything tvtop-max can tell about a training script, from its source."
+        },
+        {
+          "kind": "function",
+          "name": "arch_from_folder",
+          "signature": "def arch_from_folderfolder: str | Path -> ArchInfo",
+          "line": 538,
+          "doc": "The architecture from a ``config.json`` in *folder*, or nothing."
+        },
+        {
+          "kind": "function",
+          "name": "findings_from_log",
+          "signature": "def findings_from_loglines: list[str] -> list[Finding]",
+          "line": 567,
+          "doc": "Errors and warnings in a log's tail, each counted once per message."
+        }
+      ],
+      "errors": [],
+      "deprecations": [],
+      "required_modules": [],
+      "changes": [
+        {
+          "sha": "c81b29d2",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "0.72.6.rc2: tvtop-max, and HyperLink's default system prompt",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class ImportInfo:"
+            },
+            {
+              "kind": "added",
+              "text": "class Finding:"
+            },
+            {
+              "kind": "added",
+              "text": "class ArchInfo:"
+            },
+            {
+              "kind": "added",
+              "text": "class CookerInfo:"
+            },
+            {
+              "kind": "added",
+              "text": "class ScriptReport:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_dict(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def script_from_command(command: str | list[str], cwd: str | Path | None = None) -> Path | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def found(arg: str) -> Path | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def first_py(args: list[str]) -> Path | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _module_file(dotted: str) -> Path | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _first_line(text: str | None) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def hypernix_module_info(dotted: str) -> tuple[str, str] | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def cooker_catalogue() -> dict[str, tuple[str, str]]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _deprecated_generations() -> dict[str, str]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _arch_presets() -> dict[str, dict[str, Any]]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _call_name(call: ast.Call) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _literal(node: ast.AST) -> Any:"
+            },
+            {
+              "kind": "added",
+              "text": "def _distribution_version(top: str) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _classify(module: str, script_dir: Path) -> ImportInfo:"
+            },
+            {
+              "kind": "added",
+              "text": "class _Reader(ast.NodeVisitor):"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _add(self, module: str, name: str | None, line: int) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def visit_Import(self, node: ast.Import) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def visit_ImportFrom(self, node: ast.ImportFrom) -> None:"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "module": "hypernix.monitoring.stale_log",
       "source": "src/hypernix/monitoring/stale_log.py",
       "line_count": 514,
@@ -21484,6 +21786,188 @@
           "author": "Claude",
           "subject": "Group hypernix modules into category packages",
           "api_changes": []
+        }
+      ]
+    },
+    {
+      "module": "hypernix.monitoring.tvtop_max",
+      "source": "src/hypernix/monitoring/tvtop_max.py",
+      "line_count": 63,
+      "summary": "tvtop-max \u2014 tvtop-pro on OpenTUI, with the run itself on screen.",
+      "api": [
+        {
+          "kind": "function",
+          "name": "cli_main",
+          "signature": "def cli_mainargv: list[str] | None=None -> int",
+          "line": 42,
+          "doc": ""
+        }
+      ],
+      "errors": [],
+      "deprecations": [],
+      "required_modules": [],
+      "changes": [
+        {
+          "sha": "c81b29d2",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "0.72.6.rc2: tvtop-max, and HyperLink's default system prompt",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def cli_main(argv: list[str] | None = None) -> int:"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "module": "hypernix.monitoring.tvtop_max_bridge",
+      "source": "src/hypernix/monitoring/tvtop_max_bridge.py",
+      "line_count": 316,
+      "summary": "The Python side of tvtop-max.",
+      "api": [
+        {
+          "kind": "class",
+          "name": "Monitor",
+          "signature": "class Monitor",
+          "line": 99,
+          "doc": "The run being watched, and the answers to the bridge's commands.",
+          "methods": [
+            {
+              "name": "rescan",
+              "signature": "def rescanself -> dict[str, Any]",
+              "line": 123,
+              "doc": ""
+            },
+            {
+              "name": "describe",
+              "signature": "def describeself -> dict[str, Any]",
+              "line": 199,
+              "doc": ""
+            },
+            {
+              "name": "info",
+              "signature": "def infoself -> dict[str, Any]",
+              "line": 210,
+              "doc": ""
+            },
+            {
+              "name": "frame",
+              "signature": "def frameself -> dict[str, Any]",
+              "line": 248,
+              "doc": ""
+            },
+            {
+              "name": "handle",
+              "signature": "def handleself, message: dict[str, Any] -> dict[str, Any]",
+              "line": 299,
+              "doc": "One reply for one request. Never raises."
+            }
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "serve",
+          "signature": "def servemonitor: Monitor, stdin=None, stdout=None -> int",
+          "line": 321,
+          "doc": "Answer requests from *stdin* until it closes. Each on its own thread."
+        },
+        {
+          "kind": "function",
+          "name": "main",
+          "signature": "def mainargv: list[str] | None=None -> int",
+          "line": 354,
+          "doc": ""
+        }
+      ],
+      "errors": [],
+      "deprecations": [],
+      "required_modules": [],
+      "changes": [
+        {
+          "sha": "c81b29d2",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "0.72.6.rc2: tvtop-max, and HyperLink's default system prompt",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _resolved(path: Path) -> Path:"
+            },
+            {
+              "kind": "added",
+              "text": "def _own_family() -> set[int]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _tail_lines(path: Path, *, limit_bytes: int = 256 * 1024) -> list[str]:"
+            },
+            {
+              "kind": "added",
+              "text": "class Monitor:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, *, log: str | None = None, script: str | None = None,"
+            },
+            {
+              "kind": "added",
+              "text": "def rescan(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _pick_process(self):"
+            },
+            {
+              "kind": "added",
+              "text": "def _find_log(self, cwd: Path | None) -> Path | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def describe(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def info(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _checkpoint_folder(self) -> Path | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def frame(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _log_age(self) -> float | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _findings_for(self, lines: list[str]) -> list[dict[str, Any]]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _process_table(self) -> list[dict[str, Any]]:"
+            },
+            {
+              "kind": "added",
+              "text": "def handle(self, message: dict[str, Any]) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def serve(monitor: Monitor, stdin=None, stdout=None) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def answer(message: dict[str, Any]) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def main(argv: list[str] | None = None) -> int:"
+            }
+          ]
         }
       ]
     },
@@ -40938,7 +41422,7 @@
     {
       "module": "hypernix.t1api.config",
       "source": "src/hypernix/t1api/config.py",
-      "line_count": 620,
+      "line_count": 628,
       "summary": "t1api.config \u2014 environment-variable configuration for the T1 API.",
       "api": [
         {
@@ -40951,55 +41435,55 @@
             {
               "name": "from_env",
               "signature": "def from_envcls, *, load_dotenv: bool=True, dotenv_path: str | Path='.env' -> T1APIConfig",
-              "line": 477,
+              "line": 484,
               "doc": ""
             },
             {
               "name": "is_production",
               "signature": "def is_productionself -> bool",
-              "line": 487,
+              "line": 494,
               "doc": ""
             },
             {
               "name": "storage_backend",
               "signature": "def storage_backendself -> str",
-              "line": 491,
+              "line": 498,
               "doc": ""
             },
             {
               "name": "tls_settings",
               "signature": "def tls_settingsself -> TLSSettings",
-              "line": 494,
+              "line": 501,
               "doc": ""
             },
             {
               "name": "rate_limit_rules",
               "signature": "def rate_limit_rulesself -> Any",
-              "line": 506,
+              "line": 513,
               "doc": "Parsed rate-limit rules, or None to use the defaults."
             },
             {
               "name": "describe_secrets",
               "signature": "def describe_secretsself -> dict[str, bool]",
-              "line": 524,
+              "line": 531,
               "doc": "Which secrets are set. Values never included \u2014 this is what ``GET /status`` uses to tell an operator what's missing without telling anyone what it is."
             },
             {
               "name": "public_dict",
               "signature": "def public_dictself -> dict[str, object]",
-              "line": 538,
+              "line": 545,
               "doc": "Explicit allowlist of config surfaced by GET /config. Never includes ``token_secret``, ``deploy_secret``, ``database_url``, or any future secret field."
             },
             {
               "name": "production_problems",
               "signature": "def production_problemsself -> list[str]",
-              "line": 579,
+              "line": 587,
               "doc": "Every reason this config is unsafe for production, as text."
             },
             {
               "name": "validate_for_production",
               "signature": "def validate_for_productionself, *, strict: bool | None=None -> None",
-              "line": 671,
+              "line": 679,
               "doc": "Raise ``CONFIG_INVALID`` if this config is unsafe for production."
             }
           ]
@@ -41011,6 +41495,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "c81b29d2",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "0.72.6.rc2: tvtop-max, and HyperLink's default system prompt",
+          "api_changes": []
+        },
         {
           "sha": "0068bbf2",
           "date": "2026-09-23",
@@ -41058,13 +41549,6 @@
           "date": "2026-09-15",
           "author": "Claude",
           "subject": "t1: HyperLink could not connect over a trusted network at all",
-          "api_changes": []
-        },
-        {
-          "sha": "ec285420",
-          "date": "2026-09-08",
-          "author": "Claude",
-          "subject": "0.72.4.dev4 \u2014 trusted-network mode",
           "api_changes": []
         }
       ]
@@ -46233,336 +46717,336 @@
     {
       "module": "hypernix.t1api.routers.hyperlink",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line_count": 2122,
+      "line_count": 2127,
       "summary": "``/hyperlink`` \u2014 the surface the iOS app talks to.",
       "api": [
         {
           "kind": "function",
           "name": "list_endpoints",
           "signature": "def list_endpointsrequest: Request, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> HyperLinkEndpointsResponse",
-          "line": 191,
+          "line": 192,
           "doc": "Every address this machine can be reached on, best first."
         },
         {
           "kind": "function",
           "name": "list_peers",
           "signature": "def list_peersrequest: Request, include_offline: bool=Query(False, description='Also list peers that are down.'), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> HyperLinkPeersResponse",
-          "line": 226,
+          "line": 227,
           "doc": "Other HyperNix machines on this tailnet, as *candidates*."
         },
         {
           "kind": "function",
           "name": "create_pairing_code",
           "signature": "def create_pairing_codepayload: PairingCreateRequest, request: Request, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), registry: DeviceRegistry=Depends(get_device_registry), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id), audit=Depends(get_audit_log) -> PairingCodeResponse",
-          "line": 284,
+          "line": 285,
           "doc": "Mint a code for a phone to redeem. Admin only, on the PC."
         },
         {
           "kind": "function",
           "name": "redeem_pairing_code",
           "signature": "def redeem_pairing_codepayload: PairingRedeemRequest, request: Request, registry: DeviceRegistry=Depends(get_device_registry), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id), audit=Depends(get_audit_log) -> PairingRedeemResponse",
-          "line": 332,
+          "line": 333,
           "doc": "Exchange a pairing code for this device's permanent token."
         },
         {
           "kind": "function",
           "name": "revoke_pairing_code",
           "signature": "def revoke_pairing_codecode: str, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), registry: DeviceRegistry=Depends(get_device_registry), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> GenericOkResponse",
-          "line": 401,
+          "line": 402,
           "doc": "Cancel a code that has not been redeemed yet."
         },
         {
           "kind": "function",
           "name": "list_devices",
           "signature": "def list_devicesinclude_revoked: bool=Query(default=False), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), registry: DeviceRegistry=Depends(get_device_registry), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> DeviceListResponse",
-          "line": 425,
+          "line": 426,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "whoami",
           "signature": "def whoamiprincipal: HyperLinkPrincipal=Depends(get_hyperlink_principal), registry: DeviceRegistry=Depends(get_device_registry), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> DeviceResponse",
-          "line": 443,
+          "line": 444,
           "doc": "What the caller's own device token resolves to."
         },
         {
           "kind": "function",
           "name": "rename_device",
           "signature": "def rename_devicedevice_id: str, payload: dict[str, Any], principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), registry: DeviceRegistry=Depends(get_device_registry), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> DeviceResponse",
-          "line": 469,
+          "line": 470,
           "doc": "Rename a device. A device may rename itself; only an admin may rename another one \u2014 otherwise a phone could relabel itself as somebody else's before doing something regrettable."
         },
         {
           "kind": "function",
           "name": "revoke_device",
           "signature": "def revoke_devicedevice_id: str, request: Request, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), registry: DeviceRegistry=Depends(get_device_registry), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id), audit=Depends(get_audit_log) -> DeviceResponse",
-          "line": 489,
+          "line": 490,
           "doc": "Unpair a device."
         },
         {
           "kind": "function",
           "name": "list_sessions",
           "signature": "def list_sessionsinclude_archived: bool=Query(default=False), limit: int=Query(default=50, ge=1, le=200), offset: int=Query(default=0, ge=0), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: ChatSessionStore=Depends(get_session_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> SessionListResponse",
-          "line": 529,
+          "line": 530,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "create_session",
           "signature": "def create_sessionpayload: SessionCreateRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: ChatSessionStore=Depends(get_session_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> SessionResponse",
-          "line": 550,
+          "line": 551,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "get_session",
           "signature": "def get_sessionsession_id: str, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: ChatSessionStore=Depends(get_session_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> SessionResponse",
-          "line": 572,
+          "line": 573,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "update_session",
           "signature": "def update_sessionsession_id: str, payload: SessionUpdateRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: ChatSessionStore=Depends(get_session_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> SessionResponse",
-          "line": 585,
+          "line": 586,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "retitle_session",
           "signature": "def retitle_sessionsession_id: str, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: ChatSessionStore=Depends(get_session_store), preferences=Depends(get_preference_store), runner=Depends(get_runner), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> SessionResponse",
-          "line": 607,
+          "line": 608,
           "doc": "Ask the model to name this chat again, from its first exchange."
         },
         {
           "kind": "function",
           "name": "delete_session",
           "signature": "def delete_sessionsession_id: str, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: ChatSessionStore=Depends(get_session_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> GenericOkResponse",
-          "line": 637,
+          "line": 638,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "edit_message",
           "signature": "def edit_messagesession_id: str, message_id: str, payload: MessageEditRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: ChatSessionStore=Depends(get_session_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> MessageEditResponse",
-          "line": 653,
+          "line": 654,
           "doc": "Rewrite one of your own messages, and drop what came after it."
         },
         {
           "kind": "function",
           "name": "delete_message",
           "signature": "def delete_messagesession_id: str, message_id: str, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: ChatSessionStore=Depends(get_session_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> GenericOkResponse",
-          "line": 701,
+          "line": 702,
           "doc": "Remove one message, leaving the rest of the conversation."
         },
         {
           "kind": "function",
           "name": "list_messages",
           "signature": "def list_messagessession_id: str, after_seq: int=Query(default=0, ge=0, description='Incremental sync: only newer messages'), limit: int=Query(default=0, ge=0, le=1000), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: ChatSessionStore=Depends(get_session_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> MessageListResponse",
-          "line": 728,
+          "line": 729,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "chat_turn",
           "signature": "def chat_turnsession_id: str, payload: HyperLinkChatRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: ChatSessionStore=Depends(get_session_store), files: AttachmentStore=Depends(get_attachment_store), memories: MemoryStore=Depends(get_memory_store), preferences=Depends(get_preference_store), runner=Depends(get_runner), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id), request: Request=None -> HyperLinkChatResponse",
-          "line": 1144,
+          "line": 1147,
           "doc": "Append the user's message, run the model, append the reply."
         },
         {
           "kind": "function",
           "name": "chat_turn_stream",
           "signature": "def chat_turn_streamsession_id: str, payload: HyperLinkChatRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: ChatSessionStore=Depends(get_session_store), files: AttachmentStore=Depends(get_attachment_store), generations: GenerationRegistry=Depends(get_generation_registry), memories: MemoryStore=Depends(get_memory_store), preferences=Depends(get_preference_store), runner=Depends(get_runner), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> StreamingResponse",
-          "line": 1311,
+          "line": 1315,
           "doc": "The same turn, streamed token by token."
         },
         {
           "kind": "function",
           "name": "stop_generation",
           "signature": "def stop_generationsession_id: str, generation_id: str | None=Query(default=None), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), generations: GenerationRegistry=Depends(get_generation_registry), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> GenerationStopResponse",
-          "line": 1516,
+          "line": 1521,
           "doc": "Stop a streamed reply that is still being generated."
         },
         {
           "kind": "function",
           "name": "shell_status",
           "signature": "def shell_statusprincipal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config) -> dict[str, Any]",
-          "line": 1557,
+          "line": 1562,
           "doc": "Whether this server accepts shell commands, so the app can say why not."
         },
         {
           "kind": "function",
           "name": "run_shell",
           "signature": "def run_shellrequest_body: dict[str, Any], principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), audit=Depends(get_audit_log), request_id: str=Depends(get_request_id) -> dict[str, Any]",
-          "line": 1577,
+          "line": 1582,
           "doc": "Run one command on this machine and return its output."
         },
         {
           "kind": "function",
           "name": "server_hardware",
           "signature": "def server_hardwareprincipal: HyperLinkPrincipal=Depends(require_hyperlink_operator), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> HardwareResponse",
-          "line": 1619,
+          "line": 1624,
           "doc": "What this machine is doing: CPU, memory, swap, disks, GPUs."
         },
         {
           "kind": "function",
           "name": "list_backends",
           "signature": "def list_backendsprincipal: HyperLinkPrincipal=Depends(get_hyperlink_principal), runner=Depends(get_runner), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> BackendsResponse",
-          "line": 1665,
+          "line": 1670,
           "doc": "What could answer a message, and what would answer one now."
         },
         {
           "kind": "function",
           "name": "read_preferences",
           "signature": "def read_preferencesprincipal: HyperLinkPrincipal=Depends(get_hyperlink_principal), preferences=Depends(get_preference_store), runner=Depends(get_runner), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> PreferencesResponse",
-          "line": 1691,
+          "line": 1696,
           "doc": "This person's settings, and the bounds the server will accept."
         },
         {
           "kind": "function",
           "name": "write_preferences",
           "signature": "def write_preferencespayload: PreferencesRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), preferences=Depends(get_preference_store), runner=Depends(get_runner), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> PreferencesResponse",
-          "line": 1712,
+          "line": 1717,
           "doc": "Change some settings. Unsent fields are left alone."
         },
         {
           "kind": "function",
           "name": "reset_preferences",
           "signature": "def reset_preferencesprincipal: HyperLinkPrincipal=Depends(get_hyperlink_principal), preferences=Depends(get_preference_store), runner=Depends(get_runner), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> PreferencesResponse",
-          "line": 1738,
+          "line": 1743,
           "doc": "Back to the defaults."
         },
         {
           "kind": "function",
           "name": "server_upgrade",
           "signature": "def server_upgradeprincipal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> UpgradeResponse",
-          "line": 1754,
+          "line": 1759,
           "doc": "What is installed here, and the exact commands to update it."
         },
         {
           "kind": "function",
           "name": "server_uptime",
           "signature": "def server_uptimeprincipal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> UptimeResponse",
-          "line": 1792,
+          "line": 1797,
           "doc": "How long the server, and the machine under it, have been up."
         },
         {
           "kind": "function",
           "name": "list_generations",
           "signature": "def list_generationssession_id: str | None=Query(default=None), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), generations: GenerationRegistry=Depends(get_generation_registry), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> GenerationListResponse",
-          "line": 1819,
+          "line": 1824,
           "doc": "What is generating right now, for this caller."
         },
         {
           "kind": "function",
           "name": "upload_file",
           "signature": "async def upload_filefile: UploadFile=File(...), session_id: str=Form(default=''), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: AttachmentStore=Depends(get_attachment_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> AttachmentResponse",
-          "line": 1861,
+          "line": 1866,
           "doc": "Upload one image, document or source file."
         },
         {
           "kind": "function",
           "name": "list_attachments",
           "signature": "def list_attachmentssession_id: str | None=Query(default=None), limit: int=Query(default=100, ge=1, le=500), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: AttachmentStore=Depends(get_attachment_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> AttachmentListResponse",
-          "line": 1897,
+          "line": 1902,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "download_file",
           "signature": "def download_filefile_id: str, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: AttachmentStore=Depends(get_attachment_store), config: T1APIConfig=Depends(get_config) -> Response",
-          "line": 1916,
+          "line": 1921,
           "doc": "The raw bytes."
         },
         {
           "kind": "function",
           "name": "delete_file",
           "signature": "def delete_filefile_id: str, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: AttachmentStore=Depends(get_attachment_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> GenericOkResponse",
-          "line": 1943,
+          "line": 1948,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "resolve_model_link",
           "signature": "def resolve_model_linkpayload: HFResolveRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> HFResolveResponse",
-          "line": 1961,
+          "line": 1966,
           "doc": "Turn a model page and/or a direct file link into a download plan."
         },
         {
           "kind": "function",
           "name": "download_model",
           "signature": "def download_modelpayload: HFDownloadRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id), jobs=Depends(get_job_queue) -> HFDownloadResponse",
-          "line": 2018,
+          "line": 2023,
           "doc": "Start downloading a model onto the **server**, not the phone."
         },
         {
           "kind": "function",
           "name": "list_downloaded",
           "signature": "def list_downloadedprincipal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> DownloadedModelsResponse",
-          "line": 2094,
+          "line": 2099,
           "doc": "What is already on this server's disk."
         },
         {
           "kind": "function",
           "name": "model_catalogue",
           "signature": "def model_catalogueprincipal: HyperLinkPrincipal=Depends(get_hyperlink_principal), registry: ModelRegistry=Depends(get_registry), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> ModelCatalogueResponse",
-          "line": 2127,
+          "line": 2132,
           "doc": "Everything runnable here: the registry, LM Studio, and the disk."
         },
         {
           "kind": "function",
           "name": "sync_changes",
           "signature": "def sync_changescursor: int=Query(default=0, ge=0), limit: int=Query(default=100, ge=1, le=500), session_id: str | None=Query(default=None), entities: str | None=Query(default=None, description='Comma-separated: session,message,device,attachment'), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: SyncStore=Depends(get_sync_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> SyncPageResponse",
-          "line": 2179,
+          "line": 2184,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "claim_client_message",
           "signature": "def claim_client_messagepayload: SyncClaimRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: SyncStore=Depends(get_sync_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> SyncClaimResponse",
-          "line": 2210,
+          "line": 2215,
           "doc": "Claim an idempotency key before sending a turn."
         },
         {
           "kind": "function",
           "name": "register_push",
           "signature": "def register_pushpayload: PushRegisterRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: NotificationStore=Depends(get_notification_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> PushRegistrationResponse",
-          "line": 2242,
+          "line": 2247,
           "doc": "Register this device's APNs token."
         },
         {
           "kind": "function",
           "name": "list_push",
           "signature": "def list_pushinclude_disabled: bool=Query(default=False), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: NotificationStore=Depends(get_notification_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> PushRegistrationListResponse",
-          "line": 2274,
+          "line": 2279,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "set_push_events",
           "signature": "def set_push_eventsregistration_id: str, payload: PushEventsRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: NotificationStore=Depends(get_notification_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> PushRegistrationResponse",
-          "line": 2294,
+          "line": 2299,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "unregister_push",
           "signature": "def unregister_pushregistration_id: str, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: NotificationStore=Depends(get_notification_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> GenericOkResponse",
-          "line": 2312,
+          "line": 2317,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "list_push_events",
           "signature": "def list_push_eventsconfig: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> dict",
-          "line": 2326,
+          "line": 2331,
           "doc": "What a device may subscribe to."
         },
         {
           "kind": "function",
           "name": "search_history",
           "signature": "def search_historyq: str=Query(min_length=1, max_length=500), limit: int=Query(default=25, ge=1, le=200), session_id: str | None=Query(default=None), include_archived: bool=Query(default=False), roles: str | None=Query(default=None, description='Comma-separated'), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), index: SearchIndex=Depends(get_search_index), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> SearchResponse",
-          "line": 2364,
+          "line": 2369,
           "doc": "Search this owner's sessions and messages."
         }
       ],
@@ -46578,6 +47062,13 @@
         }
       ],
       "changes": [
+        {
+          "sha": "c81b29d2",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "0.72.6.rc2: tvtop-max, and HyperLink's default system prompt",
+          "api_changes": []
+        },
         {
           "sha": "848aac65",
           "date": "2026-09-23",
@@ -46786,38 +47277,6 @@
             {
               "kind": "added",
               "text": "def server_uptime("
-            }
-          ]
-        },
-        {
-          "sha": "030bf41b",
-          "date": "2026-09-15",
-          "author": "Claude",
-          "subject": "hyperlink: one model list from every source, and a Stop that stops",
-          "api_changes": [
-            {
-              "kind": "added",
-              "text": "@router.post(\"/sessions/{session_id}/chat/stop\", response_model=GenerationStopResponse)"
-            },
-            {
-              "kind": "added",
-              "text": "def stop_generation("
-            },
-            {
-              "kind": "added",
-              "text": "@router.get(\"/generations\", response_model=GenerationListResponse)"
-            },
-            {
-              "kind": "added",
-              "text": "def list_generations("
-            },
-            {
-              "kind": "added",
-              "text": "@router.get(\"/models\", response_model=ModelCatalogueResponse)"
-            },
-            {
-              "kind": "added",
-              "text": "def model_catalogue("
             }
           ]
         }
