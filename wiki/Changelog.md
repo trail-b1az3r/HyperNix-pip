@@ -122,6 +122,16 @@ newest entry is that version (ignoring a `.postN`, as the test does)
 under a `<version> — <YYYY-MM-DD>` header, and the refusal names the
 exact heading to add. A `.postN` with no notes of its own still only
 warns, since its tests pass.
+𖢥 **The first 0.72.6 run failed after its build, at the commit.** main
+moved while it built (the stats bot committed), so the push was
+rejected, and the retry's `git rebase` refused to start: the install and
+the build rewrite the tracked `src/hypernix.egg-info`, and a rebase will
+not run over unstaged changes. The step called that "the version bump
+conflicts with main -- another release may be in flight", which it was
+not. It now rebases with `--autostash`, so those files are set aside and
+put back, never pushed. A real conflict still stops, and now names the
+files. `tests/test_release_push_retry.py` runs the step's own script
+against a bare origin and failed the old one with the same message.
 🐛 The bump step spelled `0.72.6.postr1` as `0.72.6..post1`, which is
 not a version. It now asks the guard for the spelling
 (`version_guard.py --print-pep440`), so the version checked is the one
