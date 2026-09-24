@@ -238,14 +238,14 @@ struct MySettingsView: View {
 
     private var capabilitySection: some View {
         Section {
-            Toggle("Let the model use tools", isOn: Binding(
+            Toggle("Let the model use its workspace", isOn: Binding(
                 get: { preferences.toolsEnabled },
                 set: { on in Task { await save(.init(tools_enabled: on)) } }
             ))
         } header: {
             Text("Tools")
         } footer: {
-            Text("The model can create and edit files, run fish commands and make archives in its own workspace on the server — so “zip the logs and tell me what is in them” is one message. Off by default, because letting a model write files on your machine is not a default. What it does is recorded on each reply.")
+            Text("The model can always look things up on your server with your own access — the models, the hardware, web search — and keep memories when Auto-memory is on. This adds its workspace: creating and editing files, running fish commands and making archives, so “zip the logs and tell me what is in them” is one message. Off by default, because letting a model write files on your machine is not a default, and the server has to allow it too. What it does is recorded on each reply.")
         }
     }
 

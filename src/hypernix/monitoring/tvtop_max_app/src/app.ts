@@ -22,7 +22,7 @@ import { BUILDERS, PANELS, panelTitle, type PanelId } from "./panels.ts"
 import { theme } from "./theme.ts"
 import type { Frame, Info } from "./types.ts"
 
-export const VERSION = "0.72.6-rc2"
+export const VERSION = "0.72.6-rc3"
 
 export interface AppOptions {
   mode: Mode | "auto"

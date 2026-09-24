@@ -56,6 +56,8 @@ __all__ = [
     "ToolRound",
     "openai_tools",
     "run_tool_loop",
+    "stream_tool_loop",
+    "CallGuard",
 ]
 
 #: How many times the model may call tools before it has to answer.
@@ -116,15 +118,27 @@ class ToolRound:
         }
 
 
-def openai_tools(context: ToolContext) -> list[dict[str, Any]]:
+#: noodle's tools that touch nothing but the person's own memories. They
+#: follow the person's auto-memory setting, not the workspace switch.
+MEMORY_TOOLS = ("update_memory", "read_memory")
+
+
+def openai_tools(context: ToolContext, *, workspace: bool = True) -> list[dict[str, Any]]:
     """The tool list in the shape every backend expects.
 
     Tools the context has switched off are left out rather than offered
     and refused. A model that is told it can execute files and then told
     it cannot, every time, spends its rounds finding that out.
+
+    *workspace* False offers only the memory tools: no files, archives or
+    commands. HyperLink does that when the person has not turned on "Let
+    the model use tools", which is about the workspace, while still
+    letting the model keep the notes their auto-memory setting allows.
     """
     offered: list[dict[str, Any]] = []
     for tool in TOOLS.values():
+        if not workspace and tool.name not in MEMORY_TOOLS:
+            continue
         if tool.name == "execute_file" and not context.allow_execute:
             continue
         if tool.name == "web_search" and not context.allow_web_search:
@@ -184,6 +198,7 @@ def run_tool_loop(
     on_round: Callable[[ToolRound], None] | None = None,
     t1: T1Access | None = None,
     teach_format: bool = False,
+    workspace: bool = True,
 ) -> tuple[list[dict[str, Any]], dict[str, Any], list[ToolRound]]:
     """Run the model until it answers rather than calls a tool.
 
@@ -198,24 +213,7 @@ def run_tool_loop(
     conversation missing its tool replies is one the model cannot
     continue.
     """
-    messages = list(wire)
-    tools = openai_tools(context)
-    t1_names: set[str] = set()
-    if t1 is not None:
-        # Existing tools win a name clash: noodle's `web_search` and the
-        # T1 one both exist, and a model shown two tools with one name
-        # calls whichever it saw last.
-        taken = {t["function"]["name"] for t in tools}
-        for tool in t1tools.openai_tools(allow_mutating=t1.allow_mutating, only=t1.only):
-            name = tool["function"]["name"]
-            if name not in taken:
-                tools.append(tool)
-                t1_names.add(name)
-    if teach_format and tools:
-        # For a model without native tool support: one format, one worked
-        # example. Prepended as system text so it survives templates that
-        # drop the `tools` field entirely.
-        messages.insert(0, {"role": "system", "content": tool_prompt(tools)})
+    messages, tools, t1_names = _prepare(wire, context, t1, teach_format, workspace)
     rounds: list[ToolRound] = []
     envelope: dict[str, Any] = {}
     retried_format = False
@@ -247,11 +245,7 @@ def run_tool_loop(
         messages.append(assistant)
 
         for call in calls:
-            name = (call.get("function") or {}).get("name", "")
-            if name in t1_names:
-                record = _run_t1(call, tools, t1)
-            else:
-                record = _run_one(call, context, tools)
+            record = _run_call(call, context, tools, t1, t1_names)
             rounds.append(record)
             if on_round is not None:
                 try:
@@ -281,6 +275,245 @@ def run_tool_loop(
             envelope = ask(messages, [])
 
     return messages, envelope, rounds
+
+
+def _prepare(
+    wire: list[dict[str, Any]], context: ToolContext, t1: T1Access | None,
+    teach_format: bool, workspace: bool,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], set[str]]:
+    """The opening transcript, the tools, and which of them are T1's."""
+    messages = list(wire)
+    tools = openai_tools(context, workspace=workspace)
+    t1_names: set[str] = set()
+    if t1 is not None:
+        # Existing tools win a name clash: noodle's `web_search` and the
+        # T1 one both exist, and a model shown two tools with one name
+        # calls whichever it saw last.
+        taken = {t["function"]["name"] for t in tools}
+        for tool in t1tools.openai_tools(allow_mutating=t1.allow_mutating, only=t1.only):
+            name = tool["function"]["name"]
+            if name not in taken:
+                tools.append(tool)
+                t1_names.add(name)
+    if teach_format and tools:
+        # For a model without native tool support: one format, one worked
+        # example, as system text so it survives templates that drop the
+        # `tools` field entirely. Added to the system message that is
+        # already there, never as a second one: some backends keep only
+        # the first system message, and a second placed in front used to
+        # push out the person's own instructions and the default prompt.
+        taught = tool_prompt(tools)
+        if messages and messages[0].get("role") == "system" and isinstance(messages[0].get("content"), str):
+            messages[0] = {**messages[0], "content": f"{messages[0]['content']}\n\n{taught}"}
+        else:
+            messages.insert(0, {"role": "system", "content": taught})
+    return messages, tools, t1_names
+
+
+def _run_call(call: dict[str, Any], context: ToolContext, tools: list[dict[str, Any]],
+              t1: T1Access | None, t1_names: set[str]) -> ToolRound:
+    name = (call.get("function") or {}).get("name", "")
+    if name in t1_names and t1 is not None:
+        return _run_t1(call, tools, t1)
+    return _run_one(call, context, tools)
+
+
+# ---------------------------------------------------------------------------
+# Streaming
+# ---------------------------------------------------------------------------
+
+#: How a tool call written as text begins, in the formats _calls_in reads.
+CALL_MARKERS = ("<tool_call>", "[TOOL_CALLS]", "<|python_tag|>", "```json", "```tool")
+
+
+class CallGuard:
+    """Streams a reply's text, holding back what may be a tool call.
+
+    A local model writes its tool call as text, and streamed as it
+    arrives, the person would watch ``<tool_call>{"name": ...`` appear
+    and then vanish. So text goes out as it comes until something could
+    be the start of a call: a marker, the first few characters of one at
+    the end of a chunk, or a reply that opens with ``{`` (a bare JSON
+    call). From there it is held. At the end of the round, held text is
+    dropped if it was a call and sent if it was not, so a reply that
+    merely contains a code block still arrives whole.
+    """
+
+    def __init__(self) -> None:
+        self.text = ""
+        self.sent = 0
+        self.holding = False
+
+    def feed(self, piece: str) -> str:
+        self.text += piece
+        if self.holding:
+            return ""
+        if self.sent == 0 and self.text.lstrip().startswith("{"):
+            self.holding = True
+            return ""
+        starts = [i for i in (self.text.find(m, self.sent) for m in CALL_MARKERS) if i >= 0]
+        if starts:
+            cut = min(starts)
+            self.holding = True
+        else:
+            cut = len(self.text) - self._partial_marker_tail()
+        out = self.text[self.sent:cut]
+        self.sent = cut
+        return out
+
+    def _partial_marker_tail(self) -> int:
+        """Length of a suffix of the text that begins a marker."""
+        longest = 0
+        for marker in CALL_MARKERS:
+            for size in range(min(len(marker) - 1, len(self.text) - self.sent), 0, -1):
+                if self.text.endswith(marker[:size]):
+                    longest = max(longest, size)
+                    break
+        return longest
+
+    def rest(self) -> str:
+        out = self.text[self.sent:]
+        self.sent = len(self.text)
+        return out
+
+
+def _merge_tool_call_deltas(slots: dict[int, dict[str, Any]], deltas: Any) -> None:
+    """Assemble streamed ``delta.tool_calls`` fragments into whole calls."""
+    for position, delta in enumerate(deltas or []):
+        if not isinstance(delta, dict):
+            continue
+        index = delta.get("index", position)
+        slot = slots.setdefault(index, {"id": "", "type": "function",
+                                        "function": {"name": "", "arguments": ""}})
+        if delta.get("id"):
+            slot["id"] = delta["id"]
+        function = delta.get("function") or {}
+        if function.get("name"):
+            slot["function"]["name"] = str(function["name"])
+        if function.get("arguments"):
+            arguments = function["arguments"]
+            slot["function"]["arguments"] += (
+                arguments if isinstance(arguments, str) else json.dumps(arguments))
+
+
+def stream_tool_loop(
+    wire: list[dict[str, Any]],
+    context: ToolContext,
+    *,
+    ask_stream: Callable[[list[dict[str, Any]], list[dict[str, Any]]], Any],
+    max_rounds: int = MAX_ROUNDS,
+    t1: T1Access | None = None,
+    teach_format: bool = False,
+    workspace: bool = True,
+    cancelled: Callable[[], bool] = lambda: False,
+):
+    """:func:`run_tool_loop` for a streamed reply.
+
+    *ask_stream* takes ``(messages, tools)`` and returns an iterator of
+    OpenAI stream chunks. Yields events:
+
+    * ``("delta", text)`` -- reply text, as it arrives, with written
+      tool calls held back (see :class:`CallGuard`);
+    * ``("tool", ToolRound)`` -- a tool the model ran, as it finishes;
+    * ``("end", info)`` -- last, with ``model``, ``finish_reason``,
+      ``usage``, ``cancelled`` and ``rounds``.
+
+    Text the model writes before a tool call (``Let me check.``) is sent
+    as it comes, like any other text, so the person sees the whole turn.
+    """
+    messages, tools, t1_names = _prepare(wire, context, t1, teach_format, workspace)
+    rounds: list[ToolRound] = []
+    model, finish, usage = "", "", {}
+    retried_format = False
+    stopped = False
+
+    for round_number in range(max_rounds + 1):
+        final = round_number == max_rounds
+        offered = [] if final else tools
+        guard = CallGuard()
+        slots: dict[int, dict[str, Any]] = {}
+        finish = ""
+        stream = ask_stream(messages, offered)
+        try:
+            for chunk in stream:
+                if cancelled():
+                    stopped = True
+                    break
+                model = str(chunk.get("model") or model)
+                if isinstance(chunk.get("usage"), dict):
+                    usage = chunk["usage"]
+                for choice in chunk.get("choices") or []:
+                    if not isinstance(choice, dict):
+                        continue
+                    delta = choice.get("delta") or {}
+                    if isinstance(delta, dict):
+                        piece = delta.get("content")
+                        if isinstance(piece, str) and piece:
+                            out = guard.feed(piece)
+                            if out:
+                                yield ("delta", out)
+                        _merge_tool_call_deltas(slots, delta.get("tool_calls"))
+                    if choice.get("finish_reason"):
+                        finish = str(choice["finish_reason"])
+        finally:
+            close = getattr(stream, "close", None)
+            if stopped and callable(close):
+                close()
+        if stopped:
+            rest = guard.rest()
+            if rest and not guard.holding:
+                yield ("delta", rest)
+            break
+
+        message: dict[str, Any] = {"role": "assistant", "content": guard.text}
+        if slots:
+            message["tool_calls"] = [slots[i] for i in sorted(slots)]
+        envelope = {"choices": [{"message": message, "finish_reason": finish}], "model": model}
+        calls, failures = _calls_in(envelope, offered) if offered else ([], [])
+        if not calls:
+            if failures and not retried_format:
+                retried_format = True
+                messages.append(_assistant_message(envelope, []))
+                messages.append({
+                    "role": "system",
+                    "content": (
+                        "Your tool call could not be read: "
+                        + "; ".join(why for _, why in failures[:3])
+                        + ". Send it again as <tool_call>{\"name\": ..., "
+                          "\"arguments\": {...}}</tool_call> with valid JSON, "
+                          "or answer without a tool."
+                    ),
+                })
+                continue
+            rest = guard.rest()
+            if rest:
+                yield ("delta", rest)
+            break
+
+        messages.append(_assistant_message(envelope, calls))
+        for call in calls:
+            record = _run_call(call, context, tools, t1, t1_names)
+            rounds.append(record)
+            yield ("tool", record)
+            messages.append({
+                "role": "tool",
+                "tool_call_id": call.get("id") or "",
+                "name": record.tool,
+                "content": _truncate(record.content),
+            })
+        if round_number == max_rounds - 1:
+            messages.append({
+                "role": "system",
+                "content": (
+                    f"You have used all {max_rounds} tool rounds for this "
+                    f"turn. Answer now with what you have, and say what you "
+                    f"did not get to."
+                ),
+            })
+
+    yield ("end", {"model": model, "finish_reason": "cancelled" if stopped else finish,
+                   "usage": usage, "cancelled": stopped,
+                   "rounds": [r.to_dict() for r in rounds]})
 
 
 def _calls_in(

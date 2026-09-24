@@ -1758,6 +1758,31 @@ instead, which is a real answer rather than a degraded one.
 | `T1_HYPERCHAT_MAX_QUEUED` | `256` | prompts allowed to pile up before new ones are refused |
 | `T1_HYPERLINK_DEFAULT_PROMPT` | on | HyperLink's default system prompt on this backend (below) |
 
+#### Tools in a HyperLink chat (0.72.6.rc3)
+
+A HyperLink model is offered three kinds of tool, on both `/chat` and
+`/chat/stream`, each with its own switch:
+
+| Tools | Offered when |
+|---|---|
+| The T1 API: status, version, hardware, uptime, the runner and its queue, models, web search and summaries, memories (read) | The caller has a credential (a device token or a key). They run with that credential, so they can never do more than the person could by hand. Loading and unloading models are offered only to a caller with `write` or admin. |
+| `update_memory`, `read_memory` | The person's Auto-memory setting is on (the default) |
+| noodle's workspace: files, archives, commands | The person turned on "Let the model use its workspace" **and** the server has `T1_NOODLE_ENABLED` |
+
+Before rc3 the first two waited on both switches in the last row, which
+are off by default. The streaming route, which the app uses, offered no
+tools at all. So on a default server the model truthfully said it had
+none.
+
+On the streaming route, ordinary answers still arrive as they are
+written. A tool call the model writes as text (`<tool_call>…`) is held
+back rather than shown. Each tool it runs is announced in a
+`{"type": "tool", "tool", "ok", "summary"}` frame, and the rounds are
+kept in the reply's `metadata.tool_rounds`, as on `/chat`. On the
+built-in runner, the tool format is added to the one system message,
+after the person's instructions. It is never sent as a second system
+message, which some backends drop.
+
 #### The default system prompt (0.72.6.rc2)
 
 When a HyperLink reply comes from this server's own runner, which is
