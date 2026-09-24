@@ -854,6 +854,21 @@ class _ToolSetup:
         self.workspace = workspace
 
 
+def _memory_head(store: MemoryStore | None, owner: str) -> int:
+    """The person's memory cursor, or 0 when there is no store or it fails.
+
+    Only ever compared before and after a turn, so a failure reads as
+    "nothing changed" and never costs the chat its reply.
+    """
+    if store is None:
+        return 0
+    try:
+        return store.head(owner=owner)
+    except Exception:  # noqa: BLE001 - a memory hint never fails a chat
+        logger.debug("hyperlink: memory head for %s failed", owner, exc_info=True)
+        return 0
+
+
 def _tool_setup(config, principal, settings, request, memory_store, session_id):
     """The tools this turn gets, or None for none at all.
 
@@ -1431,6 +1446,11 @@ def chat_turn_stream(
     # than "whatever is running in this session", which is the same thing
     # right up until somebody has two devices open.
     active = generations.begin(session_id, principal.owner)
+    # Where the person's memories stood before this turn. A model that
+    # remembers or forgets something during it moves this, and the
+    # `memory` frame after `done` tells the app to sync now rather than
+    # whenever somebody next opens the Memories screen.
+    memory_before = _memory_head(memories, principal.owner)
 
     def _events():
         yield _frame(
@@ -1545,6 +1565,9 @@ def chat_turn_stream(
             input_tokens=message.input_tokens,
             output_tokens=message.output_tokens,
         )
+        memory_after = _memory_head(memories, principal.owner)
+        if memory_after > memory_before:
+            yield _frame("memory", cursor=memory_after)
         # After `done`, so the reply is never held up by naming the chat.
         # An app that stops reading at `done` still gets the title on its
         # next session list; one that reads on gets it now.

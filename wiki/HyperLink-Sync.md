@@ -107,6 +107,48 @@ conversation — the machine — and the phone is a client of it, so
 shape does not have. Message content is append-only; session metadata is
 last-write-wins.
 
+### Memories (0.72.6)
+
+Memories have their own feed, `GET /memory/sync`, because they belong to
+a person rather than a session and the model writes them in the middle
+of a chat. The app used to refetch `/memory/list` whole: the first 200,
+when the Memories screen appeared or a reply ended, with any error
+swallowed. A fact the model wrote reached the phone only if somebody
+happened to be looking, the 201st never did, and offline the screen was
+empty.
+
+Every memory write appends to a log in the same transaction: created,
+updated or deleted, including what the auto-memory budget evicts. The
+log keeps one row per memory, its latest, so a fact edited forty times
+costs one row and a page never names a memory twice. Numbers come from a
+counter row, like the change feed's, so they appear in commit order.
+
+```text
+GET /memory/sync?cursor=0          -> {"full": true,  "memories": [...], "cursor": 41}
+GET /memory/sync?cursor=41         -> {"full": false, "memories": [], "deleted": [], "cursor": 41}
+... the model remembers something ...
+GET /memory/sync?cursor=41         -> {"full": false, "memories": [{...}], "deleted": [], "cursor": 44}
+```
+
+- **A delta** (`full: false`): upsert `memories` by `memory_id`, drop
+  the ids in `deleted`, keep `cursor`. Ask again while `more` is true;
+  a page holds at most 500.
+- **The whole set** (`full: true`) replaces the copy. It is sent for a
+  first sync (`reason: "first"`), a cursor older than the tombstones,
+  which are kept for 30 days (`"expired"`), and a cursor this server
+  never issued, as when the phone was paired to a server that has since
+  been restored from a backup or replaced (`"unknown_cursor"`).
+- **A chat turn** that remembers or forgets something sends
+  `{"type": "memory", "cursor": N}` after `done` on `/chat/stream`, so
+  the app syncs while the reply is still on screen.
+
+The app keeps each server's copy on disk (Application Support, excluded
+from backups), shows it at launch and offline, and syncs on launch, on
+every return to the foreground, on the `memory` frame, and after each
+edit. When the server cannot be reached, the Memories screen says so and
+how old its copy is. Against a server without `/memory/sync`, it falls
+back to the whole list.
+
 ---
 
 ## Notifications
@@ -271,6 +313,7 @@ SwiftUI view should highlight a match, which it cannot use.
 | `PATCH` | `/hyperlink/push/{id}` | narrow the event set |
 | `DELETE` | `/hyperlink/push/{id}` | unregister, and drop its queue |
 | `GET` | `/hyperlink/search` | search sessions and messages |
+| `GET` | `/memory/sync` | memories changed since a cursor, or the whole set |
 
 A registration id is not a secret, so it is never the authority: every
 mutation checks the registration belongs to the caller, and answers

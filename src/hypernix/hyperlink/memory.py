@@ -33,6 +33,26 @@ short, there are at most a few dozen, and the whole set fits in a prompt
 prefix — so "which memories are relevant" is a question this shape does
 not have to answer, and answering it badly would be worse than not
 answering it. Retrieval is by owner, ordered by pinned-then-recent.
+
+Keeping a phone's copy current (0.72.6)
+---------------------------------------
+The app used to fetch ``/memory/list`` whole: the first 200, whenever a
+screen appeared or a reply ended, with any error swallowed. So a
+memory the model wrote mid-chat reached the phone only if somebody
+happened to be looking, the 201st never did, and with no network the
+screen was empty.
+
+Every write now appends to a change log in the same transaction:
+created, updated or deleted, including what the auto budget evicts.
+:meth:`MemoryStore.sync` answers "what changed since cursor N?" with the
+current state of each memory touched and the ids of the ones removed,
+so the phone applies a small delta to a copy it keeps. The log keeps
+one row per memory, its latest, so a fact edited forty times costs one
+row and a page never names a memory twice. Tombstones expire after
+:data:`MEMORY_LOG_TTL_SECONDS`. A cursor of 0, one older than that, or
+one this server never issued (the phone was paired to a server that has
+since been restored or replaced) gets the whole set instead, marked
+``full``, so the phone replaces its copy rather than merging into it.
 """
 from __future__ import annotations
 
@@ -53,8 +73,12 @@ logger = logging.getLogger(__name__)
 __all__ = [
     "Memory",
     "MemoryStore",
+    "MemorySyncPage",
     "AUTO_LIMIT",
     "MAX_CONTENT",
+    "MEMORY_LOG_TTL_SECONDS",
+    "MEMORY_SNAPSHOT_LIMIT",
+    "MEMORY_SYNC_PAGE",
     "SOURCES",
 ]
 
@@ -68,6 +92,19 @@ AUTO_LIMIT = 64
 MAX_CONTENT = 2000
 
 SOURCES = ("manual", "auto")
+
+#: How long a deletion stays in the change log. A phone away for longer
+#: is sent the whole set, since the deletions it needs are gone.
+MEMORY_LOG_TTL_SECONDS = 30 * 24 * 3600
+
+#: The most changes one sync answer carries. The phone asks again while
+#: ``more`` is true.
+MEMORY_SYNC_PAGE = 500
+
+#: The most memories a full answer carries. Far past what anybody keeps:
+#: auto memories are capped at :data:`AUTO_LIMIT` and a manual one is a
+#: fact somebody typed.
+MEMORY_SNAPSHOT_LIMIT = 10_000
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS hyperlink_memories (
@@ -86,6 +123,25 @@ CREATE INDEX IF NOT EXISTS idx_hyperlink_memories_owner
     ON hyperlink_memories (owner, pinned DESC, updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_hyperlink_memories_source
     ON hyperlink_memories (owner, source, updated_at);
+CREATE TABLE IF NOT EXISTS hyperlink_memory_log (
+    seq INTEGER PRIMARY KEY,
+    owner TEXT NOT NULL,
+    memory_id TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    at REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_hyperlink_memory_log_owner
+    ON hyperlink_memory_log (owner, seq);
+CREATE INDEX IF NOT EXISTS idx_hyperlink_memory_log_memory
+    ON hyperlink_memory_log (memory_id);
+CREATE TABLE IF NOT EXISTS hyperlink_memory_counter (
+    id INTEGER PRIMARY KEY,
+    next_seq INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS hyperlink_memory_floor (
+    owner TEXT PRIMARY KEY,
+    seq INTEGER NOT NULL
+);
 """
 
 
@@ -121,6 +177,34 @@ class Memory:
         }
 
 
+@dataclass
+class MemorySyncPage:
+    """One answer to "what changed since cursor N?"."""
+
+    #: True when ``memories`` is the whole set and replaces the phone's
+    #: copy; False when it is a delta to apply to it.
+    full: bool
+    memories: list[Memory]
+    #: Ids of memories that are gone. Always empty when ``full``.
+    deleted: list[str]
+    #: What to send next time.
+    cursor: int
+    #: Ask again straight away: this page was capped.
+    more: bool = False
+    #: Why a full set was sent: "first", "expired" or "unknown_cursor".
+    reason: str = ""
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "full": self.full,
+            "memories": [m.to_dict() for m in self.memories],
+            "deleted": list(self.deleted),
+            "cursor": self.cursor,
+            "more": self.more,
+            "reason": self.reason,
+        }
+
+
 def _normalise(text: str) -> str:
     """What counts as "the same memory said again".
 
@@ -138,6 +222,175 @@ class MemoryStore:
         self.backend = backend or SQLiteBackend()
         self._lock = threading.Lock()
         self.backend.executescript(_SCHEMA)
+        self._backfill_log()
+        self.prune()
+
+    # -- the change log -------------------------------------------------
+
+    def _next_seq(self, conn: Any) -> int:
+        """The next sequence number, allocated inside *conn*'s transaction.
+
+        A counter row rather than an autoincrement: on a backend where
+        two transactions can commit out of order, numbers taken from a
+        sequence could become visible out of order, and a phone that
+        had read up to 12 would never see 11. Reading and writing the
+        counter in the write's own transaction orders them.
+        """
+        row = conn.execute(
+            "SELECT next_seq FROM hyperlink_memory_counter WHERE id = 1"
+        ).fetchone()
+        if row is None:
+            conn.execute("INSERT INTO hyperlink_memory_counter (id, next_seq) VALUES (1, 2)")
+            return 1
+        seq = int(row["next_seq"])
+        conn.execute("UPDATE hyperlink_memory_counter SET next_seq = ? WHERE id = 1", (seq + 1,))
+        return seq
+
+    def _log(self, conn: Any, owner: str, memory_id: str, kind: str, now: float) -> int:
+        """Record a change, replacing the memory's earlier row.
+
+        Only the latest row per memory is kept: a phone needs the
+        memory's state now, not its history, and the new row's number
+        is higher than any cursor that saw the old one.
+        """
+        seq = self._next_seq(conn)
+        conn.execute("DELETE FROM hyperlink_memory_log WHERE memory_id = ?", (memory_id,))
+        conn.execute(
+            "INSERT INTO hyperlink_memory_log (seq, owner, memory_id, kind, at) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (seq, owner, memory_id, kind, now),
+        )
+        return seq
+
+    def _backfill_log(self) -> None:
+        """Log memories written before the log existed.
+
+        Without this a phone's first full answer would come back with
+        cursor 0, and a cursor of 0 means "send everything" — every
+        time, for ever. For the same reason number 1 is reserved and
+        never labels a change: a person with nothing remembered yet
+        still gets a cursor that is not 0.
+        """
+        with self._lock, self.backend.connect() as conn:
+            conn.execute(
+                "INSERT INTO hyperlink_memory_counter (id, next_seq) SELECT 1, 2 "
+                "WHERE NOT EXISTS (SELECT 1 FROM hyperlink_memory_counter WHERE id = 1)"
+            )
+            rows = conn.execute(
+                "SELECT memory_id, owner, updated_at FROM hyperlink_memories "
+                "WHERE memory_id NOT IN (SELECT memory_id FROM hyperlink_memory_log) "
+                "ORDER BY updated_at ASC"
+            ).fetchall()
+            for row in rows:
+                self._log(conn, row["owner"], row["memory_id"], "created",
+                          float(row["updated_at"]))
+
+    def head(self, *, owner: str) -> int:
+        """The newest cursor for *owner*: 0 when nothing was ever written."""
+        with self.backend.connect() as conn:
+            return self._head(conn, owner)
+
+    def _head(self, conn: Any, owner: str) -> int:
+        top = conn.execute(
+            "SELECT MAX(seq) AS top FROM hyperlink_memory_log WHERE owner = ?", (owner,)
+        ).fetchone()
+        return max(int(top["top"] or 0), self._floor(conn, owner))
+
+    def _issued(self, conn: Any) -> int:
+        """The highest number this server has handed out, to anyone."""
+        row = conn.execute(
+            "SELECT next_seq FROM hyperlink_memory_counter WHERE id = 1"
+        ).fetchone()
+        return int(row["next_seq"]) - 1 if row else 0
+
+    def _floor(self, conn: Any, owner: str) -> int:
+        row = conn.execute(
+            "SELECT seq FROM hyperlink_memory_floor WHERE owner = ?", (owner,)
+        ).fetchone()
+        return int(row["seq"]) if row else 0
+
+    def sync(self, *, owner: str, cursor: int = 0, limit: int = 200) -> MemorySyncPage:
+        """What changed for *owner* since *cursor*.
+
+        The state is read after the log, so a write landing in between
+        is sent now and again next time, which a phone applying upserts
+        and deletions by id cannot tell from once.
+        """
+        if not owner:
+            raise T1APIError(T1ErrorCode.VALIDATION_ERROR, "owner is required")
+        if cursor < 0:
+            raise T1APIError(T1ErrorCode.VALIDATION_ERROR, "cursor cannot be negative")
+        capped = max(1, min(int(limit), MEMORY_SYNC_PAGE))
+        with self.backend.connect() as conn:
+            # Read before the state, so the answer can only be older
+            # than the cursor it carries, never newer.
+            issued = self._issued(conn)
+            reason = ""
+            if cursor == 0:
+                reason = "first"
+            elif cursor > issued:
+                reason = "unknown_cursor"
+            elif cursor < self._floor(conn, owner):
+                reason = "expired"
+            if reason:
+                rows = conn.execute(
+                    "SELECT * FROM hyperlink_memories WHERE owner = ? "
+                    "ORDER BY pinned DESC, updated_at DESC LIMIT ?",
+                    (owner, MEMORY_SNAPSHOT_LIMIT),
+                ).fetchall()
+                return MemorySyncPage(full=True, memories=[_from_row(r) for r in rows],
+                                      deleted=[], cursor=issued, reason=reason)
+
+            log = conn.execute(
+                "SELECT seq, memory_id FROM hyperlink_memory_log "
+                "WHERE owner = ? AND seq > ? ORDER BY seq ASC LIMIT ?",
+                (owner, cursor, capped + 1),
+            ).fetchall()
+            more = len(log) > capped
+            log = log[:capped]
+            ids = [row["memory_id"] for row in log]
+            current: dict[str, Memory] = {}
+            for start in range(0, len(ids), 400):
+                chunk = ids[start:start + 400]
+                marks = ",".join("?" for _ in chunk)
+                for row in conn.execute(
+                    f"SELECT * FROM hyperlink_memories WHERE owner = ? "  # noqa: S608 - placeholders only
+                    f"AND memory_id IN ({marks})",
+                    (owner, *chunk),
+                ).fetchall():
+                    current[row["memory_id"]] = _from_row(row)
+        return MemorySyncPage(
+            full=False,
+            memories=[current[i] for i in ids if i in current],
+            deleted=[i for i in ids if i not in current],
+            cursor=log[-1]["seq"] if log else cursor,
+            more=more,
+        )
+
+    def prune(self, *, now: float | None = None) -> int:
+        """Drop tombstones older than :data:`MEMORY_LOG_TTL_SECONDS`.
+
+        Only deletions: a live memory's row is what tells a phone about
+        it. Each owner's floor records the newest number dropped, so a
+        cursor from before it is answered with the whole set.
+        """
+        cutoff = (time.time() if now is None else now) - MEMORY_LOG_TTL_SECONDS
+        with self._lock, self.backend.connect() as conn:
+            rows = conn.execute(
+                "SELECT owner, MAX(seq) AS top, COUNT(*) AS n FROM hyperlink_memory_log "
+                "WHERE kind = 'deleted' AND at < ? GROUP BY owner",
+                (cutoff,),
+            ).fetchall()
+            for row in rows:
+                conn.execute(
+                    "INSERT INTO hyperlink_memory_floor (owner, seq) VALUES (?, ?) "
+                    "ON CONFLICT (owner) DO UPDATE SET seq = excluded.seq",
+                    (row["owner"], max(int(row["top"]), self._floor(conn, row["owner"]))),
+                )
+            conn.execute(
+                "DELETE FROM hyperlink_memory_log WHERE kind = 'deleted' AND at < ?", (cutoff,)
+            )
+        return sum(int(row["n"]) for row in rows)
 
     # -- writing --------------------------------------------------------
 
@@ -213,6 +466,7 @@ class MemoryStore:
                         json.dumps(record.metadata),
                     ),
                 )
+                self._log(conn, owner, record.memory_id, "created", now)
             if source == "auto":
                 self._evict_over_budget(owner)
             return record
@@ -287,6 +541,7 @@ class MemoryStore:
                     memory_id, owner,
                 ),
             )
+            self._log(conn, owner, memory_id, "updated", now)
         return record
 
     def delete(self, memory_id: str, *, owner: str) -> bool:
@@ -295,7 +550,10 @@ class MemoryStore:
                 "DELETE FROM hyperlink_memories WHERE memory_id = ? AND owner = ?",
                 (memory_id, owner),
             )
-            return bool(cursor.rowcount)
+            removed = bool(cursor.rowcount)
+            if removed:
+                self._log(conn, owner, memory_id, "deleted", time.time())
+            return removed
 
     # -- reading --------------------------------------------------------
 
@@ -380,10 +638,14 @@ class MemoryStore:
                 (owner,),
             ).fetchall()
             doomed = [row["memory_id"] for row in rows[AUTO_LIMIT:]]
+            now = time.time()
             for memory_id in doomed:
                 conn.execute(
                     "DELETE FROM hyperlink_memories WHERE memory_id = ?", (memory_id,)
                 )
+                # An eviction is a deletion the phone has to hear about,
+                # or it keeps showing a fact the model no longer has.
+                self._log(conn, owner, memory_id, "deleted", now)
         if doomed:
             logger.info(
                 "hyperlink.memory: evicted %d auto memories for %s (limit %d)",

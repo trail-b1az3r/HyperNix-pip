@@ -48,6 +48,17 @@ struct MemoryView: View {
         return Array(used.union(known)).sorted()
     }
 
+    /// Said only when the server could not be reached: the list is then
+    /// this phone's own copy, and how old it is matters.
+    private var syncNote: String? {
+        guard state.memorySyncFailed else { return nil }
+        guard let at = state.memoriesSyncedAt else {
+            return "Could not reach the server to load memories."
+        }
+        return "Could not reach the server. Showing what this phone last saw, "
+            + "\(at.formatted(.relative(presentation: .named)))."
+    }
+
     var body: some View {
         List {
             if state.memories.isEmpty {
@@ -102,7 +113,12 @@ struct MemoryView: View {
                     Label("Remember something", systemImage: "plus.circle")
                 }
             } footer: {
-                Text("Anything here is available to every conversation, on every device signed in to this server.")
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Anything here is available to every conversation, on every device signed in to this server.")
+                    if let note = syncNote {
+                        Text(note).foregroundStyle(.orange)
+                    }
+                }
             }
         }
         .navigationTitle("Memory")

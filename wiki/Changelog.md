@@ -30,8 +30,10 @@ next release header.
 
 0.72.6, released. Three release candidates and four batches published as
 0.72.5.post14 to post17 went into it; the summary below says what
-shipped, and those entries say how. New since 0.72.6.rc3: a release
-that its own tests would reject can no longer be started.
+shipped, and those entries say how. New since 0.72.6.rc3: HyperLink
+keeps its own copy of your memories and syncs it from the server as
+they change, and a release that its own tests would reject can no
+longer be started.
 
 ### Beta / Dev → Release Summary
 
@@ -78,6 +80,32 @@ never found (rc3).
 spellings, the default prompt, tvtop-max's panels and bridge, the tools
 on the streaming route, and the bubble tail.
 
+### Added
+
+๋࣭⭑ **HyperLink syncs memories from the server as they change.** The app
+used to fetch `/memory/list` whole: the first 200, when the Memories
+screen appeared or a reply ended, with any error swallowed. A fact the
+model wrote mid-chat reached the phone only if somebody happened to be
+looking, the 201st never did, and offline the screen was empty.
+𖥔 `GET /memory/sync?cursor=N` answers with what changed since the
+cursor: the current state of each memory touched and the ids of those
+deleted, evictions by the auto-memory budget included. Every memory
+write logs itself in the same transaction, one row per memory, numbered
+by a counter row so they appear in commit order. A first sync, a cursor
+older than the 30-day tombstones, or one this server never issued (a
+server restored behind the phone's back) gets the whole set, marked
+`full`, to replace the copy with.
+𖥔 A chat turn that remembers or forgets something sends a `memory`
+frame with the new cursor after `done`, and the app syncs while the
+reply is still on screen.
+𖥔 The app keeps each server's copy on disk, excluded from backups, and
+shows it at launch and offline. It syncs on launch, on every return to
+the foreground, on the `memory` frame, and after each edit, and
+overlapping syncs run once more rather than twice at once. When the
+server cannot be reached, the Memories screen says how old its copy
+is. Forgetting or unpairing a server deletes its copy. Against a server
+without `/memory/sync`, the app falls back to the whole list.
+
 ### Fixed
 
 𖢥 **A release could be started that was certain to fail.** 0.72.6 was
@@ -122,6 +150,13 @@ rule; undated headers, no entries and no changelog are refused; the
 real tree passes its own version; the workflow runs the guard before
 torch, bumps with the guard's spelling, and runs the preflight before
 the suite.
+🧪 `tests/test_hyperlink_memory_sync.py` (22): first sync, deltas with
+edits, deletions and evictions, paging and its cap, the whole set for a
+stale, expired or foreign cursor, ownership, memories from before the
+log, the endpoint, and a real streamed turn whose `update_memory` call
+sends the `memory` frame. `MemoryMirrorTests.swift` covers applying a
+delta and a full answer, ordering, decoding, the disk cache, and the
+frame.
 
 ⸻
 
