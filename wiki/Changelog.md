@@ -64,6 +64,23 @@ joined with `Path.union`, which fills the combined outline whichever way
 either winds.
 🐛 The model's name under a reply sat 5pt left of the bubble, under its
 tail. It now lines up with the bubble.
+𖢥 **tvtop-max opened to empty panels and no header.** Reported from a
+phone. Before reading its first request, the bridge searched for a
+training log with three recursive `**/` globs over the working
+directory. Started from a home directory full of models, virtualenvs and
+caches, that took minutes, and the app draws nothing until the bridge
+answers. Now the run is found in the background and frames go out from
+the first request, saying they are still looking. The app draws at once,
+and its footer says what it is waiting for, counting seconds, and how to
+see more if nothing comes.
+𖢥 The training-log search that tvtop, tvtop-pro and tvtop-max share is
+bounded: 5 folders deep, 2 seconds, 50,000 entries. It skips
+virtualenvs, `node_modules`, `site-packages` and hidden folders, except
+`.hypernix` and `.runs`, where training runs are kept.
+🐛 tvtop-max's phone layout pushed its footer (keys, status) off the
+bottom of the screen, because its scrolling column took its content's
+full height. It now fits between the header and the footer, and its
+panels leave room for the scrollbar.
 
 ### Added
 
@@ -88,6 +105,13 @@ tail's coordinates from the Swift, shows that the mirrored tails wind in
 opposite directions and overlap their bubbles, and requires the union;
 it fails on the old shape. `BubbleShapeTests.swift` checks on a
 simulator that every point of both speakers' bubbles is filled.
+🧪 tvtop-max's slow start: a frame is answered while discovery is still
+running, `info` waits for it, a failed search still lets `info` answer,
+and the bridge serves at once. The log search stays within its depth,
+time and size limits and skips heavy and hidden folders, but finds a run
+in `.runs`. Five `bun test` cases cover the waiting footer and
+panels. Reproduced first by starting tvtop-max at `/`: empty boxes, as
+in the screenshot.
 
 ⸻
 

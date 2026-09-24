@@ -67,6 +67,7 @@ export interface Info {
   pid?: number | null
   process?: ProcessRow | null
   notes?: string[]
+  discovering?: boolean
   hypernix_version?: string
   report?: ScriptReport | null
   arch?: ArchInfo
@@ -100,4 +101,6 @@ export interface Frame {
   log_findings?: Finding[]
   log_age_seconds?: number | null
   processes?: ProcessRow[]
+  // True while the bridge is still looking for the run's script and log.
+  discovering?: boolean
 }

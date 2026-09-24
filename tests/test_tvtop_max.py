@@ -426,3 +426,127 @@ class TestPackage:
         ours = palette(APP / "src" / "theme.ts")
         theirs = palette(ROOT / "src" / "hypernix" / "interfaces" / "hyped_pro_app" / "src" / "theme.ts")
         assert ours and ours == theirs
+
+
+# ---------------------------------------------------------------------------
+# A slow start is never a blank screen (0.72.6.rc3)
+# ---------------------------------------------------------------------------
+
+
+class TestSlowStart:
+    """Reported from a phone: tvtop-max showed empty boxes and no header.
+
+    The bridge looked for the run -- a recursive search for a training
+    log under the working directory -- before it read its first request,
+    and from a home directory that took minutes. The app draws nothing
+    until the bridge answers. Now the search runs in the background and
+    is bounded, and frames go out from the start.
+    """
+
+    def test_frames_are_answered_while_the_run_is_still_being_found(self, monkeypatch):
+        import threading
+        import time as _time
+
+        release = threading.Event()
+        monkeypatch.setattr(tvtop_max_bridge.Monitor, "rescan",
+                            lambda self: release.wait(10) and self.describe())
+        started = _time.monotonic()
+        monitor = tvtop_max_bridge.Monitor(background=True)
+        frame = monitor.handle({"id": 1, "cmd": "frame"})
+        assert _time.monotonic() - started < 5
+        assert frame["ok"] and frame["data"]["discovering"] is True
+        release.set()
+        assert monitor._ready.wait(5)
+        assert monitor.frame()["discovering"] is False
+
+    def test_info_waits_for_the_search_rather_than_answering_without_it(self, monkeypatch):
+        import threading
+
+        release = threading.Event()
+        found = {}
+
+        def slow_rescan(self):
+            release.wait(10)
+            self.script = None
+            return self.describe()
+
+        monkeypatch.setattr(tvtop_max_bridge.Monitor, "rescan", slow_rescan)
+        monitor = tvtop_max_bridge.Monitor(background=True)
+        thread = threading.Thread(target=lambda: found.setdefault("info", monitor.info()))
+        thread.start()
+        thread.join(0.3)
+        assert "info" not in found  # still waiting
+        release.set()
+        thread.join(5)
+        assert found["info"]["discovering"] is False
+
+    def test_a_search_that_raises_still_lets_info_answer(self, monkeypatch):
+        def broken(self):
+            raise OSError("permission denied")
+
+        monkeypatch.setattr(tvtop_max_bridge.Monitor, "rescan", broken)
+        monitor = tvtop_max_bridge.Monitor(background=True)
+        assert monitor._ready.wait(5)
+        assert "could not look for the run" in monitor.describe()["notes"][0]
+
+    def test_the_bridge_process_starts_serving_at_once(self, monkeypatch):
+        # main() points stdout at stderr for the protocol's sake; restored after.
+        monkeypatch.setattr(sys, "stdout", sys.stdout)
+        seen = {}
+        monkeypatch.setattr(tvtop_max_bridge, "serve", lambda monitor, stdout=None: seen.setdefault("m", monitor) and 0)
+        monkeypatch.setattr(tvtop_max_bridge.Monitor, "rescan", lambda self: __import__("time").sleep(3))
+        import time as _time
+
+        started = _time.monotonic()
+        tvtop_max_bridge.main(["serve"])
+        assert _time.monotonic() - started < 2
+
+
+class TestBoundedLogSearch:
+    def test_it_finds_a_log_within_the_depth(self, tmp_path):
+        from hypernix.monitoring import tv
+
+        (tmp_path / "a" / "b").mkdir(parents=True)
+        (tmp_path / "a" / "b" / "train.log").write_text("step 1/2 loss=1\n", encoding="utf-8")
+        assert tv._autodetect_log(tmp_path).name == "train.log"
+
+    def test_it_does_not_walk_into_heavy_or_hidden_folders(self, tmp_path):
+        from hypernix.monitoring import tv
+
+        for folder in ("node_modules", "site-packages", ".cache", ".venv"):
+            (tmp_path / folder).mkdir()
+            (tmp_path / folder / "train.log").write_text("step 1/2 loss=1\n", encoding="utf-8")
+        for kept in (".hypernix", ".runs"):
+            (tmp_path / kept).mkdir()
+            (tmp_path / kept / "train.log").write_text("step 1/2 loss=1\n", encoding="utf-8")
+        found = tv._log_candidates(tmp_path)
+        assert sorted(p.parent.name for p in found) == [".hypernix", ".runs"]
+
+    def test_a_run_in_a_hidden_runs_folder_is_found(self, tmp_path):
+        """Runs kept in .runs, nested per run, are where the log is."""
+        from hypernix.monitoring import tv
+
+        run = tmp_path / ".runs" / "2026-09-24-gemma" / "logs"
+        run.mkdir(parents=True)
+        (run / "train.log").write_text("step 3/100 loss=2.1\n", encoding="utf-8")
+        (tmp_path / ".cache").mkdir()
+        (tmp_path / ".cache" / "train.log").write_text("step 9/9 loss=1\n", encoding="utf-8")
+        assert tv._autodetect_log(tmp_path) == run / "train.log"
+
+    def test_depth_is_limited(self, tmp_path):
+        from hypernix.monitoring import tv
+
+        deep = tmp_path.joinpath(*[f"d{i}" for i in range(8)])
+        deep.mkdir(parents=True)
+        (deep / "train.log").write_text("step 1/2 loss=1\n", encoding="utf-8")
+        assert tv._log_candidates(tmp_path, max_depth=5) == []
+        assert tv._log_candidates(tmp_path, max_depth=10) == [deep / "train.log"]
+
+    def test_the_time_budget_stops_a_huge_tree(self, tmp_path):
+        from hypernix.monitoring import tv
+
+        for i in range(30):
+            (tmp_path / f"d{i}").mkdir()
+            (tmp_path / f"d{i}" / "x.log").write_text("x", encoding="utf-8")
+        assert len(tv._log_candidates(tmp_path, seconds=0)) <= 1
+        assert len(tv._log_candidates(tmp_path, max_entries=5)) < 30

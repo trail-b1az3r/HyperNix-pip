@@ -18,7 +18,7 @@ import {
 import { Bridge, BridgeError } from "./bridge.ts"
 import { truncate, type Line } from "./format.ts"
 import { chooseMode, phoneColumn, phoneWidth, wideRows, type Mode } from "./layout.ts"
-import { BUILDERS, PANELS, panelTitle, type PanelId } from "./panels.ts"
+import { bridgeStatus, BUILDERS, PANELS, panelTitle, type PanelId } from "./panels.ts"
 import { theme } from "./theme.ts"
 import type { Frame, Info } from "./types.ts"
 
@@ -58,6 +58,7 @@ export class App {
   private quitting = false
   private timer: ReturnType<typeof setInterval> | null = null
   private inFlight = false
+  private readonly startedAt = Date.now()
 
   private header!: TextRenderable
   private footer!: TextRenderable
@@ -79,8 +80,12 @@ export class App {
     this.renderer.setBackgroundColor(theme.background)
     this.build()
     this.renderer.keyInput.on("keypress", (key: KeyEvent) => this.onKey(key))
+    // Drawn now, before the bridge has said anything: the first frame
+    // can take seconds, and a screen of empty boxes with no header
+    // looked broken. The footer says what it is waiting for.
+    this.draw()
     void this.loadInfo()
-    await this.tick()
+    void this.tick()
     this.timer = setInterval(() => void this.tick(), this.options.refreshMs)
   }
 
@@ -115,10 +120,15 @@ export class App {
       const scroll = new ScrollBoxRenderable(r, {
         id: "body",
         flexGrow: 1,
+        // Without these the box takes its content's full height and the
+        // footer (keys, and what tvtop-max is waiting for) is pushed off
+        // the bottom of the screen.
+        flexShrink: 1,
+        minHeight: 0,
         width,
         contentOptions: { flexDirection: "column" },
       })
-      for (const { id, height } of phoneColumn(this.visible)) scroll.add(this.panelBox(id, { height, width }))
+      for (const { id, height } of phoneColumn(this.visible)) scroll.add(this.panelBox(id, { height, flexShrink: 0 }))
       this.body = scroll
     } else {
       const column = new BoxRenderable(r, { id: "body", flexGrow: 1, flexDirection: "column" })
@@ -188,7 +198,9 @@ export class App {
     const width = this.renderer.width
     const script = this.info?.script ? this.info.script.split("/").pop() : "no script"
     const log = this.info?.log ? this.info.log.split("/").pop() : "no log"
-    const where = `${script} · ${log}${this.info?.pid ? ` · pid ${this.info.pid}` : ""}`
+    const where = this.info
+      ? `${script} · ${log}${this.info.pid ? ` · pid ${this.info.pid}` : ""}`
+      : "looking for the run…"
     this.header.content = styled([[
       { text: " tvtop-max ", fg: theme.accentText, bold: true },
       { text: `v${VERSION} `, fg: theme.hint },
@@ -196,10 +208,15 @@ export class App {
       ...(this.paused ? [{ text: "  paused", fg: theme.warn }] : []),
     ]])
     const keys = this.mode === "phone" ? KEYS_PHONE : KEYS_WIDE
+    const waiting = bridgeStatus({
+      startedAt: this.startedAt, now: Date.now(), frame: this.frame, info: this.info, error: this.error,
+    })
     this.footer.content = styled([[
       this.error
         ? { text: truncate(` ${this.error}`, width), fg: theme.error }
-        : { text: truncate(` ${keys}`, width), fg: theme.hint },
+        : waiting
+          ? { text: truncate(` ${waiting}`, width), fg: theme.warn }
+          : { text: truncate(` ${keys}`, width), fg: theme.hint },
     ]])
     for (const spec of PANELS) {
       const view = this.views.get(spec.id)
