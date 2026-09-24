@@ -1666,7 +1666,7 @@ struct BackendList: Decodable, Equatable, Sendable {
 
 // MARK: - Memory
 
-struct MemoryItem: Decodable, Identifiable, Equatable, Sendable {
+struct MemoryItem: Codable, Identifiable, Equatable, Sendable {
     let memoryID: String
     let content: String
     let category: String
@@ -1699,6 +1699,30 @@ struct MemoryItem: Decodable, Identifiable, Equatable, Sendable {
         updatedAt = try c.decodeIfPresent(Double.self, forKey: .updatedAt) ?? 0
         struct Metadata: Decodable { let key: String? }
         key = ((try? c.decodeIfPresent(Metadata.self, forKey: .metadata)) ?? nil)?.key ?? ""
+    }
+
+    init(memoryID: String, content: String, category: String = "", source: String = "manual",
+         pinned: Bool = false, updatedAt: Double = 0, key: String = "") {
+        self.memoryID = memoryID
+        self.content = content
+        self.category = category
+        self.source = source
+        self.pinned = pinned
+        self.updatedAt = updatedAt
+        self.key = key
+    }
+
+    /// In the server's own shape, so the phone's cached copy of its
+    /// memories (MemoryMirror) reads back through the decoder above.
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(memoryID, forKey: .memoryID)
+        try c.encode(content, forKey: .content)
+        try c.encode(category, forKey: .category)
+        try c.encode(source, forKey: .source)
+        try c.encode(pinned, forKey: .pinned)
+        try c.encode(updatedAt, forKey: .updatedAt)
+        try c.encode(key.isEmpty ? [String: String]() : ["key": key], forKey: .metadata)
     }
 }
 

@@ -128,14 +128,6 @@ jobs:
           pip install --upgrade "packaging>=24.2"
           pip install "build>=1.2" "twine>=6" "ruff>=0.5" "pytest>=8" "setuptools>=77" wheel
 
-      - name: Install torch (CPU wheels) + package
-        # pytest needs torch (hypernix imports it at module load). Install the
-        # CPU wheel explicitly rather than relying on the package install
-        # below to pull it, so we never accidentally fetch a GPU build.
-        run: |
-          pip install --index-url https://download.pytorch.org/whl/cpu torch
-          pip install -e ".[dev]"
-
       - name: Check the version this release was dispatched with
         # Three questions, and the old inline guard conflated two of
         # them. It refused a version equal to the tree's outright --
@@ -153,22 +145,36 @@ jobs:
         # code, which a version string cannot tell you and a tag can.
         # See .github/scripts/version_guard.py -- it is a script rather
         # than a heredoc so tests/test_version_guard.py can drive it.
+        #
+        # It runs before torch is installed, so a release the tests would
+        # reject stops in seconds rather than after the build: it holds
+        # wiki/Changelog.md's newest entry to the version the bump below
+        # is about to write, which is how "changelog newest is
+        # 0.72.6.rc3, package is 0.72.6" failed a release ten minutes in.
         run: |
           python .github/scripts/version_guard.py '${{ inputs.version }}' \
             ${{ inputs.allow_downgrade && '--allow-downgrade' || '' }}
 
+      - name: Install torch (CPU wheels) + package
+        # pytest needs torch (hypernix imports it at module load). Install the
+        # CPU wheel explicitly rather than relying on the package install
+        # below to pull it, so we never accidentally fetch a GPU build.
+        run: |
+          pip install --index-url https://download.pytorch.org/whl/cpu torch
+          pip install -e ".[dev]"
+
       - name: Bump versions in source
         run: |
           v='${{ inputs.version }}'
-          # Convert postr to PEP 440 compliant .post format for pyproject.toml
-          pep440_v=$(echo "$v" | sed 's/postr/.post/g')
-          # Convert a bare "-N" rebuild suffix (e.g. 0.70.6-2) to PEP 440's
-          # post-release form (0.70.6.post2). PyPI requires strict PEP 440
-          # and rejects a raw hyphen-number suffix, but .postN is exactly
-          # PEP 440's own mechanism for "rebuild of an already-released
-          # version" -- which is what this input is for. The raw "-2" form
-          # is kept for the git tag and __version__ below.
-          pep440_v=$(echo "$pep440_v" | sed -E 's/-([0-9]+)$/.post\1/')
+          # postr becomes .post, and a bare "-N" rebuild suffix (e.g.
+          # 0.70.6-2) becomes PEP 440's post-release form (0.70.6.post2):
+          # PyPI rejects a raw hyphen-number suffix, and .postN is PEP
+          # 440's own "rebuild of an already-released version". The raw
+          # form is kept for the git tag and __version__ below. The
+          # spelling is the guard's, so the version it checked the
+          # changelog against is the one written here -- the sed this
+          # replaces turned 0.72.6.postr1 into 0.72.6..post1.
+          pep440_v=$(python .github/scripts/version_guard.py --print-pep440 "$v")
           python - <<PY
           import re
           from pathlib import Path
@@ -220,6 +226,21 @@ jobs:
           grep __version__ src/hypernix/__init__.py
           echo "--- install-t1.sh version line"
           grep '^VERSION=' install-t1.sh
+
+      - name: Preflight -- the tests a version bump can break
+        # Seconds, not the whole suite: the changelog's newest entry
+        # against the version just written, the installer's baked
+        # version, both OpenTUI apps' package.json and app.ts, and the
+        # guard itself. A release that would fail on any of them fails
+        # here, before lint, the full suite and the build.
+        run: |
+          PYTHONPATH=src pytest -q \
+            tests/test_changelog_format.py \
+            tests/test_install_script.py \
+            tests/test_install_pin.py \
+            tests/test_hyped_pro_otui.py \
+            tests/test_version_guard.py \
+            "tests/test_tvtop_max.py::TestPackage"
 
       - name: Lint
         run: ruff check src/hypernix

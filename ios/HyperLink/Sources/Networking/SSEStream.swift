@@ -35,6 +35,9 @@ enum ChatStreamEvent: Sendable {
     /// The oldest part of the thread was summarised before this turn,
     /// replacing this many messages in what the model is sent.
     case compacted(messages: Int)
+    /// Sent after `done` when this turn remembered or forgot something:
+    /// the person's memory cursor now. Sync if the phone's is older.
+    case memory(cursor: Int)
 }
 
 enum SSEStream {
@@ -99,7 +102,7 @@ enum SSEStream {
     /// An unrecognised `type` returns nil and is skipped rather than
     /// failing the stream: a newer server adding a frame kind must not
     /// break an older app mid-answer.
-    private static func decode(_ data: Data) -> ChatStreamEvent? {
+    static func decode(_ data: Data) -> ChatStreamEvent? {
         struct Frame: Decodable {
             let type: String?
             let text: String?
@@ -113,6 +116,7 @@ enum SSEStream {
             let error: ErrorBody?
             let title: String?
             let messages: Int?
+            let cursor: Int?
 
             struct ErrorBody: Decodable {
                 let code: String?
@@ -152,6 +156,9 @@ enum SSEStream {
             return .title(title)
         case "compacted":
             return .compacted(messages: frame.messages ?? 0)
+        case "memory":
+            guard let cursor = frame.cursor else { return nil }
+            return .memory(cursor: cursor)
         default:
             return nil
         }

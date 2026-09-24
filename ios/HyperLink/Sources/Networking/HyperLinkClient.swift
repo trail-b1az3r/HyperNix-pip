@@ -719,6 +719,12 @@ actor HyperLinkClient {
         try await get("/memory/list?limit=\(limit)", as: MemoryList.self, timeout: 20)
     }
 
+    /// What changed since *cursor* (0 the first time). See MemoryMirror.
+    func syncMemories(cursor: Int, limit: Int = 200) async throws -> MemorySyncPage {
+        try await get("/memory/sync?cursor=\(max(0, cursor))&limit=\(limit)",
+                      as: MemorySyncPage.self, timeout: 20)
+    }
+
     @discardableResult
     func rememberFact(_ content: String, category: String = "") async throws -> Bool {
         struct Body: Encodable {

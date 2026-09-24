@@ -8,6 +8,9 @@ I cannot stop it" is the failure that makes the whole feature unusable.
 Owner-scoped throughout. A memory belongs to whoever's key or device
 paired it, not to a session and not to a device — so the phone and the
 desktop see the same set, which is the point of it being on the server.
+
+``/memory/sync`` (0.72.6) keeps a client's copy current from a cursor,
+deletions included, rather than refetching the whole list.
 """
 from __future__ import annotations
 
@@ -108,6 +111,34 @@ def list_memories(
         auto_count=store.count(owner=principal.owner, source="auto"),
         request_id=request_id,
     )
+
+
+@router.get("/sync")
+def sync_memories(
+    cursor: int = Query(default=0, ge=0),
+    limit: int = Query(default=200, ge=1, le=500),
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    store: MemoryStore = Depends(get_memory_store),
+    config: T1APIConfig = Depends(get_config),
+    request_id: str = Depends(get_request_id),
+) -> dict[str, Any]:
+    """What changed since *cursor*, so the phone keeps a copy current.
+
+    Send 0 the first time and the returned ``cursor`` after that. With
+    ``full`` false the answer is a delta: upsert ``memories`` by id and
+    drop the ids in ``deleted``. With ``full`` true it is the whole set
+    and replaces the copy: a first sync, a cursor older than the
+    tombstones, or one this server never issued. Ask again while
+    ``more`` is true. A cursor that is already current costs one small
+    answer with nothing in it.
+    """
+    page = store.sync(owner=principal.owner, cursor=cursor, limit=limit)
+    return {
+        **page.to_dict(),
+        "count": store.count(owner=principal.owner),
+        "auto_count": store.count(owner=principal.owner, source="auto"),
+        "request_id": request_id,
+    }
 
 
 @router.post("/edit", response_model=MemoryResponse)

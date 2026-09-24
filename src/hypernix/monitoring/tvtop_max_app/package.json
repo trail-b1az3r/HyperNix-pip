@@ -1,6 +1,6 @@
 {
   "name": "tvtop-max",
-  "version": "0.72.6-rc3",
+  "version": "0.72.6",
   "description": "tvtop-max: tvtop-pro on OpenTUI, with the run's script, model, optimizer, logs and warnings",
   "private": true,
   "type": "module",

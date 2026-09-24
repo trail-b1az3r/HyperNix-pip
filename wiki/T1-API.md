@@ -1399,6 +1399,7 @@ what says whether it found what it was looking for.
 | `GET /memory/categories` | Each memory category with its count. |
 | `POST /memory/categories/rename` | `{"from", "to"}` — moves a category, merging into an existing one. |
 | `POST /memory/organise` | Files loose and model-written memories under topics; `dry_run` previews. A category a person chose is left alone. |
+| `GET /memory/sync` | (0.72.6) `?cursor=N&limit=` — memories changed since a cursor, with the ids of deleted ones, or the whole set when `full` is true. See [HyperLink sync](HyperLink-Sync.md#memories-0726). `/chat/stream` sends a `memory` frame with the new cursor after `done` when a turn changed a memory. |
 | `GET /hyperlink/models` | Each model now carries `supports_images`: true, false, or null when nothing says. |
 | `GET /hyperlink/shell` | Whether the shell is enabled here, how to enable it, and its `root`. |
 | `POST /hyperlink/shell` | `{"command", "cwd"}` — runs one command, returns stdout, stderr, exit code and timing. `cwd` must be inside the root. |

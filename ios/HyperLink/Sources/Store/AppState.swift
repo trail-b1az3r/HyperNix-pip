@@ -113,6 +113,20 @@ final class AppState {
     /// What could answer a message here, and what would right now.
     private(set) var backends: BackendList = .empty
     private(set) var memories: [MemoryItem] = []
+    /// This server's memories as the phone last synced them, kept on
+    /// disk so the Memories screen has something to show at launch and
+    /// offline. `memories` above is its `items`.
+    private var memoryMirror = MemoryMirror()
+    /// When `memories` last matched the server. Nil before the first sync.
+    private(set) var memoriesSyncedAt: Date?
+    /// The last sync could not reach the server, so the screen is showing
+    /// what this phone last saw. False again once a sync gets through.
+    private(set) var memorySyncFailed = false
+    /// Nil until the server has been asked; false for one older than
+    /// `/memory/sync`, which is refreshed the old way.
+    private var memorySyncSupported: Bool?
+    private var memorySyncRunning = false
+    private var memorySyncAgain = false
 
     // MARK: - Transient UI state
 
@@ -150,6 +164,7 @@ final class AppState {
         connection = pairing.connection
         isKeyless = pairing.keyless
         isPaired = true
+        loadMemoryMirror()
         Task {
             await client.configure(
                 endpoints: pairing.endpoints,
@@ -206,6 +221,7 @@ final class AppState {
         settings = .empty
         backends = .empty
         memories = []
+        resetMemoryMirror()
         runner = .unknown
         runnerAvailable = false
         runnerError = nil
@@ -218,6 +234,9 @@ final class AppState {
         isKeyless = pairing.keyless
         isPaired = true
         savedServers = SavedServers.all()
+        // This machine's memories as the phone last saw them, before the
+        // sync in refreshAll brings them up to date.
+        loadMemoryMirror()
         await client.configure(
             endpoints: pairing.endpoints, token: pairing.token, keyless: pairing.keyless
         )
@@ -258,6 +277,8 @@ final class AppState {
     func forget(serverID: String) async {
         let wasCurrent = serverID == currentServerID
         SavedServers.remove(id: serverID)
+        // A forgotten machine's memories have no business staying on the phone.
+        MemoryCache.remove(serverID: serverID)
         savedServers = SavedServers.all()
         guard wasCurrent else { return }
         if let next = SavedServers.selected() {
@@ -276,6 +297,7 @@ final class AppState {
             settings = .empty
             backends = .empty
             memories = []
+            resetMemoryMirror()
             runner = .unknown
             runnerAvailable = false
             runnerError = nil
@@ -441,6 +463,7 @@ final class AppState {
         // so signing out of the server is the moment it stops being
         // something this phone should be holding.
         AdminCredentialStore.delete(fingerprint: connection.serverFingerprint)
+        MemoryCache.remove(serverID: currentServerID)
         PairingStore.clear()
         savedServers = SavedServers.all()
         await client.configure(endpoints: [], token: nil)
@@ -457,6 +480,7 @@ final class AppState {
         settings = .empty
         backends = .empty
         memories = []
+        resetMemoryMirror()
         runner = .unknown
         runnerAvailable = false
         runnerError = nil
@@ -486,7 +510,11 @@ final class AppState {
         async let engine: Void = refreshRunner()
         async let mine: Void = refreshSettings()
         async let built: Void = refreshVersion()
-        _ = await (status, list, models, identity, clock, engine, mine, built)
+        // A delta from the phone's cursor: one small answer when nothing
+        // changed, so launch and every return to the foreground can
+        // afford it.
+        async let memory: Void = refreshMemories()
+        _ = await (status, list, models, identity, clock, engine, mine, built, memory)
     }
 
     /// Re-check that the address we reached is still the machine we
@@ -684,8 +712,78 @@ final class AppState {
 
     // MARK: - Memory
 
+    /// Bring the phone's copy of its memories up to date.
+    ///
+    /// A delta from the cursor it last saw, applied to the copy on disk,
+    /// deletions included. Calls that overlap (a reply ending while the
+    /// screen appears) run once more rather than twice at the same time.
+    /// With no network the copy stays as it was, and says so.
     func refreshMemories() async {
-        memories = (try? await client.memories())?.memories ?? memories
+        guard isPaired else { return }
+        if memorySyncRunning {
+            memorySyncAgain = true
+            return
+        }
+        memorySyncRunning = true
+        defer { memorySyncRunning = false }
+        repeat {
+            memorySyncAgain = false
+            await syncMemoriesOnce()
+        } while memorySyncAgain
+    }
+
+    private func syncMemoriesOnce() async {
+        let serverID = currentServerID
+        if memorySyncSupported != false {
+            var mirror = memoryMirror
+            do {
+                // Bounded: 50 pages of 200 is far past what anybody keeps.
+                for _ in 0..<50 {
+                    let page = try await client.syncMemories(cursor: mirror.cursor)
+                    mirror.apply(page)
+                    if !page.more { break }
+                }
+                // Switched machines mid-sync: this answer is the old one's.
+                guard serverID == currentServerID else { return }
+                memorySyncSupported = true
+                memoryMirror = mirror
+                memories = mirror.items
+                memoriesSyncedAt = mirror.syncedAt
+                memorySyncFailed = false
+                MemoryCache.save(mirror, serverID: serverID)
+                return
+            } catch HyperLinkError.serverError(_, _, let status) where status == 404 {
+                guard serverID == currentServerID else { return }
+                memorySyncSupported = false
+            } catch {
+                guard serverID == currentServerID else { return }
+                memorySyncFailed = true
+                return
+            }
+        }
+        // A server from before /memory/sync: the whole list, as before.
+        if let list = try? await client.memories(limit: 1000), serverID == currentServerID {
+            memories = list.memories
+            memoriesSyncedAt = Date()
+            memorySyncFailed = false
+        } else if serverID == currentServerID {
+            memorySyncFailed = true
+        }
+    }
+
+    private func loadMemoryMirror() {
+        memoryMirror = MemoryCache.load(serverID: currentServerID)
+        memories = memoryMirror.items
+        memoriesSyncedAt = memoryMirror.syncedAt
+        memorySyncFailed = false
+        memorySyncSupported = nil
+    }
+
+    private func resetMemoryMirror() {
+        memoryMirror = MemoryMirror()
+        memoriesSyncedAt = nil
+        memorySyncFailed = false
+        memorySyncSupported = nil
     }
 
     @discardableResult
@@ -1086,11 +1184,11 @@ final class AppState {
                     streamingText = ""
                     messages = (try? await client.messages(in: sessionID)) ?? messages
                     await refreshSessionSummary()
-                    // The model may have remembered something during
-                    // this turn. The Memories screen loads once when it
-                    // appears, so one kept alive in another tab would go
-                    // on showing what it knew before this conversation.
-                    if settings.preferences.autoMemory {
+                    // A server with /memory/sync says in a `memory` frame
+                    // when this turn changed a memory, and that frame
+                    // syncs. One from before it says nothing, so the
+                    // list is fetched again as it always was.
+                    if settings.preferences.autoMemory && memorySyncSupported == false {
                         await refreshMemories()
                     }
                 case .title:
@@ -1102,6 +1200,13 @@ final class AppState {
                     // The summary is a message in the thread; the reload
                     // at `done` has already brought it in.
                     break
+                case let .memory(cursor):
+                    // The model remembered or forgot something in this
+                    // turn. Synced now, so a Memories screen open in
+                    // another tab shows it before the reply is read.
+                    if memoryMirror.isBehind(cursor) {
+                        await refreshMemories()
+                    }
                 case let .failed(_, message):
                     streamingGenerationID = nil
                     lastError = message
