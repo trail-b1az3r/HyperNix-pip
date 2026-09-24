@@ -940,3 +940,26 @@ timeline
         : 39faa5ae - chore- update generated API and code stats
 ```
 
+## Release v0.72.6 (2026-09-24)
+
+```mermaid
+timeline
+    title Release v0.72.6 Commits
+    0.72.6
+        : d4798650 - release- the push retry no longer mistakes a dirty tree for a conflict
+        : ddaedee0 - chore- update generated API and code stats
+        : 3fc645bf - HyperLink- memories sync from the server as they change
+        : 6abb9484 - 0.72.6- a release its own tests would reject cannot be started
+        : 32762dfc - tvtop-max- never a blank screen; a bounded log search that finds .runs
+        : 84d28c42 - hypernix v0.72.6.rc3 [skip ci]
+        : 92406910 - HyperLink- the assistant's bubble tail no longer punches a hole in it
+        : 471493b0 - 0.72.6.rc3- a HyperLink model has its tools on the route the app uses
+        : 39faa5ae - chore- update generated API and code stats
+        : 982f0924 - hypernix v0.72.6.rc2 [skip ci]
+        : dfb2baef - chore- update JSON stats (scheduled)
+        : c81b29d2 - 0.72.6.rc2- tvtop-max, and HyperLink's default system prompt
+        : 25d5540b - HyperLink Siri- say what the phrases match, and name models as they are said
+        : bcff04be - hypernix v0.72.6.rc1 [skip ci]
+        : 848cfa6a - 0.72.6.rc1- prepare the tree, and fix what the first release run hit
+```
+
