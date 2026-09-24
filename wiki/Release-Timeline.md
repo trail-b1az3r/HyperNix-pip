@@ -929,3 +929,14 @@ timeline
         : 25d5540b - HyperLink Siri- say what the phrases match, and name models as they are said
 ```
 
+## Release v0.72.6.rc3 (2026-09-24)
+
+```mermaid
+timeline
+    title Release v0.72.6.rc3 Commits
+    0.72.6.rc3
+        : 92406910 - HyperLink- the assistant's bubble tail no longer punches a hole in it
+        : 471493b0 - 0.72.6.rc3- a HyperLink model has its tools on the route the app uses
+        : 39faa5ae - chore- update generated API and code stats
+```
+
