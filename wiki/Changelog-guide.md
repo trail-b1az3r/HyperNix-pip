@@ -70,6 +70,8 @@ Release Categories
 Use the following categories where applicable.
 
 ### Added
+### changes that effect developers 
+### changes that effect users
 ### Changed
 ### Fixed
 ### Performance
