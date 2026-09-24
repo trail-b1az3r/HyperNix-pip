@@ -53,6 +53,17 @@ footer that says what the model has without it.
 message ahead of the first. A backend that keeps only the first system
 message then dropped the person's own instructions and the default
 prompt. It is now added to the end of the one system message.
+𖢥 **The assistant's reply bubble had a hole in its tail.** A dark
+triangle with a light rim sat at the bottom-left corner of every model
+reply, and the person's own bubbles looked right. The tail is drawn for
+the right side and mirrored for the left, and mirroring reverses a
+path's winding. Added to the bubble with `addPath`, the assistant's tail
+wound against its bubble, and SwiftUI's non-zero fill cancelled the
+overlap, leaving the screen behind showing through. The two are now
+joined with `Path.union`, which fills the combined outline whichever way
+either winds.
+🐛 The model's name under a reply sat 5pt left of the bubble, under its
+tail. It now lines up with the bubble.
 
 ### Added
 
@@ -72,6 +83,11 @@ phone on `/chat/stream`. The model writes `<tool_call>` for
 `server_version`, the server calls itself with the phone's token, and
 the phone gets the answer and never the markup. The old router fails
 three of them, and the old two-system-message behaviour fails two.
+🧪 The bubble tail: `tests/test_hyperlink_bubble_tail.py` reads the
+tail's coordinates from the Swift, shows that the mirrored tails wind in
+opposite directions and overlap their bubbles, and requires the union;
+it fails on the old shape. `BubbleShapeTests.swift` checks on a
+simulator that every point of both speakers' bubbles is filled.
 
 ⸻
 

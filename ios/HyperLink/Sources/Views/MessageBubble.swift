@@ -78,6 +78,9 @@ struct MessageBubble: View {
                 Text(shortModelName(message.modelID))
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
+                    // In line with the bubble, which sits 5pt in to leave
+                    // room for its tail, rather than under the tail.
+                    .padding(.leading, 5)
             }
         }
         .frame(maxWidth: .infinity, alignment: message.isUser ? .trailing : .leading)
@@ -89,13 +92,22 @@ struct MessageBubble: View {
 /// The tail is part of the shape, not an overlay, so it takes the same
 /// fill, the same theme colour and the same accessibility contrast as
 /// the bubble it belongs to.
+///
+/// Joined with `union`, not `addPath`. The tail is drawn for the right
+/// and mirrored for the left, and mirroring reverses the direction it
+/// winds. With `addPath`, the assistant's tail then wound against the
+/// bubble, and under SwiftUI's non-zero fill the part where they
+/// overlapped cancelled out: the assistant's bubble had a dark triangle
+/// punched through its bottom corner with a sliver of tail around it,
+/// while the user's, winding the same way as its bubble, looked right.
+/// A union fills the outline of both, whichever way either winds.
 struct BubbleShape: Shape {
     var isUser: Bool
     var showsTail: Bool
     var radius: CGFloat = 17
 
     func path(in rect: CGRect) -> Path {
-        var path = Path(roundedRect: rect, cornerRadius: radius, style: .continuous)
+        let path = Path(roundedRect: rect, cornerRadius: radius, style: .continuous)
         guard showsTail, rect.height > radius else { return path }
         // Drawn for the right-hand side and mirrored for the left, so the
         // two speakers' tails are the same shape.
@@ -113,8 +125,7 @@ struct BubbleShape: Shape {
             control: CGPoint(x: edge - out * 6, y: bottom + 1)
         )
         tail.closeSubpath()
-        path.addPath(tail)
-        return path
+        return path.union(tail)
     }
 }
 
