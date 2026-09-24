@@ -3,6 +3,26 @@
   "source": "wiki/Changelog.md",
   "entries": [
     {
+      "version": "0.72.6",
+      "key": "0.72.6",
+      "aliases": [
+        "0.72.6"
+      ],
+      "kind": "stable",
+      "heading": "0.72.6 \u2014 2026-09-24",
+      "summary": "2026-09-24"
+    },
+    {
+      "version": "0.72.6.rc3",
+      "key": "0.72.6.rc3",
+      "aliases": [
+        "0.72.6.rc3"
+      ],
+      "kind": "rc",
+      "heading": "0.72.6.rc3 \u2014 2026-09-24",
+      "summary": "2026-09-24"
+    },
+    {
       "version": "0.72.6.rc2",
       "key": "0.72.6.rc2",
       "aliases": [

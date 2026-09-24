@@ -1,8 +1,12 @@
 {
   "definition": "non-blank source lines across repository code roots: src, scripts, tests, examples, bin, native, docs/src",
-  "total_lines": 209535,
-  "code_files": 670,
+  "total_lines": 211049,
+  "code_files": 673,
   "top_files": [
+    {
+      "path": "src/hypernix/t1api/routers/hyperlink.py",
+      "lines": 2215
+    },
     {
       "path": "src/hypernix/interfaces/hyped.py",
       "lines": 2135
@@ -10,10 +14,6 @@
     {
       "path": "src/hypernix/waiter/cli.py",
       "lines": 2130
-    },
-    {
-      "path": "src/hypernix/t1api/routers/hyperlink.py",
-      "lines": 2127
     },
     {
       "path": "src/hypernix/hyped_pro.js",
@@ -37,7 +37,7 @@
     },
     {
       "path": "src/hypernix/monitoring/tv.py",
-      "lines": 1337
+      "lines": 1378
     },
     {
       "path": "src/hypernix/data/gather.py",
@@ -127,12 +127,12 @@
   "contributors": [
     {
       "author": "Claude",
-      "additions": 179824,
-      "deletions": 9772,
-      "net": 170052,
-      "changes": 189596,
-      "commits": 190,
-      "files": 1157
+      "additions": 181738,
+      "deletions": 9873,
+      "net": 171865,
+      "changes": 191611,
+      "commits": 195,
+      "files": 1160
     },
     {
       "author": "minerofthesoal",
@@ -190,6 +190,6 @@
     }
   ],
   "history_available": true,
-  "commit": "982f0924a8dc30fe73c5482f220124963c077ff6",
+  "commit": "c35c176be06db69a6c33698d8de1ec453bd326ac",
   "generated_at": null
 }

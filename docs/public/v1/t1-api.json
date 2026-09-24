@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-t1-api",
   "generated_at": "2026-09-20T21:20:58Z",
-  "commit": "982f0924a8dc30fe73c5482f220124963c077ff6",
+  "commit": "c35c176be06db69a6c33698d8de1ec453bd326ac",
   "history_available": true,
   "server_extra": "pip install 'hypernix[t1api]'",
   "client_install": "pip install hypernix",
@@ -7305,336 +7305,336 @@
     {
       "module": "hypernix.t1api.routers.hyperlink",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line_count": 2127,
+      "line_count": 2215,
       "summary": "``/hyperlink`` \u2014 the surface the iOS app talks to.",
       "api": [
         {
           "kind": "function",
           "name": "list_endpoints",
           "signature": "def list_endpointsrequest: Request, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> HyperLinkEndpointsResponse",
-          "line": 192,
+          "line": 193,
           "doc": "Every address this machine can be reached on, best first."
         },
         {
           "kind": "function",
           "name": "list_peers",
           "signature": "def list_peersrequest: Request, include_offline: bool=Query(False, description='Also list peers that are down.'), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> HyperLinkPeersResponse",
-          "line": 227,
+          "line": 228,
           "doc": "Other HyperNix machines on this tailnet, as *candidates*."
         },
         {
           "kind": "function",
           "name": "create_pairing_code",
           "signature": "def create_pairing_codepayload: PairingCreateRequest, request: Request, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), registry: DeviceRegistry=Depends(get_device_registry), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id), audit=Depends(get_audit_log) -> PairingCodeResponse",
-          "line": 285,
+          "line": 286,
           "doc": "Mint a code for a phone to redeem. Admin only, on the PC."
         },
         {
           "kind": "function",
           "name": "redeem_pairing_code",
           "signature": "def redeem_pairing_codepayload: PairingRedeemRequest, request: Request, registry: DeviceRegistry=Depends(get_device_registry), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id), audit=Depends(get_audit_log) -> PairingRedeemResponse",
-          "line": 333,
+          "line": 334,
           "doc": "Exchange a pairing code for this device's permanent token."
         },
         {
           "kind": "function",
           "name": "revoke_pairing_code",
           "signature": "def revoke_pairing_codecode: str, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), registry: DeviceRegistry=Depends(get_device_registry), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> GenericOkResponse",
-          "line": 402,
+          "line": 403,
           "doc": "Cancel a code that has not been redeemed yet."
         },
         {
           "kind": "function",
           "name": "list_devices",
           "signature": "def list_devicesinclude_revoked: bool=Query(default=False), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), registry: DeviceRegistry=Depends(get_device_registry), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> DeviceListResponse",
-          "line": 426,
+          "line": 427,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "whoami",
           "signature": "def whoamiprincipal: HyperLinkPrincipal=Depends(get_hyperlink_principal), registry: DeviceRegistry=Depends(get_device_registry), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> DeviceResponse",
-          "line": 444,
+          "line": 445,
           "doc": "What the caller's own device token resolves to."
         },
         {
           "kind": "function",
           "name": "rename_device",
           "signature": "def rename_devicedevice_id: str, payload: dict[str, Any], principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), registry: DeviceRegistry=Depends(get_device_registry), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> DeviceResponse",
-          "line": 470,
+          "line": 471,
           "doc": "Rename a device. A device may rename itself; only an admin may rename another one \u2014 otherwise a phone could relabel itself as somebody else's before doing something regrettable."
         },
         {
           "kind": "function",
           "name": "revoke_device",
           "signature": "def revoke_devicedevice_id: str, request: Request, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), registry: DeviceRegistry=Depends(get_device_registry), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id), audit=Depends(get_audit_log) -> DeviceResponse",
-          "line": 490,
+          "line": 491,
           "doc": "Unpair a device."
         },
         {
           "kind": "function",
           "name": "list_sessions",
           "signature": "def list_sessionsinclude_archived: bool=Query(default=False), limit: int=Query(default=50, ge=1, le=200), offset: int=Query(default=0, ge=0), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: ChatSessionStore=Depends(get_session_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> SessionListResponse",
-          "line": 530,
+          "line": 531,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "create_session",
           "signature": "def create_sessionpayload: SessionCreateRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: ChatSessionStore=Depends(get_session_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> SessionResponse",
-          "line": 551,
+          "line": 552,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "get_session",
           "signature": "def get_sessionsession_id: str, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: ChatSessionStore=Depends(get_session_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> SessionResponse",
-          "line": 573,
+          "line": 574,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "update_session",
           "signature": "def update_sessionsession_id: str, payload: SessionUpdateRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: ChatSessionStore=Depends(get_session_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> SessionResponse",
-          "line": 586,
+          "line": 587,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "retitle_session",
           "signature": "def retitle_sessionsession_id: str, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: ChatSessionStore=Depends(get_session_store), preferences=Depends(get_preference_store), runner=Depends(get_runner), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> SessionResponse",
-          "line": 608,
+          "line": 609,
           "doc": "Ask the model to name this chat again, from its first exchange."
         },
         {
           "kind": "function",
           "name": "delete_session",
           "signature": "def delete_sessionsession_id: str, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: ChatSessionStore=Depends(get_session_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> GenericOkResponse",
-          "line": 638,
+          "line": 639,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "edit_message",
           "signature": "def edit_messagesession_id: str, message_id: str, payload: MessageEditRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: ChatSessionStore=Depends(get_session_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> MessageEditResponse",
-          "line": 654,
+          "line": 655,
           "doc": "Rewrite one of your own messages, and drop what came after it."
         },
         {
           "kind": "function",
           "name": "delete_message",
           "signature": "def delete_messagesession_id: str, message_id: str, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: ChatSessionStore=Depends(get_session_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> GenericOkResponse",
-          "line": 702,
+          "line": 703,
           "doc": "Remove one message, leaving the rest of the conversation."
         },
         {
           "kind": "function",
           "name": "list_messages",
           "signature": "def list_messagessession_id: str, after_seq: int=Query(default=0, ge=0, description='Incremental sync: only newer messages'), limit: int=Query(default=0, ge=0, le=1000), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: ChatSessionStore=Depends(get_session_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> MessageListResponse",
-          "line": 729,
+          "line": 730,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "chat_turn",
           "signature": "def chat_turnsession_id: str, payload: HyperLinkChatRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: ChatSessionStore=Depends(get_session_store), files: AttachmentStore=Depends(get_attachment_store), memories: MemoryStore=Depends(get_memory_store), preferences=Depends(get_preference_store), runner=Depends(get_runner), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id), request: Request=None -> HyperLinkChatResponse",
-          "line": 1147,
+          "line": 1204,
           "doc": "Append the user's message, run the model, append the reply."
         },
         {
           "kind": "function",
           "name": "chat_turn_stream",
-          "signature": "def chat_turn_streamsession_id: str, payload: HyperLinkChatRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: ChatSessionStore=Depends(get_session_store), files: AttachmentStore=Depends(get_attachment_store), generations: GenerationRegistry=Depends(get_generation_registry), memories: MemoryStore=Depends(get_memory_store), preferences=Depends(get_preference_store), runner=Depends(get_runner), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> StreamingResponse",
-          "line": 1315,
+          "signature": "def chat_turn_streamsession_id: str, payload: HyperLinkChatRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: ChatSessionStore=Depends(get_session_store), files: AttachmentStore=Depends(get_attachment_store), generations: GenerationRegistry=Depends(get_generation_registry), memories: MemoryStore=Depends(get_memory_store), preferences=Depends(get_preference_store), runner=Depends(get_runner), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id), request: Request=None -> StreamingResponse",
+          "line": 1369,
           "doc": "The same turn, streamed token by token."
         },
         {
           "kind": "function",
           "name": "stop_generation",
           "signature": "def stop_generationsession_id: str, generation_id: str | None=Query(default=None), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), generations: GenerationRegistry=Depends(get_generation_registry), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> GenerationStopResponse",
-          "line": 1521,
+          "line": 1622,
           "doc": "Stop a streamed reply that is still being generated."
         },
         {
           "kind": "function",
           "name": "shell_status",
           "signature": "def shell_statusprincipal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config) -> dict[str, Any]",
-          "line": 1562,
+          "line": 1663,
           "doc": "Whether this server accepts shell commands, so the app can say why not."
         },
         {
           "kind": "function",
           "name": "run_shell",
           "signature": "def run_shellrequest_body: dict[str, Any], principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), audit=Depends(get_audit_log), request_id: str=Depends(get_request_id) -> dict[str, Any]",
-          "line": 1582,
+          "line": 1683,
           "doc": "Run one command on this machine and return its output."
         },
         {
           "kind": "function",
           "name": "server_hardware",
           "signature": "def server_hardwareprincipal: HyperLinkPrincipal=Depends(require_hyperlink_operator), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> HardwareResponse",
-          "line": 1624,
+          "line": 1725,
           "doc": "What this machine is doing: CPU, memory, swap, disks, GPUs."
         },
         {
           "kind": "function",
           "name": "list_backends",
           "signature": "def list_backendsprincipal: HyperLinkPrincipal=Depends(get_hyperlink_principal), runner=Depends(get_runner), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> BackendsResponse",
-          "line": 1670,
+          "line": 1771,
           "doc": "What could answer a message, and what would answer one now."
         },
         {
           "kind": "function",
           "name": "read_preferences",
           "signature": "def read_preferencesprincipal: HyperLinkPrincipal=Depends(get_hyperlink_principal), preferences=Depends(get_preference_store), runner=Depends(get_runner), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> PreferencesResponse",
-          "line": 1696,
+          "line": 1797,
           "doc": "This person's settings, and the bounds the server will accept."
         },
         {
           "kind": "function",
           "name": "write_preferences",
           "signature": "def write_preferencespayload: PreferencesRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), preferences=Depends(get_preference_store), runner=Depends(get_runner), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> PreferencesResponse",
-          "line": 1717,
+          "line": 1818,
           "doc": "Change some settings. Unsent fields are left alone."
         },
         {
           "kind": "function",
           "name": "reset_preferences",
           "signature": "def reset_preferencesprincipal: HyperLinkPrincipal=Depends(get_hyperlink_principal), preferences=Depends(get_preference_store), runner=Depends(get_runner), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> PreferencesResponse",
-          "line": 1743,
+          "line": 1844,
           "doc": "Back to the defaults."
         },
         {
           "kind": "function",
           "name": "server_upgrade",
           "signature": "def server_upgradeprincipal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> UpgradeResponse",
-          "line": 1759,
+          "line": 1860,
           "doc": "What is installed here, and the exact commands to update it."
         },
         {
           "kind": "function",
           "name": "server_uptime",
           "signature": "def server_uptimeprincipal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> UptimeResponse",
-          "line": 1797,
+          "line": 1898,
           "doc": "How long the server, and the machine under it, have been up."
         },
         {
           "kind": "function",
           "name": "list_generations",
           "signature": "def list_generationssession_id: str | None=Query(default=None), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), generations: GenerationRegistry=Depends(get_generation_registry), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> GenerationListResponse",
-          "line": 1824,
+          "line": 1925,
           "doc": "What is generating right now, for this caller."
         },
         {
           "kind": "function",
           "name": "upload_file",
           "signature": "async def upload_filefile: UploadFile=File(...), session_id: str=Form(default=''), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: AttachmentStore=Depends(get_attachment_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> AttachmentResponse",
-          "line": 1866,
+          "line": 1967,
           "doc": "Upload one image, document or source file."
         },
         {
           "kind": "function",
           "name": "list_attachments",
           "signature": "def list_attachmentssession_id: str | None=Query(default=None), limit: int=Query(default=100, ge=1, le=500), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: AttachmentStore=Depends(get_attachment_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> AttachmentListResponse",
-          "line": 1902,
+          "line": 2003,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "download_file",
           "signature": "def download_filefile_id: str, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: AttachmentStore=Depends(get_attachment_store), config: T1APIConfig=Depends(get_config) -> Response",
-          "line": 1921,
+          "line": 2022,
           "doc": "The raw bytes."
         },
         {
           "kind": "function",
           "name": "delete_file",
           "signature": "def delete_filefile_id: str, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: AttachmentStore=Depends(get_attachment_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> GenericOkResponse",
-          "line": 1948,
+          "line": 2049,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "resolve_model_link",
           "signature": "def resolve_model_linkpayload: HFResolveRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> HFResolveResponse",
-          "line": 1966,
+          "line": 2067,
           "doc": "Turn a model page and/or a direct file link into a download plan."
         },
         {
           "kind": "function",
           "name": "download_model",
           "signature": "def download_modelpayload: HFDownloadRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id), jobs=Depends(get_job_queue) -> HFDownloadResponse",
-          "line": 2023,
+          "line": 2124,
           "doc": "Start downloading a model onto the **server**, not the phone."
         },
         {
           "kind": "function",
           "name": "list_downloaded",
           "signature": "def list_downloadedprincipal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> DownloadedModelsResponse",
-          "line": 2099,
+          "line": 2200,
           "doc": "What is already on this server's disk."
         },
         {
           "kind": "function",
           "name": "model_catalogue",
           "signature": "def model_catalogueprincipal: HyperLinkPrincipal=Depends(get_hyperlink_principal), registry: ModelRegistry=Depends(get_registry), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> ModelCatalogueResponse",
-          "line": 2132,
+          "line": 2233,
           "doc": "Everything runnable here: the registry, LM Studio, and the disk."
         },
         {
           "kind": "function",
           "name": "sync_changes",
           "signature": "def sync_changescursor: int=Query(default=0, ge=0), limit: int=Query(default=100, ge=1, le=500), session_id: str | None=Query(default=None), entities: str | None=Query(default=None, description='Comma-separated: session,message,device,attachment'), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: SyncStore=Depends(get_sync_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> SyncPageResponse",
-          "line": 2184,
+          "line": 2285,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "claim_client_message",
           "signature": "def claim_client_messagepayload: SyncClaimRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: SyncStore=Depends(get_sync_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> SyncClaimResponse",
-          "line": 2215,
+          "line": 2316,
           "doc": "Claim an idempotency key before sending a turn."
         },
         {
           "kind": "function",
           "name": "register_push",
           "signature": "def register_pushpayload: PushRegisterRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: NotificationStore=Depends(get_notification_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> PushRegistrationResponse",
-          "line": 2247,
+          "line": 2348,
           "doc": "Register this device's APNs token."
         },
         {
           "kind": "function",
           "name": "list_push",
           "signature": "def list_pushinclude_disabled: bool=Query(default=False), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: NotificationStore=Depends(get_notification_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> PushRegistrationListResponse",
-          "line": 2279,
+          "line": 2380,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "set_push_events",
           "signature": "def set_push_eventsregistration_id: str, payload: PushEventsRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: NotificationStore=Depends(get_notification_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> PushRegistrationResponse",
-          "line": 2299,
+          "line": 2400,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "unregister_push",
           "signature": "def unregister_pushregistration_id: str, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: NotificationStore=Depends(get_notification_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> GenericOkResponse",
-          "line": 2317,
+          "line": 2418,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "list_push_events",
           "signature": "def list_push_eventsconfig: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> dict",
-          "line": 2331,
+          "line": 2432,
           "doc": "What a device may subscribe to."
         },
         {
           "kind": "function",
           "name": "search_history",
           "signature": "def search_historyq: str=Query(min_length=1, max_length=500), limit: int=Query(default=25, ge=1, le=200), session_id: str | None=Query(default=None), include_archived: bool=Query(default=False), roles: str | None=Query(default=None, description='Comma-separated'), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), index: SearchIndex=Depends(get_search_index), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> SearchResponse",
-          "line": 2369,
+          "line": 2470,
           "doc": "Search this owner's sessions and messages."
         }
       ],
@@ -7650,6 +7650,54 @@
         }
       ],
       "changes": [
+        {
+          "sha": "3fc645bf",
+          "date": "2026-09-24",
+          "author": "Claude",
+          "subject": "HyperLink: memories sync from the server as they change",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _memory_head(store: MemoryStore | None, owner: str) -> int:"
+            }
+          ]
+        },
+        {
+          "sha": "471493b0",
+          "date": "2026-09-24",
+          "author": "Claude",
+          "subject": "0.72.6.rc3: a HyperLink model has its tools on the route the app uses",
+          "api_changes": [
+            {
+              "kind": "removed",
+              "text": "def _chat_with_tools(bridge, wire, model, sampling, config, principal, t1=None,"
+            },
+            {
+              "kind": "added",
+              "text": "def _tool_summary(record) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "class _ToolSetup:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, context, t1, workspace: bool) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _tool_setup(config, principal, settings, request, memory_store, session_id):"
+            },
+            {
+              "kind": "added",
+              "text": "def _chat_with_tools(bridge, wire, model, sampling, setup: _ToolSetup, teach_format=False):"
+            },
+            {
+              "kind": "added",
+              "text": "def ask_stream(messages, tools):"
+            }
+          ]
+        },
         {
           "sha": "c81b29d2",
           "date": "2026-09-23",
@@ -7829,42 +7877,6 @@
             {
               "kind": "added",
               "text": "def server_upgrade("
-            }
-          ]
-        },
-        {
-          "sha": "6c58a994",
-          "date": "2026-09-16",
-          "author": "Claude",
-          "subject": "Fix the CI build break, and ship an IPA that can run a model",
-          "api_changes": [
-            {
-              "kind": "added",
-              "text": "def _with_memories("
-            }
-          ]
-        },
-        {
-          "sha": "1803aaab",
-          "date": "2026-09-15",
-          "author": "Claude",
-          "subject": "t1: what the server's hardware is doing, and how long it has been up",
-          "api_changes": [
-            {
-              "kind": "added",
-              "text": "@router.get(\"/hardware\", response_model=HardwareResponse)"
-            },
-            {
-              "kind": "added",
-              "text": "def server_hardware("
-            },
-            {
-              "kind": "added",
-              "text": "@router.get(\"/uptime\", response_model=UptimeResponse)"
-            },
-            {
-              "kind": "added",
-              "text": "def server_uptime("
             }
           ]
         }
@@ -8254,63 +8266,70 @@
     {
       "module": "hypernix.t1api.routers.memory",
       "source": "src/hypernix/t1api/routers/memory.py",
-      "line_count": 170,
+      "line_count": 197,
       "summary": "``/memory/*`` \u2014 what the assistant remembers between conversations.",
       "api": [
         {
           "kind": "function",
           "name": "create_memory",
           "signature": "def create_memorypayload: MemoryCreateRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: MemoryStore=Depends(get_memory_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> MemoryResponse",
-          "line": 44,
+          "line": 47,
           "doc": "Remember something."
         },
         {
           "kind": "function",
           "name": "get_memory",
           "signature": "def get_memorymemory_id: str=Query(...), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: MemoryStore=Depends(get_memory_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> MemoryResponse",
-          "line": 72,
+          "line": 75,
           "doc": "One memory. 404 for somebody else's, same as for one that is not there \u2014 distinguishing them would let a caller enumerate ids."
         },
         {
           "kind": "function",
           "name": "list_memories",
           "signature": "def list_memoriescategory: str=Query(default=''), source: str=Query(default='', description='manual | auto'), limit: int=Query(default=200, ge=1, le=1000), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: MemoryStore=Depends(get_memory_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> MemoryListResponse",
-          "line": 86,
+          "line": 89,
           "doc": "Everything remembered about this owner, pinned first."
+        },
+        {
+          "kind": "function",
+          "name": "sync_memories",
+          "signature": "def sync_memoriescursor: int=Query(default=0, ge=0), limit: int=Query(default=200, ge=1, le=500), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: MemoryStore=Depends(get_memory_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> dict[str, Any]",
+          "line": 117,
+          "doc": "What changed since *cursor*, so the phone keeps a copy current."
         },
         {
           "kind": "function",
           "name": "edit_memory",
           "signature": "def edit_memorypayload: MemoryUpdateRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: MemoryStore=Depends(get_memory_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> MemoryResponse",
-          "line": 114,
+          "line": 145,
           "doc": "Change one. Only the fields sent are touched."
         },
         {
           "kind": "function",
           "name": "delete_memory",
           "signature": "def delete_memorymemory_id: str=Query(...), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: MemoryStore=Depends(get_memory_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> GenericOkResponse",
-          "line": 134,
+          "line": 165,
           "doc": "Forget one."
         },
         {
           "kind": "function",
           "name": "list_categories",
           "signature": "def list_categoriesprincipal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: MemoryStore=Depends(get_memory_store), request_id: str=Depends(get_request_id) -> dict[str, Any]",
-          "line": 162,
+          "line": 193,
           "doc": "Each category with how many memories it holds."
         },
         {
           "kind": "function",
           "name": "rename_memory_category",
           "signature": "def rename_memory_categorypayload: dict[str, Any], principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: MemoryStore=Depends(get_memory_store), request_id: str=Depends(get_request_id) -> dict[str, Any]",
-          "line": 172,
+          "line": 203,
           "doc": "Move every memory in one category to another; merges into an existing one."
         },
         {
           "kind": "function",
           "name": "organise",
           "signature": "def organisepayload: dict[str, Any] | None=None, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: MemoryStore=Depends(get_memory_store), request_id: str=Depends(get_request_id) -> dict[str, Any]",
-          "line": 186,
+          "line": 217,
           "doc": "File memories that are not under a topic under one."
         }
       ],
@@ -8324,6 +8343,22 @@
         }
       ],
       "changes": [
+        {
+          "sha": "3fc645bf",
+          "date": "2026-09-24",
+          "author": "Claude",
+          "subject": "HyperLink: memories sync from the server as they change",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "@router.get(\"/sync\")"
+            },
+            {
+              "kind": "added",
+              "text": "def sync_memories("
+            }
+          ]
+        },
         {
           "sha": "e26841fc",
           "date": "2026-09-23",
@@ -15366,7 +15401,7 @@
       "handler": "list_backends",
       "response_model": "BackendsResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 1669,
+      "line": 1770,
       "tag": "hyperlink"
     },
     {
@@ -15376,7 +15411,7 @@
       "handler": "list_devices",
       "response_model": "DeviceListResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 425,
+      "line": 426,
       "tag": "hyperlink"
     },
     {
@@ -15386,7 +15421,7 @@
       "handler": "whoami",
       "response_model": "DeviceResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 443,
+      "line": 444,
       "tag": "hyperlink"
     },
     {
@@ -15396,7 +15431,7 @@
       "handler": "revoke_device",
       "response_model": "DeviceResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 489,
+      "line": 490,
       "tag": "hyperlink"
     },
     {
@@ -15406,7 +15441,7 @@
       "handler": "rename_device",
       "response_model": "DeviceResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 469,
+      "line": 470,
       "tag": "hyperlink"
     },
     {
@@ -15416,7 +15451,7 @@
       "handler": "list_endpoints",
       "response_model": "HyperLinkEndpointsResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 191,
+      "line": 192,
       "tag": "hyperlink"
     },
     {
@@ -15426,7 +15461,7 @@
       "handler": "list_attachments",
       "response_model": "AttachmentListResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 1901,
+      "line": 2002,
       "tag": "hyperlink"
     },
     {
@@ -15436,7 +15471,7 @@
       "handler": "upload_file",
       "response_model": "AttachmentResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 1865,
+      "line": 1966,
       "tag": "hyperlink"
     },
     {
@@ -15446,7 +15481,7 @@
       "handler": "delete_file",
       "response_model": "GenericOkResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 1947,
+      "line": 2048,
       "tag": "hyperlink"
     },
     {
@@ -15456,7 +15491,7 @@
       "handler": "download_file",
       "response_model": null,
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 1920,
+      "line": 2021,
       "tag": "hyperlink"
     },
     {
@@ -15466,7 +15501,7 @@
       "handler": "list_generations",
       "response_model": "GenerationListResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 1823,
+      "line": 1924,
       "tag": "hyperlink"
     },
     {
@@ -15476,7 +15511,7 @@
       "handler": "server_hardware",
       "response_model": "HardwareResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 1623,
+      "line": 1724,
       "tag": "hyperlink"
     },
     {
@@ -15486,7 +15521,7 @@
       "handler": "model_catalogue",
       "response_model": "ModelCatalogueResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 2131,
+      "line": 2232,
       "tag": "hyperlink"
     },
     {
@@ -15496,7 +15531,7 @@
       "handler": "download_model",
       "response_model": "HFDownloadResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 2022,
+      "line": 2123,
       "tag": "hyperlink"
     },
     {
@@ -15506,7 +15541,7 @@
       "handler": "list_downloaded",
       "response_model": "DownloadedModelsResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 2098,
+      "line": 2199,
       "tag": "hyperlink"
     },
     {
@@ -15516,7 +15551,7 @@
       "handler": "resolve_model_link",
       "response_model": "HFResolveResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 1965,
+      "line": 2066,
       "tag": "hyperlink"
     },
     {
@@ -15526,7 +15561,7 @@
       "handler": "create_pairing_code",
       "response_model": "PairingCodeResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 284,
+      "line": 285,
       "tag": "hyperlink"
     },
     {
@@ -15536,7 +15571,7 @@
       "handler": "redeem_pairing_code",
       "response_model": "PairingRedeemResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 332,
+      "line": 333,
       "tag": "hyperlink"
     },
     {
@@ -15546,7 +15581,7 @@
       "handler": "revoke_pairing_code",
       "response_model": "GenericOkResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 401,
+      "line": 402,
       "tag": "hyperlink"
     },
     {
@@ -15556,7 +15591,7 @@
       "handler": "list_peers",
       "response_model": "HyperLinkPeersResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 226,
+      "line": 227,
       "tag": "hyperlink"
     },
     {
@@ -15566,7 +15601,7 @@
       "handler": "read_preferences",
       "response_model": "PreferencesResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 1695,
+      "line": 1796,
       "tag": "hyperlink"
     },
     {
@@ -15576,7 +15611,7 @@
       "handler": "write_preferences",
       "response_model": "PreferencesResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 1716,
+      "line": 1817,
       "tag": "hyperlink"
     },
     {
@@ -15586,7 +15621,7 @@
       "handler": "reset_preferences",
       "response_model": "PreferencesResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 1742,
+      "line": 1843,
       "tag": "hyperlink"
     },
     {
@@ -15596,7 +15631,7 @@
       "handler": "list_push",
       "response_model": "PushRegistrationListResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 2278,
+      "line": 2379,
       "tag": "hyperlink"
     },
     {
@@ -15606,7 +15641,7 @@
       "handler": "register_push",
       "response_model": "PushRegistrationResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 2246,
+      "line": 2347,
       "tag": "hyperlink"
     },
     {
@@ -15616,7 +15651,7 @@
       "handler": "list_push_events",
       "response_model": "dict",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 2330,
+      "line": 2431,
       "tag": "hyperlink"
     },
     {
@@ -15626,7 +15661,7 @@
       "handler": "unregister_push",
       "response_model": "GenericOkResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 2316,
+      "line": 2417,
       "tag": "hyperlink"
     },
     {
@@ -15636,7 +15671,7 @@
       "handler": "set_push_events",
       "response_model": "PushRegistrationResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 2298,
+      "line": 2399,
       "tag": "hyperlink"
     },
     {
@@ -15646,7 +15681,7 @@
       "handler": "search_history",
       "response_model": "SearchResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 2368,
+      "line": 2469,
       "tag": "hyperlink"
     },
     {
@@ -15656,7 +15691,7 @@
       "handler": "list_sessions",
       "response_model": "SessionListResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 529,
+      "line": 530,
       "tag": "hyperlink"
     },
     {
@@ -15666,7 +15701,7 @@
       "handler": "create_session",
       "response_model": "SessionResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 550,
+      "line": 551,
       "tag": "hyperlink"
     },
     {
@@ -15676,7 +15711,7 @@
       "handler": "delete_session",
       "response_model": "GenericOkResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 637,
+      "line": 638,
       "tag": "hyperlink"
     },
     {
@@ -15686,7 +15721,7 @@
       "handler": "get_session",
       "response_model": "SessionResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 572,
+      "line": 573,
       "tag": "hyperlink"
     },
     {
@@ -15696,7 +15731,7 @@
       "handler": "update_session",
       "response_model": "SessionResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 585,
+      "line": 586,
       "tag": "hyperlink"
     },
     {
@@ -15706,7 +15741,7 @@
       "handler": "chat_turn",
       "response_model": "HyperLinkChatResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 1146,
+      "line": 1203,
       "tag": "hyperlink"
     },
     {
@@ -15716,7 +15751,7 @@
       "handler": "stop_generation",
       "response_model": "GenerationStopResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 1520,
+      "line": 1621,
       "tag": "hyperlink"
     },
     {
@@ -15726,7 +15761,7 @@
       "handler": "chat_turn_stream",
       "response_model": null,
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 1314,
+      "line": 1368,
       "tag": "hyperlink"
     },
     {
@@ -15736,7 +15771,7 @@
       "handler": "list_messages",
       "response_model": "MessageListResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 728,
+      "line": 729,
       "tag": "hyperlink"
     },
     {
@@ -15746,7 +15781,7 @@
       "handler": "delete_message",
       "response_model": "GenericOkResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 698,
+      "line": 699,
       "tag": "hyperlink"
     },
     {
@@ -15756,7 +15791,7 @@
       "handler": "edit_message",
       "response_model": "MessageEditResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 650,
+      "line": 651,
       "tag": "hyperlink"
     },
     {
@@ -15766,7 +15801,7 @@
       "handler": "retitle_session",
       "response_model": "SessionResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 607,
+      "line": 608,
       "tag": "hyperlink"
     },
     {
@@ -15776,7 +15811,7 @@
       "handler": "shell_status",
       "response_model": null,
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 1561,
+      "line": 1662,
       "tag": "hyperlink"
     },
     {
@@ -15786,7 +15821,7 @@
       "handler": "run_shell",
       "response_model": null,
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 1581,
+      "line": 1682,
       "tag": "hyperlink"
     },
     {
@@ -15796,7 +15831,7 @@
       "handler": "sync_changes",
       "response_model": "SyncPageResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 2183,
+      "line": 2284,
       "tag": "hyperlink"
     },
     {
@@ -15806,7 +15841,7 @@
       "handler": "claim_client_message",
       "response_model": "SyncClaimResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 2214,
+      "line": 2315,
       "tag": "hyperlink"
     },
     {
@@ -15816,7 +15851,7 @@
       "handler": "server_upgrade",
       "response_model": "UpgradeResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 1758,
+      "line": 1859,
       "tag": "hyperlink"
     },
     {
@@ -15826,7 +15861,7 @@
       "handler": "server_uptime",
       "response_model": "UptimeResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 1796,
+      "line": 1897,
       "tag": "hyperlink"
     },
     {
@@ -15976,7 +16011,7 @@
       "handler": "list_categories",
       "response_model": null,
       "source": "src/hypernix/t1api/routers/memory.py",
-      "line": 161,
+      "line": 192,
       "tag": "memory"
     },
     {
@@ -15986,7 +16021,7 @@
       "handler": "rename_memory_category",
       "response_model": null,
       "source": "src/hypernix/t1api/routers/memory.py",
-      "line": 171,
+      "line": 202,
       "tag": "memory"
     },
     {
@@ -15996,7 +16031,7 @@
       "handler": "create_memory",
       "response_model": "MemoryResponse",
       "source": "src/hypernix/t1api/routers/memory.py",
-      "line": 43,
+      "line": 46,
       "tag": "memory"
     },
     {
@@ -16006,7 +16041,7 @@
       "handler": "delete_memory",
       "response_model": "GenericOkResponse",
       "source": "src/hypernix/t1api/routers/memory.py",
-      "line": 133,
+      "line": 164,
       "tag": "memory"
     },
     {
@@ -16016,7 +16051,7 @@
       "handler": "edit_memory",
       "response_model": "MemoryResponse",
       "source": "src/hypernix/t1api/routers/memory.py",
-      "line": 113,
+      "line": 144,
       "tag": "memory"
     },
     {
@@ -16026,7 +16061,7 @@
       "handler": "get_memory",
       "response_model": "MemoryResponse",
       "source": "src/hypernix/t1api/routers/memory.py",
-      "line": 71,
+      "line": 74,
       "tag": "memory"
     },
     {
@@ -16036,7 +16071,7 @@
       "handler": "list_memories",
       "response_model": "MemoryListResponse",
       "source": "src/hypernix/t1api/routers/memory.py",
-      "line": 85,
+      "line": 88,
       "tag": "memory"
     },
     {
@@ -16046,7 +16081,17 @@
       "handler": "organise",
       "response_model": null,
       "source": "src/hypernix/t1api/routers/memory.py",
-      "line": 185,
+      "line": 216,
+      "tag": "memory"
+    },
+    {
+      "method": "GET",
+      "router": "router",
+      "path": "/memory/sync",
+      "handler": "sync_memories",
+      "response_model": null,
+      "source": "src/hypernix/t1api/routers/memory.py",
+      "line": 116,
       "tag": "memory"
     },
     {
