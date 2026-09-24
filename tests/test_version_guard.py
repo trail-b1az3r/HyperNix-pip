@@ -12,6 +12,11 @@ version bump" notices there is nothing to commit, "Tag and push" skips a
 tag that exists. Only the guard disagreed, so releases were cut under
 numbers invented at dispatch time to get past it: 0.72.4 `post1` and
 `post3` have no changelog heading and say nothing about what shipped.
+
+And it refuses a release the release's own tests would reject: 0.72.6
+was dispatched against a changelog whose newest entry was 0.72.6.rc3,
+built for ten minutes, and failed "changelog newest is 0.72.6.rc3,
+package is 0.72.6". That is knowable from the dispatch input alone.
 """
 from __future__ import annotations
 
@@ -46,7 +51,7 @@ def tree(tmp_path):
         )
         wiki = tmp_path / "wiki"
         wiki.mkdir(exist_ok=True)
-        body = changelog if changelog is not None else f"## Changelog\n\n## {version} — notes\n"
+        body = changelog if changelog is not None else f"## Changelog\n\n## {version} — 2026-09-24\n"
         (wiki / "Changelog.md").write_text(body, encoding="utf-8")
         if git:
             def run(*a):
@@ -95,24 +100,24 @@ class TestTheSameVersionTheTreeIsPreparedWith:
         _, out = call("0.72.4.post5", repo)
         assert "postN" not in out
 
-    def test_a_missing_changelog_heading_warns_rather_than_blocks(self, tree):
-        """A release with no notes is worth saying out loud, not worth stopping.
+    def test_a_postn_under_its_base_entry_warns_rather_than_blocks(self, tree):
+        """A .postN the tests accept, but with no notes of its own.
 
-        Blocking here would only push people back to inventing a number
-        at dispatch time, which is the behaviour that lost the notes in
-        the first place.
+        The changelog test ignores a .postN, so this release passes and
+        blocking it would only push people back to inventing numbers.
+        Its missing notes are still said out loud.
         """
-        repo = tree("0.72.4.post5", changelog="## Changelog\n\n## 0.72.4.post4 — old\n")
+        repo = tree("0.72.4.post5", changelog="## Changelog\n\n## 0.72.4.post4 — 2026-09-20\n")
         code, out = call("0.72.4.post5", repo)
         assert code == 0, out
         assert "::warning::" in out
-        assert "no heading for it" in out
+        assert "no heading for 0.72.4.post5" in out
 
     def test_the_heading_must_be_for_this_version_exactly(self, tree):
         """`## 0.72.4.post5` is not satisfied by `## 0.72.4.post50`."""
-        repo = tree("0.72.4.post5", changelog="## Changelog\n\n## 0.72.4.post50 — other\n")
+        repo = tree("0.72.4.post5", changelog="## Changelog\n\n## 0.72.4.post50 — 2026-09-20\n")
         _, out = call("0.72.4.post5", repo)
-        assert "no heading for it" in out
+        assert "no heading for 0.72.4.post5" in out
 
 
 class TestAVersionThatGoesBackwards:
@@ -126,16 +131,75 @@ class TestAVersionThatGoesBackwards:
         assert "allow_downgrade" in out
 
     def test_allow_downgrade_lets_it_through_and_says_so(self, tree):
-        repo = tree("0.72.4.post4")
+        repo = tree("0.72.4.post4", changelog="## 0.72.3.post2 — 2026-09-01\n")
         code, out = call("0.72.3.post2", repo, allow_downgrade=True)
         assert code == 0, out
         assert "::warning::" in out
 
     def test_moving_forward_is_reported(self, tree):
-        repo = tree("0.72.4.post4")
+        repo = tree("0.72.4.post4", changelog="## 0.72.5 — 2026-09-24\n\n## 0.72.4.post4 — 2026-09-20\n")
         code, out = call("0.72.5", repo)
         assert code == 0, out
         assert "0.72.4.post4 -> 0.72.5" in out
+
+
+class TestTheChangelogTheReleaseWillBeTestedAgainst:
+    """The release bumps the version and then runs the suite, and
+    tests/test_changelog_format.py holds the newest entry to that
+    version. The guard asks the same question before anything builds."""
+
+    def test_the_release_that_failed_is_refused_up_front(self, tree):
+        """0.72.6 dispatched against a changelog still headed 0.72.6.rc3."""
+        repo = tree("0.72.6.rc3")
+        code, out = call("0.72.6", repo)
+        assert code == 1, out
+        assert "::error::" in out
+        assert "changelog newest is 0.72.6.rc3, package is 0.72.6" in out
+        assert "## 0.72.6 — " in out, "the refusal names the heading to add"
+
+    def test_a_stable_entry_above_the_candidates_lets_it_through(self, tree):
+        repo = tree("0.72.6.rc3", changelog=(
+            "## Changelog\n\n## 0.72.6 — 2026-09-24\n\n## 0.72.6.rc3 — 2026-09-24\n"
+        ))
+        code, out = call("0.72.6", repo)
+        assert code == 0, out
+        assert "0.72.6rc3 -> 0.72.6" in out
+
+    def test_an_equal_version_is_held_to_it_too(self, tree):
+        """A tree prepared in pyproject but not in the changelog."""
+        repo = tree("0.72.7", changelog="## 0.72.6 — 2026-09-24\n")
+        code, out = call("0.72.7", repo)
+        assert code == 1, out
+        assert "newest entry is 0.72.6" in out
+
+    def test_a_downgrade_is_held_to_it_too(self, tree):
+        repo = tree("0.72.4.post4")
+        code, out = call("0.72.3.post2", repo, allow_downgrade=True)
+        assert code == 1, out
+
+    def test_an_undated_header_is_refused(self, tree):
+        repo = tree("0.72.6", changelog="## 0.72.6 — soon\n")
+        code, out = call("0.72.6", repo)
+        assert code == 1, out
+        assert "<YYYY-MM-DD>" in out
+
+    def test_a_changelog_with_no_entries_is_refused(self, tree):
+        repo = tree("0.72.6", changelog="## Changelog\n\n## Legend\n")
+        code, out = call("0.72.6", repo)
+        assert code == 1, out
+        assert "no version entry" in out
+
+    def test_no_changelog_is_refused(self, tmp_path):
+        (tmp_path / "pyproject.toml").write_text('[project]\nversion = "0.1.0"\n', encoding="utf-8")
+        code, out = call("0.1.1", tmp_path)
+        assert code == 1, out
+
+    def test_the_real_tree_passes_its_own_version(self):
+        """The guard and tests/test_changelog_format.py agree on this tree."""
+        version = guard.tree_version(REPO_ROOT / "pyproject.toml")
+        code, out = call(version, REPO_ROOT, head="0" * 40)
+        assert "newest entry" not in out, out
+        assert "YYYY-MM-DD" not in out, out
 
 
 class TestANumberThatAlreadyNamesOtherCode:
@@ -268,6 +332,47 @@ class TestTheWorkflowActuallyCallsIt:
         )
         assert "--allow-downgrade" in workflow
         assert "inputs.allow_downgrade" in workflow
+
+    def _workflow(self) -> str:
+        return (REPO_ROOT / ".github" / "workflows" / "public-release.yml").read_text(
+            encoding="utf-8"
+        )
+
+    def test_it_runs_before_anything_slow(self):
+        """Before torch is installed, so a refusal costs seconds."""
+        workflow = self._workflow()
+        guard_at = workflow.index("- name: Check the version this release was dispatched with")
+        assert guard_at < workflow.index("- name: Install torch")
+        assert guard_at < workflow.index("- name: Bump versions in source")
+
+    def test_the_bump_writes_the_spelling_the_guard_checked(self):
+        workflow = self._workflow()
+        bump = workflow.split("- name: Bump versions in source", 1)[1].split("- name: ", 1)[0]
+        assert "version_guard.py --print-pep440" in bump
+        assert "sed 's/postr/.post/g'" not in bump
+
+    def test_a_preflight_runs_the_version_tests_before_the_suite(self):
+        workflow = self._workflow()
+        start = workflow.index("- name: Preflight")
+        preflight = workflow[start:].split("\n      - name: ", 1)[0]
+        for name in ("test_changelog_format.py", "test_install_script.py",
+                     "test_hyped_pro_otui.py", "test_tvtop_max.py::TestPackage"):
+            assert name in preflight
+        assert workflow.index("- name: Bump versions in source") < start
+        assert start < workflow.index("- name: Tests")
+        assert start < workflow.index("- name: Build sdist")
+
+    @pytest.mark.parametrize(
+        ("typed", "written"),
+        [("0.72.6", "0.72.6"), ("0.70.6-2", "0.70.6.post2"), ("0.72.6.postr1", "0.72.6.post1")],
+    )
+    def test_print_pep440(self, typed, written):
+        done = subprocess.run(
+            [sys.executable, str(GUARD), "--print-pep440", typed],
+            capture_output=True, text=True, timeout=60,
+        )
+        assert done.returncode == 0, done.stderr
+        assert done.stdout.strip() == written
 
     def test_it_runs_as_a_script_from_the_command_line(self, tree):
         repo = tree("0.72.4.post5")

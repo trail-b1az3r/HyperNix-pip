@@ -26,6 +26,105 @@ next release header.
 - 𖥔 minor new feature
 
 
+## 0.72.6 — 2026-09-24
+
+0.72.6, released. Three release candidates and four batches published as
+0.72.5.post14 to post17 went into it; the summary below says what
+shipped, and those entries say how. New since 0.72.6.rc3: a release
+that its own tests would reject can no longer be started.
+
+### Beta / Dev → Release Summary
+
+This release includes the finalised work from 0.72.5.post14 to post17
+and 0.72.6.rc1 to rc3.
+
+#### Major Changes
+
+๋࣭⭑ v2.1 (T2C) keys, sealed with Rotorvault under a key that changes
+every day, and conceal mode for a server (0.72.5.post17).
+๋࣭⭑ `waiter serv` letters group in any order, with flags to update,
+install kits, conceal, and seal the key as a v2.1 kit (post17).
+๋࣭⭑ Siri can name chats and models, on App Intents 2.0 (post17, rc1).
+๋࣭⭑ `hypernix.elements` with `magnesium` and `carbon`, and the
+`L#-NNNNN.kS` error codes across the T1 API (post16).
+๋࣭⭑ `hyped-pro` is an OpenTUI app that works with git and edits files
+(post16), and `tvtop-max` is tvtop-pro on the same stack, with panels
+for the run's script, modules, model, Pressure Cooker, log and
+warnings (rc2).
+๋࣭⭑ HyperLink models call tools, including the T1 API as tools, on
+both chat routes (post16, rc3); models run on the iPhone itself; chats
+are named, compressed and can be made private; memories are organised
+(post16); and a reply from this server's own runner gets a default
+system prompt (rc2).
+๋࣭⭑ `hypernix.dilute`, `hyperchat` with several prompts in flight, and
+keyless `/web/v1` search (post15).
+๋࣭⭑ `hypernix.neuron` and `hypernix.audio.processor` (post14).
+
+#### Fixes Carried Into Release
+
+𖢥 Pressure Cooker V4, V5, V5S and V6 never trained through
+`NeoOven.train`, and twenty-three presets had broken RoPE (post16).
+𖢥 Neo Oven's presets named the wrong architectures (post15).
+𖢥 The server could be made to fetch its own network, and a public-only
+fetch could be steered to a private address (post16, post17).
+𖢥 A HyperLink model said it had no tools, and the assistant's reply
+bubble had a hole in its tail (rc3).
+𖢥 tvtop-max opened to empty panels, and a run kept under `.runs` was
+never found (rc3).
+
+#### Testing
+
+🧪 Each candidate added its own tests: the Siri phrases, the version
+spellings, the default prompt, tvtop-max's panels and bridge, the tools
+on the streaming route, and the bubble tail.
+
+### Fixed
+
+𖢥 **A release could be started that was certain to fail.** 0.72.6 was
+dispatched against a changelog whose newest entry was 0.72.6.rc3. The
+release bumped the version, built, ran the suite for ten minutes, and
+failed: "changelog newest is 0.72.6.rc3, package is 0.72.6". The
+version guard warned about a missing heading only when the version
+equalled the tree's, and said nothing when it moved forward, which is
+the usual case. Nothing about that needed the build to find out.
+𖢥 The guard (`.github/scripts/version_guard.py`) now checks the
+changelog against the version the bump is about to write, for every
+release, forward, equal or a permitted downgrade. It refuses unless the
+newest entry is that version (ignoring a `.postN`, as the test does)
+under a `<version> — <YYYY-MM-DD>` header, and the refusal names the
+exact heading to add. A `.postN` with no notes of its own still only
+warns, since its tests pass.
+🐛 The bump step spelled `0.72.6.postr1` as `0.72.6..post1`, which is
+not a version. It now asks the guard for the spelling
+(`version_guard.py --print-pep440`), so the version checked is the one
+written.
+🐛 `tests/test_changelog_format.py` rejected the `### Beta / Dev →
+Release Summary` heading that `Changelog-guide.md` requires of a stable
+release. It now accepts it, and checks that the guide still names it.
+
+### Changed
+
+🔧 The guard runs before torch is installed, so a refusal costs
+seconds. After the bump, a new "Preflight" step runs the tests a
+version bump can break: the changelog format, the installer's baked
+version, both OpenTUI apps' `package.json` and `app.ts`, and the
+guard's own. They take about ten seconds, and a failure there stops the
+release before lint, the full suite and the build.
+🔧 Check a release before dispatching it, from the repository root, with
+`python .github/scripts/version_guard.py 0.72.6`.
+
+### Tests
+
+🧪 `tests/test_version_guard.py`: the release that failed is refused up
+front and names the heading to add; a stable entry above the candidates
+lets it through; equal versions and downgrades are held to the same
+rule; undated headers, no entries and no changelog are refused; the
+real tree passes its own version; the workflow runs the guard before
+torch, bumps with the guard's spelling, and runs the preflight before
+the suite.
+
+⸻
+
 ## 0.72.6.rc3 — 2026-09-24
 
 The third release candidate: a HyperLink model has its tools on the

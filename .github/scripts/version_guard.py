@@ -31,12 +31,30 @@ trees under one release. Pointing at the commit being released is not
 that -- it is the same code, and re-running a release that failed after
 the tag push is a thing people legitimately do.
 
+**Will the release's own tests pass on the version it writes?** The
+release bumps the version and then runs the whole suite, and
+`tests/test_changelog_format.py` holds the changelog's newest entry to
+the version the package reports. So a tree prepared as 0.72.6.rc3 and
+dispatched as 0.72.6 built for ten minutes and then failed: "changelog
+newest is 0.72.6.rc3, package is 0.72.6". Nothing about that needs the
+build to find out. The guard now checks the newest entry against the
+version the bump is about to write, and refuses before anything is
+installed, with the heading to add. A missing heading used to be a
+warning here, on the grounds that blocking would push people to invent
+numbers; but the test suite already blocked it, just later and less
+clearly.
+
+Run it locally before dispatching, from the repository root:
+
+    python .github/scripts/version_guard.py 0.72.6
+
 Exit status is 0 to proceed and 1 to stop; every refusal prints a
 GitHub-Actions `::error::` line naming what to do instead.
 """
 from __future__ import annotations
 
 import argparse
+import datetime as _dt
 import re
 import subprocess
 import sys
@@ -103,6 +121,71 @@ def tag_points_at(tag: str, repo: Path) -> str | None:
     return _git("rev-list", "-n", "1", tag, repo=repo)
 
 
+#: The newest entry's header, as tests/test_changelog_format.py holds it.
+_HEADER = re.compile(r"^\d+\.\d+[\w.]* — \d{4}-\d{2}-\d{2}$")
+
+
+def newest_changelog_header(changelog: Path) -> str | None:
+    """The header of the newest version entry, or None when there is none.
+
+    Found the way tests/test_changelog_format.py finds it: the first
+    `## ` heading that starts with a digit.
+    """
+    if not changelog.is_file():
+        return None
+    text = changelog.read_text(encoding="utf-8", errors="replace")
+    found = re.search(r"^## (\d.*)$", text, re.M)
+    return found.group(1).strip() if found else None
+
+
+def _base(version: str) -> str:
+    """A version without its .postN, which is how the changelog test compares."""
+    return re.sub(r"\.post\d+$", "", version)
+
+
+def check_changelog(pep440: str, repo: Path) -> None:
+    """Refuse a release whose changelog the release's own tests will reject.
+
+    The rules are tests/test_changelog_format.py's, applied to the
+    version the bump step is about to write rather than the one the
+    tree has now: the newest entry has a `<version> — <date>` header,
+    and its version is this release's, ignoring a .postN.
+    """
+    changelog = repo / "wiki" / "Changelog.md"
+    today = _dt.date.today().isoformat()
+    wanted = f"## {pep440} — {today}"
+    header = newest_changelog_header(changelog)
+    if header is None:
+        fail(
+            f"wiki/Changelog.md has no version entry at all. Add `{wanted}` "
+            f"with what this release changes, commit it, and dispatch again."
+        )
+    entry = header.split(" — ")[0].strip()
+    if _base(entry) != _base(pep440):
+        fail(
+            f"wiki/Changelog.md's newest entry is {entry}, but this release "
+            f"writes {pep440}, so the release's tests would fail after the "
+            f"build (\"changelog newest is {entry}, package is {pep440}\"). "
+            f"Add `{wanted}` above `## {header}` saying what this release "
+            f"changes, commit it, and dispatch again. Check first with: "
+            f"python .github/scripts/version_guard.py {pep440}"
+        )
+    if not _HEADER.match(header):
+        fail(
+            f"wiki/Changelog.md's newest header is `## {header}`, and the "
+            f"release's tests need `<version> — <YYYY-MM-DD>`, for example "
+            f"`{wanted}`. Fix it, commit, and dispatch again."
+        )
+    if not changelog_mentions(pep440, changelog):
+        # Only reachable for a .postN whose base the newest entry names:
+        # the tests accept that, so this ships, but without its own notes.
+        warn(
+            f"wiki/Changelog.md has no heading for {pep440} itself (its "
+            f"newest is {entry}), so this release will ship without notes of "
+            f"its own. That is how 0.72.4.post1 and .post3 went out unexplained."
+        )
+
+
 def changelog_mentions(version: str, changelog: Path) -> bool:
     if not changelog.is_file():
         return False
@@ -133,9 +216,11 @@ def decide(
                 f"If you really mean to roll back, re-run with allow_downgrade."
             )
         warn(f"{old} -> {new} is a downgrade, allowed by allow_downgrade")
+        check_changelog(pep440, repo)
         return
 
     if new > old:
+        check_changelog(pep440, repo)
         note(f"{old} -> {new}")
         return
 
@@ -167,13 +252,7 @@ def decide(
             )
         note(f"{tag} already points at {current_head[:12]} -- re-running the same release")
 
-    if not changelog_mentions(pep440, repo / "wiki" / "Changelog.md"):
-        warn(
-            f"the tree is at {new} but wiki/Changelog.md has no heading for it, "
-            f"so this release will ship without notes. That is how 0.72.4.post1 "
-            f"and .post3 went out unexplained."
-        )
-
+    check_changelog(pep440, repo)
     note(f"releasing {new}, the version the tree is already prepared with")
 
 
@@ -183,7 +262,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--repo", type=Path, default=Path("."))
     parser.add_argument("--allow-downgrade", action="store_true")
     parser.add_argument("--head", default=None, help="commit being released (default: HEAD)")
+    parser.add_argument(
+        "--print-pep440", action="store_true",
+        help="print the version as the bump step writes it, and do nothing else",
+    )
     args = parser.parse_args(argv)
+
+    if args.print_pep440:
+        print(normalise(args.version))
+        return 0
 
     decide(
         args.version,

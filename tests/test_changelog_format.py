@@ -30,6 +30,11 @@ CATEGORIES = {
     "Deprecated", "Removed", "Documentation", "Tests", "Known Issues",
 }
 
+#: Not a category, but a heading the guide requires of every stable
+#: release that followed prereleases. Its own `####` sections hold the
+#: summary, so it is not held to the category rules.
+SUMMARY = "Beta / Dev → Release Summary"
+
 
 @pytest.fixture(scope="module")
 def text() -> str:
@@ -66,6 +71,9 @@ class TestTheGuideAndTheLegendAgree:
         found = set(re.findall(r"^### (\w[\w ]*)$", guide, re.M))
         assert CATEGORIES <= found, sorted(CATEGORIES - found)
 
+    def test_the_guide_still_asks_for_the_release_summary(self, guide):
+        assert f"### {SUMMARY}" in guide
+
 
 class TestEveryEntry:
     def test_there_is_at_least_one(self, text):
@@ -89,7 +97,7 @@ class TestEveryEntry:
             if not any(h.strip() in CATEGORIES for h in headings):
                 continue                       # narrative entry, left alone
             for heading in headings:
-                if heading.strip() not in CATEGORIES:
+                if heading.strip() not in CATEGORIES | {SUMMARY}:
                     bad.append(f"{header}: {heading.strip()}")
         assert not bad, f"headings the guide does not name: {bad}"
 
