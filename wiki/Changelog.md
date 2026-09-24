@@ -26,6 +26,71 @@ next release header.
 - 𖥔 minor new feature
 
 
+## 0.72.6.rc3 — 2026-09-24
+
+The third release candidate: a HyperLink model has its tools on the
+route the app actually uses.
+
+### Fixed
+
+𖢥 **A HyperLink model said it had no tools, and it was right.** Reported
+from an iPhone: gemma-4-e4b, asked to use HyperNix's T1 API, said
+nothing had been provided to it. Three bugs lined up. The app streams
+its replies, and `/chat/stream` never offered a tool; only `/chat`
+did. Even there, the person's own T1 API tools and their memory tools
+waited on "Let the model use tools" and on the server's noodle switch,
+both off by default, though that toggle only ever described noodle's
+workspace of files and commands. So a default server offered nothing
+anywhere.
+𖢥 The T1 API tools are now offered in every HyperLink chat whose caller
+has a credential, on both routes. They run with that credential, and
+loading or unloading models is still offered only to a caller with
+`write` or admin. The memory tools follow Auto-memory. Noodle's
+workspace still needs the person's toggle and `T1_NOODLE_ENABLED`, and
+the toggle is now called "Let the model use its workspace", with a
+footer that says what the model has without it.
+𖢥 On the built-in runner, the tool format went in as a second system
+message ahead of the first. A backend that keeps only the first system
+message then dropped the person's own instructions and the default
+prompt. It is now added to the end of the one system message.
+𖢥 **The assistant's reply bubble had a hole in its tail.** A dark
+triangle with a light rim sat at the bottom-left corner of every model
+reply, and the person's own bubbles looked right. The tail is drawn for
+the right side and mirrored for the left, and mirroring reverses a
+path's winding. Added to the bubble with `addPath`, the assistant's tail
+wound against its bubble, and SwiftUI's non-zero fill cancelled the
+overlap, leaving the screen behind showing through. The two are now
+joined with `Path.union`, which fills the combined outline whichever way
+either winds.
+🐛 The model's name under a reply sat 5pt left of the bubble, under its
+tail. It now lines up with the bubble.
+
+### Added
+
+𖥔 Tools on the streaming route. Ordinary answers still stream as they
+are written. A tool call written as text (`<tool_call>`, `[TOOL_CALLS]`,
+`<|python_tag|>`, a JSON block) is held back rather than shown,
+including one split across chunks. Streamed structured calls are
+assembled from their fragments. Each tool run is announced in a `tool`
+frame, and the rounds are kept in `metadata.tool_rounds`, as `/chat`
+does. Stop still stops.
+
+### Tests
+
+🧪 15 tests in `tests/test_hyperlink_stream_tools.py`, the main one the
+screenshot itself: a default server under a real uvicorn and a paired
+phone on `/chat/stream`. The model writes `<tool_call>` for
+`server_version`, the server calls itself with the phone's token, and
+the phone gets the answer and never the markup. The old router fails
+three of them, and the old two-system-message behaviour fails two.
+🧪 The bubble tail: `tests/test_hyperlink_bubble_tail.py` reads the
+tail's coordinates from the Swift, shows that the mirrored tails wind in
+opposite directions and overlap their bubbles, and requires the union;
+it fails on the old shape. `BubbleShapeTests.swift` checks on a
+simulator that every point of both speakers' bubbles is filled.
+
+⸻
+
 ## 0.72.6.rc2 — 2026-09-23
 
 The second release candidate: tvtop-max, and a default system prompt for

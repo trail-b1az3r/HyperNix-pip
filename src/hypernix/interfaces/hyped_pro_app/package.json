@@ -1,6 +1,6 @@
 {
   "name": "hyped-pro",
-  "version": "0.72.6-rc2",
+  "version": "0.72.6-rc3",
   "description": "hyped-pro: the HyperNix terminal client, built on OpenTUI",
   "private": true,
   "type": "module",

@@ -51,6 +51,7 @@ from ...hyperlink.pairing import DeviceRegistry, pairing_payload
 from ...hyperlink.search import SearchIndex
 from ...hyperlink.sessions import ChatMessage, ChatSessionStore
 from ...hyperlink.sync import SyncStore
+from ...hyperlink.toolloop import stream_tool_loop
 from ..audit import AuditCategory, AuditOutcome
 from ..config import T1APIConfig
 from ..deps import (
@@ -833,10 +834,66 @@ def _t1_access(request: Request | None, principal):
     )
 
 
-def _chat_with_tools(bridge, wire, model, sampling, config, principal, t1=None,
-                     teach_format=False, memory_store=None, auto_memory=False,
-                     session_id=""):
-    """One turn, with the model allowed to call noodle's tools.
+def _tool_summary(record) -> str:
+    """One line for the app about a tool the model ran: the tool, what it
+    was asked, and whether it worked. Never the whole result."""
+    arguments = ", ".join(f"{k}={v!r}"[:60] for k, v in list((record.arguments or {}).items())[:3])
+    head = f"{record.tool}({arguments})"
+    if record.ok:
+        return head
+    first = (record.content or "").strip().splitlines()[:1]
+    return f"{head} failed: {first[0][:120]}" if first else f"{head} failed"
+
+
+class _ToolSetup:
+    """What a turn may use: the context, the T1 access, the workspace."""
+
+    def __init__(self, context, t1, workspace: bool) -> None:
+        self.context = context
+        self.t1 = t1
+        self.workspace = workspace
+
+
+def _tool_setup(config, principal, settings, request, memory_store, session_id):
+    """The tools this turn gets, or None for none at all.
+
+    Three kinds, each with its own switch, because they are three
+    different decisions:
+
+    * **the T1 API as tools** -- what is loaded, how busy the GPU is,
+      web search -- called with the person's own credential, so they can
+      never do more than the person could by hand. Always offered to a
+      caller with a credential. These used to be offered only when the
+      two switches below were both on, so a model on a default server
+      had no tools at all and told the person so.
+    * **their memories**, when their auto-memory setting is on.
+    * **noodle's workspace** -- create and edit files, run commands --
+      only when the person turned on "Let the model use tools" *and* the
+      operator turned noodle on (``T1_NOODLE_ENABLED``).
+    """
+    from .noodle import _context as noodle_context
+
+    t1 = _t1_access(request, principal)
+    workspace = bool(getattr(settings, "tools_enabled", False)) and bool(
+        getattr(config, "noodle_enabled", False))
+    auto_memory = bool(getattr(settings, "auto_memory", False)) and memory_store is not None
+    if t1 is None and not workspace and not auto_memory:
+        return None
+    context = noodle_context(config, principal)
+    if memory_store is not None:
+        from ...hyperlink.memory import ToolMemoryBackend
+
+        # The model's memory tools write where the Memories screen reads.
+        # Switched by the person's own auto-memory setting rather than
+        # the server-wide noodle flag: whether an assistant keeps notes
+        # about you is yours to decide.
+        context.memory_backend = ToolMemoryBackend(memory_store, principal.owner, session_id)
+    context.memory_enabled = auto_memory
+    return _ToolSetup(context, t1, workspace)
+
+
+def _chat_with_tools(bridge, wire, model, sampling, setup: _ToolSetup, teach_format=False):
+    """One turn, with the model allowed to call the tools in *setup*.
 
     Returns ``(envelope, rounds)``. The rounds are what it did, for the
     message metadata — a thread that shows "wrote three files" is very
@@ -848,21 +905,6 @@ def _chat_with_tools(bridge, wire, model, sampling, config, principal, t1=None,
     somewhere nobody could reach.
     """
     from ...hyperlink.toolloop import run_tool_loop
-    from .noodle import _context as noodle_context
-
-    context = noodle_context(config, principal)
-    if memory_store is not None:
-        from ...hyperlink.memory import ToolMemoryBackend
-
-        # The model's memory tools write where the Memories screen reads.
-        # They used to write a JSON file in the tool workspace, so the
-        # assistant said "I'll remember that" and the screen never showed
-        # it. Switched by the person's own auto-memory setting rather
-        # than the server-wide noodle flag: whether an assistant keeps
-        # notes about you is yours to decide.
-        context.memory_backend = ToolMemoryBackend(
-            memory_store, principal.owner, session_id)
-        context.memory_enabled = bool(auto_memory)
 
     def ask(messages, tools):
         return bridge.chat(
@@ -874,8 +916,8 @@ def _chat_with_tools(bridge, wire, model, sampling, config, principal, t1=None,
         )
 
     _messages, envelope, rounds = run_tool_loop(
-        wire, context, ask=ask, extract=_extract_reply, t1=t1,
-        teach_format=teach_format,
+        wire, setup.context, ask=ask, extract=_extract_reply, t1=setup.t1,
+        teach_format=teach_format, workspace=setup.workspace,
     )
     return envelope, [r.to_dict() for r in rounds]
 
@@ -1215,19 +1257,16 @@ def chat_turn(
     )
     used_backup = False
     tool_rounds: list[dict[str, Any]] = []
+    setup = _tool_setup(config, principal, settings, request, memories, session_id)
     try:
-        if settings.tools_enabled and getattr(config, "noodle_enabled", False):
+        if setup is not None:
             envelope, tool_rounds = _chat_with_tools(
-                bridge, wire, wanted, sampling, config, principal,
-                t1=_t1_access(request, principal),
+                bridge, wire, wanted, sampling, setup,
                 # The built-in runner serves any GGUF, most of which were
                 # trained on a text tool format rather than structured
                 # calls. Teaching the format costs one system message and
                 # is what makes those models call tools at all.
                 teach_format=bool(backend.is_hypernix),
-                memory_store=memories,
-                auto_memory=settings.auto_memory,
-                session_id=session_id,
             )
         else:
             envelope = bridge.chat(
@@ -1324,6 +1363,7 @@ def chat_turn_stream(
     runner=Depends(get_runner),
     config: T1APIConfig = Depends(get_config),
     request_id: str = Depends(get_request_id),
+    request: Request = None,
 ) -> StreamingResponse:
     """The same turn, streamed token by token.
 
@@ -1376,6 +1416,7 @@ def chat_turn_stream(
         default_prompt_for(config, backend),
     )
     sampling = _effort_settings(settings, payload)
+    setup = _tool_setup(config, principal, settings, request, memories, session_id)
     requested_model = (
         backend.model_id if backend.is_hypernix and backend.model_id
         else (payload.model_id or session.model_id or None)
@@ -1405,13 +1446,47 @@ def chat_turn_stream(
         usage: dict[str, Any] = {}
         error: dict[str, Any] | None = None
         cancelled = False
+        tool_rounds: list[dict[str, Any]] = []
         try:
-            stream = bridge.chat_stream(
-                wire,
-                model=requested_model,
-                temperature=sampling["temperature"],
-                max_tokens=sampling["max_tokens"],
-            )
+            if setup is not None:
+                # The same tools the non-streamed route offers. Ordinary
+                # answers still stream as they arrive; a written tool call
+                # is held back rather than shown (toolloop.CallGuard),
+                # and each tool the model runs is announced as it ends.
+                def ask_stream(messages, tools):
+                    return bridge.chat_stream(
+                        messages,
+                        model=requested_model,
+                        temperature=sampling["temperature"],
+                        max_tokens=sampling["max_tokens"],
+                        tools=tools or None,
+                    )
+
+                for kind, value in stream_tool_loop(
+                    wire, setup.context, ask_stream=ask_stream, t1=setup.t1,
+                    teach_format=bool(backend.is_hypernix), workspace=setup.workspace,
+                    cancelled=lambda: active.cancelled,
+                ):
+                    if kind == "delta":
+                        collected.append(value)
+                        yield _frame("delta", text=value)
+                    elif kind == "tool":
+                        yield _frame("tool", tool=value.tool, ok=value.ok,
+                                     summary=_tool_summary(value))
+                    else:
+                        model_id = value["model"] or model_id
+                        finish = value["finish_reason"]
+                        usage = value["usage"] or {}
+                        cancelled = value["cancelled"]
+                        tool_rounds = value["rounds"]
+                stream = iter(())
+            else:
+                stream = bridge.chat_stream(
+                    wire,
+                    model=requested_model,
+                    temperature=sampling["temperature"],
+                    max_tokens=sampling["max_tokens"],
+                )
             for chunk in stream:
                 # The cooperative half of Stop. Breaking here closes
                 # `stream`, which closes the upstream response, which is
@@ -1455,7 +1530,8 @@ def chat_turn_stream(
         if cancelled:
             finish = "cancelled"
         message = _persist(
-            collected, model_id, finish, usage, truncated=bool(error) or cancelled
+            collected, model_id, finish, usage, truncated=bool(error) or cancelled,
+            tool_rounds=tool_rounds,
         )
         yield _frame(
             "done",
@@ -1485,7 +1561,8 @@ def chat_turn_stream(
         yield b"data: [DONE]\n\n"
 
     def _persist(
-        pieces: list[str], model_id: str, finish: str, usage: dict[str, Any], *, truncated: bool
+        pieces: list[str], model_id: str, finish: str, usage: dict[str, Any], *, truncated: bool,
+        tool_rounds: list[dict[str, Any]] | None = None,
     ) -> ChatMessage:
         message = store.append(
             session_id,
@@ -1501,6 +1578,7 @@ def chat_turn_stream(
                 "base_url": bridge.base_url,
                 "truncated": truncated,
                 "streamed": True,
+                **({"tool_rounds": tool_rounds} if tool_rounds else {}),
                 **({"compacted_before": compacted.get("messages_compacted", 0)} if compacted else {}),
             },
         )
