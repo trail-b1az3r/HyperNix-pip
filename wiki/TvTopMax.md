@@ -63,6 +63,13 @@ first `.py` file after the launcher's own options. The log is found the
 way tvtop-pro finds one, in the run's working directory, or else among
 the files the process has open.
 
+The log search goes at most 5 folders deep and stops after 2 seconds or
+50,000 entries. It skips virtualenvs, `node_modules`, `site-packages`
+and hidden folders, except `.hypernix` and `.runs`, so a run kept in
+`.runs/<name>/…` is found. `-l` names a log anywhere. The search runs in
+the background: the panels fill in as soon as the bridge starts, and the
+footer says what it is still waiting for.
+
 `-S` names the script. Then tvtop-max watches only a process that is
 running that script. If none is, it watches no process, rather than
 guessing. The header always says which script, log and process are in

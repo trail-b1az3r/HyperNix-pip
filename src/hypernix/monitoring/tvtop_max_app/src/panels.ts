@@ -152,7 +152,9 @@ export function trainPanel(c: PanelContext): Line[] {
   const f = c.frame
   if (!f) return [[seg("waiting…", theme.hint)]]
   const lines: Line[] = []
-  if (!f.has_training_data) {
+  if (!f.has_training_data && f.discovering) {
+    lines.push([seg("looking for the training run and its log…", theme.hint)])
+  } else if (!f.has_training_data) {
     lines.push([seg(c.info?.log ? "no step lines in the log yet" : "no training log (pass --log)", theme.hint)])
   } else {
     const total = f.total_steps ?? 0
@@ -265,6 +267,7 @@ export function logLineColor(line: string): string {
 
 export function logsPanel(c: PanelContext): Line[] {
   const lines = c.frame?.log_lines ?? []
+  if (!lines.length && (!c.frame || c.frame.discovering)) return [[seg("looking for the training log…", theme.hint)]]
   if (!c.info?.log && !lines.length) return [[seg("no training log (pass --log)", theme.hint)]]
   if (!lines.length) return [[seg("the log is empty so far", theme.hint)]]
   const offset = Math.max(0, Math.min(c.logOffset ?? 0, Math.max(0, lines.length - c.height)))
@@ -371,6 +374,33 @@ export function procsPanel(c: PanelContext): Line[] {
     ])
   }
   return fit(lines, c.height, c.width)
+}
+
+// -- the footer, while tvtop-max is still waiting ---------------------------
+
+// After this long with no reply, the footer says how to see what is wrong.
+export const BRIDGE_SLOW_SECONDS = 15
+
+export interface BridgeState {
+  startedAt: number // ms
+  now: number // ms
+  frame: Frame | null
+  info: Info | null
+  error: string
+}
+
+// What tvtop-max is waiting for, or null once it has everything. Shown in
+// the footer so a slow start never looks like a blank, broken screen.
+export function bridgeStatus(s: BridgeState): string | null {
+  if (s.error) return null
+  const seconds = Math.max(0, Math.floor((s.now - s.startedAt) / 1000))
+  if (!s.frame) {
+    const base = `starting the Python bridge… ${seconds}s`
+    return seconds >= BRIDGE_SLOW_SECONDS ? `${base} (TVTOP_MAX_DEBUG=1 shows what it runs)` : base
+  }
+  if (s.frame.discovering) return `looking for the training run… ${seconds}s`
+  if (!s.info) return "reading the script…"
+  return null
 }
 
 export const BUILDERS: Record<PanelId, (c: PanelContext) => Line[]> = {

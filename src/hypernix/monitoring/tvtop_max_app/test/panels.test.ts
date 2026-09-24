@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 
 import { lineText } from "../src/format.ts"
-import { allFindings, BUILDERS, logLineColor, PANELS, panelText, panelTitle, type PanelContext, type PanelId } from "../src/panels.ts"
+import { allFindings, BRIDGE_SLOW_SECONDS, bridgeStatus, BUILDERS, logLineColor, PANELS, panelText, panelTitle, type PanelContext, type PanelId } from "../src/panels.ts"
 import { theme } from "../src/theme.ts"
 import type { Frame, Info } from "../src/types.ts"
 
@@ -177,5 +177,35 @@ describe("what the new panels say", () => {
   test("gpu: no GPU is said, not drawn as zero", () => {
     const text = panelText("gpu", ctx({ frame: { ...FRAME, gpu_name: null, gpu_util_percent: null } }))
     expect(text[0]).toContain("no NVIDIA GPU")
+  })
+})
+
+describe("a slow start", () => {
+  const base = { startedAt: 0, frame: null, info: null, error: "" }
+
+  test("before the bridge answers, the footer says so and counts", () => {
+    expect(bridgeStatus({ ...base, now: 3200 })).toBe("starting the Python bridge… 3s")
+  })
+
+  test("a long wait says how to see what is wrong", () => {
+    expect(bridgeStatus({ ...base, now: (BRIDGE_SLOW_SECONDS + 1) * 1000 })).toContain("TVTOP_MAX_DEBUG=1")
+  })
+
+  test("while the run is being found, and then while the script is read", () => {
+    expect(bridgeStatus({ ...base, now: 5000, frame: { discovering: true } })).toBe("looking for the training run… 5s")
+    expect(bridgeStatus({ ...base, now: 5000, frame: {} })).toBe("reading the script…")
+    expect(bridgeStatus({ ...base, now: 5000, frame: {}, info: {} })).toBeNull()
+  })
+
+  test("an error is shown instead, not a waiting message", () => {
+    expect(bridgeStatus({ ...base, now: 5000, error: "the Python bridge exited" })).toBeNull()
+  })
+
+  test("the panels say they are looking rather than that nothing exists", () => {
+    const looking = { info: null, frame: { discovering: true }, width: 40, height: 5, compact: true }
+    expect(panelText("train", looking)[0]).toContain("looking for the training run")
+    expect(panelText("logs", looking)[0]).toContain("looking for the training log")
+    const found = { ...looking, frame: { discovering: false } }
+    expect(panelText("logs", found)[0]).toContain("no training log")
   })
 })

@@ -100,7 +100,8 @@ class Monitor:
     """The run being watched, and the answers to the bridge's commands."""
 
     def __init__(self, *, log: str | None = None, script: str | None = None,
-                 pid: int | None = None, discover: bool = True) -> None:
+                 pid: int | None = None, discover: bool = True,
+                 background: bool = False) -> None:
         self.explicit_log = Path(log).expanduser() if log else None
         self.explicit_script = Path(script).expanduser() if script else None
         self.explicit_pid = pid
@@ -116,7 +117,25 @@ class Monitor:
         self._info: dict[str, Any] | None = None
         self._log_findings: tuple[int, float, list[dict[str, Any]]] | None = None
         self._lock = threading.Lock()
-        self.rescan()
+        self._ready = threading.Event()
+        if background:
+            # The bridge answers from its first request. Finding the run
+            # (the process table, the script, a log somewhere under the
+            # working directory) can take seconds; done first, it held
+            # every reply back, and tvtop-max sat on empty panels with no
+            # header, which is what a phone over SSH in a big home
+            # directory showed. Frames go out meanwhile, saying so.
+            threading.Thread(target=self._discover, name="tvtop-max-discover", daemon=True).start()
+        else:
+            self._discover()
+
+    def _discover(self) -> None:
+        try:
+            self.rescan()
+        except Exception as exc:  # noqa: BLE001 - a failed search must not leave info waiting
+            self.notes = [f"could not look for the run: {type(exc).__name__}: {exc}"]
+        finally:
+            self._ready.set()
 
     # -- finding the run -------------------------------------------------
 
@@ -203,11 +222,15 @@ class Monitor:
             "pid": self.pid,
             "process": self.process,
             "notes": list(self.notes),
+            "discovering": not self._ready.is_set(),
         }
 
     # -- info: what the run is ---------------------------------------------
 
     def info(self) -> dict[str, Any]:
+        # What the run is depends on having found it; the search is
+        # bounded (tv._log_candidates), so this wait is too.
+        self._ready.wait(timeout=60)
         with self._lock:
             if self._info is not None:
                 return self._info
@@ -260,6 +283,7 @@ class Monitor:
         data["log_age_seconds"] = self._log_age()
         data["processes"] = self._process_table()
         data["time"] = time.time()
+        data["discovering"] = not self._ready.is_set()
         return data
 
     def _log_age(self) -> float | None:
@@ -363,7 +387,7 @@ def main(argv: list[str] | None = None) -> int:
     # Anything imported code prints goes to stderr, never into the protocol.
     real_stdout = sys.stdout
     sys.stdout = sys.stderr
-    monitor = Monitor(log=args.log, script=args.script, pid=args.pid)
+    monitor = Monitor(log=args.log, script=args.script, pid=args.pid, background=True)
     return serve(monitor, stdout=real_stdout)
 
 

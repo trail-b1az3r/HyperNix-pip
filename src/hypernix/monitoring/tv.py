@@ -48,6 +48,7 @@ Patches in 0.61.0b1:
 """
 from __future__ import annotations
 
+import os
 import re
 import shutil
 import sys
@@ -1362,6 +1363,54 @@ def _fmt_duration(seconds: float | None) -> str:
 # Auto-detect — only pick logs that look like training logs
 # ---------------------------------------------------------------------------
 
+#: Folders never searched for a training log: they hold thousands of
+#: files and no training logs, and walking them is what used to make a
+#: dashboard started from a home directory sit on a blank screen.
+_SKIP_LOG_DIRS = frozenset({
+    "node_modules", "__pycache__", "site-packages", "dist-packages", "venv", "env",
+    "proc", "sys", "dev", "Library", "snap",
+})
+
+#: Hidden folders that are searched anyway, because training runs live
+#: in them: HyperNix's own, and ``.runs``, where runs are commonly kept
+#: out of sight of the project tree.
+_HIDDEN_LOG_DIRS = frozenset({".hypernix", ".runs"})
+
+#: How far the search goes before giving up on what it has found.
+LOG_SEARCH_DEPTH = 5
+LOG_SEARCH_SECONDS = 2.0
+LOG_SEARCH_ENTRIES = 50_000
+
+
+def _log_candidates(start: Path, *, max_depth: int = LOG_SEARCH_DEPTH,
+                    seconds: float = LOG_SEARCH_SECONDS,
+                    max_entries: int = LOG_SEARCH_ENTRIES) -> list[Path]:
+    """``*.log`` files under *start*, within a depth, a time and a size budget.
+
+    Replaces three unbounded ``**/`` globs, which from a home directory
+    full of models, virtualenvs and caches could take minutes. Hidden
+    folders are skipped, except those in :data:`_HIDDEN_LOG_DIRS`
+    (``.hypernix`` and ``.runs``), and so are the ones in
+    :data:`_SKIP_LOG_DIRS`; symlinks are not followed.
+    """
+    found: list[Path] = []
+    deadline = time.monotonic() + seconds
+    seen = 0
+    base = Path(start)
+    for root, dirs, files in os.walk(base, onerror=lambda _error: None):
+        depth = len(Path(root).relative_to(base).parts)
+        if depth >= max_depth:
+            dirs[:] = []
+        else:
+            dirs[:] = [d for d in dirs if d not in _SKIP_LOG_DIRS
+                       and (not d.startswith(".") or d in _HIDDEN_LOG_DIRS)]
+        found.extend(Path(root) / name for name in files if name.lower().endswith(".log"))
+        seen += len(files) + len(dirs)
+        if seen > max_entries or time.monotonic() > deadline:
+            break
+    return found
+
+
 def _autodetect_log(start: Path = Path(".")) -> Path | None:
     """Pick the newest training-shaped log under ``start``.  We
     short-list candidates by mtime, then rank by:
@@ -1384,15 +1433,14 @@ def _autodetect_log(start: Path = Path(".")) -> Path | None:
         return home_default
 
     candidates: list[tuple[float, Path]] = []
-    for pattern in ("**/train*.log", "**/*training*.log", "**/*.log"):
-        for p in start.glob(pattern):
-            try:
-                name = p.name.lower()
-                if "chromium" in name or "chrome" in name:
-                    continue
-                candidates.append((p.stat().st_mtime, p))
-            except OSError:
+    for p in _log_candidates(Path(start)):
+        try:
+            name = p.name.lower()
+            if "chromium" in name or "chrome" in name:
                 continue
+            candidates.append((p.stat().st_mtime, p))
+        except OSError:
+            continue
     seen: set[Path] = set()
     uniq: list[tuple[float, Path]] = []
     for mtime, p in sorted(candidates, key=lambda x: -x[0]):
