@@ -230,8 +230,8 @@ jobs:
       - name: Preflight -- the tests a version bump can break
         # Seconds, not the whole suite: the changelog's newest entry
         # against the version just written, the installer's baked
-        # version, both OpenTUI apps' package.json and app.ts, and the
-        # guard itself. A release that would fail on any of them fails
+        # version, both OpenTUI apps' package.json and app.ts, the
+        # guard itself, and the commit step's push retry. A release that would fail on any of them fails
         # here, before lint, the full suite and the build.
         run: |
           PYTHONPATH=src pytest -q \
@@ -240,6 +240,7 @@ jobs:
             tests/test_install_pin.py \
             tests/test_hyped_pro_otui.py \
             tests/test_version_guard.py \
+            tests/test_release_push_retry.py \
             "tests/test_tvtop_max.py::TestPackage"
 
       - name: Lint
@@ -421,6 +422,14 @@ jobs:
           # it onto whatever arrived is exactly right. A conflict means
           # somebody else bumped the version concurrently, which is not
           # something to resolve automatically -- that stops, loudly.
+          #
+          # --autostash, because the tree is never clean by now: the
+          # install and the build rewrite the tracked
+          # src/hypernix.egg-info, and a plain rebase refuses to start
+          # over unstaged changes. That refusal was reported as a
+          # conflict and failed 0.72.6 the first time main moved during
+          # a release (the stats bot's commit landed mid-build). The
+          # leftovers are put back after the rebase and never pushed.
           pushed=""
           for attempt in 1 2 3 4 5; do
             if git push origin HEAD:"$BRANCH"; then
@@ -429,9 +438,15 @@ jobs:
             fi
             echo "::warning::push $attempt rejected; rebasing onto origin/$BRANCH"
             git fetch origin "$BRANCH"
-            if ! git rebase "origin/$BRANCH"; then
+            if ! git rebase --autostash "origin/$BRANCH"; then
+              conflicted=$(git diff --name-only --diff-filter=U | tr '\n' ' ')
               git rebase --abort || true
-              echo "::error::the version bump conflicts with $BRANCH -- another release may be in flight"
+              if [ -n "$conflicted" ]; then
+                echo "::error::the version bump conflicts with $BRANCH in: $conflicted-- another release may be in flight"
+              else
+                echo "::error::could not rebase the version bump onto origin/$BRANCH, and nothing conflicted. The tree:"
+                git status --short
+              fi
               exit 1
             fi
             sleep $((attempt * 3))
