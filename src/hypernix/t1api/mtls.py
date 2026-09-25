@@ -198,7 +198,7 @@ class ClientCertVerifier:
             try:
                 self._trusted_networks.append(ipaddress.ip_network(entry.strip(), strict=False))
             except ValueError:
-                logger.warning("t1api.mtls: ignoring unparseable trusted proxy %r", entry)
+                logger.warning("t1api.mtls: ignoring unparseable trusted proxy entry")
 
     def is_trusted_proxy(self, peer_ip: str | None) -> bool:
         if not peer_ip or not self._trusted_networks:
