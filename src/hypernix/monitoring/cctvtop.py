@@ -226,7 +226,7 @@ def cli_main(argv: list[str] | None = None) -> int:
             return 2
         print(state.describe())
         if state.hint:
-            print(state.hint)
+            print("cctvtop: remote desktop credentials were generated; not displaying sensitive details.")
         if insecure:
             print(
                 "cctvtop: no VNC password. Anyone who can reach "
