@@ -278,11 +278,11 @@ class MCPServer:
 
         try:
             result = self._call(method, params, set(scopes), is_admin)
-        except ToolError as exc:
-            return self._ok(identifier, error_result(str(exc)))
+        except ToolError:
+            return self._ok(identifier, error_result("Tool execution failed."))
         except Exception as exc:  # noqa: BLE001 - a bad handler is a 500, not a crash
             logger.exception("t1api.mcp: %s failed", method)
-            return self._error(identifier, JSONRPC_INTERNAL_ERROR, str(exc))
+            return self._error(identifier, JSONRPC_INTERNAL_ERROR, "Internal server error.")
 
         if result is _METHOD_NOT_FOUND:
             return self._error(
@@ -296,8 +296,8 @@ class MCPServer:
         """A raw body in, for the transport. Handles batches."""
         try:
             parsed = json.loads(body)
-        except ValueError as exc:
-            return self._error(None, JSONRPC_PARSE_ERROR, f"invalid JSON: {exc}")
+        except ValueError:
+            return self._error(None, JSONRPC_PARSE_ERROR, "invalid JSON")
 
         if isinstance(parsed, list):
             if not parsed:
