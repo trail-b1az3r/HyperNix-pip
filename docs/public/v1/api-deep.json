@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-api-deep",
   "generated_at": "2026-09-20T21:20:57Z",
-  "commit": "0cbad9508d8d65908850bc07197021e0f24300c7",
+  "commit": "118a601d9c0517bd45065fc03662305f03d692b1",
   "history_available": true,
   "source_root": "src/hypernix",
   "modules": [
@@ -37524,140 +37524,158 @@
     {
       "module": "hypernix.system.net",
       "source": "src/hypernix/system/net.py",
-      "line_count": 207,
+      "line_count": 182,
       "summary": "net \u2014 Advanced distributed network manager and Tailscale integration.",
       "api": [
         {
           "kind": "function",
           "name": "load_config",
           "signature": "def load_config -> dict",
-          "line": 29,
+          "line": 17,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "save_config",
           "signature": "def save_configcfg: dict -> None",
-          "line": 38,
+          "line": 27,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "run_cmd",
           "signature": "def run_cmdcmd: list[str], capture: bool=True -> str",
-          "line": 43,
-          "doc": "Run a subprocess command and return stdout."
+          "line": 33,
+          "doc": "Run a fixed-argument subprocess command and return stdout."
         },
         {
           "kind": "function",
           "name": "get_tailscale_peers",
           "signature": "def get_tailscale_peers -> list[str]",
-          "line": 55,
-          "doc": "Return a list of Tailscale peer IPs."
+          "line": 70,
+          "doc": "Return validated Tailscale peer IPs."
         },
         {
           "kind": "function",
           "name": "cmd_config",
           "signature": "def cmd_configargs: argparse.Namespace -> None",
-          "line": 72,
+          "line": 89,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "cmd_auto_setup",
           "signature": "def cmd_auto_setupargs: argparse.Namespace -> None",
-          "line": 78,
+          "line": 95,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "cmd_m_setup",
           "signature": "def cmd_m_setupargs: argparse.Namespace -> None",
-          "line": 88,
+          "line": 105,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "cmd_connect",
           "signature": "def cmd_connectargs: argparse.Namespace -> None",
-          "line": 95,
+          "line": 113,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "cmd_status",
           "signature": "def cmd_statusargs: argparse.Namespace -> None",
-          "line": 99,
+          "line": 119,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "cmd_m_ip",
           "signature": "def cmd_m_ipargs: argparse.Namespace -> None",
-          "line": 103,
+          "line": 124,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "cmd_a_il",
           "signature": "def cmd_a_ilargs: argparse.Namespace -> None",
-          "line": 110,
+          "line": 129,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "cmd_multi_a_port",
           "signature": "def cmd_multi_a_portargs: argparse.Namespace -> None",
-          "line": 122,
+          "line": 147,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "cmd_ex_port",
           "signature": "def cmd_ex_portargs: argparse.Namespace -> None",
-          "line": 129,
+          "line": 155,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "cmd_s_storage",
           "signature": "def cmd_s_storageargs: argparse.Namespace -> None",
-          "line": 135,
+          "line": 162,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "cmd_onef_all",
           "signature": "def cmd_onef_allargs: argparse.Namespace -> None",
-          "line": 151,
+          "line": 176,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "cmd_tail_acheck",
           "signature": "def cmd_tail_acheckargs: argparse.Namespace -> None",
-          "line": 156,
+          "line": 182,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "cmd_tail_stop",
           "signature": "def cmd_tail_stopargs: argparse.Namespace -> None",
-          "line": 174,
+          "line": 198,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "cli_main",
           "signature": "def cli_mainargv: list[str] | None=None -> int",
-          "line": 181,
+          "line": 205,
           "doc": ""
         }
       ],
-      "errors": [],
+      "errors": [
+        "ValueError"
+      ],
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "118a601d",
+          "date": "2026-09-24",
+          "author": "Rayla",
+          "subject": "Fix command injection risks in network manager",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _peer_ip(value: str) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _remote_file(value: str) -> str:"
+            }
+          ]
+        },
         {
           "sha": "8c25846c",
           "date": "2026-08-21",
@@ -49444,35 +49462,35 @@
     {
       "module": "hypernix.t1api.routers.web",
       "source": "src/hypernix/t1api/routers/web.py",
-      "line_count": 253,
+      "line_count": 285,
       "summary": "``/web/v1`` \u2014 keyless web search for HyperLink and hyperchat.",
       "api": [
         {
           "kind": "function",
           "name": "web_search",
           "signature": "async def web_searchrequest: Request, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id)",
-          "line": 88,
+          "line": 89,
           "doc": "``/web/v1/I?=query&q?=maxdepth`` \u2014 or ``?q=cats&depth=2``."
         },
         {
           "kind": "function",
           "name": "web_summarize",
           "signature": "async def web_summarizerequest: Request, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id)",
-          "line": 121,
+          "line": 122,
           "doc": "Summarise text, a URL, or the results of a search."
         },
         {
           "kind": "function",
           "name": "web_config_read",
           "signature": "async def web_config_readrequest: Request, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), request_id: str=Depends(get_request_id)",
-          "line": 240,
+          "line": 274,
           "doc": "The three settings, and the browsers actually installed."
         },
         {
           "kind": "function",
           "name": "web_config_write",
           "signature": "async def web_config_writedirectives: str, request: Request, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), request_id: str=Depends(get_request_id)",
-          "line": 261,
+          "line": 295,
           "doc": "``/web/v1/config/s1?=k|s2?:=wikipedia|s3?:={key}?[auto]``"
         }
       ],
@@ -49488,6 +49506,18 @@
         }
       ],
       "changes": [
+        {
+          "sha": "7f46b1c5",
+          "date": "2026-09-24",
+          "author": "Rayla",
+          "subject": "Potential fix for code scanning alert no. 26263: Full server-side request forgery",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _validated_summary_url(url: str) -> str:"
+            }
+          ]
+        },
         {
           "sha": "bf80987c",
           "date": "2026-09-23",

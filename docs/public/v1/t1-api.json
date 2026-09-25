@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-t1-api",
   "generated_at": "2026-09-20T21:20:58Z",
-  "commit": "0cbad9508d8d65908850bc07197021e0f24300c7",
+  "commit": "118a601d9c0517bd45065fc03662305f03d692b1",
   "history_available": true,
   "server_extra": "pip install 'hypernix[t1api]'",
   "client_install": "pip install hypernix",
@@ -9843,35 +9843,35 @@
     {
       "module": "hypernix.t1api.routers.web",
       "source": "src/hypernix/t1api/routers/web.py",
-      "line_count": 253,
+      "line_count": 285,
       "summary": "``/web/v1`` \u2014 keyless web search for HyperLink and hyperchat.",
       "api": [
         {
           "kind": "function",
           "name": "web_search",
           "signature": "async def web_searchrequest: Request, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id)",
-          "line": 88,
+          "line": 89,
           "doc": "``/web/v1/I?=query&q?=maxdepth`` \u2014 or ``?q=cats&depth=2``."
         },
         {
           "kind": "function",
           "name": "web_summarize",
           "signature": "async def web_summarizerequest: Request, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id)",
-          "line": 121,
+          "line": 122,
           "doc": "Summarise text, a URL, or the results of a search."
         },
         {
           "kind": "function",
           "name": "web_config_read",
           "signature": "async def web_config_readrequest: Request, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), request_id: str=Depends(get_request_id)",
-          "line": 240,
+          "line": 274,
           "doc": "The three settings, and the browsers actually installed."
         },
         {
           "kind": "function",
           "name": "web_config_write",
           "signature": "async def web_config_writedirectives: str, request: Request, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), request_id: str=Depends(get_request_id)",
-          "line": 261,
+          "line": 295,
           "doc": "``/web/v1/config/s1?=k|s2?:=wikipedia|s3?:={key}?[auto]``"
         }
       ],
@@ -9887,6 +9887,18 @@
         }
       ],
       "changes": [
+        {
+          "sha": "7f46b1c5",
+          "date": "2026-09-24",
+          "author": "Rayla",
+          "subject": "Potential fix for code scanning alert no. 26263: Full server-side request forgery",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _validated_summary_url(url: str) -> str:"
+            }
+          ]
+        },
         {
           "sha": "bf80987c",
           "date": "2026-09-23",
@@ -16711,7 +16723,7 @@
       "handler": "web_search",
       "response_model": null,
       "source": "src/hypernix/t1api/routers/web.py",
-      "line": 85,
+      "line": 86,
       "tag": "web"
     },
     {
@@ -16721,7 +16733,7 @@
       "handler": "web_config_read",
       "response_model": null,
       "source": "src/hypernix/t1api/routers/web.py",
-      "line": 239,
+      "line": 273,
       "tag": "web"
     },
     {
@@ -16731,7 +16743,7 @@
       "handler": "web_config_write",
       "response_model": null,
       "source": "src/hypernix/t1api/routers/web.py",
-      "line": 260,
+      "line": 294,
       "tag": "web"
     },
     {
@@ -16741,7 +16753,7 @@
       "handler": "web_search",
       "response_model": null,
       "source": "src/hypernix/t1api/routers/web.py",
-      "line": 86,
+      "line": 87,
       "tag": "web"
     },
     {
@@ -16751,7 +16763,7 @@
       "handler": "web_search",
       "response_model": null,
       "source": "src/hypernix/t1api/routers/web.py",
-      "line": 87,
+      "line": 88,
       "tag": "web"
     },
     {
@@ -16761,7 +16773,7 @@
       "handler": "web_summarize",
       "response_model": null,
       "source": "src/hypernix/t1api/routers/web.py",
-      "line": 120,
+      "line": 121,
       "tag": "web"
     },
     {
@@ -16771,7 +16783,7 @@
       "handler": "web_summarize",
       "response_model": null,
       "source": "src/hypernix/t1api/routers/web.py",
-      "line": 119,
+      "line": 120,
       "tag": "web"
     }
   ],
