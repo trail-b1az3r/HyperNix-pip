@@ -1062,8 +1062,8 @@ class ToolRegistry:
             req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (X11; Linux x86_64)"})
             with urllib.request.urlopen(req, timeout=10) as resp:
                 html_raw = resp.read().decode("utf-8", errors="ignore")
-            text = re.sub(r'<script.*?</script>', '', html_raw, flags=re.DOTALL)
-            text = re.sub(r'<style.*?</style>', '', text, flags=re.DOTALL)
+            text = re.sub(r'<script\b[^>]*>.*?</script\b[^>]*>', '', html_raw, flags=re.DOTALL | re.IGNORECASE)
+            text = re.sub(r'<style\b[^>]*>.*?</style\b[^>]*>', '', text, flags=re.DOTALL | re.IGNORECASE)
             text = re.sub(r'<[^>]+>', ' ', text)
             text = html.unescape(text)
             text = re.sub(r'\s+', ' ', text).strip()
