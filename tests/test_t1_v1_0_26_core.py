@@ -783,7 +783,7 @@ class TestHFParsing:
         with pytest.raises(HFResolveError) as excinfo:
             parse_link("https://example.com/o/r")
         assert excinfo.value.code == "not_a_hf_link"
-        assert "example.com" in str(excinfo.value)
+        assert str(excinfo.value) == "Not a Hugging Face link (host: example.com)."
 
     def test_a_link_with_no_repository_says_what_one_looks_like(self):
         with pytest.raises(HFResolveError) as excinfo:
