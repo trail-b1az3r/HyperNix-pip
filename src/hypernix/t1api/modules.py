@@ -30,6 +30,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import re
 import sqlite3
 import threading
 import time
@@ -365,10 +366,17 @@ class ModuleRegistry:
         :func:`sanitize_module_path`, exactly like a client-supplied
         filename.
         """
-        if not module_id or not module_id.strip():
+        module_id = (module_id or "").strip()
+        if not module_id:
             raise T1APIError(
                 T1ErrorCode.VALIDATION_ERROR,
                 "An inbound module transfer must carry a module_id.",
+                http_status=422,
+            )
+        if not re.fullmatch(r"[A-Za-z0-9._-]+", module_id):
+            raise T1APIError(
+                T1ErrorCode.VALIDATION_ERROR,
+                "module_id may contain only letters, numbers, dot, underscore, and hyphen.",
                 http_status=422,
             )
         now = time.time()
