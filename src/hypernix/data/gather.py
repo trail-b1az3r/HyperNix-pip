@@ -687,8 +687,8 @@ def _charset(content_type: str) -> str:
 
 _TITLE = re.compile(r"<title[^>]*>(.*?)</title>", re.IGNORECASE | re.DOTALL)
 _HREF = re.compile(r"""<a\b[^>]*?\bhref\s*=\s*["']([^"'>]+)["']""", re.IGNORECASE)
-_SCRIPT_BLOCK = re.compile(r"<script\b.*?</script\s*>", re.IGNORECASE | re.DOTALL)
-_STYLE_BLOCK = re.compile(r"<style\b.*?</style\s*>", re.IGNORECASE | re.DOTALL)
+_SCRIPT_BLOCK = re.compile(r"<script\b.*?</script\b[^>]*>", re.IGNORECASE | re.DOTALL)
+_STYLE_BLOCK = re.compile(r"<style\b.*?</style\b[^>]*>", re.IGNORECASE | re.DOTALL)
 _COMMENT = re.compile(r"<!--.*?-->", re.DOTALL)
 _TAG = re.compile(r"<[^>]+>")
 
