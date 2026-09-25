@@ -79,6 +79,8 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
+_SAFE_KEY_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,128}$")
+
 # ---------------------------------------------------------------------------
 # Optional encryption backend
 # ---------------------------------------------------------------------------
@@ -484,11 +486,18 @@ class Keymaster:
     # Persistence
     # ------------------------------------------------------------------
 
+    def _validate_key_id_for_path(self, key_id: str) -> str:
+        if not _SAFE_KEY_ID_RE.fullmatch(key_id):
+            raise ValueError(f"Invalid key id for path usage: {key_id!r}")
+        return key_id
+
     def _key_path(self, key_id: str) -> Path:
-        return self._store / f"{key_id}.json"
+        safe_key_id = self._validate_key_id_for_path(key_id)
+        return self._store / f"{safe_key_id}.json"
 
     def _archive_path(self, key_id: str) -> Path:
-        return self._store / _ARCHIVE_SUBDIR / f"{key_id}.json"
+        safe_key_id = self._validate_key_id_for_path(key_id)
+        return self._store / _ARCHIVE_SUBDIR / f"{safe_key_id}.json"
 
     def _encrypt(self, text: str) -> str:
         if self._cipher is None:
