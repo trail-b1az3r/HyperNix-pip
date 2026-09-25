@@ -550,10 +550,10 @@ def start(
             result.listen = listen
             result.password_protected = password is not None
             if plain:
-                # Only on the run that generated it. Printed by the
-                # caller, not here -- a library that writes a password to
-                # stdout writes it into whatever log is capturing stdout.
-                result.hint = f"VNC password: {plain}  (stored in {password})"
+                # Never place plaintext credentials in status text because
+                # callers may print it to stdout/stderr and have it captured
+                # by logs.
+                result.hint = f"VNC password generated and stored in {password}."
             return result
         if process.poll() is not None:
             # It died. This is the case the old code called "Running".
