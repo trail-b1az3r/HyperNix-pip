@@ -13,7 +13,7 @@ import json
 import os
 import re
 import subprocess
-from collections import Counter, defaultdict
+from collections import defaultdict
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -738,7 +738,7 @@ def build_t1_api() -> dict[str, Any]:
     sdk_root = SRC_ROOT / "t1sdk"
     modules = [build_module(p, t1=True) for p in source_files(t1_root)] + [build_module(p, t1=True) for p in source_files(sdk_root)]
     errors: list[dict[str, str]] = []
-    for path in sorted((t1_root, sdk_root)[0].glob("*.py")) if False else []:
+    for _path in sorted((t1_root, sdk_root)[0].glob("*.py")) if False else []:
         pass
     for m in modules:
         for err in m.get("errors", []):
@@ -807,7 +807,7 @@ def main() -> None:
     changelog = parse_changelog()
     existing_paths = [API_DEEP_PATH, T1_API_PATH, CODE_STATS_PATH, CHANGELOG_DATA_PATH]
     built = [api_deep, t1_api, stats, changelog]
-    for path, data in zip(existing_paths, built):
+    for path, data in zip(existing_paths, built, strict=False):
         if path.exists():
             try:
                 old = json.loads(path.read_text(encoding="utf-8"))

@@ -112,7 +112,6 @@ class TestEveryReleaseEntry:
         assert not bad, bad
 
     def test_no_category_is_empty(self, text):
-        empty: list[str] = []
         for header, body in _entries(text):
             blocks = re.split(r"^###\s+", body, flags=re.M)[1:]
             for block in blocks:

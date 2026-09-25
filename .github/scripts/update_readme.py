@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-import requests
-from pathlib import Path
 import re
+from pathlib import Path
+
+import requests
 
 REPO = Path('.')
 README = REPO / 'README.md'
