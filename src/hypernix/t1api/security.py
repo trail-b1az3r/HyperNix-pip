@@ -106,6 +106,17 @@ def validate_remote_address(address: str, *, allow_private: bool = False) -> str
     return address
 
 
+def _validate_path_component(component: str, *, original_path: str) -> str:
+    if component in {"", ".", ".."} or "/" in component or "\\" in component:
+        raise T1APIError(
+            T1ErrorCode.PATH_TRAVERSAL_REJECTED,
+            f"'{original_path}' contains an invalid path component.",
+            details={"relative_path": original_path, "component": component},
+            http_status=400,
+        )
+    return component
+
+
 def sanitize_module_path(relative_path: str, base_dir: Path) -> Path:
     """Resolve *relative_path* under *base_dir* and reject any attempt to
     escape it (``..`` traversal, an absolute path override, or a symlink
@@ -114,8 +125,26 @@ def sanitize_module_path(relative_path: str, base_dir: Path) -> Path:
     Returns the resolved, safe absolute path. Does not check existence —
     callers create/read the file themselves after this returns.
     """
+    requested = Path(relative_path)
+    if requested.is_absolute() or requested.anchor:
+        raise T1APIError(
+            T1ErrorCode.PATH_TRAVERSAL_REJECTED,
+            f"'{relative_path}' resolves outside the allowed module storage directory.",
+            details={"relative_path": relative_path},
+            http_status=400,
+        )
+
+    safe_parts = [_validate_path_component(part, original_path=relative_path) for part in requested.parts]
+    if not safe_parts:
+        raise T1APIError(
+            T1ErrorCode.PATH_TRAVERSAL_REJECTED,
+            f"'{relative_path}' resolves outside the allowed module storage directory.",
+            details={"relative_path": relative_path},
+            http_status=400,
+        )
+
     base_resolved = base_dir.resolve()
-    candidate = (base_dir / relative_path).resolve()
+    candidate = (base_resolved.joinpath(*safe_parts)).resolve()
     try:
         candidate.relative_to(base_resolved)
     except ValueError as exc:
