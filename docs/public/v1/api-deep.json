@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-api-deep",
   "generated_at": "2026-09-20T21:20:57Z",
-  "commit": "04199056ef46367974126b0049d24a7fbe39b87b",
+  "commit": "d59a288c490b3fdf93a657b211cd67229118fa92",
   "history_available": true,
   "source_root": "src/hypernix",
   "modules": [
@@ -37524,142 +37524,156 @@
     {
       "module": "hypernix.system.net",
       "source": "src/hypernix/system/net.py",
-      "line_count": 182,
+      "line_count": 207,
       "summary": "net \u2014 Advanced distributed network manager and Tailscale integration.",
       "api": [
         {
           "kind": "function",
           "name": "load_config",
           "signature": "def load_config -> dict",
-          "line": 17,
+          "line": 29,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "save_config",
           "signature": "def save_configcfg: dict -> None",
-          "line": 27,
+          "line": 38,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "run_cmd",
           "signature": "def run_cmdcmd: list[str], capture: bool=True -> str",
-          "line": 33,
-          "doc": "Run a fixed-argument subprocess command and return stdout."
+          "line": 43,
+          "doc": "Run a subprocess command and return stdout."
         },
         {
           "kind": "function",
           "name": "get_tailscale_peers",
           "signature": "def get_tailscale_peers -> list[str]",
-          "line": 70,
-          "doc": "Return validated Tailscale peer IPs."
+          "line": 55,
+          "doc": "Return a list of Tailscale peer IPs."
         },
         {
           "kind": "function",
           "name": "cmd_config",
           "signature": "def cmd_configargs: argparse.Namespace -> None",
-          "line": 89,
+          "line": 72,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "cmd_auto_setup",
           "signature": "def cmd_auto_setupargs: argparse.Namespace -> None",
-          "line": 95,
+          "line": 78,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "cmd_m_setup",
           "signature": "def cmd_m_setupargs: argparse.Namespace -> None",
-          "line": 105,
+          "line": 88,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "cmd_connect",
           "signature": "def cmd_connectargs: argparse.Namespace -> None",
-          "line": 113,
+          "line": 95,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "cmd_status",
           "signature": "def cmd_statusargs: argparse.Namespace -> None",
-          "line": 119,
+          "line": 99,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "cmd_m_ip",
           "signature": "def cmd_m_ipargs: argparse.Namespace -> None",
-          "line": 124,
+          "line": 103,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "cmd_a_il",
           "signature": "def cmd_a_ilargs: argparse.Namespace -> None",
-          "line": 129,
+          "line": 110,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "cmd_multi_a_port",
           "signature": "def cmd_multi_a_portargs: argparse.Namespace -> None",
-          "line": 147,
+          "line": 122,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "cmd_ex_port",
           "signature": "def cmd_ex_portargs: argparse.Namespace -> None",
-          "line": 155,
+          "line": 129,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "cmd_s_storage",
           "signature": "def cmd_s_storageargs: argparse.Namespace -> None",
-          "line": 162,
+          "line": 135,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "cmd_onef_all",
           "signature": "def cmd_onef_allargs: argparse.Namespace -> None",
-          "line": 176,
+          "line": 151,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "cmd_tail_acheck",
           "signature": "def cmd_tail_acheckargs: argparse.Namespace -> None",
-          "line": 182,
+          "line": 156,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "cmd_tail_stop",
           "signature": "def cmd_tail_stopargs: argparse.Namespace -> None",
-          "line": 198,
+          "line": 174,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "cli_main",
           "signature": "def cli_mainargv: list[str] | None=None -> int",
-          "line": 205,
+          "line": 181,
           "doc": ""
         }
       ],
-      "errors": [
-        "ValueError"
-      ],
+      "errors": [],
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "9262ff74",
+          "date": "2026-09-25",
+          "author": "Rayla",
+          "subject": "Refactor net.py for improved command handling",
+          "api_changes": [
+            {
+              "kind": "removed",
+              "text": "def _peer_ip(value: str) -> str:"
+            },
+            {
+              "kind": "removed",
+              "text": "def _remote_file(value: str) -> str:"
+            }
+          ]
+        },
         {
           "sha": "118a601d",
           "date": "2026-09-24",
