@@ -161,49 +161,172 @@ def changelog_aliases(version_label: str) -> set[str]:
     return {a.lstrip("v") for a in aliases}
 
 
+def _clamp_changelog_text(value: str, limit: int) -> str:
+    value = re.sub(r"\s+", " ", value).strip()
+    if len(value) <= limit:
+        return value
+    return value[:limit - 1].rsplit(" ", 1)[0].rstrip(" ,.;:") + "…"
+
+
+def _changelog_bullet_highlights(body: str, limit: int = 6) -> list[str]:
+    """Extract real change bullets from the canonical category sections.
+
+    The previous site updater treated the release date in a heading such as
+    ``0.72.6 — 2026-09-24`` as the summary. The changelog itself now has stable
+    category/bullet structure, so use those bullets instead and keep wrapped
+    continuation lines attached to the same item.
+    """
+    symbols = (
+        "๋࣭⭑", "✨", "𖥔", "𖢥", "🐛", "🛡️", "🔁", "🔧", "⚡", "🔒", "⚠️",
+        "🧪", "📚", "🛜", "🔌", "🔗", "❌", "✂️", "꩜", "❗", "🩹", "♻️", "📦",
+    )
+    highlights: list[str] = []
+    current_category = ""
+    current_item: list[str] | None = None
+
+    def flush() -> None:
+        nonlocal current_item
+        if not current_item:
+            return
+        text = re.sub(r"\s+", " ", " ".join(current_item)).strip()
+        text = clean_changelog_text(text)
+        if text:
+            text = _clamp_changelog_text(text, 280)
+            highlights.append(text)
+        current_item = None
+
+    for line in body.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("### "):
+            flush()
+            current_category = stripped[4:].strip()
+            continue
+        if stripped.startswith("#### "):
+            flush()
+            continue
+        if not current_category:
+            continue
+        matched_symbol = next((symbol for symbol in symbols if stripped.startswith(symbol + " ")), None)
+        if matched_symbol:
+            flush()
+            current_item = [stripped[len(matched_symbol):].strip()]
+            continue
+        if current_item is not None:
+            # Continuations and nested details are part of the same change; preserve
+            # their words for a useful site summary but not their markdown layout.
+            if stripped:
+                current_item.append(stripped)
+
+    flush()
+    return highlights[:limit]
+
+
+def _parse_changelog_heading(raw_heading: str) -> tuple[str, str, str]:
+    """Return (release label, heading title, date) without mistaking the date for prose."""
+    raw = raw_heading.strip()
+    date = ""
+    title = ""
+
+    date_match = re.search(r"\s+—\s+(\d{4}-\d{2}-\d{2})$", raw)
+    if date_match:
+        date = date_match.group(1)
+        raw = raw[:date_match.start()].strip()
+
+    if " — " in raw:
+        left, right = raw.split(" — ", 1)
+        if re.match(r"^v?\d+\.\d+\.\d+", left.strip(), re.I):
+            raw = left.strip()
+            title = right.strip()
+    elif " - " in raw:
+        left, right = raw.split(" - ", 1)
+        if re.match(r"^v?\d+\.\d+\.\d+", left.strip(), re.I):
+            raw = left.strip()
+            title = right.strip()
+
+    label = raw.strip()
+    return label, title, date
+
+
 def parse_changelog() -> dict[str, Any]:
+    generated_at = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     if not CHANGELOG_PATH.exists():
-        return {"generated_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"), "entries": []}
+        return {"generated_at": generated_at, "source": "wiki/Changelog.md", "entries": []}
+
     text = CHANGELOG_PATH.read_text(encoding="utf-8", errors="replace")
     matches = list(re.finditer(r"(?m)^##\s+(.+?)\s*$", text))
     entries: list[dict[str, Any]] = []
+    unreleased: dict[str, Any] | None = None
+
     for index, match in enumerate(matches):
         raw_heading = match.group(1).strip()
         body_end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
         body = text[match.end():body_end].strip()
-        # Headings such as "0.72.5 pt3 — ..." use the text before an em dash
-        # as the actual release label. Parenthetical notes are retained only
-        # when they are part of the label (e.g. pt 4).
-        label = raw_heading.split("—", 1)[0].strip()
-        label = label.split(" – ", 1)[0].strip()
+
+        if raw_heading == "Unreleased":
+            unreleased = {
+                "heading": raw_heading,
+                "summary": " · ".join(_changelog_bullet_highlights(body, 3)),
+                "highlights": _changelog_bullet_highlights(body, 8),
+            }
+            continue
+
+        label, heading_title, date = _parse_changelog_heading(raw_heading)
         if not re.match(r"^v?\d+\.\d+\.\d+", label, re.I):
             continue
-        title = ""
-        if "—" in raw_heading:
-            title = raw_heading.split("—", 1)[1].strip()
-        elif " - " in raw_heading and re.match(r"^v?\d+\.\d+\.\d+[^ ]* - ", raw_heading, re.I):
-            title = raw_heading.split(" - ", 1)[1].strip()
-        summary = clean_changelog_text(title) if title else ""
-        if not summary:
-            for candidate in body.splitlines():
-                candidate = candidate.strip()
-                if not candidate or candidate.startswith("#") or candidate.startswith("```"):
-                    continue
-                summary = clean_changelog_text(candidate)
-                if summary:
-                    break
+
+        highlights = _changelog_bullet_highlights(body)
+        summary = ""
+        # The release summary section is intentionally preferred when the guide
+        # supplies one; otherwise the first actual change bullet is the summary.
+        in_summary = False
+        summary_highlights: list[str] = []
+        for line in body.splitlines():
+            stripped = line.strip()
+            if stripped == "### Beta / Dev → Release Summary":
+                in_summary = True
+                continue
+            if in_summary and stripped.startswith("### "):
+                break
+            if in_summary and stripped.startswith("#### "):
+                continue
+            if in_summary:
+                matched_symbol = next(
+                    (symbol for symbol in (
+                        "๋࣭⭑", "✨", "𖥔", "𖢥", "🐛", "🛡️", "🔁", "🔧", "⚡", "🔒", "⚠️",
+                        "🧪", "📚", "🛜", "🔌", "🔗", "❌", "✂️", "꩜", "❗", "🩹", "♻️", "📦",
+                    ) if stripped.startswith(symbol + " ")), None
+                )
+                if matched_symbol:
+                    summary_highlights.append(
+                        _clamp_changelog_text(clean_changelog_text(stripped[len(matched_symbol):].strip()), 280)
+                    )
+        summary_parts = [x for x in summary_highlights if x]
+        if summary_parts:
+            summary = summary_parts[0]
+        elif highlights:
+            summary = highlights[0]
+        elif heading_title:
+            summary = clean_changelog_text(heading_title)
+
+        summary = _clamp_changelog_text(summary, 360)
+
         entries.append({
             "version": label,
             "key": normalize_release_label(label),
             "aliases": sorted(changelog_aliases(label)),
             "kind": release_kind(label),
             "heading": raw_heading,
+            "date": date,
+            "title": clean_changelog_text(heading_title),
             "summary": summary or "Release notes in wiki/Changelog.md.",
+            "highlights": highlights,
         })
+
     return {
-        "generated_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "generated_at": generated_at,
         "source": "wiki/Changelog.md",
         "entries": entries,
+        "unreleased": unreleased,
     }
 
 def run_git(*args: str) -> str:

@@ -1,6406 +1,175 @@
-## Changelog
+# Changelog
 
-Full per-release notes for `hypernix`. The top-level `wiki/Home.md`
-keeps a running "recent highlights" list; this page is the canonical
-history. Semver-ish: minor bumps add features, patch bumps are bug
-fixes and UX papercuts. Dates are `YYYY-MM-DD` for PyPI-published
-releases; in-branch commits between releases are grouped under the
-next release header.
+Full per-release notes for `hypernix`. This file is the canonical release history; the docs site derives release summaries and highlights from it.
+
+Historical wording and technical detail are retained during format normalization. Legacy headings and markers are converted to the current category/symbol system rather than discarded.
 
 ## Legend
 
-- 🧪 new tests 
-- ✨ normal feature
-- 🐛 minor bug fix
-- 🛡️ UX / error-message polish
-- 📚 documentation
-- 🔧 internal / plumbing
-- ✂️ cut / remove
-- 🛜 website update / pages update
-- 🔁 refactor / integration improvement 
-- 𖢥 major bug fix
-- ꩜ restore to older version of item
-- ❗ unfixed known bug
-- ❌ deprecation 
-- ๋࣭⭑ Major new feature 
-- 𖥔 minor new feature
-
-
-## 0.72.6 — 2026-09-24
-
-0.72.6, released. Three release candidates and four batches published as
-0.72.5.post14 to post17 went into it; the summary below says what
-shipped, and those entries say how. New since 0.72.6.rc3: HyperLink
-keeps its own copy of your memories and syncs it from the server as
-they change, and a release that its own tests would reject can no
-longer be started.
-
-### Beta / Dev → Release Summary
-
-This release includes the finalised work from 0.72.5.post14 to post17
-and 0.72.6.rc1 to rc3.
-
-#### Major Changes
-
-๋࣭⭑ v2.1 (T2C) keys, sealed with Rotorvault under a key that changes
-every day, and conceal mode for a server (0.72.5.post17).
-๋࣭⭑ `waiter serv` letters group in any order, with flags to update,
-install kits, conceal, and seal the key as a v2.1 kit (post17).
-๋࣭⭑ Siri can name chats and models, on App Intents 2.0 (post17, rc1).
-๋࣭⭑ `hypernix.elements` with `magnesium` and `carbon`, and the
-`L#-NNNNN.kS` error codes across the T1 API (post16).
-๋࣭⭑ `hyped-pro` is an OpenTUI app that works with git and edits files
-(post16), and `tvtop-max` is tvtop-pro on the same stack, with panels
-for the run's script, modules, model, Pressure Cooker, log and
-warnings (rc2).
-๋࣭⭑ HyperLink models call tools, including the T1 API as tools, on
-both chat routes (post16, rc3); models run on the iPhone itself; chats
-are named, compressed and can be made private; memories are organised
-(post16); and a reply from this server's own runner gets a default
-system prompt (rc2).
-๋࣭⭑ `hypernix.dilute`, `hyperchat` with several prompts in flight, and
-keyless `/web/v1` search (post15).
-๋࣭⭑ `hypernix.neuron` and `hypernix.audio.processor` (post14).
-
-#### Fixes Carried Into Release
-
-𖢥 Pressure Cooker V4, V5, V5S and V6 never trained through
-`NeoOven.train`, and twenty-three presets had broken RoPE (post16).
-𖢥 Neo Oven's presets named the wrong architectures (post15).
-𖢥 The server could be made to fetch its own network, and a public-only
-fetch could be steered to a private address (post16, post17).
-𖢥 A HyperLink model said it had no tools, and the assistant's reply
-bubble had a hole in its tail (rc3).
-𖢥 tvtop-max opened to empty panels, and a run kept under `.runs` was
-never found (rc3).
-
-#### Testing
-
-🧪 Each candidate added its own tests: the Siri phrases, the version
-spellings, the default prompt, tvtop-max's panels and bridge, the tools
-on the streaming route, and the bubble tail.
-
-### Added
-
-๋࣭⭑ **HyperLink syncs memories from the server as they change.** The app
-used to fetch `/memory/list` whole: the first 200, when the Memories
-screen appeared or a reply ended, with any error swallowed. A fact the
-model wrote mid-chat reached the phone only if somebody happened to be
-looking, the 201st never did, and offline the screen was empty.
-𖥔 `GET /memory/sync?cursor=N` answers with what changed since the
-cursor: the current state of each memory touched and the ids of those
-deleted, evictions by the auto-memory budget included. Every memory
-write logs itself in the same transaction, one row per memory, numbered
-by a counter row so they appear in commit order. A first sync, a cursor
-older than the 30-day tombstones, or one this server never issued (a
-server restored behind the phone's back) gets the whole set, marked
-`full`, to replace the copy with.
-𖥔 A chat turn that remembers or forgets something sends a `memory`
-frame with the new cursor after `done`, and the app syncs while the
-reply is still on screen.
-𖥔 The app keeps each server's copy on disk, excluded from backups, and
-shows it at launch and offline. It syncs on launch, on every return to
-the foreground, on the `memory` frame, and after each edit, and
-overlapping syncs run once more rather than twice at once. When the
-server cannot be reached, the Memories screen says how old its copy
-is. Forgetting or unpairing a server deletes its copy. Against a server
-without `/memory/sync`, the app falls back to the whole list.
-
-### Fixed
-
-𖢥 **A release could be started that was certain to fail.** 0.72.6 was
-dispatched against a changelog whose newest entry was 0.72.6.rc3. The
-release bumped the version, built, ran the suite for ten minutes, and
-failed: "changelog newest is 0.72.6.rc3, package is 0.72.6". The
-version guard warned about a missing heading only when the version
-equalled the tree's, and said nothing when it moved forward, which is
-the usual case. Nothing about that needed the build to find out.
-𖢥 The guard (`.github/scripts/version_guard.py`) now checks the
-changelog against the version the bump is about to write, for every
-release, forward, equal or a permitted downgrade. It refuses unless the
-newest entry is that version (ignoring a `.postN`, as the test does)
-under a `<version> — <YYYY-MM-DD>` header, and the refusal names the
-exact heading to add. A `.postN` with no notes of its own still only
-warns, since its tests pass.
-𖢥 **The first 0.72.6 run failed after its build, at the commit.** main
-moved while it built (the stats bot committed), so the push was
-rejected, and the retry's `git rebase` refused to start: the install and
-the build rewrite the tracked `src/hypernix.egg-info`, and a rebase will
-not run over unstaged changes. The step called that "the version bump
-conflicts with main -- another release may be in flight", which it was
-not. It now rebases with `--autostash`, so those files are set aside and
-put back, never pushed. A real conflict still stops, and now names the
-files. `tests/test_release_push_retry.py` runs the step's own script
-against a bare origin and failed the old one with the same message.
-🐛 The bump step spelled `0.72.6.postr1` as `0.72.6..post1`, which is
-not a version. It now asks the guard for the spelling
-(`version_guard.py --print-pep440`), so the version checked is the one
-written.
-🐛 `tests/test_changelog_format.py` rejected the `### Beta / Dev →
-Release Summary` heading that `Changelog-guide.md` requires of a stable
-release. It now accepts it, and checks that the guide still names it.
-
-### Changed
-
-🔧 The guard runs before torch is installed, so a refusal costs
-seconds. After the bump, a new "Preflight" step runs the tests a
-version bump can break: the changelog format, the installer's baked
-version, both OpenTUI apps' `package.json` and `app.ts`, and the
-guard's own. They take about ten seconds, and a failure there stops the
-release before lint, the full suite and the build.
-🔧 Check a release before dispatching it, from the repository root, with
-`python .github/scripts/version_guard.py 0.72.6`.
-
-### Tests
-
-🧪 `tests/test_version_guard.py`: the release that failed is refused up
-front and names the heading to add; a stable entry above the candidates
-lets it through; equal versions and downgrades are held to the same
-rule; undated headers, no entries and no changelog are refused; the
-real tree passes its own version; the workflow runs the guard before
-torch, bumps with the guard's spelling, and runs the preflight before
-the suite.
-🧪 `tests/test_hyperlink_memory_sync.py` (22): first sync, deltas with
-edits, deletions and evictions, paging and its cap, the whole set for a
-stale, expired or foreign cursor, ownership, memories from before the
-log, the endpoint, and a real streamed turn whose `update_memory` call
-sends the `memory` frame. `MemoryMirrorTests.swift` covers applying a
-delta and a full answer, ordering, decoding, the disk cache, and the
-frame.
-
-⸻
-
-## 0.72.6.rc3 — 2026-09-24
-
-The third release candidate: a HyperLink model has its tools on the
-route the app actually uses.
-
-### Fixed
-
-𖢥 **A HyperLink model said it had no tools, and it was right.** Reported
-from an iPhone: gemma-4-e4b, asked to use HyperNix's T1 API, said
-nothing had been provided to it. Three bugs lined up. The app streams
-its replies, and `/chat/stream` never offered a tool; only `/chat`
-did. Even there, the person's own T1 API tools and their memory tools
-waited on "Let the model use tools" and on the server's noodle switch,
-both off by default, though that toggle only ever described noodle's
-workspace of files and commands. So a default server offered nothing
-anywhere.
-𖢥 The T1 API tools are now offered in every HyperLink chat whose caller
-has a credential, on both routes. They run with that credential, and
-loading or unloading models is still offered only to a caller with
-`write` or admin. The memory tools follow Auto-memory. Noodle's
-workspace still needs the person's toggle and `T1_NOODLE_ENABLED`, and
-the toggle is now called "Let the model use its workspace", with a
-footer that says what the model has without it.
-𖢥 On the built-in runner, the tool format went in as a second system
-message ahead of the first. A backend that keeps only the first system
-message then dropped the person's own instructions and the default
-prompt. It is now added to the end of the one system message.
-𖢥 **The assistant's reply bubble had a hole in its tail.** A dark
-triangle with a light rim sat at the bottom-left corner of every model
-reply, and the person's own bubbles looked right. The tail is drawn for
-the right side and mirrored for the left, and mirroring reverses a
-path's winding. Added to the bubble with `addPath`, the assistant's tail
-wound against its bubble, and SwiftUI's non-zero fill cancelled the
-overlap, leaving the screen behind showing through. The two are now
-joined with `Path.union`, which fills the combined outline whichever way
-either winds.
-🐛 The model's name under a reply sat 5pt left of the bubble, under its
-tail. It now lines up with the bubble.
-𖢥 **tvtop-max opened to empty panels and no header.** Reported from a
-phone. Before reading its first request, the bridge searched for a
-training log with three recursive `**/` globs over the working
-directory. Started from a home directory full of models, virtualenvs and
-caches, that took minutes, and the app draws nothing until the bridge
-answers. Now the run is found in the background and frames go out from
-the first request, saying they are still looking. The app draws at once,
-and its footer says what it is waiting for, counting seconds, and how to
-see more if nothing comes.
-𖢥 The training-log search that tvtop, tvtop-pro and tvtop-max share is
-bounded: 5 folders deep, 2 seconds, 50,000 entries. It skips
-virtualenvs, `node_modules`, `site-packages` and hidden folders, except
-`.hypernix` and `.runs`, where training runs are kept.
-🐛 tvtop-max's phone layout pushed its footer (keys, status) off the
-bottom of the screen, because its scrolling column took its content's
-full height. It now fits between the header and the footer, and its
-panels leave room for the scrollbar.
-
-### Added
-
-𖥔 Tools on the streaming route. Ordinary answers still stream as they
-are written. A tool call written as text (`<tool_call>`, `[TOOL_CALLS]`,
-`<|python_tag|>`, a JSON block) is held back rather than shown,
-including one split across chunks. Streamed structured calls are
-assembled from their fragments. Each tool run is announced in a `tool`
-frame, and the rounds are kept in `metadata.tool_rounds`, as `/chat`
-does. Stop still stops.
-
-### Tests
-
-🧪 15 tests in `tests/test_hyperlink_stream_tools.py`, the main one the
-screenshot itself: a default server under a real uvicorn and a paired
-phone on `/chat/stream`. The model writes `<tool_call>` for
-`server_version`, the server calls itself with the phone's token, and
-the phone gets the answer and never the markup. The old router fails
-three of them, and the old two-system-message behaviour fails two.
-🧪 The bubble tail: `tests/test_hyperlink_bubble_tail.py` reads the
-tail's coordinates from the Swift, shows that the mirrored tails wind in
-opposite directions and overlap their bubbles, and requires the union;
-it fails on the old shape. `BubbleShapeTests.swift` checks on a
-simulator that every point of both speakers' bubbles is filled.
-🧪 tvtop-max's slow start: a frame is answered while discovery is still
-running, `info` waits for it, a failed search still lets `info` answer,
-and the bridge serves at once. The log search stays within its depth,
-time and size limits and skips heavy and hidden folders, but finds a run
-in `.runs`. Five `bun test` cases cover the waiting footer and
-panels. Reproduced first by starting tvtop-max at `/`: empty boxes, as
-in the screenshot.
-
-⸻
-
-## 0.72.6.rc2 — 2026-09-23
-
-The second release candidate: tvtop-max, and a default system prompt for
-HyperLink replies from HyperNix's own runner.
-
-### Added
-
-๋࣭⭑ **`tvtop-max`**: tvtop-pro on OpenTUI, like hyped-pro, in the site's
-colours, with ten panels toggled by their number keys. Alongside cpu,
-memory, GPU, training progress with a loss graph, and processes, it has
-panels for the run itself: the HyperNix modules and libraries its script
-imports, with one-line summaries, installed versions and deprecations;
-the model architecture from `new_oven(arch=…)`, a `preheat()` snapshot
-or a `config.json`, with a parameter estimate; every Pressure Cooker the
-script uses, with its generation, arguments and the learning rate the
-log reports now; the log's last lines, coloured by what they are; and a
-warnings panel.
-𖥔 tvtop-max's warnings panel reads the script for missing and deprecated
-modules, deprecated Pressure Cooker generations, `torch.load` without
-`weights_only=True`, no seed and no checkpoint. It reads the log's tail
-for tracebacks, out-of-memory errors, NaN losses, the OOM killer and
-`…Warning:` lines, each message counted once however often it repeats.
-𖥔 `tvtop-max -s` lays it out for a phone: one scrolling column 40 to 56
-columns wide, with training and warnings first. It is chosen
-automatically below 72 columns, and `s` switches layout at any time.
-𖥔 With no options, tvtop-max finds the busiest Python run that is not
-itself, reads the script from its command line and finds its log. `-S`
-watches only a process that is actually running the named script, and no
-process at all rather than a guess.
-๋࣭⭑ **HyperLink's default system prompt.** When a reply comes from this
-server's own runner, which is where hyperchat serves prompts, five
-paragraphs go first. They say where the model runs, that it is read on a
-phone, today's date, to be accurate before agreeable, to use only the
-tools it is offered, and that the person's own instructions follow and
-win. It sits under everything the person wrote, is composed per turn and
-never stored, is not sent to LM Studio, and
-`T1_HYPERLINK_DEFAULT_PROMPT=0` turns it off.
-🔧 `hypernix.monitoring.run_inspect` reads a training script with `ast`
-and its log with patterns, and never imports or runs
-either. `hypernix.monitoring.tvtop_max_bridge` answers tvtop-max on
-hyped-pro's JSON-lines protocol, from the same statistics source as
-tvtop-pro.
-
-### Changed
-
-🔁 hyped-pro's installer (`prepare_app`, `runtime_root`) takes the app's
-name and fallback program, so tvtop-max installs the same way into
-`~/.hypernix/tvtop-max/`. The release workflow bumps and commits
-tvtop-max's version alongside hyped-pro's.
-
-### Tests
-
-🧪 tvtop-max: 48 Python tests for the script reader, bridge, process
-choice, launcher and packaging, and 71 `bun test` cases for the panels,
-layout, arguments and bridge client, in a new CI job with the type
-check. Every panel is held to its width and height at 24, 40 and 80
-columns, which caught the process table overflowing a phone. The process
-test caught the launcher's own `-S train.py` being read as the run.
-🧪 The default prompt: 17 tests, through the API for what the model is
-actually sent. The backend and off-switch guards were each removed to
-check that the tests fail without them. One HyperLink test fake guessed
-that any system message mentioning summaries was a compaction request;
-it now recognises the compaction prompt itself.
-
-### Known Issues
-
-❗ tvtop-max's GPU panel reads NVIDIA GPUs through `nvidia-smi`, as
-tvtop-pro does, and shows nothing for other vendors.
-❗ When the log does not report a speed, the training panel works it out
-as steps over the time tvtop-max has been watching, as tvtop-pro does,
-so it reads high for a run that was already under way when the dashboard
-started.
-
-⸻
-
-## 0.72.6.rc1 — 2026-09-23
-
-The release candidate for 0.72.6, the two fixes its first release run
-needed, and Siri phrases that match what the docs say to say.
-
-### Changed
-
-🔧 This is the first release candidate of 0.72.6, and everything in it
-was published first as 0.72.5.post14 to post17; the entries below say
-what each of those added.
-
-### Fixed
-
-🐛 A release cut to a version the tree was not already carrying failed
-its own test run. The workflow bumped four version strings and not
-hyped-pro's `package.json` and `app.ts`, so the app still called itself
-0.72.5-post17. It now writes both through
-`hyped_pro_otui.sync_app_version`, which spells the version as semver
-(0.72.6.rc1 is 0.72.6-rc1), and the commit stages both files.
-🐛 The documentation check failed wherever fastapi is not installed, as
-on the release runner. `hypernix.t1api.create_app` re-raises the missing
-package as a plain ImportError with install advice, and the check looked
-only at that error, never at its cause.
-𖢥 **Siri answered "HyperLink hasn't added support for that".** The
-README and the intents file told people to say "ask HyperLink what's the
-weather" and "load the model Gemma 4 E2B on blazeindustries in
-HyperLink", and no registered phrase matched either: a phrase can name
-only an entity, never free text, so the question has to come after "Ask
-HyperLink", when Siri asks for it. Every Siri sentence in the docs is
-now a real phrase, and "Talk to HyperLink" and "Chat with HyperLink" are
-added.
-𖢥 A model was offered to Siri under its file name, such as
-`gemma-4-e2b-it-Q4_K_M`, which is not what anyone says, so "Load Gemma 4
-E2B in HyperLink" had no title to match. `SpokenName` titles each model
-the way it is said ("Gemma 4 E2B"), keeps the fuller forms as synonyms,
-and the model query accepts the spoken title.
-
-### Tests
-
-🧪 `semver_of` across every spelling the release workflow accepts,
-`sync_app_version` against copies of the real files, the workflow
-bumping and committing both, and the documentation check run with
-fastapi blocked. It failed twice there before the fix and passes after
-it.
-🧪 `tests/test_hyperlink_siri_phrases.py` holds every Siri sentence in
-the README, the iOS README and the intents file to a phrase the app
-registers, read from its AppShortcutsProvider. Run against the old
-README it fails on exactly the two sentences Siri
-refused. `SpokenNameTests.swift` covers the spoken names on the
-simulator.
-
-⸻
-
-## 0.72.5.post17 — 2026-09-23
-
-The 0.72.6 fourth batch. v2.1 keys and the cipher that seals them,
-conceal mode, a `waiter serv` whose letters can be grouped, Siri that
-can hear a chat's name, and `hnx-t1`.
-
-### Added
-
-๋࣭⭑ **v2.1 (T2C) keys.** A v2 key sealed twice: once for the server's
-RSA key, which is stable, and again under a per-device key that changes
-every UTC day (an HMAC of the device secret and the date). The client
-keeps a *kit* (`T2CK_…`) and sends only the day's key
-(`T2C_<device>.<seal>-<level>`). The server accepts the day either side
-and nothing else, binds each device to one key, refuses an edited access
-level, and refuses the kit itself if it is ever sent. `gkey create -v
-v2.1` mints one, and v2.1 is now the latest format.
-๋࣭⭑ **Rotorvault** (`hypernix.security.rotorvault`) seals in six
-stages: Blowfish-CTR, Twofish-CTR, an Enigma-style rotor stage wired by
-xoshiro256++, AES-256-GCM, inversion, and base64url, each keyed through
-HKDF from a fresh salt. Blowfish and Twofish are pure Python and checked
-against their published test vectors. `seal_for()` fronts it with
-RSA-OAEP and `seal_with_password()` with scrypt. The security comes from
-the AES-GCM stage; the module says so, and treats the rest as defence in
-depth at best.
-𖥔 `/auth/t2c/public-key` and `/auth/t2c/devices` (register, list,
-revoke), so a client can seal an existing key without a secret crossing
-in the clear. The server's RSA key and device secrets live in
-`<keymaster>/t2c/`, readable only by their owner and created on first
-use. `cryptography` joins the `t1api` extra.
-๋࣭⭑ **Conceal mode.** `POST /privacy/conceal` (access level 3 or higher)
-marks the calling key as concealed. Its audit records then keep its
-address only as a /24 (IPv4) or /48 (IPv6). Security records keep the
-full address, because the operator needs it to block abuse. A sweep runs
-on the request and then every 10 minutes while the server is up. It
-deletes what the key made more than **36 hours** ago: chat messages and
-the sessions they leave empty, files, finished jobs, and non-security
-audit records. Memories, preferences and usage counts are kept. The
-first two are the person's profile, and deleting usage counts would
-reset their quota. `DELETE` turns conceal off and `GET` reports it.
-𖥔 `GET /server/info` is public and describes the server: name,
-description, owner, URL, versions and features. It reads
-`T1_SERVER_NAME`, `T1_SERVER_DESCRIPTION`, `T1_SERVER_OWNER` and
-`T1_SERVER_URL`. `POST /auth/t1/validate` also returns the key's family
-and access level.
-๋࣭⭑ **`waiter serv` letters group in any order.** `waiter serv -ArEK
-<key> -I <ip>` sets the server up, refreshes it, seals the key and
-checks it. A letter that takes a value ends its group or stands alone,
-and waiter refuses `-AKE key` instead of guessing. Inside a group, `r`
-is refresh, and `Rf` and `ud` keep their meanings.
-𖥔 `-b` gives each bare string to the option it looks like: a key, a
-server, a port, `KEY=VALUE`, a limit, a kit or a config file. waiter
-prints what it decided. A CIDR range, or two strings that look like the
-same thing, is refused rather than guessed.
-𖥔 `-u` updates hypernix to at least the server's version, and `-ud` to
-exactly that version. `--dry-run` prints the pip command without running
-it.
-𖥔 `-k` installs a kit, which is a folder or `.zip` with a `kit.json`, to
-`~/.hypernix/waiter/kits/`. `waiter kits` lists, removes and runs
-them. Archives are checked for paths that escape the kit's folder and
-for symlinks. A kit is code that runs as you, so it is the same trust
-decision as `pip install`.
-𖥔 `-c` turns the server's conceal mode on and `--no-conceal` turns it
-off.
-𖥔 `-T` opens the TUI's control pane: network policy, keys and security
-events, with actions to block, allow, remove and set unlisted. It opens
-only for a verified administrator holding a level-9 T2 or v2.1 key, and
-the server still checks every action.
-𖥔 `-Y` prints the server's public card.
-𖥔 `-S` checks this client (file mode, a key stored as plain text,
-`cryptography`, version), then the server (TLS, configuration warnings,
-headers, keyless access), using public endpoints only.
-𖥔 `-e` locks waiter's config with a password (Rotorvault and
-scrypt). Every command then asks for the password or reads
-`HNX_WAITER_PASSWORD`, and `--unlock` removes the lock.
-𖥔 `-E` seals the key as a v2.1 kit when the server supports it. When it
-does not, `-E` falls back to encryption at rest as before.
-๋࣭⭑ **Siri can name chats and models.** HyperLink has `ChatEntity` and
-`ModelEntity`, each with an `EntityStringQuery` that asks the paired
-server. New phrases: "Load ‹model› in HyperLink", "Switch HyperLink to
-‹model›", "Read ‹chat› in HyperLink" and "Send a message to ‹chat› in
-HyperLink". The phrases without a name still work. The app calls
-`updateAppShortcutParameters()` whenever chats or models refresh, which
-is how Siri learns the names.
-𖥔 The T1 SDK gains `T1Client.server_info()`, `conceal()`,
-`conceal_status()`, `t2c_public_key()`, `t2c_devices()`,
-`t2c_revoke_device()`, and `seal_key()`, which turns a T1 or T2 key into
-a registered v2.1 kit. A kit given as the credential is never sent: the
-transport derives the day's key from it for each request.
-𖥔 `hnx-t1` is the short name for `hypernix-t1`. It runs the
-`hypernix-t1` installed next to it, so the two cannot drift.
-𖥔 hyped-pro finds the T1 server. After `HNX_T1_API_URL` and its own
-`/t1api` setting, it reads waiter's saved server and then hypernix-t1's
-`.env` (`T1_HOST`/`T1_PORT`, with 0.0.0.0 reached on loopback). It reads
-waiter's config only when that config is plain JSON, because decrypting
-it would create waiter's master key. `/t1api` shows where the address
-came from.
-
-### Fixed
-
-𖢥 **hyped-pro said "connection refused" to anyone whose server was not
-on 127.0.0.1:8000.** It knew only its environment variable, its own
-setting and that default, so a server on another port, or one waiter was
-already pointed at, could not be reached. See above. A refused
-connection now also says where the address came from and what to run
-(`hnx-t1 status`, `hnx-t1 start` or `/t1api <url>`), including when the
-SDK wraps the refusal in its own error.
-𖢥 **A public-only fetch could be steered to a private address.** The
-fetch resolved the name to check it, then let urllib resolve it again to
-connect, so a name that answered differently the second time (DNS
-rebinding) reached an address that was never checked. It now connects to
-the checked address, sends the real `Host` header, and verifies TLS
-against the name. Each redirect is checked and pinned the same
-way. Found by CodeQL.
-🐛 The HyperLink shell's working directory, which comes from the phone,
-is resolved (symlinks included) against `T1_HYPERLINK_SHELL_ROOT` and
-refused if it leaves it. The root defaults to the server user's
-home. Relative paths start at the root, and `GET /hyperlink/shell`
-reports it. Found by CodeQL.
-🐛 Studio failed on start with "SettingsView is not a
-type". `qt_add_resources` listed every QML view except that one, on
-`main` too.
-🐛 `hypernix-t1 help` printed "override: command not found". A pair of
-unescaped backticks in the usage text ran it as a command.
-🐛 On Windows, hyped-pro's editor saved a CRLF file back as `\r\r\n`, and
-its stale-write check never matched. Both now read and write bytes.
-🐛 tvtoppro's disk panel crashed on its first poll on Windows, because
-`os.statvfs` does not exist there. It uses `shutil.disk_usage`.
-🐛 tvtop++ scanned every process with its owner and command line on every
-frame, which takes about a second on Windows. It reuses the table for 5
-seconds.
-
-### Tests
-
-🧪 Rotorvault: 31 tests, including the published Blowfish and Twofish
-vectors, a flip of every byte of a sealed message, and the wrong key,
-RSA key or password.
-🧪 v2.1 keys: 22 tests through the real app. Yesterday's and tomorrow's
-key are accepted and nothing older. The kit is refused as a
-credential. An edited level is refused, and one device's key cannot bind
-a second key.
-🧪 Conceal and retention: 13 tests. A level-2 key is refused. The address
-is masked everywhere except on security records. A sweep keeps memories,
-a fresh session, security records and another person's data. The sweeper
-thread starts and stops with the server.
-🧪 `waiter serv`: 37 tests of grouping, `-b` and every new letter against
-the real app through the SDK, among them a kit whose archive tries to
-escape its folder, and a control pane refused to a T1 admin key, a
-level-8 T2 admin key and a level-9 key that is not an admin.
-🧪 SDK: 6. Siri: 5 structural checks on the Swift. hyped-pro
-discovery: 5, covering each source in order, an encrypted waiter config
-left untouched, and the advice when the SDK reports a refusal.
-🧪 Documentation: `tests/test_docs_current.py` checks that every relative
-link and anchor in the README, the iOS README and the wiki resolves. It
-also checks that `wiki/CLI.md` covers every `hypernix` subcommand, that
-every `waiter serv` letter has a row in its flag table, that every `T1_`
-setting is in `examples/t1api/.env.example`, and that every `hypernix.…`
-module a current page names imports.
-📚 `wiki/CLI.md` gains the commands it never had (`wakeup`, `dilute`,
-`neuron`, `errors`, `elements`, `hyprslug-headers`, `path`, `wiki`),
-with examples run against the real parsers.
-📚 `examples/t1api/.env.example` documents the 31 server settings it
-lacked.
-📚 The T1 API pages give the current version, v1.1.26.9.0.0, and links to
-moved modules are fixed.
-📚 The Roadmap's 0.72.6 list is marked with what has shipped.
-
-### Known Issues
-
-❗ Siri's new phrases have been checked by structural tests and the CI's
-iOS build, not on a device.
-❗ Conceal limits what the server *keeps*. It cannot change what the
-network, a reverse proxy, or the operator's own logs record before a
-request reaches the T1 API.
-
-⸻
-
-
-## 0.72.5.post16 — 2026-09-23
-
-The 0.72.6 third batch. Element modules, error codes, and
-the Pressure Cooker deprecation — which turned out to be the smaller
-part of its own change: moving a default off the deprecated V3 meant
-moving it onto V4, and V4 had never trained through `NeoOven.train`.
-Neither had V5, V5S or V6.
-
-### Added
-
-๋࣭⭑ `hypernix.elements` — addons named after the periodic table, with
-`hydrogen` (H, 1) as the framework: a spec per element, a registry, and
-permissions that are checked at the moment of use rather than listed for
-humans to read. `natural_gas` attaches elements to a Neo Oven so they
-run around each generation, per instance and reversibly. Periods 6 and 7
-(element 55 onward) are experimental, decided from the atomic number so
-nothing added there later escapes the gate.
-๋࣭⭑ `magnesium` (Mg, 12) — lowers other apps' priority while a model
-runs, and optionally confines their cores. Never touches terminals,
-shells, Python, HyperNix, llama.cpp, the desktop's compositor and audio,
-kernel threads, this process's tree, or other users' processes. Plans
-before it acts, and puts back each process's *original* priority rather
-than "normal".
-๋࣭⭑ `carbon` (C, 6) — tidies model output (never inside a code fence),
-expands `::snippet` shortcuts, and loads elements you write yourself
-from `~/.hypernix/elements/`. `hypernix elements new Na` scaffolds one.
-๋࣭⭑ Error codes: `L#-NNNNN.kS` — a domain letter, a tier, five digits,
-a kind `a`–`f` saying whose problem it is, and a severity 1–5. Every
-code is declared in one catalogue with a one-line explanation and a
-remedy, and an unregistered code cannot be raised. `hypernix errors
-explain R3-00020.a3` looks one up.
-𖥔 The T1 API's error envelope carries `hx_code` beside `code`. `code` is
-a published contract and stays; each of its 42 values maps 1:1 onto its
-own new code.
-๋࣭⭑ Models call tools the way they were trained to. A hosted model
-returns structured `tool_calls`; a local GGUF usually writes the call as
-text — `<tool_call>` (Hermes, Qwen), `<|python_tag|>` (Llama 3.1+),
-`[TOOL_CALLS]` (Mistral), or a fenced JSON block — and when nothing reads
-those, the call is shown to the person as the answer and nothing runs —
-which, more than the model's reasoning, is most of why local models looked
-bad at calling API endpoints. `hypernix.runtime.toolcalls` reads all of
-them, repairs the JSON mistakes models make, and checks arguments against
-the tool's schema with an error naming the exact field, so the model can
-correct itself.
-๋࣭⭑ The T1 API as tools. A model under HyperLink can ask the server what
-is loaded, how busy the GPU is, what it remembers, or search the web — each
-tool one real route, called with **the caller's own credential**, so it can
-never do more than the person could by hand. Keyless callers get none (the
-server calling itself comes from loopback, which can be a more trusted
-network than the phone's), and loading or unloading models is offered only
-to someone who could do it themselves.
-𖥔 On the built-in runner, HyperLink teaches the model the tool format in
-one system message with a worked example built from a real tool.
-๋࣭⭑ HyperLink: models on the iPhone itself, reachable. Search Hugging
-Face, see whether a model fits this phone before downloading it, download
-with progress and pause, load it, and chat with it — from a new *On
-iPhone* tab, and from the pairing screen for somebody with no PC at all;
-the search, fit estimate, download manager and llama.cpp runner already
-existed, about 1,800 lines of them, and no screen created any of it.
-𖥔 HyperLink: swipe left on a message to edit or resend it; on a reply,
-to retry. Editing now asks again — it used to rewrite the message and
-stop, leaving the thread ending on an unanswered question. Resend is an
-edit with the same text, so the new answer replaces the old one rather
-than stacking under it, and it confirms first when it would remove more
-than that one reply. VoiceOver gets the same actions without the swipe.
-𖥔 `POST /hyperlink/sessions/{id}/chat` (and `/chat/stream`) take
-`regenerate: true` to answer the thread's last message without adding a
-copy of it.
-𖥔 `hypernix-t1 launch-script -$ 'CMD'` — a bash or fish command as a
-job, with everything a script job gets: it survives the SSH connection
-closing, has logs and a status, and restarts as a command rather than
-as a missing script. `--shell` picks the shell; `auto` is bash first,
-because a launched job is scripting and most copied snippets are bash;
-fish cannot type a bare `$`, so there fish users write `'-$'` or
-`--shell-command`.
-𖥔 `hypernix-t1 override lms move-dir [FOLDER]` — points LM Studio's
-models folder somewhere else, `~/.hypernix/models` by default, so LM
-Studio and HyperNix share one copy of every GGUF. Backs the settings file
-up first (`override lms revert` restores it), writes atomically keeping
-every other key, refuses while LM Studio is running (it can rewrite its
-settings on exit), and moves existing models only with `--move-files`.
-𖥔 `hypernix elements {list,info,plan,run,new}`. `run` holds until
-Ctrl-C and restores on the way out — an element that changes other
-programs and then exits leaves nobody to change them back.
-๋࣭⭑ `hyped-pro` is an OpenTUI app — TypeScript on Bun, the stack
-opencode's terminal UI is built on — in the site's colours: the
-`#0d0d0d` page, the red accent, the same greys. A header, the
-conversation, a bordered prompt and a line of keys, laid out the way
-opencode's is; markdown replies, a model picker on ctrl+p, esc to stop
-a reply, `/noodle`, `/t1`, `/key` and `/retry`. It drives the same
-Python bridge as before, so models, keys and T1 settings carry over. The
-first run installs `@opentui/core` with `bun install`, into the package
-or, when that is read-only, into `~/.hypernix/hyped-pro/<version>`.
-๋࣭⭑ `hyped-pro` works with git. `/git` shows status, `/diff` draws each
-changed file coloured with line numbers, and `/git add`, `commit`,
-`switch`, `restore`, `log`, `branches`, `push` and `pull` do what they
-say. The header shows the branch, how far it is ahead or behind, and how
-many files have changed. The model gets git tools too: reading (status, diff,
-log, show, branches) and staging are free, while committing, switching
-branch and discarding changes wait for the person to press `y`. It has no
-push, pull, reset or rebase at all.
-๋࣭⭑ `hyped-pro` edits files. `/files` browses the workspace, and `/edit`
-opens a file in a real multi-line editor (ctrl+s saves, esc closes, and
-the first esc on unsaved work only warns). A save refuses to overwrite a
-file that changed on disk after it was opened. The model gets
-`write_file`, `move_file` and `delete_file`, and deleting asks first.
-𖥔 Consent questions reach the person in hyped-pro. The bridge sends an
-event line and waits for the answer, so a question appears in a box above
-the prompt and no other key is taken while it is open. Tool calls show as
-they happen. hyped-plus never asks for these, so there a gated tool is
-refused unless `HYPERNIX_TOOL_POLICY=allow`, because nobody can answer.
-๋࣭⭑ HyperLink names chats with the model. After the first reply the model
-is asked for a two-to-six-word title, the answer is cleaned (models
-write `Title: "…"` as often as the title), and anything unusable falls
-back to the first line. The stream sends it after `done`, so the reply
-is never held up. "Rename with AI" asks again; a setting turns it off.
-๋࣭⭑ HyperLink compresses long conversations instead of forgetting their
-start. When a thread reaches 85% of the context budget its oldest part
-is summarised once, before it would have been dropped. Every message
-stays in the transcript, where a marker shows the summary the model is
-now sent, and "Compress conversation" does it on request.
-๋࣭⭑ Private chats. A chat hidden with Face ID leaves the list and opens
-behind Face ID, Touch ID or the passcode, and locks again whenever the
-app leaves the foreground. Hiding is per phone and per server; the chat
-itself stays on the PC.
-๋࣭⭑ Memories are organised. The model's memory tool filed every fact under
-its own key, so the screen grew one category per fact. Facts now go
-under topics (About you, Preferences, Work, Projects, Tech, Health,
-Places, Schedule) with the key kept. "Organise" refiles older ones and
-leaves a category a person chose where it is. Categories can be renamed
-or merged, memories moved, and the screen searched.
-𖥔 The photo options follow the model. Each model in `/hyperlink/models`
-says whether it can see images, from LM Studio's own `vlm` flag, a GGUF's
-`mmproj` projector, or the family's name. The photo options are hidden
-for a model that cannot, and offered with a warning when nothing says.
-𖥔 A shell on the server from the phone, off unless the server's operator
-sets `T1_HYPERLINK_SHELL=1`. It runs one command at a time with a
-timeout that kills the whole process group, caps the output, and writes
-each command to the audit log before it runs. The model is never given
-it.
-𖥔 Chat bubbles have tails, as in Messages, on the last bubble of each run
-from one speaker.
-
-### Changed
-
-🔁 Qwen 3.5, 3.6, 3.8 and 3.8-Flash presets are the Qwen3.5 architecture
-(`qwen3_5_text`), not Qwen3. The text type rather than `qwen3_5`, which
-is the multimodal composite and has no language-model shape fields.
-🔁 `instant_pot` trains with Pressure Cooker V4 by default. It was V3,
-and a default HyperNix chose must not produce a deprecation warning the
-user has to act on. `use_pressure_cooker_v3: true` still selects V3.
-🔁 `hyped-plus` is the readline TUI that was called `hyped-pro` until
-now, and `hyped-pro` no longer starts it. Both commands ran the same
-program before.
-
-### Deprecated
-
-❌ Pressure Cooker V1 (`PressureCooker` and its tiers) and V3
-(`PressureCookerV3` and subclasses). They warn on construction, never on
-import — V4 imports V3's helpers, and an import-time warning would reach
-every V4 user. `FutureWarning`, because `DeprecationWarning` is hidden
-unless raised from `__main__`. V4 is kept.
-❌ There is no V2 to deprecate: no `PressureCookerV2` has ever existed
-in this codebase. The original V1 docstring listed one by mistake, which
-`wiki/Optimizers.md` already records.
-❌ `UniversalCooker` is not deprecated. It routes, and its default sends
-people to the current V5 family; only `variant="legacy"` reaches V1,
-whose tiers warn on their own.
-
-### Fixed
-
-🐛 Studio's stub engine failed to build on ubuntu-22.04. The
-`[[maybe_unused]]` that quieted clang about an unused member is not
-accepted on a data member by GCC 11, and under `-Werror` that is an
-error; the stub now reads the member instead, which satisfies both.
-🛡️ `/web/v1/summarise` reports a failed fetch in its own words (the HTTP
-status, "not public", "not text", "could not be reached") and never the
-network exception's text, which can carry paths and internals. The cause
-is in the server log.
-𖢥 **No hyped-pro tool refused to write under `.git`.** `create_file` and
-`edit_file` checked that a path stayed inside the workspace, and `.git`
-is inside it: a model could write `.git/hooks/pre-commit` and have it run
-at the next commit. Nothing writes under `.git` now.
-𖢥 **Attaching magnesium to an oven reniced the machine before refusing.**
-`natural_gas.attach` activated each element and only then checked it may
-touch the oven, so asking for magnesium lowered every other process's
-priority and then raised the permission error. Every element is checked
-before any is started, and a failure part-way stops the ones already
-started.
-𖢥 **Magnesium promised to put priorities back and could not, unless root.**
-An ordinary user may raise another of their processes' niceness but not
-lower it again (Linux allows it only down to `20 - RLIMIT_NICE`, macOS not
-at all). Magnesium now works that out first and leaves a process alone,
-marked `irreversible`, when it could not undo the change;
-`allow_irreversible` in its config opts in. The test that restored a real
-process had only ever run as root, because CI had no psutil.
-𖢥 **The server could be made to fetch its own network.**
-`/web/v1/summarise` fetches a URL the caller names, and paired phones and
-models (through `web_summarize`) can call it. Nothing stopped that URL
-being `127.0.0.1`, the LAN, or a cloud metadata address. Only public
-addresses are fetched for a caller now, checked after DNS, before
-robots.txt, and again on every redirect. Local tools such as hyped's
-`read_web_page` are unchanged. Found by CodeQL.
-🛡️ A failed summariser model or page fetch no longer returns the
-exception's text to the caller; it goes to the server log.
-🐛 The summariser's sentence splitter could backtrack on long runs of
-spaces. It splits on the single space the text is normalised to.
-🐛 Magnesium without psutil raised "the operating system refused". Nothing
-refused: a package is missing. New code `S1-00060.b3` says so, and
-`pip install 'hypernix[elements]'` installs it (the dev extra too, so CI
-runs magnesium against real processes).
-🐛 `hyped-pro` looked for `~/.bun/bin/bun` on Windows, where the
-installer writes `bun.exe`.
-𖢥 **0.72.6 pt2's preset fix broke RoPE for twenty-three presets.**
-Correcting `model_type` also changed the RoPE convention derived from
-it: `_default_rope_style` named three half-rotate types and sent the
-rest to interleaved, which had only worked while the table called every
-Qwen3 a `qwen2`. Every Qwen3, GLM4, Gemma, Phi3, Llama4, Nemotron,
-DeepSeek-V3 and GPT-OSS preset moved to the wrong convention in the same
-commit. A wrong RoPE convention does not raise; the model loads and
-produces fluent nonsense. It is now an allowlist of *interleaved* types
-(HyperNix's own, and GPT-NeoX-style) with half-rotate as the default,
-which is the direction that fails safe.
-𖢥 **Pressure Cooker V4 never trained through `NeoOven.train`.** It took
-a learning rate only inside a `ScheduleConfig`, and `train` passes a bare
-`lr`, so it raised `TypeError`. It accepts `lr`/`peak_lr` now.
-𖢥 **Nor did V5, V5S or V6** — twice over. `OptimizerBase` never put an
-`lr` in its param groups, and every PyTorch scheduler reads one at
-construction; `train` always wraps the optimizer in `CosineAnnealingLR`
-— and `train` hardcoded AdamW's `betas`, which these three do not take,
-so it is now passed only to an optimizer that names it — not merely
-one that accepts `**kwargs`, since theirs forwards to a base that
-rejects it.
-🐛 Qwen3.5-family snapshots wrote a flat `rope_theta` that their config
-class ignores; they write `rope_parameters` now. Reading always handled
-both spellings.
-𖢥 **HyperLink could not use web search at all.** `/web/v1` authenticated
-with the T1-key dependency, which checks a paired phone's `HLNK_` device
-token as a T1 key and refuses it — so the client these endpoints were
-built for got a 401 on every one, while every test, all using T1 keys,
-passed. It takes device tokens now, like every other HyperLink route.
-𖢥 **What the model remembered never reached the Memories screen.** Its
-memory tool wrote a JSON file in the tool workspace, which nothing reads,
-so it said "I'll remember that" and the screen stayed empty. In a
-HyperLink chat it now writes the person's real memories, marked as the
-model's, updating rather than duplicating, never deleting one the person
-wrote — and only when that person's auto-memory setting is on.
-𖢥 **Web search from HyperLink found almost nothing.** The model's search
-tool used DuckDuckGo's instant-answer API, which answers "capital of
-France" and comes back empty for nearly every real question. It uses the
-keyless `/web/v1` engine now, with instant answers as the fallback.
-𖢥 **An HTTP error page could be installed as an on-device model.**
-URLSession delivers a 401 or 404 body as a finished download, and its
-size matched its own Content-Length — so a gated repository's "access
-restricted" page landed in the installed list and failed to load like a
-broken GGUF. The status and the `GGUF` magic bytes are checked first,
-and a 401/403 says to accept the licence and add a token.
-🐛 An on-device download that finished while the app was suspended was
-never installed: the background session was created only on the first
-download, so there was nothing for iOS to deliver the result to.
-🐛 A misspelt tool name is answered with the nearest real ones, never
-auto-corrected — correcting `delete_model` to `delete_models` is how a
-typo becomes an action.
-🐛 Magnesium's plan put kernel threads (`kworker`, `ksoftirqd`, …) in
-the "limit" column when run as root, which is how it reaches other
-users' apps. Found by running it against a real process table; kernel
-threads are now told apart by their empty command line.
-🐛 The error registry accepted a code re-declared with a *different*
-explanation, which is two meanings behind one searchable number.
-
-### Tests
-
-🧪 Tool calls: 53 tests across every format and every refusal — a JSON
-answer the person asked for is not executed, a mutating tool is refused
-even when named. Plus an end-to-end test under a real uvicorn: a paired
-phone sends a message, the model writes `<tool_call>` as a GGUF does, the
-server calls itself with the phone's token, and the phone gets the answer.
-🧪 HyperLink: 13 tests through the API for regenerate, model memories and
-search, and 29 structural checks on the Swift — chiefly that every
-on-device piece is reached by a screen, following the chain from app to
-hub to view, since that it was not is what the bug was.
-🧪 `elements`: 111 tests, magnesium's against a real process outside this
-one's tree — reniced, then restored to its exact original priority.
-🧪 `errorcodes`: 55, most asserting a refusal.
-🧪 Pressure Cooker: 23, including V4, V5, V5S and V6 each trained end to
-end through `NeoOven.train` — a constructor test passed while every one
-of them was broken there.
-🧪 RoPE: every preset's convention asserted; the pt2 regression would
-have failed eleven of them.
-🧪 Every guard above mutation-checked. Four first attempts at tests
-passed for the wrong reason and were rewritten — a process already at
-nice 0 cannot tell "restored" from "reset to 0", and a user element
-claiming a built-in symbol is refused as a duplicate before the rule
-under test is reached.
-🧪 hyped-pro: 56 `bun test` cases for the bridge protocol, commands,
-conversation and preferences, run in CI with the type check, and 33
-pytest cases for the launcher and packaging. The palette is read from
-`docs/src/index.css` and compared, so the two cannot drift, and the
-wheel and sdist are checked to carry the app and never its
-`node_modules`.
-🧪 hyped-pro git and files: 64 tests against real repositories, among
-them a commit message that looks like an option, a file named `-p`, the
-repository's own hooks still running, and a consent answered over a real
-bridge subprocess. Plus 29 bun tests for the git and file views. Each
-guard was checked by removing it: the `.git` refusal, the gate, the ref
-check, the `--` before paths, the stale-write check and cancellation
-during a question.
-🧪 HyperLink titles, compression, shell, memory and images: 68 tests
-through the real API with a scripted model, among them an upgraded
-database missing the new preference columns and a shell pipeline killed
-on timeout, and 21 structural checks on the Swift, which follow each new
-screen back to a route the server really has.
-
-### Known Issues
-
-❗ The error-code catalogue covers the T1 API, the runtime, elements,
-models, data, quantisation, training and the system layer. Most older
-modules still raise their own exception types; they adopt codes as they
-are next changed rather than in one sweep.
-❗ `hyped-pro` needs Bun 1.3 or later, and network access once to fetch
-`@opentui/core`. Without Bun it says how to install it and exits;
-`hyped-plus` needs only Node.js.
-❗ The HyperLink Swift for these features has been checked by those
-structural tests and by the CI's iOS build, not on a device.
-
-⸻
-
-## 0.72.5.post15 — 2026-09-22
-
-The 0.72.6 second batch. Two of these are fixes for things that were
-working exactly as written and wrong anyway: gather did stop, an hour
-after it looked like it should, and Neo Oven's presets were complete,
-internally consistent, and describing the wrong architectures.
-
-### Added
-
-๋࣭⭑ `hypernix.dilute` — best-of-n sampling and self-distillation. One
-model answers each prompt four to six times across a **temperature
-ladder**, an evaluator scores them, and the winner is kept as a
-training trace. `run` collects and writes at the end; `jit` streams
-each trace to the file as it is made, so a run killed at hour three
-leaves three hours of traces rather than nothing; `inspect` reads a
-trace file back and says whether it is worth training on.
-๋࣭⭑ `dilute` evaluators — a second model as judge (or the generating
-model judging its own samples, which needs nothing else in memory), a
-plain Python function for a task with a checkable answer, and a length
-heuristic for smoke-testing a pipeline.
-𖥔 `gather -f sqlite` — one database, one row per page, full text in it
-and the link graph beside it, for a corpus too big to hold as files.
-𖥔 `gather --max-seconds` — a wall clock, 20 minutes by default, `0` to
-remove it.
-𖥔 `vera -T h` — hours as a timeout unit, and `-tt/--total-timeout` for
-the whole run rather than a stage.
-𖥔 `vera -Na` — run the checks with no AI at all.
-𖥔 `vera -m` — pick a GGUF from `~/.hypernix/models` interactively.
-𖥔 `hypernix.system.hubcompat` — signature-checked calls into
-`huggingface_hub`, so 0.x and 1.3.x both work.
-𖥔 T1 API `v1.1.2026.9.0.0`.
-𖥔 Neo Oven presets for GLM-5.3, Qwen3.8, Qwen3.8-Flash, Muse Spark
-and Spark X2.5 at 1.7b and 4b.
-๋࣭⭑ `/web/v1` — keyless web search for HyperLink and hyperchat. Search,
-summarise, and three settings written in the request's own grammar —
-`s1` the browser family to present as, `s2` the engine (DuckDuckGo,
-Google, Wikipedia, or `allowlist` for no engine at all), `s3` an API
-key for people who have one. No key is needed for any of it.
-𖥔 `/web/v1/summarize` works with no model loaded — extractive by
-default, and not as a placeholder: a phone asking for the gist of a
-page should not wait for a model load, and a server that has not
-loaded one is the common case.
-๋࣭⭑ `hyperchat` — several prompts in flight, or a queue when they
-cannot be. With `T1_HYPERCHAT_MULTI` on, N copies of the model answer N
-prompts at once; with it off, prompts wait in the order they arrived
-and a client can ask how many are ahead of it. Callers do not branch on
-which: both are `Hyperchat`, both return a ticket, and the queue is the
-pool with one worker in it.
-𖥔 `ManagedPool` — N llama.cpp processes on consecutive ports, skipping
-the T1 server's own, loaded all-or-nothing.
-𖥔 `GET /runner/hyperchat` — the mode, the core budget and the live
-queue depth, readable by any HyperLink caller.
-𖥔 HyperLink: several photos in one pick, capped, uploaded in the order
-they were chosen, with the ones that worked kept when one cannot be read.
-𖥔 HyperLink: the servers list shows the hyperNix the machine is
-*running*, and says so in orange when a pip upgrade has landed but the
-server has not been restarted into it.
-
-### Fixed
-
-𖢥 **gather looked like it never stopped.** The loop was correct — it
-ends when the queue empties or the page ceiling is hit — but a calendar,
-a session id or a faceted search produces unique URLs faster than a
-crawl consumes them, so the queue never empties and it ran to
-MAX_PAGES: 5000 pages at one second of politeness is eighty-three
-minutes past the last page worth having. There is now a wall clock, a
-"several levels produced nothing new" stop, and `stopped_because` on
-the result — "it finished" and "it hit a ceiling with 810,000 URLs
-queued" look identical from outside and mean opposite things about
-whether the data is complete.
-𖢥 **Neo Oven's presets named the wrong architectures.** `gemma`,
-`gemma2`, `gemma3`, `phi3`, `glm`, `glm4`, `qwen3`, `llama4`,
-`nemotron` and `gpt_oss` are all registered separately in transformers
-and all of them were mapped to `llama` or `qwen2`. The `model_type`
-goes into `config.json` and is what `AutoModel` dispatches on, so the
-file was wrong from the moment it was written. Thirty-seven presets
-rewritten against the real registry and the real config defaults —
-GLM's `rms_norm_eps` is `1.5625e-07`, not the `1e-5` that was there.
-𖢥 A crawl of a site twice silently overwrote the first run. Output now
-goes to `~/.hypernix/data/<site>/<session>/`.
-🐛 The first version of gather's clock checked between levels and
-overshot a 4-second budget by 33 seconds — one level of a faceted trap
-held 27,931 URLs. A level is not a unit of time; it is chunked now and
-the same trap stops at 4.1s.
-🐛 `huggingface_hub` 1.x removed `direction` from `list_models` and
-`list_datasets`, so `scavenger` raised `TypeError` on a current install.
-🐛 `hubcompat` landed at the top level of the package rather than in a
-category subpackage, which the layout table forbids — caught by the
-suite rather than by review, which is the point of having it.
-𖢥 A server row read `v1.1.26.9.0.0` — the T1 API generation, labelled
-as if it were the machine's hyperNix. It is the hyperNix version people
-upgrade and then check, and it is not the number that was on screen.
-𖢥 "Updated 2m ago" in the chat list meant "changed", not "said
-something". The store bumped `updated_at` on any write, so renaming
-eleven old conversations sent all eleven to the top of the list looking
-like they had just replied. There are two clocks now: `updated_at` for
-a prompt or a reply — including one that arrived in the background —
-and `touched_at` for everything else.
-𖢥 A second prompt arriving mid-answer had two fates and both happened
-by accident: it contended with the first inside one llama.cpp and both
-got slower, or it was dropped. HyperLink showed neither — it showed a
-spinner that did not move.
-𖢥 `eth auto` fell through to stock on a warm GPU. The auto-level table
-was three fixed temperatures and one derived from `THERMAL_ABORT_C`;
-lowering that threshold to 60 °C put the derived band *below* two of
-the fixed ones, so the table stopped ascending, the level-5 band became
-unreachable, and a GPU at 80 °C got nothing instead of the small bump
-it was meant to. The bands are fractions of the abort temperature now,
-which reproduce the old table exactly at the old threshold, and a test
-asserts the ladder ascends at any threshold.
-
-### Tests
-
-🧪 `dilute`: 89 tests. The assertions are on *spread* and *separation* —
-did the warm end of the ladder ever win, did the evaluator actually
-separate the samples — because best-of-n's failure mode is that it
-keeps working: break the ladder or the tie-break and the run still
-finishes, still writes a file, and still reports a trace count that
-looks right.
-🧪 Eight mutations reintroduced by hand and all eight caught: ties going
-to `max()`, the ladder collapsing to one temperature, the judge's score
-read as the first number in the reply, "longer is better" length
-scoring, an unreadable judge reply scoring zero, the judge sampled
-warm, the model reloaded per call, and `jit` buffering instead of
-flushing.
-🧪 `gather`: 57 tests including a real local HTTP server and a faceted
-trap, to tell "finished" from "hit a ceiling".
-🧪 `neo_oven`: every preset's `model_type` checked against what
-transformers actually registers, rather than against the table.
-🧪 `updated_at`: 18 tests pinning which write moves which clock, plus
-the migration — `CREATE TABLE IF NOT EXISTS` does not alter an existing
-table, so without the `ALTER` the first rename after upgrading is an
-OperationalError. Six mutations caught, two of which the first version
-of the tests missed because the read-side fallback hid them.
-🧪 HyperLink: 18 structural checks on the Swift, since there is no
-toolchain here. Chiefly that both new `Codable` types decode by hand —
-a synthesised decoder throws on a key that is missing from every record
-already on disk, the `try?` around `restore()` swallows it, and the
-update signs everybody out.
-🧪 `hyperchat`: 40 tests against real threads, asserting on the core
-budget and on *ordering* rather than on "the answer came back" — a pool
-that allocates every core still answers prompts, right up until the
-server stops accepting the next request. Eight mutations caught,
-including a LIFO queue and a pool that allocates the reserved core.
-🧪 `/web/v1`: 90 tests, most of them asserting a *refusal* — the
-failure mode of a hand-written grammar is that it accepts things, and a
-parser that shrugs at what it did not understand leaves a server
-configured one way and an operator certain it is another. Eight
-mutations reintroduced and all eight caught, including the allowlist
-matching by suffix without the dot (`nota.test` passing for `a.test`)
-and the API key reaching a log line intact.
-
-### Known Issues
-
-❗ `dilute`'s tie-break is seeded per attempt, so two runs with the same
-seed and the same prompts agree — but a run resumed from a different
-prompt offset will not reproduce the first run's picks.
-
-⸻
-
-## 0.72.5.post14 — 2026-09-22
-
-First entry written to the format in `Changelog-guide.md`: dated
-header, the guide's categories, one legend symbol per line. Earlier
-entries keep their own shape — the guide says corrections are made
-explicitly rather than by silently rewriting history, and restyling a
-thousand lines of it would be exactly that.
-
-### Added
-
-๋࣭⭑ `hypernix.neuron` — a module for training small networks that *act*
-rather than predict: supervised, imitation (behaviour cloning and
-DAgger), and reinforcement learning (REINFORCE and DQN), with
-evaluation as a separate call rather than a number the trainer reports
-about itself. Aimed at game automation, quick image recognition and
-robotics. `hypernix neuron {demo,clone,dagger,rl,eval}`.
-๋࣭⭑ `hypernix.audio.processor` — the signal processing between reading a
-file and using it. Windowed-sinc resampling, Audio EQ Cookbook biquads,
-envelope-follower gate and compressor, silence detection and splitting,
-spectral noise reduction, and a `Pipeline` so the order can be written
-down once.
-๋࣭⭑ `auto-scan` workflow — a Monday/Thursday sweep that scans for Python
-bugs, tests the API over two jobs, scans for security problems, applies
-the safe automatic fixes, and asks for a `.post` release only when four
-independent clauses agree.
-๋࣭⭑ `arch-map` workflow — regenerates the architecture chart on every
-published release and updates it **in place**, with a second smaller
-chart for the beta surface (dotted = beta, red = declared but not
-built). Stage is read from the source, not from a list beside it.
-𖥔 Studio settings: two shells (`fish` interactive, `bash` for generated
-scripts) and an allowed context, persisted and validated.
-𖥔 `hypernix.neuron.envs` — two real environments with known optima, so
-the trainers are tested by reaching a score rather than by mocks.
-📚 `wiki/Architecture.md` — generated, with the markers the workflow
-writes between.
-
-### Fixed
-
-𖢥 Studio would not build on macOS or Windows. `LocalEngine.h`'s
-`state_` is unused in the stub build and clang rejects it under
-`-Werror`; GCC has no such warning, so every Linux job was green and
-both other platforms had been red for days.
-𖢥 `registry_locations` crashed when the working directory no longer
-existed — `Path.cwd()` raised from inside a list of *candidate* roots,
-so losing the least important one took down `hypernix-t1 index` and the
-server's own startup with it.
-🐛 `hypernix-t1 launch-script` raised instead of refusing when the shell
-had no working directory, one line above a check that already produced
-the right message for that case.
-🐛 The `BackendUnavailable` remedy named `hypernix-t1 runner load`,
-which had stopped being the shortest way to do it.
-
-### Changed
-
-🔁 Studio's C++ tests compile with **every** compiler on the machine
-rather than the first one found. `c++` is g++ on Linux and clang on
-macOS, so the platforms were compiling Studio with different compilers
-and a clang-only diagnostic could only ever fail where nobody develops.
-
-### Security
-
-🛡️ The security scanner reports `torch.load(..., weights_only=False)`,
-`shell=True`, disabled TLS, `eval`/`exec` and `mktemp`, and an
-unresolved finding **blocks** a release rather than justifying one.
-🛡️ Studio shell settings reject anything carrying a path separator, an
-argument or a shell operator — the value is written into generated
-scripts that run elsewhere, even though Studio executes nothing itself.
-
-### Tests
-
-🧪 `neuron`: 51 tests, every trainer run end to end against a real
-environment until it reaches a known score.
-🧪 `audio.processor`: 58 tests measuring the DSP — -3.0 dB at cutoff,
-40 dB/decade, 48 dB of alias rejection against naive decimation.
-🧪 `autoscan`/`archmap`: 65 tests, every gate clause tested for saying
-no.
-🧪 Studio: `SettingsRules.h` has no Qt in it so its 38 checks compile
-and run anywhere, under g++ and clang++.
-🧪 A guard that every `Theme.X` in every `.qml` resolves — QML turns a
-missing singleton property into `undefined` and carries on.
-🧪 A guard that the sidebar and the `StackLayout` stay the same length,
-since `StackLayout` picks by index.
-
-### Known Issues
-
-❗ `silent-except` reports 83 findings on `src/` — exceptions swallowed
-with `pass` and nothing saying why. Reported, not auto-fixed.
-❗ Two `torch.load(..., weights_only=False)` calls remain in
-`models/old_oven.py` and `quant/convert.py`.
-
-⸻
-
-## 0.72.5 pt3b — a HyperNix runner, not just a bridge
-
-### 𖢥 The runner was starting models nothing could talk to ๋࣭⭑
-
-pt2 gave the server its own llama.cpp process. The chat path did not
-know about it:
-
-```python
-def _chat_bridge(config):
-    if not config.lmstudio_enabled:
-        raise T1APIError(..., "This server has no chat backend configured")
-```
-
-So a machine with no LM Studio installed could load a 70B through
-`/runner/load`, watch the status screen report it as serving, and have
-every single message refused. The runner worked. The conversation was
-impossible.
-
-`hypernix.hyperlink.inference` is the choice that was missing. It picks:
-
-1. **the HyperNix runner**, when it has a model loaded — it is this
-   server's own process, it was started deliberately, and it is holding
-   the VRAM;
-2. **the LM Studio bridge**, when it is enabled;
-3. neither — and the refusal names *both* ways out, rather than the one
-   that happens to be checked first. Naming only LM Studio is how
-   somebody ends up installing it on a machine that did not need it.
-
-The runner wins even when both are available: somebody who loaded a
-model meant that model, and quietly answering from LM Studio would
-answer as a different model than the one on screen.
-
-The same OpenAI client talks to both, because `llama-server` and LM
-Studio both speak that API and a second client would be a second set of
-retry and timeout decisions to keep in step. What is *not* borrowed is
-the label — a reply from this server's own llama.cpp is recorded as
-`hypernix`, because `"lmstudio"` on a machine with no LM Studio is the
-kind of small lie that costs somebody an afternoon.
-
-`GET /hyperlink/backends` reports both and which one would answer now,
-because "this server has no models" and "a model is loaded but nothing
-is serving it" look identical from the app and need opposite fixes.
-
-### Settings, and the bounds that come with them ๋࣭⭑
-
-A new **You** tab — separate from **Server**, because that one is about
-the machine and this one is about the person. Profile, bio, a system
-prompt every conversation starts with, effort level, context bounds, a
-backup model, tools, and memory.
-
-All of it on the server. Two reasons, and the second decides it: a
-person with a phone and a tablet is one person, and these are *inputs to
-generation* — the prompt, the effort level and the context bounds all
-have to be in the process that builds the request.
-
-**The limits come back with the values.** The effort levels in the
-picker and the context bounds are the server's, sent with the settings.
-An effort level the phone offers and the server rejects is a settings
-screen that cannot save, with no way for the phone to know why.
-
-**Clamps are reported, not applied silently.** A context maximum of four
-million is not a preference — it is a number that makes every reply fail
-with an out-of-memory two minutes later and somewhere unrelated, so it
-reads as the model being broken. It is lowered, and the screen says so.
-A minimum above the maximum is swapped rather than refused, because
-somebody who typed them the wrong way round meant the range.
-
-### The system prompt, composed in scope order 𖥔
-
-Who the person is, then how they want to be answered generally, then
-what this conversation is for, then what is known about them. The
-session's own prompt comes *after* the global one so a conversation can
-override the default rather than fight it — the later instruction is the
-one a model follows when two conflict.
-
-### Effort levels ✨
-
-`minimal` through `maximum`. A backend with a real reasoning-effort
-control is given the level by name; one without gets a matching
-temperature and answer length. That second part is an approximation and
-is documented as one — it is scheduling, not thinking. An explicit
-`temperature` on the request still wins, because somebody who sent a
-number meant it.
-
-### A backup model ✨
-
-Tried once when the model you asked for does not answer, and never the
-same model twice — a retry of "nothing is loaded" fails identically.
-When it is used the message records it, because an answer from a
-different model than the one you chose is the single most confusing
-thing that can happen in a thread.
-
-Empty by default: failing honestly beats silently answering as somebody
-else.
-
-### Full tool calling ๋࣭⭑
-
-`/noodle/run` let a *caller* run one tool. Now the model can: it asks,
-the server runs it, and the result goes back into the conversation — so
-"zip the logs and tell me what is in them" is one message rather than
-five. Files, edits, fish commands and archives, in the same per-owner
-workspace `/noodle/*` uses, so anything it writes is something you can
-list and download.
-
-Three rules, each a designed-out failure:
-
-* **Bounded.** Eight rounds, and the model is *told* when it runs out —
-  one that does not know writes its last reply as if it were about to do
-  more, and you get half a sentence about what it was going to check.
-* **Every call is answered.** A missing tool, a raising tool and a
-  switched-off tool all produce a tool message saying so. A `tool_calls`
-  with no matching reply is a malformed conversation, and the *next*
-  turn is built from it.
-* **A refusal is a result.** `allow_execute` off is the operator's
-  answer, not an error — handed back as a normal result so the model can
-  say so, rather than the turn dying with a stack trace.
-
-Off until switched on, because letting a model write files on your
-machine is not a default.
-
-### Memory you can read ✨
-
-Facts carried between conversations — some you wrote, some the model
-noticed. Both shown, both editable, both deletable, and the automatic
-ones marked as such. A model that remembers things about you and gives
-you no way to see them is a model you cannot correct.
-
-### Animations, in one vocabulary 𖥔
-
-`Motion.swift` names every duration and curve. Springs rather than ease
-curves, because chat is all interruptions — a message lands while the
-list is still settling from the last one, and a spring continues from
-where it is where an `easeInOut` restarts.
-
-Reduce Motion collapses every one of them to a cross-fade. That setting
-means "no movement", not "no feedback", so the change is still shown —
-it just does not move.
-
-### ❗ Two and a half hours in the background, honestly
-
-The request asked for the connection to survive 2.5 hours of
-backgrounding. **iOS does not sell that.** `beginBackgroundTask` grants
-about 30 seconds on a modern release — it used to be three minutes — and
-an app that claims otherwise is one that gets terminated and does not
-notice.
-
-So the promise is kept a different way, and it is a better way: *the
-work does not live on the phone*. The server is generating and persists
-the reply as it goes, including when the client disconnects half way.
-The phone uses its ~30 seconds to let go cleanly, remembers which
-conversation was in flight, and reconciles on the way back.
-
-A conversation picked up three hours later is then indistinguishable
-from one that never stopped — which is what was being asked for. The
-2.5-hour window is how long the phone keeps caring; past it the reply is
-still on the server, it is simply no longer treated as in flight.
-
-## 0.72.5 pt3 — the phone can drive the machine
-
-pt2 gave the server the operations. pt3 is the app that uses them, plus
-three bugs that all had the same shape: something reported success and
-did nothing of the sort.
-
-### 𖢥 The inference engine was skipped on every push
-
-"It always skips the inference engine build." The first fix set the
-`workflow_call` default to true, which made *releases* right and could
-not have fixed this — the release path was never the one skipping.
-
-```yaml
-if: ${{ inputs.local_engine }}
-```
-
-The `inputs` context exists **only** for `workflow_dispatch` and
-`workflow_call`. On a `push` or a `pull_request` it is not populated at
-all, so this is null, null is falsy, and the engine step was skipped on
-every single commit to main — with a grey "skipped" in the log that is
-indistinguishable from a deliberate one. `--require-engine` was gated on
-the same expression, so the guard that exists to catch exactly this was
-switched off by it.
-
-A step now decides out loud, with a stated answer for every trigger:
-push builds the engine, a pull request does not, and an explicit true or
-false is honoured wherever it comes from. The old test asserted that the
-condition *mentioned* `local_engine` — which it did — rather than that
-it was ever true on a push, which it never was.
-
-### 𖢥 "The installed T1 thinks it is running an older version"
-
-Three copies of the version number, all maintained by hand, all stale:
-`install-t1.sh` had two (`VERSION` and `T1_API_VERSION`) and
-`bin/hypernix-t1` had the third. The banner said `0.72.2.post5 · t1
-v1.0.26.8.1.1` over an install that was several releases past both.
-
-Nothing was wrong with the install. The only thing that was ever wrong
-was the number printed over it — and from the outside those two are
-indistinguishable, which is why it got reported as the install being
-old.
-
-Hand-editing them is not the fix; it is the bug, once per release. Now:
-
-* `install-t1.sh` derives both from `src/hypernix/__init__.py` and
-  `src/hypernix/t1api/version.py` when it is run from a clone. The
-  literals stay as the `curl | bash` fallback, and a test fails if they
-  drift from the package again.
-* `hypernix-t1 version` asks the installed package — it runs *after* the
-  install by definition, so it can — and reports the T1 version, the
-  Python, and which interpreter it is running as.
-
-### Every model the server has, not the ones LM Studio has open ๋࣭⭑
-
-The models screen showed `/bridge/lmstudio/models`: one source of three,
-and the only one that needs a second application to be running. A
-machine with forty GGUFs in `~/.hypernix/models` showed an empty list
-under a message telling the user to go and open LM Studio.
-
-It now shows the merged catalogue grouped by where each model came from,
-and names any source it could not reach — an empty list used to mean
-either "this server has no models" or "LM Studio is not running", with
-one blank screen for both. Siri's "switch to X" was reading the same
-narrow list and is fixed with it.
-
-### Loading a model from the phone ๋࣭⭑
-
-`/runner/*` existed and nothing in HyperLink could drive it, so "switch
-model" still meant walking over to the PC — the thing the runner was
-built to end.
-
-The new screen shows what is running and where its layers are, and loads
-anything on the server's disk. Every number comes from the server,
-because the server is the thing with the GPU: the backends offered are
-the ones that machine can actually use, and the layer split is computed
-against its real free VRAM.
-
-It will not load without showing the plan first. `/runner/plan` costs
-one request and changes nothing, and seeing "41 of 81 on the GPU" before
-committing is the difference between a decision and a surprise —
-loading evicts whatever people are currently talking to.
-
-Also on the command line, for the machine itself:
-
-```
-hypernix-t1 runner status
-hypernix-t1 runner plan qwen3-8b
-hypernix-t1 runner load qwen3-8b --gpu-layers 24
-hypernix-t1 runner unload
-```
-
-It talks HTTP to the local server rather than loading anything itself:
-starting a second llama.cpp here would take the VRAM the server's own
-copy is using, and the failure would land on the one that was working.
-
-### 𖢥 Stop now stops
-
-The button cancelled the phone's read task and told nobody, so the model
-finished the whole answer into a socket nobody was reading. The local
-cancel still goes first — it is what makes the button feel instant — and
-the server call follows, naming the generation id from the stream so two
-devices on one conversation do not stop each other.
-
-### Markdown 𖥔
-
-Models write markdown; the prose half of a message was rendered with
-plain `Text`, so a numbered list arrived as one wrapped paragraph with
-the numbers buried in it. Blocks are split by hand and each one's inline
-markup parsed with `AttributedString` — not `Text(LocalizedStringKey)`,
-which routes model output through the app's string catalogue and turns a
-`%@` in a reply into a format specifier. Half-written markup renders as
-its own characters, because text that vanishes while the model finishes
-a token looks like a bug.
-
-### Thirty-two servers ✨
-
-One pairing, one keychain account. Pairing with a laptop overwrote the
-desktop, and getting back meant pairing again.
-
-Now a list of up to 32, each with its own keychain account so forgetting
-one leaves the others signed in. Switching clears the previous machine's
-sessions and models rather than showing them under the new machine's
-name.
-
-The risky half is the update, not the list: every install has a record
-in the old shape, and an update that started reading a new key would
-come up unpaired on every device at once — the worst possible way to
-ship a feature about *keeping* connections. The old record is carried
-across and its token left where it is.
-
-### Edit mode ✨
-
-Long-press a message to copy, edit or delete it.
-
-Editing truncates, and that is the feature rather than a side effect.
-Everything below an edited message was written in reply to the *old*
-text, and that same transcript is what gets sent as context on the next
-turn — so leaving it means telling the model it said things it never
-said. The count is shown first: "this removes 11 messages" is a
-decision, finding eleven messages gone afterwards is a bug report.
-
-Only your own messages. Rewriting what the model said turns the
-transcript into a record of something that did not happen.
-
-Deleting is the opposite, for the opposite reason: it removes one
-message and keeps the thread. Deleting is usually about removing
-something that should not be stored — a pasted key, a name — and taking
-the conversation with it would make people keep the secret instead.
-
-### The hardware page, and what it will not pretend to know ✨
-
-CPU, memory, swap, disks and GPUs, answering "is the server busy, or is
-my model just slow?" — which from six hundred miles away cannot be
-answered any other way.
-
-Every reading is optional and the server names what it could not sample.
-A panel that renders a missing GPU temperature as 0°C is a confident
-wrong answer about hardware nobody can see.
-
-### Update commands, with the right interpreter in them ✨
-
-A new screen shows what the server is running and the exact commands to
-move it, each with a copy button.
-
-The reason it is worth an endpoint rather than a documentation page is
-one field. `pip install --upgrade hypernix` on a machine with a system
-Python, a pyenv, and the venv the service actually runs under upgrades
-whichever comes first on `PATH`, prints a cheerful success, and leaves
-the server running exactly the version it was. The server knows
-`sys.executable`; these commands name it. An editable install is told to
-use git instead, because pip will not replace one and a command that
-silently no-ops is worse than no command.
-
-It hands out text rather than running anything. Updating the package
-under a running server is a decision with a restart attached, and a
-phone button that did it silently would be a phone button that takes a
-machine down in the middle of somebody else's conversation — so the
-warning that a pip upgrade does not restart the server is part of the
-answer.
-
-### Uptime on screen 𖥔
-
-A conversation that lost its context, or a pairing that stopped working,
-is usually a PC that rebooted. Nothing in the app said so.
-
-## 0.72.5 pt2 — the server does the serving now
-
-pt1 made HyperNix quantise without llama.cpp. pt2 is about the thing
-that happens next: a machine with forty GGUFs in `~/.hypernix/models`
-that served none of them, because "switch model" meant walking over to
-the PC and using LM Studio.
-
-### Models in `.hypernix/models` were invisible ๋࣭⭑
-
-They were on disk, and nothing listed them. `install-t1.sh` gained two
-options:
-
-```bash
-./install-t1.sh --index-models          # find them, register them, serve them
-./install-t1.sh --index-models --estimate-prices
-```
-
-`--index-models` walks the directory, reads each GGUF's real metadata —
-architecture, parameter count, context length, quantisation — and writes
-a registry, so every model becomes switchable rather than merely
-present.
-
-### A price, instead of `0.0` ✨
-
-`hypernix-t1 index` read everything about a model except what to charge
-for it, and wrote `0.0`. A price of zero on a 70B is not a policy, it is
-an unanswered question that bills the operator.
-
-`--estimate-prices` answers it from five things the indexer already
-knows: **file size, quantisation format, parameter count, the GPU this
-machine has, and — for a mixture-of-experts or a hybrid — the *active*
-parameter count rather than the total.**
-
-That last one is the whole feature. Qwen3-235B-A22B does 22B of work per
-token and carries 235B of weights. Priced by total it comes out **8.8×
-more expensive** than priced by active, and the second number is the
-right one: decode speed follows the parameters that actually run. The
-memory it demands still comes from the file, which is why placement is
-decided from the file's size and speed from the active count.
-
-Every estimate says what it assumed — a derived parameter count, a dense
-assumption, a missing GPU — because a silently-wrong price is worse than
-an obviously uncertain one.
-
-### Running a model without LM Studio ๋࣭⭑
-
-`hypernix.hyperlink.managed` owns a llama.cpp process, so load, unload
-and switch are operations rather than instructions. Layers go where they
-fit: a configurable number on the GPU and the rest in RAM and on the
-CPU, planned against real VRAM and RAM headroom rather than hoped for.
-
-| Model | Card | Placement |
-| --- | --- | --- |
-| 8B Q4 | 24 GB | 33/33 layers on GPU |
-| 70B Q4 | 24 GB | 41 of 81 on GPU, the rest CPU |
-| 70B Q4 | none | 0/81, all CPU |
-
-`POST /runner/plan` answers "where would this go" and changes nothing —
-loading a model evicts the one people are currently talking to, so being
-able to see the consequence first is not a nicety. `/runner/load`,
-`/runner/unload` and `/runner/status` do the rest.
-
-### Who may switch it 🛡️
-
-Changing what a shared server runs affects everybody using it, so it is
-gated harder than reading is. Three ways in, and the operator decides
-how far the third goes: an **admin** key, **partial admin**, or
-`T1_RUNNER_SWITCH_PERM` — an explicit access level an operator grants to
-somebody paired over `waiter` or Tailscale, which is the "access 6+ if
-servers enable it" the request asked for. Off unless set.
-
-### 𖢥 HyperLink could not authenticate over Tailscale at all
-
-"You can not auth using Tailscale in hyperlink, it says it needs an
-authorized t1 key." Three independent causes, and the first meant
-trusted-network mode had **never** worked for any `/hyperlink` route:
-the keyless branch was checked *after* the credential was extracted, so
-a request with no key was refused before the code that allows no key
-could run. The second was IPv6 — the tailnet check covered
-`100.64.0.0/10` and not `fd7a:115c:a1e0::/48`, so a client that resolved
-to a ULA looked like a stranger. The third was ordering: the tailnet
-check ran after the LAN check, and a tailnet address is not on the LAN.
-
-### 𖢥 One model list, from every source
-
-HyperLink showed neither the LM Studio bridge's models nor the
-`.hypernix` ones. `hypernix.hyperlink.catalogue` merges the registry,
-the bridge and the local GGUFs into a single list, each entry saying
-where it came from, and reports per-source what it could not reach
-rather than returning a short list silently.
-
-### 𖢥 Stop now stops the generation
-
-It marked the response finished and left the model generating. The cause
-is worth writing down: a sync generator run through Starlette's
-`iterate_in_threadpool` cannot have its `finally` reached on client
-disconnect, because a thread blocked in a socket read is not
-interruptible. So cancellation is cooperative — a `threading.Event` the
-generator checks between chunks. Proved against a generator that never
-terminates on its own: without the check the test hangs for 33 seconds
-and fails; with it, 3.9 seconds, upstream generator closed, at most
-three further chunks.
-
-### The server's hardware, and how long it has been up ✨
-
-`GET /hyperlink/hardware` returns CPU, memory, disk, GPU and load;
-`GET /hyperlink/uptime` returns both the machine's and the process's.
-Every field is optional and an `unavailable` list names what could not
-be read, because a hardware panel that invents a zero is worse than one
-that says it does not know.
-
-### noodle over the API ✨
-
-`/noodle/tools`, `/noodle/run` and `/noodle/workspace`, with file
-creation, file edits, **fish commands** and **zipping**, each in a
-per-owner workspace. Execution and web search are off unless the
-operator turns them on.
-
-### `/chat/compact/*` and `/memory/*` ✨
-
-Five compaction scopes — `prompts`, `system`, `responses`, `all` and
-`dynamic`, which picks for you — and a memory store with
-`create`/`get`/`list`/`edit`/`delete`, deduplicated, budgeted, and
-folded into a model's context automatically.
-
-### 𖢥 hyprslug was crushing the one tensor it must not
-
-"Fix hyprslug models from falling apart."
-
-Not the attention weights, which measure exactly what their bitrates
-allow, and not the codecs. It was `ffn_gate_inp` — the
-mixture-of-experts router.
-
-A router is `[n_embd, n_expert]`: a few hundred kilobytes in a model of
-tens of gigabytes, and the only tensor in the file whose output is an
-**argmax** rather than a sum. Every other weight gets averaged over a
-reduction of thousands of terms, which is what makes a 4-bit dot product
-survivable at all. The router's does not. Quantising it moved its logits
-by a few percent — nothing, right up until two experts are within a few
-percent of each other, and then it is a *different expert*, one never
-trained for this token. The model does not degrade gracefully when that
-happens; it stops being language.
-
-hyprslug's never-quantise list was norms and biases. It now also covers
-the router, Mamba's `ssm_conv1d`, RWKV's time-mixing constants, and the
-positional and token-type tables — small tensors read directly rather
-than accumulated. llama.cpp refuses exactly this list, for exactly this
-reason. `time_mix_key` and `time_mix_value` are *not* on it: they are
-full-sized projections, and a bare `time_mix` prefix would leave most of
-an RWKV model unquantised and still call it Q4_K_M.
-
-Measured, not assumed: Q2_K moves a realistic router's weights by 30%.
-
-### 🐛 A quantised file that called itself F16
-
-`general.file_type` was copied from the source and never rewritten, so a
-`Q4_K_M` made from an F16 announced itself as F16 to llama.cpp's load
-banner, to a hub listing, and to `hypernix-t1 index`. The tensor table
-was right and the field everybody actually reads was wrong.
-
-Every run now writes the target's real `general.file_type` and
-`general.quantization_version`, as u32 — an i32 is present, correct and
-unreadable to anything calling `gguf_get_val_u32`. Sub-bit tiers get
-numbers of their own rather than borrowing an upstream one: a half-bit
-file labelled `Q2_K` claims four times the precision it has. Extracting
-one variant out of a multiquant bundle no longer stamps it with the
-*default* variant's type either.
-
-### 𖢥 `prot` did not make the monitors black
-
-It was one line:
-
-```python
-subprocess.run(["xset", "dpms", "force", state], check=False,
-               stdout=DEVNULL, stderr=DEVNULL)
-```
-
-which does nothing at all under four common conditions and says nothing
-about any of them:
-
-- **DPMS is disabled.** `xset dpms force off` is a *request to the DPMS
-  extension*; when it is off — which it is on a lot of desktops, because
-  the desktop environment handles power management itself — the X server
-  accepts the request, does nothing, and exits 0. The most common one.
-- **The session is Wayland.** There is no X server to ask.
-- **There is no graphical session at all** — a TTY, SSH, a container.
-- **The platform is macOS**, which the code did not check for, so `hnx
-  prot` on a Mac printed "Monitor will sleep" and left the screen on.
-
-`check=False` plus two `DEVNULL`s plus `except Exception: pass` meant
-all four failed identically and silently: the screen stayed on, the
-terminal went into raw mode, and the only evidence was a message
-promising the opposite.
-
-The method is now chosen from the session — `xset` (with `+dpms` first,
-and the prior setting restored on the way out), `hyprctl`, `swaymsg`,
-`wlopm`, the freedesktop screensaver, or `pmset` — and a failure comes
-back as a reason and a remedy. **It will not lock a screen it did not
-blank**: with no method available `prot` says which of the four cases it
-is and refuses to enter raw mode, because a lit screen plus a dead
-keyboard is worse than either. `--force` is there for anyone who wants
-it anyway.
-
-### 🔁 One blanker, not two
-
-`outage` had its own copy of the same logic, missing the same `+dpms`
-and knowing nothing about Hyprland or sway — and picking `xset` on a
-Wayland session that lacked `wlopm`. Both now go through
-`hypernix.system.blanking`, and a test fails if either grows its own
-copy of the commands again.
-
-### 🧪 Tests
-
-- A conftest that makes it **impossible** for a test to touch the real
-  `~/.hypernix`. The environment redirect alone was not enough:
-  `T1APIConfig` reads `T1_DB_PATH` at construction, so a suite that
-  cleared the environment on purpose fell back to the real database past
-  every environment-level guard. `SQLiteBackend.__init__` is patched for
-  the session instead.
-- …and a `clear_t1_config()` for the suites that clear the environment
-  deliberately. "A server with no configuration" and "a server writing
-  to the person's real home" are two different requests, and deleting
-  every `T1_*` variable made the second one by accident — visible only
-  in a full run, because it is the session-wide redirect those suites
-  were deleting.
-- An autouse fixture restoring every `T1_*` variable after each test,
-  after twelve auth tests passed alone and failed in a full run: a
-  helper setting `os.environ` directly leaked `T1_TRUSTED_NETWORK` into
-  later files.
-- The price estimator checked against real model shapes — Qwen3 8B at
-  4.9 GB, a 70B at 40 GB, Qwen3-235B-A22B — rather than invented ones.
-- The full index → price → serve → display chain, end to end: a GGUF on
-  disk indexed with its real context limit read from the file, priced,
-  written to the registry, served at `/models`, and listed at
-  `/hyperlink/models`.
-
-### 𖢥 Releases were shipping an IPA with no inference engine
-
-"It always skips the inference engine build." `release.yml` called
-`ios.yml` without `local_engine`, so it took that input's `false`
-default and the shipped app had nothing to run a model with. Fixed in
-three places, because one was not enough: the caller passes it, the
-default is now `true`, and `prepare_project.py --require-engine` stops
-the build rather than quietly producing an engine-less IPA.
-
-## 0.72.5 — `hnx_1375bit`, and quantisation-aware training
-
-### A tier that keeps every sign *and* the magnitude structure ✨
-
-`bpw = (2 + payload) * 8 / 256`, so 1.375 bits per weight is a 44-byte
-block. The sign-only family cannot reach it: those tiers spend
-`code_bits/group` bits on signs, which is capped at 1, and 1.375 needs
-1.3125 bits of payload per weight. Anything above one bit has to buy
-something other than signs.
-
-So this one buys magnitude:
-
-| | scale | signs | magnitude | bytes | bpw |
-|---|---|---|---|---|---|
-| INT1 | fp16 x1 | 256 | none | 34 | 1.0625 |
-| **hnx_1375bit** | fp16 x1 | **256** | **16 sub-blocks x 5 bits** | **44** | **1.375** |
-
-32 bytes of signs, 10 bytes holding sixteen 5-bit indices, and the FP16
-scale. Each index picks `scale * i / 31` for its 16 weights, and the
-stored scale is the **largest** sub-block mean rather than the block
-mean, so the indices span the codebook and nothing clamps.
-
-That is not a contradiction of the mean-not-maximum rule the sign-only
-tiers follow: what each *weight* reconstructs to is still a mean — its
-own sub-block's — and the maximum is only the unit the sixteen means are
-expressed in.
-
-On a block whose sub-blocks span 30x in magnitude, against INT1 at
-0.31 fewer bits:
-
-```
-int1_binary   34 B  1.0625 bpw  signs 100%  rmse 0.13378  corr +0.615
-hnx_1375bit   44 B  1.3750 bpw  signs 100%  rmse 0.09790  corr +0.816
-```
-
-It is registered the whole way down: `subbit.py`, `gguf.py` (type 207),
-`hyprslug`, `steamroller`, `hnxrun`, the C decoder, and the ggml patch.
-
-### INT4 and FP2 became loadable, because they had to 𖢥
-
-post21 reported that INT4 (205) and FP2 (206) were written by hyprslug
-and openable by no llama.cpp: the patch registered 200–204 and pinned
-`GGML_TYPE_COUNT` to 205, so those two were out of range and cleanly
-rejected.
-
-Adding a type at 207 forced the question. Raising the count to 208
-without registering them would have left 205 and 206 as *in-range* trait
-entries full of zeroes — and `ne[0] % ggml_blck_size(type)` on a zero
-block size is a division by zero, not a refusal. Turning a clean
-rejection into a crash is not an acceptable side effect of adding a
-tier, so both got C decoders and traits entries. All eight types 200–207
-are now registered, with no holes.
-
-Every one of them is checked against its Python implementation — decode
-bit for bit, and `vec_dot` against dequantise-then-dot — which is how
-the operation-order bug below was found rather than shipped.
-
-### Quantisation-aware training ✨
-
-`hypernix.quant.qat`:
-
-```python
-from hypernix.quant.qat import prepare_qat, finalize_qat
-
-model, report = prepare_qat(model, tier="HNX_1375BIT")
-...                                    # train as usual
-model = finalize_qat(model)            # plain nn.Linear, float weights
-```
-
-The forward pass uses the **quantised** weight, so the loss the model
-minimises is the loss it will have after `hyprslug` writes the file; the
-backward pass updates the float weight through a straight-through
-estimator. `finalize_qat` hands back the *float* weights, not the
-quantised ones — they are what hyprslug should be pointed at, and they
-now sit where the packer can represent them.
-
-Layers are skipped for the same reasons hyprslug skips tensors:
-embeddings, the output head, and any row shorter than a block or not a
-multiple of one. Simulating damage the quantiser will not do is its own
-way of making a model worse.
-
-### 𖢥 Clamping, without which QAT made everything worse
-
-A straight-through estimator puts no pressure on a weight's magnitude —
-only its sign reaches the output — so weights drift outward, and the
-block scale, being their mean absolute value, drifts with them. Measured
-on a 256-wide distillation task, weight norm 8.2 -> 18.9 over 600 steps.
-
-The first working version of this was *worse than not doing QAT at all*,
-on every tier:
-
-| tier | train in float | QAT, no clamp | QAT + clamp |
-|---|---|---|---|
-| HNX_1375BIT | 0.0350 | 0.0505 (0.69x) | **0.0232 (1.51x)** |
-| INT1 | 0.0370 | 0.0519 (0.71x) | **0.0196 (1.89x)** |
-| IQ0.9_L | 0.0500 | 0.2813 (0.18x) | **0.0336 (1.49x)** |
-| IQ0.5_XXXL | 0.0776 | 1.8994 (0.04x) | **0.0731 (1.06x)** |
-
-So weights are held within 1.5 block scales, by default. `QATConfig(clamp=0)`
-restores the textbook behaviour and the first column of numbers.
-
-Note the last row: at 0.56 bits per weight QAT buys 1.06x, because there
-is almost nothing left to arrange. The gains are where the tier has
-something to work with.
-
-### ❗ Where QAT did not help
-
-On a small classification task (1024-wide net, 8 classes, 800 steps) QAT
-was *worse* than training in float and quantising afterwards — 0.71
-against 0.58. Reported rather than omitted: these are two benchmarks,
-not a result, and the honest summary is that QAT helps on the
-regression-shaped task measured here and did not on the classification
-one.
-
-### 🧪 The fake quantiser is the real one, bit for bit
-
-If training simulates a packing that differs from what hyprslug writes,
-the model spends its capacity adapting to boundaries that never ship and
-the result is worse than no training. That is the row-length bug's exact
-shape — writer and reader agreeing with each other — with a training run
-attached, so `fake_quantize` is compared against the byte packer's own
-output and must match **exactly**.
-
-It did not, three times, and each was a real difference:
-
-- The packer stores an **FP16** scale, so every weight is a multiple of
-  one. The torch path used float32 — a ~3e-4 offset on every weight.
-- The straight-through estimator was spelled `w + (q - w).detach()`. In
-  floating point `w + (q - w)` is not `q`; each step rounds. And for a
-  non-finite weight it is `inf + (-inf)` = NaN, where the packer degrades
-  the block to zeros. `q.detach() + (w - w.detach())` adds an exact zero
-  instead.
-- `hnx_1375bit` decodes as `scale * index / 31`. The torch path computed
-  `(index / 31) * scale` — the same number in real arithmetic and a
-  different one in float32.
-
-All six packings are now bit-identical to the packer across seeds.
-
-### hyprslug builds drafts, and bundles quants ๋࣭⭑
-
-Two shapes of speculative decoding, from one quantiser:
-
-- **`dflash2`** embeds the draft in the base GGUF under a `dflash2.`
-  prefix. One file, one download, and a runtime that has never heard of
-  Dflash2 reads the base model straight through.
-- **`dflash1`** writes the draft as its own GGUF, for
-  `llama-cli --model-draft`. It renumbers the kept blocks from zero and
-  rewrites `<arch>.block_count` to match, because a draft that claims 32
-  blocks and ships 6 loads and then reads past the end of the tensor
-  table. It refuses a base with no tokenizer rather than writing a file
-  that cannot be sampled from.
-
-Both take the target precisions the roadmap asked for — `q8`, `int8`,
-`fp16`, `bf16`, `fp32`, `IQ0.5`, `Q6_K`, `Q4_M`, `int2` — and everything
-else hyprslug writes, because they now plan through `plan_tensors`
-rather than validating against llama.cpp's ten block formats. That check
-was the first version, and it meant `--quant int8` came back "unknown"
-from the draft builders while `hyprslug SOURCE int8` worked: five of the
-nine precisions the drafts were specified in were unreachable through
-them. Planning in one place is also what removed the third copy of the
-row-length rule, which had already been got wrong once.
-
-**Five new targets.** `INT8` and `INT2` join the fixed-codebook family;
-`FP32`, `FP16` and `BF16` are element widths rather than block
-quantisations and take a separate path in `encode_tensor`. BF16 rounds
-to nearest even; FP16 saturates an overflow to 65504 only when the input
-was **finite**, so an infinity stays an infinity instead of becoming a
-large number that looks like data.
-
-INT2 was expected to lose to FP2 and does not: 0.384 relRMS against
-0.397 over twelve seeds, because 39.7% of a weight tensor is near zero
-and INT2 spends a codeword there.
-
-**`hnx-bundle`** puts several quantisations of one model in a single
-GGUF under `hnxq.<slug>.`. The default variant keeps the ordinary tensor
-names, so a stock llama.cpp opens the file and runs it. Tensors every
-variant left untouched byte for byte are stored once; the rest are not,
-so a bundle is roughly its variants added together and the point is one
-download and one page cache rather than compression. `list` says what is in there, `extract` takes one back
-out as an ordinary GGUF, `strip` removes the extras.
-
-### tvtoppro: an intro, modules, and a watchdog ✨
-
-- `tvtop-older`'s animated **"decoding"** startup text, and the spinner
-  module, in tvtoppro's presentation.
-- **A module system.** A new stat is a file that registers itself, not a
-  patch to the renderer.
-- **A stall detector.** `train.log` untouched for over a week means the
-  run being watched is not the run that is happening: tvtoppro finds the
-  busiest Python process on the machine and reads *its* logs and
-  progress instead. Busy is measured over the process's whole lifetime
-  rather than with `cpu_percent()`, which returns 0.0 on the first call
-  and — for a process object built fresh from `process_iter` — every
-  call is a first call.
-
-### 𖢥 `cctvtop`'s Remote Desktop panel
-
-It reported a session as up whenever *something* held the port. The
-probe now completes an RFB handshake, so a stale listener, a tunnel with
-nothing behind it and a live desktop are three different answers. When
-there is no session it says which of the four reasons applies — no
-server installed, a server installed and not running, a Wayland session
-with only `x11vnc` available, or a display it cannot see — rather than
-"unavailable".
-
-### noodle runs inside hyped-pro 🔁
-
-`/noodle` in the TUI, and five bridge verbs behind it. The executor
-adopts keys already stored in the HyperNix config for its vendors, with
-the environment always winning over the stored copy, so a session that
-already works in `hyped` works here without being configured twice.
-
-### 🛡️ The `hypernix` CLI says what was wrong
-
-An unknown subcommand printed a usage block and exited 0. It now goes to
-stderr, exits 2, suggests the nearest real command, and accepts the
-aliases people type. Four commands that existed and were reachable only
-by knowing they existed are in the menu.
-
-### T1 v1.0.26.9.2.3 — an account without a key ๋࣭⭑
-
-Sign-up and browser sign-in, served four ways: localhost, over
-Tailscale, from the operator's own site, or from a prebuilt Cloudflare
-site hosted by the API host. scrypt for passwords, constant-time
-comparison, CSRF tokens on every form, SameSite cookies, lockout after
-repeated failures, and `Secure` coupled to whether the connection is
-actually TLS. A keyless caller never gets administrator rights, on any
-of the four.
-
-### 🛡️ Security
-
-- **The config file was world-readable.** It holds API keys. It is now
-  written `0600` into a `0700` directory, through a temporary file and
-  `os.replace` so there is no window where a half-written file exists at
-  the real path, and an existing file has its permissions tightened on
-  load.
-- **Key authentication leaked which key you sent.** The lookup compared
-  key strings and its loop position depended on the prefix, which is a
-  timing oracle for the stored keys. Keys are now indexed by digest and
-  compared with `hmac.compare_digest`; measured, the 60x spread across
-  probe keys is flat.
-
-### HyperLink: CarPlay, Siri, themes, attachments and renaming ๋࣭⭑
-
-- **CarPlay.** A conversation list, `CPVoiceControlTemplate` dictation,
-  six canned replies, and a keyboard **only when the car reports it will
-  allow one** — read from `CPSessionConfiguration.limitedUserInterfaces`
-  on every use and rebuilt from its delegate, because the answer changes
-  while the app is running.
-- **Siri.** Four App Intents — ask, load a model, read a chat, send a
-  message — none of which open the app, because the point of asking from
-  a car dock is that the phone stays where it is. Replies are trimmed
-  before being spoken: a fenced code block read aloud is unintelligible.
-- **Themes.** Eight, with the two bubble colours as the point rather than
-  one accent at 18%. Every theme's text clears WCAG AA against its own
-  bubble, the two bubbles are told apart by luminance, and so are
-  "connected" and "failed" — checked in
-  `tests/test_hyperlink_ios_wiring.py`, which found three that did not.
-- **The attachment menu** offers all four ways in. Two of them — a
-  document from Files, and the camera — were reachable by the server and
-  by nothing on screen.
-- **Renaming a chat.** The server has taken a title on `PATCH` since
-  HyperLink shipped and nothing on the phone ever sent one.
-
-### 📚 Docs
-
-- **Issue templates**, one for a bug and one for a feature request.
-- **[Model-Training-Guide](Model-Training-Guide.md)** — which of these
-  do I use, and in what order. Every API in it was run against the
-  package rather than written from memory; six were wrong.
-
-## 0.72.4.post21 — why both tiers gave a 1.4 GB file
-
-Two models from the same BF16 Qwen3-class 2B, one `IQ0.9_L` and one
-`IQ0.5_XXXL`, **both 1.4 GB**. A tier claiming 0.56 bits per weight and
-one claiming 0.94 landing on the same size is not a coincidence.
-
-### The embedding table is the file 𖢥
-
-The default policy leaves `token_embd` and `output` at source precision.
-Qwen3's vocabulary is **151,936 tokens**, so on a 2.03B-parameter model
-those two tensors are **622M parameters — 31% of the model** — and at
-BF16 they are **1.24 GB before a single packed tensor is written**.
-
-The sub-bit body adds 99 MB at IQ0.5 and 165 MB at IQ0.9. That is the
-entire difference between the two files: 1.34 GB and 1.41 GB, both of
-which read as "1.4 GB".
-
-Measured, not reasoned:
-
-```
-70.8 MB source  ->  67.2 MB   default            15.20 bits/weight
-70.8 MB source  ->   2.5 MB   with the flags      0.56 bits/weight
-```
-
-`--quantize-embeddings --quantize-output` is a **27x** difference, and
-nothing anywhere mentioned it.
-
-### The report now states the file's rate 🐛
-
-`QuantizeReport` gained `effective_bits_per_weight` — output bytes over
-total weights — beside `tier_bits_per_weight`, which is the rate the
-packing writes for the tensors it touched. Both go into `--json`. When
-the first exceeds the second by more than 1.5x, the run says so and
-names the flags:
-
-```
-IQ0.5_XXXL  (quad_code_xxxl)
-  15.20 bits/weight over the whole file (0.562 where it packed)
-
-  ! This file costs 27x what the tier name suggests.
-    To get the size the tier is named for:
-      --quantize-embeddings --quantize-output
-```
-
-1.5x is deliberately generous: norms and biases are always copied and
-always small, so a little overshoot is the design working. Twenty-seven
-times over is the embedding table.
-
-### 🧪 The C and Python decoders now have to agree
-
-Checked for the first time, and they do — **bit for bit, on all five
-tiers**, including zeros, a single outlier, all-negative and alternating
-input.
-
-This mattered more than it sounds. `hypernix.quant.subbit` (what the
-quantiser and `hnxrun` use) and `native/ggml-hnx/ggml-hnx.c` (what a
-patched llama.cpp runs) are two independent implementations of the same
-packing, and nothing compared them. That is the exact shape of the
-row-length bug: writer and reader sharing a misconception and agreeing
-with each other. Had these drifted, a model that generates fine under
-`hnx generate` would produce noise under llama.cpp while every test
-passed. `tests/test_decoder_agreement.py` builds the C decoder and
-compares; it skips where there is no compiler.
-
-### ❗ What is *not* a bug: sub-bit output quality
-
-Measured end to end from a BF16 source:
-
-| tier | signs kept | correlation with the original weights |
-|---|---|---|
-| IQ0.9_L | 93.7% | +0.70 |
-| IQ0.5_XXXL | 75.0% | +0.40 |
-
-Both match their design exactly (0.9375 and 0.75 by construction). A
-correlation of 0.40 means **84% of the weight information is gone**, and
-that is what the tier *is* — it stores two signs of every four and no
-magnitude at all.
-
-A 2B model does not survive that, and no fix to this package will change
-it. `native/ggml-hnx/build.sh` has said so for several releases: below
-about 1.5 bits per weight a model stops being a degraded version of
-itself and becomes a different, far weaker one. For a 2B, IQ0.9_L is
-already past that line.
-
-If sub-bit is the goal, an importance matrix (`--imatrix`) decides which
-signs survive and is the only lever that makes these tiers meaningfully
-better. Without one the scale is a plain mean absolute value.
-
-### `--check` now catches a truncated file 🐛
-
-The other half of the report was a 1.4 GB `IQ0.5_XXXL` that would not
-load at all, under a screenshot that says **Interrupted**.
-
-`check_gguf` only ever asked about tensor *types*. It now validates the
-container the way `gguf_init_from_reader` does before it reaches a
-block: tensor data extending past the end of the file, duplicate tensor
-names, zero or negative dimensions, more than four dimensions. llama.cpp
-reports every one of those as the same bare "failed to load model"
-naming no tensor, so the file's owner gets nothing to go on.
-
-```
-The file itself is wrong, before any tensor's type:
-  'token_embd.weight' needs 18,637 bytes past the end of the file
-  (the file is 55,603 bytes; the table asks for 74,240) -- truncated
-
-A quantise that was interrupted, or a disk that filled up, leaves
-exactly this. Re-run the quantisation.
-```
-
-A multi-gigabyte write is long enough for that to be the likeliest
-explanation of a load failure with no other symptom. It is reported
-separately from the row-length fault because the remedies differ:
-`--repair-to` fixes that one, and cannot invent bytes that were never
-written.
-
-## 0.72.4.post20 — `status` did not know about the autostart service
-
-The `systemctl` output settled it:
-
-```
-● hypernix-t1.service - HyperNix T1 API
-   Loaded: loaded (/home/ceo/.config/systemd/user/hypernix-t1.service; enabled)
-   Active: active (running) since Thu 2026-09-10 06:45:26 PDT; 8h ago
- Main PID: 921 (python)
-   CGroup: └─921 /home/ceo/.hypernix/t1api/venv/bin/python -m uvicorn …
-```
-
-The server had been up for **eight hours**. `hypernix-t1 status` said
-`! not running`.
-
-### One server, two managers, and only one of them visible 𖢥
-
-`autostart on` installs that user unit, and the unit's `ExecStart` is
-**this same script's `start-foreground`**. A server systemd is managing
-is not somebody else's — it is ours, started a different way. But every
-command here read only `$PID_FILE`, which systemd never writes, so:
-
-- `status` reported a healthy service as down,
-- `start` saw no pid file, spawned a second uvicorn, and lost the race
-  for the port — which is the whole of post19,
-- `stop` would have sent SIGTERM to systemd's `MainPID`, leaving the
-  unit believing it crashed and `Restart=on-failure` bringing it
-  straight back, presenting as a server that will not stop.
-
-post19 made `start` refuse and point at `systemctl`. That was the right
-diagnosis and the wrong altitude: it told you where the server was
-instead of just finding it.
-
-### Every command now looks in both places 🐛
-
-`systemd_pid` asks the unit — `is-active`, then `MainPID`, then
-`kill -0` on it, because MainPID outlives the process in a crashed unit.
-`running_pid` is "pid file, else systemd", and `running_owner` names
-which. On that footing:
-
-```
-hypernix-t1 status      running (pid 921) — autostart service
-hypernix-t1 start       Already running (pid 921) — the autostart service has it.
-hypernix-t1 stop        Stopping the autostart service…
-hypernix-t1 restart     Restarting the autostart service…
-```
-
-`stop`, `kill` and `restart` go through `systemctl` when systemd owns
-the process, so the unit's own restart policy is not fighting them.
-
-**`server_pid` deliberately stays pid-file-only.** It is what
-`wait_healthy` uses to notice the process *this command* spawned dying,
-and a systemd fallback there would mask exactly that — handing back the
-post19 bug wearing a different hat. Two tests pin that.
-
-Where `systemctl` is on `PATH` with no user bus behind it — containers,
-plain ssh, WSL — every `--user` call fails and all of this falls back
-quietly to the pid file, as before.
-
-### 🧪 Tests
-
-Twelve more, driven by a stub `systemctl` backed by a real process, since
-no machine this suite runs on has a user bus. Reverting the change turns
-three of them red with the screenshot's exact symptom: `status` saying
-not running while `start` cheerfully launches a second server.
-
-**And `configured` now takes a free port per test instead of a shared
-8123.** post19's port guard is correct, but it made one server left
-behind by a killed test fail every later test in the file — pointing at
-the guard rather than at the leak. Twice, during this change. Two runs
-can now share a machine, too.
-
-## 0.72.4.post19 — `start` was reporting someone else's server
-
-From a screenshot: `start` printed a pid, and `status` a second later
-said not running.
-
-```
-hypernix-t1 autostart
-  Autostart on (systemd user service).
-hypernix-t1 start
-Starting the T1 API on 0.0.0.0:8000…
-  Running (pid 122966) — http://127.0.0.1:8000
-hypernix-t1 status
-  ! not running
-```
-
-Reproduced exactly, and every line of it is true about a *different
-process*.
-
-### What happens 𖢥
-
-`autostart on` installs a **systemd user service**, which takes the
-port. `start` then looks for a live pid file of its own, finds none —
-systemd's instance is not one it started — and spawns a second uvicorn.
-That uvicorn logs `Application startup complete`, **then** binds, gets
-`[Errno 98] address already in use`, and exits.
-
-In between, `wait_healthy` was asking *"does anything answer /health on
-this port?"* Something does: the first server. So it returned success,
-and the pid printed beside it belonged to a process already on its way
-out. Seconds later `status` looks for that pid and correctly finds
-nothing.
-
-The log said so all along:
-
-```
-INFO:     Application startup complete.
-ERROR:    [Errno 98] error while attempting to bind on address
-          ('127.0.0.1', 8123): address already in use
-```
-
-### Three changes 🐛
-
-**`start` checks the port first.** Nothing of ours is running, so
-anything already listening belongs to someone else — usually the
-autostart service this script installed. It now refuses, and names the
-cause:
-
-```
-✗ Something is already listening on 127.0.0.1:8000, and it is not a
-✗ server this script started (no live pid file).
-     If that is the autostart service:  systemctl --user status hypernix-t1
-     To take it over:                   hypernix-t1 autostart off
-     To use another port:               set T1_PORT in ~/.hypernix/t1api/.env
-```
-
-The probe is a `bind()`, not `ss`/`netstat`/`lsof` — none of which are
-guaranteed to be installed. It sets `SO_REUSEADDR` because **uvicorn
-does**, so it asks the question uvicorn will actually face: without it a
-port still in `TIME_WAIT` reads as busy and `restart` refuses to start
-the server it has just stopped.
-
-**`wait_healthy` takes the pid and re-checks it.** A 200 on the port
-proves *a* server is there, not that ours is. After a good probe it
-confirms the process it was given is still alive, and reports a distinct
-failure when the port answers but our process is gone.
-
-**`status` says why.** "not running" on its own is what left this
-undiagnosed for a whole session. It now names a stale pid file, says
-when something *else* holds the port, and prints the last lines of the
-log:
-
-```
-  ! not running
-     pid 122966 is named in .../server.pid but is not running: it exited.
-     ...yet something is listening on 0.0.0.0:8000.
-     Check:  systemctl --user status hypernix-t1
-     last lines of .../server.log:
-       ERROR:    [Errno 98] ... address already in use
-```
-
-### 🧪 Tests
-
-Twelve, in `tests/test_hypernix_t1_service.py`. The central one is the
-reproduction — start a server, take its pid file away (which is exactly
-what a systemd-managed instance looks like to this script), start again,
-and assert it *fails* rather than printing a pid. Reverting either half
-of the fix turns it red.
-
-They take a port of their own and clean up by pid rather than through
-the script, because a test that orphans a server from its pid file
-cannot use `stop` to tidy up — and a leaked server on the shared port
-makes the *next* test fail on the new port guard, which is a confusing
-way to find out you wrote a leaky test.
-
-## 0.72.4.post18 — Brewer attention was not causal
-
-Reported against `BrewerAttention.forward`, and correct: the causal and
-sliding-window masks were combined with `torch.maximum`. Both are
-*additive* masks — `0` allows, `finfo.min` forbids — so the elementwise
-maximum keeps the **less** masked of the two. That is "allow if either
-allows" where the requirement is "mask if either masks".
-
-A non-causal language model trains to an excellent loss, because
-predicting a token it can already see is easy, and then generates
-nothing usable. Nothing in a loss curve tells you which one you have.
-
-### It was worse than leaking the window 𖢥
-
-The report says every query saw up to `sliding_window_size - 1` tokens
-of its own future. That is the small-window case. `_sliding_mask` builds
-its band from `dist < -(win - 1)`, which no pair of positions satisfies
-when the sequence is no longer than the window — so the window mask
-forbade nothing at all, and the union with the causal mask left the
-layer **fully bidirectional**.
-
-The configured default is `sliding_window_size = 4096`, and the four
-presets in this module that enable it use 1024 / 4096 / 8192 / 16384.
-Any training run at or under its window had odd layers attending to the
-entire sequence in both directions.
-
-### Both halves were wrong, and neither could be fixed alone 𖢥
-
-`_sliding_mask` used `dist = i - j` — positive is the past — and then
-masked `dist >= 0`. That masks the past *and the token itself* and keeps
-the strictly future positions inside the window: an anti-causal band,
-not the "causal sliding-window mask" its docstring promised.
-
-So the two defects were coupled:
-
-- `torch.minimum` alone, against that band, masks **every position of
-  every row**. Softmax over all `-inf` is NaN — a different bug, walked
-  into by applying the obvious fix.
-- Fixing the mask while keeping `torch.maximum` makes the window a
-  **silent no-op**: it forbids a subset of what causal already forbids,
-  so the union is exactly plain causal attention. That version passes
-  every causality test.
-
-Both are now correct: the mask keeps `0 <= dist <= win - 1`, and the two
-are combined with `torch.minimum`.
-
-### 🔧 `is_causal=True` on the plain-causal layers
-
-An even layer with no padding mask now hands SDPA `is_causal=True`
-rather than a mask tensor, so it can take a fused path instead of
-materialising a `B·H·T·T` score matrix to add a mask to. `is_causal` and
-`attn_mask` are mutually exclusive, so a caller-supplied mask still
-takes the explicit path; a test asserts the two agree numerically.
-
-### 🧪 `tests/test_brewer_causality.py`
-
-25 tests. The central one is the reporter's own method — perturb one
-input token, assert no *earlier* output moves — because it tests the
-property rather than the mask's spelling and stays true if the masking
-is rewritten. Verified against all three broken variants: the original
-fails 13, `minimum`-only fails 13, and mask-fixed-only fails 3 (all of
-them window-behaviour tests, since that variant is perfectly causal).
-
-## 0.72.4.post17 — a checker for the files already on disk
-
-post16 stopped the quantiser writing files llama.cpp refuses. It did
-nothing for the ones already written, which is where every model
-somebody has already spent an hour on lives:
-
-```
-gguf_init_from_reader: tensor 'blk.0.ssm_conv1d.weight' of type 202
-(IQ0.5_XXXL) has 4 elements per row, not a multiple of block size (256)
-```
-
-### `--check` and `--repair-to` ✨
-
-`hypernix.quant.ggufcheck` answers the question from the tensor table
-alone, so checking a 40 GB model costs what checking a small one costs:
-
-```
-hyprslug MODEL.gguf --check
-hyprslug MODEL.gguf --repair-to FIXED.gguf
-```
-
-`--check` exits non-zero when the file will not load, so a build step
-can gate on it without parsing anything, and `--json` gives the same
-answer machine-readably. `--repair-to` widens every offending tensor
-back to F32 and copies the rest through byte for byte — the file loads
-without a second quantisation run. It is not as good as re-quantising
-from the base model and the report says so: the values it writes are
-the ones the packer produced, so whatever the quantiser discarded is
-already gone.
-
-The message it prints is llama.cpp's, word for word, so pasting the
-error into a search finds the tool. That meant using the *tier* name
-(`IQ0.5_XXXL`, which is `type_name` in the ggml traits table) rather
-than the Python enum's `HNX_IQ0_5` — the first draft printed the second
-while the docstring claimed the first.
-
-### The format layer refuses too 𖢥
-
-`_should_quantize` deciding correctly is one line away from deciding
-incorrectly again — it already did once, and the round trip passed
-because the reader shared the writer's misconception. So `tensor_nbytes`,
-which is on the path of every write, now refuses to lay out a tensor
-whose `ne[0]` cannot divide into its type's block.
-
-That turns "this bug is fixed" into "this file cannot be produced":
-with `_should_quantize` deliberately reverted to the element-count
-check, `quantize_gguf` raises instead of writing.
-
-The guard is on **writes only**. A reader that refused these files
-would make them undiagnosable by the tool written to repair them, so
-`tensor_nbytes_unchecked` is what `GGUFFile.read` uses.
-
-### INT4 and FP2 cannot be loaded by any llama.cpp ❗
-
-Found while checking whether anything else in this area was wrong, and
-it is not new — it has been true since those tiers were added.
-
-`hyprslug` offers seven extension tiers. `native/ggml-hnx/tools/patch_llamacpp.py`
-registers **five**: it adds enum members 200–204 and pins
-`GGML_TYPE_COUNT` to 205. INT4 (205) and FP2 (206) are past the end of
-both trait tables, and `ggml-hnx.c` has no decoder for either, so
-gguf.cpp rejects such a file on the type check before it reads a
-tensor.
-
-They are not broken files — `hnx generate` and `hnx chat` run them,
-because HyperNix's own runtime knows all seven. But nothing said that
-llama.cpp and llama-server never would, so `--list-tiers` now marks
-them `[hnx runtime only]` and explains why, and `--check` reports a
-file carrying one as unloadable-by-llama.cpp while noting it still runs
-under the hnx runtime.
-
-A test parses the enum out of the patch script's own C text and asserts
-the Python table agrees, so registering a type on one side and not the
-other is a test failure rather than a discovery.
-
-### ❗ Not verified
-
-No hyprslug output has been loaded in a real llama.cpp binary from the
-test environment — there is no checkout in it and building one is not a
-test-suite job. Everything above is checked against the patch script's
-source and this package's own reader. Given that writer-and-reader
-agreeing with each other is precisely what hid the row bug, that gap is
-worth stating rather than leaving implied.
-
-## 0.72.4.post16 — `ne[0]`, not the element count
-
-A build log from the desktop side, ending in a model that would not
-load:
-
-```
-llama_model_load: error loading model: tensor 'blk.0.ssm_conv1d.weight'
-of type 202 (IQ0.5_XXXL) has 4 elements per row, not a multiple of
-block size (256)
-```
-
-### The block-size check was on the wrong number 𖢥
-
-GGML quantises **row by row**. The constraint a block-quantised type
-imposes is on `ne[0]` — the row length, the fastest-moving dimension —
-and not on the tensor's element total. `hyprslug._should_quantize` and
-`dflash2` both checked the total:
-
-```python
-if tensor.elements % block:      # a 4 x 4096 tensor passes this
-    return False, ...
-```
-
-A `4 x 4096` tensor has 16,384 elements, divides cleanly by 256, and is
-4 elements per row — so both quantisers packed it, wrote type 202 into
-the tensor table, and produced a file llama.cpp refuses on load. Every
-1-D and narrow tensor in a real model hit this: `ssm_conv1d`, the norms,
-anything whose leading dimension is small.
-
-Both now read `tensor.shape[0]`, which *is* `ne[0]` — GGUF stores the
-dimensions fastest-first and the reader keeps file order — and the
-refusal message says what it measured:
-
-```
-4 elements per row do not divide into 256-element blocks
-```
-
-`tests/test_hyprslug_row_blocks.py` is 23 tests over this, including
-the reported tensor end to end: reintroducing the element-count check
-reproduces the llama.cpp message verbatim.
-
-### The test fixtures were never producing loadable files 𖢥
-
-The reason this survived so long is worth stating plainly. The sub-bit
-fixtures used `N_EMBD=64` against a 256-element block, so *every tensor
-they ever quantised* was 64 elements per row and could not legally be
-type 202. The round trips passed because `hnxrun` decoded them with the
-same misconception the writer packed them with. Writer and reader
-agreed with each other, and neither agreed with llama.cpp — which is the
-only reader a GGUF has to satisfy.
-
-`N_EMBD` and `N_FF` are now 256 and 512. That surfaced 48 failures, all
-of them the fixtures rather than the code, and two tests that had been
-measuring the fixture rather than the behaviour:
-
-- `test_the_default_leaves_the_table_in_float` asserted a
-  bits-per-weight *floor*. That number only stays high while the
-  untouched F32 table is a large share of the model, so growing the
-  fixture broke a test about a policy that had not changed. It now
-  reads the GGML type of `token_embd.weight` and `output.weight`
-  straight out of the file, and checks a layer that *is* meant to be
-  quantised really was — so a quantiser that silently did nothing
-  cannot pass it either.
-- `test_a_budget_pins_the_largest_first` named a specific tensor. Six
-  tensors tie for largest; which one the spender reaches first is a
-  sort's tie-break, not a promise. It asserts by size now.
-- `TestTheCacheBudget.PARTIAL_BUDGET` was a hard-coded `100_000`, which
-  stopped being partial when the fixture grew — no tensor fit, nothing
-  was pinned, and three tests comparing "with a budget" to "without"
-  were comparing a number with itself. It is derived from the model
-  now.
-
-### 🛡️ `native/ggml-hnx/build.sh`
-
-The "try it" line invented a filename (`model-IQ0.5_XXXL.gguf`) that no
-step in the script produces, so following the output verbatim gave
-`No such file`. It names a placeholder and says where a real one comes
-from.
-
-## 0.72.4.post15 — SecTask is macOS-only
-
-post14's isolation fix held; the compiler moved on to the next file.
-
-```
-DeviceMemory.swift:80: error: cannot find 'SecTaskCreateFromSelf' in scope
-DeviceMemory.swift:81: error: cannot find 'SecTaskCopyValueForEntitlement' in scope
-```
-
-### Reading your own entitlements on iOS 🐛
-
-`SecTaskCreateFromSelf` and `SecTaskCopyValueForEntitlement` are the
-obvious way to ask whether the increased-memory-limit entitlement is
-granted, and they are **macOS-only** — private SPI on iOS, so not in
-scope, so a compile error rather than a runtime one.
-
-What iOS does offer is the embedded provisioning profile, which carries
-the entitlements the build was signed with: CMS-signed, with the plist
-as plain XML inside the envelope, and no public API that unwraps it.
-
-That changes what the answer *means*, and the code says so now.
-Development, ad-hoc and enterprise builds carry a profile; **App Store
-builds and the simulator do not**, so `false` is "not found", never
-"definitely not granted". The property is documented that way, and a
-test asserts it never reaches any arithmetic — a planner that gave
-itself headroom on the strength of this would be trusting a signal
-that goes missing exactly where the app is most constrained. The note
-in `ondevice.py` no longer asserts absence either.
-
-### A test that had started passing on a comment 𖢥
-
-`test_the_entitlement_is_read_not_assumed` asserted
-`SecTaskCopyValueForEntitlement` appeared in the file. It still does —
-in the comment explaining why that API *cannot* be used. The check
-would have gone on passing while the code did the opposite of what it
-claimed.
-
-This is the fourth time in this branch that comments have defeated a
-source check: the banned-token check in `gather`, the word "sudo" in a
-log message, the subsystem map's `CodingKeys`, and now this. Comments
-are stripped first here, and the same helper is used by the new checks
-below.
-
-### 🧪 A guard for the class, not the instance
-
-`TestNoMacOnlyAPIs` holds the macOS-only symbols a reasonable person
-reaches for and iOS does not offer — the two `SecTask` calls,
-`SecCodeCopySelfSigningInformation`, `NSWorkspace` and friends,
-`SecKeychain*`, `proc_listpids` — and fails if any appears in the iOS
-sources. It is not exhaustive and cannot be; it holds the ones already
-paid for.
-
-Every Security and system call in the app was audited alongside it:
-`SecItem*` and every `kSec*` constant are available on both platforms
-and were already in use by three pre-existing keychain files that
-compile, `sysctlbyname`, `uname` and `os_proc_available_memory` are
-iOS-available, and only the two `SecTask` calls were wrong.
-
-All three regressions verified by reintroducing them, including that
-the check no longer passes on the comment.
-
-## 0.72.4.post14 — actor isolation, and the easy fix that was wrong
-
-The project wiring from post13 held: the build got past `xcodegen`,
-into the Swift compiler, and stopped there.
-
-```
-Call to actor-isolated instance method
-'generate(prompt:systemPrompt:maxTokens:)' in a synchronous main
-actor-isolated context
-```
-
-### `nonisolated`, not `async` 🔧
-
-`ModelRunner` inherits `Actor`, which makes every requirement
-actor-isolated by default. `LocalInference` is `@MainActor` and calls
-`generate` synchronously.
-
-Making the caller `async` compiles and is the wrong fix: every view
-starting a generation would `await` something that returns
-*immediately*. `generate` hands back an `AsyncThrowingStream` and does
-all its work inside that stream's `Task` — it genuinely needs no
-isolation, which is what `nonisolated` says.
-
-The cost is that an implementation may not touch isolated state in the
-synchronous part of its body. `EchoRunner` read `model` inside the
-stream builder, which is an escaping `@Sendable` closure — a second
-error, waiting behind the first. That check moved into the `Task` and
-asks `await self.isLoaded`.
-
-### And a mutable static that strict concurrency exists to catch 🐛
-
-`LlamaRunner` guarded `llama_backend_init()` with a
-`private static var backendReady`, which is shared mutable state across
-every instance of the actor. It is a global `let` with a side-effecting
-initialiser now — Swift's once-only idiom, lazily initialised with a
-guaranteed thread-safe single initialisation.
-
-### 🧪 Twelve tests for a language this repo cannot compile
-
-There is no Swift toolchain in CI, so these are structural checks on
-the source — and they exist precisely because the compiler found
-something this environment could not. They pin `generate` as
-`nonisolated` in the protocol and both conformances, assert the caller
-stays synchronous, assert every *other* `runner.` call awaits (the
-class of error, not the one instance), and assert the stream builder
-opens its `Task` before doing anything, which is the rule `nonisolated`
-imposes.
-
-All four regressions were verified by reintroducing them.
-
-### 🛡️ What was checked before pushing, for once
-
-Each CI round on a macOS runner is expensive, so the rest of the file
-was audited rather than discovered a round at a time: every pointer
-type against the real header — `llama_model`, `llama_context` and
-`llama_vocab` are forward-declared and so `OpaquePointer`, while
-`llama_sampler` is fully defined and so
-`UnsafeMutablePointer<llama_sampler>`, which is what the code already
-had — every `runner.` call site, the `nonisolated` delegate hops in
-`ModelStore`, and the whole source tree for duplicate type names.
-
-That found no further problems, which is not the same as a compile.
-
-## 0.72.4.post13 — `optional: true` does not mean what I thought
-
-The iOS build failed on a checkout without the engine:
-
-```
-error: There is no XCFramework found at
-       '.../ios/vendor/llama.xcframework' (in target 'HyperLink')
-```
-
-### The wrong mental model 𖢥
-
-post11 declared the framework dependency in `project.yml` with
-XcodeGen's `optional: true`, on the belief that "optional" meant "skip
-when the file is absent". It does not. It sets **weak linking** — a
-dynamic-linker property — and the framework still has to exist at build
-time.
-
-So the project generated cleanly and then failed to build, which is the
-worst shape for this: the error arrives after `xcodegen`, in
-`xcodebuild`, pointing at a path nobody asked for.
-
-**And a test asserted it.** `test_the_framework_dependency_is_optional`
-checked that the YAML said `optional: true` and passed the whole time.
-It verified the spelling, not the behaviour — a test written from the
-same wrong belief as the code, which is the failure mode that makes a
-green suite worthless.
-
-### The decision moves to Python 🔧
-
-`ios/scripts/prepare_project.py` looks at whether the framework is
-really there and writes `project.generated.yml` — next to `project.yml`
-so every relative path still resolves — with the dependency or without
-it, plus the matching `HNX_LOCAL_LLAMA` flag. Both come from one
-filesystem check, so they cannot disagree. XcodeGen reads the generated
-spec.
-
-Being Python, it can be driven both ways from a test, which is the
-whole point.
-
-### The framework is linked, not embedded 🐛
-
-Second bug in the same block. Upstream builds with
-`BUILD_SHARED_LIBS=OFF`, so `llama.xcframework` is **static**: its code
-goes into the app binary. `embed: true` copies a static archive into
-the bundle for nothing, and App Store validation rejects it.
-
-### And an indentation bug the generator's own tests caught 🧪
-
-The first version replaced the marker *text* and left its four spaces
-behind, which merged into the following line and turned `    settings:`
-into `        settings:`. The spec stopped parsing. Indentation is
-load-bearing in YAML and a substring replace inside an indented block
-is the wrong tool; it matches the whole line now.
-
-Both branches of the generator are now parsed and asserted in tests,
-and all three regressions — a framework named directly in `project.yml`,
-the indentation, and `embed: true` — were verified by reintroducing
-them.
-
-### ❗ Still not compiled
-
-The engine has still never been built here and no Swift has been
-compiled: there is no macOS, Xcode or Swift toolchain in this
-environment. What this release fixes is the build *wiring*, which is
-exactly the layer the CI failure was in.
-
-## 0.72.4.post12 — three tests that needed a server and never said so
-
-CI went red on `test_hypernix_t1_service.py` with
-`No module named uvicorn`, three times.
-
-### The tests were mine and the guard was missing 𖢥
-
-`TestStartOutlivesTheShell` — added in post5, when `hypernix-t1 start`
-stopped using the `setsid` binary — has three tests that start a real
-server. The file's *existing* real-server class,
-`TestAgainstARealServer`, is guarded by a `skipif` for the `[t1api]`
-extra. The three new ones were not, so on a runner without the extra
-they tried to start a server that could not exist.
-
-They passed locally because this machine has fastapi and uvicorn
-installed. Local green was never evidence for these; the environment
-was the whole variable.
-
-### And the guard was checking the wrong module 🛡️
-
-The existing one asks whether **fastapi** imports. `start` execs
-`python -m uvicorn`, so uvicorn is what decides whether a server comes
-up — and a machine with fastapi and no uvicorn passes that check and
-then fails exactly the way CI did. It was right by coincidence, because
-the extra installs both together.
-
-There is now one `NEEDS_A_SERVER` marker checking both, used by both
-classes. Verified against a synthetic environment with only uvicorn
-hidden: the old check says "run these", the new one skips.
-
-### 🛠️ `\w` in a docstring
-
-`tests/test_hyperlink_search.py` raised
-`SyntaxWarning: invalid escape sequence '\w'` — the docstring explains
-that `_` is a word character and wrote it as `\w` in a non-raw string.
-Now raw.
-
-### ❗ These three still do not run in CI
-
-The unit-test job installs `.[dev,security]`, not `[t1api]`, so they
-skip there — along with about 85 other tests, including the 37 HTTP
-tests added in post9. The jobs that *do* install the extra are the
-integration jobs, and those drive a live server directly rather than
-running pytest.
-
-Adding `[t1api]` to the test matrix would fix that and was not done
-here: the matrix is four operating systems by four Python versions, and
-`uvicorn[standard]` pulls `watchfiles`, `httptools` and `uvloop`, which
-are Rust and C wheels that may not exist for the newest Python in the
-matrix. Turning sixteen green jobs red to un-skip some tests is not a
-trade to make blind. Plain `fastapi uvicorn` without the `standard`
-extra would probably do it, and that is a change worth making
-deliberately with the matrix in front of you.
-
-## 0.72.4.post11 — the engine is linked
-
-`ios/scripts/build_llama_xcframework.sh` produces
-`ios/vendor/llama.xcframework`, `project.yml` links it, and
-`LlamaRunner.swift` runs a GGUF on the phone through it. post10 left
-this specified; it is wired now.
-
-### Upstream's build script, not a hand-listed target ✨
-
-The obvious approach — a native XcodeGen target listing llama.cpp's
-sources — is a trap. llama.cpp restructures its build between releases:
-`ggml-metal.m` became `ggml-metal.cpp` and the Metal backend moved
-directory, so a hand-maintained file list breaks on every bump in a way
-that reads as a compiler error rather than as "the list is stale".
-
-The SPM route is gone too. Checking rather than assuming was worth it:
-`Package.swift` **404s** at the pinned ref — upstream removed it.
-
-What does exist is `build-xcframework.sh`, upstream's own supported
-Apple build, and that is what runs. The script clones at the ref
-`native/ggml-hnx/build.sh` pins — the phone and the desktop must agree
-about the HyperNix tensor types, and a skew would look like a corrupt
-model rather than a version mismatch — applies the sub-bit patch, and
-copies the result into `ios/vendor/`.
-
-### 236 symbols, pinned 🧪
-
-The llama.cpp C API churns hard, and this file could not be compiled
-here to find out. So it was written against the real
-`include/llama.h` fetched at the pinned ref, and every symbol it uses is
-checked against a committed manifest of what that header declares.
-
-Each of these was the correct name recently and is gone:
-
-| was | is |
-|---|---|
-| `llama_load_model_from_file` | `llama_model_load_from_file` |
-| `llama_new_context_with_model` | `llama_init_from_model` |
-| `llama_free_model` | `llama_model_free` |
-| `llama_kv_cache_clear(ctx)` | `llama_memory_clear(llama_get_memory(ctx), _)` |
-| `params.use_mmap` / `use_mlock` | `params.load_mode` |
-
-Written from memory, every one of those would have compiled into
-nothing on a machine nobody in CI has. The check was verified by
-breaking it three ways: a retired function name, the removed `use_mmap`
-field, and a ref mismatch between phone and desktop.
-
-### "JIT models" turns out to be a real flag 🔧
-
-`llama_model_params.lazy_mode` reads the rows of marked tensors **on
-demand** rather than pulling whole tensors up front.
-`LLAMA_LAZY_MODE_AUTO` applies it to tensors over 4 GiB, which is the
-default here — full `ON` is a per-model decision and not one to make on
-someone's behalf.
-
-Paired with `LLAMA_LOAD_MODE_MMAP` so the weights are file-backed and
-evictable rather than dirty anonymous pages: on iOS that is the
-difference between pages the kernel can reclaim under pressure and pages
-that count fully against the jetsam limit. Not `MLOCK` — pinning
-gigabytes on a phone is the fastest way to be killed.
-
-### A build without the engine still builds 🛡️
-
-`LocalLlama.xcconfig` ships with `HNX_LOCAL_LLAMA` empty, so
-`LlamaRunner` compiles out and `LocalInference` falls back to
-`EchoRunner`, which says this build has no local engine. The framework
-dependency is `optional: true`, so `xcodegen generate` succeeds on a
-checkout that has never run the build script.
-
-CI matches: `local_engine` is a workflow input, off by default, because
-two slices on a hosted macOS runner is 15-25 minutes nobody should pay
-on a PR that touched a view. The generate step prints which of the two
-builds it made, since an app that silently has no engine is the
-confusing case.
-
-### ❗ Still not compiled
-
-There is no Xcode, no Swift toolchain and no macOS here, so the build
-script has never run and none of the Swift has been compiled. What has
-been checked: every llama.cpp symbol against the real header, the two
-refs agreeing, the dependency being optional, the flag shipping off,
-and brace balance. The first real macOS build is where a compile error
-would surface.
-
-## 0.72.4.post10 — HyperLink runs models on the phone
-
-Search Hugging Face, download a GGUF, run it with no server involved.
-The hard part was never the running; it is answering "will this one
-work?" before a four-gigabyte download, and being right.
-
-### Total RAM is not the budget 𖢥
-
-The mistake almost every naive implementation makes, and it is fatal
-rather than cosmetic. `ProcessInfo.physicalMemory` returns 8 GB on an
-iPhone 15 Pro and **an app may not use it**: iOS gives each process a
-jetsam limit well below total RAM — commonly 2-3 GB — and exceeding it
-is not a swap, not a slowdown, and not an exception you can catch. The
-process is killed with no warning.
-
-A fit check written against `physicalMemory` therefore tells the user a
-5 GB model fits, downloads it over twenty minutes of cellular, and dies
-partway through the first reply. `os_proc_available_memory()` is the
-number that matters, and it is what `DeviceMemory` reads.
-
-The `increased-memory-limit` entitlement is read from the provisioning
-profile and **reported**, never used to inflate an estimate — claiming
-headroom the process may not have been granted is the same bug in a new
-place. The budget also shrinks while the app is open, so the check runs
-again immediately before every load.
-
-### The KV cache, and unified memory 🔁
-
-At 32k context an 8B model's cache is 4 GiB, comparable to its
-quantised weights; at 128k it is 16 GiB. A planner that sizes only the
-weights is wrong exactly when someone uses the long context they chose
-the model for, so `largest_context` answers "how much context can I
-have" rather than refusing outright. Sized by the *key/value* head
-count, not the attention head count — the difference is 4x on Llama 3.
-
-And on Apple silicon, moving layers to Metal does not reduce memory: a
-Metal buffer and a malloc come from the same pool. Offloading buys
-speed and no headroom, and a planner that subtracts offloaded layers
-approves models that cannot run.
-
-### The Neural Engine cannot run a GGUF ❗
-
-It is reachable only through Core ML, and llama.cpp has no Core ML
-backend for LLM inference — its Apple backend is Metal, with Accelerate
-on the CPU path. Running on the ANE would mean converting the model: a
-different file, in a different format, from a different toolchain. Not
-a setting.
-
-So there is no ANE toggle, and `ANE_EXPLANATION` is shown instead. A
-switch that claims otherwise is a lie the user acts on.
-
-### Sizing a file before downloading it 🔧
-
-A GGUF is not bits times parameters. llama.cpp keeps the embedding and
-output tensors at a higher precision than the name suggests, and for a
-small model those dominate — Llama-3.2-1B has a 128k vocabulary over
-2048 dimensions, 21% of its parameters. Sizing it flat under-counts by
-8%.
-
-Under-counting is the direction that gets the process killed, so the
-exception is priced separately. Every estimate now lands at or above
-the real file: +1.1% on the 1B, +5.2% on an 8B, +1.9% on Q8_0. The
-asymmetry is deliberate — over-estimating hides a model that would have
-run, under-estimating ends the app.
-
-Two errors were caught doing this. The first was mine in the validation
-harness rather than the code: Hugging Face quotes file sizes in decimal
-GB and I compared them against GiB, which made a -1.5% error look like
--8.2%. The second was real: `FORMATS` knows eight GGUF quantisations
-and Hugging Face uses about thirty, so `Q4_K_S` — on thousands of
-repositories — could not be sized at all.
-
-### 🧪 Two implementations, kept in step
-
-The decision has to be made on the phone, before a download and again
-before a load, when there may be no network. So the arithmetic exists
-twice: `hypernix/hyperlink/ondevice.py` as the reference, and
-`ModelFit.swift` as the mirror.
-
-Duplicated arithmetic drifts, and the symptom here is the Swift side
-approving a model the Python side would refuse.
-`tests/test_hyperlink_ondevice_mirror.py` parses the Swift and compares
-every constant and every quantisation bit width against the Python —
-verified by breaking it three ways: a drifted margin, a drifted bit
-width, and an ANE case sneaking into the backend enum.
-
-87 new tests. There is no Swift toolchain in CI, so none of them
-compile the Swift; they check the numbers, which are the part that
-decides whether a phone survives.
-
-### ❗ llama.cpp is not linked into the iOS target
-
-Everything above it is here: the memory guard, the load and unload
-lifecycle, the pressure response, the resumable background download
-(excluded from iCloud backup, disk checked with
-`volumeAvailableCapacityForImportantUsage`, short files deleted rather
-than kept), the Keychain-held Hugging Face token, the settings, and the
-streaming interface the UI talks to. `EchoRunner` ships so a build
-without the engine degrades to a clear message rather than a link
-error.
-
-Linking it means a native target in `ios/project.yml` building ggml
-with Metal for arm64-apple-ios. That build has not been run, and the
-Swift here has not been compiled — there is no Xcode or Swift toolchain
-in this environment. Specified, not done.
-
-## 0.72.4.post9 — HyperLink learns to catch up, notify and search
-
-Three subsystems that exist because a phone is not a desktop client, and
-the difference is not cosmetic. Plus the two issues found while writing
-post7 and post8, now fixed.
-
-### `hypernix.hyperlink.sync` — the retry that sent everything twice 𖢥
-
-A phone POSTs a turn, the connection drops before the response arrives,
-and it cannot tell "the server never saw it" from "the server saw it and
-the reply was lost". Retrying is the only safe-looking option and it
-produced two identical user messages and two model replies — one of
-which cost real tokens for nothing. There is no client-side fix.
-
-`POST /hyperlink/sync/claim` takes a `client_msg_id` the client mints
-*before* its first attempt and reuses on every retry; a second claim
-returns what the first produced. Keys are scoped per device, so two
-phones cannot collide, and expire after a day.
-
-The other half is catching up. Polling `GET /sessions` downloads
-conversations the phone already has and still cannot reveal that a
-session was **deleted** — an absence is invisible when you are diffing
-against a list you no longer trust. `GET /hyperlink/sync` is a change
-feed with real tombstone rows, a `head` so a new device can skip the
-history rather than replaying every change ever made, and a
-`resync_required` flag for a cursor that has fallen off the back of the
-log.
-
-Sequence numbers come from a counter row read and written inside the
-same transaction as the change it labels, not `MAX(seq) + 1` — two
-writers reading the same maximum pick the same number. Verified under
-eight concurrent writers: 320 rows, no duplicates, no gaps.
-
-### `hypernix.hyperlink.notify` — and two bugs only running found ✨
-
-Push registrations, a durable queue with backoff, collapse handling, and
-the APNs payload. Delivery itself is an operator-supplied transport,
-because an APNs push needs an Apple team key and a route to
-`api.push.apple.com`, neither of which ships with an open-source
-package. That boundary is stated rather than pretended past.
-
-Device tokens are credentials, so they are stored because delivery needs
-them and never returned by an API, logged, or put in a `repr` — an
-eight-character fingerprint goes out instead.
-
-Both payload bugs were invisible until the code met real text:
-
-- **`json.dumps` escapes non-ASCII by default.** `ensure_ascii=True`
-  turns each Japanese character into a six-byte `\uXXXX` where UTF-8
-  needs three. The builder measured UTF-8 and shipped 8069-byte payloads
-  against a 4096-byte limit — refused by APNs for every reply that was
-  not plain English.
-- **Subtracting the overflow over-corrects to nothing.** A body of 8000
-  double quotes escapes to two bytes each, so the first overflow is
-  about as large as the whole budget; the subtraction drove it to zero
-  and produced a 143-byte payload with an empty body. **A model reply
-  containing code arrived with no text in it.** Binary search finds the
-  real maximum: 1,979 quotes and 3,276 characters of Python where there
-  had been none.
-
-### `hypernix.hyperlink.search` — without FTS5 🔁
-
-The T1 API runs on SQLite *or* PostgreSQL, and FTS5 has no PostgreSQL
-counterpart, so an FTS5 index would make search SQLite-only and the
-schema unportable. SQL narrows, Python matches — which also buys what
-`LIKE` cannot give: `LIKE` is case-insensitive for ASCII only, so it
-never matched "straße" for "STRASSE"; a query containing `%` is now a
-search for a percent sign rather than a request for every row; and
-ranking can see match positions instead of a boolean.
-
-Bounded at 20,000 rows, and the result says `capped` when it hit the
-bound — a silent partial answer is what makes someone conclude a
-conversation is gone.
-
-### `hypernix.preheat` stopped routing through a deprecated module 𖢥
-
-The 0.71.5a2 notes said the top-level shortcuts returned a `NeoOven`
-from that release on. The lazy import map in `hypernix/__init__.py` was
-never moved, so `hypernix.preheat` and `hypernix.new_oven` kept
-resolving into `old_oven` — and once post8 made that module announce
-itself properly, the *top-level* API began telling callers to stop using
-a module they had never imported. Moved. `tests/test_old_oven.py` now
-reaches `old_oven` directly, because the shortcut would otherwise have
-turned it into a second NeoOven suite: passing, and covering nothing it
-was written to cover.
-
-### The dead ruff config 🔧
-
-`pyproject.toml` carried a `[tool.ruff]` block alongside `ruff.toml`.
-Ruff stops at the first config it finds, so the pyproject block had no
-effect and had drifted — missing the per-file E402 exemptions and the
-flake8-bugbear list FastAPI needs. Removed, with a note saying where the
-live one is.
-
-### 🧪 208 new tests
-
-70 for notifications, 50 for sync, 51 for search, 37 driving all seven
-new endpoints over real HTTP. The cross-owner checks are the ones worth
-naming: a registration id is not a secret, so knowing one must not let
-any authenticated caller silence or delete another account's
-notifications — and the refusal is 404 rather than 403, because
-confirming an id exists tells an unauthorised caller something they
-should not learn.
-
-## 0.72.4.post8 — deprecated modules say so where it can be seen
-
-### The notice was going to stdout 𖢥
-
-Four modules had announced their own deprecation since 0.71.5a2, from
-the top of the file::
-
-    from rich.console import Console
-
-    Console().print("[bold red]WARNING: old_oven is deprecated. ...[/]")
-
-That got the hard part right — it was visible, immediately, before the
-module's own imports, so it appeared even when the module below it
-failed to load. `ruff.toml` still carries a per-file E402 exemption
-saying that ordering is deliberate, and it is.
-
-But `rich.Console()` writes to **stdout**, which is the caller's data
-channel. `hnx … > out.json` got a line of English in its JSON;
-`json.load` on the result raised instead of parsing. A diagnostic
-belongs on stderr, and now goes there.
-
-Three more things were wrong with a printed string. There was no
-`DeprecationWarning`, so `-W error` did not fail on it, `pytest.warns`
-could not assert it, and nothing could find callers of the deprecated
-surface — every tool that exists for this problem was blind to it. It
-could not be turned off, so a script that knowingly uses the old API had
-the choice of noise forever or patching the library. And it imported
-`rich` to print eleven words, from the top of a module whose own imports
-had not run yet.
-
-### `monitoring.tvtop` had said nothing at all ✨
-
-Its docstring has described it as existing "solely for
-backwards-compatibility" since the 0.70.0 tvtop rewrite, and it told
-nobody who imported it. A shim that never announces itself keeps its
-callers on the shim. It announces now, pointing at
-`hypernix.monitoring.tv`.
-
-### One mechanism 🔧
-
-`hypernix.system.deprecation` emits a real `DeprecationWarning` for
-tooling **and** guarantees a one-line notice on stderr — because
-`DeprecationWarning` is hidden by default and, outside `__main__`,
-plain `warnings.warn` shows nothing whatsoever. "Prints immediately on
-import" would otherwise mean "prints for nobody".
-
-Doing both without printing twice needs to know whether the warning was
-actually displayed, and there is no public API for that. So the single
-`warnings.warn` call is made with `warnings.showwarning` briefly
-swapped for a spy: if the active filters let it through, the spy sees it
-and the stderr line is skipped; if they suppressed it, the line is
-printed instead. Under `-W error` the warning is raised and propagates,
-which is what that flag asks for. The helper imports `os`, `sys` and
-`warnings` and nothing else.
-
-`HYPERNIX_DEPRECATION_WARNINGS=0` silences the stderr line and
-deliberately not the warning: making one variable suppress both would
-let a stray export disarm `-W error::DeprecationWarning` for a whole CI
-run. `PYTHONWARNINGS=ignore::DeprecationWarning` handles the other half,
-so an operator who wants silence still has an environment-only route.
-
-### 🧪 49 tests
-
-Behavioural, in subprocesses, because `sys.modules` caches an import and
-the question is what happens the first time. Each of the five modules is
-checked for announcing on import, naming its successor, writing nothing
-to stdout, failing under `-W error::DeprecationWarning`, and announcing
-exactly once when the warning *is* displayed. One test imports through
-an intermediate module rather than `__main__` — the hidden case the
-whole stderr fallback exists for.
-
-Two guard the claim that this covers *all* of them: the set of modules
-calling `deprecated_module` must equal the documented set, and any
-module whose docstring calls itself deprecated or a compatibility shim
-must announce it. That second one is exactly how `monitoring.tvtop` sat
-quiet for several releases, and it now fails the build. Both were
-verified by breaking them.
-
-### ❗ `hypernix.preheat` still routes through a deprecated module
-
-`hypernix.preheat` and `hypernix.new_oven` resolve to
-`models.old_oven`, so touching either now raises its deprecation
-notice. The 0.71.5a2 notes say those shortcuts were meant to return a
-`NeoOven` from that release on — the lazy import map in
-`hypernix/__init__.py` was never moved across. Left alone here: changing
-it changes what the top-level shortcuts return, which is not a
-documentation fix.
-
-## 0.72.4.post7 — the subsystem map describes the tree that exists
-
-### It had stopped being true 📚
-
-`wiki/Home.md`'s map showed the training pipeline as of roughly 0.70 and
-nothing after it: no T1 API, no HyperLink, no Studio, no quantisation
-stack, no `gather`, no `fuse box`, no `hnx runtime`, no monitoring
-lineage, no security layer. Twelve subsystems that exist in `src/` were
-absent from the picture of what HyperNix is.
-
-Two things on it were not merely stale but wrong, and running the new
-checks is what surfaced them:
-
-- **`new_oven` was drawn as a module beside `old_oven`.** It is a
-  *function* in `models.old_oven`; there is no `models/new_oven.py` and
-  there never was one to lose.
-- **`neo_oven` is the successor, not a third peer.** Its own docstring
-  says it replaces `old_oven`, `CodeOven`, `new_oven` and all three
-  fridges — so `system.old_fridge`, `data.mediocre_fridge` and
-  `evaluation.new_fridge` are the earlier generation, not current assist
-  modules sitting alongside it.
-
-The map now covers four surfaces over one package, and each area —
-training, quantisation and GGUF, serving and security, interfaces and
-monitoring — names real modules rather than shapes.
-
-### 🧪 The map is checked against the tree
-
-Every dotted name it prints is resolved against `src/`, brace shorthand
-(`data.{pans, strainer}`) expanded first, and every directory and file
-it points at is confirmed to exist. A map whose boxes cannot be looked
-up is worse than no map, and this one had drifted for about fifteen
-releases without anything noticing.
-
-Getting the check to have teeth took three attempts, each caught by
-trying to break it rather than by reading it:
-
-1. `subsystem in SECTION` passed for `chat` on the strength of
-   `CodeOven.chat` — a method, in a completely different sentence.
-2. Excluding a preceding dot still passed, on the prose "the chat TUI".
-3. It now requires the map to name an actual *module* inside each
-   subsystem, which cannot be satisfied by accident — and every name
-   that satisfies it has already been resolved against the tree.
-
-That last one forced the serving block to be written in checkable form
-rather than as bare labels, which is a better block anyway.
-
-34 tests, including the two specific things the old map got wrong, so
-neither can come back quietly.
-
-## 0.72.4.post6 — the release guard stopped refusing prepared releases
-
-### "Already what the tree says" was the wrong answer 𖢥
-
-`public-release` writes whatever version it is handed, so a dispatch
-naming an older number silently downgrades main. That happened once —
-v0.72.3.post2 against a tree already at .post4 — and the guard added
-afterwards refused three things at once, only one of which was actually
-unsafe.
-
-Refusing a version *equal* to the tree's was the wrong one. Preparing a
-release means writing that number into `pyproject.toml`, `setup.cfg` and
-`__init__.py` and adding the changelog heading under it — and both steps
-downstream already expect to find that work done: "Commit version bump"
-notices there is nothing to commit, "Tag and push" skips a tag that
-exists. Only the guard disagreed, and its advice — "use a .postN
-suffix" — meant inventing a number at dispatch time. That is how 0.72.4
-`post1` and `post3` went out: numbers no changelog heading matches, so
-neither release says what shipped.
-
-What makes a repeat genuinely unsafe is the number already naming
-*different code*, and a version string cannot answer that. A tag can. So
-the guard now allows the prepared version, and refuses when
-`v<version>` points at a commit other than the one being released —
-naming both the tag's commit and the one at hand, since "use a .postN"
-is not the only way out and deleting a mistaken tag is often the right
-one. A tag on the same commit is a re-run of a release that failed after
-the tag push, which is a thing people legitimately do, so it proceeds
-with a notice. Backwards is still refused unless `allow_downgrade`.
-
-It also warns — not fails — when the tree's version has no changelog
-heading. Failing there would only push people back to inventing a number
-at dispatch, which is the behaviour that lost the notes to begin with.
-
-### It is a script now 🔧
-
-`.github/scripts/version_guard.py`, not a heredoc inside the workflow,
-so `tests/test_version_guard.py` can drive every branch of it: 24 tests
-covering the prepared-tree case, downgrades, forward bumps, a tag on
-another commit, a tag on this one, a checkout that cannot resolve HEAD,
-a checkout with no git at all, and each shape the `version` input
-accepts (`0.72.5`, `v0.72.5`, `0.72.5-rc1`, `0.70.6-2`, `0.70.6postr1`),
-including that `0.70.6-2` and a tree reading `0.70.6.post2` are
-recognised as the same request rather than a downgrade.
-
-### 📚 The roadmap through 0.73.6
-
-0.72.5 (`noodle` in `hyped-pro`, Dflash2 drafts from `hyprslug`, three
-`tvtoppro` additions, `cctvtop`'s remote desktop, T1 accounts and web
-auth without an API key), 0.72.6 (`neuron`, the scheduled code scanner,
-the self-updating flow chart, a real audio processor, `hyped` rebuilt
-around Python "dots"), 0.72.7 (the Python 3.12–3.15 migration and PEPs
-798/799/810/831), 0.73.0 (Studio without a T1 key), 0.73.1–0.73.5 (five
-releases that add nothing but stability), and 0.73.6 (HGPS, the GPU
-process scheduler for Pascal and Turing cards). 0.72.4 also gets the
-shipped entry it never had.
-
-## 0.72.4.post5 — `hypernix-t1 start` left nothing running
-
-### The `setsid` binary was the wrong tool here too 𖢥
-
-`start` backgrounded uvicorn with `setsid ... & echo $! > server.pid`.
-That fails outright on macOS, which has no `setsid` binary at all — and
-macOS is a supported platform, since the script advertises bash 3.2,
-which is the bash macOS ships. There the background job died on
-`setsid: command not found`, `echo $!` still succeeded so the `|| die`
-guard behind it never fired, and the first sign of trouble was a raw
-shell error tailed out of the log 45 seconds later under "The server
-exited during startup".
-
-`$!` was not dependable where the binary does exist, either. setsid(1)
-forks when it is already a process-group leader and the parent then
-exits, so the recorded pid can name a process that has already gone.
-`launch-script` hit exactly that in 0.72.2 and stopped using the binary
-for it — `Popen(start_new_session=True)` calls setsid(2) in the child
-directly, which is the same new session with the pid actually wanted.
-`start` never got the same fix.
-
-It does now, through the interpreter it is already about to launch:
-same new session (the server's session id is its own pid), the pid is
-the server's, stdin goes to `/dev/null`, and a launcher that reports no
-pid is a failure instead of dead code.
-
-### Logging out was the other way to lose it 🛡️
-
-systemd-logind with `KillUserProcesses=yes` kills everything the user
-owns at logout, a process in its own session included; setsid(2) is not
-an exemption and lingering is. Nothing is written to the log when it
-happens, so the server is simply gone the next time anyone looks.
-`start` now checks the running configuration — over `busctl`, falling
-back to `logind.conf` *and its drop-ins*, since a distribution shipping
-a drop-in makes the main file the wrong thing to read — and when
-lingering is off and the setting is on, says so and names both ways
-out: `hypernix-t1 autostart on`, or `loginctl enable-linger`.
-
-### 🧪 9 new tests
-
-Behavioural where it counts: one starts the server on a PATH with every
-tool on it except `setsid` (red before this change), one asserts the
-recorded pid really is the uvicorn process, and one asserts the server
-is its own session leader — the observable fact behind surviving a
-SIGHUP, however the detach is spelled. The check that the binary is
-gone reads argv positions after stripping comments, because the
-function now explains at length why the binary is wrong and a plain
-substring search would match the explanation and pass whatever the code
-does.
-
-## 0.72.4.post4 — `hnx runtime`, and why `hnx gather` printed the usage table
-
-### `hnx gather` was reaching a different install 𖢥
-
-The command was registered, dispatched and tested, and it still answered
-with the usage table on a real machine. `hnx` is not
-`hypernix.interfaces.cli` — it is `version_launcher`, which re-execs the
-CLI on an interpreter it picks. It picked by *version number*: python3.12,
-then 3.13, then 3.14, running the first one where hypernix imported —
-whichever that was.
-
-So on a machine with an old hypernix on 3.12 and a fresh
-`pip install --upgrade` on 3.13, `hnx` ran the old one. Every subcommand
-added since that 3.12 install was missing, the CLI printed what it did
-recognise, and nothing said a different install was answering. `gather`
-was simply the first command new enough to notice.
-
-`sys.executable` in a console script *is* the interpreter pip installed
-it into, which is the install just upgraded — so that one is tried
-first now, and the version list is only the fallback for what it was
-really meant to cover: the script is on PATH but its own interpreter
-lost the package. When the fallback does fire and lands on a different
-version, it says so on stderr. And reaching our own interpreter no
-longer spawns a subprocess to do it.
-
-The tests asserted the old ordering ("prefers 3.12"), so they asserted
-the bug; they now assert the fix, plus one that walks every recent
-subcommand through the real entry point rather than through `cli.main`.
-
-### `hnx runtime` — the patched llama.cpp, from other applications ✨
-
-`native/ggml-hnx` builds a llama.cpp that reads the sub-bit types. This
-is how everything else gets to use it, and there are two routes with
-very different risk.
-
-**`serve`** starts the patched `llama-server`, which speaks the
-OpenAI-compatible API that LM Studio, Jan, Open WebUI, Continue, Zed and
-Cursor already know. Nothing on the machine is modified. It prints the
-base URL and where to paste it — on stderr, so `--print-only` leaves
-stdout a bare command line.
-
-**`install`** copies the patched libraries over the ones LM Studio
-bundles. That is surgery on somebody else's application, so: refused
-without `--yes`; everything replaced is copied to
-`~/.hypernix/runtime-bridge/backup` with a manifest first, so `restore`
-works after the installing process is gone; a directory with nothing
-named like `libllama` or `libggml` in it is refused rather than filled
-with shared objects; and an unpatched build is refused, because
-installing one replaces a runtime that cannot read sub-bit models with
-another that cannot, while looking like a fix. Whether a build is
-patched is read out of the binary, not guessed from its path. 🛡️
-
-**`path`** prints the bin directory bare, for
-`export LD_LIBRARY_PATH="$(hnx runtime path)"`.
-
-Verified end to end rather than mocked: the real patched build was
-detected as patched and a stock build of the same tag as *not*; the
-server was started against a real model and answered a real
-`/v1/chat/completions`; and install/restore round-tripped against a fake
-LM Studio tree with the originals coming back byte-for-byte.
-
-Two bugs the tests found before anyone else could:
-
-**The backup directory collided.** `strftime` has one-second
-resolution, so two installs in the same second shared a directory and
-the second overwrote the first's copies — with *our* libraries, since
-that is what the target held by then. Restore put ours back and the
-originals were gone for good. Small window, total loss.
-
-**A leading global option was mistaken for "no subcommand".**
-`--build DIR install --yes` starts with a dash, so the bare-invocation
-shortcut prepended `status` and argparse rejected the line. Decided by
-looking for a subcommand anywhere in the arguments now. `--json` and
-`--build` are also accepted on both sides of the subcommand, because
-people type both.
-
-Docs: `wiki/Runtime.md`, a `runtime` section in `CLI.md`. 37 tests.
-Full suite 5122 passed.
-
-## 0.72.4.post2 — Studio runs models itself, and the pinned llama.cpp builds again
-
-### Twenty-five copies of one upstream warning
-
-The build works — that log was warnings, not errors, and `mtmd` linked
-at 71%. But it repeated the same upstream deprecation once per
-translation unit, and a log like that is a good way to miss a real error
-in it.
-
-`ggml/CMakeLists.txt` sets `CMAKE_CXX_STANDARD 17`, but only inside its
-own subdirectory, so `tools/` and `common/` get whatever the compiler
-defaults to. GCC 13 defaults to `gnu++17` and says nothing; GCC 16
-defaults to a newer one, where a bitwise OR between two different enum
-types is deprecated (C++20, P1120R0) — and `tools/mtmd/clip-graph.h`
-does exactly that in a macro every model file includes.
-
-`build.sh` now passes `-DCMAKE_CXX_STANDARD=17` for the whole tree,
-which is the standard upstream actually targets and tests against.
-Nothing in llama.cpp needs C++20. Measured on b10883, building `mtmd`:
-**46 warnings at C++20, 0 at C++17**, target still linking, no errors
-either way.
-
-Not `-Wno-deprecated-enum-enum-conversion`, which was the tempting
-one-liner. The warning is telling the truth — it is just telling it
-about code compiled to a standard nobody asked for, and silencing it
-would have hidden the same construct if it ever appeared in ours. A
-`-DCMAKE_CXX_STANDARD=20` of your own still wins: it lands after ours on
-the command line and CMake takes the last one.
-
-### The pinned llama.cpp stopped compiling
-
-`./build.sh` died on a current toolchain, in a file the patcher never
-opens: 𖢥
-
-```
-llama-mmap.h:26:5: error: 'uint32_t' does not name a type
-note: 'uint32_t' is defined in header '<cstdint>'
-```
-
-then a pile of *no declaration matches* errors after it, because once
-the compiler has guessed `int` for the return type nothing lines up any
-more.
-
-Not our patch. `src/llama-mmap.h` at the pinned tag uses `uint32_t`
-without including `<cstdint>`, and got away with it only while libstdc++
-handed `<cstdint>` out behind `<vector>` and `<memory>`. GCC 15 and 16
-stopped, upstream fixed that file — and our pin was nine months behind
-it. A pin is a promise that the revision builds, and `b4585` had stopped
-keeping it.
-
-**The pin moved to `b10883`**, which has upstream's fix. Verified the way
-the last one should have been: cloned, patched, configured, built to
-completion (exit 0, zero `error:` lines), then asked the built ggml what
-the five types are and ran `llama-cli --version` off the result.
-
-**And `-include cstdint` now goes ahead of every translation unit**
-(`-include stdint.h` for C), because moving the pin fixes the one file
-upstream fixed and not the class. 405 files at the *new* tag still get
-their fixed-width types from somebody else's header, so the next
-compiler to tighten its transitive includes breaks a different one. The
-flag costs nothing, edits no upstream source, and means a stale checkout
-or a `LLAMA_REF` you pinned yourself still builds. `HNX_FORCE_STDINT=0`
-turns it off — MSVC spells it `/FI`.
-
-**`build.sh` now says when it is reusing a checkout** rather than
-silently building whatever is there. That is how somebody pulls a fix to
-the patcher, re-runs the script, and rebuilds the same stale tree: the
-clone step is skipped when the directory exists, and nothing mentioned
-it. 🛡️
-
-Honest about what was not shown: this box has GCC 13, whose libstdc++
-still leaks `<cstdint>` transitively, so the original failure could not
-be reproduced here — three attempts at simulating the stricter headers
-were each defeated by GCC 13 pulling `<stdint.h>` in by another route.
-What *is* verified is that both the old and new pins build cleanly with
-the flags, that the new pin contains upstream's fix to the exact file
-that failed, and that `-include cstdint` is by definition GCC's own
-suggested fix applied to every translation unit.
-
-Five tests pin the invariants: the pin is not `b4585`, both `-include`
-flags reach CMake, the override exists, an existing checkout is
-reported, and the script is valid shell.
-
-### Studio runs models itself, and a patcher that matched reality
-
-Two things, and the first one was reported from a real build.
-
-#### `patch_llamacpp.py` was written against a ggml that no longer exists 𖢥
-
-The build failed with "array index in initializer exceeds array bounds",
-then "no member named `vec_dot`", then "`ggml_vec_dot_t` undeclared".
-Both causes are upstream changes the patcher had not kept up with, and
-the reason nobody noticed is worse than either: the fake llama.cpp the
-tests patch modelled the *old* shape, so every test passed while no real
-checkout would compile. A fake can only be as right as the person who
-wrote it.
-
-**`ggml_type_traits` is two tables now.** The format half (`type_name`,
-`blck_size`, `to_float`) stayed in `ggml.c`; everything the CPU computes
-with (`from_float`, `vec_dot`, `vec_dot_type`, `nrows`) moved to
-`ggml_type_traits_cpu` in `ggml-cpu/ggml-cpu.c`, behind a different
-header. The five entries are now split across both, each file getting
-the shim include under its own marker.
-
-**`GGML_TYPE_COUNT` is a literal, not a count.** Upstream writes
-`GGML_TYPE_COUNT = 43`, so adding members before it does not grow it —
-and it sizes both tables, making `[GGML_TYPE_HNX_IQ0_9]` an initialiser
-for element 200 of a 43-element array. The patcher rewrites that line
-and records the original verbatim in the marker comment, so `--revert`
-restores whatever *that* checkout had rather than a number baked in
-here.
-
-The ids stay at 200–204. They are written into every GGUF hyprslug
-produces, so packing them densely after upstream's 42 would make today's
-models unreadable the next time upstream adds a type. Holes are already
-normal there — upstream's own 36, 37 and 38 are commented out with their
-slots empty.
-
-**A new CI job builds against a real llama.cpp**, which is the only
-thing that would have caught this. It clones, patches, builds
-`ggml-base` and `ggml-cpu`, asks the built ggml what the five types
-are, compiles Studio's local engine against it, and checks `--revert`
-leaves the tree byte-identical. Only those two targets, so it is about
-two minutes rather than eight.
-
-#### HyperNix Studio runs models on this machine ✨
-
-Studio was a client: chat went over HTTP to a HyperNix server, and a
-laptop with a GGUF on it still needed something running somewhere. Now
-there is a switch at the top of the Models tab.
-
-**`ModelCatalogue`** finds and describes models without loading any: it
-parses the GGUF header for architecture, name, context length, the exact
-parameter count summed from tensor shapes, and the type histogram — so
-"what quant is this" is answered by what the weights actually are rather
-than by `general.file_type`, which is one number for a file that usually
-mixes several. It knows the HyperNix sub-bit names itself rather than
-asking ggml, because the build that cannot run an `IQ0.5_XXXL` file is
-exactly the build where a bare "type 202" is least useful.
-
-Its input is hostile by construction — a model file is something
-somebody downloaded, and every length in its header is a 64-bit number
-the parser would otherwise be told to allocate. Every one is checked
-against what is left of the file, not just against a constant: "2^63"
-and "one byte more than this file" are the same mistake. 🛡️
-
-**`LocalEngine`** loads a GGUF and generates, streaming, with GPU
-offload and a cancel that works from another thread. **`LocalSession`**
-runs it on a worker thread, because loading a 7B model takes seconds and
-generating takes as long as it takes; on the GUI thread the window stops
-repainting and the desktop offers to kill it.
-
-Off by default, and that is the right default: the server path does not
-need llama.cpp, and making the harder dependency mandatory would stop
-Studio building for everyone who only wants to connect to a HyperNix
-box. Without it the same class compiles to a stub that says which flag
-turns it on — and the catalogue still works, so such a build lists
-what is on the disk and only refuses to *load* it.
-
-**The tool boundary does not move.** A local model gets exactly the
-reach a remote one had — file operations inside the workspace, each
-approved — because there is still precisely one place in
-`StudioBridge.cpp` that reaches a mutating tool, and a test counts it.
-
-Three UI bugs worth naming, all found by running the thing rather than
-reading it. The composer gated on `studio.connected`, which is false
-forever in local mode — it was dead with a model loaded and answering;
-it binds to a new `ready` now. The chat header showed "No model loaded"
-over a working local conversation. And Send becomes Stop while a local
-model is generating, because a long answer on a slow machine is a minute
-of watching and closing the window should not be the way out.
-
-Verified against a real model, not a mock: a tiny llama built with a
-real tokenizer, loaded and generated through `LocalEngine` — streaming,
-greedy reproducibility, callback stop, cross-thread cancel, an
-oversized prompt refused rather than silently truncated, and generating
-after unload an error rather than a crash. The catalogue was
-cross-checked against the project's own Python GGUF writer (identical
-parameter count, architecture, context and type histogram) and against
-all 19 real GGUFs llama.cpp ships.
-
-Tests: 35 C++ checks in `model_catalogue_test`, 18 in
-`local_engine_test` (which runs in both configurations and checks
-different things in each), and 18 in `tests/test_studio_local.py`. Full
-suite 5077 passed.
-
-## 0.72.4.dev11 — beta 1 full: `fuse box`, and a claim that did not survive being measured
-
-A new module, `hypernix.system.fusebox`, and a subcommand: ✨
-
-```
-hnx fusebox status                    # what the cards are doing now
-hnx fusebox watch --target 78         # hold 78 °C by pacing the run
-hnx fusebox watch --target 78 --underclock --yes
-hnx fusebox plan                      # what underclocking would do
-hnx fusebox restore                   # undo what a crashed run left
-hnx train run --thermal-target 78     # the same, from a training run
-```
-
-It reads every card through `hypernix.system.gpus` — so `nvidia-smi`,
-`amd-smi` and `rocm-smi` all the same — plus the CPU through
-`thermometer`. It holds a target by pacing the training loop, or by
-lowering a power limit if you allow it. And it trips like a fuse if a
-card passes a hard limit anyway: the run pauses, waits for the reset
-temperature, and resumes eased, since whatever got the card there is
-still true.
-
-### The brief said "slow down now to go faster later". It does not work. ❗
-
-The feature as described was: ease off before the driver throttles, and
-win back more than you gave up. Before writing that down as a claim, it
-got simulated — a first-order thermal model, hardware throttling shaped
-the way vendors do it, performance scaling as `power ** 0.35` the way
-every published power-vs-throughput curve does. Three strategies over
-the same wall time:
-
-| | throughput | temperature |
-| --- | --- | --- |
-| run flat out, take the driver's throttling | **fastest** | hottest |
-| hold a target with a lower power limit | −2 % to −7 % | much cooler |
-| hold a target by pausing between steps | −12 % to −24 % | much cooler |
-
-The ordering does not change across the range a real machine occupies —
-marginal cooling and a savage throttle included, which are the
-conditions under which the story would be true if it were ever true.
-
-The reason is not subtle once you see it: a thermal throttle still does
-*most* of the work — clocks at 55 % are 55 % of a card, not zero — while
-a pause does none. And because performance scales sublinearly with
-power, 80 % of the power buys about 92 % of the throughput while pausing
-20 % of the time buys 80 %.
-
-So the module ships, and it is not sold as a speedup. It sells the thing
-it actually delivers: **a temperature you chose, at a cost it prints**.
-
-```
-fusebox eased for 412s, peak 79°C. That cost 11.4% of the run.
-fusebox did not intervene: peaked at 63°C, target 80°C. It cost the run nothing.
-```
-
-That is a legitimate thing to want — a shared machine, a laptop on a
-desk, a room someone sleeps in, a card you would like to still own in
-three years — and so is the fuse, because "the driver will handle it" is
-not a plan when the driver's next move is a shutdown in the middle of a
-checkpoint write.
-
-The measurement is not a note in a changelog: it is
-`tests/test_fusebox.py::TestTheThroughputClaim`, which runs the model on
-every CI run and fails if the ordering ever changes, and a test that the
-module docstring still says "not a speedup". Prose and physics cannot
-drift apart without something going red.
-
-Two design consequences follow from the numbers rather than from taste.
-The power limit is the cheaper lever by three to four times, so it takes
-over from pausing after three sustained hot readings rather than eight.
-And once a limit is actually applied, the pause stands down to 40 % of
-its ceiling — both levers at full pays twice for the same degrees.
-
-### What it will not do 🛡️
-
-- **It will not raise a power limit above the card's factory default.**
-  Not with a flag, not on request, not through the restore path.
-  Lowering a limit and putting it back is thermal management; going past
-  the default is overclocking, and a training run that quietly overvolts
-  someone's card is not a feature. The check lives at the one function
-  that could break it and is asserted from four directions.
-- **It will not touch a card unless asked twice.** `--underclock` turns
-  it on and `--yes` confirms. Without both, every subcommand is
-  read-only and reports what it *would* set. A power limit outlives the
-  process that changed it, so a flag left in shell history should not be
-  enough to change one. `hnx train --thermal-target` cannot reach the
-  underclocker at all.
-- **It will not sudo.** Setting a power limit needs root on every
-  current driver. A refusal is reported once and the governor falls back
-  to pausing, which needs none.
-- **It will not run anything it was handed.** Vendor commands come from
-  a fixed table; the index goes through `int()` and the wattage through
-  `float()`; every invocation is a list and there is no shell.
-- **There is no CPU actuator.** The CPU is read, and can trip the
-  breaker with `--cpu-trip`, but it never drives the pacing — a CPU at
-  85 °C during data loading is normal, and easing a cold GPU over it
-  would be harm on no evidence. Turning a machine's frequency scaling
-  down because a training run is warm would slow everything else the
-  person is doing. The one exception is job-scoped: halving *this
-  process's* torch thread count while easing.
-
-### Putting it back after a crash 𖢥
-
-Changes are written to `~/.hypernix/fusebox-state.json` as each one is
-made, not at exit — the case the file exists for is the process not
-reaching its exit. A clean exit restores, an exception restores, and a
-`SIGKILL` leaves the file for `hnx fusebox status` to notice (exit 3)
-and `hnx fusebox restore` to undo.
-
-### The breaker does not hang ❗→🛡️
-
-An hour above the trip point is a broken fan, not a transient. The
-breaker raises `ThermalStall` and says to check the cooling, rather than
-blocking a run forever without saying why.
-
-### Two bugs that only closing the loop could find 𖢥
-
-Every unit test here observes a fixed temperature and checks the
-response, and all of them passed on a controller that never reached the
-temperature it was asked for. Driving the real governor against the
-thermal model found it: pure proportional control settles wherever its
-output happens to balance the error, which for an 80 °C target was
-82.5 °C — for ever. Someone asking for 80 got 82.5. Fixed with a slow
-integral term clamped to the same ceiling as the ease itself, which is
-the whole of the anti-windup: it can never store up more than the
-controller could have produced anyway. It now settles at 79.9 °C, and
-`TestItActuallyReachesTheTarget` runs the closed loop at three targets
-so a future controller change cannot quietly reintroduce an offset.
-
-The second was in the reporting. A governor holding 79.95 °C against an
-80 °C target reported itself *over target for the entire run*, because
-80.02 is greater than 80 and the counter had no margin — a number that
-would have had someone debugging a governor that was working perfectly.
-It now counts seconds more than 1 °C over, and carries the magnitude
-separately as degree-seconds, because seconds alone cannot tell 0.1 °C
-over for an hour from 9 °C over for an hour.
-
-### Docs 📚
-
-`wiki/FuseBox.md`, a `fusebox` section in `CLI.md`, and the numbers
-above stated where a person deciding whether to turn this on will see
-them.
-
-## 0.72.4.dev10 — beta 1 pt 1: `gather`, and Neo oven learns the house architecture
-
-Everything below the fold first: the website's mobile view, the last GPU
-readers that still asked NVIDIA directly, the desktop app that did not
-compile, and CUDA kernels for the sub-bit types. Then beta 1 pt 1.
-
-### `hnx gather` — a crawler ✨
-
-A new module, `hypernix.data.gather`, and a subcommand that drives it:
-
-```
-hnx gather -W https://example.org -Q 2 -T 4 -p 1.5 -f jsonl -o ./corpus
-hnx gather -L "a.org,b.org" -f parquet -C --xz -O corpus-2026-09
-hnx gather probe -W https://example.org -u 8
-hnx gather formats --json
-```
-
-The flags are the ones that were asked for. `-W` a site, `-L` a
-comma-separated list, `-T` threads, `-Q` depth, `-p` the pause between
-requests, `-f` the format, `-o` where to write it, `-O` the file header
-(or, with `-C`, the archive's name), `-C` plus one of `--xz` / `--7z` /
-`--zip` / `--gz` to compress, `-U` to upload the result to a GitHub or
-Hugging Face repo, and `-u` to measure a host's rate limit before
-committing to a crawl.
-
-Formats: `html` (a file per page), `html-full` (every page merged into
-one document — single-site only, and `-L` is refused rather than
-quietly producing a mess), `html-full-wimages` (the same, with images
-inlined as data URIs), `text`, `jsonl`, `parquet`, and `js` — which
-**saves** the JavaScript it finds. Nothing here runs any of it: there is
-no interpreter in the module, no browser engine imported, and a test
-reads the source to keep it that way.
-
-Three things it does that a fetch loop does not:
-
-- **It asks and it waits.** robots.txt is honoured by default, there is
-  a delay between requests by default, and when a host's own
-  `Crawl-delay` asks for longer than `-p` the host wins.
-- **The rate limiter is per host and claims its slot inside the lock.**
-  Claimed outside it, two of `-T 8`'s threads both look at the clock,
-  both decide now is fine, and the delay you asked for is not the delay
-  the server sees.
-- **It cannot write outside `-o`.** A URL path is attacker-controlled
-  and becomes a file name; `safe_output_path` resolves the result and
-  requires it to be under the root, so a link to `/../../.ssh/authorized_keys`
-  lands in the corpus as a mangled file name and nowhere else.
-
-Scriptable, as asked: `--json` puts the machine-readable result on
-stdout with progress on stderr, and the exit codes are distinct — `0`
-wrote output, `1` could not start, `2` finished having fetched nothing,
-`3` wrote output but some pages failed. `3` rather than `0` matters: a
-crawl that got eight pages of ten is a corpus with holes in it, and a
-pipeline should be able to notice without parsing the JSON.
-
-`-U` never uploads without `--yes`. Publishing a scrape is not a step to
-take because a flag was in the history.
-
-### `websearch` upgraded rather than duplicated 🔁
-
-The instruction was to upgrade a module that already scrapes rather than
-add a second one, and `interfaces/websearch.py` already had its own
-`urlopen`, its own title regex, its own link extractor and its own tag
-stripper. `fetch_web_page` now delegates to `gather.fetch`, which brings
-it three things it did not have: robots.txt, a rate limit, and a
-content-type check with a size ceiling — a PDF used to be decoded as
-UTF-8 and returned as a page of replacement characters that then looked
-like real text to whatever read it. 🐛
-
-The returned shape is unchanged, down to the twenty `{'text', 'href'}`
-links, so every caller keeps working. The *search* functions still fetch
-their own results pages: they scrape one engine with engine-specific
-parsing, and routing them through a crawler's politeness layer would put
-a one-second pause in front of every lookup an agent makes.
-
-### hyperNix0x-v2 in Neo oven ✨
-
-`hypernix.models.brewer_adapter` teaches NeoOven the house architecture.
-`preheat_brewed()` and `new_brewed()` are the explicit entry points, and
-plain `preheat()` recognises a Brewer checkpoint and routes itself.
-
-The adapter is an `nn.Module` subclass, not a proxy, so `.to()`,
-`.parameters()`, `state_dict()`, the optimizer and gradient checkpointing
-all keep working without knowing it exists. What it is actually for is
-one argument position: `BrewerModel.forward(input_ids, attn_mask)`
-returns bare logits, and NeoOven calls `model(ids, labels=labels)["loss"]`.
-Passed straight through, `labels` binds to `attn_mask` and a tensor of
-token ids is used as an additive attention mask — which runs, stays
-finite, and trains into noise without ever raising. 𖢥
-
-`is_brewer_checkpoint()` looks rather than trusting the extension, and
-looks *without* unpickling: a torch `.pt` is a zip whose `data.pkl`
-member holds the object graph, so the top-level keys can be read out of
-the first 64 KB of that member as literal bytes. `torch.load` on an
-untrusted file executes code, and "is this one of ours" must never be
-the reason to run it.
-
-### The website's mobile view 🛜
-
-Item 25. The hero grid was `minmax(480px, 1fr)`, which cannot shrink
-below its minimum; inside `overflow: hidden` it clipped instead of
-scrolling, so `scrollWidth == clientWidth` and every "does this page
-scroll sideways" check passed while a 390 px phone lost the right third
-of the page. Now `minmax(min(480px, 100%), 1fr)`. 𖢥
-
-Also: a `@media (pointer: coarse)` block, a 44×44 hit target behind every
-copy button, and every inline `fontSize` below 11 raised to 11 — the
-first pass used `sed` for that and missed `9.5`, `10.0`, `9` and `8`.
-
-### Every GPU reader goes through one abstraction 🔁
-
-Item 20's last mile. `thermometer`, `tv`, `livestream`, `pascal` and
-`ethanol` each still asked `nvidia-smi` directly; an AMD card was absent
-from the temperature reading, the TV view and the livestream. They now
-go through `hypernix.system.gpus`, `read_gpu_temp()` is the max across
-all cards rather than the first one's, and a card with no temperature
-reports `None` instead of `0.0` — which had been drawn as a very cold
-GPU.
-
-### The desktop app compiles 🐛
-
-HyperNix Studio, from dev9, did not. Three places used a `std::string`
-where a `QString` was wanted, CMake required Qt 6.5 while Ubuntu 24.04
-and Debian 12 ship 6.4, and QML produced five *"Unable to assign
-[undefined] to QString"* warnings — which are not cosmetic: a failed
-assignment leaves the property at its **previous** value, so the tool
-approval dialog could show the last request's file path next to a live
-"Approve" button. 𖢥
-
-### CUDA for the sub-bit types ✨
-
-`native/ggml-hnx/ggml-hnx-cuda.cu`: one warp per row, `__shfl_down_sync`
-for the reduction, no shared memory, templated on the block geometry so
-all five types share one kernel. Checked against the C path, which is
-checked against the Python packer, exactly.
-
-## 0.72.4.dev9 — a llama.cpp that reads sub-bit models, and a desktop app
-
-Two large pieces, plus three CI failures that were mine.
-
-### `native/ggml-hnx` — sub-bit types in C
-
-Item 24 asked for HyprSlug models to load in LM Studio. They cannot, and
-header rewriting cannot make them: `IQ0.5_XXXL` is not a llama.cpp
-quantisation under a different name, it is different arithmetic. A loader
-that believes a rewritten header reads a 30-byte block as though it were
-a 210-byte Q3_K one, and what comes out is noise. So: ✨ the decoder, in
-C, to be compiled into llama.cpp — which is what LM Studio runs.
-
-All five types (`IQ0.9_L`, `IQ0.75_M`, `IQ0.5_XXXL`, `IQ0.25_UXL`,
-`INT1`), decode plus `vec_dot`. The dot product never materialises a
-row: every weight is ±scale, so a block reduces to `scale · Σ(±y)`.
-That is the compensation for throwing the magnitudes away — these types
-are cheap to multiply precisely because so little of them survives.
-
-**The test that shapes everything else.** If the C and the Python
-disagree by one bit of one byte, the model loads, runs at full speed, and
-emits fluent nonsense. Nothing about that looks like a failure. So
-`tools/gen_vectors.py` has `hypernix.quant.subbit` — which wrote every
-HyperNix sub-bit file in existence — pack blocks and record its own
-decoding, and the C compares element by element, **exactly**. No
-tolerance: both sides multiply the same FP16 scale by ±1, so there is
-nothing to forgive, and a tolerance would hide the errors this exists to
-catch. The vectors include all-positive, all-negative, alternating and
-group-aligned blocks, because a uniform block passes with the bit order
-reversed. 45 blocks, all five types, identical.
-
-That is also why the decoder has no ggml dependency — it is buildable
-with a compiler and nothing else, which is how the bit order was
-verified rather than assumed.
-
-**Registration is a patcher, not a `.patch`.** 🔧 llama.cpp moves fast
-and a diff against line numbers rots in weeks: a rejected hunk, no idea
-which half applied, and a half-patched tree that compiles.
-`patch_llamacpp.py` finds each point by pattern, edits everything in
-memory, and writes nothing at all if any anchor moved. Idempotent, and
-`--revert` undoes it.
-
-Writing it found three bugs in itself, all caught by the round trip:
-
-- Two edits target `ggml.c`. Reading it fresh for each while writing both
-  meant the second write discarded the first, so the traits table was
-  never registered and *nothing said so* — the enum was there, the tree
-  looked patched, and the build failed later with an unrelated-looking
-  error. 𖢥
-- One shared marker string was a substring of three different first
-  lines, so `--revert` matched the wrong block and deleted sixty lines of
-  `ggml.c`. Each edit now has a unique marker, matched exactly, and revert
-  verifies the block it is about to remove is the one that was added. 𖢥
-- The `IQ0.25` decoder advanced the bit cursor by `group` instead of
-  `kept` in a first, unrolled draft. One loop driven by the type table
-  replaced four near-identical copies for exactly that reason.
-
-Said plainly in the README rather than left to be discovered: this makes
-a sub-bit model loadable and **correct**, not good — below ~1.5 bits per
-weight it is a different, much worse model. The types are CPU-only here;
-the CUDA kernel is not written. `from_float` is NULL on all five so
-`llama-quantize` refuses cleanly instead of producing a file that is the
-right size and wrong inside. And the LM Studio runtime swap is
-version-specific and unsupported by them, which the README says.
-
-### `desktop/` — HyperNix Studio
-
-✨ A Qt 6 / QML desktop client: model switching, chat, a workspace of
-code the model can edit, Hugging Face resolution, and a GPU/CPU/RAM panel
-from the server's own abstraction. It authenticates with a **T2S key** —
-read and non-admin write — because nothing it does is administration.
-
-**It cannot run a command.** No shell tool, no `exec`, no "run the tests"
-button. Not disabled — absent. A model can ask for a file to be written
-and a person can agree; there is no path by which a model runs code. That
-is the only guarantee in the app that does not depend on a check being
-correct, and the way to keep it is not to write the feature.
-`tests/test_studio_core.py` greps the sources for `system(`, `popen(`,
-`exec*`, `fork(`, `QProcess` and `posix_spawn` so it stays that way.
-
-**Two boundary checks, neither redundant.** `ToolPolicy::Resolve` is
-lexical — it collapses `..` and requires the result to be under the
-workspace with no filesystem access at all, so every escape is testable
-and none needs a disk. `ToolRunner::IsTrulyInside` is the filesystem
-check, run again immediately before each operation, and it catches what
-the lexical one cannot: a symlink *inside* the workspace pointing out of
-it, which passes every string test there is. Running it at the moment of
-the write also closes the gap between deciding and doing.
-
-**The approval dialog is mostly a list of things it does not have:** no
-"approve all", no "remember this", no timeout, no click-outside-to-
-dismiss, and no default focus on the affirmative button. Each of those is
-the same feature under a different name — a way for a file to be written
-without anyone having looked. A `Deny` never becomes a prompt at all:
-there is nothing to approve about reading a private key, and a dialog for
-one is a dialog people learn to click through, which would then be there
-for the request that mattered.
-
-The security core has no Qt dependency, on purpose, so CI checks it on a
-runner with no Qt: 110 checks across two suites, including every path
-escape and, on a real filesystem, symlinked files *and* symlinked
-directories.
-
-**Not verified:** the Qt half. There is no Qt in the environment this was
-written in, so `HyperLinkClient`, `StudioBridge` and all fifteen `.qml`
-files are unbuilt — written against the Qt 6.5 APIs and reviewed, not
-compiled. `desktop/README.md` says so where someone will read it before
-their first build.
-
-### Three CI failures 𖢥
-
-**A collected systemd unit reported every job as a success.**
-`systemctl show` does not error for a unit that no longer exists — it
-answers with property *defaults*: `ActiveState=inactive`,
-`Result=success`, `ExecMainStatus=0`. Indistinguishable from a clean run,
-and `--collect` reaps the unit the moment it exits. A job that exited 7
-was reported as having succeeded: not "we lost the outcome", the opposite
-of it. Both supervisors now share one exit-recording wrapper, and
-`<log>.exit` is authoritative.
-
-**The systemd path recorded no pid.** Everything that is not systemd
-addresses a job by pid — `--status`, and dev7's training pause/resume —
-and all of it was operating on pid 0.
-
-**The icon geometry check was the one assertion that skipped.**
-`make_appicon.py` imported Pillow at the top and CI installs without
-Pillow, so the test comparing the drawn coordinates to
-`hypernix-icon.svg` errored out instead of running. Pillow now loads
-inside the drawing functions, with a second test asserting the module
-still imports without it.
-
-All three passed locally because this container cannot run the branch
-they were in — no user bus, so setsid is always chosen. They are now
-covered by feeding the real `systemctl show` output into `refresh()`,
-because a test that only runs somewhere else is how both shipped.
-
-## 0.72.4.dev8 — HyperLink knows which machine it is talking to
-
-Item 1, plus the app icon and the release plumbing.
-
-**The app has an icon.** ✨ The appiconset declared a 1024 slot and
-contained no image, so HyperLink shipped with the iOS placeholder. It
-now carries the current HyperNix mark from `assets/logo-new` — three
-staggered parallelograms, dark to red up the stack — built by
-`ios/scripts/make_appicon.py` rather than committed as three mystery
-binaries. An icon with no recipe cannot be adjusted by whoever comes
-next; they can only replace it, and the brand drifts one replacement at
-a time. Three variants for iOS 18: opaque any/dark (iOS applies its own
-mask, so pre-rounding would show wedges in the home-screen corners) and
-a greyscale-on-transparency tinted one where the red bar becomes the
-*brightest* value — the system's auto-generated tinted icon drops it,
-and it is the bar that makes the mark recognisable. The app's
-`AccentColor` was a blue predating the mark, so every button was a
-different colour from the app's own icon; it is now `#c8192e`.
-
-**The IPA ships with the release.** ✨ `public-release.yml` builds
-HyperLink and attaches it to the GitHub release alongside the wheel,
-which `release.yml` already did for tag-triggered releases and this
-workflow did not. The app's version still comes from
-`ios/scripts/app_version.py` rather than the Python release number: the
-app quotes the *T1 API's* version because that is what a server reports
-and therefore what a support question contains. A macOS runner outage
-gives a release without the app attached, not a blocked release.
-
-### Which machine is that, actually
-
-**`hypernix.hyperlink.identity`** ✨ — a server fingerprint: a hash of 32
-random bytes generated once and kept in
-`<config>/hyperlink/server-identity` at mode 0600. Stable across
-restarts, upgrades, address changes and key rotations; unguessable from
-the hostname; not a secret. `GET /hyperlink/endpoints` reports it, to
-authenticated callers only.
-
-It exists because the app reaches its server at whichever of several
-addresses answers first, and those addresses move — a DHCP lease is
-reassigned, a tailnet name is transferred — so the app will happily try
-an address some *other* machine now answers on. The obvious check is the
-server name and the obvious check is wrong: a name is advertised in the
-clear and anything on the network can claim it, so the first machine to
-call itself `desktop` wins.
-
-HyperLink pins the fingerprint at pairing time — with someone standing
-at the PC reading a six-character code off its screen, the one moment
-with independent evidence of which machine it is — and re-checks it on
-every reconnection, which is every time the phone changes network. A
-mismatch shows a banner and withholds the admin credential. It is never
-a silent re-pin: that would make the warning fire exactly once, ever.
-
-Not proof on its own, and the docs say so — anyone who can read a
-fingerprint can repeat it, as with a TLS certificate fingerprint. What
-it adds is the ability to *notice*.
-
-**`GET /hyperlink/peers`** ✨ — other HyperNix machines on the tailnet,
-so someone with a desktop and a laptop does not have to look up the
-laptop's tailnet name. Admin-only: the answer is a map of a private
-network, and a phone's credential for one server is not authority to
-enumerate every machine its owner runs.
-
-Every row is `verified: false`, in the payload and not only in the
-docs. Discovery is not connection and connection is not trust. The probe
-is a `GET /health` with a 2.5s budget, probed concurrently, capped at 64
-peers and 64 KB per reply; the only use made of a response is copying
-two strings out for display. Nothing a peer returns selects a code path,
-names a file, or reaches a shell — there is one `subprocess.run` in the
-module and its argv is a literal.
-
-**Admin credentials, held briefly** ✨ — `AdminCredentialStore` is not
-`TokenStore` with a different key. A device token is scoped and
-revocable; an admin credential stops training runs and reads audit logs.
-So it is cleared at every launch unless the user turns that off in
-Settings, stored `WhenUnlockedThisDeviceOnly` (it never needs to run
-behind a lock screen and must not ride an iCloud backup), keyed on the
-server's *fingerprint* rather than its name or address, and never
-logged, printed or described. `has(fingerprint:)` exists so a view can
-ask "should I show this section?" without holding the secret to answer.
-
-**`keyless_available_here`** 🛡️ — "this server allows keyless
-connections" and "this phone, on this network, can make one" are
-different questions, and an app told only the first finds out about the
-second by failing.
-
-### Two bugs found while wiring it up
-
-**Swift's synthesised decoder ignores property defaults.** Adding
-`serverFingerprint` with a default to `ServerConnection` would have made
-every stored record from before this release fail to decode — and
-`restore()` wraps that in `try?`, so every existing user would have been
-silently signed out by the update with nothing anywhere saying why. It
-now has a hand-written `init(from:)`.
-
-**A T2S-key connection did not survive a restart.** `isConfigured`
-required a `deviceID`, and connecting with a key produces no device
-record on the server — the key *is* the credential — so the field was
-empty, `restore()` refused, and the app came up signed out every time.
-Whether there is a credential was always `TokenStore`'s question, which
-`restore()` already asks separately.
-
-### Not done
-
-LAN Bonjour discovery. The app already declares `_hypernix._tcp` and
-would browse for it, but nothing advertises the service: doing it
-properly needs a zeroconf dependency, and half of it is worse than none.
-Tailnet discovery is the case that was asked for and it is done; on the
-LAN the server's own ranked address list already covers it.
-
-## 0.72.4.dev7 — what training is doing, and the controls for it
-
-Item 5. A training run is the longest-lived and least observable thing
-this package starts: it goes for hours, it is usually launched over a
-connection that will not survive it, and until now the only way to know
-how it was going was to read a log.
-
-**`hypernix.training.monitor`** ✨ — two halves, deliberately separate.
-`ProgressReporter` is written *by* the trainer: one atomic rewrite of a
-small JSON file per update, no lock, no append, no fsync, because the
-reader is a web request that can arrive halfway through an epoch and a
-half-written status is worse than a stale one. `TrainingMonitor` is read
-by everything else, and merges what the file says with what is actually
-running — a crashed trainer leaves a record still claiming to be
-`running`, and believing it shows a healthy run that has not existed
-since Tuesday.
-
-**`train()` reports itself** 🔁 — no caller has to arrange it. The
-launcher exports `HNX_RUN_ID` and `HNX_LOG_PATH`, so a run started with
-`hypernix-t1 launch-script ./train.py --name qwen-sft --detach` appears
-in the dashboard on its own. That mattered more than it sounds: if the
-id had to be passed by hand, the runs people most want to watch — the
-detached ones — are exactly the ones that would never appear. The loop
-catches `BaseException`, Ctrl-C and `SystemExit` included, so an
-interrupted run is recorded as failed rather than left claiming
-progress forever.
-
-**`GET /training/*`** ✨ — runs, one run, its log tail, its checkpoints
-(with `exists`, because a checkpoint list is used to decide what to
-resume from and a path that has since been deleted is the case worth
-knowing), and `/training/resources` for the GPU/CPU/RAM alongside it. A
-loss curve without utilisation cannot tell you why a run is slow, and
-that is the question people actually have.
-
-**`POST /training/runs/{id}/{pause,resume,stop}`** ✨ — SIGSTOP, SIGCONT
-and SIGTERM to the run's process group. Terminate rather than kill: a
-trainer that handles SIGTERM gets to write a final checkpoint, and the
-difference between "stopped at epoch 4" and "lost epoch 4" is the whole
-value of asking politely first.
-
-**`hypernix-t1 training`** ✨ — the same thing without a server in
-between, because the moment you most want to know what a run is doing is
-usually the moment the API is the thing in trouble. No key check: the
-controls signal processes this user already owns and the records are
-files this user can already read, so the access control is the
-filesystem's. Over the network is where credentials belong.
-
-### Who may call it
-
-The spec's line is *admin-only unless the server is using the explicitly
-enabled trusted LAN/Tailscale keyless mode*, and there are two tiers
-because a second opt-in earns the destructive half:
-
-| | admin key | trusted mode | + partial admin | public |
-|---|---|---|---|---|
-| read runs, logs, resources | ✅ | ✅ | ✅ | ❌ |
-| stop / pause / resume | ✅ | ❌ | ✅ | ❌ |
-
-Killing six hours of training is not something a device that presented
-no credential gets to do because it happens to be on the same wifi. A
-public origin never qualifies for either, whatever the configuration
-says — `TrustPolicy.allows_keyless` refuses `PUBLIC` before the policy is
-consulted, so no amount of configuration turns an unauthenticated
-internet connection into training administration. Every control is
-audited under `admin`, the same category as rotating a key.
-
-Presenting an ordinary read key does not *lose* you access you would
-have had keyless from the same address. "Authenticating made you less
-trusted than staying anonymous" is a rule people design around by not
-sending their key.
-
-### Three things running it found
-
-**Pausing does not free the card.** SIGSTOP freezes the process with its
-GPU allocations intact. That is what makes resuming instant and it is
-also the caveat, so both the API's `note` and the CLI say it out loud —
-it is the thing everyone assumes the opposite of.
-
-**A stopped process cannot handle SIGTERM.** Stopping a paused run had
-to SIGCONT it first, or "stop" reported success and left the run frozen
-forever.
-
-**A dead run kept advertising an ETA.** It holds its last measured rate,
-so a trainer that died an hour ago at 43% displayed `eta 6s` — which
-reads as *nearly finished*, the opposite of what happened. `eta_seconds`
-is now `None` for anything that is not still going, next to `progress`,
-which has always been `None` rather than `0.0` when no schedule was
-declared: a bar at 0% for a job two hours in is a lie a dashboard tells
-confidently.
-
-Stopping a run that has already ended is a 409 rather than a rewrite —
-overwriting `finished` with `stopped` would leave the history saying an
-operator killed a job that in fact completed.
-
-79 tests, including real child processes read back through `/proc`,
-because none of pause, resume or stop can be checked by reading the
-code.
-
-## 0.72.4.dev6 — one way to ask about a GPU, whoever made it
-
-Item 13, beta 1 of the three or four you asked for: the abstraction and
-detection, with acceleration to follow.
-
-`hypernix.system.gpus` is the layer everything else asks. Before it
-there were **42 places that shelled out to `nvidia-smi` and 12 that knew
-about `rocm-smi`**, spread over seven modules. That count is the problem
-rather than a symptom of it — AMD support was not so much missing as
-unevenly present, and every new panel reimplemented the same parsing and
-met the same edge cases again.
-
-```python
-from hypernix.system import gpus
-for card in gpus.detect():
-    print(card.vendor, card.name, card.memory_total_mb, card.framework)
-```
-
-NVIDIA via `nvidia-smi`, AMD via `amd-smi` then `rocm-smi`, in one shape,
-with `Vendor.framework` giving `cuda` / `rocm` / `mps` / `cpu` so no
-caller branches on vendor.
-
-### Three things it refuses to get wrong
-
-**A missing reading is `None`, never 0.** `[N/A]`, `Not Supported` and
-empty cells all appear in real output. A dashboard that reports an
-unknown temperature as zero says the card is freezing.
-
-**`rocm-smi` reports VRAM in bytes** where everything else here uses
-megabytes. Mixing them makes a panel unreadable and a limit check wrong.
-
-**It never raises for want of hardware.** No GPU, no driver, no vendor
-tool, a tool that errors or prints something unexpected — all mean "no
-cards found". A monitoring panel that crashes on a laptop is worse than
-one that says the laptop has no GPU. A probe that raises does not take
-the other vendor's down with it.
-
-ROCm field names have changed across releases, so each value is looked
-up through the spellings that have been used: a rename costs that
-reading, not the card.
-
-### Where it shows up
-
-`launch-script --gpu 3` is now checked before the job starts — on a
-two-card machine that used to succeed, and the job would see no GPU and
-either run on the CPU at a hundredth of the speed or die deep in a
-framework, hours later, in a log nobody was watching. Deliberately
-narrow: when *no* cards are visible the index is passed through with a
-warning, because a container without `nvidia-smi` cannot tell "no GPU"
-from "no tooling", and refusing there would block a job that would have
-run.
-
-`hypernix devices` now shows what the vendor tools see alongside what
-torch can use, and names a card that is present but unusable — that is a
-torch build question, not a driver one, and seeing both lists together
-is what tells you which you are looking at.
-
-47 tests, driven with real vendor output since there is no GPU in the
-machine that runs them. The part that goes wrong is never "can we call
-the tool" but "what do we do with what it said".
-
-## 0.72.4.dev5 — `hypernix-t1 launch-script`
-
-Items 9, 10 and 11. Closing a laptop is the normal end of a remote
-working session and should not be the end of a training run.
-
-```bash
-hypernix-t1 launch-script ./train.py --name training-job --detach
-hypernix-t1 launch-script --status training-job
-hypernix-t1 launch-script --logs training-job --tail 50
-hypernix-t1 launch-script --stop training-job
-```
-
-`&` does not solve this. A backgrounded process is still in the shell's
-process group and still holds the tty, so the SIGHUP that follows a
-dropped connection reaches it. What survives is a process in its **own
-session**, which is what `hypernix.system.launcher` creates —
-`systemd-run --user` where there is a user bus, and a detached wrapper
-that records the exit status where there is not.
-
-Everything is on disk under the config directory, so `--status` and
-`--logs` work from a different SSH session, after a reboot, and whether
-or not the T1 server is running.
-
-**Authentication is required** and comes three ways: a key already
-configured for the machine, `-k`, or `--admin-password`. None of them
-reaches the job — a key in `argv` is readable by every user on the box
-through `ps`. Job records store environment **names only**, because the
-values are the caller's environment and several of them are credentials.
-
-Flags: `--name --env --cwd --detach --timeout --log-file --priority
---gpu --cpu --status --logs --tail --stop --restart --list --json`.
-`--gpu` sets `CUDA_VISIBLE_DEVICES` and `HIP_VISIBLE_DEVICES` together,
-since which one a runtime reads depends on where it lands and the job
-should not have to know.
-
-### Two bugs the tests found
-
-**The `setsid` binary was the wrong tool.** It forks when it is already
-a process-group leader and then exits, so the pid recorded belonged to a
-process that had already gone — and `--status` reported *unknown* for a
-job running perfectly well. `Popen(start_new_session=True)` calls
-`setsid(2)` in the child directly: same new session, and the pid we
-actually want.
-
-**`nargs=REMAINDER` swallowed the flags.** The documented form is
-`launch-script ./train.py --name training-job --detach`, and REMAINDER
-handed `--name training-job` to the script, silently naming the job
-after the filename. Flags after the path now reach the CLI; the script's
-own arguments go after a `--`.
-
-33 tests, the first of which launches from a separate process, kills it,
-and checks the job is still running — the only one that proves the point.
-
-## 0.72.4.dev4 — trusted-network mode
-
-Items 3 and 14. An origin on the LAN or a confirmed tailnet may connect
-without a key **when the administrator turns that on**, and a public
-origin never can, however the server is configured.
-
-```
-T1_TRUSTED_NETWORK=1                     # off by default
-T1_TRUSTED_NETWORK_PARTIAL_ADMIN=1       # a second, separate opt-in
-```
-
-Or at install: `install-t1.sh --trusted-network`.
-
-### What a keyless caller gets
-
-Read only. `--trusted-network-partial-admin` adds write — and never
-`KeyScope.ADMIN`, so nothing an admin key exists to gate is reachable
-without one. "Partial administrative functionality" was the phrase in
-the request, and the partial part is load-bearing. The context carries
-no key material either: there was no credential, and recording a
-plausible-looking one would invent evidence of an authentication that
-never happened.
-
-### Three things that would each have been a hole
-
-**`--yes` cannot enable it.** `ask_yes_no` answers every confirmation
-with yes, which is right for *"are you sure"* and wrong for the one
-question that lowers an authentication requirement — an unattended
-install would have come up serving the LAN without a key and nobody
-would have chosen it. It takes `--trusted-network`, or a person.
-
-**The reverse-proxy trap.** nginx or caddy on the same host makes every
-request in the world arrive from `127.0.0.1`, which is the *most*
-trusted origin here. An operator enabling keyless LAN access behind an
-unconfigured proxy would have published it to the internet while
-believing it reachable only from their sofa. A forwarded header from a
-peer that is not a configured trusted proxy now collapses the origin to
-public — failing closed, since a direct client sending a junk header
-only denies itself.
-
-**A bad key is not "no key".** The keyless path runs only when the
-request brings no credential at all. If a failed key fell through to it,
-revoking a key would stop working from the LAN, which is the opposite of
-what revoking means.
-
-### Found while building it
-
-`_extract_credential` *raises* on a missing Authorization header, so the
-keyless check — written after it — could never run. Every origin got a
-401 with the mode on. The check moved above it; the credential path is
-untouched.
-
-27 tests, most of them the boundary rather than the feature.
-
-## 0.72.4.dev3 — one answer to "where did this come from"
-
-Third increment, item 17's shared component for items 1, 3, 4 and 14.
-0.72.4 lets a LAN or tailnet connection act without a key, and that is
-only safe if *"from the LAN"* is a fact about the connection rather than
-a claim the connection makes. `hypernix.system.nettrust` is the single
-place that decides it — the T1 API, Waiter and the installer had three
-different notions of "local" between them.
-
-**The peer address is the evidence.** `X-Forwarded-For` is set by
-whoever is talking to you; a server that believes it has turned keyless
-LAN access into keyless access for anyone who can spell a header. It is
-read only when the immediate peer is a proxy the administrator listed,
-and then only the hop that proxy added — everything to its left came
-from the client. The default is no trusted proxies, so by default no
-forwarded header is read at all.
-
-**A tailnet address is a candidate, not a conclusion.** 100.64.0.0/10 is
-shared address space, so anything on a LAN can number itself 100.x and
-route to the server. A tailnet origin is confirmed by asking the local
-tailscaled who owns it (`tailscale whois`); unconfirmed is treated as
-public. That is what makes knowing the endpoint insufficient, which item
-3 asked for explicitly.
-
-**Public is never keyless.** The refusal lives in the check as well as
-in the constructor, so a hand-built policy cannot express it either.
-
-### A bug this nearly shipped
-
-The obvious implementation of "is it on the LAN" is
-`ipaddress.is_private`. That is much broader than RFC 1918: it is true
-for the documentation ranges (192.0.2/24, 198.51.100/24, 203.0.113/24),
-for 0.0.0.0/8, for benchmarking and reserved space — and for 100.64/10
-itself. Every one of those would have been LAN, and therefore eligible
-for keyless access, despite being on nobody's network.
-
-Found because a test used 203.0.113.9 as an example of a public address
-and got back `lan`. The ranges are spelled out now, and the six
-addresses `is_private` gets wrong are a test that asserts they *are*
-`is_private` before asserting we classify them public — so it cannot
-quietly stop proving anything.
-
-38 tests, most of them about the ways a public client could try to be
-mistaken for a local one.
-
-## 0.72.4.dev2 — the registry the server actually reads
-
-Second increment of 0.72.4, item 6/7: *"Waiter does not properly see the
-automatically indexed model registry."*
-
-`waiter models` asks the server, and the server reads a file — so that
-report is never about Waiter. It is about which file was opened and what
-happened when the file was not perfect. Three separate failures, each
-reachable from an ordinary setup.
-
-𖢥 **The server never looked for it.** With no `T1_MODEL_REGISTRY_PATH`
-the loader went straight to the shipped example seed. So `hypernix-t1
-index` would write a correct `models.json` and `waiter models` would
-list entries the seed file itself documents as *not real*, with nothing
-anywhere connecting the two. `discover()` now searches the config
-directory, `~/.hypernix/t1api`, `./hypernix/models` and the working
-directory; the indexer writes to the file the server will read, and says
-"restart it" instead of naming a variable that is no longer needed. An
-explicit `T1_MODEL_REGISTRY_PATH` still wins.
-
-𖢥 **A file being written was a crash.** The registry is produced by a
-different process, so the server opens it mid-write in the normal course
-of things — and a half-flushed file raised `JSONDecodeError` out of
-startup. Reading is now tolerant and never raises.
-
-𖢥 **One bad entry discarded every good one.** `ModelEntry.from_dict`
-raises `KeyError` on a missing required field, and that killed the whole
-load: a single typo took every other model with it, leaving an empty
-list and no cause. Bad entries are skipped and named; the rest load.
-
-✨ **`models.jsonl`.** One entry per line, which is how anything writes a
-registry incrementally — and a truncated final line, the shape a
-half-flushed append takes, costs only that line.
-
-🛡️ Two shapes people actually write are accepted rather than refused
-with a type error: a single entry object, and `{"models": [...]}`. The
-installer template's `_comment` stub is skipped rather than reported.
-
-## 0.72.4.dev1 — HyperLink says why it cannot reach a server
-
-First increment of 0.72.4. Reported from a real iPhone: three addresses
-tried, three failures, and none of the messages named anything the
-reader could act on.
-
-𖢥 **The three addresses that cannot work now say so before the
-request.** iOS reported them as:
-
-| typed | shown |
-|---|---|
-| `127.0.0.1:8000` | *Could not connect to the server.* |
-| `100.109.195.71:8000` | *…App Transport Security policy requires the use of a secure connection.* |
-| `http://…ts.net:8000` | the same ATS message |
-
-The first reads as though the PC is down; it is the phone's own
-loopback, and nothing on the PC could ever answer it. The other two are
-about the phone rather than the server, are identical to each other, and
-name no address that would work.
-
-`AddressCheck.advice(for:)` judges the address before a request is sent
-and explains each case in its own terms — loopback is this device;
-a bare Tailscale IP cannot be excepted at all because **ATS exceptions
-match domain names and never IP literals**, so the MagicDNS name is the
-fix rather than a setting; a public `http://` host is refused as
-designed. `FailureAdvice.explain` translates what still comes back from
-the network — a refused connection now points at `hypernix-t1 status`,
-a timeout at `tailscale status`.
-
-The `ts.net` exception itself has been in `Info.plist` since the Sept 1
-fix, so a MagicDNS name works on a current build; the report came from
-an older one.
-
-𖢥 **The app reported a version CI had not built.** `project.yml` set
-
-```yaml
-CFBundleShortVersionString: "1.0.26"
-```
-
-as a literal. `ios/scripts/app_version.py` computes the version from
-`T1_VERSION` — the whole point being that app and server quote the same
-string in a support question — and `ios.yml` passes it to xcodebuild as
-`MARKETING_VERSION`. Overriding a build setting cannot change a plist
-key that never referenced it, so every build shipped saying `1.0.26`
-whatever CI computed. `CFBundleVersion` on the next line already had
-`$(CURRENT_PROJECT_VERSION)`; this key simply never got the same
-treatment. It does now, the fallback default is synced, and a test keeps
-the two from drifting — a default nobody checks is what went stale.
-
-## 0.72.3.post7 — "it is installed already", and it was
-
-𖢥 **`hypernix-t1 start` told people to run a command that could not
-work.** `python_bin` prefers the private venv `install-t1.sh` creates,
-so the check runs against `~/.hypernix/t1api/venv/bin/python`. The
-message was:
-
-```
-✗ hypernix[t1api] is not installed for ~/.hypernix/t1api/venv/bin/python.
-  Run: pip install 'hypernix[t1api]'
-```
-
-A bare `pip` in the operator's shell installs into whatever *their*
-shell resolves — not that venv. So the instruction can be followed
-correctly, report a successful install, and leave the check failing,
-any number of times, with nothing on screen explaining the
-disagreement. The interpreter was named in the diagnosis and left out
-of the remedy, which is the one place it mattered.
-
-The remedy now carries it:
-
-```
-  ~/.hypernix/t1api/venv/bin/python -m pip install 'hypernix[t1api]'
-```
-
-and when the package *is* importable somewhere else, that is said by
-name — because "it is installed already" is a true statement about a
-different interpreter, and nothing on screen used to acknowledge it.
-Deleting the venv, so `hypernix-t1` falls back to your own interpreter,
-is offered as the other way out.
-
-🛡️ **A missing package and a missing extra no longer wear the same
-message.** They need different fixes, and installing the wrong one of
-the two fixes nothing. `hypernix` importable without `hypernix.t1api`
-now says the `[t1api]` extra is what is absent, and that the server
-needs the fastapi and uvicorn it pulls in.
-
-## 0.72.3.post6 — `hypernix-t1 index`, and three more from the field
-
-✨ **`hypernix-t1 index` builds the model registry from the models.** The
-registry is the only place the T1 API looks up what a model can do, and
-every route calls `ModelRegistry.require` rather than trusting a
-client-supplied `model_id` — right design, and it also means a server
-with an empty registry serves nothing. Filling it meant the installer's
-one-entry template of placeholders, or hand-written JSON. Both ask an
-operator to transcribe numbers that are already in the files, and a
-context limit mistyped there is not caught anywhere; it is simply the
-number the server enforces.
-
-```bash
-hypernix-t1 index                      # ./hypernix/models -> models.json
-hypernix-t1 index --dir /srv/models --dry-run
-hypernix-t1 index --refresh            # re-read the measured fields
-```
-
-Architecture, context length and parameter count come from the GGUF's
-own metadata and tensor table — the parameter count is *summed from the
-tensors*, so three quantisations of one model report the same figure and
-none of them is read off a filename. Pricing, plan and priority are
-policy, not measurements, so they come from flags. A value the file does
-not carry is defaulted **and reported as assumed**, rather than
-presented as though it had been read.
-
-An entry you have already edited is left alone; `--refresh` re-reads
-only the measured fields and still leaves pricing, plan, priority,
-status and notes as you set them. An unchanged registry is not even
-rewritten — re-indexing is what running the command twice does, and
-touching the mtime is what a file watcher keys on. An unreadable file is
-reported and the walk continues, with a non-zero exit because the
-registry written is missing a model someone put there on purpose.
-
-🐛 **`hyprslug-headers serve <directory>` was refused.** LM Studio's
-layout is `<root>/<publisher>/<name>/<name>.gguf` — which is exactly
-what `install-model` writes, so the directory is what tab-completion
-stops at and what gets pasted. These commands would not accept the thing
-they had just created. A directory holding one GGUF now resolves to it;
-one holding several is refused *with the list*, because choosing would
-be choosing which model was meant.
-
-𖢥 **`waiter serv -A` gave a bare errno when the server was not
-running.** *"Could not reach http://…:8000/auth/t1/validate: [Errno 111]
-Connection refused"* is accurate and answers none of the reader's
-questions — and the machinery to answer them already existed in
-`waiter.diagnose`. It was wired into exactly one of a dozen
-`T1ClientError` handlers, and `serv -A`, the first command anyone runs
-after an install, was one of the eleven that got the bare errno. All of
-them now route through it, and the remedy leads with `hypernix-t1
-start` rather than a shell script the reader may not have.
-
-## 0.72.3.post5 — three things found by running the commands on a real machine
-
-Reported from an actual install, not from the suite. None was a subtle
-failure of the thing under test; all three were the code being
-confidently wrong *around* a correct result.
-
-𖢥 **A traceback where a sentence belonged.** `hyprslug-headers serve` on
-a box whose torch was a CUDA build missing an NVIDIA runtime wheel ended
-with
-
-```
-ImportError: libcusparseLt.so.0: cannot open shared object file
-```
-
-and eleven frames of stack, from a command that was about to load a
-GGUF. Nothing in that says what to do, and the file it names is one
-nobody installs on purpose. `hnxdevice.import_torch()` now turns it into
-a statement of the situation — torch is installed, one of the NVIDIA
-runtime wheels a CUDA build depends on is not — with both ways out: the
-CPU build (smaller, no such dependencies, and what a machine serving a
-0.5-bit model usually wants) or the specific `nvidia-*` package that
-carries the missing library. Every lazy `import torch` on the load path
-goes through it.
-
-🛡️ **`hypernix devices` said "torch is not installed" on a machine that
-had it.** The probes caught `ImportError` and assumed absence. Sending
-someone to install what they already have is worse than saying nothing;
-they now distinguish a missing module from a failed link and report
-which.
-
-🐛 **The runtime error was reported against the model's filename.**
-`model.gguf: PyTorch is installed but cannot load libcusparseLt.so.0`
-reads as a broken download. `HnxEnvironmentError` (a subclass, so every
-existing `except HnxRunError` still catches it) separates "this machine
-cannot" from "this model cannot", and the server prefixes only the
-second with the path.
-
-𖢥 **`serve` announced its endpoint before the model loaded.** The
-`http://127.0.0.1:1234/v1 (ctrl-c to stop)` line was printed above the
-`serve()` call, so a failed load left a URL on screen that nothing was
-ever listening on, directly above the traceback saying so. `serve()` now
-takes an `on_ready` hook called after the model is loaded *and* the port
-is bound, and the CLI announces from there.
-
-🛡️ **A tier that contradicted its filename was reported without
-remark.** `install` printed `IQ0.5_XXXL   Qwen3.8-2B-IQ0.9_L.gguf`. Both
-halves are honest — the tensors are type 202, the name is a label
-someone typed — but side by side with no comment they leave the reader
-to notice that the model they believe is 0.9-bit is half-bit. `scan`
-now carries `named_tier` and `misnamed`, and both reports say so.
-
-𖢥 **The release workflow published a version older than the tree.**
-`v0.72.3.post2` was dispatched against a tree already at `0.72.3.post4`
-and rewrote all three version strings backwards, so main claimed a
-release predating its own code and an installed copy could not be
-identified from its version. The workflow writes whatever version it is
-handed; it now refuses one that is not greater than the tree's, with
-`allow_downgrade` for a deliberate rollback. Checked against the
-dispatch that caused this, a same-number re-release, an ordinary bump,
-a prerelease, and the documented `0.70.6-2` rebuild form.
-
-## 0.72.3.post4 — the accelerator path, actually on an accelerator
-
-𖢥 **`--hnx-device auto` was broken on every accelerator, and the whole
-local suite passed.** `_rope` built its inverse-frequency table with
-`torch.arange(...)` and no `device=`. On a CPU run that is correct by
-accident, because the default device *is* the CPU; anywhere else the
-table lands on the host, the positions land on the card, and the first
-forward pass ends with *"Expected all tensors to be on the same device,
-but found at least two devices, mps:0 and cpu!"*.
-
-Not an MPS quirk. CUDA and XPU would have failed identically on the first
-token — `auto` is the default, so this was the default path. The macOS CI
-runners are the only machines in the matrix with a device, so they were
-the only jobs that could see it: twelve failures there, green on Linux
-and Windows, green locally, on the same commit.
-
-𖢥 **Seeded sampling raised instead of sampling, off the CPU.**
-`generate_tokens` seeds a `torch.Generator(device="cpu")` and
-`torch.multinomial` refuses a generator whose device differs from the
-tensor's. The probability vector is now moved to the CPU rather than the
-generator to the device — which also means a seed picks the same draws on
-every backend, where a per-device generator would not.
-
-🔧 **A placement bug is invisible on a one-device machine**, so no number
-of ordinary tests could have caught either. `tests/test_hnx_device_placement.py`
-runs the rotation against `device="meta"` — tensors that allocate nothing
-but still carry a device identity torch enforces — which turns "would
-break on MPS" into an assertion that fails on a CPU-only box. Beside it,
-an audit parses the runtime modules and requires every `torch` tensor
-factory to pass `device=` (and every `from_numpy` to be followed by a
-`.to(...)`), because that is the class the one line belonged to. Four of
-the eleven fail on the pre-fix source; the rope one was the only naive
-factory left in either module.
-
-𖢥 **Every Windows test job was red on a locale, not a bug in the code
-under test.** `install-t1.sh` carries 476 non-ASCII bytes — em dashes,
-tick marks — and prints them. `Path.read_text()` and
-`subprocess.run(text=True)` both decode with
-`locale.getpreferredencoding()`, which is UTF-8 on Linux and macOS and
-**cp1252** on Windows, so twelve tests that drive the shell scripts
-raised *"'charmap' codec can't decode byte 0x8f in position 2607"* there
-and passed everywhere else. Every read, write and capture in the four
-shell-script test modules now names `encoding="utf-8"`, and a source-level
-audit keeps it that way — a locale is not observable from inside a
-passing test, so that is the only place the property lives.
-
-The same shape as the device bug above: an implicit default that happens
-to be correct on the machine the tests were written on. Noted while
-fixing it, not fixed here: `src/` still has a dozen bare `read_text()`
-calls on JSON and config files, which is the same latent issue for
-Windows *users* rather than for CI. That is a separate change.
-
-🐛 **A heredoc in `install-t1.sh` ran commands while writing `.env`.**
-Codacy's shellcheck reported two backticks as "use `$(...)` instead of
-legacy backticks", which read like a style nit and was not: the `.env`
-heredoc is unquoted so it can expand `$BIND_HOST`, so a backtick in its
-body is command substitution. Two comment lines describing where the
-server listens each *ran* `hypernix-t1 start` while the config was being
-written. Fixed to single quotes, with a note in the file saying why a
-backtick cannot appear there, and two regression tests — a heredoc parser
-that tells `<<'EOF'` from `<<EOF`, and an end-to-end check with a
-marker-touching shim named `hypernix-t1` on `PATH`.
-
-🐛 **`test_a_machine_with_no_user_bus_says_what_to_do` failed on every
-runner.** It inferred "took the no-bus branch" from a non-zero exit code.
-Runners have a working user bus *and* still exit non-zero, because the
-test redirects `HOME` and systemd cannot see a unit written there — a
-third case the guard did not have. It now probes `systemctl --user
-show-environment` directly, which is the condition it actually cares
-about: skips on a runner, asserts in a container.
-
-## 0.72.3.post3 — CUDA, ROCm, Metal, Intel; and the Vulkan answer
-
-✨ **The sub-bit runtime runs on accelerators, and the packed bytes stay
-packed there.** `hypernix.models.hnxtorch` is a torch rewrite of both
-decoders in ops every backend supports — shifts, masks, gathers — so the
-same code runs on CUDA, ROCm, MPS and XPU. It is asserted *bit-identical*
-to the numpy decoders, not close: integer unpacking followed by one
-multiply has no rounding to hide behind.
-
-*(The decoders were bit-identical, and were tested as such. The forward
-pass around them had never run on an accelerator in CI when this shipped
-— see `post4` for what that hid.)*
-
-The arrangement is the point. The obvious port — decode with numpy, then
-`.to("cuda")` — is the worst one available: it pushes **expanded
-float32** across PCIe every forward pass, 34× the bytes a 0.9-bit tensor
-occupies, every token, to save nothing. The packed form is the small one,
-so it is uploaded once and decoded on the card. A 7B at `IQ0.9_L` puts
-about 800 MB on the GPU instead of the 28 GB a host-side decode would
-move per pass — and instead of the 14 GB its float16 weights would need,
-which is what lets it fit on a card that could not hold them.
-
-✨ **`hypernix devices`**, and the sm_61 trap it exists for. A GTX
-1060/1070/1080, Titan Xp or P40 is compute capability 6.1, and recent
-torch wheels build for sm_75 and up. `torch.cuda.is_available()` returns
-**True** on those cards; the driver is fine, memory reports correctly,
-and the first kernel launch fails with *"no kernel image is available for
-execution on the device"* — which reads like a broken driver and is
-actually a wheel that was never built for the card. The probe compares
-the device's capability against `torch.cuda.get_arch_list()` and names
-the wheel to install (`cu118` for Pascal and Maxwell). Unusable backends
-are listed *with the reason*, because "CUDA is not available" and "CUDA
-is available and has no kernels for your card" are different problems
-with different fixes.
-
-🛡️ **Half precision is not automatic.** GP102/GP104 run FP16 at 1/64 of
-their FP32 rate. A rule as reasonable-looking as "half on CUDA, float on
-CPU" finds it and makes a GTX 1080 dramatically slower while appearing to
-optimise it, so `default_dtype()` returns float32 below `sm_70` and the
-device listing says why.
-
-🛡️ **Vulkan is answered, not faked.** PyTorch's Vulkan backend is not in
-any released wheel and implements vision ops rather than a transformer;
-reporting it as available because an import succeeded would be a lie with
-a long debugging tail. `--device vulkan` refuses and gives the route that
-does work — llama.cpp's Vulkan runtime, which is what LM Studio uses on
-AMD, Intel and older NVIDIA cards, reached by converting the model with
-`hyprslug-headers wrap`.
-
-✨ **`hyprslug-headers install-model`** puts a loadable copy where LM
-Studio and Bionic look — `<root>/<publisher>/<name>/<name>.gguf`, the
-layout both scan. What lands there is a wrap, because a sub-bit GGUF is
-not something their llama.cpp can open, and the command says so:
-"installed into LM Studio" is exactly the phrase under which someone
-would assume the 0.9-bit file itself now works there. An already-upstream
-GGUF is copied unchanged rather than re-quantised.
-
-✨ `--hnx-device` on `generate` and `chat`, `--device` on
-`hyprslug-headers serve`. `auto` falls back to the CPU, which cannot be
-absent; a *named* device that is present but unusable raises with the
-reason and the remedy rather than being silently downgraded, because
-someone who typed `--device cuda` wants to know why they did not get it.
-
-📚 New wiki page: [Devices](Devices.md).
-
-## 0.72.3.post2 — new quant types, hyprslug-headers, tvtoppro
-
-✨ **Five more quant types**, in two families. `IQ0.25_UXL` and `INT1`
-extend the sign-and-scale machinery and needed no new arithmetic: `INT1`
-is its `k == g` case — every sign kept, only the magnitude lost — and
-`IQ0.25_UXL` is the far end, three signs of every sixteen in 8 bytes per
-256 weights, which is **0.25 bits per weight exactly**. About 59% of
-signs survive there, against the 50% a coin gets, and the tier says so.
-
-`INT4` and `FP2` are new, in `hypernix.quant.lowbit`: a fixed codebook,
-one FP16 block scale, a code per weight. `FP2`'s four levels are ±1 and
-±2 — one sign bit and one exponent bit, no zero, because a 2-bit type
-*with* a zero needs five levels and three bits. The rate is the name plus
-the scale (`INT4` is 4.062 bpw, not 4), which is llama.cpp's own
-convention — `Q4_0` is 4.5 — and is stated rather than left to a file
-size. Full table in [LowBit](LowBit.md).
-
-𖢥 **The FP2 scale search, which was not the original plan.** The first
-draft fitted the scale to each block's peak, the way `Q4_0` does.
-Measured on Gaussian weights that gave FP2 a relative error of 0.944 —
-*worse than one bit*, which scores 0.599 at half the size. With four
-levels and the scale pinned to a 3.5σ outlier, the levels land at 1.75σ
-and 3.5σ and almost everything rounds to the larger of two numbers that
-are both too big. A 2-bit format that loses to a 1-bit format is not a
-format. A 17-step search fixes it: FP2 0.944 → 0.396, INT4 0.113 → 0.104,
-and it is cheap because the codebook is fixed — nearest-level is a
-`searchsorted` against midpoints, not an argmin over a broadcast.
-
-🐛 **`Q4M` resolves to `Q4_K_M`.** Squashing separators does not get there
-— the missing character is the `K`, not an underscore — so it fell
-through to "unknown target", which is a confusing way to reject the most
-common request there is. `Q3L`, `Q5M`, `Q4S` and friends too.
-
-✨ **`hypernix hyprslug-headers`** — `install`, `status`, `scan`, `show`,
-`stamp`, `wrap`, `serve`. Three mechanisms, and the help leads with which
-is which, because no header makes a stock llama.cpp read a 0.5-bit
-tensor: the type id at 200 is how the loader notices, but the missing
-dequantisation kernel is why it stops, and a header claiming a type
-llama.cpp knows would load and produce noise. `stamp` writes the block
-geometry into the file's own metadata so any loader can be taught to read
-it; `wrap` re-encodes to a stock type, verified against the reference
-`gguf` reader; `serve` keeps the tier and puts hnxrun behind
-`/v1/chat/completions` so LM Studio and Bionic can reach a 0.9-bit model
-without converting it. Standard-library `http.server`, no FastAPI.
-[HyprSlug-Headers](HyprSlug-Headers.md).
-
-𖢥 **`wrap` reported success on a file it had not converted.** hyprslug's
-`_readable()` did not list the extension types, so `_should_quantize`
-declined every tensor with "source type 200 is one hyprslug cannot read"
-and copied it verbatim — producing a `Q2_K`-labelled file still full of
-type-200 tensors, refused by exactly the loader the command exists to
-satisfy. hyprslug now reads the extension types as a source, which also
-makes plain requantisation *from* a sub-bit model work, and `wrap`
-re-reads its own output and deletes it rather than shipping one that
-still carries an extension type.
-
-𖢥 **`stamp` corrupted `general.alignment`.** Copying metadata key by key
-with `set_metadata` re-infers a GGUF type per value, and nothing about
-the number `32` says UINT32 rather than INT32. The reference reader
-rejected the result with "Bad type for general.alignment field" — a file
-this package could still read and nothing else could.
-
-✨ **`tvtoppro`** — tvtop++'s stats under a btop++ presentation, with
-themes. Not built on cctvtop: `TVTopPlusPlus` is a stat source held as an
-attribute, and everything drawn is new. Braille graphs at two samples per
-cell across and four levels down, meters whose every *cell* takes its
-colour from its own position along the ramp, titles in the box border,
-and btop's own `.theme` files loading unchanged — including the `#XX`
-greyscale shorthand, which read as a truncated hex triplet turns every
-neutral in a real theme dark red. Seven themes built in and exported to
-`examples/tvtoppro/`. [TvTopPro](TvTopPro.md).
-
-🐛 **tvtoppro rows are truncated as well as padded.** At 60 columns the
-"no nvidia-smi here" line is longer than its box, and an over-long row
-does not wrap tidily — it pushes the right border onto the next line and
-every box below it looks broken. Caught by asserting every row of a frame
-is exactly the requested width, at four widths under all seven themes,
-measured with Rich rather than counted: the rows carry colour tags that
-print as nothing and braille that prints as one cell each, so `len()` is
-wrong in both directions.
-
-𖢥 **`hypernix-t1 create --host/--port` failed from a checkout.** They are
-in `hypernix-t1 --help`, but from a checkout `create` execs
-`install-t1.sh`, which had never heard of any of them and died with
-"Unknown option: --port" — so the documented interface failed on exactly
-the machine a developer is sitting at. The installer takes them now.
-
-𖢥 **`hypernix-t1 start` started the server somewhere else.**
-`install-t1.sh` put the bind address only into `start-t1.sh`, so
-`hypernix-t1 start` found no `T1_HOST` or `T1_PORT`, fell back to its own
-`127.0.0.1:8000` default, and started uvicorn on a different port from
-the one the installer had configured — after which `status`, `logs`,
-`key` and `test` all pointed at an address nothing was listening on. The
-installer writes both keys now, so both entry points agree.
-
-🛡️ **`install-t1.sh` refuses to clobber an existing `.env`.** Overwriting
-it regenerates the token secret, which invalidates every key already
-minted against it — a failure that surfaces later as "the server rejects
-my keys" rather than there as "the file was replaced". `create_minimal`
-already refused; `--force` overrides both.
-
-🛡️ **`hypernix-t1 autostart` explains a missing user bus.** `systemctl`
-being on PATH is not the same as there being a session to talk to; in a
-container, over plain ssh and on WSL it failed with systemd's bare
-"Failed to connect to bus: No medium found". It now names `enable-linger`
-and the `--write-only` flag, which installs the unit for a session that
-does not exist yet — and which lets the ExecStart-is-absolute test
-actually run instead of skipping everywhere CI does.
-
-📚 Example configs under `examples/tvtoppro/` and
-`examples/hyprslug-headers/`, and three new wiki pages: LowBit,
-HyprSlug-Headers, TvTopPro.
-
-## 0.72.3.post1 ("pt 4") — the sub-bit models actually run
-
-*Released as `0.72.3.post1`. The heading said only "pt 4", so anyone
-looking up what the released version shipped found nothing under that
-name — the release commit bumps the version files and does not write
-here.*
-
-✨ **HnxRun: a runtime for the files nothing else will open.** The IQ0.x
-tiers had been real quantisations since pt 2 — genuinely 0.56 bits per
-weight, a well-formed GGUF — and completely unrunnable. The type ids sit
-at 200 and above, deliberately outside anything upstream allocates, so
-every llama.cpp refuses them by name and the reference reader raises
-`ValueError: np.uint32(202) is not a valid GGMLQuantizationType`. A file
-that was correct, 30× smaller, and had nowhere to go.
-
-`hypernix.models.hnxrun` is the llama-family graph in torch — RMSNorm,
-RoPE, grouped-query causal attention with a KV cache, SwiGLU, output
-head — reading every type this package writes. `hypernix generate` and
-`hypernix chat` route to it for a sub-bit model and still hand upstream
-quants to llama.cpp, which is better at `Q4_K_M` than this will ever be.
-The RoPE convention is the part that decides whether this works:
-llama.cpp's converter *permutes* Q and K so rotation applies to adjacent
-pairs, and applying the Hugging Face half-split form to those tensors
-gives a model that loads, runs, and generates confident nonsense.
-
-𖢥 **Sub-bit in memory, not only on disk.** The first version dequantised
-every tensor to float32 at load time, so a model that was 0.81 bits per
-weight on disk was 32.000 resident — larger than the F16 model the
-quantisation was made from, and every byte the tier existed to save
-handed straight back. Everything worked; the numbers were just gone.
-`PackedWeight` now holds the on-disk bytes and unpacks inside the
-matmul, and an embedding lookup unpacks only the rows the prompt
-touches. Resident cost went 32.000 → 0.572 bits per weight.
-
-✨ **And fast enough to be worth running.** Sub-bit memory that costs 30×
-the time is a different way of not shipping the tier. The packed matmul
-no longer widens a weight to one float per element at all: a dropped
-sign repeats its group's last stored one, so the group's contribution
-factors, and folding `x` to match lets the dot product run against the
-`kept` signs alone. Decoding those signs is one gather off an 8 KiB
-byte→signs table, replacing `unpackbits` plus a uint8→float32
-conversion plus the `2b - 1` mapping. Measured on a 15.8M-parameter
-llama, best of eight interleaved runs:
-
-    tier          disk   resident   bpw    ms/token   vs float32
-    float32         --    63.2 MB  32.000       2.7         1.0x
-    IQ0.9_L    1.87 MB    1.87 MB   0.947      16.4         6.2x
-    IQ0.75_M   1.63 MB    1.62 MB   0.822      15.6         5.9x
-    IQ0.5_XXXL 1.13 MB    1.13 MB   0.572      10.6         4.0x
-
-56× the memory for 4× the time, and the tier that saves the most memory
-is now the fastest, because the work is proportional to the signs
-actually stored. `load_model(..., cache_bytes=N)` is the dial in
-between: weights are pinned largest-first, since every forward pass
-touches every tensor once and the only question is how much decode work
-a byte of budget buys.
-
-📚 **Corrected: the logits are not bit-identical.** The wiki claimed the
-packed and materialised paths produced identical logits. They produce
-identical *weights* — same bytes, same decoder, and that is asserted
-exactly — but the fold changes which terms are summed and chunking
-changes the order, and float32 addition is not associative. The
-difference is about 5e-7 and the claim was only ever true while every
-tensor fitted in one chunk, which no real model does. The test now
-asserts `allclose` on logits and `torch.equal` on the weights, which is
-the distinction that was being papered over.
-
-𖢥 **`hypernix chat` on a sub-bit model crashed on the first message.**
-`load_gguf` routed these files to hnxrun correctly and handed back a bare
-`LoadedModel`, which has no `.chat()` — so the REPL loaded the model,
-printed nothing, and died with `AttributeError: 'LoadedModel' object has
-no attribute 'chat'`. Every test passed: they asserted that `_run_chat`
-*mentions* `load_gguf` and that the routing does not reach llama.cpp,
-and both were true of the broken version. `load_gguf` now returns an
-`HnxSession` speaking the same `.chat()` as every other backend, so the
-REPL's stated intent — load once, not per turn — holds for the tier
-whose load actually costs something, and the tests run a real sub-bit
-model through `cli.main()` instead of reading the source.
-
-✨ **`--cache-bytes` on `generate` and `chat`.** The memory-for-speed dial
-existed in `load_model` and was unreachable from the command line, which
-is the same as not existing. Sizes are human (`512M`, `2G`, a plain byte
-count) and one it cannot read is refused rather than quietly becoming
-zero — a memory limit that does not hold looks exactly like the tool
-ignoring the flag. It reaches the sub-bit runtime only; llama.cpp has its
-own answer to how much to keep resident and this does not guess on its
-behalf.
-
-🔁 **One chat path, not two.** `chat_with_gguf` had a separate
-`_chat_with_hnx_runtime` branch that reloaded the model on every turn.
-Both backends now go through `load_gguf(...).chat(...)`, and
-`hnxrun.continue_text()` is the text-in/text-out half of `generate_text`
-that takes an already-loaded model, so nothing has to reload to produce
-a second sentence.
-
-✨ **`--quantize-embeddings` / `--quantize-output` on `hypernix
-quantize`.** A sub-bit tier leaves `token_embd` and the output head in
-float, for a good reason — at half a bit the embedding table is the
-model — but with a size consequence nobody chose: on a 7B the untouched
-pair is most of the resulting file, so a tier called `IQ0.5_XXXL`
-produced something nearer 1.7 bits per weight than 0.5. The policy was
-reachable from `hyprslug.quantize_gguf` and from no command line at all,
-which meant the headline number in the docs could not be obtained with
-the tool. On the toy model in the tests: 10.301 bits/weight by default,
-0.657 with both flags. The default is unchanged; it is now a choice.
-
-🐛 **`--json` now means JSON on `--list-tiers`.** Both quantiser CLIs
-returned from the listing branch before ever looking at `args.as_json`,
-so `steamroller --list-tiers --json` printed the human table. A script
-that asked for machine output got prose and found out at `json.loads`. A
-flag that is accepted and ignored is worse than one that is rejected,
-because the rejection is visible.
-
-## 0.72.3 pt 3 — hyprslug grows up
-
-✨ **hyprslug writes the llama.cpp quant types.** "Quantises without
-llama.cpp" was only true of the tiers nobody was asking for. The sub-bit
-tiers *needed* their own quantiser — `llama-quantize` has never heard of
-them — but `Q4_K_M` did not, so the one quantisation everybody actually
-wants still needed a binary the machine might not be able to build.
-
-`hypernix.quant.llamaquants` adds `Q4_0`, `Q4_1`, `Q5_0`, `Q5_1`, `Q8_0`
-and `Q2_K` through `Q6_K`, encoded and decoded in Python. The layouts are
-exact — every struct matches `ggml-common.h` field for field, and the
-byte counts are asserted against the table `gguf.py` sizes tensors from,
-since a block that drifts by one byte turns every later tensor into
-noise. The scale searches are ports of `make_qx_quants` and
-`make_qkx2_quants` including the 19- and 21-step searches that do most of
-the quality work, vectorised over blocks so a 7B model is minutes rather
-than hours.
-
-🔁 hyprslug then separates what llama.cpp's names conflate. `Q4_K` is a
-block format; `Q4_K_M` is a **mix** — most tensors at `Q4_K`, `attn_v`
-and `ffn_down` a step wider, the head at `Q6_K`. A table of recipes over
-the formats, rather than ten more encoders. The mixes are our reading of
-upstream's policy and say so: llama.cpp picks per layer index as well as
-per tensor role. What is exact is the encoding of every tensor.
-
-✨ **Requantising.** A `Q8_0` GGUF is the only copy of the model most
-people have, and "quantise from the unquantised weights" is advice they
-cannot take. An already-quantised source is read back through the
-decoders, and the report names the type it came from — requantising
-compounds whatever the first pass lost, and that is the operator's call.
-
-𖢥 **`steamroller -hnx Q3_K_L` produced no file at all.** A `quantize`
-step in hnx mode was skipped outright, because "hnx mode does not run
-llama-quantize" had been implemented as "hnx mode does not quantise". It
-writes the file with hyprslug now.
-
-✨ **`hnx-imatrix` — the importance matrix, measured.** hyprslug took an
-imatrix and had no way to produce one, which made the argument advice
-rather than a feature. Forward hooks on every linear layer accumulating
-`sum(x²)` per input feature over calibration text — what llama.cpp's
-tool does, so the numbers mean the same thing. Both formats read and
-written, decided by content rather than by suffix, so an imatrix from
-here works in `llama-quantize` and one from the community works in
-hyprslug. Deriving one from the weights is *not* offered: it is a
-statistic of the activations, and a weight-derived number is a different
-quantity wearing its name.
-
-𖢥 **Every real imatrix was being discarded as mismatched.** An imatrix
-carries one number per input *channel*; hyprslug wanted one per weight
-and compared the two lengths. It tiles across the tensor's rows now, and
-still refuses the ones that genuinely do not divide.
-
-✨ **Dflash2 — a draft model inside the model it drafts for.**
-Speculative decoding is a free speed-up almost nobody gets, and the
-reason is logistics: two files that share a tokenizer, and the small one
-has to come from somewhere. `dflash2 attach` derives one from the base
-(layers dropped and requantised, first and last always kept) and writes
-it into the same GGUF under a namespaced prefix. One file, one download.
-The tokens out are **identical** to the base model's own — a proposal
-survives only where the base independently chose the same token — so a
-bad draft costs time and cannot cost correctness. `extract` materialises
-it for a runtime that wants `--model-draft`; `strip` reproduces the
-original byte for byte.
-
-𖢥 **gkey printed about one key in three thousand wrong.** The T1/T2
-special set contains `[` and `]`, and gkey's panels render with rich
-markup on — so a key whose specials landed on a bracket pair had
-characters eaten on the way to the screen. The store held the right key,
-the operator pasted the wrong one, and nothing anywhere said why. Every
-value that is data rather than markup is escaped now.
-
-𖢥 **Windows: a path is a path, not a URL scheme or a shell escape.**
-`urlparse` read the drive letter of `C:\keys\gkey.jsonl` as a scheme
-named `c`, so every local `-Con` config was refused for a file sitting
-right there. `pathfix` recognised its own PATH block by the platform's
-spelling rather than the shell's, and rewrote it on every single run.
-Four test suites were asserting against failures they were not about.
-
-📚 [HyprSlug](HyprSlug.md) rewritten for the upstream types, plus new
-[Imatrix](Imatrix.md) and [Dflash2](Dflash2.md) pages.
-
-## 0.72.3 pt 2 — T1 v1.0.2026.9.2.1
-
-𖢥 **The IQ0.x tiers never quantised anything.** steamroller has
-advertised `IQ0.9_L`, `IQ0.75_M` and `IQ0.5_XXXL` for several releases.
-What `pack_sub_bit` did was copy the Q3_K_L staging file and write a
-sidecar JSON naming a tier — so a "0.5-bit model" was byte-identical to
-the 3-bit model it came from, the same size on disk, and no more
-quantised than its input. The tier was a label on an unchanged file, and
-nothing tested that it was not.
-
-Three new modules make it real. `hypernix.quant.gguf` reads and writes
-GGUF with no llama.cpp and no llama-cpp-python — alignment and unknown
-metadata handled carefully, because getting the first wrong produces a
-file that opens and returns garbage, and getting the second wrong strips
-a model's chat template on every round trip. `hypernix.quant.subbit` is
-the arithmetic: 7 signs kept of every 8 (0.938 bpw), 3 of every 4
-(0.812), or 2 of every 4 (0.562), plus one FP16 scale per 256-weight
-block. `hypernix.quant.hyprslug` — also **doomslug**,
-**doomslugthedestroyer** and **dstd** — is the quantiser, and it writes a
-real GGUF whose tensors carry HyperNix type ids at 200 and above so a
-stock loader refuses the file by name instead of reading a 0.5-bit tensor
-as Q4_K.
-
-Choosing which signs to keep by magnitude was tried first and is wrong:
-the decoder has no bits telling it which positions were stored, so it
-fills left to right regardless, and a cleverer encoder only lands the
-signs on the wrong weights. It showed up as the widest tier having the
-*worst* error. A test now pins that error is monotonic in bit rate.
-
-✨ **`steamroller -hnx` and `hnx quantize -hnx`.** Route every step
-through hyprslug and never look for llama-quantize — not "look and ignore
-the result": `resolve_binary()` downloads a build when it cannot find
-one, so a lookup that happens still leaves llama.cpp on the machine. A
-test replaces it with an assertion. Full llama-type parity in hyprslug is
-not here yet; asking for an upstream type with `-hnx` says so.
-
-✨ **`/inference/*` — the governed generation surface.** `/bridge/lmstudio/*`
-hands the caller's model string straight to LM Studio, so the registry,
-the plan's cascade, the quota and the cost ledger never see the request.
-Correct for a window onto someone else's server, and it left the one path
-that spends money outside every rule the rest of the API enforces. Six
-endpoints — chat, completions, chat/stream, embeddings, tokens, backends
-— apply all of them. Fallback is opt-in and the response says which model
-really ran; the estimate sizes a request and the backend's reported usage
-bills it; streaming runs every gate before the first byte because a 429
-cannot be sent once the response has begun.
-
-𖢥 **SSPKID assignments did not survive the process that made them.**
-`ServerKeyRegistry` said so in its own docstring: "In-memory and
-deliberately small". Same defect as the server-ID counter — each `gkey`
-run is its own process, the server is another, and a fresh registry hands
-`#1` to a second key while an audit trail still names the first. It
-persists now, in a subdirectory of the key store rather than beside the
-keys, because the Keymaster globs `*.json` there and CI counts `*.json`
-to prove no keys leaked: a registry file at the top level was read as a
-malformed key on every start and counted as a leaked key at teardown.
-
-A bare `ServerKeyRegistry()` reaches the operator's real store, which is
-right for `gkey` and wrong for anything constructed incidentally —
-`create_app()` did, so every test that built an app wrote assignments
-into `~/.hypernix`. It takes the directory from the Keymaster it was
-given now, because `cfg.keymaster_dir` is None whenever
-`T1_KEYMASTER_DIR` is unset and `store_dir=None` means *ephemeral*.
-
-✨ **`gkey create -Con`** takes a key's V1 Server ID and/or SSPKID from a
-JSONL config — a URL, a path, or a bare IP. JSONL because a fleet config
-is an append-only log: lines apply in order, later wins, and a malformed
-line is skipped rather than breaking every key minted after it. It sets
-identity only, never scopes or expiry: a config source is somewhere else,
-and possibly someone else.
-
-✨ **`hypernix wakeup`** — what openWakeWord does, without using it. A
-phrase you choose, examples from your own voice, a folder of recordings
-(WAV, MP3, FLAC, and fragmented MP3 joined in natural order so `part10`
-does not land before `part2`), or one to four TTS voices generating
-overnight — and they mix, because a model trained only on TTS learns what
-synthesised speech sounds like, which is not the task. Log-mel frames
-into a small conv+GRU classifier, then a streaming detector with a
-refractory period so one utterance does not fire six times. The dataset
-says what is wrong with itself before training: no negatives, a thin
-negative ratio, too few positives.
-
-✨ **`generate` and `chat` read a GGUF.** Both took a snapshot directory,
-so the one format this package spends most of its time producing was the
-one its own inference commands could not read. A sub-bit GGUF is refused
-with the reason and the remedy — the answer to "why will this model not
-load" should come from the thing that made it.
-
-𖢥 **integration-ios started the fake model and never waited for it.** The
-ubuntu job had the readiness loop; the macOS one did not, because whether
-to wait was a per-job decision written out by hand four times. A macOS
-runner is slow enough starting Python that the probe reached the bridge
-first and the build failed with `MODEL_UNAVAILABLE`, which reads as a
-broken bridge and is a race. `scripts/ci/wait_for_http.py` is that
-decision made once, and a test fails if any job starts a server without
-waiting.
-
-✨ **`skip_integration`** on the public release: skips both live-server
-jobs, for a runner outage and not for getting past a red test. The subtle
-half is downstream — a job that `needs` a skipped job is itself skipped,
-so the publish jobs run under `always()` and accept the integration jobs
-at success or skipped, never at failure.
-
-## 0.72.3 — T1 v1.0.2026.8.1.1
-
-🛡️ **The AI agent no longer runs code without being asked.** hyped-pro
-parses tool calls out of the model's own reply and dispatched them
-immediately — so anything that could influence that reply (a file it
-read, a web result, a fetched page, a T1 server's response) had arbitrary
-code execution on the operator's machine. `ToolRegistry.execute_tool` now
-gates the side-effecting tools behind `HYPERNIX_TOOL_POLICY`
-(ask/deny/allow); "ask" with no terminal degrades to **deny**, so a CI
-job or daemon is not a shell for whoever can reach the model.
-
-The gated set was enumerated from the registry, not from memory. The
-first version gated `run_command` and left `create_skill`/`run_skill`
-open — those write a Python module and execute it, so a model that wanted
-a shell never had to name a gated tool. Also gated: the file writers, the
-keymaster key create/revoke pair, `set_env` and `git_commit`. Reads and
-the web tools stay ungated, and the source records why.
-
-🐛 Three `hashlib.sha1` calls now pass `usedforsecurity=False`. Two are
-dedupe and one is the WebSocket handshake, where RFC 6455 mandates
-SHA-1 — none is a security digest, and without the flag all three raise
-on a FIPS-enabled host.
-
-✨ **CI and the public release now gate on a live server.** After the
-tests pass, two jobs run: one drives the T1 API from outside the process,
-the other drives the iPhone app against a real server on a booted
-simulator. Each mints its own T2 key with `gkey`, authorises it, sends a
-chat all the way through the bridge to a **fake model**, and then deletes
-every key it created — in a `finally`, so the run that failed is cleaned
-up too. The teardown counts what is left in the store and fails the job
-if the probe left anything behind. No publish step runs until both jobs
-are green.
-
-The model is a stub speaking the OpenAI shape over HTTP rather than a
-mock patched into the bridge, so the bridge, the routing engine and the
-serialisation are all real. Its reply carries a distinctive marker *and*
-echoes the prompt back, because a check that passes when the request body
-never arrived is not a check.
-
-One shape note: hosted runners cannot reach each other, so "one job hosts
-the server, the other connects" is not expressible — there is no route
-between two runners. Each job brings up its own server; the split that
-matters (API-from-outside, app-against-a-real-server, release waits on
-both) is preserved.
-
-𖢥 **`gkey` ignored `T1_KEYMASTER_DIR`, which the server reads.** On any
-install using `--config-dir`, the server's key store lived under the
-config directory while `gkey` kept writing to `~/.hypernix/keymaster` —
-so keys the operator minted were invisible to their own server, and the
-key printed at first start was invisible to `gkey`. Two halves of one
-tool disagreeing about where the keys live is a hard failure to reason
-about, because both of them work.
-
-✨ **T2P keys carry billing, and servers can refuse them.** A T2P key is
-an ordinary T2 key with a billing binding attached — provider references,
-a spend cap, a currency — so a key can be issued to someone who pays for
-their own usage. No card data is ever stored (the store refuses anything
-shaped like a card number at the boundary) and the binding is not in the
-credential, because keys land in shell history and payment tokens must
-not. A T2P key is never an administrator.
-
-`T1_BILLING_KEY_POLICY` gives a server three answers: `allow` (default,
-so nothing changes), `deny` with a `T1_PAYMENT_URL` to point at, or
-`separate`, which requires the payment key in `X-Payment-Key` so the
-credential that identifies a caller and the one that spends money have
-separate lifetimes. Enforced at authentication — refusing after the work
-is a refund, not a policy.
-
-𖢥 **A binding outlived the key it belonged to.** `release` existed, was
-documented as "called when a key is revoked", and was called by nothing —
-revocation happens in `hypernix.security`, which knows nothing about
-billing. So a revoked key left behind a spend cap and a recorded spend on
-a dead key ID, waiting to be inherited by whatever held that ID next.
-
-`Keymaster.on_revoke` and `Keymaster.on_rotate` are the missing seam, and
-the billing store registers on both. Revoking releases the binding;
-rotating **moves** it, carrying its spend — a rotation that reset `spent`
-to zero would be a way to mint unlimited spend out of a cap, and a
-rotation that dropped the binding would silently make a paid key free.
-Observers are advisory: revoking a key is the safety-critical operation,
-so one that raises is logged and cannot block it.
-
-🐛 **Family detection was a hardcoded list and silently stopped covering
-the family.** Two call sites tested `key[:3] in ("T2_", "T2S")`, so a
-T2P key fell through to the T1 path and was rejected as malformed several
-layers before the code that had an opinion about it. Derived from the
-enum now.
-
-𖢥 **HyperLink timed out because the server advertised the wrong port.**
-uvicorn owns the bind address and passes it to nobody, so the config's
-default — 8000 — went out in the endpoint list whatever port the server
-was actually on. The phone connected to 8000, timed out, and the server
-log stayed empty because nothing ever arrived. The advertised port is now
-the one the request came in on, which is by construction an address that
-works; an explicit `T1_HYPERLINK_PORT` still wins, because a proxy
-forwarding to another port knows something the request cannot.
-
-𖢥 **iOS blocked tailnet requests before they left the phone.**
-`NSAllowsLocalNetworking` exempts link-local, `.local` and the RFC 1918
-ranges. Tailscale is 100.64.0.0/10 — shared address space, not RFC 1918 —
-so ATS refused it, which is the same silent timeout with nothing to log.
-`ts.net` is now an exception domain with subdomains included, scoped so
-arbitrary loads stay off and a public `http://` endpoint is still
-refused.
-
-🛡️ **When there is no tailnet address, the server says why.**
-`tailscale_self` returned empty for four different reasons and named
-none of them: not installed, not logged in, daemon down, or IPv6-only.
-That is fine for a server — a tailnet is optional — and useless to
-someone staring at a phone that cannot connect. `tailscale_diagnosis`
-names the actual cause, including the common one where tailscale is
-installed and a service manager's minimal PATH hides it.
-
-✨ **A new server issues itself a bootstrap key.** An empty key store plus
-admin-only key routes is a closed loop, and it is why `waiter hyperlink
-pair` could not run on a new install. First start now mints a T2 admin
-key that works **only from that machine**, expires after **three days**,
-and is minted **once**. Loopback is enforced on every request, on both
-the ordinary and HyperLink auth paths — a restriction applied to one of
-two routes into the same key store is not a restriction.
-
-🐛 **`pip install hypernix` did not give you `hypernix-t1`.** It is a
-shell program, so `[project.scripts]` cannot carry it, and nothing else
-did — the documentation promised an executable the package never
-installed. `script-files` ships it now, and `MANIFEST.in` carries it and
-`install-t1.sh` into the sdist, which matters because the sdist also
-ships `tests/`, and two of those test files run these scripts.
-
-✨ **`hypernix-t1 create` works without a checkout.** It hands off to
-`install-t1.sh` for the guided setup, and that is a checkout file — so
-from a wheel, the manager could not create the thing it manages. It now
-falls back to writing a minimal local-only configuration (a real
-generated secret, 0600, its own key store) and says plainly what the
-minimal path does not cover: no allowlist, no rate limits, no pricing, no
-model registry. `--host`, `--port`, and `--force` to overwrite; it
-refuses to overwrite an existing config without being told to.
-
-𖢥 **`install-t1.sh --install skip` failed on a machine where nothing was
-wrong.** The interpreter search ran `python3.12 python3.13 python3.11
-python3 python` — newest-ish first, with the operator's own `python3`
-fourth. On any machine with several interpreters that picks one the
-operator never chose; under `--install skip`, whose entire premise is
-that the package is already installed *somewhere*, it then verified an
-installation that was never meant to be in that interpreter and failed
-while everything was in fact fine. That is exactly what CI hit: the job
-installed into setup-python's 3.11 and the script went looking in the
-system 3.12.
-
-`python3` — the interpreter actually on PATH, which is a venv's or a
-version manager's — now comes first, and a pass ahead of that prefers any
-interpreter that can already import hypernix. `--python PATH` (or
-`HYPERNIX_PYTHON`) settles it outright. A `skip` run that finds no
-installation now says that, and points at `--python`, rather than
-reporting a failed install that never ran.
-
-🐛 **Windows: 31 tests failed on a `bash` that is not one.** Every shell
-test gated on `shutil.which("bash")`, which on a GitHub Windows runner
-finds `C:\Windows\System32\bash.exe` — the WSL launcher stub, present
-on every Windows install, which exits non-zero and answers in UTF-16LE
-that no distribution is installed. So the tests ran and asserted against
-output that was never a shell's. `tests/shell_support.py` asks the only
-question that matters — does running a trivial script through it produce
-the script's output — and the three shell test modules gate on that.
-
-𖢥 **`hypernix path` wrote backslashes into POSIX shell profiles.**
-`snippet_for_shell` and `session_hint` interpolated `str(directory)`, so
-on Windows a bash or fish line came out as `export
-PATH="\opt\bin:$PATH"` — and a POSIX shell reads `\` as an escape, so
-that line is not merely ugly but wrong. These snippets are written on
-Windows, for Git Bash and WSL. They use `as_posix()` now, which is
-identical everywhere else and turns `C:\Scripts` into `C:/Scripts`,
-which is what those shells want. PowerShell keeps the native separator.
-
-✨ **VRAM optimizations: `hypernix.system.vram`.** [`freezer`](Freezer.md)
-answers "how big a batch fits?"; this answers "how do I make more of it
-fit without changing what the model learns?" Five techniques, each opt-in
-and each reversible:
-
-- **Allocator tuning.** The CUDA caching allocator carves VRAM into
-  fixed-size segments and cannot satisfy a large request from several
-  small free ones — which is the OOM that happens while `nvidia-smi`
-  still reports gigabytes free, because that memory is *reserved and
-  unusable* rather than in use. `configure_allocator()` sets
-  `expandable_segments`. It has to run before the first CUDA allocation,
-  so importing the module deliberately does **not** import torch, and a
-  call that comes too late reports that instead of silently doing
-  nothing.
-- **Activation checkpointing.** Activations, not parameters, are what a
-  long-context run runs out of: they scale with batch x sequence x
-  layers and the parameters scale with none of those.
-  `checkpoint_blocks(model, every=N)` finds the layer stack as the
-  longest `nn.ModuleList` of structurally identical children — which is
-  what a transformer's layers are in every architecture here, without
-  hard-coding `.layers` vs `.h` vs `.blocks`. `use_reentrant=False`
-  because the reentrant implementation silently produces **no gradients
-  at all** when no input to the region requires grad, which is the normal
-  case for the first block; that failure mode is a model training on a
-  subset of its own layers and never saying so.
-- **Optimizer-in-backward.** An ordinary loop holds every gradient at
-  once between `backward` and `step` — a second full copy of the model,
-  in gradient dtype, at exactly the moment activations peak.
-  `fuse_optimizer_into_backward` steps and frees each one as it finishes.
-  It refuses gradient clipping, accumulation and a `GradScaler` rather
-  than accepting them: each would produce a plausible-looking loss curve
-  for a model that trained differently than the caller asked for.
-- **Optimizer-state offload.** Adam state is twice the parameter memory
-  sitting idle through any pass that is not a training step. A context
-  manager, not a mode — host-resident state during the step would cross
-  the bus every step — with the restore in a `finally`, so an exception
-  inside cannot leave the optimizer split across two devices and fail
-  later with an error naming neither.
-- **Measurement.** `measure_peak()` reports peak allocated and reserved.
-  The gap between them is fragmentation, which is the number the
-  allocator change is trying to move.
-
-Wired to the loop, not just the library: `train()` and
-`hypernix train run` take `--gradient-checkpointing`,
-`--checkpoint-every`, `--fuse-optimizer` and `--tune-allocator`. The
-clipping/fusing conflict is refused before the checkpoint is read off
-disk, so nobody waits out a model load to be told the combination was
-never going to work.
-
-📚 **The wiki and the README were up to three releases behind.** Home's
-index called the T1 API "Beta 2" and waiter "Beta 1" — both shipped —
-`T1-API.md` still read `1.0.26.8.0.1` throughout, and the one page
-nothing linked to was the security checklist. New [VRAM](VRAM.md) page;
-`hypernix-t1` and the `gkey -v` / `gkey version` surface documented in
-[CLI](CLI.md); `HYPERNIX_TOOL_POLICY` and `T1_KEYMASTER_DIR` added to the
-environment table; the roadmap's 0.72.3 section moved from "Next
-Milestone" to what actually landed.
-
-🔧 **348 `.pyc` files were tracked in the repository**, added by ed11d4b
-and ec509fe. The `.gitignore` note said removing them was a separate
-deliberate step; this is that step.
-
-✨ **`hypernix-t1` — one executable that runs the server.** Starting a
-T1 API meant remembering a uvicorn invocation, and stopping one meant
-finding the pid. `bin/hypernix-t1` is a single dependency-free shell
-program covering the whole lifecycle: `start` / `stop` / `kill` /
-`restart` / `status` / `logs`, `create` (a fully configured server, with
-`--auto` for an unattended one), `configure` to edit the env file in
-place, `test` for a real end-to-end probe rather than a health ping,
-`key` to mint one through `gkey` against the *server's own* key store,
-`autostart on|off` to install a systemd user service, and `remove`.
-
-`stop` sends `SIGTERM` and waits 15 seconds; if the server is still
-there it says so and points at `kill`, rather than escalating on its own —
-a server that is slow to drain in-flight requests is not the same thing as
-a hung one, and only the operator knows which they have. `restart` does
-escalate, because it has been told the process is going away. The pid file
-is checked
-against the process actually running under it, so a recycled pid is not
-mistaken for a live server, and a stale one is cleaned up instead of
-reported as running. `autostart` writes an absolute `ExecStart`, because
-systemd rejects a relative one at load time rather than at first start.
-
-## 0.72.2.post5 — T1 v1.0.2026.8.1.1
-
-A fix bump inside the same feature line, so no client needs to change.
-Two shipped features did nothing, both for the same reason: state was
-written and never read back, or read and never written.
-
-𖢥 **Every key `gkey` ever minted carried server ID `00001-A1`.** The
-counter advances on each `create` and lived only in memory — and each
-`gkey` invocation is its own process, so it restarted at the beginning
-every time. The field was there, documented, and constant.
-
-It now resumes from the store. Archived keys are scanned too: `_load_all`
-reads only the active store, and revoking moves a record into
-`archive/`, so resuming from active keys alone would hand a revoked key's
-server ID to a new key the moment the highest-numbered one was revoked. A
-server ID that comes back around is worse than one that never moves,
-because an audit trail then cannot tell the two keys apart.
-
-𖢥 **`POST /t1/auth/undo` could never undo anything.** Two independent
-reasons, either of which alone was fatal:
-
-* Nothing ever called `AuthHistory.record()`. The history was read by the
-  undo, redo and history endpoints and written by nobody, so it was
-  permanently empty and every undo answered "nothing to undo".
-* The four Keymaster methods the inverse needs — `restore_key`,
-  `set_key_type`, `set_scopes`, `set_revoked` — did not exist. They
-  appeared only as `hasattr` guards in the undo handler, so even a
-  recorded entry would have answered 501 "this server's Keymaster
-  cannot…" on every deployment.
-
-Rotations (own and admin) are now recorded, and the four primitives
-exist. A rotation can be undone and redone, verified end to end: rotate,
-the old key stops authenticating, undo, it authenticates again, redo, the
-new key works.
-
-Recording is best-effort. The rotation has already happened and its new
-key is in the response; failing the request afterwards would report a
-failure that did not occur and lose the key with it.
-
-🛡️ **Undoing onto a key that no longer exists returned a bare
-`500 Internal Server Error`** — no code, no JSON, nothing to act on. The
-history outlives the keys it refers to, so undoing a rotation whose key
-has since been revoked is an ordinary thing to try. It is now a `409`
-naming the key, the operation and the direction, and the history entry is
-left in place.
-
-🔧 **Four packages carried the T1 version as a literal** —
-`hypernix.waiter`, `hypernix.t1sdk`, `hypernix.hyperlink`, and two more
-copies inside `waiter.discovery`. They derive it from `T1_VERSION` now.
-`hypernix.t1api.version` is pure stdlib, so a client that deliberately
-does without the `[t1api]` extra pays nothing for the import. This is the
-same drift that had `waiter --help` advertising a version two releases
-stale.
-
-🔧 The version tests split by intent: the one asserting *which* version
-ships stays a literal, as the tripwire that makes a bump a decision rather
-than a side effect; the ones about the parser build their input from the
-constant, so a bump does not require editing them — editing them each
-time is how a spelling quietly stops being covered.
-
-❗ Known, unchanged: `ServerKeyRegistry` is still in-memory only, so
-SSPKID assignments do not survive a restart. Nothing assigns one outside
-the undo path yet, and the T2 API does not release until 1.xx.0.
-
-## 0.72.2.post4 — T2S keys that were refused for no good reason
-
-𖢥 **A T2 or T2S key minted against a *running* server was refused until
-the server restarted.** This is the "invalid key" in the report, and the
-key was real, registered and correctly typed the whole time.
-
-`validate_key` refreshes the key store once when a key is unknown,
-because a key minted a moment ago is not in the in-memory table yet. That
-retry lived inline in the T1 branch; the T2 branch reached the store by
-another route and never refreshed. So a T1 key minted against a running
-server worked, and **the same key in its T2 or T2S spelling did not** —
-about as confusing as a failure gets. The retry is now one method shared
-by both paths.
-
-🛡️ **"Unknown or unregistered T1 key" is no longer what a T2S holder is
-told.** It reads as "you brought the wrong kind of key" when the truth is
-that the right kind is not in this server's store — a different problem
-with a different fix. The message now names the family the caller
-actually presented, says the key is well-formed, explains that a T2 key
-is a spelling of a T1 key and so authenticates by being looked up in the
-key store (a generated one belongs to no store and authenticates as
-nothing), and names `gkey create -v v2short`.
-
-🛡️ **"Requires an admin T1 key" was a dead end for a T2S key.** That is
-the "forbidden" in the report. It sent the reader off to widen their
-key's scopes, which can never work: admin rides on the password component
-of a T2 prefix, and a T2S key has no room for one — it is short enough to
-type by hand, which is exactly why. The refusal now says the restriction
-is permanent, that scopes will not change it, and gives the route that
-does work: mint the pairing code on the PC, redeem the six-character code
-on the phone, use the T2S key for everything after that.
-
-✨ **HyperLink can finally accept a T2S key.** The server has taken one as
-a first-class credential since 0.72.1, but the app had only a
-six-character pairing-code field — and it uppercased and stripped
-punctuation from whatever was typed there, which destroys a T2S key. The
-pairing screen now has a method picker: a pairing code, or a T2S key
-pasted straight in. The key field is never autocapitalised or
-autocorrected, because a key is case-sensitive and full of punctuation
-and "fixing" either turns a correct key into a wrong one.
-
-A key-based connection has no device record on the server, so signing out
-forgets the credential rather than revoking a device — which is what
-`unpair` already did when there was no device ID.
-
-🔧 An existing test asserted that the unregistered-key message did *not*
-contain "T2", as a proxy for "refused for being unknown, not for being
-T2S". The message now names the family in order to say precisely that, so
-the test asserts the reason code instead. A message that merely avoids a
-substring is not the same as one that assigns the right cause.
-
-## 0.72.2.post3 — "0.72.2-3": waiter explains itself
-
-𖢥 **A connection failure now says what to do about it.** The report was
-
-```
-✗ Could not reach http://127.0.0.1:1234/hyperlink/pair: [Errno 111] Connection refused
-```
-
-which is accurate and answers none of the reader's three questions: is
-anything listening, is this the address I meant, and what do I type next.
-Port 1234 is the giveaway — it is LM Studio's default. LM Studio is a
-*bridge target* the T1 server talks to, never an address waiter should
-point at, and nothing in that message said so.
-
-`hypernix.waiter.diagnose` now probes on failure: does the TCP port
-accept a connection, and if it does, does whatever answers look like a T1
-API, an OpenAI-compatible backend, or just some web server. The message
-names the address, **where the address came from** (the saved config and
-its path, or `-I`), and the command that fixes it. The same failure now
-reads:
-
-```
-✗ Could not reach http://127.0.0.1:1234/hyperlink/pair ([Errno 111] Connection refused)
-  Address from: the saved config (~/.hypernix/waiter/waiter.config.jsonl)
-
-Port 1234 is LM Studio's default, not the T1 API's (8000).
-  `waiter lmstudio` reaches it through the T1 server, not directly.
-  If you meant the T1 API:  waiter serv -A -I http://127.0.0.1:8000 -K <key>
-```
-
-Only unreachability gets the extra work; every other error already says
-what is wrong. If the diagnostic itself fails it is discarded and the
-original error printed — it must never replace a real error with a worse
-one.
-
-𖢥 **`waiter --help` claimed T1 v1.0.26.8.0.1.** The API has been on
-1.0.26.8.1.0 since 0.72.1; the string was typed into the usage text and
-had drifted. It is interpolated from `T1_VERSION_SHORT` now, and a test
-pins the two together.
-
-✨ **`waiter version`** — package, waiter protocol, T1 API (with the
-oldest client it speaks to), key formats, and the connected server's
-version when one is reachable. Four numbers that move independently,
-which is why they are printed together: "my key is refused" and "my
-client is too old" are diagnosed by comparing them. The server line is
-fetched unauthenticated, because requiring a key for the command you run
-when something is wrong is backwards; it is omitted rather than guessed
-when the server cannot be reached. `--json` for scripts.
-
-✨ **`waiter help <topic>`** — longer help on `connect`, `keys`,
-`hyperlink` and `find`. The questions people get stuck on need
-paragraphs, and paragraphs in the one-line subcommand table would ruin
-the table. `connect` names the two ports people reach for by mistake.
-
-🐛 **Local probes ignore the proxy environment.** A diagnostic asks "is
-*this* host up"; a proxy in between answers a different question. With
-`HTTP_PROXY` set and no `no_proxy` for localhost — containers do this
-routinely — every local probe would have failed through the proxy and
-been reported as the server being down. Ordinary API traffic is
-unaffected.
-
-🐛 `waiter version` read `t1_version` from `/status`, which is an object
-with the parts broken out; the flat string is `t1_api_version`. It
-printed a dict.
-
-🐛 Identification stopped at the first HTTP error, so a 404 on `/status`
-reported "an HTTP server" and never reached `/v1/models` — the route that
-tells LM Studio from an anonymous web server.
-
-🐛 `diagnose()` could raise on a malformed URL (`SplitResult.port` throws
-for a port outside 0-65535), which is the one thing a diagnostic must
-never do. Found by its own test.
-
-### gkey mints v2 keys
-
-✨ **`gkey create -v v1|v2|v2short`.** The CLI could only ever mint the T1
-spelling; T2 and T2S keys had to be built in Python. `-v` picks the
-format, `--level 1-9` sets the access level, and `--password` supplies an
-admin password (validated, not trusted) instead of the generated one.
-Aliases are accepted, so `v2s`, `t2s` and `2short` all mean `v2short`.
-
-The mechanism is what shapes the feature: **a v2 key is a spelling of a
-v1 key, not a separate credential.** Authentication converts it back and
-looks *that* up in the key store, so a T2 key generated on its own
-authenticates as nothing at all. `gkey` therefore mints into the store
-and presents the result — which is why both spellings of a key work and
-`gkey revoke <key-id>` kills both.
-
-🛡️ **Every impossible combination is refused before the key is minted.**
-A key created and then found unpresentable would still be in the store —
-valid, usable, and known to nobody, because the operator saw only an
-error. Refused: an admin `v2short` (the format cannot carry admin), a
-`--level` on `v1` (no such field), a `--body-len` that contradicts
-`v2short`'s fixed 26, a `--password` without `--type admin`, and a level
-outside 1-9. A test asserts the store is empty after all of them.
-
-✨ **`gkey version`** reports the three versions that move independently:
-the package, the T1 API's own six-part version, and the key formats — plus
-what each format is and which is latest. `--json` for scripts. An operator
-debugging "my key is refused" needs to know which of the three is out of
-step.
-
-✨ **`T2KeyGenerator.from_t1_admin`.** `from_t1` never produces an admin
-key, because converting an arbitrary T1 key must not grant authority.
-This is the deliberate exception, given a separate name rather than a
-flag so every use can be found by grepping one word. It grants nothing by
-itself: `gkey` calls it only after checking the store's own record says
-administrator.
-
-✂️ **`v2.1` is named but not issuable.** Asking for it explains that the
-T2C derivation is not a secret yet, rather than reporting an unknown
-version — "unknown" and "not released" are different facts, and someone
-planning a migration needs to know which one they hit.
-
-🔧 The issued format is recorded on the key (`key_version`,
-`access_level` tags), so `gkey list` can still say which spelling was
-handed out after the key itself has scrolled off the screen.
-
-🐛 The new tests redirect `keymaster._DEFAULT_STORE` and
-`gatekeeper._DEFAULT_DATA` rather than `$HOME`. Both are module-level
-constants evaluated at import, so patching `$HOME` inside a test is too
-late — the first version of these tests wrote real credentials into
-`~/.hypernix/keymaster`.
-
-
-## 0.72.2.post2 — "0.72.2-2"
-
-𖢥 **`run_tailscale.sh` told you to run a command that does not work.**
-With `T1_TOKEN_SECRET` unset it failed with
-
-```
-run_tailscale.sh: line 36: T1_TOKEN_SECRET: set T1_TOKEN_SECRET (python3 -c import secrets;print(secrets.token_hex(32)))
-```
-
-and that command is a syntax error in both the shell and Python. The
-cause is `${VAR:?message}`: the message goes through quote removal before
-it is printed, so the single quotes around the `-c` argument were stripped
-on the way out. The source looked correct; only the output was wrong. It
-is now an explicit check printing a block that has been paste-tested.
-
-𖢥 **Neither example script read the secret `install-t1.sh` had already
-written.** The installer generates a stable `T1_TOKEN_SECRET` into
-`~/.hypernix/t1api/.env`, and both scripts ignored it — so an operator
-who had just run the installer was told to go and make one. Both now
-resolve in order: the environment, then that file, then generate (local)
-or fail with instructions (tailnet). The file is read one assignment at a
-time rather than sourced, since sourcing runs whatever is in it.
-
-🐛 `run_local.sh` minted a throwaway secret on every run even when a
-stable one existed, so every restart silently invalidated every scoped
-token already issued.
-
-🐛 `run_tailscale.sh` had no `[t1api]` preflight, so a missing extra gave
-a clear message on the local path and a bare `ModuleNotFoundError` on the
-tailnet one. Both check now.
-
-🔧 `tests/test_t1api_example_scripts.py` covers the deployment scripts:
-that no `${VAR:?...}` message contains quotes, that the commands a failure
-suggests actually parse, the three-step secret resolution including
-quoted values in `.env`, and that a stable secret survives a restart.
-Reverting the shipped line fails seven of them.
-
-## 0.72.2 — the installer
-
-✨ **`install-t1.sh`** — an interactive setup and installer for the T1
-API. It installs the package, asks what kind of deployment this is, and
-writes a configuration that matches: identity and bind address,
-deployment kind, key policy, T2 admin password, connection allowlist,
-rate limits, cost accounting, model source, HyperLink, and the `waiter`
-manager TUI. Then `.env` at 0600, a start script, optionally a systemd
-unit and a registry template, an admin key, and a seeded allowlist.
-
-`--dry-run` writes nothing, `--non-interactive` takes every default, and
-a re-run backs up an existing `.env` with a timestamp rather than
-overwriting it. bash 3.2 throughout, so it runs on a stock macOS without
-installing a shell first.
-
-𖢥 **The admin key it minted was invisible to the server it configured.**
-The installer minted into `$CONFIG_DIR/keymaster`; `Keymaster()` reads
-`~/.hypernix/keymaster` and had no way to be told otherwise. So every
-install ended by printing an admin key, under "shown once, copy this
-now", that the server had never heard of. `T1_KEYMASTER_DIR` makes the
-store configurable — unset it still means the long-standing default —
-and the installer now points the server at the store it minted into.
-This also makes two T1 servers on one machine stop sharing one key
-store.
-
-𖢥 **"T2 only" was a label, not a policy.** The installer offered three
-key policies and the server had switches for two: `accept_t2_keys` can
-refuse T2 keys, but nothing could refuse the T1 spelling, so choosing
-"T2 only" silently behaved as "both" — an operator would believe a
-migration was enforced when it was not. `T1_ACCEPT_T1_KEYS` is the
-missing half. Both switches off is refused at startup rather than
-serving a process nothing can authenticate to.
-
-🛡️ **The T2-only lockout that fix would otherwise have created.** Under
-T2-only the minted key is in the T1 spelling — the one the server has
-just been told to refuse — and there is no second admin key to undo the
-setting with. The installer now hands over the T2 form of that key, and
-the refusal message names the family it wants rather than saying the key
-is invalid. Admin authority comes from the key store, not the T2
-password component, so the wrapped key is a real admin credential.
-
-🛡️ **The allowlist is read back from the database after seeding.**
-Reporting a configured whitelist that is not configured is the worst
-thing this script could do — the operator is locked out of their own
-server with no way in short of editing the database. Seeding failures
-now name the problem, and the verified CIDR list shown on success is
-tagged and extracted rather than scraped from a capture that also
-carries the interpreter's stderr.
-
-🛡️ **CIDRs are validated at the prompt.** A typo used to abort seeding
-partway through, leaving the whitelist on and half-populated. The prompt
-now re-asks, using the same `ipaddress.ip_network(strict=False)` the
-server's `parse_cidr` uses, so a value accepted at the prompt is accepted
-by the server.
-
-🐛 A `tr -dc ... < /dev/urandom | head -c N` in the secret generator died
-of SIGPIPE under `set -o pipefail`, killing the installer partway
-through. Bounded with `head -c` first, trimmed with `cut`.
-
-🐛 `curl | bash` and `answers | ./install-t1.sh` are now distinguished, so
-piped answers are not discarded in favour of a terminal that may not
-exist.
-
-🛡️ A stale `.pth` in a system Python printed a raw traceback under
-"Checking this machine", which reads like the installer crashed. Now one
-warning line naming the file.
-
-📚 [Roadmap](Roadmap.md) — **0.72.3: payment connections on a T2 key**, so
-a key can be issued to someone who pays for their own usage. Roadmap
-only; nothing is implemented.
-
-## 0.72.1 — T1 v1.0.26.8.1.0
-
-The T1 API moves to `1.0.2026.8.1.0` — a feature bump inside the same 1.0
-generation, so every existing client keeps working. Three new modules,
-the T2 key system, four new endpoints, and a GUI.
-
-### T2 keys
-
-✨ **The T2 key family.** T2 keeps T1's structure and adds the three
-things T1 has no room for: an access level (1–9) in the suffix, an
-optional 7–13 character admin password in the prefix, and an SSPKID. A
-T2 key converts to a valid T1 key and authenticates against the store
-that already holds it, so there is no migration — an operator wraps an
-existing T1 key at a stated level and both spellings work.
-
-𖢥 **The conversion had a real bug, caught by round-tripping 3000 keys.**
-The T2 special-character alphabet excluded `-` on the theory that it is
-the suffix separator. It is, but the suffix is anchored at the end and
-the special block is five characters at a fixed offset, so a `-` inside
-it was never ambiguous — and excluding it meant any T1 key whose
-specials contained one converted to a *different* T1 key, which then
-failed to authenticate. The alphabets are now identical and
-`to_t1(from_t1(k)) == k` exactly, which is the property the whole
-compatibility story rests on.
-
-✨ **T2S**, the HyperLink key: exactly 26 body characters, never an admin
-(admin is carried by the password component and a T2S key cannot have
-one), and outside HyperLink narrowed to read and non-admin write. That
-narrowing is what makes a typeable credential acceptable rather than a
-liability.
-
-✂️ **T2C is reserved and `generate()` refuses it.** The specified key
-derivation — the holder's public IP, shuffled — is not a secret: it is
-observable by every server the client contacts, changes without notice,
-and is shared across a NAT. It gets a real key-agreement step in the 1.x
-line or it does not ship. The type is kept so the wire format has a
-place for it.
-
-✨ **SSPKIDs.** A V1 Server ID identifies a server; an SSPKID identifies
-one key on it. Many keys per server, one key per SSPKID, enforced by
-`ServerKeyRegistry`. The index codec is a greedy decomposition over the
-specified symbol table (5=`!`, 10=`?`, 15=`•`, 25=`*`, 40=`^`, 75=`€`,
-100=`$`) with a trailing 1–4 digit: it round-trips and is injective over
-every index, and non-canonical spellings like `!!` are refused rather
-than silently resolving to the same key as `?`.
-
-🐛 **`generate_admin_password` could emit passwords its own validator
-rejected.** Uniform choice over 61 characters produces a
-three-character run (`abc`, `789`) about 0.6% of the time, so roughly
-one caller in two hundred saw a confusing failure. It now uses bounded
-rejection sampling.
-
-❗ The **T2 API** itself does not ship until 1.x. What ships here is the
-key system and T1's ability to recognise it; `t2_api_available()` is the
-single gate.
-
-### T1 API v1.0.26.8.1.0
-
-✨ **`/t1/auth/undo` and `/t1/auth/redo`**, aliased under `/auth/t1/` so a
-client that learned `/auth/t1/rotate` does not have to learn a
-differently shaped path for the operation that reverses it. The history
-stores an *inverse* rather than a snapshot and refuses to record an
-operation it could not actually reverse — an undo stack that lies about
-what it can restore is worse than none. Payloads carry key material for
-rotations, so they are Fernet-encrypted when the `security` extra is
-present, bounded by both age and count, and never returned by any
-endpoint that lists them.
-
-✨ **`/backup/list` and `/backup/restore`**. A snapshot captures
-registries and metadata and deliberately excludes four things: key
-material (a backup that restores working credentials is a credential
-distribution mechanism), usage counters (restoring them either
-resurrects spent quota or refunds it), the audit log (one you can roll
-back is not an audit trail), and attachment blobs (hashes only, so a
-restore can report what is missing). Restore is a dry run unless
-confirmed, and section checksums are verified first — restoring half a
-corrupt snapshot is worse than restoring none.
-
-🛡️ `GET /status` now reports `server_name`, `host_id` and `server_id`.
-Without a name to match on, `waiter -F "workshop-box"` was silently
-unsatisfiable.
-
-### HyperLink
-
-𖢥 **HyperLink refusing to connect** had one cause: pairing was the only
-way in. A device whose code expired mid-setup had no fallback, because
-a T1 key is 48 characters of mixed symbols. The principal resolver now
-accepts a T2 or T2S key alongside the `HLNK_` device token, branching on
-the credential's own shape.
-
-✨ **Hugging Face downloads**, PyTorch or GGUF, gated or public, with a
-token. Built entirely around resumption: files land at `.part` and are
-renamed only when complete, partials resume with a `Range` request, and
-a server that ignores the range header is detected by its 200 and the
-file restarted rather than appended to — appending would have produced a
-corrupt model that downloaded "successfully". Selecting PyTorch files
-prefers safetensors and drops the `.bin` duplicates, so a 70B model is
-not 260 GB of transfer for 130 GB of weights. Tokens are redacted from
-every log line. The download runs on the server, queued as a job.
-
-### waiter
-
-✨ **`waiter -F <target>`** finds a server by name, 54-character Host ID,
-`api.jsonl` endpoint, or address — told apart by shape, which works
-because the identifier formats are mutually exclusive by construction.
-`-l` restricts the sweep to this machine and this LAN; without it the
-tailnet is included. That distinction is not cosmetic: a tailnet sweep
-touches every peer on a private network. The LAN sweep deliberately does
-not walk a /24 either — that is a port scan of a home network.
-
-🛡️ **A host may name a client application in `api.jsonl`; waiter reports
-it and does not run it.** `--open` always launches HyperNix's own
-`hyped-pro` with HyperNix's own flags. Running a command the remote
-machine chose, because it asked, is remote code execution with extra
-steps, and a discovery protocol that does it only has to be lied to once.
-
-### New modules
-
-✨ **noodle** (`hypernix.interfaces.noodle`) — agents and swarms across
-nine providers (OpenAI, Anthropic, Kimi, Gemini, Qwen, Grok, HyperNix
-T1, Ollama, vLLM) in three wire formats. Ten sandboxed tools: create,
-edit, read and execute files; web search; memory read and write; context
-compaction; todo create and update. Every path resolves *before* the
-containment check so a planted symlink cannot escape; execution is
-opt-in, argv-only and runs with a minimal environment; memory is off
-unless the server enabled it. Self-correction is bounded and evidenced.
-The swarm does not fail a task over to another provider on its own —
-silent escalation produces a surprising invoice and silent demotion
-produces surprising output.
-
-✨ **steamroller** (`hypernix.quant.steamroller`) — the descending
-quantiser. Every descent below Q3_K_L stages through it, because a
-single pass has to choose every group scale from the full-precision
-distribution at once and at one bit there are not enough levels left.
-Targets: Q8_0, Q3_K_L, IQ1_M, and the HyperNix extension types IQ0.9_L,
-IQ0.75_M and IQ0.5_XXXL. ❗ Those three are **not upstream llama.cpp
-quant types** — stock llama.cpp will refuse the resulting GGUF — and
-every plan reaching them warns that below ~1.5 bits a model stops being
-a worse version of itself.
-
-✨ **scriptgen** (`hnx scriptgen`) — a dense Tk GUI over 43 parameters,
-with a headless CLI fallback because the machine with the GPU usually
-has no display. Dark slate, charcoal, obsidian and HyperNix red; the
-"no purple" rule and WCAG contrast are enforced by `audit_palette()`
-rather than by taste, and it caught the first draft of the palette
-drifting cool. Generated scripts are readable training loops, not
-wrappers.
-
-✨ **livestream** (`hypernix.monitoring.livestream`) — a hand-written
-WebSocket server streaming logs, subagent thoughts, GPU/CPU/RAM metrics
-and progress to a browser. Each viewer has a bounded queue and one that
-falls behind is dropped rather than waited for: a dropped viewer
-reconnects, a stalled trainer is an hour of GPU time.
-
-### Quantisation and hardware
-
-✨ **The format registry** (`hypernix.quant.formats`) covers NF4, INT8,
-FP8, FP4, the GGUF tiers, EXL2, AWQ and GPTQ, each carrying a minimum
-compute capability — so the tuner can filter to what a card can actually
-execute. FP8 on Pascal is a missing instruction, not a slow path.
-
-✨ **Pascal auto-tuning** (`hypernix.system.pascal`) for GTX 1080/1080 Ti,
-P40, P4 and P100. The load-bearing fact is that FP16 arithmetic is 1:64
-on GP104/GP102 and 2:1 only on GP100, so the right answer on a 1080 is
-FP16 storage with FP32 compute and on a P100 it is not — the tuner
-distinguishes them. `FP16Guard` is the NaN mitigation Pascal needs
-because it has no BF16: dynamic loss scaling, skip-on-overflow, and a
-hard FP32 fallback once loss scaling is demonstrably not rescuing the
-run.
-
-✨ **6-bit momentum** for Pressure Cooker v5, v5+, v5s and v6, in three
-packing modes. `aligned` is the right default on Pascal and the wrong
-one on a modern card, which is what the tuner decides.
-
-📚 Version and package: T1 API `1.0.26.8.1.0`, package `0.72.1`.
-
-## 0.72.0 — T1 v1.0.26.8.0.1
-
-The T1 API stops tracking the package version. The two ship together but
-answer different questions — "which pip release is this" versus "which
-API contract is this" — and a client pinning a contract could never
-derive one from `0.71.5rc2`. From here the API versions itself.
-
-✨ **The T1 API's own version scheme.** Six parts:
-`api.major.year.month.feature.fix`, in two spellings of one value —
-`1.0.2026.8.0.1` for changelogs and `1.0.26.8.0.1` for the wire, where
-people type it. Both parse, with or without a `v` / `t1 v` prefix, and
-they compare equal; a three-digit year raises rather than being guessed
-at, because a typo that parses is worse than one that does not.
-`generation` (`1.0`) is what a client pins against. `GET /status`
-reports both spellings and the parsed components; its `beta` field says
-`t1-1.0` and keeps its name, because Beta 3 clients read it and renaming
-a field is a breaking change for a cosmetic win. See
-[wiki/T1-API.md#versioning](T1-API.md#versioning).
-
-✨ **The LM Studio bridge** (`hypernix.bridge`, `/bridge/lmstudio`,
-`waiter lmstudio`). Borrow a model already loaded in LM Studio — on
-localhost, across the LAN with CORS on, or over a tailnet. It prefers LM
-Studio's native `/api/v0/models` over `/v1/models` for the one fact the
-OpenAI shape cannot express: whether a model is actually *loaded*.
-`/v1/models` lists everything downloaded, and a chat against an unloaded
-model either stalls on a just-in-time load or fails outright, so
-"appeared in a list" is not treated as "resident". `waiter lmstudio
-status` reports the CORS state explicitly — it only matters for a browser
-or WKWebView talking to LM Studio directly, and "works from curl, not
-from the app" is otherwise a long afternoon. `waiter lmstudio local`
-probes from the machine you are sitting at, with no T1 server involved,
-which is what you want when working out why the server cannot see it.
-The bridge sits behind the T1 API rather than being called directly so
-that authentication, scopes, rate limiting, the audit log and usage
-accounting all apply unchanged — and so LM Studio only has to be
-reachable from the *server*, not from every client.
-
-✨ **HyperLink pairing** (`/hyperlink/pair`, `waiter hyperlink pair`). A
-48-character T1 key is not typeable on a phone, so enrolment is a
-two-step exchange: the PC mints a six-character code — from an alphabet
-with no `0/O/1/I/L`, valid ten minutes, single use, five attempts — and
-the phone redeems it once for a device token stored only as a SHA-256.
-Losing a phone revokes that phone. A device is never an admin whatever
-key paired it: a stolen phone cannot enrol a second one. It *can* unpair
-itself, because that is the app's "sign out" and requiring an admin
-would leave a wiped phone's token valid until somebody noticed.
-
-✨ **Server-side chat sessions** (`/hyperlink/sessions`). Append-only,
-with the answering model recorded per message — people switch models
-mid-thread, and "which model said this" is the first question asked when
-re-reading one. Context is trimmed by token budget rather than message
-count, because a fixed "last 20" either overflows a small context window
-or wastes a large one. A device's owner is the key that paired it, not
-the device id, which is what makes a conversation started on the desktop
-continue on the phone while another operator's stays invisible.
-
-✨ **The attachment store** (`/hyperlink/files`). Content-addressed by
-SHA-256: re-sending the same screenshot costs nothing, ids cannot be
-enumerated, nothing is ever overwritten, and deletion is
-reference-counted so one message's copy going away does not take
-another's bytes. Content type is decided by magic bytes first, then the
-filename, then the client's claim — a `.png` that is really a zip is
-labelled a zip. At inference, images become vision parts, text and code
-become a fenced block with the filename in the fence info, and anything
-else becomes a one-line note so the model can decline rather than
-hallucinate. Downloads are always `Content-Disposition: attachment` with
-`nosniff`: this server can be reached from a WKWebView, and a stored
-file rendering as HTML in the app's origin would be stored XSS.
-
-✨ **Hugging Face link merging** (`/hyperlink/models/resolve`,
-`waiter fetch`). Paste a model page, a direct download link, or both, and
-get one complete download plan. Three pieces of knowledge go into "so it
-runs properly": a split GGUF is pulled as the whole set whichever part
-was clicked (one third of a model is a file llama.cpp refuses); a
-vision projector is included, matched to the weights' quantisation,
-because without it the model loads and then cannot see images — a much
-more confusing failure than not loading at all; and a page and a file
-link naming different repositories raises rather than being silently
-resolved, since that is two tabs open and the wrong one copied. Accepts
-page/tree/blob/resolve URLs, `hf.co`, `hf-mirror.com`, `hf://`, bare
-`owner/repo`, and the Ollama-style `owner/repo:Q4_K_M`. With no network
-it still builds a plan from an exact file link, split part names
-included — a phone on a bad connection should be able to start a
-download it has the URL for.
-
-✨ **Endpoint advertisement** (`/hyperlink/endpoints`). Every address this
-machine answers on, ranked Tailscale-first, so a client tries them in
-order and keeps the one that answers. Nothing to switch when the phone
-leaves the house. Authenticated despite looking innocuous: a list of a
-machine's internal addresses is reconnaissance.
-
-✨ **HyperLink for iOS** (`ios/`). A SwiftUI app: streaming chat, photos,
-file and code upload, per-conversation model switching, and the Hugging
-Face resolver, against a home PC on the LAN or over Tailscale. iOS 18
-and newer, developed against the iOS 27 SDK. Built and packaged as an
-IPA by `.github/workflows/ios.yml` and attached to every GitHub Release
-alongside the wheel — unsigned unless the repository has Apple signing
-secrets, which is what makes the workflow runnable by anyone. The
-`.xcodeproj` is generated from `ios/project.yml` by XcodeGen rather than
-committed. See [ios/README.md](../ios/README.md).
-
-𖢥 **A burnt pairing code came back to life.** The attempt cap deleted the
-code and then raised inside the same `with backend.connect()` block — and
-the connection's `__exit__` rolls back on an exception, so the DELETE was
-undone. A code that had exhausted its five attempts was refused once and
-then worked again on the next try: the exact opposite of a cap.
-Validation, enrolment and cancellation now happen in one transaction and
-the failure is raised after it closes. One transaction, not two, because
-two phones redeeming the same code at the same moment must not both pass
-a check-then-insert.
-
-🐛 **A mistyped pairing code reported the wrong problem.** Normalisation
-stripped every character outside the pairing alphabet, so one wrong
-keystroke silently shortened the code to five characters and the user was
-told "a pairing code is six characters" — an error about something they
-had not done. Only separators are stripped now; a stray character
-survives, the length check passes, and the lookup fails with "unknown
-pairing code", which is true and actionable.
-
-🐛 **`LMStudioModel.publisher` ignored the field it was given.** An
-operator-precedence slip — `str(a or b if c else "")` parses as
-`str((a or b) if c else "")` — meant a model whose id had no `/` in it
-reported no publisher even when the API supplied one.
-
-🐛 **`ResolvedModel.file_count` existed only in `to_dict()`.** Every
-Python caller had to serialise the object to ask it how many files were
-in the plan.
-
-🔧 `hypernix.t1sdk` and `waiter` gained typed methods for all of the
-above; `waiter` gained `lmstudio`, `hyperlink` and `fetch` subcommands.
-`T1_ENVIRONMENT=production` now refuses to start with `T1_LMSTUDIO_URL`
-pointing at a non-loopback, non-Tailscale `http://` address, since that
-sends prompts across the network in the clear. Tailscale is exempt —
-WireGuard already encrypted it.
-
-📚 [wiki/T1-API.md](T1-API.md) gains Versioning, The LM Studio bridge,
-HyperLink and Hugging Face link merging sections, plus the new endpoints
-and environment variables. [ios/README.md](../ios/README.md) covers
-building, sideloading, and how the app is put together.
-
-## 0.71.5rc2
-
-𖢥 **`hyped-pro`'s Escape key cancelled nothing.** It set a flag that made the TUI *discard* the answer when it eventually arrived — the model kept generating, a cloud call kept billing, and the prompt stayed locked the whole time. The cause was one layer down: the bridge dispatched every request inline off its stdin loop, so a ninety-second `chat` held that loop for ninety seconds and a cancel sent at second two wasn't *read* until second ninety-one. Long commands now run on their own thread while the loop stays free to read `cancel`, each in-flight request owns a `threading.Event`, and the local generation loop polls it once per token. The reply says which actually happened rather than implying more than is true: `stopped` for a local safetensors model, `pending` for a cloud call or llama.cpp inside multilama — neither has an interruption point, so those finish and their reply is dropped. A cancelled turn keeps whatever tokens were produced; only a cancel that produced nothing pops the dangling user turn, which the old code never did at all.
-
-🛡️ **Bridge failures no longer hang the TUI.** Every call now has a timeout sized to what it is (30 minutes for a chat, 10 seconds for a config read) — there was none before, so a wedged bridge froze hyped-pro with ctrl+c as the only way out. A failed spawn settles its pending promises, because Node does not guarantee an `exit` event after one and a missing Python otherwise hung every call forever. The read buffer is cleared when the process dies, so a partial line can't corrupt the first response of its replacement.
-
-𖢥 **`neo_oven.stream()` mangled every non-ASCII character.** It decoded each token on its own, and a token is not a character: "café" streamed as `caf` + two replacement characters, and any emoji or arrow came out as one `�` per byte. It now decodes the whole sequence each step and emits only the new suffix, holding back a character whose bytes haven't all arrived. It also honours stop sequences (holding back any tail that could still *become* a marker, so `
-class ` can't leak out one character at a time) and takes a `seed` — without those, the streamed answer and the non-streamed one for the same prompt were simply different text. Joining `stream()` now reproduces `complete()` exactly.
-
-𖢥 **`neo_oven.fill()` could never stop early.** It passed no `eos_ids` at all, so every call ran the full `max_new_tokens` and returned whatever the model rambled into after finishing the middle. It now stops at EOS and at the FIM markers, and trims at FIM-appropriate stops — `
-def ` is a perfectly ordinary thing to generate when filling a hole in existing code, so the completion stop list was the wrong one to apply.
-
-🐛 **EOS was being appended before the loop broke on it**, so the terminator was part of the returned sequence. This only ever looked correct because HF decode is asked to skip special tokens; a byte tokenizer, or an EOS the tokenizer doesn't class as special, would have emitted it verbatim.
-
-🐛 **`max_position_embeddings` was read unguarded** on every generated token, turning a model whose config lacks the field into an `AttributeError` at the first token rather than a clean failure at load.
-
-✨ **A cooperative `should_stop` hook** on `NeoOven.complete`/`chat`/`fill`/`stream`/`generate_batch`, polled once per token. It's what makes the TUI's Escape real for local models, and it returns whatever was generated before the stop rather than discarding it.
-
-✨ **T1 API — Beta 4, and the release candidate.** `POST /usage/report`, `hyped-pro` against a real T1 API server, automatic `PATH` setup, and the `qwen3.8-27b` registry entry. `GET /status` now reports `beta: "beta4"`.
-
-✨ **`POST /usage/report` — the endpoint that makes remote quota real.** Beta 3 could route a request and refuse an exhausted model, but nothing could report consumption back: `UsageMeter.record` had no HTTP surface at all. For any client that runs inference itself, that meant the per-model counters never moved, so the quota cascade never advanced past its first model and per-model limits were unenforceable in practice. Three rules keep it safe to expose to every authenticated key: usage is recorded against **the caller's own key**, never a body-supplied one; the model must be registered *and* allowed for that key; and counts are non-negative and capped, so a report can add usage but never subtract it — a client that could report negative tokens could refund itself quota, which would make every limit in the system advisory. A report that exhausts a model still succeeds (the tokens really were spent); the refusal belongs on the *next* route call, not on the accounting for work already done.
-
-✨ **`hyped-pro` talks to a real T1 API server, local or remote.** New `t1api` vendor and a `t1-routed` model. The division of labour follows the T1 API's own design principle — the client is never trusted to decide what it may access: the **server** authenticates the key, decides which model it may use (`POST /models/route` walks the quota cascade) and owns the counters; the **client** runs that model and reports the tokens it spent. Passing a `model_id` is a *request*, not a choice — the server confirms or refuses it, and the client runs whatever the server said. The server has no inference endpoint, so it never sees prompt text, only token counts; that's a privacy property worth keeping rather than an omission to work around. New `/t1api` command in the TUI, new `t1api_status` / `t1api_get_url` / `t1api_set_url` bridge commands, and `HNX_T1_API_KEY` / `HNX_T1_API_URL` alongside a persisted `t1_api_url`.
-
-✨ **`t1-routed` names no weights, on purpose.** Its `repo` is empty because the real model is whatever the server routes to. Server `model_id`s are stable slugs and this catalog uses short names; the two agree only by coincidence, so the mapping is an explicit `t1_api_model_map` setting with an exact-name fallback and **no fuzzy matching** — running a *similar* model to the one the server authorized would be worse than refusing. When nothing maps, the error names the model, the config key, and the command to fix it instead of quietly running something else.
-
-✨ **`hypernix path` — console scripts that are actually on `PATH`.** `pip install --user` puts ~20 scripts in a directory many systems don't have on `PATH` (Debian's `~/.profile` only adds `~/.local/bin` if it already existed at login), so `pip install hypernix` followed by `hypernix: command not found` looked like a broken package rather than a `PATH` gap. `hypernix.system.pathfix` writes one idempotent, clearly-marked, reversible block into the startup file the person's shell *actually reads* — `~/.bashrc` on Linux, `~/.bash_profile` on macOS, `$ZDOTDIR/.zshrc`, a `conf.d` file for fish, a PowerShell profile on Windows. `--undo` takes it back out; `--check`, `--print` and `--force` cover the rest. Wired into `hypernix doctor` (reported) and `doctor --fix` (repaired).
-
-🛡️ **The `PATH` fix runs automatically, and refuses more often than it acts.** It does nothing when the directory is already on `PATH`, when `HYPERNIX_NO_PATH_SETUP` is set, in CI, or after it has already tried once — so someone who deleted the block doesn't get it silently written back. Above all it refuses **inside a virtualenv or conda env**: that directory belongs to one environment and is on `PATH` only while activated, so baking it into `~/.bashrc` would leak that environment into every shell the person ever opens. It always prints what it changed and how to undo it — a `PATH` edit that happens invisibly is worse than no `PATH` edit. It hangs off the console-script and `python -m hypernix` entry points rather than `cli.main`, so calling the CLI in-process never touches a home directory.
-
-✨ **`hyped-pro` shows the current public release.** `hypernix.system.release` reads PyPI's JSON API once per six hours per machine, caches to `~/.hypernix/release-cache.json`, times out fast, and returns "unknown" instead of raising — a banner is not worth a hung TUI on a machine with no network. `HYPERNIX_NO_VERSION_CHECK` (already honoured by the launcher) turns it off. Pre-releases are tracked separately from stable ones: telling someone on `0.71.5rc2` to "upgrade" to an older stable release would be wrong, so that reads as a pre-release note, not an update prompt. New `/version` command; the status box and banner carry the label.
-
-✨ **`qwen3.8-27b`** — in the download registry (`Qwen/Qwen3.8-27B`) and in the hyped-pro catalog. The catalog entry points at the GGUF build with a conservative partial-offload default, because that's the one that actually fits a consumer card; the safetensors repo is what `hypernix download` resolves.
-
-🐛 **`hypernix.__version__` was `0.71.5postr1`**, which is not a valid PEP 440 version — pip normalizes it to something quite different from the intended `post1`, and it disagreed with `pyproject.toml` besides. Every version string in the tree now says `0.71.5rc2`.
-
-🔧 A stray Markdown code fence (` ``` `) was sitting in `.gitignore` as a literal pattern.
-
-## 0.71.5.post1
-
-Everything between Beta 3 and the release candidate: three modules that didn't work, and the documentation site.
-
-𖢥 **`hnx map` didn't find models, and its `acc` setting did nothing.** It now auto-discovers a checkpoint from the working directory (`.`, `checkpoints/`, `out/`, `output/`, `model/`, `models/`), reads shapes from safetensors headers without `torch.load`, and resolves `acc=auto` from the real parameter and layer counts instead of a constant. Errors are drawn in their own banner below the pipeline rather than over the DATA engine, and the module gained the `__main__` guard it needed to be runnable as `python -m`.
-
-𖢥 **`ethanol` (`eth`) claimed to work with no backend at all.** `backend=none` now exits non-zero and says so instead of reporting success. `auto` reads real temperatures and picks a level from them, with a hard abort above 85 °C. Level 0 performs a genuine reset on every backend — ROCm was issuing the wrong subcommands entirely, and Intel was missing its reset flag — so "turn it back to stock" now does that. New `status` and `reset` commands, and the `backend=none` check moved ahead of the confirmation gate so it can't be confirmed past.
-
-𖢥 **`ups` had no entry point, a lock held across a network call, and unbounded history.** The HTTP check and the snapshot callback both moved outside the lock (a slow or hanging endpoint was blocking every other reader), history is capped, and the guard grew `stop()` plus context-manager support so `threat_now()` can't leak a background thread. It now has a real CLI and a `ups` console script — it was a complete module that nothing could run.
-
-🛜 **The documentation site was rebuilt** — structure, type and density only; every colour value is unchanged. Self-hosted Inter + JetBrains Mono (no font CDN), a two-column hero with a terminal transcript, a shared kicker/title/lede rhythm for every section and page, and the 40-card "All subsystems" wall replaced by a grouped, searchable table with stage filters. Fixed along the way: the docs cards ran "wiki ↗" into the page name, and the stats page orphaned "Issues" onto its own row.
-
-🐛 **Two T1 API bugs found by running the server for real**, not by testing it: `waiter doctor` passed a raw dict where a `ServerStatus` was expected, and a key created while the server was running was rejected until restart because the key cache was never refreshed.
-
-🔧 CI fixes for macOS (a long temp path wrapped in `rich` output) and Windows (`WinError 10106` importing `_overlapped` through the anyio plugin), plus a timing race in a synthetic timer test.
-
-## 0.71.5b3
-
-✨ **T1 API — Beta 3: production hardening.** The T1 API is now feature-complete against its spec. PostgreSQL, a durable audit log, mTLS, advanced rate limiting, IP allow/blocklists, real remote multi-server module transport, the key directory, usage cost/estimates/forecasts, the complete SDK, the full `waiter` TUI, and production configuration validation. Full contract in `wiki/T1-API.md`; deployment examples in `examples/t1api/`.
-
-✨ **PostgreSQL for production** — `T1_DATABASE_URL` moves *every* store (usage, servers, modules, jobs, billing, audit, network policy, key assignments) and changes nothing else. The portability lives in one place, `t1api/db.py`: a connection wrapper normalizes placeholders, row-by-name access, DDL dialect and transaction/close semantics, so no store needed an `if postgres:` branch. New `hypernix[t1api-pg]` extra. Existing SQLite databases migrate in place at startup rather than needing a dump and reload.
-
-✨ **The plan is now the server's to decide** — the one deliberately breaking change. Beta 2's `POST /models/route` took `plan` from the request body, which let a client name the most generous plan it could think of. A plan is now a property of an administrator-recorded assignment (`POST /keys/assign`), and a `plan` in the body is an *assertion*: matching is accepted, mismatching returns `AUTH_INSUFFICIENT_SCOPE`. A key can also be narrowed to a subset of registered models, checked on manual selection and on whatever automatic routing lands on.
-
-✨ **Audit logging** — `hypernix.t1api.audit.AuditLog`: durable, queryable, admin-only at `GET /audit`, and reading it is itself audited. Secret-shaped fields are dropped **by name at write time** (`key`, `token`, `secret`, `password`, `authorization`, `dsn`, `credential`), so a future call site that accidentally hands over a raw key cannot write it to disk; identifiers that only look secret by name (`key_id`, `payment_token_id`) are carved out. An audit write never takes down the request it describes.
-
-✨ **Advanced rate limiting** — token bucket *and* sliding window, because they answer different questions: burst-tolerant per-key/per-IP budgets for interactive clients, hard ceilings for operator-forced limits. Runs in **middleware, before the route handler**, which is what "apply rate limits before expensive model operations" has to mean to be true. Expensive endpoints declare a higher cost. Per-process limits are documented as such rather than papered over.
-
-✨ **IP allowlists, blocklists, and the unlisted-client decision** — `hypernix.t1api.netpolicy`, CIDR-matched, persistent. The blocklist wins over the allowlist by design (un-blocking is an *appeal*, which is its own operation), and `T1_ALLOW_UNLISTED_CLIENTS` is the design principle's own "does this server accept non-allowlisted clients at all" as a first-class setting. Blocking your own address is refused — it has no undo through the API.
-
-✨ **mTLS** — direct termination (uvicorn holds the certificates) or proxy termination (nginx forwards `X-Client-*`). The proxy path trusts those headers **only** from an address in `T1_TRUSTED_PROXIES`, because otherwise any client able to reach the process directly could just send `X-Client-Verify: SUCCESS`; proxy mTLS with an empty trusted-proxy list fails closed. Optional subject/fingerprint allowlists, with fingerprints normalized so an allowlist can't silently never match. `/health` stays exempt for load balancers.
-
-✨ **Remote multi-server deployment — real bytes this time.** Beta 2's module sync was bookkeeping and said so. Beta 3 transfers: HMAC-signed over method|path|timestamp|body-digest with a freshness window, SHA-256 verified on both ends, size-capped, and pushed only to a server an admin promoted to trusted — the address comes from the registry, never from the request. Remote fetch refuses redirects, because following one is exactly how an SSRF check gets bypassed. Nothing is ever executed, imported, or interpreted on either side. New `POST /modules/{id}/deploy`, `POST /modules/{id}/fetch`, `POST /modules/receive`.
-
-✨ **The endpoints the spec listed and Beta 1/2 hadn't implemented** — `GET /keys`, `POST /keys/import`, `POST /keys/assign`, `GET /usage/history`, `GET /usage/cost`, `POST /usage/estimate`, plus `GET /usage/by` for the per-model/key/server/module/user/account reports. Cost comes only from recorded usage and the registry's own pricing — there is no second price list, and a model that isn't registered has no price and cannot be costed. Estimates record and reserve nothing; forecasts state the window they extrapolated from and how much to trust it.
-
-✨ **`hypernix.t1sdk` — the complete SDK.** Typed models over every endpoint, an exception hierarchy mapped from the server's stable codes, retries honouring `Retry-After`, mTLS and private CAs, pagination and job-polling helpers, and a `call()` escape hatch so a newer server never blocks on an SDK release. Stdlib only. Non-idempotent POSTs are never retried: replaying `POST /billing/redeem` after a timeout could look like a double redemption. `waiter.client` is now a thin compatibility layer over it rather than a second implementation.
-
-✨ **The full `waiter` TUI** — `waiter tui` / `waiter serv -G`. Eight curses panes covering models, quota, usage and cost, jobs with live progress, servers, modules, an event tail, and settings. Everything comes from the API: a greyed-out model is greyed out because `/models/{id}/availability` said so, and the fallback chain is the cascade the server actually walked, not one reconstructed from registry fields. Refresh runs on a background thread so an unreachable server shows stale data with a banner rather than a frozen terminal.
-
-✨ **Every `waiter serv` flag is now wired.** `-B`/`-W`/`-a`/`-r` call the new security endpoints (and still save locally, which is what survives a non-admin refusal); `-G` opens the TUI; `-Rf` refreshes everything; `-y` mirrors the server's settings into the local config. New subcommands: `keys`, `audit`, `security`, `cost`, `deploy`, `tui`, `doctor`, `smoke`.
-
-✨ **Production configuration validation** — `T1_ENVIRONMENT=production` makes `create_app()` refuse to start on a missing token secret, SQLite, wildcard CORS, no TLS, disabled protections, or the placeholder registry, listing *every* problem at once rather than one per restart. A bad production config should fail the deploy, not surface later as a puzzling 500. The same list is readable without the raising at `GET /status` and via `waiter doctor`.
-
-🛡️ **`waiter smoke`** — the CLI smoke tester (spec deliverable #11). Read-only by default; `--write` adds a self-cleaning module lifecycle check. Expected refusals count as passes, so "non-admin correctly refused `/audit`" passes and "non-admin served `/audit`" fails — the direction a security-relevant tool should be sensitive in.
-
-📚 **Deployment documentation and examples** — `examples/t1api/` ships a two-stage non-root Dockerfile, a compose stack (API + PostgreSQL + nginx, with the API never published to the host), an nginx config that terminates TLS and forwards mTLS headers, a sandboxed systemd unit, local and Tailscale run scripts, and a fully commented `.env.example`. `wiki/T1-API-Security-Checklist.md` is the security audit checklist, ordered by blast radius, with the items `waiter doctor`/`waiter smoke` automate marked as such.
-
-📚 **Generated API examples** — `examples/t1api/API-EXAMPLES.md` and `openapi.json` are produced by `scripts/t1api_examples.py` driving a real server. A hand-written example is a claim about the API; a generated one is a recording of it, and regenerating shows a behaviour change as a diff. Credential-shaped fields are replaced with placeholders before anything is written.
-
-𖢥 **Middleware exceptions were being swallowed.** Starlette only routes exceptions raised inside the application to `@app.exception_handler`; one raised in an outer `@app.middleware("http")` propagates past it. Every Beta 3 security check runs as middleware and signals refusal by raising, so network-policy, mTLS and rate-limit refusals returned a bare 500 with no error code instead of the documented envelope. Found by the new tests.
-
-🐛 **A non-refilling rate-limit rule produced `retry_after=inf`**, which raised `OverflowError` building the `Retry-After` header and would have serialized as a bare `Infinity` — not valid JSON — in the response body. The limiter now reports `None` ("not by waiting") and the header is omitted rather than guessed at.
-
-🐛 **`%` inside SQL string literals wasn't escaped for psycopg**, so a query containing a `LIKE '%…%'` pattern would have been a syntax error on PostgreSQL and nowhere else.
-
-🐛 **`ModelEntry` coerced its enum fields in `from_dict` but not in `__init__`**, so a directly-constructed entry kept plain strings and failed with `AttributeError` at serialization time, far from the construction that caused it. Normalized in `__post_init__`.
-
-🐛 **A disabled `AuditLog` skipped creating its table**, so reading it raised "no such table" instead of returning nothing. `enabled` now gates writes only.
-
-🐛 **Fixed three pre-existing CI failures on macOS and Windows.** `test_assistant.py` asserted a full tmpdir path appeared verbatim in console output, which fails when rich wraps the longer macOS tmpdir path at 80 columns. `test_autofix_scripts.py`'s synthetic "always fails" timer test was itself a race — measured, it lost that race 1997 times in 2000 — so on a fast runner it passed, `autofix-F` correctly stood down, and the tests expecting it to act failed; it now busy-waits a fixed margin and fails 8/8 before the repair and passes 8/8 after. And `autofix-F`'s inner pytest run crashed on Windows before executing a test, because pytest autoloaded anyio's plugin, which imports asyncio, which imports `_overlapped`, which fails on the GitHub Windows runners with `WinError 10106`; that run takes no third-party plugins and now says so.
-
-🔧 **Model limits in `GET /models`** — `context_limit`, `input_token_limit`, `output_token_limit` and `tool_call_limit` are now in the list response, not just the detail one. Displaying model limits is a TUI requirement and a client rendering a list shouldn't need one request per model to fill three columns. Additive.
-
-🔧 **Destructive operations require `?confirm=true`** (`DELETE /servers/{id}`, `DELETE /modules/{id}`), controlled by `T1_REQUIRE_DESTRUCTIVE_CONFIRMATION`.
-
-🔧 **Security response headers** on every response, error responses included: `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Cache-Control: no-store`, and HSTS when TLS is on.
-
-🔧 **Tests** — `tests/test_t1api_beta3_security.py`, `test_t1api_beta3_core.py`, `test_t1api_beta3_http.py`: network policy, rate limiting, mTLS, audit scrubbing, PostgreSQL translation (with a real round-trip when `T1_TEST_DATABASE_URL` is set), keys and plan resolution, cost and forecasts, transport signatures, deployment, production validation, and the middleware order. The Beta 1/2 HTTP suites had never actually been executed — their authoring sandbox had no network to install FastAPI — and now run; two assertions that had been asserting the wrong thing are corrected, including one that expected the placeholder registry entries to be routable when the whole point is that they are not.
-
-𖢥 **A key created while the server was running was invisible until restart.** Keymaster reads its key files once, at construction, so the documented quickstart — `gkey create`, then point `waiter` at the already-running server — returned `AUTH_INVALID_KEY` for a brand-new key. `T1AuthService.validate_key` now refreshes the key store once on an unknown key, throttled to at most one reload every five seconds because it is disk I/O an unauthenticated caller can reach. Found by running the quickstart against a real uvicorn process instead of a `TestClient`.
-
-🐛 **`waiter doctor` crashed against a real server** with `'dict' object has no attribute 'environment'`: waiter's client overrides `status()` to return the raw envelope for the CLI's table renderers, and doctor assumed it got the typed object. Same cause as above — nothing in a TestClient-driven suite exercised that path.
-
-❗ **Known limitation** — module blobs are checksummed and path-sanitized but **not encrypted at rest**; the store relies on filesystem permissions. Everything else that needs at-rest protection has it (T1 keys via Keymaster, payment tokens as hashes, waiter config via `-E`). This is the one Beta 3 line item deliberately left open rather than half-done.
-
-## 0.71.5b2
-
-✨ **T1 API — Beta 2** — Module registry, server registry, async jobs, event streaming, the model routing/quota-cascade engine, and billing/payment-token support. Matches the spec's Beta 2 scope; full contract in `wiki/T1-API.md`.
-
-✨ **Model routing & quota cascade** — `hypernix.t1api.routing.RoutingEngine` walks a plan-scoped, data-driven cascade (`t1api/data/routing_policies.example.json` ships the spec's own free-tier and paired-plan examples verbatim, including the paired-plan detail that N^3 falls back to `nanonix-mini` — *not* `nanonix-mini-lite`). Manual model selection never silently substitutes: an exhausted model raises `MODEL_QUOTA_EXHAUSTED` unless `automatic_fallback=True`. New `POST /models/route` (an addition beyond the spec's literal endpoint list — the spec describes routing behavior but doesn't enumerate an endpoint for it).
-
-✨ **Server registry** — `hypernix.t1api.servers.ServerRegistry`, SQLite-backed. Servers register `untrusted` by default; only an admin can promote to `trusted` (or register directly as `local` for the operator's own address). `require_trusted()` is what module sync checks before treating a server as a valid target.
-
-✨ **Module system** — `hypernix.t1api.modules.ModuleRegistry`: create, local upload (checksummed, path-sanitized), remote-source *registration* (SSRF-validated, never auto-fetched), versioning, and sync-tracking. Never executes, imports, or interprets anything it stores — a module is an opaque blob or a validated-but-unfetched URL, by design.
-
-✨ **Async jobs** — `hypernix.t1api.jobs.JobQueue`: `queued → running → succeeded|failed|cancelled`, a real `ThreadPoolExecutor` (not just synchronous stubs), pluggable per-kind handlers (unregistered kind → `NOT_SUPPORTED`), cooperative cancellation tested against a genuinely in-flight background job. One real handler ships: `module_sync`, composed in `t1api/app.py` from `ModuleRegistry` + `ServerRegistry`.
-
-✨ **Event streaming** — `hypernix.t1api.events.EventBus`, in-process pub/sub. `GET /events` polls (`since_id`/`type`/`limit`); `GET /events/stream` (addition beyond the spec's list) is an SSE live tail. Jobs auto-publish `job.<status>` events for any kind with zero per-handler code; servers/modules publish from their routers.
-
-✨ **Billing ledger** — `hypernix.t1api.billing.BillingLedger`. **Internal ledger, not a payment-processor integration** — no Stripe/card-network call anywhere. Admin-minted payment tokens (`POST /billing/payment-token`) return their raw value exactly once and store only a SHA-256 hash; redemption (`POST /billing/redeem`) is single-use (`PAYMENT_TOKEN_ALREADY_REDEEMED` on a second attempt); every transaction is masked in API responses (`txn_abcd1234…`).
-
-🔒 **New security guardrails** — `hypernix.t1api.security`: SSRF guard (`validate_remote_address`, blocks non-http(s) schemes and the cloud-metadata IP unconditionally; private/loopback addresses need explicit `allow_private=True`, the knob Tailscale/local deployments use) and path-traversal guard (`sanitize_module_path`) for local uploads. Both are shared by the server registry and module system rather than duplicated.
-
-🔧 **Local/Tailscale deployment documented** — new subsection in `wiki/T1-API.md#installation`: bind to `0.0.0.0`/the Tailscale interface, pass `allow_private_address=True` on server registration.
-
-🔧 **Tests** — `tests/test_t1api_routing.py`, `test_t1api_security.py`, `test_t1api_servers.py`, `test_t1api_modules.py`, `test_t1api_jobs.py` (including real threaded execution + cancellation), `test_t1api_events.py`, `test_t1api_billing.py` — all pure-core, executed against the real implementations, no FastAPI needed. `tests/test_t1api_http_beta2.py` (FastAPI `TestClient`, needs `hypernix[t1api-test]`) covers the new HTTP layer including the full `module_sync` job lifecycle over HTTP.
-
-## 0.71.5b1
-
-✨ **T1 API (`hypernix.t1api`) — Beta 1** — Controlled HTTP gateway into HyperNix-pip, built as a mountable FastAPI module (`hypernix.t1api.create_app`). Implements the spec's Beta 1 scope exactly: core FastAPI server, T1 authentication + scoped tokens, model registry, basic per-key/per-model usage tracking, `/health` `/status` `/models` + auth/usage/config endpoints, SQLite storage, OpenAPI docs. Full contract in `wiki/T1-API.md`.
-
-✨ **Model Registry** — `hypernix.t1api.registry.ModelRegistry` is the single source of truth for which models the T1 API exposes; unregistered `model_id`s always return `MODEL_NOT_SUPPORTED`, never silently fall through to a client-supplied path. The nine example models from the spec (HyperNix 1, Ryiver 1, nanoNix, ...) ship as seed data but are invisible by default (`status: "example"`) — set `T1_ENABLE_EXAMPLE_MODELS=1` to make them selectable for local testing.
-
-✨ **Auth integration, not reimplementation** — `hypernix.t1api.auth.T1AuthService` wraps the existing `Keymaster`/`Gatekeeper` rather than duplicating key storage or quota logic, and adds short-lived HMAC-signed scoped tokens (`POST /auth/token`) on top. Admin-only `POST /auth/t1/admin/rotate` implements "convert a normal T1 token into an admin token only when the authenticated user has the required permission."
-
-✨ **Usage metering** — `hypernix.t1api.usage.UsageMeter` tracks per-key/per-model usage on SQLite (`hypernix.t1api.storage.UsageStore`) and enforces the spec's "either input or output cap hit = fully exhausted, independent per model" rule via `MODEL_QUOTA_EXHAUSTED`.
-
-✨ **`waiter` — the official T1 API TUI/CLI** — New `waiter` console script (`hypernix.waiter`), zero hard deps beyond core `hypernix` (stdlib `urllib` client). Implements the spec's single-command automatic setup (`waiter serv -A -I <server> -K <T1_TOKEN> -E`) plus `models`/`model`/`status`/`health`/`whoami`/`usage`/`config` subcommands. Every `serv` flag from the spec is parsed and accepted; flags needing Beta 2/3 server endpoints (`-B`/`-W`/`-r`/`-a`, full `-Rf`/`-y`, `-G`) store intent locally and print a stable "not wired yet" notice instead of no-op'ing silently. Full flag-by-flag status in `wiki/Waiter-TUI.md`.
-
-🔧 **New optional extras** — `hypernix[t1api]` (`fastapi`, `uvicorn`, `pydantic`, `python-dotenv`) for the HTTP layer; `hypernix[t1api-test]` adds `httpx` for `tests/test_t1api_http.py`. `hypernix.t1api`'s core (registry/storage/usage/auth/config/errors) stays importable without either — same zero-extra-deps-for-core-logic pattern as `hypernix.keymaster`/`hypernix.gatekeeper`.
-
-🔧 **Tests** — `tests/test_t1api_core.py` and `tests/test_t1api_auth.py` (pure-Python core, run against the real `Keymaster`/`Gatekeeper`, no extra deps needed) plus `tests/test_t1api_http.py` (FastAPI `TestClient`, needs `hypernix[t1api-test]`).
-
-📚 **`wiki/T1-API.md`, `wiki/Waiter-TUI.md`** — New pages: architecture, model registry semantics, auth, quota rules, endpoint reference, full Beta 1→4 roadmap table matching the spec's own beta breakdown, security notes.
-
-## 0.71.5a2
-
-✨ **`neo_oven` — Unified Model Management Module** — New `hypernix.neo_oven` module replaces `old_oven`, `old_fridge`, `mediocre_fridge`, and `new_fridge` as the single, production-ready entry point for model loading, generation, training, and evaluation.
-
-✨ **`NeoOven` class** — Full successor to `CodeOven` with identical API (`complete`, `fill`, `chat`, `train`, `save_pt`) plus new capabilities: `stream()` for token-by-token generation, `generate_batch()` for batched inference, inline `freeze_backbone()` / `memory_stats()` / `vram()`, and `build_judge_corpus()` shortcut.
-
-✨ **`JudgeCorpus`** — Replaces `mediocre_fridge` toy script. Proper class-based judge/reward-model dataset builder supporting: `from_pairs()`, `from_oven()` (collect real LLM responses), `from_hf_dataset()` (HF `datasets` integration), JSONL and legacy text serialization, round-trip `load()`, and configurable hard-negative augmentation with 7 strategies (not just 5 character-shuffles).
-
-✨ **`TrainingMetrics`** — Replaces `new_fridge` regex log parsing + static matplotlib. Callback-based metrics collector with native TensorBoard (`SummaryWriter`), Weights & Biases, and MLflow integration. Buffers all steps locally; produces loss-curve PNGs, score histograms, and multi-round plots on demand via `plot_loss()` / `plot_score_distribution()` / `plot_round_losses()`. Export to JSONL via `to_jsonl()`. `NeoOven.train()` accepts `metrics=True` to auto-attach.
-
-✨ **Inline memory management** — `freeze()`, `unfreeze()`, `parameter_stats()`, `offload_to_cpu()`, `chill_cache()`, `vram_stats()` — all previously in `old_fridge`, now unified in `neo_oven` with improved DDP/FSDP/`torch.compile` unwrapping and 7 strategies for hard-negative augmentation.
-
-✨ **`preheat()` / `new_oven()`** — Top-level functional shortcuts identical in call signature to their `old_oven` counterparts, now returning a `NeoOven` instead of a `CodeOven`.
-
-✨ **`parse_training_log()`** — Extended to return structured dicts with `step`, `loss`, `lr`, and `ppl` fields instead of flat `(step, loss)` tuples, while remaining backward-compatible.
-
-🔧 **Backward-compatibility shims** — `plot_loss_curve()`, `plot_score_distribution()`, `plot_round_losses()`, and `synthesize_judge_corpus()` are re-exported from `neo_oven` so callers using the `new_fridge` / `mediocre_fridge` API surface continue to work without changes.
-
-🔧 **Codebase-wide transition** — All internal imports in `cli.py`, `hyped.py`, `hyped_pro_core.py`, `bell.py`, `countertop.py`, and `vera.py` now route through `neo_oven.preheat` instead of `old_oven.preheat`. `old_oven.py`'s internal `old_fridge` dependency was cut and replaced with `neo_oven.unwrap_model`.
-
-✂️ **Legacy modules deprecated** — `old_oven`, `old_fridge`, `mediocre_fridge`, `new_fridge` now print a **bold red** deprecation warning on import (via `rich.Console`) pointing users to `neo_oven`. The files are kept intact for backward compatibility.
-
-🔧 **Tests** — New `tests/test_neo_oven.py` with comprehensive coverage: memory management, `JudgeCorpus` round-trips, `TrainingMetrics` recording and JSONL output, `parse_training_log`, arch preset completeness, and importability checks.
-
-## 0.71.5A1
-✨ **Vera Redesign** — Transformed Vera from an AI assistant into a robust smoke-testing and linting tool (`hnx vera`). Added support for `ast`/`ruff` linting, argument testing (`-FT`), dry-runs (`-dr`), full-runs (`-C`), timeout tracking, and `pytest` fallbacks.
-✨ **Vera AI Analysis** — When a test fails in Vera, it now surfaces an advanced AI explanation powered by Qwen3.5-4b (`hypernix.neo_oven.preheat`) to identify line numbers and fixes without crashing.
-✨ **Pressure Cooker V5S Exposure** — `pressure_cooker_v5s` is now directly importable from the top-level `hypernix` namespace (and aliased as `pressurecooker_v5s`).
+| Symbol | Use for |
+| --- | --- |
+| `๋࣭⭑` | Major new feature or architecture |
+| `✨` | Regular user-facing or developer-facing feature |
+| `𖥔` | Minor feature or enhancement |
+| `𖢥` | Major correctness, data, API, security, or stability fix |
+| `🐛` | Minor bug, edge case, regression, or compatibility fix |
+| `🛡️` | UX, error-message, warning, or safety polish |
+| `🔁` | Refactor or integration improvement |
+| `🔧` | Internal plumbing, build, dependency, or maintenance work |
+| `⚡` | Performance or resource-use improvement |
+| `🔒` | Security improvement or security-relevant correction |
+| `⚠️` | Error-code creation, editing, or behavior change |
+| `🧪` | Test or test-coverage change |
+| `📚` | Documentation change |
+| `🛜` | Website, wiki, or hosted-site change |
+| `🔌` | Integration, plugin, provider, or platform support |
+| `🔗` | Public API or compatibility change |
+| `❌` | Deprecation or breaking change |
+| `✂️` | Removal or experimental work that did not ship |
+| `꩜` | Restoration or rollback |
+| `❗` | Known unresolved bug or limitation |
+| `🩹` | Temporary workaround or mitigation |
+| `♻️` | Data, checkpoint, cache, or migration work |
+| `📦` | Packaging, distribution, or release artifact change |
+
+> Format normalized to `wiki/Changelog-guide.md`; release wording and historical detail are preserved.
 
 ## Unreleased
+
+### Performance
+
 ✨ **`PressureCookerV6` / `PressureCookerV6V`** — new speed-first optimizer
-generation, deliberately the opposite tradeoff from V5/V5S's
-memory-first design. `PressureCookerV6` ("Single-State Trust Momentum")
-drops V5's whole feature set — no oscillation tracking, no curvature
-estimate, no quantized momentum, no per-parameter Python-level `float()`
-syncs — down to a single fused momentum buffer updated via
-`torch._foreach_*` multi-tensor ops, with at most one batched
-host↔device sync per step (for an optional LARS/LAMB-style trust ratio)
-instead of several per parameter tensor. Real, measured numbers, not
-estimates — from `scripts/benchmark_v6.py` and the now-V6-aware
-`scripts/measure_optimizer_memory.py`, both included in this change:
-**0.5x AdamW's optimizer-state bytes** (one fp32 buffer instead of two,
-exact across every hidden size measured) and **1.59x AdamW's step time
-on CPU** (this environment has no CUDA device — the design specifically
-targets host↔device sync and kernel-launch overhead, which matters far
-more on GPU than CPU, so that ratio is reported as a CPU number, not
-extrapolated). `PressureCookerV6V` adds CUDA graph capture
-(`warmup_graph`/`replay_graph`, identical contract to
-`pressure_cooker.ProCooker`) and optional `torch.compile` on top,
-requiring at least one CUDA parameter; falls back to eager execution
-with a warning if `torch.compile` is unavailable or fails, never raises
-for that. No Pascal-specific `Agedcookerv6` tier — V6 never touches
-torch's `fused=True` AdamW kernel (the thing that actually needs
-sm_70+), so there's nothing to work around. Full writeup, including the
-honest tradeoffs (no per-element adaptive LR, more LR tuning than
-AdamW typically needed) and a documented CUDA-graph-capture caveat for
-`grad_accum_steps`/`grad_scaler`/`skip_on_nonfinite`: see wiki
-[Pressure Cooker V6 / V6V](Pressure-Cooker-V6.md).
+  generation, deliberately the opposite tradeoff from V5/V5S's
+  memory-first design. `PressureCookerV6` ("Single-State Trust Momentum")
+  drops V5's whole feature set — no oscillation tracking, no curvature
+  estimate, no quantized momentum, no per-parameter Python-level `float()`
+  syncs — down to a single fused momentum buffer updated via
+  `torch._foreach_*` multi-tensor ops, with at most one batched
+  host↔device sync per step (for an optional LARS/LAMB-style trust ratio)
+  instead of several per parameter tensor. Real, measured numbers, not
+  estimates — from `scripts/benchmark_v6.py` and the now-V6-aware
+  `scripts/measure_optimizer_memory.py`, both included in this change:
+  **0.5x AdamW's optimizer-state bytes** (one fp32 buffer instead of two,
+  exact across every hidden size measured) and **1.59x AdamW's step time
+  on CPU** (this environment has no CUDA device — the design specifically
+  targets host↔device sync and kernel-launch overhead, which matters far
+  more on GPU than CPU, so that ratio is reported as a CPU number, not
+  extrapolated). `PressureCookerV6V` adds CUDA graph capture
+  (`warmup_graph`/`replay_graph`, identical contract to
+  `pressure_cooker.ProCooker`) and optional `torch.compile` on top,
+  requiring at least one CUDA parameter; falls back to eager execution
+  with a warning if `torch.compile` is unavailable or fails, never raises
+  for that. No Pascal-specific `Agedcookerv6` tier — V6 never touches
+  torch's `fused=True` AdamW kernel (the thing that actually needs
+  sm_70+), so there's nothing to work around. Full writeup, including the
+  honest tradeoffs (no per-element adaptive LR, more LR tuning than
+  AdamW typically needed) and a documented CUDA-graph-capture caveat for
+  `grad_accum_steps`/`grad_scaler`/`skip_on_nonfinite`: see wiki
+  [Pressure Cooker V6 / V6V](Pressure-Cooker-V6.md).
 
 ✨ **V6 production-hardening pass** — `grad_accum_steps` and
-`torch.cuda.amp.GradScaler` integration, same contract as
-`pressure_cooker.InductionCooker` (`unscale_` → skip cleanly on
-non-finite instead of corrupting momentum state → `update()`), plus an
-opt-in `skip_on_nonfinite` for plain (non-scaler) training. The
-non-finite check itself is batched into a single `torch._foreach_norm`
-+ one host sync for the *whole step*, improving on `InductionCooker`'s
-own per-parameter `.all()` sync rather than just copying it. Off by
-default (`skip_on_nonfinite=False`) so the default configuration's op
-count — and the CPU benchmark numbers above — are exactly what's
-documented, not inflated by an always-on check most stable runs never
-trip. `PressureCookerV6V` shares all of this through a new
-`_apply_update()` hook instead of duplicating `step()`'s
-accumulation/GradScaler/grad-clip logic a second time.
-
-🐛 **CUDA graph capture + dynamic V6 features don't mix safely — now
-documented, not silently wrong.** CUDA graphs bake in whichever
-Python-level branch ran during `warmup_graph`, permanently: replay
-always re-executes the same recorded kernels regardless of what later
-batches look like. If `grad_accum_steps > 1`, `grad_scaler` is set, or
-`skip_on_nonfinite=True`, the accumulation-gate / non-finite-skip
-decision only gets evaluated once, at capture time.
-`PressureCookerV6V.warmup_graph` now detects this configuration and
-warns; the docstring spells out the mechanism and what to do instead
-(don't graph-capture with those features enabled, or capture only once
-the always-taken branch is known to be safe to repeat unconditionally).
-
-🔧 **`tests/test_pressure_cooker_v6.py`** — new, real test coverage (not
-a stub): construction/config, loss actually decreasing under several
-configurations (nesterov, no-trust-ratio, no-foreach), fused vs.
-non-fused paths producing numerically identical trajectories, weight
-decay applying under a zero gradient, multi-param-group support,
-state-dict round-tripping, optimizer-state byte count vs. AdamW,
-gradient accumulation gating, GradScaler skip/apply/momentum-untouched
-behavior, `skip_on_nonfinite` on and off, and — deliberately not just a
-toy `nn.Linear` stack — a small transformer block (token embedding +
-multi-head attention + LayerNorm + GELU MLP + output head) to confirm
-V6 handles realistic parameter-shape heterogeneity. `PressureCookerV6V`
-CUDA-only paths (construction on real CUDA tensors, graph capture, a
-compiled step actually executing on a GPU) are marked
-`skipif(not torch.cuda.is_available())` and were not exercised on real
-CUDA hardware while writing this — this environment has no GPU. That
-code reuses `ProCooker`'s already-shipped `warmup_graph`/`replay_graph`
-implementation verbatim rather than inventing a new one, which is the
-best available substitute for hardware verification, not a replacement
-for it — stated plainly in the V6 wiki page too.
+  `torch.cuda.amp.GradScaler` integration, same contract as
+  `pressure_cooker.InductionCooker` (`unscale_` → skip cleanly on
+  non-finite instead of corrupting momentum state → `update()`), plus an
+  opt-in `skip_on_nonfinite` for plain (non-scaler) training. The
+  non-finite check itself is batched into a single `torch._foreach_norm`
+  + one host sync for the *whole step*, improving on `InductionCooker`'s
+  own per-parameter `.all()` sync rather than just copying it. Off by
+  default (`skip_on_nonfinite=False`) so the default configuration's op
+  count — and the CPU benchmark numbers above — are exactly what's
+  documented, not inflated by an always-on check most stable runs never
+  trip. `PressureCookerV6V` shares all of this through a new
+  `_apply_update()` hook instead of duplicating `step()`'s
+  accumulation/GradScaler/grad-clip logic a second time.
 
 🔧 **`scripts/benchmark_v6.py`** (new) and
-**`scripts/measure_optimizer_memory.py`** (extended) — real measurement
-tools cited above, not hand-typed numbers. Both auto-detect CUDA and
-report whichever device they actually ran on; `benchmark_v6.py` prints
-an explicit note when it falls back to CPU rather than letting a CPU
-number pass silently as if it were representative of GPU performance.
+  **`scripts/measure_optimizer_memory.py`** (extended) — real measurement
+  tools cited above, not hand-typed numbers. Both auto-detect CUDA and
+  report whichever device they actually ran on; `benchmark_v6.py` prints
+  an explicit note when it falls back to CPU rather than letting a CPU
+  number pass silently as if it were representative of GPU performance.
+
+### Fixed
+
+🐛 **CUDA graph capture + dynamic V6 features don't mix safely — now
+  documented, not silently wrong.** CUDA graphs bake in whichever
+  Python-level branch ran during `warmup_graph`, permanently: replay
+  always re-executes the same recorded kernels regardless of what later
+  batches look like. If `grad_accum_steps > 1`, `grad_scaler` is set, or
+  `skip_on_nonfinite=True`, the accumulation-gate / non-finite-skip
+  decision only gets evaluated once, at capture time.
+  `PressureCookerV6V.warmup_graph` now detects this configuration and
+  warns; the docstring spells out the mechanism and what to do instead
+  (don't graph-capture with those features enabled, or capture only once
+  the always-taken branch is known to be safe to repeat unconditionally).
+
+### Tests
+
+🔧 **`tests/test_pressure_cooker_v6.py`** — new, real test coverage (not
+  a stub): construction/config, loss actually decreasing under several
+  configurations (nesterov, no-trust-ratio, no-foreach), fused vs.
+  non-fused paths producing numerically identical trajectories, weight
+  decay applying under a zero gradient, multi-param-group support,
+  state-dict round-tripping, optimizer-state byte count vs. AdamW,
+  gradient accumulation gating, GradScaler skip/apply/momentum-untouched
+  behavior, `skip_on_nonfinite` on and off, and — deliberately not just a
+  toy `nn.Linear` stack — a small transformer block (token embedding +
+  multi-head attention + LayerNorm + GELU MLP + output head) to confirm
+  V6 handles realistic parameter-shape heterogeneity. `PressureCookerV6V`
+  CUDA-only paths (construction on real CUDA tensors, graph capture, a
+  compiled step actually executing on a GPU) are marked
+  `skipif(not torch.cuda.is_available())` and were not exercised on real
+  CUDA hardware while writing this — this environment has no GPU. That
+  code reuses `ProCooker`'s already-shipped `warmup_graph`/`replay_graph`
+  implementation verbatim rather than inventing a new one, which is the
+  best available substitute for hardware verification, not a replacement
+  for it — stated plainly in the V6 wiki page too.
+
+### Documentation
 
 📚 **`hypernix.__init__` / `wiki_cli.py`** — `PressureCookerV6` and
-`PressureCookerV6V` wired into the top-level lazy-import system
-(`__all__`, `_LAZY_ATTRS`, the `TYPE_CHECKING` import block) and into
-`hnx-wiki`'s module→page map, matching how every prior generation is
-exposed — `import hypernix; hypernix.PressureCookerV6` works, and
-`hnx-wiki` correctly resolves both new modules to the new wiki page.
+  `PressureCookerV6V` wired into the top-level lazy-import system
+  (`__all__`, `_LAZY_ATTRS`, the `TYPE_CHECKING` import block) and into
+  `hnx-wiki`'s module→page map, matching how every prior generation is
+  exposed — `import hypernix; hypernix.PressureCookerV6` works, and
+  `hnx-wiki` correctly resolves both new modules to the new wiki page.
 
 📚 **`wiki/Pressure-Cooker-V6.md`** (new), **`wiki/Optimizers.md`**,
-**`wiki/Home.md`** — new dedicated page for V6/V6V with the measured
-numbers, usage examples, and the CUDA-graph caveat above.
-`Optimizers.md`'s intro also got a small accuracy fix while touching
-this page: it previously called V4 "the newest `OptimizerBase`-powered
-line", which stopped being true once V5/V5S shipped and is now doubly
-wrong with V6 added — it now points to both dedicated pages instead of
-asserting a staleness-prone "newest" claim.
+  **`wiki/Home.md`** — new dedicated page for V6/V6V with the measured
+  numbers, usage examples, and the CUDA-graph caveat above.
+  `Optimizers.md`'s intro also got a small accuracy fix while touching
+  this page: it previously called V4 "the newest `OptimizerBase`-powered
+  line", which stopped being true once V5/V5S shipped and is now doubly
+  wrong with V6 added — it now points to both dedicated pages instead of
+  asserting a staleness-prone "newest" claim.
+
+### Site Changes
 
 🛜 **Docs site: full holiday/observance calendar.** Extended the
-existing Christmas / Christmas Eve / Halloween / Thanksgiving / July
-4th / Pride Month banner system (`getActiveSiteEvent`/`EventBanner` in
-`docs/src/App.tsx`) with 14 more: Trans Day of Visibility (Mar 31),
-Transgender Day of Remembrance (Nov 20), MLK Day, Valentine's Day,
-International Women's Day, St. Patrick's Day, Earth Day, Cinco de Mayo,
-Memorial Day, Juneteenth, Bisexual Visibility Day, Labor Day, National
-Coming Out Day, and New Year's Eve — each with its own hand-drawn SVG
-icon and correct date logic, including two new date helpers
-(`nthWeekdayOfMonth` already existed; added `lastWeekdayOfMonth` for
-Memorial Day) rather than hardcoded dates for the floating holidays.
-Juneteenth is checked ahead of the existing "any day in June is Pride
-Month" catch-all so it gets its own banner on the 19th instead of being
-silently shadowed. `MODULES` and the `WIKI_PAGES` fallback list also
-updated for `pressure_cooker_v6`/`pressure_cooker_v6v` and the new wiki
-page — `npm run build` verified clean after all of the above.
+  existing Christmas / Christmas Eve / Halloween / Thanksgiving / July
+  4th / Pride Month banner system (`getActiveSiteEvent`/`EventBanner` in
+  `docs/src/App.tsx`) with 14 more: Trans Day of Visibility (Mar 31),
+  Transgender Day of Remembrance (Nov 20), MLK Day, Valentine's Day,
+  International Women's Day, St. Patrick's Day, Earth Day, Cinco de Mayo,
+  Memorial Day, Juneteenth, Bisexual Visibility Day, Labor Day, National
+  Coming Out Day, and New Year's Eve — each with its own hand-drawn SVG
+  icon and correct date logic, including two new date helpers
+  (`nthWeekdayOfMonth` already existed; added `lastWeekdayOfMonth` for
+  Memorial Day) rather than hardcoded dates for the floating holidays.
+  Juneteenth is checked ahead of the existing "any day in June is Pride
+  Month" catch-all so it gets its own banner on the 19th instead of being
+  silently shadowed. `MODULES` and the `WIKI_PAGES` fallback list also
+  updated for `pressure_cooker_v6`/`pressure_cooker_v6v` and the new wiki
+  page — `npm run build` verified clean after all of the above.
 
-
-- `wiki/CLI.md` documented 13 of the CLI's 34 real subcommands and
+  - `wiki/CLI.md` documented 13 of the CLI's 34 real subcommands and
   claimed that was the complete set. Added full sections for `brew`,
   `pipeline`, `assistant`, `cli`, `tvtop`, `cctvtop`, `fizzle`/`fiz`,
   `camo`/`camouflage`, `prot`/`protect`, `net`, `wiki`, `vera`,
   `scavenger`, `config`, `gkey`, `map`, `websearch`, `stml`. Fixed the
   companion-scripts list (was missing `multilama`, `gkey`, `hnx-map`,
   `tvtop-old`, `tvtop-older`, `hypernix-quantize`).
-- 🐛 The docs site's (`docs/src/App.tsx`) "API Reference" tab was worse
+  - 🐛 The docs site's (`docs/src/App.tsx`) "API Reference" tab was worse
   than stale — cross-checking it against the real source with an AST
   parser showed most of the listed functions (`download_snapshot`,
   `resolve_short_name`, `Session.add`, `EMA.update`, etc.) don't exist
@@ -6411,58 +180,7030 @@ page — `npm run build` verified clean after all of the above.
   and fixed a splice bug of my own during that regen that had deleted
   the `WIKI_PAGES` fallback array entirely — caught by running a real
   `vite build` before calling it done, not just eyeballing the diff.
-- 🐛 The docs site's `CLI_COMMANDS` array listed `hypernix complete` and
+  - 🐛 The docs site's `CLI_COMMANDS` array listed `hypernix complete` and
   `hypernix eval`, neither of which exist, and had wrong flags for
   `convert`/`quantize` (invented `--repo-id`/`--quants` args that don't
   match the real argparse definitions). Rebuilt from the real subcommand
   set; added the previously-undocumented "Companion console scripts"
   section.
-- 🐛 **License was misrepresented on the docs site** — two hardcoded
+  - 🐛 **License was misrepresented on the docs site** — two hardcoded
   "Licensed under Apache-2.0" strings, despite `LICENSE` being a custom
   dual license (LLU-0.1 / HOS-1.0). Fixed there and in the README, which
   previously just said "LLU-0.1" with no mention of the HOS-1.0 option.
-- 🐛 `pipeline` and `assistant` accept `--llm`/`--model` flags that are
+  - 🐛 `pipeline` and `assistant` accept `--llm`/`--model` flags that are
   silently ignored — both call a hardcoded stub responder, not the model
   you pass. This isn't new in this pass, but it wasn't documented
   anywhere either; now flagged explicitly in `CLI.md` and the docs site
   instead of implying full inference support.
-- 🐛 `wiki_cli.py`'s own `--help` text told users to invoke it as bare
+  - 🐛 `wiki_cli.py`'s own `--help` text told users to invoke it as bare
   `hnx <module>`; it's only reachable as `hnx wiki <module>` (a
   subcommand of the main CLI). Also fixed the actual bug behind that:
   bare `hnx wiki` with zero arguments printed the `--help` block instead
   of the table of contents the help text itself claims is the default —
   the TOC branch existed in the code but was unreachable.
-- 📚 `wiki/Home.md`'s "Topic guides" index only linked 19 of the 55 pages
+  - 📚 `wiki/Home.md`'s "Topic guides" index only linked 19 of the 55 pages
   that exist; the other 36 were only reachable if you already knew the
   filename. Rebuilt the index to cover everything, grouped by theme.
-- ✨ New page: [`wiki/HuggingFace-Models.md`](HuggingFace-Models.md) —
+  - ✨ New page: [`wiki/HuggingFace-Models.md`](HuggingFace-Models.md) —
   catalogs all 54 models currently published under the `ray0rf1re` HF
   account, grouped by family, with short-name cross-references into
   `hypernix.download.KNOWN_MODELS` where they exist.
 
-Scope note: this pass covered the CLI reference, the docs site, this
-wiki's index, and the license text. It did not attempt to line-edit
-every one of the ~50 per-module wiki pages against source — those were
-spot-checked, not exhaustively re-verified.
+  Scope note: this pass covered the CLI reference, the docs site, this
+  wiki's index, and the license text. It did not attempt to line-edit
+  every one of the ~50 per-module wiki pages against source — those were
+  spot-checked, not exhaustively re-verified.
+
+## 0.72.6 — 2026-09-24
+
+### Beta / Dev → Release Summary
+
+This release includes the finalised work from 0.72.5.post14 to post17
+and 0.72.6.rc1 to rc3.
+
+#### Major Changes
+
+๋࣭⭑ v2.1 (T2C) keys, sealed with Rotorvault under a key that changes
+  every day, and conceal mode for a server (0.72.5.post17).
+
+๋࣭⭑ `waiter serv` letters group in any order, with flags to update,
+  install kits, conceal, and seal the key as a v2.1 kit (post17).
+
+๋࣭⭑ Siri can name chats and models, on App Intents 2.0 (post17, rc1).
+
+๋࣭⭑ `hypernix.elements` with `magnesium` and `carbon`, and the
+  `L#-NNNNN.kS` error codes across the T1 API (post16).
+
+๋࣭⭑ `hyped-pro` is an OpenTUI app that works with git and edits files
+  (post16), and `tvtop-max` is tvtop-pro on the same stack, with panels
+  for the run's script, modules, model, Pressure Cooker, log and
+  warnings (rc2).
+
+๋࣭⭑ HyperLink models call tools, including the T1 API as tools, on
+  both chat routes (post16, rc3); models run on the iPhone itself; chats
+  are named, compressed and can be made private; memories are organised
+  (post16); and a reply from this server's own runner gets a default
+  system prompt (rc2).
+
+๋࣭⭑ `hypernix.dilute`, `hyperchat` with several prompts in flight, and
+  keyless `/web/v1` search (post15).
+
+๋࣭⭑ `hypernix.neuron` and `hypernix.audio.processor` (post14).
+
+#### Fixes Carried Into Release
+
+𖢥 Pressure Cooker V4, V5, V5S and V6 never trained through
+  `NeoOven.train`, and twenty-three presets had broken RoPE (post16).
+
+𖢥 Neo Oven's presets named the wrong architectures (post15).
+
+𖢥 The server could be made to fetch its own network, and a public-only
+  fetch could be steered to a private address (post16, post17).
+
+𖢥 A HyperLink model said it had no tools, and the assistant's reply
+  bubble had a hole in its tail (rc3).
+
+𖢥 tvtop-max opened to empty panels, and a run kept under `.runs` was
+  never found (rc3).
+
+#### Testing
+
+🧪 Each candidate added its own tests: the Siri phrases, the version
+  spellings, the default prompt, tvtop-max's panels and bridge, the tools
+  on the streaming route, and the bubble tail.
+
+### Added
+
+✨ 0.72.6, released. Three release candidates and four batches published as
+  0.72.5.post14 to post17 went into it; the summary below says what
+  shipped, and those entries say how. New since 0.72.6.rc3: HyperLink
+  keeps its own copy of your memories and syncs it from the server as
+  they change, and a release that its own tests would reject can no
+  longer be started.
+
+๋࣭⭑ **HyperLink syncs memories from the server as they change.** The app
+  used to fetch `/memory/list` whole: the first 200, when the Memories
+  screen appeared or a reply ended, with any error swallowed. A fact the
+  model wrote mid-chat reached the phone only if somebody happened to be
+  looking, the 201st never did, and offline the screen was empty.
+
+𖥔 `GET /memory/sync?cursor=N` answers with what changed since the
+  cursor: the current state of each memory touched and the ids of those
+  deleted, evictions by the auto-memory budget included. Every memory
+  write logs itself in the same transaction, one row per memory, numbered
+  by a counter row so they appear in commit order. A first sync, a cursor
+  older than the 30-day tombstones, or one this server never issued (a
+  server restored behind the phone's back) gets the whole set, marked
+  `full`, to replace the copy with.
+
+𖥔 A chat turn that remembers or forgets something sends a `memory`
+  frame with the new cursor after `done`, and the app syncs while the
+  reply is still on screen.
+
+𖥔 The app keeps each server's copy on disk, excluded from backups, and
+  shows it at launch and offline. It syncs on launch, on every return to
+  the foreground, on the `memory` frame, and after each edit, and
+  overlapping syncs run once more rather than twice at once. When the
+  server cannot be reached, the Memories screen says how old its copy
+  is. Forgetting or unpairing a server deletes its copy. Against a server
+  without `/memory/sync`, the app falls back to the whole list.
+
+### Changed
+
+🔧 The guard runs before torch is installed, so a refusal costs
+  seconds. After the bump, a new "Preflight" step runs the tests a
+  version bump can break: the changelog format, the installer's baked
+  version, both OpenTUI apps' `package.json` and `app.ts`, and the
+  guard's own. They take about ten seconds, and a failure there stops the
+  release before lint, the full suite and the build.
+
+🔧 Check a release before dispatching it, from the repository root, with
+  `python .github/scripts/version_guard.py 0.72.6`.
+
+### Fixed
+
+𖢥 **A release could be started that was certain to fail.** 0.72.6 was
+  dispatched against a changelog whose newest entry was 0.72.6.rc3. The
+  release bumped the version, built, ran the suite for ten minutes, and
+  failed: "changelog newest is 0.72.6.rc3, package is 0.72.6". The
+  version guard warned about a missing heading only when the version
+  equalled the tree's, and said nothing when it moved forward, which is
+  the usual case. Nothing about that needed the build to find out.
+
+𖢥 The guard (`.github/scripts/version_guard.py`) now checks the
+  changelog against the version the bump is about to write, for every
+  release, forward, equal or a permitted downgrade. It refuses unless the
+  newest entry is that version (ignoring a `.postN`, as the test does)
+  under a `<version> — <YYYY-MM-DD>` header, and the refusal names the
+  exact heading to add. A `.postN` with no notes of its own still only
+  warns, since its tests pass.
+
+𖢥 **The first 0.72.6 run failed after its build, at the commit.** main
+  moved while it built (the stats bot committed), so the push was
+  rejected, and the retry's `git rebase` refused to start: the install and
+  the build rewrite the tracked `src/hypernix.egg-info`, and a rebase will
+  not run over unstaged changes. The step called that "the version bump
+  conflicts with main -- another release may be in flight", which it was
+  not. It now rebases with `--autostash`, so those files are set aside and
+  put back, never pushed. A real conflict still stops, and now names the
+  files. `tests/test_release_push_retry.py` runs the step's own script
+  against a bare origin and failed the old one with the same message.
+
+🐛 The bump step spelled `0.72.6.postr1` as `0.72.6..post1`, which is
+  not a version. It now asks the guard for the spelling
+  (`version_guard.py --print-pep440`), so the version checked is the one
+  written.
+
+🐛 `tests/test_changelog_format.py` rejected the `### Beta / Dev →
+  Release Summary` heading that `Changelog-guide.md` requires of a stable
+  release. It now accepts it, and checks that the guide still names it.
+
+### Tests
+
+🧪 `tests/test_version_guard.py`: the release that failed is refused up
+  front and names the heading to add; a stable entry above the candidates
+  lets it through; equal versions and downgrades are held to the same
+  rule; undated headers, no entries and no changelog are refused; the
+  real tree passes its own version; the workflow runs the guard before
+  torch, bumps with the guard's spelling, and runs the preflight before
+  the suite.
+
+🧪 `tests/test_hyperlink_memory_sync.py` (22): first sync, deltas with
+  edits, deletions and evictions, paging and its cap, the whole set for a
+  stale, expired or foreign cursor, ownership, memories from before the
+  log, the endpoint, and a real streamed turn whose `update_memory` call
+  sends the `memory` frame. `MemoryMirrorTests.swift` covers applying a
+  delta and a full answer, ordering, decoding, the disk cache, and the
+  frame.
+
+## 0.72.6.rc3 — 2026-09-24
+
+### Added
+
+𖥔 Tools on the streaming route. Ordinary answers still stream as they
+  are written. A tool call written as text (`<tool_call>`, `[TOOL_CALLS]`,
+  `<|python_tag|>`, a JSON block) is held back rather than shown,
+  including one split across chunks. Streamed structured calls are
+  assembled from their fragments. Each tool run is announced in a `tool`
+  frame, and the rounds are kept in `metadata.tool_rounds`, as `/chat`
+  does. Stop still stops.
+
+### API Changes
+
+🔗 The third release candidate: a HyperLink model has its tools on the
+  route the app actually uses.
+
+### Fixed
+
+𖢥 **A HyperLink model said it had no tools, and it was right.** Reported
+  from an iPhone: gemma-4-e4b, asked to use HyperNix's T1 API, said
+  nothing had been provided to it. Three bugs lined up. The app streams
+  its replies, and `/chat/stream` never offered a tool; only `/chat`
+  did. Even there, the person's own T1 API tools and their memory tools
+  waited on "Let the model use tools" and on the server's noodle switch,
+  both off by default, though that toggle only ever described noodle's
+  workspace of files and commands. So a default server offered nothing
+  anywhere.
+
+𖢥 The T1 API tools are now offered in every HyperLink chat whose caller
+  has a credential, on both routes. They run with that credential, and
+  loading or unloading models is still offered only to a caller with
+  `write` or admin. The memory tools follow Auto-memory. Noodle's
+  workspace still needs the person's toggle and `T1_NOODLE_ENABLED`, and
+  the toggle is now called "Let the model use its workspace", with a
+  footer that says what the model has without it.
+
+𖢥 On the built-in runner, the tool format went in as a second system
+  message ahead of the first. A backend that keeps only the first system
+  message then dropped the person's own instructions and the default
+  prompt. It is now added to the end of the one system message.
+
+𖢥 **The assistant's reply bubble had a hole in its tail.** A dark
+  triangle with a light rim sat at the bottom-left corner of every model
+  reply, and the person's own bubbles looked right. The tail is drawn for
+  the right side and mirrored for the left, and mirroring reverses a
+  path's winding. Added to the bubble with `addPath`, the assistant's tail
+  wound against its bubble, and SwiftUI's non-zero fill cancelled the
+  overlap, leaving the screen behind showing through. The two are now
+  joined with `Path.union`, which fills the combined outline whichever way
+  either winds.
+
+🐛 The model's name under a reply sat 5pt left of the bubble, under its
+  tail. It now lines up with the bubble.
+
+𖢥 **tvtop-max opened to empty panels and no header.** Reported from a
+  phone. Before reading its first request, the bridge searched for a
+  training log with three recursive `**/` globs over the working
+  directory. Started from a home directory full of models, virtualenvs and
+  caches, that took minutes, and the app draws nothing until the bridge
+  answers. Now the run is found in the background and frames go out from
+  the first request, saying they are still looking. The app draws at once,
+  and its footer says what it is waiting for, counting seconds, and how to
+  see more if nothing comes.
+
+𖢥 The training-log search that tvtop, tvtop-pro and tvtop-max share is
+  bounded: 5 folders deep, 2 seconds, 50,000 entries. It skips
+  virtualenvs, `node_modules`, `site-packages` and hidden folders, except
+  `.hypernix` and `.runs`, where training runs are kept.
+
+🐛 tvtop-max's phone layout pushed its footer (keys, status) off the
+  bottom of the screen, because its scrolling column took its content's
+  full height. It now fits between the header and the footer, and its
+  panels leave room for the scrollbar.
+
+### Tests
+
+🧪 15 tests in `tests/test_hyperlink_stream_tools.py`, the main one the
+  screenshot itself: a default server under a real uvicorn and a paired
+  phone on `/chat/stream`. The model writes `<tool_call>` for
+  `server_version`, the server calls itself with the phone's token, and
+  the phone gets the answer and never the markup. The old router fails
+  three of them, and the old two-system-message behaviour fails two.
+
+🧪 The bubble tail: `tests/test_hyperlink_bubble_tail.py` reads the
+  tail's coordinates from the Swift, shows that the mirrored tails wind in
+  opposite directions and overlap their bubbles, and requires the union;
+  it fails on the old shape. `BubbleShapeTests.swift` checks on a
+  simulator that every point of both speakers' bubbles is filled.
+
+🧪 tvtop-max's slow start: a frame is answered while discovery is still
+  running, `info` waits for it, a failed search still lets `info` answer,
+  and the bridge serves at once. The log search stays within its depth,
+  time and size limits and skips heavy and hidden folders, but finds a run
+  in `.runs`. Five `bun test` cases cover the waiting footer and
+  panels. Reproduced first by starting tvtop-max at `/`: empty boxes, as
+  in the screenshot.
+
+## 0.72.6.rc2 — 2026-09-23
+
+### Added
+
+๋࣭⭑ **`tvtop-max`**: tvtop-pro on OpenTUI, like hyped-pro, in the site's
+  colours, with ten panels toggled by their number keys. Alongside cpu,
+  memory, GPU, training progress with a loss graph, and processes, it has
+  panels for the run itself: the HyperNix modules and libraries its script
+  imports, with one-line summaries, installed versions and deprecations;
+  the model architecture from `new_oven(arch=…)`, a `preheat()` snapshot
+  or a `config.json`, with a parameter estimate; every Pressure Cooker the
+  script uses, with its generation, arguments and the learning rate the
+  log reports now; the log's last lines, coloured by what they are; and a
+  warnings panel.
+
+𖥔 tvtop-max's warnings panel reads the script for missing and deprecated
+  modules, deprecated Pressure Cooker generations, `torch.load` without
+  `weights_only=True`, no seed and no checkpoint. It reads the log's tail
+  for tracebacks, out-of-memory errors, NaN losses, the OOM killer and
+  `…Warning:` lines, each message counted once however often it repeats.
+
+𖥔 `tvtop-max -s` lays it out for a phone: one scrolling column 40 to 56
+  columns wide, with training and warnings first. It is chosen
+  automatically below 72 columns, and `s` switches layout at any time.
+
+𖥔 With no options, tvtop-max finds the busiest Python run that is not
+  itself, reads the script from its command line and finds its log. `-S`
+  watches only a process that is actually running the named script, and no
+  process at all rather than a guess.
+
+๋࣭⭑ **HyperLink's default system prompt.** When a reply comes from this
+  server's own runner, which is where hyperchat serves prompts, five
+  paragraphs go first. They say where the model runs, that it is read on a
+  phone, today's date, to be accurate before agreeable, to use only the
+  tools it is offered, and that the person's own instructions follow and
+  win. It sits under everything the person wrote, is composed per turn and
+  never stored, is not sent to LM Studio, and
+  `T1_HYPERLINK_DEFAULT_PROMPT=0` turns it off.
+
+🔧 `hypernix.monitoring.run_inspect` reads a training script with `ast`
+  and its log with patterns, and never imports or runs
+  either. `hypernix.monitoring.tvtop_max_bridge` answers tvtop-max on
+  hyped-pro's JSON-lines protocol, from the same statistics source as
+  tvtop-pro.
+
+### Changed
+
+🔁 The second release candidate: tvtop-max, and a default system prompt for
+  HyperLink replies from HyperNix's own runner.
+
+🔁 hyped-pro's installer (`prepare_app`, `runtime_root`) takes the app's
+  name and fallback program, so tvtop-max installs the same way into
+  `~/.hypernix/tvtop-max/`. The release workflow bumps and commits
+  tvtop-max's version alongside hyped-pro's.
+
+### Tests
+
+🧪 tvtop-max: 48 Python tests for the script reader, bridge, process
+  choice, launcher and packaging, and 71 `bun test` cases for the panels,
+  layout, arguments and bridge client, in a new CI job with the type
+  check. Every panel is held to its width and height at 24, 40 and 80
+  columns, which caught the process table overflowing a phone. The process
+  test caught the launcher's own `-S train.py` being read as the run.
+
+🧪 The default prompt: 17 tests, through the API for what the model is
+  actually sent. The backend and off-switch guards were each removed to
+  check that the tests fail without them. One HyperLink test fake guessed
+  that any system message mentioning summaries was a compaction request;
+  it now recognises the compaction prompt itself.
+
+### Known Issues
+
+❗ tvtop-max's GPU panel reads NVIDIA GPUs through `nvidia-smi`, as
+  tvtop-pro does, and shows nothing for other vendors.
+
+❗ When the log does not report a speed, the training panel works it out
+  as steps over the time tvtop-max has been watching, as tvtop-pro does,
+  so it reads high for a run that was already under way when the dashboard
+  started.
+
+## 0.72.6.rc1 — 2026-09-23
+
+### Changed
+
+🔁 The release candidate for 0.72.6, the two fixes its first release run
+  needed, and Siri phrases that match what the docs say to say.
+
+🔧 This is the first release candidate of 0.72.6, and everything in it
+  was published first as 0.72.5.post14 to post17; the entries below say
+  what each of those added.
+
+### Fixed
+
+🐛 A release cut to a version the tree was not already carrying failed
+  its own test run. The workflow bumped four version strings and not
+  hyped-pro's `package.json` and `app.ts`, so the app still called itself
+  0.72.5-post17. It now writes both through
+  `hyped_pro_otui.sync_app_version`, which spells the version as semver
+  (0.72.6.rc1 is 0.72.6-rc1), and the commit stages both files.
+
+🐛 The documentation check failed wherever fastapi is not installed, as
+  on the release runner. `hypernix.t1api.create_app` re-raises the missing
+  package as a plain ImportError with install advice, and the check looked
+  only at that error, never at its cause.
+
+𖢥 **Siri answered "HyperLink hasn't added support for that".** The
+  README and the intents file told people to say "ask HyperLink what's the
+  weather" and "load the model Gemma 4 E2B on blazeindustries in
+  HyperLink", and no registered phrase matched either: a phrase can name
+  only an entity, never free text, so the question has to come after "Ask
+  HyperLink", when Siri asks for it. Every Siri sentence in the docs is
+  now a real phrase, and "Talk to HyperLink" and "Chat with HyperLink" are
+  added.
+
+𖢥 A model was offered to Siri under its file name, such as
+  `gemma-4-e2b-it-Q4_K_M`, which is not what anyone says, so "Load Gemma 4
+  E2B in HyperLink" had no title to match. `SpokenName` titles each model
+  the way it is said ("Gemma 4 E2B"), keeps the fuller forms as synonyms,
+  and the model query accepts the spoken title.
+
+### Tests
+
+🧪 `semver_of` across every spelling the release workflow accepts,
+  `sync_app_version` against copies of the real files, the workflow
+  bumping and committing both, and the documentation check run with
+  fastapi blocked. It failed twice there before the fix and passes after
+  it.
+
+🧪 `tests/test_hyperlink_siri_phrases.py` holds every Siri sentence in
+  the README, the iOS README and the intents file to a phrase the app
+  registers, read from its AppShortcutsProvider. Run against the old
+  README it fails on exactly the two sentences Siri
+  refused. `SpokenNameTests.swift` covers the spoken names on the
+  simulator.
+
+## 0.72.5.post17 — 2026-09-23
+
+### Added
+
+๋࣭⭑ **v2.1 (T2C) keys.** A v2 key sealed twice: once for the server's
+  RSA key, which is stable, and again under a per-device key that changes
+  every UTC day (an HMAC of the device secret and the date). The client
+  keeps a *kit* (`T2CK_…`) and sends only the day's key
+  (`T2C_<device>.<seal>-<level>`). The server accepts the day either side
+  and nothing else, binds each device to one key, refuses an edited access
+  level, and refuses the kit itself if it is ever sent. `gkey create -v
+  v2.1` mints one, and v2.1 is now the latest format.
+
+๋࣭⭑ **Rotorvault** (`hypernix.security.rotorvault`) seals in six
+  stages: Blowfish-CTR, Twofish-CTR, an Enigma-style rotor stage wired by
+  xoshiro256++, AES-256-GCM, inversion, and base64url, each keyed through
+  HKDF from a fresh salt. Blowfish and Twofish are pure Python and checked
+  against their published test vectors. `seal_for()` fronts it with
+  RSA-OAEP and `seal_with_password()` with scrypt. The security comes from
+  the AES-GCM stage; the module says so, and treats the rest as defence in
+  depth at best.
+
+𖥔 `/auth/t2c/public-key` and `/auth/t2c/devices` (register, list,
+  revoke), so a client can seal an existing key without a secret crossing
+  in the clear. The server's RSA key and device secrets live in
+  `<keymaster>/t2c/`, readable only by their owner and created on first
+  use. `cryptography` joins the `t1api` extra.
+
+๋࣭⭑ **Conceal mode.** `POST /privacy/conceal` (access level 3 or higher)
+  marks the calling key as concealed. Its audit records then keep its
+  address only as a /24 (IPv4) or /48 (IPv6). Security records keep the
+  full address, because the operator needs it to block abuse. A sweep runs
+  on the request and then every 10 minutes while the server is up. It
+  deletes what the key made more than **36 hours** ago: chat messages and
+  the sessions they leave empty, files, finished jobs, and non-security
+  audit records. Memories, preferences and usage counts are kept. The
+  first two are the person's profile, and deleting usage counts would
+  reset their quota. `DELETE` turns conceal off and `GET` reports it.
+
+𖥔 `GET /server/info` is public and describes the server: name,
+  description, owner, URL, versions and features. It reads
+  `T1_SERVER_NAME`, `T1_SERVER_DESCRIPTION`, `T1_SERVER_OWNER` and
+  `T1_SERVER_URL`. `POST /auth/t1/validate` also returns the key's family
+  and access level.
+
+๋࣭⭑ **`waiter serv` letters group in any order.** `waiter serv -ArEK
+  <key> -I <ip>` sets the server up, refreshes it, seals the key and
+  checks it. A letter that takes a value ends its group or stands alone,
+  and waiter refuses `-AKE key` instead of guessing. Inside a group, `r`
+  is refresh, and `Rf` and `ud` keep their meanings.
+
+𖥔 `-b` gives each bare string to the option it looks like: a key, a
+  server, a port, `KEY=VALUE`, a limit, a kit or a config file. waiter
+  prints what it decided. A CIDR range, or two strings that look like the
+  same thing, is refused rather than guessed.
+
+𖥔 `-u` updates hypernix to at least the server's version, and `-ud` to
+  exactly that version. `--dry-run` prints the pip command without running
+  it.
+
+𖥔 `-k` installs a kit, which is a folder or `.zip` with a `kit.json`, to
+  `~/.hypernix/waiter/kits/`. `waiter kits` lists, removes and runs
+  them. Archives are checked for paths that escape the kit's folder and
+  for symlinks. A kit is code that runs as you, so it is the same trust
+  decision as `pip install`.
+
+𖥔 `-c` turns the server's conceal mode on and `--no-conceal` turns it
+  off.
+
+𖥔 `-T` opens the TUI's control pane: network policy, keys and security
+  events, with actions to block, allow, remove and set unlisted. It opens
+  only for a verified administrator holding a level-9 T2 or v2.1 key, and
+  the server still checks every action.
+
+𖥔 `-Y` prints the server's public card.
+
+𖥔 `-S` checks this client (file mode, a key stored as plain text,
+  `cryptography`, version), then the server (TLS, configuration warnings,
+  headers, keyless access), using public endpoints only.
+
+𖥔 `-e` locks waiter's config with a password (Rotorvault and
+  scrypt). Every command then asks for the password or reads
+  `HNX_WAITER_PASSWORD`, and `--unlock` removes the lock.
+
+𖥔 `-E` seals the key as a v2.1 kit when the server supports it. When it
+  does not, `-E` falls back to encryption at rest as before.
+
+๋࣭⭑ **Siri can name chats and models.** HyperLink has `ChatEntity` and
+  `ModelEntity`, each with an `EntityStringQuery` that asks the paired
+  server. New phrases: "Load ‹model› in HyperLink", "Switch HyperLink to
+  ‹model›", "Read ‹chat› in HyperLink" and "Send a message to ‹chat› in
+  HyperLink". The phrases without a name still work. The app calls
+  `updateAppShortcutParameters()` whenever chats or models refresh, which
+  is how Siri learns the names.
+
+𖥔 The T1 SDK gains `T1Client.server_info()`, `conceal()`,
+  `conceal_status()`, `t2c_public_key()`, `t2c_devices()`,
+  `t2c_revoke_device()`, and `seal_key()`, which turns a T1 or T2 key into
+  a registered v2.1 kit. A kit given as the credential is never sent: the
+  transport derives the day's key from it for each request.
+
+𖥔 `hnx-t1` is the short name for `hypernix-t1`. It runs the
+  `hypernix-t1` installed next to it, so the two cannot drift.
+
+𖥔 hyped-pro finds the T1 server. After `HNX_T1_API_URL` and its own
+  `/t1api` setting, it reads waiter's saved server and then hypernix-t1's
+  `.env` (`T1_HOST`/`T1_PORT`, with 0.0.0.0 reached on loopback). It reads
+  waiter's config only when that config is plain JSON, because decrypting
+  it would create waiter's master key. `/t1api` shows where the address
+  came from.
+
+### Changed
+
+🔁 The 0.72.6 fourth batch. v2.1 keys and the cipher that seals them,
+  conceal mode, a `waiter serv` whose letters can be grouped, Siri that
+  can hear a chat's name, and `hnx-t1`.
+
+### Fixed
+
+𖢥 **hyped-pro said "connection refused" to anyone whose server was not
+  on 127.0.0.1:8000.** It knew only its environment variable, its own
+  setting and that default, so a server on another port, or one waiter was
+  already pointed at, could not be reached. See above. A refused
+  connection now also says where the address came from and what to run
+  (`hnx-t1 status`, `hnx-t1 start` or `/t1api <url>`), including when the
+  SDK wraps the refusal in its own error.
+
+𖢥 **A public-only fetch could be steered to a private address.** The
+  fetch resolved the name to check it, then let urllib resolve it again to
+  connect, so a name that answered differently the second time (DNS
+  rebinding) reached an address that was never checked. It now connects to
+  the checked address, sends the real `Host` header, and verifies TLS
+  against the name. Each redirect is checked and pinned the same
+  way. Found by CodeQL.
+
+🐛 The HyperLink shell's working directory, which comes from the phone,
+  is resolved (symlinks included) against `T1_HYPERLINK_SHELL_ROOT` and
+  refused if it leaves it. The root defaults to the server user's
+  home. Relative paths start at the root, and `GET /hyperlink/shell`
+  reports it. Found by CodeQL.
+
+🐛 Studio failed on start with "SettingsView is not a
+  type". `qt_add_resources` listed every QML view except that one, on
+  `main` too.
+
+🐛 `hypernix-t1 help` printed "override: command not found". A pair of
+  unescaped backticks in the usage text ran it as a command.
+
+🐛 On Windows, hyped-pro's editor saved a CRLF file back as `\r\r\n`, and
+  its stale-write check never matched. Both now read and write bytes.
+
+🐛 tvtoppro's disk panel crashed on its first poll on Windows, because
+  `os.statvfs` does not exist there. It uses `shutil.disk_usage`.
+
+🐛 tvtop++ scanned every process with its owner and command line on every
+  frame, which takes about a second on Windows. It reuses the table for 5
+  seconds.
+
+### Tests
+
+🧪 Rotorvault: 31 tests, including the published Blowfish and Twofish
+  vectors, a flip of every byte of a sealed message, and the wrong key,
+  RSA key or password.
+
+🧪 v2.1 keys: 22 tests through the real app. Yesterday's and tomorrow's
+  key are accepted and nothing older. The kit is refused as a
+  credential. An edited level is refused, and one device's key cannot bind
+  a second key.
+
+🧪 Conceal and retention: 13 tests. A level-2 key is refused. The address
+  is masked everywhere except on security records. A sweep keeps memories,
+  a fresh session, security records and another person's data. The sweeper
+  thread starts and stops with the server.
+
+🧪 `waiter serv`: 37 tests of grouping, `-b` and every new letter against
+  the real app through the SDK, among them a kit whose archive tries to
+  escape its folder, and a control pane refused to a T1 admin key, a
+  level-8 T2 admin key and a level-9 key that is not an admin.
+
+🧪 SDK: 6. Siri: 5 structural checks on the Swift. hyped-pro
+  discovery: 5, covering each source in order, an encrypted waiter config
+  left untouched, and the advice when the SDK reports a refusal.
+
+🧪 Documentation: `tests/test_docs_current.py` checks that every relative
+  link and anchor in the README, the iOS README and the wiki resolves. It
+  also checks that `wiki/CLI.md` covers every `hypernix` subcommand, that
+  every `waiter serv` letter has a row in its flag table, that every `T1_`
+  setting is in `examples/t1api/.env.example`, and that every `hypernix.…`
+  module a current page names imports.
+
+📚 `wiki/CLI.md` gains the commands it never had (`wakeup`, `dilute`,
+  `neuron`, `errors`, `elements`, `hyprslug-headers`, `path`, `wiki`),
+  with examples run against the real parsers.
+
+📚 `examples/t1api/.env.example` documents the 31 server settings it
+  lacked.
+
+📚 The T1 API pages give the current version, v1.1.26.9.0.0, and links to
+  moved modules are fixed.
+
+📚 The Roadmap's 0.72.6 list is marked with what has shipped.
+
+### Known Issues
+
+❗ Siri's new phrases have been checked by structural tests and the CI's
+  iOS build, not on a device.
+
+❗ Conceal limits what the server *keeps*. It cannot change what the
+  network, a reverse proxy, or the operator's own logs record before a
+  request reaches the T1 API.
+
+## 0.72.5.post16 — 2026-09-23
+
+### Added
+
+๋࣭⭑ `hypernix.elements` — addons named after the periodic table, with
+  `hydrogen` (H, 1) as the framework: a spec per element, a registry, and
+  permissions that are checked at the moment of use rather than listed for
+  humans to read. `natural_gas` attaches elements to a Neo Oven so they
+  run around each generation, per instance and reversibly. Periods 6 and 7
+  (element 55 onward) are experimental, decided from the atomic number so
+  nothing added there later escapes the gate.
+
+๋࣭⭑ `magnesium` (Mg, 12) — lowers other apps' priority while a model
+  runs, and optionally confines their cores. Never touches terminals,
+  shells, Python, HyperNix, llama.cpp, the desktop's compositor and audio,
+  kernel threads, this process's tree, or other users' processes. Plans
+  before it acts, and puts back each process's *original* priority rather
+  than "normal".
+
+๋࣭⭑ `carbon` (C, 6) — tidies model output (never inside a code fence),
+  expands `::snippet` shortcuts, and loads elements you write yourself
+  from `~/.hypernix/elements/`. `hypernix elements new Na` scaffolds one.
+
+๋࣭⭑ Error codes: `L#-NNNNN.kS` — a domain letter, a tier, five digits,
+  a kind `a`–`f` saying whose problem it is, and a severity 1–5. Every
+  code is declared in one catalogue with a one-line explanation and a
+  remedy, and an unregistered code cannot be raised. `hypernix errors
+  explain R3-00020.a3` looks one up.
+
+𖥔 The T1 API's error envelope carries `hx_code` beside `code`. `code` is
+  a published contract and stays; each of its 42 values maps 1:1 onto its
+  own new code.
+
+๋࣭⭑ Models call tools the way they were trained to. A hosted model
+  returns structured `tool_calls`; a local GGUF usually writes the call as
+  text — `<tool_call>` (Hermes, Qwen), `<|python_tag|>` (Llama 3.1+),
+  `[TOOL_CALLS]` (Mistral), or a fenced JSON block — and when nothing reads
+  those, the call is shown to the person as the answer and nothing runs —
+  which, more than the model's reasoning, is most of why local models looked
+  bad at calling API endpoints. `hypernix.runtime.toolcalls` reads all of
+  them, repairs the JSON mistakes models make, and checks arguments against
+  the tool's schema with an error naming the exact field, so the model can
+  correct itself.
+
+๋࣭⭑ The T1 API as tools. A model under HyperLink can ask the server what
+  is loaded, how busy the GPU is, what it remembers, or search the web — each
+  tool one real route, called with **the caller's own credential**, so it can
+  never do more than the person could by hand. Keyless callers get none (the
+  server calling itself comes from loopback, which can be a more trusted
+  network than the phone's), and loading or unloading models is offered only
+  to someone who could do it themselves.
+
+𖥔 On the built-in runner, HyperLink teaches the model the tool format in
+  one system message with a worked example built from a real tool.
+
+๋࣭⭑ HyperLink: models on the iPhone itself, reachable. Search Hugging
+  Face, see whether a model fits this phone before downloading it, download
+  with progress and pause, load it, and chat with it — from a new *On
+  iPhone* tab, and from the pairing screen for somebody with no PC at all;
+  the search, fit estimate, download manager and llama.cpp runner already
+  existed, about 1,800 lines of them, and no screen created any of it.
+
+𖥔 HyperLink: swipe left on a message to edit or resend it; on a reply,
+  to retry. Editing now asks again — it used to rewrite the message and
+  stop, leaving the thread ending on an unanswered question. Resend is an
+  edit with the same text, so the new answer replaces the old one rather
+  than stacking under it, and it confirms first when it would remove more
+  than that one reply. VoiceOver gets the same actions without the swipe.
+
+𖥔 `POST /hyperlink/sessions/{id}/chat` (and `/chat/stream`) take
+  `regenerate: true` to answer the thread's last message without adding a
+  copy of it.
+
+𖥔 `hypernix-t1 launch-script -$ 'CMD'` — a bash or fish command as a
+  job, with everything a script job gets: it survives the SSH connection
+  closing, has logs and a status, and restarts as a command rather than
+  as a missing script. `--shell` picks the shell; `auto` is bash first,
+  because a launched job is scripting and most copied snippets are bash;
+  fish cannot type a bare `$`, so there fish users write `'-$'` or
+  `--shell-command`.
+
+𖥔 `hypernix-t1 override lms move-dir [FOLDER]` — points LM Studio's
+  models folder somewhere else, `~/.hypernix/models` by default, so LM
+  Studio and HyperNix share one copy of every GGUF. Backs the settings file
+  up first (`override lms revert` restores it), writes atomically keeping
+  every other key, refuses while LM Studio is running (it can rewrite its
+  settings on exit), and moves existing models only with `--move-files`.
+
+𖥔 `hypernix elements {list,info,plan,run,new}`. `run` holds until
+  Ctrl-C and restores on the way out — an element that changes other
+  programs and then exits leaves nobody to change them back.
+
+๋࣭⭑ `hyped-pro` is an OpenTUI app — TypeScript on Bun, the stack
+  opencode's terminal UI is built on — in the site's colours: the
+  `#0d0d0d` page, the red accent, the same greys. A header, the
+  conversation, a bordered prompt and a line of keys, laid out the way
+  opencode's is; markdown replies, a model picker on ctrl+p, esc to stop
+  a reply, `/noodle`, `/t1`, `/key` and `/retry`. It drives the same
+  Python bridge as before, so models, keys and T1 settings carry over. The
+  first run installs `@opentui/core` with `bun install`, into the package
+  or, when that is read-only, into `~/.hypernix/hyped-pro/<version>`.
+
+๋࣭⭑ `hyped-pro` works with git. `/git` shows status, `/diff` draws each
+  changed file coloured with line numbers, and `/git add`, `commit`,
+  `switch`, `restore`, `log`, `branches`, `push` and `pull` do what they
+  say. The header shows the branch, how far it is ahead or behind, and how
+  many files have changed. The model gets git tools too: reading (status, diff,
+  log, show, branches) and staging are free, while committing, switching
+  branch and discarding changes wait for the person to press `y`. It has no
+  push, pull, reset or rebase at all.
+
+๋࣭⭑ `hyped-pro` edits files. `/files` browses the workspace, and `/edit`
+  opens a file in a real multi-line editor (ctrl+s saves, esc closes, and
+  the first esc on unsaved work only warns). A save refuses to overwrite a
+  file that changed on disk after it was opened. The model gets
+  `write_file`, `move_file` and `delete_file`, and deleting asks first.
+
+𖥔 Consent questions reach the person in hyped-pro. The bridge sends an
+  event line and waits for the answer, so a question appears in a box above
+  the prompt and no other key is taken while it is open. Tool calls show as
+  they happen. hyped-plus never asks for these, so there a gated tool is
+  refused unless `HYPERNIX_TOOL_POLICY=allow`, because nobody can answer.
+
+๋࣭⭑ HyperLink names chats with the model. After the first reply the model
+  is asked for a two-to-six-word title, the answer is cleaned (models
+  write `Title: "…"` as often as the title), and anything unusable falls
+  back to the first line. The stream sends it after `done`, so the reply
+  is never held up. "Rename with AI" asks again; a setting turns it off.
+
+๋࣭⭑ HyperLink compresses long conversations instead of forgetting their
+  start. When a thread reaches 85% of the context budget its oldest part
+  is summarised once, before it would have been dropped. Every message
+  stays in the transcript, where a marker shows the summary the model is
+  now sent, and "Compress conversation" does it on request.
+
+๋࣭⭑ Private chats. A chat hidden with Face ID leaves the list and opens
+  behind Face ID, Touch ID or the passcode, and locks again whenever the
+  app leaves the foreground. Hiding is per phone and per server; the chat
+  itself stays on the PC.
+
+๋࣭⭑ Memories are organised. The model's memory tool filed every fact under
+  its own key, so the screen grew one category per fact. Facts now go
+  under topics (About you, Preferences, Work, Projects, Tech, Health,
+  Places, Schedule) with the key kept. "Organise" refiles older ones and
+  leaves a category a person chose where it is. Categories can be renamed
+  or merged, memories moved, and the screen searched.
+
+𖥔 The photo options follow the model. Each model in `/hyperlink/models`
+  says whether it can see images, from LM Studio's own `vlm` flag, a GGUF's
+  `mmproj` projector, or the family's name. The photo options are hidden
+  for a model that cannot, and offered with a warning when nothing says.
+
+𖥔 A shell on the server from the phone, off unless the server's operator
+  sets `T1_HYPERLINK_SHELL=1`. It runs one command at a time with a
+  timeout that kills the whole process group, caps the output, and writes
+  each command to the audit log before it runs. The model is never given
+  it.
+
+𖥔 Chat bubbles have tails, as in Messages, on the last bubble of each run
+  from one speaker.
+
+### Changed
+
+🔁 Qwen 3.5, 3.6, 3.8 and 3.8-Flash presets are the Qwen3.5 architecture
+  (`qwen3_5_text`), not Qwen3. The text type rather than `qwen3_5`, which
+  is the multimodal composite and has no language-model shape fields.
+
+🔁 `instant_pot` trains with Pressure Cooker V4 by default. It was V3,
+  and a default HyperNix chose must not produce a deprecation warning the
+  user has to act on. `use_pressure_cooker_v3: true` still selects V3.
+
+🔁 `hyped-plus` is the readline TUI that was called `hyped-pro` until
+  now, and `hyped-pro` no longer starts it. Both commands ran the same
+  program before.
+
+### Fixed
+
+🐛 Studio's stub engine failed to build on ubuntu-22.04. The
+  `[[maybe_unused]]` that quieted clang about an unused member is not
+  accepted on a data member by GCC 11, and under `-Werror` that is an
+  error; the stub now reads the member instead, which satisfies both.
+
+🛡️ `/web/v1/summarise` reports a failed fetch in its own words (the HTTP
+  status, "not public", "not text", "could not be reached") and never the
+  network exception's text, which can carry paths and internals. The cause
+  is in the server log.
+
+𖢥 **No hyped-pro tool refused to write under `.git`.** `create_file` and
+  `edit_file` checked that a path stayed inside the workspace, and `.git`
+  is inside it: a model could write `.git/hooks/pre-commit` and have it run
+  at the next commit. Nothing writes under `.git` now.
+
+𖢥 **Attaching magnesium to an oven reniced the machine before refusing.**
+  `natural_gas.attach` activated each element and only then checked it may
+  touch the oven, so asking for magnesium lowered every other process's
+  priority and then raised the permission error. Every element is checked
+  before any is started, and a failure part-way stops the ones already
+  started.
+
+𖢥 **Magnesium promised to put priorities back and could not, unless root.**
+  An ordinary user may raise another of their processes' niceness but not
+  lower it again (Linux allows it only down to `20 - RLIMIT_NICE`, macOS not
+  at all). Magnesium now works that out first and leaves a process alone,
+  marked `irreversible`, when it could not undo the change;
+  `allow_irreversible` in its config opts in. The test that restored a real
+  process had only ever run as root, because CI had no psutil.
+
+𖢥 **The server could be made to fetch its own network.**
+  `/web/v1/summarise` fetches a URL the caller names, and paired phones and
+  models (through `web_summarize`) can call it. Nothing stopped that URL
+  being `127.0.0.1`, the LAN, or a cloud metadata address. Only public
+  addresses are fetched for a caller now, checked after DNS, before
+  robots.txt, and again on every redirect. Local tools such as hyped's
+  `read_web_page` are unchanged. Found by CodeQL.
+
+🛡️ A failed summariser model or page fetch no longer returns the
+  exception's text to the caller; it goes to the server log.
+
+🐛 The summariser's sentence splitter could backtrack on long runs of
+  spaces. It splits on the single space the text is normalised to.
+
+🐛 Magnesium without psutil raised "the operating system refused". Nothing
+  refused: a package is missing. New code `S1-00060.b3` says so, and
+  `pip install 'hypernix[elements]'` installs it (the dev extra too, so CI
+  runs magnesium against real processes).
+
+🐛 `hyped-pro` looked for `~/.bun/bin/bun` on Windows, where the
+  installer writes `bun.exe`.
+
+𖢥 **0.72.6 pt2's preset fix broke RoPE for twenty-three presets.**
+  Correcting `model_type` also changed the RoPE convention derived from
+  it: `_default_rope_style` named three half-rotate types and sent the
+  rest to interleaved, which had only worked while the table called every
+  Qwen3 a `qwen2`. Every Qwen3, GLM4, Gemma, Phi3, Llama4, Nemotron,
+  DeepSeek-V3 and GPT-OSS preset moved to the wrong convention in the same
+  commit. A wrong RoPE convention does not raise; the model loads and
+  produces fluent nonsense. It is now an allowlist of *interleaved* types
+  (HyperNix's own, and GPT-NeoX-style) with half-rotate as the default,
+  which is the direction that fails safe.
+
+𖢥 **Pressure Cooker V4 never trained through `NeoOven.train`.** It took
+  a learning rate only inside a `ScheduleConfig`, and `train` passes a bare
+  `lr`, so it raised `TypeError`. It accepts `lr`/`peak_lr` now.
+
+𖢥 **Nor did V5, V5S or V6** — twice over. `OptimizerBase` never put an
+  `lr` in its param groups, and every PyTorch scheduler reads one at
+  construction; `train` always wraps the optimizer in `CosineAnnealingLR`
+  — and `train` hardcoded AdamW's `betas`, which these three do not take,
+  so it is now passed only to an optimizer that names it — not merely
+  one that accepts `**kwargs`, since theirs forwards to a base that
+  rejects it.
+
+🐛 Qwen3.5-family snapshots wrote a flat `rope_theta` that their config
+  class ignores; they write `rope_parameters` now. Reading always handled
+  both spellings.
+
+𖢥 **HyperLink could not use web search at all.** `/web/v1` authenticated
+  with the T1-key dependency, which checks a paired phone's `HLNK_` device
+  token as a T1 key and refuses it — so the client these endpoints were
+  built for got a 401 on every one, while every test, all using T1 keys,
+  passed. It takes device tokens now, like every other HyperLink route.
+
+𖢥 **What the model remembered never reached the Memories screen.** Its
+  memory tool wrote a JSON file in the tool workspace, which nothing reads,
+  so it said "I'll remember that" and the screen stayed empty. In a
+  HyperLink chat it now writes the person's real memories, marked as the
+  model's, updating rather than duplicating, never deleting one the person
+  wrote — and only when that person's auto-memory setting is on.
+
+𖢥 **Web search from HyperLink found almost nothing.** The model's search
+  tool used DuckDuckGo's instant-answer API, which answers "capital of
+  France" and comes back empty for nearly every real question. It uses the
+  keyless `/web/v1` engine now, with instant answers as the fallback.
+
+𖢥 **An HTTP error page could be installed as an on-device model.**
+  URLSession delivers a 401 or 404 body as a finished download, and its
+  size matched its own Content-Length — so a gated repository's "access
+  restricted" page landed in the installed list and failed to load like a
+  broken GGUF. The status and the `GGUF` magic bytes are checked first,
+  and a 401/403 says to accept the licence and add a token.
+
+🐛 An on-device download that finished while the app was suspended was
+  never installed: the background session was created only on the first
+  download, so there was nothing for iOS to deliver the result to.
+
+🐛 A misspelt tool name is answered with the nearest real ones, never
+  auto-corrected — correcting `delete_model` to `delete_models` is how a
+  typo becomes an action.
+
+🐛 Magnesium's plan put kernel threads (`kworker`, `ksoftirqd`, …) in
+  the "limit" column when run as root, which is how it reaches other
+  users' apps. Found by running it against a real process table; kernel
+  threads are now told apart by their empty command line.
+
+🐛 The error registry accepted a code re-declared with a *different*
+  explanation, which is two meanings behind one searchable number.
+
+### Deprecated
+
+❌ The 0.72.6 third batch. Element modules, error codes, and
+  the Pressure Cooker deprecation — which turned out to be the smaller
+  part of its own change: moving a default off the deprecated V3 meant
+  moving it onto V4, and V4 had never trained through `NeoOven.train`.
+  Neither had V5, V5S or V6.
+
+❌ Pressure Cooker V1 (`PressureCooker` and its tiers) and V3
+  (`PressureCookerV3` and subclasses). They warn on construction, never on
+  import — V4 imports V3's helpers, and an import-time warning would reach
+  every V4 user. `FutureWarning`, because `DeprecationWarning` is hidden
+  unless raised from `__main__`. V4 is kept.
+
+❌ There is no V2 to deprecate: no `PressureCookerV2` has ever existed
+  in this codebase. The original V1 docstring listed one by mistake, which
+  `wiki/Optimizers.md` already records.
+
+❌ `UniversalCooker` is not deprecated. It routes, and its default sends
+  people to the current V5 family; only `variant="legacy"` reaches V1,
+  whose tiers warn on their own.
+
+### Tests
+
+🧪 Tool calls: 53 tests across every format and every refusal — a JSON
+  answer the person asked for is not executed, a mutating tool is refused
+  even when named. Plus an end-to-end test under a real uvicorn: a paired
+  phone sends a message, the model writes `<tool_call>` as a GGUF does, the
+  server calls itself with the phone's token, and the phone gets the answer.
+
+🧪 HyperLink: 13 tests through the API for regenerate, model memories and
+  search, and 29 structural checks on the Swift — chiefly that every
+  on-device piece is reached by a screen, following the chain from app to
+  hub to view, since that it was not is what the bug was.
+
+🧪 `elements`: 111 tests, magnesium's against a real process outside this
+  one's tree — reniced, then restored to its exact original priority.
+
+🧪 `errorcodes`: 55, most asserting a refusal.
+
+🧪 Pressure Cooker: 23, including V4, V5, V5S and V6 each trained end to
+  end through `NeoOven.train` — a constructor test passed while every one
+  of them was broken there.
+
+🧪 RoPE: every preset's convention asserted; the pt2 regression would
+  have failed eleven of them.
+
+🧪 Every guard above mutation-checked. Four first attempts at tests
+  passed for the wrong reason and were rewritten — a process already at
+  nice 0 cannot tell "restored" from "reset to 0", and a user element
+  claiming a built-in symbol is refused as a duplicate before the rule
+  under test is reached.
+
+🧪 hyped-pro: 56 `bun test` cases for the bridge protocol, commands,
+  conversation and preferences, run in CI with the type check, and 33
+  pytest cases for the launcher and packaging. The palette is read from
+  `docs/src/index.css` and compared, so the two cannot drift, and the
+  wheel and sdist are checked to carry the app and never its
+  `node_modules`.
+
+🧪 hyped-pro git and files: 64 tests against real repositories, among
+  them a commit message that looks like an option, a file named `-p`, the
+  repository's own hooks still running, and a consent answered over a real
+  bridge subprocess. Plus 29 bun tests for the git and file views. Each
+  guard was checked by removing it: the `.git` refusal, the gate, the ref
+  check, the `--` before paths, the stale-write check and cancellation
+  during a question.
+
+🧪 HyperLink titles, compression, shell, memory and images: 68 tests
+  through the real API with a scripted model, among them an upgraded
+  database missing the new preference columns and a shell pipeline killed
+  on timeout, and 21 structural checks on the Swift, which follow each new
+  screen back to a route the server really has.
+
+### Known Issues
+
+❗ The error-code catalogue covers the T1 API, the runtime, elements,
+  models, data, quantisation, training and the system layer. Most older
+  modules still raise their own exception types; they adopt codes as they
+  are next changed rather than in one sweep.
+
+❗ `hyped-pro` needs Bun 1.3 or later, and network access once to fetch
+  `@opentui/core`. Without Bun it says how to install it and exits;
+  `hyped-plus` needs only Node.js.
+
+❗ The HyperLink Swift for these features has been checked by those
+  structural tests and by the CI's iOS build, not on a device.
+
+## 0.72.5.post15 — 2026-09-22
+
+### Added
+
+๋࣭⭑ `hypernix.dilute` — best-of-n sampling and self-distillation. One
+  model answers each prompt four to six times across a **temperature
+  ladder**, an evaluator scores them, and the winner is kept as a
+  training trace. `run` collects and writes at the end; `jit` streams
+  each trace to the file as it is made, so a run killed at hour three
+  leaves three hours of traces rather than nothing; `inspect` reads a
+  trace file back and says whether it is worth training on.
+
+๋࣭⭑ `dilute` evaluators — a second model as judge (or the generating
+  model judging its own samples, which needs nothing else in memory), a
+  plain Python function for a task with a checkable answer, and a length
+  heuristic for smoke-testing a pipeline.
+
+𖥔 `gather -f sqlite` — one database, one row per page, full text in it
+  and the link graph beside it, for a corpus too big to hold as files.
+
+𖥔 `gather --max-seconds` — a wall clock, 20 minutes by default, `0` to
+  remove it.
+
+𖥔 `vera -T h` — hours as a timeout unit, and `-tt/--total-timeout` for
+  the whole run rather than a stage.
+
+𖥔 `vera -Na` — run the checks with no AI at all.
+
+𖥔 `vera -m` — pick a GGUF from `~/.hypernix/models` interactively.
+
+𖥔 `hypernix.system.hubcompat` — signature-checked calls into
+  `huggingface_hub`, so 0.x and 1.3.x both work.
+
+𖥔 T1 API `v1.1.2026.9.0.0`.
+
+𖥔 Neo Oven presets for GLM-5.3, Qwen3.8, Qwen3.8-Flash, Muse Spark
+  and Spark X2.5 at 1.7b and 4b.
+
+๋࣭⭑ `/web/v1` — keyless web search for HyperLink and hyperchat. Search,
+  summarise, and three settings written in the request's own grammar —
+  `s1` the browser family to present as, `s2` the engine (DuckDuckGo,
+  Google, Wikipedia, or `allowlist` for no engine at all), `s3` an API
+  key for people who have one. No key is needed for any of it.
+
+𖥔 `/web/v1/summarize` works with no model loaded — extractive by
+  default, and not as a placeholder: a phone asking for the gist of a
+  page should not wait for a model load, and a server that has not
+  loaded one is the common case.
+
+๋࣭⭑ `hyperchat` — several prompts in flight, or a queue when they
+  cannot be. With `T1_HYPERCHAT_MULTI` on, N copies of the model answer N
+  prompts at once; with it off, prompts wait in the order they arrived
+  and a client can ask how many are ahead of it. Callers do not branch on
+  which: both are `Hyperchat`, both return a ticket, and the queue is the
+  pool with one worker in it.
+
+𖥔 `ManagedPool` — N llama.cpp processes on consecutive ports, skipping
+  the T1 server's own, loaded all-or-nothing.
+
+𖥔 `GET /runner/hyperchat` — the mode, the core budget and the live
+  queue depth, readable by any HyperLink caller.
+
+𖥔 HyperLink: several photos in one pick, capped, uploaded in the order
+  they were chosen, with the ones that worked kept when one cannot be read.
+
+𖥔 HyperLink: the servers list shows the hyperNix the machine is
+  *running*, and says so in orange when a pip upgrade has landed but the
+  server has not been restarted into it.
+
+### Fixed
+
+🐛 The 0.72.6 second batch. Two of these are fixes for things that were
+  working exactly as written and wrong anyway: gather did stop, an hour
+  after it looked like it should, and Neo Oven's presets were complete,
+  internally consistent, and describing the wrong architectures.
+
+𖢥 **gather looked like it never stopped.** The loop was correct — it
+  ends when the queue empties or the page ceiling is hit — but a calendar,
+  a session id or a faceted search produces unique URLs faster than a
+  crawl consumes them, so the queue never empties and it ran to
+  MAX_PAGES: 5000 pages at one second of politeness is eighty-three
+  minutes past the last page worth having. There is now a wall clock, a
+  "several levels produced nothing new" stop, and `stopped_because` on
+  the result — "it finished" and "it hit a ceiling with 810,000 URLs
+  queued" look identical from outside and mean opposite things about
+  whether the data is complete.
+
+𖢥 **Neo Oven's presets named the wrong architectures.** `gemma`,
+  `gemma2`, `gemma3`, `phi3`, `glm`, `glm4`, `qwen3`, `llama4`,
+  `nemotron` and `gpt_oss` are all registered separately in transformers
+  and all of them were mapped to `llama` or `qwen2`. The `model_type`
+  goes into `config.json` and is what `AutoModel` dispatches on, so the
+  file was wrong from the moment it was written. Thirty-seven presets
+  rewritten against the real registry and the real config defaults —
+  GLM's `rms_norm_eps` is `1.5625e-07`, not the `1e-5` that was there.
+
+𖢥 A crawl of a site twice silently overwrote the first run. Output now
+  goes to `~/.hypernix/data/<site>/<session>/`.
+
+🐛 The first version of gather's clock checked between levels and
+  overshot a 4-second budget by 33 seconds — one level of a faceted trap
+  held 27,931 URLs. A level is not a unit of time; it is chunked now and
+  the same trap stops at 4.1s.
+
+🐛 `huggingface_hub` 1.x removed `direction` from `list_models` and
+  `list_datasets`, so `scavenger` raised `TypeError` on a current install.
+
+🐛 `hubcompat` landed at the top level of the package rather than in a
+  category subpackage, which the layout table forbids — caught by the
+  suite rather than by review, which is the point of having it.
+
+𖢥 A server row read `v1.1.26.9.0.0` — the T1 API generation, labelled
+  as if it were the machine's hyperNix. It is the hyperNix version people
+  upgrade and then check, and it is not the number that was on screen.
+
+𖢥 "Updated 2m ago" in the chat list meant "changed", not "said
+  something". The store bumped `updated_at` on any write, so renaming
+  eleven old conversations sent all eleven to the top of the list looking
+  like they had just replied. There are two clocks now: `updated_at` for
+  a prompt or a reply — including one that arrived in the background —
+  and `touched_at` for everything else.
+
+𖢥 A second prompt arriving mid-answer had two fates and both happened
+  by accident: it contended with the first inside one llama.cpp and both
+  got slower, or it was dropped. HyperLink showed neither — it showed a
+  spinner that did not move.
+
+𖢥 `eth auto` fell through to stock on a warm GPU. The auto-level table
+  was three fixed temperatures and one derived from `THERMAL_ABORT_C`;
+  lowering that threshold to 60 °C put the derived band *below* two of
+  the fixed ones, so the table stopped ascending, the level-5 band became
+  unreachable, and a GPU at 80 °C got nothing instead of the small bump
+  it was meant to. The bands are fractions of the abort temperature now,
+  which reproduce the old table exactly at the old threshold, and a test
+  asserts the ladder ascends at any threshold.
+
+### Tests
+
+🧪 `dilute`: 89 tests. The assertions are on *spread* and *separation* —
+  did the warm end of the ladder ever win, did the evaluator actually
+  separate the samples — because best-of-n's failure mode is that it
+  keeps working: break the ladder or the tie-break and the run still
+  finishes, still writes a file, and still reports a trace count that
+  looks right.
+
+🧪 Eight mutations reintroduced by hand and all eight caught: ties going
+  to `max()`, the ladder collapsing to one temperature, the judge's score
+  read as the first number in the reply, "longer is better" length
+  scoring, an unreadable judge reply scoring zero, the judge sampled
+  warm, the model reloaded per call, and `jit` buffering instead of
+  flushing.
+
+🧪 `gather`: 57 tests including a real local HTTP server and a faceted
+  trap, to tell "finished" from "hit a ceiling".
+
+🧪 `neo_oven`: every preset's `model_type` checked against what
+  transformers actually registers, rather than against the table.
+
+🧪 `updated_at`: 18 tests pinning which write moves which clock, plus
+  the migration — `CREATE TABLE IF NOT EXISTS` does not alter an existing
+  table, so without the `ALTER` the first rename after upgrading is an
+  OperationalError. Six mutations caught, two of which the first version
+  of the tests missed because the read-side fallback hid them.
+
+🧪 HyperLink: 18 structural checks on the Swift, since there is no
+  toolchain here. Chiefly that both new `Codable` types decode by hand —
+  a synthesised decoder throws on a key that is missing from every record
+  already on disk, the `try?` around `restore()` swallows it, and the
+  update signs everybody out.
+
+🧪 `hyperchat`: 40 tests against real threads, asserting on the core
+  budget and on *ordering* rather than on "the answer came back" — a pool
+  that allocates every core still answers prompts, right up until the
+  server stops accepting the next request. Eight mutations caught,
+  including a LIFO queue and a pool that allocates the reserved core.
+
+🧪 `/web/v1`: 90 tests, most of them asserting a *refusal* — the
+  failure mode of a hand-written grammar is that it accepts things, and a
+  parser that shrugs at what it did not understand leaves a server
+  configured one way and an operator certain it is another. Eight
+  mutations reintroduced and all eight caught, including the allowlist
+  matching by suffix without the dot (`nota.test` passing for `a.test`)
+  and the API key reaching a log line intact.
+
+### Known Issues
+
+❗ `dilute`'s tie-break is seeded per attempt, so two runs with the same
+  seed and the same prompts agree — but a run resumed from a different
+  prompt offset will not reproduce the first run's picks.
+
+## 0.72.5.post14 — 2026-09-22
+
+### Added
+
+๋࣭⭑ `hypernix.neuron` — a module for training small networks that *act*
+  rather than predict: supervised, imitation (behaviour cloning and
+  DAgger), and reinforcement learning (REINFORCE and DQN), with
+  evaluation as a separate call rather than a number the trainer reports
+  about itself. Aimed at game automation, quick image recognition and
+  robotics. `hypernix neuron {demo,clone,dagger,rl,eval}`.
+
+๋࣭⭑ `hypernix.audio.processor` — the signal processing between reading a
+  file and using it. Windowed-sinc resampling, Audio EQ Cookbook biquads,
+  envelope-follower gate and compressor, silence detection and splitting,
+  spectral noise reduction, and a `Pipeline` so the order can be written
+  down once.
+
+๋࣭⭑ `auto-scan` workflow — a Monday/Thursday sweep that scans for Python
+  bugs, tests the API over two jobs, scans for security problems, applies
+  the safe automatic fixes, and asks for a `.post` release only when four
+  independent clauses agree.
+
+๋࣭⭑ `arch-map` workflow — regenerates the architecture chart on every
+  published release and updates it **in place**, with a second smaller
+  chart for the beta surface (dotted = beta, red = declared but not
+  built). Stage is read from the source, not from a list beside it.
+
+𖥔 Studio settings: two shells (`fish` interactive, `bash` for generated
+  scripts) and an allowed context, persisted and validated.
+
+𖥔 `hypernix.neuron.envs` — two real environments with known optima, so
+  the trainers are tested by reaching a score rather than by mocks.
+
+📚 `wiki/Architecture.md` — generated, with the markers the workflow
+  writes between.
+
+### Changed
+
+🔁 First entry written to the format in `Changelog-guide.md`: dated
+  header, the guide's categories, one legend symbol per line. Earlier
+  entries keep their own shape — the guide says corrections are made
+  explicitly rather than by silently rewriting history, and restyling a
+  thousand lines of it would be exactly that.
+
+🔁 Studio's C++ tests compile with **every** compiler on the machine
+  rather than the first one found. `c++` is g++ on Linux and clang on
+  macOS, so the platforms were compiling Studio with different compilers
+  and a clang-only diagnostic could only ever fail where nobody develops.
+
+### Security
+
+🛡️ The security scanner reports `torch.load(..., weights_only=False)`,
+  `shell=True`, disabled TLS, `eval`/`exec` and `mktemp`, and an
+  unresolved finding **blocks** a release rather than justifying one.
+
+🛡️ Studio shell settings reject anything carrying a path separator, an
+  argument or a shell operator — the value is written into generated
+  scripts that run elsewhere, even though Studio executes nothing itself.
+
+### Fixed
+
+𖢥 Studio would not build on macOS or Windows. `LocalEngine.h`'s
+  `state_` is unused in the stub build and clang rejects it under
+  `-Werror`; GCC has no such warning, so every Linux job was green and
+  both other platforms had been red for days.
+
+𖢥 `registry_locations` crashed when the working directory no longer
+  existed — `Path.cwd()` raised from inside a list of *candidate* roots,
+  so losing the least important one took down `hypernix-t1 index` and the
+  server's own startup with it.
+
+🐛 `hypernix-t1 launch-script` raised instead of refusing when the shell
+  had no working directory, one line above a check that already produced
+  the right message for that case.
+
+🐛 The `BackendUnavailable` remedy named `hypernix-t1 runner load`,
+  which had stopped being the shortest way to do it.
+
+### Tests
+
+🧪 `neuron`: 51 tests, every trainer run end to end against a real
+  environment until it reaches a known score.
+
+🧪 `audio.processor`: 58 tests measuring the DSP — -3.0 dB at cutoff,
+  40 dB/decade, 48 dB of alias rejection against naive decimation.
+
+🧪 `autoscan`/`archmap`: 65 tests, every gate clause tested for saying
+  no.
+
+🧪 Studio: `SettingsRules.h` has no Qt in it so its 38 checks compile
+  and run anywhere, under g++ and clang++.
+
+🧪 A guard that every `Theme.X` in every `.qml` resolves — QML turns a
+  missing singleton property into `undefined` and carries on.
+
+🧪 A guard that the sidebar and the `StackLayout` stay the same length,
+  since `StackLayout` picks by index.
+
+### Known Issues
+
+❗ `silent-except` reports 83 findings on `src/` — exceptions swallowed
+  with `pass` and nothing saying why. Reported, not auto-fixed.
+
+❗ Two `torch.load(..., weights_only=False)` calls remain in
+  `models/old_oven.py` and `quant/convert.py`.
+
+## 0.72.5 pt3b
+
+Release focus: a HyperNix runner, not just a bridge.
+
+### Added
+
+𖥔 The system prompt, composed in scope order
+
+  Who the person is, then how they want to be answered generally, then
+  what this conversation is for, then what is known about them. The
+  session's own prompt comes *after* the global one so a conversation can
+  override the default rather than fight it — the later instruction is the
+  one a model follows when two conflict.
+
+✨ Effort levels
+
+  `minimal` through `maximum`. A backend with a real reasoning-effort
+  control is given the level by name; one without gets a matching
+  temperature and answer length. That second part is an approximation and
+  is documented as one — it is scheduling, not thinking. An explicit
+  `temperature` on the request still wins, because somebody who sent a
+  number meant it.
+
+✨ A backup model
+
+  Tried once when the model you asked for does not answer, and never the
+  same model twice — a retry of "nothing is loaded" fails identically.
+  When it is used the message records it, because an answer from a
+  different model than the one you chose is the single most confusing
+  thing that can happen in a thread.
+
+  Empty by default: failing honestly beats silently answering as somebody
+  else.
+
+๋࣭⭑ Full tool calling
+
+  `/noodle/run` let a *caller* run one tool. Now the model can: it asks,
+  the server runs it, and the result goes back into the conversation — so
+  "zip the logs and tell me what is in them" is one message rather than
+  five. Files, edits, fish commands and archives, in the same per-owner
+  workspace `/noodle/*` uses, so anything it writes is something you can
+  list and download.
+
+  Three rules, each a designed-out failure:
+
+  * **Bounded.** Eight rounds, and the model is *told* when it runs out —
+  one that does not know writes its last reply as if it were about to do
+  more, and you get half a sentence about what it was going to check.
+  * **Every call is answered.** A missing tool, a raising tool and a
+  switched-off tool all produce a tool message saying so. A `tool_calls`
+  with no matching reply is a malformed conversation, and the *next*
+  turn is built from it.
+  * **A refusal is a result.** `allow_execute` off is the operator's
+  answer, not an error — handed back as a normal result so the model can
+  say so, rather than the turn dying with a stack trace.
+
+  Off until switched on, because letting a model write files on your
+  machine is not a default.
+
+✨ Memory you can read
+
+  Facts carried between conversations — some you wrote, some the model
+  noticed. Both shown, both editable, both deletable, and the automatic
+  ones marked as such. A model that remembers things about you and gives
+  you no way to see them is a model you cannot correct.
+
+𖥔 Animations, in one vocabulary
+
+  `Motion.swift` names every duration and curve. Springs rather than ease
+  curves, because chat is all interruptions — a message lands while the
+  list is still settling from the last one, and a spring continues from
+  where it is where an `easeInOut` restarts.
+
+  Reduce Motion collapses every one of them to a cross-fade. That setting
+  means "no movement", not "no feedback", so the change is still shown —
+  it just does not move.
+
+### Fixed
+
+๋࣭⭑ The runner was starting models nothing could talk to
+
+  pt2 gave the server its own llama.cpp process. The chat path did not
+  know about it:
+
+  ```python
+  def _chat_bridge(config):
+  if not config.lmstudio_enabled:
+  raise T1APIError(..., "This server has no chat backend configured")
+  ```
+
+  So a machine with no LM Studio installed could load a 70B through
+  `/runner/load`, watch the status screen report it as serving, and have
+  every single message refused. The runner worked. The conversation was
+  impossible.
+
+  `hypernix.hyperlink.inference` is the choice that was missing. It picks:
+
+  1. **the HyperNix runner**, when it has a model loaded — it is this
+  server's own process, it was started deliberately, and it is holding
+  the VRAM;
+  2. **the LM Studio bridge**, when it is enabled;
+  3. neither — and the refusal names *both* ways out, rather than the one
+  that happens to be checked first. Naming only LM Studio is how
+  somebody ends up installing it on a machine that did not need it.
+
+  The runner wins even when both are available: somebody who loaded a
+  model meant that model, and quietly answering from LM Studio would
+  answer as a different model than the one on screen.
+
+  The same OpenAI client talks to both, because `llama-server` and LM
+  Studio both speak that API and a second client would be a second set of
+  retry and timeout decisions to keep in step. What is *not* borrowed is
+  the label — a reply from this server's own llama.cpp is recorded as
+  `hypernix`, because `"lmstudio"` on a machine with no LM Studio is the
+  kind of small lie that costs somebody an afternoon.
+
+  `GET /hyperlink/backends` reports both and which one would answer now,
+  because "this server has no models" and "a model is loaded but nothing
+  is serving it" look identical from the app and need opposite fixes.
+
+๋࣭⭑ Settings, and the bounds that come with them
+
+  A new **You** tab — separate from **Server**, because that one is about
+  the machine and this one is about the person. Profile, bio, a system
+  prompt every conversation starts with, effort level, context bounds, a
+  backup model, tools, and memory.
+
+  All of it on the server. Two reasons, and the second decides it: a
+  person with a phone and a tablet is one person, and these are *inputs to
+  generation* — the prompt, the effort level and the context bounds all
+  have to be in the process that builds the request.
+
+  **The limits come back with the values.** The effort levels in the
+  picker and the context bounds are the server's, sent with the settings.
+  An effort level the phone offers and the server rejects is a settings
+  screen that cannot save, with no way for the phone to know why.
+
+  **Clamps are reported, not applied silently.** A context maximum of four
+  million is not a preference — it is a number that makes every reply fail
+  with an out-of-memory two minutes later and somewhere unrelated, so it
+  reads as the model being broken. It is lowered, and the screen says so.
+  A minimum above the maximum is swapped rather than refused, because
+  somebody who typed them the wrong way round meant the range.
+
+### Known Issues
+
+❗ Two and a half hours in the background, honestly
+
+  The request asked for the connection to survive 2.5 hours of
+  backgrounding. **iOS does not sell that.** `beginBackgroundTask` grants
+  about 30 seconds on a modern release — it used to be three minutes — and
+  an app that claims otherwise is one that gets terminated and does not
+  notice.
+
+  So the promise is kept a different way, and it is a better way: *the
+  work does not live on the phone*. The server is generating and persists
+  the reply as it goes, including when the client disconnects half way.
+  The phone uses its ~30 seconds to let go cleanly, remembers which
+  conversation was in flight, and reconciles on the way back.
+
+  A conversation picked up three hours later is then indistinguishable
+  from one that never stopped — which is what was being asked for. The
+  2.5-hour window is how long the phone keeps caring; past it the reply is
+  still on the server, it is simply no longer treated as in flight.
+
+## 0.72.5 pt3
+
+Release focus: the phone can drive the machine.
+
+### Added
+
+๋࣭⭑ Loading a model from the phone
+
+  `/runner/*` existed and nothing in HyperLink could drive it, so "switch
+  model" still meant walking over to the PC — the thing the runner was
+  built to end.
+
+  The new screen shows what is running and where its layers are, and loads
+  anything on the server's disk. Every number comes from the server,
+  because the server is the thing with the GPU: the backends offered are
+  the ones that machine can actually use, and the layer split is computed
+  against its real free VRAM.
+
+  It will not load without showing the plan first. `/runner/plan` costs
+  one request and changes nothing, and seeing "41 of 81 on the GPU" before
+  committing is the difference between a decision and a surprise —
+  loading evicts whatever people are currently talking to.
+
+  Also on the command line, for the machine itself:
+
+  ```
+  hypernix-t1 runner status
+  hypernix-t1 runner plan qwen3-8b
+  hypernix-t1 runner load qwen3-8b --gpu-layers 24
+  hypernix-t1 runner unload
+  ```
+
+  It talks HTTP to the local server rather than loading anything itself:
+  starting a second llama.cpp here would take the VRAM the server's own
+  copy is using, and the failure would land on the one that was working.
+
+✨ Thirty-two servers
+
+  One pairing, one keychain account. Pairing with a laptop overwrote the
+  desktop, and getting back meant pairing again.
+
+  Now a list of up to 32, each with its own keychain account so forgetting
+  one leaves the others signed in. Switching clears the previous machine's
+  sessions and models rather than showing them under the new machine's
+  name.
+
+  The risky half is the update, not the list: every install has a record
+  in the old shape, and an update that started reading a new key would
+  come up unpaired on every device at once — the worst possible way to
+  ship a feature about *keeping* connections. The old record is carried
+  across and its token left where it is.
+
+𖥔 Uptime on screen
+
+  A conversation that lost its context, or a pairing that stopped working,
+  is usually a PC that rebooted. Nothing in the app said so.
+
+### Fixed
+
+🐛 pt2 gave the server the operations. pt3 is the app that uses them, plus
+  three bugs that all had the same shape: something reported success and
+  did nothing of the sort.
+
+𖢥 The inference engine was skipped on every push
+
+  "It always skips the inference engine build." The first fix set the
+  `workflow_call` default to true, which made *releases* right and could
+  not have fixed this — the release path was never the one skipping.
+
+  ```yaml
+  if: ${{ inputs.local_engine }}
+  ```
+
+  The `inputs` context exists **only** for `workflow_dispatch` and
+  `workflow_call`. On a `push` or a `pull_request` it is not populated at
+  all, so this is null, null is falsy, and the engine step was skipped on
+  every single commit to main — with a grey "skipped" in the log that is
+  indistinguishable from a deliberate one. `--require-engine` was gated on
+  the same expression, so the guard that exists to catch exactly this was
+  switched off by it.
+
+  A step now decides out loud, with a stated answer for every trigger:
+  push builds the engine, a pull request does not, and an explicit true or
+  false is honoured wherever it comes from. The old test asserted that the
+  condition *mentioned* `local_engine` — which it did — rather than that
+  it was ever true on a push, which it never was.
+
+๋࣭⭑ Every model the server has, not the ones LM Studio has open
+
+  The models screen showed `/bridge/lmstudio/models`: one source of three,
+  and the only one that needs a second application to be running. A
+  machine with forty GGUFs in `~/.hypernix/models` showed an empty list
+  under a message telling the user to go and open LM Studio.
+
+  It now shows the merged catalogue grouped by where each model came from,
+  and names any source it could not reach — an empty list used to mean
+  either "this server has no models" or "LM Studio is not running", with
+  one blank screen for both. Siri's "switch to X" was reading the same
+  narrow list and is fixed with it.
+
+𖢥 Stop now stops
+
+  The button cancelled the phone's read task and told nobody, so the model
+  finished the whole answer into a socket nobody was reading. The local
+  cancel still goes first — it is what makes the button feel instant — and
+  the server call follows, naming the generation id from the stream so two
+  devices on one conversation do not stop each other.
+
+𖥔 Markdown
+
+  Models write markdown; the prose half of a message was rendered with
+  plain `Text`, so a numbered list arrived as one wrapped paragraph with
+  the numbers buried in it. Blocks are split by hand and each one's inline
+  markup parsed with `AttributedString` — not `Text(LocalizedStringKey)`,
+  which routes model output through the app's string catalogue and turns a
+  `%@` in a reply into a format specifier. Half-written markup renders as
+  its own characters, because text that vanishes while the model finishes
+  a token looks like a bug.
+
+✨ Edit mode
+
+  Long-press a message to copy, edit or delete it.
+
+  Editing truncates, and that is the feature rather than a side effect.
+  Everything below an edited message was written in reply to the *old*
+  text, and that same transcript is what gets sent as context on the next
+  turn — so leaving it means telling the model it said things it never
+  said. The count is shown first: "this removes 11 messages" is a
+  decision, finding eleven messages gone afterwards is a bug report.
+
+  Only your own messages. Rewriting what the model said turns the
+  transcript into a record of something that did not happen.
+
+  Deleting is the opposite, for the opposite reason: it removes one
+  message and keeps the thread. Deleting is usually about removing
+  something that should not be stored — a pasted key, a name — and taking
+  the conversation with it would make people keep the secret instead.
+
+✨ The hardware page, and what it will not pretend to know
+
+  CPU, memory, swap, disks and GPUs, answering "is the server busy, or is
+  my model just slow?" — which from six hundred miles away cannot be
+  answered any other way.
+
+  Every reading is optional and the server names what it could not sample.
+  A panel that renders a missing GPU temperature as 0°C is a confident
+  wrong answer about hardware nobody can see.
+
+### Dependencies and Packaging
+
+𖢥 "The installed T1 thinks it is running an older version"
+
+  Three copies of the version number, all maintained by hand, all stale:
+  `install-t1.sh` had two (`VERSION` and `T1_API_VERSION`) and
+  `bin/hypernix-t1` had the third. The banner said `0.72.2.post5 · t1
+  v1.0.26.8.1.1` over an install that was several releases past both.
+
+  Nothing was wrong with the install. The only thing that was ever wrong
+  was the number printed over it — and from the outside those two are
+  indistinguishable, which is why it got reported as the install being
+  old.
+
+  Hand-editing them is not the fix; it is the bug, once per release. Now:
+
+  * `install-t1.sh` derives both from `src/hypernix/__init__.py` and
+  `src/hypernix/t1api/version.py` when it is run from a clone. The
+  literals stay as the `curl | bash` fallback, and a test fails if they
+  drift from the package again.
+  * `hypernix-t1 version` asks the installed package — it runs *after* the
+  install by definition, so it can — and reports the T1 version, the
+  Python, and which interpreter it is running as.
+
+### Documentation
+
+✨ Update commands, with the right interpreter in them
+
+  A new screen shows what the server is running and the exact commands to
+  move it, each with a copy button.
+
+  The reason it is worth an endpoint rather than a documentation page is
+  one field. `pip install --upgrade hypernix` on a machine with a system
+  Python, a pyenv, and the venv the service actually runs under upgrades
+  whichever comes first on `PATH`, prints a cheerful success, and leaves
+  the server running exactly the version it was. The server knows
+  `sys.executable`; these commands name it. An editable install is told to
+  use git instead, because pip will not replace one and a command that
+  silently no-ops is worse than no command.
+
+  It hands out text rather than running anything. Updating the package
+  under a running server is a decision with a restart attached, and a
+  phone button that did it silently would be a phone button that takes a
+  machine down in the middle of somebody else's conversation — so the
+  warning that a pip upgrade does not restart the server is part of the
+  answer.
+
+## 0.72.5 pt2
+
+Release focus: the server does the serving now.
+
+### Added
+
+๋࣭⭑ Running a model without LM Studio
+
+  `hypernix.hyperlink.managed` owns a llama.cpp process, so load, unload
+  and switch are operations rather than instructions. Layers go where they
+  fit: a configurable number on the GPU and the rest in RAM and on the
+  CPU, planned against real VRAM and RAM headroom rather than hoped for.
+
+  | Model | Card | Placement |
+  | --- | --- | --- |
+  | 8B Q4 | 24 GB | 33/33 layers on GPU |
+  | 70B Q4 | 24 GB | 41 of 81 on GPU, the rest CPU |
+  | 70B Q4 | none | 0/81, all CPU |
+
+  `POST /runner/plan` answers "where would this go" and changes nothing —
+  loading a model evicts the one people are currently talking to, so being
+  able to see the consequence first is not a nicety. `/runner/load`,
+  `/runner/unload` and `/runner/status` do the rest.
+
+✨ `/chat/compact/*` and `/memory/*`
+
+  Five compaction scopes — `prompts`, `system`, `responses`, `all` and
+  `dynamic`, which picks for you — and a memory store with
+  `create`/`get`/`list`/`edit`/`delete`, deduplicated, budgeted, and
+  folded into a model's context automatically.
+
+### Changed
+
+🔁 pt1 made HyperNix quantise without llama.cpp. pt2 is about the thing
+  that happens next: a machine with forty GGUFs in `~/.hypernix/models`
+  that served none of them, because "switch model" meant walking over to
+  the PC and using LM Studio.
+
+🔁 One blanker, not two
+
+  `outage` had its own copy of the same logic, missing the same `+dpms`
+  and knowing nothing about Hyprland or sway — and picking `xset` on a
+  Wayland session that lacked `wlopm`. Both now go through
+  `hypernix.system.blanking`, and a test fails if either grows its own
+  copy of the commands again.
+
+### API Changes
+
+๋࣭⭑ Models in `.hypernix/models` were invisible
+
+  They were on disk, and nothing listed them. `install-t1.sh` gained two
+  options:
+
+  ```bash
+  ./install-t1.sh --index-models          # find them, register them, serve them
+  ./install-t1.sh --index-models --estimate-prices
+  ```
+
+  `--index-models` walks the directory, reads each GGUF's real metadata —
+  architecture, parameter count, context length, quantisation — and writes
+  a registry, so every model becomes switchable rather than merely
+  present.
+
+✨ noodle over the API
+
+  `/noodle/tools`, `/noodle/run` and `/noodle/workspace`, with file
+  creation, file edits, **fish commands** and **zipping**, each in a
+  per-owner workspace. Execution and web search are off unless the
+  operator turns them on.
+
+### CLI and UX
+
+🛡️ Who may switch it
+
+  Changing what a shared server runs affects everybody using it, so it is
+  gated harder than reading is. Three ways in, and the operator decides
+  how far the third goes: an **admin** key, **partial admin**, or
+  `T1_RUNNER_SWITCH_PERM` — an explicit access level an operator grants to
+  somebody paired over `waiter` or Tailscale, which is the "access 6+ if
+  servers enable it" the request asked for. Off unless set.
+
+### Security
+
+𖢥 HyperLink could not authenticate over Tailscale at all
+
+  "You can not auth using Tailscale in hyperlink, it says it needs an
+  authorized t1 key." Three independent causes, and the first meant
+  trusted-network mode had **never** worked for any `/hyperlink` route:
+  the keyless branch was checked *after* the credential was extracted, so
+  a request with no key was refused before the code that allows no key
+  could run. The second was IPv6 — the tailnet check covered
+  `100.64.0.0/10` and not `fd7a:115c:a1e0::/48`, so a client that resolved
+  to a ULA looked like a stranger. The third was ordering: the tailnet
+  check ran after the LAN check, and a tailnet address is not on the LAN.
+
+### Fixed
+
+✨ A price, instead of `0.0`
+
+  `hypernix-t1 index` read everything about a model except what to charge
+  for it, and wrote `0.0`. A price of zero on a 70B is not a policy, it is
+  an unanswered question that bills the operator.
+
+  `--estimate-prices` answers it from five things the indexer already
+  knows: **file size, quantisation format, parameter count, the GPU this
+  machine has, and — for a mixture-of-experts or a hybrid — the *active*
+  parameter count rather than the total.**
+
+  That last one is the whole feature. Qwen3-235B-A22B does 22B of work per
+  token and carries 235B of weights. Priced by total it comes out **8.8×
+  more expensive** than priced by active, and the second number is the
+  right one: decode speed follows the parameters that actually run. The
+  memory it demands still comes from the file, which is why placement is
+  decided from the file's size and speed from the active count.
+
+  Every estimate says what it assumed — a derived parameter count, a dense
+  assumption, a missing GPU — because a silently-wrong price is worse than
+  an obviously uncertain one.
+
+𖢥 One model list, from every source
+
+  HyperLink showed neither the LM Studio bridge's models nor the
+  `.hypernix` ones. `hypernix.hyperlink.catalogue` merges the registry,
+  the bridge and the local GGUFs into a single list, each entry saying
+  where it came from, and reports per-source what it could not reach
+  rather than returning a short list silently.
+
+𖢥 Stop now stops the generation
+
+  It marked the response finished and left the model generating. The cause
+  is worth writing down: a sync generator run through Starlette's
+  `iterate_in_threadpool` cannot have its `finally` reached on client
+  disconnect, because a thread blocked in a socket read is not
+  interruptible. So cancellation is cooperative — a `threading.Event` the
+  generator checks between chunks. Proved against a generator that never
+  terminates on its own: without the check the test hangs for 33 seconds
+  and fails; with it, 3.9 seconds, upstream generator closed, at most
+  three further chunks.
+
+✨ The server's hardware, and how long it has been up
+
+  `GET /hyperlink/hardware` returns CPU, memory, disk, GPU and load;
+  `GET /hyperlink/uptime` returns both the machine's and the process's.
+  Every field is optional and an `unavailable` list names what could not
+  be read, because a hardware panel that invents a zero is worse than one
+  that says it does not know.
+
+𖢥 hyprslug was crushing the one tensor it must not
+
+  "Fix hyprslug models from falling apart."
+
+  Not the attention weights, which measure exactly what their bitrates
+  allow, and not the codecs. It was `ffn_gate_inp` — the
+  mixture-of-experts router.
+
+  A router is `[n_embd, n_expert]`: a few hundred kilobytes in a model of
+  tens of gigabytes, and the only tensor in the file whose output is an
+  **argmax** rather than a sum. Every other weight gets averaged over a
+  reduction of thousands of terms, which is what makes a 4-bit dot product
+  survivable at all. The router's does not. Quantising it moved its logits
+  by a few percent — nothing, right up until two experts are within a few
+  percent of each other, and then it is a *different expert*, one never
+  trained for this token. The model does not degrade gracefully when that
+  happens; it stops being language.
+
+  hyprslug's never-quantise list was norms and biases. It now also covers
+  the router, Mamba's `ssm_conv1d`, RWKV's time-mixing constants, and the
+  positional and token-type tables — small tensors read directly rather
+  than accumulated. llama.cpp refuses exactly this list, for exactly this
+  reason. `time_mix_key` and `time_mix_value` are *not* on it: they are
+  full-sized projections, and a bare `time_mix` prefix would leave most of
+  an RWKV model unquantised and still call it Q4_K_M.
+
+  Measured, not assumed: Q2_K moves a realistic router's weights by 30%.
+
+🐛 A quantised file that called itself F16
+
+  `general.file_type` was copied from the source and never rewritten, so a
+  `Q4_K_M` made from an F16 announced itself as F16 to llama.cpp's load
+  banner, to a hub listing, and to `hypernix-t1 index`. The tensor table
+  was right and the field everybody actually reads was wrong.
+
+  Every run now writes the target's real `general.file_type` and
+  `general.quantization_version`, as u32 — an i32 is present, correct and
+  unreadable to anything calling `gguf_get_val_u32`. Sub-bit tiers get
+  numbers of their own rather than borrowing an upstream one: a half-bit
+  file labelled `Q2_K` claims four times the precision it has. Extracting
+  one variant out of a multiquant bundle no longer stamps it with the
+  *default* variant's type either.
+
+𖢥 `prot` did not make the monitors black
+
+  It was one line:
+
+  ```python
+  subprocess.run(["xset", "dpms", "force", state], check=False,
+  stdout=DEVNULL, stderr=DEVNULL)
+  ```
+
+  which does nothing at all under four common conditions and says nothing
+  about any of them:
+
+  - **DPMS is disabled.** `xset dpms force off` is a *request to the DPMS
+  extension*; when it is off — which it is on a lot of desktops, because
+  the desktop environment handles power management itself — the X server
+  accepts the request, does nothing, and exits 0. The most common one.
+  - **The session is Wayland.** There is no X server to ask.
+  - **There is no graphical session at all** — a TTY, SSH, a container.
+  - **The platform is macOS**, which the code did not check for, so `hnx
+  prot` on a Mac printed "Monitor will sleep" and left the screen on.
+
+  `check=False` plus two `DEVNULL`s plus `except Exception: pass` meant
+  all four failed identically and silently: the screen stayed on, the
+  terminal went into raw mode, and the only evidence was a message
+  promising the opposite.
+
+  The method is now chosen from the session — `xset` (with `+dpms` first,
+  and the prior setting restored on the way out), `hyprctl`, `swaymsg`,
+  `wlopm`, the freedesktop screensaver, or `pmset` — and a failure comes
+  back as a reason and a remedy. **It will not lock a screen it did not
+  blank**: with no method available `prot` says which of the four cases it
+  is and refuses to enter raw mode, because a lit screen plus a dead
+  keyboard is worse than either. `--force` is there for anyone who wants
+  it anyway.
+
+𖢥 Releases were shipping an IPA with no inference engine
+
+  "It always skips the inference engine build." `release.yml` called
+  `ios.yml` without `local_engine`, so it took that input's `false`
+  default and the shipped app had nothing to run a model with. Fixed in
+  three places, because one was not enough: the caller passes it, the
+  default is now `true`, and `prepare_project.py --require-engine` stops
+  the build rather than quietly producing an engine-less IPA.
+
+### Tests
+
+🧪 Tests
+
+  - A conftest that makes it **impossible** for a test to touch the real
+  `~/.hypernix`. The environment redirect alone was not enough:
+  `T1APIConfig` reads `T1_DB_PATH` at construction, so a suite that
+  cleared the environment on purpose fell back to the real database past
+  every environment-level guard. `SQLiteBackend.__init__` is patched for
+  the session instead.
+  - …and a `clear_t1_config()` for the suites that clear the environment
+  deliberately. "A server with no configuration" and "a server writing
+  to the person's real home" are two different requests, and deleting
+  every `T1_*` variable made the second one by accident — visible only
+  in a full run, because it is the session-wide redirect those suites
+  were deleting.
+  - An autouse fixture restoring every `T1_*` variable after each test,
+  after twelve auth tests passed alone and failed in a full run: a
+  helper setting `os.environ` directly leaked `T1_TRUSTED_NETWORK` into
+  later files.
+  - The price estimator checked against real model shapes — Qwen3 8B at
+  4.9 GB, a 70B at 40 GB, Qwen3-235B-A22B — rather than invented ones.
+  - The full index → price → serve → display chain, end to end: a GGUF on
+  disk indexed with its real context limit read from the file, priced,
+  written to the registry, served at `/models`, and listed at
+  `/hyperlink/models`.
+
+## 0.72.5
+
+Release focus: `hnx_1375bit`, and quantisation-aware training.
+
+### Added
+
+✨ A tier that keeps every sign *and* the magnitude structure
+
+  `bpw = (2 + payload) * 8 / 256`, so 1.375 bits per weight is a 44-byte
+  block. The sign-only family cannot reach it: those tiers spend
+  `code_bits/group` bits on signs, which is capped at 1, and 1.375 needs
+  1.3125 bits of payload per weight. Anything above one bit has to buy
+  something other than signs.
+
+  So this one buys magnitude:
+
+  | | scale | signs | magnitude | bytes | bpw |
+  |---|---|---|---|---|---|
+  | INT1 | fp16 x1 | 256 | none | 34 | 1.0625 |
+  | **hnx_1375bit** | fp16 x1 | **256** | **16 sub-blocks x 5 bits** | **44** | **1.375** |
+
+  32 bytes of signs, 10 bytes holding sixteen 5-bit indices, and the FP16
+  scale. Each index picks `scale * i / 31` for its 16 weights, and the
+  stored scale is the **largest** sub-block mean rather than the block
+  mean, so the indices span the codebook and nothing clamps.
+
+  That is not a contradiction of the mean-not-maximum rule the sign-only
+  tiers follow: what each *weight* reconstructs to is still a mean — its
+  own sub-block's — and the maximum is only the unit the sixteen means are
+  expressed in.
+
+  On a block whose sub-blocks span 30x in magnitude, against INT1 at
+  0.31 fewer bits:
+
+  ```
+  int1_binary   34 B  1.0625 bpw  signs 100%  rmse 0.13378  corr +0.615
+  hnx_1375bit   44 B  1.3750 bpw  signs 100%  rmse 0.09790  corr +0.816
+  ```
+
+  It is registered the whole way down: `subbit.py`, `gguf.py` (type 207),
+  `hyprslug`, `steamroller`, `hnxrun`, the C decoder, and the ggml patch.
+
+✨ Quantisation-aware training
+
+  `hypernix.quant.qat`:
+
+  ```python
+  from hypernix.quant.qat import prepare_qat, finalize_qat
+
+  model, report = prepare_qat(model, tier="HNX_1375BIT")
+  ...                                    # train as usual
+  model = finalize_qat(model)            # plain nn.Linear, float weights
+  ```
+
+  The forward pass uses the **quantised** weight, so the loss the model
+  minimises is the loss it will have after `hyprslug` writes the file; the
+  backward pass updates the float weight through a straight-through
+  estimator. `finalize_qat` hands back the *float* weights, not the
+  quantised ones — they are what hyprslug should be pointed at, and they
+  now sit where the packer can represent them.
+
+  Layers are skipped for the same reasons hyprslug skips tensors:
+  embeddings, the output head, and any row shorter than a block or not a
+  multiple of one. Simulating damage the quantiser will not do is its own
+  way of making a model worse.
+
+✨ tvtoppro: an intro, modules, and a watchdog
+
+  - `tvtop-older`'s animated **"decoding"** startup text, and the spinner
+  module, in tvtoppro's presentation.
+  - **A module system.** A new stat is a file that registers itself, not a
+  patch to the renderer.
+  - **A stall detector.** `train.log` untouched for over a week means the
+  run being watched is not the run that is happening: tvtoppro finds the
+  busiest Python process on the machine and reads *its* logs and
+  progress instead. Busy is measured over the process's whole lifetime
+  rather than with `cpu_percent()`, which returns 0.0 on the first call
+  and — for a process object built fresh from `process_iter` — every
+  call is a first call.
+
+### Changed
+
+🔁 noodle runs inside hyped-pro
+
+  `/noodle` in the TUI, and five bridge verbs behind it. The executor
+  adopts keys already stored in the HyperNix config for its vendors, with
+  the environment always winning over the stored copy, so a session that
+  already works in `hyped` works here without being configured twice.
+
+### API Changes
+
+๋࣭⭑ T1 v1.0.26.9.2.3 — an account without a key
+
+  Sign-up and browser sign-in, served four ways: localhost, over
+  Tailscale, from the operator's own site, or from a prebuilt Cloudflare
+  site hosted by the API host. scrypt for passwords, constant-time
+  comparison, CSRF tokens on every form, SameSite cookies, lockout after
+  repeated failures, and `Secure` coupled to whether the connection is
+  actually TLS. A keyless caller never gets administrator rights, on any
+  of the four.
+
+### Performance
+
+❗ Where QAT did not help
+
+  On a small classification task (1024-wide net, 8 classes, 800 steps) QAT
+  was *worse* than training in float and quantising afterwards — 0.71
+  against 0.58. Reported rather than omitted: these are two benchmarks,
+  not a result, and the honest summary is that QAT helps on the
+  regression-shaped task measured here and did not on the classification
+  one.
+
+### Security
+
+🛡️ Security
+
+  - **The config file was world-readable.** It holds API keys. It is now
+  written `0600` into a `0700` directory, through a temporary file and
+  `os.replace` so there is no window where a half-written file exists at
+  the real path, and an existing file has its permissions tightened on
+  load.
+  - **Key authentication leaked which key you sent.** The lookup compared
+  key strings and its loop position depended on the prefix, which is a
+  timing oracle for the stored keys. Keys are now indexed by digest and
+  compared with `hmac.compare_digest`; measured, the 60x spread across
+  probe keys is flat.
+
+### Fixed
+
+𖢥 INT4 and FP2 became loadable, because they had to
+
+  post21 reported that INT4 (205) and FP2 (206) were written by hyprslug
+  and openable by no llama.cpp: the patch registered 200–204 and pinned
+  `GGML_TYPE_COUNT` to 205, so those two were out of range and cleanly
+  rejected.
+
+  Adding a type at 207 forced the question. Raising the count to 208
+  without registering them would have left 205 and 206 as *in-range* trait
+  entries full of zeroes — and `ne[0] % ggml_blck_size(type)` on a zero
+  block size is a division by zero, not a refusal. Turning a clean
+  rejection into a crash is not an acceptable side effect of adding a
+  tier, so both got C decoders and traits entries. All eight types 200–207
+  are now registered, with no holes.
+
+  Every one of them is checked against its Python implementation — decode
+  bit for bit, and `vec_dot` against dequantise-then-dot — which is how
+  the operation-order bug below was found rather than shipped.
+
+𖢥 Clamping, without which QAT made everything worse
+
+  A straight-through estimator puts no pressure on a weight's magnitude —
+  only its sign reaches the output — so weights drift outward, and the
+  block scale, being their mean absolute value, drifts with them. Measured
+  on a 256-wide distillation task, weight norm 8.2 -> 18.9 over 600 steps.
+
+  The first working version of this was *worse than not doing QAT at all*,
+  on every tier:
+
+  | tier | train in float | QAT, no clamp | QAT + clamp |
+  |---|---|---|---|
+  | HNX_1375BIT | 0.0350 | 0.0505 (0.69x) | **0.0232 (1.51x)** |
+  | INT1 | 0.0370 | 0.0519 (0.71x) | **0.0196 (1.89x)** |
+  | IQ0.9_L | 0.0500 | 0.2813 (0.18x) | **0.0336 (1.49x)** |
+  | IQ0.5_XXXL | 0.0776 | 1.8994 (0.04x) | **0.0731 (1.06x)** |
+
+  So weights are held within 1.5 block scales, by default. `QATConfig(clamp=0)`
+  restores the textbook behaviour and the first column of numbers.
+
+  Note the last row: at 0.56 bits per weight QAT buys 1.06x, because there
+  is almost nothing left to arrange. The gains are where the tier has
+  something to work with.
+
+🧪 The fake quantiser is the real one, bit for bit
+
+  If training simulates a packing that differs from what hyprslug writes,
+  the model spends its capacity adapting to boundaries that never ship and
+  the result is worse than no training. That is the row-length bug's exact
+  shape — writer and reader agreeing with each other — with a training run
+  attached, so `fake_quantize` is compared against the byte packer's own
+  output and must match **exactly**.
+
+  It did not, three times, and each was a real difference:
+
+  - The packer stores an **FP16** scale, so every weight is a multiple of
+  one. The torch path used float32 — a ~3e-4 offset on every weight.
+  - The straight-through estimator was spelled `w + (q - w).detach()`. In
+  floating point `w + (q - w)` is not `q`; each step rounds. And for a
+  non-finite weight it is `inf + (-inf)` = NaN, where the packer degrades
+  the block to zeros. `q.detach() + (w - w.detach())` adds an exact zero
+  instead.
+  - `hnx_1375bit` decodes as `scale * index / 31`. The torch path computed
+  `(index / 31) * scale` — the same number in real arithmetic and a
+  different one in float32.
+
+  All six packings are now bit-identical to the packer across seeds.
+
+𖢥 `cctvtop`'s Remote Desktop panel
+
+  It reported a session as up whenever *something* held the port. The
+  probe now completes an RFB handshake, so a stale listener, a tunnel with
+  nothing behind it and a live desktop are three different answers. When
+  there is no session it says which of the four reasons applies — no
+  server installed, a server installed and not running, a Wayland session
+  with only `x11vnc` available, or a display it cannot see — rather than
+  "unavailable".
+
+🛡️ The `hypernix` CLI says what was wrong
+
+  An unknown subcommand printed a usage block and exited 0. It now goes to
+  stderr, exits 2, suggests the nearest real command, and accepts the
+  aliases people type. Four commands that existed and were reachable only
+  by knowing they existed are in the menu.
+
+### Removed
+
+๋࣭⭑ hyprslug builds drafts, and bundles quants
+
+  Two shapes of speculative decoding, from one quantiser:
+
+  - **`dflash2`** embeds the draft in the base GGUF under a `dflash2.`
+  prefix. One file, one download, and a runtime that has never heard of
+  Dflash2 reads the base model straight through.
+  - **`dflash1`** writes the draft as its own GGUF, for
+  `llama-cli --model-draft`. It renumbers the kept blocks from zero and
+  rewrites `<arch>.block_count` to match, because a draft that claims 32
+  blocks and ships 6 loads and then reads past the end of the tensor
+  table. It refuses a base with no tokenizer rather than writing a file
+  that cannot be sampled from.
+
+  Both take the target precisions the roadmap asked for — `q8`, `int8`,
+  `fp16`, `bf16`, `fp32`, `IQ0.5`, `Q6_K`, `Q4_M`, `int2` — and everything
+  else hyprslug writes, because they now plan through `plan_tensors`
+  rather than validating against llama.cpp's ten block formats. That check
+  was the first version, and it meant `--quant int8` came back "unknown"
+  from the draft builders while `hyprslug SOURCE int8` worked: five of the
+  nine precisions the drafts were specified in were unreachable through
+  them. Planning in one place is also what removed the third copy of the
+  row-length rule, which had already been got wrong once.
+
+  **Five new targets.** `INT8` and `INT2` join the fixed-codebook family;
+  `FP32`, `FP16` and `BF16` are element widths rather than block
+  quantisations and take a separate path in `encode_tensor`. BF16 rounds
+  to nearest even; FP16 saturates an overflow to 65504 only when the input
+  was **finite**, so an infinity stays an infinity instead of becoming a
+  large number that looks like data.
+
+  INT2 was expected to lose to FP2 and does not: 0.384 relRMS against
+  0.397 over twelve seeds, because 39.7% of a weight tensor is near zero
+  and INT2 spends a codeword there.
+
+  **`hnx-bundle`** puts several quantisations of one model in a single
+  GGUF under `hnxq.<slug>.`. The default variant keeps the ordinary tensor
+  names, so a stock llama.cpp opens the file and runs it. Tensors every
+  variant left untouched byte for byte are stored once; the rest are not,
+  so a bundle is roughly its variants added together and the point is one
+  download and one page cache rather than compression. `list` says what is in there, `extract` takes one back
+  out as an ordinary GGUF, `strip` removes the extras.
+
+### Documentation
+
+📚 Docs
+
+  - **Issue templates**, one for a bug and one for a feature request.
+  - **[Model-Training-Guide](Model-Training-Guide.md)** — which of these
+  do I use, and in what order. Every API in it was run against the
+  package rather than written from memory; six were wrong.
+
+### Tests
+
+๋࣭⭑ HyperLink: CarPlay, Siri, themes, attachments and renaming
+
+  - **CarPlay.** A conversation list, `CPVoiceControlTemplate` dictation,
+  six canned replies, and a keyboard **only when the car reports it will
+  allow one** — read from `CPSessionConfiguration.limitedUserInterfaces`
+  on every use and rebuilt from its delegate, because the answer changes
+  while the app is running.
+  - **Siri.** Four App Intents — ask, load a model, read a chat, send a
+  message — none of which open the app, because the point of asking from
+  a car dock is that the phone stays where it is. Replies are trimmed
+  before being spoken: a fenced code block read aloud is unintelligible.
+  - **Themes.** Eight, with the two bubble colours as the point rather than
+  one accent at 18%. Every theme's text clears WCAG AA against its own
+  bubble, the two bubbles are told apart by luminance, and so are
+  "connected" and "failed" — checked in
+  `tests/test_hyperlink_ios_wiring.py`, which found three that did not.
+  - **The attachment menu** offers all four ways in. Two of them — a
+  document from Files, and the camera — were reachable by the server and
+  by nothing on screen.
+  - **Renaming a chat.** The server has taken a title on `PATCH` since
+  HyperLink shipped and nothing on the phone ever sent one.
+
+## 0.72.4.post21
+
+Release focus: why both tiers gave a 1.4 GB file.
+
+### Changed
+
+🔁 Two models from the same BF16 Qwen3-class 2B, one `IQ0.9_L` and one
+  `IQ0.5_XXXL`, **both 1.4 GB**. A tier claiming 0.56 bits per weight and
+  one claiming 0.94 landing on the same size is not a coincidence.
+
+### API Changes
+
+𖢥 The embedding table is the file
+
+  The default policy leaves `token_embd` and `output` at source precision.
+  Qwen3's vocabulary is **151,936 tokens**, so on a 2.03B-parameter model
+  those two tensors are **622M parameters — 31% of the model** — and at
+  BF16 they are **1.24 GB before a single packed tensor is written**.
+
+  The sub-bit body adds 99 MB at IQ0.5 and 165 MB at IQ0.9. That is the
+  entire difference between the two files: 1.34 GB and 1.41 GB, both of
+  which read as "1.4 GB".
+
+  Measured, not reasoned:
+
+  ```
+  70.8 MB source  ->  67.2 MB   default            15.20 bits/weight
+  70.8 MB source  ->   2.5 MB   with the flags      0.56 bits/weight
+  ```
+
+  `--quantize-embeddings --quantize-output` is a **27x** difference, and
+  nothing anywhere mentioned it.
+
+🐛 The report now states the file's rate
+
+  `QuantizeReport` gained `effective_bits_per_weight` — output bytes over
+  total weights — beside `tier_bits_per_weight`, which is the rate the
+  packing writes for the tensors it touched. Both go into `--json`. When
+  the first exceeds the second by more than 1.5x, the run says so and
+  names the flags:
+
+  ```
+  IQ0.5_XXXL  (quad_code_xxxl)
+  15.20 bits/weight over the whole file (0.562 where it packed)
+
+  ! This file costs 27x what the tier name suggests.
+  To get the size the tier is named for:
+  --quantize-embeddings --quantize-output
+  ```
+
+  1.5x is deliberately generous: norms and biases are always copied and
+  always small, so a little overshoot is the design working. Twenty-seven
+  times over is the embedding table.
+
+### Fixed
+
+🐛 `--check` now catches a truncated file
+
+  The other half of the report was a 1.4 GB `IQ0.5_XXXL` that would not
+  load at all, under a screenshot that says **Interrupted**.
+
+  `check_gguf` only ever asked about tensor *types*. It now validates the
+  container the way `gguf_init_from_reader` does before it reaches a
+  block: tensor data extending past the end of the file, duplicate tensor
+  names, zero or negative dimensions, more than four dimensions. llama.cpp
+  reports every one of those as the same bare "failed to load model"
+  naming no tensor, so the file's owner gets nothing to go on.
+
+  ```
+  The file itself is wrong, before any tensor's type:
+  'token_embd.weight' needs 18,637 bytes past the end of the file
+  (the file is 55,603 bytes; the table asks for 74,240) -- truncated
+
+  A quantise that was interrupted, or a disk that filled up, leaves
+  exactly this. Re-run the quantisation.
+  ```
+
+  A multi-gigabyte write is long enough for that to be the likeliest
+  explanation of a load failure with no other symptom. It is reported
+  separately from the row-length fault because the remedies differ:
+  `--repair-to` fixes that one, and cannot invent bytes that were never
+  written.
+
+### Dependencies and Packaging
+
+❗ What is *not* a bug: sub-bit output quality
+
+  Measured end to end from a BF16 source:
+
+  | tier | signs kept | correlation with the original weights |
+  |---|---|---|
+  | IQ0.9_L | 93.7% | +0.70 |
+  | IQ0.5_XXXL | 75.0% | +0.40 |
+
+  Both match their design exactly (0.9375 and 0.75 by construction). A
+  correlation of 0.40 means **84% of the weight information is gone**, and
+  that is what the tier *is* — it stores two signs of every four and no
+  magnitude at all.
+
+  A 2B model does not survive that, and no fix to this package will change
+  it. `native/ggml-hnx/build.sh` has said so for several releases: below
+  about 1.5 bits per weight a model stops being a degraded version of
+  itself and becomes a different, far weaker one. For a 2B, IQ0.9_L is
+  already past that line.
+
+  If sub-bit is the goal, an importance matrix (`--imatrix`) decides which
+  signs survive and is the only lever that makes these tiers meaningfully
+  better. Without one the scale is a plain mean absolute value.
+
+### Tests
+
+🧪 The C and Python decoders now have to agree
+
+  Checked for the first time, and they do — **bit for bit, on all five
+  tiers**, including zeros, a single outlier, all-negative and alternating
+  input.
+
+  This mattered more than it sounds. `hypernix.quant.subbit` (what the
+  quantiser and `hnxrun` use) and `native/ggml-hnx/ggml-hnx.c` (what a
+  patched llama.cpp runs) are two independent implementations of the same
+  packing, and nothing compared them. That is the exact shape of the
+  row-length bug: writer and reader sharing a misconception and agreeing
+  with each other. Had these drifted, a model that generates fine under
+  `hnx generate` would produce noise under llama.cpp while every test
+  passed. `tests/test_decoder_agreement.py` builds the C decoder and
+  compares; it skips where there is no compiler.
+
+## 0.72.4.post20
+
+Release focus: `status` did not know about the autostart service.
+
+### API Changes
+
+🔗 The `systemctl` output settled it:
+
+  ```
+  ● hypernix-t1.service - HyperNix T1 API
+  Loaded: loaded (/home/ceo/.config/systemd/user/hypernix-t1.service; enabled)
+  Active: active (running) since Thu 2026-09-10 06:45:26 PDT; 8h ago
+  Main PID: 921 (python)
+  CGroup: └─921 /home/ceo/.hypernix/t1api/venv/bin/python -m uvicorn …
+  ```
+
+  The server had been up for **eight hours**. `hypernix-t1 status` said
+  `! not running`.
+
+### Fixed
+
+𖢥 One server, two managers, and only one of them visible
+
+  `autostart on` installs that user unit, and the unit's `ExecStart` is
+  **this same script's `start-foreground`**. A server systemd is managing
+  is not somebody else's — it is ours, started a different way. But every
+  command here read only `$PID_FILE`, which systemd never writes, so:
+
+  - `status` reported a healthy service as down,
+  - `start` saw no pid file, spawned a second uvicorn, and lost the race
+  for the port — which is the whole of post19,
+  - `stop` would have sent SIGTERM to systemd's `MainPID`, leaving the
+  unit believing it crashed and `Restart=on-failure` bringing it
+  straight back, presenting as a server that will not stop.
+
+  post19 made `start` refuse and point at `systemctl`. That was the right
+  diagnosis and the wrong altitude: it told you where the server was
+  instead of just finding it.
+
+🐛 Every command now looks in both places
+
+  `systemd_pid` asks the unit — `is-active`, then `MainPID`, then
+  `kill -0` on it, because MainPID outlives the process in a crashed unit.
+  `running_pid` is "pid file, else systemd", and `running_owner` names
+  which. On that footing:
+
+  ```
+  hypernix-t1 status      running (pid 921) — autostart service
+  hypernix-t1 start       Already running (pid 921) — the autostart service has it.
+  hypernix-t1 stop        Stopping the autostart service…
+  hypernix-t1 restart     Restarting the autostart service…
+  ```
+
+  `stop`, `kill` and `restart` go through `systemctl` when systemd owns
+  the process, so the unit's own restart policy is not fighting them.
+
+  **`server_pid` deliberately stays pid-file-only.** It is what
+  `wait_healthy` uses to notice the process *this command* spawned dying,
+  and a systemd fallback there would mask exactly that — handing back the
+  post19 bug wearing a different hat. Two tests pin that.
+
+  Where `systemctl` is on `PATH` with no user bus behind it — containers,
+  plain ssh, WSL — every `--user` call fails and all of this falls back
+  quietly to the pid file, as before.
+
+### Tests
+
+🧪 Tests
+
+  Twelve more, driven by a stub `systemctl` backed by a real process, since
+  no machine this suite runs on has a user bus. Reverting the change turns
+  three of them red with the screenshot's exact symptom: `status` saying
+  not running while `start` cheerfully launches a second server.
+
+  **And `configured` now takes a free port per test instead of a shared
+  8123.** post19's port guard is correct, but it made one server left
+  behind by a killed test fail every later test in the file — pointing at
+  the guard rather than at the leak. Twice, during this change. Two runs
+  can now share a machine, too.
+
+## 0.72.4.post19
+
+Release focus: `start` was reporting someone else's server.
+
+### API Changes
+
+🔗 From a screenshot: `start` printed a pid, and `status` a second later
+  said not running.
+
+  ```
+  hypernix-t1 autostart
+  Autostart on (systemd user service).
+  hypernix-t1 start
+  Starting the T1 API on 0.0.0.0:8000…
+  Running (pid 122966) — http://127.0.0.1:8000
+  hypernix-t1 status
+  ! not running
+  ```
+
+  Reproduced exactly, and every line of it is true about a *different
+  process*.
+
+### Fixed
+
+𖢥 What happens
+
+  `autostart on` installs a **systemd user service**, which takes the
+  port. `start` then looks for a live pid file of its own, finds none —
+  systemd's instance is not one it started — and spawns a second uvicorn.
+  That uvicorn logs `Application startup complete`, **then** binds, gets
+  `[Errno 98] address already in use`, and exits.
+
+  In between, `wait_healthy` was asking *"does anything answer /health on
+  this port?"* Something does: the first server. So it returned success,
+  and the pid printed beside it belonged to a process already on its way
+  out. Seconds later `status` looks for that pid and correctly finds
+  nothing.
+
+  The log said so all along:
+
+  ```
+  INFO:     Application startup complete.
+  ERROR:    [Errno 98] error while attempting to bind on address
+  ('127.0.0.1', 8123): address already in use
+  ```
+
+🐛 Three changes
+
+  **`start` checks the port first.** Nothing of ours is running, so
+  anything already listening belongs to someone else — usually the
+  autostart service this script installed. It now refuses, and names the
+  cause:
+
+  ```
+  ✗ Something is already listening on 127.0.0.1:8000, and it is not a
+  ✗ server this script started (no live pid file).
+  If that is the autostart service:  systemctl --user status hypernix-t1
+  To take it over:                   hypernix-t1 autostart off
+  To use another port:               set T1_PORT in ~/.hypernix/t1api/.env
+  ```
+
+  The probe is a `bind()`, not `ss`/`netstat`/`lsof` — none of which are
+  guaranteed to be installed. It sets `SO_REUSEADDR` because **uvicorn
+  does**, so it asks the question uvicorn will actually face: without it a
+  port still in `TIME_WAIT` reads as busy and `restart` refuses to start
+  the server it has just stopped.
+
+  **`wait_healthy` takes the pid and re-checks it.** A 200 on the port
+  proves *a* server is there, not that ours is. After a good probe it
+  confirms the process it was given is still alive, and reports a distinct
+  failure when the port answers but our process is gone.
+
+  **`status` says why.** "not running" on its own is what left this
+  undiagnosed for a whole session. It now names a stale pid file, says
+  when something *else* holds the port, and prints the last lines of the
+  log:
+
+  ```
+  ! not running
+  pid 122966 is named in .../server.pid but is not running: it exited.
+  ...yet something is listening on 0.0.0.0:8000.
+  Check:  systemctl --user status hypernix-t1
+  last lines of .../server.log:
+  ERROR:    [Errno 98] ... address already in use
+  ```
+
+### Tests
+
+🧪 Tests
+
+  Twelve, in `tests/test_hypernix_t1_service.py`. The central one is the
+  reproduction — start a server, take its pid file away (which is exactly
+  what a systemd-managed instance looks like to this script), start again,
+  and assert it *fails* rather than printing a pid. Reverting either half
+  of the fix turns it red.
+
+  They take a port of their own and clean up by pid rather than through
+  the script, because a test that orphans a server from its pid file
+  cannot use `stop` to tidy up — and a leaked server on the shared port
+  makes the *next* test fail on the new port guard, which is a confusing
+  way to find out you wrote a leaky test.
+
+## 0.72.4.post18
+
+Release focus: Brewer attention was not causal.
+
+### Changed
+
+🔁 Reported against `BrewerAttention.forward`, and correct: the causal and
+  sliding-window masks were combined with `torch.maximum`. Both are
+  *additive* masks — `0` allows, `finfo.min` forbids — so the elementwise
+  maximum keeps the **less** masked of the two. That is "allow if either
+  allows" where the requirement is "mask if either masks".
+
+  A non-causal language model trains to an excellent loss, because
+  predicting a token it can already see is easy, and then generates
+  nothing usable. Nothing in a loss curve tells you which one you have.
+
+🔧 `is_causal=True` on the plain-causal layers
+
+  An even layer with no padding mask now hands SDPA `is_causal=True`
+  rather than a mask tensor, so it can take a fused path instead of
+  materialising a `B·H·T·T` score matrix to add a mask to. `is_causal` and
+  `attn_mask` are mutually exclusive, so a caller-supplied mask still
+  takes the explicit path; a test asserts the two agree numerically.
+
+### Fixed
+
+𖢥 It was worse than leaking the window
+
+  The report says every query saw up to `sliding_window_size - 1` tokens
+  of its own future. That is the small-window case. `_sliding_mask` builds
+  its band from `dist < -(win - 1)`, which no pair of positions satisfies
+  when the sequence is no longer than the window — so the window mask
+  forbade nothing at all, and the union with the causal mask left the
+  layer **fully bidirectional**.
+
+  The configured default is `sliding_window_size = 4096`, and the four
+  presets in this module that enable it use 1024 / 4096 / 8192 / 16384.
+  Any training run at or under its window had odd layers attending to the
+  entire sequence in both directions.
+
+𖢥 Both halves were wrong, and neither could be fixed alone
+
+  `_sliding_mask` used `dist = i - j` — positive is the past — and then
+  masked `dist >= 0`. That masks the past *and the token itself* and keeps
+  the strictly future positions inside the window: an anti-causal band,
+  not the "causal sliding-window mask" its docstring promised.
+
+  So the two defects were coupled:
+
+  - `torch.minimum` alone, against that band, masks **every position of
+  every row**. Softmax over all `-inf` is NaN — a different bug, walked
+  into by applying the obvious fix.
+  - Fixing the mask while keeping `torch.maximum` makes the window a
+  **silent no-op**: it forbids a subset of what causal already forbids,
+  so the union is exactly plain causal attention. That version passes
+  every causality test.
+
+  Both are now correct: the mask keeps `0 <= dist <= win - 1`, and the two
+  are combined with `torch.minimum`.
+
+### Tests
+
+🧪 `tests/test_brewer_causality.py`
+
+  25 tests. The central one is the reporter's own method — perturb one
+  input token, assert no *earlier* output moves — because it tests the
+  property rather than the mask's spelling and stays true if the masking
+  is rewritten. Verified against all three broken variants: the original
+  fails 13, `minimum`-only fails 13, and mask-fixed-only fails 3 (all of
+  them window-behaviour tests, since that variant is perfectly causal).
+
+## 0.72.4.post17
+
+Release focus: a checker for the files already on disk.
+
+### Changed
+
+🔁 post16 stopped the quantiser writing files llama.cpp refuses. It did
+  nothing for the ones already written, which is where every model
+  somebody has already spent an hour on lives:
+
+  ```
+  gguf_init_from_reader: tensor 'blk.0.ssm_conv1d.weight' of type 202
+  (IQ0.5_XXXL) has 4 elements per row, not a multiple of block size (256)
+  ```
+
+### Fixed
+
+✨ `--check` and `--repair-to`
+
+  `hypernix.quant.ggufcheck` answers the question from the tensor table
+  alone, so checking a 40 GB model costs what checking a small one costs:
+
+  ```
+  hyprslug MODEL.gguf --check
+  hyprslug MODEL.gguf --repair-to FIXED.gguf
+  ```
+
+  `--check` exits non-zero when the file will not load, so a build step
+  can gate on it without parsing anything, and `--json` gives the same
+  answer machine-readably. `--repair-to` widens every offending tensor
+  back to F32 and copies the rest through byte for byte — the file loads
+  without a second quantisation run. It is not as good as re-quantising
+  from the base model and the report says so: the values it writes are
+  the ones the packer produced, so whatever the quantiser discarded is
+  already gone.
+
+  The message it prints is llama.cpp's, word for word, so pasting the
+  error into a search finds the tool. That meant using the *tier* name
+  (`IQ0.5_XXXL`, which is `type_name` in the ggml traits table) rather
+  than the Python enum's `HNX_IQ0_5` — the first draft printed the second
+  while the docstring claimed the first.
+
+𖢥 The format layer refuses too
+
+  `_should_quantize` deciding correctly is one line away from deciding
+  incorrectly again — it already did once, and the round trip passed
+  because the reader shared the writer's misconception. So `tensor_nbytes`,
+  which is on the path of every write, now refuses to lay out a tensor
+  whose `ne[0]` cannot divide into its type's block.
+
+  That turns "this bug is fixed" into "this file cannot be produced":
+  with `_should_quantize` deliberately reverted to the element-count
+  check, `quantize_gguf` raises instead of writing.
+
+  The guard is on **writes only**. A reader that refused these files
+  would make them undiagnosable by the tool written to repair them, so
+  `tensor_nbytes_unchecked` is what `GGUFFile.read` uses.
+
+❗ INT4 and FP2 cannot be loaded by any llama.cpp
+
+  Found while checking whether anything else in this area was wrong, and
+  it is not new — it has been true since those tiers were added.
+
+  `hyprslug` offers seven extension tiers. `native/ggml-hnx/tools/patch_llamacpp.py`
+  registers **five**: it adds enum members 200–204 and pins
+  `GGML_TYPE_COUNT` to 205. INT4 (205) and FP2 (206) are past the end of
+  both trait tables, and `ggml-hnx.c` has no decoder for either, so
+  gguf.cpp rejects such a file on the type check before it reads a
+  tensor.
+
+  They are not broken files — `hnx generate` and `hnx chat` run them,
+  because HyperNix's own runtime knows all seven. But nothing said that
+  llama.cpp and llama-server never would, so `--list-tiers` now marks
+  them `[hnx runtime only]` and explains why, and `--check` reports a
+  file carrying one as unloadable-by-llama.cpp while noting it still runs
+  under the hnx runtime.
+
+  A test parses the enum out of the patch script's own C text and asserts
+  the Python table agrees, so registering a type on one side and not the
+  other is a test failure rather than a discovery.
+
+### Dependencies and Packaging
+
+❗ Not verified
+
+  No hyprslug output has been loaded in a real llama.cpp binary from the
+  test environment — there is no checkout in it and building one is not a
+  test-suite job. Everything above is checked against the patch script's
+  source and this package's own reader. Given that writer-and-reader
+  agreeing with each other is precisely what hid the row bug, that gap is
+  worth stating rather than leaving implied.
+
+## 0.72.4.post16
+
+Release focus: `ne[0]`, not the element count.
+
+### Changed
+
+🔁 A build log from the desktop side, ending in a model that would not
+  load:
+
+  ```
+  llama_model_load: error loading model: tensor 'blk.0.ssm_conv1d.weight'
+  of type 202 (IQ0.5_XXXL) has 4 elements per row, not a multiple of
+  block size (256)
+  ```
+
+### CLI and UX
+
+🛡️ `native/ggml-hnx/build.sh`
+
+  The "try it" line invented a filename (`model-IQ0.5_XXXL.gguf`) that no
+  step in the script produces, so following the output verbatim gave
+  `No such file`. It names a placeholder and says where a real one comes
+  from.
+
+### Fixed
+
+𖢥 The test fixtures were never producing loadable files
+
+  The reason this survived so long is worth stating plainly. The sub-bit
+  fixtures used `N_EMBD=64` against a 256-element block, so *every tensor
+  they ever quantised* was 64 elements per row and could not legally be
+  type 202. The round trips passed because `hnxrun` decoded them with the
+  same misconception the writer packed them with. Writer and reader
+  agreed with each other, and neither agreed with llama.cpp — which is the
+  only reader a GGUF has to satisfy.
+
+  `N_EMBD` and `N_FF` are now 256 and 512. That surfaced 48 failures, all
+  of them the fixtures rather than the code, and two tests that had been
+  measuring the fixture rather than the behaviour:
+
+  - `test_the_default_leaves_the_table_in_float` asserted a
+  bits-per-weight *floor*. That number only stays high while the
+  untouched F32 table is a large share of the model, so growing the
+  fixture broke a test about a policy that had not changed. It now
+  reads the GGML type of `token_embd.weight` and `output.weight`
+  straight out of the file, and checks a layer that *is* meant to be
+  quantised really was — so a quantiser that silently did nothing
+  cannot pass it either.
+  - `test_a_budget_pins_the_largest_first` named a specific tensor. Six
+  tensors tie for largest; which one the spender reaches first is a
+  sort's tie-break, not a promise. It asserts by size now.
+  - `TestTheCacheBudget.PARTIAL_BUDGET` was a hard-coded `100_000`, which
+  stopped being partial when the fixture grew — no tensor fit, nothing
+  was pinned, and three tests comparing "with a budget" to "without"
+  were comparing a number with itself. It is derived from the model
+  now.
+
+### Tests
+
+𖢥 The block-size check was on the wrong number
+
+  GGML quantises **row by row**. The constraint a block-quantised type
+  imposes is on `ne[0]` — the row length, the fastest-moving dimension —
+  and not on the tensor's element total. `hyprslug._should_quantize` and
+  `dflash2` both checked the total:
+
+  ```python
+  if tensor.elements % block:      # a 4 x 4096 tensor passes this
+  return False, ...
+  ```
+
+  A `4 x 4096` tensor has 16,384 elements, divides cleanly by 256, and is
+  4 elements per row — so both quantisers packed it, wrote type 202 into
+  the tensor table, and produced a file llama.cpp refuses on load. Every
+  1-D and narrow tensor in a real model hit this: `ssm_conv1d`, the norms,
+  anything whose leading dimension is small.
+
+  Both now read `tensor.shape[0]`, which *is* `ne[0]` — GGUF stores the
+  dimensions fastest-first and the reader keeps file order — and the
+  refusal message says what it measured:
+
+  ```
+  4 elements per row do not divide into 256-element blocks
+  ```
+
+  `tests/test_hyprslug_row_blocks.py` is 23 tests over this, including
+  the reported tensor end to end: reintroducing the element-count check
+  reproduces the llama.cpp message verbatim.
+
+## 0.72.4.post15
+
+Release focus: SecTask is macOS-only.
+
+### API Changes
+
+🐛 Reading your own entitlements on iOS
+
+  `SecTaskCreateFromSelf` and `SecTaskCopyValueForEntitlement` are the
+  obvious way to ask whether the increased-memory-limit entitlement is
+  granted, and they are **macOS-only** — private SPI on iOS, so not in
+  scope, so a compile error rather than a runtime one.
+
+  What iOS does offer is the embedded provisioning profile, which carries
+  the entitlements the build was signed with: CMS-signed, with the plist
+  as plain XML inside the envelope, and no public API that unwraps it.
+
+  That changes what the answer *means*, and the code says so now.
+  Development, ad-hoc and enterprise builds carry a profile; **App Store
+  builds and the simulator do not**, so `false` is "not found", never
+  "definitely not granted". The property is documented that way, and a
+  test asserts it never reaches any arithmetic — a planner that gave
+  itself headroom on the strength of this would be trusting a signal
+  that goes missing exactly where the app is most constrained. The note
+  in `ondevice.py` no longer asserts absence either.
+
+𖢥 A test that had started passing on a comment
+
+  `test_the_entitlement_is_read_not_assumed` asserted
+  `SecTaskCopyValueForEntitlement` appeared in the file. It still does —
+  in the comment explaining why that API *cannot* be used. The check
+  would have gone on passing while the code did the opposite of what it
+  claimed.
+
+  This is the fourth time in this branch that comments have defeated a
+  source check: the banned-token check in `gather`, the word "sudo" in a
+  log message, the subsystem map's `CodingKeys`, and now this. Comments
+  are stripped first here, and the same helper is used by the new checks
+  below.
+
+### Security
+
+🧪 A guard for the class, not the instance
+
+  `TestNoMacOnlyAPIs` holds the macOS-only symbols a reasonable person
+  reaches for and iOS does not offer — the two `SecTask` calls,
+  `SecCodeCopySelfSigningInformation`, `NSWorkspace` and friends,
+  `SecKeychain*`, `proc_listpids` — and fails if any appears in the iOS
+  sources. It is not exhaustive and cannot be; it holds the ones already
+  paid for.
+
+  Every Security and system call in the app was audited alongside it:
+  `SecItem*` and every `kSec*` constant are available on both platforms
+  and were already in use by three pre-existing keychain files that
+  compile, `sysctlbyname`, `uname` and `os_proc_available_memory` are
+  iOS-available, and only the two `SecTask` calls were wrong.
+
+  All three regressions verified by reintroducing them, including that
+  the check no longer passes on the comment.
+
+### Fixed
+
+🐛 post14's isolation fix held; the compiler moved on to the next file.
+
+  ```
+  DeviceMemory.swift:80: error: cannot find 'SecTaskCreateFromSelf' in scope
+  DeviceMemory.swift:81: error: cannot find 'SecTaskCopyValueForEntitlement' in scope
+  ```
+
+## 0.72.4.post14
+
+Release focus: actor isolation, and the easy fix that was wrong.
+
+### Changed
+
+🔁 The project wiring from post13 held: the build got past `xcodegen`,
+  into the Swift compiler, and stopped there.
+
+  ```
+  Call to actor-isolated instance method
+  'generate(prompt:systemPrompt:maxTokens:)' in a synchronous main
+  actor-isolated context
+  ```
+
+### CLI and UX
+
+🛡️ What was checked before pushing, for once
+
+  Each CI round on a macOS runner is expensive, so the rest of the file
+  was audited rather than discovered a round at a time: every pointer
+  type against the real header — `llama_model`, `llama_context` and
+  `llama_vocab` are forward-declared and so `OpaquePointer`, while
+  `llama_sampler` is fully defined and so
+  `UnsafeMutablePointer<llama_sampler>`, which is what the code already
+  had — every `runner.` call site, the `nonisolated` delegate hops in
+  `ModelStore`, and the whole source tree for duplicate type names.
+
+  That found no further problems, which is not the same as a compile.
+
+### Fixed
+
+🔧 `nonisolated`, not `async`
+
+  `ModelRunner` inherits `Actor`, which makes every requirement
+  actor-isolated by default. `LocalInference` is `@MainActor` and calls
+  `generate` synchronously.
+
+  Making the caller `async` compiles and is the wrong fix: every view
+  starting a generation would `await` something that returns
+  *immediately*. `generate` hands back an `AsyncThrowingStream` and does
+  all its work inside that stream's `Task` — it genuinely needs no
+  isolation, which is what `nonisolated` says.
+
+  The cost is that an implementation may not touch isolated state in the
+  synchronous part of its body. `EchoRunner` read `model` inside the
+  stream builder, which is an escaping `@Sendable` closure — a second
+  error, waiting behind the first. That check moved into the `Task` and
+  asks `await self.isLoaded`.
+
+🐛 And a mutable static that strict concurrency exists to catch
+
+  `LlamaRunner` guarded `llama_backend_init()` with a
+  `private static var backendReady`, which is shared mutable state across
+  every instance of the actor. It is a global `let` with a side-effecting
+  initialiser now — Swift's once-only idiom, lazily initialised with a
+  guaranteed thread-safe single initialisation.
+
+🧪 Twelve tests for a language this repo cannot compile
+
+  There is no Swift toolchain in CI, so these are structural checks on
+  the source — and they exist precisely because the compiler found
+  something this environment could not. They pin `generate` as
+  `nonisolated` in the protocol and both conformances, assert the caller
+  stays synchronous, assert every *other* `runner.` call awaits (the
+  class of error, not the one instance), and assert the stream builder
+  opens its `Task` before doing anything, which is the rule `nonisolated`
+  imposes.
+
+  All four regressions were verified by reintroducing them.
+
+## 0.72.4.post13
+
+Release focus: `optional: true` does not mean what I thought.
+
+### Fixed
+
+🐛 The iOS build failed on a checkout without the engine:
+
+  ```
+  error: There is no XCFramework found at
+  '.../ios/vendor/llama.xcframework' (in target 'HyperLink')
+  ```
+
+🐛 The framework is linked, not embedded
+
+  Second bug in the same block. Upstream builds with
+  `BUILD_SHARED_LIBS=OFF`, so `llama.xcframework` is **static**: its code
+  goes into the app binary. `embed: true` copies a static archive into
+  the bundle for nothing, and App Store validation rejects it.
+
+🧪 And an indentation bug the generator's own tests caught
+
+  The first version replaced the marker *text* and left its four spaces
+  behind, which merged into the following line and turned `    settings:`
+  into `        settings:`. The spec stopped parsing. Indentation is
+  load-bearing in YAML and a substring replace inside an indented block
+  is the wrong tool; it matches the whole line now.
+
+  Both branches of the generator are now parsed and asserted in tests,
+  and all three regressions — a framework named directly in `project.yml`,
+  the indentation, and `embed: true` — were verified by reintroducing
+  them.
+
+### Dependencies and Packaging
+
+𖢥 The wrong mental model
+
+  post11 declared the framework dependency in `project.yml` with
+  XcodeGen's `optional: true`, on the belief that "optional" meant "skip
+  when the file is absent". It does not. It sets **weak linking** — a
+  dynamic-linker property — and the framework still has to exist at build
+  time.
+
+  So the project generated cleanly and then failed to build, which is the
+  worst shape for this: the error arrives after `xcodegen`, in
+  `xcodebuild`, pointing at a path nobody asked for.
+
+  **And a test asserted it.** `test_the_framework_dependency_is_optional`
+  checked that the YAML said `optional: true` and passed the whole time.
+  It verified the spelling, not the behaviour — a test written from the
+  same wrong belief as the code, which is the failure mode that makes a
+  green suite worthless.
+
+🔧 The decision moves to Python
+
+  `ios/scripts/prepare_project.py` looks at whether the framework is
+  really there and writes `project.generated.yml` — next to `project.yml`
+  so every relative path still resolves — with the dependency or without
+  it, plus the matching `HNX_LOCAL_LLAMA` flag. Both come from one
+  filesystem check, so they cannot disagree. XcodeGen reads the generated
+  spec.
+
+  Being Python, it can be driven both ways from a test, which is the
+  whole point.
+
+### Known Issues
+
+❗ Still not compiled
+
+  The engine has still never been built here and no Swift has been
+  compiled: there is no macOS, Xcode or Swift toolchain in this
+  environment. What this release fixes is the build *wiring*, which is
+  exactly the layer the CI failure was in.
+
+## 0.72.4.post12
+
+Release focus: three tests that needed a server and never said so.
+
+### Changed
+
+🔁 CI went red on `test_hypernix_t1_service.py` with
+  `No module named uvicorn`, three times.
+
+### Fixed
+
+𖢥 The tests were mine and the guard was missing
+
+  `TestStartOutlivesTheShell` — added in post5, when `hypernix-t1 start`
+  stopped using the `setsid` binary — has three tests that start a real
+  server. The file's *existing* real-server class,
+  `TestAgainstARealServer`, is guarded by a `skipif` for the `[t1api]`
+  extra. The three new ones were not, so on a runner without the extra
+  they tried to start a server that could not exist.
+
+  They passed locally because this machine has fastapi and uvicorn
+  installed. Local green was never evidence for these; the environment
+  was the whole variable.
+
+🛡️ And the guard was checking the wrong module
+
+  The existing one asks whether **fastapi** imports. `start` execs
+  `python -m uvicorn`, so uvicorn is what decides whether a server comes
+  up — and a machine with fastapi and no uvicorn passes that check and
+  then fails exactly the way CI did. It was right by coincidence, because
+  the extra installs both together.
+
+  There is now one `NEEDS_A_SERVER` marker checking both, used by both
+  classes. Verified against a synthetic environment with only uvicorn
+  hidden: the old check says "run these", the new one skips.
+
+### Tests
+
+🧪 🛠️ `\w` in a docstring
+
+  `tests/test_hyperlink_search.py` raised
+  `SyntaxWarning: invalid escape sequence '\w'` — the docstring explains
+  that `_` is a word character and wrote it as `\w` in a non-raw string.
+  Now raw.
+
+❗ These three still do not run in CI
+
+  The unit-test job installs `.[dev,security]`, not `[t1api]`, so they
+  skip there — along with about 85 other tests, including the 37 HTTP
+  tests added in post9. The jobs that *do* install the extra are the
+  integration jobs, and those drive a live server directly rather than
+  running pytest.
+
+  Adding `[t1api]` to the test matrix would fix that and was not done
+  here: the matrix is four operating systems by four Python versions, and
+  `uvicorn[standard]` pulls `watchfiles`, `httptools` and `uvloop`, which
+  are Rust and C wheels that may not exist for the newest Python in the
+  matrix. Turning sixteen green jobs red to un-skip some tests is not a
+  trade to make blind. Plain `fastapi uvicorn` without the `standard`
+  extra would probably do it, and that is a change worth making
+  deliberately with the matrix in front of you.
+
+## 0.72.4.post11
+
+Release focus: the engine is linked.
+
+### Changed
+
+🔁 `ios/scripts/build_llama_xcframework.sh` produces
+  `ios/vendor/llama.xcframework`, `project.yml` links it, and
+  `LlamaRunner.swift` runs a GGUF on the phone through it. post10 left
+  this specified; it is wired now.
+
+### API Changes
+
+🔧 "JIT models" turns out to be a real flag
+
+  `llama_model_params.lazy_mode` reads the rows of marked tensors **on
+  demand** rather than pulling whole tensors up front.
+  `LLAMA_LAZY_MODE_AUTO` applies it to tensors over 4 GiB, which is the
+  default here — full `ON` is a per-model decision and not one to make on
+  someone's behalf.
+
+  Paired with `LLAMA_LOAD_MODE_MMAP` so the weights are file-backed and
+  evictable rather than dirty anonymous pages: on iOS that is the
+  difference between pages the kernel can reclaim under pressure and pages
+  that count fully against the jetsam limit. Not `MLOCK` — pinning
+  gigabytes on a phone is the fastest way to be killed.
+
+### Dependencies and Packaging
+
+🛡️ A build without the engine still builds
+
+  `LocalLlama.xcconfig` ships with `HNX_LOCAL_LLAMA` empty, so
+  `LlamaRunner` compiles out and `LocalInference` falls back to
+  `EchoRunner`, which says this build has no local engine. The framework
+  dependency is `optional: true`, so `xcodegen generate` succeeds on a
+  checkout that has never run the build script.
+
+  CI matches: `local_engine` is a workflow input, off by default, because
+  two slices on a hosted macOS runner is 15-25 minutes nobody should pay
+  on a PR that touched a view. The generate step prints which of the two
+  builds it made, since an app that silently has no engine is the
+  confusing case.
+
+❗ Still not compiled
+
+  There is no Xcode, no Swift toolchain and no macOS here, so the build
+  script has never run and none of the Swift has been compiled. What has
+  been checked: every llama.cpp symbol against the real header, the two
+  refs agreeing, the dependency being optional, the flag shipping off,
+  and brace balance. The first real macOS build is where a compile error
+  would surface.
+
+### Removed
+
+✨ Upstream's build script, not a hand-listed target
+
+  The obvious approach — a native XcodeGen target listing llama.cpp's
+  sources — is a trap. llama.cpp restructures its build between releases:
+  `ggml-metal.m` became `ggml-metal.cpp` and the Metal backend moved
+  directory, so a hand-maintained file list breaks on every bump in a way
+  that reads as a compiler error rather than as "the list is stale".
+
+  The SPM route is gone too. Checking rather than assuming was worth it:
+  `Package.swift` **404s** at the pinned ref — upstream removed it.
+
+  What does exist is `build-xcframework.sh`, upstream's own supported
+  Apple build, and that is what runs. The script clones at the ref
+  `native/ggml-hnx/build.sh` pins — the phone and the desktop must agree
+  about the HyperNix tensor types, and a skew would look like a corrupt
+  model rather than a version mismatch — applies the sub-bit patch, and
+  copies the result into `ios/vendor/`.
+
+🧪 236 symbols, pinned
+
+  The llama.cpp C API churns hard, and this file could not be compiled
+  here to find out. So it was written against the real
+  `include/llama.h` fetched at the pinned ref, and every symbol it uses is
+  checked against a committed manifest of what that header declares.
+
+  Each of these was the correct name recently and is gone:
+
+  | was | is |
+  |---|---|
+  | `llama_load_model_from_file` | `llama_model_load_from_file` |
+  | `llama_new_context_with_model` | `llama_init_from_model` |
+  | `llama_free_model` | `llama_model_free` |
+  | `llama_kv_cache_clear(ctx)` | `llama_memory_clear(llama_get_memory(ctx), _)` |
+  | `params.use_mmap` / `use_mlock` | `params.load_mode` |
+
+  Written from memory, every one of those would have compiled into
+  nothing on a machine nobody in CI has. The check was verified by
+  breaking it three ways: a retired function name, the removed `use_mmap`
+  field, and a ref mismatch between phone and desktop.
+
+## 0.72.4.post10
+
+Release focus: HyperLink runs models on the phone.
+
+### Changed
+
+🔁 Search Hugging Face, download a GGUF, run it with no server involved.
+  The hard part was never the running; it is answering "will this one
+  work?" before a four-gigabyte download, and being right.
+
+### Fixed
+
+𖢥 Total RAM is not the budget
+
+  The mistake almost every naive implementation makes, and it is fatal
+  rather than cosmetic. `ProcessInfo.physicalMemory` returns 8 GB on an
+  iPhone 15 Pro and **an app may not use it**: iOS gives each process a
+  jetsam limit well below total RAM — commonly 2-3 GB — and exceeding it
+  is not a swap, not a slowdown, and not an exception you can catch. The
+  process is killed with no warning.
+
+  A fit check written against `physicalMemory` therefore tells the user a
+  5 GB model fits, downloads it over twenty minutes of cellular, and dies
+  partway through the first reply. `os_proc_available_memory()` is the
+  number that matters, and it is what `DeviceMemory` reads.
+
+  The `increased-memory-limit` entitlement is read from the provisioning
+  profile and **reported**, never used to inflate an estimate — claiming
+  headroom the process may not have been granted is the same bug in a new
+  place. The budget also shrinks while the app is open, so the check runs
+  again immediately before every load.
+
+🔁 The KV cache, and unified memory
+
+  At 32k context an 8B model's cache is 4 GiB, comparable to its
+  quantised weights; at 128k it is 16 GiB. A planner that sizes only the
+  weights is wrong exactly when someone uses the long context they chose
+  the model for, so `largest_context` answers "how much context can I
+  have" rather than refusing outright. Sized by the *key/value* head
+  count, not the attention head count — the difference is 4x on Llama 3.
+
+  And on Apple silicon, moving layers to Metal does not reduce memory: a
+  Metal buffer and a malloc come from the same pool. Offloading buys
+  speed and no headroom, and a planner that subtracts offloaded layers
+  approves models that cannot run.
+
+🔧 Sizing a file before downloading it
+
+  A GGUF is not bits times parameters. llama.cpp keeps the embedding and
+  output tensors at a higher precision than the name suggests, and for a
+  small model those dominate — Llama-3.2-1B has a 128k vocabulary over
+  2048 dimensions, 21% of its parameters. Sizing it flat under-counts by
+  8%.
+
+  Under-counting is the direction that gets the process killed, so the
+  exception is priced separately. Every estimate now lands at or above
+  the real file: +1.1% on the 1B, +5.2% on an 8B, +1.9% on Q8_0. The
+  asymmetry is deliberate — over-estimating hides a model that would have
+  run, under-estimating ends the app.
+
+  Two errors were caught doing this. The first was mine in the validation
+  harness rather than the code: Hugging Face quotes file sizes in decimal
+  GB and I compared them against GiB, which made a -1.5% error look like
+  -8.2%. The second was real: `FORMATS` knows eight GGUF quantisations
+  and Hugging Face uses about thirty, so `Q4_K_S` — on thousands of
+  repositories — could not be sized at all.
+
+### Tests
+
+🧪 Two implementations, kept in step
+
+  The decision has to be made on the phone, before a download and again
+  before a load, when there may be no network. So the arithmetic exists
+  twice: `hypernix/hyperlink/ondevice.py` as the reference, and
+  `ModelFit.swift` as the mirror.
+
+  Duplicated arithmetic drifts, and the symptom here is the Swift side
+  approving a model the Python side would refuse.
+  `tests/test_hyperlink_ondevice_mirror.py` parses the Swift and compares
+  every constant and every quantisation bit width against the Python —
+  verified by breaking it three ways: a drifted margin, a drifted bit
+  width, and an ANE case sneaking into the backend enum.
+
+  87 new tests. There is no Swift toolchain in CI, so none of them
+  compile the Swift; they check the numbers, which are the part that
+  decides whether a phone survives.
+
+### Known Issues
+
+❗ The Neural Engine cannot run a GGUF
+
+  It is reachable only through Core ML, and llama.cpp has no Core ML
+  backend for LLM inference — its Apple backend is Metal, with Accelerate
+  on the CPU path. Running on the ANE would mean converting the model: a
+  different file, in a different format, from a different toolchain. Not
+  a setting.
+
+  So there is no ANE toggle, and `ANE_EXPLANATION` is shown instead. A
+  switch that claims otherwise is a lie the user acts on.
+
+❗ llama.cpp is not linked into the iOS target
+
+  Everything above it is here: the memory guard, the load and unload
+  lifecycle, the pressure response, the resumable background download
+  (excluded from iCloud backup, disk checked with
+  `volumeAvailableCapacityForImportantUsage`, short files deleted rather
+  than kept), the Keychain-held Hugging Face token, the settings, and the
+  streaming interface the UI talks to. `EchoRunner` ships so a build
+  without the engine degrades to a clear message rather than a link
+  error.
+
+  Linking it means a native target in `ios/project.yml` building ggml
+  with Metal for arm64-apple-ios. That build has not been run, and the
+  Swift here has not been compiled — there is no Xcode or Swift toolchain
+  in this environment. Specified, not done.
+
+## 0.72.4.post9
+
+Release focus: HyperLink learns to catch up, notify and search.
+
+### API Changes
+
+𖢥 `hypernix.hyperlink.sync` — the retry that sent everything twice
+
+  A phone POSTs a turn, the connection drops before the response arrives,
+  and it cannot tell "the server never saw it" from "the server saw it and
+  the reply was lost". Retrying is the only safe-looking option and it
+  produced two identical user messages and two model replies — one of
+  which cost real tokens for nothing. There is no client-side fix.
+
+  `POST /hyperlink/sync/claim` takes a `client_msg_id` the client mints
+  *before* its first attempt and reuses on every retry; a second claim
+  returns what the first produced. Keys are scoped per device, so two
+  phones cannot collide, and expire after a day.
+
+  The other half is catching up. Polling `GET /sessions` downloads
+  conversations the phone already has and still cannot reveal that a
+  session was **deleted** — an absence is invisible when you are diffing
+  against a list you no longer trust. `GET /hyperlink/sync` is a change
+  feed with real tombstone rows, a `head` so a new device can skip the
+  history rather than replaying every change ever made, and a
+  `resync_required` flag for a cursor that has fallen off the back of the
+  log.
+
+  Sequence numbers come from a counter row read and written inside the
+  same transaction as the change it labels, not `MAX(seq) + 1` — two
+  writers reading the same maximum pick the same number. Verified under
+  eight concurrent writers: 320 rows, no duplicates, no gaps.
+
+🔁 `hypernix.hyperlink.search` — without FTS5
+
+  The T1 API runs on SQLite *or* PostgreSQL, and FTS5 has no PostgreSQL
+  counterpart, so an FTS5 index would make search SQLite-only and the
+  schema unportable. SQL narrows, Python matches — which also buys what
+  `LIKE` cannot give: `LIKE` is case-insensitive for ASCII only, so it
+  never matched "straße" for "STRASSE"; a query containing `%` is now a
+  search for a percent sign rather than a request for every row; and
+  ranking can see match positions instead of a boolean.
+
+  Bounded at 20,000 rows, and the result says `capped` when it hit the
+  bound — a silent partial answer is what makes someone conclude a
+  conversation is gone.
+
+🧪 208 new tests
+
+  70 for notifications, 50 for sync, 51 for search, 37 driving all seven
+  new endpoints over real HTTP. The cross-owner checks are the ones worth
+  naming: a registration id is not a secret, so knowing one must not let
+  any authenticated caller silence or delete another account's
+  notifications — and the refusal is 404 rather than 403, because
+  confirming an id exists tells an unauthorised caller something they
+  should not learn.
+
+### Security
+
+✨ `hypernix.hyperlink.notify` — and two bugs only running found
+
+  Push registrations, a durable queue with backoff, collapse handling, and
+  the APNs payload. Delivery itself is an operator-supplied transport,
+  because an APNs push needs an Apple team key and a route to
+  `api.push.apple.com`, neither of which ships with an open-source
+  package. That boundary is stated rather than pretended past.
+
+  Device tokens are credentials, so they are stored because delivery needs
+  them and never returned by an API, logged, or put in a `repr` — an
+  eight-character fingerprint goes out instead.
+
+  Both payload bugs were invisible until the code met real text:
+
+  - **`json.dumps` escapes non-ASCII by default.** `ensure_ascii=True`
+  turns each Japanese character into a six-byte `\uXXXX` where UTF-8
+  needs three. The builder measured UTF-8 and shipped 8069-byte payloads
+  against a 4096-byte limit — refused by APNs for every reply that was
+  not plain English.
+  - **Subtracting the overflow over-corrects to nothing.** A body of 8000
+  double quotes escapes to two bytes each, so the first overflow is
+  about as large as the whole budget; the subtraction drove it to zero
+  and produced a 143-byte payload with an empty body. **A model reply
+  containing code arrived with no text in it.** Binary search finds the
+  real maximum: 1,979 quotes and 3,276 characters of Python where there
+  had been none.
+
+### Fixed
+
+🐛 Three subsystems that exist because a phone is not a desktop client, and
+  the difference is not cosmetic. Plus the two issues found while writing
+  post7 and post8, now fixed.
+
+### Removed
+
+🔧 The dead ruff config
+
+  `pyproject.toml` carried a `[tool.ruff]` block alongside `ruff.toml`.
+  Ruff stops at the first config it finds, so the pyproject block had no
+  effect and had drifted — missing the per-file E402 exemptions and the
+  flake8-bugbear list FastAPI needs. Removed, with a note saying where the
+  live one is.
+
+### Tests
+
+𖢥 `hypernix.preheat` stopped routing through a deprecated module
+
+  The 0.71.5a2 notes said the top-level shortcuts returned a `NeoOven`
+  from that release on. The lazy import map in `hypernix/__init__.py` was
+  never moved, so `hypernix.preheat` and `hypernix.new_oven` kept
+  resolving into `old_oven` — and once post8 made that module announce
+  itself properly, the *top-level* API began telling callers to stop using
+  a module they had never imported. Moved. `tests/test_old_oven.py` now
+  reaches `old_oven` directly, because the shortcut would otherwise have
+  turned it into a second NeoOven suite: passing, and covering nothing it
+  was written to cover.
+
+## 0.72.4.post8
+
+Release focus: deprecated modules say so where it can be seen.
+
+### Added
+
+✨ `monitoring.tvtop` had said nothing at all
+
+  Its docstring has described it as existing "solely for
+  backwards-compatibility" since the 0.70.0 tvtop rewrite, and it told
+  nobody who imported it. A shim that never announces itself keeps its
+  callers on the shim. It announces now, pointing at
+  `hypernix.monitoring.tv`.
+
+### Deprecated
+
+🔧 One mechanism
+
+  `hypernix.system.deprecation` emits a real `DeprecationWarning` for
+  tooling **and** guarantees a one-line notice on stderr — because
+  `DeprecationWarning` is hidden by default and, outside `__main__`,
+  plain `warnings.warn` shows nothing whatsoever. "Prints immediately on
+  import" would otherwise mean "prints for nobody".
+
+  Doing both without printing twice needs to know whether the warning was
+  actually displayed, and there is no public API for that. So the single
+  `warnings.warn` call is made with `warnings.showwarning` briefly
+  swapped for a spy: if the active filters let it through, the spy sees it
+  and the stderr line is skipped; if they suppressed it, the line is
+  printed instead. Under `-W error` the warning is raised and propagates,
+  which is what that flag asks for. The helper imports `os`, `sys` and
+  `warnings` and nothing else.
+
+  `HYPERNIX_DEPRECATION_WARNINGS=0` silences the stderr line and
+  deliberately not the warning: making one variable suppress both would
+  let a stray export disarm `-W error::DeprecationWarning` for a whole CI
+  run. `PYTHONWARNINGS=ignore::DeprecationWarning` handles the other half,
+  so an operator who wants silence still has an environment-only route.
+
+🧪 49 tests
+
+  Behavioural, in subprocesses, because `sys.modules` caches an import and
+  the question is what happens the first time. Each of the five modules is
+  checked for announcing on import, naming its successor, writing nothing
+  to stdout, failing under `-W error::DeprecationWarning`, and announcing
+  exactly once when the warning *is* displayed. One test imports through
+  an intermediate module rather than `__main__` — the hidden case the
+  whole stderr fallback exists for.
+
+  Two guard the claim that this covers *all* of them: the set of modules
+  calling `deprecated_module` must equal the documented set, and any
+  module whose docstring calls itself deprecated or a compatibility shim
+  must announce it. That second one is exactly how `monitoring.tvtop` sat
+  quiet for several releases, and it now fails the build. Both were
+  verified by breaking them.
+
+### Documentation
+
+❗ `hypernix.preheat` still routes through a deprecated module
+
+  `hypernix.preheat` and `hypernix.new_oven` resolve to
+  `models.old_oven`, so touching either now raises its deprecation
+  notice. The 0.71.5a2 notes say those shortcuts were meant to return a
+  `NeoOven` from that release on — the lazy import map in
+  `hypernix/__init__.py` was never moved across. Left alone here: changing
+  it changes what the top-level shortcuts return, which is not a
+  documentation fix.
+
+### Tests
+
+𖢥 The notice was going to stdout
+
+  Four modules had announced their own deprecation since 0.71.5a2, from
+  the top of the file::
+
+  from rich.console import Console
+
+  Console().print("[bold red]WARNING: old_oven is deprecated. ...[/]")
+
+  That got the hard part right — it was visible, immediately, before the
+  module's own imports, so it appeared even when the module below it
+  failed to load. `ruff.toml` still carries a per-file E402 exemption
+  saying that ordering is deliberate, and it is.
+
+  But `rich.Console()` writes to **stdout**, which is the caller's data
+  channel. `hnx … > out.json` got a line of English in its JSON;
+  `json.load` on the result raised instead of parsing. A diagnostic
+  belongs on stderr, and now goes there.
+
+  Three more things were wrong with a printed string. There was no
+  `DeprecationWarning`, so `-W error` did not fail on it, `pytest.warns`
+  could not assert it, and nothing could find callers of the deprecated
+  surface — every tool that exists for this problem was blind to it. It
+  could not be turned off, so a script that knowingly uses the old API had
+  the choice of noise forever or patching the library. And it imported
+  `rich` to print eleven words, from the top of a module whose own imports
+  had not run yet.
+
+## 0.72.4.post7
+
+Release focus: the subsystem map describes the tree that exists.
+
+### Fixed
+
+🧪 The map is checked against the tree
+
+  Every dotted name it prints is resolved against `src/`, brace shorthand
+  (`data.{pans, strainer}`) expanded first, and every directory and file
+  it points at is confirmed to exist. A map whose boxes cannot be looked
+  up is worse than no map, and this one had drifted for about fifteen
+  releases without anything noticing.
+
+  Getting the check to have teeth took three attempts, each caught by
+  trying to break it rather than by reading it:
+
+  1. `subsystem in SECTION` passed for `chat` on the strength of
+  `CodeOven.chat` — a method, in a completely different sentence.
+  2. Excluding a preceding dot still passed, on the prose "the chat TUI".
+  3. It now requires the map to name an actual *module* inside each
+  subsystem, which cannot be satisfied by accident — and every name
+  that satisfies it has already been resolved against the tree.
+
+  That last one forced the serving block to be written in checkable form
+  rather than as bare labels, which is a better block anyway.
+
+  34 tests, including the two specific things the old map got wrong, so
+  neither can come back quietly.
+
+### Documentation
+
+📚 It had stopped being true
+
+  `wiki/Home.md`'s map showed the training pipeline as of roughly 0.70 and
+  nothing after it: no T1 API, no HyperLink, no Studio, no quantisation
+  stack, no `gather`, no `fuse box`, no `hnx runtime`, no monitoring
+  lineage, no security layer. Twelve subsystems that exist in `src/` were
+  absent from the picture of what HyperNix is.
+
+  Two things on it were not merely stale but wrong, and running the new
+  checks is what surfaced them:
+
+  - **`new_oven` was drawn as a module beside `old_oven`.** It is a
+  *function* in `models.old_oven`; there is no `models/new_oven.py` and
+  there never was one to lose.
+  - **`neo_oven` is the successor, not a third peer.** Its own docstring
+  says it replaces `old_oven`, `CodeOven`, `new_oven` and all three
+  fridges — so `system.old_fridge`, `data.mediocre_fridge` and
+  `evaluation.new_fridge` are the earlier generation, not current assist
+  modules sitting alongside it.
+
+  The map now covers four surfaces over one package, and each area —
+  training, quantisation and GGUF, serving and security, interfaces and
+  monitoring — names real modules rather than shapes.
+
+## 0.72.4.post6
+
+Release focus: the release guard stopped refusing prepared releases.
+
+### API Changes
+
+📚 The roadmap through 0.73.6
+
+  0.72.5 (`noodle` in `hyped-pro`, Dflash2 drafts from `hyprslug`, three
+  `tvtoppro` additions, `cctvtop`'s remote desktop, T1 accounts and web
+  auth without an API key), 0.72.6 (`neuron`, the scheduled code scanner,
+  the self-updating flow chart, a real audio processor, `hyped` rebuilt
+  around Python "dots"), 0.72.7 (the Python 3.12–3.15 migration and PEPs
+  798/799/810/831), 0.73.0 (Studio without a T1 key), 0.73.1–0.73.5 (five
+  releases that add nothing but stability), and 0.73.6 (HGPS, the GPU
+  process scheduler for Pascal and Turing cards). 0.72.4 also gets the
+  shipped entry it never had.
+
+### Fixed
+
+𖢥 "Already what the tree says" was the wrong answer
+
+  `public-release` writes whatever version it is handed, so a dispatch
+  naming an older number silently downgrades main. That happened once —
+  v0.72.3.post2 against a tree already at .post4 — and the guard added
+  afterwards refused three things at once, only one of which was actually
+  unsafe.
+
+  Refusing a version *equal* to the tree's was the wrong one. Preparing a
+  release means writing that number into `pyproject.toml`, `setup.cfg` and
+  `__init__.py` and adding the changelog heading under it — and both steps
+  downstream already expect to find that work done: "Commit version bump"
+  notices there is nothing to commit, "Tag and push" skips a tag that
+  exists. Only the guard disagreed, and its advice — "use a .postN
+  suffix" — meant inventing a number at dispatch time. That is how 0.72.4
+  `post1` and `post3` went out: numbers no changelog heading matches, so
+  neither release says what shipped.
+
+  What makes a repeat genuinely unsafe is the number already naming
+  *different code*, and a version string cannot answer that. A tag can. So
+  the guard now allows the prepared version, and refuses when
+  `v<version>` points at a commit other than the one being released —
+  naming both the tag's commit and the one at hand, since "use a .postN"
+  is not the only way out and deleting a mistaken tag is often the right
+  one. A tag on the same commit is a re-run of a release that failed after
+  the tag push, which is a thing people legitimately do, so it proceeds
+  with a notice. Backwards is still refused unless `allow_downgrade`.
+
+  It also warns — not fails — when the tree's version has no changelog
+  heading. Failing there would only push people back to inventing a number
+  at dispatch, which is the behaviour that lost the notes to begin with.
+
+### Tests
+
+🔧 It is a script now
+
+  `.github/scripts/version_guard.py`, not a heredoc inside the workflow,
+  so `tests/test_version_guard.py` can drive every branch of it: 24 tests
+  covering the prepared-tree case, downgrades, forward bumps, a tag on
+  another commit, a tag on this one, a checkout that cannot resolve HEAD,
+  a checkout with no git at all, and each shape the `version` input
+  accepts (`0.72.5`, `v0.72.5`, `0.72.5-rc1`, `0.70.6-2`, `0.70.6postr1`),
+  including that `0.70.6-2` and a tree reading `0.70.6.post2` are
+  recognised as the same request rather than a downgrade.
+
+## 0.72.4.post5
+
+Release focus: `hypernix-t1 start` left nothing running.
+
+### Fixed
+
+𖢥 The `setsid` binary was the wrong tool here too
+
+  `start` backgrounded uvicorn with `setsid ... & echo $! > server.pid`.
+  That fails outright on macOS, which has no `setsid` binary at all — and
+  macOS is a supported platform, since the script advertises bash 3.2,
+  which is the bash macOS ships. There the background job died on
+  `setsid: command not found`, `echo $!` still succeeded so the `|| die`
+  guard behind it never fired, and the first sign of trouble was a raw
+  shell error tailed out of the log 45 seconds later under "The server
+  exited during startup".
+
+  `$!` was not dependable where the binary does exist, either. setsid(1)
+  forks when it is already a process-group leader and the parent then
+  exits, so the recorded pid can name a process that has already gone.
+  `launch-script` hit exactly that in 0.72.2 and stopped using the binary
+  for it — `Popen(start_new_session=True)` calls setsid(2) in the child
+  directly, which is the same new session with the pid actually wanted.
+  `start` never got the same fix.
+
+  It does now, through the interpreter it is already about to launch:
+  same new session (the server's session id is its own pid), the pid is
+  the server's, stdin goes to `/dev/null`, and a launcher that reports no
+  pid is a failure instead of dead code.
+
+🛡️ Logging out was the other way to lose it
+
+  systemd-logind with `KillUserProcesses=yes` kills everything the user
+  owns at logout, a process in its own session included; setsid(2) is not
+  an exemption and lingering is. Nothing is written to the log when it
+  happens, so the server is simply gone the next time anyone looks.
+  `start` now checks the running configuration — over `busctl`, falling
+  back to `logind.conf` *and its drop-ins*, since a distribution shipping
+  a drop-in makes the main file the wrong thing to read — and when
+  lingering is off and the setting is on, says so and names both ways
+  out: `hypernix-t1 autostart on`, or `loginctl enable-linger`.
+
+🧪 9 new tests
+
+  Behavioural where it counts: one starts the server on a PATH with every
+  tool on it except `setsid` (red before this change), one asserts the
+  recorded pid really is the uvicorn process, and one asserts the server
+  is its own session leader — the observable fact behind surviving a
+  SIGHUP, however the detach is spelled. The check that the binary is
+  gone reads argv positions after stripping comments, because the
+  function now explains at length why the binary is wrong and a plain
+  substring search would match the explanation and pass whatever the code
+  does.
+
+## 0.72.4.post4
+
+Release focus: `hnx runtime`, and why `hnx gather` printed the usage table.
+
+### Fixed
+
+✨ `hnx runtime` — the patched llama.cpp, from other applications
+
+  `native/ggml-hnx` builds a llama.cpp that reads the sub-bit types. This
+  is how everything else gets to use it, and there are two routes with
+  very different risk.
+
+  **`serve`** starts the patched `llama-server`, which speaks the
+  OpenAI-compatible API that LM Studio, Jan, Open WebUI, Continue, Zed and
+  Cursor already know. Nothing on the machine is modified. It prints the
+  base URL and where to paste it — on stderr, so `--print-only` leaves
+  stdout a bare command line.
+
+  **`install`** copies the patched libraries over the ones LM Studio
+  bundles. That is surgery on somebody else's application, so: refused
+  without `--yes`; everything replaced is copied to
+  `~/.hypernix/runtime-bridge/backup` with a manifest first, so `restore`
+  works after the installing process is gone; a directory with nothing
+  named like `libllama` or `libggml` in it is refused rather than filled
+  with shared objects; and an unpatched build is refused, because
+  installing one replaces a runtime that cannot read sub-bit models with
+  another that cannot, while looking like a fix. Whether a build is
+  patched is read out of the binary, not guessed from its path. 🛡️
+
+  **`path`** prints the bin directory bare, for
+  `export LD_LIBRARY_PATH="$(hnx runtime path)"`.
+
+  Verified end to end rather than mocked: the real patched build was
+  detected as patched and a stock build of the same tag as *not*; the
+  server was started against a real model and answered a real
+  `/v1/chat/completions`; and install/restore round-tripped against a fake
+  LM Studio tree with the originals coming back byte-for-byte.
+
+  Two bugs the tests found before anyone else could:
+
+  **The backup directory collided.** `strftime` has one-second
+  resolution, so two installs in the same second shared a directory and
+  the second overwrote the first's copies — with *our* libraries, since
+  that is what the target held by then. Restore put ours back and the
+  originals were gone for good. Small window, total loss.
+
+  **A leading global option was mistaken for "no subcommand".**
+  `--build DIR install --yes` starts with a dash, so the bare-invocation
+  shortcut prepended `status` and argparse rejected the line. Decided by
+  looking for a subcommand anywhere in the arguments now. `--json` and
+  `--build` are also accepted on both sides of the subcommand, because
+  people type both.
+
+  Docs: `wiki/Runtime.md`, a `runtime` section in `CLI.md`. 37 tests.
+  Full suite 5122 passed.
+
+### Dependencies and Packaging
+
+𖢥 `hnx gather` was reaching a different install
+
+  The command was registered, dispatched and tested, and it still answered
+  with the usage table on a real machine. `hnx` is not
+  `hypernix.interfaces.cli` — it is `version_launcher`, which re-execs the
+  CLI on an interpreter it picks. It picked by *version number*: python3.12,
+  then 3.13, then 3.14, running the first one where hypernix imported —
+  whichever that was.
+
+  So on a machine with an old hypernix on 3.12 and a fresh
+  `pip install --upgrade` on 3.13, `hnx` ran the old one. Every subcommand
+  added since that 3.12 install was missing, the CLI printed what it did
+  recognise, and nothing said a different install was answering. `gather`
+  was simply the first command new enough to notice.
+
+  `sys.executable` in a console script *is* the interpreter pip installed
+  it into, which is the install just upgraded — so that one is tried
+  first now, and the version list is only the fallback for what it was
+  really meant to cover: the script is on PATH but its own interpreter
+  lost the package. When the fallback does fire and lands on a different
+  version, it says so on stderr. And reaching our own interpreter no
+  longer spawns a subprocess to do it.
+
+  The tests asserted the old ordering ("prefers 3.12"), so they asserted
+  the bug; they now assert the fix, plus one that walks every recent
+  subcommand through the real entry point rather than through `cli.main`.
+
+## 0.72.4.post2
+
+Release focus: Studio runs models itself, and the pinned llama.cpp builds again.
+
+### Fixed
+
+🐛 The pinned llama.cpp stopped compiling
+
+  `./build.sh` died on a current toolchain, in a file the patcher never
+  opens: 𖢥
+
+  ```
+  llama-mmap.h:26:5: error: 'uint32_t' does not name a type
+  note: 'uint32_t' is defined in header '<cstdint>'
+  ```
+
+  then a pile of *no declaration matches* errors after it, because once
+  the compiler has guessed `int` for the return type nothing lines up any
+  more.
+
+  Not our patch. `src/llama-mmap.h` at the pinned tag uses `uint32_t`
+  without including `<cstdint>`, and got away with it only while libstdc++
+  handed `<cstdint>` out behind `<vector>` and `<memory>`. GCC 15 and 16
+  stopped, upstream fixed that file — and our pin was nine months behind
+  it. A pin is a promise that the revision builds, and `b4585` had stopped
+  keeping it.
+
+  **The pin moved to `b10883`**, which has upstream's fix. Verified the way
+  the last one should have been: cloned, patched, configured, built to
+  completion (exit 0, zero `error:` lines), then asked the built ggml what
+  the five types are and ran `llama-cli --version` off the result.
+
+  **And `-include cstdint` now goes ahead of every translation unit**
+  (`-include stdint.h` for C), because moving the pin fixes the one file
+  upstream fixed and not the class. 405 files at the *new* tag still get
+  their fixed-width types from somebody else's header, so the next
+  compiler to tighten its transitive includes breaks a different one. The
+  flag costs nothing, edits no upstream source, and means a stale checkout
+  or a `LLAMA_REF` you pinned yourself still builds. `HNX_FORCE_STDINT=0`
+  turns it off — MSVC spells it `/FI`.
+
+  **`build.sh` now says when it is reusing a checkout** rather than
+  silently building whatever is there. That is how somebody pulls a fix to
+  the patcher, re-runs the script, and rebuilds the same stale tree: the
+  clone step is skipped when the directory exists, and nothing mentioned
+  it. 🛡️
+
+  Honest about what was not shown: this box has GCC 13, whose libstdc++
+  still leaks `<cstdint>` transitively, so the original failure could not
+  be reproduced here — three attempts at simulating the stricter headers
+  were each defeated by GCC 13 pulling `<stdint.h>` in by another route.
+  What *is* verified is that both the old and new pins build cleanly with
+  the flags, that the new pin contains upstream's fix to the exact file
+  that failed, and that `-include cstdint` is by definition GCC's own
+  suggested fix applied to every translation unit.
+
+  Five tests pin the invariants: the pin is not `b4585`, both `-include`
+  flags reach CMake, the override exists, an existing checkout is
+  reported, and the script is valid shell.
+
+🐛 Studio runs models itself, and a patcher that matched reality
+
+  Two things, and the first one was reported from a real build.
+
+  `patch_llamacpp.py` was written against a ggml that no longer exists 𖢥
+
+  The build failed with "array index in initializer exceeds array bounds",
+  then "no member named `vec_dot`", then "`ggml_vec_dot_t` undeclared".
+  Both causes are upstream changes the patcher had not kept up with, and
+  the reason nobody noticed is worse than either: the fake llama.cpp the
+  tests patch modelled the *old* shape, so every test passed while no real
+  checkout would compile. A fake can only be as right as the person who
+  wrote it.
+
+  **`ggml_type_traits` is two tables now.** The format half (`type_name`,
+  `blck_size`, `to_float`) stayed in `ggml.c`; everything the CPU computes
+  with (`from_float`, `vec_dot`, `vec_dot_type`, `nrows`) moved to
+  `ggml_type_traits_cpu` in `ggml-cpu/ggml-cpu.c`, behind a different
+  header. The five entries are now split across both, each file getting
+  the shim include under its own marker.
+
+  **`GGML_TYPE_COUNT` is a literal, not a count.** Upstream writes
+  `GGML_TYPE_COUNT = 43`, so adding members before it does not grow it —
+  and it sizes both tables, making `[GGML_TYPE_HNX_IQ0_9]` an initialiser
+  for element 200 of a 43-element array. The patcher rewrites that line
+  and records the original verbatim in the marker comment, so `--revert`
+  restores whatever *that* checkout had rather than a number baked in
+  here.
+
+  The ids stay at 200–204. They are written into every GGUF hyprslug
+  produces, so packing them densely after upstream's 42 would make today's
+  models unreadable the next time upstream adds a type. Holes are already
+  normal there — upstream's own 36, 37 and 38 are commented out with their
+  slots empty.
+
+  **A new CI job builds against a real llama.cpp**, which is the only
+  thing that would have caught this. It clones, patches, builds
+  `ggml-base` and `ggml-cpu`, asks the built ggml what the five types
+  are, compiles Studio's local engine against it, and checks `--revert`
+  leaves the tree byte-identical. Only those two targets, so it is about
+  two minutes rather than eight.
+
+  HyperNix Studio runs models on this machine ✨
+
+  Studio was a client: chat went over HTTP to a HyperNix server, and a
+  laptop with a GGUF on it still needed something running somewhere. Now
+  there is a switch at the top of the Models tab.
+
+  **`ModelCatalogue`** finds and describes models without loading any: it
+  parses the GGUF header for architecture, name, context length, the exact
+  parameter count summed from tensor shapes, and the type histogram — so
+  "what quant is this" is answered by what the weights actually are rather
+  than by `general.file_type`, which is one number for a file that usually
+  mixes several. It knows the HyperNix sub-bit names itself rather than
+  asking ggml, because the build that cannot run an `IQ0.5_XXXL` file is
+  exactly the build where a bare "type 202" is least useful.
+
+  Its input is hostile by construction — a model file is something
+  somebody downloaded, and every length in its header is a 64-bit number
+  the parser would otherwise be told to allocate. Every one is checked
+  against what is left of the file, not just against a constant: "2^63"
+  and "one byte more than this file" are the same mistake. 🛡️
+
+  **`LocalEngine`** loads a GGUF and generates, streaming, with GPU
+  offload and a cancel that works from another thread. **`LocalSession`**
+  runs it on a worker thread, because loading a 7B model takes seconds and
+  generating takes as long as it takes; on the GUI thread the window stops
+  repainting and the desktop offers to kill it.
+
+  Off by default, and that is the right default: the server path does not
+  need llama.cpp, and making the harder dependency mandatory would stop
+  Studio building for everyone who only wants to connect to a HyperNix
+  box. Without it the same class compiles to a stub that says which flag
+  turns it on — and the catalogue still works, so such a build lists
+  what is on the disk and only refuses to *load* it.
+
+  **The tool boundary does not move.** A local model gets exactly the
+  reach a remote one had — file operations inside the workspace, each
+  approved — because there is still precisely one place in
+  `StudioBridge.cpp` that reaches a mutating tool, and a test counts it.
+
+  Three UI bugs worth naming, all found by running the thing rather than
+  reading it. The composer gated on `studio.connected`, which is false
+  forever in local mode — it was dead with a model loaded and answering;
+  it binds to a new `ready` now. The chat header showed "No model loaded"
+  over a working local conversation. And Send becomes Stop while a local
+  model is generating, because a long answer on a slow machine is a minute
+  of watching and closing the window should not be the way out.
+
+  Verified against a real model, not a mock: a tiny llama built with a
+  real tokenizer, loaded and generated through `LocalEngine` — streaming,
+  greedy reproducibility, callback stop, cross-thread cancel, an
+  oversized prompt refused rather than silently truncated, and generating
+  after unload an error rather than a crash. The catalogue was
+  cross-checked against the project's own Python GGUF writer (identical
+  parameter count, architecture, context and type histogram) and against
+  all 19 real GGUFs llama.cpp ships.
+
+  Tests: 35 C++ checks in `model_catalogue_test`, 18 in
+  `local_engine_test` (which runs in both configurations and checks
+  different things in each), and 18 in `tests/test_studio_local.py`. Full
+  suite 5077 passed.
+
+### Deprecated
+
+❌ Twenty-five copies of one upstream warning
+
+  The build works — that log was warnings, not errors, and `mtmd` linked
+  at 71%. But it repeated the same upstream deprecation once per
+  translation unit, and a log like that is a good way to miss a real error
+  in it.
+
+  `ggml/CMakeLists.txt` sets `CMAKE_CXX_STANDARD 17`, but only inside its
+  own subdirectory, so `tools/` and `common/` get whatever the compiler
+  defaults to. GCC 13 defaults to `gnu++17` and says nothing; GCC 16
+  defaults to a newer one, where a bitwise OR between two different enum
+  types is deprecated (C++20, P1120R0) — and `tools/mtmd/clip-graph.h`
+  does exactly that in a macro every model file includes.
+
+  `build.sh` now passes `-DCMAKE_CXX_STANDARD=17` for the whole tree,
+  which is the standard upstream actually targets and tests against.
+  Nothing in llama.cpp needs C++20. Measured on b10883, building `mtmd`:
+  **46 warnings at C++20, 0 at C++17**, target still linking, no errors
+  either way.
+
+  Not `-Wno-deprecated-enum-enum-conversion`, which was the tempting
+  one-liner. The warning is telling the truth — it is just telling it
+  about code compiled to a standard nobody asked for, and silencing it
+  would have hidden the same construct if it ever appeared in ours. A
+  `-DCMAKE_CXX_STANDARD=20` of your own still wins: it lands after ours on
+  the command line and CMake takes the last one.
+
+## 0.72.4.dev11
+
+Release focus: beta 1 full: `fuse box`, and a claim that did not survive being measured.
+
+### Performance
+
+❗ The brief said "slow down now to go faster later". It does not work.
+
+  The feature as described was: ease off before the driver throttles, and
+  win back more than you gave up. Before writing that down as a claim, it
+  got simulated — a first-order thermal model, hardware throttling shaped
+  the way vendors do it, performance scaling as `power ** 0.35` the way
+  every published power-vs-throughput curve does. Three strategies over
+  the same wall time:
+
+  | | throughput | temperature |
+  | --- | --- | --- |
+  | run flat out, take the driver's throttling | **fastest** | hottest |
+  | hold a target with a lower power limit | −2 % to −7 % | much cooler |
+  | hold a target by pausing between steps | −12 % to −24 % | much cooler |
+
+  The ordering does not change across the range a real machine occupies —
+  marginal cooling and a savage throttle included, which are the
+  conditions under which the story would be true if it were ever true.
+
+  The reason is not subtle once you see it: a thermal throttle still does
+  *most* of the work — clocks at 55 % are 55 % of a card, not zero — while
+  a pause does none. And because performance scales sublinearly with
+  power, 80 % of the power buys about 92 % of the throughput while pausing
+  20 % of the time buys 80 %.
+
+  So the module ships, and it is not sold as a speedup. It sells the thing
+  it actually delivers: **a temperature you chose, at a cost it prints**.
+
+  ```
+  fusebox eased for 412s, peak 79°C. That cost 11.4% of the run.
+  fusebox did not intervene: peaked at 63°C, target 80°C. It cost the run nothing.
+  ```
+
+  That is a legitimate thing to want — a shared machine, a laptop on a
+  desk, a room someone sleeps in, a card you would like to still own in
+  three years — and so is the fuse, because "the driver will handle it" is
+  not a plan when the driver's next move is a shutdown in the middle of a
+  checkpoint write.
+
+  The measurement is not a note in a changelog: it is
+  `tests/test_fusebox.py::TestTheThroughputClaim`, which runs the model on
+  every CI run and fails if the ordering ever changes, and a test that the
+  module docstring still says "not a speedup". Prose and physics cannot
+  drift apart without something going red.
+
+  Two design consequences follow from the numbers rather than from taste.
+  The power limit is the cheaper lever by three to four times, so it takes
+  over from pausing after three sustained hot readings rather than eight.
+  And once a limit is actually applied, the pause stands down to 40 % of
+  its ceiling — both levers at full pays twice for the same degrees.
+
+### Fixed
+
+✨ A new module, `hypernix.system.fusebox`, and a subcommand:
+
+  ```
+  hnx fusebox status                    # what the cards are doing now
+  hnx fusebox watch --target 78         # hold 78 °C by pacing the run
+  hnx fusebox watch --target 78 --underclock --yes
+  hnx fusebox plan                      # what underclocking would do
+  hnx fusebox restore                   # undo what a crashed run left
+  hnx train run --thermal-target 78     # the same, from a training run
+  ```
+
+  It reads every card through `hypernix.system.gpus` — so `nvidia-smi`,
+  `amd-smi` and `rocm-smi` all the same — plus the CPU through
+  `thermometer`. It holds a target by pacing the training loop, or by
+  lowering a power limit if you allow it. And it trips like a fuse if a
+  card passes a hard limit anyway: the run pauses, waits for the reset
+  temperature, and resumes eased, since whatever got the card there is
+  still true.
+
+🛡️ What it will not do
+
+  - **It will not raise a power limit above the card's factory default.**
+  Not with a flag, not on request, not through the restore path.
+  Lowering a limit and putting it back is thermal management; going past
+  the default is overclocking, and a training run that quietly overvolts
+  someone's card is not a feature. The check lives at the one function
+  that could break it and is asserted from four directions.
+  - **It will not touch a card unless asked twice.** `--underclock` turns
+  it on and `--yes` confirms. Without both, every subcommand is
+  read-only and reports what it *would* set. A power limit outlives the
+  process that changed it, so a flag left in shell history should not be
+  enough to change one. `hnx train --thermal-target` cannot reach the
+  underclocker at all.
+  - **It will not sudo.** Setting a power limit needs root on every
+  current driver. A refusal is reported once and the governor falls back
+  to pausing, which needs none.
+  - **It will not run anything it was handed.** Vendor commands come from
+  a fixed table; the index goes through `int()` and the wattage through
+  `float()`; every invocation is a list and there is no shell.
+  - **There is no CPU actuator.** The CPU is read, and can trip the
+  breaker with `--cpu-trip`, but it never drives the pacing — a CPU at
+  85 °C during data loading is normal, and easing a cold GPU over it
+  would be harm on no evidence. Turning a machine's frequency scaling
+  down because a training run is warm would slow everything else the
+  person is doing. The one exception is job-scoped: halving *this
+  process's* torch thread count while easing.
+
+𖢥 Putting it back after a crash
+
+  Changes are written to `~/.hypernix/fusebox-state.json` as each one is
+  made, not at exit — the case the file exists for is the process not
+  reaching its exit. A clean exit restores, an exception restores, and a
+  `SIGKILL` leaves the file for `hnx fusebox status` to notice (exit 3)
+  and `hnx fusebox restore` to undo.
+
+🛡️ The breaker does not hang →
+
+  An hour above the trip point is a broken fan, not a transient. The
+  breaker raises `ThermalStall` and says to check the cooling, rather than
+  blocking a run forever without saying why.
+
+### Documentation
+
+📚 Docs
+
+  `wiki/FuseBox.md`, a `fusebox` section in `CLI.md`, and the numbers
+  above stated where a person deciding whether to turn this on will see
+  them.
+
+### Tests
+
+𖢥 Two bugs that only closing the loop could find
+
+  Every unit test here observes a fixed temperature and checks the
+  response, and all of them passed on a controller that never reached the
+  temperature it was asked for. Driving the real governor against the
+  thermal model found it: pure proportional control settles wherever its
+  output happens to balance the error, which for an 80 °C target was
+  82.5 °C — for ever. Someone asking for 80 got 82.5. Fixed with a slow
+  integral term clamped to the same ceiling as the ease itself, which is
+  the whole of the anti-windup: it can never store up more than the
+  controller could have produced anyway. It now settles at 79.9 °C, and
+  `TestItActuallyReachesTheTarget` runs the closed loop at three targets
+  so a future controller change cannot quietly reintroduce an offset.
+
+  The second was in the reporting. A governor holding 79.95 °C against an
+  80 °C target reported itself *over target for the entire run*, because
+  80.02 is greater than 80 and the counter had no margin — a number that
+  would have had someone debugging a governor that was working perfectly.
+  It now counts seconds more than 1 °C over, and carries the magnitude
+  separately as degree-seconds, because seconds alone cannot tell 0.1 °C
+  over for an hour from 9 °C over for an hour.
+
+## 0.72.4.dev10
+
+Release focus: beta 1 pt 1: `gather`, and Neo oven learns the house architecture.
+
+### Added
+
+✨ CUDA for the sub-bit types
+
+  `native/ggml-hnx/ggml-hnx-cuda.cu`: one warp per row, `__shfl_down_sync`
+  for the reduction, no shared memory, templated on the block geometry so
+  all five types share one kernel. Checked against the C path, which is
+  checked against the Python packer, exactly.
+
+### Changed
+
+🔁 Every GPU reader goes through one abstraction
+
+  Item 20's last mile. `thermometer`, `tv`, `livestream`, `pascal` and
+  `ethanol` each still asked `nvidia-smi` directly; an AMD card was absent
+  from the temperature reading, the TV view and the livestream. They now
+  go through `hypernix.system.gpus`, `read_gpu_temp()` is the max across
+  all cards rather than the first one's, and a card with no temperature
+  reports `None` instead of `0.0` — which had been drawn as a very cold
+  GPU.
+
+### API Changes
+
+✨ `hnx gather` — a crawler
+
+  A new module, `hypernix.data.gather`, and a subcommand that drives it:
+
+  ```
+  hnx gather -W https://example.org -Q 2 -T 4 -p 1.5 -f jsonl -o ./corpus
+  hnx gather -L "a.org,b.org" -f parquet -C --xz -O corpus-2026-09
+  hnx gather probe -W https://example.org -u 8
+  hnx gather formats --json
+  ```
+
+  The flags are the ones that were asked for. `-W` a site, `-L` a
+  comma-separated list, `-T` threads, `-Q` depth, `-p` the pause between
+  requests, `-f` the format, `-o` where to write it, `-O` the file header
+  (or, with `-C`, the archive's name), `-C` plus one of `--xz` / `--7z` /
+  `--zip` / `--gz` to compress, `-U` to upload the result to a GitHub or
+  Hugging Face repo, and `-u` to measure a host's rate limit before
+  committing to a crawl.
+
+  Formats: `html` (a file per page), `html-full` (every page merged into
+  one document — single-site only, and `-L` is refused rather than
+  quietly producing a mess), `html-full-wimages` (the same, with images
+  inlined as data URIs), `text`, `jsonl`, `parquet`, and `js` — which
+  **saves** the JavaScript it finds. Nothing here runs any of it: there is
+  no interpreter in the module, no browser engine imported, and a test
+  reads the source to keep it that way.
+
+  Three things it does that a fetch loop does not:
+
+  - **It asks and it waits.** robots.txt is honoured by default, there is
+  a delay between requests by default, and when a host's own
+  `Crawl-delay` asks for longer than `-p` the host wins.
+  - **The rate limiter is per host and claims its slot inside the lock.**
+  Claimed outside it, two of `-T 8`'s threads both look at the clock,
+  both decide now is fine, and the delay you asked for is not the delay
+  the server sees.
+  - **It cannot write outside `-o`.** A URL path is attacker-controlled
+  and becomes a file name; `safe_output_path` resolves the result and
+  requires it to be under the root, so a link to `/../../.ssh/authorized_keys`
+  lands in the corpus as a mangled file name and nowhere else.
+
+  Scriptable, as asked: `--json` puts the machine-readable result on
+  stdout with progress on stderr, and the exit codes are distinct — `0`
+  wrote output, `1` could not start, `2` finished having fetched nothing,
+  `3` wrote output but some pages failed. `3` rather than `0` matters: a
+  crawl that got eight pages of ten is a corpus with holes in it, and a
+  pipeline should be able to notice without parsing the JSON.
+
+  `-U` never uploads without `--yes`. Publishing a scrape is not a step to
+  take because a flag was in the history.
+
+✨ hyperNix0x-v2 in Neo oven
+
+  `hypernix.models.brewer_adapter` teaches NeoOven the house architecture.
+  `preheat_brewed()` and `new_brewed()` are the explicit entry points, and
+  plain `preheat()` recognises a Brewer checkpoint and routes itself.
+
+  The adapter is an `nn.Module` subclass, not a proxy, so `.to()`,
+  `.parameters()`, `state_dict()`, the optimizer and gradient checkpointing
+  all keep working without knowing it exists. What it is actually for is
+  one argument position: `BrewerModel.forward(input_ids, attn_mask)`
+  returns bare logits, and NeoOven calls `model(ids, labels=labels)["loss"]`.
+  Passed straight through, `labels` binds to `attn_mask` and a tensor of
+  token ids is used as an additive attention mask — which runs, stays
+  finite, and trains into noise without ever raising. 𖢥
+
+  `is_brewer_checkpoint()` looks rather than trusting the extension, and
+  looks *without* unpickling: a torch `.pt` is a zip whose `data.pkl`
+  member holds the object graph, so the top-level keys can be read out of
+  the first 64 KB of that member as literal bytes. `torch.load` on an
+  untrusted file executes code, and "is this one of ours" must never be
+  the reason to run it.
+
+### Fixed
+
+🔁 `websearch` upgraded rather than duplicated
+
+  The instruction was to upgrade a module that already scrapes rather than
+  add a second one, and `interfaces/websearch.py` already had its own
+  `urlopen`, its own title regex, its own link extractor and its own tag
+  stripper. `fetch_web_page` now delegates to `gather.fetch`, which brings
+  it three things it did not have: robots.txt, a rate limit, and a
+  content-type check with a size ceiling — a PDF used to be decoded as
+  UTF-8 and returned as a page of replacement characters that then looked
+  like real text to whatever read it. 🐛
+
+  The returned shape is unchanged, down to the twenty `{'text', 'href'}`
+  links, so every caller keeps working. The *search* functions still fetch
+  their own results pages: they scrape one engine with engine-specific
+  parsing, and routing them through a crawler's politeness layer would put
+  a one-second pause in front of every lookup an agent makes.
+
+🐛 The desktop app compiles
+
+  HyperNix Studio, from dev9, did not. Three places used a `std::string`
+  where a `QString` was wanted, CMake required Qt 6.5 while Ubuntu 24.04
+  and Debian 12 ship 6.4, and QML produced five *"Unable to assign
+  [undefined] to QString"* warnings — which are not cosmetic: a failed
+  assignment leaves the property at its **previous** value, so the tool
+  approval dialog could show the last request's file path next to a live
+  "Approve" button. 𖢥
+
+### Site Changes
+
+🛜 Everything below the fold first: the website's mobile view, the last GPU
+  readers that still asked NVIDIA directly, the desktop app that did not
+  compile, and CUDA kernels for the sub-bit types. Then beta 1 pt 1.
+
+🛜 The website's mobile view
+
+  Item 25. The hero grid was `minmax(480px, 1fr)`, which cannot shrink
+  below its minimum; inside `overflow: hidden` it clipped instead of
+  scrolling, so `scrollWidth == clientWidth` and every "does this page
+  scroll sideways" check passed while a 390 px phone lost the right third
+  of the page. Now `minmax(min(480px, 100%), 1fr)`. 𖢥
+
+  Also: a `@media (pointer: coarse)` block, a 44×44 hit target behind every
+  copy button, and every inline `fontSize` below 11 raised to 11 — the
+  first pass used `sed` for that and missed `9.5`, `10.0`, `9` and `8`.
+
+## 0.72.4.dev9
+
+Release focus: a llama.cpp that reads sub-bit models, and a desktop app.
+
+### Changed
+
+🔁 Two large pieces, plus three CI failures that were mine.
+
+### Fixed
+
+𖢥 Three CI failures
+
+  **A collected systemd unit reported every job as a success.**
+  `systemctl show` does not error for a unit that no longer exists — it
+  answers with property *defaults*: `ActiveState=inactive`,
+  `Result=success`, `ExecMainStatus=0`. Indistinguishable from a clean run,
+  and `--collect` reaps the unit the moment it exits. A job that exited 7
+  was reported as having succeeded: not "we lost the outcome", the opposite
+  of it. Both supervisors now share one exit-recording wrapper, and
+  `<log>.exit` is authoritative.
+
+  **The systemd path recorded no pid.** Everything that is not systemd
+  addresses a job by pid — `--status`, and dev7's training pause/resume —
+  and all of it was operating on pid 0.
+
+  **The icon geometry check was the one assertion that skipped.**
+  `make_appicon.py` imported Pillow at the top and CI installs without
+  Pillow, so the test comparing the drawn coordinates to
+  `hypernix-icon.svg` errored out instead of running. Pillow now loads
+  inside the drawing functions, with a second test asserting the module
+  still imports without it.
+
+  All three passed locally because this container cannot run the branch
+  they were in — no user bus, so setsid is always chosen. They are now
+  covered by feeding the real `systemctl show` output into `refresh()`,
+  because a test that only runs somewhere else is how both shipped.
+
+### Dependencies and Packaging
+
+📦 `native/ggml-hnx` — sub-bit types in C
+
+  Item 24 asked for HyprSlug models to load in LM Studio. They cannot, and
+  header rewriting cannot make them: `IQ0.5_XXXL` is not a llama.cpp
+  quantisation under a different name, it is different arithmetic. A loader
+  that believes a rewritten header reads a 30-byte block as though it were
+  a 210-byte Q3_K one, and what comes out is noise. So: ✨ the decoder, in
+  C, to be compiled into llama.cpp — which is what LM Studio runs.
+
+  All five types (`IQ0.9_L`, `IQ0.75_M`, `IQ0.5_XXXL`, `IQ0.25_UXL`,
+  `INT1`), decode plus `vec_dot`. The dot product never materialises a
+  row: every weight is ±scale, so a block reduces to `scale · Σ(±y)`.
+  That is the compensation for throwing the magnitudes away — these types
+  are cheap to multiply precisely because so little of them survives.
+
+  **The test that shapes everything else.** If the C and the Python
+  disagree by one bit of one byte, the model loads, runs at full speed, and
+  emits fluent nonsense. Nothing about that looks like a failure. So
+  `tools/gen_vectors.py` has `hypernix.quant.subbit` — which wrote every
+  HyperNix sub-bit file in existence — pack blocks and record its own
+  decoding, and the C compares element by element, **exactly**. No
+  tolerance: both sides multiply the same FP16 scale by ±1, so there is
+  nothing to forgive, and a tolerance would hide the errors this exists to
+  catch. The vectors include all-positive, all-negative, alternating and
+  group-aligned blocks, because a uniform block passes with the bit order
+  reversed. 45 blocks, all five types, identical.
+
+  That is also why the decoder has no ggml dependency — it is buildable
+  with a compiler and nothing else, which is how the bit order was
+  verified rather than assumed.
+
+  **Registration is a patcher, not a `.patch`.** 🔧 llama.cpp moves fast
+  and a diff against line numbers rots in weeks: a rejected hunk, no idea
+  which half applied, and a half-patched tree that compiles.
+  `patch_llamacpp.py` finds each point by pattern, edits everything in
+  memory, and writes nothing at all if any anchor moved. Idempotent, and
+  `--revert` undoes it.
+
+  Writing it found three bugs in itself, all caught by the round trip:
+
+  - Two edits target `ggml.c`. Reading it fresh for each while writing both
+  meant the second write discarded the first, so the traits table was
+  never registered and *nothing said so* — the enum was there, the tree
+  looked patched, and the build failed later with an unrelated-looking
+  error. 𖢥
+  - One shared marker string was a substring of three different first
+  lines, so `--revert` matched the wrong block and deleted sixty lines of
+  `ggml.c`. Each edit now has a unique marker, matched exactly, and revert
+  verifies the block it is about to remove is the one that was added. 𖢥
+  - The `IQ0.25` decoder advanced the bit cursor by `group` instead of
+  `kept` in a first, unrolled draft. One loop driven by the type table
+  replaced four near-identical copies for exactly that reason.
+
+  Said plainly in the README rather than left to be discovered: this makes
+  a sub-bit model loadable and **correct**, not good — below ~1.5 bits per
+  weight it is a different, much worse model. The types are CPU-only here;
+  the CUDA kernel is not written. `from_float` is NULL on all five so
+  `llama-quantize` refuses cleanly instead of producing a file that is the
+  right size and wrong inside. And the LM Studio runtime swap is
+  version-specific and unsupported by them, which the README says.
+
+### Tests
+
+🧪 `desktop/` — HyperNix Studio
+
+  ✨ A Qt 6 / QML desktop client: model switching, chat, a workspace of
+  code the model can edit, Hugging Face resolution, and a GPU/CPU/RAM panel
+  from the server's own abstraction. It authenticates with a **T2S key** —
+  read and non-admin write — because nothing it does is administration.
+
+  **It cannot run a command.** No shell tool, no `exec`, no "run the tests"
+  button. Not disabled — absent. A model can ask for a file to be written
+  and a person can agree; there is no path by which a model runs code. That
+  is the only guarantee in the app that does not depend on a check being
+  correct, and the way to keep it is not to write the feature.
+  `tests/test_studio_core.py` greps the sources for `system(`, `popen(`,
+  `exec*`, `fork(`, `QProcess` and `posix_spawn` so it stays that way.
+
+  **Two boundary checks, neither redundant.** `ToolPolicy::Resolve` is
+  lexical — it collapses `..` and requires the result to be under the
+  workspace with no filesystem access at all, so every escape is testable
+  and none needs a disk. `ToolRunner::IsTrulyInside` is the filesystem
+  check, run again immediately before each operation, and it catches what
+  the lexical one cannot: a symlink *inside* the workspace pointing out of
+  it, which passes every string test there is. Running it at the moment of
+  the write also closes the gap between deciding and doing.
+
+  **The approval dialog is mostly a list of things it does not have:** no
+  "approve all", no "remember this", no timeout, no click-outside-to-
+  dismiss, and no default focus on the affirmative button. Each of those is
+  the same feature under a different name — a way for a file to be written
+  without anyone having looked. A `Deny` never becomes a prompt at all:
+  there is nothing to approve about reading a private key, and a dialog for
+  one is a dialog people learn to click through, which would then be there
+  for the request that mattered.
+
+  The security core has no Qt dependency, on purpose, so CI checks it on a
+  runner with no Qt: 110 checks across two suites, including every path
+  escape and, on a real filesystem, symlinked files *and* symlinked
+  directories.
+
+  **Not verified:** the Qt half. There is no Qt in the environment this was
+  written in, so `HyperLinkClient`, `StudioBridge` and all fifteen `.qml`
+  files are unbuilt — written against the Qt 6.5 APIs and reviewed, not
+  compiled. `desktop/README.md` says so where someone will read it before
+  their first build.
+
+## 0.72.4.dev8
+
+Release focus: HyperLink knows which machine it is talking to.
+
+### Security
+
+🔒 Which machine is that, actually
+
+  **`hypernix.hyperlink.identity`** ✨ — a server fingerprint: a hash of 32
+  random bytes generated once and kept in
+  `<config>/hyperlink/server-identity` at mode 0600. Stable across
+  restarts, upgrades, address changes and key rotations; unguessable from
+  the hostname; not a secret. `GET /hyperlink/endpoints` reports it, to
+  authenticated callers only.
+
+  It exists because the app reaches its server at whichever of several
+  addresses answers first, and those addresses move — a DHCP lease is
+  reassigned, a tailnet name is transferred — so the app will happily try
+  an address some *other* machine now answers on. The obvious check is the
+  server name and the obvious check is wrong: a name is advertised in the
+  clear and anything on the network can claim it, so the first machine to
+  call itself `desktop` wins.
+
+  HyperLink pins the fingerprint at pairing time — with someone standing
+  at the PC reading a six-character code off its screen, the one moment
+  with independent evidence of which machine it is — and re-checks it on
+  every reconnection, which is every time the phone changes network. A
+  mismatch shows a banner and withholds the admin credential. It is never
+  a silent re-pin: that would make the warning fire exactly once, ever.
+
+  Not proof on its own, and the docs say so — anyone who can read a
+  fingerprint can repeat it, as with a TLS certificate fingerprint. What
+  it adds is the ability to *notice*.
+
+  **`GET /hyperlink/peers`** ✨ — other HyperNix machines on the tailnet,
+  so someone with a desktop and a laptop does not have to look up the
+  laptop's tailnet name. Admin-only: the answer is a map of a private
+  network, and a phone's credential for one server is not authority to
+  enumerate every machine its owner runs.
+
+  Every row is `verified: false`, in the payload and not only in the
+  docs. Discovery is not connection and connection is not trust. The probe
+  is a `GET /health` with a 2.5s budget, probed concurrently, capped at 64
+  peers and 64 KB per reply; the only use made of a response is copying
+  two strings out for display. Nothing a peer returns selects a code path,
+  names a file, or reaches a shell — there is one `subprocess.run` in the
+  module and its argv is a literal.
+
+  **Admin credentials, held briefly** ✨ — `AdminCredentialStore` is not
+  `TokenStore` with a different key. A device token is scoped and
+  revocable; an admin credential stops training runs and reads audit logs.
+  So it is cleared at every launch unless the user turns that off in
+  Settings, stored `WhenUnlockedThisDeviceOnly` (it never needs to run
+  behind a lock screen and must not ride an iCloud backup), keyed on the
+  server's *fingerprint* rather than its name or address, and never
+  logged, printed or described. `has(fingerprint:)` exists so a view can
+  ask "should I show this section?" without holding the secret to answer.
+
+  **`keyless_available_here`** 🛡️ — "this server allows keyless
+  connections" and "this phone, on this network, can make one" are
+  different questions, and an app told only the first finds out about the
+  second by failing.
+
+🔒 Two bugs found while wiring it up
+
+  **Swift's synthesised decoder ignores property defaults.** Adding
+  `serverFingerprint` with a default to `ServerConnection` would have made
+  every stored record from before this release fail to decode — and
+  `restore()` wraps that in `try?`, so every existing user would have been
+  silently signed out by the update with nothing anywhere saying why. It
+  now has a hand-written `init(from:)`.
+
+  **A T2S-key connection did not survive a restart.** `isConfigured`
+  required a `deviceID`, and connecting with a key produces no device
+  record on the server — the key *is* the credential — so the field was
+  empty, `restore()` refused, and the app came up signed out every time.
+  Whether there is a credential was always `TokenStore`'s question, which
+  `restore()` already asks separately.
+
+### Dependencies and Packaging
+
+📦 Item 1, plus the app icon and the release plumbing.
+
+  **The app has an icon.** ✨ The appiconset declared a 1024 slot and
+  contained no image, so HyperLink shipped with the iOS placeholder. It
+  now carries the current HyperNix mark from `assets/logo-new` — three
+  staggered parallelograms, dark to red up the stack — built by
+  `ios/scripts/make_appicon.py` rather than committed as three mystery
+  binaries. An icon with no recipe cannot be adjusted by whoever comes
+  next; they can only replace it, and the brand drifts one replacement at
+  a time. Three variants for iOS 18: opaque any/dark (iOS applies its own
+  mask, so pre-rounding would show wedges in the home-screen corners) and
+  a greyscale-on-transparency tinted one where the red bar becomes the
+  *brightest* value — the system's auto-generated tinted icon drops it,
+  and it is the bar that makes the mark recognisable. The app's
+  `AccentColor` was a blue predating the mark, so every button was a
+  different colour from the app's own icon; it is now `#c8192e`.
+
+  **The IPA ships with the release.** ✨ `public-release.yml` builds
+  HyperLink and attaches it to the GitHub release alongside the wheel,
+  which `release.yml` already did for tag-triggered releases and this
+  workflow did not. The app's version still comes from
+  `ios/scripts/app_version.py` rather than the Python release number: the
+  app quotes the *T1 API's* version because that is what a server reports
+  and therefore what a support question contains. A macOS runner outage
+  gives a release without the app attached, not a blocked release.
+
+📦 Not done
+
+  LAN Bonjour discovery. The app already declares `_hypernix._tcp` and
+  would browse for it, but nothing advertises the service: doing it
+  properly needs a zeroconf dependency, and half of it is worse than none.
+  Tailnet discovery is the case that was asked for and it is done; on the
+  LAN the server's own ranked address list already covers it.
+
+## 0.72.4.dev7
+
+Release focus: what training is doing, and the controls for it.
+
+### API Changes
+
+🔗 Three things running it found
+
+  **Pausing does not free the card.** SIGSTOP freezes the process with its
+  GPU allocations intact. That is what makes resuming instant and it is
+  also the caveat, so both the API's `note` and the CLI say it out loud —
+  it is the thing everyone assumes the opposite of.
+
+  **A stopped process cannot handle SIGTERM.** Stopping a paused run had
+  to SIGCONT it first, or "stop" reported success and left the run frozen
+  forever.
+
+  **A dead run kept advertising an ETA.** It holds its last measured rate,
+  so a trainer that died an hour ago at 43% displayed `eta 6s` — which
+  reads as *nearly finished*, the opposite of what happened. `eta_seconds`
+  is now `None` for anything that is not still going, next to `progress`,
+  which has always been `None` rather than `0.0` when no schedule was
+  declared: a bar at 0% for a job two hours in is a lie a dashboard tells
+  confidently.
+
+  Stopping a run that has already ended is a 409 rather than a rewrite —
+  overwriting `finished` with `stopped` would leave the history saying an
+  operator killed a job that in fact completed.
+
+  79 tests, including real child processes read back through `/proc`,
+  because none of pause, resume or stop can be checked by reading the
+  code.
+
+### Security
+
+🔒 Who may call it
+
+  The spec's line is *admin-only unless the server is using the explicitly
+  enabled trusted LAN/Tailscale keyless mode*, and there are two tiers
+  because a second opt-in earns the destructive half:
+
+  | | admin key | trusted mode | + partial admin | public |
+  |---|---|---|---|---|
+  | read runs, logs, resources | ✅ | ✅ | ✅ | ❌ |
+  | stop / pause / resume | ✅ | ❌ | ✅ | ❌ |
+
+  Killing six hours of training is not something a device that presented
+  no credential gets to do because it happens to be on the same wifi. A
+  public origin never qualifies for either, whatever the configuration
+  says — `TrustPolicy.allows_keyless` refuses `PUBLIC` before the policy is
+  consulted, so no amount of configuration turns an unauthenticated
+  internet connection into training administration. Every control is
+  audited under `admin`, the same category as rotating a key.
+
+  Presenting an ordinary read key does not *lose* you access you would
+  have had keyless from the same address. "Authenticating made you less
+  trusted than staying anonymous" is a rule people design around by not
+  sending their key.
+
+### Dependencies and Packaging
+
+📦 Item 5. A training run is the longest-lived and least observable thing
+  this package starts: it goes for hours, it is usually launched over a
+  connection that will not survive it, and until now the only way to know
+  how it was going was to read a log.
+
+  **`hypernix.training.monitor`** ✨ — two halves, deliberately separate.
+  `ProgressReporter` is written *by* the trainer: one atomic rewrite of a
+  small JSON file per update, no lock, no append, no fsync, because the
+  reader is a web request that can arrive halfway through an epoch and a
+  half-written status is worse than a stale one. `TrainingMonitor` is read
+  by everything else, and merges what the file says with what is actually
+  running — a crashed trainer leaves a record still claiming to be
+  `running`, and believing it shows a healthy run that has not existed
+  since Tuesday.
+
+  **`train()` reports itself** 🔁 — no caller has to arrange it. The
+  launcher exports `HNX_RUN_ID` and `HNX_LOG_PATH`, so a run started with
+  `hypernix-t1 launch-script ./train.py --name qwen-sft --detach` appears
+  in the dashboard on its own. That mattered more than it sounds: if the
+  id had to be passed by hand, the runs people most want to watch — the
+  detached ones — are exactly the ones that would never appear. The loop
+  catches `BaseException`, Ctrl-C and `SystemExit` included, so an
+  interrupted run is recorded as failed rather than left claiming
+  progress forever.
+
+  **`GET /training/*`** ✨ — runs, one run, its log tail, its checkpoints
+  (with `exists`, because a checkpoint list is used to decide what to
+  resume from and a path that has since been deleted is the case worth
+  knowing), and `/training/resources` for the GPU/CPU/RAM alongside it. A
+  loss curve without utilisation cannot tell you why a run is slow, and
+  that is the question people actually have.
+
+  **`POST /training/runs/{id}/{pause,resume,stop}`** ✨ — SIGSTOP, SIGCONT
+  and SIGTERM to the run's process group. Terminate rather than kill: a
+  trainer that handles SIGTERM gets to write a final checkpoint, and the
+  difference between "stopped at epoch 4" and "lost epoch 4" is the whole
+  value of asking politely first.
+
+  **`hypernix-t1 training`** ✨ — the same thing without a server in
+  between, because the moment you most want to know what a run is doing is
+  usually the moment the API is the thing in trouble. No key check: the
+  controls signal processes this user already owns and the records are
+  files this user can already read, so the access control is the
+  filesystem's. Over the network is where credentials belong.
+
+## 0.72.4.dev6
+
+Release focus: one way to ask about a GPU, whoever made it.
+
+### Added
+
+✨ Item 13, beta 1 of the three or four you asked for: the abstraction and
+  detection, with acceleration to follow.
+
+  `hypernix.system.gpus` is the layer everything else asks. Before it
+  there were **42 places that shelled out to `nvidia-smi` and 12 that knew
+  about `rocm-smi`**, spread over seven modules. That count is the problem
+  rather than a symptom of it — AMD support was not so much missing as
+  unevenly present, and every new panel reimplemented the same parsing and
+  met the same edge cases again.
+
+  ```python
+  from hypernix.system import gpus
+  for card in gpus.detect():
+  print(card.vendor, card.name, card.memory_total_mb, card.framework)
+  ```
+
+  NVIDIA via `nvidia-smi`, AMD via `amd-smi` then `rocm-smi`, in one shape,
+  with `Vendor.framework` giving `cuda` / `rocm` / `mps` / `cpu` so no
+  caller branches on vendor.
+
+### Fixed
+
+🐛 Three things it refuses to get wrong
+
+  **A missing reading is `None`, never 0.** `[N/A]`, `Not Supported` and
+  empty cells all appear in real output. A dashboard that reports an
+  unknown temperature as zero says the card is freezing.
+
+  **`rocm-smi` reports VRAM in bytes** where everything else here uses
+  megabytes. Mixing them makes a panel unreadable and a limit check wrong.
+
+  **It never raises for want of hardware.** No GPU, no driver, no vendor
+  tool, a tool that errors or prints something unexpected — all mean "no
+  cards found". A monitoring panel that crashes on a laptop is worse than
+  one that says the laptop has no GPU. A probe that raises does not take
+  the other vendor's down with it.
+
+  ROCm field names have changed across releases, so each value is looked
+  up through the spellings that have been used: a rename costs that
+  reading, not the card.
+
+🐛 Where it shows up
+
+  `launch-script --gpu 3` is now checked before the job starts — on a
+  two-card machine that used to succeed, and the job would see no GPU and
+  either run on the CPU at a hundredth of the speed or die deep in a
+  framework, hours later, in a log nobody was watching. Deliberately
+  narrow: when *no* cards are visible the index is passed through with a
+  warning, because a container without `nvidia-smi` cannot tell "no GPU"
+  from "no tooling", and refusing there would block a job that would have
+  run.
+
+  `hypernix devices` now shows what the vendor tools see alongside what
+  torch can use, and names a card that is present but unusable — that is a
+  torch build question, not a driver one, and seeing both lists together
+  is what tells you which you are looking at.
+
+  47 tests, driven with real vendor output since there is no GPU in the
+  machine that runs them. The part that goes wrong is never "can we call
+  the tool" but "what do we do with what it said".
+
+## 0.72.4.dev5
+
+Release focus: `hypernix-t1 launch-script`.
+
+### Security
+
+🔒 Items 9, 10 and 11. Closing a laptop is the normal end of a remote
+  working session and should not be the end of a training run.
+
+  ```bash
+  hypernix-t1 launch-script ./train.py --name training-job --detach
+  hypernix-t1 launch-script --status training-job
+  hypernix-t1 launch-script --logs training-job --tail 50
+  hypernix-t1 launch-script --stop training-job
+  ```
+
+  `&` does not solve this. A backgrounded process is still in the shell's
+  process group and still holds the tty, so the SIGHUP that follows a
+  dropped connection reaches it. What survives is a process in its **own
+  session**, which is what `hypernix.system.launcher` creates —
+  `systemd-run --user` where there is a user bus, and a detached wrapper
+  that records the exit status where there is not.
+
+  Everything is on disk under the config directory, so `--status` and
+  `--logs` work from a different SSH session, after a reboot, and whether
+  or not the T1 server is running.
+
+  **Authentication is required** and comes three ways: a key already
+  configured for the machine, `-k`, or `--admin-password`. None of them
+  reaches the job — a key in `argv` is readable by every user on the box
+  through `ps`. Job records store environment **names only**, because the
+  values are the caller's environment and several of them are credentials.
+
+  Flags: `--name --env --cwd --detach --timeout --log-file --priority
+  --gpu --cpu --status --logs --tail --stop --restart --list --json`.
+  `--gpu` sets `CUDA_VISIBLE_DEVICES` and `HIP_VISIBLE_DEVICES` together,
+  since which one a runtime reads depends on where it lands and the job
+  should not have to know.
+
+### Fixed
+
+🐛 Two bugs the tests found
+
+  **The `setsid` binary was the wrong tool.** It forks when it is already
+  a process-group leader and then exits, so the pid recorded belonged to a
+  process that had already gone — and `--status` reported *unknown* for a
+  job running perfectly well. `Popen(start_new_session=True)` calls
+  `setsid(2)` in the child directly: same new session, and the pid we
+  actually want.
+
+  **`nargs=REMAINDER` swallowed the flags.** The documented form is
+  `launch-script ./train.py --name training-job --detach`, and REMAINDER
+  handed `--name training-job` to the script, silently naming the job
+  after the filename. Flags after the path now reach the CLI; the script's
+  own arguments go after a `--`.
+
+  33 tests, the first of which launches from a separate process, kills it,
+  and checks the job is still running — the only one that proves the point.
+
+## 0.72.4.dev4
+
+Release focus: trusted-network mode.
+
+### Changed
+
+🔁 Items 3 and 14. An origin on the LAN or a confirmed tailnet may connect
+  without a key **when the administrator turns that on**, and a public
+  origin never can, however the server is configured.
+
+  ```
+  T1_TRUSTED_NETWORK=1                     # off by default
+  T1_TRUSTED_NETWORK_PARTIAL_ADMIN=1       # a second, separate opt-in
+  ```
+
+  Or at install: `install-t1.sh --trusted-network`.
+
+### Security
+
+🔒 What a keyless caller gets
+
+  Read only. `--trusted-network-partial-admin` adds write — and never
+  `KeyScope.ADMIN`, so nothing an admin key exists to gate is reachable
+  without one. "Partial administrative functionality" was the phrase in
+  the request, and the partial part is load-bearing. The context carries
+  no key material either: there was no credential, and recording a
+  plausible-looking one would invent evidence of an authentication that
+  never happened.
+
+🔒 Three things that would each have been a hole
+
+  **`--yes` cannot enable it.** `ask_yes_no` answers every confirmation
+  with yes, which is right for *"are you sure"* and wrong for the one
+  question that lowers an authentication requirement — an unattended
+  install would have come up serving the LAN without a key and nobody
+  would have chosen it. It takes `--trusted-network`, or a person.
+
+  **The reverse-proxy trap.** nginx or caddy on the same host makes every
+  request in the world arrive from `127.0.0.1`, which is the *most*
+  trusted origin here. An operator enabling keyless LAN access behind an
+  unconfigured proxy would have published it to the internet while
+  believing it reachable only from their sofa. A forwarded header from a
+  peer that is not a configured trusted proxy now collapses the origin to
+  public — failing closed, since a direct client sending a junk header
+  only denies itself.
+
+  **A bad key is not "no key".** The keyless path runs only when the
+  request brings no credential at all. If a failed key fell through to it,
+  revoking a key would stop working from the LAN, which is the opposite of
+  what revoking means.
+
+🔒 Found while building it
+
+  `_extract_credential` *raises* on a missing Authorization header, so the
+  keyless check — written after it — could never run. Every origin got a
+  401 with the mode on. The check moved above it; the credential path is
+  untouched.
+
+  27 tests, most of them the boundary rather than the feature.
+
+## 0.72.4.dev3
+
+Release focus: one answer to "where did this come from".
+
+### API Changes
+
+🔗 Third increment, item 17's shared component for items 1, 3, 4 and 14.
+  0.72.4 lets a LAN or tailnet connection act without a key, and that is
+  only safe if *"from the LAN"* is a fact about the connection rather than
+  a claim the connection makes. `hypernix.system.nettrust` is the single
+  place that decides it — the T1 API, Waiter and the installer had three
+  different notions of "local" between them.
+
+  **The peer address is the evidence.** `X-Forwarded-For` is set by
+  whoever is talking to you; a server that believes it has turned keyless
+  LAN access into keyless access for anyone who can spell a header. It is
+  read only when the immediate peer is a proxy the administrator listed,
+  and then only the hop that proxy added — everything to its left came
+  from the client. The default is no trusted proxies, so by default no
+  forwarded header is read at all.
+
+  **A tailnet address is a candidate, not a conclusion.** 100.64.0.0/10 is
+  shared address space, so anything on a LAN can number itself 100.x and
+  route to the server. A tailnet origin is confirmed by asking the local
+  tailscaled who owns it (`tailscale whois`); unconfirmed is treated as
+  public. That is what makes knowing the endpoint insufficient, which item
+  3 asked for explicitly.
+
+  **Public is never keyless.** The refusal lives in the check as well as
+  in the constructor, so a hand-built policy cannot express it either.
+
+### Documentation
+
+📚 A bug this nearly shipped
+
+  The obvious implementation of "is it on the LAN" is
+  `ipaddress.is_private`. That is much broader than RFC 1918: it is true
+  for the documentation ranges (192.0.2/24, 198.51.100/24, 203.0.113/24),
+  for 0.0.0.0/8, for benchmarking and reserved space — and for 100.64/10
+  itself. Every one of those would have been LAN, and therefore eligible
+  for keyless access, despite being on nobody's network.
+
+  Found because a test used 203.0.113.9 as an example of a public address
+  and got back `lan`. The ranges are spelled out now, and the six
+  addresses `is_private` gets wrong are a test that asserts they *are*
+  `is_private` before asserting we classify them public — so it cannot
+  quietly stop proving anything.
+
+  38 tests, most of them about the ways a public client could try to be
+  mistaken for a local one.
+
+## 0.72.4.dev2
+
+Release focus: the registry the server actually reads.
+
+### Added
+
+✨ **`models.jsonl`.** One entry per line, which is how anything writes a
+  registry incrementally — and a truncated final line, the shape a
+  half-flushed append takes, costs only that line.
+
+### Changed
+
+🔁 Second increment of 0.72.4, item 6/7: *"Waiter does not properly see the
+  automatically indexed model registry."*
+
+  `waiter models` asks the server, and the server reads a file — so that
+  report is never about Waiter. It is about which file was opened and what
+  happened when the file was not perfect. Three separate failures, each
+  reachable from an ordinary setup.
+
+### API Changes
+
+𖢥 **The server never looked for it.** With no `T1_MODEL_REGISTRY_PATH`
+  the loader went straight to the shipped example seed. So `hypernix-t1
+  index` would write a correct `models.json` and `waiter models` would
+  list entries the seed file itself documents as *not real*, with nothing
+  anywhere connecting the two. `discover()` now searches the config
+  directory, `~/.hypernix/t1api`, `./hypernix/models` and the working
+  directory; the indexer writes to the file the server will read, and says
+  "restart it" instead of naming a variable that is no longer needed. An
+  explicit `T1_MODEL_REGISTRY_PATH` still wins.
+
+### CLI and UX
+
+🛡️ Two shapes people actually write are accepted rather than refused
+  with a type error: a single entry object, and `{"models": [...]}`. The
+  installer template's `_comment` stub is skipped rather than reported.
+
+### Fixed
+
+𖢥 **A file being written was a crash.** The registry is produced by a
+  different process, so the server opens it mid-write in the normal course
+  of things — and a half-flushed file raised `JSONDecodeError` out of
+  startup. Reading is now tolerant and never raises.
+
+𖢥 **One bad entry discarded every good one.** `ModelEntry.from_dict`
+  raises `KeyError` on a missing required field, and that killed the whole
+  load: a single typo took every other model with it, leaving an empty
+  list and no cause. Bad entries are skipped and named; the rest load.
+
+## 0.72.4.dev1
+
+Release focus: HyperLink says why it cannot reach a server.
+
+### Changed
+
+🔁 First increment of 0.72.4. Reported from a real iPhone: three addresses
+  tried, three failures, and none of the messages named anything the
+  reader could act on.
+
+### Security
+
+𖢥 **The three addresses that cannot work now say so before the
+  request.** iOS reported them as:
+
+  | typed | shown |
+  |---|---|
+  | `127.0.0.1:8000` | *Could not connect to the server.* |
+  | `100.109.195.71:8000` | *…App Transport Security policy requires the use of a secure connection.* |
+  | `http://…ts.net:8000` | the same ATS message |
+
+  The first reads as though the PC is down; it is the phone's own
+  loopback, and nothing on the PC could ever answer it. The other two are
+  about the phone rather than the server, are identical to each other, and
+  name no address that would work.
+
+  `AddressCheck.advice(for:)` judges the address before a request is sent
+  and explains each case in its own terms — loopback is this device;
+  a bare Tailscale IP cannot be excepted at all because **ATS exceptions
+  match domain names and never IP literals**, so the MagicDNS name is the
+  fix rather than a setting; a public `http://` host is refused as
+  designed. `FailureAdvice.explain` translates what still comes back from
+  the network — a refused connection now points at `hypernix-t1 status`,
+  a timeout at `tailscale status`.
+
+  The `ts.net` exception itself has been in `Info.plist` since the Sept 1
+  fix, so a MagicDNS name works on a current build; the report came from
+  an older one.
+
+### Fixed
+
+𖢥 **The app reported a version CI had not built.** `project.yml` set
+
+  ```yaml
+  CFBundleShortVersionString: "1.0.26"
+  ```
+
+  as a literal. `ios/scripts/app_version.py` computes the version from
+  `T1_VERSION` — the whole point being that app and server quote the same
+  string in a support question — and `ios.yml` passes it to xcodebuild as
+  `MARKETING_VERSION`. Overriding a build setting cannot change a plist
+  key that never referenced it, so every build shipped saying `1.0.26`
+  whatever CI computed. `CFBundleVersion` on the next line already had
+  `$(CURRENT_PROJECT_VERSION)`; this key simply never got the same
+  treatment. It does now, the fallback default is synced, and a test keeps
+  the two from drifting — a default nobody checks is what went stale.
+
+## 0.72.3.post7
+
+Release focus: "it is installed already", and it was.
+
+### Dependencies and Packaging
+
+𖢥 **`hypernix-t1 start` told people to run a command that could not
+  work.** `python_bin` prefers the private venv `install-t1.sh` creates,
+  so the check runs against `~/.hypernix/t1api/venv/bin/python`. The
+  message was:
+
+  ```
+  ✗ hypernix[t1api] is not installed for ~/.hypernix/t1api/venv/bin/python.
+  Run: pip install 'hypernix[t1api]'
+  ```
+
+  A bare `pip` in the operator's shell installs into whatever *their*
+  shell resolves — not that venv. So the instruction can be followed
+  correctly, report a successful install, and leave the check failing,
+  any number of times, with nothing on screen explaining the
+  disagreement. The interpreter was named in the diagnosis and left out
+  of the remedy, which is the one place it mattered.
+
+  The remedy now carries it:
+
+  ```
+  ~/.hypernix/t1api/venv/bin/python -m pip install 'hypernix[t1api]'
+  ```
+
+  and when the package *is* importable somewhere else, that is said by
+  name — because "it is installed already" is a true statement about a
+  different interpreter, and nothing on screen used to acknowledge it.
+  Deleting the venv, so `hypernix-t1` falls back to your own interpreter,
+  is offered as the other way out.
+
+🛡️ **A missing package and a missing extra no longer wear the same
+  message.** They need different fixes, and installing the wrong one of
+  the two fixes nothing. `hypernix` importable without `hypernix.t1api`
+  now says the `[t1api]` extra is what is absent, and that the server
+  needs the fastapi and uvicorn it pulls in.
+
+## 0.72.3.post6
+
+Release focus: `hypernix-t1 index`, and three more from the field.
+
+### API Changes
+
+✨ **`hypernix-t1 index` builds the model registry from the models.** The
+  registry is the only place the T1 API looks up what a model can do, and
+  every route calls `ModelRegistry.require` rather than trusting a
+  client-supplied `model_id` — right design, and it also means a server
+  with an empty registry serves nothing. Filling it meant the installer's
+  one-entry template of placeholders, or hand-written JSON. Both ask an
+  operator to transcribe numbers that are already in the files, and a
+  context limit mistyped there is not caught anywhere; it is simply the
+  number the server enforces.
+
+  ```bash
+  hypernix-t1 index                      # ./hypernix/models -> models.json
+  hypernix-t1 index --dir /srv/models --dry-run
+  hypernix-t1 index --refresh            # re-read the measured fields
+  ```
+
+  Architecture, context length and parameter count come from the GGUF's
+  own metadata and tensor table — the parameter count is *summed from the
+  tensors*, so three quantisations of one model report the same figure and
+  none of them is read off a filename. Pricing, plan and priority are
+  policy, not measurements, so they come from flags. A value the file does
+  not carry is defaulted **and reported as assumed**, rather than
+  presented as though it had been read.
+
+  An entry you have already edited is left alone; `--refresh` re-reads
+  only the measured fields and still leaves pricing, plan, priority,
+  status and notes as you set them. An unchanged registry is not even
+  rewritten — re-indexing is what running the command twice does, and
+  touching the mtime is what a file watcher keys on. An unreadable file is
+  reported and the walk continues, with a non-zero exit because the
+  registry written is missing a model someone put there on purpose.
+
+### Fixed
+
+🐛 **`hyprslug-headers serve <directory>` was refused.** LM Studio's
+  layout is `<root>/<publisher>/<name>/<name>.gguf` — which is exactly
+  what `install-model` writes, so the directory is what tab-completion
+  stops at and what gets pasted. These commands would not accept the thing
+  they had just created. A directory holding one GGUF now resolves to it;
+  one holding several is refused *with the list*, because choosing would
+  be choosing which model was meant.
+
+𖢥 **`waiter serv -A` gave a bare errno when the server was not
+  running.** *"Could not reach http://…:8000/auth/t1/validate: [Errno 111]
+  Connection refused"* is accurate and answers none of the reader's
+  questions — and the machinery to answer them already existed in
+  `waiter.diagnose`. It was wired into exactly one of a dozen
+  `T1ClientError` handlers, and `serv -A`, the first command anyone runs
+  after an install, was one of the eleven that got the bare errno. All of
+  them now route through it, and the remedy leads with `hypernix-t1
+  start` rather than a shell script the reader may not have.
+
+## 0.72.3.post5
+
+Release focus: three things found by running the commands on a real machine.
+
+### CLI and UX
+
+🛡️ **A tier that contradicted its filename was reported without
+  remark.** `install` printed `IQ0.5_XXXL   Qwen3.8-2B-IQ0.9_L.gguf`. Both
+  halves are honest — the tensors are type 202, the name is a label
+  someone typed — but side by side with no comment they leave the reader
+  to notice that the model they believe is 0.9-bit is half-bit. `scan`
+  now carries `named_tier` and `misnamed`, and both reports say so.
+
+### Fixed
+
+🐛 Reported from an actual install, not from the suite. None was a subtle
+  failure of the thing under test; all three were the code being
+  confidently wrong *around* a correct result.
+
+🛡️ **`hypernix devices` said "torch is not installed" on a machine that
+  had it.** The probes caught `ImportError` and assumed absence. Sending
+  someone to install what they already have is worse than saying nothing;
+  they now distinguish a missing module from a failed link and report
+  which.
+
+🐛 **The runtime error was reported against the model's filename.**
+  `model.gguf: PyTorch is installed but cannot load libcusparseLt.so.0`
+  reads as a broken download. `HnxEnvironmentError` (a subclass, so every
+  existing `except HnxRunError` still catches it) separates "this machine
+  cannot" from "this model cannot", and the server prefixes only the
+  second with the path.
+
+𖢥 **`serve` announced its endpoint before the model loaded.** The
+  `http://127.0.0.1:1234/v1 (ctrl-c to stop)` line was printed above the
+  `serve()` call, so a failed load left a URL on screen that nothing was
+  ever listening on, directly above the traceback saying so. `serve()` now
+  takes an `on_ready` hook called after the model is loaded *and* the port
+  is bound, and the CLI announces from there.
+
+𖢥 **The release workflow published a version older than the tree.**
+  `v0.72.3.post2` was dispatched against a tree already at `0.72.3.post4`
+  and rewrote all three version strings backwards, so main claimed a
+  release predating its own code and an installed copy could not be
+  identified from its version. The workflow writes whatever version it is
+  handed; it now refuses one that is not greater than the tree's, with
+  `allow_downgrade` for a deliberate rollback. Checked against the
+  dispatch that caused this, a same-number re-release, an ordinary bump,
+  a prerelease, and the documented `0.70.6-2` rebuild form.
+
+### Dependencies and Packaging
+
+𖢥 **A traceback where a sentence belonged.** `hyprslug-headers serve` on
+  a box whose torch was a CUDA build missing an NVIDIA runtime wheel ended
+  with
+
+  ```
+  ImportError: libcusparseLt.so.0: cannot open shared object file
+  ```
+
+  and eleven frames of stack, from a command that was about to load a
+  GGUF. Nothing in that says what to do, and the file it names is one
+  nobody installs on purpose. `hnxdevice.import_torch()` now turns it into
+  a statement of the situation — torch is installed, one of the NVIDIA
+  runtime wheels a CUDA build depends on is not — with both ways out: the
+  CPU build (smaller, no such dependencies, and what a machine serving a
+  0.5-bit model usually wants) or the specific `nvidia-*` package that
+  carries the missing library. Every lazy `import torch` on the load path
+  goes through it.
+
+## 0.72.3.post4
+
+Release focus: the accelerator path, actually on an accelerator.
+
+### Fixed
+
+𖢥 **`--hnx-device auto` was broken on every accelerator, and the whole
+  local suite passed.** `_rope` built its inverse-frequency table with
+  `torch.arange(...)` and no `device=`. On a CPU run that is correct by
+  accident, because the default device *is* the CPU; anywhere else the
+  table lands on the host, the positions land on the card, and the first
+  forward pass ends with *"Expected all tensors to be on the same device,
+  but found at least two devices, mps:0 and cpu!"*.
+
+  Not an MPS quirk. CUDA and XPU would have failed identically on the first
+  token — `auto` is the default, so this was the default path. The macOS CI
+  runners are the only machines in the matrix with a device, so they were
+  the only jobs that could see it: twelve failures there, green on Linux
+  and Windows, green locally, on the same commit.
+
+𖢥 **Seeded sampling raised instead of sampling, off the CPU.**
+  `generate_tokens` seeds a `torch.Generator(device="cpu")` and
+  `torch.multinomial` refuses a generator whose device differs from the
+  tensor's. The probability vector is now moved to the CPU rather than the
+  generator to the device — which also means a seed picks the same draws on
+  every backend, where a per-device generator would not.
+
+𖢥 **Every Windows test job was red on a locale, not a bug in the code
+  under test.** `install-t1.sh` carries 476 non-ASCII bytes — em dashes,
+  tick marks — and prints them. `Path.read_text()` and
+  `subprocess.run(text=True)` both decode with
+  `locale.getpreferredencoding()`, which is UTF-8 on Linux and macOS and
+  **cp1252** on Windows, so twelve tests that drive the shell scripts
+  raised *"'charmap' codec can't decode byte 0x8f in position 2607"* there
+  and passed everywhere else. Every read, write and capture in the four
+  shell-script test modules now names `encoding="utf-8"`, and a source-level
+  audit keeps it that way — a locale is not observable from inside a
+  passing test, so that is the only place the property lives.
+
+  The same shape as the device bug above: an implicit default that happens
+  to be correct on the machine the tests were written on. Noted while
+  fixing it, not fixed here: `src/` still has a dozen bare `read_text()`
+  calls on JSON and config files, which is the same latent issue for
+  Windows *users* rather than for CI. That is a separate change.
+
+🐛 **`test_a_machine_with_no_user_bus_says_what_to_do` failed on every
+  runner.** It inferred "took the no-bus branch" from a non-zero exit code.
+  Runners have a working user bus *and* still exit non-zero, because the
+  test redirects `HOME` and systemd cannot see a unit written there — a
+  third case the guard did not have. It now probes `systemctl --user
+  show-environment` directly, which is the condition it actually cares
+  about: skips on a runner, asserts in a container.
+
+### Tests
+
+🔧 **A placement bug is invisible on a one-device machine**, so no number
+  of ordinary tests could have caught either. `tests/test_hnx_device_placement.py`
+  runs the rotation against `device="meta"` — tensors that allocate nothing
+  but still carry a device identity torch enforces — which turns "would
+  break on MPS" into an assertion that fails on a CPU-only box. Beside it,
+  an audit parses the runtime modules and requires every `torch` tensor
+  factory to pass `device=` (and every `from_numpy` to be followed by a
+  `.to(...)`), because that is the class the one line belonged to. Four of
+  the eleven fail on the pre-fix source; the rope one was the only naive
+  factory left in either module.
+
+🐛 **A heredoc in `install-t1.sh` ran commands while writing `.env`.**
+  Codacy's shellcheck reported two backticks as "use `$(...)` instead of
+  legacy backticks", which read like a style nit and was not: the `.env`
+  heredoc is unquoted so it can expand `$BIND_HOST`, so a backtick in its
+  body is command substitution. Two comment lines describing where the
+  server listens each *ran* `hypernix-t1 start` while the config was being
+  written. Fixed to single quotes, with a note in the file saying why a
+  backtick cannot appear there, and two regression tests — a heredoc parser
+  that tells `<<'EOF'` from `<<EOF`, and an end-to-end check with a
+  marker-touching shim named `hypernix-t1` on `PATH`.
+
+## 0.72.3.post3
+
+Release focus: CUDA, ROCm, Metal, Intel; and the Vulkan answer.
+
+### Added
+
+✨ **`hyprslug-headers install-model`** puts a loadable copy where LM
+  Studio and Bionic look — `<root>/<publisher>/<name>/<name>.gguf`, the
+  layout both scan. What lands there is a wrap, because a sub-bit GGUF is
+  not something their llama.cpp can open, and the command says so:
+  "installed into LM Studio" is exactly the phrase under which someone
+  would assume the 0.9-bit file itself now works there. An already-upstream
+  GGUF is copied unchanged rather than re-quantised.
+
+📚 New wiki page: [Devices](Devices.md).
+
+### CLI and UX
+
+🛡️ **Half precision is not automatic.** GP102/GP104 run FP16 at 1/64 of
+  their FP32 rate. A rule as reasonable-looking as "half on CUDA, float on
+  CPU" finds it and makes a GTX 1080 dramatically slower while appearing to
+  optimise it, so `default_dtype()` returns float32 below `sm_70` and the
+  device listing says why.
+
+### Fixed
+
+✨ **The sub-bit runtime runs on accelerators, and the packed bytes stay
+  packed there.** `hypernix.models.hnxtorch` is a torch rewrite of both
+  decoders in ops every backend supports — shifts, masks, gathers — so the
+  same code runs on CUDA, ROCm, MPS and XPU. It is asserted *bit-identical*
+  to the numpy decoders, not close: integer unpacking followed by one
+  multiply has no rounding to hide behind.
+
+  *(The decoders were bit-identical, and were tested as such. The forward
+  pass around them had never run on an accelerator in CI when this shipped
+  — see `post4` for what that hid.)*
+
+  The arrangement is the point. The obvious port — decode with numpy, then
+  `.to("cuda")` — is the worst one available: it pushes **expanded
+  float32** across PCIe every forward pass, 34× the bytes a 0.9-bit tensor
+  occupies, every token, to save nothing. The packed form is the small one,
+  so it is uploaded once and decoded on the card. A 7B at `IQ0.9_L` puts
+  about 800 MB on the GPU instead of the 28 GB a host-side decode would
+  move per pass — and instead of the 14 GB its float16 weights would need,
+  which is what lets it fit on a card that could not hold them.
+
+✨ `--hnx-device` on `generate` and `chat`, `--device` on
+  `hyprslug-headers serve`. `auto` falls back to the CPU, which cannot be
+  absent; a *named* device that is present but unusable raises with the
+  reason and the remedy rather than being silently downgraded, because
+  someone who typed `--device cuda` wants to know why they did not get it.
+
+### Dependencies and Packaging
+
+✨ **`hypernix devices`**, and the sm_61 trap it exists for. A GTX
+  1060/1070/1080, Titan Xp or P40 is compute capability 6.1, and recent
+  torch wheels build for sm_75 and up. `torch.cuda.is_available()` returns
+  **True** on those cards; the driver is fine, memory reports correctly,
+  and the first kernel launch fails with *"no kernel image is available for
+  execution on the device"* — which reads like a broken driver and is
+  actually a wheel that was never built for the card. The probe compares
+  the device's capability against `torch.cuda.get_arch_list()` and names
+  the wheel to install (`cu118` for Pascal and Maxwell). Unusable backends
+  are listed *with the reason*, because "CUDA is not available" and "CUDA
+  is available and has no kernels for your card" are different problems
+  with different fixes.
+
+🛡️ **Vulkan is answered, not faked.** PyTorch's Vulkan backend is not in
+  any released wheel and implements vision ops rather than a transformer;
+  reporting it as available because an import succeeded would be a lie with
+  a long debugging tail. `--device vulkan` refuses and gives the route that
+  does work — llama.cpp's Vulkan runtime, which is what LM Studio uses on
+  AMD, Intel and older NVIDIA cards, reached by converting the model with
+  `hyprslug-headers wrap`.
+
+## 0.72.3.post2
+
+Release focus: new quant types, hyprslug-headers, tvtoppro.
+
+### Added
+
+✨ **`tvtoppro`** — tvtop++'s stats under a btop++ presentation, with
+  themes. Not built on cctvtop: `TVTopPlusPlus` is a stat source held as an
+  attribute, and everything drawn is new. Braille graphs at two samples per
+  cell across and four levels down, meters whose every *cell* takes its
+  colour from its own position along the ramp, titles in the box border,
+  and btop's own `.theme` files loading unchanged — including the `#XX`
+  greyscale shorthand, which read as a truncated hex triplet turns every
+  neutral in a real theme dark red. Seven themes built in and exported to
+  `examples/tvtoppro/`. [TvTopPro](TvTopPro.md).
+
+📚 Example configs under `examples/tvtoppro/` and
+  `examples/hyprslug-headers/`, and three new wiki pages: LowBit,
+  HyprSlug-Headers, TvTopPro.
+
+### API Changes
+
+✨ **`hypernix hyprslug-headers`** — `install`, `status`, `scan`, `show`,
+  `stamp`, `wrap`, `serve`. Three mechanisms, and the help leads with which
+  is which, because no header makes a stock llama.cpp read a 0.5-bit
+  tensor: the type id at 200 is how the loader notices, but the missing
+  dequantisation kernel is why it stops, and a header claiming a type
+  llama.cpp knows would load and produce noise. `stamp` writes the block
+  geometry into the file's own metadata so any loader can be taught to read
+  it; `wrap` re-encodes to a stock type, verified against the reference
+  `gguf` reader; `serve` keeps the tier and puts hnxrun behind
+  `/v1/chat/completions` so LM Studio and Bionic can reach a 0.9-bit model
+  without converting it. Standard-library `http.server`, no FastAPI.
+  [HyprSlug-Headers](HyprSlug-Headers.md).
+
+### CLI and UX
+
+🛡️ **`install-t1.sh` refuses to clobber an existing `.env`.** Overwriting
+  it regenerates the token secret, which invalidates every key already
+  minted against it — a failure that surfaces later as "the server rejects
+  my keys" rather than there as "the file was replaced". `create_minimal`
+  already refused; `--force` overrides both.
+
+### Fixed
+
+✨ **Five more quant types**, in two families. `IQ0.25_UXL` and `INT1`
+  extend the sign-and-scale machinery and needed no new arithmetic: `INT1`
+  is its `k == g` case — every sign kept, only the magnitude lost — and
+  `IQ0.25_UXL` is the far end, three signs of every sixteen in 8 bytes per
+  256 weights, which is **0.25 bits per weight exactly**. About 59% of
+  signs survive there, against the 50% a coin gets, and the tier says so.
+
+  `INT4` and `FP2` are new, in `hypernix.quant.lowbit`: a fixed codebook,
+  one FP16 block scale, a code per weight. `FP2`'s four levels are ±1 and
+  ±2 — one sign bit and one exponent bit, no zero, because a 2-bit type
+  *with* a zero needs five levels and three bits. The rate is the name plus
+  the scale (`INT4` is 4.062 bpw, not 4), which is llama.cpp's own
+  convention — `Q4_0` is 4.5 — and is stated rather than left to a file
+  size. Full table in [LowBit](LowBit.md).
+
+𖢥 **The FP2 scale search, which was not the original plan.** The first
+  draft fitted the scale to each block's peak, the way `Q4_0` does.
+  Measured on Gaussian weights that gave FP2 a relative error of 0.944 —
+  *worse than one bit*, which scores 0.599 at half the size. With four
+  levels and the scale pinned to a 3.5σ outlier, the levels land at 1.75σ
+  and 3.5σ and almost everything rounds to the larger of two numbers that
+  are both too big. A 2-bit format that loses to a 1-bit format is not a
+  format. A 17-step search fixes it: FP2 0.944 → 0.396, INT4 0.113 → 0.104,
+  and it is cheap because the codebook is fixed — nearest-level is a
+  `searchsorted` against midpoints, not an argmin over a broadcast.
+
+🐛 **`Q4M` resolves to `Q4_K_M`.** Squashing separators does not get there
+  — the missing character is the `K`, not an underscore — so it fell
+  through to "unknown target", which is a confusing way to reject the most
+  common request there is. `Q3L`, `Q5M`, `Q4S` and friends too.
+
+𖢥 **`wrap` reported success on a file it had not converted.** hyprslug's
+  `_readable()` did not list the extension types, so `_should_quantize`
+  declined every tensor with "source type 200 is one hyprslug cannot read"
+  and copied it verbatim — producing a `Q2_K`-labelled file still full of
+  type-200 tensors, refused by exactly the loader the command exists to
+  satisfy. hyprslug now reads the extension types as a source, which also
+  makes plain requantisation *from* a sub-bit model work, and `wrap`
+  re-reads its own output and deletes it rather than shipping one that
+  still carries an extension type.
+
+🐛 **tvtoppro rows are truncated as well as padded.** At 60 columns the
+  "no nvidia-smi here" line is longer than its box, and an over-long row
+  does not wrap tidily — it pushes the right border onto the next line and
+  every box below it looks broken. Caught by asserting every row of a frame
+  is exactly the requested width, at four widths under all seven themes,
+  measured with Rich rather than counted: the rows carry colour tags that
+  print as nothing and braille that prints as one cell each, so `len()` is
+  wrong in both directions.
+
+𖢥 **`hypernix-t1 create --host/--port` failed from a checkout.** They are
+  in `hypernix-t1 --help`, but from a checkout `create` execs
+  `install-t1.sh`, which had never heard of any of them and died with
+  "Unknown option: --port" — so the documented interface failed on exactly
+  the machine a developer is sitting at. The installer takes them now.
+
+𖢥 **`hypernix-t1 start` started the server somewhere else.**
+  `install-t1.sh` put the bind address only into `start-t1.sh`, so
+  `hypernix-t1 start` found no `T1_HOST` or `T1_PORT`, fell back to its own
+  `127.0.0.1:8000` default, and started uvicorn on a different port from
+  the one the installer had configured — after which `status`, `logs`,
+  `key` and `test` all pointed at an address nothing was listening on. The
+  installer writes both keys now, so both entry points agree.
+
+🛡️ **`hypernix-t1 autostart` explains a missing user bus.** `systemctl`
+  being on PATH is not the same as there being a session to talk to; in a
+  container, over plain ssh and on WSL it failed with systemd's bare
+  "Failed to connect to bus: No medium found". It now names `enable-linger`
+  and the `--write-only` flag, which installs the unit for a session that
+  does not exist yet — and which lets the ExecStart-is-absolute test
+  actually run instead of skipping everywhere CI does.
+
+### Dependencies and Packaging
+
+𖢥 **`stamp` corrupted `general.alignment`.** Copying metadata key by key
+  with `set_metadata` re-infers a GGUF type per value, and nothing about
+  the number `32` says UINT32 rather than INT32. The reference reader
+  rejected the result with "Bad type for general.alignment field" — a file
+  this package could still read and nothing else could.
+
+## 0.72.3.post1 ("pt 4")
+
+Release focus: the sub-bit models actually run.
+
+### Changed
+
+🔁 *Released as `0.72.3.post1`. The heading said only "pt 4", so anyone
+  looking up what the released version shipped found nothing under that
+  name — the release commit bumps the version files and does not write
+  here.*
+
+🔁 **One chat path, not two.** `chat_with_gguf` had a separate
+  `_chat_with_hnx_runtime` branch that reloaded the model on every turn.
+  Both backends now go through `load_gguf(...).chat(...)`, and
+  `hnxrun.continue_text()` is the text-in/text-out half of `generate_text`
+  that takes an already-loaded model, so nothing has to reload to produce
+  a second sentence.
+
+### API Changes
+
+✨ **And fast enough to be worth running.** Sub-bit memory that costs 30×
+  the time is a different way of not shipping the tier. The packed matmul
+  no longer widens a weight to one float per element at all: a dropped
+  sign repeats its group's last stored one, so the group's contribution
+  factors, and folding `x` to match lets the dot product run against the
+  `kept` signs alone. Decoding those signs is one gather off an 8 KiB
+  byte→signs table, replacing `unpackbits` plus a uint8→float32
+  conversion plus the `2b - 1` mapping. Measured on a 15.8M-parameter
+  llama, best of eight interleaved runs:
+
+  tier          disk   resident   bpw    ms/token   vs float32
+  float32         --    63.2 MB  32.000       2.7         1.0x
+  IQ0.9_L    1.87 MB    1.87 MB   0.947      16.4         6.2x
+  IQ0.75_M   1.63 MB    1.62 MB   0.822      15.6         5.9x
+  IQ0.5_XXXL 1.13 MB    1.13 MB   0.572      10.6         4.0x
+
+  56× the memory for 4× the time, and the tier that saves the most memory
+  is now the fastest, because the work is proportional to the signs
+  actually stored. `load_model(..., cache_bytes=N)` is the dial in
+  between: weights are pinned largest-first, since every forward pass
+  touches every tensor once and the only question is how much decode work
+  a byte of budget buys.
+
+✨ **`--cache-bytes` on `generate` and `chat`.** The memory-for-speed dial
+  existed in `load_model` and was unreachable from the command line, which
+  is the same as not existing. Sizes are human (`512M`, `2G`, a plain byte
+  count) and one it cannot read is refused rather than quietly becoming
+  zero — a memory limit that does not hold looks exactly like the tool
+  ignoring the flag. It reaches the sub-bit runtime only; llama.cpp has its
+  own answer to how much to keep resident and this does not guess on its
+  behalf.
+
+🐛 **`--json` now means JSON on `--list-tiers`.** Both quantiser CLIs
+  returned from the listing branch before ever looking at `args.as_json`,
+  so `steamroller --list-tiers --json` printed the human table. A script
+  that asked for machine output got prose and found out at `json.loads`. A
+  flag that is accepted and ignored is worse than one that is rejected,
+  because the rejection is visible.
+
+### Fixed
+
+𖢥 **Sub-bit in memory, not only on disk.** The first version dequantised
+  every tensor to float32 at load time, so a model that was 0.81 bits per
+  weight on disk was 32.000 resident — larger than the F16 model the
+  quantisation was made from, and every byte the tier existed to save
+  handed straight back. Everything worked; the numbers were just gone.
+  `PackedWeight` now holds the on-disk bytes and unpacks inside the
+  matmul, and an embedding lookup unpacks only the rows the prompt
+  touches. Resident cost went 32.000 → 0.572 bits per weight.
+
+𖢥 **`hypernix chat` on a sub-bit model crashed on the first message.**
+  `load_gguf` routed these files to hnxrun correctly and handed back a bare
+  `LoadedModel`, which has no `.chat()` — so the REPL loaded the model,
+  printed nothing, and died with `AttributeError: 'LoadedModel' object has
+  no attribute 'chat'`. Every test passed: they asserted that `_run_chat`
+  *mentions* `load_gguf` and that the routing does not reach llama.cpp,
+  and both were true of the broken version. `load_gguf` now returns an
+  `HnxSession` speaking the same `.chat()` as every other backend, so the
+  REPL's stated intent — load once, not per turn — holds for the tier
+  whose load actually costs something, and the tests run a real sub-bit
+  model through `cli.main()` instead of reading the source.
+
+✨ **`--quantize-embeddings` / `--quantize-output` on `hypernix
+  quantize`.** A sub-bit tier leaves `token_embd` and the output head in
+  float, for a good reason — at half a bit the embedding table is the
+  model — but with a size consequence nobody chose: on a 7B the untouched
+  pair is most of the resulting file, so a tier called `IQ0.5_XXXL`
+  produced something nearer 1.7 bits per weight than 0.5. The policy was
+  reachable from `hyprslug.quantize_gguf` and from no command line at all,
+  which meant the headline number in the docs could not be obtained with
+  the tool. On the toy model in the tests: 10.301 bits/weight by default,
+  0.657 with both flags. The default is unchanged; it is now a choice.
+
+### Dependencies and Packaging
+
+✨ **HnxRun: a runtime for the files nothing else will open.** The IQ0.x
+  tiers had been real quantisations since pt 2 — genuinely 0.56 bits per
+  weight, a well-formed GGUF — and completely unrunnable. The type ids sit
+  at 200 and above, deliberately outside anything upstream allocates, so
+  every llama.cpp refuses them by name and the reference reader raises
+  `ValueError: np.uint32(202) is not a valid GGMLQuantizationType`. A file
+  that was correct, 30× smaller, and had nowhere to go.
+
+  `hypernix.models.hnxrun` is the llama-family graph in torch — RMSNorm,
+  RoPE, grouped-query causal attention with a KV cache, SwiGLU, output
+  head — reading every type this package writes. `hypernix generate` and
+  `hypernix chat` route to it for a sub-bit model and still hand upstream
+  quants to llama.cpp, which is better at `Q4_K_M` than this will ever be.
+  The RoPE convention is the part that decides whether this works:
+  llama.cpp's converter *permutes* Q and K so rotation applies to adjacent
+  pairs, and applying the Hugging Face half-split form to those tensors
+  gives a model that loads, runs, and generates confident nonsense.
+
+### Documentation
+
+📚 **Corrected: the logits are not bit-identical.** The wiki claimed the
+  packed and materialised paths produced identical logits. They produce
+  identical *weights* — same bytes, same decoder, and that is asserted
+  exactly — but the fold changes which terms are summed and chunking
+  changes the order, and float32 addition is not associative. The
+  difference is about 5e-7 and the claim was only ever true while every
+  tensor fitted in one chunk, which no real model does. The test now
+  asserts `allclose` on logits and `torch.equal` on the weights, which is
+  the distinction that was being papered over.
+
+## 0.72.3 pt 3
+
+Release focus: hyprslug grows up.
+
+### Added
+
+✨ **Requantising.** A `Q8_0` GGUF is the only copy of the model most
+  people have, and "quantise from the unquantised weights" is advice they
+  cannot take. An already-quantised source is read back through the
+  decoders, and the report names the type it came from — requantising
+  compounds whatever the first pass lost, and that is the operator's call.
+
+✨ **`hnx-imatrix` — the importance matrix, measured.** hyprslug took an
+  imatrix and had no way to produce one, which made the argument advice
+  rather than a feature. Forward hooks on every linear layer accumulating
+  `sum(x²)` per input feature over calibration text — what llama.cpp's
+  tool does, so the numbers mean the same thing. Both formats read and
+  written, decided by content rather than by suffix, so an imatrix from
+  here works in `llama-quantize` and one from the community works in
+  hyprslug. Deriving one from the weights is *not* offered: it is a
+  statistic of the activations, and a weight-derived number is a different
+  quantity wearing its name.
+
+✨ **Dflash2 — a draft model inside the model it drafts for.**
+  Speculative decoding is a free speed-up almost nobody gets, and the
+  reason is logistics: two files that share a tokenizer, and the small one
+  has to come from somewhere. `dflash2 attach` derives one from the base
+  (layers dropped and requantised, first and last always kept) and writes
+  it into the same GGUF under a namespaced prefix. One file, one download.
+  The tokens out are **identical** to the base model's own — a proposal
+  survives only where the base independently chose the same token — so a
+  bad draft costs time and cannot cost correctness. `extract` materialises
+  it for a runtime that wants `--model-draft`; `strip` reproduces the
+  original byte for byte.
+
+### Changed
+
+🔁 hyprslug then separates what llama.cpp's names conflate. `Q4_K` is a
+  block format; `Q4_K_M` is a **mix** — most tensors at `Q4_K`, `attn_v`
+  and `ffn_down` a step wider, the head at `Q6_K`. A table of recipes over
+  the formats, rather than ten more encoders. The mixes are our reading of
+  upstream's policy and say so: llama.cpp picks per layer index as well as
+  per tensor role. What is exact is the encoding of every tensor.
+
+### Fixed
+
+✨ **hyprslug writes the llama.cpp quant types.** "Quantises without
+  llama.cpp" was only true of the tiers nobody was asking for. The sub-bit
+  tiers *needed* their own quantiser — `llama-quantize` has never heard of
+  them — but `Q4_K_M` did not, so the one quantisation everybody actually
+  wants still needed a binary the machine might not be able to build.
+
+  `hypernix.quant.llamaquants` adds `Q4_0`, `Q4_1`, `Q5_0`, `Q5_1`, `Q8_0`
+  and `Q2_K` through `Q6_K`, encoded and decoded in Python. The layouts are
+  exact — every struct matches `ggml-common.h` field for field, and the
+  byte counts are asserted against the table `gguf.py` sizes tensors from,
+  since a block that drifts by one byte turns every later tensor into
+  noise. The scale searches are ports of `make_qx_quants` and
+  `make_qkx2_quants` including the 19- and 21-step searches that do most of
+  the quality work, vectorised over blocks so a 7B model is minutes rather
+  than hours.
+
+𖢥 **`steamroller -hnx Q3_K_L` produced no file at all.** A `quantize`
+  step in hnx mode was skipped outright, because "hnx mode does not run
+  llama-quantize" had been implemented as "hnx mode does not quantise". It
+  writes the file with hyprslug now.
+
+𖢥 **Every real imatrix was being discarded as mismatched.** An imatrix
+  carries one number per input *channel*; hyprslug wanted one per weight
+  and compared the two lengths. It tiles across the tensor's rows now, and
+  still refuses the ones that genuinely do not divide.
+
+𖢥 **gkey printed about one key in three thousand wrong.** The T1/T2
+  special set contains `[` and `]`, and gkey's panels render with rich
+  markup on — so a key whose specials landed on a bracket pair had
+  characters eaten on the way to the screen. The store held the right key,
+  the operator pasted the wrong one, and nothing anywhere said why. Every
+  value that is data rather than markup is escaped now.
+
+### Documentation
+
+📚 [HyprSlug](HyprSlug.md) rewritten for the upstream types, plus new
+  [Imatrix](Imatrix.md) and [Dflash2](Dflash2.md) pages.
+
+### Tests
+
+𖢥 **Windows: a path is a path, not a URL scheme or a shell escape.**
+  `urlparse` read the drive letter of `C:\keys\gkey.jsonl` as a scheme
+  named `c`, so every local `-Con` config was refused for a file sitting
+  right there. `pathfix` recognised its own PATH block by the platform's
+  spelling rather than the shell's, and rewrote it on every single run.
+  Four test suites were asserting against failures they were not about.
+
+## 0.72.3 pt 2
+
+Release focus: T1 v1.0.2026.9.2.1.
+
+### Added
+
+✨ **`gkey create -Con`** takes a key's V1 Server ID and/or SSPKID from a
+  JSONL config — a URL, a path, or a bare IP. JSONL because a fleet config
+  is an append-only log: lines apply in order, later wins, and a malformed
+  line is skipped rather than breaking every key minted after it. It sets
+  identity only, never scopes or expiry: a config source is somewhere else,
+  and possibly someone else.
+
+✨ **`skip_integration`** on the public release: skips both live-server
+  jobs, for a runner outage and not for getting past a red test. The subtle
+  half is downstream — a job that `needs` a skipped job is itself skipped,
+  so the publish jobs run under `always()` and accept the integration jobs
+  at success or skipped, never at failure.
+
+### API Changes
+
+✨ **`steamroller -hnx` and `hnx quantize -hnx`.** Route every step
+  through hyprslug and never look for llama-quantize — not "look and ignore
+  the result": `resolve_binary()` downloads a build when it cannot find
+  one, so a lookup that happens still leaves llama.cpp on the machine. A
+  test replaces it with an assertion. Full llama-type parity in hyprslug is
+  not here yet; asking for an upstream type with `-hnx` says so.
+
+✨ **`/inference/*` — the governed generation surface.** `/bridge/lmstudio/*`
+  hands the caller's model string straight to LM Studio, so the registry,
+  the plan's cascade, the quota and the cost ledger never see the request.
+  Correct for a window onto someone else's server, and it left the one path
+  that spends money outside every rule the rest of the API enforces. Six
+  endpoints — chat, completions, chat/stream, embeddings, tokens, backends
+  — apply all of them. Fallback is opt-in and the response says which model
+  really ran; the estimate sizes a request and the backend's reported usage
+  bills it; streaming runs every gate before the first byte because a 429
+  cannot be sent once the response has begun.
+
+### Fixed
+
+𖢥 **The IQ0.x tiers never quantised anything.** steamroller has
+  advertised `IQ0.9_L`, `IQ0.75_M` and `IQ0.5_XXXL` for several releases.
+  What `pack_sub_bit` did was copy the Q3_K_L staging file and write a
+  sidecar JSON naming a tier — so a "0.5-bit model" was byte-identical to
+  the 3-bit model it came from, the same size on disk, and no more
+  quantised than its input. The tier was a label on an unchanged file, and
+  nothing tested that it was not.
+
+  Three new modules make it real. `hypernix.quant.gguf` reads and writes
+  GGUF with no llama.cpp and no llama-cpp-python — alignment and unknown
+  metadata handled carefully, because getting the first wrong produces a
+  file that opens and returns garbage, and getting the second wrong strips
+  a model's chat template on every round trip. `hypernix.quant.subbit` is
+  the arithmetic: 7 signs kept of every 8 (0.938 bpw), 3 of every 4
+  (0.812), or 2 of every 4 (0.562), plus one FP16 scale per 256-weight
+  block. `hypernix.quant.hyprslug` — also **doomslug**,
+  **doomslugthedestroyer** and **dstd** — is the quantiser, and it writes a
+  real GGUF whose tensors carry HyperNix type ids at 200 and above so a
+  stock loader refuses the file by name instead of reading a 0.5-bit tensor
+  as Q4_K.
+
+  Choosing which signs to keep by magnitude was tried first and is wrong:
+  the decoder has no bits telling it which positions were stored, so it
+  fills left to right regardless, and a cleverer encoder only lands the
+  signs on the wrong weights. It showed up as the widest tier having the
+  *worst* error. A test now pins that error is monotonic in bit rate.
+
+𖢥 **SSPKID assignments did not survive the process that made them.**
+  `ServerKeyRegistry` said so in its own docstring: "In-memory and
+  deliberately small". Same defect as the server-ID counter — each `gkey`
+  run is its own process, the server is another, and a fresh registry hands
+  `#1` to a second key while an audit trail still names the first. It
+  persists now, in a subdirectory of the key store rather than beside the
+  keys, because the Keymaster globs `*.json` there and CI counts `*.json`
+  to prove no keys leaked: a registry file at the top level was read as a
+  malformed key on every start and counted as a leaked key at teardown.
+
+  A bare `ServerKeyRegistry()` reaches the operator's real store, which is
+  right for `gkey` and wrong for anything constructed incidentally —
+  `create_app()` did, so every test that built an app wrote assignments
+  into `~/.hypernix`. It takes the directory from the Keymaster it was
+  given now, because `cfg.keymaster_dir` is None whenever
+  `T1_KEYMASTER_DIR` is unset and `store_dir=None` means *ephemeral*.
+
+✨ **`hypernix wakeup`** — what openWakeWord does, without using it. A
+  phrase you choose, examples from your own voice, a folder of recordings
+  (WAV, MP3, FLAC, and fragmented MP3 joined in natural order so `part10`
+  does not land before `part2`), or one to four TTS voices generating
+  overnight — and they mix, because a model trained only on TTS learns what
+  synthesised speech sounds like, which is not the task. Log-mel frames
+  into a small conv+GRU classifier, then a streaming detector with a
+  refractory period so one utterance does not fire six times. The dataset
+  says what is wrong with itself before training: no negatives, a thin
+  negative ratio, too few positives.
+
+𖢥 **integration-ios started the fake model and never waited for it.** The
+  ubuntu job had the readiness loop; the macOS one did not, because whether
+  to wait was a per-job decision written out by hand four times. A macOS
+  runner is slow enough starting Python that the probe reached the bridge
+  first and the build failed with `MODEL_UNAVAILABLE`, which reads as a
+  broken bridge and is a race. `scripts/ci/wait_for_http.py` is that
+  decision made once, and a test fails if any job starts a server without
+  waiting.
+
+### Dependencies and Packaging
+
+✨ **`generate` and `chat` read a GGUF.** Both took a snapshot directory,
+  so the one format this package spends most of its time producing was the
+  one its own inference commands could not read. A sub-bit GGUF is refused
+  with the reason and the remedy — the answer to "why will this model not
+  load" should come from the thing that made it.
+
+## 0.72.3
+
+Release focus: T1 v1.0.2026.8.1.1.
+
+### Changed
+
+🔧 **348 `.pyc` files were tracked in the repository**, added by ed11d4b
+  and ec509fe. The `.gitignore` note said removing them was a separate
+  deliberate step; this is that step.
+
+### API Changes
+
+𖢥 **iOS blocked tailnet requests before they left the phone.**
+  `NSAllowsLocalNetworking` exempts link-local, `.local` and the RFC 1918
+  ranges. Tailscale is 100.64.0.0/10 — shared address space, not RFC 1918 —
+  so ATS refused it, which is the same silent timeout with nothing to log.
+  `ts.net` is now an exception domain with subdomains included, scoped so
+  arbitrary loads stay off and a public `http://` endpoint is still
+  refused.
+
+### CLI and UX
+
+🛡️ **The AI agent no longer runs code without being asked.** hyped-pro
+  parses tool calls out of the model's own reply and dispatched them
+  immediately — so anything that could influence that reply (a file it
+  read, a web result, a fetched page, a T1 server's response) had arbitrary
+  code execution on the operator's machine. `ToolRegistry.execute_tool` now
+  gates the side-effecting tools behind `HYPERNIX_TOOL_POLICY`
+  (ask/deny/allow); "ask" with no terminal degrades to **deny**, so a CI
+  job or daemon is not a shell for whoever can reach the model.
+
+  The gated set was enumerated from the registry, not from memory. The
+  first version gated `run_command` and left `create_skill`/`run_skill`
+  open — those write a Python module and execute it, so a model that wanted
+  a shell never had to name a gated tool. Also gated: the file writers, the
+  keymaster key create/revoke pair, `set_env` and `git_commit`. Reads and
+  the web tools stay ungated, and the source records why.
+
+🛡️ **When there is no tailnet address, the server says why.**
+  `tailscale_self` returned empty for four different reasons and named
+  none of them: not installed, not logged in, daemon down, or IPv6-only.
+  That is fine for a server — a tailnet is optional — and useless to
+  someone staring at a phone that cannot connect. `tailscale_diagnosis`
+  names the actual cause, including the common one where tailscale is
+  installed and a service manager's minimal PATH hides it.
+
+### Security
+
+🐛 Three `hashlib.sha1` calls now pass `usedforsecurity=False`. Two are
+  dedupe and one is the WebSocket handshake, where RFC 6455 mandates
+  SHA-1 — none is a security digest, and without the flag all three raise
+  on a FIPS-enabled host.
+
+✨ **T2P keys carry billing, and servers can refuse them.** A T2P key is
+  an ordinary T2 key with a billing binding attached — provider references,
+  a spend cap, a currency — so a key can be issued to someone who pays for
+  their own usage. No card data is ever stored (the store refuses anything
+  shaped like a card number at the boundary) and the binding is not in the
+  credential, because keys land in shell history and payment tokens must
+  not. A T2P key is never an administrator.
+
+  `T1_BILLING_KEY_POLICY` gives a server three answers: `allow` (default,
+  so nothing changes), `deny` with a `T1_PAYMENT_URL` to point at, or
+  `separate`, which requires the payment key in `X-Payment-Key` so the
+  credential that identifies a caller and the one that spends money have
+  separate lifetimes. Enforced at authentication — refusing after the work
+  is a refund, not a policy.
+
+𖢥 **A binding outlived the key it belonged to.** `release` existed, was
+  documented as "called when a key is revoked", and was called by nothing —
+  revocation happens in `hypernix.security`, which knows nothing about
+  billing. So a revoked key left behind a spend cap and a recorded spend on
+  a dead key ID, waiting to be inherited by whatever held that ID next.
+
+  `Keymaster.on_revoke` and `Keymaster.on_rotate` are the missing seam, and
+  the billing store registers on both. Revoking releases the binding;
+  rotating **moves** it, carrying its spend — a rotation that reset `spent`
+  to zero would be a way to mint unlimited spend out of a cap, and a
+  rotation that dropped the binding would silently make a paid key free.
+  Observers are advisory: revoking a key is the safety-critical operation,
+  so one that raises is logged and cannot block it.
+
+📚 **The wiki and the README were up to three releases behind.** Home's
+  index called the T1 API "Beta 2" and waiter "Beta 1" — both shipped —
+  `T1-API.md` still read `1.0.26.8.0.1` throughout, and the one page
+  nothing linked to was the security checklist. New [VRAM](VRAM.md) page;
+  `hypernix-t1` and the `gkey -v` / `gkey version` surface documented in
+  [CLI](CLI.md); `HYPERNIX_TOOL_POLICY` and `T1_KEYMASTER_DIR` added to the
+  environment table; the roadmap's 0.72.3 section moved from "Next
+  Milestone" to what actually landed.
+
+### Fixed
+
+✨ **CI and the public release now gate on a live server.** After the
+  tests pass, two jobs run: one drives the T1 API from outside the process,
+  the other drives the iPhone app against a real server on a booted
+  simulator. Each mints its own T2 key with `gkey`, authorises it, sends a
+  chat all the way through the bridge to a **fake model**, and then deletes
+  every key it created — in a `finally`, so the run that failed is cleaned
+  up too. The teardown counts what is left in the store and fails the job
+  if the probe left anything behind. No publish step runs until both jobs
+  are green.
+
+  The model is a stub speaking the OpenAI shape over HTTP rather than a
+  mock patched into the bridge, so the bridge, the routing engine and the
+  serialisation are all real. Its reply carries a distinctive marker *and*
+  echoes the prompt back, because a check that passes when the request body
+  never arrived is not a check.
+
+  One shape note: hosted runners cannot reach each other, so "one job hosts
+  the server, the other connects" is not expressible — there is no route
+  between two runners. Each job brings up its own server; the split that
+  matters (API-from-outside, app-against-a-real-server, release waits on
+  both) is preserved.
+
+𖢥 **`gkey` ignored `T1_KEYMASTER_DIR`, which the server reads.** On any
+  install using `--config-dir`, the server's key store lived under the
+  config directory while `gkey` kept writing to `~/.hypernix/keymaster` —
+  so keys the operator minted were invisible to their own server, and the
+  key printed at first start was invisible to `gkey`. Two halves of one
+  tool disagreeing about where the keys live is a hard failure to reason
+  about, because both of them work.
+
+🐛 **Family detection was a hardcoded list and silently stopped covering
+  the family.** Two call sites tested `key[:3] in ("T2_", "T2S")`, so a
+  T2P key fell through to the T1 path and was rejected as malformed several
+  layers before the code that had an opinion about it. Derived from the
+  enum now.
+
+𖢥 **HyperLink timed out because the server advertised the wrong port.**
+  uvicorn owns the bind address and passes it to nobody, so the config's
+  default — 8000 — went out in the endpoint list whatever port the server
+  was actually on. The phone connected to 8000, timed out, and the server
+  log stayed empty because nothing ever arrived. The advertised port is now
+  the one the request came in on, which is by construction an address that
+  works; an explicit `T1_HYPERLINK_PORT` still wins, because a proxy
+  forwarding to another port knows something the request cannot.
+
+✨ **A new server issues itself a bootstrap key.** An empty key store plus
+  admin-only key routes is a closed loop, and it is why `waiter hyperlink
+  pair` could not run on a new install. First start now mints a T2 admin
+  key that works **only from that machine**, expires after **three days**,
+  and is minted **once**. Loopback is enforced on every request, on both
+  the ordinary and HyperLink auth paths — a restriction applied to one of
+  two routes into the same key store is not a restriction.
+
+𖢥 **`hypernix path` wrote backslashes into POSIX shell profiles.**
+  `snippet_for_shell` and `session_hint` interpolated `str(directory)`, so
+  on Windows a bash or fish line came out as `export
+  PATH="\opt\bin:$PATH"` — and a POSIX shell reads `\` as an escape, so
+  that line is not merely ugly but wrong. These snippets are written on
+  Windows, for Git Bash and WSL. They use `as_posix()` now, which is
+  identical everywhere else and turns `C:\Scripts` into `C:/Scripts`,
+  which is what those shells want. PowerShell keeps the native separator.
+
+✨ **VRAM optimizations: `hypernix.system.vram`.** [`freezer`](Freezer.md)
+  answers "how big a batch fits?"; this answers "how do I make more of it
+  fit without changing what the model learns?" Five techniques, each opt-in
+  and each reversible:
+
+  - **Allocator tuning.** The CUDA caching allocator carves VRAM into
+  fixed-size segments and cannot satisfy a large request from several
+  small free ones — which is the OOM that happens while `nvidia-smi`
+  still reports gigabytes free, because that memory is *reserved and
+  unusable* rather than in use. `configure_allocator()` sets
+  `expandable_segments`. It has to run before the first CUDA allocation,
+  so importing the module deliberately does **not** import torch, and a
+  call that comes too late reports that instead of silently doing
+  nothing.
+  - **Activation checkpointing.** Activations, not parameters, are what a
+  long-context run runs out of: they scale with batch x sequence x
+  layers and the parameters scale with none of those.
+  `checkpoint_blocks(model, every=N)` finds the layer stack as the
+  longest `nn.ModuleList` of structurally identical children — which is
+  what a transformer's layers are in every architecture here, without
+  hard-coding `.layers` vs `.h` vs `.blocks`. `use_reentrant=False`
+  because the reentrant implementation silently produces **no gradients
+  at all** when no input to the region requires grad, which is the normal
+  case for the first block; that failure mode is a model training on a
+  subset of its own layers and never saying so.
+  - **Optimizer-in-backward.** An ordinary loop holds every gradient at
+  once between `backward` and `step` — a second full copy of the model,
+  in gradient dtype, at exactly the moment activations peak.
+  `fuse_optimizer_into_backward` steps and frees each one as it finishes.
+  It refuses gradient clipping, accumulation and a `GradScaler` rather
+  than accepting them: each would produce a plausible-looking loss curve
+  for a model that trained differently than the caller asked for.
+  - **Optimizer-state offload.** Adam state is twice the parameter memory
+  sitting idle through any pass that is not a training step. A context
+  manager, not a mode — host-resident state during the step would cross
+  the bus every step — with the restore in a `finally`, so an exception
+  inside cannot leave the optimizer split across two devices and fail
+  later with an error naming neither.
+  - **Measurement.** `measure_peak()` reports peak allocated and reserved.
+  The gap between them is fragmentation, which is the number the
+  allocator change is trying to move.
+
+  Wired to the loop, not just the library: `train()` and
+  `hypernix train run` take `--gradient-checkpointing`,
+  `--checkpoint-every`, `--fuse-optimizer` and `--tune-allocator`. The
+  clipping/fusing conflict is refused before the checkpoint is read off
+  disk, so nobody waits out a model load to be told the combination was
+  never going to work.
+
+### Dependencies and Packaging
+
+✨ **`hypernix-t1 create` works without a checkout.** It hands off to
+  `install-t1.sh` for the guided setup, and that is a checkout file — so
+  from a wheel, the manager could not create the thing it manages. It now
+  falls back to writing a minimal local-only configuration (a real
+  generated secret, 0600, its own key store) and says plainly what the
+  minimal path does not cover: no allowlist, no rate limits, no pricing, no
+  model registry. `--host`, `--port`, and `--force` to overwrite; it
+  refuses to overwrite an existing config without being told to.
+
+𖢥 **`install-t1.sh --install skip` failed on a machine where nothing was
+  wrong.** The interpreter search ran `python3.12 python3.13 python3.11
+  python3 python` — newest-ish first, with the operator's own `python3`
+  fourth. On any machine with several interpreters that picks one the
+  operator never chose; under `--install skip`, whose entire premise is
+  that the package is already installed *somewhere*, it then verified an
+  installation that was never meant to be in that interpreter and failed
+  while everything was in fact fine. That is exactly what CI hit: the job
+  installed into setup-python's 3.11 and the script went looking in the
+  system 3.12.
+
+  `python3` — the interpreter actually on PATH, which is a venv's or a
+  version manager's — now comes first, and a pass ahead of that prefers any
+  interpreter that can already import hypernix. `--python PATH` (or
+  `HYPERNIX_PYTHON`) settles it outright. A `skip` run that finds no
+  installation now says that, and points at `--python`, rather than
+  reporting a failed install that never ran.
+
+✨ **`hypernix-t1` — one executable that runs the server.** Starting a
+  T1 API meant remembering a uvicorn invocation, and stopping one meant
+  finding the pid. `bin/hypernix-t1` is a single dependency-free shell
+  program covering the whole lifecycle: `start` / `stop` / `kill` /
+  `restart` / `status` / `logs`, `create` (a fully configured server, with
+  `--auto` for an unattended one), `configure` to edit the env file in
+  place, `test` for a real end-to-end probe rather than a health ping,
+  `key` to mint one through `gkey` against the *server's own* key store,
+  `autostart on|off` to install a systemd user service, and `remove`.
+
+  `stop` sends `SIGTERM` and waits 15 seconds; if the server is still
+  there it says so and points at `kill`, rather than escalating on its own —
+  a server that is slow to drain in-flight requests is not the same thing as
+  a hung one, and only the operator knows which they have. `restart` does
+  escalate, because it has been told the process is going away. The pid file
+  is checked
+  against the process actually running under it, so a recycled pid is not
+  mistaken for a live server, and a stale one is cleaned up instead of
+  reported as running. `autostart` writes an absolute `ExecStart`, because
+  systemd rejects a relative one at load time rather than at first start.
+
+### Tests
+
+🐛 **`pip install hypernix` did not give you `hypernix-t1`.** It is a
+  shell program, so `[project.scripts]` cannot carry it, and nothing else
+  did — the documentation promised an executable the package never
+  installed. `script-files` ships it now, and `MANIFEST.in` carries it and
+  `install-t1.sh` into the sdist, which matters because the sdist also
+  ships `tests/`, and two of those test files run these scripts.
+
+🐛 **Windows: 31 tests failed on a `bash` that is not one.** Every shell
+  test gated on `shutil.which("bash")`, which on a GitHub Windows runner
+  finds `C:\Windows\System32\bash.exe` — the WSL launcher stub, present
+  on every Windows install, which exits non-zero and answers in UTF-16LE
+  that no distribution is installed. So the tests ran and asserted against
+  output that was never a shell's. `tests/shell_support.py` asks the only
+  question that matters — does running a trivial script through it produce
+  the script's output — and the three shell test modules gate on that.
+
+## 0.72.2.post5
+
+Release focus: T1 v1.0.2026.8.1.1.
+
+### Added
+
+𖢥 **Every key `gkey` ever minted carried server ID `00001-A1`.** The
+  counter advances on each `create` and lived only in memory — and each
+  `gkey` invocation is its own process, so it restarted at the beginning
+  every time. The field was there, documented, and constant.
+
+  It now resumes from the store. Archived keys are scanned too: `_load_all`
+  reads only the active store, and revoking moves a record into
+  `archive/`, so resuming from active keys alone would hand a revoked key's
+  server ID to a new key the moment the highest-numbered one was revoked. A
+  server ID that comes back around is worse than one that never moves,
+  because an audit trail then cannot tell the two keys apart.
+
+### Changed
+
+🔧 The version tests split by intent: the one asserting *which* version
+  ships stays a literal, as the tripwire that makes a bump a decision rather
+  than a side effect; the ones about the parser build their input from the
+  constant, so a bump does not require editing them — editing them each
+  time is how a spelling quietly stops being covered.
+
+### API Changes
+
+❗ Known, unchanged: `ServerKeyRegistry` is still in-memory only, so
+  SSPKID assignments do not survive a restart. Nothing assigns one outside
+  the undo path yet, and the T2 API does not release until 1.xx.0.
+
+### CLI and UX
+
+🛡️ **Undoing onto a key that no longer exists returned a bare
+  `500 Internal Server Error`** — no code, no JSON, nothing to act on. The
+  history outlives the keys it refers to, so undoing a rotation whose key
+  has since been revoked is an ordinary thing to try. It is now a `409`
+  naming the key, the operation and the direction, and the history entry is
+  left in place.
+
+### Fixed
+
+🐛 A fix bump inside the same feature line, so no client needs to change.
+  Two shipped features did nothing, both for the same reason: state was
+  written and never read back, or read and never written.
+
+𖢥 **`POST /t1/auth/undo` could never undo anything.** Two independent
+  reasons, either of which alone was fatal:
+
+  * Nothing ever called `AuthHistory.record()`. The history was read by the
+  undo, redo and history endpoints and written by nobody, so it was
+  permanently empty and every undo answered "nothing to undo".
+  * The four Keymaster methods the inverse needs — `restore_key`,
+  `set_key_type`, `set_scopes`, `set_revoked` — did not exist. They
+  appeared only as `hasattr` guards in the undo handler, so even a
+  recorded entry would have answered 501 "this server's Keymaster
+  cannot…" on every deployment.
+
+  Rotations (own and admin) are now recorded, and the four primitives
+  exist. A rotation can be undone and redone, verified end to end: rotate,
+  the old key stops authenticating, undo, it authenticates again, redo, the
+  new key works.
+
+  Recording is best-effort. The rotation has already happened and its new
+  key is in the response; failing the request afterwards would report a
+  failure that did not occur and lose the key with it.
+
+### Dependencies and Packaging
+
+🔧 **Four packages carried the T1 version as a literal** —
+  `hypernix.waiter`, `hypernix.t1sdk`, `hypernix.hyperlink`, and two more
+  copies inside `waiter.discovery`. They derive it from `T1_VERSION` now.
+  `hypernix.t1api.version` is pure stdlib, so a client that deliberately
+  does without the `[t1api]` extra pays nothing for the import. This is the
+  same drift that had `waiter --help` advertising a version two releases
+  stale.
+
+## 0.72.2.post4
+
+Release focus: T2S keys that were refused for no good reason.
+
+### Changed
+
+🔧 An existing test asserted that the unregistered-key message did *not*
+  contain "T2", as a proxy for "refused for being unknown, not for being
+  T2S". The message now names the family in order to say precisely that, so
+  the test asserts the reason code instead. A message that merely avoids a
+  substring is not the same as one that assigns the right cause.
+
+### API Changes
+
+🛡️ **"Requires an admin T1 key" was a dead end for a T2S key.** That is
+  the "forbidden" in the report. It sent the reader off to widen their
+  key's scopes, which can never work: admin rides on the password component
+  of a T2 prefix, and a T2S key has no room for one — it is short enough to
+  type by hand, which is exactly why. The refusal now says the restriction
+  is permanent, that scopes will not change it, and gives the route that
+  does work: mint the pairing code on the PC, redeem the six-character code
+  on the phone, use the T2S key for everything after that.
+
+### Security
+
+✨ **HyperLink can finally accept a T2S key.** The server has taken one as
+  a first-class credential since 0.72.1, but the app had only a
+  six-character pairing-code field — and it uppercased and stripped
+  punctuation from whatever was typed there, which destroys a T2S key. The
+  pairing screen now has a method picker: a pairing code, or a T2S key
+  pasted straight in. The key field is never autocapitalised or
+  autocorrected, because a key is case-sensitive and full of punctuation
+  and "fixing" either turns a correct key into a wrong one.
+
+  A key-based connection has no device record on the server, so signing out
+  forgets the credential rather than revoking a device — which is what
+  `unpair` already did when there was no device ID.
+
+### Fixed
+
+𖢥 **A T2 or T2S key minted against a *running* server was refused until
+  the server restarted.** This is the "invalid key" in the report, and the
+  key was real, registered and correctly typed the whole time.
+
+  `validate_key` refreshes the key store once when a key is unknown,
+  because a key minted a moment ago is not in the in-memory table yet. That
+  retry lived inline in the T1 branch; the T2 branch reached the store by
+  another route and never refreshed. So a T1 key minted against a running
+  server worked, and **the same key in its T2 or T2S spelling did not** —
+  about as confusing as a failure gets. The retry is now one method shared
+  by both paths.
+
+🛡️ **"Unknown or unregistered T1 key" is no longer what a T2S holder is
+  told.** It reads as "you brought the wrong kind of key" when the truth is
+  that the right kind is not in this server's store — a different problem
+  with a different fix. The message now names the family the caller
+  actually presented, says the key is well-formed, explains that a T2 key
+  is a spelling of a T1 key and so authenticates by being looked up in the
+  key store (a generated one belongs to no store and authenticates as
+  nothing), and names `gkey create -v v2short`.
+
+## 0.72.2.post3
+
+Release focus: "0.72.2-3": waiter explains itself.
+
+### Added
+
+✨ **`waiter help <topic>`** — longer help on `connect`, `keys`,
+  `hyperlink` and `find`. The questions people get stuck on need
+  paragraphs, and paragraphs in the one-line subcommand table would ruin
+  the table. `connect` names the two ports people reach for by mistake.
+
+### API Changes
+
+𖢥 **`waiter --help` claimed T1 v1.0.26.8.0.1.** The API has been on
+  1.0.26.8.1.0 since 0.72.1; the string was typed into the usage text and
+  had drifted. It is interpolated from `T1_VERSION_SHORT` now, and a test
+  pins the two together.
+
+🐛 Identification stopped at the first HTTP error, so a 404 on `/status`
+  reported "an HTTP server" and never reached `/v1/models` — the route that
+  tells LM Studio from an anonymous web server.
+
+### Security
+
+🔒 gkey mints v2 keys
+
+  ✨ **`gkey create -v v1|v2|v2short`.** The CLI could only ever mint the T1
+  spelling; T2 and T2S keys had to be built in Python. `-v` picks the
+  format, `--level 1-9` sets the access level, and `--password` supplies an
+  admin password (validated, not trusted) instead of the generated one.
+  Aliases are accepted, so `v2s`, `t2s` and `2short` all mean `v2short`.
+
+  The mechanism is what shapes the feature: **a v2 key is a spelling of a
+  v1 key, not a separate credential.** Authentication converts it back and
+  looks *that* up in the key store, so a T2 key generated on its own
+  authenticates as nothing at all. `gkey` therefore mints into the store
+  and presents the result — which is why both spellings of a key work and
+  `gkey revoke <key-id>` kills both.
+
+  🛡️ **Every impossible combination is refused before the key is minted.**
+  A key created and then found unpresentable would still be in the store —
+  valid, usable, and known to nobody, because the operator saw only an
+  error. Refused: an admin `v2short` (the format cannot carry admin), a
+  `--level` on `v1` (no such field), a `--body-len` that contradicts
+  `v2short`'s fixed 26, a `--password` without `--type admin`, and a level
+  outside 1-9. A test asserts the store is empty after all of them.
+
+  ✨ **`gkey version`** reports the three versions that move independently:
+  the package, the T1 API's own six-part version, and the key formats — plus
+  what each format is and which is latest. `--json` for scripts. An operator
+  debugging "my key is refused" needs to know which of the three is out of
+  step.
+
+  ✨ **`T2KeyGenerator.from_t1_admin`.** `from_t1` never produces an admin
+  key, because converting an arbitrary T1 key must not grant authority.
+  This is the deliberate exception, given a separate name rather than a
+  flag so every use can be found by grepping one word. It grants nothing by
+  itself: `gkey` calls it only after checking the store's own record says
+  administrator.
+
+  ✂️ **`v2.1` is named but not issuable.** Asking for it explains that the
+  T2C derivation is not a secret yet, rather than reporting an unknown
+  version — "unknown" and "not released" are different facts, and someone
+  planning a migration needs to know which one they hit.
+
+  🔧 The issued format is recorded on the key (`key_version`,
+  `access_level` tags), so `gkey list` can still say which spelling was
+  handed out after the key itself has scrolled off the screen.
+
+  🐛 The new tests redirect `keymaster._DEFAULT_STORE` and
+  `gatekeeper._DEFAULT_DATA` rather than `$HOME`. Both are module-level
+  constants evaluated at import, so patching `$HOME` inside a test is too
+  late — the first version of these tests wrote real credentials into
+  `~/.hypernix/keymaster`.
+
+### Fixed
+
+𖢥 **A connection failure now says what to do about it.** The report was
+
+  ```
+  ✗ Could not reach http://127.0.0.1:1234/hyperlink/pair: [Errno 111] Connection refused
+  ```
+
+  which is accurate and answers none of the reader's three questions: is
+  anything listening, is this the address I meant, and what do I type next.
+  Port 1234 is the giveaway — it is LM Studio's default. LM Studio is a
+  *bridge target* the T1 server talks to, never an address waiter should
+  point at, and nothing in that message said so.
+
+  `hypernix.waiter.diagnose` now probes on failure: does the TCP port
+  accept a connection, and if it does, does whatever answers look like a T1
+  API, an OpenAI-compatible backend, or just some web server. The message
+  names the address, **where the address came from** (the saved config and
+  its path, or `-I`), and the command that fixes it. The same failure now
+  reads:
+
+  ```
+  ✗ Could not reach http://127.0.0.1:1234/hyperlink/pair ([Errno 111] Connection refused)
+  Address from: the saved config (~/.hypernix/waiter/waiter.config.jsonl)
+
+  Port 1234 is LM Studio's default, not the T1 API's (8000).
+  `waiter lmstudio` reaches it through the T1 server, not directly.
+  If you meant the T1 API:  waiter serv -A -I http://127.0.0.1:8000 -K <key>
+  ```
+
+  Only unreachability gets the extra work; every other error already says
+  what is wrong. If the diagnostic itself fails it is discarded and the
+  original error printed — it must never replace a real error with a worse
+  one.
+
+🐛 **Local probes ignore the proxy environment.** A diagnostic asks "is
+  *this* host up"; a proxy in between answers a different question. With
+  `HTTP_PROXY` set and no `no_proxy` for localhost — containers do this
+  routinely — every local probe would have failed through the proxy and
+  been reported as the server being down. Ordinary API traffic is
+  unaffected.
+
+🐛 `waiter version` read `t1_version` from `/status`, which is an object
+  with the parts broken out; the flat string is `t1_api_version`. It
+  printed a dict.
+
+🐛 `diagnose()` could raise on a malformed URL (`SplitResult.port` throws
+  for a port outside 0-65535), which is the one thing a diagnostic must
+  never do. Found by its own test.
+
+### Dependencies and Packaging
+
+✨ **`waiter version`** — package, waiter protocol, T1 API (with the
+  oldest client it speaks to), key formats, and the connected server's
+  version when one is reachable. Four numbers that move independently,
+  which is why they are printed together: "my key is refused" and "my
+  client is too old" are diagnosed by comparing them. The server line is
+  fetched unauthenticated, because requiring a key for the command you run
+  when something is wrong is backwards; it is omitted rather than guessed
+  when the server cannot be reached. `--json` for scripts.
+
+## 0.72.2.post2
+
+Release focus: "0.72.2-2".
+
+### API Changes
+
+𖢥 **Neither example script read the secret `install-t1.sh` had already
+  written.** The installer generates a stable `T1_TOKEN_SECRET` into
+  `~/.hypernix/t1api/.env`, and both scripts ignored it — so an operator
+  who had just run the installer was told to go and make one. Both now
+  resolve in order: the environment, then that file, then generate (local)
+  or fail with instructions (tailnet). The file is read one assignment at a
+  time rather than sourced, since sourcing runs whatever is in it.
+
+🐛 `run_tailscale.sh` had no `[t1api]` preflight, so a missing extra gave
+  a clear message on the local path and a bare `ModuleNotFoundError` on the
+  tailnet one. Both check now.
+
+### Fixed
+
+🐛 `run_local.sh` minted a throwaway secret on every run even when a
+  stable one existed, so every restart silently invalidated every scoped
+  token already issued.
+
+### Removed
+
+𖢥 **`run_tailscale.sh` told you to run a command that does not work.**
+  With `T1_TOKEN_SECRET` unset it failed with
+
+  ```
+  run_tailscale.sh: line 36: T1_TOKEN_SECRET: set T1_TOKEN_SECRET (python3 -c import secrets;print(secrets.token_hex(32)))
+  ```
+
+  and that command is a syntax error in both the shell and Python. The
+  cause is `${VAR:?message}`: the message goes through quote removal before
+  it is printed, so the single quotes around the `-c` argument were stripped
+  on the way out. The source looked correct; only the output was wrong. It
+  is now an explicit check printing a block that has been paste-tested.
+
+### Tests
+
+🔧 `tests/test_t1api_example_scripts.py` covers the deployment scripts:
+  that no `${VAR:?...}` message contains quotes, that the commands a failure
+  suggests actually parse, the three-step secret resolution including
+  quoted values in `.env`, and that a stable secret survives a restart.
+  Reverting the shipped line fails seven of them.
+
+## 0.72.2
+
+Release focus: the installer.
+
+### CLI and UX
+
+🛡️ **The allowlist is read back from the database after seeding.**
+  Reporting a configured whitelist that is not configured is the worst
+  thing this script could do — the operator is locked out of their own
+  server with no way in short of editing the database. Seeding failures
+  now name the problem, and the verified CIDR list shown on success is
+  tagged and extracted rather than scraped from a capture that also
+  carries the interpreter's stderr.
+
+🛡️ **CIDRs are validated at the prompt.** A typo used to abort seeding
+  partway through, leaving the whitelist on and half-populated. The prompt
+  now re-asks, using the same `ipaddress.ip_network(strict=False)` the
+  server's `parse_cidr` uses, so a value accepted at the prompt is accepted
+  by the server.
+
+### Security
+
+🛡️ **The T2-only lockout that fix would otherwise have created.** Under
+  T2-only the minted key is in the T1 spelling — the one the server has
+  just been told to refuse — and there is no second admin key to undo the
+  setting with. The installer now hands over the T2 form of that key, and
+  the refusal message names the family it wants rather than saying the key
+  is invalid. Admin authority comes from the key store, not the T2
+  password component, so the wrapped key is a real admin credential.
+
+### Fixed
+
+𖢥 **The admin key it minted was invisible to the server it configured.**
+  The installer minted into `$CONFIG_DIR/keymaster`; `Keymaster()` reads
+  `~/.hypernix/keymaster` and had no way to be told otherwise. So every
+  install ended by printing an admin key, under "shown once, copy this
+  now", that the server had never heard of. `T1_KEYMASTER_DIR` makes the
+  store configurable — unset it still means the long-standing default —
+  and the installer now points the server at the store it minted into.
+  This also makes two T1 servers on one machine stop sharing one key
+  store.
+
+𖢥 **"T2 only" was a label, not a policy.** The installer offered three
+  key policies and the server had switches for two: `accept_t2_keys` can
+  refuse T2 keys, but nothing could refuse the T1 spelling, so choosing
+  "T2 only" silently behaved as "both" — an operator would believe a
+  migration was enforced when it was not. `T1_ACCEPT_T1_KEYS` is the
+  missing half. Both switches off is refused at startup rather than
+  serving a process nothing can authenticate to.
+
+🐛 A `tr -dc ... < /dev/urandom | head -c N` in the secret generator died
+  of SIGPIPE under `set -o pipefail`, killing the installer partway
+  through. Bounded with `head -c` first, trimmed with `cut`.
+
+🐛 `curl | bash` and `answers | ./install-t1.sh` are now distinguished, so
+  piped answers are not discarded in favour of a terminal that may not
+  exist.
+
+🛡️ A stale `.pth` in a system Python printed a raw traceback under
+  "Checking this machine", which reads like the installer crashed. Now one
+  warning line naming the file.
+
+### Dependencies and Packaging
+
+✨ **`install-t1.sh`** — an interactive setup and installer for the T1
+  API. It installs the package, asks what kind of deployment this is, and
+  writes a configuration that matches: identity and bind address,
+  deployment kind, key policy, T2 admin password, connection allowlist,
+  rate limits, cost accounting, model source, HyperLink, and the `waiter`
+  manager TUI. Then `.env` at 0600, a start script, optionally a systemd
+  unit and a registry template, an admin key, and a seeded allowlist.
+
+  `--dry-run` writes nothing, `--non-interactive` takes every default, and
+  a re-run backs up an existing `.env` with a timestamp rather than
+  overwriting it. bash 3.2 throughout, so it runs on a stock macOS without
+  installing a shell first.
+
+### Documentation
+
+📚 [Roadmap](Roadmap.md) — **0.72.3: payment connections on a T2 key**, so
+  a key can be issued to someone who pays for their own usage. Roadmap
+  only; nothing is implemented.
+
+## 0.72.1
+
+Release focus: T1 v1.0.26.8.1.0.
+
+### API Changes
+
+🔗 The T1 API moves to `1.0.2026.8.1.0` — a feature bump inside the same 1.0
+  generation, so every existing client keeps working. Three new modules,
+  the T2 key system, four new endpoints, and a GUI.
+
+🔗 waiter
+
+  ✨ **`waiter -F <target>`** finds a server by name, 54-character Host ID,
+  `api.jsonl` endpoint, or address — told apart by shape, which works
+  because the identifier formats are mutually exclusive by construction.
+  `-l` restricts the sweep to this machine and this LAN; without it the
+  tailnet is included. That distinction is not cosmetic: a tailnet sweep
+  touches every peer on a private network. The LAN sweep deliberately does
+  not walk a /24 either — that is a port scan of a home network.
+
+  🛡️ **A host may name a client application in `api.jsonl`; waiter reports
+  it and does not run it.** `--open` always launches HyperNix's own
+  `hyped-pro` with HyperNix's own flags. Running a command the remote
+  machine chose, because it asked, is remote code execution with extra
+  steps, and a discovery protocol that does it only has to be lied to once.
+
+🔗 New modules
+
+  ✨ **noodle** (`hypernix.interfaces.noodle`) — agents and swarms across
+  nine providers (OpenAI, Anthropic, Kimi, Gemini, Qwen, Grok, HyperNix
+  T1, Ollama, vLLM) in three wire formats. Ten sandboxed tools: create,
+  edit, read and execute files; web search; memory read and write; context
+  compaction; todo create and update. Every path resolves *before* the
+  containment check so a planted symlink cannot escape; execution is
+  opt-in, argv-only and runs with a minimal environment; memory is off
+  unless the server enabled it. Self-correction is bounded and evidenced.
+  The swarm does not fail a task over to another provider on its own —
+  silent escalation produces a surprising invoice and silent demotion
+  produces surprising output.
+
+  ✨ **steamroller** (`hypernix.quant.steamroller`) — the descending
+  quantiser. Every descent below Q3_K_L stages through it, because a
+  single pass has to choose every group scale from the full-precision
+  distribution at once and at one bit there are not enough levels left.
+  Targets: Q8_0, Q3_K_L, IQ1_M, and the HyperNix extension types IQ0.9_L,
+  IQ0.75_M and IQ0.5_XXXL. ❗ Those three are **not upstream llama.cpp
+  quant types** — stock llama.cpp will refuse the resulting GGUF — and
+  every plan reaching them warns that below ~1.5 bits a model stops being
+  a worse version of itself.
+
+  ✨ **scriptgen** (`hnx scriptgen`) — a dense Tk GUI over 43 parameters,
+  with a headless CLI fallback because the machine with the GPU usually
+  has no display. Dark slate, charcoal, obsidian and HyperNix red; the
+  "no purple" rule and WCAG contrast are enforced by `audit_palette()`
+  rather than by taste, and it caught the first draft of the palette
+  drifting cool. Generated scripts are readable training loops, not
+  wrappers.
+
+  ✨ **livestream** (`hypernix.monitoring.livestream`) — a hand-written
+  WebSocket server streaming logs, subagent thoughts, GPU/CPU/RAM metrics
+  and progress to a browser. Each viewer has a bounded queue and one that
+  falls behind is dropped rather than waited for: a dropped viewer
+  reconnects, a stalled trainer is an hour of GPU time.
+
+### Security
+
+🔒 T2 keys
+
+  ✨ **The T2 key family.** T2 keeps T1's structure and adds the three
+  things T1 has no room for: an access level (1–9) in the suffix, an
+  optional 7–13 character admin password in the prefix, and an SSPKID. A
+  T2 key converts to a valid T1 key and authenticates against the store
+  that already holds it, so there is no migration — an operator wraps an
+  existing T1 key at a stated level and both spellings work.
+
+  𖢥 **The conversion had a real bug, caught by round-tripping 3000 keys.**
+  The T2 special-character alphabet excluded `-` on the theory that it is
+  the suffix separator. It is, but the suffix is anchored at the end and
+  the special block is five characters at a fixed offset, so a `-` inside
+  it was never ambiguous — and excluding it meant any T1 key whose
+  specials contained one converted to a *different* T1 key, which then
+  failed to authenticate. The alphabets are now identical and
+  `to_t1(from_t1(k)) == k` exactly, which is the property the whole
+  compatibility story rests on.
+
+  ✨ **T2S**, the HyperLink key: exactly 26 body characters, never an admin
+  (admin is carried by the password component and a T2S key cannot have
+  one), and outside HyperLink narrowed to read and non-admin write. That
+  narrowing is what makes a typeable credential acceptable rather than a
+  liability.
+
+  ✂️ **T2C is reserved and `generate()` refuses it.** The specified key
+  derivation — the holder's public IP, shuffled — is not a secret: it is
+  observable by every server the client contacts, changes without notice,
+  and is shared across a NAT. It gets a real key-agreement step in the 1.x
+  line or it does not ship. The type is kept so the wire format has a
+  place for it.
+
+  ✨ **SSPKIDs.** A V1 Server ID identifies a server; an SSPKID identifies
+  one key on it. Many keys per server, one key per SSPKID, enforced by
+  `ServerKeyRegistry`. The index codec is a greedy decomposition over the
+  specified symbol table (5=`!`, 10=`?`, 15=`•`, 25=`*`, 40=`^`, 75=`€`,
+  100=`$`) with a trailing 1–4 digit: it round-trips and is injective over
+  every index, and non-canonical spellings like `!!` are refused rather
+  than silently resolving to the same key as `?`.
+
+  🐛 **`generate_admin_password` could emit passwords its own validator
+  rejected.** Uniform choice over 61 characters produces a
+  three-character run (`abc`, `789`) about 0.6% of the time, so roughly
+  one caller in two hundred saw a confusing failure. It now uses bounded
+  rejection sampling.
+
+  ❗ The **T2 API** itself does not ship until 1.x. What ships here is the
+  key system and T1's ability to recognise it; `t2_api_available()` is the
+  single gate.
+
+🔒 T1 API v1.0.26.8.1.0
+
+  ✨ **`/t1/auth/undo` and `/t1/auth/redo`**, aliased under `/auth/t1/` so a
+  client that learned `/auth/t1/rotate` does not have to learn a
+  differently shaped path for the operation that reverses it. The history
+  stores an *inverse* rather than a snapshot and refuses to record an
+  operation it could not actually reverse — an undo stack that lies about
+  what it can restore is worse than none. Payloads carry key material for
+  rotations, so they are Fernet-encrypted when the `security` extra is
+  present, bounded by both age and count, and never returned by any
+  endpoint that lists them.
+
+  ✨ **`/backup/list` and `/backup/restore`**. A snapshot captures
+  registries and metadata and deliberately excludes four things: key
+  material (a backup that restores working credentials is a credential
+  distribution mechanism), usage counters (restoring them either
+  resurrects spent quota or refunds it), the audit log (one you can roll
+  back is not an audit trail), and attachment blobs (hashes only, so a
+  restore can report what is missing). Restore is a dry run unless
+  confirmed, and section checksums are verified first — restoring half a
+  corrupt snapshot is worse than restoring none.
+
+  🛡️ `GET /status` now reports `server_name`, `host_id` and `server_id`.
+  Without a name to match on, `waiter -F "workshop-box"` was silently
+  unsatisfiable.
+
+🔒 HyperLink
+
+  𖢥 **HyperLink refusing to connect** had one cause: pairing was the only
+  way in. A device whose code expired mid-setup had no fallback, because
+  a T1 key is 48 characters of mixed symbols. The principal resolver now
+  accepts a T2 or T2S key alongside the `HLNK_` device token, branching on
+  the credential's own shape.
+
+  ✨ **Hugging Face downloads**, PyTorch or GGUF, gated or public, with a
+  token. Built entirely around resumption: files land at `.part` and are
+  renamed only when complete, partials resume with a `Range` request, and
+  a server that ignores the range header is detected by its 200 and the
+  file restarted rather than appended to — appending would have produced a
+  corrupt model that downloaded "successfully". Selecting PyTorch files
+  prefers safetensors and drops the `.bin` duplicates, so a 70B model is
+  not 260 GB of transfer for 130 GB of weights. Tokens are redacted from
+  every log line. The download runs on the server, queued as a job.
+
+### Dependencies and Packaging
+
+📦 Quantisation and hardware
+
+  ✨ **The format registry** (`hypernix.quant.formats`) covers NF4, INT8,
+  FP8, FP4, the GGUF tiers, EXL2, AWQ and GPTQ, each carrying a minimum
+  compute capability — so the tuner can filter to what a card can actually
+  execute. FP8 on Pascal is a missing instruction, not a slow path.
+
+  ✨ **Pascal auto-tuning** (`hypernix.system.pascal`) for GTX 1080/1080 Ti,
+  P40, P4 and P100. The load-bearing fact is that FP16 arithmetic is 1:64
+  on GP104/GP102 and 2:1 only on GP100, so the right answer on a 1080 is
+  FP16 storage with FP32 compute and on a P100 it is not — the tuner
+  distinguishes them. `FP16Guard` is the NaN mitigation Pascal needs
+  because it has no BF16: dynamic loss scaling, skip-on-overflow, and a
+  hard FP32 fallback once loss scaling is demonstrably not rescuing the
+  run.
+
+  ✨ **6-bit momentum** for Pressure Cooker v5, v5+, v5s and v6, in three
+  packing modes. `aligned` is the right default on Pascal and the wrong
+  one on a modern card, which is what the tuner decides.
+
+  📚 Version and package: T1 API `1.0.26.8.1.0`, package `0.72.1`.
+
+## 0.72.0
+
+Release focus: T1 v1.0.26.8.0.1.
+
+### Added
+
+✨ **HyperLink pairing** (`/hyperlink/pair`, `waiter hyperlink pair`). A
+  48-character T1 key is not typeable on a phone, so enrolment is a
+  two-step exchange: the PC mints a six-character code — from an alphabet
+  with no `0/O/1/I/L`, valid ten minutes, single use, five attempts — and
+  the phone redeems it once for a device token stored only as a SHA-256.
+  Losing a phone revokes that phone. A device is never an admin whatever
+  key paired it: a stolen phone cannot enrol a second one. It *can* unpair
+  itself, because that is the app's "sign out" and requiring an admin
+  would leave a wiped phone's token valid until somebody noticed.
+
+✨ **The attachment store** (`/hyperlink/files`). Content-addressed by
+  SHA-256: re-sending the same screenshot costs nothing, ids cannot be
+  enumerated, nothing is ever overwritten, and deletion is
+  reference-counted so one message's copy going away does not take
+  another's bytes. Content type is decided by magic bytes first, then the
+  filename, then the client's claim — a `.png` that is really a zip is
+  labelled a zip. At inference, images become vision parts, text and code
+  become a fenced block with the filename in the fence info, and anything
+  else becomes a one-line note so the model can decline rather than
+  hallucinate. Downloads are always `Content-Disposition: attachment` with
+  `nosniff`: this server can be reached from a WKWebView, and a stored
+  file rendering as HTML in the app's origin would be stored XSS.
+
+### API Changes
+
+✨ **The LM Studio bridge** (`hypernix.bridge`, `/bridge/lmstudio`,
+  `waiter lmstudio`). Borrow a model already loaded in LM Studio — on
+  localhost, across the LAN with CORS on, or over a tailnet. It prefers LM
+  Studio's native `/api/v0/models` over `/v1/models` for the one fact the
+  OpenAI shape cannot express: whether a model is actually *loaded*.
+  `/v1/models` lists everything downloaded, and a chat against an unloaded
+  model either stalls on a just-in-time load or fails outright, so
+  "appeared in a list" is not treated as "resident". `waiter lmstudio
+  status` reports the CORS state explicitly — it only matters for a browser
+  or WKWebView talking to LM Studio directly, and "works from curl, not
+  from the app" is otherwise a long afternoon. `waiter lmstudio local`
+  probes from the machine you are sitting at, with no T1 server involved,
+  which is what you want when working out why the server cannot see it.
+  The bridge sits behind the T1 API rather than being called directly so
+  that authentication, scopes, rate limiting, the audit log and usage
+  accounting all apply unchanged — and so LM Studio only has to be
+  reachable from the *server*, not from every client.
+
+✨ **Endpoint advertisement** (`/hyperlink/endpoints`). Every address this
+  machine answers on, ranked Tailscale-first, so a client tries them in
+  order and keeps the one that answers. Nothing to switch when the phone
+  leaves the house. Authenticated despite looking innocuous: a list of a
+  machine's internal addresses is reconnaissance.
+
+🐛 **`LMStudioModel.publisher` ignored the field it was given.** An
+  operator-precedence slip — `str(a or b if c else "")` parses as
+  `str((a or b) if c else "")` — meant a model whose id had no `/` in it
+  reported no publisher even when the API supplied one.
+
+### Fixed
+
+✨ **Server-side chat sessions** (`/hyperlink/sessions`). Append-only,
+  with the answering model recorded per message — people switch models
+  mid-thread, and "which model said this" is the first question asked when
+  re-reading one. Context is trimmed by token budget rather than message
+  count, because a fixed "last 20" either overflows a small context window
+  or wastes a large one. A device's owner is the key that paired it, not
+  the device id, which is what makes a conversation started on the desktop
+  continue on the phone while another operator's stays invisible.
+
+✨ **Hugging Face link merging** (`/hyperlink/models/resolve`,
+  `waiter fetch`). Paste a model page, a direct download link, or both, and
+  get one complete download plan. Three pieces of knowledge go into "so it
+  runs properly": a split GGUF is pulled as the whole set whichever part
+  was clicked (one third of a model is a file llama.cpp refuses); a
+  vision projector is included, matched to the weights' quantisation,
+  because without it the model loads and then cannot see images — a much
+  more confusing failure than not loading at all; and a page and a file
+  link naming different repositories raises rather than being silently
+  resolved, since that is two tabs open and the wrong one copied. Accepts
+  page/tree/blob/resolve URLs, `hf.co`, `hf-mirror.com`, `hf://`, bare
+  `owner/repo`, and the Ollama-style `owner/repo:Q4_K_M`. With no network
+  it still builds a plan from an exact file link, split part names
+  included — a phone on a bad connection should be able to start a
+  download it has the URL for.
+
+𖢥 **A burnt pairing code came back to life.** The attempt cap deleted the
+  code and then raised inside the same `with backend.connect()` block — and
+  the connection's `__exit__` rolls back on an exception, so the DELETE was
+  undone. A code that had exhausted its five attempts was refused once and
+  then worked again on the next try: the exact opposite of a cap.
+  Validation, enrolment and cancellation now happen in one transaction and
+  the failure is raised after it closes. One transaction, not two, because
+  two phones redeeming the same code at the same moment must not both pass
+  a check-then-insert.
+
+🐛 **A mistyped pairing code reported the wrong problem.** Normalisation
+  stripped every character outside the pairing alphabet, so one wrong
+  keystroke silently shortened the code to five characters and the user was
+  told "a pairing code is six characters" — an error about something they
+  had not done. Only separators are stripped now; a stray character
+  survives, the length check passes, and the lookup fails with "unknown
+  pairing code", which is true and actionable.
+
+🐛 **`ResolvedModel.file_count` existed only in `to_dict()`.** Every
+  Python caller had to serialise the object to ask it how many files were
+  in the plan.
+
+🔧 `hypernix.t1sdk` and `waiter` gained typed methods for all of the
+  above; `waiter` gained `lmstudio`, `hyperlink` and `fetch` subcommands.
+  `T1_ENVIRONMENT=production` now refuses to start with `T1_LMSTUDIO_URL`
+  pointing at a non-loopback, non-Tailscale `http://` address, since that
+  sends prompts across the network in the clear. Tailscale is exempt —
+  WireGuard already encrypted it.
+
+### Dependencies and Packaging
+
+📦 The T1 API stops tracking the package version. The two ship together but
+  answer different questions — "which pip release is this" versus "which
+  API contract is this" — and a client pinning a contract could never
+  derive one from `0.71.5rc2`. From here the API versions itself.
+
+✨ **HyperLink for iOS** (`ios/`). A SwiftUI app: streaming chat, photos,
+  file and code upload, per-conversation model switching, and the Hugging
+  Face resolver, against a home PC on the LAN or over Tailscale. iOS 18
+  and newer, developed against the iOS 27 SDK. Built and packaged as an
+  IPA by `.github/workflows/ios.yml` and attached to every GitHub Release
+  alongside the wheel — unsigned unless the repository has Apple signing
+  secrets, which is what makes the workflow runnable by anyone. The
+  `.xcodeproj` is generated from `ios/project.yml` by XcodeGen rather than
+  committed. See [ios/README.md](../ios/README.md).
+
+### Documentation
+
+✨ **The T1 API's own version scheme.** Six parts:
+  `api.major.year.month.feature.fix`, in two spellings of one value —
+  `1.0.2026.8.0.1` for changelogs and `1.0.26.8.0.1` for the wire, where
+  people type it. Both parse, with or without a `v` / `t1 v` prefix, and
+  they compare equal; a three-digit year raises rather than being guessed
+  at, because a typo that parses is worse than one that does not.
+  `generation` (`1.0`) is what a client pins against. `GET /status`
+  reports both spellings and the parsed components; its `beta` field says
+  `t1-1.0` and keeps its name, because Beta 3 clients read it and renaming
+  a field is a breaking change for a cosmetic win. See
+  [wiki/T1-API.md#versioning](T1-API.md#versioning).
+
+📚 [wiki/T1-API.md](T1-API.md) gains Versioning, The LM Studio bridge,
+  HyperLink and Hugging Face link merging sections, plus the new endpoints
+  and environment variables. [ios/README.md](../ios/README.md) covers
+  building, sideloading, and how the app is put together.
+
+## 0.71.5rc2
+
+### Added
+
+𖢥 **`neo_oven.stream()` mangled every non-ASCII character.** It decoded each token on its own, and a token is not a character: "café" streamed as `caf` + two replacement characters, and any emoji or arrow came out as one `�` per byte. It now decodes the whole sequence each step and emits only the new suffix, holding back a character whose bytes haven't all arrived. It also honours stop sequences (holding back any tail that could still *become* a marker, so `
+  class ` can't leak out one character at a time) and takes a `seed` — without those, the streamed answer and the non-streamed one for the same prompt were simply different text. Joining `stream()` now reproduces `complete()` exactly.
+
+✨ **A cooperative `should_stop` hook** on `NeoOven.complete`/`chat`/`fill`/`stream`/`generate_batch`, polled once per token. It's what makes the TUI's Escape real for local models, and it returns whatever was generated before the stop rather than discarding it.
+
+✨ **`qwen3.8-27b`** — in the download registry (`Qwen/Qwen3.8-27B`) and in the hyped-pro catalog. The catalog entry points at the GGUF build with a conservative partial-offload default, because that's the one that actually fits a consumer card; the safetensors repo is what `hypernix download` resolves.
+
+### Changed
+
+🔧 A stray Markdown code fence (` ``` `) was sitting in `.gitignore` as a literal pattern.
+
+### API Changes
+
+𖢥 **`hyped-pro`'s Escape key cancelled nothing.** It set a flag that made the TUI *discard* the answer when it eventually arrived — the model kept generating, a cloud call kept billing, and the prompt stayed locked the whole time. The cause was one layer down: the bridge dispatched every request inline off its stdin loop, so a ninety-second `chat` held that loop for ninety seconds and a cancel sent at second two wasn't *read* until second ninety-one. Long commands now run on their own thread while the loop stays free to read `cancel`, each in-flight request owns a `threading.Event`, and the local generation loop polls it once per token. The reply says which actually happened rather than implying more than is true: `stopped` for a local safetensors model, `pending` for a cloud call or llama.cpp inside multilama — neither has an interruption point, so those finish and their reply is dropped. A cancelled turn keeps whatever tokens were produced; only a cancel that produced nothing pops the dangling user turn, which the old code never did at all.
+
+✨ **T1 API — Beta 4, and the release candidate.** `POST /usage/report`, `hyped-pro` against a real T1 API server, automatic `PATH` setup, and the `qwen3.8-27b` registry entry. `GET /status` now reports `beta: "beta4"`.
+
+✨ **`POST /usage/report` — the endpoint that makes remote quota real.** Beta 3 could route a request and refuse an exhausted model, but nothing could report consumption back: `UsageMeter.record` had no HTTP surface at all. For any client that runs inference itself, that meant the per-model counters never moved, so the quota cascade never advanced past its first model and per-model limits were unenforceable in practice. Three rules keep it safe to expose to every authenticated key: usage is recorded against **the caller's own key**, never a body-supplied one; the model must be registered *and* allowed for that key; and counts are non-negative and capped, so a report can add usage but never subtract it — a client that could report negative tokens could refund itself quota, which would make every limit in the system advisory. A report that exhausts a model still succeeds (the tokens really were spent); the refusal belongs on the *next* route call, not on the accounting for work already done.
+
+✨ **`hyped-pro` talks to a real T1 API server, local or remote.** New `t1api` vendor and a `t1-routed` model. The division of labour follows the T1 API's own design principle — the client is never trusted to decide what it may access: the **server** authenticates the key, decides which model it may use (`POST /models/route` walks the quota cascade) and owns the counters; the **client** runs that model and reports the tokens it spent. Passing a `model_id` is a *request*, not a choice — the server confirms or refuses it, and the client runs whatever the server said. The server has no inference endpoint, so it never sees prompt text, only token counts; that's a privacy property worth keeping rather than an omission to work around. New `/t1api` command in the TUI, new `t1api_status` / `t1api_get_url` / `t1api_set_url` bridge commands, and `HNX_T1_API_KEY` / `HNX_T1_API_URL` alongside a persisted `t1_api_url`.
+
+### Fixed
+
+🛡️ **Bridge failures no longer hang the TUI.** Every call now has a timeout sized to what it is (30 minutes for a chat, 10 seconds for a config read) — there was none before, so a wedged bridge froze hyped-pro with ctrl+c as the only way out. A failed spawn settles its pending promises, because Node does not guarantee an `exit` event after one and a missing Python otherwise hung every call forever. The read buffer is cleared when the process dies, so a partial line can't corrupt the first response of its replacement.
+
+𖢥 **`neo_oven.fill()` could never stop early.** It passed no `eos_ids` at all, so every call ran the full `max_new_tokens` and returned whatever the model rambled into after finishing the middle. It now stops at EOS and at the FIM markers, and trims at FIM-appropriate stops — `
+  def ` is a perfectly ordinary thing to generate when filling a hole in existing code, so the completion stop list was the wrong one to apply.
+
+🐛 **EOS was being appended before the loop broke on it**, so the terminator was part of the returned sequence. This only ever looked correct because HF decode is asked to skip special tokens; a byte tokenizer, or an EOS the tokenizer doesn't class as special, would have emitted it verbatim.
+
+🐛 **`max_position_embeddings` was read unguarded** on every generated token, turning a model whose config lacks the field into an `AttributeError` at the first token rather than a clean failure at load.
+
+✨ **`t1-routed` names no weights, on purpose.** Its `repo` is empty because the real model is whatever the server routes to. Server `model_id`s are stable slugs and this catalog uses short names; the two agree only by coincidence, so the mapping is an explicit `t1_api_model_map` setting with an exact-name fallback and **no fuzzy matching** — running a *similar* model to the one the server authorized would be worse than refusing. When nothing maps, the error names the model, the config key, and the command to fix it instead of quietly running something else.
+
+🛡️ **The `PATH` fix runs automatically, and refuses more often than it acts.** It does nothing when the directory is already on `PATH`, when `HYPERNIX_NO_PATH_SETUP` is set, in CI, or after it has already tried once — so someone who deleted the block doesn't get it silently written back. Above all it refuses **inside a virtualenv or conda env**: that directory belongs to one environment and is on `PATH` only while activated, so baking it into `~/.bashrc` would leak that environment into every shell the person ever opens. It always prints what it changed and how to undo it — a `PATH` edit that happens invisibly is worse than no `PATH` edit. It hangs off the console-script and `python -m hypernix` entry points rather than `cli.main`, so calling the CLI in-process never touches a home directory.
+
+✨ **`hyped-pro` shows the current public release.** `hypernix.system.release` reads PyPI's JSON API once per six hours per machine, caches to `~/.hypernix/release-cache.json`, times out fast, and returns "unknown" instead of raising — a banner is not worth a hung TUI on a machine with no network. `HYPERNIX_NO_VERSION_CHECK` (already honoured by the launcher) turns it off. Pre-releases are tracked separately from stable ones: telling someone on `0.71.5rc2` to "upgrade" to an older stable release would be wrong, so that reads as a pre-release note, not an update prompt. New `/version` command; the status box and banner carry the label.
+
+🐛 **`hypernix.__version__` was `0.71.5postr1`**, which is not a valid PEP 440 version — pip normalizes it to something quite different from the intended `post1`, and it disagreed with `pyproject.toml` besides. Every version string in the tree now says `0.71.5rc2`.
+
+### Dependencies and Packaging
+
+✨ **`hypernix path` — console scripts that are actually on `PATH`.** `pip install --user` puts ~20 scripts in a directory many systems don't have on `PATH` (Debian's `~/.profile` only adds `~/.local/bin` if it already existed at login), so `pip install hypernix` followed by `hypernix: command not found` looked like a broken package rather than a `PATH` gap. `hypernix.system.pathfix` writes one idempotent, clearly-marked, reversible block into the startup file the person's shell *actually reads* — `~/.bashrc` on Linux, `~/.bash_profile` on macOS, `$ZDOTDIR/.zshrc`, a `conf.d` file for fish, a PowerShell profile on Windows. `--undo` takes it back out; `--check`, `--print` and `--force` cover the rest. Wired into `hypernix doctor` (reported) and `doctor --fix` (repaired).
+
+## 0.71.5.post1
+
+### Changed
+
+🔧 CI fixes for macOS (a long temp path wrapped in `rich` output) and Windows (`WinError 10106` importing `_overlapped` through the anyio plugin), plus a timing race in a synthetic timer test.
+
+### API Changes
+
+𖢥 **`ups` had no entry point, a lock held across a network call, and unbounded history.** The HTTP check and the snapshot callback both moved outside the lock (a slow or hanging endpoint was blocking every other reader), history is capped, and the guard grew `stop()` plus context-manager support so `threat_now()` can't leak a background thread. It now has a real CLI and a `ups` console script — it was a complete module that nothing could run.
+
+### Fixed
+
+𖢥 **`hnx map` didn't find models, and its `acc` setting did nothing.** It now auto-discovers a checkpoint from the working directory (`.`, `checkpoints/`, `out/`, `output/`, `model/`, `models/`), reads shapes from safetensors headers without `torch.load`, and resolves `acc=auto` from the real parameter and layer counts instead of a constant. Errors are drawn in their own banner below the pipeline rather than over the DATA engine, and the module gained the `__main__` guard it needed to be runnable as `python -m`.
+
+𖢥 **`ethanol` (`eth`) claimed to work with no backend at all.** `backend=none` now exits non-zero and says so instead of reporting success. `auto` reads real temperatures and picks a level from them, with a hard abort above 85 °C. Level 0 performs a genuine reset on every backend — ROCm was issuing the wrong subcommands entirely, and Intel was missing its reset flag — so "turn it back to stock" now does that. New `status` and `reset` commands, and the `backend=none` check moved ahead of the confirmation gate so it can't be confirmed past.
+
+### Documentation
+
+📚 Everything between Beta 3 and the release candidate: three modules that didn't work, and the documentation site.
+
+🛜 **The documentation site was rebuilt** — structure, type and density only; every colour value is unchanged. Self-hosted Inter + JetBrains Mono (no font CDN), a two-column hero with a terminal transcript, a shared kicker/title/lede rhythm for every section and page, and the 40-card "All subsystems" wall replaced by a grouped, searchable table with stage filters. Fixed along the way: the docs cards ran "wiki ↗" into the page name, and the stats page orphaned "Issues" onto its own row.
+
+### Tests
+
+🐛 **Two T1 API bugs found by running the server for real**, not by testing it: `waiter doctor` passed a raw dict where a `ServerStatus` was expected, and a key created while the server was running was rejected until restart because the key cache was never refreshed.
+
+## 0.71.5b3
+
+### Added
+
+✨ **mTLS** — direct termination (uvicorn holds the certificates) or proxy termination (nginx forwards `X-Client-*`). The proxy path trusts those headers **only** from an address in `T1_TRUSTED_PROXIES`, because otherwise any client able to reach the process directly could just send `X-Client-Verify: SUCCESS`; proxy mTLS with an empty trusted-proxy list fails closed. Optional subject/fingerprint allowlists, with fingerprints normalized so an allowlist can't silently never match. `/health` stays exempt for load balancers.
+
+✨ **Remote multi-server deployment — real bytes this time.** Beta 2's module sync was bookkeeping and said so. Beta 3 transfers: HMAC-signed over method|path|timestamp|body-digest with a freshness window, SHA-256 verified on both ends, size-capped, and pushed only to a server an admin promoted to trusted — the address comes from the registry, never from the request. Remote fetch refuses redirects, because following one is exactly how an SSRF check gets bypassed. Nothing is ever executed, imported, or interpreted on either side. New `POST /modules/{id}/deploy`, `POST /modules/{id}/fetch`, `POST /modules/receive`.
+
+✨ **Production configuration validation** — `T1_ENVIRONMENT=production` makes `create_app()` refuse to start on a missing token secret, SQLite, wildcard CORS, no TLS, disabled protections, or the placeholder registry, listing *every* problem at once rather than one per restart. A bad production config should fail the deploy, not surface later as a puzzling 500. The same list is readable without the raising at `GET /status` and via `waiter doctor`.
+
+𖢥 **A key created while the server was running was invisible until restart.** Keymaster reads its key files once, at construction, so the documented quickstart — `gkey create`, then point `waiter` at the already-running server — returned `AUTH_INVALID_KEY` for a brand-new key. `T1AuthService.validate_key` now refreshes the key store once on an unknown key, throttled to at most one reload every five seconds because it is disk I/O an unauthenticated caller can reach. Found by running the quickstart against a real uvicorn process instead of a `TestClient`.
+
+### Changed
+
+🔧 **Model limits in `GET /models`** — `context_limit`, `input_token_limit`, `output_token_limit` and `tool_call_limit` are now in the list response, not just the detail one. Displaying model limits is a TUI requirement and a client rendering a list shouldn't need one request per model to fill three columns. Additive.
+
+🔧 **Destructive operations require `?confirm=true`** (`DELETE /servers/{id}`, `DELETE /modules/{id}`), controlled by `T1_REQUIRE_DESTRUCTIVE_CONFIRMATION`.
+
+### API Changes
+
+✨ **PostgreSQL for production** — `T1_DATABASE_URL` moves *every* store (usage, servers, modules, jobs, billing, audit, network policy, key assignments) and changes nothing else. The portability lives in one place, `t1api/db.py`: a connection wrapper normalizes placeholders, row-by-name access, DDL dialect and transaction/close semantics, so no store needed an `if postgres:` branch. New `hypernix[t1api-pg]` extra. Existing SQLite databases migrate in place at startup rather than needing a dump and reload.
+
+✨ **The plan is now the server's to decide** — the one deliberately breaking change. Beta 2's `POST /models/route` took `plan` from the request body, which let a client name the most generous plan it could think of. A plan is now a property of an administrator-recorded assignment (`POST /keys/assign`), and a `plan` in the body is an *assertion*: matching is accepted, mismatching returns `AUTH_INSUFFICIENT_SCOPE`. A key can also be narrowed to a subset of registered models, checked on manual selection and on whatever automatic routing lands on.
+
+✨ **Advanced rate limiting** — token bucket *and* sliding window, because they answer different questions: burst-tolerant per-key/per-IP budgets for interactive clients, hard ceilings for operator-forced limits. Runs in **middleware, before the route handler**, which is what "apply rate limits before expensive model operations" has to mean to be true. Expensive endpoints declare a higher cost. Per-process limits are documented as such rather than papered over.
+
+✨ **IP allowlists, blocklists, and the unlisted-client decision** — `hypernix.t1api.netpolicy`, CIDR-matched, persistent. The blocklist wins over the allowlist by design (un-blocking is an *appeal*, which is its own operation), and `T1_ALLOW_UNLISTED_CLIENTS` is the design principle's own "does this server accept non-allowlisted clients at all" as a first-class setting. Blocking your own address is refused — it has no undo through the API.
+
+✨ **The endpoints the spec listed and Beta 1/2 hadn't implemented** — `GET /keys`, `POST /keys/import`, `POST /keys/assign`, `GET /usage/history`, `GET /usage/cost`, `POST /usage/estimate`, plus `GET /usage/by` for the per-model/key/server/module/user/account reports. Cost comes only from recorded usage and the registry's own pricing — there is no second price list, and a model that isn't registered has no price and cannot be costed. Estimates record and reserve nothing; forecasts state the window they extrapolated from and how much to trust it.
+
+✨ **`hypernix.t1sdk` — the complete SDK.** Typed models over every endpoint, an exception hierarchy mapped from the server's stable codes, retries honouring `Retry-After`, mTLS and private CAs, pagination and job-polling helpers, and a `call()` escape hatch so a newer server never blocks on an SDK release. Stdlib only. Non-idempotent POSTs are never retried: replaying `POST /billing/redeem` after a timeout could look like a double redemption. `waiter.client` is now a thin compatibility layer over it rather than a second implementation.
+
+✨ **The full `waiter` TUI** — `waiter tui` / `waiter serv -G`. Eight curses panes covering models, quota, usage and cost, jobs with live progress, servers, modules, an event tail, and settings. Everything comes from the API: a greyed-out model is greyed out because `/models/{id}/availability` said so, and the fallback chain is the cascade the server actually walked, not one reconstructed from registry fields. Refresh runs on a background thread so an unreachable server shows stale data with a banner rather than a frozen terminal.
+
+### Security
+
+✨ **Audit logging** — `hypernix.t1api.audit.AuditLog`: durable, queryable, admin-only at `GET /audit`, and reading it is itself audited. Secret-shaped fields are dropped **by name at write time** (`key`, `token`, `secret`, `password`, `authorization`, `dsn`, `credential`), so a future call site that accidentally hands over a raw key cannot write it to disk; identifiers that only look secret by name (`key_id`, `payment_token_id`) are carved out. An audit write never takes down the request it describes.
+
+✨ **Every `waiter serv` flag is now wired.** `-B`/`-W`/`-a`/`-r` call the new security endpoints (and still save locally, which is what survives a non-admin refusal); `-G` opens the TUI; `-Rf` refreshes everything; `-y` mirrors the server's settings into the local config. New subcommands: `keys`, `audit`, `security`, `cost`, `deploy`, `tui`, `doctor`, `smoke`.
+
+🛡️ **`waiter smoke`** — the CLI smoke tester (spec deliverable #11). Read-only by default; `--write` adds a self-cleaning module lifecycle check. Expected refusals count as passes, so "non-admin correctly refused `/audit`" passes and "non-admin served `/audit`" fails — the direction a security-relevant tool should be sensitive in.
+
+📚 **Generated API examples** — `examples/t1api/API-EXAMPLES.md` and `openapi.json` are produced by `scripts/t1api_examples.py` driving a real server. A hand-written example is a claim about the API; a generated one is a recording of it, and regenerating shows a behaviour change as a diff. Credential-shaped fields are replaced with placeholders before anything is written.
+
+𖢥 **Middleware exceptions were being swallowed.** Starlette only routes exceptions raised inside the application to `@app.exception_handler`; one raised in an outer `@app.middleware("http")` propagates past it. Every Beta 3 security check runs as middleware and signals refusal by raising, so network-policy, mTLS and rate-limit refusals returned a bare 500 with no error code instead of the documented envelope. Found by the new tests.
+
+🔧 **Security response headers** on every response, error responses included: `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Cache-Control: no-store`, and HSTS when TLS is on.
+
+### Fixed
+
+🐛 **A non-refilling rate-limit rule produced `retry_after=inf`**, which raised `OverflowError` building the `Retry-After` header and would have serialized as a bare `Infinity` — not valid JSON — in the response body. The limiter now reports `None` ("not by waiting") and the header is omitted rather than guessed at.
+
+🐛 **`%` inside SQL string literals wasn't escaped for psycopg**, so a query containing a `LIKE '%…%'` pattern would have been a syntax error on PostgreSQL and nowhere else.
+
+🐛 **`ModelEntry` coerced its enum fields in `from_dict` but not in `__init__`**, so a directly-constructed entry kept plain strings and failed with `AttributeError` at serialization time, far from the construction that caused it. Normalized in `__post_init__`.
+
+🐛 **A disabled `AuditLog` skipped creating its table**, so reading it raised "no such table" instead of returning nothing. `enabled` now gates writes only.
+
+🐛 **`waiter doctor` crashed against a real server** with `'dict' object has no attribute 'environment'`: waiter's client overrides `status()` to return the raw envelope for the CLI's table renderers, and doctor assumed it got the typed object. Same cause as above — nothing in a TestClient-driven suite exercised that path.
+
+### Documentation
+
+✨ **T1 API — Beta 3: production hardening.** The T1 API is now feature-complete against its spec. PostgreSQL, a durable audit log, mTLS, advanced rate limiting, IP allow/blocklists, real remote multi-server module transport, the key directory, usage cost/estimates/forecasts, the complete SDK, the full `waiter` TUI, and production configuration validation. Full contract in `wiki/T1-API.md`; deployment examples in `examples/t1api/`.
+
+📚 **Deployment documentation and examples** — `examples/t1api/` ships a two-stage non-root Dockerfile, a compose stack (API + PostgreSQL + nginx, with the API never published to the host), an nginx config that terminates TLS and forwards mTLS headers, a sandboxed systemd unit, local and Tailscale run scripts, and a fully commented `.env.example`. `wiki/T1-API-Security-Checklist.md` is the security audit checklist, ordered by blast radius, with the items `waiter doctor`/`waiter smoke` automate marked as such.
+
+### Tests
+
+🐛 **Fixed three pre-existing CI failures on macOS and Windows.** `test_assistant.py` asserted a full tmpdir path appeared verbatim in console output, which fails when rich wraps the longer macOS tmpdir path at 80 columns. `test_autofix_scripts.py`'s synthetic "always fails" timer test was itself a race — measured, it lost that race 1997 times in 2000 — so on a fast runner it passed, `autofix-F` correctly stood down, and the tests expecting it to act failed; it now busy-waits a fixed margin and fails 8/8 before the repair and passes 8/8 after. And `autofix-F`'s inner pytest run crashed on Windows before executing a test, because pytest autoloaded anyio's plugin, which imports asyncio, which imports `_overlapped`, which fails on the GitHub Windows runners with `WinError 10106`; that run takes no third-party plugins and now says so.
+
+🔧 **Tests** — `tests/test_t1api_beta3_security.py`, `test_t1api_beta3_core.py`, `test_t1api_beta3_http.py`: network policy, rate limiting, mTLS, audit scrubbing, PostgreSQL translation (with a real round-trip when `T1_TEST_DATABASE_URL` is set), keys and plan resolution, cost and forecasts, transport signatures, deployment, production validation, and the middleware order. The Beta 1/2 HTTP suites had never actually been executed — their authoring sandbox had no network to install FastAPI — and now run; two assertions that had been asserting the wrong thing are corrected, including one that expected the placeholder registry entries to be routable when the whole point is that they are not.
+
+### Known Issues
+
+❗ **Known limitation** — module blobs are checksummed and path-sanitized but **not encrypted at rest**; the store relies on filesystem permissions. Everything else that needs at-rest protection has it (T1 keys via Keymaster, payment tokens as hashes, waiter config via `-E`). This is the one Beta 3 line item deliberately left open rather than half-done.
+
+## 0.71.5b2
+
+### API Changes
+
+✨ **Model routing & quota cascade** — `hypernix.t1api.routing.RoutingEngine` walks a plan-scoped, data-driven cascade (`t1api/data/routing_policies.example.json` ships the spec's own free-tier and paired-plan examples verbatim, including the paired-plan detail that N^3 falls back to `nanonix-mini` — *not* `nanonix-mini-lite`). Manual model selection never silently substitutes: an exhausted model raises `MODEL_QUOTA_EXHAUSTED` unless `automatic_fallback=True`. New `POST /models/route` (an addition beyond the spec's literal endpoint list — the spec describes routing behavior but doesn't enumerate an endpoint for it).
+
+✨ **Server registry** — `hypernix.t1api.servers.ServerRegistry`, SQLite-backed. Servers register `untrusted` by default; only an admin can promote to `trusted` (or register directly as `local` for the operator's own address). `require_trusted()` is what module sync checks before treating a server as a valid target.
+
+✨ **Module system** — `hypernix.t1api.modules.ModuleRegistry`: create, local upload (checksummed, path-sanitized), remote-source *registration* (SSRF-validated, never auto-fetched), versioning, and sync-tracking. Never executes, imports, or interprets anything it stores — a module is an opaque blob or a validated-but-unfetched URL, by design.
+
+✨ **Event streaming** — `hypernix.t1api.events.EventBus`, in-process pub/sub. `GET /events` polls (`since_id`/`type`/`limit`); `GET /events/stream` (addition beyond the spec's list) is an SSE live tail. Jobs auto-publish `job.<status>` events for any kind with zero per-handler code; servers/modules publish from their routers.
+
+✨ **Billing ledger** — `hypernix.t1api.billing.BillingLedger`. **Internal ledger, not a payment-processor integration** — no Stripe/card-network call anywhere. Admin-minted payment tokens (`POST /billing/payment-token`) return their raw value exactly once and store only a SHA-256 hash; redemption (`POST /billing/redeem`) is single-use (`PAYMENT_TOKEN_ALREADY_REDEEMED` on a second attempt); every transaction is masked in API responses (`txn_abcd1234…`).
+
+### Security
+
+🔒 **New security guardrails** — `hypernix.t1api.security`: SSRF guard (`validate_remote_address`, blocks non-http(s) schemes and the cloud-metadata IP unconditionally; private/loopback addresses need explicit `allow_private=True`, the knob Tailscale/local deployments use) and path-traversal guard (`sanitize_module_path`) for local uploads. Both are shared by the server registry and module system rather than duplicated.
+
+### Fixed
+
+✨ **Async jobs** — `hypernix.t1api.jobs.JobQueue`: `queued → running → succeeded|failed|cancelled`, a real `ThreadPoolExecutor` (not just synchronous stubs), pluggable per-kind handlers (unregistered kind → `NOT_SUPPORTED`), cooperative cancellation tested against a genuinely in-flight background job. One real handler ships: `module_sync`, composed in `t1api/app.py` from `ModuleRegistry` + `ServerRegistry`.
+
+### Documentation
+
+✨ **T1 API — Beta 2** — Module registry, server registry, async jobs, event streaming, the model routing/quota-cascade engine, and billing/payment-token support. Matches the spec's Beta 2 scope; full contract in `wiki/T1-API.md`.
+
+🔧 **Local/Tailscale deployment documented** — new subsection in `wiki/T1-API.md#installation`: bind to `0.0.0.0`/the Tailscale interface, pass `allow_private_address=True` on server registration.
+
+### Tests
+
+🔧 **Tests** — `tests/test_t1api_routing.py`, `test_t1api_security.py`, `test_t1api_servers.py`, `test_t1api_modules.py`, `test_t1api_jobs.py` (including real threaded execution + cancellation), `test_t1api_events.py`, `test_t1api_billing.py` — all pure-core, executed against the real implementations, no FastAPI needed. `tests/test_t1api_http_beta2.py` (FastAPI `TestClient`, needs `hypernix[t1api-test]`) covers the new HTTP layer including the full `module_sync` job lifecycle over HTTP.
+
+## 0.71.5b1
+
+### API Changes
+
+✨ **Auth integration, not reimplementation** — `hypernix.t1api.auth.T1AuthService` wraps the existing `Keymaster`/`Gatekeeper` rather than duplicating key storage or quota logic, and adds short-lived HMAC-signed scoped tokens (`POST /auth/token`) on top. Admin-only `POST /auth/t1/admin/rotate` implements "convert a normal T1 token into an admin token only when the authenticated user has the required permission."
+
+✨ **Usage metering** — `hypernix.t1api.usage.UsageMeter` tracks per-key/per-model usage on SQLite (`hypernix.t1api.storage.UsageStore`) and enforces the spec's "either input or output cap hit = fully exhausted, independent per model" rule via `MODEL_QUOTA_EXHAUSTED`.
+
+### Documentation
+
+✨ **T1 API (`hypernix.t1api`) — Beta 1** — Controlled HTTP gateway into HyperNix-pip, built as a mountable FastAPI module (`hypernix.t1api.create_app`). Implements the spec's Beta 1 scope exactly: core FastAPI server, T1 authentication + scoped tokens, model registry, basic per-key/per-model usage tracking, `/health` `/status` `/models` + auth/usage/config endpoints, SQLite storage, OpenAPI docs. Full contract in `wiki/T1-API.md`.
+
+✨ **`waiter` — the official T1 API TUI/CLI** — New `waiter` console script (`hypernix.waiter`), zero hard deps beyond core `hypernix` (stdlib `urllib` client). Implements the spec's single-command automatic setup (`waiter serv -A -I <server> -K <T1_TOKEN> -E`) plus `models`/`model`/`status`/`health`/`whoami`/`usage`/`config` subcommands. Every `serv` flag from the spec is parsed and accepted; flags needing Beta 2/3 server endpoints (`-B`/`-W`/`-r`/`-a`, full `-Rf`/`-y`, `-G`) store intent locally and print a stable "not wired yet" notice instead of no-op'ing silently. Full flag-by-flag status in `wiki/Waiter-TUI.md`.
+
+📚 **`wiki/T1-API.md`, `wiki/Waiter-TUI.md`** — New pages: architecture, model registry semantics, auth, quota rules, endpoint reference, full Beta 1→4 roadmap table matching the spec's own beta breakdown, security notes.
+
+### Tests
+
+✨ **Model Registry** — `hypernix.t1api.registry.ModelRegistry` is the single source of truth for which models the T1 API exposes; unregistered `model_id`s always return `MODEL_NOT_SUPPORTED`, never silently fall through to a client-supplied path. The nine example models from the spec (HyperNix 1, Ryiver 1, nanoNix, ...) ship as seed data but are invisible by default (`status: "example"`) — set `T1_ENABLE_EXAMPLE_MODELS=1` to make them selectable for local testing.
+
+🔧 **New optional extras** — `hypernix[t1api]` (`fastapi`, `uvicorn`, `pydantic`, `python-dotenv`) for the HTTP layer; `hypernix[t1api-test]` adds `httpx` for `tests/test_t1api_http.py`. `hypernix.t1api`'s core (registry/storage/usage/auth/config/errors) stays importable without either — same zero-extra-deps-for-core-logic pattern as `hypernix.keymaster`/`hypernix.gatekeeper`.
+
+🔧 **Tests** — `tests/test_t1api_core.py` and `tests/test_t1api_auth.py` (pure-Python core, run against the real `Keymaster`/`Gatekeeper`, no extra deps needed) plus `tests/test_t1api_http.py` (FastAPI `TestClient`, needs `hypernix[t1api-test]`).
+
+## 0.71.5a2
+
+### Added
+
+✨ **`neo_oven` — Unified Model Management Module** — New `hypernix.neo_oven` module replaces `old_oven`, `old_fridge`, `mediocre_fridge`, and `new_fridge` as the single, production-ready entry point for model loading, generation, training, and evaluation.
+
+✨ **`JudgeCorpus`** — Replaces `mediocre_fridge` toy script. Proper class-based judge/reward-model dataset builder supporting: `from_pairs()`, `from_oven()` (collect real LLM responses), `from_hf_dataset()` (HF `datasets` integration), JSONL and legacy text serialization, round-trip `load()`, and configurable hard-negative augmentation with 7 strategies (not just 5 character-shuffles).
+
+✨ **`TrainingMetrics`** — Replaces `new_fridge` regex log parsing + static matplotlib. Callback-based metrics collector with native TensorBoard (`SummaryWriter`), Weights & Biases, and MLflow integration. Buffers all steps locally; produces loss-curve PNGs, score histograms, and multi-round plots on demand via `plot_loss()` / `plot_score_distribution()` / `plot_round_losses()`. Export to JSONL via `to_jsonl()`. `NeoOven.train()` accepts `metrics=True` to auto-attach.
+
+✨ **`parse_training_log()`** — Extended to return structured dicts with `step`, `loss`, `lr`, and `ppl` fields instead of flat `(step, loss)` tuples, while remaining backward-compatible.
+
+### API Changes
+
+✨ **`NeoOven` class** — Full successor to `CodeOven` with identical API (`complete`, `fill`, `chat`, `train`, `save_pt`) plus new capabilities: `stream()` for token-by-token generation, `generate_batch()` for batched inference, inline `freeze_backbone()` / `memory_stats()` / `vram()`, and `build_judge_corpus()` shortcut.
+
+✨ **Inline memory management** — `freeze()`, `unfreeze()`, `parameter_stats()`, `offload_to_cpu()`, `chill_cache()`, `vram_stats()` — all previously in `old_fridge`, now unified in `neo_oven` with improved DDP/FSDP/`torch.compile` unwrapping and 7 strategies for hard-negative augmentation.
+
+✨ **`preheat()` / `new_oven()`** — Top-level functional shortcuts identical in call signature to their `old_oven` counterparts, now returning a `NeoOven` instead of a `CodeOven`.
+
+🔧 **Backward-compatibility shims** — `plot_loss_curve()`, `plot_score_distribution()`, `plot_round_losses()`, and `synthesize_judge_corpus()` are re-exported from `neo_oven` so callers using the `new_fridge` / `mediocre_fridge` API surface continue to work without changes.
+
+### Dependencies and Packaging
+
+🔧 **Codebase-wide transition** — All internal imports in `cli.py`, `hyped.py`, `hyped_pro_core.py`, `bell.py`, `countertop.py`, and `vera.py` now route through `neo_oven.preheat` instead of `old_oven.preheat`. `old_oven.py`'s internal `old_fridge` dependency was cut and replaced with `neo_oven.unwrap_model`.
+
+### Deprecated
+
+✂️ **Legacy modules deprecated** — `old_oven`, `old_fridge`, `mediocre_fridge`, `new_fridge` now print a **bold red** deprecation warning on import (via `rich.Console`) pointing users to `neo_oven`. The files are kept intact for backward compatibility.
+
+### Tests
+
+🔧 **Tests** — New `tests/test_neo_oven.py` with comprehensive coverage: memory management, `JudgeCorpus` round-trips, `TrainingMetrics` recording and JSONL output, `parse_training_log`, arch preset completeness, and importability checks.
+
+## 0.71.5A1
+
+### Added
+
+✨ **Pressure Cooker V5S Exposure** — `pressure_cooker_v5s` is now directly importable from the top-level `hypernix` namespace (and aliased as `pressurecooker_v5s`).
+
+### Fixed
+
+✨ **Vera AI Analysis** — When a test fails in Vera, it now surfaces an advanced AI explanation powered by Qwen3.5-4b (`hypernix.neo_oven.preheat`) to identify line numbers and fixes without crashing.
+
+### Tests
+
+✨ **Vera Redesign** — Transformed Vera from an AI assistant into a robust smoke-testing and linting tool (`hnx vera`). Added support for `ast`/`ruff` linting, argument testing (`-FT`), dry-runs (`-dr`), full-runs (`-C`), timeout tracking, and `pytest` fallbacks.
 
 ## 0.71.4-3
-✂️ removed the web ui due to it being full of lies and incomplete information and features 
+
+### Site Changes
+
+✂️ removed the web ui due to it being full of lies and incomplete information and features
 
 ## 0.71.4b10
 
+### Added
+
 ✨ **Public release workflow: accurate "commits since" for stable releases** — `public-release.yml` used `git describe --tags --abbrev=0` to find the changelog baseline, which returns the *immediately preceding* tag regardless of whether it was a prerelease. Cutting a stable release after several betas (e.g. v0.71.4b6 → b7 → b8 → b9 → stable) meant the changelog only showed commits since the last beta, not everything that actually shipped since the last stable version. New "Determine changelog baseline" step: when the release being cut is stable, it walks tags version-sorted (`--sort=-v:refname`, not creation-date) and picks the most recent one that doesn't match the same prerelease-marker pattern the classify step already uses, skipping over any betas in between. Prereleases keep the old "since the immediately preceding tag" behavior — an incremental changelog per beta, not a re-diff against the last stable release every time. Verified against a constructed git history (stable → 3 betas → cutting a new stable) before merging, not just read over.
+
+✨ **60 CPU presets, both meanings of "CPU preset" in this codebase** — `hypernix.freezer.CPU_PRESETS` gains 12 real AMD Ryzen entries (5000/7000/9000 series desktop, Zen 3/4/5) with verified specs (cores/threads/base clock researched per-SKU, not estimated) plus generational aliases (`ryzen-9000`, `ryzen-7-7000`, etc.), closing the README gap above. Separately, `hypernix.brewer` gains three CPU-*sized* architecture presets — `cpu-nano` (2,073,728 params), `cpu-tiny` (9,211,136 params), `cpu-small` (26,450,304 params), all measured via `BrewerModel.num_params()` rather than estimated, plain MHA with no sliding window for simplicity, positioned below the existing GPU-oriented `33m`/`micro`/`small`/`medium`/`large` family.
+
+### Documentation
 
 🐛 **README / PyPI page fixes** — The `hypernix.freezer` row claimed "16 CPU presets (i7 7th-14th gen, Core Ultra, Ryzen)"; the actual count was 48 (an earlier 32-preset addition was never reflected here) and there were zero Ryzen presets despite the claim — confirmed by grepping `CPU_PRESETS` directly, not just trusting the text. `hypernix.brewer` (the whole `hyperNx0x-v2` preset-family module) had no README row at all. Both fixed; module count bumped 11→12. Same staleness existed in `wiki/Alarms.md`'s CPU presets table (also missing i5/i9 entirely) and the GitHub Pages docs site's `SUBSYSTEMS` list (missing `brewer` and the entire hyped-pro module family) — all brought in sync, and the docs site's `vite build` verified clean after.
 
-✨ **60 CPU presets, both meanings of "CPU preset" in this codebase** — `hypernix.freezer.CPU_PRESETS` gains 12 real AMD Ryzen entries (5000/7000/9000 series desktop, Zen 3/4/5) with verified specs (cores/threads/base clock researched per-SKU, not estimated) plus generational aliases (`ryzen-9000`, `ryzen-7-7000`, etc.), closing the README gap above. Separately, `hypernix.brewer` gains three CPU-*sized* architecture presets — `cpu-nano` (2,073,728 params), `cpu-tiny` (9,211,136 params), `cpu-small` (26,450,304 params), all measured via `BrewerModel.num_params()` rather than estimated, plain MHA with no sliding window for simplicity, positioned below the existing GPU-oriented `33m`/`micro`/`small`/`medium`/`large` family.
+### Tests
 
 ✨ **Real test coverage for everything shipped since 0.71.4b6** — None of `hyped_pro_core`, `hyped_pro_tools`, `multilama`, `hyped_pro_bridge`, or the interpreter-resolution launcher fix had pytest coverage; all of it was validated only through manual scripts during development. 125 new tests across 6 files: catalog integrity and both cloud dispatch protocols (mocked HTTP) plus the full agentic tool-calling loop for `hyped_pro_core`; real file-tool behavior and workspace path-traversal blocking for `hyped_pro_tools`; backend registry and GitHub-release asset-picking logic for `multilama`; the stdio JSON protocol for `hyped_pro_bridge`; provider-key storage round-trips for `config`; and the interpreter-resolution probing order plus the actual `HYPED_PRO_PYTHON` subprocess-env bug fix for the launcher. Along the way, found and fixed a real test-isolation bug of my own: `hypernix.config`'s `_CONFIG_DIR`/`_CONFIG_FILE` are resolved from `Path.home()` once at import time, so monkeypatching `HOME` after import silently does nothing — tests need to patch those module attributes directly instead. 1600 total tests pass (was 1475).
 
 ## 0.71.4b9
 
-🐛 **More catalog fixes** — `qwable-3.6-27b-mtp` (Mia-AiLab/Qwable-3.6-27b-MTP) wasn't just wrong format (safetensors → gguf) — the community has reported llama.cpp failing to load it entirely ("missing tensor 'blk.64.attn_norm.weight'") and the repo owner's own comment confirms it was mid-fix, not stable. Swapped to the same publisher's plain (non-MTP) `Qwable-3.6-27b`, a single clean GGUF file with no such reports; renamed the catalog entry to `qwable-3.6-27b` to match. `qwable-9b-fable5` (empero-ai/Qwable-9B-Claude-Fable-5, safetensors) was auditing-caught before a bug report: its base, Qwen3.5-9B, uses a hybrid Gated-DeltaNet/full-attention architecture neither `HyperNixModel` nor the installed `transformers` recognizes — the same "falls back to HyperNixModel, may produce garbage" trap already confirmed live on `qwopus-3.5-9b-v3`. Swapped to the same publisher's official GGUF. `qwopus-3.6-27b-coder` and `qwopus-3.5-9b-v3` are confirmed genuinely safetensors (not broken/fake) but carry the same unrecognized `qwen3_5`/`qwen3_6` tag — flagged honestly in their catalog notes rather than swapped, since I don't have enough confidence in an alternative to recommend one.
-
-🐛 **Fixed a double-period/jammed-text bug** in the wrapped multilama error message (`hyped_pro_core`'s GGUF-load error appended `". "` after a message that already ended in a period, and ran straight into the model's catalog notes with no separator).
+### Added
 
 🐛 **The footer box no longer disappears during local model loads/downloads** — `eraseFooter()` was wiping it to blank space the instant a noisy operation (download, local model load, tool-call execution) started, which looked like the banner vanishing; it wasn't scrolling away, it was being erased. New `settleFooter()` leaves it visibly on screen and just moves the cursor past it, so real backend output appends below and scrolls normally like anything else in the terminal, the same as everywhere else in this codebase that already prints real logs to the terminal.
 
@@ -6470,11 +7211,15 @@ spot-checked, not exhaustively re-verified.
 
 ✨ **`/settings thinking-display`** replaces the old `hide-thinking` boolean with five modes: `hidden` (default, unchanged), `grayed`, `normal`, `red`, `theme` (the active theme's accent color). `hyped_pro_core.send_chat_message` now returns `{content, thinking}` instead of a bare string — when thinking isn't hidden, `extract_thinking()` captures it instead of discarding it (built on the same tag-matching as `strip_thinking`, including the truncated/unclosed-tag case), so the TUI has real content to render in the chosen color before the main reply, printed as a separate `thinking>` line.
 
+### Fixed
+
+🐛 **More catalog fixes** — `qwable-3.6-27b-mtp` (Mia-AiLab/Qwable-3.6-27b-MTP) wasn't just wrong format (safetensors → gguf) — the community has reported llama.cpp failing to load it entirely ("missing tensor 'blk.64.attn_norm.weight'") and the repo owner's own comment confirms it was mid-fix, not stable. Swapped to the same publisher's plain (non-MTP) `Qwable-3.6-27b`, a single clean GGUF file with no such reports; renamed the catalog entry to `qwable-3.6-27b` to match. `qwable-9b-fable5` (empero-ai/Qwable-9B-Claude-Fable-5, safetensors) was auditing-caught before a bug report: its base, Qwen3.5-9B, uses a hybrid Gated-DeltaNet/full-attention architecture neither `HyperNixModel` nor the installed `transformers` recognizes — the same "falls back to HyperNixModel, may produce garbage" trap already confirmed live on `qwopus-3.5-9b-v3`. Swapped to the same publisher's official GGUF. `qwopus-3.6-27b-coder` and `qwopus-3.5-9b-v3` are confirmed genuinely safetensors (not broken/fake) but carry the same unrecognized `qwen3_5`/`qwen3_6` tag — flagged honestly in their catalog notes rather than swapped, since I don't have enough confidence in an alternative to recommend one.
+
+🐛 **Fixed a double-period/jammed-text bug** in the wrapped multilama error message (`hyped_pro_core`'s GGUF-load error appended `". "` after a message that already ended in a period, and ran straight into the model's catalog notes with no separator).
+
 ## 0.71.4b8
 
-🐛 **Nanbeige fix** — `nanbeige4.2-3b-gguf`'s filename had the wrong case (`nanbeige4.2-3b-Q4_K_M.gguf` vs the repo's actual `Nanbeige4.2-3B-Q4_K_M.gguf`, a 404), and — the bigger issue — it was wired to the `vanilla` backend when Nanbeige4.2 uses a looped-transformer architecture (`general.architecture=nanbeige`) not in upstream llama.cpp at all, confirmed on the model card. Fixed the filename and added a `nanbeige` backend to `hypernix.multilama` (`Nanbeige/llama.cpp` @ `nanbeige42` branch, no prebuilt releases — same treatment as `prismml`).
-
-✨ **Python interpreter resolution** — On a machine with more than one Python (pyenv/uv/conda alongside system `python3`), the bridge/GUI subprocesses could end up on a different interpreter than the one `hypernix` was actually installed into. Fixed at the root: `hypernix.hyped_pro`'s launcher now passes `HYPED_PRO_PYTHON=sys.executable` to the Node process it spawns (previously only *implied* in a debug message, never actually set — the real bug). For the case where hyped_pro.py itself is run by an interpreter without hypernix, `resolve_python_for_subprocess()` probes `python3.12` → `python3.14` → any other `python3.x` on `$PATH` with hypernix importable. The same probing is mirrored in `bin/_hypernix_python.sh` (shared by `bin/hyped-pro`/`bin/hyped-pro-gui`) and in `hyped_pro.ts`'s `pythonBin()`, so all three entry points agree regardless of how hyped-pro ends up being launched.
+### Added
 
 ✨ **Hidden thinking output** — `hypernix.hyped_pro_core.strip_thinking()` removes inline `<think>`/`<thinking>`/`<reasoning>` blocks (Qwen3 thinking mode, DeepSeek-R1-style reasoners) from every reply, cloud or local, applied centrally in `send_chat_message` — including the truncated case where `max_tokens` cut generation off mid-thought (an unclosed tag), which now surfaces a short note instead of returning what would otherwise look like a silently empty reply. Toggle with `/settings hide-thinking on|off`.
 
@@ -6482,31 +7227,51 @@ spot-checked, not exhaustively re-verified.
 
 ✨ **Real file tools** — New `hypernix.hyped_pro_tools` module: `create_file`, `edit_file` (str_replace-style — exact, unique match required), `read_file`, `list_directory`, `search_files` (regex content search or filename glob). Every path is resolved and checked against a workspace root (`HYPED_PRO_WORKSPACE`, default the directory hyped-pro was launched from) before anything touches disk — a path that would escape it is refused. Wired into a real agentic tool-calling loop in `send_cloud_chat` (Anthropic's `tool_use`/`tool_result` blocks and the OpenAI-compatible `tool_calls` shape both handled — DashScope/Qwen and Moonshot/Kimi get this for free since they're OpenAI-compatible) and `send_local_chat_gguf` (via `multilama`'s new `chat_message()`, which returns the raw tool-call-capable message instead of just text — best-effort, depends on the GGUF's own chat template actually supporting function calling). Bounded at 8 rounds by default so a model that keeps calling tools without ever answering fails cleanly instead of looping forever. Every tool call and its result prints to the terminal as it happens — never silent. `hypernix.old_oven` (the plain safetensors path) has no tool-calling infrastructure, so tools simply aren't offered there rather than faking support. Toggle with `/tools on|off`; on by default.
 
+### Fixed
+
+🐛 **Nanbeige fix** — `nanbeige4.2-3b-gguf`'s filename had the wrong case (`nanbeige4.2-3b-Q4_K_M.gguf` vs the repo's actual `Nanbeige4.2-3B-Q4_K_M.gguf`, a 404), and — the bigger issue — it was wired to the `vanilla` backend when Nanbeige4.2 uses a looped-transformer architecture (`general.architecture=nanbeige`) not in upstream llama.cpp at all, confirmed on the model card. Fixed the filename and added a `nanbeige` backend to `hypernix.multilama` (`Nanbeige/llama.cpp` @ `nanbeige42` branch, no prebuilt releases — same treatment as `prismml`).
+
+✨ **Python interpreter resolution** — On a machine with more than one Python (pyenv/uv/conda alongside system `python3`), the bridge/GUI subprocesses could end up on a different interpreter than the one `hypernix` was actually installed into. Fixed at the root: `hypernix.hyped_pro`'s launcher now passes `HYPED_PRO_PYTHON=sys.executable` to the Node process it spawns (previously only *implied* in a debug message, never actually set — the real bug). For the case where hyped_pro.py itself is run by an interpreter without hypernix, `resolve_python_for_subprocess()` probes `python3.12` → `python3.14` → any other `python3.x` on `$PATH` with hypernix importable. The same probing is mirrored in `bin/_hypernix_python.sh` (shared by `bin/hyped-pro`/`bin/hyped-pro-gui`) and in `hyped_pro.ts`'s `pythonBin()`, so all three entry points agree regardless of how hyped-pro ends up being launched.
+
 ## 0.71.4b7
+
+### API Changes
 
 ✨ **New module: `hypernix.multilama`** — Unified interface over several llama.cpp variants, since one GGUF-publishing fork doesn't necessarily load on another's binaries. Backends: `vanilla` (upstream ggml-org/llama.cpp via the existing `llama-cpp-python` in-process bindings), `ik` (ikawrakow/ik_llama.cpp — newer SOTA quant types, faster MoE offload), `prismml` (PrismML-Eng/llama.cpp — the custom Q1_0_g128 1-bit hybrid-attention kernels `bonsai-27b-gguf` needs and no one else ships), `kobold` (LostRuins/koboldcpp). `vanilla` runs in-process; the fork-based backends have no Python bindings, so `multilama` fetches/caches their `llama-server`-style binary (generalizing `hypernix.fetcher`'s proven GitHub-release-asset logic to an arbitrary repo/binary name), launches it as a local subprocess, and talks to it over the same OpenAI-compatible HTTP protocol every llama.cpp-derived server exposes — the caller's `MultiLlama.chat()` call is identical regardless of which fork actually answered. GGUF files are always resolved to a local path via `huggingface_hub` before any backend launches, rather than relying on each fork's own (version-dependent) `-hf` convenience flag — `ik_llama.cpp` diverged from upstream in Aug 2024, before that flag existed there. `prismml` has no known prebuilt releases; calling it raises with the exact build-from-source command instead of guessing at a release asset. `python -m hypernix.multilama list` reports live availability per backend; `hypernix.hyped_pro_core`'s GGUF dispatch now routes through `multilama` instead of calling `llama_cpp` directly, so `bonsai-27b-gguf` goes from "will likely fail here" to "works once the fork is built."
 
 ## 0.71.4b6
 
-✨ **`hyped+`/`hyped-pro` real provider dispatch** — Replaced the mocked chat reply with real dispatch through a shared Python layer (`hypernix.hyped_pro_core`, called from the Node TUI via a persistent `hypernix.hyped_pro_bridge` worker): real Anthropic Messages / OpenAI-compatible HTTP calls for cloud models, real local inference via `hypernix.old_oven` for HuggingFace models, and the real HNX1 Gatekeeper/Keymaster quota layer for T1. A failed call now surfaces a coded error (`HPC-*`/`HPB-*`/`HPT-*`) instead of a fabricated reply.
-
-🛡️ **Provider reclassification** — Qwen (`qwen3.7-plus`) and Kimi K3 (`kimi-k3`) are now correctly classified as `cloud`, routed to Alibaba Cloud Model Studio (DashScope, OpenAI-compatible) and Moonshot AI respectively, each with a real, documented API base URL and auth env var (`DASHSCOPE_API_KEY`, `MOONSHOT_API_KEY`). Kimi K2.7 Code stays `local` (open-weight, self-hostable) since only K3 is cloud-only at launch.
+### Added
 
 ✨ **Automatic local model downloads** — Selecting a `local` model (via `/model` or the model picker) or running `/download [model]` now auto-fetches its HuggingFace snapshot through the existing `hypernix.download.download_model` fallback-chain machinery if it isn't cached yet, with live progress on the terminal.
 
-✨ **`/gui` desktop mode** — New `hyped-pro-gui` entry point (also reachable from the TUI via `/gui`) launches a real Qt6 desktop app (`PySide6`, working on both X11 and Wayland from one codebase) with a GTK4 fallback for Qt-less systems. Both backends log coded debug/error info to the terminal (`HPG-*` codes) and neither fabricates a chat reply — they call into the same `hyped_pro_core` dispatch as the TUI.
+### API Changes
+
+🛡️ **Provider reclassification** — Qwen (`qwen3.7-plus`) and Kimi K3 (`kimi-k3`) are now correctly classified as `cloud`, routed to Alibaba Cloud Model Studio (DashScope, OpenAI-compatible) and Moonshot AI respectively, each with a real, documented API base URL and auth env var (`DASHSCOPE_API_KEY`, `MOONSHOT_API_KEY`). Kimi K2.7 Code stays `local` (open-weight, self-hostable) since only K3 is cloud-only at launch.
 
 ✨ **Real `/key` persistence** — `/key <vendor> <api-key>` now saves to `~/.hypernix/config.json` (via new `hypernix.config.get_provider_key`/`set_provider_key`) and is usable immediately without a restart; `/key` with no args shows masked status for every configured vendor.
 
-🛡️ **Branding cleanup** — Removed the OpenClaw-inspired naming/theme references from `hyped+`'s banner, system prompt, and footer; it's its own design now. Docs updated to match (historical changelog/roadmap entries describing what actually shipped in `0.71.4b2` are left as-is).
+### Fixed
 
-🐛 **Fixes** — Added the `tsconfig.json` that `package.json`'s `build` script referenced but never shipped (the TS build was broken). Removed leftover joke debug comments from `hyped_pro.py`'s launcher in favor of a real `--debug`/`HYPED_PRO_DEBUG` flag. Fixed a broken-pipe traceback when quitting `hyped+` while a bridge request was still in flight.
+✨ **`hyped+`/`hyped-pro` real provider dispatch** — Replaced the mocked chat reply with real dispatch through a shared Python layer (`hypernix.hyped_pro_core`, called from the Node TUI via a persistent `hypernix.hyped_pro_bridge` worker): real Anthropic Messages / OpenAI-compatible HTTP calls for cloud models, real local inference via `hypernix.old_oven` for HuggingFace models, and the real HNX1 Gatekeeper/Keymaster quota layer for T1. A failed call now surfaces a coded error (`HPC-*`/`HPB-*`/`HPT-*`) instead of a fabricated reply.
+
+✨ **`/gui` desktop mode** — New `hyped-pro-gui` entry point (also reachable from the TUI via `/gui`) launches a real Qt6 desktop app (`PySide6`, working on both X11 and Wayland from one codebase) with a GTK4 fallback for Qt-less systems. Both backends log coded debug/error info to the terminal (`HPG-*` codes) and neither fabricates a chat reply — they call into the same `hyped_pro_core` dispatch as the TUI.
+
+### Dependencies and Packaging
 
 🐛 **Real-world follow-up fixes** — A local-model chat turn on a model still loading for the first time could stack duplicate footer boxes on screen: the Python bridge's inherited stderr (transformers/torch warnings during model load) isn't coordinated with the TUI's footer redraw math, and racing a periodic spinner-redraw against it corrupted the terminal. `hyped_pro.ts` now suspends the live redraw for local/T1 turns and lets that output scroll normally, matching how `/download` already handled it. Separately, `hypernix.train.HyperNixConfig`/`load_snapshot` could silently build a model at its own dataclass defaults (vocab_size=32000, hidden_size=1024) when a downloaded checkpoint's `config.json` didn't use HF-standard field names, surfacing a cryptic `load_state_dict` size-mismatch deep in PyTorch instead of a clear error; `load_snapshot` now validates the real checkpoint's shape fields up front (with a `text_config`-nesting unwrap for wrapped/multimodal configs) and fails with the actual raw config keys shown, so a genuine schema mismatch is immediately diagnosable. A missing `huggingface_hub`/`torch` for whichever Python interpreter is actually running the bridge (common on machines with multiple Pythons — pyenv/uv/conda alongside system python3) used to surface as a bare `ModuleNotFoundError` traceback; it's now a coded `HPC-DEPS-001` error naming the exact interpreter in use and pointing at `HYPED_PRO_PYTHON` if that's not the one with the package installed. Selecting a local model and immediately running `/download` could race two concurrent downloads of the same model; concurrent callers now share one in-flight download.
 
 ✨ **GGUF model support** — `ModelDef` gained a `format` field (`"safetensors"` default, or `"gguf"`) and `send_chat_message`/`ensure_downloaded`/`is_downloaded` now branch on it, routing GGUF models through `llama-cpp-python` (`llama_cpp.Llama.from_pretrained` + `create_chat_completion`) instead of `hypernix.old_oven`/transformers — the same optional dependency HyperNix already ships for *producing* GGUFs (`hypernix[llama-cpp]`), now also used to *run* one. Added `qwen3-4b-gguf` (Qwen/Qwen3-4B-GGUF, Q4_K_M, 2.5GB), `nanbeige4.2-3b-gguf` (owao/Nanbeige4.2-3B-GGUF, Q4_K_M, 2.57GB — both fit comfortably in 8GB VRAM), and `bonsai-27b-gguf` (prism-ml/Bonsai-27B-gguf — flagged in its notes as needing a custom PrismML llama.cpp fork with non-standard 1-bit kernels that stock llama-cpp-python doesn't ship, so it's listed but will likely fail to load here). Also fixed two *existing* catalog entries (`qwopus-3.6-35b-a3b-coder-mtp`, `qwopus-3.6-35b-a3b-v1-mtp`) that were GGUF-only repos mismarked as safetensors-loadable — they'd have failed outright. New `HYPED_PRO_GGUF_CTX`/`HYPED_PRO_GGUF_NGL` env vars control context size and GPU-layer offload; models too large to fully fit even at their smallest quant (both 35B-A3B MoE Qwopus entries, 17.2GB minimum) default to a conservative partial-offload split instead of attempting full GPU offload and OOMing.
 
+### Removed
+
+🛡️ **Branding cleanup** — Removed the OpenClaw-inspired naming/theme references from `hyped+`'s banner, system prompt, and footer; it's its own design now. Docs updated to match (historical changelog/roadmap entries describing what actually shipped in `0.71.4b2` are left as-is).
+
+🐛 **Fixes** — Added the `tsconfig.json` that `package.json`'s `build` script referenced but never shipped (the TS build was broken). Removed leftover joke debug comments from `hyped_pro.py`'s launcher in favor of a real `--debug`/`HYPED_PRO_DEBUG` flag. Fixed a broken-pipe traceback when quitting `hyped+` while a bridge request was still in flight.
+
 ## 0.71.4b2
+
+### Added
 
 ✨ **`hyped+` (`hyped-pro`) Node.js TUI** — Standalone Node.js interactive CLI (`hyped+` / `hyped-pro`) featuring a locked multi-panel layout inspired by OpenClaw, Qwen Code CLI, Claude Desktop, and Claude CLI. Includes quick 2D pixel art coffee mascot startup animation, 256-color Hyped theme, and instant execution.
 
@@ -6522,189 +7287,125 @@ spot-checked, not exhaustively re-verified.
   - `/vision <img> <prompt>`: Multi-modal vision input support.
   - Command auto-completion on tab for all slash commands.
 
+### API Changes
+
 ✨ **Brewer 33.6429M Parameter Architecture** — Added `hypernix0x_v2_33m` (33.6429M parameters: 33,642,900 parameters) architecture preset (`d_model=512`, `n_layers=6`, `d_ff=1444`, `ctx=4096`) in `brewer.py`.
 
-🐛 **Normal Hyped Model Load Error Fix** — Resolved issue where missing local model weights caused `hyped` to return `[Error: Model runner not properly loaded.]`. Improved exception handling, fallback logic, and auto-download prompts.
+### CLI and UX
 
 🛡️ **`hyper-Nix.2` Undertrained Warning Banner** — Prominently surfaces the undertrained warning box whenever `hyper-Nix.2` is selected or executed.
 
+### Fixed
 
+🐛 **Normal Hyped Model Load Error Fix** — Resolved issue where missing local model weights caused `hyped` to return `[Error: Model runner not properly loaded.]`. Improved exception handling, fallback logic, and auto-download prompts.
 
 ## 0.71.1
 
-✨ **`hnx map`** — a new steampunk schematic TUI. Dials represent parameter
-counts (per-layer, scaled by a configurable `acc` value), pipes represent
-layer connections, animated steam represents live data flow, and steam
-engines represent prompt/dataset input. A dedicated throttle dial sweeps
-only while a training run is actually active (via `checkpoints/train.log`
-telemetry). Detail level (`poly`: 16/32/64/128) scales dial resolution,
-pipe-joint richness, and steam-animation frame count. Reads architecture
-from a single `.safetensors` file, a full model folder (auto-discovering
-sharded weights, or falling back to an analytical estimate from
-`config.json` if no weights are present yet), or runs with just live
-`train.log` telemetry and no architecture breakdown. Move the mouse into
-the bottom-right corner for a legend (falls back to `?` on terminals
-without mouse-motion reporting). Configured via `hnx map config poly|acc|
-main use-gpu|main tps|main file model <1|2|3> [-f|-F PATH]`; see
-`hnx map --help`.
+### Added
 
 ✨ **`UniversalCooker` / `universal_cooker()` now default to the V5S
-optimizer tier** instead of the legacy CPU/CUDA device tiers. Pass
-`variant="v5"` / `"v5-plus"` / `"v5s"` (default) / `"legacy"` to choose;
-a CUDA device detected as pre-Volta (Pascal, sm_61/6.2) still
-auto-selects the matching `Aged*` tier (`Agedcookerv5`,
-`ULTRAagedcookerv5`, `Agedcookerv5s`) exactly as the old device-tier
-logic did for `InductionCooker`. `variant="legacy"` restores the
-pre-0.71.1 selection behavior unchanged.
+  optimizer tier** instead of the legacy CPU/CUDA device tiers. Pass
+  `variant="v5"` / `"v5-plus"` / `"v5s"` (default) / `"legacy"` to choose;
+  a CUDA device detected as pre-Volta (Pascal, sm_61/6.2) still
+  auto-selects the matching `Aged*` tier (`Agedcookerv5`,
+  `ULTRAagedcookerv5`, `Agedcookerv5s`) exactly as the old device-tier
+  logic did for `InductionCooker`. `variant="legacy"` restores the
+  pre-0.71.1 selection behavior unchanged.
 
-🐛 **Fixed corrupted borders in `tvtop++` and `cctvtop`.** The Hardware
-Vitals / GPU Details panels' bar gauges and history graphs embedded raw
-ANSI escape codes directly into Rich `Text` objects; Rich has no way to
-know those bytes aren't visible characters, so its cell-width
-measurement came out wrong and the panel's right-hand border got drawn
-in the wrong column (stray "│" characters floating outside the box).
-Fixed by routing that content through `Text.from_ansi` instead, which
-parses the escape codes into proper zero-width style spans.
+### Changed
 
 🔧 Internal: `pressure_cooker.py`'s `UniversalCooker` gained a
-`_select_legacy` / `_select_v5_family` split; existing tests that
-exercised the old default now pass `variant="legacy"` explicitly.
+  `_select_legacy` / `_select_v5_family` split; existing tests that
+  exercised the old default now pass `variant="legacy"` explicitly.
 
+### API Changes
 
+✨ **`hnx map`** — a new steampunk schematic TUI. Dials represent parameter
+  counts (per-layer, scaled by a configurable `acc` value), pipes represent
+  layer connections, animated steam represents live data flow, and steam
+  engines represent prompt/dataset input. A dedicated throttle dial sweeps
+  only while a training run is actually active (via `checkpoints/train.log`
+  telemetry). Detail level (`poly`: 16/32/64/128) scales dial resolution,
+  pipe-joint richness, and steam-animation frame count. Reads architecture
+  from a single `.safetensors` file, a full model folder (auto-discovering
+  sharded weights, or falling back to an analytical estimate from
+  `config.json` if no weights are present yet), or runs with just live
+  `train.log` telemetry and no architecture breakdown. Move the mouse into
+  the bottom-right corner for a legend (falls back to `?` on terminals
+  without mouse-motion reporting). Configured via `hnx map config poly|acc|
+  main use-gpu|main tps|main file model <1|2|3> [-f|-F PATH]`; see
+  `hnx map --help`.
+
+### Fixed
+
+🐛 **Fixed corrupted borders in `tvtop++` and `cctvtop`.** The Hardware
+  Vitals / GPU Details panels' bar gauges and history graphs embedded raw
+  ANSI escape codes directly into Rich `Text` objects; Rich has no way to
+  know those bytes aren't visible characters, so its cell-width
+  measurement came out wrong and the panel's right-hand border got drawn
+  in the wrong column (stray "│" characters floating outside the box).
+  Fixed by routing that content through `Text.from_ansi` instead, which
+  parses the escape codes into proper zero-width style spans.
 
 ## 0.70.6-3
 
+### Dependencies and Packaging
+
 ✨ **all imports are now lazy, speeding the intire package up.**
-
-
 
 ## 0.70.6
 
+### Added
+
 ✨ **Pressure Cooker v5S.** Added new oscillation resistant cosin 3d, pressure diffusion low power optimizer `PressureCookerV5S`. It targets a 2.1x speedup over AdamW while using less RAM.
+
 ✨ **CLI Optimization.** Drastically improved CLI startup speed by deferring heavy PyTorch imports across all subcommands via an updated fast-path check.
+
 ✨ **Automated Release Timeline.** Added a GitHub Action step to automatically generate and append a Mermaid.js horizontal release timeline to the wiki on every public release.
+
 ✨ **New CLI Subcommands.** Added `wiki`, `vera`, `scavenger`, and `config` to the main `hnx` interface.
+
+### Fixed
+
 🐛 **Log Tailing Fixes.** Fixed `cctvtop` and `tvtop++` auto-detecting Chromium binary logs by aggressively filtering out `.config`, `.cache`, and non-text files.
+
 🐛 **cctvtop VNC.** Fixed the VNC logic in `cctvtop` to correctly use the `$DISPLAY` variable and spawn `x11vnc` with `-shared`.
+
+### Documentation
+
 📚 **Documentation Updates.** Expanded the "Learn" page on the website and added new documentation and wikis for V5S, Vera, and Scavenger.
 
 ## 0.70.5b2
 
+### Added
+
 ✨ **Net Module.** New `hypernix.net` module for distributed network operations and Tailscale integration. Features: `config`, `auto-setup`, `m-setup`, `connect`, `status`, `m-ip`, `a-il` (auto-connect), `mutli-a-port`, `ex-port`, `s-storage` (distributed storage sharing), `onef-all`, `tail acheck` (automatic Python script checks over Tailscale SSH), and `tail stop`. Accessible via `hnx net <cmd>`. Fully implemented using `subprocess` with `tailscale` and `ssh` commands without relying on mocked stubs.
 
 ✨ **Protect Module.** New `hypernix.protect` module for hardware health and monitor protection. Configurable via `hnx prot bind [set|reset] <word>`. Sleeps the monitor via `xset dpms force off` and uses raw terminal input modes to invisibly wait for the wake word (default: "bon") before waking the monitor via `xset dpms force on`.
 
-🐛 **cctvtop Python Rewrite.** Completely rewrote the buggy C++ `cctvtop_ext` wrapper (`cctvtop.py`) into a pure Python 2D interface using `rich.live.Live` with `screen=True`. Fixes terminal scrolling artifacts, duplicate text, and lockups, cleanly tracking and rendering the latest `.log` file in a robust layout.
+✨ **Net Module.** New `hypernix.net` module for distributed network operations and Tailscale integration. Features: `config`, `auto-setup`, `m-setup`, `connect`, `status`, `m-ip`, `a-il` (auto-connect), `mutli-a-port`, `ex-port`, `s-storage` (distributed storage sharing), `onef-all`, `tail acheck` (automatic Python script checks over Tailscale SSH), and `tail stop`. Accessible via `hnx net <cmd>`. Fully implemented using `subprocess` with `tailscale` and `ssh` commands without relying on mocked stubs.
+
+✨ **Protect Module.** New `hypernix.protect` module for hardware health and monitor protection. Configurable via `hnx prot bind [set|reset] <word>`. Sleeps the monitor via `xset dpms force off` and uses raw terminal input modes to invisibly wait for the wake word (default: "bon") before waking the monitor via `xset dpms force on`.
+
+### API Changes
 
 🛡️ **CLI Default Polish.** Running `hypernix` or `hnx` with no valid subcommand or just invalid flags now cleanly prints the usage menu instead of silently falling back to the legacy `all` (download -> convert -> quantize) pipeline.
 
+🛡️ **CLI Default Polish.** Running `hypernix` or `hnx` with no valid subcommand or just invalid flags now cleanly prints the usage menu instead of silently falling back to the legacy `all` (download -> convert -> quantize) pipeline.
+
+### Fixed
+
+🐛 **cctvtop Python Rewrite.** Completely rewrote the buggy C++ `cctvtop_ext` wrapper (`cctvtop.py`) into a pure Python 2D interface using `rich.live.Live` with `screen=True`. Fixes terminal scrolling artifacts, duplicate text, and lockups, cleanly tracking and rendering the latest `.log` file in a robust layout.
+
+🐛 **cctvtop Python Rewrite.** Completely rewrote the buggy C++ `cctvtop_ext` wrapper (`cctvtop.py`) into a pure Python 2D interface using `rich.live.Live` with `screen=True`. Fixes terminal scrolling artifacts, duplicate text, and lockups, cleanly tracking and rendering the latest `.log` file in a robust layout.
+
 ## 0.70.5b1
+
+### Added
 
 ✨ **Brewer Module.** New `hypernix.brewer` module for building fully custom transformer architectures from scratch with no base model. Features: `BrewerConfig` dataclass, `BrewerModel` (RMSNorm + RoPE + GQA + SwiGLU + optional sliding-window), the **hyperNix0x-v2** preset family (Small 9L/ctx=20482, Medium 18L/ctx=40964, Large 36L/ctx=103724), training loop with cosine LR schedule, PyTorch + GGUF export, auto-registration into `KNOWN_MODELS`, and full CLI via `hnx brew`.
 
-✨ **WebUI Overhaul.** Complete rewrite of the web dashboard with in-depth controls for every HyperNix module: Training (PressureCookerV4 params), Brewer (architecture builder + registry), Camouflage (RLHF/RLAF config), Fizzle (model fusion), Download, Quantize (30+ quant types), Tupperware (round planner), Pans/Data Prep, Pressure Cooker (code gen), Abbicus (curriculum config), Hyper-Log (code gen), Upload, Ethanol (GPU controls), Script Builder (now exports Python), Network, and Settings. All panels generate real CLI snippets.
-
-✨ **Autofix Scripts.** New standalone scripts in `scripts/`:
-  - `autofix-B` — bash script for CI failures: runs `ruff --fix` + `--unsafe-fixes`, commits with `[autofix-B]` message.
-  - `autofix-E` — Python script for public release failures: fixes dup imports, bare `except:`, `from __future__ import annotations` gaps, empty tests, type-checking guards, then `py_compile`-validates every file.
-
-✨ **GitHub Actions — Python 3.14 + macOS M-series.** Updated `ci.yml` to test against Python 3.11/3.12/3.13/3.14 (`allow-prereleases` for 3.14) on `ubuntu-latest`, `ubuntu-22.04`, and `macos-latest` (Apple Silicon). Torch installs routed by OS.
-
-🐛 **tvtop++ Border Artifacts Fixed.** Refactored `run()` to build the Rich `Layout` tree once and only call `.update()` on named slots each tick, eliminating ghost border artifacts from repeated full layout reconstruction.
-
 ✨ **tvtop++ All-Process Monitor.** `_get_active_processes` now shows the top 12 system-wide processes by CPU (all processes, not just python/train), adds a STATUS column, and uses a `show_all` toggle.
-
-🐛 **Chromium Log Filter.** `_autodetect_log` in `tv.py` now skips any `.log` file with `chromium` or `chrome` in the name to prevent auto-tailing browser debug logs.
-
-🔧 **CLI `brew` → Brewer.** `hnx brew` now routes to `brewer.cli_main` instead of `instant_pot.brew`.
-
-## 0.70.5a2
-
-✨ **Massive Model Support Expansion.** Added support for GLM 5.2, Nex-N2, more Nemo models, LFM 2.5, SmolLM 3, Z Image, all Whisper models, DeepSeekV4, Kimi K2.5+, more Gemma 4, more Qwen, and Mimo models. Added explicit support for "Model Families" grouping.
-✨ **Camouflage (RLHF/RLAF).** Added a new module `hypernix.camouflage` with CLI support via `hnx camo`. Includes AI-assisted modes `-Ai` and full scaffolding for RLHF loops.
-✨ **Fizzle Image Models.** `fizzle` now automatically supports Vision/Image models using `AutoImageProcessor` to construct multi-modal architectures seamlessly.
-✨ **Hyper-Log TUI.** New premium dashboard (`hyper_log`) providing consistent, styled console logs for training with deep metrics: 5-decimal grad norm, learning rate, epoch progress, GPU telemetry, ETA, and emergency stop features.
-✨ **Pressure Cooker V4 Enhancements.** Fleshed out quantization scaling stubs, added Sophia clipping approximation, and enhanced Pascal architectural warnings.
-✨ **Spinner Consistency.** Brought the new `spinner` animations across `tvtop++`, `tvtop` (old), and `cctvtop`.
-📚 **Documentation Updates.** Expanded GitHub Pages docs to highlight Camouflage and Hyper-Log, plus corresponding Wiki entries.
-
-## 0.70.4b11
-
-✨ **`qa` — Q&A dataset formatter.** New module (`hypernix.qa.QAProcessor`)
-turns structured datasets (JSONL, lists of dicts, plain text files) into raw
-text strings for causal LM training. Supports `question_answer` mode
-(`Question: {q}\nAnswer: {a}`) and `predict_next` concatenation mode.
-Optionally integrates with `salt_shaker` and `pepper_shaker` — seasoning is
-applied to the raw fields *before* templating so the `Question:` / `Answer:`
-keywords are never corrupted. Automatic key fallbacks handle `instruction` /
-`completion` / `prompt` / `response` naming conventions.
-
-✨ **`stml` — Short Term Memory Loss context manager.** New module
-(`hypernix.stml`) with two components:
-- **`calculate_vram_context`** — estimates the maximum safe trained context
-  length from VRAM, model size, batch size, and precision. Returns a multiple
-  of 128. Accessible via `hypernix stml --vram N --params N` CLI.
-- **`STML`** — training-time context manager that enforces an `untrained_max_context`
-  hard cap and folds long sequences into the batch dimension using
-  `segment_length`-sized chunks `(batch × num_segments, segment_length)`,
-  so the model trains on all the data rather than just a truncated slice.
-  Accepts an optional `regulator` (`Abbicus` / `TurboAbbicus`) that is applied
-  first. Compatible with `old_oven.CodeOven.train()` and `hypernix.train.train()`.
-
-✨ **`TurboAbbicus` — exponential curriculum regulator.** New curriculum
-class (`hypernix.abbicus.TurboAbbicus`) configured via `TurboAbbicusConfig`.
-- **Exponential growth** — context grows as `base × exp(k × progress)` from
-  25% of base to `hard_cap` (vs. linear Abbicus).
-- **Configurable `hard_cap`** — absolute maximum context in tokens.
-- **Sine-wave oscillation** — when the cap is reached, context oscillates
-  around `hard_cap` using `sin(step × frequency) × amplitude`, adjusted by
-  host CPU load. GPU utilisation is never used as a change factor.
-- **VRAM safeguard** — on each `step()`, VRAM allocation is checked; if it
-  exceeds `vram_safety_threshold` (default 90%), context is scaled back 10%.
-  It recovers +5% per step when pressure eases.
-
-✨ **`tvtop++` layout, color, and resize fixes.**
-- Fixed a layout-tree bug where `layout["body"].split_column()` was called
-  *after* a `split_row()`, causing border shifting on every refresh. The
-  layout is now rebuilt as a clean static tree (`body → top/bottom → left/right`).
-- Fixed hardware panel colors to match original `tvtop` (CPU=green,
-  RAM=magenta, GPU=red; was all-default before).
-- Fixed `Console` being created with a hardcoded `width=term_width` that
-  prevented the dashboard from adapting when the terminal was resized.
-- Made graph width and log-tail line width dynamic (scale with `console.width`).
-- Log tail now shows 8 lines (was 6).
-
-✨ **`hypernix stml` CLI subcommand.** New `hypernix stml` command exposes
-`calculate_vram_context` from the shell with `--vram`, `--params`,
-`--batch-size`, `--precision`, `--num-layers`, `--num-heads`, `--head-dim`.
-
-✨ **`hypernix train run` curriculum flags.** Added `--use-abbicus`,
-`--use-turbo-abbicus`, `--use-stml`, `--untrained-max-context`,
-`--segment-length` to `hypernix train run`.
-
-🔧 **Version bump.** `0.70.4b11`.
-
-📚 **Documentation.** Updated `Abbicus.md` with full TurboAbbicus reference.
-New `STML.md` wiki page. Added `qa` section to `Kitchen.md`. Updated `Home.md`.
-
-🛡️ **59 new tests** in `tests/test_v0704b11_features.py` covering all new
-modules, config classes, CLI integration, layout correctness, and train/oven
-signatures. Tests are version-resilient (check APIs and behaviour, not
-internal details).
-
----
-
-## 0.70.5b2
-
-✨ **Net Module.** New `hypernix.net` module for distributed network operations and Tailscale integration. Features: `config`, `auto-setup`, `m-setup`, `connect`, `status`, `m-ip`, `a-il` (auto-connect), `mutli-a-port`, `ex-port`, `s-storage` (distributed storage sharing), `onef-all`, `tail acheck` (automatic Python script checks over Tailscale SSH), and `tail stop`. Accessible via `hnx net <cmd>`. Fully implemented using `subprocess` with `tailscale` and `ssh` commands without relying on mocked stubs.
-
-✨ **Protect Module.** New `hypernix.protect` module for hardware health and monitor protection. Configurable via `hnx prot bind [set|reset] <word>`. Sleeps the monitor via `xset dpms force off` and uses raw terminal input modes to invisibly wait for the wake word (default: "bon") before waking the monitor via `xset dpms force on`.
-
-🐛 **cctvtop Python Rewrite.** Completely rewrote the buggy C++ `cctvtop_ext` wrapper (`cctvtop.py`) into a pure Python 2D interface using `rich.live.Live` with `screen=True`. Fixes terminal scrolling artifacts, duplicate text, and lockups, cleanly tracking and rendering the latest `.log` file in a robust layout.
-
-🛡️ **CLI Default Polish.** Running `hypernix` or `hnx` with no valid subcommand or just invalid flags now cleanly prints the usage menu instead of silently falling back to the legacy `all` (download -> convert -> quantize) pipeline.
-
-## 0.70.5b1
 
 ✨ **`hnx` CLI Shortcut.** Added a new CLI shortcut alias `hnx` which matches all capability of the main `hypernix` command.
 
@@ -6718,120 +7419,266 @@ internal details).
 
 🛡️ **14 new tests.** Added tests for `lazy_suzan` (v0.70.3 additional tests) and the updated log parser, block history, loss curve estimations, and `tvtop++` dashboard.
 
+### API Changes
+
+✨ **GitHub Actions — Python 3.14 + macOS M-series.** Updated `ci.yml` to test against Python 3.11/3.12/3.13/3.14 (`allow-prereleases` for 3.14) on `ubuntu-latest`, `ubuntu-22.04`, and `macos-latest` (Apple Silicon). Torch installs routed by OS.
+
+🔧 **CLI `brew` → Brewer.** `hnx brew` now routes to `brewer.cli_main` instead of `instant_pot.brew`.
+
+### Fixed
+
+✨ **Autofix Scripts.** New standalone scripts in `scripts/`:
+  - `autofix-B` — bash script for CI failures: runs `ruff --fix` + `--unsafe-fixes`, commits with `[autofix-B]` message.
+  - `autofix-E` — Python script for public release failures: fixes dup imports, bare `except:`, `from __future__ import annotations` gaps, empty tests, type-checking guards, then `py_compile`-validates every file.
+
+🐛 **tvtop++ Border Artifacts Fixed.** Refactored `run()` to build the Rich `Layout` tree once and only call `.update()` on named slots each tick, eliminating ghost border artifacts from repeated full layout reconstruction.
+
+🐛 **Chromium Log Filter.** `_autodetect_log` in `tv.py` now skips any `.log` file with `chromium` or `chrome` in the name to prevent auto-tailing browser debug logs.
+
+### Dependencies and Packaging
+
 🔧 **Version Bump.** Updated all version files across the package to `0.70.4b1`.
 
----
+### Site Changes
+
+✨ **WebUI Overhaul.** Complete rewrite of the web dashboard with in-depth controls for every HyperNix module: Training (PressureCookerV4 params), Brewer (architecture builder + registry), Camouflage (RLHF/RLAF config), Fizzle (model fusion), Download, Quantize (30+ quant types), Tupperware (round planner), Pans/Data Prep, Pressure Cooker (code gen), Abbicus (curriculum config), Hyper-Log (code gen), Upload, Ethanol (GPU controls), Script Builder (now exports Python), Network, and Settings. All panels generate real CLI snippets.
+
+## 0.70.5a2
+
+### Added
+
+✨ **Massive Model Support Expansion.** Added support for GLM 5.2, Nex-N2, more Nemo models, LFM 2.5, SmolLM 3, Z Image, all Whisper models, DeepSeekV4, Kimi K2.5+, more Gemma 4, more Qwen, and Mimo models. Added explicit support for "Model Families" grouping.
+
+✨ **Fizzle Image Models.** `fizzle` now automatically supports Vision/Image models using `AutoImageProcessor` to construct multi-modal architectures seamlessly.
+
+✨ **Hyper-Log TUI.** New premium dashboard (`hyper_log`) providing consistent, styled console logs for training with deep metrics: 5-decimal grad norm, learning rate, epoch progress, GPU telemetry, ETA, and emergency stop features.
+
+✨ **Pressure Cooker V4 Enhancements.** Fleshed out quantization scaling stubs, added Sophia clipping approximation, and enhanced Pascal architectural warnings.
+
+✨ **Spinner Consistency.** Brought the new `spinner` animations across `tvtop++`, `tvtop` (old), and `cctvtop`.
+
+### API Changes
+
+✨ **Camouflage (RLHF/RLAF).** Added a new module `hypernix.camouflage` with CLI support via `hnx camo`. Includes AI-assisted modes `-Ai` and full scaffolding for RLHF loops.
+
+### Documentation
+
+📚 **Documentation Updates.** Expanded GitHub Pages docs to highlight Camouflage and Hyper-Log, plus corresponding Wiki entries.
+
+## 0.70.4b11
+
+### Added
+
+✨ **`qa` — Q&A dataset formatter.** New module (`hypernix.qa.QAProcessor`)
+  turns structured datasets (JSONL, lists of dicts, plain text files) into raw
+  text strings for causal LM training. Supports `question_answer` mode
+  (`Question: {q}\nAnswer: {a}`) and `predict_next` concatenation mode.
+  Optionally integrates with `salt_shaker` and `pepper_shaker` — seasoning is
+  applied to the raw fields *before* templating so the `Question:` / `Answer:`
+  keywords are never corrupted. Automatic key fallbacks handle `instruction` /
+  `completion` / `prompt` / `response` naming conventions.
+
+✨ **`stml` — Short Term Memory Loss context manager.** New module
+  (`hypernix.stml`) with two components:
+  - **`calculate_vram_context`** — estimates the maximum safe trained context
+  length from VRAM, model size, batch size, and precision. Returns a multiple
+  of 128. Accessible via `hypernix stml --vram N --params N` CLI.
+  - **`STML`** — training-time context manager that enforces an `untrained_max_context`
+  hard cap and folds long sequences into the batch dimension using
+  `segment_length`-sized chunks `(batch × num_segments, segment_length)`,
+  so the model trains on all the data rather than just a truncated slice.
+  Accepts an optional `regulator` (`Abbicus` / `TurboAbbicus`) that is applied
+  first. Compatible with `old_oven.CodeOven.train()` and `hypernix.train.train()`.
+
+✨ **`TurboAbbicus` — exponential curriculum regulator.** New curriculum
+  class (`hypernix.abbicus.TurboAbbicus`) configured via `TurboAbbicusConfig`.
+  - **Exponential growth** — context grows as `base × exp(k × progress)` from
+  25% of base to `hard_cap` (vs. linear Abbicus).
+  - **Configurable `hard_cap`** — absolute maximum context in tokens.
+  - **Sine-wave oscillation** — when the cap is reached, context oscillates
+  around `hard_cap` using `sin(step × frequency) × amplitude`, adjusted by
+  host CPU load. GPU utilisation is never used as a change factor.
+  - **VRAM safeguard** — on each `step()`, VRAM allocation is checked; if it
+  exceeds `vram_safety_threshold` (default 90%), context is scaled back 10%.
+  It recovers +5% per step when pressure eases.
+
+✨ **`hypernix stml` CLI subcommand.** New `hypernix stml` command exposes
+  `calculate_vram_context` from the shell with `--vram`, `--params`,
+  `--batch-size`, `--precision`, `--num-layers`, `--num-heads`, `--head-dim`.
+
+### Changed
+
+🔧 **Version bump.** `0.70.4b11`.
+
+### API Changes
+
+✨ **`hypernix train run` curriculum flags.** Added `--use-abbicus`,
+  `--use-turbo-abbicus`, `--use-stml`, `--untrained-max-context`,
+  `--segment-length` to `hypernix train run`.
+
+### Fixed
+
+✨ **`tvtop++` layout, color, and resize fixes.**
+  - Fixed a layout-tree bug where `layout["body"].split_column()` was called
+  *after* a `split_row()`, causing border shifting on every refresh. The
+  layout is now rebuilt as a clean static tree (`body → top/bottom → left/right`).
+  - Fixed hardware panel colors to match original `tvtop` (CPU=green,
+  RAM=magenta, GPU=red; was all-default before).
+  - Fixed `Console` being created with a hardcoded `width=term_width` that
+  prevented the dashboard from adapting when the terminal was resized.
+  - Made graph width and log-tail line width dynamic (scale with `console.width`).
+  - Log tail now shows 8 lines (was 6).
+
+### Documentation
+
+📚 **Documentation.** Updated `Abbicus.md` with full TurboAbbicus reference.
+  New `STML.md` wiki page. Added `qa` section to `Kitchen.md`. Updated `Home.md`.
+
+### Tests
+
+🛡️ **59 new tests** in `tests/test_v0704b11_features.py` covering all new
+  modules, config classes, CLI integration, layout correctness, and train/oven
+  signatures. Tests are version-resilient (check APIs and behaviour, not
+  internal details).
 
 ## 0.70.3b2
 
-✨ **Web UI ground-up rebuild.** Replaced the monolithic inline HTML dashboard with a modular static frontend (`webui_static/`) served by a threaded HTTP server. Tailscale is now **opt-in only** via `-T` / `--tailscale`; local-only is the default. Fixed the `WebUIServer` constructor mismatch that broke CLI launches.
+### Added
 
 ✨ **`Tupperware` — automated dataset round splitting.** New module splits a chosen dataset into N training rounds with automatic step budgets, per-round optimal LR (scale-aware heuristic), warmup/cooldown ratios, and optional evaluation at the end of each round. Integrates with `new_fridge.plot_round_losses` for multi-round loss charts.
 
 ✨ **`StovetopV3CookerPlus` (v0.70.3).** Pascal-safe V3Plus variant with forced sm_61 kernels, adaptive gradient clipping, EMA shadow weights, and optional QAT via `QuantConfig`.
 
-✨ **`HyperNixQuantizer` — quantize facade.** Remade the quantize surface with use-case profiles (`chat`, `code`, `edge`, `quality`, `reference`), batch planning/runs, and a formatted catalog printer. Existing `quantize_gguf` / `CATALOG` API unchanged.
-
-📚 **Wiki expansion.** Dedicated pages for Pressure Cooker v3, Abbicus, Frameworks, Tupperware, and a Roadmap (0.70.4 → 0.70.6 → 0.71.2). Updated Ovens, Fridges, and Home index.
+### Changed
 
 🔧 **`old_fridge` / `old_oven` distributed unwrap.** `unwrap_model()` now peels DDP, FSDP, and DataParallel wrappers; `CodeOven.train` binds optimizers to the unwrapped core.
 
----
+### API Changes
+
+✨ **`HyperNixQuantizer` — quantize facade.** Remade the quantize surface with use-case profiles (`chat`, `code`, `edge`, `quality`, `reference`), batch planning/runs, and a formatted catalog printer. Existing `quantize_gguf` / `CATALOG` API unchanged.
+
+### Documentation
+
+📚 **Wiki expansion.** Dedicated pages for Pressure Cooker v3, Abbicus, Frameworks, Tupperware, and a Roadmap (0.70.4 → 0.70.6 → 0.71.2). Updated Ovens, Fridges, and Home index.
+
+### Site Changes
+
+✨ **Web UI ground-up rebuild.** Replaced the monolithic inline HTML dashboard with a modular static frontend (`webui_static/`) served by a threaded HTTP server. Tailscale is now **opt-in only** via `-T` / `--tailscale`; local-only is the default. Fixed the `WebUIServer` constructor mismatch that broke CLI launches.
 
 ## 0.70.3
 
+### Added
+
 ✨ **`lazy_suzan` — High-efficiency decentralized multi-GPU linking.** A new module allowing linking of multiple GPUs without a physical NVLink, utilizing fp8/int8/topk gradient compression, overlapped backward-pass communication, and a custom P2P ring topology to bypass standard NCCL bottlenecks.
+
+### API Changes
 
 ✨ **`PressureCookerV3` Variants.** Added `StovetopV3Cooker` for safe backwards compatibility on older CUDA 6.1 (Pascal) hardware by disabling fused/foreach kernels. Added `CookerLite` for a heavily optimized CPU-only training loop. Aliased the legacy `peak_lr` parameter to the standard PyTorch `lr` naming convention.
 
-🐛 **`ComputeFramework` Crash Fix.** Fixed string-based instantiation crashes in `instant_pot.py` when initializing `ComputeFramework`, and properly added `backward()` and `step()` bindings to allow seamless hookups with the `lazy_suzan` auto-synchronizer.
+### Fixed
 
----
+🐛 **`ComputeFramework` Crash Fix.** Fixed string-based instantiation crashes in `instant_pot.py` when initializing `ComputeFramework`, and properly added `backward()` and `step()` bindings to allow seamless hookups with the `lazy_suzan` auto-synchronizer.
 
 ## 0.70.1
 
-✨ **WebUI Design Rewrite.** Completely rebuilt the `webui.py` frontend using a premium glassmorphism aesthetic. Removed generic styles in favor of vibrant gradients, deep blurred backgrounds, dynamic hover animations, and a sleek dark mode. The UI now looks strictly modern and state-of-the-art.
-
-✨ **`tvtop` Instant Boot & Hardware Telemetry.** `tvtop` now starts up instantly due to lazy loading heavy modules (`abbicus`, `train`) in `hypernix/__init__.py`. Added historical line-graphs (up to 120 ticks) for CPU, RAM, and GPU utilisation directly in the TUI. Added a predictive loss curve extending the current loss trajectory into the future for easy estimation of convergence. Fixed a parsing error with `nvidia-smi` on certain GPU names that broke VRAM stats.
+### Added
 
 ✨ **`workshop` Conversational Streaming.** Rewrote the `ASRToLLMToTTS` pipeline in `workshop.py` to stream generator-based sentences for real-time conversational flow, heavily reducing time-to-first-audio-byte compared to the previous blocking implementation.
 
 ✨ **`instant_pot` Modernization.** The one-shot `brew()` trainer now gracefully supports `PressureCookerV3`, automatically regulates context windows with `Abbicus`, and implements multi-device distributions via `ComputeFramework`. Upgraded `old_oven` and `old_fridge` to support seamlessly unwrapping models bound to FSDP/DDP topologies.
 
+### Fixed
+
+✨ **`tvtop` Instant Boot & Hardware Telemetry.** `tvtop` now starts up instantly due to lazy loading heavy modules (`abbicus`, `train`) in `hypernix/__init__.py`. Added historical line-graphs (up to 120 ticks) for CPU, RAM, and GPU utilisation directly in the TUI. Added a predictive loss curve extending the current loss trajectory into the future for easy estimation of convergence. Fixed a parsing error with `nvidia-smi` on certain GPU names that broke VRAM stats.
+
 🐛 **`PressureCookerV3` LR Floor Fix.** Added a `1e-6` minimum floor to the scheduled learning rate drop to prevent catastrophic model collapse or stalled training when the LR scheduler zeroes out near the end of the steps.
+
+### Removed
+
+✨ **WebUI Design Rewrite.** Completely rebuilt the `webui.py` frontend using a premium glassmorphism aesthetic. Removed generic styles in favor of vibrant gradients, deep blurred backgrounds, dynamic hover animations, and a sleek dark mode. The UI now looks strictly modern and state-of-the-art.
+
+### Tests
 
 🛡️ **Mixed-Precision Test Suite.** Vastly expanded unit testing in `tests/` specifically benchmarking `PressureCookerV3` memory savings across FP8, FP64, Q5.5, and Q4M variants vs `AdamW`.
 
----
-
 ## 0.70.0
 
+### Added
+
 ✨ **`abbicus` — Automatic token regulation and curriculum tuning.** New
-module that dynamically modifies max sequence length and token
-padding/truncation strategies during training based on model size,
-context length, dataset complexity, and current global step. Supports
-model sizes from 0.5B to 72B with automatic size-based multipliers.
-Configurable curriculum steps, dynamic padding, and dataset-type
-awareness.
-
-✨ **`compute_framework` — Hardware-agnostic multi-device training.**
-Abstracts away CUDA, MPS, CPU, and TPU backends with automatic DDP /
-ZeRO wrapping. `ComputeFramework` class handles PyTorch DDP
-initialization, device placement, and fallback logic automatically.
-Supports distributed training with `local_rank`, `world_size`, `use_ddp`,
-`use_fsdp`, and `zero_stage` parameters. Auto-detects available compute
-backend and sets up the appropriate device.
-
-✨ **`pressure_cooker` V2 rewrite — Quantization-aware training.** Full
-V2 implementation with fp16/bf16/fp64 mixed-precision, automatic dtype
-detection, and quantization-aware training (QAT) hooks for Q8/Q6/Q5.5/Q4M.
-10 major upgrades: gradient checkpointing integration, adaptive gradient
-clipping with per-layer scaling, EMA weight shadowing, distributed
-training awareness (DDP/FSDP compatible), dynamic loss scaling with
-backoff on overflow, parameter freezing/unfreezing callbacks, learning
-rate finder utility, and training metrics streaming to tvtop dashboard.
-Device-specific tiers (`StovetopCooker`, `ElectricCooker`,
-`InductionCooker`, `ProCooker`) all upgraded to V2 standards.
-
-✨ **`pressure_cooker_v3` — ZeRO-optimized V3 optimizer.** Replaces V2
-with full ZeRO-1/2 optimizations, FP8 support, and zero bugs. New
-`QuantDtype` enum (FP8/FP16/FP32/FP64/Q8/Q6/Q5_5/Q4M) and `QuantConfig`
-dataclass for fine-grained quantization control. `PressureCookerV3`
-class with advanced ZeRO stage support, improved memory efficiency, and
-heavily tested quantization paths.
+  module that dynamically modifies max sequence length and token
+  padding/truncation strategies during training based on model size,
+  context length, dataset complexity, and current global step. Supports
+  model sizes from 0.5B to 72B with automatic size-based multipliers.
+  Configurable curriculum steps, dynamic padding, and dataset-type
+  awareness.
 
 ✨ **`workshop` — Model frameworks and TTS/ASR pipelines.** New room for
-building model frameworks with pre-built templates for TTS, ASR, LLM,
-and Vision models. `WorkshopFramework` base class with
-`FrameworkConfig` dataclass. Full compatibility with
-ray0rf1re/nano-nano collection and 30+ additional architectures including
-LiquidAI LFM2.5, MiniCPM5, Gemma 4 family, Qwen3.5 series, Phi-4,
-DeepSeek-V2.5, GLM-Edge/MoE, GPT-OSS, Nemotron, Llama-3.2, Mistral-Nemo,
-Mixtral-8x22B. Includes `TTSEngine`, `ASREngine`, `ASRToTTS` (direct
-speech-to-speech), and `ASRToLLMToTTS` (full conversational pipeline).
+  building model frameworks with pre-built templates for TTS, ASR, LLM,
+  and Vision models. `WorkshopFramework` base class with
+  `FrameworkConfig` dataclass. Full compatibility with
+  ray0rf1re/nano-nano collection and 30+ additional architectures including
+  LiquidAI LFM2.5, MiniCPM5, Gemma 4 family, Qwen3.5 series, Phi-4,
+  DeepSeek-V2.5, GLM-Edge/MoE, GPT-OSS, Nemotron, Llama-3.2, Mistral-Nemo,
+  Mixtral-8x22B. Includes `TTSEngine`, `ASREngine`, `ASRToTTS` (direct
+  speech-to-speech), and `ASRToLLMToTTS` (full conversational pipeline).
+
+### Changed
 
 🔧 **`tvtop` backwards-compatibility shim.** All tvtop functionality
-moved to `hypernix.tv`; this module now re-exports everything so
-`import hypernix.tvtop` continues to work. Console script `tvtop` still
-registered and points at `hypernix.tv.cli_main`.
+  moved to `hypernix.tv`; this module now re-exports everything so
+  `import hypernix.tvtop` continues to work. Console script `tvtop` still
+  registered and points at `hypernix.tv.cli_main`.
+
+### API Changes
+
+✨ **`compute_framework` — Hardware-agnostic multi-device training.**
+  Abstracts away CUDA, MPS, CPU, and TPU backends with automatic DDP /
+  ZeRO wrapping. `ComputeFramework` class handles PyTorch DDP
+  initialization, device placement, and fallback logic automatically.
+  Supports distributed training with `local_rank`, `world_size`, `use_ddp`,
+  `use_fsdp`, and `zero_stage` parameters. Auto-detects available compute
+  backend and sets up the appropriate device.
+
+✨ **`pressure_cooker` V2 rewrite — Quantization-aware training.** Full
+  V2 implementation with fp16/bf16/fp64 mixed-precision, automatic dtype
+  detection, and quantization-aware training (QAT) hooks for Q8/Q6/Q5.5/Q4M.
+  10 major upgrades: gradient checkpointing integration, adaptive gradient
+  clipping with per-layer scaling, EMA weight shadowing, distributed
+  training awareness (DDP/FSDP compatible), dynamic loss scaling with
+  backoff on overflow, parameter freezing/unfreezing callbacks, learning
+  rate finder utility, and training metrics streaming to tvtop dashboard.
+  Device-specific tiers (`StovetopCooker`, `ElectricCooker`,
+  `InductionCooker`, `ProCooker`) all upgraded to V2 standards.
+
+### Performance
+
+✨ **`pressure_cooker_v3` — ZeRO-optimized V3 optimizer.** Replaces V2
+  with full ZeRO-1/2 optimizations, FP8 support, and zero bugs. New
+  `QuantDtype` enum (FP8/FP16/FP32/FP64/Q8/Q6/Q5_5/Q4M) and `QuantConfig`
+  dataclass for fine-grained quantization control. `PressureCookerV3`
+  class with advanced ZeRO stage support, improved memory efficiency, and
+  heavily tested quantization paths.
+
+### Documentation
 
 📚 **Documentation updates.** Wiki expanded with usage examples for all
-new modules. README updated with v0.70.0 feature highlights.
-
----
+  new modules. README updated with v0.70.0 feature highlights.
 
 ## 0.61.4
 
-🖥️ **`tvtop` btop-style multi-panel rewrite.**  Reported on a
-mid-screen rendering: the 0.61.1 dashboard "still sucks and only
-shows CPU usage" — the single ``hardware`` panel was visually
-sparse compared to btop++'s rich CPU / memory / GPU breakdown.
+### Added
 
-The 0.61.2 dashboard splits the old single ``hardware`` panel
-into **four** richer panels in a 2×2 grid above the loss curve +
-log:
+✨ **`tvtop` btop-style multi-panel rewrite.** Reported on a
+  mid-screen rendering: the 0.61.1 dashboard "still sucks and only
+  shows CPU usage" — the single ``hardware`` panel was visually
+  sparse compared to btop++'s rich CPU / memory / GPU breakdown.
 
-* **`cpu` panel** — TOTAL utilisation bar at the top, then a
+  The 0.61.2 dashboard splits the old single ``hardware`` panel
+  into **four** richer panels in a 2×2 grid above the loss curve +
+  log:
+
+  * **`cpu` panel** — TOTAL utilisation bar at the top, then a
   **per-core grid** in two columns (each cell ``cN <bar>
   NN.N%``), then a 3-row history graph rendered through the
   same multi-row block-bar helper used for the loss curve.
@@ -6839,166 +7686,203 @@ log:
   percpu=True)`` first, then a Linux-only ``/proc/stat`` per-CPU
   fallback that reads each ``cpuN`` line and computes the
   delta-against-prev sample.
-* **`memory` panel** — separate bars for ``USED`` /  ``CACHE``
+  * **`memory` panel** — separate bars for ``USED`` /  ``CACHE``
   / ``FREE`` / ``SWAP`` (each with absolute MiB), plus a 2-row
   history graph.  Sourced from
   ``psutil.virtual_memory()`` + ``psutil.swap_memory()`` first,
   then ``/proc/meminfo`` (``MemTotal`` / ``MemAvailable`` /
   ``Cached`` / ``SwapTotal`` / ``SwapFree``) on Linux.
-* **`gpu` panel** — GPU name on top, then ``UTIL`` / ``VRAM``
+  * **`gpu` panel** — GPU name on top, then ``UTIL`` / ``VRAM``
   (with ``used/total MiB``) / ``TEMP`` (mapped 30-100°C across
   the bar so a hot GPU is visible) / ``PWR`` (against
   ``power.limit`` so 100% bar = at TDP) gauges + 2-row util
   history.  Falls back to a clean ``(no GPU detected)``
   placeholder when ``nvidia-smi`` isn't on PATH.
-* **`training` panel** — unchanged from 0.61.1.
+  * **`training` panel** — unchanged from 0.61.1.
 
-The footer now shows ``cores=N · gpu=<name>`` so users can see
-at a glance whether the new probes resolved.
+  The footer now shows ``cores=N · gpu=<name>`` so users can see
+  at a glance whether the new probes resolved.
 
 🔧 **New probes in `hypernix.tv`**:
-* ``_safe_psutil_per_core()`` — per-core list of CPU
+  * ``_safe_psutil_per_core()`` — per-core list of CPU
   percentages, ``None`` if psutil isn't installed.
-* ``_read_proc_stat_per_core()`` — Linux fallback that needs
+  * ``_read_proc_stat_per_core()`` — Linux fallback that needs
   two consecutive samples to compute deltas (returns ``None``
   on the first call).
-* ``_read_memory_breakdown()`` — dict of
+  * ``_read_memory_breakdown()`` — dict of
   ``total_mib`` / ``used_mib`` / ``free_mib`` / ``cached_mib``
   / ``swap_used_mib`` / ``swap_total_mib`` / ``percent``.
-* ``_query_nvidia_smi_full()`` — extended ``nvidia-smi`` query
+  * ``_query_nvidia_smi_full()`` — extended ``nvidia-smi`` query
   that returns name + temperature + power.draw + power.limit
   alongside the original mem/util tuple.  Cached for 3 s
   alongside the legacy 3-tuple.
-* Rolling history deques (``_cpu_history``, ``_ram_history``,
+  * Rolling history deques (``_cpu_history``, ``_ram_history``,
   ``_gpu_util_history``) capped at 120 entries, populated each
   ``latest_frame()``.
 
-🪪 **No btop code was copied.**  The dashboard is original
-Python that mimics the same UX patterns (per-core grid, time-
-series block graphs, coloured threshold bars).  btop++ is
-GPL-3.0 C++ source and reproducing it into hypernix would be a
-license/copyright problem — so this is a clean-room
-implementation inspired by the same look-and-feel.
+  🪪 **No btop code was copied.**  The dashboard is original
+  Python that mimics the same UX patterns (per-core grid, time-
+  series block graphs, coloured threshold bars).  btop++ is
+  GPL-3.0 C++ source and reproducing it into hypernix would be a
+  license/copyright problem — so this is a clean-room
+  implementation inspired by the same look-and-feel.
+
+✨ **Linux Local AI Assistant** — Voice-controlled AI assistant with ASR input, natural language TTS responses, and system control capabilities. Built-in commands: `/help`, `/voice`, `/system`, `/quit`. Features persistent memory and conversation context.
+
+✨ **Enhanced ASR/TTS Pipelines** — Improved `ASRToTTS` direct speech-to-speech conversion and enhanced `ASRToLLMToTTS` full conversational pipeline with better error handling, device management, and streaming support.
+
+📦 **30+ New Model Architectures** — Added support for:
+  - LiquidAI LFM2.5-8B-A1B (GGUF quantized)
+  - OpenBMB MiniCPM5-1B
+  - Google Gemma 4 family (all variants including 31B-it, 12B, 4B, 1B)
+  - Qwen3.5 series, Phi-4, DeepSeek-V2.5, GLM-Edge/MoE
+  - GPT-OSS, Nemotron, Llama-3.2, Mistral-Nemo, Mixtral-8x22B
+  - Full Nano-Nano collection (ray0rf1re/nano-nano)
+  - And 15+ additional architectures for vision, audio, and language tasks
+
+### Dependencies and Packaging
+
+🔧 **Dependency Updates** — Updated requirements for latest transformers, accelerate, bitsandbytes, and TTS/ASR libraries. Added tailscale-python for secure tunneling.
+
+### Documentation
+
+📚 **Documentation Updates** — Complete changelog preserved, README updated with new features, wiki expanded with usage examples for all new modules.
+
+### Site Changes
+
+🛜 **Interactive TUI/CLI (`hypernix-cli`)** — Rich-based interactive menu system with fallback mode for all major operations: model management, training control, ASR/TTS pipelines, AI assistant, and Web UI launcher. Commands include `models`, `train`, `asr`, `tts`, `pipeline`, `assistant`, and `webui`.
+
+🛜 **Web UI with Tailscale Integration** — Modern web dashboard at `http://localhost:8080` with secure Tailscale tunneling for remote access. Provides model management, training monitoring, ASR/TTS pipeline controls, and chat interface.
+
+### Tests
 
 🛡️ **9 new regression tests** in ``tests/test_v061_2.py``
-covering: ``_read_memory_breakdown`` shape, ``_safe_psutil_per_core``
-return type, ``/proc/stat`` per-core delta semantics, per-core
-grid label appears in render, memory panel renders breakdown or
-fallback, GPU panel renders gauges or no-GPU placeholder, footer
-shows core count + GPU label, CPU/RAM/GPU history deques grow
-per frame and are capped at 120.
+  covering: ``_read_memory_breakdown`` shape, ``_safe_psutil_per_core``
+  return type, ``/proc/stat`` per-core delta semantics, per-core
+  grid label appears in render, memory panel renders breakdown or
+  fallback, GPU panel renders gauges or no-GPU placeholder, footer
+  shows core count + GPU label, CPU/RAM/GPU history deques grow
+  per frame and are capped at 120.
 
-The existing ``test_render_uses_panel_frames`` was updated to
-check for the new ``cpu`` / ``memory`` / ``gpu`` panel titles
-instead of the old single ``hardware`` title.
+  The existing ``test_render_uses_panel_frames`` was updated to
+  check for the new ``cpu`` / ``memory`` / ``gpu`` panel titles
+  instead of the old single ``hardware`` title.
 
----
+🛡️ **Pressure Cooker V2 Improvements** — Fixed lookahead slow buffer initialization bug that silently disabled lookahead optimization. Added comprehensive test coverage for both scalar and multitensor paths with Q8/Q6/Q5.5/Q4M quantization-aware training.
 
 ## 0.61.1
 
-✨ **`hyped` chat CLI.**  New high-quality TUI chat CLI registered
-as the ``hyped`` console script.  Two-screen flow:
+### Added
 
-1. **Configurator** — pick a model from the curated short-list
-   organised by family (HyperNix / Nix / Qwen 3.5 / Nano), or
-   ``0`` to browse every entry in :data:`KNOWN_MODELS`.  Pick a
-   persona from :data:`hypernix.menu.MENU` (or ``0`` for none).
-   Tweak sampling defaults (temperature / top_p / top_k /
-   max_new_tokens) — press Enter on each to accept.
-2. **Chat** — full-screen panel layout: status bar (model /
-   persona / sampling), conversation panel with the last 12
-   turns wrapped to terminal width, then a typing prompt.
-   Streams tokens through :class:`hypernix.bell.Bell` and applies
-   :class:`hypernix.flour.Flour` (smart by default; switch via
-   ``--flour aggressive|off``).  Slash commands inside the chat:
-   ``/quit``, ``/reset``, ``/persona <name>``, ``/save <path>``,
-   ``/help``.
+✨ **`hyped` chat CLI.** New high-quality TUI chat CLI registered
+  as the ``hyped`` console script.  Two-screen flow:
 
-Skip the picker with ``hyped --model <short>``; pre-pick a
-persona with ``hyped --persona <name>``.  ASCII fallback via
-``hyped --ascii`` for non-UTF terminals; ``readline`` is loaded
-when available so up-arrow recall + inline editing Just Work.
+  1. **Configurator** — pick a model from the curated short-list
+  organised by family (HyperNix / Nix / Qwen 3.5 / Nano), or
+  ``0`` to browse every entry in :data:`KNOWN_MODELS`.  Pick a
+  persona from :data:`hypernix.menu.MENU` (or ``0`` for none).
+  Tweak sampling defaults (temperature / top_p / top_k /
+  max_new_tokens) — press Enter on each to accept.
+  2. **Chat** — full-screen panel layout: status bar (model /
+  persona / sampling), conversation panel with the last 12
+  turns wrapped to terminal width, then a typing prompt.
+  Streams tokens through :class:`hypernix.bell.Bell` and applies
+  :class:`hypernix.flour.Flour` (smart by default; switch via
+  ``--flour aggressive|off``).  Slash commands inside the chat:
+  ``/quit``, ``/reset``, ``/persona <name>``, ``/save <path>``,
+  ``/help``.
 
-🚨 **MAJOR ``hyper-Nix.2`` undertrained warning.**  The chat-tuned
-``ray0rf1re/hyper-Nix.2`` checkpoint shipped publicly but its
-training run was cut short — outputs are often nonsensical,
-repetitive, or incoherent.  ``hypernix.utils.warn_hyper_nix_2``
-fires a red-bordered ANSI box on stderr the first time any
-hyper-Nix.2 alias is touched (``download_model``, ``preheat``,
-``hyped --model hyper-nix.2``).  Idempotent per process; suppress
-with ``HYPERNIX_SUPPRESS_HYPERNIX2_WARNING=1``.  Also demotes the
-hyped configurator badge from ``★`` to ``⚠`` and points users at
-``Nix-ai/Nix-2.7a`` / ``Qwen/Qwen2.5-7B-Instruct`` /
-``ray0rf1re/hyper-nix.1`` as solid alternatives.
+  Skip the picker with ``hyped --model <short>``; pre-pick a
+  persona with ``hyped --persona <name>``.  ASCII fallback via
+  ``hyped --ascii`` for non-UTF terminals; ``readline`` is loaded
+  when available so up-arrow recall + inline editing Just Work.
+
+  🚨 **MAJOR ``hyper-Nix.2`` undertrained warning.**  The chat-tuned
+  ``ray0rf1re/hyper-Nix.2`` checkpoint shipped publicly but its
+  training run was cut short — outputs are often nonsensical,
+  repetitive, or incoherent.  ``hypernix.utils.warn_hyper_nix_2``
+  fires a red-bordered ANSI box on stderr the first time any
+  hyper-Nix.2 alias is touched (``download_model``, ``preheat``,
+  ``hyped --model hyper-nix.2``).  Idempotent per process; suppress
+  with ``HYPERNIX_SUPPRESS_HYPERNIX2_WARNING=1``.  Also demotes the
+  hyped configurator badge from ``★`` to ``⚠`` and points users at
+  ``Nix-ai/Nix-2.7a`` / ``Qwen/Qwen2.5-7B-Instruct`` /
+  ``ray0rf1re/hyper-nix.1`` as solid alternatives.
+
+🔌 **New console script** in ``pyproject.toml``:
+  ``hyped = "hypernix.hyped:cli_main"``.
+
+### Fixed
 
 🐛 **Five bug-fix passes** while building hyped:
 
-* **hyped chat loop** now routes through ``Countertop.say()`` with
+  * **hyped chat loop** now routes through ``Countertop.say()`` with
   a streaming token callback registered on the bell, instead of
   bypassing the countertop's history / trim / clean logic.
-* **hyped ASCII picker** uses ``*`` instead of ``★`` for the
+  * **hyped ASCII picker** uses ``*`` instead of ``★`` for the
   default-model badge so non-UTF terminals don't render ``?``.
-* **`ups.UPS` instantiation** is now lazy — IP-geolocation deferred
+  * **`ups.UPS` instantiation** is now lazy — IP-geolocation deferred
   to the first ``check()`` call, so ``UPS()`` no-args returns
   instantly instead of blocking on a 5-second HTTPS round-trip.
-* **`plasma.calibrate_alarm`** stashes the pristine bound method
+  * **`plasma.calibrate_alarm`** stashes the pristine bound method
   on ``alarm._plasma_original`` and resets to it before
   re-wrapping, so calling ``calibrate_alarm`` twice no longer
   compounds factors.  New ``reset_calibration(alarm)`` undoes
   the wrapper entirely.
-* **`tv._sanitise`** now exempts ``\r`` (0x0D) from the
+  * **`tv._sanitise`** now exempts ``\r`` (0x0D) from the
   non-printable strip so Windows CRLF logs don't lose every line
   ending to ``?``.
 
-🛠️ **Utility helpers** added:
+  🛠️ **Utility helpers** added:
 
-* **`hypernix.utils`** (new module): ``healthcheck()`` /
+  * **`hypernix.utils`** (new module): ``healthcheck()`` /
   ``diagnostic_info()`` / ``list_models()`` / ``print_models()`` /
   ``session_dir()`` / ``is_module_available()`` /
   ``has_binary()``.  Diagnostic snapshot includes torch +
   CUDA + every common optional dep + relevant binaries on PATH +
   the ``KNOWN_MODELS`` count.
-* **`Menu.find(query)`** — fuzzy persona lookup with exact /
+  * **`Menu.find(query)`** — fuzzy persona lookup with exact /
   case-insensitive / substring / prefix matching.  Returns
   ``None`` on ambiguous matches so the caller can disambiguate.
-* **`hypernix.injection.thinking()` / `testing()` /
+  * **`hypernix.injection.thinking()` / `testing()` /
   `system_override()`** — module-level shortcuts so
   ``injection.thinking("hi")`` works without instantiating an
   injector.
 
-🔌 **New console script** in ``pyproject.toml``:
-``hyped = "hypernix.hyped:cli_main"``.
+### Tests
 
 🛡️ **37 new tests** in ``tests/test_v061_1.py`` covering every
-bug-fix regression (ASCII picker / lazy UPS / plasma compounding /
-CRLF / hyped curated short-list), every utility helper, every
-fuzzy-find branch in ``Menu.find``, every injection shortcut, and
-every code path of the hyper-Nix.2 warning (alias matching /
-once-per-process / force re-emit / non-v2 skip / env-var
-suppression).
-
----
+  bug-fix regression (ASCII picker / lazy UPS / plasma compounding /
+  CRLF / hyped curated short-list), every utility helper, every
+  fuzzy-find branch in ``Menu.find``, every injection shortcut, and
+  every code path of the hyper-Nix.2 warning (alias matching /
+  once-per-process / force re-emit / non-v2 skip / env-var
+  suppression).
 
 ## 0.61.0
 
-🐍 **Python 3.14 support.**  ``requires-python`` bumped to
-``>=3.10,<3.15``; classifiers gain
-``Programming Language :: Python :: 3.14``.  No code changes
-needed — every module imports clean on the 3.14 release
-candidate.
+### Changed
+
+🔁 🐍 **Python 3.14 support.** ``requires-python`` bumped to
+  ``>=3.10,<3.15``; classifiers gain
+  ``Programming Language :: Python :: 3.14``.  No code changes
+  needed — every module imports clean on the 3.14 release
+  candidate.
+
+### Performance
 
 ✨ **Three new modules.**
 
-* **`hypernix.ups`** — uninterruptible-power-supply mode.
+  * **`hypernix.ups`** — uninterruptible-power-supply mode.
   Checks two real-world signals every ``check_interval_seconds``
   (default 5 minutes):
-    * **Weather** — open-meteo (free, no API key).  Forces a
-      checkpoint when the WMO weather code is in
-      :data:`SEVERE_WEATHER_CODES` (heavy rain 65/66/67, heavy
-      snow 75, violent rain showers 82, thunderstorm 95/96/99).
-    * **Scheduled outage** — pluggable
-      ``outage_check_fn(address) -> bool`` callback so a user
-      can wire in their utility's "scheduled maintenance" lookup.
+  * **Weather** — open-meteo (free, no API key).  Forces a
+  checkpoint when the WMO weather code is in
+  :data:`SEVERE_WEATHER_CODES` (heavy rain 65/66/67, heavy
+  snow 75, violent rain showers 82, thunderstorm 95/96/99).
+  * **Scheduled outage** — pluggable
+  ``outage_check_fn(address) -> bool`` callback so a user
+  can wire in their utility's "scheduled maintenance" lookup.
   On a panic transition (was-clear → severe / outage), the UPS
   fires the user-supplied ``snapshot_fn`` exactly once, then
   shrinks ``save_every`` by ``cadence_multiplier`` (default 3 →
@@ -7007,23 +7891,23 @@ candidate.
   latitude/longitude is supplied.  ``offline=True`` (or
   ``HYPERNIX_UPS_OFFLINE=1``) skips every HTTP call.
 
-* **`hypernix.injection`** — token / phrase splicers for chat
+  * **`hypernix.injection`** — token / phrase splicers for chat
   scaffolding tokens.  Four variants:
-    * ``ThinkingInjector`` — wraps in ``<think>...</think>`` —
-      the convention HyperNix-2 / Qwen-3 thinking mode /
-      DeepSeek-R1 distilled checkpoints share.
-    * ``TestingInjector`` — prepends ``<|test|>`` to short-
-      circuit a chat oven into eval mode.
-    * ``SystemOverrideInjector`` — appends a one-shot
-      ``<|system_override|>...`` without disturbing the
-      caller's persistent system prompt.
-    * ``CustomInjector`` — generic open / close / mode triple.
+  * ``ThinkingInjector`` — wraps in ``<think>...</think>`` —
+  the convention HyperNix-2 / Qwen-3 thinking mode /
+  DeepSeek-R1 distilled checkpoints share.
+  * ``TestingInjector`` — prepends ``<|test|>`` to short-
+  circuit a chat oven into eval mode.
+  * ``SystemOverrideInjector`` — appends a one-shot
+  ``<|system_override|>...`` without disturbing the
+  caller's persistent system prompt.
+  * ``CustomInjector`` — generic open / close / mode triple.
   Two scopes: :meth:`inject_messages` for
   ``[{"role", "content"}, ...]`` lists, :meth:`inject_text`
   for already-rendered prompt strings.  Each injection is
   recorded in :attr:`history` for provenance.
 
-* **`hypernix.plasma`** — quick GPU benchmark for sharper
+  * **`hypernix.plasma`** — quick GPU benchmark for sharper
   ETAs.  Runs a 6-step Llama-shape forward + loss + backward
   + AdamW.step loop sized to fit on a laptop GPU (and to
   finish in ~2 s on CPU), returning a :class:`PlasmaResult`
@@ -7036,11 +7920,11 @@ candidate.
   on CUDA so fp16 / bf16 configs don't explode on bf16-broken
   cross-entropy paths.
 
-🖥️ **`tvtop` visual rewrite (the headline polish).**
-The 0.60 dashboard worked but looked thin and got tripped by
-non-training logs.  0.61.0b1 reworks the layout to btop++-style:
+⚡ **`tvtop` visual rewrite (the headline polish).**
+  The 0.60 dashboard worked but looked thin and got tripped by
+  non-training logs.  0.61.0b1 reworks the layout to btop++-style:
 
-* **Multi-panel layout** — rounded-corner framed panels
+  * **Multi-panel layout** — rounded-corner framed panels
   (``╭`` / ``╮`` / ``╰`` / ``╯``).  Side-by-side ``hardware``
   panel (CPU / RAM / GPU / VRAM bars + numbers) and
   ``training`` panel (step + progress bar, loss / lr / tput,
@@ -7049,447 +7933,474 @@ non-training logs.  0.61.0b1 reworks the layout to btop++-style:
   :func:`multi_row_graph` helper, quantised to ``height × 8``
   sub-pixels via the ``▁ ▂ ▃ ▄ ▅ ▆ ▇ █`` ladder), then a
   full-width ``recent log`` panel with the last 6 lines.
-* **Auto-detect filter** — :func:`_looks_like_training_log`
+  * **Auto-detect filter** — :func:`_looks_like_training_log`
   reads the first 16 KiB of each candidate log and keeps only
   the ones containing a ``step N/M loss=…`` match.  Ranks
   shaped logs above name-matched logs above arbitrary newest.
   Stops the dashboard from latching onto a Konsole / browser
   / system log.
-* **Binary sanitisation** — ``_sanitise()`` replaces every
+  * **Binary sanitisation** — ``_sanitise()`` replaces every
   byte in ``[0x00–0x08, 0x0B–0x1F, 0x7F–0x9F]`` with ``?``,
   so a binary-laced log can't render as ``�`` garbage.
-* **Empty-state** — when no training data has been parsed
+  * **Empty-state** — when no training data has been parsed
   yet, the training panel shows
   ``⏳ waiting for training data…`` instead of a fake
   ``step 0 / loss=—``.
-* **Performance** — ``nvidia-smi`` cached for 3 seconds (was
+  * **Performance** — ``nvidia-smi`` cached for 3 seconds (was
   shelling out every 1-second refresh); cursor-home + per-line
   clear instead of full-screen erase per tick (less flicker);
   frame-diff suppression so the renderer skips writes when
   nothing visible changed.
-* **ASCII fallback** — ``--ascii`` swaps every Unicode block
+  * **ASCII fallback** — ``--ascii`` swaps every Unicode block
   char to ``# . : - = + *`` so non-UTF terminals stay readable.
-* Rounded panel chars + colour gauges (green < 60% < yellow
+  * Rounded panel chars + colour gauges (green < 60% < yellow
   < 85% < red) make the panels actually pleasant to watch.
 
+### Tests
+
 🛡️ **32 new tests** in ``tests/test_v061_b1.py`` covering
-every UPS state transition (offline / panic-once-on-edge /
-cadence triple / no-panic passthrough / history /
-multiplier-floor), every Injection mode (text / messages /
-prefix / suffix / wrap / factory / one-shot helper / history),
-every Plasma path (returns shape / positive throughput /
-summary string / alarm calibration / object-without-method
-rejection / alias), and every tv polish bit
-(``multi_row_graph`` shape / empty / constant / log
-sanitisation / training-log autodetect filter / panel frames /
-empty-state header).
+  every UPS state transition (offline / panic-once-on-edge /
+  cadence triple / no-panic passthrough / history /
+  multiplier-floor), every Injection mode (text / messages /
+  prefix / suffix / wrap / factory / one-shot helper / history),
+  every Plasma path (returns shape / positive throughput /
+  summary string / alarm calibration / object-without-method
+  rejection / alias), and every tv polish bit
+  (``multi_row_graph`` shape / empty / constant / log
+  sanitisation / training-log autodetect filter / panel frames /
+  empty-state header).
 
-Final: 800 tests pass, 1 skipped (matplotlib).
-
----
+  Final: 800 tests pass, 1 skipped (matplotlib).
 
 ## 0.60.0
 
+### Added
+
 ✨ **Eight new modules — four headline + four multi-tier.**
 
-🖥️ **`hypernix.tv` + `tvtop` CLI** — btop++-style training
-dashboard.  Tails any training log under cwd, parses
-``step N/M loss=X lr=Y`` lines, and renders a live ANSI-colour
-panel: progress bar with percent, loss sparkline (Unicode
-block-bar by default; ``--ascii`` for non-UTF terminals),
-throughput, elapsed wall time, ETA, CPU% / RAM% / GPU util%
-/ VRAM (via ``nvidia-smi``), and the most recent log tail.
-Zero hard dependencies — pure stdlib + ANSI.  Console script
-``tvtop`` is registered in ``pyproject.toml``.
-
-📦 **`hypernix.compactor`** — zip older checkpoints to save
-disk.  ``Compactor(root, keep_recent=3, fmt="zip"|"tar"|"tar.gz")``
-walks a snapshot directory, finds ``ckpt-NNNN`` /
-``checkpoint-NNNN`` / ``step-NNNN`` directories (and matching
-``.pt`` / ``.safetensors`` files), keeps the N most-recent
-uncompressed, and rolls the rest into archives.  ``dry_run=True``
-plans without touching the disk.
+✨ **`hypernix.tv` + `tvtop` CLI** — btop++-style training
+  dashboard.  Tails any training log under cwd, parses
+  ``step N/M loss=X lr=Y`` lines, and renders a live ANSI-colour
+  panel: progress bar with percent, loss sparkline (Unicode
+  block-bar by default; ``--ascii`` for non-UTF terminals),
+  throughput, elapsed wall time, ETA, CPU% / RAM% / GPU util%
+  / VRAM (via ``nvidia-smi``), and the most recent log tail.
+  Zero hard dependencies — pure stdlib + ANSI.  Console script
+  ``tvtop`` is registered in ``pyproject.toml``.
 
 ⚡ **`hypernix.ethanol` + `eth` CLI** — bounded GPU overclock.
-``Ethanol(level=0..30)`` maps a single integer to bounded core /
-memory / power-limit offsets (level 0 = full stock; level 30 =
-``MAX_CORE_OFFSET_MHZ`` / ``MAX_MEM_OFFSET_MHZ`` /
-``MAX_POWER_LIMIT_PCT``, all well below typical manual-OC
-limits).  Refuses to apply without ``confirm=True`` or
-``HYPERNIX_ETHANOL_CONFIRM=1``.  Vendor backends:
-``nvidia-settings`` (full), ``nvidia-smi`` (power limit only),
-``rocm-smi``, ``intel_gpu_frequency``.  Returned
-``OverclockResult`` records what was attempted, what succeeded,
-and any vendor-tool stderr.
+  ``Ethanol(level=0..30)`` maps a single integer to bounded core /
+  memory / power-limit offsets (level 0 = full stock; level 30 =
+  ``MAX_CORE_OFFSET_MHZ`` / ``MAX_MEM_OFFSET_MHZ`` /
+  ``MAX_POWER_LIMIT_PCT``, all well below typical manual-OC
+  limits).  Refuses to apply without ``confirm=True`` or
+  ``HYPERNIX_ETHANOL_CONFIRM=1``.  Vendor backends:
+  ``nvidia-settings`` (full), ``nvidia-smi`` (power limit only),
+  ``rocm-smi``, ``intel_gpu_frequency``.  Returned
+  ``OverclockResult`` records what was attempted, what succeeded,
+  and any vendor-tool stderr.
 
-🌑 **`hypernix.outage`** — turn the display off during training.
-``with Outage(): train_for_six_hours()`` blanks the panel on
-entry and **always** restores it on exit — clean finish,
-KeyboardInterrupt, OOM, RuntimeError, doesn't matter.  Backends:
-``xset dpms`` (X11), ``wlopm`` (Wayland), ``pmset`` (macOS),
-``SendMessageW`` via ``ctypes`` (Windows).  Missing backends
-log a note instead of raising.
+  🌑 **`hypernix.outage`** — turn the display off during training.
+  ``with Outage(): train_for_six_hours()`` blanks the panel on
+  entry and **always** restores it on exit — clean finish,
+  KeyboardInterrupt, OOM, RuntimeError, doesn't matter.  Backends:
+  ``xset dpms`` (X11), ``wlopm`` (Wayland), ``pmset`` (macOS),
+  ``SendMessageW`` via ``ctypes`` (Windows).  Missing backends
+  log a note instead of raising.
 
-🍳 **Four new 4-tier modules** (matching the established
-multi-tier pattern of ``smoker`` / ``coffee_maker`` /
-``espresso_maker`` / ``blender`` / ``toaster`` etc.):
+  🍳 **Four new 4-tier modules** (matching the established
+  multi-tier pattern of ``smoker`` / ``coffee_maker`` /
+  ``espresso_maker`` / ``blender`` / ``toaster`` etc.):
 
-* **`timer`** — countdown / interval / pomodoro helpers, all on
+  * **`timer`** — countdown / interval / pomodoro helpers, all on
   a monotonic clock.
-    * ``KitchenTimer``  — t1.  Plain countdown.
-    * ``EggTimer``      — t2.  Countdown + ``on_ring`` callback
-      fired exactly once when the timer crosses ``duration``.
-    * ``IntervalTimer`` — t3.  Fires every ``interval_seconds``
-      via ``should_fire()`` — ideal for throttling log emits /
-      checkpoint saves / eval cadence inside a tight training
-      loop.
-    * ``PomodoroTimer`` — t4.  Alternates between
-      ``work_seconds`` / ``rest_seconds`` blocks; ``state``
-      returns ``"work" | "rest"``.
+  * ``KitchenTimer``  — t1.  Plain countdown.
+  * ``EggTimer``      — t2.  Countdown + ``on_ring`` callback
+  fired exactly once when the timer crosses ``duration``.
+  * ``IntervalTimer`` — t3.  Fires every ``interval_seconds``
+  via ``should_fire()`` — ideal for throttling log emits /
+  checkpoint saves / eval cadence inside a tight training
+  loop.
+  * ``PomodoroTimer`` — t4.  Alternates between
+  ``work_seconds`` / ``rest_seconds`` blocks; ``state``
+  returns ``"work" | "rest"``.
 
-* **`thermometer`** — sample CPU / GPU temperatures.
-    * ``InstantThermometer``  — t1.  One-shot read.
-    * ``ProbeThermometer``    — t2.  Rolling window with
-      ``recent_max / recent_mean / recent_min``.
-    * ``InfraredThermometer`` — t3.  Per-source peak tracking +
-      configurable warn / critical thresholds.
-    * ``DigitalThermometer``  — t4.  Logs every reading to a
-      JSONL file for post-mortem analysis.
+  * **`thermometer`** — sample CPU / GPU temperatures.
+  * ``InstantThermometer``  — t1.  One-shot read.
+  * ``ProbeThermometer``    — t2.  Rolling window with
+  ``recent_max / recent_mean / recent_min``.
+  * ``InfraredThermometer`` — t3.  Per-source peak tracking +
+  configurable warn / critical thresholds.
+  * ``DigitalThermometer``  — t4.  Logs every reading to a
+  JSONL file for post-mortem analysis.
   Sources: ``psutil.sensors_temperatures`` when installed,
   Linux ``/sys/class/thermal/thermal_zone*/temp`` fallback,
   ``nvidia-smi --query-gpu=temperature.gpu`` for the GPU.
 
-* **`dishwasher`** — clean up training-run leftovers.
-    * ``HandWash``   — t1.  Logs + ``__pycache__`` only.
-    * ``QuickWash``  — t2.  HandWash + ``*.tmp`` / ``*.partial``
-      / ``*.lock`` / ``.DS_Store``.
-    * ``NormalWash`` — t3.  QuickWash + stale checkpoints
-      (delegates discovery to :mod:`hypernix.compactor`).
-    * ``HeavyDuty``  — t4.  NormalWash + intermediate fp16
-      GGUFs + ``dist`` / ``build`` / ``.pytest_cache`` /
-      ``.ruff_cache`` directories; opt-in
-      ``purge_hf_cache=True`` also wipes
-      ``~/.cache/huggingface``.
+  * **`dishwasher`** — clean up training-run leftovers.
+  * ``HandWash``   — t1.  Logs + ``__pycache__`` only.
+  * ``QuickWash``  — t2.  HandWash + ``*.tmp`` / ``*.partial``
+  / ``*.lock`` / ``.DS_Store``.
+  * ``NormalWash`` — t3.  QuickWash + stale checkpoints
+  (delegates discovery to :mod:`hypernix.compactor`).
+  * ``HeavyDuty``  — t4.  NormalWash + intermediate fp16
+  GGUFs + ``dist`` / ``build`` / ``.pytest_cache`` /
+  ``.ruff_cache`` directories; opt-in
+  ``purge_hf_cache=True`` also wipes
+  ``~/.cache/huggingface``.
   Every tier supports ``dry_run=True`` and reports total bytes
   freed.
 
-* **`strainer`** — drop low-quality dataset rows.
-    * ``Colander``    — t1.  Empty / None / whitespace-only.
-    * ``FineMesh``    — t2.  Colander + length floor / ceiling.
-    * ``NutMilkBag``  — t3.  FineMesh + non-printable-character
-      filter.
-    * ``Cheesecloth`` — t4.  NutMilkBag + 8-gram Jaccard
-      near-duplicate detection (``similarity_threshold=0.85``
-      by default).
+  * **`strainer`** — drop low-quality dataset rows.
+  * ``Colander``    — t1.  Empty / None / whitespace-only.
+  * ``FineMesh``    — t2.  Colander + length floor / ceiling.
+  * ``NutMilkBag``  — t3.  FineMesh + non-printable-character
+  filter.
+  * ``Cheesecloth`` — t4.  NutMilkBag + 8-gram Jaccard
+  near-duplicate detection (``similarity_threshold=0.85``
+  by default).
   Operates on dicts (``record["text"]``) or plain strings; the
   ``key`` arg points the strainer at a non-default field.
 
-🛡️ **44 new tests** in ``tests/test_v060.py`` — checkpoint
-discovery + zip / dry-run / unknown-fmt for ``compactor``,
-level → offsets math + clamp + plan-without-confirm + CLI
-help / invalid-level for ``ethanol``, backend detection +
-context-manager round-trip + strict-mode for ``outage``,
-sparkline / log-tail / step-loss-lr regex / progress clamp /
-render / single-frame run for ``tv``, all four
-timer / thermometer / dishwasher / strainer tiers + their
-factories.
-
 🔌 **Two new console scripts** registered in ``pyproject.toml``:
-``tvtop`` → ``hypernix.tv:cli_main``, ``eth`` → 
-``hypernix.ethanol:cli_main``.
+  ``tvtop`` → ``hypernix.tv:cli_main``, ``eth`` →
+  ``hypernix.ethanol:cli_main``.
 
----
+### Dependencies and Packaging
+
+📦 **`hypernix.compactor`** — zip older checkpoints to save
+  disk.  ``Compactor(root, keep_recent=3, fmt="zip"|"tar"|"tar.gz")``
+  walks a snapshot directory, finds ``ckpt-NNNN`` /
+  ``checkpoint-NNNN`` / ``step-NNNN`` directories (and matching
+  ``.pt`` / ``.safetensors`` files), keeps the N most-recent
+  uncompressed, and rolls the rest into archives.  ``dry_run=True``
+  plans without touching the disk.
+
+### Tests
+
+🛡️ **44 new tests** in ``tests/test_v060.py`` — checkpoint
+  discovery + zip / dry-run / unknown-fmt for ``compactor``,
+  level → offsets math + clamp + plan-without-confirm + CLI
+  help / invalid-level for ``ethanol``, backend detection +
+  context-manager round-trip + strict-mode for ``outage``,
+  sparkline / log-tail / step-loss-lr regex / progress clamp /
+  render / single-frame run for ``tv``, all four
+  timer / thermometer / dishwasher / strainer tiers + their
+  factories.
 
 ## 0.52.6
 
-🐛 **More forgiving `smoke_alarm` kwargs.**  Continuation of the
-0.52.5 fix-up — same downstream ``chat_hypernix2.py`` script,
-same Surface Pro, two more ``TypeError``s after the previous
-patch landed::
+### Fixed
 
-    TypeError: GasAlarm.__init__() missing 1 required positional
-    argument: 'time_budget_seconds'
+🐛 **More forgiving `smoke_alarm` kwargs.** Continuation of the
+  0.52.5 fix-up — same downstream ``chat_hypernix2.py`` script,
+  same Surface Pro, two more ``TypeError``s after the previous
+  patch landed::
 
-    TypeError: Alarm.__init__() got an unexpected keyword argument
-    'log_every'
+  TypeError: GasAlarm.__init__() missing 1 required positional
+  argument: 'time_budget_seconds'
 
-The user's call shape is ``smoke_alarm.GasAlarm(cpu_preset="…",
-log_every=10, save_every=100, ...)`` — an alarm being used as a
-training-config holder.  Two further fixes:
+  TypeError: Alarm.__init__() got an unexpected keyword argument
+  'log_every'
 
-* **`time_budget_seconds` now defaults to ``600.0``.** (Was a
+  The user's call shape is ``smoke_alarm.GasAlarm(cpu_preset="…",
+  log_every=10, save_every=100, ...)`` — an alarm being used as a
+  training-config holder.  Two further fixes:
+
+  * **`time_budget_seconds` now defaults to ``600.0``.** (Was a
   required positional arg.)  Picking a hardware preset is the
   more interesting signal; the time budget is a knob most
   callers default anyway.  ``RadsAlarm()`` / ``GasAlarm()`` /
   ``ModernAlarm()`` / ``AutoAlarm()`` all instantiate with no
   arguments now.
-* **Base `Alarm` accepts `log_every` / `save_every` /
+  * **Base `Alarm` accepts `log_every` / `save_every` /
   `eval_every`.**  Training-loop cadence kwargs that real users
   type into config dicts.  RadsAlarm doesn't *use* them, but
   accepting them silently is friendlier than crashing.
   ``AutoAlarm`` also accepts and forwards them through
   ``_common_kwargs`` to the picked tier.
 
-🛡️ **20 new regression tests** in ``tests/test_v052_6.py``:
-both repro lines, default ``time_budget_seconds`` on every tier,
-``log_every`` / ``save_every`` / ``eval_every`` accepted on every
-tier, ``AutoAlarm`` forwarding the cadence knobs, and a realistic
-``**cfg`` user-config-dict expansion test.
+### Tests
 
----
+🛡️ **20 new regression tests** in ``tests/test_v052_6.py``:
+  both repro lines, default ``time_budget_seconds`` on every tier,
+  ``log_every`` / ``save_every`` / ``eval_every`` accepted on every
+  tier, ``AutoAlarm`` forwarding the cadence knobs, and a realistic
+  ``**cfg`` user-config-dict expansion test.
 
 ## 0.52.5
 
-🐛 **`smoke_alarm` is forgiving about kwargs.**  Reported by a
-downstream ``chat_hypernix2.py`` script running on an i7 7th-gen
-Surface Pro:
+### Fixed
 
-    TypeError: GasAlarm.__init__() got an unexpected keyword
-    argument 'cpu_preset'
+🐛 **`smoke_alarm` is forgiving about kwargs.** Reported by a
+  downstream ``chat_hypernix2.py`` script running on an i7 7th-gen
+  Surface Pro:
 
-…and after the script's own ``except`` fell through to
-``RadsAlarm``:
+  TypeError: GasAlarm.__init__() got an unexpected keyword
+  argument 'cpu_preset'
 
-    TypeError: Alarm.__init__() got an unexpected keyword
-    argument 'max_steps'
+  …and after the script's own ``except`` fell through to
+  ``RadsAlarm``:
 
-Real users type the kwargs they intuitively expect.  ``cpu_preset``
-is the *function name* for resolving CPU presets in
-``hypernix.freezer``, so reaching for ``GasAlarm(cpu_preset=…)``
-is the natural call.  Same for ``max_steps`` as a hard cap on
-``recommended_steps()``.
+  TypeError: Alarm.__init__() got an unexpected keyword
+  argument 'max_steps'
 
-Fix:
+  Real users type the kwargs they intuitively expect.  ``cpu_preset``
+  is the *function name* for resolving CPU presets in
+  ``hypernix.freezer``, so reaching for ``GasAlarm(cpu_preset=…)``
+  is the natural call.  Same for ``max_steps`` as a hard cap on
+  ``recommended_steps()``.
 
-* **Base `Alarm` dataclass** gains three forgiving kwargs:
+  Fix:
+
+  * **Base `Alarm` dataclass** gains three forgiving kwargs:
   ``max_steps: int | None``, ``cpu_preset: str | CPUPreset``,
   ``gpu_preset: str | GPUPreset``.  Every subclass
   (`RadsAlarm` / `GasAlarm` / `ModernAlarm`) inherits them, so
   none of them raise ``TypeError`` anymore on those kwargs.
-* **`Alarm.recommended_steps()`** now caps the natural
+  * **`Alarm.recommended_steps()`** now caps the natural
   recommendation at ``self.max_steps`` when set (a CAP, not a
   target — recommendations below ``max_steps`` are unaffected).
-* **`GasAlarm.__post_init__`** resolves a ``cpu_preset`` string
+  * **`GasAlarm.__post_init__`** resolves a ``cpu_preset`` string
   into ``self.cpu`` via ``hypernix.freezer.cpu_preset``, and a
   ``gpu_preset`` string into ``self.gpu``.  An explicit
   ``cpu=`` / ``gpu=`` object takes precedence.  Pre-built
   ``CPUPreset`` / ``GPUPreset`` objects passed via the alias
   also work.
-* **`AutoAlarm`** mirrors the same kwargs and forwards
+  * **`AutoAlarm`** mirrors the same kwargs and forwards
   ``max_steps`` through ``_common_kwargs`` so the picked tier
   honours the cap.
 
-🌶️ **Generational CPU aliases in `hypernix.freezer.cpu_preset`.**
-``"i7_7th_gen"`` (the user's exact string) used to return
-``None``.  Added a generation-family map so the natural-feeling
-aliases resolve to a representative SKU:
+  🌶️ **Generational CPU aliases in `hypernix.freezer.cpu_preset`.**
+  ``"i7_7th_gen"`` (the user's exact string) used to return
+  ``None``.  Added a generation-family map so the natural-feeling
+  aliases resolve to a representative SKU:
 
-* ``i7_7th_gen`` → ``i7-7700hq``
-* ``i7-12th-gen`` → ``i7-12700h``
-* ``i9-12th-gen`` → ``i9-12900k``
-* ``i9-14th-gen`` → ``i9-14900k``
-* ``ultra-7`` / ``core-ultra`` → ``core-ultra-7-155h``
-* ``ultra-9`` → ``core-ultra-9-185h``
-* …plus full coverage of i5 / i7 / i9 11th – 14th gen, Core
+  * ``i7_7th_gen`` → ``i7-7700hq``
+  * ``i7-12th-gen`` → ``i7-12700h``
+  * ``i9-12th-gen`` → ``i9-12900k``
+  * ``i9-14th-gen`` → ``i9-14900k``
+  * ``ultra-7`` / ``core-ultra`` → ``core-ultra-7-155h``
+  * ``ultra-9`` → ``core-ultra-9-185h``
+  * …plus full coverage of i5 / i7 / i9 11th – 14th gen, Core
   Ultra Series 1 + 2.
 
-Direct SKU lookups (``"i7-7700hq"``) still take the fast path —
-the alias map is only consulted on a primary miss.
+  Direct SKU lookups (``"i7-7700hq"``) still take the fast path —
+  the alias map is only consulted on a primary miss.
+
+### Tests
 
 🛡️ **27 new regression tests** in ``tests/test_v052_5.py``
-covering both lines from the user's repro, ``max_steps`` cap
-semantics (no-op when natural rec is below the cap, ignores 0 /
-None, hard-caps when smaller), explicit ``cpu_preset`` / 
-``gpu_preset`` resolution, explicit-``cpu=`` precedence, every
-generational alias, ``AutoAlarm`` forwarding, and kwarg
-acceptance on every tier.
-
----
+  covering both lines from the user's repro, ``max_steps`` cap
+  semantics (no-op when natural rec is below the cap, ignores 0 /
+  None, hard-caps when smaller), explicit ``cpu_preset`` /
+  ``gpu_preset`` resolution, explicit-``cpu=`` precedence, every
+  generational alias, ``AutoAlarm`` forwarding, and kwarg
+  acceptance on every tier.
 
 ## 0.52.4
 
+### Dependencies and Packaging
+
 🐛 **`CodeOven.chat` no longer crashes with ``ValueError: too many
-dimensions 'str'``.**  Reported on a downstream notebook running
-the published wheel: a chat turn died deep inside
-``torch.tensor([input_ids], dtype=torch.long, ...)`` because the
-tokenizer's ``apply_chat_template`` returned a plain rendered
-string instead of token IDs (some tokenizers ignore
-``tokenize=True``).  ``list("hello world")`` produced
-``['h', 'e', 'l', ...]``, and torch quite reasonably refused to
-build a long tensor out of single-character strings.
+  dimensions 'str'``.**  Reported on a downstream notebook running
+  the published wheel: a chat turn died deep inside
+  ``torch.tensor([input_ids], dtype=torch.long, ...)`` because the
+  tokenizer's ``apply_chat_template`` returned a plain rendered
+  string instead of token IDs (some tokenizers ignore
+  ``tokenize=True``).  ``list("hello world")`` produced
+  ``['h', 'e', 'l', ...]``, and torch quite reasonably refused to
+  build a long tensor out of single-character strings.
 
-The fix lives in two places:
+  The fix lives in two places:
 
-* **New :meth:`CodeOven._coerce_token_ids` helper.**  Accepts
+  * **New :meth:`CodeOven._coerce_token_ids` helper.**  Accepts
   every legal shape ``apply_chat_template`` is allowed to return
   and normalises into a flat ``list[int]``:
 
-    * a plain ``str`` → re-encoded through ``self._encode``,
-    * a 1-D / 2-D ``torch.Tensor`` → flattened then ``int(x)``-cast,
-    * a ``BatchEncoding``-like object exposing ``.input_ids`` →
-      recurses into the input-ids field,
-    * ``list[int]`` / ``tuple[int, ...]`` → passthrough,
-    * batched ``list[list[int]]`` → take the first batch,
-    * ``list[str]`` (the buggy shape) → return ``None`` so the
-      caller falls through to the cookbook / plain transcript
-      path instead of crashing.
+  * a plain ``str`` → re-encoded through ``self._encode``,
+  * a 1-D / 2-D ``torch.Tensor`` → flattened then ``int(x)``-cast,
+  * a ``BatchEncoding``-like object exposing ``.input_ids`` →
+  recurses into the input-ids field,
+  * ``list[int]`` / ``tuple[int, ...]`` → passthrough,
+  * batched ``list[list[int]]`` → take the first batch,
+  * ``list[str]`` (the buggy shape) → return ``None`` so the
+  caller falls through to the cookbook / plain transcript
+  path instead of crashing.
 
   The ``apply_chat_template`` call is also wrapped in a try /
   except so a tokenizer that simply raises is treated identically
   to a tokenizer that returns garbage — both fall through to the
   cookbook path.
 
-* **Defensive guard in :meth:`CodeOven._run`.**  Coerces ``str``
+  * **Defensive guard in :meth:`CodeOven._run`.**  Coerces ``str``
   / ``torch.Tensor`` / generic-iterable inputs the same way as
   ``_coerce_token_ids`` and raises a clear ``TypeError("_run
   expected list[int] for input_ids; got …")`` if anything still
   slips through, instead of bubbling up the cryptic torch error.
 
+### Tests
+
 🛡️ **19 new regression tests** in ``tests/test_v051_4.py``:
 
-* The headline bug — chat does not raise ``too many dimensions
+  * The headline bug — chat does not raise ``too many dimensions
   'str'`` when the tokenizer's ``apply_chat_template`` returns a
   string.
-* 1-D tensor return / 2-D batched tensor return /
+  * 1-D tensor return / 2-D batched tensor return /
   ``BatchEncoding``-like return / ``list[str]`` fallback.
-* ``_coerce_token_ids`` unit coverage for str / list[int] /
+  * ``_coerce_token_ids`` unit coverage for str / list[int] /
   tuple[int] / 1-D Tensor / 2-D Tensor / empty Tensor / empty
   list / batched list / BatchEncoding-like / list[str] /
   unrecognised object.
-* ``_run`` defensive guard accepts string and tensor inputs via
+  * ``_run`` defensive guard accepts string and tensor inputs via
   coercion and raises ``TypeError`` with a useful message on a
   truly unrecoverable input.
 
----
-
 ## 0.52.3
+
+### Changed
 
 🔧 Auto version bump from CI (no code changes vs 0.51.3).
 
----
-
 ## 0.51.3
+
+### API Changes
 
 ✨ **`hypernix.quantize` rewrite — full llama.cpp catalog.**
 
-The 6-type alias dict from 0.51.2 grew into a structured 30-entry
-``QUANT_CATALOG`` of frozen ``QuantSpec`` dataclasses, one per
-distinct llama-quantize target type, with bits-per-weight,
-category, size factor (relative to fp16), human-readable notes,
-and a ``recommended`` flag for the curated short-list.
+  The 6-type alias dict from 0.51.2 grew into a structured 30-entry
+  ``QUANT_CATALOG`` of frozen ``QuantSpec`` dataclasses, one per
+  distinct llama-quantize target type, with bits-per-weight,
+  category, size factor (relative to fp16), human-readable notes,
+  and a ``recommended`` flag for the curated short-list.
 
-* **Floats:** ``F32``, ``F16``, ``BF16``.
-* **Legacy quants:** ``Q4_0``, ``Q4_1``, ``Q5_0``, ``Q5_1``,
+  * **Floats:** ``F32``, ``F16``, ``BF16``.
+  * **Legacy quants:** ``Q4_0``, ``Q4_1``, ``Q5_0``, ``Q5_1``,
   ``Q8_0``.
-* **K-quants:** ``Q2_K``, ``Q2_K_S``, ``Q3_K_S``, ``Q3_K_M``,
+  * **K-quants:** ``Q2_K``, ``Q2_K_S``, ``Q3_K_S``, ``Q3_K_M``,
   ``Q3_K_L``, ``Q4_K_S``, ``Q4_K_M``, ``Q5_K_S``, ``Q5_K_M``,
   ``Q6_K``.
-* **IQ-quants (newer, importance-matrix friendly):** ``IQ1_S``,
+  * **IQ-quants (newer, importance-matrix friendly):** ``IQ1_S``,
   ``IQ1_M``, ``IQ2_XXS``, ``IQ2_XS``, ``IQ2_S``, ``IQ2_M``,
   ``IQ3_XXS``, ``IQ3_XS``, ``IQ3_S``, ``IQ3_M``, ``IQ4_NL``,
   ``IQ4_XS``.
 
-49 aliases (incl. the original ``q4km`` / ``q5km`` shortcuts and
-the dash-form ``q4-k-m``) all resolve through the catalog.  The
-old ``QUANT_TYPES`` dict is preserved unchanged at the alias
-layer — pre-0.51.3 callers keep working.
+  49 aliases (incl. the original ``q4km`` / ``q5km`` shortcuts and
+  the dash-form ``q4-k-m``) all resolve through the catalog.  The
+  old ``QUANT_TYPES`` dict is preserved unchanged at the alias
+  layer — pre-0.51.3 callers keep working.
 
-New helper API:
+  New helper API:
 
-* ``quant_recommended()`` — curated short-list (F16, Q8_0,
+  * ``quant_recommended()`` — curated short-list (F16, Q8_0,
   Q6_K, Q5_K_M, Q4_K_M).
-* ``quant_by_category("float" | "legacy" | "k" | "iq")`` — every
+  * ``quant_by_category("float" | "legacy" | "k" | "iq")`` — every
   spec in a category, sorted ascending by bpw.
-* ``quant_for_size(target_size_bytes, fp16_size_bytes)`` —
+  * ``quant_for_size(target_size_bytes, fp16_size_bytes)`` —
   picks the largest non-float spec that fits the byte budget;
   falls back to the smallest IQ tier if nothing fits.
-* ``quant_estimate_size(quant_type, fp16_size_bytes)`` —
+  * ``quant_estimate_size(quant_type, fp16_size_bytes)`` —
   pure-arithmetic size estimate (no llama-quantize required).
-* ``quant_resolve_spec(alias)`` — alias → ``QuantSpec`` lookup
+  * ``quant_resolve_spec(alias)`` — alias → ``QuantSpec`` lookup
   with case-insensitive matching and dash/underscore normalisation.
-* ``quant_list_types()`` — sorted list of every canonical name
+  * ``quant_list_types()`` — sorted list of every canonical name
   in the catalog.
 
-``QuantSpec``, ``QUANT_CATALOG``, and all six helpers are
-re-exported at the top level (``hypernix.QuantSpec``,
-``hypernix.QUANT_CATALOG``, ``hypernix.quant_recommended``,
-etc.).
+  ``QuantSpec``, ``QUANT_CATALOG``, and all six helpers are
+  re-exported at the top level (``hypernix.QuantSpec``,
+  ``hypernix.QUANT_CATALOG``, ``hypernix.quant_recommended``,
+  etc.).
+
+### Documentation
+
+📚 **README + wiki refreshed.** README's quant-aliases table and
+  the ``hypernix.quantize`` row now describe the new catalog.
+  ``wiki/Quantization.md`` opens with a v0.51.3 callout, the type
+  table covers every recommended bpw tier, and a new "Catalog
+  helpers" section shows ``quant_recommended`` /
+  ``quant_by_category`` / ``quant_for_size`` /
+  ``quant_estimate_size`` / ``quant_resolve_spec`` in action.
+  README also broadens the headline tagline to mention both the
+  chat-tuned ``ray0rf1re/hyper-Nix.2`` (current default) **and**
+  the original ``ray0rf1re/hyper-nix.1`` (still fully supported).
+
+### Tests
 
 🛡️ **37 new tests** in ``tests/test_v051_3.py`` covering:
 
-* Catalog completeness (≥ 30 specs, every alias resolves, every
+  * Catalog completeness (≥ 30 specs, every alias resolves, every
   spec has a positive bpw / known category / non-empty notes).
-* ``QuantSpec`` is a frozen dataclass.
-* ``recommended()`` short-list contents.
-* ``by_category()`` sorted-by-bpw ordering and unknown-category
+  * ``QuantSpec`` is a frozen dataclass.
+  * ``recommended()`` short-list contents.
+  * ``by_category()`` sorted-by-bpw ordering and unknown-category
   empty return.
-* ``for_size()`` happy path, tiny-target fallback, zero-fp16
+  * ``for_size()`` happy path, tiny-target fallback, zero-fp16
   rejection.
-* ``estimate_size()`` math against expected ranges.
-* ``resolve_spec()`` canonical / short-alias / dash-alias /
+  * ``estimate_size()`` math against expected ranges.
+  * ``resolve_spec()`` canonical / short-alias / dash-alias /
   case-insensitive / unknown-raises paths.
-* Backward-compat: every pre-0.51.3 alias still resolves,
+  * Backward-compat: every pre-0.51.3 alias still resolves,
   ``quantize_gguf`` still raises ``ValueError`` on unknown
   targets.
-* Top-level re-exports present and identity-equal to the
+  * Top-level re-exports present and identity-equal to the
   underlying objects.
-
-📚 **README + wiki refreshed.**  README's quant-aliases table and
-the ``hypernix.quantize`` row now describe the new catalog.
-``wiki/Quantization.md`` opens with a v0.51.3 callout, the type
-table covers every recommended bpw tier, and a new "Catalog
-helpers" section shows ``quant_recommended`` /
-``quant_by_category`` / ``quant_for_size`` /
-``quant_estimate_size`` / ``quant_resolve_spec`` in action.
-README also broadens the headline tagline to mention both the
-chat-tuned ``ray0rf1re/hyper-Nix.2`` (current default) **and**
-the original ``ray0rf1re/hyper-nix.1`` (still fully supported).
-
----
 
 ## 0.51.2.1
 
-🐛 **PyPI logo broken-image fix (carried over from 0.51.1.2).**  The 0.51.1 / 0.51.1.1
-README pointed at
-``https://raw.githubusercontent.com/trail-b1az3r/hypernix-pip/main/assets/logo.png``
-but that path returns 404 — the logo file is on the
-``claude/pytorch-quantization-package-cJMQp`` working branch
-and hasn't been merged to ``main`` yet, so the PyPI project page
-showed the alt text + a broken-image placeholder.  Fixed by
-pinning the URL to commit ``2d5eb37`` (the upload commit), which
-is permanent regardless of branch lifecycle.  PyPI renders the
-logo from this release onward.  Once the branch lands on
-``main`` we can switch back to the pretty
-``main/assets/logo.png`` URL.
+### Dependencies and Packaging
 
----
+🐛 **PyPI logo broken-image fix (carried over from 0.51.1.2).** The 0.51.1 / 0.51.1.1
+  README pointed at
+  ``https://raw.githubusercontent.com/trail-b1az3r/hypernix-pip/main/assets/logo.png``
+  but that path returns 404 — the logo file is on the
+  ``claude/pytorch-quantization-package-cJMQp`` working branch
+  and hasn't been merged to ``main`` yet, so the PyPI project page
+  showed the alt text + a broken-image placeholder.  Fixed by
+  pinning the URL to commit ``2d5eb37`` (the upload commit), which
+  is permanent regardless of branch lifecycle.  PyPI renders the
+  logo from this release onward.  Once the branch lands on
+  ``main`` we can switch back to the pretty
+  ``main/assets/logo.png`` URL.
 
 ## 0.51.1.1
 
-🎨 **Logo file landed.**  ``assets/logo.png`` (1408 × 768 RGBA,
-670 KB) and the transparent-background variant
-``assets/logo1.png`` are now in the repo, so the raw-GitHub
-``<img>`` tag at the top of the README renders on the PyPI
-project page from this release onward.  Originals also kept
-under ``assets/logo/`` for archival.  No code changes vs
-0.51.1.
+### Changed
 
----
+🔁 🎨 **Logo file landed.** ``assets/logo.png`` (1408 × 768 RGBA,
+  670 KB) and the transparent-background variant
+  ``assets/logo1.png`` are now in the repo, so the raw-GitHub
+  ``<img>`` tag at the top of the README renders on the PyPI
+  project page from this release onward.  Originals also kept
+  under ``assets/logo/`` for archival.  No code changes vs
+  0.51.1.
 
 ## 0.51.1
 
-🐛 **Five bug-fix patches across three review passes** — one
-by-hand source-read pass and two hand-driven testing passes,
-including a memory-leak / Pascal-GPU / CPU-leak audit.
+### Added
 
-* **`bell.Bell._iter_from_ids` — stop-marker leak.**  The
+🔧 **Memory-leak audit (CPU + Pascal-GPU paths).** Manually
+  exercised ``deep_fryer.LightFry`` (fry / un_fry over 50 iters,
+  ``torch.Generator`` and ``torch.Tensor`` object counts both
+  delta-zero), ``Bell.iter_complete`` (20 streaming runs,
+  delta-zero), ``CodeOven.chat`` (10 turns, delta-zero).  No leaks
+  introduced by the v0.51.0 chat surface.
+
+  Final: 621 tests pass, 1 skipped (matplotlib).
+
+### Tests
+
+🐛 **Five bug-fix patches across three review passes** — one
+  by-hand source-read pass and two hand-driven testing passes,
+  including a memory-leak / Pascal-GPU / CPU-leak audit.
+
+  * **`bell.Bell._iter_from_ids` — stop-marker leak.**  The
   stop-sequence check ran *after* yielding the offending token,
   so consumers wired up via ``iter_chat`` / ``iter_complete``
   saw ``"<|im_end|>"`` (or whatever the stop string was) appear
   in their stream before generation halted.  Fix: check the
   *candidate* decoded text BEFORE yielding the token.
 
-* **`countertop.Countertop._trim` — wipes the just-added user
+  * **`countertop.Countertop._trim` — wipes the just-added user
   turn.**  Aggressive trimming with a small ``max_history_tokens``
   could ``del self.history[:2]`` when ``len(history) == 2``,
   leaving an empty history right before the call to
@@ -7497,7 +8408,7 @@ including a memory-leak / Pascal-GPU / CPU-leak audit.
   ``len(self.history) - 1`` so the most-recent message always
   survives.
 
-* **`cookbook._HYPER_NIX_2` — dict-aliasing footgun.**
+  * **`cookbook._HYPER_NIX_2` — dict-aliasing footgun.**
   ``_HYPER_NIX_2`` was constructed with
   ``role_prefixes=_CHATML.role_prefixes`` (and same for
   ``role_suffixes``), so the two templates literally shared the
@@ -7505,7 +8416,7 @@ including a memory-leak / Pascal-GPU / CPU-leak audit.
   prefix table silently corrupted ``hyper-nix.2``.  Fix: copy
   the dicts at construction time.
 
-* **`flour.Flour.process` — crashes on tensor input.**  The
+  * **`flour.Flour.process` — crashes on tensor input.**  The
   guard ``if produced_ids:`` raised
   ``RuntimeError: Boolean value of Tensor with more than one
   value is ambiguous`` when callers passed a ``torch.Tensor``.
@@ -7514,7 +8425,7 @@ including a memory-leak / Pascal-GPU / CPU-leak audit.
   check; tensors, numpy arrays, and one-shot generators now all
   work.
 
-* **`pressure_cooker.UniversalCooker.select` — breaks Pascal
+  * **`pressure_cooker.UniversalCooker.select` — breaks Pascal
   (sm_61) GPUs.**  The selector unconditionally returned
   ``ProCooker`` (which inherits ``InductionCooker`` with
   ``fused=True`` + CUDA graphs) on any CUDA device, but fused
@@ -7527,36 +8438,27 @@ including a memory-leak / Pascal-GPU / CPU-leak audit.
   ``foreach=_HAS_FOREACH``) on a plain ``InductionCooker``.
 
 🛡️ **14 new regression tests** in ``tests/test_v051_1.py`` —
-one per behavioural requirement of the fixes (stop-marker
-absence in stream / token-callback / done-callback; trim
-preserves freshest user; cookbook dicts are independent and
-non-aliasing; flour accepts torch tensors / generators / empty
-inputs; ``_is_pre_volta`` returns False on CPU and the Pascal
-selector path forces ``fused=False``).
+  one per behavioural requirement of the fixes (stop-marker
+  absence in stream / token-callback / done-callback; trim
+  preserves freshest user; cookbook dicts are independent and
+  non-aliasing; flour accepts torch tensors / generators / empty
+  inputs; ``_is_pre_volta`` returns False on CPU and the Pascal
+  selector path forces ``fused=False``).
 
-🎨 **Project logo wired in.**  ``assets/logo.png`` is now
-referenced from the top of the README (with a raw GitHub URL so
-PyPI renders it on the project page) and is shipped in the sdist
-via ``MANIFEST.in``.  ``DEFAULT_REPO_ID`` and the ``Homepage``
-URL also updated to point at ``ray0rf1re/hyper-Nix.2``.
-
-🔧 **Memory-leak audit (CPU + Pascal-GPU paths).**  Manually
-exercised ``deep_fryer.LightFry`` (fry / un_fry over 50 iters,
-``torch.Generator`` and ``torch.Tensor`` object counts both
-delta-zero), ``Bell.iter_complete`` (20 streaming runs,
-delta-zero), ``CodeOven.chat`` (10 turns, delta-zero).  No leaks
-introduced by the v0.51.0 chat surface.
-
-Final: 621 tests pass, 1 skipped (matplotlib).
-
----
+  🎨 **Project logo wired in.**  ``assets/logo.png`` is now
+  referenced from the top of the README (with a raw GitHub URL so
+  PyPI renders it on the project page) and is shipped in the sdist
+  via ``MANIFEST.in``.  ``DEFAULT_REPO_ID`` and the ``Homepage``
+  URL also updated to point at ``ray0rf1re/hyper-Nix.2``.
 
 ## 0.51.0
 
-✨ **Chat-first release.** Five new modules + first-class support
-for the new ``ray0rf1re/hyper-Nix.2`` chat checkpoint.
+### Fixed
 
-* **`hypernix.cookbook` — chat-template registry.**
+✨ **Chat-first release.** Five new modules + first-class support
+  for the new ``ray0rf1re/hyper-Nix.2`` chat checkpoint.
+
+  * **`hypernix.cookbook` — chat-template registry.**
   Different model families use wildly different prompt formats
   (ChatML, Llama 3 turn tags, Alpaca, Vicuna, plain ``role:
   content``) and getting one wrong silently makes a chat model
@@ -7564,10 +8466,10 @@ for the new ``ray0rf1re/hyper-Nix.2`` chat checkpoint.
   template as a dataclass and resolves the right one from a
   short name or HF repo id::
 
-      from hypernix.cookbook import COOKBOOK, for_model
+  from hypernix.cookbook import COOKBOOK, for_model
 
-      tmpl = for_model("ray0rf1re/hyper-Nix.2")  # picks "hyper-nix.2"
-      prompt = tmpl.apply(messages, add_generation_prompt=True)
+  tmpl = for_model("ray0rf1re/hyper-Nix.2")  # picks "hyper-nix.2"
+  prompt = tmpl.apply(messages, add_generation_prompt=True)
 
   Built-in templates: ``chatml``, ``hyper-nix.2`` (ChatML +
   HyperNix-flavoured default system prompt), ``llama3``,
@@ -7578,17 +8480,17 @@ for the new ``ray0rf1re/hyper-Nix.2`` chat checkpoint.
   hyper-Nix.2 snapshot Just Works for chat without any extra
   configuration.
 
-* **`hypernix.countertop` — multi-turn chat session.**
+  * **`hypernix.countertop` — multi-turn chat session.**
   Persistent workspace bound to an oven::
 
-      from hypernix.old_oven import preheat
-      from hypernix.countertop import Countertop
+  from hypernix.old_oven import preheat
+  from hypernix.countertop import Countertop
 
-      oven = preheat("hyper-nix.2")
-      chat = Countertop(oven, system="You are a helpful chef.")
-      print(chat.say("How do I dice an onion?"))
-      print(chat.say("And a shallot?"))
-      chat.save("session.json")
+  oven = preheat("hyper-nix.2")
+  chat = Countertop(oven, system="You are a helpful chef.")
+  print(chat.say("How do I dice an onion?"))
+  print(chat.say("And a shallot?"))
+  chat.save("session.json")
 
   Auto-resolves the chat template from ``oven.repo_id``,
   optionally streams through a :class:`Bell`, optionally cleans
@@ -7596,7 +8498,7 @@ for the new ``ray0rf1re/hyper-Nix.2`` chat checkpoint.
   rendered transcript exceeds ``max_history_tokens``, and
   round-trips to JSON for resumable sessions.
 
-* **`hypernix.menu` — system-prompt presets.**
+  * **`hypernix.menu` — system-prompt presets.**
   Named registry of personas: ``default`` / ``concise`` /
   ``code-helper`` / ``judge`` / ``creative`` / ``chef`` /
   ``hyper-nix``.  Pairs with the ``persona=`` kwarg on
@@ -7604,89 +8506,91 @@ for the new ``ray0rf1re/hyper-Nix.2`` chat checkpoint.
   ``countertop(oven, persona="judge")`` instead of pasting the
   judge prompt by hand.  Persists with ``Menu.save / Menu.load``.
 
-* **`hypernix.bell` — streaming-token callback.**
+  * **`hypernix.bell` — streaming-token callback.**
   Wraps any oven exposing ``model`` + ``_decode`` + ``_format_chat``
   so generation streams a token at a time::
 
-      bell = Bell()
-      bell.on_token(lambda tok, idx: print(tok, end="", flush=True))
-      bell.on_done(lambda full: print(f"\\n[done, {len(full)} chars]"))
-      bell.stream_chat(oven, messages, max_new_tokens=128)
+  bell = Bell()
+  bell.on_token(lambda tok, idx: print(tok, end="", flush=True))
+  bell.on_done(lambda full: print(f"\\n[done, {len(full)} chars]"))
+  bell.stream_chat(oven, messages, max_new_tokens=128)
 
   Or pull tokens out of the iterator yourself::
 
-      for tok in bell.iter_chat(oven, messages):
-          ...
+  for tok in bell.iter_chat(oven, messages):
+  ...
 
   ``stdout_bell()`` and ``file_bell(path)`` are ready-made
   variants.  Bells accept a ``flour=`` so live logits processing
   applies during streaming, not just at the end.
 
-* **`hypernix.flour` — chat-quality logits processor.**
+  * **`hypernix.flour` — chat-quality logits processor.**
   *The reason hypernix's chat surface is "better than raw
   transformers for chatting".*  Bundles every chat-quality
   heuristic you'd otherwise wire by hand on top of vanilla
   transformers:
-    * **repetition penalty** (OpenAI-style multiplicative),
-    * **frequency penalty** (linear in count),
-    * **presence penalty** (linear, once per unique token),
-    * **no-repeat n-gram** blocking,
-    * **bad-word / phrase** suppression,
-    * **role-leak suppression** — strips
-      ``<|im_start|>user`` / ``[INST]`` / ``user:`` tokens the
-      assistant would otherwise hallucinate, and cuts the reply
-      at any half-emitted next-turn marker,
-    * **stop-sequence detection** on **decoded text** rather than
-      raw token ids — so ``"<|im_end|>"`` works even when the
-      tokenizer splits it into 3 BPE pieces.
+  * **repetition penalty** (OpenAI-style multiplicative),
+  * **frequency penalty** (linear in count),
+  * **presence penalty** (linear, once per unique token),
+  * **no-repeat n-gram** blocking,
+  * **bad-word / phrase** suppression,
+  * **role-leak suppression** — strips
+  ``<|im_start|>user`` / ``[INST]`` / ``user:`` tokens the
+  assistant would otherwise hallucinate, and cuts the reply
+  at any half-emitted next-turn marker,
+  * **stop-sequence detection** on **decoded text** rather than
+  raw token ids — so ``"<|im_end|>"`` works even when the
+  tokenizer splits it into 3 BPE pieces.
   ``Flour.smart_default(template="hyper-nix.2")`` applies all of
   the above with values tuned for chat.  ``Flour.aggressive()``
   cranks up the penalties for models that loop a lot.
   ``Flour.off()`` is a no-op.
 
-🌶️ **First-class support for ``ray0rf1re/hyper-Nix.2``.**
+  🌶️ **First-class support for ``ray0rf1re/hyper-Nix.2``.**
 
-* New ``KNOWN_MODELS`` entry plus the aliases ``hyper-nix.2`` /
+  * New ``KNOWN_MODELS`` entry plus the aliases ``hyper-nix.2`` /
   ``hyper-nix2`` / ``hypernix2`` / ``hyper-nix`` / ``hypernix``,
   all routing to ``ray0rf1re/hyper-Nix.2``.  The chat-aware
   ``hyper-nix`` / ``hypernix`` short names now resolve to v2
   (was v1 in 0.50).
-* ``DEFAULT_REPO_ID`` updated to ``ray0rf1re/hyper-Nix.2`` so
+  * ``DEFAULT_REPO_ID`` updated to ``ray0rf1re/hyper-Nix.2`` so
   ``preheat()`` with no args downloads the chat-tuned model.
-* New ``ARCH_PRESETS["hypernix2"]`` / ``["hyper-nix.2"]`` for
+  * New ``ARCH_PRESETS["hypernix2"]`` / ``["hyper-nix.2"]`` for
   fresh-init from-scratch chat models with the same Llama-shape
   config as v1.
-* ``CodeOven.repo_id`` is now persisted on the oven so
+  * ``CodeOven.repo_id`` is now persisted on the oven so
   ``_format_chat`` can resolve the cookbook template
   automatically — no more ``role: content`` fallback for v2.
 
+### Tests
+
 🛡️ **56 new tests** in ``tests/test_v051.py``: cookbook templates
-(ChatML / Llama 2/3 / Alpaca / Vicuna / plain + ``for_model``
-resolver), menu CRUD + persistence, bell streaming with a stub
-oven (no real weights needed), countertop session lifecycle
-(say / reset / trim / save / load / persona / flour-cleanup),
-flour logits processor (repetition penalty math, no-repeat n-gram
-ban, role-leak detection, decoded-text stop-match,
-``clean_reply`` after generation), and hyper-Nix.2 wiring (alias
-table, default repo id, oven ``repo_id`` plumbing).
+  (ChatML / Llama 2/3 / Alpaca / Vicuna / plain + ``for_model``
+  resolver), menu CRUD + persistence, bell streaming with a stub
+  oven (no real weights needed), countertop session lifecycle
+  (say / reset / trim / save / load / persona / flour-cleanup),
+  flour logits processor (repetition penalty math, no-repeat n-gram
+  ban, role-leak detection, decoded-text stop-match,
+  ``clean_reply`` after generation), and hyper-Nix.2 wiring (alias
+  table, default repo id, oven ``repo_id`` plumbing).
 
-Final: 607 tests pass, 1 skipped (matplotlib).
-
----
+  Final: 607 tests pass, 1 skipped (matplotlib).
 
 ## 0.50.0
 
+### Added
+
 ✨ **Four new kitchen modules.**
 
-* **`hypernix.whisk` — checkpoint averaging.**
+  * **`hypernix.whisk` — checkpoint averaging.**
   Three modes for blending N saved snapshots into one set of
   weights, all working on plain ``dict[str, Tensor]``:
-    * ``swa_average(items)`` — uniform Stochastic Weight Average
-      (mean across all N).
-    * ``ema(items, decay=0.99)`` — exponential moving average;
-      later inputs weighted ``decay ** (N-1-i)``.
-    * ``geometric_mean(items)`` — element-wise geometric mean
-      (clamped at ``eps`` for non-positives).
+  * ``swa_average(items)`` — uniform Stochastic Weight Average
+  (mean across all N).
+  * ``ema(items, decay=0.99)`` — exponential moving average;
+  later inputs weighted ``decay ** (N-1-i)``.
+  * ``geometric_mean(items)`` — element-wise geometric mean
+  (clamped at ``eps`` for non-positives).
   Inputs may be in-memory state dicts **or** paths to ``.pt`` /
   ``.safetensors``.  Mismatched keys are intersected with a
   warning unless ``strict=True``.  Integer tensors are taken from
@@ -7697,62 +8601,64 @@ Final: 607 tests pass, 1 skipped (matplotlib).
   call (best-effort config recovery from a sibling
   ``config.json``).
 
-* **`hypernix.cutting_board` — train / val / test splitting.**
-    * ``CuttingBoard(train_ratio, val_ratio, test_ratio,
-      seed, shuffle)`` — deterministic random split.  Ratios are
-      renormalised if they don't sum to 1.0; ``test_ratio=0`` is
-      allowed (you'll get train + val and an empty test slice).
-      ``.slice(source)`` returns ``{"train": [...], "val": [...],
-      "test": [...]}`` from a corpus path or any iterable of
-      strings; ``.slice_to_files(out_dir, suffix=".txt")`` writes
-      each slice to its own file.
-    * ``StratifiedBoard(label_key="label")`` — stratified split
-      that preserves the class distribution from labelled records
-      (each unique label is shuffled and split independently,
-      then per-class slices are concatenated and shuffled once
-      more so the output isn't grouped by class).
-    * Convenience: ``cutting_board(source, train=…, val=…,
-      test=…, seed=…)`` returns the slice dict directly when
-      ``source`` is given, else returns a configured board.
+  * **`hypernix.cutting_board` — train / val / test splitting.**
+  * ``CuttingBoard(train_ratio, val_ratio, test_ratio,
+  seed, shuffle)`` — deterministic random split.  Ratios are
+  renormalised if they don't sum to 1.0; ``test_ratio=0`` is
+  allowed (you'll get train + val and an empty test slice).
+  ``.slice(source)`` returns ``{"train": [...], "val": [...],
+  "test": [...]}`` from a corpus path or any iterable of
+  strings; ``.slice_to_files(out_dir, suffix=".txt")`` writes
+  each slice to its own file.
+  * ``StratifiedBoard(label_key="label")`` — stratified split
+  that preserves the class distribution from labelled records
+  (each unique label is shuffled and split independently,
+  then per-class slices are concatenated and shuffled once
+  more so the output isn't grouped by class).
+  * Convenience: ``cutting_board(source, train=…, val=…,
+  test=…, seed=…)`` returns the slice dict directly when
+  ``source`` is given, else returns a configured board.
 
-* **`hypernix.apron` — RNG-state guard.**
+  * **`hypernix.apron` — RNG-state guard.**
   An apron protects what's underneath while you cook.  Captures
   every random-number source hypernix or your script might touch
   (Python ``random``, NumPy if installed, PyTorch CPU, every
   CUDA device's RNG) and restores it on exit.  Two ways to use
   it:
 
-      with apron(seed=0):
-          # everything inside is deterministic; nothing leaks out.
-          random.shuffle(my_list)
-          torch.randn(10)
+  with apron(seed=0):
+  # everything inside is deterministic; nothing leaks out.
+  random.shuffle(my_list)
+  torch.randn(10)
 
-      a = Apron.snapshot(seed=0)
-      ...
-      a.restore()
+  a = Apron.snapshot(seed=0)
+  ...
+  a.restore()
 
   Use it any time a step in your pipeline wants to perturb the
   global RNG (e.g. an evaluator that uses ``torch.randn`` for
   sampling) without leaking the perturbation back to the caller.
 
-* **`hypernix.recipe_book` — named-config registry.**
+  * **`hypernix.recipe_book` — named-config registry.**
   Save 12-key brew recipes once, refer to them by name forever.
   ``RecipeBook.add(name, recipe)`` / ``get(name)`` /
   ``remove(name)`` / ``save(path)`` / ``load(path)``.
   ``cook(name, **overrides)`` looks up, applies overrides on top,
   and dispatches by ``kind`` field:
-    * ``"instant_pot"`` → ``hypernix.instant_pot.brew``
-    * ``"cold_brew"`` → ``hypernix.coffee_maker.cold_brew(...).brew()``
-    * ``"espresso"`` → ``hypernix.espresso_maker.espresso_maker(...).pull(prompts)``
+  * ``"instant_pot"`` → ``hypernix.instant_pot.brew``
+  * ``"cold_brew"`` → ``hypernix.coffee_maker.cold_brew(...).brew()``
+  * ``"espresso"`` → ``hypernix.espresso_maker.espresso_maker(...).pull(prompts)``
   ``RecipeBook.from_builtins()`` ships a handful of ready-to-use
   recipes (``evaluator-quick``, ``ftune-pascal``,
   ``nightly-coldbrew``, ``espresso-eval``).
 
+### Fixed
+
 🐛 **Three bug-fix passes across the codebase.**
 
-Pass 1 — runtime correctness:
+  Pass 1 — runtime correctness:
 
-* `pressure_cooker._adamw_multitensor`: the private
+  * `pressure_cooker._adamw_multitensor`: the private
   ``torch.optim._functional.adamw`` API is **not** stable across
   torch 1.13 → 2.x.  Now wrapped in a try/except (both
   ``ImportError`` on the import and ``TypeError`` at call time),
@@ -7760,460 +8666,528 @@ Pass 1 — runtime correctness:
   ``_adamw_scalar_for(params, group)`` so the optimizer keeps
   working on torch versions where the private name was renamed
   or had its signature changed.
-* `deep_fryer.LightFry` / `HeavyFry`: replaced the global
+  * `deep_fryer.LightFry` / `HeavyFry`: replaced the global
   ``torch.manual_seed`` mutation with a per-parameter
   ``torch.Generator(device=flat.device)`` keyed on
   ``self.seed + sum(map(ord, pname))``.  Two consecutive fries
   with the same seed now produce identical noise **without** also
   perturbing the user's training RNG state.
-* `food_processor.SliceBlade`: previously accepted any
+  * `food_processor.SliceBlade`: previously accepted any
   ``overlap_chars`` and produced a zero-length step (infinite
   loop) when ``overlap_chars >= slice_chars``.  Now raises
   ``ValueError`` at chunk time with a clear message.
-* `industrial_range._parse_pairwise`: the pairwise parser used
+  * `industrial_range._parse_pairwise`: the pairwise parser used
   to insist that "tie/tied/equal" be the first character of the
   judge response.  Real judges write things like "Tied — both
   responses are correct" or "Equal quality" — those now correctly
   return ``"T"``.
 
-Pass 2 — UX / error-message clarity:
+  Pass 2 — UX / error-message clarity:
 
-* `instant_pot.brew`: when ``recipe["dataset"]`` doesn't exist on
+  * `instant_pot.brew`: when ``recipe["dataset"]`` doesn't exist on
   disk, the old behaviour was a confusing ``KeyError`` deep inside
   ``train`` after a 30-second model download.  Now fast-fails with
   ``FileNotFoundError("instant_pot.brew: dataset … does not
   exist")`` before the download starts.
-* `microwave._preheat`: a string repo id like ``"nix2.5"`` that
+  * `microwave._preheat`: a string repo id like ``"nix2.5"`` that
   happened to coincide with an existing local directory was being
   treated as a path even when the directory didn't contain a
   ``config.json``.  The path branch now also requires
   ``config.json`` before short-circuiting the Hub download.
-* `cake_pan` `step_timeout` handler: the SIGALRM handler used to
+  * `cake_pan` `step_timeout` handler: the SIGALRM handler used to
   raise ``BakeOff`` directly without first restoring pristine
   state, leaving the model with a half-applied gradient step.
   Now calls ``self.roll_back()`` before raising.
 
-Pass 3 — discovered during smoke-testing the new modules:
+  Pass 3 — discovered during smoke-testing the new modules:
 
-* `apron.Apron.snapshot`: the previous implementation seeded the
+  * `apron.Apron.snapshot`: the previous implementation seeded the
   RNGs **before** capturing state, so the ``with apron(seed=42):``
   context-manager exit restored to the seeded state instead of
   the caller's pre-call state.  Now snapshots first, then
   optionally seeds, so exit truly returns the caller to whatever
   they were doing before.
 
-🛡️ **36 new tests** in ``tests/test_v050.py`` covering all four
-new modules plus regressions for every bug fix above.
+### Tests
 
----
+🛡️ **36 new tests** in ``tests/test_v050.py`` covering all four
+  new modules plus regressions for every bug fix above.
 
 ## 0.49.0
 
+### Dependencies and Packaging
+
 ✨ **`hypernix.lunchbox` — consistent-schema dataset packager.**
-Reported: the Hub dataset viewer on a hypernix-built
-``ray0rf1re/eval`` dataset crashed with
+  Reported: the Hub dataset viewer on a hypernix-built
+  ``ray0rf1re/eval`` dataset crashed with
 
   Error code: StreamingRowsError
   Exception:  CastError
   Message:    Couldn't cast … because column names don't match
 
-The actual column layout (11 cols incl. ``latency_s``,
-``keyword_score``, ``pipeline_meta``) didn't match the
-``huggingface`` metadata blob embedded inside the Parquet shards
-(only 4 cols).  That happens when shards written at different
-schema versions get concatenated.  ``Lunchbox`` makes that
-impossible by construction:
+  The actual column layout (11 cols incl. ``latency_s``,
+  ``keyword_score``, ``pipeline_meta``) didn't match the
+  ``huggingface`` metadata blob embedded inside the Parquet shards
+  (only 4 cols).  That happens when shards written at different
+  schema versions get concatenated.  ``Lunchbox`` makes that
+  impossible by construction:
 
   * ``add(**fields)`` collects plain dicts.
   * ``normalize()`` fills every missing cell with ``None``.
   * ``validate()`` rejects mixed non-None types per column
-    (str+float in the same column is a Parquet write error).
+  (str+float in the same column is a Parquet write error).
   * ``pack(path)`` routes through
-    ``datasets.Dataset.from_list(...).to_parquet(...)`` so the
-    embedded ``huggingface`` metadata is always in sync with the
-    actual column set.
+  ``datasets.Dataset.from_list(...).to_parquet(...)`` so the
+  embedded ``huggingface`` metadata is always in sync with the
+  actual column set.
   * ``push_to_hub(repo_id)`` does the same for direct uploads.
   * ``Lunchbox.for_eval()`` pre-loads the recommended eval-dataset
-    schema (``EVAL_SCHEMA``: id / category / difficulty / tier /
-    prompt / reference / model_response / keyword_score /
-    latency_s / variant / pipeline_meta).
+  schema (``EVAL_SCHEMA``: id / category / difficulty / tier /
+  prompt / reference / model_response / keyword_score /
+  latency_s / variant / pipeline_meta).
   * ``pack_jsonl(path)`` writes the same normalised rows as JSON
-    Lines — no pyarrow / datasets install required.
+  Lines — no pyarrow / datasets install required.
 
-``datasets`` is a **lazy** dependency: the first pack / push call
-routes through :func:`hypernix.deps.ensure`, respecting
-``HYPERNIX_AUTO_INSTALL=0``.
+  ``datasets`` is a **lazy** dependency: the first pack / push call
+  routes through :func:`hypernix.deps.ensure`, respecting
+  ``HYPERNIX_AUTO_INSTALL=0``.
+
+### Tests
 
 🧪 **+31 new coverage tests** (`tests/test_coverage_beef.py`)
-touching gaps in the existing per-module suites: lunchbox
-edge cases (empty box, 10 000-row normalise, unicode,
-duplicate rows, mixed-types rejection, push-URL shape),
-pressure_cooker (amsgrad wiring, closure-form step, foreach
-state persistence, repr text), deep_fryer (frozen-param
-handling, multi-cycle save/restore, HeavyFry fries frozen
-weights), cake_pan (CPU memory-guard no-op, oven-all-bad
-zero count, step_count monotonicity), freezer presets (every
-CPU has AVX, every GPU has positive bandwidth, lookup-key
-normalisation), shakers (determinism, rate=0 identity, empty-
-line passthrough), smoke_alarm (time_hours math, save_every=0
-silence, unknown-preset error content), plus an end-to-end
-evaluator→Lunchbox→JSONL→Table round trip.
+  touching gaps in the existing per-module suites: lunchbox
+  edge cases (empty box, 10 000-row normalise, unicode,
+  duplicate rows, mixed-types rejection, push-URL shape),
+  pressure_cooker (amsgrad wiring, closure-form step, foreach
+  state persistence, repr text), deep_fryer (frozen-param
+  handling, multi-cycle save/restore, HeavyFry fries frozen
+  weights), cake_pan (CPU memory-guard no-op, oven-all-bad
+  zero count, step_count monotonicity), freezer presets (every
+  CPU has AVX, every GPU has positive bandwidth, lookup-key
+  normalisation), shakers (determinism, rate=0 identity, empty-
+  line passthrough), smoke_alarm (time_hours math, save_every=0
+  silence, unknown-preset error content), plus an end-to-end
+  evaluator→Lunchbox→JSONL→Table round trip.
 
-Full suite 515 passed, 1 skipped (matplotlib).
-
----
+  Full suite 515 passed, 1 skipped (matplotlib).
 
 ## 0.48.0
 
-✨ **`pressure_cooker` rewrite — 4 device-tuned tiers + universal
-selector + 5 new knobs.**  The base :class:`PressureCooker` keeps
-the v0.47 API exactly (warmup / plateau / cosine cooldown + optional
-lookahead); on top of it ship four specialised classes and a
-selector:
+### Added
 
-* **`StovetopCooker`** (CPU tier 1) — minimum-memory path:
+✨ **New base-class knobs (opt-in, all backward-compatible):**
+
+  * ``grad_scaler=`` — unscales, skips on inf, advances the scaler.
+  * ``grad_accum_steps=N`` — only the N-th ``step()`` runs the
+  optimizer; earlier calls just bump the counter.
+  * ``foreach=True | False | None`` — selects the multi-tensor path.
+  * ``fused=True | False | None`` — selects the fused CUDA kernel
+  when torch supports it (torch ≥ 2.0, all params on the same
+  CUDA device).
+  * ``amsgrad=`` — forwarded to the inner AdamW.
+
+✨ **Factory convenience:** ``pressure_cooker(params, tier="...")``
+  accepts any of ``"pressure-cooker"`` / ``"stovetop"`` / ``"electric"``
+  / ``"induction"`` / ``"pro"``.  Unknown tiers raise
+  ``ValueError`` with the full list.
+
+### API Changes
+
+✨ **`universal_cooker(params, prefer_speed=True)`** — probes the
+  first parameter's device and returns `ElectricCooker` on CPU (or
+  `StovetopCooker` with `prefer_speed=False`), `ProCooker` on CUDA
+  (or `InductionCooker`).
+
+### Fixed
+
+✨ **`pressure_cooker` rewrite — 4 device-tuned tiers + universal
+  selector + 5 new knobs.**  The base :class:`PressureCooker` keeps
+  the v0.47 API exactly (warmup / plateau / cosine cooldown + optional
+  lookahead); on top of it ship four specialised classes and a
+  selector:
+
+  * **`StovetopCooker`** (CPU tier 1) — minimum-memory path:
   ``foreach=False``, ``fused=False``, no AMP.  Use on RAM-
   constrained boxes and old Intel Macs.
-* **`ElectricCooker`** (CPU tier 2) — ``foreach=True`` multi-tensor
+  * **`ElectricCooker`** (CPU tier 2) — ``foreach=True`` multi-tensor
   path (torch ≥ 1.12) for fast CPU updates when you have the RAM.
-* **`InductionCooker`** (GPU tier 1) — ``foreach=True`` +
+  * **`InductionCooker`** (GPU tier 1) — ``foreach=True`` +
   ``fused=True`` AdamW kernel on torch ≥ 2.0 + first-class
   ``torch.cuda.amp.GradScaler`` integration.  Pass
   ``grad_scaler=torch.cuda.amp.GradScaler()`` and the cooker
   unscales, inf-skips, and advances the scaler automatically.
-* **`ProCooker`** (GPU tier 2) — InductionCooker plus optional
+  * **`ProCooker`** (GPU tier 2) — InductionCooker plus optional
   CUDA-graph capture via ``warmup_graph(step_fn)`` /
   ``replay_graph()`` for a material speedup on fixed-shape steps.
 
-✨ **`universal_cooker(params, prefer_speed=True)`** — probes the
-first parameter's device and returns `ElectricCooker` on CPU (or
-`StovetopCooker` with `prefer_speed=False`), `ProCooker` on CUDA
-(or `InductionCooker`).
-
-✨ **New base-class knobs (opt-in, all backward-compatible):**
-
-* ``grad_scaler=`` — unscales, skips on inf, advances the scaler.
-* ``grad_accum_steps=N`` — only the N-th ``step()`` runs the
-  optimizer; earlier calls just bump the counter.
-* ``foreach=True | False | None`` — selects the multi-tensor path.
-* ``fused=True | False | None`` — selects the fused CUDA kernel
-  when torch supports it (torch ≥ 2.0, all params on the same
-  CUDA device).
-* ``amsgrad=`` — forwarded to the inner AdamW.
-
-✨ **Factory convenience:** ``pressure_cooker(params, tier="...")``
-accepts any of ``"pressure-cooker"`` / ``"stovetop"`` / ``"electric"``
-/ ``"induction"`` / ``"pro"``.  Unknown tiers raise
-``ValueError`` with the full list.
+### Tests
 
 🔧 `describe()` method on the base class returns a dict of the
-active knobs for logging / provenance.
+  active knobs for logging / provenance.
 
-Tests (`tests/test_pressure_cooker_v048.py`, 19 new):
+  Tests (`tests/test_pressure_cooker_v048.py`, 19 new):
 
-* v0.47 signature + LR schedule + phase labels unchanged (backward
+  * v0.47 signature + LR schedule + phase labels unchanged (backward
   compat).
-* Every tier's defaults (`foreach`, `fused`, `grad_scaler`) verified.
-* Universal selector picks Electric on CPU (fast) or Stovetop
+  * Every tier's defaults (`foreach`, `fused`, `grad_scaler`) verified.
+  * Universal selector picks Electric on CPU (fast) or Stovetop
   (safe).
-* Grad-accumulation: N-1 no-op steps then one real update.
-* GradScaler: skip-on-inf path *and* update-on-finite path via a
+  * Grad-accumulation: N-1 no-op steps then one real update.
+  * GradScaler: skip-on-inf path *and* update-on-finite path via a
   fake scaler so we don't need CUDA to test.
-* Scalar vs. foreach inner path produce the same weight update to
+  * Scalar vs. foreach inner path produce the same weight update to
   within fp rounding.
-* Factory tier lookup + error paths.
-* Lookahead slow-weight population survives the rewrite.
+  * Factory tier lookup + error paths.
+  * Lookahead slow-weight population survives the rewrite.
 
-Full suite 469 passed, 1 skipped (matplotlib).
+  Full suite 469 passed, 1 skipped (matplotlib).
 
-Docs: README subsystem table row rewritten to list all five tiers,
-wiki/Home.md version history picks up 0.48.0 + backfills 0.47.1.
-
----
+  Docs: README subsystem table row rewritten to list all five tiers,
+  wiki/Home.md version history picks up 0.48.0 + backfills 0.47.1.
 
 ## 0.47.0
 
-✨ **`deep_fryer`** — 2-tier model-weight perturbation.  `LightFry`
-(t1): 2% of elements, 0.1× param-std Gaussian noise — use as a
-regulariser between epochs.  `HeavyFry` (t2): 30% of elements,
-0.5× noise, plus configurable zero-rate for sparse destruction —
-use to generate deliberately-bad-model negatives for training a
-judge, or for robustness testing.  Both are in-place and reversible
-via `save_pristine()` / `un_fry()`.
+### Added
 
-✨ **`cake_pan`** — hybrid CPU + GPU training guard.  Wraps each
-step in `bake(fn)` which catches NaN / Inf in the loss (and
-optionally gradients), enforces a wall-time watchdog via SIGALRM,
-monitors GPU memory and offloads matching modules when pressure
-passes `free_gb_trip`, and rolls back to the last pristine state
-on trouble — raising `BakeOff(reason, step)` for the caller.
-`CakePan.oven(batches, step_fn)` is the fire-and-forget loop
-wrapper with automatic retry + skip.
+✨ **`cake_pan`** — hybrid CPU + GPU training guard. Wraps each
+  step in `bake(fn)` which catches NaN / Inf in the loss (and
+  optionally gradients), enforces a wall-time watchdog via SIGALRM,
+  monitors GPU memory and offloads matching modules when pressure
+  passes `free_gb_trip`, and rolls back to the last pristine state
+  on trouble — raising `BakeOff(reason, step)` for the caller.
+  `CakePan.oven(batches, step_fn)` is the fire-and-forget loop
+  wrapper with automatic retry + skip.
 
 ✨ **CPU preset expansion — now 48 total** (was 16, **×3**).
-Adds 7th-gen i5 (7200U, 7300HQ, 7400, 7600K), i9 (7900X, 7980XE);
-11th-gen i5 (11400, 11600K, 11320H), i9 (11900K); 12th-gen i5
-(12400, 12500, 12600K), i9 (12900K, 12900HX); 13th-gen i5 (13400,
-13500, 13600K), i9 (13900K, 13900HX); 14th-gen i5 (14400, 14500,
-14600K), i9 (14900K, 14900KS, 14900HX); Core Ultra 5 Series 1
-(125H, 135H, 228V), Series 2 (225K, 235K); Core Ultra 9 Series 1
-(185H).
+  Adds 7th-gen i5 (7200U, 7300HQ, 7400, 7600K), i9 (7900X, 7980XE);
+  11th-gen i5 (11400, 11600K, 11320H), i9 (11900K); 12th-gen i5
+  (12400, 12500, 12600K), i9 (12900K, 12900HX); 13th-gen i5 (13400,
+  13500, 13600K), i9 (13900K, 13900HX); 14th-gen i5 (14400, 14500,
+  14600K), i9 (14900K, 14900KS, 14900HX); Core Ultra 5 Series 1
+  (125H, 135H, 228V), Series 2 (225K, 235K); Core Ultra 9 Series 1
+  (185H).
+
+### Tests
+
+✨ **`deep_fryer`** — 2-tier model-weight perturbation. `LightFry`
+  (t1): 2% of elements, 0.1× param-std Gaussian noise — use as a
+  regulariser between epochs.  `HeavyFry` (t2): 30% of elements,
+  0.5× noise, plus configurable zero-rate for sparse destruction —
+  use to generate deliberately-bad-model negatives for training a
+  judge, or for robustness testing.  Both are in-place and reversible
+  via `save_pristine()` / `un_fry()`.
 
 ✨ **GPU preset expansion — now 71 total** (was 20, **×3.5**).
-Adds the rest of GTX 10 (1050, 1050 Ti, 1060, 1070, 1070 Ti), GTX
-16 (1650, 1650 Super, 1660, 1660 Super), RTX 20 (2060, 2060 Super,
-2070, 2070 Super), full RTX 30 (3050, 3060, 3060 Ti, 3070, 3070
-Ti, 3080, 3090, 3090 Ti), full RTX 40 (4060, 4060 Ti 8/16GB, 4070,
-4070 Ti, 4080, 4090), full Blackwell consumer RTX 50 (5070, 5070
-Ti, 5080, 5090).  **Apple Silicon** via MPS: M1 / M1 Pro / M1 Max
-/ M1 Ultra, M2 / M2 Pro / M2 Max, M3 / M3 Pro / M3 Max, M4 / M4
-Pro / M4 Max.  **AMD**: Radeon RX 6800 XT / 6900 XT / 7900 XT /
-7900 XTX, Instinct MI250X / MI300X.  Non-CUDA devices (Apple,
-AMD) use the `(0, 0)` sentinel for `compute_capability`.
+  Adds the rest of GTX 10 (1050, 1050 Ti, 1060, 1070, 1070 Ti), GTX
+  16 (1650, 1650 Super, 1660, 1660 Super), RTX 20 (2060, 2060 Super,
+  2070, 2070 Super), full RTX 30 (3050, 3060, 3060 Ti, 3070, 3070
+  Ti, 3080, 3090, 3090 Ti), full RTX 40 (4060, 4060 Ti 8/16GB, 4070,
+  4070 Ti, 4080, 4090), full Blackwell consumer RTX 50 (5070, 5070
+  Ti, 5080, 5090).  **Apple Silicon** via MPS: M1 / M1 Pro / M1 Max
+  / M1 Ultra, M2 / M2 Pro / M2 Max, M3 / M3 Pro / M3 Max, M4 / M4
+  Pro / M4 Max.  **AMD**: Radeon RX 6800 XT / 6900 XT / 7900 XT /
+  7900 XTX, Instinct MI250X / MI300X.  Non-CUDA devices (Apple,
+  AMD) use the `(0, 0)` sentinel for `compute_capability`.
 
-Tests (`tests/test_v047_deep_fryer_cake_pan_presets.py`, 76 tests):
-every fryer tier + pattern filter + unknown-tier error; cake_pan
-loss/grad NaN detection, snapshot writes, oven retry counting,
-pristine rollback; every new CPU preset spec + preset count bound;
-every new GPU preset vram + count bound; compute-capability
-sentinels for Apple + AMD.  **Full suite 447 passed**, 1 skipped
-(matplotlib).
-
----
+  Tests (`tests/test_v047_deep_fryer_cake_pan_presets.py`, 76 tests):
+  every fryer tier + pattern filter + unknown-tier error; cake_pan
+  loss/grad NaN detection, snapshot writes, oven retry counting,
+  pristine rollback; every new CPU preset spec + preset count bound;
+  every new GPU preset vram + count bound; compute-capability
+  sentinels for Apple + AMD.  **Full suite 447 passed**, 1 skipped
+  (matplotlib).
 
 ## 0.46.1
 
-🛡️ **`nix` short-name fallback chain.**
-`KNOWN_MODELS["nix"]` now points at `Nix-ai/Nix-2.7a` (was
-`ray0rf1re/Nix2.5`).  `download_model("nix")` consults a new
-`FALLBACK_CHAINS` registry and tries in order:
-`Nix-ai/Nix-2.7a` → `Nix-ai/Nix2.6-mm` → `ray0rf1re/Nix2.5`,
-falling through only when an earlier candidate 404s / is gated /
-hits a network error.  Explicit `org/repo` ids bypass the chain.
-Six regression tests in `tests/test_nix_fallback.py` cover the
-happy path, fallthrough, exhaustion, and explicit-repo bypass.
+### Tests
 
----
+🛡️ **`nix` short-name fallback chain.**
+  `KNOWN_MODELS["nix"]` now points at `Nix-ai/Nix-2.7a` (was
+  `ray0rf1re/Nix2.5`).  `download_model("nix")` consults a new
+  `FALLBACK_CHAINS` registry and tries in order:
+  `Nix-ai/Nix-2.7a` → `Nix-ai/Nix2.6-mm` → `ray0rf1re/Nix2.5`,
+  falling through only when an earlier candidate 404s / is gated /
+  hits a network error.  Explicit `org/repo` ids bypass the chain.
+  Six regression tests in `tests/test_nix_fallback.py` cover the
+  happy path, fallthrough, exhaustion, and explicit-repo bypass.
 
 ## 0.46.0
 
+### Added
+
 ✨ **`salt_shaker`** — 3-tier gentle data augmentation.
 
-- `FromTheBag` (t1): per-character substitution at `rate`, preserves
+  - `FromTheBag` (t1): per-character substitution at `rate`, preserves
   line length.
-- `HandCrusher` (t2): adjacent-token swaps at `rate`.
-- `PoshSaltDish` (t3): independent drop / duplicate / swap rates
+  - `HandCrusher` (t2): adjacent-token swaps at `rate`.
+  - `PoshSaltDish` (t3): independent drop / duplicate / swap rates
   with word-level granularity.
 
-All three share a `Shaker` base, a deterministic `seed`, and plug
-into `sink.Sink.pour(...)` like the pans.
+  All three share a `Shaker` base, a deterministic `seed`, and plug
+  into `sink.Sink.pour(...)` like the pans.
 
 ✨ **`pepper_shaker`** — 3-tier sharp perturbations.
 
-- `SmallShaker` (t1): random token masking with configurable
+  - `SmallShaker` (t1): random token masking with configurable
   `mask_token` (default `[MASK]`).
-- `Dish` (t2): typo injection (drop / duplicate an internal char);
+  - `Dish` (t2): typo injection (drop / duplicate an internal char);
   preserves first + last character so words stay recognisable.
-- `TallHandmade` (t3): negation injection; prepends `negator`
+  - `TallHandmade` (t3): negation injection; prepends `negator`
   (default `"NOT"`) at `rate`.
 
-✨ **`torch_compat`** — portability shim for **old Intel Macs with
-torch 1.13**.  Provides version-gated fallbacks for
-`torch.nn.RMSNorm` (needs ≥ 2.4) and
-`torch.nn.functional.scaled_dot_product_attention` (needs ≥ 2.0).
-`HyperNixModel` + `NanoNanoModel` now route through the shim, so
-identical outputs on modern and legacy torch.
-
 ✨ **`[legacy-torch]` extra** — companion dep pins that co-install
-with torch 1.13: `numpy<2`, `safetensors>=0.3.1`,
-`huggingface-hub>=0.16`, `tqdm>=4.64`, `sentencepiece>=0.1.99`.
-Does **not** relax the main torch pin; you must install torch 1.13
-first yourself.  See `scripts/install_macos_legacy.sh`.
+  with torch 1.13: `numpy<2`, `safetensors>=0.3.1`,
+  `huggingface-hub>=0.16`, `tqdm>=4.64`, `sentencepiece>=0.1.99`.
+  Does **not** relax the main torch pin; you must install torch 1.13
+  first yourself.  See `scripts/install_macos_legacy.sh`.
+
+### Changed
 
 🔧 **`scripts/install_macos_legacy.sh`** — one-shot installer that
-pins torch 1.13.1 CPU, installs hypernix with `--no-deps`, then
-pulls the legacy-torch extras, and smoke-tests
-`torch_compat.describe()`.
+  pins torch 1.13.1 CPU, installs hypernix with `--no-deps`, then
+  pulls the legacy-torch extras, and smoke-tests
+  `torch_compat.describe()`.
+
+### API Changes
+
+✨ **`torch_compat`** — portability shim for **old Intel Macs with
+  torch 1.13**.  Provides version-gated fallbacks for
+  `torch.nn.RMSNorm` (needs ≥ 2.4) and
+  `torch.nn.functional.scaled_dot_product_attention` (needs ≥ 2.0).
+  `HyperNixModel` + `NanoNanoModel` now route through the shim, so
+  identical outputs on modern and legacy torch.
+
+### Documentation
 
 📚 New `wiki/macOS-legacy.md` documents what works, what doesn't,
-and how to size training on old Intel Macs (`OldFreezer` + a
-`GasAlarm(preset="i7-7660u")`-style budget).
-
----
+  and how to size training on old Intel Macs (`OldFreezer` + a
+  `GasAlarm(preset="i7-7660u")`-style budget).
 
 ## 0.45.3
 
-🛡️ **`smoke_alarm.GasAlarm` accepts `preset=`.** One-string shortcut
-that resolves against `GPU_PRESETS` first, then `CPU_PRESETS`. Works
-on the class (`GasAlarm(..., preset="i7-7700hq")`), on the factory
-(`gas_alarm(..., preset="h100")`), and on the selector
-(`auto_alarm(..., preset="rtx-3080-ti")`). Unknown names raise
-`ValueError` with the full list of valid presets.
-
-🛡️ Explicit `cpu=` / `gpu=` instances still win over a conflicting
-`preset=` hint — no silent overwrite.
+### Changed
 
 🔧 Shared `_resolve_preset` helper in `smoke_alarm.py`.
 
+### CLI and UX
+
+🛡️ **`smoke_alarm.GasAlarm` accepts `preset=`.** One-string shortcut
+  that resolves against `GPU_PRESETS` first, then `CPU_PRESETS`. Works
+  on the class (`GasAlarm(..., preset="i7-7700hq")`), on the factory
+  (`gas_alarm(..., preset="h100")`), and on the selector
+  (`auto_alarm(..., preset="rtx-3080-ti")`). Unknown names raise
+  `ValueError` with the full list of valid presets.
+
+🛡️ Explicit `cpu=` / `gpu=` instances still win over a conflicting
+  `preset=` hint — no silent overwrite.
+
 ## 0.45.2
 
+### Fixed
+
 🐛 **Every pan accepts `context_length=` and `max_chars=`.** Reported:
-`FryingPan(context_length=CONTEXT_LEN)` raised a bare `TypeError`.
-Both are now keyword-only fields on the `Pan` base class; when set,
-lines are truncated to fit. `context_length` is treated as
-`max_chars = context_length * 4` (English-BPE heuristic); the direct
-`max_chars=` wins when both are set. For precise chunking by tokens
-use `hypernix.food_processor` instead.
+  `FryingPan(context_length=CONTEXT_LEN)` raised a bare `TypeError`.
+  Both are now keyword-only fields on the `Pan` base class; when set,
+  lines are truncated to fit. `context_length` is treated as
+  `max_chars = context_length * 4` (English-BPE heuristic); the direct
+  `max_chars=` wins when both are set. For precise chunking by tokens
+  use `hypernix.food_processor` instead.
 
 ## 0.45.1
 
-🐛 **Pan positional-argument fix.** `Pan` inherited `name: str` as a
-dataclass field, so `Skillet(src, "instruct")` silently set
-`name="instruct"` and left `mode="chat"`. Fix: `name` is now a
-`typing.ClassVar` on every pan — still the pan's label, no longer
-part of `__init__`. `GrillPan._seen` (internal dedupe state) marked
-`init=False`.
+### CLI and UX
 
 🛡️ `pick_pan` error messages now list valid tiers / valid kwargs
-instead of raising `KeyError` or cryptic `TypeError`.
+  instead of raising `KeyError` or cryptic `TypeError`.
+
+### Fixed
+
+🐛 **Pan positional-argument fix.** `Pan` inherited `name: str` as a
+  dataclass field, so `Skillet(src, "instruct")` silently set
+  `name="instruct"` and left `mode="chat"`. Fix: `name` is now a
+  `typing.ClassVar` on every pan — still the pan's label, no longer
+  part of `__init__`. `GrillPan._seen` (internal dedupe state) marked
+  `init=False`.
 
 ## 0.45.0
 
+### Added
+
 ✨ **Espresso, blender, toaster, food_processor, smoker** — five new
-appliances, each 4 tiers. Shared interface per module.
+  appliances, each 4 tiers. Shared interface per module.
 
 ✨ **+3 microwave tiers** — now `defrost` (preheat-only) / `low_zap`
-(deterministic one-liner) / `zap` (existing) / `high_zap`
-(long-temp draft) / `chat_zap` (existing). Plus `reheat(oven,
-prior_output)` for continuation without rebuild.
-
-✨ **+2 coffee_maker tiers and one new type.**
-`FrenchPressMaker` (batch), `PercolatorMaker` (cyclic with optional
-convergence), and a new `ColdBrewMaker` (long single brew with
-mandatory JSON checkpoints, resumes cleanly after a crash).
+  (deterministic one-liner) / `zap` (existing) / `high_zap`
+  (long-temp draft) / `chat_zap` (existing). Plus `reheat(oven,
+  prior_output)` for continuation without rebuild.
 
 ✨ **CLI `hypernix brew recipe.json`** — runs `instant_pot.brew`
-from a JSON recipe. Supports `--set KEY=VALUE` overrides with JSON
-literals.
+  from a JSON recipe. Supports `--set KEY=VALUE` overrides with JSON
+  literals.
+
+### Fixed
+
+✨ **+2 coffee_maker tiers and one new type.**
+  `FrenchPressMaker` (batch), `PercolatorMaker` (cyclic with optional
+  convergence), and a new `ColdBrewMaker` (long single brew with
+  mandatory JSON checkpoints, resumes cleanly after a crash).
+
+### Documentation
 
 📚 `wiki/Kitchen.md` gets full sections for every new appliance.
 
 ## 0.44.0
 
+### Added
+
 ✨ **Kitchen modules + pressure_cooker optimizer.** Seven new
-top-level modules (pans, microwave, table, sink, instant_pot,
-coffee_maker, pressure_cooker) covering preprocessing, throwaway
-inference, log inspection, file output, end-to-end pipelines,
-scheduled repetition, and a custom optimizer.
+  top-level modules (pans, microwave, table, sink, instant_pot,
+  coffee_maker, pressure_cooker) covering preprocessing, throwaway
+  inference, log inspection, file output, end-to-end pipelines,
+  scheduled repetition, and a custom optimizer.
 
 ✨ `pressure_cooker` — `torch.optim.Optimizer` subclass: AdamW +
-three-phase LR schedule (linear warmup → plateau → cosine cooldown)
-+ Zhang-et-al-2019 Lookahead "pressure seal". No separate scheduler
-object; the LR lives inside the optimizer.
+  three-phase LR schedule (linear warmup → plateau → cosine cooldown)
+  + Zhang-et-al-2019 Lookahead "pressure seal". No separate scheduler
+  object; the LR lives inside the optimizer.
+
+### Documentation
 
 📚 README gains a **"Who this is actually for"** section framing the
-package around the solo-GPU / consumer-card / QLoRA-to-Hub workflow,
-with an explicit disclaimer that `train()` is a smoke-tester, not a
-production trainer. New `wiki/Kitchen.md`.
+  package around the solo-GPU / consumer-card / QLoRA-to-Hub workflow,
+  with an explicit disclaimer that `train()` is a smoke-tester, not a
+  production trainer. New `wiki/Kitchen.md`.
 
 ## 0.43.0
 
+### Added
+
 ✨ **`smoke_alarm`** — four-tier training-step planner + mid-run
-monitor. `RadsAlarm` (constants, lightest), `GasAlarm` (CPU/GPU
-presets), `ModernAlarm` (warmup-measured), `AutoAlarm` (selector).
+  monitor. `RadsAlarm` (constants, lightest), `GasAlarm` (CPU/GPU
+  presets), `ModernAlarm` (warmup-measured), `AutoAlarm` (selector).
 
 ✨ **16 CPU presets** (`hypernix.freezer.CPU_PRESETS`): i7 7th gen
-(7660U / 7700HQ / 7700K), 11th–14th gen K/H/HX, Core Ultra Series 1
-(Meteor / Lunar Lake), Series 2 (Arrow Lake, AVX10).
+  (7660U / 7700HQ / 7700K), 11th–14th gen K/H/HX, Core Ultra Series 1
+  (Meteor / Lunar Lake), Series 2 (Arrow Lake, AVX10).
 
 ✨ **20 GPU presets** (`hypernix.freezer.GPU_PRESETS`): Hopper
-(H100/H200), Ampere workstation (A4500–A6000), RTX PRO Ada +
-Blackwell, RTX 4070 Ti Super / 4080 Super, RTX 3080 Ti, Turing
-consumer (1660 Ti, 2080, 2080 Super, 2080 Ti), Pascal (1080, 1080 Ti).
+  (H100/H200), Ampere workstation (A4500–A6000), RTX PRO Ada +
+  Blackwell, RTX 4070 Ti Super / 4080 Super, RTX 3080 Ti, Turing
+  consumer (1660 Ti, 2080, 2080 Super, 2080 Ti), Pascal (1080, 1080 Ti).
+
+### Documentation
 
 📚 New `wiki/Alarms.md` with both preset tables.
 
 ## 0.42.0
 
-✨ **`new_range` / `old_range` / `industrial_range`** — three
-sophistication tiers of labeling rubrics that drop into
-`mediocre_fridge.collect_responses_from(label_rule=...)`.
+### Added
 
-- `new_range` — zero-dep first-fail rubric (is_empty, is_refusal,
+✨ **`new_range` / `old_range` / `industrial_range`** — three
+  sophistication tiers of labeling rubrics that drop into
+  `mediocre_fridge.collect_responses_from(label_rule=...)`.
+
+  - `new_range` — zero-dep first-fail rubric (is_empty, is_refusal,
   math_lacks_digit, is_repetition).
-- `old_range` — weighted-mean scored rubric with `None` = "no
+  - `old_range` — weighted-mean scored rubric with `None` = "no
   opinion", any-rule-at-0 short-circuits to BAD, references / keywords
   / stopword-filtered overlap built in.
-- `industrial_range` — LLM-as-judge wrapper around any CodeOven;
+  - `industrial_range` — LLM-as-judge wrapper around any CodeOven;
   pointwise + pairwise with caching.
+
+### Documentation
 
 📚 New `wiki/Ranges.md`.
 
 ## 0.41.0
 
+### Added
+
 ✨ **CUDA 6.1 / Pascal support.** `compute_capability`, `is_pascal`,
-`pascal_safe_dtype` (fp32 on CPU, fp16 on Pascal / Volta / Turing,
-bf16 on Ampere+), `pascal_mode_hints` (one-stop dict of recommended
-settings for sm_61).
+  `pascal_safe_dtype` (fp32 on CPU, fp16 on Pascal / Volta / Turing,
+  bf16 on Ampere+), `pascal_mode_hints` (one-stop dict of recommended
+  settings for sm_61).
 
 ✨ **`examples/train_hypernix_1_5_gtx1080.py`** — HyperNix 1.5,
-verified 92,130,048 params, trains on an 8 GB Pascal card via
-`auto_freezer` + `flash_freezer(slow=True)`.
+  verified 92,130,048 params, trains on an 8 GB Pascal card via
+  `auto_freezer` + `flash_freezer(slow=True)`.
+
+### Documentation
 
 📚 New `wiki/Pascal.md` with a full sm_61 playbook.
 
 ## 0.40.0
 
+### Added
+
 ✨ **`freezer` module** — VRAM manager. `OldFreezer` (8 – 10 GB,
-batch=1, fp16, empty_cache each step), `NewFreezer` (11 GB+, batch=8,
-fp32/bf16), `FlashFreezer` (OOM-safe retry wrapper with exponential
-backoff, wait-for-free-GB, and optional slow-mode that halves
-`current_batch_size` on each retry).
+  batch=1, fp16, empty_cache each step), `NewFreezer` (11 GB+, batch=8,
+  fp32/bf16), `FlashFreezer` (OOM-safe retry wrapper with exponential
+  backoff, wait-for-free-GB, and optional slow-mode that halves
+  `current_batch_size` on each retry).
+
+### Documentation
 
 📚 New `wiki/Freezer.md`.
 
 ## 0.36.0
 
-✨ **`old_fridge` / `mediocre_fridge` / `new_fridge`** — memory
-housekeeping (freeze/unfreeze/parameter_stats), judge-training dataset
-synthesis, and training-curve plotting.
+### Added
 
 ✨ `examples/train_hypernix_0_1_5_evaluator.py` — end-to-end example
-wiring ovens + all three fridges.
+  wiring ovens + all three fridges.
+
+### API Changes
+
+✨ **`old_fridge` / `mediocre_fridge` / `new_fridge`** — memory
+  housekeeping (freeze/unfreeze/parameter_stats), judge-training dataset
+  synthesis, and training-curve plotting.
+
+### Documentation
 
 📚 New `wiki/Fridges.md`.
 
 ## 0.35.0
 
+### Added
+
 ✨ **Gemma 4, Qwen 3.5 & 3.6, GLM 5.x, Nix collection presets.** New
-entries in both `ARCH_PRESETS` (for `new_oven`) and `KNOWN_MODELS`
-(for short-name resolution). Config knobs verified against the actual
-HuggingFace repos.
+  entries in both `ARCH_PRESETS` (for `new_oven`) and `KNOWN_MODELS`
+  (for short-name resolution). Config knobs verified against the actual
+  HuggingFace repos.
 
 ## 0.34.0
 
+### API Changes
+
 ✨ **AutoModel fallback.** `load_snapshot` routes any non-HyperNix
-`model_type` (Gemma, Phi, DeepSeek, GLM, GPT-OSS, …) through a thin
-`transformers.AutoModelForCausalLM` wrapper. New ARCH_PRESETS covering
-those families.
+  `model_type` (Gemma, Phi, DeepSeek, GLM, GPT-OSS, …) through a thin
+  `transformers.AutoModelForCausalLM` wrapper. New ARCH_PRESETS covering
+  those families.
 
 ## 0.33.0
 
+### Added
+
 ✨ **Windows + macOS support.** Cross-platform `doctor`, path
-handling, `llama-quantize` resolution.
+  handling, `llama-quantize` resolution.
 
 ✨ **Python 3.13** support (sentencepiece 0.2.1 floor).
 
 ✨ **Runtime auto-install.** `HYPERNIX_AUTO_INSTALL` env var (default
-on) lets missing runtime deps be installed lazily; `hypernix doctor
---fix` makes it explicit.
+  on) lets missing runtime deps be installed lazily; `hypernix doctor
+  --fix` makes it explicit.
 
 ## 0.32.1
 
+### Fixed
+
 🐛 Fall back to the slow tokenizer when the `tokenizers` crate is too
-old to decode a newer tokenizer.json.
+  old to decode a newer tokenizer.json.
 
 ## 0.32.0
+
+### Added
 
 ✨ **torch 2.7+** (incl. CUDA 11.8 builds).
 
@@ -8221,31 +9195,39 @@ old to decode a newer tokenizer.json.
 
 ## 0.31.0
 
+### Added
+
 ✨ **Chat REPL.** `hypernix chat --repo-id <short-name>` plus
-`CodeOven.chat(turns, ...)`.
+  `CodeOven.chat(turns, ...)`.
 
 ✨ **Nano-nano / Nano-mini / nano-nano-927** family — new entries in
-`KNOWN_MODELS`.
+  `KNOWN_MODELS`.
 
 ## 0.30.0
 
+### Added
+
 ✨ **`old_oven` code-generation wrapper.** `preheat`, `CodeOven`,
-`bake_code`, `fill_middle`, `save_pt` / `load_pt`. `--auto-oven`
-top-level CLI shortcut.
+  `bake_code`, `fill_middle`, `save_pt` / `load_pt`. `--auto-oven`
+  top-level CLI shortcut.
 
 ## 0.21.0
 
+### Added
+
 ✨ Download every file the model needs — not just weights — so the
-output directory is a self-contained snapshot.
+  output directory is a self-contained snapshot.
 
 ## 0.2.0
 
+### Fixed
+
 ✨ First subcommand-based CLI. `train` module scaffold. Fixed
-`tokenizer.ggml.merges` in GGUF output.
+  `tokenizer.ggml.merges` in GGUF output.
 
----
+## Changelog maintenance
 
-## Upgrading
+### Upgrading
 
 `hypernix` follows no breaking-change policy yet. Patch releases
 (`0.45.x`) are always safe to upgrade — they only fix bugs, UX
@@ -8263,41 +9245,10 @@ print(inspect.signature(smoke_alarm.GasAlarm))
 print(inspect.signature(pans.FryingPan))
 ```
 
-## Contributing changelog entries
+### Contributing changelog entries
 
 New features should land with a one-paragraph entry at the top of
 this file, grouped by emoji legend. Patch releases get a couple of
 bullet points; minor releases get a section per subsystem touched.
 Keep the tone utilitarian — what changed, how the caller notices,
 what to do instead if an old call stopped working.
-
----
-
-## 0.61.4
-
-🖥️ **Interactive TUI/CLI (`hypernix-cli`)** — Rich-based interactive menu system with fallback mode for all major operations: model management, training control, ASR/TTS pipelines, AI assistant, and Web UI launcher. Commands include `models`, `train`, `asr`, `tts`, `pipeline`, `assistant`, and `webui`.
-
-🤖 **Linux Local AI Assistant** — Voice-controlled AI assistant with ASR input, natural language TTS responses, and system control capabilities. Built-in commands: `/help`, `/voice`, `/system`, `/quit`. Features persistent memory and conversation context.
-
-🌐 **Web UI with Tailscale Integration** — Modern web dashboard at `http://localhost:8080` with secure Tailscale tunneling for remote access. Provides model management, training monitoring, ASR/TTS pipeline controls, and chat interface.
-
-🔊 **Enhanced ASR/TTS Pipelines** — Improved `ASRToTTS` direct speech-to-speech conversion and enhanced `ASRToLLMToTTS` full conversational pipeline with better error handling, device management, and streaming support.
-
-📦 **30+ New Model Architectures** — Added support for:
-- LiquidAI LFM2.5-8B-A1B (GGUF quantized)
-- OpenBMB MiniCPM5-1B
-- Google Gemma 4 family (all variants including 31B-it, 12B, 4B, 1B)
-- Qwen3.5 series, Phi-4, DeepSeek-V2.5, GLM-Edge/MoE
-- GPT-OSS, Nemotron, Llama-3.2, Mistral-Nemo, Mixtral-8x22B
-- Full Nano-Nano collection (ray0rf1re/nano-nano)
-- And 15+ additional architectures for vision, audio, and language tasks
-
-🛡️ **Pressure Cooker V2 Improvements** — Fixed lookahead slow buffer initialization bug that silently disabled lookahead optimization. Added comprehensive test coverage for both scalar and multitensor paths with Q8/Q6/Q5.5/Q4M quantization-aware training.
-
-📚 **Documentation Updates** — Complete changelog preserved, README updated with new features, wiki expanded with usage examples for all new modules.
-
-🔧 **Dependency Updates** — Updated requirements for latest transformers, accelerate, bitsandbytes, and TTS/ASR libraries. Added tailscale-python for secure tunneling.
-
----
-
-## Contributing changelog entries

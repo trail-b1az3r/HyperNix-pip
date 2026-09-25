@@ -1,4 +1,4 @@
-name: Update API and Code Stats
+name: Update Docs Data
 
 # Full-history source scan for the docs site. This runs independently of the
 # PyPI download stats job because API/code data comes from the repository itself.
@@ -31,7 +31,7 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Generate API reference and code stats
+      - name: Generate API reference, code stats, and changelog summaries
         run: python scripts/generate_docs_data.py
 
       - name: Commit only when generated data changed
@@ -39,9 +39,9 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           if git diff --quiet -- docs/public/v1/api-deep.json docs/public/v1/t1-api.json docs/public/v1/code-stats.json docs/public/v1/changelog.json; then
-            echo "No API/code-stat changes — skipping commit."
+            echo "No generated docs data changes — skipping commit."
             exit 0
           fi
           git add docs/public/v1/api-deep.json docs/public/v1/t1-api.json docs/public/v1/code-stats.json docs/public/v1/changelog.json
-          git commit -m "chore: update generated API and code stats"
+          git commit -m "chore: refresh generated docs data and release summaries"
           git push

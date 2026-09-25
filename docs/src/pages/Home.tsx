@@ -3,6 +3,7 @@ import { SUBSYSTEMS, FEATURES, MODELS, QUICKSTART, GROUP_ORDER, subsystemGroup, 
 import { FeatureIcon } from '../components/icons'
 import { CountUp, SectionHeading, CodeBlock } from '../components/ui'
 import { LogoLockup } from '../components/Logo'
+import { CreditsPage } from './Credits'
 
 function HeroTerminal({ version }) {
   return (
@@ -114,7 +115,7 @@ function SubsystemBrowser() {
   )
 }
 
-function HomePage({ setPage, downloads, olderDownloads, totalDownloads, ghStats, version }) {
+function HomePage({ setPage, downloads, olderDownloads, totalDownloads, ghStats, version, changelogEntries }) {
   return (
     <div>
       {/* ── Hero ─────────────────────────────────────────────────────── */}
@@ -175,6 +176,13 @@ function HomePage({ setPage, downloads, olderDownloads, totalDownloads, ghStats,
                   display:'inline-block' }}>
                 PyPI ↗
               </a>
+              <a href="https://github.com/trail-b1az3r/HyperNix" target="_blank" rel="noreferrer"
+                className="press-btn" style={{
+                  background:'none', border:'1px solid var(--border-strong)', color:'var(--text-muted)', borderRadius:8,
+                  padding:'12px 26px', fontSize:14.5, textDecoration:'none',
+                  display:'inline-block' }}>
+                GitHub ↗
+              </a>
             </div>
 
             <div className="anim-fade-up" style={{ maxWidth:360, animationDelay:'0.24s' }}>
@@ -216,6 +224,47 @@ function HomePage({ setPage, downloads, olderDownloads, totalDownloads, ghStats,
           )}
         </div>
       </section>
+
+      {/* ── Latest release snapshot ─────────────────────────────────── */}
+      {changelogEntries?.[0] && (
+        <section className="section" style={{ background:'var(--surface-1)', borderTop:'1px solid var(--surface-2)', borderBottom:'1px solid var(--surface-2)' }}>
+          <div className="shell">
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(min(340px,100%),1fr))', gap:18, alignItems:'stretch' }}>
+              <div style={{ border:'1px solid var(--border-strong)', borderRadius:12, background:'var(--surface-2)', padding:'22px 20px' }}>
+                <div className="eyebrow" style={{ color:'var(--accent)', marginBottom:8 }}>Latest release</div>
+                <div style={{ display:'flex', alignItems:'baseline', gap:10, flexWrap:'wrap' }}>
+                  <h2 style={{ margin:0, color:'var(--text)', fontSize:26, letterSpacing:'-0.03em' }}>v{changelogEntries[0].version}</h2>
+                  {changelogEntries[0].date && <span className="tabular" style={{ color:'var(--text-faint)', fontSize:11 }}>{changelogEntries[0].date}</span>}
+                </div>
+                <p style={{ margin:'12px 0 18px', color:'var(--text-dim)', fontSize:13.5, lineHeight:1.7 }}>
+                  {changelogEntries[0].summary}
+                </p>
+                <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
+                  <a href="https://github.com/trail-b1az3r/HyperNix/wiki/Changelog" target="_blank" rel="noreferrer"
+                    className="press-btn" style={{ background:'none', border:'1px solid var(--border-strong)', color:'var(--text)', borderRadius:8, padding:'9px 13px', textDecoration:'none', fontSize:12.5 }}>
+                    Full changelog ↗
+                  </a>
+                  <button onClick={() => setPage('stats')} className="press-btn" style={{ background:'var(--surface-3)', border:'1px solid var(--border-strong)', color:'var(--text-muted)', borderRadius:8, padding:'9px 13px', fontSize:12.5, cursor:'pointer' }}>
+                    Release timeline
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ border:'1px solid var(--border-strong)', borderRadius:12, background:'var(--surface-2)', padding:'20px' }}>
+                <div className="eyebrow" style={{ color:'var(--text-faint)', marginBottom:11 }}>Change highlights</div>
+                <div style={{ display:'grid', gap:8 }}>
+                  {(changelogEntries[0].highlights || []).slice(0, 5).map((item, i) => (
+                    <div key={`${i}-${item}`} style={{ display:'flex', gap:10, alignItems:'flex-start', padding:'9px 10px', background:'var(--surface-1)', borderRadius:8 }}>
+                      <span className="tabular" style={{ color:'var(--accent)', fontSize:10.5, minWidth:20 }}>{String(i + 1).padStart(2,'0')}</span>
+                      <span style={{ color:'var(--text-dim)', fontSize:12.5, lineHeight:1.6 }}>{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ── Features ─────────────────────────────────────────────────── */}
       <section className="section" style={{ background:'var(--surface-1)', borderTop:'1px solid var(--surface-2)',
@@ -331,6 +380,9 @@ function HomePage({ setPage, downloads, olderDownloads, totalDownloads, ghStats,
           <SubsystemBrowser />
         </div>
       </section>
+
+      {/* Home-only credits: intentionally not routed, linked, or shown in the global footer. */}
+      <CreditsPage />
     </div>
   )
 }

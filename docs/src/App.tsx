@@ -193,7 +193,7 @@ export default function App() {
         const version = r.tag_name || r.name || 'unknown'
         return {
           version,
-          date: r.published_at ? new Date(r.published_at).toLocaleDateString() : '',
+          date: entry?.date || (r.published_at ? new Date(r.published_at).toLocaleDateString() : ''),
           description: entry?.summary || (r.body ? r.body.split('\n').find(line => line.trim()) : 'Release'),
           isPreRelease: r.prerelease,
           releaseKind: entry?.kind || kindFor(version, r.prerelease),
@@ -206,7 +206,7 @@ export default function App() {
       } else {
         setReleaseTimeline(entries.slice(0, 80).map(entry => ({
           version: entry.version,
-          date: '',
+          date: entry.date || '',
           description: entry.summary,
           isPreRelease: entry.kind !== 'stable' && entry.kind !== 'post',
           releaseKind: entry.kind,
