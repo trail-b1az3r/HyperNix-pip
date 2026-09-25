@@ -9230,10 +9230,13 @@ Release focus: T1 v1.0.26.8.0.1.
 ### Upgrading
 
 `hypernix` follows no breaking-change policy yet. Patch releases
-(`0.45.x`) are always safe to upgrade — they only fix bugs, UX
-papercuts, or improve error messages.
+(`0.45.x`) are NOT always safe to upgrade — they add new features change, UX
+papercuts, improve error messages, and more.
 
-Minor releases (`0.N.0`) add features. The usual gotcha is renamed
+bug fix releases: (`0.0.0.postN`) are ALWAYS safe to upgrade to, they rarely add new features,
+and mainly fix bugs that i have found during testing
+
+MAJOR releases (`0.N.0`) add features. The usual gotcha is renamed
 kwargs from the UX-polish patches above; when in doubt, check the
 signature:
 
@@ -9244,6 +9247,7 @@ from hypernix import smoke_alarm, pans
 print(inspect.signature(smoke_alarm.GasAlarm))
 print(inspect.signature(pans.FryingPan))
 ```
+feature relealses (`0.0.N`) add fixes, improvements and more
 
 ### Contributing changelog entries
 
