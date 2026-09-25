@@ -582,12 +582,14 @@ def fetch(
             page.error = f"refused: {problem}"
             return page
 
-    host = urllib.parse.urlsplit(url).netloc
-    if limiter is not None:
+    parts = urllib.parse.urlsplit(url)
+    host = parts.hostname or parts.netloc
+    if limiter is not None and host:
         limiter.wait(host)
 
+    normalized_url = parts.geturl()
     request = urllib.request.Request(  # noqa: S310 - scheme checked above
-        url,
+        normalized_url,
         headers={
             "User-Agent": user_agent,
             "Accept": "text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.5",
@@ -599,7 +601,7 @@ def fetch(
     )
     try:
         opened = (
-            _open_pinned(url, dict(request.header_items()), timeout)
+            _open_pinned(normalized_url, dict(request.header_items()), timeout)
             if public_only
             else urllib.request.urlopen(request, timeout=timeout)  # noqa: S310
         )
