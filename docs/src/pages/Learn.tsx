@@ -126,7 +126,7 @@ function LearnPage() {
       const provider = { url: resolvedUrl, model: resolvedModel, kind: meta.kind, key: apiKey.trim() }
       await callProvider(provider, [{ role: 'user', content: 'Reply with the word OK and nothing else.' }],
         'You are a connection test. Reply with exactly one word.')
-      const savedCfg = { url: resolvedUrl, model: resolvedModel, backend, kind: meta.kind, key: needsKey ? apiKey.trim() : '' }
+      const savedCfg = { url: resolvedUrl, model: resolvedModel, backend, kind: meta.kind, key: '' }
       sessionStorage.setItem('hnx_llm_cfg', JSON.stringify(savedCfg))
       setCfg(savedCfg)
       setTestStatus('ok')
