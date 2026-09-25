@@ -139,6 +139,12 @@ Post releases and development revisions preserve their exact package version:
 ## 0.72.4.post18
 ```
 
+Patch releases that are posted on pypi must use the format 
+
+```markdown
+## 0.72.7.post14 — patch # - headline change or fix
+```
+
 If an in-branch development point has no meaningful release date, omit the date rather than inventing one.
 
 ---
