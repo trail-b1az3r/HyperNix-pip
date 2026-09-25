@@ -163,7 +163,8 @@ def _print_json(obj: Any) -> None:
 def _mask(secret: str | None, keep: int = 8) -> str:
     if not secret:
         return "-"
-    return secret[:keep] + "…" if len(secret) > keep else secret
+    visible = max(1, keep)
+    return secret[:visible] + "…"
 
 
 # ---------------------------------------------------------------------------
