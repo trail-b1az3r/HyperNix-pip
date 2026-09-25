@@ -560,11 +560,19 @@ def _cmd_create(args: list[str]) -> int:
         )
         content_lines.append(f"[dim]  {_literal(meta.key)}[/dim]")
 
+    masked_kit = None
+    if t2c_kit is not None:
+        kit_text = t2c_kit.to_text()
+        if len(kit_text) > 24:
+            masked_kit = f"{kit_text[:12]}...{kit_text[-8:]}"
+        else:
+            masked_kit = "[redacted]"
+
     if _HAS_RICH:
         _print_panel("\n".join(content_lines), title="gkey create")
         if t2c_kit is not None:
             print(f"Key: {issued_key}")
-            print(f"Kit: {t2c_kit.to_text()}")
+            print(f"Kit: {masked_kit} [redacted]")
     else:
         print("Key created successfully!")
         print(f"  Key ID:    {meta.key_id}")
@@ -579,7 +587,7 @@ def _cmd_create(args: list[str]) -> int:
         if admin_password:
             print(f"  Password:  {admin_password}")
         if t2c_kit is not None:
-            print(f"  Kit:       {t2c_kit.to_text()}")
+            print(f"  Kit:       {masked_kit} [redacted]")
             print(f"  Device:    {t2c_kit.device_id}")
         elif version is not DEFAULT_KEY_VERSION:
             print(f"  v1 form:   {meta.key}")
