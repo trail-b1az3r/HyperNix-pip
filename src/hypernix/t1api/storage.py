@@ -230,13 +230,15 @@ class UsageStore:
         every "usage by model/key/server/module/user/account" report."""
         if group_by not in GROUPABLE:
             raise ValueError(f"{group_by!r} is not a groupable usage dimension")
+        groupable_columns = {name: name for name in GROUPABLE}
+        group_column = groupable_columns[group_by]
         where, params = self._where(filters, since=since, until=until)
         query = (
-            f"SELECT {group_by} AS group_key, "
+            f"SELECT {group_column} AS group_key, "
             "COALESCE(SUM(requests),0) AS requests, "
             "COALESCE(SUM(input_tokens),0) AS input_tokens, "
             "COALESCE(SUM(output_tokens),0) AS output_tokens "
-            f"FROM usage_events{where} GROUP BY {group_by} "
+            f"FROM usage_events{where} GROUP BY {group_column} "
             "ORDER BY (SUM(input_tokens) + SUM(output_tokens)) DESC LIMIT ?"
         )
         with self._lock, self.backend.connect() as conn:
