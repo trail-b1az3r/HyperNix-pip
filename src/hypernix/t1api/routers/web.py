@@ -33,6 +33,7 @@ of here redacts before logging, and no response ever contains the key.
 from __future__ import annotations
 
 import logging
+import urllib.parse
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
@@ -140,6 +141,8 @@ async def web_summarize(
 
     text = str(payload.get("text") or "")
     url = str(payload.get("url") or "")
+    if url:
+        url = _validated_summary_url(url)
     query = str(payload.get("query") or "")
     sentences = payload.get("sentences", 5)
     try:
@@ -164,6 +167,37 @@ async def web_summarize(
     result["request_id"] = request_id
     result["chars_in"] = len(text)
     return JSONResponse(result)
+
+
+def _validated_summary_url(url: str) -> str:
+    """Validate and normalize a URL accepted by /summarize."""
+    candidate = url.strip()
+    parts = urllib.parse.urlsplit(candidate)
+    if parts.scheme not in {"http", "https"}:
+        raise T1APIError(
+            T1ErrorCode.VALIDATION_ERROR,
+            "url must start with http:// or https://",
+            http_status=400,
+        )
+    if not parts.hostname:
+        raise T1APIError(
+            T1ErrorCode.VALIDATION_ERROR,
+            "url must include a hostname",
+            http_status=400,
+        )
+    if parts.username is not None or parts.password is not None:
+        raise T1APIError(
+            T1ErrorCode.VALIDATION_ERROR,
+            "url must not include user info",
+            http_status=400,
+        )
+    if parts.fragment:
+        raise T1APIError(
+            T1ErrorCode.VALIDATION_ERROR,
+            "url fragments are not allowed",
+            http_status=400,
+        )
+    return candidate
 
 
 def _fetch_failure(page) -> str:
