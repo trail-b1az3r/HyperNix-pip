@@ -174,8 +174,8 @@ def trusted_proxies_from_env(
             networks.append(ipaddress.ip_network(text, strict=False))
         except ValueError:
             logger.warning(
-                "system.nettrust: T1_TRUSTED_PROXIES entry %r is not an address "
-                "or network; ignoring it", text
+                "system.nettrust: T1_TRUSTED_PROXIES contains an invalid address "
+                "or network entry; ignoring it"
             )
     return networks
 
