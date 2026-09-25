@@ -1,0 +1,105 @@
+# ─────────────────────────────────────────────────────────────────────────────
+#  Security Autofix — AI fixes for open GitHub Security alerts → autofix branch + PR
+#
+#  Needs: .github/scripts/security_autofix.py
+#
+#  Runs after "HyperNix Security Scan" finishes on the default branch, weekly,
+#  or on demand. Reads Code scanning + Dependabot alerts, fixes them with
+#  Copilot Autofix (CodeQL) and an LLM (everything else), commits one fix per
+#  alert to `autofix/security`, and opens/updates a PR. Never merges.
+#
+#  AI provider (picked automatically, first match wins):
+#    secrets.ANTHROPIC_API_KEY  → Anthropic       (AI_MODEL default claude-sonnet-5)
+#    secrets.OPENAI_API_KEY or vars.AI_BASE_URL → any OpenAI-compatible API
+#                                 (OpenAI, LM Studio / llama.cpp on a self-hosted runner, …)
+#    otherwise                  → GitHub Models via GITHUB_TOKEN (free tier, openai/gpt-4.1)
+#
+#  One-time repo settings:
+#    • Settings → Actions → General → Workflow permissions:
+#        "Read and write" + "Allow GitHub Actions to create and approve pull requests"
+#    • Optional secret AUTOFIX_TOKEN (fine-grained PAT: contents, pull requests,
+#      code scanning alerts, Dependabot alerts = read/write) — needed to read
+#      Dependabot alerts on some plans, to fix files in .github/workflows/, and
+#      so the PR triggers your CI (GITHUB_TOKEN pushes don't start workflows).
+# ─────────────────────────────────────────────────────────────────────────────
+name: Security Autofix
+
+on:
+  workflow_run:
+    workflows: ["HyperNix Security Scan"]
+    types: [completed]
+  schedule:
+    - cron: "43 10 * * 1"          # weekly, after the Monday scan
+  workflow_dispatch:
+    inputs:
+      min_severity:
+        description: "Lowest severity to fix"
+        type: choice
+        default: medium
+        options: [low, medium, high, critical]
+      max_alerts:
+        description: "Max alerts per run"
+        default: "30"
+      tools:
+        description: "Only these tools (comma list, e.g. CodeQL,Bandit,hypernix-t1-audit). Blank = all"
+        default: ""
+      dry_run:
+        description: "Dry run (no push / PR)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  security-events: write     # read alerts + Copilot Autofix
+  models: read               # GitHub Models fallback
+  actions: read
+
+concurrency:
+  group: security-autofix
+  cancel-in-progress: false
+
+jobs:
+  autofix:
+    # Only after scans of the default branch (not PRs / forks), or on schedule / manual.
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.head_branch == github.event.repository.default_branch &&
+       github.event.workflow_run.event != 'pull_request')
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.repository.default_branch }}
+          token: ${{ secrets.AUTOFIX_TOKEN || github.token }}
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install YAML validator
+        run: python -m pip install --quiet pyyaml
+
+      - name: Give code scanning a moment to ingest the new SARIF
+        if: github.event_name == 'workflow_run'
+        run: sleep 60
+
+      - name: Run security autofix
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          AUTOFIX_TOKEN: ${{ secrets.AUTOFIX_TOKEN }}
+          BASE_BRANCH: ${{ github.event.repository.default_branch }}
+          AUTOFIX_BRANCH: ${{ vars.AUTOFIX_BRANCH || 'autofix/security' }}
+          MIN_SEVERITY: ${{ inputs.min_severity || vars.AUTOFIX_MIN_SEVERITY || 'medium' }}
+          MAX_ALERTS: ${{ inputs.max_alerts || vars.AUTOFIX_MAX_ALERTS || '30' }}
+          TOOLS: ${{ inputs.tools || vars.AUTOFIX_TOOLS || '' }}
+          DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+          USE_COPILOT_AUTOFIX: ${{ vars.USE_COPILOT_AUTOFIX || '1' }}
+          AI_PROVIDER: ${{ vars.AI_PROVIDER || 'auto' }}
+          AI_MODEL: ${{ vars.AI_MODEL || '' }}
+          AI_BASE_URL: ${{ vars.AI_BASE_URL || '' }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: python .github/scripts/security_autofix.py

@@ -1,0 +1,714 @@
+# hypernix-t1-audit: ignore-file
+# ─────────────────────────────────────────────────────────────────────────────
+#  HyperNix Full Security Scan  —  drop into .github/workflows/ of ANY repo
+#
+#  Engines (all results land in the repo's Security → Code scanning tab):
+#    • CodeQL            python (+ actions) · security-extended + quality queries
+#    • Bandit            Python AST security linter
+#    • Semgrep           p/python, p/security-audit, p/owasp-top-ten, p/secrets
+#    • HyperNix T1 audit T1 API config/code/key misuse (custom, built in below)
+#    • OSV-Scanner       vulnerable dependencies (requirements, pyproject, lockfiles)
+#    • pip-audit         PyPI advisory DB cross-check (report in job summary)
+#    • Gitleaks          secrets in the full git history
+#
+#  Also callable from other repos:
+#    jobs:
+#      scan:
+#        uses: <owner>/<repo>/.github/workflows/hypernix-security-scan.yml@main
+#        permissions: { contents: read, security-events: write, actions: read }
+#
+#  Code-scanning upload is free on public repos; private repos need GitHub
+#  Advanced Security (Code Security). Without it the SARIF is still kept as
+#  a workflow artifact and summarised in the run.
+# ─────────────────────────────────────────────────────────────────────────────
+name: HyperNix Security Scan
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  schedule:
+    - cron: "17 9 * * 1"          # weekly, Monday 09:17 UTC
+  workflow_dispatch:
+    inputs:
+      fail_on:
+        description: "Fail the run at this level or above (error | warning | none)"
+        default: "error"
+        type: choice
+        options: [error, warning, none]
+  workflow_call:
+    inputs:
+      fail_on:
+        type: string
+        default: "error"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hnx-security-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FAIL_ON: ${{ inputs.fail_on || 'error' }}
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  # ───────────────────────────── CodeQL ─────────────────────────────
+  codeql:
+    name: CodeQL (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    continue-on-error: true   # e.g. repo with no workflow files, or fork PRs without upload rights
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [python, actions]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: none
+          queries: security-extended,security-and-quality
+      - uses: github/codeql-action/analyze@v4
+        with:
+          category: /language:${{ matrix.language }}
+
+  # ─────────────────────── Python SAST + HyperNix T1 ───────────────────────
+  sast:
+    name: Bandit · Semgrep · HyperNix T1 audit
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install scanners
+        run: python -m pip install --quiet --upgrade "bandit[sarif,toml]" semgrep
+
+      - name: Bandit
+        run: |
+          mkdir -p sarif
+          EXCL=".git,.venv,venv,env,node_modules,build,dist,site-packages,.tox"
+          CFG=""; [ -f pyproject.toml ] && grep -q '^\[tool.bandit' pyproject.toml && CFG="-c pyproject.toml"
+          bandit -r . $CFG -x "$EXCL" -f sarif -o sarif/bandit.sarif --exit-zero || true
+          [ -s sarif/bandit.sarif ] || echo '{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"Bandit","rules":[]}},"results":[]}]}' > sarif/bandit.sarif
+
+      - name: Semgrep
+        env:
+          SEMGREP_SEND_METRICS: "off"
+        run: |
+          semgrep scan --metrics=off --quiet \
+            --config p/python --config p/security-audit --config p/owasp-top-ten --config p/secrets \
+            --exclude .venv --exclude venv --exclude node_modules --exclude build --exclude dist \
+            --sarif --output sarif/semgrep.sarif . || true
+          [ -s sarif/semgrep.sarif ] || echo '{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"Semgrep","rules":[]}},"results":[]}]}' > sarif/semgrep.sarif
+
+      - name: HyperNix T1 API audit
+        run: |
+          mkdir -p "$RUNNER_TEMP/hnx"
+          cat > "$RUNNER_TEMP/hnx/t1_audit.py" <<'HNX_T1_AUDIT_EOF'
+          #!/usr/bin/env python3
+          # hypernix-t1-audit: ignore-file
+          """HyperNix T1 API security audit -> SARIF 2.1.0.
+
+          Checks any repo for insecure HyperNix T1 API deployment settings
+          (env files, compose, k8s, Dockerfiles, shell, Python), dangerous
+          T1APIConfig(...) construction, disabled production validation, leaked
+          T1/T2 keys and scoped tokens, and TLS verification turned off in the
+          t1sdk client. Findings in tests/, examples/, docs/ and *.example files
+          are downgraded to notes.
+
+          Usage: t1_audit.py [repo_root] [out.sarif]
+          Suppress a line with a trailing comment:  t1-audit: ignore
+          """
+          from __future__ import annotations
+
+          import ast
+          import fnmatch
+          import json
+          import re
+          import sys
+          from pathlib import Path
+
+          ROOT = Path(sys.argv[1] if len(sys.argv) > 1 else ".").resolve()
+          OUT = Path(sys.argv[2] if len(sys.argv) > 2 else "t1-audit.sarif")
+
+          SKIP_DIRS = {".git", "node_modules", ".venv", "venv", "env", "__pycache__", "site-packages",
+                       "dist", "build", ".tox", ".nox", ".mypy_cache", ".ruff_cache", ".pytest_cache", ".eggs"}
+          CONFIG_GLOBS = (".env", ".env.*", "*.env", "*.yml", "*.yaml", "*.toml", "*.ini", "*.cfg", "*.conf",
+                          "*.sh", "*.bash", "*.zsh", "*.fish", "*.service", "*.socket", "Dockerfile", "Dockerfile.*",
+                          "*.dockerfile", "Containerfile", "*.json", "Procfile", "Makefile", "*.ps1", "*.bat", "*.cmd",
+                          "*.tf", "*.tfvars", "*.nix", "*.envrc", ".envrc")
+          KEY_SCAN_GLOBS = CONFIG_GLOBS + ("*.py", "*.pyi", "*.ipynb", "*.js", "*.ts", "*.qml", "*.txt", "*.md",
+                                           "*.html", "*.go", "*.rs", "*.java", "*.kt", "*.swift", "*.rb", "*.php")
+          EXAMPLE_HINTS = re.compile(r"(^|/)(tests?|testing|examples?|samples?|docs?|wiki|fixtures)(/|$)|"
+                                     r"(^|/)test_[^/]*\.py$|_test\.py$|\.(example|sample|template|dist)(\.|$)",
+                                     re.I)
+          MAX_BYTES = 2_000_000
+          SUPPRESS = "t1-audit: ignore"
+
+          TRUE = {"1", "true", "yes", "on"}
+          FALSE = {"0", "false", "no", "off"}
+          SECRET_KEYS = {"T1_TOKEN_SECRET", "T1_ADMIN_KEY", "T1_API_KEY", "T1_KEY", "T1_ADMIN_PASSWORD",
+                         "T1_T2_ADMIN_PASSWORD", "T1_HF_TOKEN", "T1_DEPLOY_SECRET", "T1_BOOTSTRAP_KEY",
+                         "T1_BOOTSTRAP_ADMIN_KEY", "T1_LMSTUDIO_API_KEY", "T1_ACCOUNTS_INVITE_CODES"}
+          LEN32_KEYS = {"T1_TOKEN_SECRET", "T1_DEPLOY_SECRET"}
+          PLACEHOLDER = re.compile(r"^(\$|<|%|\{\{|your[-_]|xxx|\.\.\.|replace|todo|changeme_?$|none$|null$|~$)", re.I)
+
+          # T1APIConfig field -> env var (subset that matters for security)
+          FIELD_ENV = {
+              "token_secret": "T1_TOKEN_SECRET", "cors_allow_origins": "T1_CORS_ALLOW_ORIGINS",
+              "trusted_network": "T1_TRUSTED_NETWORK", "trusted_network_tailnet_verify": "T1_TRUSTED_NETWORK_TAILNET_VERIFY",
+              "trusted_network_partial_admin": "T1_TRUSTED_NETWORK_PARTIAL_ADMIN", "noodle_enabled": "T1_NOODLE_ENABLED",
+              "noodle_allow_execute": "T1_NOODLE_ALLOW_EXECUTE", "hyperlink_shell": "T1_HYPERLINK_SHELL",
+              "network_policy_enabled": "T1_NETWORK_POLICY_ENABLED", "rate_limit_enabled": "T1_RATE_LIMIT_ENABLED",
+              "audit_enabled": "T1_AUDIT_ENABLED", "require_destructive_confirmation": "T1_REQUIRE_DESTRUCTIVE_CONFIRMATION",
+              "allow_private_deploy_targets": "T1_ALLOW_PRIVATE_DEPLOY_TARGETS", "deploy_secret": "T1_DEPLOY_SECRET",
+              "lmstudio_url": "T1_LMSTUDIO_URL", "lmstudio_api_key": "T1_LMSTUDIO_API_KEY",
+              "lmstudio_discovery": "T1_LMSTUDIO_DISCOVERY", "hf_token": "T1_HF_TOKEN",
+              "mtls_behind_proxy": "T1_MTLS_BEHIND_PROXY", "trusted_proxies": "T1_TRUSTED_PROXIES",
+              "expose_docs": "T1_EXPOSE_DOCS", "environment": "T1_ENVIRONMENT",
+              "scoped_token_default_ttl_seconds": "T1_TOKEN_DEFAULT_TTL", "allow_unlisted_clients": "T1_ALLOW_UNLISTED_CLIENTS",
+          }
+
+          # id: (name, level, short description, help, cwe)
+          RULES = {
+              "HNX-T1-001": ("hardcoded-t1-secret", "error", "Hard-coded HyperNix T1 secret",
+                             "T1 secrets (token secret, admin key, admin password, deploy secret, HF token) must come from a "
+                             "secret store / environment at deploy time, never from a committed file.", "CWE-798"),
+              "HNX-T1-002": ("weak-t1-secret", "error", "T1 signing secret shorter than 32 characters",
+                             "Scoped tokens are HMAC-signed with T1_TOKEN_SECRET. Generate one with "
+                             "`python -c 'import secrets;print(secrets.token_hex(32))'`.", "CWE-326"),
+              "HNX-T1-003": ("cors-wildcard", "error", "T1 API accepts any CORS origin",
+                             "A wildcard origin on an authenticated API lets any site drive it with a user's credentials. "
+                             "List explicit origins in T1_CORS_ALLOW_ORIGINS.", "CWE-942"),
+              "HNX-T1-004": ("protection-disabled", "warning", "T1 network policy, rate limiting or audit log disabled",
+                             "hypernix refuses these in production (production_problems). Leave them enabled.", "CWE-778"),
+              "HNX-T1-005": ("trusted-network-keyless", "warning", "Keyless trusted-network access enabled",
+                             "T1_TRUSTED_NETWORK lets LAN/tailnet peers use the API with no key. Anyone on the LAN "
+                             "(or any device on it that is compromised) gets access.", "CWE-306"),
+              "HNX-T1-006": ("tailnet-verify-off", "error", "Tailnet peers trusted by IP range alone",
+                             "With tailnet verification off, anything on the LAN can number itself 100.x and be trusted. "
+                             "Keep T1_TRUSTED_NETWORK_TAILNET_VERIFY on.", "CWE-290"),
+              "HNX-T1-007": ("trusted-partial-admin", "error", "Unauthenticated peers get partial admin",
+                             "T1_TRUSTED_NETWORK_PARTIAL_ADMIN grants administrative functions without a key.", "CWE-269"),
+              "HNX-T1-008": ("noodle-execute", "error", "Noodle remote code execution enabled",
+                             "T1_NOODLE_ALLOW_EXECUTE lets API callers run code they wrote on this server.", "CWE-94"),
+              "HNX-T1-009": ("noodle-enabled", "note", "Noodle autonomous executor enabled",
+                             "Noodle writes files on the server over the API. Make sure this is intended.", "CWE-73"),
+              "HNX-T1-010": ("hyperlink-shell", "error", "HyperLink remote shell enabled",
+                             "T1_HYPERLINK_SHELL exposes shell execution to paired devices.", "CWE-78"),
+              "HNX-T1-011": ("private-deploy-targets", "warning", "Deploys to private addresses allowed (SSRF)",
+                             "T1_ALLOW_PRIVATE_DEPLOY_TARGETS lets module transport reach internal hosts.", "CWE-918"),
+              "HNX-T1-012": ("destructive-no-confirm", "warning", "Destructive operations need no confirmation",
+                             "Keep T1_REQUIRE_DESTRUCTIVE_CONFIRMATION on.", "CWE-862"),
+              "HNX-T1-013": ("proxy-without-trusted-list", "warning", "Behind-proxy mode with no trusted proxy list",
+                             "With T1_MTLS_BEHIND_PROXY set and no T1_TRUSTED_PROXIES, forwarded client identity / IP "
+                             "headers can be spoofed.", "CWE-348"),
+              "HNX-T1-014": ("lmstudio-plaintext", "warning", "LM Studio bridge over plaintext HTTP to a remote host",
+                             "Prompts and completions cross the network unencrypted. Use loopback, Tailscale, or TLS.",
+                             "CWE-319"),
+              "HNX-T1-015": ("open-registration", "warning", "Open account registration",
+                             "T1_ACCOUNTS_REGISTRATION=open lets anyone create an account. Prefer invite or closed.",
+                             "CWE-284"),
+              "HNX-T1-016": ("docs-exposed-prod", "note", "OpenAPI docs exposed in production",
+                             "Set T1_EXPOSE_DOCS to 0 if the Swagger/ReDoc surface should not be public.", "CWE-200"),
+              "HNX-T1-017": ("long-token-ttl", "note", "Scoped token lifetime over 7 days",
+                             "Long-lived bearer tokens widen the window for a leaked token.", "CWE-613"),
+              "HNX-T1-018": ("lan-discovery", "note", "LM Studio LAN discovery enabled",
+                             "The server probes the LAN for open LM Studio ports.", "CWE-200"),
+              "HNX-T1-020": ("prod-validation-disabled", "error", "Production config validation disabled",
+                             "validate_for_production(strict=False) skips hypernix's refusal to start an unsafe "
+                             "production server.", "CWE-1188"),
+              "HNX-T1-021": ("bind-all-no-tls", "warning", "T1 API bound to all interfaces without TLS",
+                             "uvicorn.run(host='0.0.0.0') with no ssl_certfile sends T1 keys in plaintext. Bind to "
+                             "127.0.0.1 / a tailnet address, or configure TLS.", "CWE-319"),
+              "HNX-T1-022": ("sdk-tls-verify-off", "error", "t1sdk TLS verification disabled",
+                             "TLSConfig(verify=False) accepts any server certificate. Point ca_certs at your CA instead.",
+                             "CWE-295"),
+              "HNX-T1-023": ("secret-logged", "warning", "T1 secret written to logs/stdout",
+                             "Never print or log token secrets, admin keys or passwords.", "CWE-532"),
+              "HNX-T1-030": ("leaked-t1-key", "error", "HyperNix T1/T2 API key or scoped token committed",
+                             "Revoke the key (gkey revoke / waiter) and load it from a secret store.", "CWE-798"),
+          }
+          LEVEL_SCORE = {"error": "8.5", "warning": "5.5", "note": "2.0"}
+
+          KEY_PATTERNS = [
+              re.compile(r"(?<![A-Za-z0-9_])T1_[A-Za-z0-9]{16,}[a-z]{2}[^\s\"'`]{5}[/\\][1-9](?![A-Za-z0-9])"),
+              re.compile(r"(?<![A-Za-z0-9_])T2(?:S|C)?_[A-Za-z0-9]{20,}[^\s\"'`]*"),
+              re.compile(r"(?<![A-Za-z0-9_])T1S\.[A-Za-z0-9_-]{16,}\.[A-Za-z0-9_-]{20,}"),
+              re.compile(r"(?<![A-Za-z0-9_])T1PAY\.[A-Za-z0-9_-]{16,}\.[A-Za-z0-9_-]{16,}"),
+          ]
+          ENV_ASSIGN = re.compile(r"(?<![A-Za-z0-9_$.{])[\"']?(T1_[A-Z0-9_]+)[\"']?\s*[:=]\s*(\S*)")
+          DOCKER_ENV = re.compile(r"^\s*ENV\s+(T1_[A-Z0-9_]+)\s+(\S+)")
+
+          results: list[dict] = []
+          seen: set[tuple] = set()
+
+
+          def rel(p: Path) -> str:
+              return p.relative_to(ROOT).as_posix()
+
+
+          def add(rule: str, path: str, line: int, msg: str, example: bool, col: int = 1) -> None:
+              key = (rule, path, line)
+              if key in seen:
+                  return
+              seen.add(key)
+              level = "note" if example else RULES[rule][1]
+              results.append({
+                  "ruleId": rule, "level": level,
+                  "message": {"text": msg + (" (example/test context)" if example else "")},
+                  "locations": [{"physicalLocation": {"artifactLocation": {"uri": path, "uriBaseId": "%SRCROOT%"},
+                                                      "region": {"startLine": max(1, line), "startColumn": max(1, col)}}}],
+              })
+
+
+          def clean(v: str) -> str:
+              v = v.strip().rstrip(",;")
+              while v and v[-1] in "}])" and v.count(v[-1]) > v.count({"}": "{", "]": "[", ")": "("}[v[-1]]):
+                  v = v[:-1]
+              return v.strip().strip("\"'").strip()
+
+
+          def is_local(host: str) -> bool:
+              import ipaddress
+              h = host.strip().lower().strip("[]")
+              if h in ("localhost", "127.0.0.1", "::1") or h.endswith(".ts.net"):
+                  return True
+              try:
+                  a = ipaddress.ip_address(h)
+              except ValueError:
+                  return False
+              return a.is_loopback or a in ipaddress.ip_network("100.64.0.0/10")
+
+
+          def check_env(key: str, value: str, path: str, line: int, ex: bool, ctx: dict) -> None:
+              v = value.strip()
+              lv = v.lower()
+              ctx.setdefault(key, (v, line))
+              if key in SECRET_KEYS:
+                  if v and not PLACEHOLDER.match(v):
+                      add("HNX-T1-001", path, line, f"{key} has a hard-coded value committed to the repo.", ex)
+                      if key in LEN32_KEYS and len(v) < 32:
+                          add("HNX-T1-002", path, line, f"{key} is only {len(v)} characters (minimum 32).", ex)
+                  return
+              if key == "T1_CORS_ALLOW_ORIGINS" and "*" in v:
+                  add("HNX-T1-003", path, line, "T1_CORS_ALLOW_ORIGINS contains '*'.", ex)
+              elif key in ("T1_NETWORK_POLICY_ENABLED", "T1_RATE_LIMIT_ENABLED", "T1_AUDIT_ENABLED") and lv in FALSE:
+                  add("HNX-T1-004", path, line, f"{key} is turned off.", ex)
+              elif key == "T1_TRUSTED_NETWORK" and lv in TRUE:
+                  add("HNX-T1-005", path, line, "Keyless trusted-network access is on (T1_TRUSTED_NETWORK).", ex)
+              elif key == "T1_TRUSTED_NETWORK_TAILNET_VERIFY" and lv in FALSE:
+                  add("HNX-T1-006", path, line, "Tailnet peer verification is off.", ex)
+              elif key == "T1_TRUSTED_NETWORK_PARTIAL_ADMIN" and lv in TRUE:
+                  add("HNX-T1-007", path, line, "Trusted-network peers get partial admin.", ex)
+              elif key == "T1_NOODLE_ALLOW_EXECUTE" and lv in TRUE:
+                  add("HNX-T1-008", path, line, "Noodle is allowed to execute code over the API.", ex)
+              elif key == "T1_NOODLE_ENABLED" and lv in TRUE:
+                  add("HNX-T1-009", path, line, "Noodle executor is enabled.", ex)
+              elif key == "T1_HYPERLINK_SHELL" and lv in TRUE:
+                  add("HNX-T1-010", path, line, "HyperLink shell execution is enabled.", ex)
+              elif key == "T1_ALLOW_PRIVATE_DEPLOY_TARGETS" and lv in TRUE:
+                  add("HNX-T1-011", path, line, "Module deploys may target private/internal addresses.", ex)
+              elif key == "T1_REQUIRE_DESTRUCTIVE_CONFIRMATION" and lv in FALSE:
+                  add("HNX-T1-012", path, line, "Destructive-operation confirmation is off.", ex)
+              elif key == "T1_LMSTUDIO_URL" and lv.startswith("http://"):
+                  host = lv.split("//", 1)[1].split("/")[0].rsplit(":", 1)[0] if lv.count(":") > 1 else lv.split("//", 1)[1].split("/")[0]
+                  if host and not is_local(host):
+                      add("HNX-T1-014", path, line, f"LM Studio bridge talks to {host} over plain HTTP.", ex)
+              elif key == "T1_LMSTUDIO_DISCOVERY" and lv in TRUE:
+                  add("HNX-T1-018", path, line, "LM Studio LAN discovery is on.", ex)
+              elif key == "T1_ACCOUNTS_REGISTRATION" and lv == "open":
+                  add("HNX-T1-015", path, line, "Anyone can register an account.", ex)
+              elif key == "T1_TOKEN_DEFAULT_TTL":
+                  try:
+                      if int(float(v)) > 7 * 86400:
+                          add("HNX-T1-017", path, line, f"Scoped token default TTL is {int(float(v))}s.", ex)
+                  except ValueError:
+                      pass
+
+
+          def finish_ctx(path: str, ex: bool, ctx: dict) -> None:
+              env = ctx.get("T1_ENVIRONMENT", ("", 0))[0].lower()
+              if env in ("production", "prod") and ctx.get("T1_EXPOSE_DOCS", ("1", 0))[0].lower() not in FALSE:
+                  add("HNX-T1-016", path, ctx["T1_ENVIRONMENT"][1], "Production config leaves OpenAPI docs exposed.", ex)
+              bp = ctx.get("T1_MTLS_BEHIND_PROXY")
+              if bp and bp[0].lower() in TRUE and not ctx.get("T1_TRUSTED_PROXIES", ("", 0))[0]:
+                  add("HNX-T1-013", path, bp[1], "T1_MTLS_BEHIND_PROXY is on but T1_TRUSTED_PROXIES is empty here.", ex)
+
+
+          def scan_keys(path: str, lines: list[str], ex: bool) -> None:
+              for i, ln in enumerate(lines, 1):
+                  if SUPPRESS in ln:
+                      continue
+                  for pat in KEY_PATTERNS:
+                      m = pat.search(ln)
+                      if m:
+                          tok = m.group(0)
+                          add("HNX-T1-030", path, i, f"Possible HyperNix credential '{tok[:6]}…' committed.", ex, m.start() + 1)
+                          break
+
+
+          def scan_config(path: str, lines: list[str], ex: bool) -> None:
+              ctx: dict = {}
+              for i, ln in enumerate(lines, 1):
+                  if SUPPRESS in ln:
+                      continue
+                  s = ln.lstrip()
+                  if s.startswith(("#", "//", ";")) and not s.startswith("#!"):
+                      continue
+                  m = DOCKER_ENV.match(ln)
+                  pairs = [(m.group(1), m.group(2))] if m else [(a, b) for a, b in ENV_ASSIGN.findall(ln)]
+                  for k, v in pairs:
+                      check_env(k, clean(v), path, i, ex, ctx)
+              finish_ctx(path, ex, ctx)
+
+
+          def const_env(node: ast.AST) -> str | None:
+              if isinstance(node, ast.Constant):
+                  if isinstance(node.value, bool):
+                      return "1" if node.value else "0"
+                  if isinstance(node.value, (str, int, float)):
+                      return str(node.value)
+              if isinstance(node, (ast.List, ast.Tuple, ast.Set)):
+                  parts = [const_env(e) for e in node.elts]
+                  if all(p is not None for p in parts):
+                      return ",".join(parts)  # type: ignore[arg-type]
+              return None
+
+
+          def dotted(node: ast.AST) -> str:
+              if isinstance(node, ast.Name):
+                  return node.id
+              if isinstance(node, ast.Attribute):
+                  return dotted(node.value) + "." + node.attr
+              if isinstance(node, ast.Call):
+                  return dotted(node.func) + "()"
+              return ""
+
+
+          SECRET_ATTR = re.compile(r"(token_secret|admin_key|admin_password|deploy_secret|hf_token|lmstudio_api_key|"
+                                   r"T1_TOKEN_SECRET|T1_ADMIN_KEY|T1_ADMIN_PASSWORD|T1_DEPLOY_SECRET|T1_API_KEY)$")
+          LOG_FUNCS = re.compile(r"(^print$|(^|\.)(debug|info|warning|warn|error|exception|critical|log)$)")
+
+
+          def refs_secret(node: ast.AST) -> bool:
+              for n in ast.walk(node):
+                  if isinstance(n, ast.Attribute) and SECRET_ATTR.search(n.attr):
+                      return True
+                  if isinstance(n, ast.Name) and SECRET_ATTR.search(n.id):
+                      return True
+                  if isinstance(n, ast.Constant) and isinstance(n.value, str) and re.fullmatch(
+                          r"T1_(TOKEN_SECRET|ADMIN_KEY|ADMIN_PASSWORD|DEPLOY_SECRET|API_KEY|HF_TOKEN)", n.value):
+                      return True
+              return False
+
+
+          def scan_python(path: str, text: str, ex: bool) -> None:
+              try:
+                  tree = ast.parse(text)
+              except (SyntaxError, ValueError):
+                  return
+              lines = text.splitlines()
+              uses_hnx = bool(re.search(r"^\s*(from|import)\s+hypernix", text, re.M))
+              uses_t1 = uses_hnx and ("t1api" in text or "create_app" in text)
+              ctx: dict = {}
+
+              def sup(n: ast.AST) -> bool:
+                  ln = getattr(n, "lineno", 0)
+                  return 0 < ln <= len(lines) and SUPPRESS in lines[ln - 1]
+
+              for node in ast.walk(tree):
+                  if sup(node):
+                      continue
+                  if isinstance(node, ast.Call):
+                      fn = dotted(node.func)
+                      kws = {k.arg: k.value for k in node.keywords if k.arg}
+                      if fn.endswith("T1APIConfig") or (uses_hnx and fn.endswith("replace") and "T1APIConfig" in text):
+                          for k, v in kws.items():
+                              if k in FIELD_ENV and (cv := const_env(v)) is not None:
+                                  check_env(FIELD_ENV[k], cv, path, v.lineno, ex, ctx)
+                      if fn.endswith("validate_for_production") and isinstance(kws.get("strict"), ast.Constant) \
+                              and kws["strict"].value is False:
+                          add("HNX-T1-020", path, node.lineno, "validate_for_production(strict=False).", ex)
+                      if fn.endswith(("environ.setdefault", "os.putenv", "putenv")) and len(node.args) >= 2:
+                          k, v = const_env(node.args[0]), const_env(node.args[1])
+                          if k and k.startswith("T1_") and v is not None:
+                              check_env(k, v, path, node.lineno, ex, ctx)
+                      if fn.endswith("environ.update"):
+                          for k, v in kws.items():
+                              if k.startswith("T1_") and (cv := const_env(v)) is not None:
+                                  check_env(k, cv, path, node.lineno, ex, ctx)
+                          if node.args and isinstance(node.args[0], ast.Dict):
+                              for kk, vv in zip(node.args[0].keys, node.args[0].values):
+                                  k, v = const_env(kk) if kk else None, const_env(vv)
+                                  if k and k.startswith("T1_") and v is not None:
+                                      check_env(k, v, path, node.lineno, ex, ctx)
+                      if uses_t1 and fn.endswith("uvicorn.run") or (uses_t1 and fn == "run" and "uvicorn" in text):
+                          host = kws.get("host")
+                          if isinstance(host, ast.Constant) and host.value in ("0.0.0.0", "::", "") \
+                                  and "ssl_certfile" not in kws:
+                              add("HNX-T1-021", path, node.lineno, "T1 API served on all interfaces with no TLS.", ex)
+                      if (fn.endswith("TLSConfig") or (uses_hnx and "T1" in fn)) and \
+                              isinstance(kws.get("verify"), ast.Constant) and kws["verify"].value is False:
+                          add("HNX-T1-022", path, node.lineno, f"{fn}(verify=False) disables certificate checks.", ex)
+                      if LOG_FUNCS.search(fn) and any(refs_secret(a) for a in list(node.args) + list(kws.values())):
+                          add("HNX-T1-023", path, node.lineno, f"{fn}(...) outputs a T1 secret.", ex)
+                  elif isinstance(node, ast.Assign):
+                      cv = const_env(node.value)
+                      if cv is None:
+                          continue
+                      for t in node.targets:
+                          if isinstance(t, ast.Subscript) and dotted(t.value).endswith("environ"):
+                              k = const_env(t.slice)
+                              if k and k.startswith("T1_"):
+                                  check_env(k, cv, path, node.lineno, ex, ctx)
+                          elif uses_hnx and isinstance(t, ast.Attribute) and t.attr in FIELD_ENV:
+                              check_env(FIELD_ENV[t.attr], cv, path, node.lineno, ex, ctx)
+              finish_ctx(path, ex, ctx)
+
+
+          def matches(name: str, globs: tuple) -> bool:
+              return any(fnmatch.fnmatch(name, g) for g in globs)
+
+
+          def walk():
+              stack = [ROOT]
+              while stack:
+                  d = stack.pop()
+                  try:
+                      entries = sorted(d.iterdir())
+                  except OSError:
+                      continue
+                  for p in entries:
+                      if p.is_symlink():
+                          continue
+                      if p.is_dir():
+                          if p.name not in SKIP_DIRS:
+                              stack.append(p)
+                      elif p.is_file():
+                          yield p
+
+
+          def main() -> int:
+              files = 0
+              for p in walk():
+                  name = p.name
+                  is_py = name.endswith((".py", ".pyi"))
+                  is_cfg = matches(name, CONFIG_GLOBS)
+                  if not (is_py or is_cfg or matches(name, KEY_SCAN_GLOBS)):
+                      continue
+                  try:
+                      if p.stat().st_size > MAX_BYTES:
+                          continue
+                      raw = p.read_bytes()
+                  except OSError:
+                      continue
+                  if b"\x00" in raw[:4096]:
+                      continue
+                  text = raw.decode("utf-8", "replace")
+                  if "hypernix-t1-audit: ignore-file" in text[:2000]:
+                      continue
+                  files += 1
+                  path = rel(p)
+                  ex = bool(EXAMPLE_HINTS.search(path))
+                  lines = text.splitlines()
+                  scan_keys(path, lines, ex)
+                  if is_py:
+                      scan_python(path, text, ex)
+                  elif is_cfg:
+                      scan_config(path, lines, ex)
+
+              used = sorted({r["ruleId"] for r in results})
+              idx = {rid: i for i, rid in enumerate(used)}
+              for r in results:
+                  r["ruleIndex"] = idx[r["ruleId"]]
+              sarif = {
+                  "$schema": "https://json.schemastore.org/sarif-2.1.0.json", "version": "2.1.0",
+                  "runs": [{
+                      "tool": {"driver": {
+                          "name": "hypernix-t1-audit", "version": "1.0.0",
+                          "informationUri": "https://pypi.org/project/hypernix/",
+                          "rules": [{
+                              "id": rid, "name": RULES[rid][0],
+                              "shortDescription": {"text": RULES[rid][2]},
+                              "fullDescription": {"text": RULES[rid][3]},
+                              "help": {"text": RULES[rid][3], "markdown": f"**{RULES[rid][2]}** ({RULES[rid][4]})\n\n{RULES[rid][3]}"},
+                              "defaultConfiguration": {"level": RULES[rid][1]},
+                              "properties": {"tags": ["security", "hypernix", "t1api", "external/cwe/" + RULES[rid][4].lower()],
+                                             "security-severity": LEVEL_SCORE[RULES[rid][1]], "precision": "high"},
+                          } for rid in used],
+                      }},
+                      "results": results,
+                  }],
+              }
+              OUT.write_text(json.dumps(sarif, indent=2))
+              counts = {lv: sum(1 for r in results if r["level"] == lv) for lv in ("error", "warning", "note")}
+              print(f"hypernix-t1-audit: scanned {files} files -> {counts['error']} error, "
+                    f"{counts['warning']} warning, {counts['note']} note  ({OUT})")
+              for r in sorted(results, key=lambda r: ("error", "warning", "note").index(r["level"])):
+                  loc = r["locations"][0]["physicalLocation"]
+                  print(f"  [{r['level']:7}] {r['ruleId']} {loc['artifactLocation']['uri']}:{loc['region']['startLine']}"
+                        f"  {r['message']['text']}")
+              return 0
+
+
+          if __name__ == "__main__":
+              sys.exit(main())
+          HNX_T1_AUDIT_EOF
+          python "$RUNNER_TEMP/hnx/t1_audit.py" . sarif/hypernix-t1.sarif
+
+      - name: Upload Bandit to code scanning
+        uses: github/codeql-action/upload-sarif@v4
+        continue-on-error: true
+        with: { sarif_file: sarif/bandit.sarif, category: bandit }
+      - name: Upload Semgrep to code scanning
+        uses: github/codeql-action/upload-sarif@v4
+        continue-on-error: true
+        with: { sarif_file: sarif/semgrep.sarif, category: semgrep }
+      - name: Upload HyperNix T1 audit to code scanning
+        uses: github/codeql-action/upload-sarif@v4
+        continue-on-error: true
+        with: { sarif_file: sarif/hypernix-t1.sarif, category: hypernix-t1 }
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: sarif-sast, path: sarif/, retention-days: 30 }
+
+  # ───────────────────────── Dependency vulnerabilities ─────────────────────────
+  deps:
+    name: OSV-Scanner · pip-audit
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: OSV-Scanner
+        run: |
+          mkdir -p sarif
+          curl -fsSL -o /usr/local/bin/osv-scanner \
+            https://github.com/google/osv-scanner/releases/latest/download/osv-scanner_linux_amd64
+          chmod +x /usr/local/bin/osv-scanner
+          osv-scanner scan source -r --format sarif --output sarif/osv.sarif . || true
+          [ -s sarif/osv.sarif ] || echo '{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"osv-scanner","rules":[]}},"results":[]}]}' > sarif/osv.sarif
+
+      - name: pip-audit (every requirements file + pyproject)
+        run: |
+          python -m pip install --quiet pip-audit
+          {
+            echo "## pip-audit"
+            found=0
+            while IFS= read -r req; do
+              found=1
+              echo "### \`$req\`"
+              pip-audit -r "$req" --progress-spinner off -f markdown --desc on 2>&1 || true
+            done < <(git ls-files '*requirements*.txt' '*requirements*.in' 'requirements/*.txt')
+            if [ -f pyproject.toml ]; then
+              found=1
+              echo "### \`pyproject.toml\` (project deps)"
+              python -m venv /tmp/pa && /tmp/pa/bin/pip install --quiet . 2>/dev/null \
+                && pip-audit --progress-spinner off -f markdown --desc on --path /tmp/pa/lib/python*/site-packages 2>&1 || echo "_could not install project; OSV-Scanner still covers pyproject_"
+            fi
+            [ $found = 1 ] || echo "_no Python dependency manifests found_"
+          } | tee -a "$GITHUB_STEP_SUMMARY" > sarif/pip-audit.md
+
+      - name: Upload OSV to code scanning
+        uses: github/codeql-action/upload-sarif@v4
+        continue-on-error: true
+        with: { sarif_file: sarif/osv.sarif, category: osv-scanner }
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: sarif-deps, path: sarif/, retention-days: 30 }
+
+  # ───────────────────────────── Secrets ─────────────────────────────
+  secrets:
+    name: Gitleaks (full history)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Gitleaks
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p sarif
+          TAG=$(gh release view -R gitleaks/gitleaks --json tagName -q .tagName)
+          curl -fsSL "https://github.com/gitleaks/gitleaks/releases/download/${TAG}/gitleaks_${TAG#v}_linux_x64.tar.gz" | tar -xz -C /usr/local/bin gitleaks
+          gitleaks git . --redact --no-banner --exit-code 0 \
+            --report-format sarif --report-path sarif/gitleaks.sarif
+      - name: Upload Gitleaks to code scanning
+        uses: github/codeql-action/upload-sarif@v4
+        continue-on-error: true
+        with: { sarif_file: sarif/gitleaks.sarif, category: gitleaks }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: sarif-secrets, path: sarif/, retention-days: 30 }
+
+  # ───────────────────────────── Gate + summary ─────────────────────────────
+  summary:
+    name: Security summary / gate
+    needs: [codeql, sast, deps, secrets]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: sarif-*
+          path: sarif
+          merge-multiple: true
+      - name: Summarise and gate
+        run: |
+          python3 - <<'PY'
+          import glob, json, os, sys
+          fail_on = os.environ.get("FAIL_ON", "error")
+          rank = {"none": 0, "note": 1, "warning": 2, "error": 3}
+          rows, worst, total = [], 0, 0
+          top = []
+          for f in sorted(glob.glob("sarif/*.sarif")):
+              try:
+                  data = json.load(open(f))
+              except Exception:
+                  continue
+              for run in data.get("runs", []):
+                  tool = run.get("tool", {}).get("driver", {}).get("name", os.path.basename(f))
+                  rules = {r.get("id"): r for r in run.get("tool", {}).get("driver", {}).get("rules", [])}
+                  c = {"error": 0, "warning": 0, "note": 0}
+                  for r in run.get("results", []):
+                      lv = r.get("level") or rules.get(r.get("ruleId"), {}).get("defaultConfiguration", {}).get("level", "warning")
+                      lv = lv if lv in c else "note"
+                      c[lv] += 1
+                      worst = max(worst, rank[lv]); total += 1
+                      if lv == "error" and len(top) < 25:
+                          loc = (r.get("locations") or [{}])[0].get("physicalLocation", {})
+                          top.append(f"| {tool} | `{r.get('ruleId')}` | `{loc.get('artifactLocation', {}).get('uri', '?')}:{loc.get('region', {}).get('startLine', '?')}` | {r.get('message', {}).get('text', '')[:140].replace('|', '/')} |")
+                  rows.append(f"| {tool} | {c['error']} | {c['warning']} | {c['note']} |")
+          out = ["# 🔐 HyperNix Security Scan", "", "| Engine | Error | Warning | Note |", "|---|---:|---:|---:|", *rows, "",
+                 f"CodeQL results are in **Security → Code scanning**. Total findings (non-CodeQL): **{total}**.", ""]
+          if top:
+              out += ["## Top errors", "", "| Engine | Rule | Location | Message |", "|---|---|---|---|", *top, ""]
+          open(os.environ["GITHUB_STEP_SUMMARY"], "a").write("\n".join(out) + "\n")
+          print("\n".join(out))
+          if fail_on != "none" and worst >= rank.get(fail_on, 3):
+              print(f"::error::Findings at or above '{fail_on}' — failing the gate.")
+              sys.exit(1)
+          PY
