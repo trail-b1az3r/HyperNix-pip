@@ -791,7 +791,9 @@ class TestServerSideFetchIsPublicOnly:
                 seen.append((self.path, self.headers.get("Host")))
                 if self.path.startswith("/hop"):
                     self.send_response(302)
-                    self.send_header("Location", self.path.split("?to=", 1)[1])
+                    location = self.path.split("?to=", 1)[1]
+                    location = location.replace("\r", "").replace("\n", "")
+                    self.send_header("Location", location)
                     self.end_headers()
                     return
                 if self.path == "/missing":
