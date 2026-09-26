@@ -1,6 +1,6 @@
 {
   "definition": "non-blank source lines across repository code roots: src, scripts, tests, examples, bin, native, docs/src",
-  "total_lines": 211442,
+  "total_lines": 211444,
   "code_files": 675,
   "top_files": [
     {
@@ -41,7 +41,7 @@
     },
     {
       "path": "src/hypernix/data/gather.py",
-      "lines": 1302
+      "lines": 1304
     },
     {
       "path": "src/hypernix/interfaces/hyped_pro_core.py",
@@ -172,12 +172,12 @@
     },
     {
       "author": "Rayla",
-      "additions": 270,
-      "deletions": 237,
-      "net": 33,
-      "changes": 507,
-      "commits": 16,
-      "files": 4
+      "additions": 276,
+      "deletions": 241,
+      "net": 35,
+      "changes": 517,
+      "commits": 17,
+      "files": 5
     },
     {
       "author": "github-actions[bot]",
@@ -190,6 +190,6 @@
     }
   ],
   "history_available": true,
-  "commit": "6fd7fe0df8d4bcd73918e51266b831fe64ff8d32",
+  "commit": "e41dc4540d1cd16c494b11dc2b7c295b40fb4067",
   "generated_at": null
 }

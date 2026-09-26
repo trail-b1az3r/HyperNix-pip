@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-api-deep",
   "generated_at": "2026-09-20T21:20:57Z",
-  "commit": "6fd7fe0df8d4bcd73918e51266b831fe64ff8d32",
+  "commit": "e41dc4540d1cd16c494b11dc2b7c295b40fb4067",
   "history_available": true,
   "source_root": "src/hypernix",
   "modules": [
@@ -2738,7 +2738,7 @@
     {
       "module": "hypernix.data.gather",
       "source": "src/hypernix/data/gather.py",
-      "line_count": 1302,
+      "line_count": 1304,
       "summary": "gather \u2014 crawl a site into a dataset.",
       "api": [
         {
@@ -2878,56 +2878,56 @@
           "kind": "function",
           "name": "extract_title",
           "signature": "def extract_titlemarkup: str -> str",
-          "line": 694,
+          "line": 696,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "extract_text",
           "signature": "def extract_textmarkup: str -> str",
-          "line": 699,
+          "line": 701,
           "doc": "Tags stripped, whitespace collapsed."
         },
         {
           "kind": "function",
           "name": "extract_links",
           "signature": "def extract_linksmarkup: str, base_url: str -> list[str]",
-          "line": 719,
+          "line": 721,
           "doc": "Absolute http(s) links, deduplicated, fragments dropped."
         },
         {
           "kind": "function",
           "name": "extract_assets",
           "signature": "def extract_assetsmarkup: str, base_url: str, tag: str, attribute: str -> list[str]",
-          "line": 744,
+          "line": 746,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "safe_output_path",
           "signature": "def safe_output_pathroot: Path, url: str, suffix: str -> Path",
-          "line": 769,
+          "line": 771,
           "doc": "A file under *root* named after *url*, and never outside it."
         },
         {
           "kind": "function",
           "name": "crawl",
           "signature": "def crawlplan: CrawlPlan, *, on_page=None -> CrawlResult",
-          "line": 825,
+          "line": 827,
           "doc": "Breadth-first, bounded, and polite."
         },
         {
           "kind": "function",
           "name": "probe_rate_limit",
           "signature": "def probe_rate_limiturl: str, *, requests: int=5, delay: float=0.5, timeout: float=15.0 -> dict[str, Any]",
-          "line": 1025,
+          "line": 1027,
           "doc": "Find out what a host will tolerate, before a long crawl does."
         },
         {
           "kind": "function",
           "name": "write_output",
           "signature": "def write_outputplan: CrawlPlan, result: CrawlResult -> list[Path]",
-          "line": 1241,
+          "line": 1243,
           "doc": "Write *result* in ``plan.fmt``. Returns what it wrote."
         }
       ],
@@ -2939,6 +2939,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "3c3c3c47",
+          "date": "2026-09-25",
+          "author": "Rayla",
+          "subject": "Potential fix for code scanning alert no. 26263: Full server-side request forgery",
+          "api_changes": []
+        },
         {
           "sha": "0d427c97",
           "date": "2026-09-23",
