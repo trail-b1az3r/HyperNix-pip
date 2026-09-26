@@ -168,9 +168,13 @@ class WaiterConfigStore:
                 self.password, payload.encode("utf-8"), context=_LOCK_CONTEXT)
         elif self._write_cipher is not None:
             payload = self._write_cipher.encrypt(payload.encode("utf-8")).decode("ascii")
-        self.path.write_text(payload + "\n", encoding="utf-8")
+        # Created 0600, not written and then chmodded: in between, the key
+        # sat in a file readable under the default umask.
+        descriptor = os.open(self.path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            handle.write(payload + "\n")
         try:
-            os.chmod(self.path, 0o600)
+            os.chmod(self.path, 0o600)  # a file that already existed keeps its old mode otherwise
         except OSError:
             pass
         return self.path

@@ -228,6 +228,7 @@ def fetch_web_page(url: str, max_length: int = 4000, *, public_only: bool = Fals
 
 
 _LIMITER = None
+_PUBLIC_ROBOTS = None
 _ROBOTS = None
 
 
@@ -249,11 +250,19 @@ def _shared_limiter():
     return _LIMITER
 
 
-def _shared_robots():
-    global _ROBOTS
-    if _ROBOTS is None:
-        from hypernix.data import gather
+def _shared_robots(*, public_only: bool = False):
+    """The robots.txt cache. ``public_only`` is the server's own: robots.txt
+    fetched only from public addresses, redirects checked, for a fetch made
+    on a caller's behalf. The local tools keep the plain one, which may
+    read a site on the LAN because the person asked it to."""
+    global _ROBOTS, _PUBLIC_ROBOTS
+    from hypernix.data import gather
 
+    if public_only:
+        if _PUBLIC_ROBOTS is None:
+            _PUBLIC_ROBOTS = gather.RobotsCache(public_only=True)
+        return _PUBLIC_ROBOTS
+    if _ROBOTS is None:
         _ROBOTS = gather.RobotsCache()
     return _ROBOTS
 

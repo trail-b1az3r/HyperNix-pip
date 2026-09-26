@@ -236,7 +236,7 @@ def _fetch_for_summary(url: str) -> str:
             f"will not fetch that URL: {problem}"[:300],
             http_status=400,
         )
-    if not iw._shared_robots().allows(url):
+    if not iw._shared_robots(public_only=True).allows(url):
         raise T1APIError(
             T1ErrorCode.VALIDATION_ERROR,
             "that site's robots.txt asks not to be fetched",

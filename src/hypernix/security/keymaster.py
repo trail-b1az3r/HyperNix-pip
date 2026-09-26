@@ -412,6 +412,23 @@ _DEFAULT_STORE: Path = Path.home() / ".hypernix" / "keymaster"
 _ARCHIVE_SUBDIR = "archive"
 
 
+
+#: What a key id may look like: the ids this module mints are hex or
+#: url-safe base64, and nothing else ever becomes a file name.
+_KEY_ID = re.compile(r"[A-Za-z0-9_-]{1,128}")
+
+
+def _safe_key_id(key_id: str) -> str:
+    """*key_id*, or ValueError if it could name a path outside the store.
+
+    Every caller today passes an id that already exists, but the id
+    arrives from HTTP on the rotate and revoke routes, and a file name
+    built from `../` is the one mistake here that cannot be undone.
+    """
+    if not isinstance(key_id, str) or not _KEY_ID.fullmatch(key_id):
+        raise ValueError(f"not a key id: {key_id!r}")
+    return key_id
+
 class Keymaster:
     """Full-lifecycle API key manager.
 
@@ -485,10 +502,10 @@ class Keymaster:
     # ------------------------------------------------------------------
 
     def _key_path(self, key_id: str) -> Path:
-        return self._store / f"{key_id}.json"
+        return self._store / f"{_safe_key_id(key_id)}.json"
 
     def _archive_path(self, key_id: str) -> Path:
-        return self._store / _ARCHIVE_SUBDIR / f"{key_id}.json"
+        return self._store / _ARCHIVE_SUBDIR / f"{_safe_key_id(key_id)}.json"
 
     def _encrypt(self, text: str) -> str:
         if self._cipher is None:

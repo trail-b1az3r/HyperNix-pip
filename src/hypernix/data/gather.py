@@ -359,9 +359,17 @@ class RobotsCache:
     behaviour rather than inventing its own.
     """
 
-    def __init__(self, user_agent: str = _USER_AGENT, timeout: float = 10.0) -> None:
+    def __init__(self, user_agent: str = _USER_AGENT, timeout: float = 10.0,
+                 *, public_only: bool = False) -> None:
         self.user_agent = user_agent
         self.timeout = timeout
+        #: Fetch robots.txt only from public addresses, pinned and with
+        #: every redirect checked, as :func:`fetch` does with
+        #: ``public_only``. For a server fetching on a caller's behalf:
+        #: the page URL was checked, but robots.txt is fetched first, and
+        #: a plain urlopen follows a redirect from a public robots.txt to
+        #: 169.254.169.254 or the LAN without asking.
+        self.public_only = public_only
         self._parsers: dict[str, Any] = {}
         self._lock = threading.Lock()
 
@@ -373,10 +381,15 @@ class RobotsCache:
         parser = urllib.robotparser.RobotFileParser()
         parser.set_url(f"{base}/robots.txt")
         try:
-            request = urllib.request.Request(  # noqa: S310 - scheme checked
-                f"{base}/robots.txt", headers={"User-Agent": self.user_agent}
-            )
-            with urllib.request.urlopen(request, timeout=self.timeout) as response:  # noqa: S310
+            headers = {"User-Agent": self.user_agent}
+            if self.public_only:
+                opened = _open_pinned(f"{base}/robots.txt", headers, self.timeout)
+            else:
+                request = urllib.request.Request(  # noqa: S310 - scheme checked
+                    f"{base}/robots.txt", headers=headers
+                )
+                opened = urllib.request.urlopen(request, timeout=self.timeout)  # noqa: S310
+            with opened as response:
                 parser.parse(
                     response.read(512 * 1024).decode("utf-8", errors="replace")
                     .splitlines()
@@ -687,8 +700,11 @@ def _charset(content_type: str) -> str:
 
 _TITLE = re.compile(r"<title[^>]*>(.*?)</title>", re.IGNORECASE | re.DOTALL)
 _HREF = re.compile(r"""<a\b[^>]*?\bhref\s*=\s*["']([^"'>]+)["']""", re.IGNORECASE)
-_SCRIPT_BLOCK = re.compile(r"<script\b.*?</script\s*>", re.IGNORECASE | re.DOTALL)
-_STYLE_BLOCK = re.compile(r"<style\b.*?</style\s*>", re.IGNORECASE | re.DOTALL)
+# The end tag may carry junk before its `>` (`</script foo>`, a tab, a
+# newline), and browsers end the element there anyway, so a pattern that
+# insists on `</script>` leaves the script's text in the "page text".
+_SCRIPT_BLOCK = re.compile(r"<script\b.*?</script\b[^>]*>", re.IGNORECASE | re.DOTALL)
+_STYLE_BLOCK = re.compile(r"<style\b.*?</style\b[^>]*>", re.IGNORECASE | re.DOTALL)
 _COMMENT = re.compile(r"<!--.*?-->", re.DOTALL)
 _TAG = re.compile(r"<[^>]+>")
 

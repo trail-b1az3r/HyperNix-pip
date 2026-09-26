@@ -943,7 +943,7 @@ class TestServerSideFetchIsPublicOnly:
                 return True
 
         monkeypatch.setattr(gather, "public_address_problem", lambda url: None)
-        monkeypatch.setattr(iw, "_shared_robots", lambda: Robots())
+        monkeypatch.setattr(iw, "_shared_robots", lambda **kwargs: Robots())
         monkeypatch.setattr(gather, "fetch", lambda *a, **k: page)
 
     def test_a_failed_fetch_is_an_error_not_a_summary_of_the_error(self, client, user_key, monkeypatch):

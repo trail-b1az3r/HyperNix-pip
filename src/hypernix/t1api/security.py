@@ -28,6 +28,7 @@ in the T1 API.
 from __future__ import annotations
 
 import ipaddress
+import os
 import socket
 from pathlib import Path
 from urllib.parse import urlparse
@@ -114,18 +115,19 @@ def sanitize_module_path(relative_path: str, base_dir: Path) -> Path:
     Returns the resolved, safe absolute path. Does not check existence —
     callers create/read the file themselves after this returns.
     """
-    base_resolved = base_dir.resolve()
-    candidate = (base_dir / relative_path).resolve()
-    try:
-        candidate.relative_to(base_resolved)
-    except ValueError as exc:
+    # realpath, then a prefix check against the base plus a separator:
+    # the shape static analysis recognises as a traversal guard, and the
+    # separator is what stops /srv/modules-evil passing for /srv/modules.
+    base_resolved = os.path.realpath(base_dir)
+    candidate = os.path.realpath(os.path.join(base_resolved, relative_path))
+    if candidate != base_resolved and not candidate.startswith(base_resolved + os.sep):
         raise T1APIError(
             T1ErrorCode.PATH_TRAVERSAL_REJECTED,
             f"'{relative_path}' resolves outside the allowed module storage directory.",
             details={"relative_path": relative_path},
             http_status=400,
-        ) from exc
-    return candidate
+        )
+    return Path(candidate)
 
 
 __all__ = ["validate_remote_address", "sanitize_module_path"]
