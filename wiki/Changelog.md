@@ -297,6 +297,15 @@ runner's default model.
   failed the message. That round is now retried without it, and the rest
   of the turn uses the taught text convention.
 
+𖢥 **The model did not know how to use the tools it was taught.** The
+  taught prompt listed the tools and showed one call, and nothing else.
+  A small model read that as optional: it said it could not reach
+  things a tool could, or stopped at the call as if it were the answer.
+  The prompt now says the tools are real and to call one instead of
+  guessing, and shows a whole exchange: call, result, answer. A result
+  the model writes itself after its call is removed, never shown or
+  kept.
+
 🐛 Two labels on the site were 10.5px, under the 11px floor
   `test_website_mobile` enforces, so the full suite, and with it a
   release, failed on main.

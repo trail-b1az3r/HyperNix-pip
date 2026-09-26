@@ -514,6 +514,12 @@ def tool_prompt(tools: list[dict[str, Any]]) -> str:
     tool — a model copies an example far more reliably than it follows a
     description, and an example using a tool that exists cannot teach it
     to call one that does not.
+
+    It also says the tools are real and when to reach for one, and shows
+    the whole exchange, call, result and answer (0.72.6.post1). With only
+    the call format, a small model treated the tools as optional
+    decoration: it said it had no access to things a tool could reach,
+    or stopped after calling one as though the call were the answer.
     """
     if not tools:
         return ""
@@ -536,12 +542,27 @@ def tool_prompt(tools: list[dict[str, Any]]) -> str:
     example = json.dumps({"name": first["name"], "arguments": example_args})
     lines += [
         "",
-        "To call one, reply with exactly this and nothing else on those lines:",
+        "These tools are real. Calling one runs it on this server and gives you "
+        "its actual result. When a question is about something a tool can "
+        "reach, call the tool: do not say you cannot access it, and do not "
+        "guess what it would say.",
+        "",
+        f"To call a tool, write the call on its own and stop. This one calls "
+        f"{first['name']}:",
         f"<tool_call>{example}</tool_call>",
         "",
-        "Arguments are a JSON object with double-quoted keys. You will get "
-        "the result back, then continue. Only call tools listed above. If "
-        "you do not need a tool, just answer.",
+        "The result comes back to you, as a tool message or as "
+        "<tool_response>…</tool_response>, and you then answer from it. "
+        "A whole exchange looks like this:",
+        f"User: (a question {first['name']} can answer)",
+        f"Assistant: <tool_call>{example}</tool_call>",
+        f'<tool_response name="{first["name"]}">(the real result)</tool_response>',
+        "Assistant: (the answer, using what the result said)",
+        "",
+        "Arguments are a JSON object with double-quoted keys and the "
+        "parameter names exactly as listed. Call one tool at a time and wait "
+        "for its result; never write a <tool_response> yourself. Only call "
+        "tools listed above. If no tool fits, just answer.",
     ]
     return "\n".join(lines)
 

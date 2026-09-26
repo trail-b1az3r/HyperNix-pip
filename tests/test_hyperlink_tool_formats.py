@@ -241,3 +241,46 @@ class TestTheFormatIsTaughtEverywhere:
         assert system.startswith("Be kind.") and "<tool_call>" in system
         example = system.split("<tool_call>", 1)[1].split("</tool_call>", 1)[0]
         assert "name" in json.loads(example)
+
+
+class TestTheTaughtPromptSaysWhenAndShowsTheWholeExchange:
+    """Told only the call format, a small model treated the tools as
+    optional: it said it had no access to things a tool could reach, or
+    stopped at the call as though that were the answer."""
+
+    def test_it_says_the_tools_are_real_and_when_to_use_them(self):
+        from hypernix.runtime.toolcalls import tool_prompt
+
+        text = tool_prompt(TOOLS)
+        assert "These tools are real" in text
+        assert "do not say you cannot access it" in text
+
+    def test_it_shows_call_result_and_answer_with_a_real_tool(self):
+        from hypernix.runtime.toolcalls import tool_prompt
+
+        text = tool_prompt(TOOLS)
+        first_call = text.split("<tool_call>")[1].split("</tool_call>")[0]
+        assert json.loads(first_call)["name"] == "get_weather"
+        assert '<tool_response name="get_weather">' in text
+        assert "Assistant: (the answer" in text
+        assert "never write a <tool_response> yourself" in text
+
+    def test_a_result_the_model_invents_is_never_kept(self, context, monkeypatch):
+        from hypernix.hyperlink import toolloop
+
+        monkeypatch.setattr(toolloop, "_run_call", lambda call, *a: ToolRound(
+            call["function"]["name"], {}, True, "real: 0.72.6.post1"))
+        seen = []
+
+        def backend(messages, tools):
+            seen.append([dict(m) for m in messages])
+            if len(seen) == 1:
+                return _chunks('<tool_call>{"name": "server_version", "arguments": {}}</tool_call>\n'
+                               '<tool_response name="server_version">made up 9.9</tool_response>')
+            return _chunks("It is 0.72.6.post1.")
+
+        events = list(stream_tool_loop([{"role": "user", "content": "version?"}], context,
+                                       ask_stream=backend, teach_format=True, workspace=False))
+        shown = "".join(v for k, v in events if k == "delta")
+        assert "made up" not in shown and shown == "It is 0.72.6.post1."
+        assert not any("made up" in str(m.get("content")) for m in seen[1])

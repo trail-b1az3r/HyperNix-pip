@@ -36,6 +36,7 @@ from __future__ import annotations
 import itertools
 import json
 import logging
+import re
 from collections.abc import Callable
 from typing import Any
 
@@ -390,6 +391,10 @@ CALL_MARKERS = (
 )
 
 
+#: A tool result the model wrote itself.
+_INVENTED_RESULT = re.compile(r"<tool_response\b.*?(?:</tool_response>|$)", re.S)
+
+
 class CallGuard:
     """Streams a reply's text, holding back what may be a tool call.
 
@@ -637,9 +642,15 @@ def _assistant_message(
     # `content` is kept even when it is empty: some backends reject an
     # assistant message without the key, and some models write a
     # sentence *and* call a tool, which the person should see.
+    content = str(message.get("content") or "")
+    if calls:
+        # A model copying the taught example sometimes writes the result
+        # it expects after its call. Only the real result, which follows
+        # as its own message, may be believed.
+        content = _INVENTED_RESULT.sub("", content).strip()
     return {
         "role": "assistant",
-        "content": message.get("content") or "",
+        "content": content,
         "tool_calls": calls,
     }
 
