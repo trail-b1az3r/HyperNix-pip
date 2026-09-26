@@ -242,6 +242,13 @@ def local_models(root: Path | str | None = None) -> tuple[list[CatalogueModel], 
                 if read.is_extension else ""
             ),
         ))
+    # Native HyperNix checkpoints: a folder with a brewer config.json and
+    # weights, served by brewed_server rather than llama.cpp.
+    from .brewed import brewed_dirs, describe
+
+    for folder in brewed_dirs(directory):
+        facts = describe(folder)
+        models.append(CatalogueModel(source="local", runnable=True, **facts))
     if not models:
         # The directory is there and readable, so the source *worked* --
         # it just has nothing to offer. Reporting that as a bare path

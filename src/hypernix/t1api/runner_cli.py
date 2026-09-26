@@ -63,7 +63,7 @@ class Unreachable(SystemExit):
 _EPILOG = """\
 Examples:
 
-  hypernix-t1 built-in-runner start
+  hypernix-t1 built-in-runner start            # the default model, HyperNix.3-mini
   hypernix-t1 built-in-runner start qwen3-8b --gpu-layers 24
   hypernix-t1 built-in-runner status
   hypernix-t1 built-in-runner plan qwen3-8b
@@ -249,10 +249,23 @@ def _why_nothing(catalogue: dict[str, Any]) -> str:
 def _pick(url: str, key: str) -> tuple[str, int]:
     """``(model_id, exit_code)`` for a ``start`` that named no model.
 
-    One model is not a guess, so it starts. More than one is, and
-    guessing wrong costs the VRAM and the minutes of a load somebody
-    then has to undo — so it lists them and stops.
+    The default model when there is one (HyperNix.3-mini unless
+    ``T1_DEFAULT_MODEL`` says otherwise), fetched by the server the first
+    time. With the default turned off (``T1_DEFAULT_MODEL=``): one model
+    is not a guess, so it starts. More than one is, and guessing wrong
+    costs the VRAM and the minutes of a load somebody then has to undo,
+    so it lists them and stops.
     """
+    from ..hyperlink.brewed import DEFAULT_MODEL_ID, DEFAULT_MODEL_REPO, default_model_id
+
+    default = default_model_id()
+    if default:
+        fetched = (f", from {DEFAULT_MODEL_REPO} (the server downloads it the first "
+                   f"time, about 195 MB)") if default == DEFAULT_MODEL_ID else ""
+        print(f"Starting the default model, {default}{fetched}. Name a model to "
+              f"start a different one; T1_DEFAULT_MODEL= turns the default off.",
+              file=sys.stderr)
+        return default, 0
     catalogue, refusal = _catalogue(url, key)
     if refusal is not None:
         return "", _fail(*refusal)
@@ -317,10 +330,10 @@ def build_parser() -> argparse.ArgumentParser:
     # you type when the machine has one model and nothing serving it,
     # which is the state every fresh install is in.
     start = sub.add_parser(
-        "start", help="start serving — names the model for you when there is only one"
+        "start", help="start serving — the default model (HyperNix.3-mini) unless you name one"
     )
     start.add_argument("model_id", nargs="?", default="",
-                       help="the model to serve (default: the only loadable one)")
+                       help="the model to serve (default: T1_DEFAULT_MODEL, else HyperNix.3-mini)")
     start.add_argument("--restart", action="store_true",
                        help="load again even if that model is already serving")
     _load_options(start)

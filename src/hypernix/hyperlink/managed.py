@@ -424,6 +424,11 @@ class ManagedRunner:
         that was working.
         """
         model_path = Path(path).expanduser()
+        from .brewed import is_brewed_dir
+
+        if is_brewed_dir(model_path):
+            return self._load_brewed(model_path, model_id=model_id, backend=backend,
+                                     timeout=timeout)
         if not model_path.is_file():
             raise ManagedError(f"No such model: {model_path}")
 
@@ -485,6 +490,63 @@ class ManagedRunner:
             raise ManagedError(
                 f"{record.model_id} did not start within {timeout:.0f}s.\n"
                 f"Placement was: {placement.reason}\n"
+                f"Last output:\n{output[-2000:]}"
+            )
+        return record
+
+    def _load_brewed(self, folder: Path, *, model_id: str, backend: str,
+                     timeout: float) -> ManagedModel:
+        """Serve a native HyperNix checkpoint (see :mod:`.brewed_server`).
+
+        Same contract as a GGUF load: whatever was running is unloaded,
+        the process is watched until it answers ``/health``, and its last
+        output is in the error if it never does. PyTorch holds the whole
+        model on one device, so there is no layer split to plan.
+        """
+        import json as _json
+
+        if backend not in BACKENDS:
+            raise ManagedError(f"Unknown backend {backend!r}. Available: {', '.join(BACKENDS)}")
+        device = ("cpu" if backend in ("cpu", "hnx-cpu")
+                  else "cuda" if backend in ("cuda", "hnx-cuda") else "auto")
+        try:
+            config = _json.loads((folder / "config.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            raise ManagedError(f"{folder}/config.json is unreadable: {exc}") from exc
+        layers = int(config.get("n_layers") or 0)
+        context = int(config.get("max_seq_len") or 0)
+        placement = Placement(
+            gpu_layers=0 if device == "cpu" else layers, total_layers=layers,
+            backend=device, explicit=device != "auto",
+            reason=(f"native HyperNix model: all {layers} layers in PyTorch on "
+                    f"{'the CPU' if device == 'cpu' else 'the GPU when there is one'}, "
+                    f"no llama.cpp"),
+        )
+        self.unload()
+        alias = model_id or str(config.get("name") or folder.name).lower()
+        argv = [sys.executable, "-m", "hypernix.hyperlink.brewed_server",
+                "--model", str(folder), "--host", self.host, "--port", str(self.port),
+                "--alias", alias, "--device", device]
+        logger.info("managed: starting %s", " ".join(argv))
+        try:
+            process = subprocess.Popen(  # noqa: S603 - argv list, never a shell
+                argv, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+            )
+        except OSError as exc:
+            raise ManagedError(f"Could not start the HyperNix model server: {exc}") from exc
+        record = ManagedModel(
+            model_id=alias, path=str(folder), port=self.port, placement=placement,
+            started_at=time.time(), context_length=context, pid=process.pid,
+            base_url=self.base_url,
+        )
+        with self._lock:
+            self._process = process
+            self._current = record
+        if not self._wait_until_ready(process, timeout):
+            output = self._drain(process)
+            self.unload()
+            raise ManagedError(
+                f"{alias} did not start within {timeout:.0f}s.\n"
                 f"Last output:\n{output[-2000:]}"
             )
         return record

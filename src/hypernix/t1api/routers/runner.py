@@ -129,10 +129,22 @@ def _resolve(model_id: str, config: T1APIConfig, registry) -> tuple[str, dict]:
                 raise T1APIError(
                     T1ErrorCode.VALIDATION_ERROR,
                     f"{model_id} is known to this server but has no file on "
-                    f"disk — it came from {model.source}. Only a local GGUF "
-                    f"can be loaded by the runner.",
+                    f"disk — it came from {model.source}. Only a local GGUF or "
+                    f"HyperNix model folder can be loaded by the runner.",
                 )
             return model.path, model.to_dict()
+    from ...hyperlink.brewed import BrewedError, describe, download, matches_default
+
+    if matches_default(model_id):
+        # The default model is fetched the first time it is asked for,
+        # into the same folder the catalogue reads.
+        try:
+            folder = download(models_dir=config.hf_download_dir or None)
+        except BrewedError as exc:
+            raise T1APIError(
+                T1ErrorCode.VALIDATION_ERROR, str(exc), details={"model_id": model_id},
+            ) from exc
+        return str(folder), describe(folder)
     known = [m.model_id for m in catalogue.models if m.path][:20]
     raise T1APIError(
         T1ErrorCode.NOT_FOUND,
@@ -179,9 +191,12 @@ def runner_plan(
     the consequence first is not a nicety.
     """
     path, facts = _resolve(payload.model_id, config, registry)
+    target = Path(path)
+    size = (sum(f.stat().st_size for f in target.iterdir() if f.is_file())
+            if target.is_dir() else target.stat().st_size)
     try:
         placement = plan_placement(
-            file_bytes=Path(path).stat().st_size,
+            file_bytes=size,
             total_layers=payload.total_layers or 0,
             gpu_layers=payload.gpu_layers,
             backend=payload.backend,

@@ -291,6 +291,16 @@ class TestStart:
     asked for.
     """
 
+    @pytest.fixture(autouse=True)
+    def _no_default_model(self, monkeypatch):
+        """The catalogue rule, which is what runs with the default off.
+
+        0.72.6.post1 made HyperNix.3-mini the model `start` names when
+        you name none; `T1_DEFAULT_MODEL=` brings back this behaviour.
+        """
+        monkeypatch.setenv("T1_DEFAULT_MODEL", "")
+
+
     def test_it_loads_the_only_loadable_model(self, calls):
         calls.replies.append((200, {"loaded": False}))
         calls.replies.append((200, {"models": [
@@ -492,6 +502,8 @@ class TestStartAgainstARealServer:
         from fastapi.testclient import TestClient
 
         clear_t1_config(monkeypatch)
+        # The catalogue path, which runs with the default model turned off.
+        monkeypatch.setenv("T1_DEFAULT_MODEL", "")
         monkeypatch.setenv("T1_DB_PATH", str(tmp_path / "t.sqlite3"))
         monkeypatch.setenv("T1_CONFIG_DIR", str(tmp_path))
         monkeypatch.setenv("T1_HF_DOWNLOAD_DIR", str(tmp_path / "models"))
@@ -518,3 +530,32 @@ class TestStartAgainstARealServer:
         err = capsys.readouterr().err
         assert "hypernix-t1 index" in err
         assert "Refused" not in err
+
+
+class TestTheDefaultModel:
+    """`start` with no model named starts HyperNix.3-mini (0.72.6.post1)."""
+
+    def test_it_is_named_without_asking_the_catalogue(self, calls, monkeypatch, capsys):
+        monkeypatch.delenv("T1_DEFAULT_MODEL", raising=False)
+        calls.replies.append((200, {"loaded": False}))
+        calls.replies.append((200, {"loaded": True, "model": {"model_id": "hypernix.3-mini"}}))
+        assert runner_cli.main(["start"]) == 0
+        methods = [(m, u.rsplit("/", 2)[-2] + "/" + u.rsplit("/", 1)[-1]) for m, u, _k, _p in calls.recorded]
+        assert ("GET", "hyperlink/models") not in methods
+        load = calls.recorded[-1]
+        assert load[1].endswith("/runner/load") and load[3]["model_id"] == "hypernix.3-mini"
+        assert "ray0rf1re/HyperNix.3-mini" in capsys.readouterr().err
+
+    def test_another_default_can_be_configured(self, calls, monkeypatch):
+        monkeypatch.setenv("T1_DEFAULT_MODEL", "qwen3-8b")
+        calls.replies.append((200, {"loaded": False}))
+        calls.replies.append((200, {"loaded": True, "model": {"model_id": "qwen3-8b"}}))
+        assert runner_cli.main(["start"]) == 0
+        assert calls.recorded[-1][3]["model_id"] == "qwen3-8b"
+
+    def test_a_named_model_still_wins(self, calls, monkeypatch):
+        monkeypatch.delenv("T1_DEFAULT_MODEL", raising=False)
+        calls.replies.append((200, {"loaded": False}))
+        calls.replies.append((200, {"loaded": True, "model": {"model_id": "qwen3-8b"}}))
+        assert runner_cli.main(["start", "qwen3-8b"]) == 0
+        assert calls.recorded[-1][3]["model_id"] == "qwen3-8b"

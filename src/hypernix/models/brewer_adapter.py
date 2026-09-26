@@ -275,6 +275,11 @@ def is_brewer_checkpoint(path: str | Path) -> bool:
         return False
 
 
+def _is_tied_head(key: str, config: Any) -> bool:
+    """A missing key that is only the output head sharing the embedding."""
+    return bool(getattr(config, "tie_embeddings", False)) and "head" in key and key.endswith("weight")
+
+
 def load(path: str | Path, *, device: str | None = None) -> tuple[Any, Any]:
     """``(adapted_model, config)`` from a checkpoint or a save directory.
 
@@ -293,13 +298,30 @@ def load(path: str | Path, *, device: str | None = None) -> tuple[Any, Any]:
             raise FileNotFoundError(f"No config.json in {candidate}")
         config = brewer.BrewerConfig.load(config_path)
         model = brewer.BrewerModel(config)
+        safetensors_path = candidate / "model.safetensors"
         weights = next(
             (candidate / name for name in
              ("model.pt", "pytorch_model.bin", "weights.pt")
              if (candidate / name).is_file()),
             None,
         )
-        if weights is None:
+        if safetensors_path.is_file():
+            # Preferred when both are there, as they are on the Hub: a
+            # safetensors file is tensors and nothing else, where a .pt is
+            # a pickle that torch.load has to be told not to run.
+            from safetensors.torch import load_file
+
+            state = load_file(str(safetensors_path), device="cpu")
+            # Tied embeddings are saved once; the head shares the table.
+            missing, unexpected = model.load_state_dict(state, strict=False)
+            if unexpected or [k for k in missing if not _is_tied_head(k, config)]:
+                raise ValueError(
+                    f"{safetensors_path} does not match its config.json: "
+                    f"missing {missing[:5]}, unexpected {unexpected[:5]}"
+                )
+            if config.tie_embeddings and hasattr(model, "tie_weights"):
+                model.tie_weights()
+        elif weights is None:
             # A config with no weights is a *shape*, which is a legitimate
             # thing to load -- `hnx brew new` writes exactly that. Said
             # out loud rather than returning random weights silently.
