@@ -47,6 +47,19 @@ __all__ = ["main", "cli_main"]
 
 DEFAULT_URL = "http://127.0.0.1:8000"
 
+
+class Unreachable(SystemExit):
+    """Nothing answered at *url*. A SystemExit, so a caller that does not
+    handle it still exits with the message rather than a traceback."""
+
+    def __init__(self, url: str, reason: object) -> None:
+        self.url = url
+        self.reason = reason
+        super().__init__(
+            f"Could not reach the T1 API at {url}: {reason}\n"
+            f"Is it running? `hypernix-t1 status` says."
+        )
+
 _EPILOG = """\
 Examples:
 
@@ -98,8 +111,14 @@ def _resolve_key(explicit: str) -> str:
 
 
 def _base_url(explicit: str) -> str:
-    url = explicit or os.environ.get("T1_URL", "") or DEFAULT_URL
-    return url.rstrip("/")
+    """Where the server is: --url, T1_URL, T1_HOST/T1_PORT, the .env, 8000.
+
+    It used to be --url, T1_URL, 8000, so a server started on 8001 by
+    `hypernix-t1 start` was unreachable to `hypernix-t1 runner`.
+    """
+    from .localserver import configured_url
+
+    return configured_url(explicit)[0]
 
 
 def _request(
@@ -128,10 +147,7 @@ def _request(
         except ValueError:
             return error.code, {"error": {"message": body.decode(errors="replace")}}
     except urllib.error.URLError as error:
-        raise SystemExit(
-            f"Could not reach the T1 API at {url}: {error.reason}\n"
-            f"Is it running? `hypernix-t1 status` says."
-        ) from error
+        raise Unreachable(url, error.reason) from error
 
 
 def _fail(status: int, body: Any) -> int:
@@ -277,7 +293,9 @@ def build_parser() -> argparse.ArgumentParser:
         epilog=_EPILOG,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument("--url", default="", help=f"server base URL (default {DEFAULT_URL})")
+    parser.add_argument("--url", default="",
+                        help="server base URL (default: T1_URL, else T1_HOST/T1_PORT from the "
+                             f"environment or the server's .env, else {DEFAULT_URL})")
     parser.add_argument("--key", default="", help="admin key (default: T1_ADMIN_KEY, then the server's .env)")
     parser.add_argument("--json", action="store_true", help="print the raw response")
 
@@ -323,10 +341,34 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
-    command = args.command or "status"
-
     url = _base_url(args.url)
     key = _resolve_key(args.key)
+    try:
+        return _run(parser, args, url, key)
+    except Unreachable as missing:
+        # Somebody named the address, so do not go looking elsewhere.
+        if args.url or os.environ.get("T1_URL"):
+            raise
+        from .localserver import configured_url, discover
+
+        found = discover(exclude=url)
+        if not found:
+            _, source = configured_url()
+            raise SystemExit(
+                f"Could not reach the T1 API at {url} (from {source}): {missing.reason}\n"
+                f"Nothing else on this machine answered as one either. Start it with "
+                f"`hypernix-t1 start`, or point this at it with --url."
+            ) from None
+        print(
+            f"Nothing answered at {url}; using the T1 API found at {found}.\n"
+            f"Set T1_PORT in {_config_dir() / '.env'} to its port, or pass --url {found}.\n",
+            file=sys.stderr,
+        )
+        return _run(parser, args, found, key)
+
+
+def _run(parser: argparse.ArgumentParser, args: argparse.Namespace, url: str, key: str) -> int:
+    command = args.command or "status"
 
     if command == "start":
         return _start(url, key, args)
