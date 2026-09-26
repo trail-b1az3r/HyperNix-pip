@@ -502,10 +502,14 @@ class Keymaster:
     # ------------------------------------------------------------------
 
     def _key_path(self, key_id: str) -> Path:
-        return self._store / f"{_safe_key_id(key_id)}.json"
+        if not _KEY_ID.fullmatch(key_id or ""):
+            raise ValueError(f"not a key id: {key_id!r}")
+        return self._store / f"{key_id}.json"
 
     def _archive_path(self, key_id: str) -> Path:
-        return self._store / _ARCHIVE_SUBDIR / f"{_safe_key_id(key_id)}.json"
+        if not _KEY_ID.fullmatch(key_id or ""):
+            raise ValueError(f"not a key id: {key_id!r}")
+        return self._store / _ARCHIVE_SUBDIR / f"{key_id}.json"
 
     def _encrypt(self, text: str) -> str:
         if self._cipher is None:

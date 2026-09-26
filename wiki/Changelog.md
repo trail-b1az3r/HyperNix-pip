@@ -214,6 +214,118 @@ Historical wording and technical detail are retained during format normalization
   every one of the ~50 per-module wiki pages against source — those were
   spot-checked, not exhaustively re-verified.
 
+## 0.72.6.post1 — 2026-09-26
+
+The first patch to 0.72.6: the runner command could not find a server
+on another port, HyperLink still could not call tools on most local
+models, the high-rated security findings, and HyperNix.3-mini as the
+runner's default model.
+
+### Added
+
+๋࣭⭑ **HyperNix.3-mini is the runner's default model.** `hypernix-t1
+  runner start` with no model named loads
+  [`ray0rf1re/HyperNix.3-mini`](https://huggingface.co/ray0rf1re/HyperNix.3-mini),
+  downloaded on first use: the safetensors, config and tokenizer, never
+  the pickled `model.pt`. `T1_DEFAULT_MODEL` names another, and an empty
+  `T1_DEFAULT_MODEL=` restores "start the only model here".
+
+๋࣭⭑ **The runner serves native HyperNix models.** A `hyperNix0x-v2`
+  folder with a brewer config and weights is served by
+  `hypernix.hyperlink.brewed_server`, in PyTorch, over the same OpenAI API
+  llama-server speaks, streamed or not. The catalogue lists such folders
+  beside the GGUFs, and `brewer_adapter` now reads `model.safetensors`.
+
+𖥔 `hypernix-t1 chat [-s SYSTEM] [--new] MESSAGE` streams a reply from
+  the served model through the HyperLink route and remembers the chat. It
+  replaces a curl recipe that fish refused.
+
+### Security
+
+🛡️ **robots.txt could send the server to the LAN.** The page URL of a
+  server-side fetch (`/web/v1/summarise`) was checked to be public, but
+  its robots.txt was fetched first, with a plain `urlopen` that follows
+  redirects. A public site could redirect it to 169.254.169.254 or a
+  private address. It now goes through the same pinned, public-only
+  opener as the page. The local tools keep a separate cache that may
+  read a LAN site.
+
+🛡️ Script and style blocks ending `</script foo>` or in upper case were
+  left in extracted page text. The patterns now match what browsers do.
+
+🛡️ Usage SQL interpolates only literal column names looked up from a
+  table, never the request's string. It was allowlisted already, and now
+  cannot be otherwise.
+
+🛡️ Module storage paths use realpath and a separator-aware prefix
+  check, so `/srv/modules-evil` no longer passes for `/srv/modules`. Key
+  ids are checked before they become file names.
+
+🛡️ waiter's config, which holds a key, is created 0600 instead of being
+  written under the default umask and chmodded afterwards.
+
+🛡️ The LM Studio address must be http or https. The admin-only override
+  arrives over HTTP, and `urlopen` also speaks `file://`.
+
+🛡️ The examples script no longer commits T1 token and deploy secrets.
+  The consent-gated shell tools in `hyped` carry `nosec` with the reason.
+
+### Fixed
+
+𖢥 **`hypernix-t1 runner` could not find a server on another port.** A
+  server on 8001 answered everything else and got "Could not reach the T1
+  API at http://127.0.0.1:8000". The runner command knew `--url`, `T1_URL`
+  and 8000, and never read the `T1_PORT` the shell wrapper had exported
+  from the server's `.env` for it. It now uses `--url`, `T1_URL`,
+  `T1_HOST`/`T1_PORT`, the `.env`, then 8000. If nothing answers there, it
+  asks the nearby loopback ports whether they are a T1 API and says where
+  it found one.
+
+𖢥 **HyperLink still could not call tools on most local models.** Three
+  causes. First, the format was taught only on the built-in runner. On LM
+  Studio the tools went in the `tools` field alone, and a model whose
+  template drops it, as Gemma's does, never learned they existed. It is
+  now taught on every backend (`T1_HYPERLINK_TEACH_TOOLS`).
+
+𖢥 Second, half the conventions were unread and shown as the answer. The
+  loop now also reads LM Studio's `[TOOL_REQUEST]`, Gemma's
+  `call:name{...}` and `tool_code`, Llama's `<function=...>`, DeepSeek's
+  markers, and a JSON call after a sentence. Python-style calls are read
+  with `ast` and `literal_eval`, never run, and only for offered tools.
+
+𖢥 Third, a backend that refuses `tools` (llama-server without `--jinja`)
+  failed the message. That round is now retried without it, and the rest
+  of the turn uses the taught text convention.
+
+🐛 Two labels on the site were 10.5px, under the 11px floor
+  `test_website_mobile` enforces, so the full suite, and with it a
+  release, failed on main.
+
+### Tests
+
+🧪 `tests/test_local_server_url.py` (15): the address order, discovery on
+  a neighbouring port, a named URL never second-guessed, and the chat
+  command against a stand-in server.
+
+🧪 `tests/test_hyperlink_tool_formats.py` (25): every new convention,
+  what is not a call, the stream holding each marker back, a backend that
+  refuses tools on both routes, and the format taught everywhere.
+
+🧪 `tests/test_security_post1.py` (28), one or more per fix, including a
+  loopback server that must see no robots.txt request.
+
+🧪 `tests/test_hyperlink_brewed.py` (27): a two-layer model of the same
+  architecture through the loader, the server, the runner's subprocess,
+  the catalogue and the downloader.
+
+### Known Issues
+
+❗ HyperNix.3-mini is a 48.7M-parameter base model with a 512-token
+  context and a validation perplexity of about 2,540. As the default chat
+  model it completes text, often incoherently, and cannot call tools.
+  HyperLink's default prompt and the tool format fall off the front of
+  its window.
+
 ## 0.72.6 — 2026-09-24
 
 ### Beta / Dev → Release Summary

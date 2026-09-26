@@ -120,7 +120,8 @@ def sanitize_module_path(relative_path: str, base_dir: Path) -> Path:
     # separator is what stops /srv/modules-evil passing for /srv/modules.
     base_resolved = os.path.realpath(base_dir)
     candidate = os.path.realpath(os.path.join(base_resolved, relative_path))
-    if candidate != base_resolved and not candidate.startswith(base_resolved + os.sep):
+    # The base itself is not a module file either, so it is refused too.
+    if not candidate.startswith(base_resolved + os.sep):
         raise T1APIError(
             T1ErrorCode.PATH_TRAVERSAL_REJECTED,
             f"'{relative_path}' resolves outside the allowed module storage directory.",
