@@ -986,3 +986,17 @@ timeline
         : fa59f481 - hypernix-t1 runner finds the server where `start` put it; add `hypernix-t1 chat`
 ```
 
+## Release v0.72.6.post2 (2026-09-27)
+
+```mermaid
+timeline
+    title Release v0.72.6.post2 Commits
+    0.72.6.post2
+        : 20b4cbaf - 0.72.6.post2- HyperLink on the web works from the tailnet, and says why a reply failed
+        : 0002558b - HyperLink- a model reads the link it is given
+        : 28d8e5f3 - chore- refresh generated docs data and release summaries
+        : 29dd64a3 - chore- refresh generated docs data and release summaries
+        : 069fcdc3 - Auto-update README header (hourly)
+        : 91e6ce60 - chore- refresh generated docs data and release summaries
+```
+
