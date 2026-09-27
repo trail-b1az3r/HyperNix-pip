@@ -1760,6 +1760,8 @@ instead, which is a real answer rather than a degraded one.
 | `T1_HYPERLINK_DEFAULT_PROMPT` | on | HyperLink's default system prompt on this backend (below) |
 | `T1_HYPERLINK_TEACH_TOOLS` | on | Teach the written tool-call format in the system prompt; `runner` for the built-in runner only, `0` never |
 | `T1_DEFAULT_MODEL` | `hypernix.3-mini` | What `hypernix-t1 runner start` loads when no model is named; empty turns the default off |
+| `T1_WEB_ENABLED` | on | Host HyperLink on the web (below) |
+| `T1_WEB_PORT` | `37965` | Its port; `0` turns it off |
 
 #### Tools in a HyperLink chat (0.72.6.rc3)
 
@@ -1834,6 +1836,38 @@ override it without having to argue with it. It is composed per turn
 and never stored in the chat, so changing it never rewrites history.
 The text is `hypernix.hyperlink.default_prompt.DEFAULT_PROMPT`, and
 `T1_HYPERLINK_DEFAULT_PROMPT=0` turns it off.
+
+#### HyperLink on the web (0.72.6.post1)
+
+While the T1 API runs, it also hosts HyperLink as a website on port
+**37965**: `http://127.0.0.1:37965` on the machine, and
+`http://<its Tailscale address>:37965` from your other devices on the
+tailnet. It never listens on the LAN, and it notices a tailnet that
+comes up after the server has started.
+
+The site does most of what the app does: chats with streamed replies and
+the tools the model ran, the model picker, the runner (load, unload,
+move from LM Studio), memories, and settings. It is dark and fits a
+phone. It shares the API's origin, so it signs in as any client does:
+with no key where trusted-network mode allows that origin, otherwise
+with a HyperLink pairing code or a key, which that browser keeps.
+
+`T1_WEB_ENABLED=0` or `T1_WEB_PORT=0` turns it off. The page is served
+from a fixed list of four files with a strict content security policy,
+and every other path is the T1 API itself.
+
+#### Moving a model out of LM Studio (0.72.6.post1)
+
+| Route | What it does |
+| --- | --- |
+| `GET /runner/adopt` | Whether this caller may move LM Studio's model onto the runner (`allowed`, `why`), whether there is one to move (`available`), and what LM Studio has loaded |
+| `POST /runner/adopt` | `{"model_id"?, "backend"?, "gpu_layers"?, "context_length"?}`. Unloads the model from LM Studio and loads the same GGUF on the runner. If the runner cannot load it, it goes back into LM Studio, and the refusal says whether that worked |
+
+Only admins, and callers on this machine or its tailnet, may move a
+model: the move ejects another application's model. The file is found
+with `lms ls --json` when LM Studio's `lms` command is installed, and
+otherwise by matching the model id against LM Studio's models folder. A
+match that is not unique is refused, with the candidates listed.
 
 ## Trusted network mode
 

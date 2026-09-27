@@ -214,14 +214,41 @@ Historical wording and technical detail are retained during format normalization
   every one of the ~50 per-module wiki pages against source — those were
   spot-checked, not exhaustively re-verified.
 
-## 0.72.6.post1 — 2026-09-26
+## 0.72.6.post1 — 2026-09-27
 
 The first patch to 0.72.6: the runner command could not find a server
 on another port, HyperLink still could not call tools on most local
-models, the high-rated security findings, and HyperNix.3-mini as the
-runner's default model.
+models, the high-rated security findings, HyperNix.3-mini as the
+runner's default model, HyperLink on the web on port 37965, and a
+button that moves LM Studio's model onto the HyperNix runner.
 
 ### Added
+
+๋࣭⭑ **HyperLink on the web, on port 37965.** While the T1 API runs it also
+  hosts a site that works like the app: chats with streamed replies and
+  the tools the model ran, the model picker, the runner (load, unload,
+  and the move below), memories kept current with `/memory/sync`, and
+  settings. It is dark, and fits a phone. It listens on 127.0.0.1 and
+  this machine's Tailscale addresses only, never the LAN, and picks up
+  a tailnet that comes up after the server does.
+  `T1_WEB_ENABLED=0` or `T1_WEB_PORT` changes that.
+
+𖥔 The site shares the API's origin, so it signs in the way any client
+  does: keyless where trusted-network mode allows it, else a HyperLink
+  pairing code or a key, kept in that browser. It has a strict content
+  security policy with no inline script, and model text is escaped
+  before the few tags the page adds.
+
+๋࣭⭑ **Move LM Studio's model onto the HyperNix runner.** A button on
+  HyperLink's Runner screen, and on the site, for admins and devices on
+  the server's tailnet or at the machine. It unloads the model LM Studio
+  is serving and loads the same GGUF on this server's runner, so the
+  server can place its layers, switch it and queue prompts on it. The
+  file is found with `lms ls --json`, or in LM Studio's models folder,
+  and two candidates are refused rather than guessed between. It is
+  unloaded first, so the VRAM is never asked for twice, and put back in
+  LM Studio if the runner cannot load it. `GET /runner/adopt` says
+  whether the button applies; `POST /runner/adopt` makes the move.
 
 ๋࣭⭑ **HyperNix.3-mini is the runner's default model.** `hypernix-t1
   runner start` with no model named loads
@@ -269,6 +296,12 @@ runner's default model.
 
 🛡️ The examples script no longer commits T1 token and deploy secrets.
   The consent-gated shell tools in `hyped` carry `nosec` with the reason.
+
+🛡️ A keyless caller, a phone or the site on a trusted network, gets the
+  read-only T1 tools instead of none, so its model can answer "which
+  version is this server". Nothing that writes is offered: the server
+  calls itself from loopback, which may be trusted more than the
+  caller's network, and what differs between them is write access.
 
 ### Fixed
 
@@ -326,6 +359,16 @@ runner's default model.
 🧪 `tests/test_hyperlink_brewed.py` (27): a two-layer model of the same
   architecture through the loader, the server, the runner's subprocess,
   the catalogue and the downloader.
+
+🧪 `tests/test_runner_adopt.py` (12): finding the file by folder, by
+  `lms`, and refusing two; unloading through the API or `lms`; who may;
+  the move, and a failed load put back in LM Studio.
+
+🧪 `tests/test_hyperlink_web.py` (15): the page and the API on one
+  origin, its headers, no request path becoming a file path, listening
+  on loopback and tailnet addresses only, the server starting and
+  stopping it, dark mode, and Node checking that model text is escaped.
+  The page was also driven in Chromium at desktop and phone sizes.
 
 ### Known Issues
 
