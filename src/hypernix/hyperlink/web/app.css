@@ -1,31 +1,19 @@
-/* HyperLink on the web: the app's look, in one sheet. Colours are tokens,
-   redefined for dark mode, so every surface follows the system setting. */
+/* HyperLink on the web: the app's look, in one sheet. Colours are tokens. */
+/* Dark, whatever the system says: HyperLink on the web is a dark app. */
 :root {
-  --bg: #f4f4f7;
-  --panel: #ffffff;
-  --panel-2: #ececf1;
-  --text: #16161d;
-  --muted: #6b6b78;
-  --line: #dcdce4;
-  --accent: #6d5dfc;
+  color-scheme: dark;
+  --bg: #0e0e13;
+  --panel: #17171f;
+  --panel-2: #20202b;
+  --text: #ececf3;
+  --muted: #9a9aab;
+  --line: #2b2b38;
+  --accent: #8475ff;
   --accent-text: #ffffff;
-  --bubble-them: #e7e7ee;
-  --danger: #d33a3a;
+  --bubble-them: #262633;
+  --danger: #ff6b6b;
   --radius: 18px;
   --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0e0e13;
-    --panel: #17171f;
-    --panel-2: #20202b;
-    --text: #ececf3;
-    --muted: #9a9aab;
-    --line: #2b2b38;
-    --accent: #8475ff;
-    --bubble-them: #262633;
-    --danger: #ff6b6b;
-  }
 }
 
 * { box-sizing: border-box; }
@@ -42,6 +30,7 @@ input, textarea, select {
   width: 100%; border: 1px solid var(--line); border-radius: 10px;
   background: var(--panel); padding: 9px 11px;
 }
+input:focus, textarea:focus, select:focus { outline: none; border-color: var(--accent); }
 code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .92em; }
 .muted { color: var(--muted); font-size: 13px; }
 .error { color: var(--danger); }

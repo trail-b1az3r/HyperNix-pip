@@ -148,6 +148,14 @@ class TestWhereItListens:
 
 
 class TestThePageItself:
+    def test_it_is_dark(self):
+        """Dark whatever the system is set to (asked for in 0.72.6.post1)."""
+        css = (WEB / "app.css").read_text()
+        root = css[css.index(":root {"):css.index("}", css.index(":root {"))]
+        assert "color-scheme: dark" in root and "--bg: #0e0e13" in root
+        assert "prefers-color-scheme: light" not in css
+        assert '<meta name="color-scheme" content="dark">' in (WEB / "index.html").read_text()
+
     def test_no_inline_script_so_the_policy_can_forbid_it(self):
         html = (WEB / "index.html").read_text()
         assert re.findall(r"<script(?![^>]*\bsrc=)", html) == []
