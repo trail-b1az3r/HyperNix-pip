@@ -63,6 +63,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import secrets
 import shutil
 import socket
@@ -438,6 +439,21 @@ _OUR_PORT: int = 0
 _CACHE: tuple[float, Status] | None = None
 
 
+#: An X display name: an optional host, then `:display[.screen]`.
+_X_DISPLAY = re.compile(r"[A-Za-z0-9_.\-/]*:\d{1,4}(\.\d{1,3})?")
+
+
+def _x_display() -> str:
+    """``$DISPLAY`` when it is a display name, else ``:0``.
+
+    It becomes x11vnc's ``-display`` argument. Anything but a display
+    name there -- an option such as ``-rfbauth x``, or a stray space --
+    would be x11vnc's to misread, so it is refused and the default used.
+    """
+    value = os.environ.get("DISPLAY", "")
+    return value if _X_DISPLAY.fullmatch(value) else ":0"
+
+
 def _listen_args(backend: str, listen: str) -> list[str]:
     if backend != "x11vnc":
         return []
@@ -512,7 +528,7 @@ def start(
     if backend.name == "x11vnc":
         command = [
             "x11vnc",
-            "-display", os.environ.get("DISPLAY", ":0"),
+            "-display", _x_display(),
             "-rfbport", str(chosen),
             "-forever", "-shared", "-q",
             # Not -bg. Backgrounding is why the old code could not tell a
@@ -532,6 +548,9 @@ def start(
         command += ["0.0.0.0" if listen in ("lan", "all") else "127.0.0.1", str(chosen)]
 
     try:
+        # An argv list, no shell; the one value from the environment,
+        # $DISPLAY, is checked to be a display name by _x_display.
+        # nosemgrep: python.lang.security.audit.dangerous-subprocess-use-tainted-env-args.dangerous-subprocess-use-tainted-env-args
         process = subprocess.Popen(
             command,
             stdout=subprocess.DEVNULL,

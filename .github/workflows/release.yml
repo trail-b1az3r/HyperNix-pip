@@ -59,7 +59,12 @@ jobs:
       # and a demo.
       local_engine: true
       version: ""
-    secrets: inherit
+    secrets:
+      IOS_DIST_CERTIFICATE_P12: ${{ secrets.IOS_DIST_CERTIFICATE_P12 }}
+      IOS_DIST_CERTIFICATE_PASSWORD: ${{ secrets.IOS_DIST_CERTIFICATE_PASSWORD }}
+      IOS_PROVISIONING_PROFILE: ${{ secrets.IOS_PROVISIONING_PROFILE }}
+      IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
+      IOS_EXPORT_METHOD: ${{ secrets.IOS_EXPORT_METHOD }}
 
   # ---------------------------------------------------------------------------
   # Verify the git tag matches pyproject.toml before any publish step.

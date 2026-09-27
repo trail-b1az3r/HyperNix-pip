@@ -59,6 +59,20 @@ on:
         description: "Marketing version to stamp into the build"
         type: string
         default: ""
+    # Named, not inherited: a caller hands this workflow the signing
+    # secrets it uses and nothing else. All optional, as they are for a
+    # push or a dispatch -- without them the IPA is built unsigned.
+    secrets:
+      IOS_DIST_CERTIFICATE_P12:
+        required: false
+      IOS_DIST_CERTIFICATE_PASSWORD:
+        required: false
+      IOS_PROVISIONING_PROFILE:
+        required: false
+      IOS_TEAM_ID:
+        required: false
+      IOS_EXPORT_METHOD:
+        required: false
     outputs:
       ipa_artifact:
         description: "Name of the uploaded IPA artifact"
@@ -123,6 +137,10 @@ jobs:
 
       - name: Work out the version to stamp
         id: version
+        # The input arrives as an environment variable, not as text in
+        # the script, so no version string can become a shell command.
+        env:
+          SUPPLIED_VERSION: ${{ inputs.version }}
         run: |
           set -euo pipefail
           # The app's marketing version tracks the T1 API's year.month
@@ -130,7 +148,7 @@ jobs:
           # support question will quote. CFBundleVersion is the run
           # number, which is monotonic and unique — App Store Connect
           # and TestFlight both require that.
-          supplied="${{ inputs.version }}"
+          supplied="${SUPPLIED_VERSION:-}"
           if [ -n "$supplied" ]; then
             marketing="$supplied"
           else

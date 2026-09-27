@@ -63,6 +63,10 @@ let _resolvedPythonBin: string | null = null;
 
 function probeInterpreter(candidate: string): boolean {
   try {
+    // An argv array with no shell: `candidate` is a Python found on this
+    // machine's PATH or named by HYPED_PRO_PYTHON, run to see whether it
+    // can import hypernix. Nothing in it is interpreted as a command.
+    // nosemgrep: javascript.lang.security.detect-child-process.detect-child-process
     const result = spawnSync(candidate, ['-c', 'import hypernix'], { stdio: 'ignore', timeout: 8000 });
     return !result.error && result.status === 0;
   } catch {

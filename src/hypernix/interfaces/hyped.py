@@ -1000,6 +1000,7 @@ class ToolRegistry:
             # DANGEROUS_TOOLS). shell=True is the tool's stated purpose.
             res = subprocess.run(  # nosec B602 - consent-gated shell tool
                 command,
+                # nosemgrep: python.lang.security.audit.subprocess-shell-true.subprocess-shell-true
                 shell=True,  # noqa: S602
                 cwd=cwd or os.getcwd(),
                 capture_output=True,
@@ -1320,6 +1321,7 @@ class ToolRegistry:
         try:
             # nosec B602 - consent-gated, as above.
             proc = subprocess.Popen(  # nosec B602 - consent-gated shell tool
+                # nosemgrep: python.lang.security.audit.subprocess-shell-true.subprocess-shell-true
                 command, shell=True,  # noqa: S602
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                 start_new_session=True,
