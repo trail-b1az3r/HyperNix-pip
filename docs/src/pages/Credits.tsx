@@ -59,7 +59,7 @@ export function CreditsPage() {
             >
               <div
                 className="eyebrow"
-                style={{ color: 'var(--accent-text)', marginBottom: 10, fontSize: 10.5 }}
+                style={{ color: 'var(--accent-text)', marginBottom: 10, fontSize: 11 }}
               >
                 {group.provider}
               </div>

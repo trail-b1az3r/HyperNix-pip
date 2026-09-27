@@ -466,14 +466,30 @@ def create_app(
     app.state.t1_retention = RetentionSweeper(db, app.state.t1_conceal, attachments=attachments)
     retention = app.state.t1_retention
     previous_lifespan = app.router.lifespan_context
+    # 0.72.6.post1 -- HyperLink on the web, on 127.0.0.1 and the tailnet
+    # (t1api.hyperlink_web). Started with the server like the sweeper,
+    # so an app a test builds binds nothing.
+    web = None
+    if cfg.web_enabled and cfg.web_port > 0:
+        from .hyperlink_web import WebListener
+
+        web = WebListener(app, port=cfg.web_port)
+    app.state.t1_web = web
 
     @contextlib.asynccontextmanager
     async def _lifespan(lifespan_app):
         retention.start()
+        if web is not None:
+            try:
+                web.start()
+            except Exception:  # noqa: BLE001 - the site is extra; the API must still start
+                logger.warning("t1api: the HyperLink web site did not start", exc_info=True)
         try:
             async with previous_lifespan(lifespan_app) as state:
                 yield state
         finally:
+            if web is not None:
+                web.stop()
             retention.stop()
 
     app.router.lifespan_context = _lifespan

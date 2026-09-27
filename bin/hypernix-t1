@@ -762,6 +762,17 @@ cmd_runner() {
     exec "$py" -m hypernix.t1api.runner_cli "$@"
 }
 
+cmd_chat() {
+  # Talks to the running server, like `runner`. Here so a chat with a
+  # system prompt is one command in any shell, rather than curl and
+  # `VAR=$(...)` lines that fish refuses.
+  require_installed
+  load_env
+  local py; py="$(python_bin)"
+  T1_CONFIG_DIR="${T1_CONFIG_DIR:-$CONFIG_DIR}" \
+    exec "$py" -m hypernix.t1api.chat_cli "$@"
+}
+
 cmd_index() {
   # No require_installed: indexing reads GGUF files and writes JSON, and
   # needs neither a configured server nor the [t1api] extra. Someone who
@@ -920,6 +931,9 @@ hypernix-t1 — manage a T1 API server (also installed as hnx-t1)
                         instead of forwarding to LM Studio. \`start\` with
                         no model named picks the one on this machine when
                         there is only one. Also spelled \`runner\`.
+  chat [-s SYSTEM] [--new] MESSAGE
+                        Send a message to the served model and print the
+                        reply. Carries on the same chat until --new.
   configure             Edit the configuration in \$EDITOR
   test                  Health, status, and a real end-to-end probe
   key ...               Run gkey against this server's key store
@@ -950,6 +964,7 @@ main() {
     built-in-runner|builtin-runner)
                        cmd_runner built-in-runner "$@" ;;
     runner)            cmd_runner runner "$@" ;;
+    chat)              cmd_chat "$@" ;;
     launch-script)     cmd_launch_script "$@" ;;
     override)          cmd_override "$@" ;;
     training)          cmd_training "$@" ;;

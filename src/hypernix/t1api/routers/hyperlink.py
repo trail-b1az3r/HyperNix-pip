@@ -806,17 +806,31 @@ def _last_user_message(store, session_id: str, owner: str):
 def _t1_access(request: Request | None, principal):
     """How the model reaches this server's own API, or None for no T1 tools.
 
-    None for a keyless caller. The server calling itself comes from
-    loopback, which trusted-network mode can treat as a *different*,
-    more trusted network than the phone's — the model would be acting as
-    somebody other than the person. With a credential, it is theirs.
+    With a credential, the model uses it, and can do what the person
+    could by hand.
+
+    A keyless caller (a phone or the web site on a trusted network) gets
+    the read-only tools only (0.72.6.post1; before, none at all, so the
+    model said it had no tools). The server calling itself comes from
+    loopback, which trusted-network mode may trust *more* than the
+    caller's own network: what differs between origins is partial
+    admin, which is write access. A caller is keyless only if its own
+    origin already allows reading, so the read tools give it nothing it
+    could not ask for itself, and nothing that writes is offered.
     """
     if request is None:
         return None
     header = request.headers.get("authorization") or ""
-    if not header.lower().startswith("bearer "):
-        return None
     from ...hyperlink.toolloop import T1Access
+
+    if not header.lower().startswith("bearer "):
+        host, port = (request.scope.get("server") or ("127.0.0.1", 8000))[:2]
+        if host in ("0.0.0.0", "::", "", None):
+            host = "127.0.0.1"
+        if ":" in str(host):
+            host = f"[{host}]"
+        base = f"{request.url.scheme}://{host}:{port}{request.scope.get('root_path', '')}"
+        return T1Access(base, "", allow_mutating=False)
 
     host, port = (request.scope.get("server") or ("127.0.0.1", 8000))[:2]
     if host in ("0.0.0.0", "::", "", None):
@@ -852,6 +866,28 @@ class _ToolSetup:
         self.context = context
         self.t1 = t1
         self.workspace = workspace
+
+
+def _teach_tools(backend) -> bool:
+    """Whether the tool format goes into the system prompt, as text.
+
+    It used to be taught only on the built-in runner, on the theory that
+    LM Studio passes ``tools`` to a model whose template knows what to do
+    with it. Many templates do not (Gemma's among them), and a model
+    whose template drops the field never learns the tools exist: it says
+    it has none, which is what HyperLink kept being told. Taught
+    everywhere now; the parser reads the native form and the taught one
+    alike. ``T1_HYPERLINK_TEACH_TOOLS=0`` turns it off, ``=runner`` keeps
+    the old behaviour.
+    """
+    import os
+
+    setting = os.environ.get("T1_HYPERLINK_TEACH_TOOLS", "").strip().lower()
+    if setting in ("0", "false", "no", "off"):
+        return False
+    if setting == "runner":
+        return bool(getattr(backend, "is_hypernix", False))
+    return True
 
 
 def _memory_head(store: MemoryStore | None, owner: str) -> int:
@@ -1281,7 +1317,7 @@ def chat_turn(
                 # trained on a text tool format rather than structured
                 # calls. Teaching the format costs one system message and
                 # is what makes those models call tools at all.
-                teach_format=bool(backend.is_hypernix),
+                teach_format=_teach_tools(backend),
             )
         else:
             envelope = bridge.chat(
@@ -1484,7 +1520,7 @@ def chat_turn_stream(
 
                 for kind, value in stream_tool_loop(
                     wire, setup.context, ask_stream=ask_stream, t1=setup.t1,
-                    teach_format=bool(backend.is_hypernix), workspace=setup.workspace,
+                    teach_format=_teach_tools(backend), workspace=setup.workspace,
                     cancelled=lambda: active.cancelled,
                 ):
                     if kind == "delta":

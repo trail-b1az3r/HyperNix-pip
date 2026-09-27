@@ -63,6 +63,21 @@ _ADDED_COLUMNS: tuple[tuple[str, str], ...] = (
 GROUPABLE = ("model_id", "key_id", "server_id", "module_id", "user_id", "account_id", "endpoint")
 FILTERABLE = GROUPABLE
 
+#: The column each dimension names, as literals. Queries interpolate the
+#: value looked up here, never the caller's string: the allowlist checks
+#: already refused anything else, and this makes it impossible for the
+#: SQL text to hold text a request supplied even if one were missed.
+_COLUMNS: dict[str, str] = {
+    "model_id": "model_id",
+    "key_id": "key_id",
+    "server_id": "server_id",
+    "module_id": "module_id",
+    "user_id": "user_id",
+    "account_id": "account_id",
+    "endpoint": "endpoint",
+}
+assert set(_COLUMNS) == set(GROUPABLE)
+
 
 class UsageStore:
     """Thread-safe store for per-request usage events.
@@ -180,9 +195,10 @@ class UsageStore:
         for column, value in filters.items():
             if value is None:
                 continue
-            if column not in FILTERABLE:
+            name = _COLUMNS.get(column)
+            if name is None or column not in FILTERABLE:
                 raise ValueError(f"{column!r} is not a filterable usage dimension")
-            clauses.append(f"{column} = ?")
+            clauses.append(f"{name} = ?")
             params.append(value)
         if since is not None:
             clauses.append("ts >= ?")
@@ -228,15 +244,16 @@ class UsageStore:
     ) -> list[dict[str, Any]]:
         """Grouped totals along one dimension — the single query behind
         every "usage by model/key/server/module/user/account" report."""
-        if group_by not in GROUPABLE:
+        column = _COLUMNS.get(group_by)
+        if column is None:
             raise ValueError(f"{group_by!r} is not a groupable usage dimension")
         where, params = self._where(filters, since=since, until=until)
         query = (
-            f"SELECT {group_by} AS group_key, "
+            f"SELECT {column} AS group_key, "
             "COALESCE(SUM(requests),0) AS requests, "
             "COALESCE(SUM(input_tokens),0) AS input_tokens, "
             "COALESCE(SUM(output_tokens),0) AS output_tokens "
-            f"FROM usage_events{where} GROUP BY {group_by} "
+            f"FROM usage_events{where} GROUP BY {column} "
             "ORDER BY (SUM(input_tokens) + SUM(output_tokens)) DESC LIMIT ?"
         )
         with self._lock, self.backend.connect() as conn:

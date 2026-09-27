@@ -19,6 +19,7 @@ Writes:
 from __future__ import annotations
 
 import json
+import secrets
 import shutil
 import sys
 import tempfile
@@ -125,10 +126,12 @@ def build() -> None:
             registry.register(entry)
 
         config = T1APIConfig(
-            token_secret="example-token-secret-not-a-real-one-0123456789",
+            # Made fresh each run: a secret written into the repo is a
+            # secret somebody copies into a real .env.
+            token_secret=secrets.token_hex(32),
             db_path=str(workdir / "t1.sqlite3"),
             module_storage_dir=str(workdir / "modules"),
-            deploy_secret="example-deploy-secret-not-a-real-one-0123456789",
+            deploy_secret=secrets.token_hex(32),
         )
         app = create_app(
             config=config, keymaster=km, gatekeeper=gk, registry=registry,

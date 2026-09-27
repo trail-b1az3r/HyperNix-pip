@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#0e0e13">
+  <title>HyperLink</title>
+  <link rel="icon" href="/web/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/web/app.css">
+  <script src="/web/app.js" defer></script>
+</head>
+<body>
+  <div id="app" class="app" hidden>
+    <aside class="sidebar" id="sidebar">
+      <header class="sidebar-head">
+        <img src="/web/icon.svg" alt="" class="logo">
+        <div class="brand">
+          <strong>HyperLink</strong>
+          <span id="server-name" class="muted">this server</span>
+        </div>
+        <button class="icon-button" id="new-chat" title="New chat" aria-label="New chat">＋</button>
+      </header>
+      <nav class="tabs" role="tablist">
+        <button role="tab" data-view="chats" class="tab active">Chats</button>
+        <button role="tab" data-view="runner" class="tab">Runner</button>
+        <button role="tab" data-view="memory" class="tab">Memory</button>
+        <button role="tab" data-view="settings" class="tab">Settings</button>
+      </nav>
+      <input id="search" class="search" type="search" placeholder="Search chats" aria-label="Search chats">
+      <ul id="sessions" class="sessions" aria-label="Chats"></ul>
+      <footer class="sidebar-foot muted" id="who"></footer>
+    </aside>
+
+    <main class="main">
+      <section class="view" id="view-chats">
+        <header class="chat-head">
+          <button class="icon-button only-narrow" id="show-sidebar" aria-label="Chats">☰</button>
+          <div class="chat-title">
+            <h1 id="chat-title">New chat</h1>
+            <select id="model-picker" aria-label="Model"></select>
+          </div>
+          <button class="icon-button" id="rename-chat" title="Rename" aria-label="Rename chat">✎</button>
+          <button class="icon-button danger" id="delete-chat" title="Delete" aria-label="Delete chat">🗑</button>
+        </header>
+        <div class="thread" id="thread" aria-live="polite"></div>
+        <form class="composer" id="composer">
+          <textarea id="message" rows="1" placeholder="Message" aria-label="Message"></textarea>
+          <button type="submit" id="send" class="send" aria-label="Send">↑</button>
+          <button type="button" id="stop" class="send stop" aria-label="Stop" hidden>■</button>
+        </form>
+      </section>
+
+      <section class="view" id="view-runner" hidden>
+        <header class="page-head"><h1>Runner</h1>
+          <button class="icon-button" id="refresh-runner" aria-label="Refresh">↻</button></header>
+        <div class="card" id="runner-now"></div>
+        <div class="card" id="runner-adopt" hidden></div>
+        <h2>Models on this server</h2>
+        <ul class="list" id="runner-models"></ul>
+        <p class="error" id="runner-error" hidden></p>
+      </section>
+
+      <section class="view" id="view-memory" hidden>
+        <header class="page-head"><h1>Memory</h1></header>
+        <form class="inline-form" id="remember">
+          <input id="remember-text" placeholder="Remember something" aria-label="Remember something">
+          <button type="submit">Add</button>
+        </form>
+        <ul class="list" id="memories"></ul>
+        <p class="muted" id="memory-note"></p>
+      </section>
+
+      <section class="view" id="view-settings" hidden>
+        <header class="page-head"><h1>Settings</h1></header>
+        <form class="settings" id="settings">
+          <label>Your name<input name="display_name"></label>
+          <label>System prompt<textarea name="system_prompt" rows="5"></textarea></label>
+          <label class="check"><input type="checkbox" name="auto_memory"> Remember things automatically</label>
+          <label class="check"><input type="checkbox" name="tools_enabled"> Let the model use its workspace</label>
+          <label class="check"><input type="checkbox" name="auto_compact"> Compress long chats</label>
+          <label class="check"><input type="checkbox" name="model_titles"> Let the model name chats</label>
+          <button type="submit">Save</button>
+          <p class="muted" id="settings-note"></p>
+        </form>
+        <div class="card">
+          <h2>This browser</h2>
+          <p class="muted" id="sign-in-state"></p>
+          <button id="sign-out" type="button">Sign out</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="sign-in" class="sign-in" hidden>
+    <form class="card sign-in-card" id="sign-in-form">
+      <img src="/web/icon.svg" alt="" class="logo big">
+      <h1>HyperLink</h1>
+      <p class="muted">This server's own HyperLink. Pair this browser with a code from the app
+        (Servers → Pair another device) or <code>hypernix-t1 key</code>, or paste a key.</p>
+      <label>Pairing code or key<input id="credential" autocomplete="off" autofocus></label>
+      <button type="submit">Sign in</button>
+      <p class="error" id="sign-in-error" hidden></p>
+    </form>
+  </div>
+</body>
+</html>

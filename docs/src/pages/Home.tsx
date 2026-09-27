@@ -255,7 +255,7 @@ function HomePage({ setPage, downloads, olderDownloads, totalDownloads, ghStats,
                 <div style={{ display:'grid', gap:8 }}>
                   {(changelogEntries[0].highlights || []).slice(0, 5).map((item, i) => (
                     <div key={`${i}-${item}`} style={{ display:'flex', gap:10, alignItems:'flex-start', padding:'9px 10px', background:'var(--surface-1)', borderRadius:8 }}>
-                      <span className="tabular" style={{ color:'var(--accent)', fontSize:10.5, minWidth:20 }}>{String(i + 1).padStart(2,'0')}</span>
+                      <span className="tabular" style={{ color:'var(--accent)', fontSize:11, minWidth:20 }}>{String(i + 1).padStart(2,'0')}</span>
                       <span style={{ color:'var(--text-dim)', fontSize:12.5, lineHeight:1.6 }}>{item}</span>
                     </div>
                   ))}

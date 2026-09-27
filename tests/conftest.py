@@ -49,6 +49,11 @@ STORAGE_KEYS = (
     "T1_BACKUP_DIR",
     "T1_MODULE_STORAGE_DIR",
     "T1_CONFIG_DIR",
+    # Not storage, but kept for the same reason: a suite that clears its
+    # configuration still must not have every server it starts bind the
+    # real port 37965 for the HyperLink web site. Tests of the site turn
+    # it on themselves.
+    "T1_WEB_ENABLED",
 )
 
 
@@ -66,6 +71,7 @@ def _redirect_environment() -> None:
     # real home. The same variable covers the registry, the launcher and
     # the training monitor.
     os.environ.setdefault("T1_CONFIG_DIR", str(_SESSION_ROOT / "config"))
+    os.environ.setdefault("T1_WEB_ENABLED", "0")
 
 
 def clear_t1_config(monkeypatch) -> None:

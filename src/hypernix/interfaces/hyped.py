@@ -998,7 +998,7 @@ class ToolRegistry:
             # nosec B602 - reachable only through ToolRegistry.execute_tool,
             # which requires operator consent for this tool (see
             # DANGEROUS_TOOLS). shell=True is the tool's stated purpose.
-            res = subprocess.run(
+            res = subprocess.run(  # nosec B602 - consent-gated shell tool
                 command,
                 shell=True,  # noqa: S602
                 cwd=cwd or os.getcwd(),
@@ -1062,8 +1062,11 @@ class ToolRegistry:
             req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (X11; Linux x86_64)"})
             with urllib.request.urlopen(req, timeout=10) as resp:
                 html_raw = resp.read().decode("utf-8", errors="ignore")
-            text = re.sub(r'<script.*?</script>', '', html_raw, flags=re.DOTALL)
-            text = re.sub(r'<style.*?</style>', '', text, flags=re.DOTALL)
+            # Any case, and junk before the end tag's `>`, as browsers allow.
+            text = re.sub(r'<script\b.*?</script\b[^>]*>', '', html_raw,
+                          flags=re.DOTALL | re.IGNORECASE)
+            text = re.sub(r'<style\b.*?</style\b[^>]*>', '', text,
+                          flags=re.DOTALL | re.IGNORECASE)
             text = re.sub(r'<[^>]+>', ' ', text)
             text = html.unescape(text)
             text = re.sub(r'\s+', ' ', text).strip()
@@ -1316,7 +1319,7 @@ class ToolRegistry:
     def _run_background_command(self, command: str) -> str:
         try:
             # nosec B602 - consent-gated, as above.
-            proc = subprocess.Popen(
+            proc = subprocess.Popen(  # nosec B602 - consent-gated shell tool
                 command, shell=True,  # noqa: S602
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                 start_new_session=True,

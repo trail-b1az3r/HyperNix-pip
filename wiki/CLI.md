@@ -769,12 +769,37 @@ Studio, and without walking over to the machine. Also spelled
 `hypernix-t1 runner`; the two are the same command.
 
 ```bash
-hypernix-t1 built-in-runner start
+hypernix-t1 built-in-runner start                 # the default model, HyperNix.3-mini
 hypernix-t1 built-in-runner start qwen3-8b --gpu-layers 24 --backend cuda
 hypernix-t1 built-in-runner status
 hypernix-t1 built-in-runner plan qwen3-8b
 hypernix-t1 built-in-runner stop
 ```
+
+**The default model (0.72.6.post1).** `start` with no model named loads
+[HyperNix.3-mini](https://huggingface.co/ray0rf1re/HyperNix.3-mini), and
+the server downloads it into `~/.hypernix/models/HyperNix.3-mini` the
+first time (about 195 MB: the safetensors, config and tokenizer, never
+the pickled `model.pt`). It is HyperNix's own model: 48.7M parameters,
+trained from scratch on one GTX 1080, with a 512-token context. It is a
+**base model**. It completes text, it does not follow instructions or
+call tools, and at this size its text is often not coherent. For
+chatting with tools, name a GGUF instead. `T1_DEFAULT_MODEL` names a
+different default, and `T1_DEFAULT_MODEL=` (empty) turns the default
+off, so `start` loads the only model on the machine as it did before.
+
+**Native HyperNix models.** A folder with a brewer `config.json` and
+weights, like HyperNix.3-mini or anything `hnx brew` trained, is served
+by `hypernix.hyperlink.brewed_server` in PyTorch instead of llama.cpp,
+over the same OpenAI API, so HyperLink cannot tell the difference. The
+chat is written out as a `User:` / `Assistant:` transcript, which is the
+only format a base model can continue.
+
+**Where the server is.** `runner` and `chat` use `--url`, then `T1_URL`,
+then `T1_HOST`/`T1_PORT` from the environment or the server's `.env`,
+then port 8000. It used to try only 8000, so a server on 8001 was "not
+running" to it. If nothing answers there, it asks the nearby ports on
+this machine whether they are a T1 API, and says where it found one.
 
 **`start` does not make you name a model when there is only one.**
 `load` always did, which is right on a machine with forty of them and
@@ -822,6 +847,28 @@ with no key at all.
 A refusal is printed rather than raised, because a refusal is
 information: a 403 names the three ways to be allowed, and a 404 lists
 what this server *can* load.
+
+## `hypernix-t1 chat`
+
+```bash
+hypernix-t1 chat "What can you do here?"
+hypernix-t1 chat -s "You are terse. Answer in one line." "Which model are you?"
+hypernix-t1 chat "and on the GPU?"                # carries on the same chat
+hypernix-t1 chat --new "a fresh conversation"
+echo "summarise this" | hypernix-t1 chat
+```
+
+A message to the model this server serves, with the reply streamed to
+the terminal. It uses the same HyperLink route as the phone, so the
+answer comes from the built-in runner when a model is loaded there, with
+HyperLink's default system prompt and tools, and from LM Studio
+otherwise. `-s` sets this chat's own system prompt, which is added after
+the default one. The chat is remembered, so the next `chat` carries it
+on until `--new`. Tools the model runs are printed as `[tool ✓]` on
+stderr. `-q` prints only the reply.
+
+It replaces a curl recipe that needed `VAR=$(...)`, which fish refuses
+("Unsupported use of '='"), and works the same in any shell.
 
 ## `wakeup`
 

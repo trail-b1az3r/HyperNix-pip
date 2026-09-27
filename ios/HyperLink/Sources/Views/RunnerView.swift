@@ -27,6 +27,9 @@ struct RunnerView: View {
     @State private var selected: CatalogueModel?
     @State private var confirmingUnload = false
 
+    /// The LM Studio model whose move is being confirmed.
+    @State private var moving: String?
+
     private var loadable: [CatalogueModel] {
         // Only models with a file on this machine. A model the bridge
         // borrowed from LM Studio has no path here, and the runner
@@ -51,6 +54,7 @@ struct RunnerView: View {
                 }
             } else {
                 runningSection
+                lmStudioSection
                 loadableSection
             }
 
@@ -89,6 +93,49 @@ struct RunnerView: View {
                 "Anyone talking to this server stops getting answers until "
                 + "something is loaded again."
             )
+        }
+    }
+
+    /// Models LM Studio is serving, with a button to move each onto the
+    /// HyperNix runner. Shown only to admins and tailnet devices, and
+    /// only when LM Studio has something loaded.
+    @ViewBuilder
+    private var lmStudioSection: some View {
+        if let preview = state.adoptPreview, preview.available {
+            Section {
+                ForEach(preview.lmstudioLoaded, id: \.self) { modelID in
+                    Button {
+                        moving = modelID
+                    } label: {
+                        Label("Move \(shortModelName(modelID)) to the HyperNix runner",
+                              systemImage: "arrow.right.circle")
+                    }
+                    .disabled(state.runnerBusy)
+                }
+            } header: {
+                Text("In LM Studio")
+            } footer: {
+                Text(
+                    "Unloads it from LM Studio and loads the same file here, so this "
+                    + "server can place its layers, switch it and queue prompts on it. "
+                    + "If the runner cannot load it, it goes back into LM Studio. "
+                    + "Admins and devices on this server's tailnet only."
+                )
+            }
+            .confirmationDialog(
+                "Move to the HyperNix runner?",
+                isPresented: Binding(get: { moving != nil }, set: { if !$0 { moving = nil } }),
+                titleVisibility: .visible
+            ) {
+                Button("Move") {
+                    guard let modelID = moving else { return }
+                    moving = nil
+                    Task { await state.moveFromLMStudio(modelID) }
+                }
+                Button("Cancel", role: .cancel) { moving = nil }
+            } message: {
+                Text("Replies pause while it reloads. Whatever the runner is serving now is replaced.")
+            }
         }
     }
 

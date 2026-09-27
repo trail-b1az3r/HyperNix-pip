@@ -898,6 +898,20 @@ actor HyperLinkClient {
         try await post("/runner/load", body: request, as: RunnerStatus.self, timeout: 600)
     }
 
+    /// Whether "Move to the HyperNix runner" applies to this caller, and
+    /// what LM Studio has loaded. Admins and tailnet devices only.
+    func runnerAdoptPreview() async throws -> AdoptPreview {
+        try await get("/runner/adopt", as: AdoptPreview.self, timeout: 20)
+    }
+
+    /// Unload *modelID* from LM Studio and load the same file on the
+    /// runner. If the runner cannot load it, the server puts it back.
+    func runnerAdopt(modelID: String?, backend: String = "auto") async throws -> RunnerStatus {
+        struct Body: Encodable { let model_id: String?; let backend: String }
+        return try await post("/runner/adopt", body: Body(model_id: modelID, backend: backend),
+                              as: RunnerStatus.self, timeout: 600)
+    }
+
     /// Stop serving. Unloading nothing is a success, not an error.
     @discardableResult
     func runnerUnload() async throws -> RunnerStatus {

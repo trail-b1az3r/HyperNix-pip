@@ -740,6 +740,11 @@ def _normalise_url(url: str) -> str:
         return f"http://localhost:{DEFAULT_PORT}"
     if "://" not in url:
         url = "http://" + url
+    scheme = url.split("://", 1)[0].lower()
+    if scheme not in ("http", "https"):
+        # urlopen also speaks file:// and ftp://, and an admin-supplied
+        # override is the one URL here that arrives over HTTP.
+        raise LMStudioError(f"LM Studio's address must be http or https, not {scheme}://")
     url = url.rstrip("/")
     for suffix in ("/v1", "/api/v0"):
         if url.endswith(suffix):

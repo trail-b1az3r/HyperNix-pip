@@ -1827,3 +1827,31 @@ struct MemoryList: Decodable, Equatable, Sendable {
         count = try c.decodeIfPresent(Int.self, forKey: .count) ?? 0
     }
 }
+
+
+// MARK: - Moving a model out of LM Studio
+
+/// `GET /runner/adopt`: whether this caller may move LM Studio's model
+/// onto the HyperNix runner, and what LM Studio has loaded.
+struct AdoptPreview: Decodable, Equatable, Sendable {
+    let allowed: Bool
+    let why: String
+    let available: Bool
+    let lmstudioLoaded: [String]
+    let runnerModel: String
+
+    enum CodingKeys: String, CodingKey {
+        case allowed, why, available
+        case lmstudioLoaded = "lmstudio_loaded"
+        case runnerModel = "runner_model"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        allowed = try c.decodeIfPresent(Bool.self, forKey: .allowed) ?? false
+        why = try c.decodeIfPresent(String.self, forKey: .why) ?? ""
+        available = try c.decodeIfPresent(Bool.self, forKey: .available) ?? false
+        lmstudioLoaded = try c.decodeIfPresent([String].self, forKey: .lmstudioLoaded) ?? []
+        runnerModel = try c.decodeIfPresent(String.self, forKey: .runnerModel) ?? ""
+    }
+}

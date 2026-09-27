@@ -33,8 +33,10 @@ they cannot act on.
 """
 from __future__ import annotations
 
+import itertools
 import json
 import logging
+import re
 from collections.abc import Callable
 from typing import Any
 
@@ -188,6 +190,56 @@ def _truncate(text: str) -> str:
     )
 
 
+def _as_text_transcript(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """*messages* with tool calls and results written out as text.
+
+    For a backend that refused native tools. It would refuse an
+    assistant message carrying ``tool_calls`` and a ``tool`` role just as
+    readily, so a call becomes the ``<tool_call>`` text the model was
+    taught and its result a user turn it can read.
+    """
+    out: list[dict[str, Any]] = []
+    for message in messages:
+        role = message.get("role")
+        if role == "assistant" and message.get("tool_calls"):
+            written = []
+            for call in message["tool_calls"]:
+                function = call.get("function") or {}
+                written.append("<tool_call>" + json.dumps({
+                    "name": function.get("name", ""),
+                    "arguments": _arguments(function.get("arguments")),
+                }) + "</tool_call>")
+            text = str(message.get("content") or "").strip()
+            out.append({"role": "assistant", "content": "\n".join(filter(None, [text, *written]))})
+        elif role == "tool":
+            out.append({
+                "role": "user",
+                "content": f"<tool_response name=\"{message.get('name', '')}\">\n"
+                           f"{message.get('content', '')}\n</tool_response>",
+            })
+        else:
+            out.append(message)
+    return out
+
+
+class _Native:
+    """Whether the backend takes the ``tools`` field, learned by asking.
+
+    llama-server started without ``--jinja``, and some LM Studio
+    templates, reject a request that carries ``tools`` outright. The
+    first refusal switches the turn to the taught text convention for
+    good, rather than failing the person's message.
+    """
+
+    def __init__(self) -> None:
+        self.ok = True
+
+    def refuse(self, exc: BaseException) -> None:
+        self.ok = False
+        logger.info("hyperlink: the backend refused native tools (%s); "
+                    "using the written <tool_call> convention", exc)
+
+
 def run_tool_loop(
     wire: list[dict[str, Any]],
     context: ToolContext,
@@ -217,9 +269,18 @@ def run_tool_loop(
     rounds: list[ToolRound] = []
     envelope: dict[str, Any] = {}
     retried_format = False
+    native = _Native()
+
+    def ask_once(offered: list[dict[str, Any]]) -> dict[str, Any]:
+        if native.ok and offered:
+            try:
+                return ask(messages, offered)
+            except Exception as exc:  # noqa: BLE001 - retried below without tools
+                native.refuse(exc)
+        return ask(_as_text_transcript(messages) if not native.ok else messages, [])
 
     for round_number in range(max_rounds):
-        envelope = ask(messages, tools)
+        envelope = ask_once(tools)
         calls, failures = _calls_in(envelope, tools)
         if not calls:
             if failures and not retried_format:
@@ -272,7 +333,7 @@ def run_tool_loop(
                     f"did not get to."
                 ),
             })
-            envelope = ask(messages, [])
+            envelope = ask_once([])
 
     return messages, envelope, rounds
 
@@ -323,7 +384,15 @@ def _run_call(call: dict[str, Any], context: ToolContext, tools: list[dict[str, 
 # ---------------------------------------------------------------------------
 
 #: How a tool call written as text begins, in the formats _calls_in reads.
-CALL_MARKERS = ("<tool_call>", "[TOOL_CALLS]", "<|python_tag|>", "```json", "```tool")
+CALL_MARKERS = (
+    "<tool_call>", "[TOOL_CALLS]", "<|python_tag|>", "```json", "```tool",
+    "[TOOL_REQUEST]", "<function=", "<start_function_call>", "<|tool_call>",
+    "<｜tool▁call", '{"name"',
+)
+
+
+#: A tool result the model wrote itself.
+_INVENTED_RESULT = re.compile(r"<tool_response\b.*?(?:</tool_response>|$)", re.S)
 
 
 class CallGuard:
@@ -426,6 +495,29 @@ def stream_tool_loop(
     model, finish, usage = "", "", {}
     retried_format = False
     stopped = False
+    native = _Native()
+
+    def open_stream(offered: list[dict[str, Any]]):
+        """``(stream, chunks)``, falling back to no native tools on a refusal.
+
+        A refusal arrives on the first chunk, since the request is only
+        made when the stream is first read; after that, a failure is the
+        backend's and is raised as it would have been.
+        """
+        if native.ok and offered:
+            stream = ask_stream(messages, offered)
+            chunks = iter(stream)
+            try:
+                first = next(chunks)
+            except StopIteration:
+                return stream, iter(())
+            except Exception as exc:  # noqa: BLE001 - retried without tools
+                native.refuse(exc)
+            else:
+                return stream, itertools.chain([first], chunks)
+        wire_now = messages if native.ok else _as_text_transcript(messages)
+        stream = ask_stream(wire_now, [])
+        return stream, iter(stream)
 
     for round_number in range(max_rounds + 1):
         final = round_number == max_rounds
@@ -433,9 +525,9 @@ def stream_tool_loop(
         guard = CallGuard()
         slots: dict[int, dict[str, Any]] = {}
         finish = ""
-        stream = ask_stream(messages, offered)
+        stream, chunks = open_stream(offered)
         try:
-            for chunk in stream:
+            for chunk in chunks:
                 if cancelled():
                     stopped = True
                     break
@@ -469,6 +561,9 @@ def stream_tool_loop(
         if slots:
             message["tool_calls"] = [slots[i] for i in sorted(slots)]
         envelope = {"choices": [{"message": message, "finish_reason": finish}], "model": model}
+        # Read against the tools offered even when they were not sent
+        # natively: they were taught in the prompt, and the call comes
+        # back as text.
         calls, failures = _calls_in(envelope, offered) if offered else ([], [])
         if not calls:
             if failures and not retried_format:
@@ -547,9 +642,15 @@ def _assistant_message(
     # `content` is kept even when it is empty: some backends reject an
     # assistant message without the key, and some models write a
     # sentence *and* call a tool, which the person should see.
+    content = str(message.get("content") or "")
+    if calls:
+        # A model copying the taught example sometimes writes the result
+        # it expects after its call. Only the real result, which follows
+        # as its own message, may be believed.
+        content = _INVENTED_RESULT.sub("", content).strip()
     return {
         "role": "assistant",
-        "content": message.get("content") or "",
+        "content": content,
         "tool_calls": calls,
     }
 
