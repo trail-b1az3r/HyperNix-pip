@@ -83,13 +83,17 @@ TOOLS: tuple[T1Tool, ...] = (
     T1Tool("list_downloaded_models", "GET", "/hyperlink/models/downloaded",
            "GGUF files already on the server's disk."),
     T1Tool("web_search", "GET", "/web/v1/search",
-           "Search the web without an API key.",
+           "Search the live web. Use it for anything current, or anything "
+           "you do not know; it returns the pages found and text from them.",
            {"q": _s("What to search for."),
             "depth": _i("Result pages to read, 1 to 5.", minimum=1, maximum=5)},
            required=("q",)),
     T1Tool("web_summarize", "POST", "/web/v1/summarize",
-           "Summarise a web page or a piece of text.",
-           {"url": _s("A page to fetch and summarise."),
+           "Open a web page and read it: give it any http or https link, such "
+           "as a GitHub repository, a file on GitHub, or an article, and it "
+           "returns what the page says. Use it whenever the person gives you "
+           "a link. It can also summarise a piece of text.",
+           {"url": _s("The link to open, for example https://github.com/owner/repo."),
             "text": _s("Text to summarise instead of a URL."),
             "query": _s("What the summary should focus on."),
             "sentences": _i("Roughly how many sentences.", minimum=1, maximum=12)},
@@ -162,6 +166,10 @@ def call_tool(
 
     args = {k: v for k, v in (arguments or {}).items()
             if k in tool.parameters and v not in (None, "")}
+    if isinstance(args.get("url"), str):
+        # A link as people paste it, .../repo#readme, is refused by the
+        # endpoint for its fragment, which is never sent to a site anyway.
+        args["url"] = urllib.parse.urldefrag(args["url"].strip())[0]
     url = base_url.rstrip("/") + tool.path
     data = None
     if tool.body:

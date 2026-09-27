@@ -366,6 +366,22 @@ Historical wording and technical detail are retained during format normalization
 🐛 Fixed a result the model writes itself after its call being shown and
   kept; it is now removed.
 
+𖢥 Fixed a HyperLink model saying it cannot browse when given a link.
+  - Reported from a phone: asked to look at a GitHub repository, the
+    model listed read_memory and update_memory as its only tools and
+    said three times that it could not open a web page.
+  - The phone had no key, and a keyless caller got no T1 tools, so no
+    `web_search` or `web_summarize` (fixed above, under Security).
+  - Nothing it was told said a link could be opened either. The
+    `web_summarize` tool now says it opens any http or https link, a
+    GitHub repository included; the taught prompt says, when a web tool
+    is offered, that the model can reach the web and must not say it
+    cannot browse; and the default prompt says an offered tool is an
+    ability the model has.
+🐛 Fixed a link pasted with a fragment (`…/repo#readme`) failing
+  `web_summarize`: the fragment, which is never sent to a site, is
+  dropped before the call.
+
 ### Dependencies and Packaging
 
 📦 Added the site's files (`hypernix/hyperlink/web/`) to the package data
@@ -430,6 +446,10 @@ Historical wording and technical detail are retained during format normalization
   on loopback and tailnet addresses only, the server starting and
   stopping it, dark mode, and Node checking that model text is escaped.
   - The page was also driven in Chromium at desktop and phone sizes.
+🧪 Added `tests/test_hyperlink_reads_links.py` (5): a keyless phone on a
+  trusted network pastes a GitHub link, the model is offered the web
+  tools and told it can open links, calls `web_summarize`, and gets the
+  page's text back through the real server.
 🧪 Added `tests/test_docs_changelog_data.py` (11): the Pages data reads
   the patch heading, keeps details apart and underscores in names, has a
   label for every legend symbol, and has the newest entry.

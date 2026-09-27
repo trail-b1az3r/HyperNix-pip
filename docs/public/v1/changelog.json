@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-27T04:19:53Z",
+  "generated_at": "2026-09-27T19:06:27Z",
   "source": "wiki/Changelog.md",
   "entries": [
     {
@@ -257,6 +257,24 @@
           "details": []
         },
         {
+          "symbol": "\ud81a\udca5",
+          "label": "major fix",
+          "category": "Fixed",
+          "text": "Fixed a HyperLink model saying it cannot browse when given a link.",
+          "details": [
+            "Reported from a phone: asked to look at a GitHub repository, the model listed read_memory and update_memory as its only tools and said three times that it could not open a web page.",
+            "The phone had no key, and a keyless caller got no T1 tools, so no web_search or web_summarize (fixed above, under Security).",
+            "Nothing it was told said a link could be opened either. The web_summarize tool now says it opens any http or https link, a GitHub repository included; the taught prompt says, when a web tool is offered, that the model can reach the web and must not say it cannot browse; and the\u2026"
+          ]
+        },
+        {
+          "symbol": "\ud83d\udc1b",
+          "label": "fix",
+          "category": "Fixed",
+          "text": "Fixed a link pasted with a fragment (\u2026/repo#readme) failing web_summarize: the fragment, which is never sent to a site, is dropped before the call.",
+          "details": []
+        },
+        {
           "symbol": "\ud83d\udce6",
           "label": "packaging",
           "category": "Dependencies and Packaging",
@@ -362,6 +380,13 @@
           "details": [
             "The page was also driven in Chromium at desktop and phone sizes."
           ]
+        },
+        {
+          "symbol": "\ud83e\uddea",
+          "label": "tests",
+          "category": "Tests",
+          "text": "Added tests/test_hyperlink_reads_links.py (5): a keyless phone on a trusted network pastes a GitHub link, the model is offered the web tools and told it can open links, calls web_summarize, and gets the page's text back through the real server.",
+          "details": []
         },
         {
           "symbol": "\ud83e\uddea",
