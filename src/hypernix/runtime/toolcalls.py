@@ -546,6 +546,7 @@ def tool_prompt(tools: list[dict[str, Any]]) -> str:
         "its actual result. When a question is about something a tool can "
         "reach, call the tool: do not say you cannot access it, and do not "
         "guess what it would say.",
+        *_web_hint({(t.get("function") or {}).get("name") for t in tools}),
         "",
         f"To call a tool, write the call on its own and stop. This one calls "
         f"{first['name']}:",
@@ -565,6 +566,30 @@ def tool_prompt(tools: list[dict[str, Any]]) -> str:
         "tools listed above. If no tool fits, just answer.",
     ]
     return "\n".join(lines)
+
+
+def _web_hint(names: set[Any]) -> list[str]:
+    """What to say when the web is among the tools.
+
+    A local model is trained to say it cannot browse, and a system prompt
+    that tells it to claim no ability it lacks makes that stronger. Given
+    a GitHub link and a tool that reads links, one said "I cannot open a
+    web browser" three times running. So when a web tool is offered, it
+    is told in so many words what it can now do.
+    """
+    reads, searches = "web_summarize" in names, "web_search" in names
+    if not (reads or searches):
+        return []
+    can = []
+    if reads:
+        can.append("open a link the person gives you, such as a GitHub "
+                   "repository or an article, with web_summarize")
+    if searches:
+        can.append("look things up on the live web with web_search")
+    return ["", "You can reach the web in this conversation: you can "
+            + " and ".join(can) + ". Never say you cannot browse, open links "
+            "or see websites; use the tool, and if it fails, say what it "
+            "returned."]
 
 
 def _example_value(schema: dict[str, Any]) -> Any:

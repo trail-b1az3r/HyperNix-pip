@@ -1587,7 +1587,7 @@ def chat_turn_stream(
             finish = "cancelled"
         message = _persist(
             collected, model_id, finish, usage, truncated=bool(error) or cancelled,
-            tool_rounds=tool_rounds,
+            tool_rounds=tool_rounds, error=error,
         )
         yield _frame(
             "done",
@@ -1621,7 +1621,7 @@ def chat_turn_stream(
 
     def _persist(
         pieces: list[str], model_id: str, finish: str, usage: dict[str, Any], *, truncated: bool,
-        tool_rounds: list[dict[str, Any]] | None = None,
+        tool_rounds: list[dict[str, Any]] | None = None, error: dict[str, Any] | None = None,
     ) -> ChatMessage:
         message = store.append(
             session_id,
@@ -1639,6 +1639,11 @@ def chat_turn_stream(
                 "streamed": True,
                 **({"tool_rounds": tool_rounds} if tool_rounds else {}),
                 **({"compacted_before": compacted.get("messages_compacted", 0)} if compacted else {}),
+                # Why the reply stopped, so a client that redraws from the
+                # server's copy, or opens the chat later, can say so rather
+                # than show an empty reply (0.72.6.post2).
+                **({"error": {"code": str(error.get("code", "")),
+                              "message": str(error.get("message", ""))}} if error else {}),
             },
         )
         return message

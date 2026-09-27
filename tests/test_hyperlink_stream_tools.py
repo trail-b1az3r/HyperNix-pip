@@ -373,3 +373,25 @@ def test_the_non_streamed_route_agrees(served, monkeypatch):
     assert got.status_code == 200, got.text
     offered = {t["function"]["name"] for t in model.seen[0]["tools"] or []}
     assert "server_version" in offered
+
+
+def test_a_failed_reply_is_saved_with_its_error(served, monkeypatch):
+    """0.72.6.post2: a reply that failed was saved empty with nothing to say
+    why, so a client that redrew from the server showed an empty reply."""
+    from hypernix.bridge.lmstudio import LMStudioError
+
+    class Unreachable(StreamingModel):
+        def chat_stream(self, messages, **kwargs):
+            raise LMStudioError("No LM Studio server answering at http://127.0.0.1:1234",
+                                code="unreachable", base_url="http://127.0.0.1:1234")
+
+    base, auth = served()
+    _use(monkeypatch, Unreachable())
+    session, frames = _stream(base, auth, "hello")
+    assert any(f["type"] == "error" for f in frames)
+
+    reply = httpx.get(f"{base}/hyperlink/sessions/{session}/messages",
+                      headers=auth).json()["messages"][-1]
+    assert reply["role"] == "assistant" and reply["content"] == ""
+    assert reply["metadata"]["error"] == {
+        "code": "unreachable", "message": "No LM Studio server answering at http://127.0.0.1:1234"}

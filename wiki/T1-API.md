@@ -1856,6 +1856,22 @@ with a HyperLink pairing code or a key, which that browser keeps.
 from a fixed list of four files with a strict content security policy,
 and every other path is the T1 API itself.
 
+If it does not open (0.72.6.post2):
+
+- `hypernix-t1 status` lists each address the site is on and whether
+  the page answers there. Starting the server prints the same addresses
+  in `hypernix-t1 logs`.
+- From another device, use the Tailscale address `status` prints. The
+  site is never on the LAN address, so `http://192.168.x.x:37965` is
+  refused by design.
+- No Tailscale address listed: before 0.72.6.post2 the site found the
+  tailnet only through `tailscale` on PATH or psutil, which a systemd
+  unit or the Mac App Store Tailscale often lacks. Upgrade; it now also
+  asks the kernel for the route to Tailscale's own address.
+- A message with no reply now shows why, in red. "No LM Studio server
+  answering" means nothing is serving a model: load one from the Runner
+  tab, or start LM Studio's server.
+
 #### Moving a model out of LM Studio (0.72.6.post1)
 
 | Route | What it does |

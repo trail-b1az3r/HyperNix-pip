@@ -39,6 +39,7 @@ __all__ = [
     "WEB_FILES",
     "WebListener",
     "build_web_app",
+    "status_lines",
     "tailnet_addresses",
 ]
 
@@ -76,16 +77,74 @@ def _is_tailnet(address: str) -> bool:
     return ip in (_TAILNET_V4 if ip.version == 4 else _TAILNET_V6)
 
 
+#: Tailscale's own addresses inside the tailnet (MagicDNS). Only ever used
+#: to ask the kernel which local address routes to them; nothing is sent.
+_TAILNET_PROBES = (("100.100.100.100", socket.AF_INET), ("fd7a:115c:a1e0::53", socket.AF_INET6))
+
+
+def _tailscale_binary() -> str:
+    """The tailscale command, wherever it is, or ``""``.
+
+    PATH alone misses it under a systemd unit, whose PATH is minimal,
+    and on a Mac with Tailscale from the App Store, which keeps it inside
+    the app. The same places the keyless check looks in.
+    """
+    import os
+
+    from ..system.nettrust import _TAILSCALE_PATHS
+
+    return shutil.which("tailscale") or next(
+        (path for path in _TAILSCALE_PATHS if os.path.exists(path)), "")
+
+
+def _routed_addresses() -> list[str]:
+    """This machine's addresses on the routes to Tailscale's own addresses.
+
+    A connected UDP socket sends nothing: the kernel only picks the
+    local address it would use. With Tailscale up that is this machine's
+    tailnet address, found with neither the command nor psutil; without
+    it the route is the LAN's, which the caller's range check drops.
+    """
+    found = []
+    for probe, family in _TAILNET_PROBES:
+        try:
+            with socket.socket(family, socket.SOCK_DGRAM) as sock:
+                sock.connect((probe, 53))
+                found.append(str(sock.getsockname()[0]).split("%", 1)[0])
+        except OSError:
+            continue
+    return found
+
+
+def _interface_addresses() -> list[str]:
+    try:
+        import psutil
+    except ImportError:
+        return []
+    found = []
+    try:
+        for addresses in psutil.net_if_addrs().values():
+            for entry in addresses:
+                found.append(str(entry.address).split("%", 1)[0])
+    except Exception:  # noqa: BLE001 - interfaces unreadable: no tailnet from here
+        logger.debug("hyperlink_web: interfaces unreadable", exc_info=True)
+    return found
+
+
 def tailnet_addresses() -> list[str]:
     """This machine's Tailscale addresses, or ``[]`` without Tailscale.
 
-    Asked of ``tailscale ip`` when the command is there, and read from
-    the network interfaces otherwise (the command is missing on some
-    installs where the daemon runs anyway). Only addresses inside
-    Tailscale's ranges are returned, whatever either source says.
+    Asked of ``tailscale ip`` when the command can be found, then of the
+    kernel's routes to Tailscale's own addresses, then of the network
+    interfaces (with psutil, when it is installed). Before 0.72.6.post2
+    only PATH and psutil were tried, and the t1api extra does not bring
+    psutil, so a server started by systemd or on a Mac listened on
+    127.0.0.1 alone and a phone on the tailnet was refused. Only
+    addresses inside Tailscale's ranges are returned, whatever any
+    source says.
     """
     found: list[str] = []
-    tailscale = shutil.which("tailscale")
+    tailscale = _tailscale_binary()
     if tailscale:
         try:
             done = subprocess.run(  # noqa: S603 - fixed argv
@@ -94,15 +153,10 @@ def tailnet_addresses() -> list[str]:
             found = [line.strip() for line in done.stdout.splitlines() if line.strip()]
         except (OSError, subprocess.SubprocessError):
             found = []
-    if not found:
-        try:
-            import psutil
-
-            for addresses in psutil.net_if_addrs().values():
-                for entry in addresses:
-                    found.append(str(entry.address).split("%", 1)[0])
-        except Exception:  # noqa: BLE001 - no psutil, no interfaces: no tailnet
-            logger.debug("hyperlink_web: interfaces unreadable", exc_info=True)
+    if not any(_is_tailnet(address) for address in found):
+        found = _routed_addresses()
+    if not any(_is_tailnet(address) for address in found):
+        found = _interface_addresses()
     unique: list[str] = []
     for address in found:
         if _is_tailnet(address) and address not in unique:
@@ -201,7 +255,8 @@ class WebListener:
                 sockets.append(sock)
                 bound.append(address)
         if not sockets:
-            logger.warning("hyperlink_web: nothing to listen on; the web site is off")
+            logger.warning("hyperlink_web: nothing to listen on; the web site is off. Is "
+                           "something else using port %s? Set T1_WEB_PORT to move it.", self.port)
             return
         config = uvicorn.Config(build_web_app(self.api_app), log_level="warning",
                                 lifespan="off", access_log=False)
@@ -213,7 +268,25 @@ class WebListener:
         with self._lock:
             self._server, self._thread, self.addresses = server, thread, bound
         thread.start()
-        logger.info("hyperlink_web: HyperLink on the web at %s", ", ".join(self.urls()))
+        self._announce(addresses)
+
+    def _announce(self, wanted: list[str]) -> None:
+        """Say where the site is, in the server's log, where people look.
+
+        An INFO line never reached ``hypernix-t1 logs``, so a site that
+        was up said nothing and one missing its tailnet said nothing
+        either. This is printed like the first-start key is.
+        """
+        import sys
+
+        lines = [f"  HyperLink on the web: {', '.join(self.urls())}"]
+        if len(wanted) == 1:
+            lines.append("    No Tailscale address on this machine, so only this machine can "
+                         "open it. It is picked up within a minute of Tailscale coming up.")
+        missed = [a for a in wanted if a not in self.addresses]
+        if missed:
+            lines.append(f"    Could not listen on {', '.join(missed)} (see the warning above).")
+        print("\n".join(lines), file=sys.stderr, flush=True)
 
     def _halt(self) -> None:
         with self._lock:
@@ -237,3 +310,30 @@ class WebListener:
     def stop(self) -> None:
         self._stopping.set()
         self._halt()
+
+
+def _answers(url: str, timeout: float = 2.0) -> bool:
+    """Whether *url* serves this site's page. No proxy: these are local."""
+    import urllib.request
+
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    try:
+        with opener.open(url, timeout=timeout) as page:
+            return b"<title>HyperLink</title>" in page.read(4096)
+    except OSError:
+        return False
+
+
+def status_lines(enabled: bool, port: int) -> list[str]:
+    """What ``hypernix-t1 status`` says about the site: each address, and
+    whether it answers there. Asked from outside the server, so it holds
+    whether the server is healthy, wedged or reading another port."""
+    if not enabled or port <= 0:
+        return ["web       off (T1_WEB_ENABLED=0)"]
+    lines = []
+    for address in ["127.0.0.1", *tailnet_addresses()]:
+        url = f"http://[{address}]:{port}/" if ":" in address else f"http://{address}:{port}/"
+        lines.append(f"web       {url}  {'answering' if _answers(url) else 'NOT answering'}")
+    if len(lines) == 1:
+        lines.append("          no Tailscale address here, so only this machine can open it")
+    return lines

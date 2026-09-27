@@ -186,15 +186,22 @@ function newChat() {
 function drawThread() {
   const thread = $("thread");
   thread.replaceChildren();
-  const shown = state.messages.filter((m) => m.role === "user" || m.role === "assistant");
+  // A reply that failed before a word arrived is saved empty; it is shown
+  // as its error, never as a blank bubble.
+  const shown = state.messages.filter((m) => m.role === "user" || (m.role === "assistant"
+    && (m.content || failure(m) || ((m.metadata && m.metadata.tool_rounds) || []).length)));
   shown.forEach((message, index) => {
     const next = shown[index + 1];
     const tail = !next || next.role !== message.role;
-    thread.append(bubble(message.role === "user" ? "me" : "them", message.content, {
-      tail,
-      meta: message.role === "assistant" && tail ? shortModel(message.model_id) : "",
-      tools: (message.metadata && message.metadata.tool_rounds) || [],
-    }));
+    const row = message.content || message.role === "user"
+      ? bubble(message.role === "user" ? "me" : "them", message.content, {
+        tail,
+        meta: message.role === "assistant" && tail ? shortModel(message.model_id) : "",
+        tools: (message.metadata && message.metadata.tool_rounds) || [],
+      })
+      : errorRow("");
+    if (message.role === "assistant" && failure(message)) row.append(errorNote(failure(message)));
+    thread.append(row);
   });
   if (!shown.length) {
     const empty = document.createElement("p");
@@ -205,6 +212,34 @@ function drawThread() {
     thread.append(empty);
   }
   thread.scrollTop = thread.scrollHeight;
+}
+
+function failure(message) {
+  const error = message.metadata && message.metadata.error;
+  return (error && explain(error.message || error.code, error.code)) || "";
+}
+
+// Nothing answering is the usual failure on a fresh server, and the
+// backend's own message only knows about LM Studio.
+function explain(text, code) {
+  if (code === "unreachable" || /No LM Studio server answering/.test(text || "")) {
+    return `${text} Or load a model on this server itself: Runner tab.`;
+  }
+  return text;
+}
+
+function errorNote(text) {
+  const note = document.createElement("div");
+  note.className = "meta error";
+  note.textContent = text;
+  return note;
+}
+
+function errorRow(text) {
+  const row = document.createElement("div");
+  row.className = "row them";
+  if (text) row.append(errorNote(text));
+  return row;
 }
 
 function toolChip(tool, ok) {
@@ -260,6 +295,7 @@ async function send(text) {
   body.classList.add("typing");
   thread.append(reply);
   let collected = "";
+  let failed = "";
   const controller = new AbortController();
   state.streaming = controller;
   setStreaming(true);
@@ -300,7 +336,8 @@ async function send(text) {
           } else if (frame.type === "tool") {
             reply.insertBefore(toolChip(frame.tool, frame.ok), body);
           } else if (frame.type === "error") {
-            throw new Error((frame.error && frame.error.message) || "The model failed.");
+            const error = frame.error || {};
+            throw new Error(explain(error.message || "The model failed.", error.code));
           } else if (frame.type === "title") {
             $("chat-title").textContent = frame.title;
           }
@@ -309,10 +346,8 @@ async function send(text) {
     }
   } catch (error) {
     if (error.name !== "AbortError") {
-      const note = document.createElement("div");
-      note.className = "meta error";
-      note.textContent = error.message;
-      reply.append(note);
+      failed = error.message;
+      reply.append(errorNote(failed));
     }
   } finally {
     body.classList.remove("typing");
@@ -322,7 +357,16 @@ async function send(text) {
     $("message").focus();
   }
   // The server's copy is the true one: ids, tool rounds, model names.
+  // Redrawing from it used to wipe the error off the screen, so a reply
+  // that failed (no model loaded, LM Studio not running) showed nothing
+  // at all. A server that saved the error shows it from its copy; for
+  // one that did not, or a request that never reached it, it is kept.
   await openSession(sessionId).catch(() => {});
+  if (failed) {
+    const last = state.messages[state.messages.length - 1];
+    if (!(last && last.role === "assistant" && failure(last))) $("thread").append(errorRow(failed));
+    $("thread").scrollTop = $("thread").scrollHeight;
+  }
   loadSessions().catch(() => {});
 }
 

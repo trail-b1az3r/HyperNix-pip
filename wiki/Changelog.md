@@ -214,6 +214,90 @@ Historical wording and technical detail are retained during format normalization
   every one of the ~50 per-module wiki pages against source — those were
   spot-checked, not exhaustively re-verified.
 
+## 0.72.6.post2 — patch 2 - HyperLink on the web works from the tailnet, and a model reads links
+
+### Added
+
+✨ Added the site's addresses to the server's log and to `hypernix-t1 status`.
+  - Starting the server prints "HyperLink on the web: http://127.0.0.1:37965,
+    http://100.x.y.z:37965", and says so when there is no Tailscale
+    address, so only this machine can open it.
+  - `hypernix-t1 status` lists each address and whether the page
+    answers there, asked from outside the server.
+𖥔 Added `T1_WEB_ENABLED` and `T1_WEB_PORT` to the `.env` that
+  `hypernix-t1 create` and `install-t1.sh` write, with where to look.
+
+### Fixed
+
+𖢥 Fixed HyperLink on the web listening on 127.0.0.1 alone on most servers.
+  - The site found its Tailscale addresses with `tailscale ip` from
+    PATH, or else psutil. A systemd unit's PATH is minimal, Tailscale
+    from the Mac App Store keeps the command inside the app, and the
+    `t1api` extra does not bring psutil, so the tailnet was never found
+    and a phone or laptop on it was refused.
+  - The command is now looked for where the keyless check already looks
+    (`/usr/bin`, `/usr/local/bin`, `/opt/homebrew/bin`, the Mac app), and
+    without it the kernel is asked which local address routes to
+    Tailscale's own 100.100.100.100 and fd7a:115c:a1e0::53. That sends
+    nothing, and needs neither the command nor psutil.
+
+𖢥 Fixed a message on the site showing nothing when no reply came.
+  - With nothing to answer it, no model on the runner and LM Studio not
+    running, the server sent an error, the page showed it, and then
+    redrew the chat from the server's copy, which wiped it. The message
+    sat there with no reply and no reason.
+  - The error now stays, in red, and says the model can also be loaded
+    on this server from the Runner tab.
+🐛 Fixed a failed reply being saved with nothing to say why.
+  - The saved reply's metadata now carries the error's `code` and
+    `message`, so a client that redraws or reopens the chat can show it;
+    the site does, instead of an empty bubble.
+
+𖢥 Fixed a HyperLink model saying it cannot browse when given a link.
+  - Reported from a phone: asked to look at a GitHub repository, the
+    model listed read_memory and update_memory as its only tools and
+    said three times that it could not open a web page.
+  - The phone had no key. 0.72.6 gave a keyless caller no T1 tools, so
+    no `web_search` or `web_summarize`; 0.72.6.post1 gives it the
+    read-only ones.
+  - Nothing it was told said a link could be opened either. The
+    `web_summarize` tool now says it opens any http or https link, a
+    GitHub repository included; the taught prompt says, when a web tool
+    is offered, that the model can reach the web and must not say it
+    cannot browse; and the default prompt says an offered tool is an
+    ability the model has.
+🐛 Fixed a link pasted with a fragment (`…/repo#readme`) failing
+  `web_summarize`: the fragment, which is never sent to a site, is
+  dropped before the call.
+
+🐛 Fixed `hypernix-t1 create` stamping the `.env` it writes with 0.72.5.
+  - It now names the installed package's version.
+
+### Tests
+
+🧪 Added five tests to `tests/test_hyperlink_web.py` (now 20): the
+  Tailscale address found through the route with neither the command nor
+  psutil, the command found on a minimal PATH, the addresses in the log,
+  `status` saying whether the page answers, and the error kept on
+  screen after the redraw.
+  - The released 0.72.6.post1 wheel and this branch were each installed
+    in a fresh virtualenv, started with `hypernix-t1`, and driven in
+    Chromium: sign-in with a key and keyless, chat, Runner, Memory and
+    Settings.
+🧪 Added `test_a_failed_reply_is_saved_with_its_error` to
+  `tests/test_hyperlink_stream_tools.py`.
+🧪 Added `tests/test_hyperlink_reads_links.py` (5): a keyless phone on a
+  trusted network pastes a GitHub link, the model is offered the web
+  tools and told it can open links, calls `web_summarize`, and gets the
+  page's text back through the real server.
+
+### Known Issues
+
+❗ The site is not reachable from the LAN, by design.
+  - It listens on 127.0.0.1 and Tailscale addresses only. From another
+    device, use this machine's Tailscale address, which `hypernix-t1
+    status` prints.
+
 ## 0.72.6.post1 — patch 1 - HyperLink tool calling fixed, and HyperLink on the web
 
 ### Added
