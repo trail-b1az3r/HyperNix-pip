@@ -214,6 +214,53 @@ Historical wording and technical detail are retained during format normalization
   every one of the ~50 per-module wiki pages against source — those were
   spot-checked, not exhaustively re-verified.
 
+## 0.72.6.post3 — patch 3 - HyperLink on the web opens at the server's own address
+
+### Added
+
+✨ Added HyperLink on the web at `/` on the T1 API's own port.
+  - The page opens at the server's address, `http://127.0.0.1:8000/` or
+    whatever `T1_PORT` is, as well as on port 37965, for the same callers:
+    this machine and the tailnet, by the connection's address. Anyone
+    else still gets the API's 404.
+  - `T1_WEB_ENABLED=0` turns both off. Under `T1_MOUNT_PREFIX` only port
+    37965 serves it, since the page calls the API at its root.
+𖥔 Added the API-port address to the startup line and to
+  `hypernix-t1 status`, which says whether the page answers there.
+
+### Changed
+
+🔧 Changed Bandit's `assert_used` check (B101) to skip `tests/`, in a new
+  `[tool.bandit]` section of `pyproject.toml` that the security scan
+  already reads when present.
+  - pytest's asserts are how a test checks its result, and B101 reported
+    every one, over eleven thousand, as a code-scanning alert on each PR
+    that touched a test. It still reports the 29 in the package itself,
+    and every other Bandit check still runs on the tests.
+
+### Fixed
+
+𖢥 Fixed the server's own address answering 404 instead of HyperLink on the web.
+  - From a server log: the server on `0.0.0.0:8001`, the browser at
+    `http://127.0.0.1:8001/`, and `GET / 404`. The site was only on its
+    own port, 37965, and 0.72.6.post1 said so nowhere, so the address
+    people tried first was the one address that did not serve it.
+
+### Tests
+
+🧪 Added two tests to `tests/test_hyperlink_web.py` (now 22): the page on
+  the API's port for loopback and tailnet peers (IPv4 and IPv6) and not
+  for LAN or public ones, and neither when the site is off.
+  - A server started with `hypernix-t1`, bound to `0.0.0.0:8001` as in
+    the log, was driven in Chromium at `http://127.0.0.1:8001/`: the page,
+    keyless sign-in and a chat; the machine's LAN address got a 404.
+
+### Known Issues
+
+❗ The site is still not on the LAN address, on either port, by design.
+  - From another device, use this machine's Tailscale address, which
+    `hypernix-t1 status` prints.
+
 ## 0.72.6.post2 — patch 2 - HyperLink on the web works from the tailnet, and a model reads links
 
 ### Added

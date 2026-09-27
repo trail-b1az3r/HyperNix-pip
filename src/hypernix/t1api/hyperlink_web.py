@@ -39,6 +39,7 @@ __all__ = [
     "WEB_FILES",
     "WebListener",
     "build_web_app",
+    "serve_on_api",
     "status_lines",
     "tailnet_addresses",
 ]
@@ -193,6 +194,49 @@ def build_web_app(api_app: Any):
     return app
 
 
+def _local_or_tailnet(host: str) -> bool:
+    """Whether a peer address is this machine or on its tailnet."""
+    try:
+        ip = ipaddress.ip_address(host.split("%", 1)[0])
+    except ValueError:
+        return False
+    if ip.version == 6 and ip.ipv4_mapped is not None:
+        ip = ip.ipv4_mapped
+    return ip.is_loopback or _is_tailnet(str(ip))
+
+
+def serve_on_api(api_app: Any) -> None:
+    """Serve the page on the T1 API's own port too (0.72.6.post3).
+
+    The site had a port of its own and nothing else, so opening the
+    server's address, http://127.0.0.1:8001/ on one machine, answered
+    404, and nothing said where the site was instead. The page is now
+    also at ``/`` on the API's port, for the same callers the site's own
+    port takes: this machine and the tailnet, by the peer's address.
+    Everyone else keeps the API's plain 404. The page holds nothing:
+    every call it makes is an API call with the API's authentication.
+    """
+    from starlette.responses import JSONResponse, Response
+
+    cache: dict[str, bytes] = {}
+
+    async def page(request):
+        name, content_type = WEB_FILES[request.url.path]
+        host = request.client.host if request.client else ""
+        if not _local_or_tailnet(host):
+            return JSONResponse({"detail": "Not Found"}, status_code=404)
+        if name not in cache:
+            cache[name] = (WEB_DIR / name).read_bytes()
+        headers = {k.decode(): v.decode() for k, v in _HEADERS}
+        body = b"" if request.method == "HEAD" else cache[name]
+        return Response(body, media_type=content_type, headers=headers)
+
+    for path in WEB_FILES:
+        # A plain Starlette route: it is handed the request as is, where a
+        # FastAPI route would read an unannotated argument as a query field.
+        api_app.router.add_route(path, page, methods=["GET", "HEAD"], include_in_schema=False)
+
+
 def _bind(address: str, port: int) -> socket.socket | None:
     family = socket.AF_INET6 if ":" in address else socket.AF_INET
     sock = socket.socket(family, socket.SOCK_STREAM)
@@ -279,7 +323,8 @@ class WebListener:
         """
         import sys
 
-        lines = [f"  HyperLink on the web: {', '.join(self.urls())}"]
+        lines = [f"  HyperLink on the web: {', '.join(self.urls())}",
+                 "    and at / on this server's own port, for this machine and the tailnet."]
         if len(wanted) == 1:
             lines.append("    No Tailscale address on this machine, so only this machine can "
                          "open it. It is picked up within a minute of Tailscale coming up.")
@@ -324,16 +369,20 @@ def _answers(url: str, timeout: float = 2.0) -> bool:
         return False
 
 
-def status_lines(enabled: bool, port: int) -> list[str]:
+def status_lines(enabled: bool, port: int, api_url: str = "") -> list[str]:
     """What ``hypernix-t1 status`` says about the site: each address, and
     whether it answers there. Asked from outside the server, so it holds
-    whether the server is healthy, wedged or reading another port."""
+    whether the server is healthy, wedged or reading another port.
+    *api_url* is the API's own address, which serves the page too."""
     if not enabled or port <= 0:
         return ["web       off (T1_WEB_ENABLED=0)"]
     lines = []
+    if api_url:
+        url = api_url.rstrip("/") + "/"
+        lines.append(f"web       {url}  {'answering' if _answers(url) else 'NOT answering'}")
     for address in ["127.0.0.1", *tailnet_addresses()]:
         url = f"http://[{address}]:{port}/" if ":" in address else f"http://{address}:{port}/"
         lines.append(f"web       {url}  {'answering' if _answers(url) else 'NOT answering'}")
-    if len(lines) == 1:
+    if len(lines) == (2 if api_url else 1):
         lines.append("          no Tailscale address here, so only this machine can open it")
     return lines
