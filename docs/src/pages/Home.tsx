@@ -234,6 +234,7 @@ function HomePage({ setPage, downloads, olderDownloads, totalDownloads, ghStats,
                 <div className="eyebrow" style={{ color:'var(--accent)', marginBottom:8 }}>Latest release</div>
                 <div style={{ display:'flex', alignItems:'baseline', gap:10, flexWrap:'wrap' }}>
                   <h2 style={{ margin:0, color:'var(--text)', fontSize:26, letterSpacing:'-0.03em' }}>v{changelogEntries[0].version}</h2>
+                  {changelogEntries[0].patch != null && <span style={{ background:'var(--surface-1)', border:'1px solid var(--border)', borderRadius:4, padding:'0 6px', color:'var(--accent)', fontSize:11 }}>patch {changelogEntries[0].patch}</span>}
                   {changelogEntries[0].date && <span className="tabular" style={{ color:'var(--text-faint)', fontSize:11 }}>{changelogEntries[0].date}</span>}
                 </div>
                 <p style={{ margin:'12px 0 18px', color:'var(--text-dim)', fontSize:13.5, lineHeight:1.7 }}>
@@ -253,10 +254,15 @@ function HomePage({ setPage, downloads, olderDownloads, totalDownloads, ghStats,
               <div style={{ border:'1px solid var(--border-strong)', borderRadius:12, background:'var(--surface-2)', padding:'20px' }}>
                 <div className="eyebrow" style={{ color:'var(--text-faint)', marginBottom:11 }}>Change highlights</div>
                 <div style={{ display:'grid', gap:8 }}>
-                  {(changelogEntries[0].highlights || []).slice(0, 5).map((item, i) => (
-                    <div key={`${i}-${item}`} style={{ display:'flex', gap:10, alignItems:'flex-start', padding:'9px 10px', background:'var(--surface-1)', borderRadius:8 }}>
-                      <span className="tabular" style={{ color:'var(--accent)', fontSize:11, minWidth:20 }}>{String(i + 1).padStart(2,'0')}</span>
-                      <span style={{ color:'var(--text-dim)', fontSize:12.5, lineHeight:1.6 }}>{item}</span>
+                  {/* What each change is, from wiki/Changelog-guide.md's legend, when the
+                      entry carries its changes; numbered highlights for an older one. */}
+                  {(changelogEntries[0].changes?.length
+                    ? changelogEntries[0].changes.map(c => ({ mark: c.label || c.symbol, text: c.text, hint: `${c.symbol} ${c.category}` }))
+                    : (changelogEntries[0].highlights || []).map((text, i) => ({ mark: String(i + 1).padStart(2,'0'), text, hint: undefined }))
+                  ).slice(0, 5).map((item, i) => (
+                    <div key={`${i}-${item.text}`} style={{ display:'flex', gap:10, alignItems:'flex-start', padding:'9px 10px', background:'var(--surface-1)', borderRadius:8 }}>
+                      <span className="tabular" style={{ color:'var(--accent)', fontSize:11, minWidth:20, flexShrink:0, whiteSpace:'nowrap', paddingTop:2 }} title={item.hint}>{item.mark}</span>
+                      <span style={{ color:'var(--text-dim)', fontSize:12.5, lineHeight:1.6 }}>{item.text}</span>
                     </div>
                   ))}
                 </div>

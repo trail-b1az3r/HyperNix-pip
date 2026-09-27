@@ -214,169 +214,248 @@ Historical wording and technical detail are retained during format normalization
   every one of the ~50 per-module wiki pages against source — those were
   spot-checked, not exhaustively re-verified.
 
-## 0.72.6.post1 — 2026-09-27
-
-The first patch to 0.72.6: the runner command could not find a server
-on another port, HyperLink still could not call tools on most local
-models, the high-rated security findings, HyperNix.3-mini as the
-runner's default model, HyperLink on the web on port 37965, and a
-button that moves LM Studio's model onto the HyperNix runner.
+## 0.72.6.post1 — patch 1 - HyperLink tool calling fixed, and HyperLink on the web
 
 ### Added
 
-๋࣭⭑ **HyperLink on the web, on port 37965.** While the T1 API runs it also
-  hosts a site that works like the app: chats with streamed replies and
-  the tools the model ran, the model picker, the runner (load, unload,
-  and the move below), memories kept current with `/memory/sync`, and
-  settings. It is dark, and fits a phone. It listens on 127.0.0.1 and
-  this machine's Tailscale addresses only, never the LAN, and picks up
-  a tailnet that comes up after the server does.
-  `T1_WEB_ENABLED=0` or `T1_WEB_PORT` changes that.
+๋࣭⭑ Added HyperLink on the web, served by the T1 API on port 37965.
+  - It works like the app: chats with streamed replies and the tools the
+    model ran, the model picker, the runner (load, unload, and the move
+    below), memories kept current with `/memory/sync`, and settings.
+  - It listens on 127.0.0.1 and this machine's Tailscale addresses only,
+    never the LAN, and picks up a tailnet that comes up after the server
+    does.
+  - It is dark whatever the system is set to, and fits a phone.
+𖥔 Added sign-in for the site on the API's own origin.
+  - Keyless where trusted-network mode allows it, else a HyperLink pairing
+    code or a key, kept in that browser.
+  - A strict content security policy with no inline script, and model
+    text is escaped before the few tags the page adds.
 
-𖥔 The site shares the API's origin, so it signs in the way any client
-  does: keyless where trusted-network mode allows it, else a HyperLink
-  pairing code or a key, kept in that browser. It has a strict content
-  security policy with no inline script, and model text is escaped
-  before the few tags the page adds.
+✨ Added a button that moves LM Studio's model onto the HyperNix runner.
+  - On HyperLink's Runner screen and on the site, for admins and for
+    devices at the machine or on its tailnet.
+  - It unloads the model LM Studio is serving and loads the same GGUF on
+    this server's runner, so the server can place its layers, switch it
+    and queue prompts on it.
+  - The file is found with `lms ls --json`, or in LM Studio's models
+    folder. Two candidates are refused rather than guessed between.
+  - The model is unloaded first, so the VRAM is never asked for twice,
+    and put back in LM Studio if the runner cannot load it.
 
-๋࣭⭑ **Move LM Studio's model onto the HyperNix runner.** A button on
-  HyperLink's Runner screen, and on the site, for admins and devices on
-  the server's tailnet or at the machine. It unloads the model LM Studio
-  is serving and loads the same GGUF on this server's runner, so the
-  server can place its layers, switch it and queue prompts on it. The
-  file is found with `lms ls --json`, or in LM Studio's models folder,
-  and two candidates are refused rather than guessed between. It is
-  unloaded first, so the VRAM is never asked for twice, and put back in
-  LM Studio if the runner cannot load it. `GET /runner/adopt` says
-  whether the button applies; `POST /runner/adopt` makes the move.
+✨ Added native HyperNix models to the runner.
+  - A `hyperNix0x-v2` folder with a brewer config and weights is served
+    by `hypernix.hyperlink.brewed_server`, in PyTorch, over the same
+    OpenAI API llama-server speaks, streamed or not.
+  - The catalogue lists such folders beside the GGUFs.
+𖥔 Added `model.safetensors` loading to `brewer_adapter`.
 
-๋࣭⭑ **HyperNix.3-mini is the runner's default model.** `hypernix-t1
-  runner start` with no model named loads
-  [`ray0rf1re/HyperNix.3-mini`](https://huggingface.co/ray0rf1re/HyperNix.3-mini),
-  downloaded on first use: the safetensors, config and tokenizer, never
-  the pickled `model.pt`. `T1_DEFAULT_MODEL` names another, and an empty
-  `T1_DEFAULT_MODEL=` restores "start the only model here".
+✨ Added HyperNix.3-mini as the runner's default model.
+  - `hypernix-t1 runner start` with no model named loads
+    [`ray0rf1re/HyperNix.3-mini`](https://huggingface.co/ray0rf1re/HyperNix.3-mini),
+    downloaded on first use.
+  - Only the safetensors, config and tokenizer are fetched, never the
+    pickled `model.pt`.
 
-๋࣭⭑ **The runner serves native HyperNix models.** A `hyperNix0x-v2`
-  folder with a brewer config and weights is served by
-  `hypernix.hyperlink.brewed_server`, in PyTorch, over the same OpenAI API
-  llama-server speaks, streamed or not. The catalogue lists such folders
-  beside the GGUFs, and `brewer_adapter` now reads `model.safetensors`.
+### API Changes
 
-𖥔 `hypernix-t1 chat [-s SYSTEM] [--new] MESSAGE` streams a reply from
-  the served model through the HyperLink route and remembers the chat. It
-  replaces a curl recipe that fish refused.
+🔗 Added `GET /runner/adopt` and `POST /runner/adopt` (additive).
+  - `GET` says whether LM Studio has a model this server's runner could
+    take over, and which file it would load. `POST` makes the move.
+  - Admins, and callers at the machine or on its tailnet, only.
+
+🔗 Added the `T1_WEB_ENABLED` (default on) and `T1_WEB_PORT` (default
+  37965) settings (additive).
+  - `T1_WEB_ENABLED=0` turns the site off.
+
+🔗 Changed `hypernix-t1 runner start` with no model named (behavioral).
+  - It now loads `T1_DEFAULT_MODEL`, HyperNix.3-mini unless set.
+  - Before, it started the only model on the server, and listed them and
+    stopped when there were several.
+  - Migration: an empty `T1_DEFAULT_MODEL=` restores the old behavior;
+    any other value names the model to load.
+
+🔗 Added `T1_HYPERLINK_TEACH_TOOLS` (behavioral; default on).
+  - The tool format is now taught in the system prompt on every backend.
+  - `0` turns it off; `runner` teaches it on the built-in runner only, as
+    0.72.6 did.
+
+### CLI and UX
+
+✨ Added `hypernix-t1 chat [-s SYSTEM] [--new] MESSAGE`.
+  - It streams a reply from the served model through the HyperLink route
+    and remembers the chat.
+  - It replaces a curl recipe that fish refused.
 
 ### Security
 
-🛡️ **robots.txt could send the server to the LAN.** The page URL of a
-  server-side fetch (`/web/v1/summarise`) was checked to be public, but
-  its robots.txt was fetched first, with a plain `urlopen` that follows
-  redirects. A public site could redirect it to 169.254.169.254 or a
-  private address. It now goes through the same pinned, public-only
-  opener as the page. The local tools keep a separate cache that may
-  read a LAN site.
+🔒 Fixed robots.txt letting a server-side fetch reach the LAN.
+  - The page URL of `/web/v1/summarise` was checked to be public, but its
+    robots.txt was fetched first, with a plain `urlopen` that follows
+    redirects, so a public site could redirect it to 169.254.169.254 or a
+    private address.
+  - It now goes through the same pinned, public-only opener as the page.
+    The local tools keep a separate cache that may read a LAN site.
 
-🛡️ Script and style blocks ending `</script foo>` or in upper case were
-  left in extracted page text. The patterns now match what browsers do.
+🔒 Fixed script and style blocks ending `</script foo>`, or in upper case,
+  being left in extracted page text.
+  - The patterns now match what browsers do.
 
-🛡️ Usage SQL interpolates only literal column names looked up from a
-  table, never the request's string. It was allowlisted already, and now
-  cannot be otherwise.
+🔒 Changed usage SQL to interpolate only literal column names looked up
+  from a table, never the request's string.
+  - It was allowlisted already, and now cannot be otherwise.
 
-🛡️ Module storage paths use realpath and a separator-aware prefix
-  check, so `/srv/modules-evil` no longer passes for `/srv/modules`. Key
-  ids are checked before they become file names.
+🔒 Fixed module storage paths accepting a sibling directory.
+  - A realpath and separator-aware prefix check means `/srv/modules-evil`
+    no longer passes for `/srv/modules`.
+  - Key ids are checked before they become file names.
 
-🛡️ waiter's config, which holds a key, is created 0600 instead of being
-  written under the default umask and chmodded afterwards.
+🔒 Changed waiter's config, which holds a key, to be created 0600.
+  - It was written under the default umask and chmodded afterwards.
 
-🛡️ The LM Studio address must be http or https. The admin-only override
-  arrives over HTTP, and `urlopen` also speaks `file://`.
+🔒 Restricted the LM Studio address to http and https.
+  - The admin-only override arrives over HTTP, and `urlopen` also speaks
+    `file://`.
 
-🛡️ The examples script no longer commits T1 token and deploy secrets.
-  The consent-gated shell tools in `hyped` carry `nosec` with the reason.
+🔒 Removed committed T1 token and deploy secrets from the examples script.
+  - It generates them with `secrets.token_hex(32)`.
+  - The consent-gated shell tools in `hyped` carry `nosec` with the
+    reason.
 
-🛡️ A keyless caller, a phone or the site on a trusted network, gets the
-  read-only T1 tools instead of none, so its model can answer "which
-  version is this server". Nothing that writes is offered: the server
-  calls itself from loopback, which may be trusted more than the
-  caller's network, and what differs between them is write access.
+🔒 Changed a keyless caller, a phone or the site on a trusted network, to
+  get the read-only T1 tools instead of none.
+  - Its model can now answer "which version is this server".
+  - Nothing that writes is offered: the server calls itself from loopback,
+    which may be trusted more than the caller's network, and what differs
+    between them is write access.
 
 ### Fixed
 
-𖢥 **`hypernix-t1 runner` could not find a server on another port.** A
-  server on 8001 answered everything else and got "Could not reach the T1
-  API at http://127.0.0.1:8000". The runner command knew `--url`, `T1_URL`
-  and 8000, and never read the `T1_PORT` the shell wrapper had exported
-  from the server's `.env` for it. It now uses `--url`, `T1_URL`,
-  `T1_HOST`/`T1_PORT`, the `.env`, then 8000. If nothing answers there, it
-  asks the nearby loopback ports whether they are a T1 API and says where
-  it found one.
+𖢥 Fixed `hypernix-t1 runner` not finding a server on another port.
+  - A server on 8001 answered everything else and got "Could not reach
+    the T1 API at http://127.0.0.1:8000". The command knew `--url`,
+    `T1_URL` and 8000, and never read the `T1_PORT` the shell wrapper had
+    exported from the server's `.env` for it.
+  - It now uses `--url`, `T1_URL`, `T1_HOST`/`T1_PORT`, the `.env`, then
+    8000.
+🛡️ Added discovery when nothing answers at that address: the command asks
+  the nearby loopback ports whether they are a T1 API, and says where it
+  found one.
 
-𖢥 **HyperLink still could not call tools on most local models.** Three
-  causes. First, the format was taught only on the built-in runner. On LM
-  Studio the tools went in the `tools` field alone, and a model whose
-  template drops it, as Gemma's does, never learned they existed. It is
-  now taught on every backend (`T1_HYPERLINK_TEACH_TOOLS`).
+𖢥 Fixed HyperLink not calling tools on most local models.
+  - The format was taught only on the built-in runner. On LM Studio the
+    tools went in the `tools` field alone, and a model whose template
+    drops it, as Gemma's does, never learned they existed. It is now
+    taught on every backend.
+  - Half the conventions went unread and were shown as the answer. The
+    loop now also reads LM Studio's `[TOOL_REQUEST]`, Gemma's
+    `call:name{...}` and `tool_code`, Llama's `<function=...>`,
+    DeepSeek's markers, and a JSON call after a sentence. Python-style
+    calls are read with `ast` and `literal_eval`, never run, and only for
+    offered tools.
+  - A backend that refuses `tools` (llama-server without `--jinja`)
+    failed the message. That round is now retried without it, and the
+    rest of the turn uses the taught text convention.
 
-𖢥 Second, half the conventions were unread and shown as the answer. The
-  loop now also reads LM Studio's `[TOOL_REQUEST]`, Gemma's
-  `call:name{...}` and `tool_code`, Llama's `<function=...>`, DeepSeek's
-  markers, and a JSON call after a sentence. Python-style calls are read
-  with `ast` and `literal_eval`, never run, and only for offered tools.
+𖢥 Fixed the model not knowing how to use the tools it was taught.
+  - The taught prompt listed the tools and showed one call, and nothing
+    else. A small model read that as optional: it said it could not reach
+    things a tool could, or stopped at the call as if it were the answer.
+  - The prompt now says the tools are real and to call one instead of
+    guessing, and shows a whole exchange: call, result, answer.
+🐛 Fixed a result the model writes itself after its call being shown and
+  kept; it is now removed.
 
-𖢥 Third, a backend that refuses `tools` (llama-server without `--jinja`)
-  failed the message. That round is now retried without it, and the rest
-  of the turn uses the taught text convention.
+### Dependencies and Packaging
 
-𖢥 **The model did not know how to use the tools it was taught.** The
-  taught prompt listed the tools and showed one call, and nothing else.
-  A small model read that as optional: it said it could not reach
-  things a tool could, or stopped at the call as if it were the answer.
-  The prompt now says the tools are real and to call one instead of
-  guessing, and shows a whole exchange: call, result, answer. A result
-  the model writes itself after its call is removed, never shown or
-  kept.
+📦 Added the site's files (`hypernix/hyperlink/web/`) to the package data
+  and `MANIFEST.in`, so the wheel and the sdist carry them.
 
-🐛 Two labels on the site were 10.5px, under the 11px floor
-  `test_website_mobile` enforces, so the full suite, and with it a
-  release, failed on main.
+📦 Changed the release guard to hold a patch release to the guide's
+  `<version> — patch N - <headline>` heading.
+  - `wiki/Changelog-guide.md` now gives a patch posted on PyPI that form
+    instead of a date, so a `.postN` whose newest entry is dated, or
+    whose patch number is not its post number, is refused before the
+    build rather than failing the release's tests after it.
+
+### Documentation
+
+📚 Added `T1_WEB_ENABLED` and `T1_WEB_PORT` to
+  `examples/t1api/.env.example`.
+
+### Site Changes
+
+🛜 Documented HyperLink on the web and the move from LM Studio on the
+  wiki's T1 API page, with the two settings and the `/runner/adopt`
+  routes.
+🛜 Documented the tool-calling changes and `T1_HYPERLINK_TEACH_TOOLS` on
+  the wiki's T1 API page.
+🛜 Documented the default model, native models, where the runner finds
+  the server, and `hypernix-t1 chat` on the wiki's CLI page.
+🛜 Fixed two labels on the docs site's Home and Credits pages that were
+  10.5px, under the 11px floor `test_website_mobile` enforces, which
+  failed the full suite, and with it a release, on main.
+🛜 Changed the GitHub Pages changelog to read the guide's format.
+  - A patch's number and headline come from its `patch N - <headline>`
+    heading: the headline is its summary, and Home and the release
+    history show "patch N" where a dated release shows its date.
+  - A change's nested details are kept apart from it instead of being
+    run into the summary, and names keep their underscores
+    (`brewer_adapter` was shown as `breweradapter`).
+  - Home's highlights are labelled with the legend's meaning (major,
+    minor, feature, security, ...); `๋࣭⭑` and `𖥔` are in scripts few
+    fonts carry, and showed as boxes.
+  - The release history calls `.postN` releases patch releases, as the
+    guide does.
 
 ### Tests
 
-🧪 `tests/test_local_server_url.py` (15): the address order, discovery on
-  a neighbouring port, a named URL never second-guessed, and the chat
-  command against a stand-in server.
-
-🧪 `tests/test_hyperlink_tool_formats.py` (25): every new convention,
-  what is not a call, the stream holding each marker back, a backend that
-  refuses tools on both routes, and the format taught everywhere.
-
-🧪 `tests/test_security_post1.py` (28), one or more per fix, including a
-  loopback server that must see no robots.txt request.
-
-🧪 `tests/test_hyperlink_brewed.py` (27): a two-layer model of the same
-  architecture through the loader, the server, the runner's subprocess,
-  the catalogue and the downloader.
-
-🧪 `tests/test_runner_adopt.py` (12): finding the file by folder, by
-  `lms`, and refusing two; unloading through the API or `lms`; who may;
-  the move, and a failed load put back in LM Studio.
-
-🧪 `tests/test_hyperlink_web.py` (15): the page and the API on one
+🧪 Added `tests/test_local_server_url.py` (15): the address order,
+  discovery on a neighbouring port, a named URL never second-guessed, and
+  the chat command against a stand-in server.
+🧪 Added `tests/test_hyperlink_tool_formats.py` (28): every new
+  convention, what is not a call, the stream holding each marker back, a
+  backend that refuses tools on both routes, and the format taught
+  everywhere.
+🧪 Added `tests/test_security_post1.py` (28), one or more per fix,
+  including a loopback server that must see no robots.txt request.
+🧪 Added `tests/test_hyperlink_brewed.py` (27): a two-layer model of the
+  same architecture through the loader, the server, the runner's
+  subprocess, the catalogue and the downloader.
+🧪 Added `tests/test_runner_adopt.py` (12): finding the file by folder,
+  by `lms`, and refusing two; unloading through the API or `lms`; who
+  may; the move, and a failed load put back in LM Studio.
+🧪 Added `tests/test_hyperlink_web.py` (15): the page and the API on one
   origin, its headers, no request path becoming a file path, listening
   on loopback and tailnet addresses only, the server starting and
   stopping it, dark mode, and Node checking that model text is escaped.
-  The page was also driven in Chromium at desktop and phone sizes.
+  - The page was also driven in Chromium at desktop and phone sizes.
+🧪 Added `tests/test_docs_changelog_data.py` (11): the Pages data reads
+  the patch heading, keeps details apart and underscores in names, has a
+  label for every legend symbol, and has the newest entry.
+🧪 Added a changelog test and three release-guard tests for the patch
+  heading: accepted as `patch N - <headline>`, refused dated, and refused
+  when N is not the post number.
 
 ### Known Issues
 
-❗ HyperNix.3-mini is a 48.7M-parameter base model with a 512-token
-  context and a validation perplexity of about 2,540. As the default chat
-  model it completes text, often incoherently, and cannot call tools.
-  HyperLink's default prompt and the tool format fall off the front of
-  its window.
+❗ HyperNix.3-mini, the new default, cannot hold a chat or call tools.
+  - It is a 48.7M-parameter base model with a 512-token context and a
+    validation perplexity of about 2,540. It completes text, often
+    incoherently.
+  - HyperLink's default prompt and the tool format fall off the front of
+    its window.
+
+### Temporary Workarounds
+
+🩹 Name a chat model with `T1_DEFAULT_MODEL` when the runner's model
+  should hold a conversation or call tools.
+  - Affects `hypernix-t1 runner start` with no model named, from
+    0.72.6.post1.
+  - The named model is loaded instead of HyperNix.3-mini; nothing else
+    changes.
+  - Remove the workaround when the default HyperNix model can hold
+    HyperLink's prompt and call tools.
 
 ## 0.72.6 — 2026-09-24
 

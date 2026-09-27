@@ -21,6 +21,7 @@ package is 0.72.6". That is knowable from the dispatch input alone.
 from __future__ import annotations
 
 import importlib.util
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -42,6 +43,15 @@ def _load():
 guard = _load()
 
 
+def heading(version: str, date: str = "2026-09-24") -> str:
+    """A changelog heading in wiki/Changelog-guide.md's form for `version`:
+    dated, or `patch N - <headline>` for a .postN posted on PyPI."""
+    post = re.search(r"\.post(\d+)$", version)
+    if post:
+        return f"## {version} — patch {int(post.group(1))} - a headline fix"
+    return f"## {version} — {date}"
+
+
 @pytest.fixture
 def tree(tmp_path):
     """A checkout with a version, a changelog, and one commit."""
@@ -51,7 +61,7 @@ def tree(tmp_path):
         )
         wiki = tmp_path / "wiki"
         wiki.mkdir(exist_ok=True)
-        body = changelog if changelog is not None else f"## Changelog\n\n## {version} — 2026-09-24\n"
+        body = changelog if changelog is not None else f"## Changelog\n\n{heading(version)}\n"
         (wiki / "Changelog.md").write_text(body, encoding="utf-8")
         if git:
             def run(*a):
@@ -107,7 +117,7 @@ class TestTheSameVersionTheTreeIsPreparedWith:
         blocking it would only push people back to inventing numbers.
         Its missing notes are still said out loud.
         """
-        repo = tree("0.72.4.post5", changelog="## Changelog\n\n## 0.72.4.post4 — 2026-09-20\n")
+        repo = tree("0.72.4.post5", changelog=f"## Changelog\n\n{heading('0.72.4.post4')}\n")
         code, out = call("0.72.4.post5", repo)
         assert code == 0, out
         assert "::warning::" in out
@@ -115,7 +125,7 @@ class TestTheSameVersionTheTreeIsPreparedWith:
 
     def test_the_heading_must_be_for_this_version_exactly(self, tree):
         """`## 0.72.4.post5` is not satisfied by `## 0.72.4.post50`."""
-        repo = tree("0.72.4.post5", changelog="## Changelog\n\n## 0.72.4.post50 — 2026-09-20\n")
+        repo = tree("0.72.4.post5", changelog=f"## Changelog\n\n{heading('0.72.4.post50')}\n")
         _, out = call("0.72.4.post5", repo)
         assert "no heading for 0.72.4.post5" in out
 
@@ -131,13 +141,13 @@ class TestAVersionThatGoesBackwards:
         assert "allow_downgrade" in out
 
     def test_allow_downgrade_lets_it_through_and_says_so(self, tree):
-        repo = tree("0.72.4.post4", changelog="## 0.72.3.post2 — 2026-09-01\n")
+        repo = tree("0.72.4.post4", changelog=f"{heading('0.72.3.post2')}\n")
         code, out = call("0.72.3.post2", repo, allow_downgrade=True)
         assert code == 0, out
         assert "::warning::" in out
 
     def test_moving_forward_is_reported(self, tree):
-        repo = tree("0.72.4.post4", changelog="## 0.72.5 — 2026-09-24\n\n## 0.72.4.post4 — 2026-09-20\n")
+        repo = tree("0.72.4.post4", changelog=f"## 0.72.5 — 2026-09-24\n\n{heading('0.72.4.post4')}\n")
         code, out = call("0.72.5", repo)
         assert code == 0, out
         assert "0.72.4.post4 -> 0.72.5" in out
@@ -182,6 +192,26 @@ class TestTheChangelogTheReleaseWillBeTestedAgainst:
         code, out = call("0.72.6", repo)
         assert code == 1, out
         assert "<YYYY-MM-DD>" in out
+
+    def test_a_patch_release_is_headed_patch_n(self, tree):
+        """wiki/Changelog-guide.md: a patch posted on PyPI is
+        `## 0.72.7.post14 — patch 14 - headline change or fix`."""
+        repo = tree("0.72.6.post1",
+                    changelog="## 0.72.6.post1 — patch 1 - HyperLink tool calling fixed\n")
+        code, out = call("0.72.6.post1", repo)
+        assert code == 0, out
+
+    def test_a_dated_patch_release_is_refused(self, tree):
+        repo = tree("0.72.6.post1", changelog="## 0.72.6.post1 — 2026-09-27\n")
+        code, out = call("0.72.6.post1", repo)
+        assert code == 1, out
+        assert "patch N - <headline>" in out
+        assert "## 0.72.6.post1 — patch 1 - " in out
+
+    def test_the_patch_number_is_the_post_number(self, tree):
+        repo = tree("0.72.6.post2", changelog="## 0.72.6.post2 — patch 1 - a fix\n")
+        code, out = call("0.72.6.post2", repo)
+        assert code == 1, out
 
     def test_a_changelog_with_no_entries_is_refused(self, tree):
         repo = tree("0.72.6", changelog="## Changelog\n\n## Legend\n")

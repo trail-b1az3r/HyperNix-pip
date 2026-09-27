@@ -110,7 +110,10 @@ CURATED_EXAMPLES = [
 def clean_changelog_text(text: str, limit: int = 360) -> str:
     text = re.sub(r"```.*?```", "", text, flags=re.S)
     text = re.sub(r"`([^`]+)`", r"\1", text)
-    text = re.sub(r"[*_~]", "", text)
+    text = re.sub(r"[*~]", "", text)
+    # Emphasis underscores go; the ones inside a name (brewer_adapter,
+    # T1_WEB_PORT) stay.
+    text = re.sub(r"(?<!\w)_+|_+(?!\w)", "", text)
     text = re.sub(r"\s+", " ", text).strip()
     if len(text) <= limit:
         return text
@@ -168,57 +171,98 @@ def _clamp_changelog_text(value: str, limit: int) -> str:
     return value[:limit - 1].rsplit(" ", 1)[0].rstrip(" ,.;:") + "…"
 
 
+#: wiki/Changelog-guide.md's legend, in its order.
+CHANGELOG_SYMBOLS = (
+    "๋࣭⭑", "✨", "𖥔", "𖢥", "🐛", "🛡️", "🔁", "🔧", "⚡", "🔒", "⚠️",
+    "🧪", "📚", "🛜", "🔌", "🔗", "❌", "✂️", "꩜", "❗", "🩹", "♻️", "📦",
+)
+
+
+#: Each symbol's meaning in the legend, as a short label. The site shows
+#: the label: ๋࣭⭑ and 𖥔 are in scripts few fonts carry, and render as boxes.
+CHANGELOG_SYMBOL_LABELS = {
+    "๋࣭⭑": "major", "✨": "feature", "𖥔": "minor", "𖢥": "major fix", "🐛": "fix",
+    "🛡️": "polish", "🔁": "refactor", "🔧": "internal", "⚡": "performance",
+    "🔒": "security", "⚠️": "error codes", "🧪": "tests", "📚": "docs", "🛜": "site",
+    "🔌": "integration", "🔗": "API", "❌": "breaking", "✂️": "removed", "꩜": "restored",
+    "❗": "known issue", "🩹": "workaround", "♻️": "migration", "📦": "packaging",
+}
+
+
+def _changelog_changes(body: str) -> list[dict[str, Any]]:
+    """Every change bullet in an entry, as the guide lays them out.
+
+    A change is a line that starts with a legend symbol. Its wrapped
+    continuation lines are part of its sentence; its nested ``- `` bullets
+    are its details, which the guide keeps apart from the change itself,
+    so they are kept apart here rather than run into the site's summary.
+    """
+    changes: list[dict[str, Any]] = []
+    category = ""
+    current: dict[str, Any] | None = None
+    text: list[str] = []
+    details: list[list[str]] = []
+
+    def flush() -> None:
+        nonlocal current, text, details
+        if current is not None:
+            sentence = clean_changelog_text(" ".join(text))
+            if sentence:
+                current["text"] = _clamp_changelog_text(sentence, 280)
+                current["details"] = [
+                    _clamp_changelog_text(clean_changelog_text(" ".join(d)), 280)
+                    for d in details if " ".join(d).strip()
+                ]
+                changes.append(current)
+        current, text, details = None, [], []
+
+    for line in body.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("### "):
+            flush()
+            category = stripped[4:].strip()
+            continue
+        if stripped.startswith("#### "):
+            flush()
+            continue
+        if not category:
+            continue
+        symbol = next((s for s in CHANGELOG_SYMBOLS if stripped.startswith(s + " ")), None)
+        if symbol:
+            flush()
+            current = {"symbol": symbol, "label": CHANGELOG_SYMBOL_LABELS[symbol], "category": category}
+            text = [stripped[len(symbol):].strip()]
+            continue
+        if current is None or not stripped:
+            continue
+        if stripped.startswith("- ") and line[:1] in (" ", "\t"):
+            details.append([stripped[2:].strip()])
+        elif details:
+            details[-1].append(stripped)
+        else:
+            text.append(stripped)
+
+    flush()
+    return changes
+
+
 def _changelog_bullet_highlights(body: str, limit: int = 6) -> list[str]:
-    """Extract real change bullets from the canonical category sections.
+    """The change sentences of an entry, without their nested details.
 
     The previous site updater treated the release date in a heading such as
     ``0.72.6 — 2026-09-24`` as the summary. The changelog itself now has stable
     category/bullet structure, so use those bullets instead and keep wrapped
     continuation lines attached to the same item.
     """
-    symbols = (
-        "๋࣭⭑", "✨", "𖥔", "𖢥", "🐛", "🛡️", "🔁", "🔧", "⚡", "🔒", "⚠️",
-        "🧪", "📚", "🛜", "🔌", "🔗", "❌", "✂️", "꩜", "❗", "🩹", "♻️", "📦",
-    )
-    highlights: list[str] = []
-    current_category = ""
-    current_item: list[str] | None = None
+    return [change["text"] for change in _changelog_changes(body)][:limit]
 
-    def flush() -> None:
-        nonlocal current_item
-        if not current_item:
-            return
-        text = re.sub(r"\s+", " ", " ".join(current_item)).strip()
-        text = clean_changelog_text(text)
-        if text:
-            text = _clamp_changelog_text(text, 280)
-            highlights.append(text)
-        current_item = None
 
-    for line in body.splitlines():
-        stripped = line.strip()
-        if stripped.startswith("### "):
-            flush()
-            current_category = stripped[4:].strip()
-            continue
-        if stripped.startswith("#### "):
-            flush()
-            continue
-        if not current_category:
-            continue
-        matched_symbol = next((symbol for symbol in symbols if stripped.startswith(symbol + " ")), None)
-        if matched_symbol:
-            flush()
-            current_item = [stripped[len(matched_symbol):].strip()]
-            continue
-        if current_item is not None:
-            # Continuations and nested details are part of the same change; preserve
-            # their words for a useful site summary but not their markdown layout.
-            if stripped:
-                current_item.append(stripped)
+#: How many of the newest entries carry their full list of changes.
+DETAILED_ENTRIES = 5
 
-    flush()
-    return highlights[:limit]
+#: wiki/Changelog-guide.md: a patch posted on PyPI is headed
+#: ``0.72.7.post14 — patch 14 - headline change or fix``.
+_PATCH_TITLE = re.compile(r"^patch\s+(\d+)\s+-\s+(.+)$", re.I)
 
 
 def _parse_changelog_heading(raw_heading: str) -> tuple[str, str, str]:
@@ -259,6 +303,7 @@ def parse_changelog() -> dict[str, Any]:
 
     for index, match in enumerate(matches):
         raw_heading = match.group(1).strip()
+        detailed = len(entries) < DETAILED_ENTRIES
         body_end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
         body = text[match.end():body_end].strip()
 
@@ -274,7 +319,10 @@ def parse_changelog() -> dict[str, Any]:
         if not re.match(r"^v?\d+\.\d+\.\d+", label, re.I):
             continue
 
-        highlights = _changelog_bullet_highlights(body)
+        changes = _changelog_changes(body)
+        highlights = [change["text"] for change in changes][:6]
+        patch = _PATCH_TITLE.match(heading_title)
+        headline = clean_changelog_text(patch.group(2)) if patch else ""
         summary = ""
         # The release summary section is intentionally preferred when the guide
         # supplies one; otherwise the first actual change bullet is the summary.
@@ -291,17 +339,17 @@ def parse_changelog() -> dict[str, Any]:
                 continue
             if in_summary:
                 matched_symbol = next(
-                    (symbol for symbol in (
-                        "๋࣭⭑", "✨", "𖥔", "𖢥", "🐛", "🛡️", "🔁", "🔧", "⚡", "🔒", "⚠️",
-                        "🧪", "📚", "🛜", "🔌", "🔗", "❌", "✂️", "꩜", "❗", "🩹", "♻️", "📦",
-                    ) if stripped.startswith(symbol + " ")), None
+                    (symbol for symbol in CHANGELOG_SYMBOLS if stripped.startswith(symbol + " ")), None
                 )
                 if matched_symbol:
                     summary_highlights.append(
                         _clamp_changelog_text(clean_changelog_text(stripped[len(matched_symbol):].strip()), 280)
                     )
         summary_parts = [x for x in summary_highlights if x]
-        if summary_parts:
+        if headline:
+            # A patch release's headline is its one-line summary.
+            summary = headline
+        elif summary_parts:
             summary = summary_parts[0]
         elif highlights:
             summary = highlights[0]
@@ -319,7 +367,13 @@ def parse_changelog() -> dict[str, Any]:
             "date": date,
             "title": clean_changelog_text(heading_title),
             "summary": summary or "Release notes in wiki/Changelog.md.",
+            "patch": int(patch.group(1)) if patch else None,
+            "headline": headline,
             "highlights": highlights,
+            # Every change, with its symbol, category and details, for the
+            # newest entries the site shows in full; older ones keep only
+            # their highlights, so the file does not grow with the history.
+            "changes": changes if detailed else [],
         })
 
     return {
