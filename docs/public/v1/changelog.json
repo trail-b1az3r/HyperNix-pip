@@ -1,7 +1,137 @@
 {
-  "generated_at": "2026-09-27T19:06:27Z",
+  "generated_at": "2026-09-27T19:26:22Z",
   "source": "wiki/Changelog.md",
   "entries": [
+    {
+      "version": "0.72.6.post2",
+      "key": "0.72.6.post2",
+      "aliases": [
+        "0.72.6-post2",
+        "0.72.6.post2"
+      ],
+      "kind": "post",
+      "heading": "0.72.6.post2 \u2014 patch 2 - HyperLink on the web works from the tailnet, and a model reads links",
+      "date": "",
+      "title": "patch 2 - HyperLink on the web works from the tailnet, and a model reads links",
+      "summary": "HyperLink on the web works from the tailnet, and a model reads links",
+      "patch": 2,
+      "headline": "HyperLink on the web works from the tailnet, and a model reads links",
+      "highlights": [
+        "Added the site's addresses to the server's log and to hypernix-t1 status.",
+        "Added T1_WEB_ENABLED and T1_WEB_PORT to the .env that hypernix-t1 create and install-t1.sh write, with where to look.",
+        "Fixed HyperLink on the web listening on 127.0.0.1 alone on most servers.",
+        "Fixed a message on the site showing nothing when no reply came.",
+        "Fixed a failed reply being saved with nothing to say why.",
+        "Fixed a HyperLink model saying it cannot browse when given a link."
+      ],
+      "changes": [
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "Added the site's addresses to the server's log and to hypernix-t1 status.",
+          "details": [
+            "Starting the server prints \"HyperLink on the web: http://127.0.0.1:37965, http://100.x.y.z:37965\", and says so when there is no Tailscale address, so only this machine can open it.",
+            "hypernix-t1 status lists each address and whether the page answers there, asked from outside the server."
+          ]
+        },
+        {
+          "symbol": "\ud81a\udd54",
+          "label": "minor",
+          "category": "Added",
+          "text": "Added T1_WEB_ENABLED and T1_WEB_PORT to the .env that hypernix-t1 create and install-t1.sh write, with where to look.",
+          "details": []
+        },
+        {
+          "symbol": "\ud81a\udca5",
+          "label": "major fix",
+          "category": "Fixed",
+          "text": "Fixed HyperLink on the web listening on 127.0.0.1 alone on most servers.",
+          "details": [
+            "The site found its Tailscale addresses with tailscale ip from PATH, or else psutil. A systemd unit's PATH is minimal, Tailscale from the Mac App Store keeps the command inside the app, and the t1api extra does not bring psutil, so the tailnet was never found and a phone or\u2026",
+            "The command is now looked for where the keyless check already looks (/usr/bin, /usr/local/bin, /opt/homebrew/bin, the Mac app), and without it the kernel is asked which local address routes to Tailscale's own 100.100.100.100 and fd7a:115c:a1e0::53. That sends nothing, and needs\u2026"
+          ]
+        },
+        {
+          "symbol": "\ud81a\udca5",
+          "label": "major fix",
+          "category": "Fixed",
+          "text": "Fixed a message on the site showing nothing when no reply came.",
+          "details": [
+            "With nothing to answer it, no model on the runner and LM Studio not running, the server sent an error, the page showed it, and then redrew the chat from the server's copy, which wiped it. The message sat there with no reply and no reason.",
+            "The error now stays, in red, and says the model can also be loaded on this server from the Runner tab."
+          ]
+        },
+        {
+          "symbol": "\ud83d\udc1b",
+          "label": "fix",
+          "category": "Fixed",
+          "text": "Fixed a failed reply being saved with nothing to say why.",
+          "details": [
+            "The saved reply's metadata now carries the error's code and message, so a client that redraws or reopens the chat can show it; the site does, instead of an empty bubble."
+          ]
+        },
+        {
+          "symbol": "\ud81a\udca5",
+          "label": "major fix",
+          "category": "Fixed",
+          "text": "Fixed a HyperLink model saying it cannot browse when given a link.",
+          "details": [
+            "Reported from a phone: asked to look at a GitHub repository, the model listed read_memory and update_memory as its only tools and said three times that it could not open a web page.",
+            "The phone had no key. 0.72.6 gave a keyless caller no T1 tools, so no web_search or web_summarize; 0.72.6.post1 gives it the read-only ones.",
+            "Nothing it was told said a link could be opened either. The web_summarize tool now says it opens any http or https link, a GitHub repository included; the taught prompt says, when a web tool is offered, that the model can reach the web and must not say it cannot browse; and the\u2026"
+          ]
+        },
+        {
+          "symbol": "\ud83d\udc1b",
+          "label": "fix",
+          "category": "Fixed",
+          "text": "Fixed a link pasted with a fragment (\u2026/repo#readme) failing web_summarize: the fragment, which is never sent to a site, is dropped before the call.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udc1b",
+          "label": "fix",
+          "category": "Fixed",
+          "text": "Fixed hypernix-t1 create stamping the .env it writes with 0.72.5.",
+          "details": [
+            "It now names the installed package's version."
+          ]
+        },
+        {
+          "symbol": "\ud83e\uddea",
+          "label": "tests",
+          "category": "Tests",
+          "text": "Added five tests to tests/test_hyperlink_web.py (now 20): the Tailscale address found through the route with neither the command nor psutil, the command found on a minimal PATH, the addresses in the log, status saying whether the page answers, and the error kept on screen after\u2026",
+          "details": [
+            "The released 0.72.6.post1 wheel and this branch were each installed in a fresh virtualenv, started with hypernix-t1, and driven in Chromium: sign-in with a key and keyless, chat, Runner, Memory and Settings."
+          ]
+        },
+        {
+          "symbol": "\ud83e\uddea",
+          "label": "tests",
+          "category": "Tests",
+          "text": "Added test_a_failed_reply_is_saved_with_its_error to tests/test_hyperlink_stream_tools.py.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83e\uddea",
+          "label": "tests",
+          "category": "Tests",
+          "text": "Added tests/test_hyperlink_reads_links.py (5): a keyless phone on a trusted network pastes a GitHub link, the model is offered the web tools and told it can open links, calls web_summarize, and gets the page's text back through the real server.",
+          "details": []
+        },
+        {
+          "symbol": "\u2757",
+          "label": "known issue",
+          "category": "Known Issues",
+          "text": "The site is not reachable from the LAN, by design.",
+          "details": [
+            "It listens on 127.0.0.1 and Tailscale addresses only. From another device, use this machine's Tailscale address, which hypernix-t1 status prints."
+          ]
+        }
+      ]
+    },
     {
       "version": "0.72.6.post1",
       "key": "0.72.6.post1",
@@ -257,24 +387,6 @@
           "details": []
         },
         {
-          "symbol": "\ud81a\udca5",
-          "label": "major fix",
-          "category": "Fixed",
-          "text": "Fixed a HyperLink model saying it cannot browse when given a link.",
-          "details": [
-            "Reported from a phone: asked to look at a GitHub repository, the model listed read_memory and update_memory as its only tools and said three times that it could not open a web page.",
-            "The phone had no key, and a keyless caller got no T1 tools, so no web_search or web_summarize (fixed above, under Security).",
-            "Nothing it was told said a link could be opened either. The web_summarize tool now says it opens any http or https link, a GitHub repository included; the taught prompt says, when a web tool is offered, that the model can reach the web and must not say it cannot browse; and the\u2026"
-          ]
-        },
-        {
-          "symbol": "\ud83d\udc1b",
-          "label": "fix",
-          "category": "Fixed",
-          "text": "Fixed a link pasted with a fragment (\u2026/repo#readme) failing web_summarize: the fragment, which is never sent to a site, is dropped before the call.",
-          "details": []
-        },
-        {
           "symbol": "\ud83d\udce6",
           "label": "packaging",
           "category": "Dependencies and Packaging",
@@ -380,13 +492,6 @@
           "details": [
             "The page was also driven in Chromium at desktop and phone sizes."
           ]
-        },
-        {
-          "symbol": "\ud83e\uddea",
-          "label": "tests",
-          "category": "Tests",
-          "text": "Added tests/test_hyperlink_reads_links.py (5): a keyless phone on a trusted network pastes a GitHub link, the model is offered the web tools and told it can open links, calls web_summarize, and gets the page's text back through the real server.",
-          "details": []
         },
         {
           "symbol": "\ud83e\uddea",
@@ -889,64 +994,7 @@
         "Siri answered \"HyperLink hasn't added support for that\". The README and the intents file told people to say \"ask HyperLink what's the weather\" and \"load the model Gemma 4 E2B on blazeindustries in HyperLink\", and no registered phrase matched either: a phrase can name only an\u2026",
         "A model was offered to Siri under its file name, such as gemma-4-e2b-it-Q4_K_M, which is not what anyone says, so \"Load Gemma 4 E2B in HyperLink\" had no title to match. SpokenName titles each model the way it is said (\"Gemma 4 E2B\"), keeps the fuller forms as synonyms, and the\u2026"
       ],
-      "changes": [
-        {
-          "symbol": "\ud83d\udd01",
-          "label": "refactor",
-          "category": "Changed",
-          "text": "The release candidate for 0.72.6, the two fixes its first release run needed, and Siri phrases that match what the docs say to say.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udd27",
-          "label": "internal",
-          "category": "Changed",
-          "text": "This is the first release candidate of 0.72.6, and everything in it was published first as 0.72.5.post14 to post17; the entries below say what each of those added.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udc1b",
-          "label": "fix",
-          "category": "Fixed",
-          "text": "A release cut to a version the tree was not already carrying failed its own test run. The workflow bumped four version strings and not hyped-pro's package.json and app.ts, so the app still called itself 0.72.5-post17. It now writes both through hyped_pro_otui.sync_app_version\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udc1b",
-          "label": "fix",
-          "category": "Fixed",
-          "text": "The documentation check failed wherever fastapi is not installed, as on the release runner. hypernix.t1api.create_app re-raises the missing package as a plain ImportError with install advice, and the check looked only at that error, never at its cause.",
-          "details": []
-        },
-        {
-          "symbol": "\ud81a\udca5",
-          "label": "major fix",
-          "category": "Fixed",
-          "text": "Siri answered \"HyperLink hasn't added support for that\". The README and the intents file told people to say \"ask HyperLink what's the weather\" and \"load the model Gemma 4 E2B on blazeindustries in HyperLink\", and no registered phrase matched either: a phrase can name only an\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\ud81a\udca5",
-          "label": "major fix",
-          "category": "Fixed",
-          "text": "A model was offered to Siri under its file name, such as gemma-4-e2b-it-Q4_K_M, which is not what anyone says, so \"Load Gemma 4 E2B in HyperLink\" had no title to match. SpokenName titles each model the way it is said (\"Gemma 4 E2B\"), keeps the fuller forms as synonyms, and the\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\ud83e\uddea",
-          "label": "tests",
-          "category": "Tests",
-          "text": "semver_of across every spelling the release workflow accepts, sync_app_version against copies of the real files, the workflow bumping and committing both, and the documentation check run with fastapi blocked. It failed twice there before the fix and passes after it.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83e\uddea",
-          "label": "tests",
-          "category": "Tests",
-          "text": "tests/test_hyperlink_siri_phrases.py holds every Siri sentence in the README, the iOS README and the intents file to a phrase the app registers, read from its AppShortcutsProvider. Run against the old README it fails on exactly the two sentences Siri refused\u2026",
-          "details": []
-        }
-      ]
+      "changes": []
     },
     {
       "version": "0.72.5.post17",

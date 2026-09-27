@@ -103,6 +103,7 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .
   clip-path: path("M12 0 C 12 8 8 12 0 14 C 6 14 10 12 12 10 Z");
 }
 .meta { font-size: 11px; color: var(--muted); padding: 2px 6px 6px; }
+.meta.error { color: var(--danger); font-size: 13px; max-width: 78%; }
 .bubble p { margin: 0 0 .5em; } .bubble p:last-child { margin-bottom: 0; }
 .bubble pre {
   background: rgba(0,0,0,.18); padding: 8px 10px; border-radius: 10px;

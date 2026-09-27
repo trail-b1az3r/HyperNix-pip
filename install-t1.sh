@@ -45,7 +45,7 @@ set -euo pipefail
 # below replaces them whenever the script is run from a clone, and
 # tests/test_install_script.py fails if the fallback drifts from the
 # package again.
-VERSION="0.72.6.post1"
+VERSION="0.72.6.post2"
 T1_API_VERSION="1.1.26.9.0.0"
 
 # Replace the baked versions with the real ones, when they can be read.
@@ -1129,6 +1129,12 @@ T1_PORT=$BIND_PORT
 # The port advertised to HyperLink clients. Keep it matching whatever
 # uvicorn is actually bound to — it cannot be inferred behind a proxy.
 T1_HYPERLINK_PORT=$BIND_PORT
+
+# HyperLink on the web: the app as a site, on 127.0.0.1 and this
+# machine's Tailscale addresses only, never the LAN. 'hypernix-t1 status'
+# says where it is and whether it answers.
+T1_WEB_ENABLED=1
+T1_WEB_PORT=37965
 $(if [ -n "$PUBLIC_URL" ]; then printf 'T1_HYPERLINK_PUBLIC_URL=%s\n' "$PUBLIC_URL"; else printf '# T1_HYPERLINK_PUBLIC_URL=https://t1.example.com\n'; fi)
 
 # Whether an address must be explicitly allowed before it can reach any

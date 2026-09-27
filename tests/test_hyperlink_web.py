@@ -95,7 +95,87 @@ class TestWhereItListens:
                 return {"eth0": [Entry("192.168.1.5")], "lo": [Entry("127.0.0.1")]}
 
         monkeypatch.setitem(__import__("sys").modules, "psutil", Psutil)
+        monkeypatch.setattr(hyperlink_web, "_tailscale_binary", lambda: "")
+        # With no Tailscale the route to 100.100.100.100 is the LAN's.
+        monkeypatch.setattr(hyperlink_web, "_routed_addresses", lambda: ["192.168.1.5"])
         assert hyperlink_web.tailnet_addresses() == []
+
+    def test_the_route_finds_it_without_the_command_or_psutil(self, monkeypatch):
+        """0.72.6.post2: the t1api extra has no psutil, and a systemd unit's
+        PATH, or a Mac with Tailscale from the App Store, has no `tailscale`,
+        so the site listened on 127.0.0.1 alone and a phone was refused."""
+        monkeypatch.setattr(hyperlink_web, "_tailscale_binary", lambda: "")
+        monkeypatch.setitem(__import__("sys").modules, "psutil", None)
+        asked = []
+
+        class Probe:
+            def __init__(self, family, kind):
+                self.family = family
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc):
+                return False
+
+            def connect(self, address):
+                asked.append(address)
+                if self.family == socket.AF_INET6:
+                    raise OSError("no IPv6 route")
+
+            def getsockname(self):
+                return ("100.101.102.103", 50000)
+
+        monkeypatch.setattr(hyperlink_web.socket, "socket", Probe)
+        assert hyperlink_web.tailnet_addresses() == ["100.101.102.103"]
+        assert ("100.100.100.100", 53) in asked  # Tailscale's own address, asked of the kernel
+
+    def test_a_minimal_path_still_finds_the_command(self, monkeypatch):
+        import os
+
+        monkeypatch.setattr(hyperlink_web.shutil, "which", lambda name: None)
+        monkeypatch.setattr(os.path, "exists", lambda path: path == "/usr/bin/tailscale")
+        ran = []
+
+        def run(argv, **kwargs):
+            ran.append(argv)
+            return subprocess.CompletedProcess(argv, 0, stdout="100.64.1.2\n", stderr="")
+
+        monkeypatch.setattr(hyperlink_web.subprocess, "run", run)
+        assert hyperlink_web.tailnet_addresses() == ["100.64.1.2"]
+        assert ran == [["/usr/bin/tailscale", "ip"]]
+
+    def test_it_says_where_it_is_in_the_log(self, api_app, monkeypatch, capsys):
+        monkeypatch.setattr(hyperlink_web, "tailnet_addresses", lambda: [])
+        port = _free_port()
+        listener = hyperlink_web.WebListener(api_app, port=port)
+        listener.start()
+        try:
+            err = capsys.readouterr().err
+            assert f"HyperLink on the web: http://127.0.0.1:{port}" in err
+            assert "No Tailscale address on this machine" in err
+        finally:
+            listener.stop()
+
+    def test_status_says_whether_it_answers(self, api_app, monkeypatch):
+        monkeypatch.setattr(hyperlink_web, "tailnet_addresses", lambda: [])
+        assert hyperlink_web.status_lines(False, 37965) == ["web       off (T1_WEB_ENABLED=0)"]
+        port = _free_port()
+        assert "NOT answering" in hyperlink_web.status_lines(True, port)[0]
+        listener = hyperlink_web.WebListener(api_app, port=port)
+        listener.start()
+        try:
+            import time
+
+            for _ in range(50):
+                lines = hyperlink_web.status_lines(True, port)
+                if lines[0].endswith(" answering"):
+                    break
+                time.sleep(0.1)
+            assert lines[0] == f"web       http://127.0.0.1:{port}/  answering"
+            assert "only this machine" in lines[1]
+        finally:
+            listener.stop()
 
     def test_it_serves_on_loopback_and_never_everywhere(self, api_app, monkeypatch):
         monkeypatch.setattr(hyperlink_web, "tailnet_addresses", lambda: [])
@@ -155,6 +235,19 @@ class TestThePageItself:
         assert "color-scheme: dark" in root and "--bg: #0e0e13" in root
         assert "prefers-color-scheme: light" not in css
         assert '<meta name="color-scheme" content="dark">' in (WEB / "index.html").read_text()
+
+    def test_a_failed_reply_keeps_its_error_on_screen(self):
+        """0.72.6.post2: the page redrew the chat from the server after a
+        reply, which wiped the error, so a message with nothing to answer
+        it (no model loaded, LM Studio not running) showed nothing at all."""
+        js = (WEB / "app.js").read_text()
+        send = js[js.index("async function send"):js.index("async function stop")]
+        redraw = send.index("await openSession(sessionId)")
+        assert "if (failed)" in send[redraw:], "the error is re-shown after the redraw"
+        assert "metadata.error" in js  # and drawn from the server's copy
+        assert "Runner tab" in js
+        css = (WEB / "app.css").read_text()
+        assert ".meta.error { color: var(--danger)" in css
 
     def test_no_inline_script_so_the_policy_can_forbid_it(self):
         html = (WEB / "index.html").read_text()
