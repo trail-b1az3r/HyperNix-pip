@@ -311,3 +311,152 @@ def runner_hyperchat(
         "live": chat.stats() if chat is not None else None,
         "request_id": request_id,
     }
+
+
+# ---------------------------------------------------------------------------
+# Moving LM Studio's model onto the runner (0.72.6.post1)
+# ---------------------------------------------------------------------------
+
+
+def _may_adopt(principal: HyperLinkPrincipal, request: Request) -> tuple[bool, str]:
+    """Admins, and anyone on this machine or its tailnet.
+
+    Narrower than loading a model: this also reaches into LM Studio,
+    another application on the machine, and ejects what it is serving.
+    A key with write scope from the internet is not enough; being the
+    admin, or being on the owner's own tailnet (or at the keyboard), is.
+    """
+    from ...system.nettrust import Trust
+    from ..deps import get_origin
+
+    if principal.is_admin:
+        return True, "admin"
+    origin = get_origin(request)
+    if origin.trust in (Trust.TAILNET, Trust.LOOPBACK):
+        return True, origin.trust.value
+    return False, (
+        "Only an admin, or a device on this server's tailnet, can move a model "
+        f"out of LM Studio. This request came from a {origin.trust.value} address."
+    )
+
+
+def _lmstudio(config: T1APIConfig):
+    from ...bridge.lmstudio import LMStudioBridge
+
+    if not config.lmstudio_enabled:
+        return None
+    return LMStudioBridge(config.lmstudio_url or None, api_key=config.lmstudio_api_key,
+                          timeout=config.lmstudio_timeout_seconds)
+
+
+def _lmstudio_loaded(bridge) -> list[str]:
+    if bridge is None:
+        return []
+    try:
+        return [m.model_id for m in bridge.loaded_models()]
+    except Exception:  # noqa: BLE001 - LM Studio off is an answer, not an error
+        return []
+
+
+@router.get("/adopt")
+def runner_adopt_preview(
+    request: Request,
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    runner=Depends(get_runner),
+    config: T1APIConfig = Depends(get_config),
+    request_id: str = Depends(get_request_id),
+) -> dict:
+    """Whether "Move to the HyperNix runner" applies here, and to what.
+
+    The app asks this to decide whether to show the button: it is shown
+    when this caller may use it and LM Studio has a model loaded.
+    """
+    allowed, why = _may_adopt(principal, request)
+    loaded = _lmstudio_loaded(_lmstudio(config)) if allowed else []
+    current = runner.current
+    return {
+        "allowed": allowed,
+        "why": why,
+        "available": allowed and bool(loaded),
+        "lmstudio_loaded": loaded,
+        "runner_model": current.model_id if current else "",
+        "request_id": request_id,
+    }
+
+
+@router.post("/adopt", response_model=RunnerStatusResponse)
+def runner_adopt(
+    request: Request,
+    payload: dict | None = None,
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    runner=Depends(get_runner),
+    config: T1APIConfig = Depends(get_config),
+    request_id: str = Depends(get_request_id),
+) -> RunnerStatusResponse:
+    """Unload LM Studio's model and load the same file on the runner.
+
+    ``{"model_id": ...}`` picks one when LM Studio has several loaded;
+    ``backend``, ``gpu_layers`` and ``context_length`` are as for
+    ``/runner/load``. If the runner cannot load it, it is put back in LM
+    Studio, and the refusal says whether that worked.
+    """
+    from ...hyperlink.handover import (
+        HandoverError,
+        find_lmstudio_file,
+        load_in_lmstudio,
+        unload_from_lmstudio,
+    )
+
+    allowed, why = _may_adopt(principal, request)
+    if not allowed:
+        raise T1APIError(T1ErrorCode.AUTH_INSUFFICIENT_SCOPE, why, http_status=403)
+    body = payload or {}
+    bridge = _lmstudio(config)
+    if bridge is None:
+        raise T1APIError(T1ErrorCode.NOT_SUPPORTED,
+                         "The LM Studio bridge is off on this server, so there is nothing to move.",
+                         http_status=409)
+    loaded = _lmstudio_loaded(bridge)
+    wanted = str(body.get("model_id") or "")
+    if wanted and wanted not in loaded:
+        raise T1APIError(T1ErrorCode.NOT_FOUND, f"LM Studio does not have {wanted!r} loaded.",
+                         details={"lmstudio_loaded": loaded}, http_status=404)
+    if not wanted:
+        if len(loaded) != 1:
+            raise T1APIError(
+                T1ErrorCode.VALIDATION_ERROR,
+                "LM Studio has no model loaded." if not loaded else
+                f"LM Studio has {len(loaded)} models loaded; say which to move.",
+                details={"lmstudio_loaded": loaded}, http_status=409,
+            )
+        wanted = loaded[0]
+
+    try:
+        found = find_lmstudio_file(wanted)
+        how = unload_from_lmstudio(bridge, wanted)
+    except HandoverError as exc:
+        raise T1APIError(T1ErrorCode.VALIDATION_ERROR, str(exc),
+                         details={"step": exc.step, "remedy": exc.remedy}) from exc
+    try:
+        current = runner.load(
+            found.path, model_id=wanted,
+            gpu_layers=body.get("gpu_layers"),
+            backend=str(body.get("backend") or "auto"),
+            context_length=int(body.get("context_length") or 0),
+        )
+    except ManagedError as exc:
+        restored = load_in_lmstudio(bridge, wanted)
+        raise T1APIError(
+            T1ErrorCode.VALIDATION_ERROR,
+            f"The runner could not load {wanted}: {exc}",
+            details={"step": "load", "restored_in_lmstudio": restored,
+                     "remedy": "It is back in LM Studio." if restored else
+                               "Load it in LM Studio again; putting it back failed."},
+        ) from exc
+
+    logger.info("runner: %s moved %s from LM Studio (%s, file via %s)",
+                principal.label, wanted, how, found.found_by)
+    return RunnerStatusResponse(
+        loaded=True, model=current.to_dict(), base_url=runner.base_url,
+        backends=list(BACKENDS), request_id=request_id,
+    )

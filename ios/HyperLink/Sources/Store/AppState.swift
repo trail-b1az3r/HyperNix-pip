@@ -79,6 +79,9 @@ final class AppState {
     /// spinning disk takes minutes, and a screen that does not say so
     /// looks broken.
     private(set) var runnerBusy = false
+    /// Whether "Move to the HyperNix runner" applies here. Nil when the
+    /// server does not offer it or this caller may not use it.
+    private(set) var adoptPreview: AdoptPreview?
     /// What the last load or unload said when it refused.
     var runnerError: String?
 
@@ -962,6 +965,28 @@ final class AppState {
         } else {
             runner = .unknown
             runnerAvailable = false
+        }
+        // Nil on a server without /runner/adopt, or when it refuses:
+        // the button is simply not shown.
+        adoptPreview = try? await client.runnerAdoptPreview()
+    }
+
+    /// Move a model from LM Studio onto the HyperNix runner.
+    @discardableResult
+    func moveFromLMStudio(_ modelID: String) async -> Bool {
+        runnerBusy = true
+        runnerError = nil
+        defer { runnerBusy = false }
+        do {
+            runner = try await client.runnerAdopt(modelID: modelID)
+            runnerAvailable = true
+            adoptPreview = try? await client.runnerAdoptPreview()
+            await refreshModels()
+            return true
+        } catch {
+            runnerError = (error as? HyperLinkError)?.errorDescription
+                ?? error.localizedDescription
+            return false
         }
     }
 
