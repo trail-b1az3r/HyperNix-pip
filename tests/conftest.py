@@ -24,10 +24,23 @@ Two layers, because the environment variable alone is not enough:
 from __future__ import annotations
 
 import os
+import sys
 import tempfile
 from pathlib import Path
 
 import pytest
+
+# Tests live in one folder per package they cover (tests/t1api,
+# tests/quant, ...), and a few import a helper from a test in another
+# folder (test_hnxrun's model writer, test_hyprslug_headers' GGUF
+# builder). Every test folder is on the path, after everything else so it
+# never shadows a real module, and those imports work wherever the file
+# lives.
+_TESTS = Path(__file__).resolve().parent
+for _folder in sorted(p for p in _TESTS.iterdir()
+                      if p.is_dir() and not p.name.startswith(("_", "."))):
+    if str(_folder) not in sys.path:
+        sys.path.append(str(_folder))
 
 #: Where the stores land unless told otherwise.
 REAL_HOME = Path.home() / ".hypernix"
