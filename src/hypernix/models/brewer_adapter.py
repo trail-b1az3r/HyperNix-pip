@@ -333,12 +333,11 @@ def load(path: str | Path, *, device: str | None = None) -> tuple[Any, Any]:
             state = torch.load(weights, map_location="cpu", weights_only=True)
             model.load_state_dict(state)
     else:
-        # weights_only is not available for this one: brewer's checkpoint
-        # stores its config as a plain dict alongside the tensors, and
-        # weights_only=True refuses anything that is not a tensor. The
-        # file is one the user pointed at, which is the same trust level
-        # as any other model file they load.
-        payload = torch.load(candidate, map_location="cpu", weights_only=False)
+        # brewer's checkpoint is its config as a plain dict alongside the
+        # tensors, which weights_only loading reads without running any
+        # of the file. A model.pt from a hub is a program otherwise.
+        from ..security.safeload import load_checkpoint
+        payload = load_checkpoint(candidate)
         if not isinstance(payload, dict) or "model_state_dict" not in payload:
             raise ValueError(
                 f"{candidate} is not a {ARCH_NAME} checkpoint "

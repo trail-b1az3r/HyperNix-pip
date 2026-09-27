@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-27T22:58:10Z",
+  "generated_at": "2026-09-27T23:32:50Z",
   "source": "wiki/Changelog.md",
   "entries": [
     {
@@ -20,9 +20,9 @@
         "Added HyperLink on the web at / on the T1 API's own port.",
         "Added the API-port address to the startup line and to hypernix-t1 status, which says whether the page answers there.",
         "Changed Bandit's assert_used check (B101) to skip tests/, in a new [tool.bandit] section of pyproject.toml that the security scan already reads when present.",
-        "Fixed the server's own address answering 404 instead of HyperLink on the web.",
-        "Added two tests to tests/test_hyperlink_web.py (now 22): the page on the API's port for loopback and tailnet peers (IPv4 and IPv6) and not for LAN or public ones, and neither when the site is off.",
-        "The site is still not on the LAN address, on either port, by design."
+        "Changed the security scanners so each one runs and reports.",
+        "Fixed the security gate's 16 Semgrep errors.",
+        "Fixed checkpoints being unpickled, which runs any code in the file."
       ],
       "changes": [
         {
@@ -52,6 +52,57 @@
           ]
         },
         {
+          "symbol": "\ud83d\udd27",
+          "label": "internal",
+          "category": "Changed",
+          "text": "Changed the security scanners so each one runs and reports.",
+          "details": [
+            "The security scan's CodeQL job, and codeql.yml, are removed. The repository uses GitHub's CodeQL default setup, which runs on every push and pull request, and while it is on GitHub refuses results from an advanced CodeQL workflow, so both only ever failed. Turn default setup\u2026",
+            "A .gitleaksignore lists the five gitleaks findings in history, each reviewed and none a secret (variable names, an allocator setting, a test id); anything new is still reported.",
+            "A .codacy.yml excludes the binary assets and generated site data from Codacy, whose report step crashed on every run reading one of them as text."
+          ]
+        },
+        {
+          "symbol": "\ud81a\udca5",
+          "label": "major fix",
+          "category": "Security",
+          "text": "Fixed the security gate's 16 Semgrep errors.",
+          "details": [
+            "public-release.yml and ios.yml wrote ${{ inputs.version }} and inputs.allow_downgrade into run: scripts, so a dispatched version string was shell text. They now arrive as environment variables, and the version bump's Python heredoc is quoted and reads them from there.",
+            "release.yml and public-release.yml called ios.yml with secrets: inherit. ios.yml now declares the five signing secrets it uses, all optional, and both callers pass exactly those.",
+            "remote_desktop passed $DISPLAY straight to x11vnc -display; it is now used only when it is a display name, else :0.",
+            "The operator's /system shell escape, hyped's consent-gated run_command and run_background_command, the hyped-pro and tvtop-max launchers and hyped-pro's interpreter probe are intended as they are, and carry a nosemgrep marker for their one rule beside Bandit's nosec and the\u2026"
+          ]
+        },
+        {
+          "symbol": "\ud81a\udca5",
+          "label": "major fix",
+          "category": "Security",
+          "text": "Fixed checkpoints being unpickled, which runs any code in the file.",
+          "details": [
+            "Six torch.load(..., weights_only=False) calls (wake-word models, brewed model.pt, oven bundles, quant.convert, brewer resume) now go through hypernix.security.safeload.load_checkpoint, which loads with weights_only=True. Every checkpoint HyperNix writes is tensors and plain\u2026",
+            "A file that needs full unpickling is refused with the reason, unless HYPERNIX_TRUST_PICKLE=1 is set for a file the person trusts."
+          ]
+        },
+        {
+          "symbol": "\ud83d\udd12",
+          "label": "security",
+          "category": "Security",
+          "text": "Changed MCP to keep an unexpected error's text on the server.",
+          "details": [
+            "A tool that raised sent str(exc) to the remote client, which can name files and settings. The client now gets an incident id, and the server's log has the traceback under that id."
+          ]
+        },
+        {
+          "symbol": "\ud83d\udd12",
+          "label": "security",
+          "category": "Security",
+          "text": "Changed the key store to check that a key's file is inside the store.",
+          "details": [
+            "Besides the key id pattern, the normalised path must be under the store before a key file is read, written or deleted."
+          ]
+        },
+        {
           "symbol": "\ud81a\udca5",
           "label": "major fix",
           "category": "Fixed",
@@ -68,6 +119,20 @@
           "details": [
             "A server started with hypernix-t1, bound to 0.0.0.0:8001 as in the log, was driven in Chromium at http://127.0.0.1:8001/: the page, keyless sign-in and a chat; the machine's LAN address got a 404."
           ]
+        },
+        {
+          "symbol": "\ud83e\uddea",
+          "label": "tests",
+          "category": "Tests",
+          "text": "Added tests/test_safeload.py (3): a plain checkpoint loads, one with code in it is refused and the code does not run, and trusting it loads it.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83e\uddea",
+          "label": "tests",
+          "category": "Tests",
+          "text": "Added an MCP test that an internal error's text stays in the server's log and the client gets only the incident id.",
+          "details": []
         },
         {
           "symbol": "\u2757",

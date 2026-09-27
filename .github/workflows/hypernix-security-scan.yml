@@ -3,7 +3,7 @@
 #  HyperNix Full Security Scan  —  drop into .github/workflows/ of ANY repo
 #
 #  Engines (all results land in the repo's Security → Code scanning tab):
-#    • CodeQL            python (+ actions) · security-extended + quality queries
+#    • CodeQL            via GitHub's default setup (see the note in jobs:)
 #    • Bandit            Python AST security linter
 #    • Semgrep           p/python, p/security-audit, p/owasp-top-ten, p/secrets
 #    • HyperNix T1 audit T1 API config/code/key misuse (custom, built in below)
@@ -54,29 +54,12 @@ env:
   PYTHON_VERSION: "3.12"
 
 jobs:
-  # ───────────────────────────── CodeQL ─────────────────────────────
-  codeql:
-    name: CodeQL (${{ matrix.language }})
-    runs-on: ubuntu-latest
-    continue-on-error: true   # e.g. repo with no workflow files, or fork PRs without upload rights
-    permissions:
-      contents: read
-      security-events: write
-      actions: read
-    strategy:
-      fail-fast: false
-      matrix:
-        language: [python, actions]
-    steps:
-      - uses: actions/checkout@v5
-      - uses: github/codeql-action/init@v4
-        with:
-          languages: ${{ matrix.language }}
-          build-mode: none
-          queries: security-extended,security-and-quality
-      - uses: github/codeql-action/analyze@v4
-        with:
-          category: /language:${{ matrix.language }}
+  # CodeQL is not run here. The repository uses GitHub's CodeQL default
+  # setup, which analyses Python and Actions on every push and pull
+  # request; while it is on, GitHub refuses results from an advanced
+  # CodeQL workflow ("cannot be processed when the default setup is
+  # enabled"), so a job here only ever failed. To run CodeQL from this
+  # file instead, turn default setup off in Settings -> Code security.
 
   # ─────────────────────── Python SAST + HyperNix T1 ───────────────────────
   sast:
@@ -667,7 +650,7 @@ jobs:
   # ───────────────────────────── Gate + summary ─────────────────────────────
   summary:
     name: Security summary / gate
-    needs: [codeql, sast, deps, secrets]
+    needs: [sast, deps, secrets]
     if: always()
     runs-on: ubuntu-latest
     steps:

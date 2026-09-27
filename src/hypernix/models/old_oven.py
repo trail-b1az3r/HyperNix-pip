@@ -1049,7 +1049,8 @@ def load_pt(pt_path: Path | str, *, device: str | None = None) -> CodeOven:
     still available; otherwise falls back to the byte-level tokenizer.
     """
     pt_path = Path(pt_path)
-    bundle = torch.load(pt_path, map_location="cpu", weights_only=False)
+    from ..security.safeload import load_checkpoint
+    bundle = load_checkpoint(pt_path)
     from hypernix.training.train import HyperNixConfig
 
     cfg = HyperNixConfig.from_dict(bundle["config"])

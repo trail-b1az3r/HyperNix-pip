@@ -63,8 +63,10 @@ def _collect_state_dict(model_dir: Path) -> dict[str, torch.Tensor]:
 
     loose = list(model_dir.glob("*.pt")) + list(model_dir.glob("*.pth")) + list(model_dir.glob("*.bin"))
     if loose:
+        from ..security.safeload import load_checkpoint
+
         for path in sorted(loose):
-            blob: Any = torch.load(path, map_location="cpu", weights_only=False)
+            blob: Any = load_checkpoint(path)
             if isinstance(blob, dict):
                 # Could be a bare state_dict or a checkpoint wrapper.
                 inner = blob.get("state_dict") or blob.get("model") or blob

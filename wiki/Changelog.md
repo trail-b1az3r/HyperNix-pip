@@ -238,6 +238,55 @@ Historical wording and technical detail are retained during format normalization
     that touched a test. It still reports the 29 in the package itself,
     and every other Bandit check still runs on the tests.
 
+🔧 Changed the security scanners so each one runs and reports.
+  - The security scan's CodeQL job, and `codeql.yml`, are removed. The
+    repository uses GitHub's CodeQL default setup, which runs on every
+    push and pull request, and while it is on GitHub refuses results from
+    an advanced CodeQL workflow, so both only ever failed. Turn default
+    setup off in Settings if CodeQL should run from the workflow instead.
+  - A `.gitleaksignore` lists the five gitleaks findings in history,
+    each reviewed and none a secret (variable names, an allocator
+    setting, a test id); anything new is still reported.
+  - A `.codacy.yml` excludes the binary assets and generated site data
+    from Codacy, whose report step crashed on every run reading one of
+    them as text.
+
+### Security
+
+𖢥 Fixed the security gate's 16 Semgrep errors.
+  - `public-release.yml` and `ios.yml` wrote `${{ inputs.version }}` and
+    `inputs.allow_downgrade` into `run:` scripts, so a dispatched version
+    string was shell text. They now arrive as environment variables, and
+    the version bump's Python heredoc is quoted and reads them from there.
+  - `release.yml` and `public-release.yml` called `ios.yml` with
+    `secrets: inherit`. `ios.yml` now declares the five signing secrets it
+    uses, all optional, and both callers pass exactly those.
+  - `remote_desktop` passed `$DISPLAY` straight to `x11vnc -display`; it
+    is now used only when it is a display name, else `:0`.
+  - The operator's `/system` shell escape, hyped's consent-gated
+    `run_command` and `run_background_command`, the hyped-pro and
+    tvtop-max launchers and hyped-pro's interpreter probe are intended as
+    they are, and carry a `nosemgrep` marker for their one rule beside
+    Bandit's `nosec` and the reason.
+
+𖢥 Fixed checkpoints being unpickled, which runs any code in the file.
+  - Six `torch.load(..., weights_only=False)` calls (wake-word models,
+    brewed `model.pt`, oven bundles, `quant.convert`, brewer resume) now
+    go through `hypernix.security.safeload.load_checkpoint`, which loads
+    with `weights_only=True`. Every checkpoint HyperNix writes is tensors
+    and plain data, so they all still load.
+  - A file that needs full unpickling is refused with the reason, unless
+    `HYPERNIX_TRUST_PICKLE=1` is set for a file the person trusts.
+
+🔒 Changed MCP to keep an unexpected error's text on the server.
+  - A tool that raised sent `str(exc)` to the remote client, which can
+    name files and settings. The client now gets an incident id, and the
+    server's log has the traceback under that id.
+
+🔒 Changed the key store to check that a key's file is inside the store.
+  - Besides the key id pattern, the normalised path must be under the
+    store before a key file is read, written or deleted.
+
 ### Fixed
 
 𖢥 Fixed the server's own address answering 404 instead of HyperLink on the web.
@@ -254,6 +303,11 @@ Historical wording and technical detail are retained during format normalization
   - A server started with `hypernix-t1`, bound to `0.0.0.0:8001` as in
     the log, was driven in Chromium at `http://127.0.0.1:8001/`: the page,
     keyless sign-in and a chat; the machine's LAN address got a 404.
+
+🧪 Added `tests/test_safeload.py` (3): a plain checkpoint loads, one with
+  code in it is refused and the code does not run, and trusting it loads it.
+🧪 Added an MCP test that an internal error's text stays in the server's
+  log and the client gets only the incident id.
 
 ### Known Issues
 

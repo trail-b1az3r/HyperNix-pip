@@ -172,6 +172,21 @@ class TestTheTwoKindsOfError:
         reply = call(server, "tools/call", {"name": "broken", "arguments": {}})
         assert "error" in reply
 
+    def test_an_unexpected_exception_keeps_its_details_on_the_server(self, server, caplog):
+        """The text of an internal error can name files, settings or keys.
+        The caller gets an incident id; the server's log gets the rest."""
+        def broken():
+            raise RuntimeError("could not read /home/ceo/.hypernix/t1api/.env")
+
+        server.add_tool(echo_tool(name="broken", handler=broken, input_schema={
+            "type": "object", "properties": {}}))
+        with caplog.at_level("ERROR", logger="hypernix.t1api.mcp"):
+            reply = call(server, "tools/call", {"name": "broken", "arguments": {}})
+        message = reply["error"]["message"]
+        assert ".env" not in message and "/home/" not in message
+        incident = message.split("incident ", 1)[1].split(";", 1)[0]
+        assert incident in caplog.text and ".env" in caplog.text
+
     def test_a_missing_required_argument_is_named(self, server):
         reply = call(server, "tools/call", {"name": "echo", "arguments": {}})
         assert reply["result"]["isError"] is True

@@ -577,7 +577,7 @@ def _cmd_create(args: list[str]) -> int:
         print(f"  Expires:   {_fmt_ts(meta.expires_at)}")
         print(f"  Server ID: {meta.server_id}")
         if admin_password:
-            print(f"  Password:  {admin_password}")
+            print(f"  Password:  {admin_password}")  # shown once, to its creator. t1-audit: ignore
         if t2c_kit is not None:
             print(f"  Kit:       {t2c_kit.to_text()}")
             print(f"  Device:    {t2c_kit.device_id}")

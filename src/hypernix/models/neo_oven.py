@@ -1654,7 +1654,8 @@ def load_pt(pt_path: Path | str, *, device: str | None = None) -> NeoOven:
     (``hypernix_format_version=1``).
     """
     pt_path = Path(pt_path)
-    bundle = torch.load(pt_path, map_location="cpu", weights_only=False)
+    from ..security.safeload import load_checkpoint
+    bundle = load_checkpoint(pt_path)
     cfg = HyperNixConfig.from_dict(bundle["config"])
     model = HyperNixModel(cfg)
     model.load_state_dict(bundle["state_dict"], strict=False)

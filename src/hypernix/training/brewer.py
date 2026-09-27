@@ -1094,7 +1094,8 @@ class Brewer:
     @classmethod
     def from_checkpoint(cls, ckpt_path: str | Path, name: str | None = None) -> Brewer:
         """Restore a :class:`Brewer` (with built model) from a ``.pt`` checkpoint."""
-        ckpt = torch.load(ckpt_path, map_location="cpu", weights_only=False)
+        from ..security.safeload import load_checkpoint
+        ckpt = load_checkpoint(ckpt_path)
         cfg = BrewerConfig.from_dict(ckpt["config"])
         brewer = cls(cfg, name=name or cfg.name)
         brewer.build()

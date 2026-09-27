@@ -1,0 +1,15 @@
+# Codacy (.github/workflows/codacy.yml) reads this.
+#
+# The analysis crashed on every run while writing its SARIF report
+# (java.nio.charset.MalformedInputException reading a file's lines):
+# every tracked text file is valid UTF-8, so what it choked on is one of
+# the binaries below. None of them is source to analyse; neither is the
+# generated site data, which is rewritten by a bot every hour.
+exclude_paths:
+  - "assets/**"
+  - "**/*.png"
+  - "**/*.ico"
+  - "**/*.pdf"
+  - "**/*.so"
+  - "docs/public/v1/**"
+  - "src/hypernix.egg-info/**"

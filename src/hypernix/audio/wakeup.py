@@ -837,12 +837,12 @@ class WakeUpDetector:
 
 def load_detector(path: str | Path, **kwargs: Any) -> WakeUpDetector:
     """Load a model saved by :func:`save_wakeword`."""
-    import torch
+    from ..security.safeload import load_checkpoint
 
     path = Path(path)
     if not path.exists():
         raise WakeUpError(f"No wake-word model at {path}")
-    payload = torch.load(path, map_location="cpu", weights_only=False)
+    payload = load_checkpoint(path)
     if not isinstance(payload, dict) or "hypernix.wakeup" not in payload:
         raise WakeUpError(
             f"{path} is not a HyperNix wake-word model (saved by a different tool?)."
