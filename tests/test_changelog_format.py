@@ -180,7 +180,22 @@ class TestNewestEntry:
 
     def test_newest_header_has_version_and_date(self, newest):
         header, _body = newest
+        version = header.split(" — ", 1)[0].strip()
+        if re.search(r"\.post\d+$", version):
+            return  # a patch release; the next test holds its header
         assert re.match(r"^\d+\.\d+\.\d+[^—]* — \d{4}-\d{2}-\d{2}$", header), header
+
+    def test_a_newest_patch_release_is_headed_as_the_guide_says(self, newest):
+        """`## 0.72.7.post14 — patch 14 - headline change or fix`, per
+        wiki/Changelog-guide.md's rule for patch releases posted on PyPI."""
+        header, _body = newest
+        version = header.split(" — ", 1)[0].strip()
+        post = re.search(r"\.post(\d+)$", version)
+        if post is None:
+            return  # a dated release; the test above holds its header
+        patch = re.match(r"^\d+\.\d+\.\d+\.post\d+ — patch (\d+) - \S.*$", header)
+        assert patch, header
+        assert int(patch.group(1)) == int(post.group(1)), header
 
     def test_newest_matches_package_version(self, newest):
         header, _body = newest

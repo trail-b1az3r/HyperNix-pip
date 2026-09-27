@@ -121,8 +121,32 @@ def tag_points_at(tag: str, repo: Path) -> str | None:
     return _git("rev-list", "-n", "1", tag, repo=repo)
 
 
-#: The newest entry's header, as tests/test_changelog_format.py holds it.
+#: The newest entry's header, as tests/test_changelog_format.py holds it:
+#: `<version> — <YYYY-MM-DD>`, except that a .postN, which goes to PyPI as
+#: a patch, is `<version> — patch N - <headline>` (wiki/Changelog-guide.md).
 _HEADER = re.compile(r"^\d+\.\d+[\w.]* — \d{4}-\d{2}-\d{2}$")
+_PATCH_HEADER = re.compile(r"^\d+\.\d+\.\d+\.post(\d+) — patch (\d+) - \S")
+
+
+def _post_number(version: str) -> str | None:
+    found = re.search(r"\.post(\d+)$", version)
+    return found.group(1) if found else None
+
+
+def header_is_valid(header: str) -> bool:
+    """Whether the newest entry's header is in the form the guide gives it."""
+    post = _post_number(header.split(" — ")[0].strip())
+    if post is None:
+        return bool(_HEADER.match(header))
+    patch = _PATCH_HEADER.match(header)
+    return bool(patch) and int(patch.group(1)) == int(patch.group(2)) == int(post)
+
+
+def wanted_header(pep440: str, today: str) -> str:
+    post = _post_number(pep440)
+    if post is None:
+        return f"## {pep440} — {today}"
+    return f"## {pep440} — patch {int(post)} - <headline change or fix>"
 
 
 def newest_changelog_header(changelog: Path) -> str | None:
@@ -148,12 +172,13 @@ def check_changelog(pep440: str, repo: Path) -> None:
 
     The rules are tests/test_changelog_format.py's, applied to the
     version the bump step is about to write rather than the one the
-    tree has now: the newest entry has a `<version> — <date>` header,
-    and its version is this release's, ignoring a .postN.
+    tree has now: the newest entry has a `<version> — <date>` header, or
+    `<version> — patch N - <headline>` for a .postN, and its version is
+    this release's, ignoring a .postN.
     """
     changelog = repo / "wiki" / "Changelog.md"
     today = _dt.date.today().isoformat()
-    wanted = f"## {pep440} — {today}"
+    wanted = wanted_header(pep440, today)
     header = newest_changelog_header(changelog)
     if header is None:
         fail(
@@ -170,11 +195,14 @@ def check_changelog(pep440: str, repo: Path) -> None:
             f"changes, commit it, and dispatch again. Check first with: "
             f"python .github/scripts/version_guard.py {pep440}"
         )
-    if not _HEADER.match(header):
+    if not header_is_valid(header):
+        form = ("`<version> — patch N - <headline>`, N being the .postN"
+                if _post_number(entry) is not None else "`<version> — <YYYY-MM-DD>`")
         fail(
             f"wiki/Changelog.md's newest header is `## {header}`, and the "
-            f"release's tests need `<version> — <YYYY-MM-DD>`, for example "
-            f"`{wanted}`. Fix it, commit, and dispatch again."
+            f"release's tests need {form}, for example "
+            f"`{wanted_header(entry, today)}` (wiki/Changelog-guide.md). "
+            f"Fix it, commit, and dispatch again."
         )
     if not changelog_mentions(pep440, changelog):
         # Only reachable for a .postN whose base the newest entry names:
