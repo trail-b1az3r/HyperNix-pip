@@ -963,3 +963,26 @@ timeline
         : 848cfa6a - 0.72.6.rc1- prepare the tree, and fix what the first release run hit
 ```
 
+## Release v0.72.6.post1 (2026-09-27)
+
+```mermaid
+timeline
+    title Release v0.72.6.post1 Commits
+    0.72.6.post1
+        : 43b0c4d0 - Modify pip install to include 't1api' extra
+        : 9cad38dc - Add 't1api' to editable install in CI workflow
+        : f100cd49 - Pages changelog- read the changelog guide's format
+        : 4523433d - 0.72.6.post1- changelog entry in the updated changelog guide's format
+        : e37af407 - 0.72.6.post1- changelog and docs for HyperLink on the web and the LM Studio move
+        : f67439a9 - HyperLink on the web- dark mode
+        : 59c7a9f4 - HyperLink on the web- the T1 server hosts it on port 37965
+        : 6fcb21b0 - chore- refresh generated docs data and release summaries
+        : bf44cc7e - HyperLink- move LM Studio's model onto the HyperNix runner
+        : 8147b3b8 - HyperLink- teach the model when to use its tools, not only the format
+        : ddf4092f - 0.72.6.post1- version, changelog and docs; simpler path guards
+        : 1c244db8 - Runner- serve native HyperNix models; HyperNix.3-mini is the default
+        : 43e651df - HyperLink- tool calls from the models people actually run
+        : eb12198c - Fix the high-rated security findings
+        : fa59f481 - hypernix-t1 runner finds the server where `start` put it; add `hypernix-t1 chat`
+```
+

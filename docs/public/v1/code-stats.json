@@ -1,15 +1,15 @@
 {
   "definition": "non-blank source lines across repository code roots: src, scripts, tests, examples, bin, native, docs/src",
-  "total_lines": 211444,
-  "code_files": 675,
+  "total_lines": 215120,
+  "code_files": 689,
   "top_files": [
     {
       "path": "src/hypernix/t1api/routers/hyperlink.py",
-      "lines": 2215
+      "lines": 2245
     },
     {
       "path": "src/hypernix/interfaces/hyped.py",
-      "lines": 2135
+      "lines": 2138
     },
     {
       "path": "src/hypernix/waiter/cli.py",
@@ -41,7 +41,7 @@
     },
     {
       "path": "src/hypernix/data/gather.py",
-      "lines": 1304
+      "lines": 1320
     },
     {
       "path": "src/hypernix/interfaces/hyped_pro_core.py",
@@ -100,6 +100,10 @@
       "lines": 1016
     },
     {
+      "path": "src/hypernix/security/keymaster.py",
+      "lines": 968
+    },
+    {
       "path": "src/hypernix/models/old_oven.py",
       "lines": 962
     },
@@ -110,10 +114,6 @@
     {
       "path": "src/hypernix/security/t2keys.py",
       "lines": 953
-    },
-    {
-      "path": "src/hypernix/security/keymaster.py",
-      "lines": 952
     },
     {
       "path": "src/hypernix/__init__.py",
@@ -127,12 +127,12 @@
   "contributors": [
     {
       "author": "Claude",
-      "additions": 181898,
-      "deletions": 9873,
-      "net": 172025,
-      "changes": 191771,
-      "commits": 196,
-      "files": 1161
+      "additions": 186685,
+      "deletions": 10031,
+      "net": 176654,
+      "changes": 196716,
+      "commits": 208,
+      "files": 1181
     },
     {
       "author": "minerofthesoal",
@@ -190,6 +190,6 @@
     }
   ],
   "history_available": true,
-  "commit": "da66a27ba411d955b2a885000134431293e7f23b",
+  "commit": "29dd64a3b6ad87b4aafe7d0658a3d449a35d75a1",
   "generated_at": null
 }
