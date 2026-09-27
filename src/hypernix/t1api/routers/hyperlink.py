@@ -806,17 +806,31 @@ def _last_user_message(store, session_id: str, owner: str):
 def _t1_access(request: Request | None, principal):
     """How the model reaches this server's own API, or None for no T1 tools.
 
-    None for a keyless caller. The server calling itself comes from
-    loopback, which trusted-network mode can treat as a *different*,
-    more trusted network than the phone's — the model would be acting as
-    somebody other than the person. With a credential, it is theirs.
+    With a credential, the model uses it, and can do what the person
+    could by hand.
+
+    A keyless caller (a phone or the web site on a trusted network) gets
+    the read-only tools only (0.72.6.post1; before, none at all, so the
+    model said it had no tools). The server calling itself comes from
+    loopback, which trusted-network mode may trust *more* than the
+    caller's own network: what differs between origins is partial
+    admin, which is write access. A caller is keyless only if its own
+    origin already allows reading, so the read tools give it nothing it
+    could not ask for itself, and nothing that writes is offered.
     """
     if request is None:
         return None
     header = request.headers.get("authorization") or ""
-    if not header.lower().startswith("bearer "):
-        return None
     from ...hyperlink.toolloop import T1Access
+
+    if not header.lower().startswith("bearer "):
+        host, port = (request.scope.get("server") or ("127.0.0.1", 8000))[:2]
+        if host in ("0.0.0.0", "::", "", None):
+            host = "127.0.0.1"
+        if ":" in str(host):
+            host = f"[{host}]"
+        base = f"{request.url.scheme}://{host}:{port}{request.scope.get('root_path', '')}"
+        return T1Access(base, "", allow_mutating=False)
 
     host, port = (request.scope.get("server") or ("127.0.0.1", 8000))[:2]
     if host in ("0.0.0.0", "::", "", None):

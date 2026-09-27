@@ -232,6 +232,11 @@ hypernix = [
     "monitoring/tvtop_max_app/bun.lock",
     "monitoring/tvtop_max_app/tsconfig.json",
     "monitoring/tvtop_max_app/src/*.ts",
+    # HyperLink on the web, served by the T1 API on port 37965.
+    "hyperlink/web/*.html",
+    "hyperlink/web/*.css",
+    "hyperlink/web/*.js",
+    "hyperlink/web/*.svg",
 ]
 
 # ---------------------------------------------------------------------------
