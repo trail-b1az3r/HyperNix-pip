@@ -656,6 +656,14 @@ def create_app(
     for router in ALL_ROUTERS:
         app.include_router(router, prefix=prefix)
 
+    if web is not None and not prefix:
+        # The site on the API's own port as well, so the server's address
+        # opens it too (0.72.6.post3). Not under a prefix: the page calls
+        # the API at its root.
+        from .hyperlink_web import serve_on_api
+
+        serve_on_api(app)
+
     if cfg.is_production:
         logger.info(
             "t1api: production configuration validated (backend=%s, mtls=%s, rate_limit=%s, audit=%s)",

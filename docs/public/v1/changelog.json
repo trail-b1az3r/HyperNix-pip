@@ -1,7 +1,75 @@
 {
-  "generated_at": "2026-09-27T19:26:22Z",
+  "generated_at": "2026-09-27T22:22:41Z",
   "source": "wiki/Changelog.md",
   "entries": [
+    {
+      "version": "0.72.6.post3",
+      "key": "0.72.6.post3",
+      "aliases": [
+        "0.72.6-post3",
+        "0.72.6.post3"
+      ],
+      "kind": "post",
+      "heading": "0.72.6.post3 \u2014 patch 3 - HyperLink on the web opens at the server's own address",
+      "date": "",
+      "title": "patch 3 - HyperLink on the web opens at the server's own address",
+      "summary": "HyperLink on the web opens at the server's own address",
+      "patch": 3,
+      "headline": "HyperLink on the web opens at the server's own address",
+      "highlights": [
+        "Added HyperLink on the web at / on the T1 API's own port.",
+        "Added the API-port address to the startup line and to hypernix-t1 status, which says whether the page answers there.",
+        "Fixed the server's own address answering 404 instead of HyperLink on the web.",
+        "Added two tests to tests/test_hyperlink_web.py (now 22): the page on the API's port for loopback and tailnet peers (IPv4 and IPv6) and not for LAN or public ones, and neither when the site is off.",
+        "The site is still not on the LAN address, on either port, by design."
+      ],
+      "changes": [
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "Added HyperLink on the web at / on the T1 API's own port.",
+          "details": [
+            "The page opens at the server's address, http://127.0.0.1:8000/ or whatever T1_PORT is, as well as on port 37965, for the same callers: this machine and the tailnet, by the connection's address. Anyone else still gets the API's 404.",
+            "T1_WEB_ENABLED=0 turns both off. Under T1_MOUNT_PREFIX only port 37965 serves it, since the page calls the API at its root."
+          ]
+        },
+        {
+          "symbol": "\ud81a\udd54",
+          "label": "minor",
+          "category": "Added",
+          "text": "Added the API-port address to the startup line and to hypernix-t1 status, which says whether the page answers there.",
+          "details": []
+        },
+        {
+          "symbol": "\ud81a\udca5",
+          "label": "major fix",
+          "category": "Fixed",
+          "text": "Fixed the server's own address answering 404 instead of HyperLink on the web.",
+          "details": [
+            "From a server log: the server on 0.0.0.0:8001, the browser at http://127.0.0.1:8001/, and GET / 404. The site was only on its own port, 37965, and 0.72.6.post1 said so nowhere, so the address people tried first was the one address that did not serve it."
+          ]
+        },
+        {
+          "symbol": "\ud83e\uddea",
+          "label": "tests",
+          "category": "Tests",
+          "text": "Added two tests to tests/test_hyperlink_web.py (now 22): the page on the API's port for loopback and tailnet peers (IPv4 and IPv6) and not for LAN or public ones, and neither when the site is off.",
+          "details": [
+            "A server started with hypernix-t1, bound to 0.0.0.0:8001 as in the log, was driven in Chromium at http://127.0.0.1:8001/: the page, keyless sign-in and a chat; the machine's LAN address got a 404."
+          ]
+        },
+        {
+          "symbol": "\u2757",
+          "label": "known issue",
+          "category": "Known Issues",
+          "text": "The site is still not on the LAN address, on either port, by design.",
+          "details": [
+            "From another device, use this machine's Tailscale address, which hypernix-t1 status prints."
+          ]
+        }
+      ]
+    },
     {
       "version": "0.72.6.post2",
       "key": "0.72.6.post2",
@@ -886,92 +954,7 @@
         "HyperLink's default system prompt. When a reply comes from this server's own runner, which is where hyperchat serves prompts, five paragraphs go first. They say where the model runs, that it is read on a phone, today's date, to be accurate before agreeable, to use only the\u2026",
         "hypernix.monitoring.run_inspect reads a training script with ast and its log with patterns, and never imports or runs either. hypernix.monitoring.tvtop_max_bridge answers tvtop-max on hyped-pro's JSON-lines protocol, from the same statistics source as tvtop-pro."
       ],
-      "changes": [
-        {
-          "symbol": "\u0e4b\u08ed\u2b51",
-          "label": "major",
-          "category": "Added",
-          "text": "tvtop-max: tvtop-pro on OpenTUI, like hyped-pro, in the site's colours, with ten panels toggled by their number keys. Alongside cpu, memory, GPU, training progress with a loss graph, and processes, it has panels for the run itself: the HyperNix modules and libraries its script\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\ud81a\udd54",
-          "label": "minor",
-          "category": "Added",
-          "text": "tvtop-max's warnings panel reads the script for missing and deprecated modules, deprecated Pressure Cooker generations, torch.load without weights_only=True, no seed and no checkpoint. It reads the log's tail for tracebacks, out-of-memory errors, NaN losses, the OOM killer and\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\ud81a\udd54",
-          "label": "minor",
-          "category": "Added",
-          "text": "tvtop-max -s lays it out for a phone: one scrolling column 40 to 56 columns wide, with training and warnings first. It is chosen automatically below 72 columns, and s switches layout at any time.",
-          "details": []
-        },
-        {
-          "symbol": "\ud81a\udd54",
-          "label": "minor",
-          "category": "Added",
-          "text": "With no options, tvtop-max finds the busiest Python run that is not itself, reads the script from its command line and finds its log. -S watches only a process that is actually running the named script, and no process at all rather than a guess.",
-          "details": []
-        },
-        {
-          "symbol": "\u0e4b\u08ed\u2b51",
-          "label": "major",
-          "category": "Added",
-          "text": "HyperLink's default system prompt. When a reply comes from this server's own runner, which is where hyperchat serves prompts, five paragraphs go first. They say where the model runs, that it is read on a phone, today's date, to be accurate before agreeable, to use only the\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udd27",
-          "label": "internal",
-          "category": "Added",
-          "text": "hypernix.monitoring.run_inspect reads a training script with ast and its log with patterns, and never imports or runs either. hypernix.monitoring.tvtop_max_bridge answers tvtop-max on hyped-pro's JSON-lines protocol, from the same statistics source as tvtop-pro.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udd01",
-          "label": "refactor",
-          "category": "Changed",
-          "text": "The second release candidate: tvtop-max, and a default system prompt for HyperLink replies from HyperNix's own runner.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udd01",
-          "label": "refactor",
-          "category": "Changed",
-          "text": "hyped-pro's installer (prepare_app, runtime_root) takes the app's name and fallback program, so tvtop-max installs the same way into /.hypernix/tvtop-max/. The release workflow bumps and commits tvtop-max's version alongside hyped-pro's.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83e\uddea",
-          "label": "tests",
-          "category": "Tests",
-          "text": "tvtop-max: 48 Python tests for the script reader, bridge, process choice, launcher and packaging, and 71 bun test cases for the panels, layout, arguments and bridge client, in a new CI job with the type check. Every panel is held to its width and height at 24, 40 and 80\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\ud83e\uddea",
-          "label": "tests",
-          "category": "Tests",
-          "text": "The default prompt: 17 tests, through the API for what the model is actually sent. The backend and off-switch guards were each removed to check that the tests fail without them. One HyperLink test fake guessed that any system message mentioning summaries was a compaction\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\u2757",
-          "label": "known issue",
-          "category": "Known Issues",
-          "text": "tvtop-max's GPU panel reads NVIDIA GPUs through nvidia-smi, as tvtop-pro does, and shows nothing for other vendors.",
-          "details": []
-        },
-        {
-          "symbol": "\u2757",
-          "label": "known issue",
-          "category": "Known Issues",
-          "text": "When the log does not report a speed, the training panel works it out as steps over the time tvtop-max has been watching, as tvtop-pro does, so it reads high for a run that was already under way when the dashboard started.",
-          "details": []
-        }
-      ]
+      "changes": []
     },
     {
       "version": "0.72.6.rc1",

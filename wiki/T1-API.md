@@ -1842,7 +1842,8 @@ The text is `hypernix.hyperlink.default_prompt.DEFAULT_PROMPT`, and
 While the T1 API runs, it also hosts HyperLink as a website on port
 **37965**: `http://127.0.0.1:37965` on the machine, and
 `http://<its Tailscale address>:37965` from your other devices on the
-tailnet. It never listens on the LAN, and it notices a tailnet that
+tailnet. Since 0.72.6.post3 the same page is also at `/` on the API's
+own port (`http://127.0.0.1:8000/`), for the same callers. It never listens on the LAN, and it notices a tailnet that
 comes up after the server has started.
 
 The site does most of what the app does: chats with streamed replies and
@@ -1858,6 +1859,8 @@ and every other path is the T1 API itself.
 
 If it does not open (0.72.6.post2):
 
+- Before 0.72.6.post3, `http://127.0.0.1:<T1_PORT>/` answered 404: the
+  site was only on port 37965. It now answers on both.
 - `hypernix-t1 status` lists each address the site is on and whether
   the page answers there. Starting the server prints the same addresses
   in `hypernix-t1 logs`.

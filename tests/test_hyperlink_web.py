@@ -68,6 +68,36 @@ class TestThePageAndTheApiShareAnOrigin:
         assert health["status"] == "ok"
         assert client.get("/hyperlink/sessions").status_code == 200  # keyless on loopback here
 
+    def test_the_api_port_serves_it_too(self, monkeypatch):
+        """0.72.6.post3, from a log: the server on 0.0.0.0:8001, the browser
+        at http://127.0.0.1:8001/, and a 404, because the site was only on
+        37965 and nothing said so."""
+        from hypernix.t1api.app import create_app
+
+        monkeypatch.setenv("T1_TRUSTED_NETWORK", "1")
+        monkeypatch.setenv("T1_WEB_ENABLED", "1")
+        monkeypatch.setenv("T1_WEB_PORT", str(_free_port()))
+        api_app = create_app()  # no lifespan here, so the site's own port stays shut
+        for peer in ("127.0.0.1", "::1", "100.101.102.103", "fd7a:115c:a1e0::9"):
+            client = TestClient(api_app, client=(peer, 5000))
+            page = client.get("/")
+            assert page.status_code == 200 and "<title>HyperLink</title>" in page.text, peer
+            assert "frame-ancestors 'none'" in page.headers["content-security-policy"]
+            script = client.get("/web/app.js")
+            assert script.status_code == 200 and "javascript" in script.headers["content-type"]
+        for peer in ("192.168.1.246", "8.8.8.8"):
+            client = TestClient(api_app, client=(peer, 5000))
+            assert client.get("/").status_code == 404, peer
+            assert "HyperLink" not in client.get("/web/app.js").text
+
+    def test_off_means_off_on_the_api_port_too(self, monkeypatch):
+        from hypernix.t1api.app import create_app
+
+        monkeypatch.setenv("T1_TRUSTED_NETWORK", "1")
+        monkeypatch.setenv("T1_WEB_ENABLED", "0")
+        client = TestClient(create_app(), client=("127.0.0.1", 5000))
+        assert client.get("/").status_code == 404
+
     def test_no_request_path_becomes_a_file_path(self, api_app):
         client = TestClient(hyperlink_web.build_web_app(api_app), client=("127.0.0.1", 5000))
         for path in ("/web/../../pyproject.toml", "/web/app.js/../index.html", "/web/secret.txt"):

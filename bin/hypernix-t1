@@ -551,6 +551,7 @@ print(" ".join(value[i:i + 8] for i in range(0, len(value), 8)))
     # HyperLink on the web (0.72.6.post1): where it is, and whether it
     # answers there, asked from outside the server.
     T1_WEB_ENABLED="$(setting T1_WEB_ENABLED 1)" T1_WEB_PORT="$(setting T1_WEB_PORT 37965)" \
+      HX_API_URL="$url" \
       "$(python_bin)" -c '
 import os
 from hypernix.t1api.hyperlink_web import status_lines
@@ -559,7 +560,7 @@ try:
     port = int(os.environ["T1_WEB_PORT"])
 except ValueError:
     port = 37965
-for line in status_lines(enabled, port):
+for line in status_lines(enabled, port, os.environ.get("HX_API_URL", "")):
     print("     " + line)
 ' 2>/dev/null || true
     local body
