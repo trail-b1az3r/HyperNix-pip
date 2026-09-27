@@ -211,7 +211,7 @@ function StatsPage({ downloads, olderDownloads, threeMonthDownloads, totalDownlo
             <span style={{ color:'var(--text-faint)', fontSize:11 }}>Summaries from <code>wiki/Changelog.md</code> when a version is documented there.</span>
           </div>
           {['stable','post','alpha','beta','rc','dev','patch','other'].map(kind => {
-            const labels = { stable:'Stable releases', post:'Post releases', alpha:'Alpha releases', beta:'Beta releases', rc:'Release candidates', dev:'Development releases', patch:'Patch / point releases', other:'Other release labels' }
+            const labels = { stable:'Stable releases', post:'Patch releases (.postN)', alpha:'Alpha releases', beta:'Beta releases', rc:'Release candidates', dev:'Development releases', patch:'Point releases (pt N)', other:'Other release labels' }
             const items = releaseTimeline.filter(r => (r.releaseKind || 'other') === kind)
             if (!items.length) return null
             return (
@@ -233,6 +233,7 @@ function StatsPage({ downloads, olderDownloads, threeMonthDownloads, totalDownlo
                         ) : (
                           <span style={{ color:'var(--accent)', fontFamily:'monospace', fontSize:13 }}>{r.version}</span>
                         )}
+                        {r.patch != null && <span style={{ background:'var(--surface-1)', border:'1px solid var(--border)', borderRadius:4, padding:'0 6px', fontSize:11, color:'var(--accent)' }}>patch {r.patch}</span>}
                         {r.changelogVersion && <span style={{ background:'var(--surface-1)', border:'1px solid var(--border)', borderRadius:4, padding:'0 6px', fontSize:11, color:'var(--text-faint)' }}>wiki {r.changelogVersion}</span>}
                         {r.date && <span style={{ color:'var(--text-faint)', fontSize:12 }}>{r.date}</span>}
                       </div>

@@ -395,6 +395,18 @@ Historical wording and technical detail are retained during format normalization
 🛜 Fixed two labels on the docs site's Home and Credits pages that were
   10.5px, under the 11px floor `test_website_mobile` enforces, which
   failed the full suite, and with it a release, on main.
+🛜 Changed the GitHub Pages changelog to read the guide's format.
+  - A patch's number and headline come from its `patch N - <headline>`
+    heading: the headline is its summary, and Home and the release
+    history show "patch N" where a dated release shows its date.
+  - A change's nested details are kept apart from it instead of being
+    run into the summary, and names keep their underscores
+    (`brewer_adapter` was shown as `breweradapter`).
+  - Home's highlights are labelled with the legend's meaning (major,
+    minor, feature, security, ...); `๋࣭⭑` and `𖥔` are in scripts few
+    fonts carry, and showed as boxes.
+  - The release history calls `.postN` releases patch releases, as the
+    guide does.
 
 ### Tests
 
@@ -418,6 +430,9 @@ Historical wording and technical detail are retained during format normalization
   on loopback and tailnet addresses only, the server starting and
   stopping it, dark mode, and Node checking that model text is escaped.
   - The page was also driven in Chromium at desktop and phone sizes.
+🧪 Added `tests/test_docs_changelog_data.py` (11): the Pages data reads
+  the patch heading, keeps details apart and underscores in names, has a
+  label for every legend symbol, and has the newest entry.
 🧪 Added a changelog test and three release-guard tests for the patch
   heading: accepted as `patch N - <headline>`, refused dated, and refused
   when N is not the post number.
