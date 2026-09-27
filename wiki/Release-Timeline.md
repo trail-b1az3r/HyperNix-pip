@@ -1000,3 +1000,11 @@ timeline
         : 91e6ce60 - chore- refresh generated docs data and release summaries
 ```
 
+## Release v0.72.6.post2 (2026-09-27)
+
+```mermaid
+timeline
+    title Release v0.72.6.post2 Commits
+    0.72.6.post2 : No commits found
+```
+
