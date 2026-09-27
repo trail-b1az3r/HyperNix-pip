@@ -228,6 +228,16 @@ Historical wording and technical detail are retained during format normalization
 𖥔 Added the API-port address to the startup line and to
   `hypernix-t1 status`, which says whether the page answers there.
 
+### Changed
+
+🔧 Changed Bandit's `assert_used` check (B101) to skip `tests/`, in a new
+  `[tool.bandit]` section of `pyproject.toml` that the security scan
+  already reads when present.
+  - pytest's asserts are how a test checks its result, and B101 reported
+    every one, over eleven thousand, as a code-scanning alert on each PR
+    that touched a test. It still reports the 29 in the package itself,
+    and every other Bandit check still runs on the tests.
+
 ### Fixed
 
 𖢥 Fixed the server's own address answering 404 instead of HyperLink on the web.

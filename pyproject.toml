@@ -257,3 +257,12 @@ hypernix = [
 testpaths = ["tests"]
 addopts = "-ra"
 
+
+# Read by .github/workflows/hypernix-security-scan.yml (`bandit -c
+# pyproject.toml`). pytest's own asserts are how a test checks its result,
+# and B101 reported every one of them, over eleven thousand, on every PR
+# that touched a test. B101 still applies to the package itself, where an
+# assert stripped by `python -O` could be a real bug; every other Bandit
+# check still runs on the tests.
+[tool.bandit.assert_used]
+skips = ["*/tests/*", "tests/*"]

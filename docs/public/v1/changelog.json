@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-27T22:22:41Z",
+  "generated_at": "2026-09-27T22:58:10Z",
   "source": "wiki/Changelog.md",
   "entries": [
     {
@@ -19,6 +19,7 @@
       "highlights": [
         "Added HyperLink on the web at / on the T1 API's own port.",
         "Added the API-port address to the startup line and to hypernix-t1 status, which says whether the page answers there.",
+        "Changed Bandit's assert_used check (B101) to skip tests/, in a new [tool.bandit] section of pyproject.toml that the security scan already reads when present.",
         "Fixed the server's own address answering 404 instead of HyperLink on the web.",
         "Added two tests to tests/test_hyperlink_web.py (now 22): the page on the API's port for loopback and tailnet peers (IPv4 and IPv6) and not for LAN or public ones, and neither when the site is off.",
         "The site is still not on the LAN address, on either port, by design."
@@ -40,6 +41,15 @@
           "category": "Added",
           "text": "Added the API-port address to the startup line and to hypernix-t1 status, which says whether the page answers there.",
           "details": []
+        },
+        {
+          "symbol": "\ud83d\udd27",
+          "label": "internal",
+          "category": "Changed",
+          "text": "Changed Bandit's assert_used check (B101) to skip tests/, in a new [tool.bandit] section of pyproject.toml that the security scan already reads when present.",
+          "details": [
+            "pytest's asserts are how a test checks its result, and B101 reported every one, over eleven thousand, as a code-scanning alert on each PR that touched a test. It still reports the 29 in the package itself, and every other Bandit check still runs on the tests."
+          ]
         },
         {
           "symbol": "\ud81a\udca5",
