@@ -46,6 +46,9 @@ _VOLATILE_KEYS = {
     "checksum", "observed_seconds", "duration_ms", "since", "until", "basis",
     "first_ts", "key_id", "actor_key_id", "resource_id", "rotated_from",
     "hypernix_version", "t1_api_version",
+    # The machine the examples were recorded on, which is nobody's business
+    # and changes with whoever regenerates them.
+    "server_name",
 }
 
 

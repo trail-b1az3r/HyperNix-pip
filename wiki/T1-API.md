@@ -52,6 +52,7 @@ could never derive one from `0.71.5rc2`. See
 - [MCP](#mcp)
 - [Backup and restore](#backup-and-restore)
 - [Governed inference](#governed-inference)
+- [Model sync](#model-sync)
 - [The SDK](#the-sdk)
 - [Endpoint reference](#endpoint-reference)
 - [Trusted network mode](#trusted-network-mode)
@@ -1584,6 +1585,45 @@ reports what can answer right now, so a client can tell "none configured"
 from "down". `POST /inference/tokens` sizes and prices a request without
 running it.
 
+## Model sync
+
+`~/.hypernix/models` is shared: HyperLink's downloads land there, LM
+Studio can be pointed at it, and people drop GGUFs in by hand. With
+`T1_MODEL_SYNC=1` the server gets its own folder,
+`~/.hypernix/t1api/models` (`T1_MODELS_DIR`), holding a symlink for every
+file in the shared one (`T1_HF_DOWNLOAD_DIR`), and serves its local
+models from there. New servers from `hypernix-t1 create` or
+`install-t1.sh` have it on.
+
+```bash
+hypernix-sync               # also t1-sync, and hypernix-t1 sync
+hypernix-sync --dry-run     # what would change
+hypernix-sync --index       # then write the registry from the T1 folder
+hypernix-sync --watch 30    # keep at it every 30 seconds
+```
+
+- **Folders are real, files are links.** One symlink per file rather than
+  per folder, because `rglob` does not descend into a symlinked folder:
+  a linked Hugging Face repo would look empty, and a HyperNix
+  checkpoint's `config.json` would not be found beside its weights.
+- **Both directions.** New files are linked, moved ones relinked, and a
+  link whose file is gone is removed with any folder the sync made that
+  is left empty (they are listed in `.hypernix-sync.json`).
+- **Never yours.** A real file, or a symlink pointing anywhere but the
+  shared folder, is left alone and reported. Hidden entries and downloads
+  still in progress (`.part`, `.incomplete`, `.tmp`, `.lock`, `.aria2`)
+  are skipped.
+- **When the server does it:** at startup, after each download finishes,
+  and before a model list (`GET /hyperlink/models`, runner loads, the MCP
+  `list_models` tool), at most once every five seconds. A sync that fails
+  is logged and the folder served as it is.
+- Exit status: 0 synced, 1 could not sync (no source folder, or one
+  folder inside the other), 2 synced but something was left alone or
+  failed. `hypernix-t1 status` names both folders when sync is on.
+
+Downloads still go to the shared folder, so the phone, LM Studio and the
+T1 server all see one copy of each model.
+
 ## The SDK
 
 `hypernix.t1sdk` — zero dependencies beyond the standard library, because
@@ -2324,7 +2364,9 @@ their row says otherwise.
 | `T1_RUNNER_PORT` | `8781` | the llama.cpp server the built-in runner owns (not 8080, where somebody's own llama-server usually is) |
 | `T1_RUNNER_SWITCH_PERM` | `0` | the access level that may load and unload models without being an admin; `0` means only admins and partial admins |
 | `T1_HF_DOWNLOADS_ENABLED` | `1` | `POST /hyperlink/models/download` |
-| `T1_HF_DOWNLOAD_DIR` | `~/.hypernix/models` | where it downloads to |
+| `T1_HF_DOWNLOAD_DIR` | `~/.hypernix/models` | where it downloads to, and the shared folder [model sync](#model-sync) mirrors |
+| `T1_MODEL_SYNC` | `0` (`1` in new configs) | mirror the shared folder into `T1_MODELS_DIR` by symlink and serve from it |
+| `T1_MODELS_DIR` | `<T1_CONFIG_DIR>/models` | this server's own models folder, `~/.hypernix/t1api/models` |
 | `T1_BACKUP_DIR` | `~/.hypernix/t1api/backups` | [snapshots](#backup-and-restore) |
 | `T1_BACKUP_MAX_COUNT` | `20` | how many are kept |
 | `T1_MCP_ENABLED` | `0` | [MCP](#mcp) |

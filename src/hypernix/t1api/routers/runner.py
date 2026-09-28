@@ -120,9 +120,9 @@ def _resolve(model_id: str, config: T1APIConfig, registry) -> tuple[str, dict]:
     the user can see is a model they can load, and a path built by string
     concatenation is a path traversal waiting to be found.
     """
-    catalogue = collect(
-        registry=registry, bridge=None, local_dir=config.hf_download_dir or None
-    )
+    from ..modelsync import serving_dir
+
+    catalogue = collect(registry=registry, bridge=None, local_dir=serving_dir(config))
     for model in catalogue.models:
         if model.model_id == model_id:
             if not model.path:

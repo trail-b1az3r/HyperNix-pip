@@ -410,6 +410,17 @@ class T1APIConfig:
         default_factory=lambda: os.environ.get("T1_HF_DOWNLOAD_DIR")
     )
 
+    # --- Model sync (0.72.6.post3) --------------------------------------------
+    #: Mirror the shared models folder (T1_HF_DOWNLOAD_DIR, by default
+    #: ~/.hypernix/models) into this server's own, by symlink, and serve
+    #: from that. Synced at startup, after each download, and before a
+    #: model list. See hypernix.t1api.modelsync; `hypernix-sync` does it
+    #: by hand. Off by default: it writes into the config directory.
+    model_sync: bool = field(default_factory=lambda: _bool_env("T1_MODEL_SYNC", False))
+    #: The server's own models folder. Default <T1_CONFIG_DIR>/models,
+    #: which is ~/.hypernix/t1api/models.
+    models_dir: str | None = field(default_factory=lambda: os.environ.get("T1_MODELS_DIR"))
+
     # --- Backups (T1 v1.0.26.8.1.0) -------------------------------------------
     # Where /backup/list and /backup/restore keep snapshots. Never
     # contains key material — see hypernix.t1api.backup.EXCLUDED.

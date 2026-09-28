@@ -54,10 +54,31 @@ Response `200`:
 {
   "status": "ok",
   "environment": "development",
+  "server_name": "<server_name>",
+  "host_id": "",
+  "server_id": "",
   "t1_api_version": "<t1_api_version>",
+  "t1_api_version_long": "1.1.2026.9.0.0",
+  "t1_version": {
+    "short": "1.1.26.9.0.0",
+    "long": "1.1.2026.9.0.0",
+    "display": "t1 v1.1.26.9.0.0",
+    "generation": "1.1",
+    "release": "2026-09",
+    "api": 1,
+    "major": 1,
+    "year": 2026,
+    "month": 9,
+    "feature": 0,
+    "fix": 0
+  },
   "hypernix_version": "<hypernix_version>",
-  "beta": "beta4",
+  "beta": "t1-1.0",
+  "lmstudio_bridge_enabled": true,
+  "lmstudio_configured": false,
+  "hyperlink_enabled": true,
   "model_count": 9,
+  "example_model_count": 0,
   "storage_backend": "sqlite",
   "request_id": "<request_id>",
   "tls_enabled": false,
@@ -72,7 +93,9 @@ Response `200`:
     "deploy_secret": true,
     "tls_keyfile": false,
     "tls_ca_certs": false,
-    "database_url": false
+    "database_url": false,
+    "lmstudio_api_key": false,
+    "hf_token": false
   },
   "production_ready": false,
   "production_warnings": [
@@ -107,6 +130,17 @@ Response `200`:
     "require_destructive_confirmation": true,
     "remote_deployment_enabled": true,
     "max_transfer_bytes": 268435456,
+    "lmstudio_enabled": true,
+    "lmstudio_url": "",
+    "lmstudio_discovery": false,
+    "hyperlink_enabled": true,
+    "mcp_enabled": false,
+    "hyperchat_multi": false,
+    "hyperchat_instances": 0,
+    "hyperchat_max_queued": 256,
+    "hyperlink_default_prompt": true,
+    "hyperlink_public_url": "",
+    "hyperlink_max_upload_bytes": 67108864,
     "tls_enabled": false,
     "mtls_enabled": false,
     "mtls_mode": "off",
@@ -136,6 +170,7 @@ Response `401`:
 {
   "error": {
     "code": "AUTH_INVALID_KEY",
+    "hx_code": "T1-05011.a3",
     "message": "Not a valid T1 key format: <T1_KEY>\u2026",
     "details": {}
   },
@@ -165,6 +200,7 @@ Response `401`:
 {
   "error": {
     "code": "AUTH_INVALID_KEY",
+    "hx_code": "T1-05011.a3",
     "message": "Not a valid T1 key format: <T1_KEY>\u2026",
     "details": {}
   },
@@ -210,6 +246,7 @@ Response `403`:
 {
   "error": {
     "code": "AUTH_ADMIN_REQUIRED",
+    "hx_code": "T1-05021.a3",
     "message": "This operation requires an admin-scoped T1 key.",
     "details": {}
   },
@@ -422,6 +459,7 @@ Response `404`:
 {
   "error": {
     "code": "MODEL_NOT_SUPPORTED",
+    "hx_code": "T2-00010.a3",
     "message": "Model 'does-not-exist' is not registered in the T1 model registry.",
     "details": {
       "model_id": "does-not-exist"
@@ -514,6 +552,7 @@ Response `403`:
 {
   "error": {
     "code": "AUTH_INSUFFICIENT_SCOPE",
+    "hx_code": "T1-05020.a3",
     "message": "This key is assigned to plan 'free', not 'enterprise'. Plans are assigned server-side (POST /keys/assign); a client cannot select one.",
     "details": {
       "assigned_plan": "free"
@@ -834,6 +873,7 @@ Response `422`:
 {
   "error": {
     "code": "VALIDATION_ERROR",
+    "hx_code": "T1-02050.a3",
     "message": "Import payload contains no keys.",
     "details": {}
   },
@@ -868,7 +908,7 @@ Response `200`:
     "status": "unknown",
     "capabilities": [],
     "tags": {},
-    "registered_by": "a47b7e7b-34a3-4c64-bcaa-dea809d7d105",
+    "registered_by": "308a8f7b-a903-4c1e-925b-b0931e815957",
     "created_at": "<created_at>",
     "updated_at": "<updated_at>",
     "last_seen": null
@@ -892,7 +932,7 @@ Response `200`:
       "status": "unknown",
       "capabilities": [],
       "tags": {},
-      "registered_by": "a47b7e7b-34a3-4c64-bcaa-dea809d7d105",
+      "registered_by": "308a8f7b-a903-4c1e-925b-b0931e815957",
       "created_at": "<created_at>",
       "updated_at": "<updated_at>",
       "last_seen": null
@@ -903,7 +943,7 @@ Response `200`:
 }
 ```
 
-### `PATCH /servers/fb5aad1e2e23448cacfe365d1bd16fd4` *(authenticated)*
+### `PATCH /servers/5dcf9a88f8cc446eba4e937806f43947` *(authenticated)*
 
 Promotion is audited — it is the gate every module push checks.
 
@@ -927,7 +967,7 @@ Response `200`:
     "status": "unknown",
     "capabilities": [],
     "tags": {},
-    "registered_by": "a47b7e7b-34a3-4c64-bcaa-dea809d7d105",
+    "registered_by": "308a8f7b-a903-4c1e-925b-b0931e815957",
     "created_at": "<created_at>",
     "updated_at": "<updated_at>",
     "last_seen": null
@@ -955,6 +995,7 @@ Response `400`:
 {
   "error": {
     "code": "SSRF_BLOCKED",
+    "hx_code": "T1-05091.a4",
     "message": "'169.254.169.254' is a cloud-metadata endpoint and is never allowed.",
     "details": {
       "address": "http://169.254.169.254/latest/meta-data"
@@ -964,7 +1005,7 @@ Response `400`:
 }
 ```
 
-### `DELETE /servers/fb5aad1e2e23448cacfe365d1bd16fd4` *(authenticated)*
+### `DELETE /servers/5dcf9a88f8cc446eba4e937806f43947` *(authenticated)*
 
 Destructive operations need ?confirm=true.
 
@@ -974,6 +1015,7 @@ Response `409`:
 {
   "error": {
     "code": "CONFIRMATION_REQUIRED",
+    "hx_code": "T1-02170.a2",
     "message": "Deleting a server registration is destructive and requires explicit confirmation. Re-send with ?confirm=true.",
     "details": {
       "action": "Deleting a server registration"
@@ -1004,7 +1046,7 @@ Response `200`:
     "module_id": "<module_id>",
     "name": "demo-module",
     "version": "1.0.0",
-    "owner_key_id": "41cdbf28-88d6-4291-8e9f-8c8a2ffb0e72",
+    "owner_key_id": "45feeb84-77b0-48a0-b495-ab2b89085349",
     "status": "draft",
     "source_type": "none",
     "source_url": null,
@@ -1030,7 +1072,7 @@ Response `200`:
       "module_id": "<module_id>",
       "name": "demo-module",
       "version": "1.0.0",
-      "owner_key_id": "41cdbf28-88d6-4291-8e9f-8c8a2ffb0e72",
+      "owner_key_id": "45feeb84-77b0-48a0-b495-ab2b89085349",
       "status": "draft",
       "source_type": "none",
       "source_url": null,
@@ -1073,11 +1115,12 @@ Response `429`:
 {
   "error": {
     "code": "RATE_LIMITED",
+    "hx_code": "T1-01020.c2",
     "message": "Rate limit 'expensive_operations' exceeded for key. Retry in 5.8s.",
     "details": {
       "rule": "expensive_operations",
       "subject_kind": "key",
-      "retry_after_seconds": 5.76,
+      "retry_after_seconds": 5.79,
       "cost": 10.0
     }
   },
@@ -1085,7 +1128,7 @@ Response `429`:
 }
 ```
 
-### `POST /modules/9017e7c22ac3484c95d89914668c62c4/deploy` *(authenticated)*
+### `POST /modules/4c16d5bbe2704fde9513a42a1ee605ed/deploy` *(authenticated)*
 
 Multi-server deployment. Every target is trust-checked before the job is queued.
 
@@ -1105,6 +1148,7 @@ Response `404`:
 {
   "error": {
     "code": "SERVER_NOT_FOUND",
+    "hx_code": "T2-00070.a3",
     "message": "Server '<SERVER_ID>' is not registered.",
     "details": {
       "server_id": "<server_id>"
@@ -1135,10 +1179,12 @@ Response `501`:
 {
   "error": {
     "code": "NOT_SUPPORTED",
+    "hx_code": "T1-02030.b2",
     "message": "No job handler registered for kind 'not-a-registered-kind'.",
     "details": {
       "kind": "not-a-registered-kind",
       "available_kinds": [
+        "hf_download",
         "module_fetch",
         "module_sync"
       ]
@@ -1211,7 +1257,7 @@ Response `200`:
 ```json
 {
   "account_type": "user",
-  "account_id": "41cdbf28-88d6-4291-8e9f-8c8a2ffb0e72",
+  "account_id": "45feeb84-77b0-48a0-b495-ab2b89085349",
   "balance": 0.0,
   "request_id": "<request_id>"
 }
@@ -1260,6 +1306,7 @@ Response `400`:
 {
   "error": {
     "code": "PAYMENT_TOKEN_INVALID",
+    "hx_code": "T2-05100.a3",
     "message": "Payment token is invalid.",
     "details": {}
   },
@@ -1285,6 +1332,7 @@ Response `400`:
 {
   "error": {
     "code": "PAYMENT_TOKEN_INVALID",
+    "hx_code": "T2-05100.a3",
     "message": "Payment token is invalid.",
     "details": {}
   },
@@ -1304,12 +1352,12 @@ Response `200`:
     {
       "transaction_id": "<transaction_id>",
       "account_type": "user",
-      "account_id": "41cdbf28-88d6-4291-8e9f-8c8a2ffb0e72",
+      "account_id": "45feeb84-77b0-48a0-b495-ab2b89085349",
       "amount": 25.0,
       "kind": "redeem",
       "balance_after": 25.0,
       "note": "payment token redemption",
-      "created_by": "41cdbf28-88d6-4291-8e9f-8c8a2ffb0e72",
+      "created_by": "45feeb84-77b0-48a0-b495-ab2b89085349",
       "created_at": "<created_at>"
     }
   ],
@@ -1355,7 +1403,7 @@ Response `200`:
       "cidr": "203.0.113.0/24",
       "kind": "block",
       "reason": "abuse",
-      "created_by": "a47b7e7b\u2026",
+      "created_by": "308a8f7b\u2026",
       "created_at": "<created_at>",
       "expires_at": null,
       "expired": false
@@ -1389,7 +1437,7 @@ Response `200`:
       "cidr": "100.64.0.0/10",
       "kind": "allow",
       "reason": "tailnet",
-      "created_by": "a47b7e7b\u2026",
+      "created_by": "308a8f7b\u2026",
       "created_at": "<created_at>",
       "expires_at": null,
       "expired": false
@@ -1399,7 +1447,7 @@ Response `200`:
       "cidr": "203.0.113.0/24",
       "kind": "block",
       "reason": "abuse",
-      "created_by": "a47b7e7b\u2026",
+      "created_by": "308a8f7b\u2026",
       "created_at": "<created_at>",
       "expires_at": null,
       "expired": false
@@ -1562,6 +1610,7 @@ Response `403`:
 {
   "error": {
     "code": "AUTH_ADMIN_REQUIRED",
+    "hx_code": "T1-05021.a3",
     "message": "This operation requires an admin-scoped T1 key.",
     "details": {}
   },

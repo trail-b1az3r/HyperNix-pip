@@ -136,7 +136,8 @@ Surfaces documented inside those pages rather than on their own:
 
 | Surface | Where |
 |---|---|
-| `hypernix-t1` — start / stop / restart / status / version / upgrade / logs / create / configure / test / key / autostart / built-in-runner / chat / training / launch-script | [CLI](CLI.md#hypernix-t1) |
+| `hypernix-t1` — start / stop / restart / status / version / upgrade / sync / logs / create / configure / test / key / autostart / built-in-runner / chat / training / launch-script | [CLI](CLI.md#hypernix-t1) |
+| `hypernix-sync` / `t1-sync` and `T1_MODEL_SYNC` — `~/.hypernix/models` mirrored into `~/.hypernix/t1api/models` | [T1-API § Model sync](T1-API.md#model-sync) |
 | Web accounts (`t1-accounts`), MCP, backups, `/inference/*` | [T1-API § Web accounts](T1-API.md#web-accounts), [§ MCP](T1-API.md#mcp), [§ Backup and restore](T1-API.md#backup-and-restore), [§ Governed inference](T1-API.md#governed-inference) |
 | `gkey` — minting T1, T2, T2S and T2P keys (`-v v1\|v2\|v2short`), `gkey version` | [T1-API § Minting keys in each format](T1-API.md#minting-keys-in-each-format) |
 | The bootstrap key a new server issues itself (loopback-only, 3 days, once) | [T1-API § The first key a new server has](T1-API.md#the-first-key-a-new-server-has) |

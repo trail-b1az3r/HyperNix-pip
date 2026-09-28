@@ -644,6 +644,7 @@ hypernix-t1 start                        # start / stop / kill / restart / statu
 hypernix-t1 version                      # HyperNix + T1 versions, and the Python it runs as
 hypernix-t1 logs -f                      # follow the log (or `logs 200`)
 hypernix-t1 upgrade                      # upgrade HyperNix in the server's own Python, and restart
+hypernix-t1 sync                         # mirror ~/.hypernix/models into ~/.hypernix/t1api/models
 hypernix-t1 test                         # health, status, and a real end-to-end probe
 hypernix-t1 key create -v v2 --level 5   # gkey, against this server's own store
 hypernix-t1 configure                    # open the config in $EDITOR
@@ -673,6 +674,7 @@ uvicorn invocation or hunting for a pid.
 | `test` | not a health ping — `/health`, then `/status`, then (in a checkout) the same end-to-end probe CI runs, reported per stage |
 | `key` | pass straight through to `gkey`, against **this server's** key store — `hypernix-t1 key create -v v2 --level 5` |
 | `autostart` | `on` / `off` / `status` — a systemd **user** service, with an absolute `ExecStart` because systemd rejects a relative one at load |
+| `sync` | mirror `~/.hypernix/models` into this server's own `~/.hypernix/t1api/models`, one symlink per file, removing links whose file has gone (`--dry-run`, `--index`, `--watch S`). Also installed as `hypernix-sync` and `t1-sync`; `T1_MODEL_SYNC=1` has the server do it itself — see [T1-API § Model sync](T1-API.md#model-sync) |
 | `index` | read every `.gguf` in a folder and write the model registry from what the files say — see [ModelIndex](ModelIndex.md) |
 | `built-in-runner` | also `runner`: serve a model from this server's own llama.cpp instead of LM Studio — see [below](#hypernix-t1-built-in-runner) |
 | `chat` | send a message to the served model and print the reply — see [below](#hypernix-t1-chat) |

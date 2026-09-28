@@ -236,6 +236,19 @@ Historical wording and technical detail are retained during format normalization
     still said 0.72.6, with no HyperLink site on any port.
   - `--main` installs the newest code from GitHub; any pip requirement,
     such as `'hypernix[t1api]==0.72.7'`, works too.
+✨ Added model sync: `~/.hypernix/models` mirrored into the T1 server's
+  own `~/.hypernix/t1api/models`, one symlink per file.
+  - `T1_MODEL_SYNC=1` has the server sync at startup, after each download
+    and before a model list, and serve its local models from the mirror
+    (`T1_MODELS_DIR`). New configs from `hypernix-t1 create` and
+    `install-t1.sh` have it on; it is off otherwise.
+  - `hypernix-sync`, also `t1-sync` and `hypernix-t1 sync`, does it by
+    hand, with `--dry-run`, `--index` (write the registry from the result)
+    and `--watch`.
+  - Links whose file is gone are removed. A real file, or a link of your
+    own, in the T1 folder is never replaced, and downloads in progress
+    are skipped.
+  - `hypernix-t1 status` names both folders when it is on.
 𖥔 Added the server's HyperNix version to `hypernix-t1 status`, and a
   warning from `status` and `start` when it is older than the one that
   came with `hypernix-t1` itself.
@@ -333,6 +346,13 @@ Historical wording and technical detail are retained during format normalization
     `T1_HYPERLINK_TEACH_TOOLS`, and the `T1_HOST`, `T1_PORT` and
     `T1_START_TIMEOUT` that `hypernix-t1` reads.
 
+📚 Changed `examples/t1api`: the README starts with `hypernix-t1`, says
+  where models go and how sync works under systemd and in a container,
+  and `API-EXAMPLES.md` and `openapi.json` are regenerated from a live
+  server (164 paths; they were a month old).
+  - The example generator now replaces the recording machine's name with
+    a placeholder, as it already did ids and timestamps.
+
 ### Site Changes
 
 🛜 Changed the T1 API page to cover every route the server has and every
@@ -370,6 +390,11 @@ Historical wording and technical detail are retained during format normalization
 🧪 Added `tests/t1api/test_hypernix_t1_upgrade.py` (10): `upgrade` runs pip
   in the server's own Python, `--main` and a requirement, the warning when
   the server's HyperNix is older, and none when it is not.
+🧪 Added `tests/t1api/test_modelsync.py` (22): linking, relinking and
+  pruning, your own files left alone, in-progress downloads skipped,
+  the catalogue finding synced models and checkpoints, a server with sync
+  on serving from the mirror, the CLI's exit codes and `.env` settings,
+  and `hypernix-t1 sync` and `status`.
 🧪 Added a test that a reload after a flat-name import keeps the real name,
   in a fresh interpreter. The pressure-cooker check that importing does
   not warn now runs in one too, so it no longer swaps out the classes

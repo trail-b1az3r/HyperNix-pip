@@ -1135,6 +1135,13 @@ T1_HYPERLINK_PORT=$BIND_PORT
 # says where it is and whether it answers.
 T1_WEB_ENABLED=1
 T1_WEB_PORT=37965
+
+# Mirror ~/.hypernix/models (where HyperLink downloads land) into this
+# server's own models folder by symlink, and serve from it. Synced at
+# startup, after each download and before a model list; 'hypernix-t1
+# sync' does the same by hand.
+T1_MODEL_SYNC=1
+T1_MODELS_DIR=$CONFIG_DIR/models
 $(if [ -n "$PUBLIC_URL" ]; then printf 'T1_HYPERLINK_PUBLIC_URL=%s\n' "$PUBLIC_URL"; else printf '# T1_HYPERLINK_PUBLIC_URL=https://t1.example.com\n'; fi)
 
 # Whether an address must be explicitly allowed before it can reach any

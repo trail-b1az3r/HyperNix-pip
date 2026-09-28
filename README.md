@@ -113,6 +113,10 @@ v1.1.26.9.0.0; these add to it.
   actually runs on, its private venv, and restarts it; `status` and
   `start` warn when that has fallen behind. If an upgrade seemed to do
   nothing, `hypernix-t1 version` shows why.
+- **Model sync.** `T1_MODEL_SYNC=1` mirrors `~/.hypernix/models` into
+  the server's own `~/.hypernix/t1api/models`, one symlink per file, and
+  serves from it; `hypernix-sync` does it by hand.
+  [T1 API](wiki/T1-API.md#model-sync).
 - **Safer by default:** checkpoints never unpickled, MCP errors that keep
   their details on the server, key files confined to the key store. The
   [security checklist](wiki/T1-API-Security-Checklist.md) now covers
@@ -818,8 +822,9 @@ than a step in the pipeline:
 | `hnx-map` | The steampunk schematic TUI. |
 | `hnx-scriptgen` | The training-script builder. |
 | `waiter` | The T1 API's client TUI/CLI. Needs no server extra. `waiter serv` letters can be grouped (`-ArEK <key> -I <ip>`). |
-| `hypernix-t1` (`hnx-t1`) | Runs a T1 server: `create`, `start`, `stop`, `restart`, `status`, `version`, `upgrade`, `logs`, `test`, `built-in-runner`, `chat`, `index`, `training`, `autostart`, `launch-script`, `override`. |
+| `hypernix-t1` (`hnx-t1`) | Runs a T1 server: `create`, `start`, `stop`, `restart`, `status`, `version`, `upgrade`, `sync`, `logs`, `test`, `built-in-runner`, `chat`, `index`, `training`, `autostart`, `launch-script`, `override`. |
 | `t1-accounts` | Web accounts for a T1 server: create, reset, unlock, and the four deployment modes. |
+| `hypernix-sync` (`t1-sync`) | Mirrors `~/.hypernix/models` into the T1 server's own `~/.hypernix/t1api/models` by symlink; `T1_MODEL_SYNC=1` has the server do it itself. |
 | `gkey` | Gatekeeper + Keymaster, in one place. |
 | `multilama` | One interface over vanilla llama.cpp, ik_llama.cpp, PrismML and KoboldCpp. |
 | `noodle` | The autonomous multi-agent executor, standalone. |

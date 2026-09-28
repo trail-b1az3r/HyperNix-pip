@@ -67,6 +67,9 @@ STORAGE_KEYS = (
     # real port 37965 for the HyperLink web site. Tests of the site turn
     # it on themselves.
     "T1_WEB_ENABLED",
+    # Likewise: a server started by a test must not mirror the real
+    # ~/.hypernix/models. Tests of the sync pass their own folders.
+    "T1_MODEL_SYNC",
 )
 
 
@@ -85,6 +88,7 @@ def _redirect_environment() -> None:
     # the training monitor.
     os.environ.setdefault("T1_CONFIG_DIR", str(_SESSION_ROOT / "config"))
     os.environ.setdefault("T1_WEB_ENABLED", "0")
+    os.environ.setdefault("T1_MODEL_SYNC", "0")
 
 
 def clear_t1_config(monkeypatch) -> None:

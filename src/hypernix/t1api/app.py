@@ -664,6 +664,15 @@ def create_app(
 
         serve_on_api(app)
 
+    if cfg.model_sync:
+        # Mirror ~/.hypernix/models into this server's own folder before
+        # the first model list, and say where, since it is a folder of
+        # symlinks somebody may go looking for.
+        from .modelsync import serving_dir, target_for
+
+        serving_dir(cfg, force=True)
+        logger.info("t1api: models served from %s (T1_MODEL_SYNC)", target_for(cfg))
+
     if cfg.is_production:
         logger.info(
             "t1api: production configuration validated (backend=%s, mtls=%s, rate_limit=%s, audit=%s)",
@@ -714,6 +723,12 @@ def _make_hf_download_handler(cfg: T1APIConfig):
             filenames=list(payload.get("filenames") or []) or None,
             kind=str(payload.get("kind") or "auto"),
         )
+        if cfg.model_sync:
+            # So the new model is in the server's own folder at once,
+            # not at the next model list.
+            from .modelsync import serving_dir
+
+            serving_dir(cfg, force=True)
         return result.to_dict()
 
     return handler

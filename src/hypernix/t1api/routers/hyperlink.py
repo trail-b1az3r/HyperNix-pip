@@ -2296,10 +2296,12 @@ def model_catalogue(
 
         bridge = _bridge_for(config)
 
+    from ..modelsync import serving_dir
+
     catalogue = collect(
         registry=registry,
         bridge=bridge,
-        local_dir=config.hf_download_dir or None,
+        local_dir=serving_dir(config),
     )
     data = catalogue.to_dict()
     return ModelCatalogueResponse(

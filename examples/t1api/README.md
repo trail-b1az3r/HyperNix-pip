@@ -14,10 +14,21 @@ before exposing any of them to something you don't control.
 | [`nginx.conf`](nginx.conf) | TLS termination and optional mTLS header forwarding |
 | [`hypernix-t1api.service`](hypernix-t1api.service) | systemd unit with a real sandbox |
 | [`.env.example`](.env.example) | Every configuration variable, with why it matters |
+| [`../../bin/hypernix-t1`](../../bin/hypernix-t1) | Not an example: the service manager most single machines want instead of any of the above |
 | [`API-EXAMPLES.md`](API-EXAMPLES.md) | Request/response for every endpoint — generated, not written |
 | [`openapi.json`](openapi.json) | Exported OpenAPI schema |
 
 ## Fastest path
+
+On one machine you own, `hypernix-t1` does all of this for you:
+
+```bash
+pip install 'hypernix[t1api]'
+hypernix-t1 create && hypernix-t1 start
+hypernix-t1 status        # address, version, HyperLink on the web, models folder
+```
+
+The scripts here are for when you want to see or change each piece:
 
 ```bash
 pip install 'hypernix[t1api]'
@@ -55,9 +66,41 @@ pip install 'hypernix[t1api-test]'
 python ../../scripts/t1api_examples.py
 ```
 
+Run it with a throwaway `HOME` and `T1_CONFIG_DIR` if you have a real
+server on the machine: the generator starts its own, and a fresh one with
+an empty key store prints a bootstrap key. The machine's name, like ids
+and timestamps, is replaced with a placeholder.
+
 The diff is then the behaviour change, which is the point. Volatile values
 (ids, timestamps) and anything credential-shaped are replaced with
 placeholders before the file is written.
+
+## Models
+
+Put GGUFs, or HyperNix checkpoint folders, in `~/.hypernix/models`;
+HyperLink's downloads land there too. With `T1_MODEL_SYNC=1` (which
+`hypernix-t1 create` and `install-t1.sh` write) the server mirrors that
+folder into its own, `~/.hypernix/t1api/models`, one symlink per file,
+and serves from there: at startup, after each download and before each
+model list. `hypernix-sync` (also `t1-sync`, `hypernix-t1 sync`) does it
+by hand; `--dry-run` shows what it would change.
+
+```bash
+hypernix-sync --dry-run
+hypernix-sync --index     # and write the model registry from the result
+```
+
+Under the systemd unit, whose sandbox can only write `/var/lib/hypernix`,
+put both folders there:
+
+```
+T1_HF_DOWNLOAD_DIR=/var/lib/hypernix/models
+T1_MODELS_DIR=/var/lib/hypernix/t1api/models
+```
+
+In a container, mount the models folder and point `T1_HF_DOWNLOAD_DIR`
+at it rather than syncing: a symlink made on the host points at a host
+path, which does not exist inside the container.
 
 ## The `config/` directory
 

@@ -625,6 +625,11 @@ print(" ".join(value[i:i + 8] for i in range(0, len(value), 8)))
   installed="$(hypernix_version "$(python_bin)")" || installed=""
   [ -n "$installed" ] && dim "     hypernix  $installed ($(python_bin))"
   warn_if_stale
+  case "$(setting T1_MODEL_SYNC 0 | tr '[:upper:]' '[:lower:]')" in
+    1|true|yes|on)
+      dim "     models    $(setting T1_MODELS_DIR "$CONFIG_DIR/models")"
+      dim "               mirrored from $(setting T1_HF_DOWNLOAD_DIR "$HOME/.hypernix/models") (T1_MODEL_SYNC; hypernix-t1 sync)" ;;
+  esac
   if [ -n "$pid" ]; then
     # HyperLink on the web (0.72.6.post1): where it is, and whether it
     # answers there, asked from outside the server.
@@ -744,6 +749,10 @@ T1_ENVIRONMENT=development
 # \`hypernix-t1 status\` says where it is and whether it answers.
 T1_WEB_ENABLED=1
 T1_WEB_PORT=37965
+# Mirror ~/.hypernix/models into this server's own folder by symlink,
+# and serve from it. \`hypernix-t1 sync\` does the same by hand.
+T1_MODEL_SYNC=1
+T1_MODELS_DIR=$CONFIG_DIR/models
 EOF
   chmod 600 "$ENV_FILE"
   mkdir -p "$CONFIG_DIR/keymaster"
@@ -896,6 +905,15 @@ cmd_index() {
     exec "$py" -m hypernix.t1api.modelindex_cli "$@"
 }
 
+cmd_sync() {
+  # Mirror ~/.hypernix/models into this server's own models folder, by
+  # symlink. The same code the server runs with T1_MODEL_SYNC=1.
+  load_env
+  local py; py="$(python_bin)"
+  T1_CONFIG_DIR="${T1_CONFIG_DIR:-$CONFIG_DIR}" \
+    exec "$py" -m hypernix.t1api.modelsync_cli "$@"
+}
+
 cmd_autostart() {
   local action="on" write_only=0
   while [ $# -gt 0 ]; do
@@ -1021,6 +1039,11 @@ hypernix-t1 — manage a T1 API server (also installed as hnx-t1)
                         Set up a new server. Runs install-t1.sh when it is
                         available (the guided setup); otherwise writes a
                         minimal local-only configuration.
+  sync [--dry-run] [--index] [--watch S]
+                        Mirror ~/.hypernix/models into this server's own
+                        models folder (~/.hypernix/t1api/models) as
+                        symlinks, removing links whose file has gone.
+                        T1_MODEL_SYNC=1 has the server do it itself.
   index [--dir D] [-o FILE] [--refresh] [--dry-run]
                         Read every .gguf under D (default ./hypernix/models)
                         and write the model registry from what the files
@@ -1075,6 +1098,7 @@ main() {
     test)              cmd_test "$@" ;;
     key|keys)          cmd_key "$@" ;;
     index)             cmd_index "$@" ;;
+    sync)              cmd_sync "$@" ;;
     built-in-runner|builtin-runner)
                        cmd_runner built-in-runner "$@" ;;
     runner)            cmd_runner runner "$@" ;;
