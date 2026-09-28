@@ -762,6 +762,26 @@ def t1_routes() -> list[dict[str, Any]]:
                     "line": i,
                     "tag": tag,
                 })
+    # HyperLink on the web: the page's fixed files, which serve_on_api adds
+    # to the API's own port (0.72.6.post3). They live in WEB_FILES rather
+    # than a router, so the decorator scan above cannot see them.
+    web = SRC_ROOT / "t1api" / "hyperlink_web.py"
+    if web.exists():
+        source = web.read_text(encoding="utf-8", errors="replace")
+        block = re.search(r"^WEB_FILES\s*=\s*\{(.*?)^\}", source, re.S | re.M)
+        if block:
+            first = source[: block.start()].count("\n") + 1
+            for m in re.finditer(r"[\"'](/[^\"']*)[\"']\s*:", block.group(1)):
+                routes.append({
+                    "method": "GET",
+                    "router": "hyperlink_web",
+                    "path": m.group(1),
+                    "handler": "page",
+                    "response_model": None,
+                    "source": str(web.relative_to(ROOT)).replace(os.sep, "/"),
+                    "line": first + block.group(1)[: m.start()].count("\n"),
+                    "tag": "hyperlink-web",
+                })
     routes.sort(key=lambda x: (x["path"], x["method"], x["source"], x["line"]))
     return routes
 

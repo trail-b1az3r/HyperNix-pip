@@ -14,9 +14,9 @@
 
 ## What's fixed in this update
 
-The first section below covers what the 0.72.6 line has added so far
-(published as `0.72.5.post14` to `post17`, then `0.72.6.rc1` and `rc2`),
-and the one after it covers 0.72.5. [`wiki/Changelog.md`](wiki/Changelog.md) is the canonical
+The first section below covers the 0.72.6 line (published as
+`0.72.5.post14` to `post17`, `0.72.6.rc1` to `rc3`, `0.72.6`, and the
+patches `0.72.6.post1` onward), and the one after it covers 0.72.5. [`wiki/Changelog.md`](wiki/Changelog.md) is the canonical
 per-release history, and [`wiki/Roadmap.md`](wiki/Roadmap.md) says what
 is next.
 
@@ -102,6 +102,21 @@ GPU and training progress, it shows:
 It finds the busiest Python run, its script and its log by itself, and
 it reads the script without running it. `tvtop-max -s` lays it out for
 a phone. [TvTopMax](wiki/TvTopMax.md).
+
+**The T1 server in the 0.72.6 patches.** The T1 contract is still
+v1.1.26.9.0.0; these add to it.
+- **HyperLink on the web.** The server hosts a site that works like the
+  app, at `http://127.0.0.1:37965` and on its Tailscale address, and
+  since post3 also at `/` on the API's own port. Never on the LAN.
+  [T1 API](wiki/T1-API.md#hyperlink-on-the-web-0726post1).
+- **`hypernix-t1 upgrade`** upgrades HyperNix in the Python the server
+  actually runs on, its private venv, and restarts it; `status` and
+  `start` warn when that has fallen behind. If an upgrade seemed to do
+  nothing, `hypernix-t1 version` shows why.
+- **Safer by default:** checkpoints never unpickled, MCP errors that keep
+  their details on the server, key files confined to the key store. The
+  [security checklist](wiki/T1-API-Security-Checklist.md) now covers
+  every opt-in feature.
 
 **Also in 0.72.6:**
 - **HyperLink's default system prompt.** When a reply comes from
@@ -803,7 +818,7 @@ than a step in the pipeline:
 | `hnx-map` | The steampunk schematic TUI. |
 | `hnx-scriptgen` | The training-script builder. |
 | `waiter` | The T1 API's client TUI/CLI. Needs no server extra. `waiter serv` letters can be grouped (`-ArEK <key> -I <ip>`). |
-| `hypernix-t1` (`hnx-t1`) | Runs a T1 server: `start`, `stop`, `status`, `logs`, `test`, `autostart`, `launch-script`, `override`. |
+| `hypernix-t1` (`hnx-t1`) | Runs a T1 server: `create`, `start`, `stop`, `restart`, `status`, `version`, `upgrade`, `logs`, `test`, `built-in-runner`, `chat`, `index`, `training`, `autostart`, `launch-script`, `override`. |
 | `t1-accounts` | Web accounts for a T1 server: create, reset, unlock, and the four deployment modes. |
 | `gkey` | Gatekeeper + Keymaster, in one place. |
 | `multilama` | One interface over vanilla llama.cpp, ik_llama.cpp, PrismML and KoboldCpp. |

@@ -185,6 +185,60 @@ Everything below that those two cover is marked ✅ **automated**.
 - [ ] **`GET /config` and `GET /status` have been eyeballed on the live
       deployment** for anything you did not expect to be public.
 
+## 11. Opt-in features
+
+Each of these is off, or narrow, by default. Every one that is on should
+be on because somebody decided it, not because an installer answer was
+never revisited. `hypernix-t1 status` and `GET /status` show what is on.
+
+- [ ] **Trusted-network mode (`T1_TRUSTED_NETWORK=1`) only where every
+      machine on that network is yours.** Keyless callers from the LAN
+      and the tailnet get read access; turn off whichever of
+      `T1_TRUSTED_NETWORK_LAN` / `T1_TRUSTED_NETWORK_TAILNET` you do not
+      need. Leave `T1_TRUSTED_NETWORK_TAILNET_VERIFY=1`: with it off,
+      anything that numbers itself 100.x is treated as a tailnet peer.
+- [ ] **`T1_TRUSTED_NETWORK_PARTIAL_ADMIN` stays `0`** unless keyless
+      callers should pause and stop training, read the hardware and load
+      models. That is a separate decision from letting them read.
+- [ ] **`T1_HYPERLINK_SHELL=0`** unless paired phones should run shell
+      commands on this machine; if on, `T1_HYPERLINK_SHELL_ROOT` is as
+      narrow as it can be.
+- [ ] **noodle: `T1_NOODLE_ENABLED` and `T1_NOODLE_ALLOW_EXECUTE` are
+      separate switches.** Writing files in a workspace is the first;
+      running them is the second, and it is running code on this server.
+- [ ] **`T1_RUNNER_SWITCH_PERM=0`** unless non-admins should change the
+      model everybody on the server is using.
+- [ ] **`T1_MCP_ENABLED=0`** unless an assistant is going to use it. It
+      is the same capabilities by another route, and a route nobody uses
+      is one nobody watches.
+- [ ] **Web accounts: registration is `closed`, `invite` or
+      `first-user`, not `open`,** unless strangers should mint keys. In
+      `site` or `cloudflare` mode, `T1_ACCOUNTS_PUBLIC_URL` is set and the
+      proxy replaces the client's `X-Forwarded-For` rather than
+      appending to it.
+- [ ] **HyperLink on the web answers only on loopback and the tailnet.**
+      From a LAN address, `http://<lan-ip>:37965/` and the API port's `/`
+      should both refuse. `T1_WEB_ENABLED=0` if nobody uses it.
+- [ ] **The bootstrap admin key is replaced.** A first start with an
+      empty key store mints a local-only three-day admin key; mint real
+      keys and let it expire, or set `T1_BOOTSTRAP_KEY=0` on a server
+      provisioned another way.
+- [ ] **`T1_BILLING_KEY_POLICY` is a deliberate choice** on a server that
+      takes payment keys.
+- [ ] **`HYPERNIX_TRUST_PICKLE` is not set on the server.** Checkpoints
+      load with `weights_only=True`; that variable turns full unpickling
+      (arbitrary code) back on for every load in the process.
+
+## 12. Staying current
+
+- [ ] **`hypernix-t1 version` shows the release you think it does.** The
+      server runs from its own venv, which a `pip install -U` in your
+      shell does not touch; `hypernix-t1 upgrade` upgrades the right one
+      and restarts. `status` and `start` warn when it has fallen behind.
+- [ ] **Security fixes in the changelog have been read against this
+      deployment** — the 🔒 and 𖢥 entries under Security in
+      [the changelog](Changelog.md).
+
 ---
 
 ## After an incident

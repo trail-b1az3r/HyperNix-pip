@@ -323,6 +323,39 @@ Historical wording and technical detail are retained during format normalization
     nothing at all, or re-ran the module as `hypernix.<flat>` and renamed
     it for everyone. The real spec is now put back after the import.
 
+### Documentation
+
+📚 Changed the README and `examples/t1api/.env.example` for the T1 server
+  as it is now.
+  - The README says what the 0.72.6 patches changed on the T1 server, and
+    lists every `hypernix-t1` command.
+  - The example `.env` gains the settings it lacked: web accounts,
+    `T1_HYPERLINK_TEACH_TOOLS`, and the `T1_HOST`, `T1_PORT` and
+    `T1_START_TIMEOUT` that `hypernix-t1` reads.
+
+### Site Changes
+
+🛜 Changed the T1 API page to cover every route the server has and every
+  setting it reads, checked against the code.
+  - The endpoint reference gains the 71 routes it did not list (inference,
+    the runner, memory, compaction, noodle, accounts, backups, MCP,
+    HyperLink preferences, sync, push, search and more), each with who
+    may call it.
+  - New sections: web accounts, MCP, backup and restore, and governed
+    inference. The configuration section lists all 46 settings it
+    lacked, and which are read by the tools rather than the server.
+  - The quickstart copied `.env.t1api.example`, which does not exist; it
+    now starts with `hypernix-t1 create`, and says which Python the
+    server runs from.
+𖥔 Added "Opt-in features" and "Staying current" to the T1 security
+  checklist, and the 0.72.6.post3 protections to the T1 API's Security
+  section.
+𖥔 Added every `hypernix-t1` command to the CLI page's table (`version`,
+  `index`, `built-in-runner`, `chat`, `training`, `launch-script`,
+  `override`, `start-foreground`), and a fuller `status`.
+🛜 Changed the documentation site's T1 route list to include the HyperLink
+  web routes on the API's port, which it could not see.
+
 ### Tests
 
 🧪 Added two tests to `tests/hyperlink/test_hyperlink_web.py` (now 22): the page on

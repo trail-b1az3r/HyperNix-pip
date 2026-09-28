@@ -641,6 +641,7 @@ hnx-t1 status                            # hnx-t1 is the same program, shorter
 hypernix-t1 create                       # set up a server (hands off to install-t1.sh)
 hypernix-t1 create --non-interactive     # …or unattended, accepting every default
 hypernix-t1 start                        # start / stop / kill / restart / status
+hypernix-t1 version                      # HyperNix + T1 versions, and the Python it runs as
 hypernix-t1 logs -f                      # follow the log (or `logs 200`)
 hypernix-t1 upgrade                      # upgrade HyperNix in the server's own Python, and restart
 hypernix-t1 test                         # health, status, and a real end-to-end probe
@@ -664,13 +665,21 @@ uvicorn invocation or hunting for a pid.
 | `kill` | `SIGKILL`, immediately. In-flight requests are lost, and it says so. |
 | `restart` | `stop`, escalating to `kill` if needed, then `start` |
 | `upgrade` | `pip install -U 'hypernix[t1api]'` in the Python the server runs on (its private venv, when it has one), then restart; `--main` installs from GitHub. `status` and `start` warn when that Python's HyperNix is older than `hypernix-t1`'s own |
-| `status` | pid, address, version, whether `/health` actually answers |
+| `status` | pid, address, config/key/log paths, this server's identity fingerprint, the HyperNix version and the Python it runs on, where HyperLink on the web answers (or that this HyperNix has none), and the T1 version from `/status`. When the server is not running, the stale pid, anything else on its port, and the last lines of the log. |
+| `version` | the HyperNix and T1 versions, and the Python the server runs as — the line to read first when an upgrade seems to have done nothing |
 | `logs` | tail; `-f` to follow |
 | `create` | hands off to `install-t1.sh` when it is available — the guided setup, and every flag passes through (`--non-interactive`, `--yes`, …). Installed from a wheel there is no checkout and no installer, so it writes a **minimal** local-only config instead (`--host`, `--port`, `--force`) and says plainly what that does not cover: no allowlist, no rate limits, no pricing, no model registry. |
 | `configure` | open the config in `$EDITOR`; with none set it prints the path rather than picking an editor for you |
 | `test` | not a health ping — `/health`, then `/status`, then (in a checkout) the same end-to-end probe CI runs, reported per stage |
 | `key` | pass straight through to `gkey`, against **this server's** key store — `hypernix-t1 key create -v v2 --level 5` |
 | `autostart` | `on` / `off` / `status` — a systemd **user** service, with an absolute `ExecStart` because systemd rejects a relative one at load |
+| `index` | read every `.gguf` in a folder and write the model registry from what the files say — see [ModelIndex](ModelIndex.md) |
+| `built-in-runner` | also `runner`: serve a model from this server's own llama.cpp instead of LM Studio — see [below](#hypernix-t1-built-in-runner) |
+| `chat` | send a message to the served model and print the reply — see [below](#hypernix-t1-chat) |
+| `training` | what training is doing on this machine, with pause / resume / stop; runs started by `launch-script` show up on their own |
+| `launch-script` | run a script, or a command with `-$ 'CMD'`, so it survives an ssh disconnect: supervised, with its logs and exit status kept, and `--status` / `--logs` / `--stop` from any later session |
+| `override lms move-dir` | point LM Studio's models folder at `~/.hypernix/models` (or a folder you name); `override lms revert` undoes it |
+| `start-foreground` | run in this terminal instead of the background; what the systemd unit uses |
 | `remove` | stop, disable, delete the config — but **keeps the key store**, which is not recoverable and may still be in use elsewhere. Confirmed by typing the word, not by `y`. |
 
 The pid file is checked against the process actually running under it, so

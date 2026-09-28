@@ -128,15 +128,16 @@ reachable if you already knew the filename. Fixed.)
 
 | Guide | Covers |
 |---|---|
-| [T1-API](T1-API.md) | `hypernix.t1api` — controlled HTTP gateway into HyperNix-pip (model registry, auth, routing, modules, servers, jobs, events, billing, the LM Studio bridge, HyperLink). Released: **T1 v1.1.26.9.0.0**. |
-| [T1-API Security Checklist](T1-API-Security-Checklist.md) | What to check before exposing a deployment — one page, per-item, with the config field each maps to. |
+| [T1-API](T1-API.md) | `hypernix.t1api` — controlled HTTP gateway into HyperNix-pip (model registry, auth, routing, modules, servers, jobs, events, billing, the LM Studio bridge, HyperLink and HyperLink on the web, web accounts, MCP, backups, governed inference), every route and every setting. Released: **T1 v1.1.26.9.0.0**, current in 0.72.6.post3. |
+| [T1-API Security Checklist](T1-API-Security-Checklist.md) | What to check before exposing a deployment — one page, per-item, with the config field each maps to, including every opt-in feature and keeping the server current. |
 | [Waiter-TUI](Waiter-TUI.md) | `waiter` — the official T1 API client CLI/TUI (`waiter serv`, `models`, `usage`, `hyperlink`, `version`, `help`). Beta 3 complete: every spec flag wired, full curses TUI (`-G`). |
 
 Surfaces documented inside those pages rather than on their own:
 
 | Surface | Where |
 |---|---|
-| `hypernix-t1` — start / stop / restart / status / logs / create / configure / test / key / autostart | [CLI](CLI.md#hypernix-t1) |
+| `hypernix-t1` — start / stop / restart / status / version / upgrade / logs / create / configure / test / key / autostart / built-in-runner / chat / training / launch-script | [CLI](CLI.md#hypernix-t1) |
+| Web accounts (`t1-accounts`), MCP, backups, `/inference/*` | [T1-API § Web accounts](T1-API.md#web-accounts), [§ MCP](T1-API.md#mcp), [§ Backup and restore](T1-API.md#backup-and-restore), [§ Governed inference](T1-API.md#governed-inference) |
 | `gkey` — minting T1, T2, T2S and T2P keys (`-v v1\|v2\|v2short`), `gkey version` | [T1-API § Minting keys in each format](T1-API.md#minting-keys-in-each-format) |
 | The bootstrap key a new server issues itself (loopback-only, 3 days, once) | [T1-API § The first key a new server has](T1-API.md#the-first-key-a-new-server-has) |
 | T2P billing keys, and a server refusing or separating them | [T1-API § Billing keys](T1-API.md#billing-keys-t2p-and-refusing-them) |

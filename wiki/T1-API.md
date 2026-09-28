@@ -6,8 +6,9 @@ server decides what exists, what's available, and how much is left — see
 [Design principle](#design-principle).
 
 **Status: released — T1 v1.1.26.9.0.0** (long form `1.1.2026.9.0.0`),
-the first of the 1.1 generation, shipped in `0.72.5.post15`. The betas
-ended at v1.0.26.8.0.1. This page is the living contract for what's actually
+the first of the 1.1 generation, shipped in `0.72.5.post15` and still
+the contract in `0.72.6.post3`, the newest package. The betas ended at
+v1.0.26.8.0.1. This page is the living contract for what's actually
 implemented vs. planned; cross-reference against the
 [Roadmap](#roadmap) before assuming an endpoint exists.
 
@@ -47,8 +48,14 @@ could never derive one from `0.71.5rc2`. See
 - [The LM Studio bridge](#the-lm-studio-bridge)
 - [HyperLink](#hyperlink)
 - [Hugging Face link merging](#hugging-face-link-merging)
+- [Web accounts](#web-accounts)
+- [MCP](#mcp)
+- [Backup and restore](#backup-and-restore)
+- [Governed inference](#governed-inference)
 - [The SDK](#the-sdk)
 - [Endpoint reference](#endpoint-reference)
+- [Trusted network mode](#trusted-network-mode)
+- [Training](#training)
 - [Configuration](#configuration)
 - [Security](#security)
 - [Roadmap](#roadmap)
@@ -58,10 +65,24 @@ could never derive one from `0.71.5rc2`. See
 
 ```bash
 pip install 'hypernix[t1api]'
-cp .env.t1api.example .env   # fill in T1_TOKEN_SECRET at minimum
-python3 -m uvicorn hypernix.t1api.app:create_app --factory --reload
+hypernix-t1 create            # the guided setup; writes ~/.hypernix/t1api/.env
+hypernix-t1 start
+hypernix-t1 status            # the address, the version, and HyperLink on the web
 # → http://127.0.0.1:8000/docs (Swagger UI)
 ```
+
+Or by hand, without the service manager:
+
+```bash
+cp examples/t1api/.env.example .env   # fill in T1_TOKEN_SECRET at minimum
+python3 -m uvicorn hypernix.t1api.app:create_app --factory --reload
+```
+
+`hypernix-t1 create` installs into a private venv when it runs the
+installer, and the server runs from there. Upgrade that one with
+`hypernix-t1 upgrade`: a `pip install -U` in your own shell upgrades a
+different environment, and `hypernix-t1 version` shows which Python the
+server really runs as.
 
 Mint yourself a T1 key with the existing `gkey` CLI (T1 keys are
 `hypernix.keymaster` keys — the T1 API doesn't create its own key format):
@@ -137,7 +158,9 @@ for a cosmetic win. Read `t1_version.generation` for the generation.
 
 **Package version.** The pip package (`hypernix`) versions
 independently: `0.72.3` shipped T1 v1.0.26.8.1.1, and `0.72.5.post15`
-onward ship T1 v1.1.26.9.0.0. `GET /status` reports both, as
+through `0.72.6.post3` ship T1 v1.1.26.9.0.0. The 0.72.6 releases added
+endpoints within the 1.1 generation (only additions, so the contract did
+not change), HyperLink on the web, and `hypernix-t1 upgrade`. `GET /status` reports both, as
 `t1_api_version` and `hypernix_version`.
 
 ## Installation
@@ -1460,6 +1483,107 @@ direct file link alone, split part names included, marked
 `metadata_from_api: false`. A phone on a bad connection should still be
 able to start a download it has the exact URL for.
 
+## Web accounts
+
+T1 v1.0.26.9.2.3 (0.72.5): a way for somebody to get their first T1 key
+without already having one. Sign-up and browser sign-in, off unless
+`T1_ACCOUNTS_ENABLED=1`, served from one of four places:
+
+| `T1_ACCOUNTS_MODE` | Where | Cookies and client address |
+|---|---|---|
+| `local` (default) | `http://127.0.0.1:8000`, one machine | no TLS needed |
+| `tailscale` | the tailnet address; WireGuard already encrypts and authenticates the link | no TLS needed |
+| `site` | your own domain, TLS and reverse proxy; set `T1_ACCOUNTS_PUBLIC_URL` | `Secure`; client IP from `X-Forwarded-For`, which the proxy must set itself |
+| `cloudflare` | behind a Cloudflare tunnel; set `T1_ACCOUNTS_PUBLIC_URL` | `Secure`; client IP from `CF-Connecting-IP` |
+
+```bash
+t1-accounts create mason --admin     # password prompted, never an argument
+t1-accounts modes                    # the table above, with the command for each
+T1_ACCOUNTS_ENABLED=1 T1_ACCOUNTS_MODE=tailscale hypernix-t1 start
+```
+
+Registration is `closed` until `T1_ACCOUNTS_REGISTRATION` says `open`,
+`invite` (with `T1_ACCOUNTS_INVITE_CODES`, comma-separated) or
+`first-user`. `t1-accounts` also lists, resets, disables, enables and
+unlocks accounts, and shows or purges sessions.
+
+Passwords are scrypt, compared in constant time. Every form carries a
+CSRF token, cookies are `SameSite`, repeated failures lock the account,
+and `Secure` follows whether the connection really is TLS. An account's
+one purpose is minting and revoking its own T1 keys (`/accounts/keys`),
+whose material is shown once; a keyless caller never gets administrator
+rights in any mode.
+
+## MCP
+
+The server's models, runner, hardware and version, described over the
+[Model Context Protocol](https://modelcontextprotocol.io) (protocol
+`2025-06-18`) so an assistant can discover and use them without being
+taught each endpoint. Off unless `T1_MCP_ENABLED=1`; while off, `/mcp`
+answers 501 and says how to turn it on.
+
+- `POST /mcp` takes one JSON-RPC message or a batch (up to 1 MB); a body
+  of only notifications gets 202 and no body. `GET /mcp` describes the
+  server for a person looking at it in a browser.
+- The same key and scopes as every other route. Tools the caller's
+  scopes cannot use are **hidden**, not offered and then refused, and the
+  scope is checked before a handler runs.
+- Built-in tools: `list_models`, `runner_status`, `hardware` (`read`),
+  `runner_load` (`write`), `server_version` (any key), and the resource
+  `hypernix://models`.
+- A tool's failure comes back as `isError: true` with the reason, which
+  the model can read. An unexpected error inside the server returns only
+  an incident id (0.72.6.post3); the traceback is in the server's log
+  under that id, so file paths and settings never reach the client.
+- Plugins are Python objects registered at startup
+  (`app.state.t1_mcp_plugins`) and namespaced; nothing is ever imported
+  by a name a request supplies.
+
+## Backup and restore
+
+Snapshots of the deployment's state, admin-only:
+
+```bash
+curl -X POST  -H "Authorization: Bearer $ADMIN" http://127.0.0.1:8000/backup
+curl          -H "Authorization: Bearer $ADMIN" http://127.0.0.1:8000/backup/list
+curl -X POST  -H "Authorization: Bearer $ADMIN" -H 'Content-Type: application/json' \
+     -d '{"backup_id": "…"}' http://127.0.0.1:8000/backup/restore                  # dry run
+curl -X POST  -H "Authorization: Bearer $ADMIN" -H 'Content-Type: application/json' \
+     -d '{"backup_id": "…"}' "http://127.0.0.1:8000/backup/restore?confirm=true"
+```
+
+`"sections": [...]` in the body restores only those.
+
+A snapshot holds the configuration allowlist, the model registry,
+routing policies, the server and module registries, the network policy
+and the key directory's *metadata*. It never holds key material (a
+restore re-creates key records; the keys are re-minted and handed out
+again), usage counters, the audit log (an audit trail you can roll back
+is not one) or attachment blobs (their hashes are recorded, so a restore
+says what is missing). A restore is a dry run reporting what would change
+unless `confirm=true`, and both are audited. Snapshots live in
+`T1_BACKUP_DIR` (default `~/.hypernix/t1api/backups`), and past
+`T1_BACKUP_MAX_COUNT` (20) the oldest are deleted.
+
+## Governed inference
+
+`/inference/*` (T1 v1.0.26.9.2.1) is inference under the same rules as
+the rest of the API. `/bridge/lmstudio/*` hands the caller's model string
+straight to LM Studio; these do not. Every call:
+
+1. takes the plan from the key's **server-side assignment**, never the body;
+2. requires the model through the registry (`MODEL_NOT_SUPPORTED` if it is not there);
+3. checks the key's assignment allows that model;
+4. refuses an exhausted key **before** anything runs;
+5. dispatches to whichever backend the server has; and
+6. meters the tokens actually spent, and prices them.
+
+Fallback down the plan's cascade is opt-in (`allow_fallback: true`), and
+the response names the model that really ran. `GET /inference/backends`
+reports what can answer right now, so a client can tell "none configured"
+from "down". `POST /inference/tokens` sizes and prices a request without
+running it.
+
 ## The SDK
 
 `hypernix.t1sdk` — zero dependencies beyond the standard library, because
@@ -1690,6 +1814,119 @@ it — `s3` exists for people who have one and would rather use it. See
 | GET | `/web/v1/config` | bearer | the three settings — **never** the API key |
 | GET | `/web/v1/config/s1?=k\|s2?:=…` | bearer, **admin** | change them; see the grammar below |
 | GET | `/runner/hyperchat` | bearer | pool or queue, the core budget, and the live queue depth |
+
+**The rest of the surface (0.72.5 – 0.72.6.post3)**
+
+Every route the server has, so nothing here is a surprise in `/docs`.
+"bearer" on a HyperLink, memory, runner or compaction route means a
+device token or a T1 key, or no key at all from an origin
+[trusted-network mode](#trusted-network-mode) admits. "Partial admin"
+is a key with `write`, or a trusted origin on a server with
+`T1_TRUSTED_NETWORK_PARTIAL_ADMIN=1`.
+
+*Server and install.*
+
+| Method | Path | Auth | Notes |
+|---|---|---|---|
+| GET | `/version` | none | what is running, and whether it is what is installed |
+| GET | `/hyperlink/upgrade` | bearer | what is installed here, and the exact commands to update it, each naming the interpreter |
+| GET | `/hyperlink/uptime` | bearer | how long the server and the machine have been up |
+| GET | `/hyperlink/hardware` | bearer, **admin or partial admin** | CPU, memory, swap, disks, GPUs |
+| GET | `/docs`, `/redoc`, `/openapi.json` | none | the schema and its viewers; `T1_EXPOSE_DOCS=0` hides them |
+
+*Governed inference* — see [Governed inference](#governed-inference).
+
+| Method | Path | Auth | Notes |
+|---|---|---|---|
+| GET | `/inference/backends` | bearer | what can answer, and whether it does |
+| POST | `/inference/chat` | bearer | a chat completion through the registry, the cascade and the meter |
+| POST | `/inference/chat/stream` | bearer | the same, streamed |
+| POST | `/inference/completions` | bearer | a plain prompt, sent as one user turn |
+| POST | `/inference/embeddings` | bearer | embeddings, under the same registry and quota rules |
+| POST | `/inference/tokens` | bearer | size and price a request without running it |
+
+*The built-in runner* — see [Runtime](Runtime.md) and
+`hypernix-t1 built-in-runner`.
+
+| Method | Path | Auth | Notes |
+|---|---|---|---|
+| GET | `/runner/status` | bearer | what is loaded, where its layers are, how long it has been up |
+| POST | `/runner/plan` | bearer | where a model's layers would go; changes nothing |
+| POST | `/runner/load` | bearer, **admin, partial admin, or a switch grant** (`T1_RUNNER_SWITCH_PERM`) | load a model, replacing what was running; the default model is downloaded the first time |
+| POST | `/runner/unload` | as `load` | stop serving; unloading nothing is a success |
+
+*HyperLink, beyond pairing and sessions.* Sync, notifications and
+search are covered in [HyperLink sync](HyperLink-Sync.md).
+
+| Method | Path | Auth | Notes |
+|---|---|---|---|
+| PATCH | `/hyperlink/sessions/{id}/messages/{message_id}` | bearer | rewrite one of your own messages, dropping what came after it |
+| DELETE | `/hyperlink/sessions/{id}/messages/{message_id}` | bearer | remove one message, keeping the rest |
+| POST | `/hyperlink/sessions/{id}/chat/stop` | bearer | stop a reply still being streamed |
+| GET | `/hyperlink/generations` | bearer | what is generating right now, for this caller |
+| GET | `/hyperlink/backends` | bearer | what could answer a message, and what would now |
+| GET/PATCH | `/hyperlink/preferences` | bearer | this person's settings and the bounds the server accepts; PATCH changes only the fields sent |
+| POST | `/hyperlink/preferences/reset` | bearer | back to the defaults |
+| POST | `/hyperlink/models/download` | bearer | download a model onto the **server**, as a job |
+| GET | `/hyperlink/models/downloaded` | bearer | what is already on the server's disk |
+| GET | `/hyperlink/sync` | bearer | the change feed since a cursor |
+| POST | `/hyperlink/sync/claim` | bearer | claim an idempotency key before sending a turn |
+| GET/POST | `/hyperlink/push` | bearer | list / register this device's APNs token |
+| PATCH/DELETE | `/hyperlink/push/{registration_id}` | bearer | change / remove a registration |
+| GET | `/hyperlink/push/events` | none | what a device may subscribe to |
+| GET | `/hyperlink/search` | bearer | search this owner's sessions and messages |
+
+*Memory and compaction.*
+
+| Method | Path | Auth | Notes |
+|---|---|---|---|
+| GET | `/memory/list` | bearer | everything remembered about this owner, pinned first |
+| GET | `/memory/get` | bearer | one memory; somebody else's is a 404, like a missing one |
+| POST | `/memory/create` / `/memory/edit` / `/memory/delete` | bearer | remember, change (only the fields sent), forget |
+| POST | `/chat/compact/prompts` | bearer | summarise what the person sent, keeping the answers |
+| POST | `/chat/compact/responses` | bearer | summarise the model's messages, keeping the questions |
+| POST | `/chat/compact/prompts/system` | bearer | summarise the system prompt alone |
+| POST | `/chat/compact/all` | bearer | summarise both sides, oldest first |
+
+*noodle* — every route 404s unless `T1_NOODLE_ENABLED=1`.
+
+| Method | Path | Auth | Notes |
+|---|---|---|---|
+| GET | `/noodle/tools` | bearer, **admin or partial admin** | what this server lets noodle do |
+| POST | `/noodle/run` | bearer, **admin or partial admin** | run one tool; running code needs `T1_NOODLE_ALLOW_EXECUTE=1` too |
+| GET | `/noodle/workspace` | bearer, **admin or partial admin** | what is in this caller's workspace |
+
+*Web accounts* — see [Web accounts](#web-accounts); only with
+`T1_ACCOUNTS_ENABLED=1`. "Session" is the sign-in cookie; a write also
+needs the CSRF token `/accounts/me` returns.
+
+| Method | Path | Auth | Notes |
+|---|---|---|---|
+| GET | `/accounts`, `/accounts/login`, `/accounts/register` | none | the pages |
+| GET | `/accounts/config` | none | what the sign-up page needs; no secrets |
+| POST | `/accounts/register` / `/accounts/login` | none | create an account / sign in |
+| POST | `/accounts/logout` | session | end this session |
+| GET | `/accounts/me` | session | the account, and the CSRF token for the next write |
+| POST | `/accounts/password` | session + CSRF | change the password, checking the old one |
+| GET/POST | `/accounts/keys` | session (+ CSRF to mint) | this account's keys (metadata only) / mint one, shown once |
+| DELETE | `/accounts/keys/{key_id}` | session + CSRF | revoke one |
+
+*Backups and MCP.*
+
+| Method | Path | Auth | Notes |
+|---|---|---|---|
+| POST | `/backup` | bearer, admin | take a snapshot now |
+| GET | `/backup/list` | bearer, admin | every snapshot, newest first |
+| POST | `/backup/restore` | bearer, admin | dry run unless `?confirm=true` |
+| DELETE | `/backup/{backup_id}` | bearer, admin | delete a snapshot |
+| GET/POST | `/mcp` | bearer | see [MCP](#mcp); 501 unless `T1_MCP_ENABLED=1` |
+
+*Web search and HyperLink on the web.*
+
+| Method | Path | Auth | Notes |
+|---|---|---|---|
+| POST | `/web/v1/summarise` | bearer | the same as `/web/v1/summarize` |
+| GET | `/`, `/index.html`, `/web/app.js`, `/web/app.css`, `/web/icon.svg` | none, **this machine and the tailnet only** | [HyperLink on the web](#hyperlink-on-the-web-0726post1), on the API port since 0.72.6.post3; any other caller gets a 404 |
 
 ### Web search
 
@@ -2059,6 +2296,61 @@ T1 v1.0.26.8.1.1 adds:
 | `T1_PAYMENT_URL` | — | where a `deny`/`separate` server sends a caller instead. Returned in the refusal, so the error is actionable. |
 | `T1_KEYMASTER_DIR` | `~/.hypernix/keymaster` | the key store. `gkey` reads the same variable, so a server and the tool that mints its keys cannot disagree about where keys live. |
 
+Everything else the server reads. The feature switches are off unless
+their row says otherwise.
+
+| Variable | Default | |
+|---|---|---|
+| `T1_DB_PATH` | `~/.hypernix/t1api/t1api.sqlite3` | the SQLite file; `T1_DATABASE_URL` wins over it (see [PostgreSQL](#postgresql)) |
+| `T1_MOUNT_PREFIX` | — | serve under a path prefix. HyperLink on the web is then only on its own port, since the page calls the API at its root. |
+| `T1_EXPOSE_DOCS` | `1` | `/docs`, `/redoc` and `/openapi.json` |
+| `T1_CORS_ALLOW_ORIGINS` | — | comma-separated; `*` is a production error |
+| `T1_DEFAULT_PLAN` | `free` | the plan a key without an assignment gets |
+| `T1_ROUTING_POLICY_PATH` | — | a routing-policy file for the [quota cascade](#model-routing--quota-cascade) |
+| `T1_TOKEN_DEFAULT_TTL` | `3600` | seconds a scoped token from `POST /auth/token` lives |
+| `T1_AUDIT_ENABLED` | `1` | the [audit log](#audit-log) |
+| `T1_RATE_LIMIT_ENABLED` | `1` | [rate limiting](#rate-limiting) |
+| `T1_RATE_LIMIT_RULES` | built-in rules | JSON, a list of rules or `{"rules": [...]}`; empty means the defaults, never "unlimited" |
+| `T1_NETWORK_POLICY_ENABLED` | `1` | the [network policy](#network-policy) |
+| `T1_TRUSTED_NETWORK_TAILNET_VERIFY` | `1` | ask tailscaled whether a 100.x peer really is one; `0` trusts the address range itself |
+| `T1_TLS_CA_CERTS` | — | CA bundle for client certificates ([TLS and mTLS](#tls-and-mtls)) |
+| `T1_MTLS_REQUIRE_CLIENT_CERT` | `0` | refuse a connection without a client certificate |
+| `T1_MTLS_BEHIND_PROXY` | `0` | read the client certificate from a trusted proxy's headers |
+| `T1_MTLS_ALLOWED_SUBJECTS` / `T1_MTLS_ALLOWED_FINGERPRINTS` | — | comma-separated allowlists |
+| `T1_MAX_TRANSFER_BYTES` | `268435456` | the largest module a [remote deployment](#remote-multi-server-deployment) moves |
+| `T1_ALLOW_PRIVATE_DEPLOY_TARGETS` | `0` | let a deployment push to private addresses |
+| `T1_MODULE_STORAGE_DIR` | — | where uploaded modules are kept |
+| `T1_HOST_ID` / `T1_SERVER_ID` | — | this deployment's issued Host ID and V1 Server ID |
+| `T1_RUNNER_PORT` | `8781` | the llama.cpp server the built-in runner owns (not 8080, where somebody's own llama-server usually is) |
+| `T1_RUNNER_SWITCH_PERM` | `0` | the access level that may load and unload models without being an admin; `0` means only admins and partial admins |
+| `T1_HF_DOWNLOADS_ENABLED` | `1` | `POST /hyperlink/models/download` |
+| `T1_HF_DOWNLOAD_DIR` | `~/.hypernix/models` | where it downloads to |
+| `T1_BACKUP_DIR` | `~/.hypernix/t1api/backups` | [snapshots](#backup-and-restore) |
+| `T1_BACKUP_MAX_COUNT` | `20` | how many are kept |
+| `T1_MCP_ENABLED` | `0` | [MCP](#mcp) |
+| `T1_NOODLE_ALLOW_EXECUTE` | `0` | let noodle run what it writes, not only write it |
+| `T1_NOODLE_WEB_SEARCH` | `1` | noodle's web search tool |
+| `T1_NOODLE_MEMORY` | `0` | noodle's memory tool |
+| `T1_NOODLE_WORKSPACE_DIR` | `~/.hypernix/noodle` | one directory per owner, which it cannot leave |
+| `T1_NOODLE_EXECUTE_TIMEOUT` | `60` | seconds a command may run |
+| `T1_ACCOUNTS_ENABLED` | `0` | [web accounts](#web-accounts) |
+| `T1_ACCOUNTS_MODE` | `local` | `local`, `tailscale`, `site` or `cloudflare` |
+| `T1_ACCOUNTS_PUBLIC_URL` | — | the public address for `site` and `cloudflare` |
+| `T1_ACCOUNTS_ORIGINS` | — | more origins the forms accept, comma-separated |
+| `T1_ACCOUNTS_REGISTRATION` | `closed` | `open`, `invite`, `first-user` or `closed` |
+| `T1_ACCOUNTS_INVITE_CODES` | — | comma-separated, for `invite` |
+
+Read by the tools around the server rather than the server itself:
+
+| Variable | Default | |
+|---|---|---|
+| `T1_CONFIG_DIR` | `~/.hypernix/t1api` | where `hypernix-t1`, the runner and chat CLIs, hyped-pro and the training monitor find the server's `.env` |
+| `T1_HOST` / `T1_PORT` | `127.0.0.1` / `8000` | the address `hypernix-t1` starts the server on, and the one the CLIs connect to |
+| `T1_START_TIMEOUT` | `45` | seconds `hypernix-t1 start` waits for `/health` |
+| `T1_URL` | from `T1_HOST`/`T1_PORT` | the server `hypernix-t1 chat` and `built-in-runner` talk to |
+| `T1_ADMIN_KEY` | the `.env`'s `T1_ADMIN_KEY` or `T1_BOOTSTRAP_ADMIN_KEY` | the key `hypernix-t1 built-in-runner` uses |
+| `T1_ADMIN_PASSWORD` | the `.env`'s `T1_T2_ADMIN_PASSWORD` | what `hypernix-t1 launch-script` checks |
+
 ## Security
 
 - API keys/tokens are never logged. The exception-handling path logs the
@@ -2100,6 +2392,24 @@ T1 v1.0.26.8.1.1 adds:
 - **Explicit confirmation** on destructive operations (`?confirm=true`).
 - **Production configuration validation** refuses to start an unsafe
   production deployment, listing every problem at once.
+- **Internal errors stay on the server.** An unexpected exception is a
+  bare 500 with no detail; over [MCP](#mcp) it is an incident id, with
+  the traceback in the server's log under that id (0.72.6.post3).
+- **Key files stay inside the key store.** Beyond the key-id pattern, the
+  normalised path of a key file must be under `T1_KEYMASTER_DIR` before
+  it is read, written or deleted (0.72.6.post3).
+- **Checkpoints are never unpickled.** Everything HyperNix loads with
+  `torch.load` goes through `hypernix.security.safeload`, with
+  `weights_only=True`; a file that needs full unpickling is refused unless
+  `HYPERNIX_TRUST_PICKLE=1` (0.72.6.post3).
+- **HyperLink on the web is loopback and tailnet only**, decided by the
+  connection's address, on its own port and on the API's; the LAN gets a
+  404. Its page is four fixed files under a strict content security
+  policy.
+- **Keyless access is opt-in and verified.** Trusted-network mode is off
+  by default, a tailnet peer is confirmed with tailscaled rather than
+  trusted for its 100.x address, and a keyless caller is never an
+  administrator. See [Trusted network mode](#trusted-network-mode).
 - Security response headers (`X-Content-Type-Options`, `X-Frame-Options`,
   `Referrer-Policy`, `Cache-Control: no-store`, and HSTS when TLS is on)
   are applied to every response, including error responses raised from
@@ -2142,8 +2452,8 @@ six-part scheme in [Versioning](#versioning) rather than a beta number.
 |---|---|---|
 | **1.0.26.8.0.1** | The [LM Studio bridge](#the-lm-studio-bridge); [HyperLink](#hyperlink) pairing, sessions, attachments and endpoint advertisement; [Hugging Face link merging](#hugging-face-link-merging); the [HyperLink iOS app](../ios/README.md) | **Shipped** |
 | **1.0.26.8.1.1** | The [bootstrap admin key](#the-first-key-a-new-server-has) a fresh server issues itself; [T2P billing keys](#billing-keys-t2p-and-refusing-them) and the server-side policy that can refuse them; the three HyperLink reachability fixes (advertised port, tailnet ATS, Tailscale diagnosis) and [T2S key](#using-a-t2s-key) entry from the app; [undoable](#undoing-an-authentication-change) auth changes and durable server ids | **Shipped** |
-| **1.0.26.9.2.3** | Web accounts: sign-up and browser sign-in in four deployment modes (`t1-accounts`), with a keyless caller never an administrator | **Shipped** (0.72.5) |
-| **1.1.26.9.0.0** | The 1.1 generation, first shipped in `0.72.5.post15`; a 1.0 client is told to upgrade. The package releases after it added [HyperLink](#hyperlink) titles, compression, memory, images and the shell, [web search](#web-search), [v2.1 keys](#v21-t2c-keys-and-rotorvault), [conceal mode](#conceal-mode-and-36-hour-retention) and [server info](#server-info) — see the [Changelog](Changelog.md) | **Shipped** |
+| **1.0.26.9.2.3** | [Web accounts](#web-accounts): sign-up and browser sign-in in four deployment modes (`t1-accounts`), with a keyless caller never an administrator | **Shipped** (0.72.5) |
+| **1.1.26.9.0.0** | The 1.1 generation, first shipped in `0.72.5.post15`; a 1.0 client is told to upgrade. The package releases after it added [HyperLink](#hyperlink) titles, compression, memory, images and the shell, [web search](#web-search), [v2.1 keys](#v21-t2c-keys-and-rotorvault), [conceal mode](#conceal-mode-and-36-hour-retention) and [server info](#server-info); the 0.72.6 patches added [HyperLink on the web](#hyperlink-on-the-web-0726post1), moving a model out of LM Studio, and `hypernix-t1 upgrade` — see the [Changelog](Changelog.md) | **Shipped** |
 
 ## Design principle
 
