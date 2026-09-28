@@ -75,7 +75,7 @@ def main(argv: list[str] | None = None) -> int:
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("--source", default="",
-                        help="the shared models folder (default: T1_HF_DOWNLOAD_DIR, "
+                        help="the shared models folder (default: T1_MODELS_SOURCE, "
                              "else ~/.hypernix/models)")
     parser.add_argument("--target", default="",
                         help="the T1 server's folder (default: T1_MODELS_DIR, "
@@ -94,7 +94,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--json", dest="as_json", action="store_true")
     args = parser.parse_args(argv)
 
-    source = Path(args.source or _setting("T1_HF_DOWNLOAD_DIR") or default_source()).expanduser()
+    source = Path(args.source or _setting("T1_MODELS_SOURCE") or default_source()).expanduser()
     configured_dir = _setting("T1_CONFIG_DIR")
     target = Path(
         args.target or _setting("T1_MODELS_DIR") or default_target(configured_dir or None)

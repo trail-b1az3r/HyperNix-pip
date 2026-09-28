@@ -171,6 +171,8 @@ def test_manifest_lists_only_folders_it_made(folders):
 class _Config:
     def __init__(self, source, target, on=True):
         self.model_sync = on
+        self.models_source = str(source)
+        # With sync off the server reads the download folder, as before.
         self.hf_download_dir = str(source)
         self.models_dir = str(target)
 
@@ -234,8 +236,8 @@ def test_cli_reads_the_servers_env_file(folders, tmp_path, monkeypatch, capsys):
     source, target = folders
     config = tmp_path / "cfg"
     config.mkdir()
-    (config / ".env").write_text(f"T1_HF_DOWNLOAD_DIR={source}\nT1_MODELS_DIR={target}\n")
-    for name in ("T1_HF_DOWNLOAD_DIR", "T1_MODELS_DIR"):
+    (config / ".env").write_text(f"T1_MODELS_SOURCE={source}\nT1_MODELS_DIR={target}\n")
+    for name in ("T1_MODELS_SOURCE", "T1_MODELS_DIR"):
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setenv("T1_CONFIG_DIR", str(config))
     assert cli([]) == 0
@@ -246,7 +248,7 @@ def test_hypernix_t1_sync_runs_it(folders, tmp_path):
     source, target = folders
     config = tmp_path / "cfg"
     config.mkdir()
-    (config / ".env").write_text(f"T1_HF_DOWNLOAD_DIR={source}\nT1_MODELS_DIR={target}\n")
+    (config / ".env").write_text(f"T1_MODELS_SOURCE={source}\nT1_MODELS_DIR={target}\n")
     result = subprocess.run(
         ["bash", str(REPO_ROOT / "bin" / "hypernix-t1"), "sync"],
         capture_output=True, text=True, timeout=120,
@@ -278,7 +280,7 @@ def test_a_server_with_sync_on_serves_from_the_mirror(folders, monkeypatch, tmp_
     monkeypatch.setenv("T1_TRUSTED_NETWORK", "1")
     monkeypatch.setenv("T1_LMSTUDIO_ENABLED", "0")
     monkeypatch.setenv("T1_MODEL_SYNC", "1")
-    monkeypatch.setenv("T1_HF_DOWNLOAD_DIR", str(source))
+    monkeypatch.setenv("T1_MODELS_SOURCE", str(source))
     monkeypatch.setenv("T1_MODELS_DIR", str(target))
 
     app = create_app()
@@ -307,3 +309,79 @@ def test_status_names_the_mirror(tmp_path):
     )
     assert f"models    {tmp_path / 'mirror'}" in result.stdout + result.stderr
     assert "T1_MODEL_SYNC" in result.stdout + result.stderr
+
+
+def _installer_style(tmp_path):
+    """What install-t1.sh writes: the download folder IS the T1 folder.
+
+    The first version of the sync mirrored T1_HF_DOWNLOAD_DIR, so on every
+    installer-made server it mirrored the T1 folder into itself -- a
+    refusal, and nothing synced (reported from a real server's status).
+    """
+    home = tmp_path / "home"
+    shared = home / ".hypernix" / "models"
+    shared.mkdir(parents=True)
+    (shared / "gemma.gguf").write_bytes(b"GGUF")
+    config = home / ".hypernix" / "t1api"
+    config.mkdir(parents=True)
+    (config / ".env").write_text(
+        f"T1_HF_DOWNLOAD_DIR={config}/models\n"
+        f"T1_MODEL_SYNC=1\nT1_MODELS_DIR={config}/models\n"
+    )
+    return home, shared, config
+
+
+def test_an_installer_config_syncs_from_the_shared_folder(tmp_path, monkeypatch, capsys):
+    home, shared, config = _installer_style(tmp_path)
+    for name in ("T1_MODELS_SOURCE", "T1_MODELS_DIR", "T1_HF_DOWNLOAD_DIR"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("T1_CONFIG_DIR", str(config))
+    from hypernix.t1api import modelsync_cli
+
+    monkeypatch.setattr(modelsync_cli, "default_source", lambda: shared)
+    assert cli([]) == 0
+    assert (config / "models" / "gemma.gguf").is_symlink()
+
+
+def test_the_server_with_an_installer_config_syncs_too(tmp_path, monkeypatch):
+    from hypernix.t1api.config import T1APIConfig
+
+    home, shared, config = _installer_style(tmp_path)
+    monkeypatch.setenv("T1_MODEL_SYNC", "1")
+    monkeypatch.setenv("T1_HF_DOWNLOAD_DIR", str(config / "models"))
+    monkeypatch.setenv("T1_MODELS_DIR", str(config / "models"))
+    monkeypatch.delenv("T1_MODELS_SOURCE", raising=False)
+    monkeypatch.setattr(modelsync, "default_source", lambda: shared)
+    cfg = T1APIConfig.from_env(load_dotenv=False)
+    assert modelsync.source_for(cfg) == shared
+    assert serving_dir(cfg, force=True) == config / "models"
+    assert (config / "models" / "gemma.gguf").is_symlink()
+
+
+def test_status_shows_the_shared_folder_as_the_source(tmp_path):
+    home, shared, config = _installer_style(tmp_path)
+    result = subprocess.run(
+        ["bash", str(REPO_ROOT / "bin" / "hypernix-t1"), "status"],
+        capture_output=True, text=True, timeout=120,
+        env={**os.environ, "HOME": str(home), "T1_CONFIG_DIR": str(config),
+             "PYTHONPATH": str(REPO_ROOT / "src"), "NO_COLOR": "1"},
+    )
+    out = result.stdout + result.stderr
+    assert f"mirrored from {shared} " in out
+    assert "nothing is synced" not in out
+
+
+def test_status_warns_when_the_folders_are_one(tmp_path):
+    config = tmp_path / "cfg"
+    config.mkdir()
+    (config / ".env").write_text(
+        f"T1_MODEL_SYNC=1\nT1_MODELS_DIR={config}/models\nT1_MODELS_SOURCE={config}/models\n"
+    )
+    result = subprocess.run(
+        ["bash", str(REPO_ROOT / "bin" / "hypernix-t1"), "status"],
+        capture_output=True, text=True, timeout=120,
+        env={**os.environ, "HOME": str(tmp_path), "T1_CONFIG_DIR": str(config),
+             "PYTHONPATH": str(REPO_ROOT / "src"), "NO_COLOR": "1"},
+    )
+    assert "nothing is synced" in result.stdout + result.stderr

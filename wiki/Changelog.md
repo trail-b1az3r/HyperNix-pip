@@ -248,7 +248,13 @@ Historical wording and technical detail are retained during format normalization
   - Links whose file is gone are removed. A real file, or a link of your
     own, in the T1 folder is never replaced, and downloads in progress
     are skipped.
-  - `hypernix-t1 status` names both folders when it is on.
+  - The folder mirrored is `T1_MODELS_SOURCE`, default
+    `~/.hypernix/models`, and not the download folder: `install-t1.sh`
+    points `T1_HF_DOWNLOAD_DIR` at the T1 folder itself, so a server it
+    made would have mirrored that folder into itself and synced nothing.
+  - `hypernix-t1 status` names both folders when it is on, and warns when
+    they are one folder, when one is inside the other, or when the shared
+    one does not exist.
 𖥔 Added the server's HyperNix version to `hypernix-t1 status`, and a
   warning from `status` and `start` when it is older than the one that
   came with `hypernix-t1` itself.
@@ -390,11 +396,12 @@ Historical wording and technical detail are retained during format normalization
 🧪 Added `tests/t1api/test_hypernix_t1_upgrade.py` (10): `upgrade` runs pip
   in the server's own Python, `--main` and a requirement, the warning when
   the server's HyperNix is older, and none when it is not.
-🧪 Added `tests/t1api/test_modelsync.py` (22): linking, relinking and
+🧪 Added `tests/t1api/test_modelsync.py` (26): linking, relinking and
   pruning, your own files left alone, in-progress downloads skipped,
   the catalogue finding synced models and checkpoints, a server with sync
   on serving from the mirror, the CLI's exit codes and `.env` settings,
-  and `hypernix-t1 sync` and `status`.
+  `hypernix-t1 sync` and `status`, and an `install-t1.sh`-style config
+  syncing from the shared folder.
 🧪 Added a test that a reload after a flat-name import keeps the real name,
   in a fresh interpreter. The pressure-cooker check that importing does
   not warn now runs in one too, so it no longer swaps out the classes

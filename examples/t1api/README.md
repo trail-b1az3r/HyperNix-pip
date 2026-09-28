@@ -94,7 +94,7 @@ Under the systemd unit, whose sandbox can only write `/var/lib/hypernix`,
 put both folders there:
 
 ```
-T1_HF_DOWNLOAD_DIR=/var/lib/hypernix/models
+T1_MODELS_SOURCE=/var/lib/hypernix/models
 T1_MODELS_DIR=/var/lib/hypernix/t1api/models
 ```
 

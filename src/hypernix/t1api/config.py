@@ -411,7 +411,7 @@ class T1APIConfig:
     )
 
     # --- Model sync (0.72.6.post3) --------------------------------------------
-    #: Mirror the shared models folder (T1_HF_DOWNLOAD_DIR, by default
+    #: Mirror the shared models folder (T1_MODELS_SOURCE, by default
     #: ~/.hypernix/models) into this server's own, by symlink, and serve
     #: from that. Synced at startup, after each download, and before a
     #: model list. See hypernix.t1api.modelsync; `hypernix-sync` does it
@@ -420,6 +420,11 @@ class T1APIConfig:
     #: The server's own models folder. Default <T1_CONFIG_DIR>/models,
     #: which is ~/.hypernix/t1api/models.
     models_dir: str | None = field(default_factory=lambda: os.environ.get("T1_MODELS_DIR"))
+    #: The folder mirrored. Deliberately not T1_HF_DOWNLOAD_DIR:
+    #: install-t1.sh has always set that to <T1_CONFIG_DIR>/models, the
+    #: very folder the mirror is built in, which made the source and the
+    #: target one folder and the sync a refusal.
+    models_source: str | None = field(default_factory=lambda: os.environ.get("T1_MODELS_SOURCE"))
 
     # --- Backups (T1 v1.0.26.8.1.0) -------------------------------------------
     # Where /backup/list and /backup/restore keep snapshots. Never

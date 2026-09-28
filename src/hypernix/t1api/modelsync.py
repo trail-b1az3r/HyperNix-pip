@@ -314,11 +314,13 @@ _last: dict[tuple[str, str], float] = {}
 
 
 def source_for(config: Any) -> Path:
-    return Path(getattr(config, "hf_download_dir", "") or default_source())
+    """``T1_MODELS_SOURCE``, else ``~/.hypernix/models``. Never the download
+    folder: install-t1.sh points that at the T1 folder itself."""
+    return Path(getattr(config, "models_source", "") or default_source()).expanduser()
 
 
 def target_for(config: Any) -> Path:
-    return Path(getattr(config, "models_dir", "") or default_target())
+    return Path(getattr(config, "models_dir", "") or default_target()).expanduser()
 
 
 def serving_dir(config: Any, *, force: bool = False) -> Path | None:

@@ -1591,8 +1591,8 @@ running it.
 Studio can be pointed at it, and people drop GGUFs in by hand. With
 `T1_MODEL_SYNC=1` the server gets its own folder,
 `~/.hypernix/t1api/models` (`T1_MODELS_DIR`), holding a symlink for every
-file in the shared one (`T1_HF_DOWNLOAD_DIR`), and serves its local
-models from there. New servers from `hypernix-t1 create` or
+file in the shared one (`T1_MODELS_SOURCE`, default
+`~/.hypernix/models`), and serves its local models from there. New servers from `hypernix-t1 create` or
 `install-t1.sh` have it on.
 
 ```bash
@@ -1621,8 +1621,11 @@ hypernix-sync --watch 30    # keep at it every 30 seconds
   folder inside the other), 2 synced but something was left alone or
   failed. `hypernix-t1 status` names both folders when sync is on.
 
-Downloads still go to the shared folder, so the phone, LM Studio and the
-T1 server all see one copy of each model.
+Downloads go to `T1_HF_DOWNLOAD_DIR`. On an `install-t1.sh` server that
+is the T1 folder itself, so a download lands there as a real file: served
+at once, and left alone by the sync. `hypernix-t1 status` warns when the
+two folders are the same or one is inside the other, since then nothing
+can be synced.
 
 ## The SDK
 
@@ -2364,7 +2367,8 @@ their row says otherwise.
 | `T1_RUNNER_PORT` | `8781` | the llama.cpp server the built-in runner owns (not 8080, where somebody's own llama-server usually is) |
 | `T1_RUNNER_SWITCH_PERM` | `0` | the access level that may load and unload models without being an admin; `0` means only admins and partial admins |
 | `T1_HF_DOWNLOADS_ENABLED` | `1` | `POST /hyperlink/models/download` |
-| `T1_HF_DOWNLOAD_DIR` | `~/.hypernix/models` | where it downloads to, and the shared folder [model sync](#model-sync) mirrors |
+| `T1_HF_DOWNLOAD_DIR` | `~/.hypernix/models` | where it downloads to (`install-t1.sh` sets `<T1_CONFIG_DIR>/models`, so downloads land in the server's own folder as real files, which sync never touches) |
+| `T1_MODELS_SOURCE` | `~/.hypernix/models` | the shared folder [model sync](#model-sync) mirrors; must be neither `T1_MODELS_DIR` nor inside it |
 | `T1_MODEL_SYNC` | `0` (`1` in new configs) | mirror the shared folder into `T1_MODELS_DIR` by symlink and serve from it |
 | `T1_MODELS_DIR` | `<T1_CONFIG_DIR>/models` | this server's own models folder, `~/.hypernix/t1api/models` |
 | `T1_BACKUP_DIR` | `~/.hypernix/t1api/backups` | [snapshots](#backup-and-restore) |

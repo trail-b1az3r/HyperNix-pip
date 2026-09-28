@@ -627,8 +627,19 @@ print(" ".join(value[i:i + 8] for i in range(0, len(value), 8)))
   warn_if_stale
   case "$(setting T1_MODEL_SYNC 0 | tr '[:upper:]' '[:lower:]')" in
     1|true|yes|on)
-      dim "     models    $(setting T1_MODELS_DIR "$CONFIG_DIR/models")"
-      dim "               mirrored from $(setting T1_HF_DOWNLOAD_DIR "$HOME/.hypernix/models") (T1_MODEL_SYNC; hypernix-t1 sync)" ;;
+      local m_dst m_src
+      m_dst="$(setting T1_MODELS_DIR "$CONFIG_DIR/models")"
+      m_src="$(setting T1_MODELS_SOURCE "$HOME/.hypernix/models")"
+      m_dst="${m_dst/#\~/$HOME}"; m_src="${m_src/#\~/$HOME}"
+      dim "     models    $m_dst"
+      dim "               mirrored from $m_src (T1_MODEL_SYNC; hypernix-t1 sync)"
+      case "${m_dst%/}/" in
+        "${m_src%/}/"*) warn "the models folder is the folder it mirrors, or inside it: nothing is synced. Set T1_MODELS_SOURCE to the shared folder." ;;
+      esac
+      case "${m_src%/}/" in
+        "${m_dst%/}/"?*) warn "the folder it mirrors is inside the models folder: nothing is synced. Set T1_MODELS_SOURCE to the shared folder." ;;
+      esac
+      [ -d "$m_src" ] || warn "$m_src does not exist, so there is nothing to mirror yet." ;;
   esac
   if [ -n "$pid" ]; then
     # HyperLink on the web (0.72.6.post1): where it is, and whether it

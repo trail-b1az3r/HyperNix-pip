@@ -1142,6 +1142,9 @@ T1_WEB_PORT=37965
 # sync' does the same by hand.
 T1_MODEL_SYNC=1
 T1_MODELS_DIR=$CONFIG_DIR/models
+# The folder mirrored (default ~/.hypernix/models, of the user the server
+# runs as). Not T1_HF_DOWNLOAD_DIR below, which is the folder above.
+# T1_MODELS_SOURCE=/path/to/shared/models
 $(if [ -n "$PUBLIC_URL" ]; then printf 'T1_HYPERLINK_PUBLIC_URL=%s\n' "$PUBLIC_URL"; else printf '# T1_HYPERLINK_PUBLIC_URL=https://t1.example.com\n'; fi)
 
 # Whether an address must be explicitly allowed before it can reach any
