@@ -265,6 +265,9 @@ Historical wording and technical detail are retained during format normalization
     stays and warns that the server is behind.
   - `status` asks the server's own code which folders it mirrors, and
     counts the files linked.
+  - A copy from before this cannot hand over. `status` says when one is
+    first on `PATH`, and gives the `ln -sf` that points it at the
+    server's copy for good.
 𖥔 Added the server's HyperNix version to `hypernix-t1 status`, and a
   warning from `status` and `start` when it is older than the one that
   came with `hypernix-t1` itself.
@@ -403,7 +406,7 @@ Historical wording and technical detail are retained during format normalization
 
 🧪 Added `tests/security/test_safeload.py` (3): a plain checkpoint loads, one with
   code in it is refused and the code does not run, and trusting it loads it.
-🧪 Added `tests/t1api/test_hypernix_t1_upgrade.py` (15): `upgrade` runs pip
+🧪 Added `tests/t1api/test_hypernix_t1_upgrade.py` (18): `upgrade` runs pip
   in the server's own Python, `--main` and a requirement, the warning when
   the server's HyperNix is older, and none when it is not.
 🧪 Added `tests/t1api/test_modelsync.py` (27): linking, relinking and

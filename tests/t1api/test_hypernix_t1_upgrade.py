@@ -199,3 +199,45 @@ def test_without_a_private_venv_nothing_is_handed_off_to(tmp_path):
     config.mkdir()
     result = run(SCRIPT, "status", home=tmp_path, config=config)
     assert "HyperNix T1 API" in result.output
+
+
+def _status_with_path_copy(server, tmp_path, path_copy_text: str | None, *, link: bool = False):
+    venv_copy = server["config"] / "venv" / "bin" / "hypernix-t1"
+    shutil.copy(SCRIPT, venv_copy)
+    venv_copy.chmod(0o755)
+    on_path = tmp_path / "pathbin"
+    on_path.mkdir()
+    first = on_path / "hypernix-t1"
+    if link:
+        first.symlink_to(venv_copy)
+    else:
+        first.write_text(path_copy_text or "", encoding="utf-8")
+        first.chmod(0o755)
+    result = subprocess.run(
+        [BASH, str(venv_copy), "status"],
+        capture_output=True, text=True, encoding="utf-8", timeout=60,
+        env={**os.environ, "HOME": str(server["home"]), "T1_CONFIG_DIR": str(server["config"]),
+             "NO_COLOR": "1", "PYTHONPATH": str(REPO_ROOT / "src"),
+             "PATH": f"{on_path}{os.pathsep}{os.environ.get('PATH', '')}"},
+    )
+    return first, venv_copy, result.stdout + result.stderr
+
+
+def test_status_says_when_an_old_copy_on_path_runs_instead(server, tmp_path):
+    """Seen on a real server: two copies on PATH from before the hand-off,
+    one in a uv-managed Python, both running instead of the venv's."""
+    first, venv_copy, out = _status_with_path_copy(
+        server, tmp_path, "#!/usr/bin/env bash\necho old copy\n")
+    assert f"{first} is an older hypernix-t1 than the server's" in out
+    assert f"ln -sf {venv_copy} {first}" in out
+
+
+def test_no_word_about_a_copy_that_hands_over(server, tmp_path):
+    _first, _venv, out = _status_with_path_copy(
+        server, tmp_path, SCRIPT.read_text(encoding="utf-8"))
+    assert "older hypernix-t1 than the server's" not in out
+
+
+def test_no_word_about_a_link_to_the_servers_copy(server, tmp_path):
+    _first, _venv, out = _status_with_path_copy(server, tmp_path, None, link=True)
+    assert "older hypernix-t1 than the server's" not in out

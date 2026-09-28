@@ -177,6 +177,25 @@ use_servers_copy() {
   exec "${BASH:-bash}" "$theirs" "$@"
 }
 
+# Say so when the hypernix-t1 first on PATH is a different script from
+# the server's and too old to hand over to it (before 0.72.6.post3). That
+# copy describes the code it came with, not the code the server runs, and
+# upgrading the server never touches it. A symlink to the server's copy
+# fixes it for good: it then follows every upgrade. hnx-t1 runs the
+# hypernix-t1 beside it, so linking that one covers both names.
+warn_if_path_copy_cannot_hand_over() {
+  local mine first
+  mine="$CONFIG_DIR/venv/bin/hypernix-t1"
+  [ -f "$mine" ] || return 0
+  first="$(command -v hypernix-t1 2>/dev/null)" || return 0
+  [ -n "$first" ] && [ -f "$first" ] || return 0
+  [ "$first" -ef "$mine" ] && return 0
+  grep -q "use_servers_copy" "$first" 2>/dev/null && return 0
+  warn "$first is an older hypernix-t1 than the server's, and runs instead of it."
+  dim  "     Point it at the server's, so it follows every upgrade:"
+  dim  "       ln -sf $mine $first"
+}
+
 # Say so when the server runs an older HyperNix than the one that came
 # with this script. The usual cause: `pip install -U hypernix` in your
 # own shell upgrades that environment, while the server keeps running
@@ -671,6 +690,7 @@ print(" ".join(value[i:i + 8] for i in range(0, len(value), 8)))
   installed="$(hypernix_version "$(python_bin)")" || installed=""
   [ -n "$installed" ] && dim "     hypernix  $installed ($(python_bin))"
   warn_if_stale
+  warn_if_path_copy_cannot_hand_over
   case "$(setting T1_MODEL_SYNC 0 | tr '[:upper:]' '[:lower:]')" in
     1|true|yes|on)
       # Asked of the server's own code rather than worked out here: which

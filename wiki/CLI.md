@@ -664,6 +664,15 @@ and two builds of one version cannot be told apart by their version. The
 one exception is a copy newer than the server's HyperNix, which keeps
 running and warns that the server is behind.
 
+A copy from before 0.72.6.post3 cannot hand over, and `status` (run from
+the server's copy) says so when one is first on `PATH`, with the fix: a
+symlink to the server's copy, which then follows every upgrade.
+
+```bash
+~/.hypernix/t1api/venv/bin/hypernix-t1 status     # the server's own copy
+ln -sf ~/.hypernix/t1api/venv/bin/hypernix-t1 "$(command -v hypernix-t1)"
+```
+
 A single dependency-free shell program covering the whole lifecycle of a
 [T1 API](T1-API.md) server, so running one does not mean remembering a
 uvicorn invocation or hunting for a pid.
