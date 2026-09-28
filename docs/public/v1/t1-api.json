@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-t1-api",
   "generated_at": "2026-09-20T21:20:58Z",
-  "commit": "b87c3b8918900ba5ca6c8f1e9820be3630537961",
+  "commit": "444f0286c114099518f715e0f30cdeefb4c6c047",
   "history_available": true,
   "server_extra": "pip install 'hypernix[t1api]'",
   "client_install": "pip install hypernix",
@@ -508,7 +508,7 @@
     {
       "module": "hypernix.t1api.app",
       "source": "src/hypernix/t1api/app.py",
-      "line_count": 680,
+      "line_count": 686,
       "summary": "t1api.app \u2014 ``create_app()``, the T1 API's FastAPI factory.",
       "api": [
         {
@@ -532,6 +532,13 @@
         }
       ],
       "changes": [
+        {
+          "sha": "a4b757dd",
+          "date": "2026-09-27",
+          "author": "Claude",
+          "subject": "0.72.6.post3: HyperLink on the web opens at the server's own address",
+          "api_changes": []
+        },
         {
           "sha": "59c7a9f4",
           "date": "2026-09-27",
@@ -584,13 +591,6 @@
           "date": "2026-09-15",
           "author": "Claude",
           "subject": "hyperlink: one model list from every source, and a Stop that stops",
-          "api_changes": []
-        },
-        {
-          "sha": "2324f0fa",
-          "date": "2026-09-15",
-          "author": "Mason",
-          "subject": "t1 v1.0.26.9.2.3: sign up for a key without already having one",
           "api_changes": []
         }
       ]
@@ -3322,46 +3322,53 @@
     {
       "module": "hypernix.t1api.hyperlink_web",
       "source": "src/hypernix/t1api/hyperlink_web.py",
-      "line_count": 286,
+      "line_count": 327,
       "summary": "HyperLink on the web: the T1 server's own site, on port 37965.",
       "api": [
         {
           "kind": "function",
           "name": "tailnet_addresses",
           "signature": "def tailnet_addresses -> list[str]",
-          "line": 134,
+          "line": 135,
           "doc": "This machine's Tailscale addresses, or ``[]`` without Tailscale."
         },
         {
           "kind": "function",
           "name": "build_web_app",
           "signature": "def build_web_appapi_app: Any",
-          "line": 167,
+          "line": 168,
           "doc": "An ASGI app: the page's files, and the T1 API for everything else."
+        },
+        {
+          "kind": "function",
+          "name": "serve_on_api",
+          "signature": "def serve_on_apiapi_app: Any -> None",
+          "line": 208,
+          "doc": "Serve the page on the T1 API's own port too (0.72.6.post3)."
         },
         {
           "kind": "class",
           "name": "WebListener",
           "signature": "class WebListener",
-          "line": 213,
+          "line": 257,
           "doc": "Serves :func:`build_web_app` on loopback and the tailnet.",
           "methods": [
             {
               "name": "urls",
               "signature": "def urlsself -> list[str]",
-              "line": 234,
+              "line": 278,
               "doc": ""
             },
             {
               "name": "start",
               "signature": "def startself -> None",
-              "line": 238,
+              "line": 282,
               "doc": ""
             },
             {
               "name": "stop",
               "signature": "def stopself -> None",
-              "line": 310,
+              "line": 355,
               "doc": ""
             }
           ]
@@ -3369,9 +3376,9 @@
         {
           "kind": "function",
           "name": "status_lines",
-          "signature": "def status_linesenabled: bool, port: int -> list[str]",
-          "line": 327,
-          "doc": "What ``hypernix-t1 status`` says about the site: each address, and whether it answers there. Asked from outside the server, so it holds whether the server is healthy, wedged or reading another port."
+          "signature": "def status_linesenabled: bool, port: int, api_url: str='' -> list[str]",
+          "line": 372,
+          "doc": "What ``hypernix-t1 status`` says about the site: each address, and whether it answers there. Asked from outside the server, so it holds whether the server is healthy, wedged or reading another port. *api_url* is the API's own address, which serves the page too."
         }
       ],
       "errors": [],
@@ -3384,6 +3391,34 @@
         }
       ],
       "changes": [
+        {
+          "sha": "a4b757dd",
+          "date": "2026-09-27",
+          "author": "Claude",
+          "subject": "0.72.6.post3: HyperLink on the web opens at the server's own address",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _local_or_tailnet(host: str) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def serve_on_api(api_app: Any) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "async def page(request):"
+            },
+            {
+              "kind": "removed",
+              "text": "def status_lines(enabled: bool, port: int) -> list[str]:"
+            },
+            {
+              "kind": "added",
+              "text": "def status_lines(enabled: bool, port: int, api_url: str = \"\") -> list[str]:"
+            }
+          ]
+        },
         {
           "sha": "20b4cbaf",
           "date": "2026-09-27",
