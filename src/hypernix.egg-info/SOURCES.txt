@@ -289,7 +289,7 @@ tests/shell_support.py
 tests/timing/test_alarms_and_presets.py
 tests/models/test_arch_mapping.py
 tests/interfaces/test_assistant.py
-tests/timing/test_autofix_scripts.py
+tests/repo/test_autofix_scripts.py
 tests/t1api/test_billing_keys.py
 tests/security/test_bootstrap_key.py
 tests/repo/test_ci_integration_jobs.py
@@ -313,7 +313,7 @@ tests/training/test_lazy_suzan.py
 tests/repo/test_lint_regressions.py
 tests/data/test_lunchbox.py
 tests/monitoring/test_map.py
-tests/timing/test_module_layout.py
+tests/repo/test_module_layout.py
 tests/models/test_neo_oven.py
 tests/models/test_neo_oven_generation.py
 tests/models/test_new_archs_v035.py
@@ -327,8 +327,8 @@ tests/quant/test_quantize_v0703.py
 tests/evaluation/test_ranges.py
 tests/data/test_shakers_and_torchcompat.py
 tests/training/test_snapshot_roundtrip.py
-tests/security/test_t1_v1_0_26_8_1_1.py
-tests/hyperlink/test_t1_v1_0_26_core.py
+tests/t1api/test_t1_v1_0_26_8_1_1.py
+tests/t1api/test_t1_v1_0_26_core.py
 tests/t1api/test_t1_v1_0_26_http.py
 tests/security/test_t1api_auth.py
 tests/t1api/test_t1api_beta3_core.py
@@ -375,7 +375,7 @@ tests/monitoring/test_v0711_border_fix.py
 tests/security/test_v0712_hyped_countertop.py
 tests/system/test_v0714_config_provider_keys.py
 tests/training/test_v0714_cpu_presets.py
-tests/system/test_v0714_hyped_pro_bridge.py
+tests/interfaces/test_v0714_hyped_pro_bridge.py
 tests/interfaces/test_v0714_hyped_pro_core.py
 tests/interfaces/test_v0714_hyped_pro_launcher.py
 tests/interfaces/test_v0714_hyped_pro_tools.py

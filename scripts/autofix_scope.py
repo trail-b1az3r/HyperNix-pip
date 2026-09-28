@@ -210,7 +210,7 @@ def discover_tests(
     wanted = set(category_modules(category))
     refs: list[TestRef] = []
 
-    for path in sorted(tests_dir.glob("test_*.py")):
+    for path in sorted(tests_dir.rglob("test_*.py")):
         try:
             tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         except SyntaxError:

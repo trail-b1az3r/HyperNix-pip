@@ -681,4 +681,4 @@ jobs:
           xargs -a selected-tests.txt -d '\n' pytest -q --
 
       - name: Confirm the scope table still matches the tree
-        run: pytest -q tests/timing/test_module_layout.py tests/timing/test_autofix_scripts.py
+        run: pytest -q tests/repo/test_module_layout.py tests/repo/test_autofix_scripts.py

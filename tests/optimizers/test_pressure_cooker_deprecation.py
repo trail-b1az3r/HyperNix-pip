@@ -19,7 +19,11 @@ end to end rather than at the constructor.
 from __future__ import annotations
 
 import importlib
+import os
+import subprocess
+import sys
 import warnings
+from pathlib import Path
 
 import pytest
 
@@ -94,14 +98,23 @@ class TestTheDeprecatedOnes:
         """V4 imports V3's helpers, and the package loader imports these
         modules for their aliases. An import-time warning would reach
         people who never used either."""
-        import hypernix.optimizers.pressure_cooker as v1
-        import hypernix.optimizers.pressure_cooker_v3 as v3
-
-        with warnings.catch_warnings(record=True) as caught:
-            warnings.simplefilter("always")
-            importlib.reload(v3)
-            importlib.reload(v1)
-        assert [w for w in caught if "deprecated" in str(w.message)] == []
+        # In a fresh interpreter: reloading them here would replace the
+        # classes every other test already imported.
+        code = (
+            "import warnings\n"
+            "warnings.simplefilter('error')\n"
+            "import hypernix.optimizers.pressure_cooker_v3\n"
+            "import hypernix.optimizers.pressure_cooker\n"
+            "import hypernix.optimizers.pressure_cooker_v4\n"
+        )
+        src = Path(__file__).resolve().parents[2] / "src"
+        result = subprocess.run(
+            [sys.executable, "-c", code],
+            capture_output=True, text=True, timeout=300,
+            env={**os.environ, "PYTHONPATH": str(src)},
+        )
+        assert "deprecated" not in result.stderr, result.stderr
+        assert result.returncode == 0, result.stderr
 
     def test_they_are_marked(self):
         from hypernix.optimizers.pressure_cooker import PressureCooker

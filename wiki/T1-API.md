@@ -1859,6 +1859,11 @@ and every other path is the T1 API itself.
 
 If it does not open (0.72.6.post2):
 
+- Nothing on either port, not even an error: check `hypernix-t1
+  version`. If it says `hypernix 0.72.6`, the server runs a HyperNix
+  from before the site existed, usually because `pip install -U` went to
+  your shell's Python rather than the server's private venv (the "runs
+  as" line). `hypernix-t1 upgrade` upgrades the right one and restarts.
 - Before 0.72.6.post3, `http://127.0.0.1:<T1_PORT>/` answered 404: the
   site was only on port 37965. It now answers on both.
 - `hypernix-t1 status` lists each address the site is on and whether

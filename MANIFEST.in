@@ -21,7 +21,7 @@ recursive-include tests *.py
 # examples are Dockerfiles, compose files, nginx config and .env
 # templates, and an example you can't actually run is not an example.
 recursive-include examples *
-# The whole scripts/ tree: tests/timing/test_autofix_scripts.py runs the
+# The whole scripts/ tree: tests/repo/test_autofix_scripts.py runs the
 # autofix scripts, and the sdist ships tests/.
 recursive-include scripts *
 # The installer and the service manager. tests/repo/test_install_script.py and

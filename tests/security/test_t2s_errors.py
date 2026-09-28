@@ -25,7 +25,7 @@ from hypernix.security.gkey_cli import main as gkey
 from hypernix.security.t2keys import T2KeyGenerator, T2Type
 
 # Everything that drives a server needs the [t1api] extra; the version
-# check does not. See tests/security/test_t1_v1_0_26_8_1_1.py for the same split.
+# check does not. See tests/t1api/test_t1_v1_0_26_8_1_1.py for the same split.
 try:  # a real import, not find_spec
     import fastapi  # noqa: F401
 

@@ -228,6 +228,20 @@ Historical wording and technical detail are retained during format normalization
 𖥔 Added the API-port address to the startup line and to
   `hypernix-t1 status`, which says whether the page answers there.
 
+✨ Added `hypernix-t1 upgrade`, which upgrades HyperNix in the Python the
+  server runs on, then restarts the server.
+  - That is the private venv when `install-t1.sh` made one. A `pip install
+    -U hypernix` in your own shell upgrades a different environment, so
+    the server kept running the old version, and `hypernix-t1 version`
+    still said 0.72.6, with no HyperLink site on any port.
+  - `--main` installs the newest code from GitHub; any pip requirement,
+    such as `'hypernix[t1api]==0.72.7'`, works too.
+𖥔 Added the server's HyperNix version to `hypernix-t1 status`, and a
+  warning from `status` and `start` when it is older than the one that
+  came with `hypernix-t1` itself.
+𖥔 Added a line to `hypernix-t1 status` when the installed HyperNix has no
+  HyperLink site at all, where it used to print nothing about the site.
+
 ### Changed
 
 🔧 Changed Bandit's `assert_used` check (B101) to skip `tests/`, in a new
@@ -250,6 +264,14 @@ Historical wording and technical detail are retained during format normalization
   - A `.codacy.yml` excludes the binary assets and generated site data
     from Codacy, whose report step crashed on every run reading one of
     them as text.
+
+🔧 Changed `tests/` into one folder per package, named like the folder
+  under `src/hypernix/` it tests, plus `ios/`, `desktop/`, `docs/` and
+  `repo/`; `tests/README.md` lists them.
+  - `pytest tests/t1api` runs one area. Every folder is on the import
+    path, so the shared helpers still import the same way.
+  - `scripts/autofix_scope.py` now looks for tests in every folder; it
+    only read `tests/test_*.py`, so it would have found none.
 
 ### Security
 
@@ -295,17 +317,30 @@ Historical wording and technical detail are retained during format normalization
     own port, 37965, and 0.72.6.post1 said so nowhere, so the address
     people tried first was the one address that did not serve it.
 
+𖢥 Fixed `importlib.reload` of a module first imported by its flat name
+  (`hypernix.pressure_cooker` for `hypernix.optimizers.pressure_cooker`).
+  - The alias left its own spec on the real module, so a reload did
+    nothing at all, or re-ran the module as `hypernix.<flat>` and renamed
+    it for everyone. The real spec is now put back after the import.
+
 ### Tests
 
-🧪 Added two tests to `tests/test_hyperlink_web.py` (now 22): the page on
+🧪 Added two tests to `tests/hyperlink/test_hyperlink_web.py` (now 22): the page on
   the API's port for loopback and tailnet peers (IPv4 and IPv6) and not
   for LAN or public ones, and neither when the site is off.
   - A server started with `hypernix-t1`, bound to `0.0.0.0:8001` as in
     the log, was driven in Chromium at `http://127.0.0.1:8001/`: the page,
     keyless sign-in and a chat; the machine's LAN address got a 404.
 
-🧪 Added `tests/test_safeload.py` (3): a plain checkpoint loads, one with
+🧪 Added `tests/security/test_safeload.py` (3): a plain checkpoint loads, one with
   code in it is refused and the code does not run, and trusting it loads it.
+🧪 Added `tests/t1api/test_hypernix_t1_upgrade.py` (10): `upgrade` runs pip
+  in the server's own Python, `--main` and a requirement, the warning when
+  the server's HyperNix is older, and none when it is not.
+🧪 Added a test that a reload after a flat-name import keeps the real name,
+  in a fresh interpreter. The pressure-cooker check that importing does
+  not warn now runs in one too, so it no longer swaps out the classes
+  other tests hold.
 🧪 Added an MCP test that an internal error's text stays in the server's
   log and the client gets only the incident id.
 

@@ -15,6 +15,7 @@ for that to be a safe place to keep them, and each one is a test below:
 from __future__ import annotations
 
 import importlib
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -78,6 +79,30 @@ class TestFlatNameCompat:
         alias = importlib.import_module(f"hypernix.{flat}")
         assert alias is real
         assert alias.__name__ == f"hypernix.{category}.{flat}"
+
+    def test_reload_after_a_flat_import_keeps_the_real_name(self) -> None:
+        """Importing by the flat name used to leave the alias's spec on the
+        real module, so a later ``importlib.reload`` re-ran it as
+        ``hypernix.<flat>`` and renamed it for everyone. Whether a test
+        run tripped on that depended on which file happened to go first:
+        hence a fresh interpreter."""
+        code = (
+            "import importlib\n"
+            "import hypernix.timer as alias\n"
+            "import hypernix.timing.timer as real\n"
+            "assert alias is real\n"
+            "assert real.__spec__.name == 'hypernix.timing.timer', real.__spec__.name\n"
+            "importlib.reload(real)\n"
+            "assert real.__name__ == 'hypernix.timing.timer', real.__name__\n"
+            "import hypernix.timer as again\n"
+            "assert again is real\n"
+        )
+        result = subprocess.run(
+            [sys.executable, "-c", code],
+            capture_output=True, text=True, timeout=120,
+            env={**os.environ, "PYTHONPATH": str(SRC)},
+        )
+        assert result.returncode == 0, result.stderr
 
     def test_attribute_access_matches_import(self) -> None:
         assert hypernix.timer is importlib.import_module("hypernix.timing.timer")

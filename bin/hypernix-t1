@@ -115,6 +115,49 @@ python_bin() {
   fi
 }
 
+# The installed HyperNix version for interpreter $1, or nothing.
+hypernix_version() {
+  "$1" -c 'import importlib.metadata as m; print(m.version("hypernix"))' 2>/dev/null
+}
+
+# The Python this copy of hypernix-t1 was installed with: pip puts the
+# script next to its interpreter. Nothing when run from a checkout.
+own_python() {
+  local here p
+  here="$(cd "$(dirname "$0")" 2>/dev/null && pwd)" || return 1
+  for p in "$here/python3" "$here/python"; do
+    if [ -x "$p" ]; then printf '%s' "$p"; return 0; fi
+  done
+  return 1
+}
+
+# Say so when the server runs an older HyperNix than the one that came
+# with this script. The usual cause: `pip install -U hypernix` in your
+# own shell upgrades that environment, while the server keeps running
+# from the private venv install-t1.sh made -- so an upgrade looks like
+# it did nothing, and new features (the HyperLink site) never appear.
+warn_if_stale() {
+  local py own theirs mine
+  py="$(python_bin)"; [ -n "$py" ] || return 0
+  own="$(own_python)" || return 0
+  # Same environment? Compare folders, not files: a venv's python is a
+  # link to the base interpreter, so two venvs' pythons are one file.
+  [ "$(dirname "$own")" = "$(cd "$(dirname "$py")" 2>/dev/null && pwd)" ] && return 0
+  theirs="$(hypernix_version "$py")" || return 0
+  mine="$(hypernix_version "$own")" || return 0
+  [ -n "$theirs" ] && [ -n "$mine" ] && [ "$theirs" != "$mine" ] || return 0
+  "$own" - "$mine" "$theirs" <<'PYEOF' 2>/dev/null || return 0
+import sys
+try:
+    from packaging.version import Version
+except ImportError:
+    from pip._vendor.packaging.version import Version
+sys.exit(0 if Version(sys.argv[1]) > Version(sys.argv[2]) else 1)
+PYEOF
+  warn "The server runs HyperNix $theirs ($py), older than the $mine this command came with."
+  dim  "     Upgrade the server's own Python:  hypernix-t1 upgrade"
+}
+
 require_installed() {
   local py; py="$(python_bin)"
   [ -n "$py" ] || die "No python3 found."
@@ -371,7 +414,7 @@ logind_kills_user_processes() {
 }
 
 cmd_start() {
-  load_env; require_installed
+  load_env; require_installed; warn_if_stale
   local existing owner
   existing="$(running_pid || true)"
   if [ -n "$existing" ]; then
@@ -496,6 +539,37 @@ cmd_restart() {
   cmd_start
 }
 
+cmd_upgrade() {
+  # Upgrade HyperNix in the Python the server runs on -- which is the
+  # private venv when install-t1.sh made one, not whatever `pip` your
+  # shell finds -- then restart the server so it runs the new code.
+  load_env
+  local spec="hypernix[t1api]" py before after
+  case "${1:-}" in
+    "") ;;
+    --main) spec="hypernix[t1api] @ git+https://github.com/trail-b1az3r/HyperNix-pip@main" ;;
+    -*) die "Unknown option: $1 (try --main, or a pip requirement such as 'hypernix[t1api]==0.72.7')" ;;
+    *) spec="$1" ;;
+  esac
+  py="$(python_bin)"; [ -n "$py" ] || die "No python3 found."
+  before="$(hypernix_version "$py")" || before=""
+  say "Upgrading HyperNix in $py (now ${before:-not installed})…"
+  "$py" -m pip install -U "$spec" \
+    || die "pip could not upgrade it. The command was: $py -m pip install -U '$spec'"
+  after="$(hypernix_version "$py")" || after=""
+  if [ "$before" = "$after" ]; then
+    ok "HyperNix $after is already the newest."
+  else
+    ok "HyperNix ${before:-(none)} → $after"
+  fi
+  if [ -n "$(running_pid || true)" ]; then
+    say "Restarting so the server runs it…"
+    cmd_restart
+  else
+    dim "     Start it with:  hypernix-t1 start"
+  fi
+}
+
 cmd_status() {
   load_env
   local pid owner
@@ -547,6 +621,10 @@ value = fingerprint()
 print(" ".join(value[i:i + 8] for i in range(0, len(value), 8)))
 ' 2>/dev/null || true)"
   [ -n "$ident" ] && dim "     identity  $ident"
+  local installed
+  installed="$(hypernix_version "$(python_bin)")" || installed=""
+  [ -n "$installed" ] && dim "     hypernix  $installed ($(python_bin))"
+  warn_if_stale
   if [ -n "$pid" ]; then
     # HyperLink on the web (0.72.6.post1): where it is, and whether it
     # answers there, asked from outside the server.
@@ -554,7 +632,14 @@ print(" ".join(value[i:i + 8] for i in range(0, len(value), 8)))
       HX_API_URL="$url" \
       "$(python_bin)" -c '
 import os
-from hypernix.t1api.hyperlink_web import status_lines
+try:
+    from hypernix.t1api.hyperlink_web import status_lines
+except ImportError:
+    import hypernix
+    print("     web       none: HyperNix %s has no HyperLink site (0.72.6.post1 added it)"
+          % hypernix.__version__)
+    print("               get it with:  hypernix-t1 upgrade")
+    raise SystemExit
 enabled = os.environ["T1_WEB_ENABLED"].strip().lower() in ("1", "true", "yes", "on")
 try:
     port = int(os.environ["T1_WEB_PORT"])
@@ -926,6 +1011,9 @@ hypernix-t1 — manage a T1 API server (also installed as hnx-t1)
   stop                  Ask it to stop, and wait
   kill                  Force it to stop, losing in-flight requests
   restart               Stop (or kill) then start
+  upgrade [--main|SPEC] Upgrade HyperNix in the Python the server runs on
+                        (its private venv, if it has one), then restart it.
+                        --main installs the newest code from GitHub.
   status                Is it running, where, and what version
   logs [N|-f]           Last N lines, or follow
 
@@ -979,6 +1067,7 @@ main() {
     stop)              cmd_stop "$@" ;;
     kill|force-stop)   cmd_kill "$@" ;;
     restart)           cmd_restart "$@" ;;
+    upgrade|update)    cmd_upgrade "$@" ;;
     status)            cmd_status "$@" ;;
     logs)              cmd_logs "$@" ;;
     create)            cmd_create "$@" ;;

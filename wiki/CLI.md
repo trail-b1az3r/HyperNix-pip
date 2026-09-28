@@ -642,6 +642,7 @@ hypernix-t1 create                       # set up a server (hands off to install
 hypernix-t1 create --non-interactive     # …or unattended, accepting every default
 hypernix-t1 start                        # start / stop / kill / restart / status
 hypernix-t1 logs -f                      # follow the log (or `logs 200`)
+hypernix-t1 upgrade                      # upgrade HyperNix in the server's own Python, and restart
 hypernix-t1 test                         # health, status, and a real end-to-end probe
 hypernix-t1 key create -v v2 --level 5   # gkey, against this server's own store
 hypernix-t1 configure                    # open the config in $EDITOR
@@ -662,6 +663,7 @@ uvicorn invocation or hunting for a pid.
 | `stop` | `SIGTERM`, then wait 15s. Still there? It says so and points at `kill` rather than escalating on its own. |
 | `kill` | `SIGKILL`, immediately. In-flight requests are lost, and it says so. |
 | `restart` | `stop`, escalating to `kill` if needed, then `start` |
+| `upgrade` | `pip install -U 'hypernix[t1api]'` in the Python the server runs on (its private venv, when it has one), then restart; `--main` installs from GitHub. `status` and `start` warn when that Python's HyperNix is older than `hypernix-t1`'s own |
 | `status` | pid, address, version, whether `/health` actually answers |
 | `logs` | tail; `-f` to follow |
 | `create` | hands off to `install-t1.sh` when it is available — the guided setup, and every flag passes through (`--non-interactive`, `--yes`, …). Installed from a wheel there is no checkout and no installer, so it writes a **minimal** local-only config instead (`--host`, `--port`, `--force`) and says plainly what that does not cover: no allowlist, no rate limits, no pricing, no model registry. |

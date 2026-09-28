@@ -123,4 +123,4 @@ python scripts/autofix_scope.py --time-kwargs
 python scripts/autofix_scope.py --classify ci-log.txt
 ```
 
-Tests for all of this live in `tests/timing/test_autofix_scripts.py`.
+Tests for all of this live in `tests/repo/test_autofix_scripts.py`.
