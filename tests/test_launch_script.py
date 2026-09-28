@@ -302,6 +302,26 @@ class TestArgumentsAndEnvironment:
         job = settle(store.find("withargs"), store)
         assert "args:--lr 3e-4" in read_logs(job)
 
+    def test_restart_keeps_the_script_and_its_arguments(self, tmp_path, capsys):
+        """The bug in the restart path: it picked the script to relaunch
+        as ``command[-1]``, which is only the script path when the
+        original run had zero arguments — with any argument it grabbed
+        the *last argument* instead and always dropped the rest,
+        regardless of which element it picked."""
+        work = script(tmp_path, 'echo "args:$*"\n')
+        os.environ["T1_CONFIG_DIR"] = str(tmp_path / "cfg")
+        os.environ["T1_API_KEY"] = generate_t1_key()
+
+        assert launch_main([str(work), "--name", "restartargs", "--", "one", "two"]) == 0
+        capsys.readouterr()
+        store = JobStore()
+        settle(store.find("restartargs"), store)
+
+        assert launch_main(["--restart", "restartargs"]) == 0
+        capsys.readouterr()
+        fresh = settle(store.find("restartargs"), store)
+        assert "args:one two" in read_logs(fresh)
+
     def test_flags_after_the_path_reach_the_cli_not_the_script(
         self, tmp_path, capsys
     ):

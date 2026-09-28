@@ -250,7 +250,14 @@ class RoutingEngine:
     ) -> RoutingDecision:
         # Manual selection must still go through the registry — a
         # client-supplied model_id never bypasses it.
-        self.registry.require(model_id)
+        entry = self.registry.require(model_id)
+        if not entry.is_routable:
+            raise T1APIError(
+                T1ErrorCode.MODEL_NOT_SUPPORTED,
+                f"Model '{model_id}' is not routable (disabled, deprecated, or an "
+                "example entry).",
+                details={"model_id": model_id},
+            )
         snap = self.meter.snapshot_for_model(key_id, model_id)
         if not snap.is_exhausted:
             return RoutingDecision(

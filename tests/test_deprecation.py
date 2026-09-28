@@ -45,7 +45,8 @@ def run_import(module: str, *, env_extra: dict[str, str] | None = None,
     A subprocess, because `sys.modules` caches the import and the whole
     point is what happens the first time.
     """
-    env = {**os.environ, "PYTHONPATH": str(SRC), "NO_COLOR": "1"}
+    env = {**os.environ, "PYTHONPATH": str(SRC), "NO_COLOR": "1",
+           "PYTHONIOENCODING": "utf-8", "PYTHONUTF8": "1"}
     env.pop("HYPERNIX_DEPRECATION_WARNINGS", None)
     env.update(env_extra or {})
     return subprocess.run(
@@ -167,6 +168,8 @@ class TestTheHiddenCase:
             **os.environ,
             "PYTHONPATH": os.pathsep.join([str(SRC), str(tmp_path)]),
             "NO_COLOR": "1",
+            "PYTHONIOENCODING": "utf-8",
+            "PYTHONUTF8": "1",
         }
         env.pop("HYPERNIX_DEPRECATION_WARNINGS", None)
         done = subprocess.run(

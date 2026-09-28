@@ -89,6 +89,66 @@ Historical wording and technical detail are retained during format normalization
   an explicit note when it falls back to CPU rather than letting a CPU
   number pass silently as if it were representative of GPU performance.
 
+### T1 API
+
+𖢥 **Undoing an admin key promotion now actually reverses the
+  promotion.** `POST /auth/t1/admin/rotate` with `promote_to_admin=True`
+  recorded only a `rotate` entry in the auth undo history, even though a
+  promotion changes both the key material *and* the key type. Because of
+  that, `authundo.py`'s `AuthOp.PROMOTE` branch — the one that actually
+  calls `set_key_type` to revert the type — was unreachable, and
+  `POST /t1/auth/undo` after a promotion restored the caller's original
+  key material onto a record that was still admin-typed: undo turned a
+  plain key into a live admin credential. `_record_rotation` now records
+  the rotation and the promotion as two separate, ordered history
+  entries, so undo reverses the type change first and the key material
+  second, as the module's own docstring always said it would.
+
+𖢥 **A disabled or deprecated model could still be selected by
+  `model_id` and run inference.** `RoutingEngine.route_manual` — the path
+  every explicit `model_id` request goes through, including
+  `/inference/chat`, `/inference/completions`, and `/models/route` —
+  only checked that the model was registered, not that it was routable.
+  `route_automatic` already skipped non-routable entries; `route_manual`
+  now raises `MODEL_NOT_SUPPORTED` for one too, matching it.
+
+𖢥 **Payment token redemption could be double-spent under concurrent
+  or multi-worker requests.** `BillingStore.redeem()` checked
+  `redeemed=0` with a `SELECT` and then wrote `redeemed=1` with a plain
+  `UPDATE`, which only excludes other threads in the same process — two
+  workers (the documented production target is multi-worker PostgreSQL)
+  could both pass the check before either committed. The flip is now a
+  single conditional `UPDATE ... WHERE redeemed=0`, checked by affected-row
+  count, so the database — not a `threading.Lock` — is what makes
+  redemption single-use. If crediting the balance afterward fails, the
+  token is now un-burned instead of being left spent with nothing paid
+  out.
+
+🐛 **Cancelling a job could stomp a status it had already moved past.**
+  `JobQueue.cancel()` read a job's status once and then, on a delay,
+  unconditionally overwrote it to `cancelled` if that stale read had said
+  `queued` — even if the executor had since started running it. The
+  write is now a conditional `UPDATE ... WHERE status='queued'`, so a job
+  that started running in between is left to the worker thread's own
+  terminal write instead of being raced.
+
+⚡ **`JobQueue` no longer leaks a `threading.Event` per job forever.**
+  Every submitted job's cancel event stayed in memory for the life of
+  the process; it's now dropped once the job reaches a terminal state.
+  The `_futures` map, written on every submission and never read
+  anywhere, was removed outright.
+
+🐛 **`hypernix-t1 launch-script <name> --restart` could restart the
+  wrong thing, or drop the original arguments.** The restart path picked
+  the script path as `command[-1]`, which is only correct when the
+  original run had zero arguments — with any arguments it grabbed the
+  *last argument* instead and handed it to `launch()` as a script path
+  (typically failing outright), and always passed `args=[]`, silently
+  dropping whatever arguments the run actually had. `Job` now records the
+  original script path (`Job.script`) at launch time, and `--restart`
+  uses it directly instead of trying to reverse-engineer it from
+  `command`.
+
 ### Fixed
 
 🐛 **CUDA graph capture + dynamic V6 features don't mix safely — now
@@ -103,7 +163,47 @@ Historical wording and technical detail are retained during format normalization
   (don't graph-capture with those features enabled, or capture only once
   the always-taken branch is known to be safe to repeat unconditionally).
 
+🐛 **T1 SDK: `RetryPolicy.delay_for` clamped a server's `Retry-After` to
+  `max_backoff`** (8s by default), contradicting its own docstring
+  ("overrides the curve") — a real `Retry-After: 60` got retried after 8s,
+  hit the same limit again, and exhausted `max_attempts` well before the
+  server actually meant. It's now honored in full.
+
+🐛 **T1 SDK: `T1Client.stream_events()` ignored its own `timeout`
+  argument** whenever the transport had a custom opener installed (the
+  SDK's documented test/injection point) — it silently used the
+  transport's constructor-level timeout (15s) instead. `Transport._urlopen`
+  now takes an explicit timeout override, and `stream_events` always
+  routes through it.
+
+🐛 **macOS: `websearch.detect_browsers()` ignored an injected
+  `path_lookup`** for its `/Applications` bundle scan, always checking
+  the real filesystem regardless — so on any Mac with a browser actually
+  installed (including GitHub's hosted macOS runners, which ship
+  Firefox, Chrome, and Edge preinstalled), the function reported browsers
+  a test explicitly told it not to. The bundle scan is now skipped
+  whenever a caller supplies its own `path_lookup`.
+
 ### Tests
+
+🧪 **Subprocess-spawning tests now force UTF-8 child I/O encoding.**
+  Tests that shell out to a fresh interpreter to observe output
+  (`tests/test_deprecation.py` and others) set `PYTHONIOENCODING=utf-8`
+  and `PYTHONUTF8=1` for the child process. On Windows, a child whose
+  stdio is piped (not a real console) otherwise falls back to the
+  system's ANSI code page; any non-ASCII byte it wrote (an em dash in a
+  message, for example) then got encoded in that code page while the
+  parent decoded assuming UTF-8, crashing `subprocess`'s pipe-reader
+  thread and surfacing as `TypeError: argument of type 'NoneType' is not
+  iterable` rather than a real assertion failure. Set once, session-wide,
+  in `tests/conftest.py`, so it covers every test that shells out, not
+  just the ones that already built their own `env`.
+
+🧪 **`tests/test_launch_script.py::test_restart_keeps_the_script_and_its_arguments`**
+  (new) — regression coverage for the `--restart` bug above:
+  `TestResolveShell`'s sibling suite covered a restarted shell (`-$`)
+  command; nothing covered a restarted plain script launched with
+  arguments, which is the exact shape the bug needed to reproduce.
 
 🔧 **`tests/test_pressure_cooker_v6.py`** — new, real test coverage (not
   a stub): construction/config, loss actually decreasing under several

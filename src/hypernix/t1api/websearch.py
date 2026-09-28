@@ -354,11 +354,15 @@ def detect_browsers(*, path_lookup=None) -> dict[str, list[str]]:
     for binary in _CHROMIUM_BINARIES:
         if which(binary):
             found["chromium"].append(binary)
-    if sys.platform == "darwin":
+    if sys.platform == "darwin" and path_lookup is None:
+        # macOS browsers are bundles, not binaries on PATH, so
+        # `which` finds none of them and the setting would report an
+        # empty machine on the platform most likely to have four.
+        # Skipped when a `path_lookup` was injected: a caller supplying
+        # its own lookup wants full control over what "installed" means,
+        # and a real-filesystem scan of /Applications would silently
+        # override that (and does, on any Mac with a browser installed).
         for app, family in _MAC_APPS.items():
-            # macOS browsers are bundles, not binaries on PATH, so
-            # `which` finds none of them and the setting would report an
-            # empty machine on the platform most likely to have four.
             if Path(app).exists():
                 found[family].append(Path(app).stem)
     return {family: sorted(set(names)) for family, names in found.items()}

@@ -351,23 +351,50 @@ class BillingLedger:
                     T1ErrorCode.PAYMENT_TOKEN_INVALID, "Payment token has expired.", http_status=400
                 )
             now = time.time()
-            conn.execute(
+            # Conditional on redeemed=0 and checked via rowcount, rather
+            # than trusting the SELECT above: the SELECT and this UPDATE
+            # are two statements, and self._lock only excludes other
+            # threads in *this* process — two processes (the production
+            # target is multi-worker PostgreSQL) can both pass the SELECT
+            # before either commits. The UPDATE itself is atomic, so
+            # gating the flip on it, not the earlier read, is what
+            # actually makes redemption single-use.
+            cur = conn.execute(
                 """UPDATE billing_payment_tokens SET redeemed=1, redeemed_by_type=?,
-                   redeemed_by_id=?, redeemed_at=? WHERE payment_token_id=?""",
+                   redeemed_by_id=?, redeemed_at=? WHERE payment_token_id=? AND redeemed=0""",
                 (account_type, account_id, now, row["payment_token_id"]),
             )
+            if cur.rowcount != 1:
+                raise T1APIError(
+                    T1ErrorCode.PAYMENT_TOKEN_ALREADY_REDEEMED,
+                    "Payment token has already been redeemed.",
+                    http_status=409,
+                )
             amount = row["amount"]
         # add_balance re-enters the lock internally via _apply_delta — fine,
         # threading.Lock is not held across this call (the `with` block above
         # already exited).
-        return self._apply_delta(
-            account_type=account_type,
-            account_id=account_id,
-            amount=amount,
-            kind=TransactionKind.REDEEM,
-            created_by=redeemed_by,
-            note="payment token redemption",
-        )
+        try:
+            return self._apply_delta(
+                account_type=account_type,
+                account_id=account_id,
+                amount=amount,
+                kind=TransactionKind.REDEEM,
+                created_by=redeemed_by,
+                note="payment token redemption",
+            )
+        except Exception:
+            # The token is already committed as redeemed. If crediting the
+            # balance fails, un-burn it rather than leaving a token that is
+            # spent but paid out nothing — the caller can retry redemption.
+            with self._lock, self.backend.connect() as conn:
+                conn.execute(
+                    """UPDATE billing_payment_tokens SET redeemed=0, redeemed_by_type=NULL,
+                       redeemed_by_id=NULL, redeemed_at=NULL
+                       WHERE payment_token_id=?""",
+                    (row["payment_token_id"],),
+                )
+            raise
 
     def get_payment_token_record(self, payment_token_id: str) -> PaymentTokenRecord | None:
         with self._lock, self.backend.connect() as conn:

@@ -67,9 +67,17 @@ class RetryPolicy:
 
     def delay_for(self, attempt: int, retry_after: float | None = None) -> float:
         """Seconds to wait before *attempt* (1-based, so attempt 2 is the
-        first retry). A server-sent ``Retry-After`` overrides the curve."""
+        first retry). A server-sent ``Retry-After`` overrides the curve.
+
+        Not clamped to ``max_backoff``: that ceiling bounds the
+        exponential curve below, where nothing but this client picked the
+        number. ``Retry-After`` is the server naming how long *it* needs,
+        and honoring anything less defeats the point of it saying so —
+        the client just re-arrives at the same limit and burns an
+        attempt (of a small ``max_attempts``) doing it.
+        """
         if retry_after is not None:
-            return min(retry_after, self.max_backoff)
+            return max(0.0, retry_after)
         base = min(self.initial_backoff * (self.backoff_multiplier ** (attempt - 1)), self.max_backoff)
         # Jitter so a fleet of clients retrying after one outage doesn't
         # come back in lockstep and cause the next one.
@@ -284,12 +292,13 @@ class HTTPTransport:
             built = T1TransportError(f"Could not reach {_safe_path(url)}: {reason}")
             raise _RetryableFailure(built, reason=str(reason)) from exc
 
-    def _urlopen(self, request: urllib.request.Request):
+    def _urlopen(self, request: urllib.request.Request, *, timeout: float | None = None):
+        effective = self.timeout if timeout is None else timeout
         if self._opener is not None:
-            return self._opener(request, timeout=self.timeout)
+            return self._opener(request, timeout=effective)
         if self._ssl_context is not None:
-            return urllib.request.urlopen(request, timeout=self.timeout, context=self._ssl_context)
-        return urllib.request.urlopen(request, timeout=self.timeout)
+            return urllib.request.urlopen(request, timeout=effective, context=self._ssl_context)
+        return urllib.request.urlopen(request, timeout=effective)
 
     # ------------------------------------------------------------------
 

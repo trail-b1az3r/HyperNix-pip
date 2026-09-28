@@ -304,9 +304,24 @@ def _dispatch(args, store: JobStore, who: str, parser) -> int:
                     cpu=job.cpu, store=store,
                 )
             else:
+                # `job.command` alone is ambiguous once there are
+                # arguments — a self-executing script with one argument
+                # and an interpreted script with none are the same shape
+                # — so prefer the path `launch()` recorded. Older job
+                # records made before that field existed fall back to
+                # the previous best-effort guess.
+                if job.script and job.script == job.command[0]:
+                    script_path, restart_args = job.script, job.command[1:]
+                elif job.script and len(job.command) > 1 and job.script == job.command[1]:
+                    script_path, restart_args = job.script, job.command[2:]
+                elif job.script:
+                    script_path, restart_args = job.script, []
+                else:
+                    script_path = job.command[-1] if len(job.command) > 1 else job.command[0]
+                    restart_args = []
                 fresh = launch(
-                    job.command[-1] if len(job.command) > 1 else job.command[0],
-                    args=[], name=job.name, cwd=job.cwd, timeout=job.timeout,
+                    script_path,
+                    args=restart_args, name=job.name, cwd=job.cwd, timeout=job.timeout,
                     priority=job.priority, gpu=job.gpu, cpu=job.cpu, store=store,
                 )
             print(f"restarted {fresh.name} ({fresh.job_id})")

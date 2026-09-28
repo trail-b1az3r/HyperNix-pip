@@ -34,7 +34,7 @@ import time
 import traceback
 import uuid
 from collections.abc import Callable
-from concurrent.futures import Future, ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
@@ -158,7 +158,6 @@ class JobQueue:
         self._cancel_events: dict[str, threading.Event] = {}
         self._synchronous = synchronous
         self._executor = ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="t1api-job")
-        self._futures: dict[str, Future] = {}
         self._event_bus = event_bus
 
     def _publish(self, job_id: str, kind: str, status: JobStatus, **extra: Any) -> None:
@@ -211,12 +210,22 @@ class JobQueue:
         if self._synchronous:
             self._run(entry.job_id, kind, payload, cancel_event)
         else:
-            future = self._executor.submit(self._run, entry.job_id, kind, payload, cancel_event)
-            with self._lock:
-                self._futures[entry.job_id] = future
+            self._executor.submit(self._run, entry.job_id, kind, payload, cancel_event)
         return self.require(entry.job_id)
 
     def _run(self, job_id: str, kind: str, payload: dict[str, Any], cancel_event: threading.Event) -> None:
+        try:
+            self._run_inner(job_id, kind, payload, cancel_event)
+        finally:
+            # The event is only useful while the job can still be waited
+            # on or cancelled; every path through _run_inner ends in a
+            # terminal status, so this is safe unconditionally. Without
+            # it, a long-running server accumulates one Event per job
+            # ever submitted, forever.
+            with self._lock:
+                self._cancel_events.pop(job_id, None)
+
+    def _run_inner(self, job_id: str, kind: str, payload: dict[str, Any], cancel_event: threading.Event) -> None:
         if cancel_event.is_set():
             self._set_status(job_id, JobStatus.CANCELLED, finished=True)
             self._publish(job_id, kind, JobStatus.CANCELLED)
@@ -283,10 +292,20 @@ class JobQueue:
             event = self._cancel_events.get(job_id)
         if event is not None:
             event.set()
-        if entry.status == JobStatus.QUEUED:
-            # Never actually started (or finished synchronously already
-            # raced past this) — safe to mark cancelled directly.
-            self._set_status(job_id, JobStatus.CANCELLED, finished=True)
+        # Conditional on status still being 'queued' at write time, not on
+        # the *entry* fetched above: between that read and here, the
+        # executor may have already picked the job up and moved it to
+        # 'running'. Without the WHERE clause, this would force-write
+        # CANCELLED over a job that is actually mid-execution, and the
+        # worker thread's own terminal write would then race it.
+        now = time.time()
+        with self._lock, self.backend.connect() as conn:
+            cur = conn.execute(
+                "UPDATE jobs SET status=?, finished_at=? WHERE job_id=? AND status=?",
+                (JobStatus.CANCELLED.value, now, job_id, JobStatus.QUEUED.value),
+            )
+            cancelled = cur.rowcount == 1
+        if cancelled:
             self._publish(job_id, entry.kind, JobStatus.CANCELLED)
         return self.require(job_id)
 

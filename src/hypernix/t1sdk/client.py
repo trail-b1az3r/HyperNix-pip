@@ -687,9 +687,7 @@ class T1Client:
         import urllib.request
 
         request = urllib.request.Request(url, headers=headers, method="GET")
-        with self.transport._urlopen(request) if self.transport._opener else urllib.request.urlopen(
-            request, timeout=timeout
-        ) as response:
+        with self.transport._urlopen(request, timeout=timeout) as response:
             for raw_line in response:
                 line = raw_line.decode("utf-8", errors="replace").strip()
                 if not line or line.startswith(":"):

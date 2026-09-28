@@ -93,6 +93,22 @@ def clear_t1_config(monkeypatch) -> None:
 
 _redirect_environment()
 
+# Dozens of tests shell out to a fresh interpreter (`subprocess.run(...,
+# capture_output=True, text=True, encoding="utf-8")`) to observe a fresh
+# import or a CLI's output. On Windows, a child process whose stdio is
+# redirected to a pipe (rather than a real console) does not default to
+# UTF-8 -- it falls back to the system's ANSI code page -- so any
+# non-ASCII byte the child writes (an em dash in a message, for example)
+# gets encoded in that code page while the parent decodes assuming UTF-8.
+# That mismatch crashes `subprocess`'s pipe-reader thread and the test
+# sees `None` where it expected the captured text, not a real assertion
+# failure. Setting these here, once, for the whole test session, makes
+# every subprocess a test spawns actually encode as UTF-8, matching what
+# the parent already assumes -- there is no `env=` a test builds that
+# doesn't inherit or copy this process's environment.
+os.environ.setdefault("PYTHONIOENCODING", "utf-8")
+os.environ.setdefault("PYTHONUTF8", "1")
+
 
 @pytest.fixture(scope="session", autouse=True)
 def _no_real_database() -> None:

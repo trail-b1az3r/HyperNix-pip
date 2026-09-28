@@ -79,6 +79,15 @@ def _record_rotation(
     caller back where they were without changing any key ID, which is what
     keeps references to the key valid across an undo.
 
+    A promotion is two reversible changes, not one: the key material
+    rotates *and* the key type changes. They are recorded as two stack
+    entries — rotate, then promote — so undo reverses them in the order
+    they happened (type first, then material), and the type change is
+    actually reachable by ``authundo``'s ``AuthOp.PROMOTE`` branch instead
+    of being silently dropped into a ``ROTATE`` entry that ``restore_key``
+    cannot use to revert it, which left a promoted key admin-typed even
+    after "undo".
+
     Best-effort on purpose. The rotation has already happened and its new
     key is in the response; failing the request now would tell the caller
     their rotation failed when it did not, and lose the key with it.
@@ -86,18 +95,25 @@ def _record_rotation(
     history = getattr(request.app.state, "t1_auth_history", None)
     if history is None:
         return
-    payload = {"previous_key": previous_key, "new_key": new_meta.key}
-    if previous_type:
-        payload["previous_type"] = previous_type
-        payload["new_type"] = new_meta.key_type.value
     try:
         history.record(
             AuthOp.ROTATE,
             actor=actor,
             target_key_id=new_meta.key_id,
-            payload=payload,
+            payload={"previous_key": previous_key, "new_key": new_meta.key},
             summary=f"rotated {new_meta.key_id[:8]}…",
         )
+        if previous_type:
+            history.record(
+                AuthOp.PROMOTE,
+                actor=actor,
+                target_key_id=new_meta.key_id,
+                payload={
+                    "previous_type": previous_type,
+                    "new_type": new_meta.key_type.value,
+                },
+                summary=f"promoted {new_meta.key_id[:8]}… to {new_meta.key_type.value}",
+            )
     except Exception:  # noqa: BLE001
         logger.warning("t1api.auth: could not record the rotation", exc_info=True)
 

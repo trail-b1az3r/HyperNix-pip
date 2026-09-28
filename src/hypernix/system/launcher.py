@@ -116,6 +116,13 @@ class Job:
     supervisor: str
     created_at: float
     unit: str = ""
+    #: The script path as given to :func:`launch`, before an interpreter
+    #: was prepended — empty for a job started by :func:`launch_shell`.
+    #: ``command`` alone is ambiguous once there are arguments (a
+    #: self-executing script with one argument and an interpreted script
+    #: with none are the same shape), so a restart needs this rather than
+    #: trying to re-derive it from ``command``.
+    script: str = ""
     pid: int = 0
     status: str = JobStatus.RUNNING.value
     exit_status: int | None = None
@@ -280,7 +287,7 @@ def launch(
         _interpreter_for(path) + list(args or []),
         label=_slug(name or path.stem), cwd=cwd, env=env, timeout=timeout,
         log_file=log_file, priority=priority, gpu=gpu, cpu=cpu, store=store,
-        supervisor=supervisor,
+        supervisor=supervisor, script=str(path),
     )
 
 
@@ -366,6 +373,7 @@ def _start(
     cpu: str,
     store: JobStore | None,
     supervisor: Supervisor | None,
+    script: str = "",
 ) -> Job:
     """Detach *command* under a supervisor. Shared by script and shell jobs."""
     store = store or JobStore()
@@ -443,7 +451,7 @@ def _start(
         job_id=job_id, name=label, command=command, cwd=working,
         log_path=str(log_path), supervisor=chosen.value,
         created_at=time.time(), timeout=timeout, priority=priority,
-        gpu=gpu, cpu=cpu, env_keys=sorted(env or {}),
+        gpu=gpu, cpu=cpu, env_keys=sorted(env or {}), script=script,
     )
 
     if chosen is Supervisor.SYSTEMD:
