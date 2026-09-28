@@ -655,6 +655,15 @@ hypernix-t1 remove                       # tear it back down
 `hnx-t1` (0.72.6) is an alias, not a copy: it runs the `hypernix-t1` next
 to it, so every subcommand, flag and exit code is the same.
 
+When the server has a private venv (`~/.hypernix/t1api/venv`, made by
+`install-t1.sh`), whichever `hypernix-t1` you run hands over to the copy
+installed in that venv if it is a different script. That copy came with
+the code the server actually runs, which the one first on your `PATH` may
+not have: `pip install -U` into the venv upgrades only the venv's copy,
+and two builds of one version cannot be told apart by their version. The
+one exception is a copy newer than the server's HyperNix, which keeps
+running and warns that the server is behind.
+
 A single dependency-free shell program covering the whole lifecycle of a
 [T1 API](T1-API.md) server, so running one does not mean remembering a
 uvicorn invocation or hunting for a pid.

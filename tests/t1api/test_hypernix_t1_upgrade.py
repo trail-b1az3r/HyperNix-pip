@@ -152,3 +152,50 @@ def test_status_says_when_the_installed_hypernix_has_no_site():
     source = SCRIPT.read_text(encoding="utf-8")
     assert "has no HyperLink site" in source
     assert "except ImportError:" in source
+
+
+def _venv_script(server, body: str) -> Path:
+    script = server["config"] / "venv" / "bin" / "hypernix-t1"
+    script.write_text("#!/usr/bin/env bash\n" + body, encoding="utf-8")
+    script.chmod(0o755)
+    return script
+
+
+def test_a_different_copy_in_the_servers_venv_is_the_one_that_runs(server):
+    """`pip install -U` into the venv upgrades venv/bin/hypernix-t1, not the
+    copy on PATH; two builds of one version cannot be told apart by it.
+    Seen on a real server: status described the old model sync."""
+    _venv_script(server, 'echo "server copy: $* delegated=$HNX_T1_DELEGATED"\n')
+    result = run(SCRIPT, "status", "--x", home=server["home"], config=server["config"])
+    assert result.returncode == 0, result.output
+    assert "server copy: status --x delegated=1" in result.output
+
+
+def test_an_identical_copy_is_not_handed_off_to(server):
+    copy = server["config"] / "venv" / "bin" / "hypernix-t1"
+    shutil.copy(SCRIPT, copy)
+    result = run(SCRIPT, "status", home=server["home"], config=server["config"])
+    assert "HyperNix T1 API" in result.output
+
+
+def test_the_hand_off_happens_once(server, monkeypatch):
+    _venv_script(server, 'echo "server copy"\n')
+    monkeypatch.setenv("HNX_T1_DELEGATED", "1")
+    result = run(SCRIPT, "status", home=server["home"], config=server["config"])
+    assert "server copy" not in result.output
+    assert "HyperNix T1 API" in result.output
+
+
+def test_a_newer_copy_keeps_running_and_says_the_server_is_behind(server, tmp_path):
+    _venv_script(server, 'echo "server copy"\n')
+    script = _installed_copy(tmp_path, "0.72.7")
+    result = run(script, "status", home=server["home"], config=server["config"])
+    assert "server copy" not in result.output
+    assert "older than the 0.72.7 this command came with" in result.output
+
+
+def test_without_a_private_venv_nothing_is_handed_off_to(tmp_path):
+    config = tmp_path / "t1api"
+    config.mkdir()
+    result = run(SCRIPT, "status", home=tmp_path, config=config)
+    assert "HyperNix T1 API" in result.output

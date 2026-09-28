@@ -255,6 +255,16 @@ Historical wording and technical detail are retained during format normalization
   - `hypernix-t1 status` names both folders when it is on, and warns when
     they are one folder, when one is inside the other, or when the shared
     one does not exist.
+✨ Added the hand-off from `hypernix-t1` to the copy in the server's venv.
+  - `pip install -U` into `~/.hypernix/t1api/venv` upgrades the copy in
+    `venv/bin`, not the `hnx-t1` first on `PATH`, and both report the same
+    version. Seen on a real server: the venv had the fixed model sync, and
+    `status` from the other copy still described the old one.
+  - Whichever copy runs now hands over to the venv's when it is a
+    different script, unless it is the newer of the two, in which case it
+    stays and warns that the server is behind.
+  - `status` asks the server's own code which folders it mirrors, and
+    counts the files linked.
 𖥔 Added the server's HyperNix version to `hypernix-t1 status`, and a
   warning from `status` and `start` when it is older than the one that
   came with `hypernix-t1` itself.
@@ -393,10 +403,10 @@ Historical wording and technical detail are retained during format normalization
 
 🧪 Added `tests/security/test_safeload.py` (3): a plain checkpoint loads, one with
   code in it is refused and the code does not run, and trusting it loads it.
-🧪 Added `tests/t1api/test_hypernix_t1_upgrade.py` (10): `upgrade` runs pip
+🧪 Added `tests/t1api/test_hypernix_t1_upgrade.py` (15): `upgrade` runs pip
   in the server's own Python, `--main` and a requirement, the warning when
   the server's HyperNix is older, and none when it is not.
-🧪 Added `tests/t1api/test_modelsync.py` (26): linking, relinking and
+🧪 Added `tests/t1api/test_modelsync.py` (27): linking, relinking and
   pruning, your own files left alone, in-progress downloads skipped,
   the catalogue finding synced models and checkpoints, a server with sync
   on serving from the mirror, the CLI's exit codes and `.env` settings,

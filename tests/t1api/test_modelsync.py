@@ -385,3 +385,16 @@ def test_status_warns_when_the_folders_are_one(tmp_path):
              "PYTHONPATH": str(REPO_ROOT / "src"), "NO_COLOR": "1"},
     )
     assert "nothing is synced" in result.stdout + result.stderr
+
+
+def test_status_counts_the_links(tmp_path):
+    home, shared, config = _installer_style(tmp_path)
+    sync(shared, config / "models")
+    (config / "models" / "downloaded.gguf").write_bytes(b"GGUF")   # a real file
+    result = subprocess.run(
+        ["bash", str(REPO_ROOT / "bin" / "hypernix-t1"), "status"],
+        capture_output=True, text=True, timeout=120,
+        env={**os.environ, "HOME": str(home), "T1_CONFIG_DIR": str(config),
+             "PYTHONPATH": str(REPO_ROOT / "src"), "NO_COLOR": "1"},
+    )
+    assert "1 file(s) linked, 1 of its own" in result.stdout + result.stderr
