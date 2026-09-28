@@ -37,7 +37,7 @@ They cost microseconds on a key and milliseconds on a config file, and
 none of them can weaken the stage that carries the security.
 
 Blowfish and Twofish are implemented here in pure Python and checked
-against their published test vectors (see ``tests/test_rotorvault.py``):
+against their published test vectors (see ``tests/security/test_rotorvault.py``):
 Blowfish has moved to ``cryptography``'s "decrepit" module and Twofish
 was never in it. AES-GCM, HKDF and RSA come from ``cryptography``
 (``pip install "hypernix[security]"``).

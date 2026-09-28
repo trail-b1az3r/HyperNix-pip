@@ -135,7 +135,7 @@ hide precisely the errors this exists to catch. The vectors include
 all-positive, all-negative, alternating and group-aligned blocks,
 because a uniform block passes with the bit order reversed.
 
-`tests/test_ggml_hnx.py` runs all of it from the Python suite, so it is
+`tests/quant/test_ggml_hnx.py` runs all of it from the Python suite, so it is
 covered by CI rather than by remembering to run `ctest`.
 
 ## Using it with LM Studio

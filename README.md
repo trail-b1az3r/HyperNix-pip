@@ -251,7 +251,7 @@ ways in, and renaming.
   first sentence: see [Siri](ios/README.md#siri).
 - Every theme's text clears WCAG AA against its own bubble, the two
   bubbles are told apart by luminance, and so are "connected" and
-  "failed" — checked in `tests/test_hyperlink_ios_wiring.py`, which found
+  "failed" — checked in `tests/ios/test_hyperlink_ios_wiring.py`, which found
   three that were not.
 - A chat can be renamed. The server has taken a title on
   `PATCH /hyperlink/sessions/{id}` since HyperLink shipped, and nothing

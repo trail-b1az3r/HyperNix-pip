@@ -14,7 +14,7 @@ are re-drawn here as polygons rather than rasterised from the SVG,
 because the shapes are four points each and pulling in an SVG renderer
 to draw twelve points would be the larger dependency by far. The
 coordinates below are the ``d`` attributes of ``hypernix-icon.svg``,
-verified against that file by ``tests/test_ios_appicon.py`` — so if the
+verified against that file by ``tests/ios/test_ios_appicon.py`` — so if the
 mark ever changes, the test fails rather than the icon quietly going
 stale.
 
@@ -88,7 +88,7 @@ TINTED_VALUES = (200, 144, 255)
 SUPERSAMPLE = 4
 
 # Pillow is imported inside the drawing functions, not at the top. The
-# geometry above is what tests/test_ios_appicon.py compares against
+# geometry above is what tests/ios/test_ios_appicon.py compares against
 # hypernix-icon.svg, and that check is the one worth running everywhere
 # -- CI installs the package without Pillow, and a top-level import made
 # the most important assertion in that file the one that got skipped.

@@ -43,7 +43,7 @@ set -euo pipefail
 # `curl ... | bash`, where there is no checkout to read and no hypernix
 # installed yet to ask. So they are a *fallback*, `derive_versions`
 # below replaces them whenever the script is run from a clone, and
-# tests/test_install_script.py fails if the fallback drifts from the
+# tests/repo/test_install_script.py fails if the fallback drifts from the
 # package again.
 VERSION="0.72.6.post3"
 T1_API_VERSION="1.1.26.9.0.0"

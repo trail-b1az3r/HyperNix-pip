@@ -142,7 +142,7 @@ Tests mock `torch.cuda.is_available` / `get_device_capability` /
 `mem_get_info` so the whole thing exercises on CPU-only CI:
 
 ```bash
-pytest tests/test_freezer.py -v
+pytest tests/system/test_freezer.py -v
 ```
 
 26 tests cover: probe on CPU vs CUDA, OldFreezer hint capping,

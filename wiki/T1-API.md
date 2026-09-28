@@ -262,9 +262,9 @@ hypernix/waiter/   the waiter TUI/CLI      (stdlib only, sits on the SDK)
 
 The core/HTTP split is deliberate: routing, quota math, and registry
 enforcement are testable (and reusable, e.g. from `waiter` or a future
-non-HTTP embedding) without pulling in FastAPI. `tests/test_t1api_core.py`
-and `tests/test_t1api_auth.py` exercise the core directly and need no
-extra beyond base `hypernix`; only `tests/test_t1api_http.py` needs
+non-HTTP embedding) without pulling in FastAPI. `tests/t1api/test_t1api_core.py`
+and `tests/security/test_t1api_auth.py` exercise the core directly and need no
+extra beyond base `hypernix`; only `tests/t1api/test_t1api_http.py` needs
 `pip install hypernix[t1api-test]` (fastapi/pydantic/uvicorn *and* httpx,
 which Starlette's `TestClient` requires and which plain `[t1api]` doesn't
 pull in).
@@ -768,7 +768,7 @@ is unique), and sync-tracking against the server registry.
 (`deployed_servers`) — there is no real network transport pushing module
 bytes to a live remote server, because Beta 2 has no second real server
 to test that against safely. The trust-gating and job-tracking pipeline
-is real and tested end-to-end (`tests/test_t1api_http_beta2.py`); actual
+is real and tested end-to-end (`tests/t1api/test_t1api_http_beta2.py`); actual
 byte transport is Beta 3 scope.
 
 **What "remote upload" means in this beta**: `POST /modules/upload/remote`

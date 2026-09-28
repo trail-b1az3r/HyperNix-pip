@@ -534,7 +534,7 @@ needs root and `--yes`, outlives the process).
 **It is not a speedup and does not claim to be.** Holding a temperature
 costs throughput — a power limit 2–7 %, pausing 12–24 % — and the module
 prints what it cost when the run ends. What you buy is the temperature.
-The measurement is in `tests/test_fusebox.py`, and the reasoning is in
+The measurement is in `tests/training/test_fusebox.py`, and the reasoning is in
 [FuseBox](FuseBox.md).
 
 It never raises a power limit above the card's default, never escalates

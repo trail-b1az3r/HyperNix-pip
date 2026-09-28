@@ -151,7 +151,7 @@ jobs:
         # What actually makes a repeat unsafe is the number naming other
         # code, which a version string cannot tell you and a tag can.
         # See .github/scripts/version_guard.py -- it is a script rather
-        # than a heredoc so tests/test_version_guard.py can drive it.
+        # than a heredoc so tests/repo/test_version_guard.py can drive it.
         #
         # It runs before torch is installed, so a release the tests would
         # reject stops in seconds rather than after the build: it holds
@@ -210,7 +210,7 @@ jobs:
           # is no checkout to read and no hypernix installed yet to ask
           # -- and a release that bumped the other three without this one
           # shipped an installer whose banner announced the previous
-          # version over a correct install. tests/test_install_script.py
+          # version over a correct install. tests/repo/test_install_script.py
           # fails when they drift, which is how this came to be here.
           installer = Path("install-t1.sh")
           installer.write_text(
@@ -249,13 +249,13 @@ jobs:
         # here, before lint, the full suite and the build.
         run: |
           PYTHONPATH=src pytest -q \
-            tests/test_changelog_format.py \
-            tests/test_install_script.py \
-            tests/test_install_pin.py \
-            tests/test_hyped_pro_otui.py \
-            tests/test_version_guard.py \
-            tests/test_release_push_retry.py \
-            "tests/test_tvtop_max.py::TestPackage"
+            tests/docs/test_changelog_format.py \
+            tests/repo/test_install_script.py \
+            tests/repo/test_install_pin.py \
+            tests/interfaces/test_hyped_pro_otui.py \
+            tests/repo/test_version_guard.py \
+            tests/repo/test_release_push_retry.py \
+            "tests/monitoring/test_tvtop_max.py::TestPackage"
 
       - name: Lint
         run: ruff check src/hypernix
@@ -407,7 +407,7 @@ jobs:
           # list did not stage it, so the change was written, discarded,
           # and the installer drifted back to the previous version on the
           # very next release -- the bug the bump step was added to fix.
-          # tests/test_install_script.py checks the two lists agree.
+          # tests/repo/test_install_script.py checks the two lists agree.
           git add \
             pyproject.toml \
             setup.cfg \

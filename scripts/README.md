@@ -34,7 +34,7 @@ reason: a `ModuleNotFoundError` in a timing test is `autofix-E`'s problem, not
 
 Scope comes from `hypernix.MODULE_CATEGORIES`, not a hardcoded list.
 `autofix_scope.py` resolves each test file's imports and finds the individual
-test *functions* that use those modules, so a file like `tests/test_v060.py`
+test *functions* that use those modules, so a file like `tests/system/test_v060.py`
 — which covers eight modules — contributes only its timer tests.
 
 **It engages only when some but not all of the category's tests fail.** That
@@ -88,7 +88,7 @@ test, so a full run would tell you nothing new.
 ```
 Autofix-Script: autofix-F
 Autofix-Scope: timing
-Autofix-Tests: tests/test_v060.py::TestTimer::test_interval_timer_only_fires_after_interval
+Autofix-Tests: tests/system/test_v060.py::TestTimer::test_interval_timer_only_fires_after_interval
 ```
 
 `.github/workflows/ci.yml` has a `triage` job that reads them. When
@@ -123,4 +123,4 @@ python scripts/autofix_scope.py --time-kwargs
 python scripts/autofix_scope.py --classify ci-log.txt
 ```
 
-Tests for all of this live in `tests/test_autofix_scripts.py`.
+Tests for all of this live in `tests/timing/test_autofix_scripts.py`.

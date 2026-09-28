@@ -18,7 +18,7 @@ This is **not a speedup**, and the module says so in its own docstring.
 The pitch a module like this usually makes is "ease off before the
 driver throttles and win back more than you gave up". That was the
 design brief. It does not survive being simulated, and the simulation is
-in the test suite (`tests/test_fusebox.py::TestTheThroughputClaim`) so
+in the test suite (`tests/training/test_fusebox.py::TestTheThroughputClaim`) so
 you can check rather than take our word:
 
 | strategy | throughput | temperature |

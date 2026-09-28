@@ -313,8 +313,8 @@ jobs:
   # can be built and tested on a plain runner rather than only where a
   # 200 MB checkout or a Qt install happens to exist.
   #
-  # The Python suite compiles both too (tests/test_ggml_hnx.py,
-  # tests/test_studio_core.py). This job runs them through their own
+  # The Python suite compiles both too (tests/quant/test_ggml_hnx.py,
+  # tests/desktop/test_studio_core.py). This job runs them through their own
   # CMake as well, because that is how a developer builds them and a
   # build file that only works when driven from pytest is a build file
   # that is about to stop working.
@@ -343,7 +343,7 @@ jobs:
         run: |
           set -euo pipefail
           # A real llama.cpp clone would be 200 MB for a test of four
-          # string edits; tests/test_ggml_hnx.py builds a tree with the
+          # string edits; tests/quant/test_ggml_hnx.py builds a tree with the
           # anchors instead. This step proves the CLI itself runs.
           python native/ggml-hnx/tools/patch_llamacpp.py --help >/dev/null
           if python native/ggml-hnx/tools/patch_llamacpp.py . --check; then
@@ -397,7 +397,7 @@ jobs:
 
   # The patcher against a real llama.cpp, which is the only thing that
   # would have caught what shipped broken: the fake tree in
-  # tests/test_ggml_hnx.py modelled one type_traits table, upstream has
+  # tests/quant/test_ggml_hnx.py modelled one type_traits table, upstream has
   # had two for a while, and every test passed while no real checkout
   # compiled. A fake can only be as right as the person who wrote it.
   #
@@ -539,7 +539,7 @@ jobs:
           ctest --test-dir build/cuda --output-on-failure
 
       - name: The kernels instantiate with the CPU's constants
-        run: python -m pytest tests/test_ggml_hnx.py -q -k Cuda
+        run: python -m pytest tests/quant/test_ggml_hnx.py -q -k Cuda
 
   build-check:
     name: build sdist + wheel (smoke)
@@ -584,7 +584,7 @@ jobs:
           done
 
   # hyped-pro is a TypeScript app on OpenTUI, which runs on Bun. Its own
-  # tests and the type check run here; tests/test_hyped_pro_otui.py covers
+  # tests and the type check run here; tests/interfaces/test_hyped_pro_otui.py covers
   # the Python launcher and the packaging in `test`, on every platform.
   hyped-pro:
     name: hyped-pro (bun test + tsc)
@@ -603,7 +603,7 @@ jobs:
       - run: bun x tsc --noEmit
       - run: bun test
 
-  # tvtop-max is the same kind of app; tests/test_tvtop_max.py covers its
+  # tvtop-max is the same kind of app; tests/monitoring/test_tvtop_max.py covers its
   # launcher, bridge and the script reading behind it.
   tvtop-max:
     name: tvtop-max (bun test + tsc)
@@ -681,4 +681,4 @@ jobs:
           xargs -a selected-tests.txt -d '\n' pytest -q --
 
       - name: Confirm the scope table still matches the tree
-        run: pytest -q tests/test_module_layout.py tests/test_autofix_scripts.py
+        run: pytest -q tests/timing/test_module_layout.py tests/timing/test_autofix_scripts.py

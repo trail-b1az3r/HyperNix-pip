@@ -101,9 +101,9 @@ jobs:
       matrix:
         include:
           - half: "1 of 2 — routes and schemas"
-            target: "tests/test_t1api_http.py tests/test_t1api_beta3_http.py tests/test_version_endpoint.py tests/test_inference_endpoints.py"
+            target: "tests/t1api/test_t1api_http.py tests/t1api/test_t1api_beta3_http.py tests/t1api/test_version_endpoint.py tests/t1api/test_inference_endpoints.py"
           - half: "2 of 2 — auth and limits"
-            target: "tests/test_trusted_network.py tests/test_t2s_errors.py tests/test_billing_keys.py tests/test_bootstrap_key.py"
+            target: "tests/t1api/test_trusted_network.py tests/security/test_t2s_errors.py tests/t1api/test_billing_keys.py tests/security/test_bootstrap_key.py"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

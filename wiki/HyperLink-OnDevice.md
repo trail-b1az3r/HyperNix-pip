@@ -128,7 +128,7 @@ arithmetic exists twice:
 
 Duplicated arithmetic drifts, and here the symptom of drift is the Swift
 side approving a model the Python side would refuse. So
-`tests/test_hyperlink_ondevice_mirror.py` parses the Swift and compares
+`tests/hyperlink/test_hyperlink_ondevice_mirror.py` parses the Swift and compares
 every constant and every quantisation bit width against the Python.
 Change one and the build says so.
 
@@ -236,7 +236,7 @@ should pay on a PR that touched a view.
 
 `ios/vendor/llama-api-b10883.json` records every function, struct and
 constant `include/llama.h` declared at the pinned ref — 236 functions —
-and `tests/test_ios_llama_link.py` checks that every `llama_*` symbol
+and `tests/ios/test_ios_llama_link.py` checks that every `llama_*` symbol
 `LlamaRunner.swift` calls is in it.
 
 That check exists because the C API moves a lot, and each of these was
