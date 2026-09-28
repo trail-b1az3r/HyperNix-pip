@@ -241,7 +241,7 @@ function HomePage({ setPage, downloads, olderDownloads, totalDownloads, ghStats,
                   {changelogEntries[0].summary}
                 </p>
                 <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
-                  <a href="https://github.com/trail-b1az3r/HyperNix/wiki/Changelog" target="_blank" rel="noreferrer"
+                  <a href="https://github.com/trail-b1az3r/HyperNix-pip/blob/main/wiki/Changelog.md" target="_blank" rel="noreferrer"
                     className="press-btn" style={{ background:'none', border:'1px solid var(--border-strong)', color:'var(--text)', borderRadius:8, padding:'9px 13px', textDecoration:'none', fontSize:12.5 }}>
                     Full changelog ↗
                   </a>
