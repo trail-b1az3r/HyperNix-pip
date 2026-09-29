@@ -252,7 +252,11 @@ Historical wording and technical detail are retained during format normalization
 ✨ Added nightly builds to `public-release.yml`, behind a setting.
   - Set the repository variable `PUBLIC_RELEASE_NIGHTLY` to `true`, and
     the workflow builds the default branch at 03:23 UTC. A night with no
-    new commits is skipped. "Run workflow" with `nightly` ticked makes
+    new commits is skipped, and so is one whose only commits are the stat
+    bots' (JSON stats, generated docs data, the README header, the
+    architecture chart). A commit counts as a stat update only when its
+    subject and every file it touches match, so a person's edit to
+    `README.md` still makes a nightly. "Run workflow" with `nightly` ticked makes
     one by hand, whatever the setting.
   - A nightly runs the same lint, full test suite and live integration
     jobs as a release, then replaces the rolling `nightly` GitHub
@@ -265,7 +269,7 @@ Historical wording and technical detail are retained during format normalization
     also `true`, since it needs a macOS runner every night.
   - `.github/scripts/release_plan.py` decides whether a run is a
     release, a nightly or nothing, and `tests/repo/test_release_plan.py`
-    (23) covers it and the workflow's guards.
+    (36) covers it and the workflow's guards.
 
 ✨ Added linking a model that is already on the server, from HyperLink.
   - The web app's Runner page and the iOS app's Runner screen take a path

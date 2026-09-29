@@ -24,7 +24,9 @@ name: public-release
 # at 03:23 UTC. It is off until the repository variable
 # PUBLIC_RELEASE_NIGHTLY is set to true (Settings -> Secrets and
 # variables -> Actions -> Variables), and a night with no new commits is
-# skipped. "Run workflow" with `nightly` ticked makes one by hand.
+# skipped -- counting only people's commits: the stat bots' (JSON stats,
+# generated docs data, the README header, the architecture chart) do not
+# make a nightly on their own. See STAT_UPDATES in release_plan.py. "Run workflow" with `nightly` ticked makes one by hand.
 #
 # A nightly is not a release: the version is the tree's plus a local
 # label (0.72.6.post3+nightly.20260930.1a2b3c4), nothing is committed,
