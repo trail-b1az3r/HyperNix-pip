@@ -289,7 +289,7 @@ def decode_frames(
     """
     import random
 
-    rng = random.Random(seed)
+    rng = random.Random(seed)  # nosec B311 - seeded for reproducibility (shuffles, splits, jitter); nothing secret
     positions = [i for i, ch in enumerate(text) if not ch.isspace()]
     rng.shuffle(positions)
     steps = max(1, int(steps))
@@ -357,7 +357,7 @@ def anime_print(
                     elif ch == " ":
                         glitched += " "
                     else:
-                        glitched += random.choice(chars)
+                        glitched += random.choice(chars)  # nosec B311 - seeded for reproducibility (shuffles, splits, jitter); nothing secret
                 sys.stdout.write(f"\r{_BOLD}\x1b[95m{glitched}{_RESET}   ")
                 sys.stdout.flush()
                 time.sleep(delay * 1.5)

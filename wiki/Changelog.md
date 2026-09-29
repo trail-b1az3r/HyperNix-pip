@@ -374,6 +374,48 @@ Historical wording and technical detail are retained during format normalization
   - Besides the key id pattern, the normalised path must be under the
     store before a key file is read, written or deleted.
 
+𖢥 Fixed the Codacy scan, which had crashed on every run since 2026-09-08.
+  - Its SARIF writer died with `MalformedInputException` because the
+    analysis container's JVM defaulted to ASCII, and the action passes
+    only four environment variables into Docker. The workflow now runs
+    `codacy/codacy-analysis-cli:4.0.0` itself with UTF-8 set, so a new
+    report can be uploaded and the alerts from the last good run
+    (about 20,000 on GitHub) can close.
+  - `.github/scripts/codacy_sarif_filter.py` keeps the report to
+    findings about correctness and security: style-only tools
+    (duplication, Markdown, CSS lint), pylint's convention, refactor and
+    info messages, and Python findings in `tests/` and `build/` are
+    dropped, and what is left is capped below GitHub's 25,000-per-run
+    limit, most severe first. The job summary lists what was dropped.
+  - Most of the drop in the alert count comes from this filter and the
+    `.codacy.yml` exclusions, not from code changes; the code changes
+    are the entries below.
+
+🔒 Changed every `urlopen` in the package to refuse anything but http and https.
+  - `hypernix.security.safeurl.urlopen` checks the scheme before opening,
+    so a `file://` or `ftp://` URL from a setting or a model's link is
+    refused with `UnsafeURLError`. 26 modules use it.
+
+🔒 Changed the SQLite stores to allowlist what is put into SQL text.
+  - The account updater takes only its own columns, and the auth
+    history's sort order only `ASC` or `DESC`; every value was already a
+    bound parameter. The remaining interpolated queries carry a `nosec`
+    marker saying why.
+
+🔒 Changed 29 `assert` checks in the package into real errors.
+  - `python -O` strips `assert`, so those checks (hyprslug, storage,
+    pairing, fusebox and others) would have silently stopped running.
+    They raise `AssertionError` as before, without depending on it.
+
+🔧 Changed the Bandit configuration.
+  - `[tool.bandit]` in `pyproject.toml` excludes `tests` and `build`, and
+    skips B404 and B603 (importing `subprocess`, and calling it with a
+    list and no shell). Every other finding kept in the code has a
+    `nosec` marker with its reason.
+  - Bandit went from about 1,087 findings to 107: 53 `try/except/pass`,
+    25 Hugging Face downloads without a pinned revision, 18 commands
+    found on `PATH`, and a handful of low-severity others.
+
 ### Fixed
 
 𖢥 Fixed `brew train` throwing away its character vocabulary.
@@ -448,6 +490,8 @@ Historical wording and technical detail are retained during format normalization
 
 ### Tests
 
+🧪 Added `tests/security/test_safeurl.py` (12) and
+  `tests/repo/test_codacy_sarif_filter.py` (3).
 🧪 Added `tests/models/test_brewer_gguf.py` (28), including a check that
   llama.cpp's pair rotation on the permuted weights gives Brewer's
   attention scores exactly, and that without the permutation it does not;

@@ -73,7 +73,7 @@ class CuttingBoard:
     ) -> dict[str, list[str]]:
         rows = list(_open_stream(source))
         if self.shuffle:
-            rng = random.Random(self.seed)
+            rng = random.Random(self.seed)  # nosec B311 - seeded for reproducibility (shuffles, splits, jitter); nothing secret
             rng.shuffle(rows)
         n = len(rows)
         train_r, val_r, _ = self._normalise()
@@ -135,7 +135,7 @@ class StratifiedBoard:
             lbl = r.get(self.label_key, self.fallback)
             groups.setdefault(lbl, []).append(r)
 
-        rng = random.Random(self.seed)
+        rng = random.Random(self.seed)  # nosec B311 - seeded for reproducibility (shuffles, splits, jitter); nothing secret
         train: list[dict] = []
         val: list[dict] = []
         test: list[dict] = []

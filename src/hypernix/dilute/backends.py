@@ -24,6 +24,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from hypernix.security.safeurl import urlopen as safe_urlopen
+
 logger = logging.getLogger(__name__)
 
 __all__ = [
@@ -159,7 +161,7 @@ class ServerGenerator:
         request.add_header("Content-Type", "application/json")
         if self.token:
             request.add_header("Authorization", f"Bearer {self.token}")
-        with urllib.request.urlopen(request, timeout=self.timeout) as response:
+        with safe_urlopen(request, timeout=self.timeout) as response:
             payload = json.loads(response.read() or b"{}")
         choices = payload.get("choices") or []
         if not choices:
@@ -170,12 +172,12 @@ class ServerGenerator:
         """Nothing to release. Here so callers need not care which they hold."""
 
 
-def server_is_up(base_url: str, token: str = "", *, timeout: float = 2.0) -> bool:
+def server_is_up(base_url: str, token: str = "", *, timeout: float = 2.0) -> bool:  # nosec B107 - an empty default, not a credential
     request = urllib.request.Request(f"{base_url.rstrip('/')}/health", method="GET")
     if token:
         request.add_header("Authorization", f"Bearer {token}")
     try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
+        with safe_urlopen(request, timeout=timeout) as response:
             return response.status < 400
     except (urllib.error.URLError, OSError, ValueError):
         return False

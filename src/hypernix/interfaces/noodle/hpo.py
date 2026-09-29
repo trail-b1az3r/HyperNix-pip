@@ -181,7 +181,7 @@ def random_search(
     seed: int | None = None,
 ) -> HPOResult:
     """Sample *trials* configurations and evaluate each at *budget*."""
-    rng = random.Random(seed)
+    rng = random.Random(seed)  # nosec B311 - seeded for reproducibility (shuffles, splits, jitter); nothing secret
     started = time.monotonic()
     result = HPOResult(strategy="random")
     for index in range(trials):
@@ -210,7 +210,7 @@ def successive_halving(
     """
     if reduction < 2:
         raise ValueError("reduction must be at least 2")
-    rng = random.Random(seed)
+    rng = random.Random(seed)  # nosec B311 - seeded for reproducibility (shuffles, splits, jitter); nothing secret
     started = time.monotonic()
     result = HPOResult(strategy="successive_halving")
 

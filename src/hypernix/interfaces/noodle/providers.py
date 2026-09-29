@@ -45,6 +45,8 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any
 
+from hypernix.security.safeurl import urlopen as safe_urlopen
+
 logger = logging.getLogger(__name__)
 
 __all__ = [
@@ -301,7 +303,7 @@ class ModelClient:
             method="POST",
         )
         try:
-            with urllib.request.urlopen(req, timeout=self.timeout) as resp:  # noqa: S310
+            with safe_urlopen(req, timeout=self.timeout) as resp:
                 return json.loads(resp.read().decode("utf-8", "replace") or "{}")
         except urllib.error.HTTPError as exc:
             detail = self._error_detail(exc)

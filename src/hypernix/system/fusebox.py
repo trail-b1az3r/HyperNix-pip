@@ -553,7 +553,9 @@ class Governor:
             )
 
         # Below the fuse: proportional easing around the target.
-        assert hot is not None  # cpu_trip alone is handled above
+        # cpu_trip alone is handled above
+        if hot is None:
+            raise AssertionError('hot is not None')
         over = hot - self.policy.target_c
         if over > 0:
             self._hot_streak += 1

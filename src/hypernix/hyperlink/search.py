@@ -388,7 +388,7 @@ class SearchIndex:
         session_ph = ",".join("?" for _ in titles)
         role_ph = ",".join("?" for _ in roles)
         sql = (
-            f"SELECT message_id, session_id, role, content, created_at "
+            f"SELECT message_id, session_id, role, content, created_at "  # nosec B608 - values are bound parameters; interpolated SQL is fixed or allowlisted
             f"FROM hyperlink_messages "
             f"WHERE session_id IN ({session_ph}) AND role IN ({role_ph})"
         )

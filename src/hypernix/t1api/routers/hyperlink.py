@@ -825,7 +825,7 @@ def _t1_access(request: Request | None, principal):
 
     if not header.lower().startswith("bearer "):
         host, port = (request.scope.get("server") or ("127.0.0.1", 8000))[:2]
-        if host in ("0.0.0.0", "::", "", None):
+        if host in ("0.0.0.0", "::", "", None):  # nosec B104 - compares against or binds 0.0.0.0 only where the caller chose LAN access
             host = "127.0.0.1"
         if ":" in str(host):
             host = f"[{host}]"
@@ -833,7 +833,7 @@ def _t1_access(request: Request | None, principal):
         return T1Access(base, "", allow_mutating=False)
 
     host, port = (request.scope.get("server") or ("127.0.0.1", 8000))[:2]
-    if host in ("0.0.0.0", "::", "", None):
+    if host in ("0.0.0.0", "::", "", None):  # nosec B104 - compares against or binds 0.0.0.0 only where the caller chose LAN access
         host = "127.0.0.1"          # bound everywhere: loopback is one of them
     if ":" in str(host):
         host = f"[{host}]"

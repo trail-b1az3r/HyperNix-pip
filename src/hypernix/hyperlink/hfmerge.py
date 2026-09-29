@@ -50,6 +50,8 @@ import urllib.request
 from dataclasses import dataclass, field
 from typing import Any
 
+from hypernix.security.safeurl import urlopen as safe_urlopen
+
 __all__ = [
     "GGUFFile",
     "HFRef",
@@ -380,7 +382,7 @@ def fetch_repo_info(
         headers["Authorization"] = f"Bearer {token}"
     req = urllib.request.Request(url, headers=headers)
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310
+        with safe_urlopen(req, timeout=timeout) as resp:
             return json.loads(resp.read().decode("utf-8", "replace"))
     except urllib.error.HTTPError as exc:
         if exc.code in (401, 403):
@@ -443,7 +445,8 @@ def merge(
     direct = parse_link(file_link) if file_link else None
 
     if page is None:
-        assert direct is not None
+        if direct is None:
+            raise AssertionError('direct is not None')
         return direct
     if direct is None:
         return page

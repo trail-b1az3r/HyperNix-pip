@@ -260,7 +260,8 @@ def file_type_for(spec: TargetSpec) -> int:
         return _FILE_TYPES[spec.width]
     if spec.kind == "tier":
         return HNX_FILE_TYPE_BASE + (spec.ggml_type - 200)
-    assert spec.recipe is not None
+    if spec.recipe is None:
+        raise AssertionError('spec.recipe is not None')
     return _FILE_TYPES.get(spec.recipe.name, _FILE_TYPES.get(spec.recipe.base, 1))
 
 
@@ -1104,7 +1105,8 @@ def write_provenance(
             f"HyperNix {spec.name} ({_bits_per_weight(spec.packing):.3f} bpw)"
         )
     else:
-        assert spec.recipe is not None
+        if spec.recipe is None:
+            raise AssertionError('spec.recipe is not None')
         _set("hypernix.sub_bit", False)
         _set("hypernix.base_format", spec.recipe.base)
         description = (

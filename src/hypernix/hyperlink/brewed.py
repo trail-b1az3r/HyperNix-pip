@@ -37,6 +37,8 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
+from hypernix.security.safeurl import urlopen as safe_urlopen
+
 logger = logging.getLogger(__name__)
 
 __all__ = [
@@ -198,7 +200,7 @@ def download(
             request.add_header("Authorization", f"Bearer {token}")
         logger.info("brewed: fetching %s/%s", repo, filename)
         try:
-            with urllib.request.urlopen(request, timeout=timeout) as response, \
+            with safe_urlopen(request, timeout=timeout) as response, \
                     partial.open("wb") as out:  # noqa: S310
                 while True:
                     block = response.read(1 << 20)

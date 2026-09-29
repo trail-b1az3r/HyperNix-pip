@@ -50,6 +50,8 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
+from hypernix.security.safeurl import urlopen as safe_urlopen
+
 #: WMO weather codes considered "force checkpoint now" severe.
 #:
 #: 65 = heavy rain                    95 = thunderstorm
@@ -111,7 +113,7 @@ def _query_open_meteo(
         "&current=temperature_2m,weather_code,precipitation,wind_speed_10m"
     )
     try:
-        with urllib.request.urlopen(url, timeout=timeout) as resp:
+        with safe_urlopen(url, timeout=timeout) as resp:
             data = json.loads(resp.read().decode("utf-8"))
     except (urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError):
         return None
@@ -121,7 +123,7 @@ def _query_open_meteo(
 def _autodetect_coords(timeout: float = 5.0) -> tuple[float, float] | None:
     """Best-effort IP-geolocation via ipapi.co (free, no key)."""
     try:
-        with urllib.request.urlopen(
+        with safe_urlopen(
             "https://ipapi.co/json/", timeout=timeout,
         ) as resp:
             data = json.loads(resp.read().decode("utf-8"))

@@ -35,6 +35,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from hypernix.security.safeurl import urlopen as safe_urlopen
+
 __all__ = [
     "CACHE_TTL_SECONDS",
     "ReleaseInfo",
@@ -230,7 +232,7 @@ def _fetch(timeout: float) -> dict[str, Any]:
         headers={"Accept": "application/json",
                  "User-Agent": f"hypernix/{installed_version()}"},
     )
-    with urllib.request.urlopen(request, timeout=timeout) as response:  # noqa: S310
+    with safe_urlopen(request, timeout=timeout) as response:
         return json.loads(response.read().decode("utf-8"))
 
 

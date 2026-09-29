@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 
 def fetch_pypi_info():
     try:
-        with urllib.request.urlopen('https://pypi.org/pypi/hypernix/json', timeout=10) as resp:
+        with urllib.request.urlopen('https://pypi.org/pypi/hypernix/json', timeout=10) as resp:  # nosec B310 - a fixed https URL
             data = json.loads(resp.read().decode())
             version = data.get('info', {}).get('version', 'unknown')
     except Exception as e:
@@ -16,7 +16,7 @@ def fetch_pypi_info():
 
 def fetch_pypistats_recent():
     try:
-        with urllib.request.urlopen('https://pypistats.org/api/packages/hypernix/recent', timeout=10) as resp:
+        with urllib.request.urlopen('https://pypistats.org/api/packages/hypernix/recent', timeout=10) as resp:  # nosec B310 - a fixed https URL
             data = json.loads(resp.read().decode())
             recent = data.get('data', {})
             return {
@@ -30,7 +30,7 @@ def fetch_pypistats_recent():
 
 def fetch_pypistats_overall():
     try:
-        with urllib.request.urlopen('https://pypistats.org/api/packages/hypernix/overall', timeout=10) as resp:
+        with urllib.request.urlopen('https://pypistats.org/api/packages/hypernix/overall', timeout=10) as resp:  # nosec B310 - a fixed https URL
             data = json.loads(resp.read().decode())
             total = data.get('data', {}).get('total_downloads', 0)
             return total

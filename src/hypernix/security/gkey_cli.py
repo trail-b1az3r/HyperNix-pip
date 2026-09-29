@@ -465,7 +465,7 @@ def _cmd_create(args: list[str]) -> int:
     # a T2 key generated on its own belongs to no key store and
     # authenticates as nothing.
     issued_key = meta.key
-    admin_password = ""
+    admin_password = ""  # nosec B105 - an empty default, a prefix or an error-code name, not a credential
     t2c_kit = None
     if version is not DEFAULT_KEY_VERSION:
         from hypernix.security.t2keys import T2KeyGenerator, T2Type

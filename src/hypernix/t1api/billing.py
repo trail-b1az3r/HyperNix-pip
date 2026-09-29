@@ -77,7 +77,7 @@ CREATE TABLE IF NOT EXISTS billing_payment_tokens (
 );
 """
 
-_TOKEN_PREFIX = "T1PAY"
+_TOKEN_PREFIX = "T1PAY"  # nosec B105 - an empty default, a prefix or an error-code name, not a credential
 
 
 class TransactionKind(StrEnum):

@@ -46,7 +46,7 @@ class Shaker:
     def __post_init__(self) -> None:
         if not 0.0 <= self.rate <= 1.0:
             raise ValueError("rate must be in [0, 1]")
-        self._rng = random.Random(self.seed)
+        self._rng = random.Random(self.seed)  # nosec B311 - seeded for reproducibility (shuffles, splits, jitter); nothing secret
 
     def _source_lines(self) -> Iterator[str]:
         if isinstance(self.source, str | Path):

@@ -45,6 +45,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from hypernix.security.safeurl import urlopen as safe_urlopen
+
 logger = logging.getLogger(__name__)
 
 __all__ = [
@@ -212,7 +214,7 @@ class HFDownloader:
         )
         req = urllib.request.Request(url, headers=self._headers())
         try:
-            with urllib.request.urlopen(req, timeout=self.timeout) as resp:  # noqa: S310
+            with safe_urlopen(req, timeout=self.timeout) as resp:
                 return json.loads(resp.read().decode("utf-8", "replace"))
         except urllib.error.HTTPError as exc:
             if exc.code in (401, 403):
@@ -305,7 +307,7 @@ class HFDownloader:
                 headers["Range"] = f"bytes={already}-"
             req = urllib.request.Request(url, headers=headers)
             try:
-                with urllib.request.urlopen(req, timeout=self.timeout) as resp:  # noqa: S310
+                with safe_urlopen(req, timeout=self.timeout) as resp:
                     # A server that ignores Range answers 200 with the whole
                     # file. Appending that to a partial would produce a
                     # corrupt model that downloaded "successfully", so the

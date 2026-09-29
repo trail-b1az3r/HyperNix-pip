@@ -44,7 +44,7 @@ from .errors import T1APIError, T1ErrorCode
 
 logger = logging.getLogger(__name__)
 
-_TOKEN_PREFIX = "T1S"
+_TOKEN_PREFIX = "T1S"  # nosec B105 - an empty default, a prefix or an error-code name, not a credential
 
 
 def _b64url_encode(raw: bytes) -> str:

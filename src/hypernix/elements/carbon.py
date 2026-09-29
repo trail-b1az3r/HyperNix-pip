@@ -208,7 +208,7 @@ def load_user_elements(registry: Registry, directory: Path | None = None) -> lis
                                      "__file__": str(path)}
         try:
             code = compile(path.read_text(encoding="utf-8"), str(path), "exec")
-            exec(code, namespace)  # noqa: S102 - the user's own file, by design
+            exec(code, namespace)  # nosec B102 - runs code the user wrote or approved (consent-gated tool)
         except Exception as exc:  # noqa: BLE001 - one bad file, not the loader
             registry.failures[path.stem] = HyperNixError(
                 codes.ELEMENT_LOAD_FAILED, f"{path.name}: {exc}").args[0]

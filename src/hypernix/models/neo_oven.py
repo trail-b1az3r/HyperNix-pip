@@ -666,7 +666,7 @@ class JudgeCorpus:
         About ``good_ratio`` of examples get the reference answer (GOOD);
         the rest are mangled into BAD examples via :func:`_mangle_response`.
         """
-        rng = random.Random(seed)
+        rng = random.Random(seed)  # nosec B311 - seeded for reproducibility (shuffles, splits, jitter); nothing secret
         examples: list[JudgeExample] = []
         for i in range(n):
             prompt, good = pairs[i % len(pairs)]

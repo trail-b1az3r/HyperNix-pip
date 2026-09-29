@@ -378,7 +378,7 @@ class AuditLog:
             clauses.append("ts < ?")
             params.append(until)
         where = " WHERE " + " AND ".join(clauses) if clauses else ""
-        query = f"SELECT * FROM audit_events{where} ORDER BY ts DESC LIMIT ? OFFSET ?"
+        query = f"SELECT * FROM audit_events{where} ORDER BY ts DESC LIMIT ? OFFSET ?"  # nosec B608 - values are bound parameters; interpolated SQL is fixed or allowlisted
         with self._lock, self.backend.connect() as conn:
             rows = conn.execute(query, [*params, int(limit), int(offset)]).fetchall()
         return [_row_to_record(r) for r in rows]

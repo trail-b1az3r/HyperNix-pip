@@ -345,7 +345,7 @@ class DeviceRegistry:
 
         failure: T1APIError | None = None
         record: DeviceRecord | None = None
-        token = ""
+        token = ""  # nosec B105 - an empty default, a prefix or an error-code name, not a credential
 
         with self._lock, self.backend.connect() as conn:
             row = conn.execute(
@@ -418,7 +418,9 @@ class DeviceRegistry:
 
         if failure is not None:
             raise failure
-        assert record is not None       # one of the two branches always runs
+        # one of the two branches always runs
+        if record is None:
+            raise AssertionError('record is not None')
         return record, token
 
     def note_failed_attempt(self, code: str) -> None:

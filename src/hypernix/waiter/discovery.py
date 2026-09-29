@@ -55,6 +55,8 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from typing import Any
 
+from hypernix.security.safeurl import urlopen as safe_urlopen
+
 from ..t1api.version import T1_VERSION_SHORT
 
 logger = logging.getLogger(__name__)
@@ -368,7 +370,7 @@ def _get(url: str, timeout: float) -> tuple[int, str]:
         },
     )
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310
+        with safe_urlopen(req, timeout=timeout) as resp:
             return resp.status, resp.read().decode("utf-8", "replace")
     except urllib.error.HTTPError as exc:
         return exc.code, ""

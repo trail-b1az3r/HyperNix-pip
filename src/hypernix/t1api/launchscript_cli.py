@@ -299,7 +299,7 @@ def _dispatch(args, store: JobStore, who: str, parser) -> int:
                 # relaunching that as a script path would fail with
                 # "No such script".
                 fresh = launch_shell(
-                    shell[1], shell=shell[0], name=job.name, cwd=job.cwd,
+                    shell[1], shell=shell[0], name=job.name, cwd=job.cwd,  # nosec B604 - `shell` here names a shell (bash, zsh, fish), it is not shell=True
                     timeout=job.timeout, priority=job.priority, gpu=job.gpu,
                     cpu=job.cpu, store=store,
                 )
@@ -318,7 +318,7 @@ def _dispatch(args, store: JobStore, who: str, parser) -> int:
                 "give either a script or -$ 'command', not both"
             )
         job = launch_shell(
-            args.shell_command, shell=args.shell, name=args.name,
+            args.shell_command, shell=args.shell, name=args.name,  # nosec B604 - `shell` here names a shell (bash, zsh, fish), it is not shell=True
             cwd=args.cwd or None, env=_parse_env(args.env),
             timeout=args.timeout, log_file=args.log_file or None,
             priority=args.priority, gpu=args.gpu, cpu=args.cpu, store=store,

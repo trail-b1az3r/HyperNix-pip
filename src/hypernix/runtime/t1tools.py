@@ -21,6 +21,8 @@ import urllib.request
 from dataclasses import dataclass, field
 from typing import Any
 
+from hypernix.security.safeurl import urlopen as safe_urlopen
+
 from ..system import errorcatalogue as codes
 
 __all__ = ["T1Tool", "TOOLS", "catalogue", "openai_tools", "call_tool"]
@@ -184,7 +186,7 @@ def call_tool(
     if token:
         request.add_header("Authorization", f"Bearer {token}")
     try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
+        with safe_urlopen(request, timeout=timeout) as response:
             payload = response.read().decode("utf-8", errors="replace")
     except urllib.error.HTTPError as exc:
         body = exc.read().decode("utf-8", errors="replace")

@@ -45,6 +45,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from hypernix.security.safeurl import urlopen as safe_urlopen
+
 from .dots import Config, DotError, Settings, load
 
 __all__ = ["main", "cli_main", "Session", "Backend", "search_huggingface"]
@@ -147,7 +149,7 @@ def discover_backend(config: Config, *, timeout: float = 2.0) -> Backend:
         request = urllib.request.Request(f"{url}/health", method="GET")
         if config.token:
             request.add_header("Authorization", f"Bearer {config.token}")
-        with urllib.request.urlopen(request, timeout=timeout) as response:
+        with safe_urlopen(request, timeout=timeout) as response:
             if response.status < 400:
                 return Backend("t1", base_url=url, token=config.token,
                                model=config.model,
@@ -210,7 +212,7 @@ def search_huggingface(
     if token:
         request.add_header("Authorization", f"Bearer {token}")
     try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
+        with safe_urlopen(request, timeout=timeout) as response:
             payload = json.loads(response.read() or b"[]")
     except urllib.error.HTTPError as error:
         if error.code in (401, 403):
@@ -243,7 +245,7 @@ def list_gguf_files(
     if token:
         request.add_header("Authorization", f"Bearer {token}")
     try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
+        with safe_urlopen(request, timeout=timeout) as response:
             payload = json.loads(response.read() or b"{}")
     except (urllib.error.URLError, OSError, ValueError) as error:
         raise RuntimeError(f"Could not read {repo}: {error}") from error
@@ -279,7 +281,7 @@ def download_gguf(
     if token:
         request.add_header("Authorization", f"Bearer {token}")
 
-    with urllib.request.urlopen(request, timeout=60) as response:
+    with safe_urlopen(request, timeout=60) as response:
         total = int(response.headers.get("Content-Length") or 0)
         done = 0
         with partial.open("wb") as handle:
@@ -549,7 +551,7 @@ class Session:
         request.add_header("Content-Type", "application/json")
         if self.backend.token:
             request.add_header("Authorization", f"Bearer {self.backend.token}")
-        with urllib.request.urlopen(request, timeout=300) as response:
+        with safe_urlopen(request, timeout=300) as response:
             payload = json.loads(response.read() or b"{}")
         choices = payload.get("choices") or []
         if not choices:

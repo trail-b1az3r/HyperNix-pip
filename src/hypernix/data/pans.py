@@ -211,7 +211,7 @@ class Wok(Pan):
 
     def iter(self) -> Iterator[str]:
         # Pre-clean with SaucePan semantics.
-        rng = random.Random(self.seed)
+        rng = random.Random(self.seed)  # nosec B311 - seeded for reproducibility (shuffles, splits, jitter); nothing secret
         cap = self._effective_max_chars()
         buffer: list[str] = []
         for raw in self._source_lines():

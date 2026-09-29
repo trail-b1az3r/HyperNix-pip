@@ -47,6 +47,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from hypernix.security.safeurl import urlopen as safe_urlopen
+
 logger = logging.getLogger(__name__)
 
 __all__ = [
@@ -597,7 +599,7 @@ class ManagedRunner:
             if process.poll() is not None:
                 return False
             try:
-                with urllib.request.urlopen(url, timeout=2) as response:
+                with safe_urlopen(url, timeout=2) as response:
                     if response.status == 200:
                         return True
             except (urllib.error.URLError, OSError, TimeoutError):

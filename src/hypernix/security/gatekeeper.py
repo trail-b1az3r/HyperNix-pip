@@ -46,6 +46,7 @@ from pathlib import Path
 from typing import Any
 
 from hypernix.security.keymaster import Keymaster, KeyMeta, KeyScope
+from hypernix.security.safeurl import urlopen as safe_urlopen
 
 logger = logging.getLogger(__name__)
 
@@ -614,7 +615,7 @@ class Gatekeeper:
             method="POST",
         )
         try:
-            with urllib.request.urlopen(req, timeout=10):
+            with safe_urlopen(req, timeout=10):
                 pass
             logger.debug("gatekeeper: remote sync OK")
         except (urllib.error.URLError, OSError) as exc:

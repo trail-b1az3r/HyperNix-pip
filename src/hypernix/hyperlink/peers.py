@@ -41,6 +41,8 @@ import urllib.request
 from dataclasses import dataclass
 from typing import Any
 
+from hypernix.security.safeurl import urlopen as safe_urlopen
+
 from .discovery import _tailscale_binary
 
 logger = logging.getLogger(__name__)
@@ -160,7 +162,7 @@ def probe(peer: Peer, *, port: int, scheme: str = "http", timeout: float = PROBE
         request = urllib.request.Request(  # noqa: S310 - scheme is ours, not a peer's
             f"{url}/health", headers={"accept": "application/json"}, method="GET"
         )
-        with urllib.request.urlopen(request, timeout=timeout) as response:  # noqa: S310
+        with safe_urlopen(request, timeout=timeout) as response:
             body = response.read(MAX_BODY)
             payload = json.loads(body)
     except (urllib.error.URLError, OSError, ValueError, json.JSONDecodeError) as exc:

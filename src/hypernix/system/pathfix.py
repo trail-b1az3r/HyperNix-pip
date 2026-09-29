@@ -408,7 +408,7 @@ def ensure_on_path(
         return PathSetupResult(
             "already-on-path",
             f"{directory} is already on PATH — nothing to do.",
-            scripts_dir=directory, shell=shell, profile=target,
+            scripts_dir=directory, shell=shell, profile=target,  # nosec B604 - `shell` here names a shell (bash, zsh, fish), it is not shell=True
         )
 
     if target is None:
@@ -416,7 +416,7 @@ def ensure_on_path(
             "no-profile",
             f"Don't know which startup file {shell!r} reads. Add this yourself:\n"
             f"  {snippet_for_shell(directory, shell)}",
-            scripts_dir=directory, shell=shell,
+            scripts_dir=directory, shell=shell,  # nosec B604 - `shell` here names a shell (bash, zsh, fish), it is not shell=True
         )
 
     existing = ""
@@ -430,7 +430,7 @@ def ensure_on_path(
                 "unreadable",
                 f"Could not read {target}: {exc}\nAdd this yourself:\n"
                 f"  {snippet_for_shell(directory, shell)}",
-                scripts_dir=directory, shell=shell, profile=target,
+                scripts_dir=directory, shell=shell, profile=target,  # nosec B604 - `shell` here names a shell (bash, zsh, fish), it is not shell=True
             )
 
     if BLOCK_START in existing:
@@ -447,7 +447,7 @@ def ensure_on_path(
                 "already-configured",
                 f"{target} already has the hypernix PATH block for {directory}.\n"
                 f"Open a new shell, or run: {session_hint(directory, shell)}",
-                scripts_dir=directory, shell=shell, profile=target,
+                scripts_dir=directory, shell=shell, profile=target,  # nosec B604 - `shell` here names a shell (bash, zsh, fish), it is not shell=True
             )
         existing, _ = _strip_block(existing)
 
@@ -455,7 +455,7 @@ def ensure_on_path(
         return PathSetupResult(
             "would-write",
             f"Would add {directory} to PATH via {target}.",
-            scripts_dir=directory, shell=shell, profile=target,
+            scripts_dir=directory, shell=shell, profile=target,  # nosec B604 - `shell` here names a shell (bash, zsh, fish), it is not shell=True
         )
 
     body = existing
@@ -471,7 +471,7 @@ def ensure_on_path(
             "unwritable",
             f"Could not write {target}: {exc}\nAdd this yourself:\n"
             f"  {snippet_for_shell(directory, shell)}",
-            scripts_dir=directory, shell=shell, profile=target,
+            scripts_dir=directory, shell=shell, profile=target,  # nosec B604 - `shell` here names a shell (bash, zsh, fish), it is not shell=True
         )
 
     return PathSetupResult(
@@ -479,7 +479,7 @@ def ensure_on_path(
         f"Added {directory} to PATH in {target}.\n"
         f"New shells pick it up automatically. For this one:\n"
         f"  {session_hint(directory, shell)}",
-        scripts_dir=directory, shell=shell, profile=target, changed=True,
+        scripts_dir=directory, shell=shell, profile=target, changed=True,  # nosec B604 - `shell` here names a shell (bash, zsh, fish), it is not shell=True
     )
 
 
@@ -493,35 +493,35 @@ def remove_from_path(
         return PathSetupResult(
             "not-configured",
             f"No hypernix PATH block to remove ({target or 'no known profile'}).",
-            shell=shell, profile=target,
+            shell=shell, profile=target,  # nosec B604 - `shell` here names a shell (bash, zsh, fish), it is not shell=True
         )
 
     try:
         text = target.read_text(encoding="utf-8", errors="replace")
     except OSError as exc:
         return PathSetupResult(
-            "unreadable", f"Could not read {target}: {exc}", shell=shell, profile=target
+            "unreadable", f"Could not read {target}: {exc}", shell=shell, profile=target  # nosec B604 - `shell` here names a shell (bash, zsh, fish), it is not shell=True
         )
 
     cleaned, removed = _strip_block(text)
     if not removed:
         return PathSetupResult(
             "not-configured", f"No hypernix PATH block found in {target}.",
-            shell=shell, profile=target,
+            shell=shell, profile=target,  # nosec B604 - `shell` here names a shell (bash, zsh, fish), it is not shell=True
         )
 
     try:
         target.write_text(cleaned, encoding="utf-8")
     except OSError as exc:
         return PathSetupResult(
-            "unwritable", f"Could not write {target}: {exc}", shell=shell, profile=target
+            "unwritable", f"Could not write {target}: {exc}", shell=shell, profile=target  # nosec B604 - `shell` here names a shell (bash, zsh, fish), it is not shell=True
         )
 
     return PathSetupResult(
         "removed",
         f"Removed the hypernix PATH block from {target}.\n"
         "Existing shells keep the old PATH until they're restarted.",
-        shell=shell, profile=target, changed=True,
+        shell=shell, profile=target, changed=True,  # nosec B604 - `shell` here names a shell (bash, zsh, fish), it is not shell=True
     )
 
 
@@ -644,7 +644,7 @@ def cli_main(argv: list[str] | None = None) -> int:
         return 0
 
     if ns.undo:
-        result = remove_from_path(shell=shell, profile=profile)
+        result = remove_from_path(shell=shell, profile=profile)  # nosec B604 - `shell` here names a shell (bash, zsh, fish), it is not shell=True
         print(result.message)
         return 0 if result.status in ("removed", "not-configured") else 1
 
@@ -659,13 +659,13 @@ def cli_main(argv: list[str] | None = None) -> int:
                 file=sys.stderr,
             )
             return 1
-        result = ensure_on_path(apply=True, directory=directory, shell=shell,
+        result = ensure_on_path(apply=True, directory=directory, shell=shell,  # nosec B604 - `shell` here names a shell (bash, zsh, fish), it is not shell=True
                                 profile=profile, force=ns.force)
         print(result.message)
         return 0 if result.status in ("written", "already-on-path", "already-configured") else 1
 
     # Default: --check.
-    result = ensure_on_path(apply=False, directory=directory, shell=shell, profile=profile)
+    result = ensure_on_path(apply=False, directory=directory, shell=shell, profile=profile)  # nosec B604 - `shell` here names a shell (bash, zsh, fish), it is not shell=True
     print(f"scripts directory : {directory}")
     print(f"shell             : {shell}")
     print(f"startup file      : {result.profile or '(unknown)'}")

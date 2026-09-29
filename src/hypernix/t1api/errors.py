@@ -44,8 +44,8 @@ class T1ErrorCode(StrEnum):
     AUTH_INVALID_KEY = "AUTH_INVALID_KEY"
     AUTH_EXPIRED_KEY = "AUTH_EXPIRED_KEY"
     AUTH_REVOKED_KEY = "AUTH_REVOKED_KEY"
-    AUTH_INVALID_TOKEN = "AUTH_INVALID_TOKEN"
-    AUTH_EXPIRED_TOKEN = "AUTH_EXPIRED_TOKEN"
+    AUTH_INVALID_TOKEN = "AUTH_INVALID_TOKEN"  # nosec B105 - an empty default, a prefix or an error-code name, not a credential
+    AUTH_EXPIRED_TOKEN = "AUTH_EXPIRED_TOKEN"  # nosec B105 - an empty default, a prefix or an error-code name, not a credential
     AUTH_INSUFFICIENT_SCOPE = "AUTH_INSUFFICIENT_SCOPE"
     AUTH_ADMIN_REQUIRED = "AUTH_ADMIN_REQUIRED"
 
@@ -72,10 +72,10 @@ class T1ErrorCode(StrEnum):
     SSRF_BLOCKED = "SSRF_BLOCKED"
 
     # --- Beta 2: billing -------------------------------------------------
-    PAYMENT_TOKEN_INVALID = "PAYMENT_TOKEN_INVALID"
+    PAYMENT_TOKEN_INVALID = "PAYMENT_TOKEN_INVALID"  # nosec B105 - an empty default, a prefix or an error-code name, not a credential
     BILLING_PAYMENT_REQUIRED = "BILLING_PAYMENT_REQUIRED"
     BILLING_KEY_REFUSED = "BILLING_KEY_REFUSED"
-    PAYMENT_TOKEN_ALREADY_REDEEMED = "PAYMENT_TOKEN_ALREADY_REDEEMED"
+    PAYMENT_TOKEN_ALREADY_REDEEMED = "PAYMENT_TOKEN_ALREADY_REDEEMED"  # nosec B105 - an empty default, a prefix or an error-code name, not a credential
     INSUFFICIENT_BALANCE = "INSUFFICIENT_BALANCE"
 
     # --- Beta 2: routing ---------------------------------------------------

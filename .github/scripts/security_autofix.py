@@ -75,8 +75,17 @@ def log(msg: str) -> None:
 
 
 # ───────────────────────────── helpers ─────────────────────────────
+def _http_only(url: str) -> str:
+    """The URLs here come from the environment; refuse file:, ftp: and the rest."""
+    import urllib.parse
+
+    if urllib.parse.urlsplit(url).scheme not in ("https", "http"):
+        raise ValueError(f"refusing to fetch a non-HTTP URL: {url!r}")
+    return url
+
+
 def gh(method: str, path: str, body: dict | None = None, *, ok404: bool = False, raw: bool = False):
-    url = path if path.startswith("http") else f"{API}{path}"
+    url = _http_only(path if path.startswith("http") else f"{API}{path}")
     data = json.dumps(body).encode() if body is not None else None
     req = urllib.request.Request(url, data=data, method=method, headers={
         "Authorization": f"Bearer {TOKEN}", "Accept": "application/vnd.github+json",
@@ -84,7 +93,7 @@ def gh(method: str, path: str, body: dict | None = None, *, ok404: bool = False,
         **({"Content-Type": "application/json"} if data else {}),
     })
     try:
-        with urllib.request.urlopen(req, timeout=60) as r:
+        with urllib.request.urlopen(req, timeout=60) as r:  # nosec B310 - scheme checked by _http_only
             text = r.read().decode()
             if raw:
                 return r, text
@@ -118,11 +127,11 @@ def git(*args: str, check: bool = True) -> str:
 
 
 def http_json(url: str, body: dict, headers: dict, timeout: int = 180) -> dict:
-    req = urllib.request.Request(url, data=json.dumps(body).encode(), method="POST",
+    req = urllib.request.Request(_http_only(url), data=json.dumps(body).encode(), method="POST",
                                  headers={"Content-Type": "application/json", **headers})
     for attempt in range(4):
         try:
-            with urllib.request.urlopen(req, timeout=timeout) as r:
+            with urllib.request.urlopen(req, timeout=timeout) as r:  # nosec B310 - scheme checked by _http_only
                 return json.loads(r.read().decode())
         except urllib.error.HTTPError as e:
             if e.code in (429, 500, 502, 503, 529) and attempt < 3:
@@ -425,7 +434,7 @@ def llm_fix(a: Alert) -> bool:
         a.note = "AI patch suspiciously large"
         return False
     eol = "\r\n" if lines and lines[0].endswith("\r\n") else "\n"
-    new_block = [l + eol for l in repl.split("\n")] if repl != "" else []
+    new_block = [part + eol for part in repl.split("\n")] if repl != "" else []
     if new_block and not (e < n or original.endswith(("\n", "\r\n"))):
         new_block[-1] = new_block[-1].rstrip("\r\n")
     new_lines = lines[: s - 1] + new_block + lines[e:]

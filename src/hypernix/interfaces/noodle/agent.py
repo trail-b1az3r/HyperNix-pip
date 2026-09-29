@@ -224,7 +224,8 @@ class Agent:
         return result
 
     def _verify(self) -> tuple[bool, str]:
-        assert self.verifier is not None
+        if self.verifier is None:
+            raise AssertionError('self.verifier is not None')
         try:
             return self.verifier(self.context)
         except Exception as exc:  # noqa: BLE001

@@ -545,7 +545,7 @@ def start(
         command = ["wayvnc", "--render-cursor"]
         if password:
             command += ["--config", str(password)]
-        command += ["0.0.0.0" if listen in ("lan", "all") else "127.0.0.1", str(chosen)]
+        command += ["0.0.0.0" if listen in ("lan", "all") else "127.0.0.1", str(chosen)]  # nosec B104 - compares against or binds 0.0.0.0 only where the caller chose LAN access
 
     try:
         # An argv list, no shell; the one value from the environment,

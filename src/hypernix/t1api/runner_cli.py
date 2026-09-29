@@ -43,6 +43,8 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
+from hypernix.security.safeurl import urlopen as safe_urlopen
+
 __all__ = ["main", "cli_main"]
 
 DEFAULT_URL = "http://127.0.0.1:8000"
@@ -138,7 +140,7 @@ def _request(
     if key:
         request.add_header("Authorization", f"Bearer {key}")
     try:
-        with urllib.request.urlopen(request, timeout=900) as response:
+        with safe_urlopen(request, timeout=900) as response:
             return response.status, json.loads(response.read() or b"{}")
     except urllib.error.HTTPError as error:
         body = error.read() or b"{}"
