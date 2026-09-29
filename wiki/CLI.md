@@ -276,11 +276,19 @@ hypernix doctor              # report
 hypernix doctor --fix        # install missing runtime deps
 ```
 
-Reports Python / torch / numpy / safetensors / huggingface-hub / gguf /
-tqdm / sentencepiece versions, OS + distro, and the resolved
-`llama-quantize` path. `--fix` routes through `hypernix.deps.ensure`
-to install any runtime deps that aren't pinned by the wheel
-(`torch` is never touched — users control their CUDA flavor).
+Reports the OS and distro, Python (3.10–3.14), torch, and every other
+dependency in `pyproject.toml` (numpy, safetensors, huggingface-hub,
+gguf, tqdm, rich, sentencepiece) -- those decide the exit code. Then,
+without failing the run: the GPU and the brewer preset and optimizer it
+suits, `llama-quantize` (fetched on first use if missing), the patched
+llama.cpp and whether it reads every HyperNix type, the models folder
+(through symlinks, with any broken link and its target), and which
+extras are installed.
+
+`--fix` installs every dependency but torch, plus the `train` extra,
+through `hypernix.deps.ensure`, and puts the console scripts on PATH
+(`torch` is never touched — users control their CUDA flavor). Full
+table: [PipelineMechanics](PipelineMechanics.md#hypernixdoctor--environment-diagnostic).
 
 ## `fetch-llama-quantize`
 

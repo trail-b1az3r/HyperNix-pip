@@ -241,6 +241,21 @@ def _proc_state(pid: int) -> str:
     return stat.rsplit(")", 1)[1].split()[0]
 
 
+def _settled_state(pid: int, stopped: bool, timeout: float = 5.0) -> str:
+    """The process state once the signal has landed.
+
+    kill() returns when the signal is queued, not when the process has
+    stopped or continued; /proc changes when the kernel next schedules
+    it. Read at once, a loaded machine sometimes still shows "S".
+    """
+    deadline = time.monotonic() + timeout
+    state = _proc_state(pid)
+    while (state in ("T", "t")) != stopped and time.monotonic() < deadline:
+        time.sleep(0.02)
+        state = _proc_state(pid)
+    return state
+
+
 @pytest.fixture
 def sleeper():
     """A real child in its own session, so killpg hits it and not us."""
@@ -275,7 +290,7 @@ class TestControls:
 
         monitor.pause(run)
 
-        assert _proc_state(sleeper.pid) in ("T", "t")
+        assert _settled_state(sleeper.pid, stopped=True) in ("T", "t")
         assert monitor.get("run-1").state == RunState.PAUSED.value
 
     def test_resume_puts_it_back(self, tmp_path, sleeper):
@@ -285,7 +300,7 @@ class TestControls:
         monitor.pause(run)
         monitor.resume(run)
 
-        assert _proc_state(sleeper.pid) not in ("T", "t")
+        assert _settled_state(sleeper.pid, stopped=False) not in ("T", "t")
         assert monitor.get("run-1").state == RunState.RUNNING.value
 
     def test_stopping_a_paused_run_really_ends_it(self, tmp_path, sleeper):

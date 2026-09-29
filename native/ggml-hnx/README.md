@@ -85,6 +85,14 @@ exactly, including all 256 FP8 codes.
 GPU backends are upstream's, untouched: `-DGGML_CUDA=ON` and
 `-DGGML_HIPBLAS=ON` are passed straight through.
 
+When it finishes, `build.sh` writes the build directory to
+`~/.hypernix/llama-build`. The T1 runner, `hnx runtime` and `hnx doctor`
+read it, so a server installed with pip uses this build rather than a
+stock llama.cpp it finds first (`HNX_LLAMA_BUILD` still overrides it).
+They also check the build per type: one patched before INT3 and FP8
+existed is reported as needing a rebuild, not handed a model it cannot
+open. See [Runtime](../../wiki/Runtime.md#which-build-it-uses).
+
 Test the decoder on its own, without cloning 200 MB of upstream:
 
 ```bash

@@ -567,6 +567,41 @@ Historical wording and technical detail are retained during format normalization
   by hand. Its default is `docs/public/v1/json`, where the workflow and
   the site read it.
 
+𖢥 Fixed the runner starting a stock llama.cpp on a model with HyperNix
+  types.
+  - From a server log: `hnx-t1 runner load hypernix-3-mini` started a
+    stock llama-server, which rejected the INT3 layer with "invalid
+    ggml type 210. should be in [0, 43)". The first build found was
+    used, of any kind, and a T1 server installed with pip could not see
+    the patched build in the checkout at all.
+  - The runner reads the model's tensor types first and picks the first
+    patched build that reads all of them. When none does, it refuses
+    before starting anything, names the missing types, and says whether
+    to build or rebuild. A build patched before INT3 and FP8 existed is
+    caught too: each type is checked by its own decoder symbol.
+  - `native/ggml-hnx/build.sh` records where it built in
+    `~/.hypernix/llama-build`, which the runner, `hnx runtime` and
+    `hnx doctor` read. `HNX_LLAMA_BUILD` is now used as named, never
+    passed over.
+
+🐛 Fixed a runner load that crashed being reported as "did not start
+  within 300s".
+  - llama-server had exited 50 ms in. The refusal now says it exited,
+    with its exit code, above its output.
+
+🐛 Brought `hnx doctor` up to date.
+  - Python 3.14 read as unsupported, `rich` was neither checked nor
+    installed by `--fix`, and a missing `llama-quantize` failed the
+    whole check though `hypernix quantize` fetches one itself. Its
+    Python range and dependency list now match `pyproject.toml`, and a
+    test keeps them matching. `--fix` also installs `accelerate` with
+    the rest of the `train` extra.
+  - It now reports the GPU and the brewer preset and optimizer it
+    suits, the patched llama.cpp and any HyperNix types it lacks, the
+    models folder (through symlinks, with broken links and their
+    targets, and without creating it), and which extras are installed.
+    Only the interpreter and the required packages decide the exit code.
+
 ### Documentation
 
 📚 Changed the README and `examples/t1api/.env.example` for the T1 server

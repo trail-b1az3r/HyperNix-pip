@@ -157,11 +157,19 @@ cmake -S "$TARGET" -B "$TARGET/build" \
   "${@:2}"
 cmake --build "$TARGET/build" -j"$(nproc 2>/dev/null || echo 4)"
 
+# Say where the build is, so a T1 server installed with pip -- which has
+# no way to know where this checkout is -- serves models with this build
+# rather than a stock llama.cpp it finds first. HNX_LLAMA_BUILD still
+# overrides it.
+mkdir -p "$HOME/.hypernix"
+printf '%s\n' "$(cd "$TARGET/build" && pwd)" > "$HOME/.hypernix/llama-build"
+
 cat <<DONE
 
 ==> done
 
   binaries   $TARGET/build/bin
+  recorded   ~/.hypernix/llama-build (the T1 runner and \`hnx runtime\` use it)
   try it     $TARGET/build/bin/llama-cli -m YOUR-MODEL.gguf -p "hello"
 
   model-IQ0.5_XXXL.gguf used to be printed there literally, and people

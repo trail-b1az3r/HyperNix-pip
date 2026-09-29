@@ -42,7 +42,10 @@ def fake_build(root: Path, *, patched: bool = True) -> Path:
     """A directory shaped like a built llama.cpp."""
     bin_dir = root / "build" / "bin"
     bin_dir.mkdir(parents=True)
-    marker = b"hnx_ggml_to_float_iq0_5" if patched else b"nothing to see"
+    # A current patched build exports one decoder per HyperNix type.
+    marker = (b"".join(f"hnx_ggml_to_float_{s}".encode() + b"\0"
+                       for s in bridge.HNX_TYPE_SYMBOLS.values())
+              if patched else b"nothing to see")
     for stem in bridge.CORE_LIBRARIES:
         (bin_dir / f"{stem}{_suffix()}").write_bytes(b"ELF" + marker)
     server = bin_dir / "llama-server"
