@@ -43,6 +43,19 @@ TYPES = {
     204: "int1_binary",        # INT1
 }
 
+# The fixed-codebook types, from hypernix.quant.lowbit. Same record
+# layout; the C side decodes them through its levels tables, which is
+# exactly what these check -- FP8's 256-entry E4M3 table in particular,
+# which nobody should have to proofread by eye.
+CODEBOOKS = {
+    205: "INT4",
+    206: "FP2",
+    208: "INT8",
+    209: "INT2",
+    210: "INT3",
+    211: "FP8",
+}
+
 
 def _blocks(rng: random.Random) -> list[list[float]]:
     """Weight blocks worth checking, not just random ones.
@@ -101,6 +114,25 @@ def main(argv: list[str]) -> int:
                 )
                 return 1
             decoded = subbit.dequantize_block(packed, packing)
+            out += struct.pack("<ii", type_id, block_bytes)
+            out += packed
+            out += struct.pack(f"<{len(decoded)}f", *decoded)
+            records += 1
+
+    from hypernix.quant import lowbit
+
+    for type_id, codec in CODEBOOKS.items():
+        block_bytes = lowbit.packed_block_bytes(codec)
+        for weights in _blocks(rng):
+            packed = lowbit.quantize_array(weights, codec)
+            if len(packed) != block_bytes:
+                print(
+                    f"gen_vectors: {codec} packed {len(packed)} bytes, "
+                    f"expected {block_bytes}",
+                    file=sys.stderr,
+                )
+                return 1
+            decoded = [float(v) for v in lowbit.dequantize_array(packed, codec)]
             out += struct.pack("<ii", type_id, block_bytes)
             out += packed
             out += struct.pack(f"<{len(decoded)}f", *decoded)

@@ -117,7 +117,8 @@ class TestHyprslugListTiers:
     def test_both_families_are_present_and_distinguished(self, listing):
         """A caller has to be able to tell which of these produce a file
         any llama.cpp can open."""
-        assert all(r["upstream"] for r in listing["recipes"])
+        needs_patch = {r["name"] for r in listing["recipes"] if not r["upstream"]}
+        assert needs_patch == {"Q8_K", "hnx_Q6_H_k", "hnx_Q6_H_4", "hnx_Q6_H_2"}
         assert not any(t["upstream"] for t in listing["sub_bit_tiers"])
 
     def test_every_recipe_it_lists_is_one_it_can_write(self, listing):

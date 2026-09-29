@@ -218,6 +218,42 @@ Historical wording and technical detail are retained during format normalization
 
 ### Added
 
+๋࣭⭑ Added three hybrid quantisations to hyprslug: `hnx_Q6_H_k` (`q6h`),
+  `hnx_Q6_H_4` (`q6h4`) and `hnx_Q6_H_2` (`q6h2`).
+  - Each tensor's format is chosen from its role and its depth: the
+    output head, `attn_v` and `ffn_down` get the most bits, the first and
+    last eighth of the layers more than the middle, and the aggressive
+    formats land only on the middle layers' `ffn_gate`/`ffn_up`.
+  - `q6h` mixes Q8_K, Q6_K and Q3_K (about 5.9 bits/weight on a 7B
+    llama). `q6h4` mixes Q6_K, Q5_K, Q4_K, INT3 and Q2_K (about 4.8).
+    `q6h2` is `q6h4` with IQ1_XS for Q2_K, Q3_K_L's formats for Q4_K_S,
+    and no INT3 (about 4.5).
+  - IQ1_XS is not a llama.cpp type (upstream has IQ1_S and IQ1_M). Here
+    it names `HNX_1375BIT`, the HyperNix one-bit type below IQ1_S.
+  - The token embedding is always a stock K-quant, because llama.cpp's
+    `get_rows` aborts on anything else.
+  - The file records `hypernix.hybrid`, `hypernix.ingredients` and
+    `hypernix.needs: ggml-hnx`, and a `general.file_type` from 1301 up
+    rather than claiming Q6_K.
+
+✨ Added `Q8_K`, `INT3` and `FP8` to hyprslug and to `native/ggml-hnx`.
+  - `Q8_K` is llama.cpp's own block used as a weight. Stock llama.cpp
+    only quantises activations to it; the patch now gives it a `to_float`
+    and an int8 x int8 `vec_dot`.
+  - `INT3` (type 210, 3.06 bits/weight) is the codebook between INT2 and
+    INT4. `FP8` (type 211, 8.06) stores E4M3 floats as their own bytes
+    against an FP16 block scale.
+  - Checked in patched llama.cpp on a trained 8-layer hyperNix0x-v2
+    model. For every new target and every hybrid, the logits from the
+    quantised file matched the logits from the same weights dequantised
+    to F32, to within 0.7% of the range; INT3 and FP8 matched to within
+    0.01%.
+
+✨ Added hyperNix0x-v2 (Brewer) models as hyprslug input.
+  - `hyprslug brewer_models/mymodel q6h4` takes a model folder or a `.pt`
+    checkpoint. It exports an F16 GGUF beside the output, quantises that,
+    and deletes it.
+
 ✨ Added a real GGUF export for Brewer (hyperNix0x-v2) models, which run in
   any llama.cpp: stock, LM Studio's, and the `native/ggml-hnx` patched one.
   - `brew export --format gguf` wrote an `HNXG` file, a JSON header and raw
@@ -424,6 +460,16 @@ Historical wording and technical detail are retained during format normalization
 
 ### Fixed
 
+🐛 Fixed `hnx_quantize_rows` in `native/ggml-hnx` writing sign bits for
+  the codebook types.
+  - INT4, FP2, INT8 and INT2 went through the sign-and-scale encoder, so
+    a C caller got noise. They now get the nearest level. hyprslug never
+    used this path, so no file it wrote was affected.
+
+🐛 Fixed hyprslug's summary for a recipe printing `()` and `0.000 where
+  it packed`.
+  - A recipe has several formats, listed under `mix`, not one packing.
+
 𖢥 Fixed `brew train` throwing away its character vocabulary.
   - It built the table from the corpus, trained on it, and kept it in
     memory only, so a model it trained could never turn its output ids
@@ -496,6 +542,11 @@ Historical wording and technical detail are retained during format normalization
 
 ### Tests
 
+🧪 Added `tests/quant/test_hyprslug_hybrids.py` (54): Q8_K's block and
+  bsums, INT3 and FP8 round trips, FP8 codes being E4M3 bytes, where each
+  hybrid puts each format, and Brewer folders as input.
+  - `hnx_selftest` now cross-checks the six codebook types against Python
+    (99 blocks, exact), and checks the Q8_K dot product.
 🧪 Added `tests/security/test_safeurl.py` (12) and
   `tests/repo/test_codacy_sarif_filter.py` (3).
 🧪 Added `tests/models/test_brewer_gguf.py` (28), including a check that

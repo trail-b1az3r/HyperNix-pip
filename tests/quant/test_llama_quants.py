@@ -32,6 +32,9 @@ ALL_FORMATS = sorted(lq.FORMATS)
 #: scrambled" bounds. A format whose bits went to the wrong place lands
 #: one to two orders of magnitude above its entry, not just above it.
 ERROR_BUDGET = {
+    # Q8_K's scale covers 256 weights, Q8_0's 32, so on these outlier-
+    # heavy samples Q8_K is the looser of the two despite the FP32 scale.
+    "Q8_K": 0.04,
     "Q8_0": 0.03,
     "Q6_K": 0.05,
     "Q5_1": 0.09,
@@ -82,7 +85,8 @@ class TestBlockGeometry:
     def test_bits_per_weight_ranks_the_formats_in_the_expected_order(self):
         order = sorted(ALL_FORMATS, key=lambda n: lq.FORMATS[n].bits_per_weight)
         assert order[0] == "Q2_K"
-        assert order[-1] == "Q8_0"
+        # Q8_K's FP32 scale puts it just above Q8_0: 9.125 against 8.5.
+        assert order[-2:] == ["Q8_0", "Q8_K"]
 
     @pytest.mark.parametrize("name", ALL_FORMATS)
     def test_a_partial_block_is_refused_not_padded(self, name):

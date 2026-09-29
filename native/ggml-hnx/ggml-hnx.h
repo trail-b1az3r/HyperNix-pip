@@ -104,6 +104,21 @@ extern "C" {
 #define HNX_TYPE_INT8    208
 #define HNX_TYPE_INT2    209
 
+/* Added in 0.72.6.post3, same family and shape again.
+ *
+ * INT3 is two's complement -4..3: 768 code bits per block, so codes run
+ * across byte boundaries, which the LSB-first readers here already
+ * handle for any width.
+ *
+ * FP8 is E4M3 (OCP "FN": no infinities, S.1111.111 is NaN) against the
+ * FP16 block scale. Each code is the E4M3 byte itself, so a kernel with
+ * native FP8 can use the codes directly; the table below is only the
+ * portable path. The two NaN codes decode to zero -- hyprslug never
+ * writes them, and a file that has one should lose a weight, not a
+ * block. */
+#define HNX_TYPE_INT3    210
+#define HNX_TYPE_FP8     211
+
 /* One block of each type. Laid out to match the file exactly: an FP16
  * scale then the packed sign bits, with no padding. The static asserts
  * below are load-bearing — a compiler that padded these would read every
@@ -119,6 +134,16 @@ typedef struct { uint16_t d; uint8_t qs[128]; } hnx_block_int4;   /* 130 */
 typedef struct { uint16_t d; uint8_t qs[64]; } hnx_block_fp2;     /*  66 */
 typedef struct { uint16_t d; uint8_t qs[256]; } hnx_block_int8;   /* 258 */
 typedef struct { uint16_t d; uint8_t qs[64]; } hnx_block_int2;    /*  66 */
+typedef struct { uint16_t d; uint8_t qs[96]; } hnx_block_int3;    /*  98 */
+typedef struct { uint16_t d; uint8_t qs[256]; } hnx_block_fp8;    /* 258 */
+
+/* llama.cpp's own Q8_K block: an FP32 scale, 256 int8 codes and sixteen
+ * 16-code partial sums. Upstream only ever quantises activations to it,
+ * so stock ggml has no kernel that takes it as a weight; the patch gives
+ * it one (hnx_vec_dot_q8_k) with Q8_K activations, which makes the dot
+ * product an int8 x int8 sum per block. */
+#define HNX_Q8K_BYTES 292
+typedef struct { float d; int8_t qs[256]; int16_t bsums[16]; } hnx_block_q8_k;
 
 /* Everything a caller needs to handle one of these types without a
  * switch over the ids. */
@@ -170,6 +195,14 @@ int hnx_dequantize_block(int type, const void *src, float *dst);
  * stay small, and expanding a row to float32 to multiply it gives that
  * back at exactly the moment it matters. */
 float hnx_vec_dot(int type, const void *x, const float *y, size_t nblocks);
+
+/* dot(x, y) where both are `nblocks` Q8_K blocks: sum over blocks of
+ * x.d * y.d * sum(x.qs * y.qs), accumulated in int32 per block. */
+float hnx_vec_dot_q8_k(const void *x, const void *y, size_t nblocks);
+
+/* Decode `nblocks` Q8_K blocks. Upstream has dequantize_row_q8_K but
+ * does not register it; this is the same arithmetic. */
+void hnx_dequantize_q8_k(const void *src, float *dst, size_t nblocks);
 
 /* Encode `nblocks * HNX_BLOCK_SIZE` floats into `dst`.
  *

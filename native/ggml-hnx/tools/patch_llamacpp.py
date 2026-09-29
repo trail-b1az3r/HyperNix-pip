@@ -71,6 +71,8 @@ MARK_TRAITS_CPU = "GGML_HNX_TRAITS_CPU"
 MARK_INCLUDE = "GGML_HNX_INCLUDE"
 MARK_INCLUDE_CPU = "GGML_HNX_INCLUDE_CPU"
 MARK_CMAKE = "GGML_HNX_SOURCES"
+MARK_Q8K = "GGML_HNX_Q8K_TO_FLOAT"
+MARK_Q8K_CPU = "GGML_HNX_Q8K_VEC_DOT"
 
 #: One past the highest HyperNix type id. ``GGML_TYPE_COUNT`` sizes both
 #: trait tables, and upstream pins it to a literal (``= 43`` at the time
@@ -88,7 +90,7 @@ MARK_CMAKE = "GGML_HNX_SOURCES"
 #: upstream's own 36, 37 and 38 are commented out and their table slots
 #: sit empty -- and every read goes through a bounds-checked lookup by
 #: an id some tensor actually carries, never a sweep of the range.
-HNX_TYPE_COUNT = 210
+HNX_TYPE_COUNT = 212
 
 # The enum values. Kept as one string so the marker and the entries
 # cannot be added separately -- a tree with the marker but not the
@@ -110,6 +112,8 @@ ENUM_ADDITION = f"""\
         GGML_TYPE_HNX_1375   = 207,
         GGML_TYPE_HNX_INT8   = 208,
         GGML_TYPE_HNX_INT2   = 209,
+        GGML_TYPE_HNX_INT3   = 210,
+        GGML_TYPE_HNX_FP8    = 211,
 """
 
 TRAITS_ADDITION = f"""\
@@ -206,6 +210,22 @@ TRAITS_ADDITION = f"""\
         .to_float                 = (ggml_to_float_t) hnx_ggml_to_float_int2,
         .from_float_ref           = NULL,
     }},
+    [GGML_TYPE_HNX_INT3] = {{
+        .type_name                = "INT3",
+        .blck_size                = HNX_BLOCK_SIZE,
+        .type_size                = 98,
+        .is_quantized             = true,
+        .to_float                 = (ggml_to_float_t) hnx_ggml_to_float_int3,
+        .from_float_ref           = NULL,
+    }},
+    [GGML_TYPE_HNX_FP8] = {{
+        .type_name                = "FP8",
+        .blck_size                = HNX_BLOCK_SIZE,
+        .type_size                = 258,
+        .is_quantized             = true,
+        .to_float                 = (ggml_to_float_t) hnx_ggml_to_float_fp8,
+        .from_float_ref           = NULL,
+    }},
 """
 
 TRAITS_CPU_ADDITION = f"""\
@@ -284,6 +304,34 @@ TRAITS_CPU_ADDITION = f"""\
         .vec_dot_type             = GGML_TYPE_F32,
         .nrows                    = 1,
     }},
+    [GGML_TYPE_HNX_INT3] = {{
+        .from_float               = NULL,
+        .vec_dot                  = (ggml_vec_dot_t) hnx_ggml_vec_dot_int3,
+        .vec_dot_type             = GGML_TYPE_F32,
+        .nrows                    = 1,
+    }},
+    [GGML_TYPE_HNX_FP8] = {{
+        .from_float               = NULL,
+        .vec_dot                  = (ggml_vec_dot_t) hnx_ggml_vec_dot_fp8,
+        .vec_dot_type             = GGML_TYPE_F32,
+        .nrows                    = 1,
+    }},
+"""
+
+# Q8_K as a weight. Upstream's Q8_K entries exist -- it is what K-quant
+# activations are quantised to -- but neither has what a weight type
+# needs: no to_float in ggml.c, no vec_dot in ggml-cpu.c. These go
+# *inside* upstream's own entries rather than as a second
+# [GGML_TYPE_Q8_K] initialiser, because in a designated initialiser
+# list the later entry wins, and ours would come first and be ignored.
+Q8K_TRAITS_ADDITION = f"""\
+        .to_float                 = (ggml_to_float_t) hnx_ggml_to_float_q8_K, // {MARK_Q8K}
+"""
+
+Q8K_TRAITS_CPU_ADDITION = f"""\
+        .vec_dot                  = (ggml_vec_dot_t) hnx_ggml_vec_dot_q8_K, // {MARK_Q8K_CPU}
+        .vec_dot_type             = GGML_TYPE_Q8_K,
+        .nrows                    = 1,
 """
 
 INCLUDE_ADDITION = f'#include "ggml-hnx-shim.h" // {MARK_INCLUDE}\n'
@@ -405,6 +453,26 @@ EDITS = (
         after=True,
         what="the ggml-cpu.c includes",
         marker=MARK_INCLUDE_CPU,
+    ),
+    Edit(
+        candidates=("ggml/src/ggml.c", "src/ggml.c", "ggml.c"),
+        anchor='.type_name                = "q8_K",',
+        addition=Q8K_TRAITS_ADDITION,
+        after=True,
+        what="the Q8_K format entry",
+        marker=MARK_Q8K,
+    ),
+    Edit(
+        candidates=(
+            "ggml/src/ggml-cpu/ggml-cpu.c",
+            "ggml/src/ggml-cpu.c",
+            "src/ggml-cpu/ggml-cpu.c",
+        ),
+        anchor=".from_float               = quantize_row_q8_K,",
+        addition=Q8K_TRAITS_CPU_ADDITION,
+        after=True,
+        what="the Q8_K CPU entry",
+        marker=MARK_Q8K_CPU,
     ),
     Edit(
         candidates=("ggml/src/CMakeLists.txt", "src/CMakeLists.txt"),

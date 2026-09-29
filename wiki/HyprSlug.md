@@ -193,6 +193,69 @@ byte-for-byte reproduction of upstream's *mix* policy: llama.cpp picks
 per layer index as well as per tensor role, and a file claiming to match
 that exactly would be claiming something nobody has checked.
 
+## Q8_K, INT3, FP8 and the hybrids
+
+Added in 0.72.6.post3. All of these need llama.cpp built with
+[`native/ggml-hnx`](../native/ggml-hnx/README.md); `--list-tiers` marks
+them `[needs ggml-hnx]`, and the file's own metadata says so.
+
+| Target | Aliases | bits/weight | What it is |
+|---|---|---|---|
+| `Q8_K` | `q8k` | 9.125 | llama.cpp's own Q8_K block used as a weight: an FP32 scale, 256 int8 codes, 16 partial sums. Stock llama.cpp only quantises activations to it and has no weight kernel; the patch adds one (int8 x int8 against Q8_K activations). Token embeddings go to `Q8_0`, because llama.cpp's `get_rows` cannot read Q8_K. |
+| `INT3` | `i3` | 3.0625 | Codebook, two's complement `-4..3`, FP16 block scale. Type 210. |
+| `FP8` | `e4m3`, `f8` | 8.0625 | E4M3 floats against an FP16 block scale. Each code is the E4M3 byte itself, so a kernel with native FP8 can use it directly. Type 211. |
+| `hnx_Q6_H_k` | `q6h` | ~5.9 | Hybrid of Q8_K, Q6_K and Q3_K_M's Q3_K. |
+| `hnx_Q6_H_4` | `q6h4` | ~4.8 | Hybrid of Q6_K, Q5_K, Q4_K_S's Q4_K, INT3 and Q2_K. |
+| `hnx_Q6_H_2` | `q6h2` | ~4.5 | `hnx_Q6_H_4` with IQ1_XS in place of Q2_K, Q3_K_L in place of Q4_K_S, and no INT3. |
+
+The hybrids pick each tensor's format automatically, from its role and
+its depth:
+
+| Tensor | `hnx_Q6_H_k` | `hnx_Q6_H_4` | `hnx_Q6_H_2` |
+|---|---|---|---|
+| `output` | Q8_K | Q6_K | Q6_K |
+| `token_embd` | Q6_K | Q4_K | Q3_K |
+| `attn_v` | Q8_K on the edge and every third layer, else Q6_K | Q6_K | Q6_K |
+| `ffn_down` | same as `attn_v` | Q6_K on those layers, else Q5_K | Q6_K on those layers, else Q5_K |
+| `attn_q` / `attn_k` | Q6_K | Q4_K / Q4_K | Q3_K / Q5_K |
+| `attn_output` | Q6_K | Q5_K | Q5_K |
+| `ffn_gate`, first and last eighth | Q6_K | Q5_K | Q5_K |
+| `ffn_gate`, the quarters between | Q3_K | Q4_K | Q3_K |
+| `ffn_gate`, middle half | Q3_K | Q2_K | IQ1_XS |
+| `ffn_up`, middle half | Q3_K | INT3 | Q3_K |
+
+"Every third layer" is llama.cpp's own `use_more_bits` rule. The token
+embedding is always a stock K-quant, because llama.cpp's CPU `get_rows`
+has no case for a HyperNix type or for Q8_K and aborts on the first
+token.
+
+**IQ1_XS is not a llama.cpp type.** Upstream's one-bit types are `IQ1_S`
+(1.56 bits/weight) and `IQ1_M` (1.75). Both are built on a 2048-entry
+grid and are unusable without an importance matrix. The HyperNix type
+below IQ1_S is `HNX_1375BIT`: every sign plus a magnitude per 16 weights,
+at 1.375 bits/weight. `IQ1_XS` means that type here, as a hybrid
+ingredient and as a target name.
+
+Checked against patched llama.cpp on a trained 8-layer hyperNix0x-v2
+model. For every target, the logits from the quantised file matched the
+logits from the same weights dequantised to F32, to within 0.7% of the
+logit range. That rules out the kernels, bit orders and tables as a
+source of error. The codebook types matched to within 0.01%.
+
+## hyperNix0x-v2 models as input
+
+A Brewer model folder, or a `.pt` checkpoint, is accepted wherever a
+GGUF is:
+
+```
+hyprslug brewer_models/mymodel q6h4 -o mymodel.q6h4.gguf
+```
+
+It is exported to an F16 GGUF first ([Model Training
+Guide](Model-Training-Guide.md#running-a-brewed-model-in-llamacpp)),
+staged beside the output rather than in `/tmp`, and deleted afterwards.
+The report says `from a hyperNix0x-v2 model`.
+
 ## Requantising
 
 A `Q8_0` GGUF is the only copy of the model most people have, and

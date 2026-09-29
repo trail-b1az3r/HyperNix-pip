@@ -135,7 +135,7 @@ class TestTheCAgreesWithPython:
             seen.add(type_id)
             offset += 8 + block_bytes + 256 * 4
 
-        assert seen == {200, 201, 202, 203, 204}
+        assert seen == {200, 201, 202, 203, 204, 205, 206, 208, 209, 210, 211}
         assert offset == len(data), "the vector file does not parse cleanly"
 
     def test_the_block_sizes_match_the_registry(self):
@@ -154,6 +154,8 @@ class TestTheCAgreesWithPython:
             ("IQ0.75_M", GGMLType.HNX_IQ0_75, "iq0_75"),
             ("IQ0.5_XXXL", GGMLType.HNX_IQ0_5, "iq0_5"),
             ("IQ0.25_UXL", GGMLType.HNX_IQ0_25, "iq0_25"),
+            ("INT3", GGMLType.HNX_INT3, "int3"),
+            ("FP8", GGMLType.HNX_FP8, "fp8"),
         ):
             block_size, block_bytes = _BLOCK_SHAPE[ggml_type]
             assert block_size == 256, f"{name} is not a 256-weight block"
@@ -197,7 +199,7 @@ class TestTheShimCompilesAgainstGgmlsSignatures:
         shim = (NATIVE / "ggml-hnx-shim.c").read_text(encoding="utf-8")
         header = (NATIVE / "ggml-hnx-shim.h").read_text(encoding="utf-8")
 
-        for suffix in ("iq0_9", "iq0_75", "iq0_5", "iq0_25", "int1"):
+        for suffix in ("iq0_9", "iq0_75", "iq0_5", "iq0_25", "int1", "int3", "fp8"):
             assert f"HNX_SHIM({suffix}," in shim.replace(" ", "")  or \
                    f"HNX_SHIM({suffix}," in shim
             assert f"hnx_ggml_to_float_{suffix}" in header
@@ -245,6 +247,10 @@ def _fake_llamacpp(root: Path) -> Path:
         "\n"
         "static const struct ggml_type_traits type_traits[GGML_TYPE_COUNT] = {\n"
         "    [GGML_TYPE_F32] = { .type_name = \"f32\" },\n"
+        "    [GGML_TYPE_Q8_K] = {\n"
+        "        .type_name                = \"q8_K\",\n"
+        "        .blck_size                = QK_K,\n"
+        "    },\n"
         "};\n",
         encoding="utf-8",
     )
@@ -254,6 +260,9 @@ def _fake_llamacpp(root: Path) -> Path:
         "static const struct ggml_type_traits_cpu "
         "type_traits_cpu[GGML_TYPE_COUNT] = {\n"
         "    [GGML_TYPE_F32] = { .vec_dot_type = GGML_TYPE_F32 },\n"
+        "    [GGML_TYPE_Q8_K] = {\n"
+        "        .from_float               = quantize_row_q8_K,\n"
+        "    },\n"
         "};\n",
         encoding="utf-8",
     )

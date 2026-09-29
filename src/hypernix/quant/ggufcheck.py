@@ -78,7 +78,7 @@ block_elements = type_block_size
 #: and asserts this agrees with it, so adding a type on the C side
 #: without updating this is a test failure rather than a surprise.
 LLAMA_CPP_REGISTERED_TYPES: frozenset[int] = frozenset(
-    {200, 201, 202, 203, 204, 205, 206, 207, 208, 209}
+    {200, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211}
 )
 
 

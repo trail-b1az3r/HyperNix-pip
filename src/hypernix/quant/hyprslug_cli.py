@@ -514,7 +514,9 @@ def main(argv: list[str] | None = None) -> int:
                         "bits_per_weight": round(recipe.bits_per_weight, 3),
                         "overrides": {frag: fmt for frag, fmt in recipe.overrides},
                         "output": recipe.output,
-                        "upstream": True,
+                        "upstream": not recipe.needs_patched_llamacpp,
+                        "hybrid": recipe.rule is not None,
+                        "ingredients": list(recipe.ingredients),
                         "summary": recipe.summary,
                     }
                     for name, recipe in sorted(
@@ -533,14 +535,19 @@ def main(argv: list[str] | None = None) -> int:
                   f"a width conversion, not a quantisation"
                   + ("  [F32 exponent range]" if name == "BF16" else ""))
         print()
-        print("llama.cpp quant types (any llama.cpp reads the result):")
+        print("llama.cpp quant types and HyperNix hybrids:")
         for name, recipe in sorted(
             RECIPES.items(), key=lambda kv: -kv[1].bits_per_weight
         ):
             widened = ", ".join(sorted({fmt for _, fmt in recipe.overrides}))
             note = f"  wider: {widened}" if widened else ""
-            print(f"  {name:8} {recipe.bits_per_weight:5.2f} bits/weight  "
-                  f"{recipe.summary}{note}")
+            if recipe.rule is not None:
+                note = f"  mixes: {', '.join(recipe.ingredients)}"
+            reach = "  [needs ggml-hnx]" if recipe.needs_patched_llamacpp else ""
+            print(f"  {name:10} {recipe.bits_per_weight:5.2f} bits/weight  "
+                  f"{recipe.summary}{note}{reach}")
+        print("  [needs ggml-hnx] loads in llama.cpp built with native/ggml-hnx;")
+        print("  stock llama.cpp has no weight kernel for Q8_K or the HyperNix types.")
         print()
         print("HyperNix extension tiers (stock llama.cpp refuses these by name):")
         for tier, (type_id, packing) in TIER_TYPES.items():

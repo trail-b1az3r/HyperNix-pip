@@ -222,6 +222,16 @@ TIERS: dict[str, Tier] = {
              "0.397 relative RMS); the zeros are the reason to pick it.",
              packing="hypernix-int2",
              honest_warning=_EXTENSION_WARNING),
+        Tier("INT3", 3.0625, False,
+             "Signed 3-bit two's complement, -4..3: the step between INT2 "
+             "and INT4. Codes cross byte boundaries.",
+             packing="hypernix-int3",
+             honest_warning=_EXTENSION_WARNING),
+        Tier("FP8", 8.0625, False,
+             "E4M3 floats against an FP16 block scale, each code stored as "
+             "its E4M3 byte so an FP8 kernel can read it directly.",
+             packing="hypernix-fp8",
+             honest_warning=_EXTENSION_WARNING),
     )
 }
 
@@ -238,9 +248,9 @@ _TIER_ALIASES = {
     "iq0.25_uxl": "IQ0.25_UXL", "iq0.25uxl": "IQ0.25_UXL",
     "iq025uxl": "IQ0.25_UXL", "iq.0.25uxl": "IQ0.25_UXL",
     "int1": "INT1", "int4": "INT4", "fp2": "FP2",
-    "int8": "INT8", "int2": "INT2",
+    "int8": "INT8", "int2": "INT2", "int3": "INT3", "fp8": "FP8",
     "i1": "INT1", "i4": "INT4", "f2": "FP2",
-    "i8": "INT8", "i2": "INT2",
+    "i8": "INT8", "i2": "INT2", "i3": "INT3", "f8": "FP8", "e4m3": "FP8",
     # The rate has a decimal point in it and people write it every way
     # there is. get_tier() lower-cases and strips dashes and underscores,
     # so these cover the rest.
