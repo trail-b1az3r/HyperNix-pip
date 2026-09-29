@@ -1,15 +1,15 @@
 {
   "definition": "non-blank source lines across repository code roots: src, scripts, tests, examples, bin, native, docs/src",
-  "total_lines": 215566,
-  "code_files": 690,
+  "total_lines": 220168,
+  "code_files": 708,
   "top_files": [
     {
       "path": "src/hypernix/t1api/routers/hyperlink.py",
-      "lines": 2250
+      "lines": 2337
     },
     {
       "path": "src/hypernix/interfaces/hyped.py",
-      "lines": 2138
+      "lines": 2141
     },
     {
       "path": "src/hypernix/waiter/cli.py",
@@ -21,19 +21,23 @@
     },
     {
       "path": "src/hypernix/hyped_pro.ts",
-      "lines": 1796
+      "lines": 1800
     },
     {
       "path": "src/hypernix/t1api/schemas.py",
-      "lines": 1614
-    },
-    {
-      "path": "src/hypernix/models/neo_oven.py",
-      "lines": 1474
+      "lines": 1630
     },
     {
       "path": "src/hypernix/interfaces/cli.py",
-      "lines": 1424
+      "lines": 1483
+    },
+    {
+      "path": "src/hypernix/models/neo_oven.py",
+      "lines": 1475
+    },
+    {
+      "path": "src/hypernix/quant/hyprslug.py",
+      "lines": 1405
     },
     {
       "path": "src/hypernix/monitoring/tv.py",
@@ -41,15 +45,19 @@
     },
     {
       "path": "src/hypernix/data/gather.py",
-      "lines": 1320
+      "lines": 1321
+    },
+    {
+      "path": "src/hypernix/training/brewer.py",
+      "lines": 1247
     },
     {
       "path": "src/hypernix/interfaces/hyped_pro_core.py",
-      "lines": 1191
+      "lines": 1192
     },
     {
       "path": "src/hypernix/system/fusebox.py",
-      "lines": 1174
+      "lines": 1176
     },
     {
       "path": "src/hypernix/monitoring/map.py",
@@ -60,19 +68,11 @@
       "lines": 1112
     },
     {
-      "path": "src/hypernix/quant/hyprslug.py",
-      "lines": 1107
-    },
-    {
-      "path": "tests/test_hypernix_t1_service.py",
+      "path": "tests/t1api/test_hypernix_t1_service.py",
       "lines": 1100
     },
     {
-      "path": "src/hypernix/training/brewer.py",
-      "lines": 1083
-    },
-    {
-      "path": "tests/test_hyperlink_ios_wiring.py",
+      "path": "tests/ios/test_hyperlink_ios_wiring.py",
       "lines": 1065
     },
     {
@@ -92,8 +92,8 @@
       "lines": 1050
     },
     {
-      "path": "tests/test_install_script.py",
-      "lines": 1024
+      "path": "tests/repo/test_install_script.py",
+      "lines": 1026
     },
     {
       "path": "src/hypernix/optimizers/pressure_cooker_v5s.py",
@@ -101,11 +101,11 @@
     },
     {
       "path": "src/hypernix/security/keymaster.py",
-      "lines": 968
+      "lines": 977
     },
     {
       "path": "src/hypernix/models/old_oven.py",
-      "lines": 962
+      "lines": 963
     },
     {
       "path": "src/hypernix/training/train.py",
@@ -113,26 +113,26 @@
     },
     {
       "path": "src/hypernix/security/t2keys.py",
-      "lines": 953
+      "lines": 954
     },
     {
       "path": "src/hypernix/__init__.py",
-      "lines": 935
+      "lines": 945
     },
     {
-      "path": "tests/test_v0710_gatekeeper_keymaster.py",
+      "path": "tests/security/test_v0710_gatekeeper_keymaster.py",
       "lines": 910
     }
   ],
   "contributors": [
     {
       "author": "Claude",
-      "additions": 187299,
-      "deletions": 10080,
-      "net": 177219,
-      "changes": 197379,
-      "commits": 211,
-      "files": 1182
+      "additions": 208605,
+      "deletions": 13887,
+      "net": 194718,
+      "changes": 222492,
+      "commits": 229,
+      "files": 1463
     },
     {
       "author": "minerofthesoal",
@@ -190,6 +190,6 @@
     }
   ],
   "history_available": true,
-  "commit": "8a2f4c6604f709278d5f20dd8cfecf27d4e64843",
+  "commit": "727ffcd3ff16c4df34cfee9429d0900fd4edd5a0",
   "generated_at": null
 }

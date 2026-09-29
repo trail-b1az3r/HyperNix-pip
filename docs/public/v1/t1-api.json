@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-t1-api",
   "generated_at": "2026-09-20T21:20:58Z",
-  "commit": "8a2f4c6604f709278d5f20dd8cfecf27d4e64843",
+  "commit": "727ffcd3ff16c4df34cfee9429d0900fd4edd5a0",
   "history_available": true,
   "server_extra": "pip install 'hypernix[t1api]'",
   "client_install": "pip install hypernix",
@@ -71,7 +71,7 @@
     {
       "module": "hypernix.t1api.accounts",
       "source": "src/hypernix/t1api/accounts.py",
-      "line_count": 704,
+      "line_count": 710,
       "summary": "t1api.accounts \u2014 sign up for a T1 key without already having one.",
       "api": [
         {
@@ -197,73 +197,73 @@
             {
               "name": "set_password",
               "signature": "def set_passwordself, account_id: str, password: str -> None",
-              "line": 608,
+              "line": 614,
               "doc": "Set a password without checking the old one. Admin path only."
             },
             {
               "name": "change_password",
               "signature": "def change_passwordself, account_id: str, current: str, new: str -> None",
-              "line": 620,
+              "line": 626,
               "doc": "Set a password, having checked the old one. The self-service path."
             },
             {
               "name": "set_active",
               "signature": "def set_activeself, account_id: str, active: bool -> None",
-              "line": 631,
+              "line": 637,
               "doc": ""
             },
             {
               "name": "remember_key",
               "signature": "def remember_keyself, account_id: str, key_id: str -> None",
-              "line": 636,
+              "line": 642,
               "doc": "Record that a key belongs to this account."
             },
             {
               "name": "forget_key",
               "signature": "def forget_keyself, account_id: str, key_id: str -> None",
-              "line": 647,
+              "line": 653,
               "doc": ""
             },
             {
               "name": "start_session",
               "signature": "def start_sessionself, account: Account, *, client_ip: str='', user_agent: str='' -> tuple[Session, str]",
-              "line": 656,
+              "line": 662,
               "doc": "Open a session. Returns ``(session, token)``."
             },
             {
               "name": "resolve_session",
               "signature": "def resolve_sessionself, token: str, *, client_ip: str='' -> tuple[Session, Account] | None",
-              "line": 687,
+              "line": 693,
               "doc": "The session and account a cookie names, or ``None``."
             },
             {
               "name": "check_csrf",
               "signature": "def check_csrfself, session: Session, supplied: str -> bool",
-              "line": 741,
+              "line": 747,
               "doc": "Whether *supplied* matches this session's CSRF token."
             },
             {
               "name": "end_session",
               "signature": "def end_sessionself, session_id: str -> bool",
-              "line": 754,
+              "line": 760,
               "doc": ""
             },
             {
               "name": "revoke_all_sessions",
               "signature": "def revoke_all_sessionsself, account_id: str -> int",
-              "line": 761,
+              "line": 767,
               "doc": ""
             },
             {
               "name": "purge_expired_sessions",
               "signature": "def purge_expired_sessionsself -> int",
-              "line": 768,
+              "line": 774,
               "doc": ""
             },
             {
               "name": "sessions_for",
               "signature": "def sessions_forself, account_id: str -> list[Session]",
-              "line": 776,
+              "line": 782,
               "doc": ""
             }
           ]
@@ -272,19 +272,20 @@
           "kind": "function",
           "name": "registration_mode_from_env",
           "signature": "def registration_mode_from_env -> str",
-          "line": 796,
+          "line": 802,
           "doc": "``T1_ACCOUNTS_REGISTRATION``, defaulting to the safe one."
         },
         {
           "kind": "function",
           "name": "invite_codes_from_env",
           "signature": "def invite_codes_from_env -> tuple[str, ...]",
-          "line": 801,
+          "line": 807,
           "doc": ""
         }
       ],
       "errors": [
-        "AccountError"
+        "AccountError",
+        "ValueError"
       ],
       "deprecations": [],
       "required_modules": [
@@ -295,6 +296,13 @@
         }
       ],
       "changes": [
+        {
+          "sha": "99ddc1ae",
+          "date": "2026-09-29",
+          "author": "Claude",
+          "subject": "Security: make Codacy scan again, and clear most Bandit findings",
+          "api_changes": []
+        },
         {
           "sha": "2324f0fa",
           "date": "2026-09-15",
@@ -508,7 +516,7 @@
     {
       "module": "hypernix.t1api.app",
       "source": "src/hypernix/t1api/app.py",
-      "line_count": 686,
+      "line_count": 698,
       "summary": "t1api.app \u2014 ``create_app()``, the T1 API's FastAPI factory.",
       "api": [
         {
@@ -532,6 +540,13 @@
         }
       ],
       "changes": [
+        {
+          "sha": "999d2e1b",
+          "date": "2026-09-28",
+          "author": "Claude",
+          "subject": "Model sync: mirror ~/.hypernix/models into ~/.hypernix/t1api/models",
+          "api_changes": []
+        },
         {
           "sha": "a4b757dd",
           "date": "2026-09-27",
@@ -584,13 +599,6 @@
           "date": "2026-09-16",
           "author": "Claude",
           "subject": "Fix the CI build break, and ship an IPA that can run a model",
-          "api_changes": []
-        },
-        {
-          "sha": "030bf41b",
-          "date": "2026-09-15",
-          "author": "Claude",
-          "subject": "hyperlink: one model list from every source, and a Stop that stops",
           "api_changes": []
         }
       ]
@@ -696,6 +704,13 @@
         }
       ],
       "changes": [
+        {
+          "sha": "99ddc1ae",
+          "date": "2026-09-29",
+          "author": "Claude",
+          "subject": "Security: make Codacy scan again, and clear most Bandit findings",
+          "api_changes": []
+        },
         {
           "sha": "0068bbf2",
           "date": "2026-09-23",
@@ -901,6 +916,13 @@
       ],
       "changes": [
         {
+          "sha": "99ddc1ae",
+          "date": "2026-09-29",
+          "author": "Claude",
+          "subject": "Security: make Codacy scan again, and clear most Bandit findings",
+          "api_changes": []
+        },
+        {
           "sha": "462b479d",
           "date": "2026-09-23",
           "author": "Claude",
@@ -989,20 +1011,13 @@
           "author": "Claude",
           "subject": "Group hypernix modules into category packages",
           "api_changes": []
-        },
-        {
-          "sha": "bccc73ec",
-          "date": "2026-08-20",
-          "author": "minerofthesoal",
-          "subject": "fixes",
-          "api_changes": []
         }
       ]
     },
     {
       "module": "hypernix.t1api.authhistory",
       "source": "src/hypernix/t1api/authhistory.py",
-      "line_count": 310,
+      "line_count": 312,
       "summary": "t1api.authhistory \u2014 undo and redo for authentication changes.",
       "api": [
         {
@@ -1062,32 +1077,33 @@
             {
               "name": "undo",
               "signature": "def undoself, applier: Any -> AuthHistoryEntry",
-              "line": 255,
+              "line": 257,
               "doc": "Reverse the most recent operation."
             },
             {
               "name": "redo",
               "signature": "def redoself, applier: Any -> AuthHistoryEntry",
-              "line": 279,
+              "line": 281,
               "doc": "Replay the oldest undone operation."
             },
             {
               "name": "list_entries",
               "signature": "def list_entriesself, *, limit: int=50, include_undone: bool=True -> list[AuthHistoryEntry]",
-              "line": 298,
+              "line": 300,
               "doc": ""
             },
             {
               "name": "describe",
               "signature": "def describeself, *, limit: int=50 -> dict[str, Any]",
-              "line": 306,
+              "line": 308,
               "doc": "The stack as an endpoint should return it \u2014 no key material."
             }
           ]
         }
       ],
       "errors": [
-        "T1APIError"
+        "T1APIError",
+        "ValueError"
       ],
       "deprecations": [],
       "required_modules": [
@@ -1098,6 +1114,13 @@
         }
       ],
       "changes": [
+        {
+          "sha": "99ddc1ae",
+          "date": "2026-09-29",
+          "author": "Claude",
+          "subject": "Security: make Codacy scan again, and clear most Bandit findings",
+          "api_changes": []
+        },
         {
           "sha": "370119db",
           "date": "2026-08-26",
@@ -1474,6 +1497,13 @@
       ],
       "changes": [
         {
+          "sha": "99ddc1ae",
+          "date": "2026-09-29",
+          "author": "Claude",
+          "subject": "Security: make Codacy scan again, and clear most Bandit findings",
+          "api_changes": []
+        },
+        {
           "sha": "bccc73ec",
           "date": "2026-08-20",
           "author": "minerofthesoal",
@@ -1838,6 +1868,13 @@
       ],
       "changes": [
         {
+          "sha": "99ddc1ae",
+          "date": "2026-09-29",
+          "author": "Claude",
+          "subject": "Security: make Codacy scan again, and clear most Bandit findings",
+          "api_changes": []
+        },
+        {
           "sha": "5d516951",
           "date": "2026-09-01",
           "author": "Claude",
@@ -1878,28 +1915,28 @@
     {
       "module": "hypernix.t1api.chat_cli",
       "source": "src/hypernix/t1api/chat_cli.py",
-      "line_count": 168,
+      "line_count": 169,
       "summary": "``hypernix-t1 chat`` \u2014 talk to the served model from the terminal.",
       "api": [
         {
           "kind": "function",
           "name": "build_parser",
           "signature": "def build_parser -> argparse.ArgumentParser",
-          "line": 155,
+          "line": 157,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "main",
           "signature": "def mainargv: list[str] | None=None -> int",
-          "line": 172,
+          "line": 174,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "cli_main",
           "signature": "def cli_main -> None",
-          "line": 196,
+          "line": 198,
           "doc": ""
         }
       ],
@@ -1913,6 +1950,13 @@
         }
       ],
       "changes": [
+        {
+          "sha": "99ddc1ae",
+          "date": "2026-09-29",
+          "author": "Claude",
+          "subject": "Security: make Codacy scan again, and clear most Bandit findings",
+          "api_changes": []
+        },
         {
           "sha": "fa59f481",
           "date": "2026-09-26",
@@ -1970,7 +2014,7 @@
     {
       "module": "hypernix.t1api.config",
       "source": "src/hypernix/t1api/config.py",
-      "line_count": 634,
+      "line_count": 649,
       "summary": "t1api.config \u2014 environment-variable configuration for the T1 API.",
       "api": [
         {
@@ -1983,55 +2027,55 @@
             {
               "name": "from_env",
               "signature": "def from_envcls, *, load_dotenv: bool=True, dotenv_path: str | Path='.env' -> T1APIConfig",
-              "line": 490,
+              "line": 506,
               "doc": ""
             },
             {
               "name": "is_production",
               "signature": "def is_productionself -> bool",
-              "line": 500,
+              "line": 516,
               "doc": ""
             },
             {
               "name": "storage_backend",
               "signature": "def storage_backendself -> str",
-              "line": 504,
+              "line": 520,
               "doc": ""
             },
             {
               "name": "tls_settings",
               "signature": "def tls_settingsself -> TLSSettings",
-              "line": 507,
+              "line": 523,
               "doc": ""
             },
             {
               "name": "rate_limit_rules",
               "signature": "def rate_limit_rulesself -> Any",
-              "line": 519,
+              "line": 535,
               "doc": "Parsed rate-limit rules, or None to use the defaults."
             },
             {
               "name": "describe_secrets",
               "signature": "def describe_secretsself -> dict[str, bool]",
-              "line": 537,
+              "line": 553,
               "doc": "Which secrets are set. Values never included \u2014 this is what ``GET /status`` uses to tell an operator what's missing without telling anyone what it is."
             },
             {
               "name": "public_dict",
               "signature": "def public_dictself -> dict[str, object]",
-              "line": 551,
+              "line": 567,
               "doc": "Explicit allowlist of config surfaced by GET /config. Never includes ``token_secret``, ``deploy_secret``, ``database_url``, or any future secret field."
             },
             {
               "name": "production_problems",
               "signature": "def production_problemsself -> list[str]",
-              "line": 593,
+              "line": 609,
               "doc": "Every reason this config is unsafe for production, as text."
             },
             {
               "name": "validate_for_production",
               "signature": "def validate_for_productionself, *, strict: bool | None=None -> None",
-              "line": 685,
+              "line": 701,
               "doc": "Raise ``CONFIG_INVALID`` if this config is unsafe for production."
             }
           ]
@@ -2049,6 +2093,20 @@
         }
       ],
       "changes": [
+        {
+          "sha": "216b2a30",
+          "date": "2026-09-28",
+          "author": "Claude",
+          "subject": "Model sync: mirror T1_MODELS_SOURCE, not the download folder",
+          "api_changes": []
+        },
+        {
+          "sha": "999d2e1b",
+          "date": "2026-09-28",
+          "author": "Claude",
+          "subject": "Model sync: mirror ~/.hypernix/models into ~/.hypernix/t1api/models",
+          "api_changes": []
+        },
         {
           "sha": "59c7a9f4",
           "date": "2026-09-27",
@@ -2089,20 +2147,6 @@
           "date": "2026-09-22",
           "author": "Claude",
           "subject": "t1api: MCP server support, with plugins",
-          "api_changes": []
-        },
-        {
-          "sha": "cc94bf5a",
-          "date": "2026-09-16",
-          "author": "Claude",
-          "subject": "t1: run a model without LM Studio, and switch it from the API",
-          "api_changes": []
-        },
-        {
-          "sha": "88c9024f",
-          "date": "2026-09-16",
-          "author": "Claude",
-          "subject": "t1: noodle over the API \u2014 files, edits, fish and archives",
           "api_changes": []
         }
       ]
@@ -3100,6 +3144,13 @@
       ],
       "changes": [
         {
+          "sha": "99ddc1ae",
+          "date": "2026-09-29",
+          "author": "Claude",
+          "subject": "Security: make Codacy scan again, and clear most Bandit findings",
+          "api_changes": []
+        },
+        {
           "sha": "589ebbdc",
           "date": "2026-09-23",
           "author": "Claude",
@@ -3911,7 +3962,7 @@
     {
       "module": "hypernix.t1api.launchscript_cli",
       "source": "src/hypernix/t1api/launchscript_cli.py",
-      "line_count": 322,
+      "line_count": 324,
       "summary": "``hypernix-t1 launch-script`` \u2014 run something that outlives the SSH session.",
       "api": [
         {
@@ -3940,7 +3991,7 @@
           "kind": "function",
           "name": "cli_main",
           "signature": "def cli_main -> None",
-          "line": 364,
+          "line": 366,
           "doc": ""
         }
       ],
@@ -3957,6 +4008,20 @@
         }
       ],
       "changes": [
+        {
+          "sha": "fdb60dd8",
+          "date": "2026-09-29",
+          "author": "Claude",
+          "subject": "hypernix-t1 launch-script: -1 'CMD' replaces -$ 'CMD'",
+          "api_changes": []
+        },
+        {
+          "sha": "99ddc1ae",
+          "date": "2026-09-29",
+          "author": "Claude",
+          "subject": "Security: make Codacy scan again, and clear most Bandit findings",
+          "api_changes": []
+        },
         {
           "sha": "589ebbdc",
           "date": "2026-09-23",
@@ -4259,35 +4324,35 @@
     {
       "module": "hypernix.t1api.localserver",
       "source": "src/hypernix/t1api/localserver.py",
-      "line_count": 100,
+      "line_count": 101,
       "summary": "Where the T1 API on this machine is, for the command-line clients.",
       "api": [
         {
           "kind": "function",
           "name": "config_dir",
           "signature": "def config_dir -> Path",
-          "line": 47,
+          "line": 49,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "configured_url",
           "signature": "def configured_urlexplicit: str='' -> tuple[str, str]",
-          "line": 78,
+          "line": 80,
           "doc": "``(base_url, where_it_came_from)`` for the T1 API on this machine."
         },
         {
           "kind": "function",
           "name": "is_t1_api",
           "signature": "def is_t1_apibase_url: str, *, timeout: float=0.6 -> bool",
-          "line": 98,
+          "line": 100,
           "doc": "Does *base_url* answer ``/health`` the way the T1 API does?"
         },
         {
           "kind": "function",
           "name": "discover",
           "signature": "def discoverexclude: str='', *, host: str=DEFAULT_HOST -> str",
-          "line": 112,
+          "line": 114,
           "doc": "The first T1 API answering on loopback, or ``\"\"``."
         }
       ],
@@ -4301,6 +4366,13 @@
         }
       ],
       "changes": [
+        {
+          "sha": "99ddc1ae",
+          "date": "2026-09-29",
+          "author": "Claude",
+          "subject": "Security: make Codacy scan again, and clear most Bandit findings",
+          "api_changes": []
+        },
         {
           "sha": "fa59f481",
           "date": "2026-09-26",
@@ -4338,14 +4410,14 @@
     {
       "module": "hypernix.t1api.mcp",
       "source": "src/hypernix/t1api/mcp.py",
-      "line_count": 420,
+      "line_count": 428,
       "summary": "t1api.mcp \u2014 the T1 API as an MCP server, and the plugins that extend it.",
       "api": [
         {
           "kind": "class",
           "name": "ToolError",
           "signature": "class ToolError",
-          "line": 80,
+          "line": 81,
           "doc": "A tool failed in a way the *model* should be told about.",
           "methods": []
         },
@@ -4353,27 +4425,27 @@
           "kind": "function",
           "name": "text_content",
           "signature": "def text_contenttext: str -> list[dict[str, Any]]",
-          "line": 89,
+          "line": 90,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "error_result",
           "signature": "def error_resultmessage: str -> dict[str, Any]",
-          "line": 93,
+          "line": 94,
           "doc": ""
         },
         {
           "kind": "class",
           "name": "MCPTool",
           "signature": "class MCPTool",
-          "line": 98,
+          "line": 99,
           "doc": "One thing the server can do, described so a model can choose it.",
           "methods": [
             {
               "name": "describe",
               "signature": "def describeself -> dict[str, Any]",
-              "line": 117,
+              "line": 118,
               "doc": ""
             }
           ]
@@ -4382,13 +4454,13 @@
           "kind": "class",
           "name": "MCPResource",
           "signature": "class MCPResource",
-          "line": 130,
+          "line": 131,
           "doc": "Something readable by URI. Context rather than action.",
           "methods": [
             {
               "name": "describe",
               "signature": "def describeself -> dict[str, Any]",
-              "line": 140,
+              "line": 141,
               "doc": ""
             }
           ]
@@ -4397,19 +4469,19 @@
           "kind": "class",
           "name": "MCPPlugin",
           "signature": "class MCPPlugin",
-          "line": 150,
+          "line": 151,
           "doc": "What a plugin has to be.",
           "methods": [
             {
               "name": "tools",
               "signature": "def toolsself -> Iterable[MCPTool]",
-              "line": 161,
+              "line": 162,
               "doc": ""
             },
             {
               "name": "resources",
               "signature": "def resourcesself -> Iterable[MCPResource]",
-              "line": 164,
+              "line": 165,
               "doc": ""
             }
           ]
@@ -4418,49 +4490,49 @@
           "kind": "class",
           "name": "MCPServer",
           "signature": "class MCPServer",
-          "line": 169,
+          "line": 170,
           "doc": "The protocol, over a registry of tools and resources.",
           "methods": [
             {
               "name": "add_tool",
               "signature": "def add_toolself, tool: MCPTool -> None",
-              "line": 182,
+              "line": 183,
               "doc": ""
             },
             {
               "name": "add_resource",
               "signature": "def add_resourceself, resource: MCPResource -> None",
-              "line": 192,
+              "line": 193,
               "doc": ""
             },
             {
               "name": "add_plugin",
               "signature": "def add_pluginself, plugin: MCPPlugin -> None",
-              "line": 197,
+              "line": 198,
               "doc": "Take a plugin's tools and resources."
             },
             {
               "name": "plugins",
               "signature": "def pluginsself -> list[str]",
-              "line": 225,
+              "line": 226,
               "doc": ""
             },
             {
               "name": "tool_names",
               "signature": "def tool_namesself -> list[str]",
-              "line": 229,
+              "line": 230,
               "doc": ""
             },
             {
               "name": "handle",
               "signature": "def handleself, message: Any, *, scopes: Iterable[str]=(), is_admin: bool=False -> dict[str, Any] | None",
-              "line": 234,
+              "line": 235,
               "doc": "One JSON-RPC message in, one response out \u2014 or None."
             },
             {
               "name": "handle_text",
               "signature": "def handle_textself, body: str, **kwargs -> dict[str, Any] | list | None",
-              "line": 295,
+              "line": 303,
               "doc": "A raw body in, for the transport. Handles batches."
             }
           ]
@@ -4479,6 +4551,13 @@
         }
       ],
       "changes": [
+        {
+          "sha": "b4381824",
+          "date": "2026-09-27",
+          "author": "Claude",
+          "subject": "Security: safe checkpoint loading, MCP errors, key paths, and working scanners",
+          "api_changes": []
+        },
         {
           "sha": "3bd1c25d",
           "date": "2026-09-22",
@@ -4588,7 +4667,7 @@
     {
       "module": "hypernix.t1api.mcptools",
       "source": "src/hypernix/t1api/mcptools.py",
-      "line_count": 229,
+      "line_count": 230,
       "summary": "t1api.mcptools \u2014 the T1 capabilities, described for a model.",
       "api": [
         {
@@ -4603,7 +4682,7 @@
           "kind": "function",
           "name": "build_server",
           "signature": "def build_servercontext: ServerContext, *, instructions: str='' -> MCPServer",
-          "line": 167,
+          "line": 168,
           "doc": "Every built-in tool, on a fresh server."
         }
       ],
@@ -4619,6 +4698,13 @@
         }
       ],
       "changes": [
+        {
+          "sha": "999d2e1b",
+          "date": "2026-09-28",
+          "author": "Claude",
+          "subject": "Model sync: mirror ~/.hypernix/models into ~/.hypernix/t1api/models",
+          "api_changes": []
+        },
         {
           "sha": "3bd1c25d",
           "date": "2026-09-22",
@@ -4688,7 +4774,7 @@
     {
       "module": "hypernix.t1api.modelindex",
       "source": "src/hypernix/t1api/modelindex.py",
-      "line_count": 361,
+      "line_count": 366,
       "summary": "``hypernix-t1 index`` \u2014 turn a folder of GGUFs into a model registry.",
       "api": [
         {
@@ -4752,7 +4838,7 @@
           "kind": "function",
           "name": "write_registry",
           "signature": "def write_registryentries: list[ModelEntry], path: str | Path, *, refresh: bool=False -> dict[str, Any]",
-          "line": 337,
+          "line": 343,
           "doc": "Merge *entries* into the registry at *path*."
         }
       ],
@@ -4766,6 +4852,13 @@
         }
       ],
       "changes": [
+        {
+          "sha": "99636442",
+          "date": "2026-09-29",
+          "author": "Claude",
+          "subject": "HyperLink: symlinked models load, and models can be linked from the app",
+          "api_changes": []
+        },
         {
           "sha": "182b1efc",
           "date": "2026-09-16",
@@ -4897,6 +4990,244 @@
             {
               "kind": "added",
               "text": "def _human(result: dict, rows: list, *, dry_run: bool) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def main(argv: list[str] | None = None) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def cli_main() -> None:"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "module": "hypernix.t1api.modelsync",
+      "source": "src/hypernix/t1api/modelsync.py",
+      "line_count": 298,
+      "summary": "t1api.modelsync \u2014 mirror ``~/.hypernix/models`` into the T1 server's own folder.",
+      "api": [
+        {
+          "kind": "function",
+          "name": "default_source",
+          "signature": "def default_source -> Path",
+          "line": 64,
+          "doc": "The shared models folder: where HyperLink downloads and people drop files."
+        },
+        {
+          "kind": "function",
+          "name": "default_target",
+          "signature": "def default_targetconfig_dir: str | Path | None=None -> Path",
+          "line": 71,
+          "doc": "``<T1 config dir>/models``, which is ``~/.hypernix/t1api/models``."
+        },
+        {
+          "kind": "class",
+          "name": "SyncResult",
+          "signature": "class SyncResult",
+          "line": 78,
+          "doc": "",
+          "methods": [
+            {
+              "name": "changed",
+              "signature": "def changedself -> bool",
+              "line": 91,
+              "doc": ""
+            },
+            {
+              "name": "to_dict",
+              "signature": "def to_dictself -> dict[str, Any]",
+              "line": 94,
+              "doc": ""
+            },
+            {
+              "name": "summary",
+              "signature": "def summaryself -> str",
+              "line": 99,
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "sync",
+          "signature": "def syncsource: str | Path | None=None, target: str | Path | None=None, *, prune: bool=True, dry_run: bool=False -> SyncResult",
+          "line": 181,
+          "doc": "Make *target* a symlink mirror of every model file in *source*."
+        },
+        {
+          "kind": "function",
+          "name": "source_for",
+          "signature": "def source_forconfig: Any -> Path",
+          "line": 316,
+          "doc": "``T1_MODELS_SOURCE``, else ``~/.hypernix/models``. Never the download folder: install-t1.sh points that at the T1 folder itself."
+        },
+        {
+          "kind": "function",
+          "name": "target_for",
+          "signature": "def target_forconfig: Any -> Path",
+          "line": 322,
+          "doc": ""
+        },
+        {
+          "kind": "function",
+          "name": "serving_dir",
+          "signature": "def serving_dirconfig: Any, *, force: bool=False -> Path | None",
+          "line": 326,
+          "doc": "The folder the server reads models from, synced first when it syncs."
+        }
+      ],
+      "errors": [
+        "FileNotFoundError",
+        "ValueError"
+      ],
+      "deprecations": [],
+      "required_modules": [
+        {
+          "module": "fastapi / uvicorn / pydantic",
+          "extra": "t1api",
+          "requirement": "pip install 'hypernix[t1api]'"
+        }
+      ],
+      "changes": [
+        {
+          "sha": "216b2a30",
+          "date": "2026-09-28",
+          "author": "Claude",
+          "subject": "Model sync: mirror T1_MODELS_SOURCE, not the download folder",
+          "api_changes": []
+        },
+        {
+          "sha": "999d2e1b",
+          "date": "2026-09-28",
+          "author": "Claude",
+          "subject": "Model sync: mirror ~/.hypernix/models into ~/.hypernix/t1api/models",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def default_source() -> Path:"
+            },
+            {
+              "kind": "added",
+              "text": "def default_target(config_dir: str | Path | None = None) -> Path:"
+            },
+            {
+              "kind": "added",
+              "text": "class SyncResult:"
+            },
+            {
+              "kind": "added",
+              "text": "def changed(self) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_dict(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def summary(self) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _skipped(name: str) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def _abs(path: Path) -> Path:"
+            },
+            {
+              "kind": "added",
+              "text": "def _points_into(link: Path, root: Path) -> Path | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _load_manifest(target: Path) -> set[str]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _save_manifest(target: Path, folders: set[str]) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _wanted(source: Path) -> tuple[set[str], set[str]]:"
+            },
+            {
+              "kind": "added",
+              "text": "def sync("
+            },
+            {
+              "kind": "added",
+              "text": "def source_for(config: Any) -> Path:"
+            },
+            {
+              "kind": "added",
+              "text": "def target_for(config: Any) -> Path:"
+            },
+            {
+              "kind": "added",
+              "text": "def serving_dir(config: Any, *, force: bool = False) -> Path | None:"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "module": "hypernix.t1api.modelsync_cli",
+      "source": "src/hypernix/t1api/modelsync_cli.py",
+      "line_count": 107,
+      "summary": "``hypernix-sync`` (also ``t1-sync`` and ``hypernix-t1 sync``).",
+      "api": [
+        {
+          "kind": "function",
+          "name": "main",
+          "signature": "def mainargv: list[str] | None=None -> int",
+          "line": 70,
+          "doc": ""
+        },
+        {
+          "kind": "function",
+          "name": "cli_main",
+          "signature": "def cli_main -> None",
+          "line": 125,
+          "doc": ""
+        }
+      ],
+      "errors": [],
+      "deprecations": [],
+      "required_modules": [
+        {
+          "module": "fastapi / uvicorn / pydantic",
+          "extra": "t1api",
+          "requirement": "pip install 'hypernix[t1api]'"
+        }
+      ],
+      "changes": [
+        {
+          "sha": "216b2a30",
+          "date": "2026-09-28",
+          "author": "Claude",
+          "subject": "Model sync: mirror T1_MODELS_SOURCE, not the download folder",
+          "api_changes": []
+        },
+        {
+          "sha": "999d2e1b",
+          "date": "2026-09-28",
+          "author": "Claude",
+          "subject": "Model sync: mirror ~/.hypernix/models into ~/.hypernix/t1api/models",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _setting(name: str) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _index(target: Path) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def _print(result, *, as_json: bool, verbose: bool) -> None:"
             },
             {
               "kind": "added",
@@ -7674,336 +8005,350 @@
     {
       "module": "hypernix.t1api.routers.hyperlink",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line_count": 2250,
+      "line_count": 2337,
       "summary": "``/hyperlink`` \u2014 the surface the iOS app talks to.",
       "api": [
         {
           "kind": "function",
           "name": "list_endpoints",
           "signature": "def list_endpointsrequest: Request, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> HyperLinkEndpointsResponse",
-          "line": 193,
+          "line": 195,
           "doc": "Every address this machine can be reached on, best first."
         },
         {
           "kind": "function",
           "name": "list_peers",
           "signature": "def list_peersrequest: Request, include_offline: bool=Query(False, description='Also list peers that are down.'), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> HyperLinkPeersResponse",
-          "line": 228,
+          "line": 230,
           "doc": "Other HyperNix machines on this tailnet, as *candidates*."
         },
         {
           "kind": "function",
           "name": "create_pairing_code",
           "signature": "def create_pairing_codepayload: PairingCreateRequest, request: Request, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), registry: DeviceRegistry=Depends(get_device_registry), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id), audit=Depends(get_audit_log) -> PairingCodeResponse",
-          "line": 286,
+          "line": 288,
           "doc": "Mint a code for a phone to redeem. Admin only, on the PC."
         },
         {
           "kind": "function",
           "name": "redeem_pairing_code",
           "signature": "def redeem_pairing_codepayload: PairingRedeemRequest, request: Request, registry: DeviceRegistry=Depends(get_device_registry), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id), audit=Depends(get_audit_log) -> PairingRedeemResponse",
-          "line": 334,
+          "line": 336,
           "doc": "Exchange a pairing code for this device's permanent token."
         },
         {
           "kind": "function",
           "name": "revoke_pairing_code",
           "signature": "def revoke_pairing_codecode: str, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), registry: DeviceRegistry=Depends(get_device_registry), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> GenericOkResponse",
-          "line": 403,
+          "line": 405,
           "doc": "Cancel a code that has not been redeemed yet."
         },
         {
           "kind": "function",
           "name": "list_devices",
           "signature": "def list_devicesinclude_revoked: bool=Query(default=False), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), registry: DeviceRegistry=Depends(get_device_registry), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> DeviceListResponse",
-          "line": 427,
+          "line": 429,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "whoami",
           "signature": "def whoamiprincipal: HyperLinkPrincipal=Depends(get_hyperlink_principal), registry: DeviceRegistry=Depends(get_device_registry), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> DeviceResponse",
-          "line": 445,
+          "line": 447,
           "doc": "What the caller's own device token resolves to."
         },
         {
           "kind": "function",
           "name": "rename_device",
           "signature": "def rename_devicedevice_id: str, payload: dict[str, Any], principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), registry: DeviceRegistry=Depends(get_device_registry), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> DeviceResponse",
-          "line": 471,
+          "line": 473,
           "doc": "Rename a device. A device may rename itself; only an admin may rename another one \u2014 otherwise a phone could relabel itself as somebody else's before doing something regrettable."
         },
         {
           "kind": "function",
           "name": "revoke_device",
           "signature": "def revoke_devicedevice_id: str, request: Request, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), registry: DeviceRegistry=Depends(get_device_registry), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id), audit=Depends(get_audit_log) -> DeviceResponse",
-          "line": 491,
+          "line": 493,
           "doc": "Unpair a device."
         },
         {
           "kind": "function",
           "name": "list_sessions",
           "signature": "def list_sessionsinclude_archived: bool=Query(default=False), limit: int=Query(default=50, ge=1, le=200), offset: int=Query(default=0, ge=0), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: ChatSessionStore=Depends(get_session_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> SessionListResponse",
-          "line": 531,
+          "line": 533,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "create_session",
           "signature": "def create_sessionpayload: SessionCreateRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: ChatSessionStore=Depends(get_session_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> SessionResponse",
-          "line": 552,
+          "line": 554,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "get_session",
           "signature": "def get_sessionsession_id: str, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: ChatSessionStore=Depends(get_session_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> SessionResponse",
-          "line": 574,
+          "line": 576,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "update_session",
           "signature": "def update_sessionsession_id: str, payload: SessionUpdateRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: ChatSessionStore=Depends(get_session_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> SessionResponse",
-          "line": 587,
+          "line": 589,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "retitle_session",
           "signature": "def retitle_sessionsession_id: str, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: ChatSessionStore=Depends(get_session_store), preferences=Depends(get_preference_store), runner=Depends(get_runner), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> SessionResponse",
-          "line": 609,
+          "line": 611,
           "doc": "Ask the model to name this chat again, from its first exchange."
         },
         {
           "kind": "function",
           "name": "delete_session",
           "signature": "def delete_sessionsession_id: str, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: ChatSessionStore=Depends(get_session_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> GenericOkResponse",
-          "line": 639,
+          "line": 641,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "edit_message",
           "signature": "def edit_messagesession_id: str, message_id: str, payload: MessageEditRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: ChatSessionStore=Depends(get_session_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> MessageEditResponse",
-          "line": 655,
+          "line": 657,
           "doc": "Rewrite one of your own messages, and drop what came after it."
         },
         {
           "kind": "function",
           "name": "delete_message",
           "signature": "def delete_messagesession_id: str, message_id: str, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: ChatSessionStore=Depends(get_session_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> GenericOkResponse",
-          "line": 703,
+          "line": 705,
           "doc": "Remove one message, leaving the rest of the conversation."
         },
         {
           "kind": "function",
           "name": "list_messages",
           "signature": "def list_messagessession_id: str, after_seq: int=Query(default=0, ge=0, description='Incremental sync: only newer messages'), limit: int=Query(default=0, ge=0, le=1000), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: ChatSessionStore=Depends(get_session_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> MessageListResponse",
-          "line": 730,
+          "line": 732,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "chat_turn",
           "signature": "def chat_turnsession_id: str, payload: HyperLinkChatRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: ChatSessionStore=Depends(get_session_store), files: AttachmentStore=Depends(get_attachment_store), memories: MemoryStore=Depends(get_memory_store), preferences=Depends(get_preference_store), runner=Depends(get_runner), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id), request: Request=None -> HyperLinkChatResponse",
-          "line": 1240,
+          "line": 1242,
           "doc": "Append the user's message, run the model, append the reply."
         },
         {
           "kind": "function",
           "name": "chat_turn_stream",
           "signature": "def chat_turn_streamsession_id: str, payload: HyperLinkChatRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: ChatSessionStore=Depends(get_session_store), files: AttachmentStore=Depends(get_attachment_store), generations: GenerationRegistry=Depends(get_generation_registry), memories: MemoryStore=Depends(get_memory_store), preferences=Depends(get_preference_store), runner=Depends(get_runner), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id), request: Request=None -> StreamingResponse",
-          "line": 1405,
+          "line": 1407,
           "doc": "The same turn, streamed token by token."
         },
         {
           "kind": "function",
           "name": "stop_generation",
           "signature": "def stop_generationsession_id: str, generation_id: str | None=Query(default=None), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), generations: GenerationRegistry=Depends(get_generation_registry), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> GenerationStopResponse",
-          "line": 1663,
+          "line": 1665,
           "doc": "Stop a streamed reply that is still being generated."
         },
         {
           "kind": "function",
           "name": "shell_status",
           "signature": "def shell_statusprincipal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config) -> dict[str, Any]",
-          "line": 1704,
+          "line": 1706,
           "doc": "Whether this server accepts shell commands, so the app can say why not."
         },
         {
           "kind": "function",
           "name": "run_shell",
           "signature": "def run_shellrequest_body: dict[str, Any], principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), audit=Depends(get_audit_log), request_id: str=Depends(get_request_id) -> dict[str, Any]",
-          "line": 1724,
+          "line": 1726,
           "doc": "Run one command on this machine and return its output."
         },
         {
           "kind": "function",
           "name": "server_hardware",
           "signature": "def server_hardwareprincipal: HyperLinkPrincipal=Depends(require_hyperlink_operator), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> HardwareResponse",
-          "line": 1766,
+          "line": 1768,
           "doc": "What this machine is doing: CPU, memory, swap, disks, GPUs."
         },
         {
           "kind": "function",
           "name": "list_backends",
           "signature": "def list_backendsprincipal: HyperLinkPrincipal=Depends(get_hyperlink_principal), runner=Depends(get_runner), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> BackendsResponse",
-          "line": 1812,
+          "line": 1814,
           "doc": "What could answer a message, and what would answer one now."
         },
         {
           "kind": "function",
           "name": "read_preferences",
           "signature": "def read_preferencesprincipal: HyperLinkPrincipal=Depends(get_hyperlink_principal), preferences=Depends(get_preference_store), runner=Depends(get_runner), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> PreferencesResponse",
-          "line": 1838,
+          "line": 1840,
           "doc": "This person's settings, and the bounds the server will accept."
         },
         {
           "kind": "function",
           "name": "write_preferences",
           "signature": "def write_preferencespayload: PreferencesRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), preferences=Depends(get_preference_store), runner=Depends(get_runner), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> PreferencesResponse",
-          "line": 1859,
+          "line": 1861,
           "doc": "Change some settings. Unsent fields are left alone."
         },
         {
           "kind": "function",
           "name": "reset_preferences",
           "signature": "def reset_preferencesprincipal: HyperLinkPrincipal=Depends(get_hyperlink_principal), preferences=Depends(get_preference_store), runner=Depends(get_runner), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> PreferencesResponse",
-          "line": 1885,
+          "line": 1887,
           "doc": "Back to the defaults."
         },
         {
           "kind": "function",
           "name": "server_upgrade",
           "signature": "def server_upgradeprincipal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> UpgradeResponse",
-          "line": 1901,
+          "line": 1903,
           "doc": "What is installed here, and the exact commands to update it."
         },
         {
           "kind": "function",
           "name": "server_uptime",
           "signature": "def server_uptimeprincipal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> UptimeResponse",
-          "line": 1939,
+          "line": 1941,
           "doc": "How long the server, and the machine under it, have been up."
         },
         {
           "kind": "function",
           "name": "list_generations",
           "signature": "def list_generationssession_id: str | None=Query(default=None), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), generations: GenerationRegistry=Depends(get_generation_registry), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> GenerationListResponse",
-          "line": 1966,
+          "line": 1968,
           "doc": "What is generating right now, for this caller."
         },
         {
           "kind": "function",
           "name": "upload_file",
           "signature": "async def upload_filefile: UploadFile=File(...), session_id: str=Form(default=''), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: AttachmentStore=Depends(get_attachment_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> AttachmentResponse",
-          "line": 2008,
+          "line": 2010,
           "doc": "Upload one image, document or source file."
         },
         {
           "kind": "function",
           "name": "list_attachments",
           "signature": "def list_attachmentssession_id: str | None=Query(default=None), limit: int=Query(default=100, ge=1, le=500), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: AttachmentStore=Depends(get_attachment_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> AttachmentListResponse",
-          "line": 2044,
+          "line": 2046,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "download_file",
           "signature": "def download_filefile_id: str, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: AttachmentStore=Depends(get_attachment_store), config: T1APIConfig=Depends(get_config) -> Response",
-          "line": 2063,
+          "line": 2065,
           "doc": "The raw bytes."
         },
         {
           "kind": "function",
           "name": "delete_file",
           "signature": "def delete_filefile_id: str, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: AttachmentStore=Depends(get_attachment_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> GenericOkResponse",
-          "line": 2090,
+          "line": 2092,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "resolve_model_link",
           "signature": "def resolve_model_linkpayload: HFResolveRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> HFResolveResponse",
-          "line": 2108,
+          "line": 2110,
           "doc": "Turn a model page and/or a direct file link into a download plan."
         },
         {
           "kind": "function",
           "name": "download_model",
           "signature": "def download_modelpayload: HFDownloadRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id), jobs=Depends(get_job_queue) -> HFDownloadResponse",
-          "line": 2165,
+          "line": 2167,
           "doc": "Start downloading a model onto the **server**, not the phone."
         },
         {
           "kind": "function",
           "name": "list_downloaded",
           "signature": "def list_downloadedprincipal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> DownloadedModelsResponse",
-          "line": 2241,
+          "line": 2243,
           "doc": "What is already on this server's disk."
+        },
+        {
+          "kind": "function",
+          "name": "link_model_route",
+          "signature": "def link_model_routepayload: ModelLinkRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> ModelLinkResponse",
+          "line": 2315,
+          "doc": "List a model that is already on the server, by symlinking it in."
+        },
+        {
+          "kind": "function",
+          "name": "unlink_model_route",
+          "signature": "def unlink_model_routename: str, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> ModelLinkResponse",
+          "line": 2354,
+          "doc": "Remove a model link. Only ever a link: never the model it points at."
         },
         {
           "kind": "function",
           "name": "model_catalogue",
           "signature": "def model_catalogueprincipal: HyperLinkPrincipal=Depends(get_hyperlink_principal), registry: ModelRegistry=Depends(get_registry), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> ModelCatalogueResponse",
-          "line": 2274,
+          "line": 2373,
           "doc": "Everything runnable here: the registry, LM Studio, and the disk."
         },
         {
           "kind": "function",
           "name": "sync_changes",
           "signature": "def sync_changescursor: int=Query(default=0, ge=0), limit: int=Query(default=100, ge=1, le=500), session_id: str | None=Query(default=None), entities: str | None=Query(default=None, description='Comma-separated: session,message,device,attachment'), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: SyncStore=Depends(get_sync_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> SyncPageResponse",
-          "line": 2326,
+          "line": 2427,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "claim_client_message",
           "signature": "def claim_client_messagepayload: SyncClaimRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: SyncStore=Depends(get_sync_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> SyncClaimResponse",
-          "line": 2357,
+          "line": 2458,
           "doc": "Claim an idempotency key before sending a turn."
         },
         {
           "kind": "function",
           "name": "register_push",
           "signature": "def register_pushpayload: PushRegisterRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: NotificationStore=Depends(get_notification_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> PushRegistrationResponse",
-          "line": 2389,
+          "line": 2490,
           "doc": "Register this device's APNs token."
         },
         {
           "kind": "function",
           "name": "list_push",
           "signature": "def list_pushinclude_disabled: bool=Query(default=False), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: NotificationStore=Depends(get_notification_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> PushRegistrationListResponse",
-          "line": 2421,
+          "line": 2522,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "set_push_events",
           "signature": "def set_push_eventsregistration_id: str, payload: PushEventsRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: NotificationStore=Depends(get_notification_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> PushRegistrationResponse",
-          "line": 2441,
+          "line": 2542,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "unregister_push",
           "signature": "def unregister_pushregistration_id: str, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: NotificationStore=Depends(get_notification_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> GenericOkResponse",
-          "line": 2459,
+          "line": 2560,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "list_push_events",
           "signature": "def list_push_eventsconfig: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> dict",
-          "line": 2473,
+          "line": 2574,
           "doc": "What a device may subscribe to."
         },
         {
           "kind": "function",
           "name": "search_history",
           "signature": "def search_historyq: str=Query(min_length=1, max_length=500), limit: int=Query(default=25, ge=1, le=200), session_id: str | None=Query(default=None), include_archived: bool=Query(default=False), roles: str | None=Query(default=None, description='Comma-separated'), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), index: SearchIndex=Depends(get_search_index), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> SearchResponse",
-          "line": 2511,
+          "line": 2612,
           "doc": "Search this owner's sessions and messages."
         }
       ],
@@ -8019,6 +8364,52 @@
         }
       ],
       "changes": [
+        {
+          "sha": "99636442",
+          "date": "2026-09-29",
+          "author": "Claude",
+          "subject": "HyperLink: symlinked models load, and models can be linked from the app",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _link_error(exc: Exception) -> T1APIError:"
+            },
+            {
+              "kind": "added",
+              "text": "def _links_dir(config: T1APIConfig) -> Path:"
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/models/link\", response_model=ModelLinkResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def link_model_route("
+            },
+            {
+              "kind": "added",
+              "text": "@router.delete(\"/models/link/{name}\", response_model=ModelLinkResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def unlink_model_route("
+            }
+          ]
+        },
+        {
+          "sha": "99ddc1ae",
+          "date": "2026-09-29",
+          "author": "Claude",
+          "subject": "Security: make Codacy scan again, and clear most Bandit findings",
+          "api_changes": []
+        },
+        {
+          "sha": "999d2e1b",
+          "date": "2026-09-28",
+          "author": "Claude",
+          "subject": "Model sync: mirror ~/.hypernix/models into ~/.hypernix/t1api/models",
+          "api_changes": []
+        },
         {
           "sha": "20b4cbaf",
           "date": "2026-09-27",
@@ -8090,64 +8481,6 @@
             {
               "kind": "added",
               "text": "def ask_stream(messages, tools):"
-            }
-          ]
-        },
-        {
-          "sha": "c81b29d2",
-          "date": "2026-09-23",
-          "author": "Claude",
-          "subject": "0.72.6.rc2: tvtop-max, and HyperLink's default system prompt",
-          "api_changes": []
-        },
-        {
-          "sha": "848aac65",
-          "date": "2026-09-23",
-          "author": "Claude",
-          "subject": "HyperLink shell: the working directory stays inside one root",
-          "api_changes": []
-        },
-        {
-          "sha": "e26841fc",
-          "date": "2026-09-23",
-          "author": "Claude",
-          "subject": "HyperLink: model titles, compression, private chats, organised memory, images, shell, tails",
-          "api_changes": [
-            {
-              "kind": "added",
-              "text": "@router.post(\"/sessions/{session_id}/title\", response_model=SessionResponse)"
-            },
-            {
-              "kind": "added",
-              "text": "def retitle_session("
-            },
-            {
-              "kind": "added",
-              "text": "def _maybe_compact(store, config, session_id: str, owner: str, settings, budget: int) -> dict | None:"
-            },
-            {
-              "kind": "added",
-              "text": "def _title_session(store, session_id: str, owner: str, settings, bridge, model: str | None) -> str:"
-            },
-            {
-              "kind": "added",
-              "text": "def complete(messages: list[dict[str, str]]) -> str:"
-            },
-            {
-              "kind": "added",
-              "text": "@router.get(\"/shell\")"
-            },
-            {
-              "kind": "added",
-              "text": "def shell_status("
-            },
-            {
-              "kind": "added",
-              "text": "@router.post(\"/shell\")"
-            },
-            {
-              "kind": "added",
-              "text": "def run_shell("
             }
           ]
         }
@@ -9243,7 +9576,7 @@
     {
       "module": "hypernix.t1api.routers.runner",
       "source": "src/hypernix/t1api/routers/runner.py",
-      "line_count": 403,
+      "line_count": 411,
       "summary": "``/runner/*`` \u2014 loading, unloading and switching the served model.",
       "api": [
         {
@@ -9257,49 +9590,49 @@
           "kind": "function",
           "name": "runner_status",
           "signature": "def runner_statusprincipal: HyperLinkPrincipal=Depends(get_hyperlink_principal), runner=Depends(get_runner), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> RunnerStatusResponse",
-          "line": 158,
+          "line": 167,
           "doc": "What is loaded, where its layers are, and how long it has been up."
         },
         {
           "kind": "function",
           "name": "runner_plan",
           "signature": "def runner_planpayload: RunnerLoadRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), registry=Depends(get_registry), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> RunnerPlanResponse",
-          "line": 181,
+          "line": 190,
           "doc": "Where this model's layers would go. Changes nothing."
         },
         {
           "kind": "function",
           "name": "runner_load",
           "signature": "def runner_loadpayload: RunnerLoadRequest, principal: HyperLinkPrincipal=Depends(require_switch), runner=Depends(get_runner), registry=Depends(get_registry), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> RunnerStatusResponse",
-          "line": 217,
+          "line": 226,
           "doc": "Load a model, replacing whatever was running."
         },
         {
           "kind": "function",
           "name": "runner_unload",
           "signature": "def runner_unloadprincipal: HyperLinkPrincipal=Depends(require_switch), runner=Depends(get_runner), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> RunnerStatusResponse",
-          "line": 261,
+          "line": 270,
           "doc": "Stop serving. Unloading nothing is a success, not an error."
         },
         {
           "kind": "function",
           "name": "runner_hyperchat",
           "signature": "def runner_hyperchatrequest: Request, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> dict",
-          "line": 277,
+          "line": 286,
           "doc": "Whether prompts run side by side or wait in line, and how deep."
         },
         {
           "kind": "function",
           "name": "runner_adopt_preview",
           "signature": "def runner_adopt_previewrequest: Request, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), runner=Depends(get_runner), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> dict",
-          "line": 362,
+          "line": 371,
           "doc": "Whether \"Move to the HyperNix runner\" applies here, and to what."
         },
         {
           "kind": "function",
           "name": "runner_adopt",
           "signature": "def runner_adoptrequest: Request, payload: dict | None=None, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), runner=Depends(get_runner), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> RunnerStatusResponse",
-          "line": 388,
+          "line": 397,
           "doc": "Unload LM Studio's model and load the same file on the runner."
         }
       ],
@@ -9315,6 +9648,20 @@
         }
       ],
       "changes": [
+        {
+          "sha": "99636442",
+          "date": "2026-09-29",
+          "author": "Claude",
+          "subject": "HyperLink: symlinked models load, and models can be linked from the app",
+          "api_changes": []
+        },
+        {
+          "sha": "999d2e1b",
+          "date": "2026-09-28",
+          "author": "Claude",
+          "subject": "Model sync: mirror ~/.hypernix/models into ~/.hypernix/t1api/models",
+          "api_changes": []
+        },
         {
           "sha": "bf44cc7e",
           "date": "2026-09-27",
@@ -10575,14 +10922,14 @@
     {
       "module": "hypernix.t1api.runner_cli",
       "source": "src/hypernix/t1api/runner_cli.py",
-      "line_count": 394,
+      "line_count": 395,
       "summary": "``hypernix-t1 built-in-runner`` \u2014 load, unload and inspect the served model.",
       "api": [
         {
           "kind": "class",
           "name": "Unreachable",
           "signature": "class Unreachable",
-          "line": 51,
+          "line": 53,
           "doc": "Nothing answered at *url*. A SystemExit, so a caller that does not handle it still exits with the message rather than a traceback.",
           "methods": []
         },
@@ -10590,21 +10937,21 @@
           "kind": "function",
           "name": "build_parser",
           "signature": "def build_parser -> argparse.ArgumentParser",
-          "line": 299,
+          "line": 301,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "main",
           "signature": "def mainargv: list[str] | None=None -> int",
-          "line": 354,
+          "line": 356,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "cli_main",
           "signature": "def cli_mainargv: list[str] | None=None -> int",
-          "line": 467,
+          "line": 469,
           "doc": ""
         }
       ],
@@ -10618,6 +10965,13 @@
         }
       ],
       "changes": [
+        {
+          "sha": "99ddc1ae",
+          "date": "2026-09-29",
+          "author": "Claude",
+          "subject": "Security: make Codacy scan again, and clear most Bandit findings",
+          "api_changes": []
+        },
         {
           "sha": "1c244db8",
           "date": "2026-09-26",
@@ -10738,7 +11092,7 @@
     {
       "module": "hypernix.t1api.schemas",
       "source": "src/hypernix/t1api/schemas.py",
-      "line_count": 1614,
+      "line_count": 1630,
       "summary": "t1api.schemas \u2014 Pydantic v2 request/response models for the T1 API.",
       "api": [
         {
@@ -11751,9 +12105,25 @@
         },
         {
           "kind": "class",
+          "name": "ModelLinkRequest",
+          "signature": "class ModelLinkRequest",
+          "line": 1484,
+          "doc": "A model already on the server, to list in HyperLink by symlink.",
+          "methods": []
+        },
+        {
+          "kind": "class",
+          "name": "ModelLinkResponse",
+          "signature": "class ModelLinkResponse",
+          "line": 1494,
+          "doc": "",
+          "methods": []
+        },
+        {
+          "kind": "class",
           "name": "RunnerLoadRequest",
           "signature": "class RunnerLoadRequest",
-          "line": 1484,
+          "line": 1505,
           "doc": "",
           "methods": []
         },
@@ -11761,7 +12131,7 @@
           "kind": "class",
           "name": "RunnerStatusResponse",
           "signature": "class RunnerStatusResponse",
-          "line": 1497,
+          "line": 1518,
           "doc": "",
           "methods": []
         },
@@ -11769,7 +12139,7 @@
           "kind": "class",
           "name": "RunnerPlanResponse",
           "signature": "class RunnerPlanResponse",
-          "line": 1508,
+          "line": 1529,
           "doc": "",
           "methods": []
         },
@@ -11777,7 +12147,7 @@
           "kind": "class",
           "name": "NoodleRunRequest",
           "signature": "class NoodleRunRequest",
-          "line": 1516,
+          "line": 1537,
           "doc": "",
           "methods": []
         },
@@ -11785,7 +12155,7 @@
           "kind": "class",
           "name": "NoodleToolsResponse",
           "signature": "class NoodleToolsResponse",
-          "line": 1521,
+          "line": 1542,
           "doc": "",
           "methods": []
         },
@@ -11793,7 +12163,7 @@
           "kind": "class",
           "name": "NoodleWorkspaceResponse",
           "signature": "class NoodleWorkspaceResponse",
-          "line": 1534,
+          "line": 1555,
           "doc": "",
           "methods": []
         },
@@ -11801,7 +12171,7 @@
           "kind": "class",
           "name": "CompactRequest",
           "signature": "class CompactRequest",
-          "line": 1542,
+          "line": 1563,
           "doc": "",
           "methods": []
         },
@@ -11809,7 +12179,7 @@
           "kind": "class",
           "name": "CompactResponse",
           "signature": "class CompactResponse",
-          "line": 1553,
+          "line": 1574,
           "doc": "",
           "methods": []
         },
@@ -11817,7 +12187,7 @@
           "kind": "class",
           "name": "MemoryCreateRequest",
           "signature": "class MemoryCreateRequest",
-          "line": 1570,
+          "line": 1591,
           "doc": "",
           "methods": []
         },
@@ -11825,7 +12195,7 @@
           "kind": "class",
           "name": "MemoryUpdateRequest",
           "signature": "class MemoryUpdateRequest",
-          "line": 1583,
+          "line": 1604,
           "doc": "",
           "methods": []
         },
@@ -11833,7 +12203,7 @@
           "kind": "class",
           "name": "MemoryResponse",
           "signature": "class MemoryResponse",
-          "line": 1591,
+          "line": 1612,
           "doc": "",
           "methods": []
         },
@@ -11841,7 +12211,7 @@
           "kind": "class",
           "name": "MemoryListResponse",
           "signature": "class MemoryListResponse",
-          "line": 1596,
+          "line": 1617,
           "doc": "",
           "methods": []
         },
@@ -11849,7 +12219,7 @@
           "kind": "class",
           "name": "HardwareResponse",
           "signature": "class HardwareResponse",
-          "line": 1606,
+          "line": 1627,
           "doc": "One sample of what the machine is doing.",
           "methods": []
         },
@@ -11857,7 +12227,7 @@
           "kind": "class",
           "name": "UptimeResponse",
           "signature": "class UptimeResponse",
-          "line": 1628,
+          "line": 1649,
           "doc": "How long the server and the machine have been up.",
           "methods": []
         },
@@ -11865,7 +12235,7 @@
           "kind": "class",
           "name": "GenerationStopResponse",
           "signature": "class GenerationStopResponse",
-          "line": 1644,
+          "line": 1665,
           "doc": "What Stop actually stopped. An empty list is a success.",
           "methods": []
         },
@@ -11873,7 +12243,7 @@
           "kind": "class",
           "name": "GenerationListResponse",
           "signature": "class GenerationListResponse",
-          "line": 1652,
+          "line": 1673,
           "doc": "",
           "methods": []
         },
@@ -11881,7 +12251,7 @@
           "kind": "class",
           "name": "BackendsResponse",
           "signature": "class BackendsResponse",
-          "line": 1658,
+          "line": 1679,
           "doc": "Every thing that could answer a message, and whether it can now.",
           "methods": []
         },
@@ -11889,7 +12259,7 @@
           "kind": "class",
           "name": "PreferencesRequest",
           "signature": "class PreferencesRequest",
-          "line": 1672,
+          "line": 1693,
           "doc": "A partial update. Every field optional, and that is the point.",
           "methods": []
         },
@@ -11897,7 +12267,7 @@
           "kind": "class",
           "name": "PreferencesResponse",
           "signature": "class PreferencesResponse",
-          "line": 1695,
+          "line": 1716,
           "doc": "",
           "methods": []
         },
@@ -11905,7 +12275,7 @@
           "kind": "class",
           "name": "UpgradeResponse",
           "signature": "class UpgradeResponse",
-          "line": 1710,
+          "line": 1731,
           "doc": "What this server is running, and the commands to change it.",
           "methods": []
         },
@@ -11913,7 +12283,7 @@
           "kind": "class",
           "name": "ModelCatalogueResponse",
           "signature": "class ModelCatalogueResponse",
-          "line": 1725,
+          "line": 1746,
           "doc": "Every model this server can offer, from every source it has.",
           "methods": []
         },
@@ -11921,7 +12291,7 @@
           "kind": "class",
           "name": "InferenceMessage",
           "signature": "class InferenceMessage",
-          "line": 1753,
+          "line": 1774,
           "doc": "",
           "methods": []
         },
@@ -11929,7 +12299,7 @@
           "kind": "class",
           "name": "InferenceChatRequest",
           "signature": "class InferenceChatRequest",
-          "line": 1758,
+          "line": 1779,
           "doc": "",
           "methods": []
         },
@@ -11937,7 +12307,7 @@
           "kind": "class",
           "name": "InferenceCompletionRequest",
           "signature": "class InferenceCompletionRequest",
-          "line": 1771,
+          "line": 1792,
           "doc": "",
           "methods": []
         },
@@ -11945,7 +12315,7 @@
           "kind": "class",
           "name": "InferenceResponse",
           "signature": "class InferenceResponse",
-          "line": 1781,
+          "line": 1802,
           "doc": "",
           "methods": []
         },
@@ -11953,7 +12323,7 @@
           "kind": "class",
           "name": "InferenceEmbeddingsRequest",
           "signature": "class InferenceEmbeddingsRequest",
-          "line": 1799,
+          "line": 1820,
           "doc": "",
           "methods": []
         },
@@ -11961,7 +12331,7 @@
           "kind": "class",
           "name": "InferenceEmbeddingsResponse",
           "signature": "class InferenceEmbeddingsResponse",
-          "line": 1804,
+          "line": 1825,
           "doc": "",
           "methods": []
         },
@@ -11969,7 +12339,7 @@
           "kind": "class",
           "name": "InferenceTokenCountRequest",
           "signature": "class InferenceTokenCountRequest",
-          "line": 1813,
+          "line": 1834,
           "doc": "",
           "methods": []
         },
@@ -11977,7 +12347,7 @@
           "kind": "class",
           "name": "InferenceTokenCountResponse",
           "signature": "class InferenceTokenCountResponse",
-          "line": 1821,
+          "line": 1842,
           "doc": "",
           "methods": []
         },
@@ -11985,7 +12355,7 @@
           "kind": "class",
           "name": "InferenceBackend",
           "signature": "class InferenceBackend",
-          "line": 1834,
+          "line": 1855,
           "doc": "",
           "methods": []
         },
@@ -11993,7 +12363,7 @@
           "kind": "class",
           "name": "InferenceBackendsResponse",
           "signature": "class InferenceBackendsResponse",
-          "line": 1842,
+          "line": 1863,
           "doc": "",
           "methods": []
         },
@@ -12001,7 +12371,7 @@
           "kind": "class",
           "name": "TrainingRunItem",
           "signature": "class TrainingRunItem",
-          "line": 1853,
+          "line": 1874,
           "doc": "One run, as ``training.monitor`` reconciled it.",
           "methods": []
         },
@@ -12009,7 +12379,7 @@
           "kind": "class",
           "name": "TrainingRunListResponse",
           "signature": "class TrainingRunListResponse",
-          "line": 1884,
+          "line": 1905,
           "doc": "",
           "methods": []
         },
@@ -12017,7 +12387,7 @@
           "kind": "class",
           "name": "TrainingRunResponse",
           "signature": "class TrainingRunResponse",
-          "line": 1892,
+          "line": 1913,
           "doc": "",
           "methods": []
         },
@@ -12025,7 +12395,7 @@
           "kind": "class",
           "name": "TrainingLogResponse",
           "signature": "class TrainingLogResponse",
-          "line": 1897,
+          "line": 1918,
           "doc": "",
           "methods": []
         },
@@ -12033,7 +12403,7 @@
           "kind": "class",
           "name": "TrainingCheckpointItem",
           "signature": "class TrainingCheckpointItem",
-          "line": 1909,
+          "line": 1930,
           "doc": "",
           "methods": []
         },
@@ -12041,7 +12411,7 @@
           "kind": "class",
           "name": "TrainingCheckpointListResponse",
           "signature": "class TrainingCheckpointListResponse",
-          "line": 1916,
+          "line": 1937,
           "doc": "",
           "methods": []
         },
@@ -12049,7 +12419,7 @@
           "kind": "class",
           "name": "TrainingResourcesResponse",
           "signature": "class TrainingResourcesResponse",
-          "line": 1923,
+          "line": 1944,
           "doc": "",
           "methods": []
         },
@@ -12057,7 +12427,7 @@
           "kind": "class",
           "name": "TrainingControlResponse",
           "signature": "class TrainingControlResponse",
-          "line": 1932,
+          "line": 1953,
           "doc": "",
           "methods": []
         },
@@ -12065,7 +12435,7 @@
           "kind": "class",
           "name": "SyncChange",
           "signature": "class SyncChange",
-          "line": 1944,
+          "line": 1965,
           "doc": "",
           "methods": []
         },
@@ -12073,7 +12443,7 @@
           "kind": "class",
           "name": "SyncPageResponse",
           "signature": "class SyncPageResponse",
-          "line": 1955,
+          "line": 1976,
           "doc": "",
           "methods": []
         },
@@ -12081,7 +12451,7 @@
           "kind": "class",
           "name": "SyncClaimRequest",
           "signature": "class SyncClaimRequest",
-          "line": 1967,
+          "line": 1988,
           "doc": "",
           "methods": []
         },
@@ -12089,7 +12459,7 @@
           "kind": "class",
           "name": "SyncClaimResponse",
           "signature": "class SyncClaimResponse",
-          "line": 1971,
+          "line": 1992,
           "doc": "",
           "methods": []
         },
@@ -12097,7 +12467,7 @@
           "kind": "class",
           "name": "PushRegisterRequest",
           "signature": "class PushRegisterRequest",
-          "line": 1981,
+          "line": 2002,
           "doc": "",
           "methods": []
         },
@@ -12105,7 +12475,7 @@
           "kind": "class",
           "name": "PushRegistrationSummary",
           "signature": "class PushRegistrationSummary",
-          "line": 1991,
+          "line": 2012,
           "doc": "",
           "methods": []
         },
@@ -12113,7 +12483,7 @@
           "kind": "class",
           "name": "PushRegistrationResponse",
           "signature": "class PushRegistrationResponse",
-          "line": 2006,
+          "line": 2027,
           "doc": "",
           "methods": []
         },
@@ -12121,7 +12491,7 @@
           "kind": "class",
           "name": "PushRegistrationListResponse",
           "signature": "class PushRegistrationListResponse",
-          "line": 2011,
+          "line": 2032,
           "doc": "",
           "methods": []
         },
@@ -12129,7 +12499,7 @@
           "kind": "class",
           "name": "PushEventsRequest",
           "signature": "class PushEventsRequest",
-          "line": 2018,
+          "line": 2039,
           "doc": "",
           "methods": []
         },
@@ -12137,7 +12507,7 @@
           "kind": "class",
           "name": "SearchSnippet",
           "signature": "class SearchSnippet",
-          "line": 2022,
+          "line": 2043,
           "doc": "",
           "methods": []
         },
@@ -12145,7 +12515,7 @@
           "kind": "class",
           "name": "SearchHit",
           "signature": "class SearchHit",
-          "line": 2030,
+          "line": 2051,
           "doc": "",
           "methods": []
         },
@@ -12153,7 +12523,7 @@
           "kind": "class",
           "name": "SearchResponse",
           "signature": "class SearchResponse",
-          "line": 2042,
+          "line": 2063,
           "doc": "",
           "methods": []
         }
@@ -12168,6 +12538,22 @@
         }
       ],
       "changes": [
+        {
+          "sha": "99636442",
+          "date": "2026-09-29",
+          "author": "Claude",
+          "subject": "HyperLink: symlinked models load, and models can be linked from the app",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class ModelLinkRequest(BaseModel):"
+            },
+            {
+              "kind": "added",
+              "text": "class ModelLinkResponse(BaseModel):"
+            }
+          ]
+        },
         {
           "sha": "0068bbf2",
           "date": "2026-09-23",
@@ -12232,26 +12618,6 @@
             {
               "kind": "added",
               "text": "class PreferencesResponse(BaseModel):"
-            }
-          ]
-        },
-        {
-          "sha": "3f05aaf6",
-          "date": "2026-09-16",
-          "author": "Claude",
-          "subject": "The version it actually is, the runner from the phone, and edit mode",
-          "api_changes": [
-            {
-              "kind": "added",
-              "text": "class MessageEditRequest(BaseModel):"
-            },
-            {
-              "kind": "added",
-              "text": "class MessageEditResponse(BaseModel):"
-            },
-            {
-              "kind": "added",
-              "text": "class UpgradeResponse(BaseModel):"
             }
           ]
         }
@@ -12503,68 +12869,69 @@
     {
       "module": "hypernix.t1api.storage",
       "source": "src/hypernix/t1api/storage.py",
-      "line_count": 295,
+      "line_count": 296,
       "summary": "t1api.storage \u2014 usage-event persistence.",
       "api": [
         {
           "kind": "class",
           "name": "UsageStore",
           "signature": "class UsageStore",
-          "line": 82,
+          "line": 83,
           "doc": "Thread-safe store for per-request usage events.",
           "methods": [
             {
               "name": "record",
               "signature": "def recordself, *, key_id: str, model_id: str, input_tokens: int=0, output_tokens: int=0, requests: int=1, endpoint: str='', server_id: str='', module_id: str='', user_id: str='', account_id: str='', ts: float | None=None -> None",
-              "line": 138,
+              "line": 139,
               "doc": ""
             },
             {
               "name": "totals_for_key",
               "signature": "def totals_for_keyself, key_id: str, *, since: float | None=None, model_id: str | None=None -> dict[str, Any]",
-              "line": 211,
+              "line": 212,
               "doc": "Aggregate (requests, input_tokens, output_tokens) for a key, optionally filtered by a start timestamp and/or model_id."
             },
             {
               "name": "totals",
               "signature": "def totalsself, *, since: float | None=None, until: float | None=None, **filters: str | None -> dict[str, Any]",
-              "line": 218,
+              "line": 219,
               "doc": ""
             },
             {
               "name": "aggregate",
               "signature": "def aggregateself, group_by: str, *, since: float | None=None, until: float | None=None, limit: int=500, **filters: str | None -> list[dict[str, Any]]",
-              "line": 236,
+              "line": 237,
               "doc": "Grouped totals along one dimension \u2014 the single query behind every \"usage by model/key/server/module/user/account\" report."
             },
             {
               "name": "breakdown_by_model",
               "signature": "def breakdown_by_modelself, key_id: str, *, since: float | None=None -> list[dict[str, Any]]",
-              "line": 263,
+              "line": 264,
               "doc": ""
             },
             {
               "name": "history",
               "signature": "def historyself, *, since: float | None=None, until: float | None=None, limit: int=100, offset: int=0, **filters: str | None -> list[dict[str, Any]]",
-              "line": 266,
+              "line": 267,
               "doc": "Raw usage events, newest first \u2014 backs GET /usage/history."
             },
             {
               "name": "first_event_ts",
               "signature": "def first_event_tsself, **filters: str | None -> float | None",
-              "line": 302,
+              "line": 303,
               "doc": "Timestamp of the earliest matching event, or None. Used by the cost forecaster to know how long a spend rate has been observed for \u2014 forecasting from a 10-minute-old account is not the same as forecasting from a 30-day-old one."
             },
             {
               "name": "event_count",
               "signature": "def event_countself -> int",
-              "line": 312,
+              "line": 313,
               "doc": ""
             }
           ]
         }
       ],
       "errors": [
+        "AssertionError",
         "ValueError"
       ],
       "deprecations": [],
@@ -12576,6 +12943,13 @@
         }
       ],
       "changes": [
+        {
+          "sha": "99ddc1ae",
+          "date": "2026-09-29",
+          "author": "Claude",
+          "subject": "Security: make Codacy scan again, and clear most Bandit findings",
+          "api_changes": []
+        },
         {
           "sha": "eb12198c",
           "date": "2026-09-26",
@@ -13912,536 +14286,536 @@
     {
       "module": "hypernix.t1sdk.client",
       "source": "src/hypernix/t1sdk/client.py",
-      "line_count": 833,
+      "line_count": 834,
       "summary": "t1sdk.client \u2014 :class:`T1Client`, the complete T1 API SDK.",
       "api": [
         {
           "kind": "class",
           "name": "T1Client",
           "signature": "class T1Client",
-          "line": 62,
+          "line": 64,
           "doc": "A client for one T1 API server.",
           "methods": [
             {
               "name": "base_url",
               "signature": "def base_urlself -> str",
-              "line": 88,
+              "line": 90,
               "doc": ""
             },
             {
               "name": "credential",
               "signature": "def credentialself -> str | None",
-              "line": 92,
+              "line": 94,
               "doc": ""
             },
             {
               "name": "credential",
               "signature": "def credentialself, value: str | None -> None",
-              "line": 96,
+              "line": 98,
               "doc": ""
             },
             {
               "name": "call",
               "signature": "def callself, method: str, path: str, *, body: dict[str, Any] | None=None, query: dict[str, Any] | None=None, auth: bool=False, idempotent: bool | None=None -> dict[str, Any]",
-              "line": 108,
+              "line": 110,
               "doc": "Escape hatch for an endpoint this SDK version doesn't wrap."
             },
             {
               "name": "health",
               "signature": "def healthself -> dict[str, Any]",
-              "line": 138,
+              "line": 140,
               "doc": ""
             },
             {
               "name": "status",
               "signature": "def statusself -> ServerStatus",
-              "line": 141,
+              "line": 143,
               "doc": ""
             },
             {
               "name": "config",
               "signature": "def configself -> dict[str, Any]",
-              "line": 144,
+              "line": 146,
               "doc": "The server's public configuration. Never contains a secret \u2014 the endpoint serves an explicit allowlist."
             },
             {
               "name": "ping",
               "signature": "def pingself -> bool",
-              "line": 149,
+              "line": 151,
               "doc": "True if the server answers ``/health``. Swallows transport errors so a caller can poll without a try/except \u2014 anything other than \"reachable and healthy\" is False."
             },
             {
               "name": "validate",
               "signature": "def validateself, key: str | None=None -> dict[str, Any]",
-              "line": 162,
+              "line": 164,
               "doc": ""
             },
             {
               "name": "server_info",
               "signature": "def server_infoself -> dict[str, Any]",
-              "line": 175,
+              "line": 177,
               "doc": "Name, description, owner, url, versions and features. Public."
             },
             {
               "name": "conceal_status",
               "signature": "def conceal_statusself -> dict[str, Any]",
-              "line": 179,
+              "line": 181,
               "doc": ""
             },
             {
               "name": "conceal",
               "signature": "def concealself, enabled: bool=True -> dict[str, Any]",
-              "line": 182,
+              "line": 184,
               "doc": "Turn conceal mode (masked address, 36-hour retention) on or off."
             },
             {
               "name": "t2c_public_key",
               "signature": "def t2c_public_keyself -> dict[str, Any]",
-              "line": 188,
+              "line": 190,
               "doc": ""
             },
             {
               "name": "t2c_devices",
               "signature": "def t2c_devicesself -> list[dict[str, Any]]",
-              "line": 191,
+              "line": 193,
               "doc": ""
             },
             {
               "name": "t2c_revoke_device",
               "signature": "def t2c_revoke_deviceself, device_id: str -> dict[str, Any]",
-              "line": 194,
+              "line": 196,
               "doc": ""
             },
             {
               "name": "seal_key",
               "signature": "def seal_keyself, key: str | None=None, *, label: str='', access_level: int=1",
-              "line": 197,
+              "line": 199,
               "doc": "Turn a T1 or T2 key into a v2.1 kit, registered with this server."
             },
             {
               "name": "whoami",
               "signature": "def whoamiself -> KeyInfo",
-              "line": 237,
+              "line": 239,
               "doc": "Identity of the configured credential, as a typed object."
             },
             {
               "name": "issue_token",
               "signature": "def issue_tokenself, key: str | None=None, *, ttl_seconds: int | None=None, scopes: list[str] | None=None -> dict[str, Any]",
-              "line": 241,
+              "line": 243,
               "doc": "Exchange a raw T1 key for a short-lived scoped token."
             },
             {
               "name": "rotate",
               "signature": "def rotateself -> dict[str, Any]",
-              "line": 260,
+              "line": 262,
               "doc": "Rotate the credential in use. The response carries the new raw key \u2014 the only place in the API where one is returned. Store it before discarding the response; the old key stops working."
             },
             {
               "name": "admin_rotate",
               "signature": "def admin_rotateself, target_key_id: str, *, promote_to_admin: bool=False -> dict[str, Any]",
-              "line": 266,
+              "line": 268,
               "doc": "Rotate another key, optionally promoting it to admin. Requires the caller to already be admin \u2014 the permission check the spec asks for around admin-token conversion."
             },
             {
               "name": "list_models",
               "signature": "def list_modelsself -> list[Model]",
-              "line": 281,
+              "line": 283,
               "doc": ""
             },
             {
               "name": "list_models_raw",
               "signature": "def list_models_rawself -> dict[str, Any]",
-              "line": 284,
+              "line": 286,
               "doc": ""
             },
             {
               "name": "get_model",
               "signature": "def get_modelself, model_id: str -> Model",
-              "line": 287,
+              "line": 289,
               "doc": ""
             },
             {
               "name": "model_availability",
               "signature": "def model_availabilityself, model_id: str -> dict[str, Any]",
-              "line": 290,
+              "line": 292,
               "doc": ""
             },
             {
               "name": "model_usage",
               "signature": "def model_usageself, model_id: str -> ModelUsage",
-              "line": 293,
+              "line": 295,
               "doc": ""
             },
             {
               "name": "route",
               "signature": "def routeself, *, model_id: str | None=None, input_tokens: int=0, automatic_fallback: bool=False, plan: str | None=None -> RoutingDecision",
-              "line": 296,
+              "line": 298,
               "doc": "Ask the server which model to use."
             },
             {
               "name": "usage_current",
               "signature": "def usage_currentself -> dict[str, Any]",
-              "line": 334,
+              "line": 336,
               "doc": ""
             },
             {
               "name": "usage_remaining",
               "signature": "def usage_remainingself, model_id: str -> ModelUsage",
-              "line": 337,
+              "line": 339,
               "doc": ""
             },
             {
               "name": "usage_history",
               "signature": "def usage_historyself, *, range: str | None=None, since: float | None=None, until: float | None=None, limit: int=100, offset: int=0, **filters: Any -> dict[str, Any]",
-              "line": 342,
+              "line": 344,
               "doc": ""
             },
             {
               "name": "iter_usage_history",
               "signature": "def iter_usage_historyself, *, page_size: int=200, max_events: int | None=None, **kwargs: Any -> Iterator[dict[str, Any]]",
-              "line": 356,
+              "line": 358,
               "doc": "Walk usage history transparently across pages."
             },
             {
               "name": "usage_by",
               "signature": "def usage_byself, group_by: str, **kwargs: Any -> dict[str, Any]",
-              "line": 379,
+              "line": 381,
               "doc": "Usage grouped along one dimension: ``model_id``, ``key_id``, ``server_id``, ``module_id``, ``user_id``, ``account_id``, ``endpoint``."
             },
             {
               "name": "usage_cost",
               "signature": "def usage_costself, *, group_by: str='model_id', forecast: bool=False, **kwargs: Any -> CostReport",
-              "line": 385,
+              "line": 387,
               "doc": ""
             },
             {
               "name": "estimate_cost",
               "signature": "def estimate_costself, *, model_id: str, input_tokens: int, output_tokens: int | None=None, requests: int=1 -> dict[str, Any]",
-              "line": 392,
+              "line": 394,
               "doc": "What an operation would cost. Records nothing, reserves nothing. Omitting *output_tokens* gives an upper bound based on the model's output limit."
             },
             {
               "name": "report_usage",
               "signature": "def report_usageself, *, model_id: str, input_tokens: int=0, output_tokens: int=0, requests: int=1, endpoint: str='', server_id: str='', module_id: str='' -> dict[str, Any]",
-              "line": 412,
+              "line": 414,
               "doc": "Report tokens actually consumed, so the server's quota advances."
             },
             {
               "name": "list_keys",
               "signature": "def list_keysself, *, key_type: str | None=None, include_inactive: bool=False -> list[KeyInfo]",
-              "line": 453,
+              "line": 455,
               "doc": "List keys. A non-admin caller sees only their own."
             },
             {
               "name": "import_keys",
               "signature": "def import_keysself, payload: dict[str, Any] -> dict[str, Any]",
-              "line": 460,
+              "line": 462,
               "doc": "Import a Keymaster export. Admin-only. The response carries counts and masked ids \u2014 never key material."
             },
             {
               "name": "assign_key",
               "signature": "def assign_keyself, key_id: str, **fields: Any -> dict[str, Any]",
-              "line": 465,
+              "line": 467,
               "doc": "Bind a key to a plan / account / user / servers / model subset."
             },
             {
               "name": "list_servers",
               "signature": "def list_serversself -> list[Server]",
-              "line": 477,
+              "line": 479,
               "doc": ""
             },
             {
               "name": "register_server",
               "signature": "def register_serverself, *, name: str, address: str, capabilities: list[str] | None=None, tags: dict[str, str] | None=None, allow_private_address: bool=False -> Server",
-              "line": 480,
+              "line": 482,
               "doc": "Register a server. It starts *untrusted*; only an admin can promote it, and only a trusted server can receive a module."
             },
             {
               "name": "update_server",
               "signature": "def update_serverself, server_id: str, **fields: Any -> Server",
-              "line": 506,
+              "line": 508,
               "doc": ""
             },
             {
               "name": "trust_server",
               "signature": "def trust_serverself, server_id: str -> Server",
-              "line": 512,
+              "line": 514,
               "doc": "Promote a server to ``trusted``. Admin-only, audited, and the gate every module push checks."
             },
             {
               "name": "delete_server",
               "signature": "def delete_serverself, server_id: str, *, confirm: bool=False -> dict[str, Any]",
-              "line": 517,
+              "line": 519,
               "doc": "Deregister a server. Destructive, so *confirm* must be True \u2014 the SDK surfaces the requirement as an argument rather than letting the server reject the call."
             },
             {
               "name": "list_modules",
               "signature": "def list_modulesself -> list[Module]",
-              "line": 534,
+              "line": 536,
               "doc": ""
             },
             {
               "name": "create_module",
               "signature": "def create_moduleself, *, name: str, version: str, metadata: dict[str, Any] | None=None -> Module",
-              "line": 537,
+              "line": 539,
               "doc": ""
             },
             {
               "name": "get_module",
               "signature": "def get_moduleself, module_id: str -> Module",
-              "line": 543,
+              "line": 545,
               "doc": ""
             },
             {
               "name": "upload_module",
               "signature": "def upload_moduleself, module_id: str, file_path: str | Path -> Module",
-              "line": 546,
+              "line": 548,
               "doc": "Upload local content. The server checksums it and stores it as an opaque blob \u2014 it is never executed, imported, or interpreted."
             },
             {
               "name": "register_remote_source",
               "signature": "def register_remote_sourceself, module_id: str, source_url: str, *, allow_private: bool=False -> Module",
-              "line": 554,
+              "line": 556,
               "doc": "Register (not fetch) a remote source URL. Validated against the SSRF guard now; call :meth:`fetch_module` to actually stage it."
             },
             {
               "name": "update_module",
               "signature": "def update_moduleself, module_id: str, **fields: Any -> Module",
-              "line": 568,
+              "line": 570,
               "doc": ""
             },
             {
               "name": "delete_module",
               "signature": "def delete_moduleself, module_id: str, *, confirm: bool=False -> dict[str, Any]",
-              "line": 574,
+              "line": 576,
               "doc": ""
             },
             {
               "name": "sync_module",
               "signature": "def sync_moduleself, module_id: str, server_id: str -> dict[str, Any]",
-              "line": 584,
+              "line": 586,
               "doc": "Queue a push of this module to one trusted server."
             },
             {
               "name": "deploy_module",
               "signature": "def deploy_moduleself, module_id: str, server_ids: list[str] -> dict[str, Any]",
-              "line": 590,
+              "line": 592,
               "doc": "Queue a push to several trusted servers as one job."
             },
             {
               "name": "fetch_module",
               "signature": "def fetch_moduleself, module_id: str -> dict[str, Any]",
-              "line": 599,
+              "line": 601,
               "doc": "Queue a fetch of this module's registered remote source."
             },
             {
               "name": "deploy_and_wait",
               "signature": "def deploy_and_waitself, module_id: str, server_ids: list[str], *, timeout: float=300.0 -> Job",
-              "line": 603,
+              "line": 605,
               "doc": "Deploy to several servers and block until the job settles."
             },
             {
               "name": "submit_job",
               "signature": "def submit_jobself, kind: str, payload: dict[str, Any] | None=None -> Job",
-              "line": 627,
+              "line": 629,
               "doc": ""
             },
             {
               "name": "get_job",
               "signature": "def get_jobself, job_id: str -> Job",
-              "line": 632,
+              "line": 634,
               "doc": ""
             },
             {
               "name": "cancel_job",
               "signature": "def cancel_jobself, job_id: str -> Job",
-              "line": 635,
+              "line": 637,
               "doc": ""
             },
             {
               "name": "wait_for_job",
               "signature": "def wait_for_jobself, job_id: str, *, timeout: float=300.0, poll_interval: float=0.5 -> Job",
-              "line": 640,
+              "line": 642,
               "doc": "Poll a job until it reaches a terminal state."
             },
             {
               "name": "list_events",
               "signature": "def list_eventsself, *, limit: int=50, since_id: str | None=None, event_type: str | None=None -> list[Event]",
-              "line": 666,
+              "line": 668,
               "doc": ""
             },
             {
               "name": "stream_events",
               "signature": "def stream_eventsself, *, event_type: str | None=None, timeout: float=300.0 -> Iterator[Event]",
-              "line": 674,
+              "line": 676,
               "doc": "Live tail over Server-Sent Events."
             },
             {
               "name": "balance",
               "signature": "def balanceself -> dict[str, Any]",
-              "line": 707,
+              "line": 709,
               "doc": ""
             },
             {
               "name": "transactions",
               "signature": "def transactionsself -> list[dict[str, Any]]",
-              "line": 710,
+              "line": 712,
               "doc": ""
             },
             {
               "name": "mint_payment_token",
               "signature": "def mint_payment_tokenself, amount: float, *, currency: str='USD', ttl_seconds: int | None=None -> dict[str, Any]",
-              "line": 713,
+              "line": 715,
               "doc": "Admin-only. The raw token is returned **once** and never retrievable again \u2014 the server stores only its hash. Capture it from the response or it is gone."
             },
             {
               "name": "redeem_payment_token",
               "signature": "def redeem_payment_tokenself, token: str, *, account_type: str='user', account_id: str | None=None -> dict[str, Any]",
-              "line": 724,
+              "line": 726,
               "doc": "Redeem a payment token. Single-use, and never retried by the transport \u2014 a replay after a timeout could look like a double redemption from the caller's side."
             },
             {
               "name": "add_balance",
               "signature": "def add_balanceself, *, account_type: str, account_id: str, amount: float, note: str='' -> dict[str, Any]",
-              "line": 735,
+              "line": 737,
               "doc": "Admin-only direct credit, with no payment-token trail."
             },
             {
               "name": "audit_events",
               "signature": "def audit_eventsself, **filters: Any -> dict[str, Any]",
-              "line": 755,
+              "line": 757,
               "doc": ""
             },
             {
               "name": "network_policy",
               "signature": "def network_policyself, *, kind: str | None=None -> dict[str, Any]",
-              "line": 758,
+              "line": 760,
               "doc": ""
             },
             {
               "name": "blacklist_ip",
               "signature": "def blacklist_ipself, cidr: str, *, reason: str='', ttl_seconds: float | None=None -> dict[str, Any]",
-              "line": 761,
+              "line": 763,
               "doc": ""
             },
             {
               "name": "whitelist_ip",
               "signature": "def whitelist_ipself, cidr: str, *, reason: str='', ttl_seconds: float | None=None -> dict[str, Any]",
-              "line": 769,
+              "line": 771,
               "doc": ""
             },
             {
               "name": "appeal_ip",
               "signature": "def appeal_ipself, cidr: str -> dict[str, Any]",
-              "line": 777,
+              "line": 779,
               "doc": "Remove an allow or block entry \u2014 the appeal path."
             },
             {
               "name": "set_allow_unlisted",
               "signature": "def set_allow_unlistedself, enabled: bool -> dict[str, Any]",
-              "line": 781,
+              "line": 783,
               "doc": ""
             },
             {
               "name": "list_forced_limits",
               "signature": "def list_forced_limitsself -> list[dict[str, Any]]",
-              "line": 786,
+              "line": 788,
               "doc": ""
             },
             {
               "name": "set_forced_limit",
               "signature": "def set_forced_limitself, *, subject_type: str, subject_id: str, requests_per_window: int | None=None, tokens_per_window: int | None=None, window_seconds: float=60.0, reason: str='' -> dict[str, Any]",
-              "line": 789,
+              "line": 791,
               "doc": "Force a ceiling on one key or server. Only ever tightens."
             },
             {
               "name": "clear_forced_limit",
               "signature": "def clear_forced_limitself, subject_type: str, subject_id: str -> dict[str, Any]",
-              "line": 814,
+              "line": 816,
               "doc": ""
             },
             {
               "name": "rate_limit_status",
               "signature": "def rate_limit_statusself -> dict[str, Any]",
-              "line": 819,
+              "line": 821,
               "doc": "The caller's own remaining budget per rule \u2014 enough to back off before hitting a 429 rather than after."
             },
             {
               "name": "lmstudio_status",
               "signature": "def lmstudio_statusself, *, discover: bool=False -> dict[str, Any]",
-              "line": 829,
+              "line": 831,
               "doc": "Is the server's LM Studio reachable, and is anything loaded?"
             },
             {
               "name": "lmstudio_models",
               "signature": "def lmstudio_modelsself, *, base_url: str | None=None -> dict[str, Any]",
-              "line": 835,
+              "line": 837,
               "doc": "Every model LM Studio has, with the loaded ones marked."
             },
             {
               "name": "lmstudio_chat",
               "signature": "def lmstudio_chatself, messages: list[dict[str, Any]], *, model: str | None=None, temperature: float | None=None, max_tokens: int | None=None, base_url: str | None=None -> dict[str, Any]",
-              "line": 843,
+              "line": 845,
               "doc": "One completion through the bridge, with the reply lifted out."
             },
             {
               "name": "hyperlink_endpoints",
               "signature": "def hyperlink_endpointsself -> dict[str, Any]",
-              "line": 869,
+              "line": 871,
               "doc": "Addresses this server answers on, ranked best-first."
             },
             {
               "name": "hyperlink_pair",
               "signature": "def hyperlink_pairself, *, label: str='', scopes: list[str] | None=None, ttl_seconds: float | None=None -> dict[str, Any]",
-              "line": 873,
+              "line": 875,
               "doc": "Mint a pairing code for a phone. Admin only."
             },
             {
               "name": "hyperlink_redeem",
               "signature": "def hyperlink_redeemself, code: str, *, device_name: str, platform: str='ios', app_version: str='' -> dict[str, Any]",
-              "line": 883,
+              "line": 885,
               "doc": "Redeem a pairing code. Unauthenticated \u2014 the code is the credential."
             },
             {
               "name": "hyperlink_devices",
               "signature": "def hyperlink_devicesself, *, include_revoked: bool=False -> dict[str, Any]",
-              "line": 897,
+              "line": 899,
               "doc": ""
             },
             {
               "name": "hyperlink_revoke_device",
               "signature": "def hyperlink_revoke_deviceself, device_id: str -> dict[str, Any]",
-              "line": 902,
+              "line": 904,
               "doc": ""
             },
             {
               "name": "hyperlink_sessions",
               "signature": "def hyperlink_sessionsself, *, include_archived: bool=False, limit: int=50 -> dict[str, Any]",
-              "line": 907,
+              "line": 909,
               "doc": ""
             },
             {
               "name": "hyperlink_create_session",
               "signature": "def hyperlink_create_sessionself, *, title: str='', model_id: str='', system_prompt: str='' -> dict[str, Any]",
-              "line": 914,
+              "line": 916,
               "doc": ""
             },
             {
               "name": "hyperlink_messages",
               "signature": "def hyperlink_messagesself, session_id: str, *, after_seq: int=0 -> dict[str, Any]",
-              "line": 923,
+              "line": 925,
               "doc": ""
             },
             {
               "name": "hyperlink_chat",
               "signature": "def hyperlink_chatself, session_id: str, content: str, *, attachment_ids: list[str] | None=None, model_id: str | None=None, max_tokens: int | None=None -> dict[str, Any]",
-              "line": 930,
+              "line": 932,
               "doc": "One chat turn. Both messages are persisted server-side."
             },
             {
               "name": "hyperlink_resolve_model",
               "signature": "def hyperlink_resolve_modelself, *, page_url: str='', file_url: str='', prefer: str='strict', include_vision: bool=True, offline: bool=False -> dict[str, Any]",
-              "line": 951,
+              "line": 953,
               "doc": "Merge a Hugging Face page link and/or file link into a plan."
             }
           ]
@@ -14462,6 +14836,13 @@
         }
       ],
       "changes": [
+        {
+          "sha": "99ddc1ae",
+          "date": "2026-09-29",
+          "author": "Claude",
+          "subject": "Security: make Codacy scan again, and clear most Bandit findings",
+          "api_changes": []
+        },
         {
           "sha": "c76677db",
           "date": "2026-09-23",
@@ -15147,20 +15528,20 @@
     {
       "module": "hypernix.t1sdk.transport",
       "source": "src/hypernix/t1sdk/transport.py",
-      "line_count": 332,
+      "line_count": 333,
       "summary": "t1sdk.transport \u2014 the SDK's HTTP layer.",
       "api": [
         {
           "kind": "class",
           "name": "RetryPolicy",
           "signature": "class RetryPolicy",
-          "line": 54,
+          "line": 56,
           "doc": "How hard to try before giving up.",
           "methods": [
             {
               "name": "delay_for",
               "signature": "def delay_forself, attempt: int, retry_after: float | None=None -> float",
-              "line": 68,
+              "line": 70,
               "doc": "Seconds to wait before *attempt* (1-based, so attempt 2 is the first retry). A server-sent ``Retry-After`` overrides the curve."
             }
           ]
@@ -15169,13 +15550,13 @@
           "kind": "class",
           "name": "TLSConfig",
           "signature": "class TLSConfig",
-          "line": 80,
+          "line": 82,
           "doc": "Client-side TLS, including mTLS.",
           "methods": [
             {
               "name": "build_context",
               "signature": "def build_contextself -> ssl.SSLContext | None",
-              "line": 101,
+              "line": 103,
               "doc": ""
             }
           ]
@@ -15184,13 +15565,13 @@
           "kind": "class",
           "name": "Response",
           "signature": "class Response",
-          "line": 118,
+          "line": 120,
           "doc": "A parsed T1 response.",
           "methods": [
             {
               "name": "request_id",
               "signature": "def request_idself -> str | None",
-              "line": 126,
+              "line": 128,
               "doc": ""
             }
           ]
@@ -15199,31 +15580,31 @@
           "kind": "class",
           "name": "HTTPTransport",
           "signature": "class HTTPTransport",
-          "line": 130,
+          "line": 132,
           "doc": "Issues requests against one T1 server.",
           "methods": [
             {
               "name": "wire_credential",
               "signature": "def wire_credentialself -> str | None",
-              "line": 166,
+              "line": 168,
               "doc": "What goes in the Authorization header."
             },
             {
               "name": "url_for",
               "signature": "def url_forself, path: str, query: dict[str, Any] | None=None -> str",
-              "line": 182,
+              "line": 184,
               "doc": ""
             },
             {
               "name": "request",
               "signature": "def requestself, method: str, path: str, *, body: dict[str, Any] | None=None, query: dict[str, Any] | None=None, auth: bool=False, idempotent: bool | None=None, raw_body: bytes | None=None, content_type: str | None=None, extra_headers: dict[str, str] | None=None -> Response",
-              "line": 192,
+              "line": 194,
               "doc": "Issue one request, retrying per the policy."
             },
             {
               "name": "upload_file",
               "signature": "def upload_fileself, path: str, file_path: str | Path, *, field_name: str='file', query: dict[str, Any] | None=None -> Response",
-              "line": 296,
+              "line": 298,
               "doc": "Multipart file upload."
             }
           ]
@@ -15241,6 +15622,13 @@
         }
       ],
       "changes": [
+        {
+          "sha": "99ddc1ae",
+          "date": "2026-09-29",
+          "author": "Claude",
+          "subject": "Security: make Codacy scan again, and clear most Bandit findings",
+          "api_changes": []
+        },
         {
           "sha": "c76677db",
           "date": "2026-09-23",
@@ -15337,6 +15725,16 @@
     }
   ],
   "routes": [
+    {
+      "method": "GET",
+      "router": "hyperlink_web",
+      "path": "/",
+      "handler": "page",
+      "response_model": null,
+      "source": "src/hypernix/t1api/hyperlink_web.py",
+      "line": 52,
+      "tag": "hyperlink-web"
+    },
     {
       "method": "GET",
       "router": "router",
@@ -15804,7 +16202,7 @@
       "handler": "list_backends",
       "response_model": "BackendsResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 1811,
+      "line": 1813,
       "tag": "hyperlink"
     },
     {
@@ -15814,7 +16212,7 @@
       "handler": "list_devices",
       "response_model": "DeviceListResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 426,
+      "line": 428,
       "tag": "hyperlink"
     },
     {
@@ -15824,7 +16222,7 @@
       "handler": "whoami",
       "response_model": "DeviceResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 444,
+      "line": 446,
       "tag": "hyperlink"
     },
     {
@@ -15834,7 +16232,7 @@
       "handler": "revoke_device",
       "response_model": "DeviceResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 490,
+      "line": 492,
       "tag": "hyperlink"
     },
     {
@@ -15844,7 +16242,7 @@
       "handler": "rename_device",
       "response_model": "DeviceResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 470,
+      "line": 472,
       "tag": "hyperlink"
     },
     {
@@ -15854,7 +16252,7 @@
       "handler": "list_endpoints",
       "response_model": "HyperLinkEndpointsResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 192,
+      "line": 194,
       "tag": "hyperlink"
     },
     {
@@ -15864,7 +16262,7 @@
       "handler": "list_attachments",
       "response_model": "AttachmentListResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 2043,
+      "line": 2045,
       "tag": "hyperlink"
     },
     {
@@ -15874,7 +16272,7 @@
       "handler": "upload_file",
       "response_model": "AttachmentResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 2007,
+      "line": 2009,
       "tag": "hyperlink"
     },
     {
@@ -15884,7 +16282,7 @@
       "handler": "delete_file",
       "response_model": "GenericOkResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 2089,
+      "line": 2091,
       "tag": "hyperlink"
     },
     {
@@ -15894,7 +16292,7 @@
       "handler": "download_file",
       "response_model": null,
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 2062,
+      "line": 2064,
       "tag": "hyperlink"
     },
     {
@@ -15904,7 +16302,7 @@
       "handler": "list_generations",
       "response_model": "GenerationListResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 1965,
+      "line": 1967,
       "tag": "hyperlink"
     },
     {
@@ -15914,7 +16312,7 @@
       "handler": "server_hardware",
       "response_model": "HardwareResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 1765,
+      "line": 1767,
       "tag": "hyperlink"
     },
     {
@@ -15924,7 +16322,7 @@
       "handler": "model_catalogue",
       "response_model": "ModelCatalogueResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 2273,
+      "line": 2372,
       "tag": "hyperlink"
     },
     {
@@ -15934,7 +16332,7 @@
       "handler": "download_model",
       "response_model": "HFDownloadResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 2164,
+      "line": 2166,
       "tag": "hyperlink"
     },
     {
@@ -15944,7 +16342,27 @@
       "handler": "list_downloaded",
       "response_model": "DownloadedModelsResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 2240,
+      "line": 2242,
+      "tag": "hyperlink"
+    },
+    {
+      "method": "POST",
+      "router": "router",
+      "path": "/hyperlink/models/link",
+      "handler": "link_model_route",
+      "response_model": "ModelLinkResponse",
+      "source": "src/hypernix/t1api/routers/hyperlink.py",
+      "line": 2314,
+      "tag": "hyperlink"
+    },
+    {
+      "method": "DELETE",
+      "router": "router",
+      "path": "/hyperlink/models/link/{name}",
+      "handler": "unlink_model_route",
+      "response_model": "ModelLinkResponse",
+      "source": "src/hypernix/t1api/routers/hyperlink.py",
+      "line": 2353,
       "tag": "hyperlink"
     },
     {
@@ -15954,7 +16372,7 @@
       "handler": "resolve_model_link",
       "response_model": "HFResolveResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 2107,
+      "line": 2109,
       "tag": "hyperlink"
     },
     {
@@ -15964,7 +16382,7 @@
       "handler": "create_pairing_code",
       "response_model": "PairingCodeResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 285,
+      "line": 287,
       "tag": "hyperlink"
     },
     {
@@ -15974,7 +16392,7 @@
       "handler": "redeem_pairing_code",
       "response_model": "PairingRedeemResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 333,
+      "line": 335,
       "tag": "hyperlink"
     },
     {
@@ -15984,7 +16402,7 @@
       "handler": "revoke_pairing_code",
       "response_model": "GenericOkResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 402,
+      "line": 404,
       "tag": "hyperlink"
     },
     {
@@ -15994,7 +16412,7 @@
       "handler": "list_peers",
       "response_model": "HyperLinkPeersResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 227,
+      "line": 229,
       "tag": "hyperlink"
     },
     {
@@ -16004,7 +16422,7 @@
       "handler": "read_preferences",
       "response_model": "PreferencesResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 1837,
+      "line": 1839,
       "tag": "hyperlink"
     },
     {
@@ -16014,7 +16432,7 @@
       "handler": "write_preferences",
       "response_model": "PreferencesResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 1858,
+      "line": 1860,
       "tag": "hyperlink"
     },
     {
@@ -16024,7 +16442,7 @@
       "handler": "reset_preferences",
       "response_model": "PreferencesResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 1884,
+      "line": 1886,
       "tag": "hyperlink"
     },
     {
@@ -16034,7 +16452,7 @@
       "handler": "list_push",
       "response_model": "PushRegistrationListResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 2420,
+      "line": 2521,
       "tag": "hyperlink"
     },
     {
@@ -16044,7 +16462,7 @@
       "handler": "register_push",
       "response_model": "PushRegistrationResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 2388,
+      "line": 2489,
       "tag": "hyperlink"
     },
     {
@@ -16054,7 +16472,7 @@
       "handler": "list_push_events",
       "response_model": "dict",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 2472,
+      "line": 2573,
       "tag": "hyperlink"
     },
     {
@@ -16064,7 +16482,7 @@
       "handler": "unregister_push",
       "response_model": "GenericOkResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 2458,
+      "line": 2559,
       "tag": "hyperlink"
     },
     {
@@ -16074,7 +16492,7 @@
       "handler": "set_push_events",
       "response_model": "PushRegistrationResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 2440,
+      "line": 2541,
       "tag": "hyperlink"
     },
     {
@@ -16084,7 +16502,7 @@
       "handler": "search_history",
       "response_model": "SearchResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 2510,
+      "line": 2611,
       "tag": "hyperlink"
     },
     {
@@ -16094,7 +16512,7 @@
       "handler": "list_sessions",
       "response_model": "SessionListResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 530,
+      "line": 532,
       "tag": "hyperlink"
     },
     {
@@ -16104,7 +16522,7 @@
       "handler": "create_session",
       "response_model": "SessionResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 551,
+      "line": 553,
       "tag": "hyperlink"
     },
     {
@@ -16114,7 +16532,7 @@
       "handler": "delete_session",
       "response_model": "GenericOkResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 638,
+      "line": 640,
       "tag": "hyperlink"
     },
     {
@@ -16124,7 +16542,7 @@
       "handler": "get_session",
       "response_model": "SessionResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 573,
+      "line": 575,
       "tag": "hyperlink"
     },
     {
@@ -16134,7 +16552,7 @@
       "handler": "update_session",
       "response_model": "SessionResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 586,
+      "line": 588,
       "tag": "hyperlink"
     },
     {
@@ -16144,7 +16562,7 @@
       "handler": "chat_turn",
       "response_model": "HyperLinkChatResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 1239,
+      "line": 1241,
       "tag": "hyperlink"
     },
     {
@@ -16154,7 +16572,7 @@
       "handler": "stop_generation",
       "response_model": "GenerationStopResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 1662,
+      "line": 1664,
       "tag": "hyperlink"
     },
     {
@@ -16164,7 +16582,7 @@
       "handler": "chat_turn_stream",
       "response_model": null,
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 1404,
+      "line": 1406,
       "tag": "hyperlink"
     },
     {
@@ -16174,7 +16592,7 @@
       "handler": "list_messages",
       "response_model": "MessageListResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 729,
+      "line": 731,
       "tag": "hyperlink"
     },
     {
@@ -16184,7 +16602,7 @@
       "handler": "delete_message",
       "response_model": "GenericOkResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 699,
+      "line": 701,
       "tag": "hyperlink"
     },
     {
@@ -16194,7 +16612,7 @@
       "handler": "edit_message",
       "response_model": "MessageEditResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 651,
+      "line": 653,
       "tag": "hyperlink"
     },
     {
@@ -16204,7 +16622,7 @@
       "handler": "retitle_session",
       "response_model": "SessionResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 608,
+      "line": 610,
       "tag": "hyperlink"
     },
     {
@@ -16214,7 +16632,7 @@
       "handler": "shell_status",
       "response_model": null,
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 1703,
+      "line": 1705,
       "tag": "hyperlink"
     },
     {
@@ -16224,7 +16642,7 @@
       "handler": "run_shell",
       "response_model": null,
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 1723,
+      "line": 1725,
       "tag": "hyperlink"
     },
     {
@@ -16234,7 +16652,7 @@
       "handler": "sync_changes",
       "response_model": "SyncPageResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 2325,
+      "line": 2426,
       "tag": "hyperlink"
     },
     {
@@ -16244,7 +16662,7 @@
       "handler": "claim_client_message",
       "response_model": "SyncClaimResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 2356,
+      "line": 2457,
       "tag": "hyperlink"
     },
     {
@@ -16254,7 +16672,7 @@
       "handler": "server_upgrade",
       "response_model": "UpgradeResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 1900,
+      "line": 1902,
       "tag": "hyperlink"
     },
     {
@@ -16264,8 +16682,18 @@
       "handler": "server_uptime",
       "response_model": "UptimeResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 1938,
+      "line": 1940,
       "tag": "hyperlink"
+    },
+    {
+      "method": "GET",
+      "router": "hyperlink_web",
+      "path": "/index.html",
+      "handler": "page",
+      "response_model": null,
+      "source": "src/hypernix/t1api/hyperlink_web.py",
+      "line": 53,
+      "tag": "hyperlink-web"
     },
     {
       "method": "GET",
@@ -16724,7 +17152,7 @@
       "handler": "runner_adopt_preview",
       "response_model": null,
       "source": "src/hypernix/t1api/routers/runner.py",
-      "line": 361,
+      "line": 370,
       "tag": "runner"
     },
     {
@@ -16734,7 +17162,7 @@
       "handler": "runner_adopt",
       "response_model": "RunnerStatusResponse",
       "source": "src/hypernix/t1api/routers/runner.py",
-      "line": 387,
+      "line": 396,
       "tag": "runner"
     },
     {
@@ -16744,7 +17172,7 @@
       "handler": "runner_hyperchat",
       "response_model": null,
       "source": "src/hypernix/t1api/routers/runner.py",
-      "line": 276,
+      "line": 285,
       "tag": "runner"
     },
     {
@@ -16754,7 +17182,7 @@
       "handler": "runner_load",
       "response_model": "RunnerStatusResponse",
       "source": "src/hypernix/t1api/routers/runner.py",
-      "line": 216,
+      "line": 225,
       "tag": "runner"
     },
     {
@@ -16764,7 +17192,7 @@
       "handler": "runner_plan",
       "response_model": "RunnerPlanResponse",
       "source": "src/hypernix/t1api/routers/runner.py",
-      "line": 180,
+      "line": 189,
       "tag": "runner"
     },
     {
@@ -16774,7 +17202,7 @@
       "handler": "runner_status",
       "response_model": "RunnerStatusResponse",
       "source": "src/hypernix/t1api/routers/runner.py",
-      "line": 157,
+      "line": 166,
       "tag": "runner"
     },
     {
@@ -16784,7 +17212,7 @@
       "handler": "runner_unload",
       "response_model": "RunnerStatusResponse",
       "source": "src/hypernix/t1api/routers/runner.py",
-      "line": 260,
+      "line": 269,
       "tag": "runner"
     },
     {
@@ -17129,6 +17557,36 @@
     },
     {
       "method": "GET",
+      "router": "hyperlink_web",
+      "path": "/web/app.css",
+      "handler": "page",
+      "response_model": null,
+      "source": "src/hypernix/t1api/hyperlink_web.py",
+      "line": 55,
+      "tag": "hyperlink-web"
+    },
+    {
+      "method": "GET",
+      "router": "hyperlink_web",
+      "path": "/web/app.js",
+      "handler": "page",
+      "response_model": null,
+      "source": "src/hypernix/t1api/hyperlink_web.py",
+      "line": 54,
+      "tag": "hyperlink-web"
+    },
+    {
+      "method": "GET",
+      "router": "hyperlink_web",
+      "path": "/web/icon.svg",
+      "handler": "page",
+      "response_model": null,
+      "source": "src/hypernix/t1api/hyperlink_web.py",
+      "line": 56,
+      "tag": "hyperlink-web"
+    },
+    {
+      "method": "GET",
       "router": "router",
       "path": "/web/v1/I",
       "handler": "web_search",
@@ -17204,12 +17662,20 @@
       "module": "hypernix.t1api.accounts"
     },
     {
+      "name": "AssertionError",
+      "module": "hypernix.t1api.storage"
+    },
+    {
       "name": "AttributeError",
       "module": "hypernix.t1api"
     },
     {
       "name": "AuthError",
       "module": "hypernix.t1api.launchscript_cli"
+    },
+    {
+      "name": "FileNotFoundError",
+      "module": "hypernix.t1api.modelsync"
     },
     {
       "name": "GrammarError",
@@ -17489,6 +17955,10 @@
     },
     {
       "name": "ValueError",
+      "module": "hypernix.t1api.accounts"
+    },
+    {
+      "name": "ValueError",
       "module": "hypernix.t1api.app"
     },
     {
@@ -17497,11 +17967,19 @@
     },
     {
       "name": "ValueError",
+      "module": "hypernix.t1api.authhistory"
+    },
+    {
+      "name": "ValueError",
       "module": "hypernix.t1api.db"
     },
     {
       "name": "ValueError",
       "module": "hypernix.t1api.mcp"
+    },
+    {
+      "name": "ValueError",
+      "module": "hypernix.t1api.modelsync"
     },
     {
       "name": "ValueError",
