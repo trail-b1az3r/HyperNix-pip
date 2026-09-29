@@ -249,6 +249,16 @@ Historical wording and technical detail are retained during format normalization
     to F32, to within 0.7% of the range; INT3 and FP8 matched to within
     0.01%.
 
+✨ Added `-P` and `-Q` to `hypernix convert` (and `hnx convert`).
+  - `hnx convert ./snapshot -P -Q q6h4` converts a safetensors model to a
+    GGUF, then quantises it with hyprslug to any target it knows. It
+    accepts a Hugging Face folder or a `.safetensors` in one, a Brewer
+    folder or `.pt`, or a `.gguf`, which is quantised as it is.
+  - The output defaults to `<model>.<target>.gguf` beside the model. The
+    F16 copy is staged beside it and deleted, unless
+    `--keep-intermediate` is given. `-Q` implies `-P`, and a bad target
+    is refused before anything is converted.
+
 ✨ Added hyperNix0x-v2 (Brewer) models as hyprslug input.
   - `hyprslug brewer_models/mymodel q6h4` takes a model folder or a `.pt`
     checkpoint. It exports an F16 GGUF beside the output, quantises that,
@@ -542,6 +552,7 @@ Historical wording and technical detail are retained during format normalization
 
 ### Tests
 
+🧪 Added `tests/quant/test_convert_pipeline.py` (14) for `convert -P`.
 🧪 Added `tests/quant/test_hyprslug_hybrids.py` (54): Q8_K's block and
   bsums, INT3 and FP8 round trips, FP8 codes being E4M3 bytes, where each
   hybrid puts each format, and Brewer folders as input.

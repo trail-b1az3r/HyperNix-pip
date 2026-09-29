@@ -12,7 +12,7 @@ usage: hypernix <subcommand> [options]  (or: hnx <subcommand> [options])
 Core pipeline:
   all                    download -> convert -> [quantize]
   download               fetch a HuggingFace snapshot
-  convert                produce fp32 / fp16 GGUF from a snapshot
+  convert                produce fp32 / fp16 GGUF; -P -Q TARGET also quantises
   quantize               run llama-quantize on an fp16 / fp32 GGUF
   verify                 read-validate a GGUF and print headers
   info                   package + optional GGUF header summary
@@ -143,17 +143,38 @@ Prints the local snapshot path to stdout.
 
 ```bash
 hypernix convert --model-dir ./snapshot --output ./out-fp16.gguf --dtype fp16
+
+# -P: convert and quantise in one step (hnx is the same command)
+hypernix convert ./snapshot -P -Q Q4_K_M
+hnx convert ./snapshot/model.safetensors -P -Q q6h4 -o model.q6h4.gguf
+hnx convert ./brewer_models/mine -P -Q FP8
 ```
 
 | Flag | Default |
 |---|---|
-| `--model-dir PATH` | required |
-| `--output PATH` | required |
+| `MODEL` (or `--model-dir PATH`) | required |
+| `-o`, `--output PATH` | required without `-P`; with it, `<model>.<target>.gguf` beside the model |
+| `-P`, `--pipeline` | off. Converts safetensors to a GGUF, then quantises it with [hyprslug](HyprSlug.md) to the `-Q` target |
+| `-Q`, `--quant TARGET` | none. Any hyprslug target: `Q4_K_M`, `Q8_0`, `INT3`, `FP8`, `IQ0.5`, the hybrids `q6h`/`q6h4`/`q6h2`. Implies `-P` |
+| `--keep-intermediate` | off. With `-P`, keep the F16 GGUF beside the output |
+| `--imatrix PATH` | none. With `-P`, an importance matrix for hyprslug |
 | `--dtype` | `fp16` (`fp16` / `f16` / `fp32` / `f32`) |
 | `--arch NAME` | `hypernix` |
 | `--name NAME` | `HyperNix` |
 | `--n-head N` | from config |
 | `--context-length N` | from config |
+
+What `-P` does with each kind of model:
+
+| Model | What happens |
+|---|---|
+| Hugging Face folder, or a `.safetensors` in one | converted to an F16 GGUF, quantised, and the F16 copy deleted |
+| hyperNix0x-v2 (Brewer) folder or `.pt` | exported to a llama.cpp GGUF by hyprslug, then quantised |
+| `.gguf` | quantised as it is |
+
+The target is checked before anything is converted, so a typo in `-Q`
+costs nothing. The F16 copy is staged beside the output, not in `/tmp`,
+because it is the biggest file in the pipeline.
 
 ## `quantize`
 

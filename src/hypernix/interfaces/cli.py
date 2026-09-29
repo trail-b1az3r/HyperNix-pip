@@ -216,7 +216,7 @@ def _print_usage() -> None:
         
         table.add_row("[green]all[/]", "download -> convert -> \\[quantize] (classic pipeline)")
         table.add_row("[green]download[/]", "fetch a HuggingFace model snapshot to disk")
-        table.add_row("[green]convert[/]", "produce fp32 / fp16 GGUF from a local snapshot")
+        table.add_row("[green]convert[/]", "produce fp32 / fp16 GGUF from a local snapshot; -P -Q TARGET quantises too")
         table.add_row("[green]quantize[/]", "run llama-quantize on an fp16/fp32 GGUF")
         table.add_row("[green]verify[/]", "read-check a GGUF and print its headers")
         table.add_row("[green]info[/]", "show package + GGUF header info")
@@ -282,7 +282,7 @@ def _print_usage() -> None:
             "Subcommands:\n"
             "  all                    download -> convert -> [quantize] (the classic pipeline)\n"
             "  download               fetch a HuggingFace model snapshot to disk\n"
-            "  convert                produce fp32 / fp16 GGUF from a local snapshot\n"
+            "  convert                produce fp32 / fp16 GGUF; -P -Q TARGET also quantises\n"
             "  quantize               run llama-quantize on an fp16/fp32 GGUF\n"
             "  verify                 read-check a GGUF and print its headers\n"
             "  info                   show package + GGUF header info\n"
@@ -506,15 +506,47 @@ def _run_convert(raw: list[str]) -> int:
     from hypernix.quant.convert import convert_to_gguf
     from hypernix.timing.spinner import Spinner
 
-    p = argparse.ArgumentParser(prog="hypernix convert")
-    p.add_argument("--model-dir", required=True)
-    p.add_argument("--output", required=True)
+    p = argparse.ArgumentParser(
+        prog="hypernix convert",
+        description="Produce an F32/F16 GGUF from a snapshot, or with -P, "
+                    "convert and quantise in one step.",
+        epilog="examples:\n"
+               "  hypernix convert --model-dir ./snap --output snap.f16.gguf\n"
+               "  hypernix convert ./snap -P -Q Q4_K_M\n"
+               "  hnx convert ./snap/model.safetensors -P -Q q6h4 -o snap.q6h4.gguf\n"
+               "  hnx convert ./brewer_models/mine -P -Q q6h",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    p.add_argument("source", nargs="?", default=None,
+                   help="Model folder, .safetensors, Brewer folder/.pt, or .gguf "
+                        "(same as --model-dir)")
+    p.add_argument("--model-dir", default=None)
+    p.add_argument("-o", "--output", default=None)
+    p.add_argument("-P", "--pipeline", action="store_true",
+                   help="If the source is safetensors, convert it, then quantise "
+                        "the result with hyprslug to the -Q target. A Brewer "
+                        "model or a GGUF is quantised as it is.")
+    p.add_argument("-Q", "--quant", default=None, metavar="TARGET",
+                   help="hyprslug target for -P: any llama.cpp type or mix "
+                        "(Q4_K_M, Q8_0...), a HyperNix tier (INT3, FP8, "
+                        "IQ0.5...), or a hybrid (q6h, q6h4, q6h2). Implies -P.")
+    p.add_argument("--keep-intermediate", action="store_true",
+                   help="With -P, keep the F16 GGUF beside the output")
+    p.add_argument("--imatrix", default=None, help="With -P, an importance matrix")
     p.add_argument("--dtype", default="fp16", choices=["fp32", "f32", "fp16", "f16"])
     p.add_argument("--arch", default="hypernix")
     p.add_argument("--name", default="HyperNix")
     p.add_argument("--n-head", type=int, default=None)
     p.add_argument("--context-length", type=int, default=None)
     ns = p.parse_args(raw)
+    source = ns.source or ns.model_dir
+    if not source:
+        p.error("give a model: hypernix convert MODEL [-P -Q TARGET], or --model-dir")
+    if ns.pipeline or ns.quant:
+        return _run_convert_pipeline(ns, source)
+    if not ns.output:
+        p.error("--output is required without -P")
+    ns.model_dir = source
     with Spinner(f"Converting to {ns.dtype.upper()} GGUF", style="grow"):
         out = convert_to_gguf(
             model_dir=ns.model_dir, output=ns.output, dtype=ns.dtype,
@@ -522,6 +554,36 @@ def _run_convert(raw: list[str]) -> int:
             n_head_hint=ns.n_head, context_length=ns.context_length,
         )
     print(out)
+    return 0
+
+
+def _run_convert_pipeline(ns: argparse.Namespace, source: str) -> int:
+    """``convert -P``: safetensors -> GGUF -> hyprslug."""
+    from hypernix.quant.convertq import ConvertQuantizeError, convert_and_quantize, source_kind
+    from hypernix.quant.hyprslug import HyprslugError
+    from hypernix.timing.spinner import Spinner
+
+    if not ns.quant:
+        print("hypernix convert: -P needs a target, e.g. -Q Q4_K_M, -Q q6h4 or -Q FP8",
+              file=sys.stderr)
+        return 2
+    kind = source_kind(source)
+    step = {"safetensors": "Converting and quantising", "brewer": "Exporting and quantising",
+            "gguf": "Quantising"}.get(kind, "Quantising")
+    try:
+        with Spinner(f"{step} to {ns.quant}", style="grow"):
+            result = convert_and_quantize(
+                source, ns.quant, ns.output, dtype=ns.dtype, arch_name=ns.arch,
+                name=None if ns.name == "HyperNix" else ns.name,
+                keep_intermediate=ns.keep_intermediate, imatrix=ns.imatrix,
+            )
+    except (ConvertQuantizeError, HyprslugError, FileNotFoundError) as exc:
+        print(f"hypernix convert: {exc}", file=sys.stderr)
+        return 1
+    print(result.report.describe())
+    if result.intermediate:
+        print(f"kept {result.intermediate}")
+    print(result.output)
     return 0
 
 

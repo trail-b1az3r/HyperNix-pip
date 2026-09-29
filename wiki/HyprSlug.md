@@ -256,6 +256,10 @@ Guide](Model-Training-Guide.md#running-a-brewed-model-in-llamacpp)),
 staged beside the output rather than in `/tmp`, and deleted afterwards.
 The report says `from a hyperNix0x-v2 model`.
 
+`hypernix convert MODEL -P -Q TARGET` does the same for a Hugging Face
+safetensors folder: it converts, quantises with hyprslug, and removes
+the F16 copy. See [CLI](CLI.md#convert).
+
 ## Requantising
 
 A `Q8_0` GGUF is the only copy of the model most people have, and
