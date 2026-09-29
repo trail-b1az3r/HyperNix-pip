@@ -139,7 +139,8 @@ def describe(path: str | Path) -> dict[str, Any]:
         params = BrewerConfig.from_dict(config).approx_params()
     except Exception:  # noqa: BLE001 - a count is a nicety, not a requirement
         params = 0
-    detail = "native HyperNix model (hyperNix0x-v2), served without llama.cpp"
+    detail = ("native HyperNix model (hyperNix0x-v2); the runner serves it through "
+              "llama.cpp when there is a build, converting it once, else in PyTorch")
     if matches_default(name) or folder.name == DEFAULT_MODEL_DIR:
         detail = ("the default model: a small base model that completes text. "
                   "It does not follow instructions or call tools")

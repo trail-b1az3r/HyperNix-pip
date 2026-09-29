@@ -395,9 +395,15 @@ hypernix chat --model-dir model.iq05.gguf --cache-bytes 2G
 # One-shot pipeline from a recipe file:
 hypernix brew recipe.json --set output_dir=./out
 
-# Architecture-builder sub-CLI (brewer):
-hypernix brew new --preset small --out-dir ./arch
+# Architecture-builder sub-CLI (brewer). Each model is a folder,
+# ./brewer_models/<name>, so these work across separate runs:
+hypernix brew new --preset cpu-nano --name my-model
+hypernix brew train --name my-model --data corpus.txt --steps 2000   # saves the folder
+hypernix brew export --name my-model --outtype f16                   # a GGUF llama.cpp runs
 hypernix brew list
+
+# Any Brewer model folder or .pt, HyperNix.3-mini included, to GGUF:
+hypernix brew gguf ~/.hypernix/models/HyperNix.3-mini --outtype q8_0
 ```
 
 A path ending in `.json` is treated as an `instant_pot` recipe and run
@@ -405,6 +411,19 @@ end-to-end (download/convert/quantize/etc. as described in the recipe).
 Anything else dispatches into the `brewer` architecture-builder sub-CLI,
 with presets from `33m`/`micro`/`small`/`medium`/`large` (GPU) through
 `cpu-nano`/`cpu-tiny`/`cpu-small` (CPU-only).
+
+| Brewer command | |
+|---|---|
+| `new --preset P --name N [--save-dir D]` | write `D/N/config.json` (default `./brewer_models/N`) |
+| `train --name N \| --dir D --data F` | train, continuing from saved weights if there are any, and save `model.safetensors` and `char_vocab.json` into the folder. `--steps`, `--lr`, `--batch-size`, `--device` all apply |
+| `export --name N \| --dir D` | `--format gguf` (default; runs in llama.cpp), `pt`, or `hnxg` (the old binary, not GGUF). `--outtype f32\|f16\|bf16\|q8_0`, `--tokenizer`, `--context`. Refuses a folder with no trained weights |
+| `gguf SOURCE` | any Brewer folder (config.json + weights + tokenizer) or `.pt` to a GGUF; `--pad-ffn 256` (default) keeps every tensor k-quantisable |
+| `list` | the folders in `./brewer_models`, whether each is trained, and its GGUFs |
+
+A Brewer GGUF is written as llama.cpp's `llama` architecture, which is
+what a Brewer block is, so it runs in any llama.cpp build, LM Studio, and
+the `native/ggml-hnx` patched build alike; see
+[Model-Training-Guide § Running a brewed model in llama.cpp](Model-Training-Guide.md#running-a-brewed-model-in-llamacpp).
 
 ## `pipeline` and `assistant` — current limitations
 
@@ -821,8 +840,13 @@ off, so `start` loads the only model on the machine as it did before.
 
 **Native HyperNix models.** A folder with a brewer `config.json` and
 weights, like HyperNix.3-mini or anything `hnx brew` trained, is served
-by `hypernix.hyperlink.brewed_server` in PyTorch instead of llama.cpp,
-over the same OpenAI API, so HyperLink cannot tell the difference. The
+through llama.cpp when there is a llama.cpp build: it is converted to a
+GGUF once, cached in `<T1_CONFIG_DIR>/cache/brewed-gguf` and converted
+again only when its weights change. Otherwise, or when it cannot be
+converted (no tokenizer), `hypernix.hyperlink.brewed_server` serves it in
+PyTorch. Either way it is the same OpenAI API, so HyperLink cannot tell
+the difference. `HYPERNIX_BREWED_BACKEND=torch` always uses PyTorch;
+`=llama` requires llama.cpp and says why when it cannot. The
 chat is written out as a `User:` / `Assistant:` transcript, which is the
 only format a base model can continue.
 

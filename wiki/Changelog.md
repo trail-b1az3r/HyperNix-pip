@@ -218,6 +218,39 @@ Historical wording and technical detail are retained during format normalization
 
 ### Added
 
+✨ Added a real GGUF export for Brewer (hyperNix0x-v2) models, which run in
+  any llama.cpp: stock, LM Studio's, and the `native/ggml-hnx` patched one.
+  - `brew export --format gguf` wrote an `HNXG` file, a JSON header and raw
+    F32 tensors that no llama.cpp could open, patched or not. It now writes
+    the `llama` architecture, which is what a Brewer block is; the old file
+    is `--format hnxg`.
+  - `brew gguf SOURCE` converts any Brewer folder or `.pt`, HyperNix.3-mini
+    included: `hnx brew gguf ~/.hypernix/models/HyperNix.3-mini`.
+  - Q and K are permuted from Brewer's half rotation to llama.cpp's pair
+    rotation, the tokenizer goes inside the file (a byte-level BPE
+    `tokenizer.json`, or a `brew train` character vocabulary rebuilt as
+    byte-level BPE), and a sliding-window model's context is capped at the
+    window, where llama.cpp is exact.
+  - `--outtype f32|f16|bf16|q8_0`, and the Brewer config kept in the file
+    under `hypernix.brewer.*`.
+✨ Added llama.cpp serving for brewed models in the runner.
+  - With a llama.cpp build, a brewed folder is converted to GGUF once,
+    cached in `<T1_CONFIG_DIR>/cache/brewed-gguf` until its weights change,
+    and served by llama.cpp: a KV cache, quantised weights and a GPU layer
+    split, none of which the PyTorch server has.
+  - Without one, or without a tokenizer, the PyTorch server serves it as
+    before. `HYPERNIX_BREWED_BACKEND=torch` always uses it; `=llama`
+    requires llama.cpp and says why when it cannot.
+𖥔 Added `Brewer.save()` and `Brewer.from_dir()`: the model folder
+  (`config.json`, `model.safetensors`, `char_vocab.json`) that NeoOven, the
+  runner, `brew gguf` and the catalogue all read.
+𖥔 Added zero-padding of the FFN to a multiple of 256 in the GGUF, on by
+  default (`--pad-ffn`). HyperNix.3-mini's `d_ff` is 2203, so every
+  `ffn_down` fell back to F16 in `llama-quantize`; padded, it quantises to
+  Q4_K/Q6_K, and zero rows and columns change no output.
+𖥔 Added `char_vocab.json` to NeoOven's tokenizer loading, so a
+  character-level brewed model chats in Python too.
+
 ✨ Added HyperLink on the web at `/` on the T1 API's own port.
   - The page opens at the server's address, `http://127.0.0.1:8000/` or
     whatever `T1_PORT` is, as well as on port 37965, for the same callers:
@@ -343,6 +376,24 @@ Historical wording and technical detail are retained during format normalization
 
 ### Fixed
 
+𖢥 Fixed `brew train` throwing away its character vocabulary.
+  - It built the table from the corpus, trained on it, and kept it in
+    memory only, so a model it trained could never turn its output ids
+    back into text, in Python or anywhere else. The vocabulary is now
+    returned, saved as `char_vocab.json` and put in every checkpoint, and
+    training further keeps the ids it already has.
+  - A corpus with more characters than the model has embeddings was a
+    warning followed by an IndexError (a device-side assert on CUDA) some
+    way into the run. It is refused before training starts.
+𖢥 Fixed the `brew` commands working only within one process.
+  - `brew new` then `brew train` in a second command found nothing, since
+    the registry lived in memory. `brew train` saved no weights, and
+    ignored `--lr`, `--batch-size` and `--device`.
+  - `brew export` built a fresh, randomly initialised model and exported
+    that, whatever had been trained. It now reads the model's folder, and
+    refuses one with no trained weights.
+  - Each command works on `./brewer_models/<name>` or `--dir`.
+
 𖢥 Fixed the server's own address answering 404 instead of HyperLink on the web.
   - From a server log: the server on `0.0.0.0:8001`, the browser at
     `http://127.0.0.1:8001/`, and `GET / 404`. The site was only on its
@@ -396,6 +447,19 @@ Historical wording and technical detail are retained during format normalization
   web routes on the API's port, which it could not see.
 
 ### Tests
+
+🧪 Added `tests/models/test_brewer_gguf.py` (28), including a check that
+  llama.cpp's pair rotation on the permuted weights gives Brewer's
+  attention scores exactly, and that without the permutation it does not;
+  the FFN padding changing no output; the tokenizers; and `brew new`,
+  `train` and `export` as separate runs.
+  - Also run against llama.cpp built from source, stock and with
+    ggml-hnx patched in: logits matched PyTorch within 0.0025 at every
+    position in f32 and f16, tokenization matched exactly with
+    multi-byte characters, and greedy generation produced the same text.
+🧪 Added six runner tests: converted once and cached, converted again for
+  new weights, PyTorch without llama.cpp or a tokenizer, and the
+  `HYPERNIX_BREWED_BACKEND` choices.
 
 🧪 Added two tests to `tests/hyperlink/test_hyperlink_web.py` (now 22): the page on
   the API's port for loopback and tailnet peers (IPv4 and IPv6) and not

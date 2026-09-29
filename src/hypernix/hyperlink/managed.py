@@ -427,8 +427,19 @@ class ManagedRunner:
         from .brewed import is_brewed_dir
 
         if is_brewed_dir(model_path):
-            return self._load_brewed(model_path, model_id=model_id, backend=backend,
-                                     timeout=timeout)
+            converted = brewed_gguf_for(model_path)
+            if converted is None:
+                return self._load_brewed(model_path, model_id=model_id, backend=backend,
+                                         timeout=timeout)
+            # The same model through llama.cpp: a KV cache, quantised
+            # weights, and the GPU layer split, none of which the PyTorch
+            # server has.
+            import json as _json
+
+            config = _json.loads((model_path / "config.json").read_text(encoding="utf-8"))
+            model_id = model_id or str(config.get("name") or model_path.name).lower()
+            total_layers = total_layers or int(config.get("n_layers") or 0)
+            model_path = converted
         if not model_path.is_file():
             raise ManagedError(f"No such model: {model_path}")
 
@@ -758,3 +769,72 @@ def allocate_ports(
             found.append(port)
         port += 1
     return found
+
+
+#: ``auto`` serves a brewed model through llama.cpp when there is a build,
+#: converting it once; ``torch`` always uses the PyTorch server; ``llama``
+#: requires llama.cpp and says why when it cannot.
+BREWED_BACKEND_ENV = "HYPERNIX_BREWED_BACKEND"
+
+
+def brewed_cache_dir() -> Path:
+    """``<T1_CONFIG_DIR>/cache/brewed-gguf``: beside the server, not in the model."""
+    import os
+
+    base = os.environ.get("T1_CONFIG_DIR") or str(Path.home() / ".hypernix" / "t1api")
+    return Path(base) / "cache" / "brewed-gguf"
+
+
+def brewed_gguf_for(folder: Path) -> Path | None:
+    """A GGUF of the brewed model in *folder* for llama.cpp, or ``None``.
+
+    ``None`` means "serve it with the PyTorch server": the setting says so,
+    there is no llama.cpp build, or the model cannot be converted (no
+    tokenizer, for one). The conversion is cached by the weights' size
+    and modification time, outside the model folder, which may be a
+    read-only mirror of symlinks.
+    """
+    import os
+
+    mode = os.environ.get(BREWED_BACKEND_ENV, "auto").strip().lower() or "auto"
+    if mode == "torch":
+        return None
+    try:
+        from ..quant.runtime_bridge import BridgeError, find_build
+
+        find_build()
+    except BridgeError as exc:
+        if mode == "llama":
+            raise ManagedError(f"{BREWED_BACKEND_ENV}=llama, but there is no llama.cpp build: {exc}") from exc
+        return None
+
+    weights = next((folder / n for n in ("model.safetensors", "model.pt", "pytorch_model.bin",
+                                         "weights.pt") if (folder / n).is_file()), None)
+    if weights is None:
+        return None
+    stat = weights.stat()
+    import hashlib
+
+    key = hashlib.sha256(
+        f"{folder.resolve()}|{stat.st_size}|{stat.st_mtime_ns}".encode()
+    ).hexdigest()[:16]
+    target = brewed_cache_dir() / f"{folder.name}-{key}.f16.gguf"
+    if target.is_file():
+        return target
+    try:
+        from ..models.brewer_gguf import export_gguf
+
+        target.parent.mkdir(parents=True, exist_ok=True)
+        partial = target.with_suffix(".partial")
+        report = export_gguf(folder, partial, outtype="f16")
+        partial.replace(target)
+        logger.info("managed: %s converted for llama.cpp: %s", folder, report.summary())
+        for stale in target.parent.glob(f"{folder.name}-*.f16.gguf"):
+            if stale != target:
+                stale.unlink(missing_ok=True)
+        return target
+    except Exception as exc:  # noqa: BLE001 - the PyTorch server still runs it
+        if mode == "llama":
+            raise ManagedError(f"{folder} could not be converted for llama.cpp: {exc}") from exc
+        logger.warning("managed: %s stays on the PyTorch server: %s", folder, exc)
+        return None

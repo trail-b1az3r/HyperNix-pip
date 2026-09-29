@@ -117,6 +117,11 @@ v1.1.26.9.0.0; these add to it.
   the server's own `~/.hypernix/t1api/models`, one symlink per file, and
   serves from it; `hypernix-sync` does it by hand.
   [T1 API](wiki/T1-API.md#model-sync).
+- **Brewer models run in llama.cpp.** `brew export --format gguf` wrote a
+  file no llama.cpp could open; it now writes a real GGUF (as `llama`),
+  and `hnx brew gguf <folder>` converts HyperNix.3-mini or anything
+  brewed. The runner serves brewed models through llama.cpp when it has
+  a build. [Training guide](wiki/Model-Training-Guide.md#running-a-brewed-model-in-llamacpp).
 - **Safer by default:** checkpoints never unpickled, MCP errors that keep
   their details on the server, key files confined to the key store. The
   [security checklist](wiki/T1-API-Security-Checklist.md) now covers
@@ -453,7 +458,7 @@ Click a category below to expand it.
 |---|---|
 | `hypernix.download` | Pull snapshots from the Hub (short-name resolution, gated repos, offline cache). |
 | `hypernix.train` | `HyperNixConfig`, `HyperNixModel`, `init_from_scratch`, `expand_checkpoint`, `train`. Non-HyperNix archs route through `AutoModelForCausalLM`. |
-| `hypernix.brewer` | `hyperNix0x-v2` architecture preset family — `Brewer(config).build()` for a from-scratch `BrewerModel`. GPU-oriented presets `33m` / `micro` / `small` / `medium` / `large` (33.6M-3.5B params), plus `cpu-nano` / `cpu-tiny` / `cpu-small` (2.1M/9.2M/26.5M params) sized for CPU-only training and inference. `custom_arch(**kwargs)` for a fully bespoke config. Also available as `hypernix brew new --preset <name>`. |
+| `hypernix.brewer` | `hyperNix0x-v2` architecture preset family — `Brewer(config).build()` for a from-scratch `BrewerModel`; `brew export` / `brew gguf` write a GGUF any llama.cpp runs (as `llama`). GPU-oriented presets `33m` / `micro` / `small` / `medium` / `large` (33.6M-3.5B params), plus `cpu-nano` / `cpu-tiny` / `cpu-small` (2.1M/9.2M/26.5M params) sized for CPU-only training and inference. `custom_arch(**kwargs)` for a fully bespoke config. Also available as `hypernix brew new --preset <name>`. |
 | `hypernix.instant_pot` | `brew(recipe)` — one-shot end-to-end pipeline. Also available as `hypernix brew recipe.json`. |
 | `hypernix.coffee_maker` | 3 tiers (drip / french-press / percolator) + `cold_brew` type for long checkpointed runs. |
 | `hypernix.deep_fryer` | 2-tier model-weight perturbation: `LightFry` (regulariser) / `HeavyFry` (severe, for bad-model negatives). In-place, reversible via snapshot. |

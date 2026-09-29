@@ -13,7 +13,8 @@ Quick-start::
     brewer = Brewer(cfg, name="my-model")
     model = brewer.build()
     brewer.train(data_path="corpus.txt", steps=1000)
-    brewer.export(out_path="my-model.gguf", fmt="gguf")
+    brewer.save()                                    # ./brewer_models/my-model
+    brewer.export(out_path="my-model.gguf", fmt="gguf")  # runs in llama.cpp
 
 CLI::
 
@@ -21,6 +22,7 @@ CLI::
     python -m hypernix brew list
     python -m hypernix brew train --name my-model --data corpus.txt --steps 2000
     python -m hypernix brew export --name my-model --format gguf --out my-model.gguf
+    python -m hypernix brew gguf ~/.hypernix/models/HyperNix.3-mini --outtype q8_0
 """
 from __future__ import annotations
 
@@ -691,11 +693,18 @@ class _SimpleTextDataset:
 
     Chunks the file into non-overlapping windows of ``seq_len`` tokens.
     All characters are mapped to a compact integer vocabulary.
+
+    *vocab* is the vocabulary of a model being trained further: its ids are
+    kept, and characters it has never seen are appended after them. Sorting
+    afresh would renumber every character the model already learned.
     """
 
-    def __init__(self, path: str | Path, seq_len: int) -> None:
+    def __init__(self, path: str | Path, seq_len: int, vocab: list[str] | None = None) -> None:
         text = Path(path).read_text(encoding="utf-8", errors="replace")
-        chars = sorted(set(text))
+        chars = list(vocab or [])
+        known = set(chars)
+        chars += sorted(set(text) - known)
+        self.chars = chars
         self.vocab_size = len(chars)
         self.stoi: dict[str, int] = {c: i for i, c in enumerate(chars)}
         self.itos: dict[int, str] = {i: c for c, i in self.stoi.items()}
@@ -738,7 +747,8 @@ def train_model(
     device: str = "auto",
     checkpoint_dir: str | Path | None = None,
     log_callback: Callable[[int, float], None] | None = None,
-) -> None:
+    char_vocab: list[str] | None = None,
+) -> list[str]:
     """Train *model* in-place on a plain-text corpus.
 
     This is a minimal but fully functional training loop suitable for
@@ -757,6 +767,13 @@ def train_model(
                         steps.  Created if it doesn't exist.  Skipped if None.
         log_callback:   Optional ``(step, loss) → None`` callable invoked at
                         every logging step (every 100 steps).
+        char_vocab:     The character vocabulary of a model being trained
+                        further, so its ids stay the same.
+
+    Returns:
+        The character vocabulary, id order. Keep it: without it the model's
+        output ids cannot be turned back into text, anywhere. ``Brewer``
+        saves it as ``char_vocab.json``, and it goes into every checkpoint.
     """
     # ---- Device selection -------------------------------------------------
     if device == "auto":
@@ -774,15 +791,15 @@ def train_model(
 
     # ---- Dataset ----------------------------------------------------------
     seq_len = min(config.max_seq_len, 512)   # cap training length for RAM
-    dataset = _SimpleTextDataset(data_path, seq_len)
+    dataset = _SimpleTextDataset(data_path, seq_len, vocab=char_vocab)
 
-    # Warn if model vocab_size > dataset vocab_size (fine) or vice-versa (bad).
+    # More characters than embeddings is not a warning: the first id past
+    # the table is an IndexError on CPU and a device-side assert on CUDA,
+    # a long way into a run. Refused here, before anything is spent.
     if dataset.vocab_size > config.vocab_size:
-        print(
-            f"[brewer] WARNING: dataset has {dataset.vocab_size} unique chars but "
-            f"model vocab_size={config.vocab_size}.  Indices will overflow — "
-            f"consider increasing vocab_size.",
-            file=sys.stderr,
+        raise ValueError(
+            f"The data has {dataset.vocab_size} distinct characters but the model "
+            f"has vocab_size={config.vocab_size}. Use a larger vocab_size."
         )
 
     # ---- Optimizer --------------------------------------------------------
@@ -860,6 +877,7 @@ def train_model(
                     "optimizer_state_dict": optimizer.state_dict(),
                     "scheduler_state_dict": scheduler.state_dict(),
                     "config": config.to_dict(),
+                    "char_vocab": dataset.chars,
                     "loss": avg_loss if step % 100 == 0 else None,
                 },
                 ckpt_path,
@@ -868,33 +886,38 @@ def train_model(
 
     total_time = time.perf_counter() - t0
     print(f"[brewer] Training complete in {total_time:.1f}s.", flush=True)
+    return dataset.chars
 
 
 # ---------------------------------------------------------------------------
 # Export helpers
 # ---------------------------------------------------------------------------
 
-def _export_pt(model: BrewerModel, config: BrewerConfig, out_path: Path) -> None:
+def _export_pt(
+    model: BrewerModel, config: BrewerConfig, out_path: Path,
+    char_vocab: list[str] | None = None,
+) -> None:
     """Save model as a standard PyTorch state-dict bundle."""
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    torch.save(
-        {
-            "config": config.to_dict(),
-            "model_state_dict": model.state_dict(),
-            "arch": "hypernix0x-v2",
-            "version": 2,
-        },
-        out_path,
-    )
+    bundle = {
+        "config": config.to_dict(),
+        "model_state_dict": model.state_dict(),
+        "arch": "hypernix0x-v2",
+        "version": 2,
+    }
+    if char_vocab:
+        bundle["char_vocab"] = list(char_vocab)
+    torch.save(bundle, out_path)
     print(f"[brewer] Exported PyTorch model → {out_path}")
 
 
-def _export_gguf(model: BrewerModel, config: BrewerConfig, out_path: Path) -> None:
-    """Export a minimal GGUF-like flat binary (F32 tensors, JSON header).
+def _export_hnxg(model: BrewerModel, config: BrewerConfig, out_path: Path) -> None:
+    """The old ``HNXG`` flat binary: F32 tensors behind a JSON header.
 
-    This produces a self-describing binary that downstream tools can parse.
-    For full GGUF compatibility use llama.cpp's convert scripts on the
-    intermediate PyTorch export.
+    This is what ``fmt="gguf"`` used to write. It is not GGUF -- no
+    llama.cpp opens it -- and it is kept, as ``fmt="hnxg"``, only for
+    anything that already parses it. ``fmt="gguf"`` now writes a real
+    GGUF; see :mod:`hypernix.models.brewer_gguf`.
     """
     out_path.parent.mkdir(parents=True, exist_ok=True)
     import struct
@@ -969,6 +992,8 @@ class Brewer:
         self.name = name or config.name
         self.save_dir = Path(save_dir) if save_dir else Path.cwd() / "brewer_models" / self.name
         self._model: BrewerModel | None = None
+        #: The character vocabulary ``train`` learned, in id order.
+        self.char_vocab: list[str] | None = None
         self._register()
 
     # ------------------------------------------------------------------
@@ -1036,9 +1061,10 @@ class Brewer:
         """Train the model on a text corpus.  Builds if not yet built."""
         if self._model is None:
             self.build()
-        train_model(
+        self.char_vocab = train_model(
             model=self.model,
             config=self.config,
+            char_vocab=self.char_vocab,
             data_path=data_path,
             steps=steps,
             lr=lr,
@@ -1055,29 +1081,110 @@ class Brewer:
         self,
         out_path: str | Path | None = None,
         fmt: str = "pt",
+        *,
+        outtype: str = "f16",
+        tokenizer: str | Path | None = None,
+        context: str | int = "auto",
     ) -> Path:
         """Export the model to a file.
 
         Args:
-            out_path: Destination file.  Defaults to ``<save_dir>/<name>.<fmt>``.
-            fmt:      ``"pt"`` (PyTorch state-dict) or ``"gguf"``.
+            out_path:  Destination file.  Defaults to ``<save_dir>/<name>.<ext>``.
+            fmt:       ``"pt"`` (PyTorch state-dict), ``"gguf"`` (a real GGUF
+                       llama.cpp runs, as the ``llama`` architecture) or
+                       ``"hnxg"`` (the old flat binary ``gguf`` used to mean).
+            outtype:   GGUF tensor type: ``f32``, ``f16``, ``bf16`` or ``q8_0``.
+            tokenizer: A ``tokenizer.json`` (or its folder) for the GGUF.
+                       Without one, the character vocabulary ``train``
+                       learned is used.
+            context:   GGUF context: ``"auto"`` (capped at the sliding
+                       window, where llama.cpp is exact), ``"full"`` or a
+                       number of tokens.
 
         Returns:
             The resolved output path.
         """
+        fmt_lower = fmt.lower()
         if out_path is None:
-            ext = "gguf" if fmt == "gguf" else "pt"
+            ext = {"gguf": f"{outtype.lower()}.gguf", "hnxg": "hnxg"}.get(fmt_lower, "pt")
             out_path = self.save_dir / f"{self.name}.{ext}"
         out = Path(out_path)
 
-        fmt_lower = fmt.lower()
         if fmt_lower == "gguf":
-            _export_gguf(self.model, self.config, out)
+            from ..models.brewer_gguf import export_gguf
+
+            report = export_gguf(
+                self.save_dir if self.save_dir.is_dir() else None, out,
+                state_dict=self.model.state_dict(), config=self.config,
+                char_vocab=self.char_vocab, tokenizer=tokenizer,
+                outtype=outtype, context=context, name=self.name,
+            )
+            print(f"[brewer] Exported GGUF → {report.summary()}")
+            for note in report.notes:
+                print(f"[brewer]   note: {note}")
+        elif fmt_lower == "hnxg":
+            _export_hnxg(self.model, self.config, out)
         elif fmt_lower in ("pt", "pytorch"):
-            _export_pt(self.model, self.config, out)
+            _export_pt(self.model, self.config, out, self.char_vocab)
         else:
-            raise ValueError(f"Unknown export format: {fmt!r}. Choose 'pt' or 'gguf'.")
+            raise ValueError(f"Unknown export format: {fmt!r}. Choose 'pt', 'gguf' or 'hnxg'.")
         return out
+
+    # ------------------------------------------------------------------
+
+    def save(self, directory: str | Path | None = None) -> Path:
+        """Write the model folder every HyperNix loader reads.
+
+        ``config.json``, ``model.safetensors`` (a tied head saved once, as
+        on the Hub) and, for a character-level model, ``char_vocab.json``.
+        The same layout HyperNix.3-mini ships in, so the runner, NeoOven,
+        ``brew gguf`` and the catalogue all find it.
+        """
+        from safetensors.torch import save_file
+
+        from ..models.brewer_gguf import CHAR_VOCAB_FILE, write_char_vocab
+
+        folder = Path(directory) if directory else self.save_dir
+        folder.mkdir(parents=True, exist_ok=True)
+        self.config.save(folder / "config.json")
+        state = {
+            k: v.detach().to("cpu").contiguous()
+            for k, v in self.model.state_dict().items()
+            if not (self.config.tie_embeddings and k == "lm_head.weight")
+        }
+        save_file(state, str(folder / "model.safetensors"))
+        if self.char_vocab:
+            write_char_vocab(folder / CHAR_VOCAB_FILE, self.char_vocab)
+        print(f"[brewer] Saved → {folder}")
+        return folder
+
+    @classmethod
+    def from_dir(cls, directory: str | Path, name: str | None = None) -> Brewer:
+        """A :class:`Brewer` from a model folder, weights and vocabulary included.
+
+        A folder with only a ``config.json`` (what ``brew new`` writes) comes
+        back built and untrained.
+        """
+        from ..models.brewer_gguf import CHAR_VOCAB_FILE, read_char_vocab
+
+        folder = Path(directory)
+        cfg = BrewerConfig.load(folder / "config.json")
+        brewer = cls(cfg, name=name or cfg.name, save_dir=folder)
+        brewer.build()
+        weights = folder / "model.safetensors"
+        if weights.is_file():
+            from safetensors.torch import load_file
+
+            state = load_file(str(weights), device="cpu")
+            missing, unexpected = brewer.model.load_state_dict(state, strict=False)
+            bad = [k for k in missing if not (k == "lm_head.weight" and cfg.tie_embeddings)]
+            if unexpected or bad:
+                raise ValueError(f"{weights} does not match config.json: missing {bad[:5]}, "
+                                 f"unexpected {unexpected[:5]}")
+            BREWER_REGISTRY[brewer.name]["trained"] = True
+        if (folder / CHAR_VOCAB_FILE).is_file():
+            brewer.char_vocab = read_char_vocab(folder / CHAR_VOCAB_FILE)
+        return brewer
 
     # ------------------------------------------------------------------
 
@@ -1100,6 +1207,8 @@ class Brewer:
         brewer = cls(cfg, name=name or cfg.name)
         brewer.build()
         brewer.model.load_state_dict(ckpt["model_state_dict"])
+        if ckpt.get("char_vocab"):
+            brewer.char_vocab = list(ckpt["char_vocab"])
         print(f"[brewer] Loaded checkpoint from {ckpt_path}")
         return brewer
 
@@ -1131,6 +1240,38 @@ _PRESET_MAP: dict[str, Callable[[], BrewerConfig]] = {
 }
 
 
+def _models_root() -> Path:
+    return Path.cwd() / "brewer_models"
+
+
+def _model_dir(args: argparse.Namespace) -> Path:
+    """The folder a ``brew`` command acts on.
+
+    ``--dir`` if given, else the folder registered in this process, else
+    ``./brewer_models/<name>``. The registry alone was all there was, and
+    it lives in one process: ``brew new`` then ``brew train`` in the next
+    command found nothing, and ``brew export`` built a fresh, random model
+    and exported that.
+    """
+    if getattr(args, "dir", None):
+        return Path(args.dir)
+    name = getattr(args, "name", None)
+    if not name:
+        print("[brewer] Name a model with --name or give its folder with --dir.", file=sys.stderr)
+        sys.exit(2)
+    registered = BREWER_REGISTRY.get(name, {}).get("save_dir")
+    return Path(registered) if registered else _models_root() / name
+
+
+def _open(args: argparse.Namespace) -> Brewer:
+    folder = _model_dir(args)
+    if not (folder / "config.json").is_file():
+        print(f"[brewer] No model at {folder} (no config.json). "
+              f"Create one with: brew new --preset small --name <name>", file=sys.stderr)
+        sys.exit(1)
+    return Brewer.from_dir(folder, name=getattr(args, "name", None))
+
+
 def _cmd_new(args: argparse.Namespace) -> None:
     preset_fn = _PRESET_MAP.get(args.preset.lower())
     if preset_fn is None:
@@ -1151,52 +1292,86 @@ def _cmd_new(args: argparse.Namespace) -> None:
 
 
 def _cmd_list(_args: argparse.Namespace) -> None:
-    if not BREWER_REGISTRY:
-        print("[brewer] No models registered in this session.")
-        return
-    print(f"[brewer] Registered models ({len(BREWER_REGISTRY)}):")
+    rows: dict[str, tuple[Path, dict]] = {}
+    root = _models_root()
+    if root.is_dir():
+        for cfg_path in sorted(root.glob("*/config.json")):
+            try:
+                rows[cfg_path.parent.name] = (cfg_path.parent, json.loads(cfg_path.read_text()))
+            except (OSError, ValueError):
+                continue
     for name, info in BREWER_REGISTRY.items():
-        cfg_info = info.get("config", {})
+        rows.setdefault(name, (Path(info.get("save_dir", "")), info.get("config", {})))
+    if not rows:
+        print(f"[brewer] No models in {root}. Create one with: brew new --preset small --name <name>")
+        return
+    print(f"[brewer] Models ({len(rows)}):")
+    for name, (folder, cfg_info) in rows.items():
+        trained = (folder / "model.safetensors").is_file()
+        ggufs = sorted(p.name for p in folder.glob("*.gguf")) if folder.is_dir() else []
         print(
             f"  • {name!r:30s}  "
             f"layers={cfg_info.get('n_layers', '?')}  "
             f"d_model={cfg_info.get('d_model', '?')}  "
-            f"built={info.get('built')}  "
-            f"trained={info.get('trained')}"
+            f"trained={trained}"
+            + (f"  gguf={', '.join(ggufs)}" if ggufs else "")
         )
 
 
 def _cmd_train(args: argparse.Namespace) -> None:
-    if args.name not in BREWER_REGISTRY:
-        print(
-            f"[brewer] Model '{args.name}' not found in registry. "
-            "Did you run 'brew new' first?",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-    info = BREWER_REGISTRY[args.name]
-    cfg = BrewerConfig.from_dict(info["config"])
-    brewer = Brewer(cfg, name=args.name, save_dir=info.get("save_dir"))
-    brewer.build()
+    brewer = _open(args)
     brewer.train(
         data_path=args.data,
         steps=int(args.steps),
+        lr=float(args.lr),
+        batch_size=int(args.batch_size),
+        device=args.device,
     )
+    # Saved every time: training that ends without writing its weights is
+    # training that has to be done again.
+    brewer.save()
 
 
 def _cmd_export(args: argparse.Namespace) -> None:
-    if args.name not in BREWER_REGISTRY:
-        print(
-            f"[brewer] Model '{args.name}' not found in registry.",
-            file=sys.stderr,
-        )
+    brewer = _open(args)
+    if not (brewer.save_dir / "model.safetensors").is_file():
+        print(f"[brewer] {brewer.save_dir} has no trained weights; exporting would "
+              f"write a random model. Train it first: brew train --name {brewer.name} "
+              f"--data <text file>", file=sys.stderr)
         sys.exit(1)
-    info = BREWER_REGISTRY[args.name]
-    cfg = BrewerConfig.from_dict(info["config"])
-    brewer = Brewer(cfg, name=args.name, save_dir=info.get("save_dir"))
-    brewer.build()
-    out = brewer.export(out_path=args.out, fmt=args.format)
+    out = brewer.export(out_path=args.out, fmt=args.format, outtype=args.outtype,
+                        tokenizer=args.tokenizer, context=_context(args.context))
     print(f"[brewer] Exported → {out}")
+
+
+def _context(value: str) -> str | int:
+    return int(value) if str(value).isdigit() else value
+
+
+def _cmd_gguf(args: argparse.Namespace) -> None:
+    """Any Brewer model -- a folder such as HyperNix.3-mini, or a ``.pt`` -- to GGUF."""
+    from ..models.brewer_gguf import GGUFExportError, export_gguf
+
+    try:
+        report = export_gguf(args.source, args.out, tokenizer=args.tokenizer,
+                             outtype=args.outtype, context=_context(args.context),
+                             pad_ffn_to=int(args.pad_ffn))
+    except (GGUFExportError, FileNotFoundError) as exc:
+        print(f"[brewer] {exc}", file=sys.stderr)
+        sys.exit(1)
+    print(f"[brewer] {report.summary()}")
+    for note in report.notes:
+        print(f"[brewer]   note: {note}")
+    print(f"[brewer] Run it: llama-cli -m {report.path}   (or put it in ~/.hypernix/models)")
+
+
+def _add_gguf_options(p: argparse.ArgumentParser) -> None:
+    p.add_argument("--outtype", default="f16", choices=["f32", "f16", "bf16", "q8_0"],
+                   help="GGUF tensor type (norms are always f32).")
+    p.add_argument("--tokenizer", default=None,
+                   help="tokenizer.json (or its folder) to embed; default: the model's own.")
+    p.add_argument("--context", default="auto",
+                   help="auto (capped at the sliding window, exact) | full | a token count.")
 
 
 def cli_main(argv: list[str] | None = None) -> None:
@@ -1223,11 +1398,12 @@ def cli_main(argv: list[str] | None = None) -> None:
     p_new.add_argument("--save-dir", default=None, help="Root directory to save model files.")
 
     # ---- brew list --------------------------------------------------------
-    sub.add_parser("list", help="List all registered brewer models.")
+    sub.add_parser("list", help="List the models in ./brewer_models.")
 
     # ---- brew train -------------------------------------------------------
-    p_train = sub.add_parser("train", help="Train a registered model.")
-    p_train.add_argument("--name", required=True, help="Registered model name.")
+    p_train = sub.add_parser("train", help="Train a model and save it to its folder.")
+    p_train.add_argument("--name", default=None, help="Model name (./brewer_models/<name>).")
+    p_train.add_argument("--dir", default=None, help="The model's folder, instead of --name.")
     p_train.add_argument("--data", required=True, help="Path to training text file.")
     p_train.add_argument("--steps", default=1000, type=int, help="Training steps.")
     p_train.add_argument("--lr", default=3e-4, type=float, help="Learning rate.")
@@ -1235,13 +1411,26 @@ def cli_main(argv: list[str] | None = None) -> None:
     p_train.add_argument("--device", default="auto", help="Device: auto | cpu | cuda | mps.")
 
     # ---- brew export ------------------------------------------------------
-    p_export = sub.add_parser("export", help="Export a registered model.")
-    p_export.add_argument("--name", required=True, help="Registered model name.")
+    p_export = sub.add_parser("export", help="Export a trained model.")
+    p_export.add_argument("--name", default=None, help="Model name (./brewer_models/<name>).")
+    p_export.add_argument("--dir", default=None, help="The model's folder, instead of --name.")
     p_export.add_argument(
-        "--format", default="gguf", choices=["gguf", "pt"],
-        help="Export format: gguf | pt.",
+        "--format", default="gguf", choices=["gguf", "pt", "hnxg"],
+        help="gguf (runs in llama.cpp) | pt | hnxg (the old non-GGUF binary).",
     )
     p_export.add_argument("--out", default=None, help="Output file path.")
+    _add_gguf_options(p_export)
+
+    # ---- brew gguf --------------------------------------------------------
+    p_gguf = sub.add_parser(
+        "gguf", help="Convert any Brewer model folder or .pt checkpoint to a GGUF llama.cpp runs.")
+    p_gguf.add_argument("source", help="Model folder (config.json + weights) or .pt checkpoint.")
+    p_gguf.add_argument("-o", "--out", default=None,
+                        help="Output file (default: <folder>/<name>.<outtype>.gguf).")
+    p_gguf.add_argument("--pad-ffn", default=256, type=int,
+                        help="Zero-pad the FFN to a multiple of this, so every tensor can be "
+                             "k-quantised (exact; 0 turns it off).")
+    _add_gguf_options(p_gguf)
 
     ns = parser.parse_args(argv)
 
@@ -1250,6 +1439,7 @@ def cli_main(argv: list[str] | None = None) -> None:
         "list":   _cmd_list,
         "train":  _cmd_train,
         "export": _cmd_export,
+        "gguf":   _cmd_gguf,
     }
     dispatch[ns.command](ns)
 

@@ -279,3 +279,90 @@ class TestTheDefault:
         path, facts = runner_router._resolve("ray0rf1re/HyperNix.3-mini", config, None)
         assert Path(path) == tmp_path / "HyperNix.3-mini" and fetched
         assert facts["architecture"] == "hyperNix0x-v2"
+
+
+class TestServedThroughLlamaCpp:
+    """With a llama.cpp build, a brewed model is converted once and served by it."""
+
+    @pytest.fixture
+    def with_tokenizer(self, tiny, tmp_path):
+        import shutil
+
+        tokenizers = pytest.importorskip("tokenizers")
+        from tokenizers import models, pre_tokenizers, trainers
+
+        folder = tmp_path / "tok-brew"
+        shutil.copytree(tiny, folder)
+        tok = tokenizers.Tokenizer(models.BPE())
+        tok.pre_tokenizer = pre_tokenizers.ByteLevel(add_prefix_space=False)
+        tok.train_from_iterator(["hello there " * 50], trainers.BpeTrainer(
+            vocab_size=300, special_tokens=["<|endoftext|>"],
+            initial_alphabet=pre_tokenizers.ByteLevel.alphabet()))
+        tok.save(str(folder / "tokenizer.json"))
+        return folder
+
+    @pytest.fixture
+    def a_build(self, monkeypatch):
+        from hypernix.quant import runtime_bridge
+
+        monkeypatch.setattr(runtime_bridge, "find_build", lambda *a, **k: object())
+
+    @pytest.fixture
+    def no_build(self, monkeypatch):
+        from hypernix.quant import runtime_bridge
+
+        def missing(*_a, **_k):
+            raise runtime_bridge.BridgeError("no llama.cpp here")
+
+        monkeypatch.setattr(runtime_bridge, "find_build", missing)
+
+    def test_converted_once_and_cached(self, with_tokenizer, a_build, monkeypatch, tmp_path):
+        from hypernix.hyperlink import managed
+        from hypernix.models import brewer_gguf
+
+        monkeypatch.setenv("T1_CONFIG_DIR", str(tmp_path / "cfg"))
+        calls = []
+        real = brewer_gguf.export_gguf
+        monkeypatch.setattr(brewer_gguf, "export_gguf", lambda *a, **k: calls.append(1) or real(*a, **k))
+        first = managed.brewed_gguf_for(with_tokenizer)
+        assert first is not None and first.is_file() and first.suffix == ".gguf"
+        assert first.parent == tmp_path / "cfg" / "cache" / "brewed-gguf"
+        assert managed.brewed_gguf_for(with_tokenizer) == first
+        assert len(calls) == 1
+
+    def test_new_weights_are_converted_again(self, with_tokenizer, a_build, monkeypatch, tmp_path):
+        import os
+
+        from hypernix.hyperlink import managed
+
+        monkeypatch.setenv("T1_CONFIG_DIR", str(tmp_path / "cfg"))
+        first = managed.brewed_gguf_for(with_tokenizer)
+        weights = with_tokenizer / "model.safetensors"
+        stat = weights.stat()
+        os.utime(weights, ns=(stat.st_atime_ns, stat.st_mtime_ns + 10_000_000_000))
+        second = managed.brewed_gguf_for(with_tokenizer)
+        assert second != first and second.is_file() and not first.exists()
+
+    def test_the_pytorch_server_without_llama_cpp(self, with_tokenizer, no_build):
+        from hypernix.hyperlink import managed
+
+        assert managed.brewed_gguf_for(with_tokenizer) is None
+
+    def test_the_pytorch_server_without_a_tokenizer(self, tiny, a_build, monkeypatch, tmp_path):
+        from hypernix.hyperlink import managed
+
+        monkeypatch.setenv("T1_CONFIG_DIR", str(tmp_path / "cfg"))
+        assert managed.brewed_gguf_for(tiny) is None
+
+    def test_torch_is_a_choice(self, with_tokenizer, a_build, monkeypatch):
+        from hypernix.hyperlink import managed
+
+        monkeypatch.setenv(managed.BREWED_BACKEND_ENV, "torch")
+        assert managed.brewed_gguf_for(with_tokenizer) is None
+
+    def test_llama_is_a_requirement_that_says_why(self, tiny, no_build, monkeypatch):
+        from hypernix.hyperlink import managed
+
+        monkeypatch.setenv(managed.BREWED_BACKEND_ENV, "llama")
+        with pytest.raises(managed.ManagedError, match="no llama.cpp build"):
+            managed.brewed_gguf_for(tiny)

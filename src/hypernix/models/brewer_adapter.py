@@ -33,8 +33,7 @@ What this deliberately does not do
 It does not convert weights. A hyperNix0x-v2 model stays a
 hyperNix0x-v2 model — the adapter is a calling convention, not a format
 migration, and the tensors are never touched. Exporting to GGUF is
-``brewer``'s ``_export_gguf``, which already exists and is the right
-place for it.
+:mod:`hypernix.models.brewer_gguf` (``brew export`` / ``brew gguf``).
 """
 from __future__ import annotations
 
