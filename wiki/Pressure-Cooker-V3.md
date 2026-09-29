@@ -1,5 +1,12 @@
 # Pressure Cooker v3 — `hypernix.pressure_cooker_v3`
 
+> **Deprecated since 0.72.6.** Constructing `PressureCookerV3` (or a
+> subclass) warns with a `FutureWarning`: use `PressureCookerV4`, which
+> is kept, or [V5](Pressure-Cooker-V5.md) / [V6](Pressure-Cooker-V6.md)
+> for new training. Importing the module does not warn, because V4 uses
+> its helpers. The original `PressureCooker` (v1) is deprecated the same
+> way; there has never been a V2 class.
+
 ZeRO-aware optimizer family replacing V2 with FP8/QAT support, Pascal-safe
 variants, and a CPU-optimized lite tier.
 
@@ -11,7 +18,7 @@ variants, and a CPU-optimized lite tier.
 | `PressureCookerV3Plus` | Full quantization-aware training (QAT) with calibration + fake-quant |
 | `StovetopV3Cooker` | Pascal (sm_61) safe — disables fused / foreach / amsgrad |
 | `StovetopV3CookerPlus` | Pascal-safe V3Plus with EMA + adaptive clipping (v0.70.3) |
-| `CookerLite` | CPU-only fast path |
+| `CookerLite` | CPU-only fast path. Now a `PressureCookerV4` subclass in `hypernix.optimizers.pressure_cooker_v4`; `from hypernix import CookerLite` still works |
 
 ## Quantization
 

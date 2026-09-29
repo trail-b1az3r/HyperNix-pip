@@ -42,8 +42,12 @@ it.
 
 A reference implementation of the llama-family graph, in torch, that
 reads every type this package writes: F32/F16/BF16, the llama.cpp block
-types through [llamaquants](HyprSlug.md), and the HyperNix sub-bit types
-through `subbit`. Quantised weights stay packed in memory and are
+types (including `Q8_K`) through [llamaquants](HyprSlug.md), the
+HyperNix sub-bit types through `subbit`, and the fixed codebooks
+(`INT8`, `INT4`, `INT3`, `INT2`, `FP2`, `FP8`) through `lowbit`. The
+codebook list is read from `lowbit` itself: until 0.72.6.post3 it was
+written out here and stopped at `INT4` and `FP2`, so `INT8` and `INT2`
+files quantised and then could not be run. Quantised weights stay packed in memory and are
 unpacked a slice at a time inside each matmul (see below); the graph is
 RMSNorm → RoPE → grouped-query causal attention with a KV cache →
 SwiGLU → output head.

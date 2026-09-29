@@ -236,10 +236,10 @@ Cut across `dev1`–`dev13` and `post1`–`post5`; see the
   the server has taken a title on `PATCH` since HyperLink shipped and
   nothing on the phone ever sent one.
 
-## 0.72.6 — in progress
+## 0.72.6 (Shipped)
 
-Published so far as `0.72.5.post14` to `post17`; the
-[Changelog](Changelog.md) has each batch.
+Released 2026-09-24, after `0.72.5.post14` to `post17` and three
+release candidates; the [Changelog](Changelog.md) has each batch.
 
 - **HyperNix Studio picks a shell.** *Done* (0.72.5.post14): `fish`
   interactive, `bash` for the scripts it writes, persisted and
@@ -277,6 +277,20 @@ Published so far as `0.72.5.post14` to `post17`; the
     `/server/info` (post17);
   - `waiter serv` letter groups with `-b -u -k -c -T -Y -S -e` (post17);
   - Siri on App Intents entities and `hnx-t1` (post17).
+
+### 0.72.6.post1 – post3 (Shipped)
+
+- **HyperLink on the web** (post1–post2): the T1 API serves the app's
+  web version on port 37965, to this machine and the tailnet.
+- **Brewer models run in llama.cpp** (post3): a real GGUF export, the
+  `llama` architecture, checked against llama.cpp itself.
+- **hyprslug**: `Q8_K`, `INT3`, `FP8`, the `hnx_Q6_H` hybrids, and
+  hyperNix0x-v2 input (post3); `hnx convert -P -Q` (post3).
+- **Model sync and symlinked models** (post3): `T1_MODEL_SYNC` /
+  `hypernix-sync`, symlinked folders found everywhere a model is looked
+  for, and linking a model from HyperLink.
+- **Release plumbing** (post3): Codacy's crash fixed, nightly builds
+  behind `PUBLIC_RELEASE_NIGHTLY`.
 
 ## 0.72.7 — planned: Python 3.12 → 3.15
 

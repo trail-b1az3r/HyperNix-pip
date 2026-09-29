@@ -1,7 +1,9 @@
 # `runtime` — the HyperNix llama.cpp, from other applications
 
-`native/ggml-hnx` builds a llama.cpp that reads the sub-bit types. This
-is how everything else gets to use it.
+`native/ggml-hnx` builds a llama.cpp that reads every HyperNix type (the
+sub-bit tiers, `HNX_1375BIT`, the `INT8`/`INT4`/`INT3`/`INT2`/`FP2`/`FP8`
+codebooks) and runs `Q8_K` weights, so the `hnx_Q6_H` hybrids load too.
+This is how everything else gets to use it.
 
 ```bash
 hnx runtime status                # what is built, detected, installed
@@ -21,7 +23,7 @@ and closing it puts everything back. It works with applications this has
 never heard of, and it does not care what version of them you have.
 
 **`install` copies the patched libraries over the ones LM Studio
-bundles**, so LM Studio loads a sub-bit model natively. Nicer when it
+bundles**, so LM Studio loads a HyperNix model natively. Nicer when it
 works, and it is surgery on somebody else's application. Read the
 guarantees below before using it.
 
@@ -123,6 +125,6 @@ exists and cannot compute with it.
 
 ## See also
 
-- [HyprSlug](HyprSlug.md) — making the sub-bit files.
+- [HyprSlug](HyprSlug.md) — making the files: sub-bit tiers, codebooks, `Q8_K` and the hybrids.
 - [Studio](../desktop/README.md) — the desktop app, which runs them
   in-process without any of this.

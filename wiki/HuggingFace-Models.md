@@ -2,7 +2,7 @@
 
 Every model currently published under the [`ray0rf1re`](https://huggingface.co/ray0rf1re)
 HuggingFace account, pulled directly from the account's model listing.
-**54 models** as of this writing. This page is a snapshot, not a live
+**55 models** as of this writing (late September 2026). This page is a snapshot, not a live
 feed — downloads/likes will have moved on by the time you read it; treat
 the counts as "roughly this order of magnitude," not exact.
 
@@ -44,7 +44,8 @@ short names (`hyper-nix`, `hypernix`, etc.) resolve to.
 
 | Model | Task | Params | Updated | Downloads |
 |---|---|---|---|---|
-| [HyperNix.3-mini](https://huggingface.co/ray0rf1re/HyperNix.3-mini) | — | — | 18 days ago | — |
+| [HyperNix.3-mini](https://huggingface.co/ray0rf1re/HyperNix.3-mini) | Text Generation | 48.7M | Sep 25 | 319 |
+| [hypernix.3-mini-Beta-278m-tokens-out-of-1.3b](https://huggingface.co/ray0rf1re/hypernix.3-mini-Beta-278m-tokens-out-of-1.3b) | — | 65.1M | Sep 16 | — |
 | [HyperNix.3](https://huggingface.co/ray0rf1re/HyperNix.3) | — | — | Jun 4 | — |
 | [HyperNano.3](https://huggingface.co/ray0rf1re/HyperNano.3) | — | — | May 18 | — |
 | [HyperNix.25b1](https://huggingface.co/ray0rf1re/HyperNix.25b1) | — | 0.1B | Jun 29 | 6 |

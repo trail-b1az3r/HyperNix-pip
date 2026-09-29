@@ -254,6 +254,10 @@ def _print_usage() -> None:
         # These four dispatch and always have; they were simply never
         # added to the menu, so `hypernix --help` was not a list of what
         # hypernix can do and there was no way to find them at all.
+        # `hypernix tvtop` is the classic dashboard, not an alias of
+        # cctvtop -- the help used to list it as one. (The standalone
+        # `tvtop` console script is cctvtop; see wiki/Dashboards.md.)
+        table.add_row("[green]tvtop[/]", "the classic training dashboard (the `tvtop` command runs cctvtop)")
         table.add_row("[green]devices[/]", "list the GPUs/accelerators this machine has, and what they support")
         table.add_row("[green]wakeup[/]", "wake-word detection: train a trigger phrase, then listen for it")
         table.add_row("[green]websearch[/]", "web search backend used by the chat and assistant surfaces")
@@ -264,8 +268,7 @@ def _print_usage() -> None:
         shortcuts.append("                         (equivalent to `hypernix oven --auto ...`).\n", style="dim")
         shortcuts.append("\nAlso accepted: ", style="bold yellow")
         shortcuts.append(
-            "tvtop (cctvtop) · fiz (fizzle) · camouflage (camo) · protect (prot) ·\n"
-            "                 fuse-box (fusebox)\n",
+            "fiz (fizzle) · camouflage (camo) · protect (prot) · fuse-box (fusebox)\n",
             style="dim",
         )
         
@@ -609,8 +612,9 @@ def _run_quantize(raw: list[str]) -> int:
         "-hnx", "--hnx", dest="hnx", action="store_true",
         help="Quantise with hyprslug and never touch llama.cpp — no binary "
              "looked for, downloaded or built, and llama-cpp-python not "
-             "needed. Covers the HyperNix sub-bit tiers (IQ0.9_L, IQ0.75_M, "
-             "IQ0.5_XXXL), which llama-quantize cannot produce at all.",
+             "needed. Covers what llama-quantize cannot produce at all: the "
+             "HyperNix sub-bit and codebook tiers (IQ0.5_XXXL, INT3, FP8...), "
+             "Q8_K, and the hybrids q6h, q6h4 and q6h2.",
     )
     p.add_argument("--imatrix", default=None,
                    help="Importance matrix as JSON (hyprslug tiers).")

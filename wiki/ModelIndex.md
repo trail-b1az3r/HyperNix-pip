@@ -87,9 +87,20 @@ a model someone put there on purpose.
 ## What runs each model
 
 `local_available` records whether this machine can execute it: a
-sub-bit extension type needs [HnxRun](HnxRun.md), an upstream quant can
-go to llama.cpp. The tier and bit rate land in `notes`, so a registry
-listing says which entries are the cheap ones.
+HyperNix extension type needs [HnxRun](HnxRun.md) or llama.cpp built
+with [`native/ggml-hnx`](../native/ggml-hnx/README.md), and an upstream
+quant can go to any llama.cpp. The tier and bit rate land in `notes`, so
+a registry listing says which entries are the cheap ones.
+
+## Symlinked folders
+
+The walk follows symlinks (0.72.6.post3). A model kept on another disk
+and linked in, `ln -s /data/qwen ./hypernix/models/qwen`, is indexed
+under the name it has here. `Path.rglob`, which the index used before,
+never descends into a symlinked folder, so such a model was silently
+left out. A link back up the tree is walked once. A link whose target
+has gone is reported as unreadable, with the rest of the unreadable
+files, rather than skipped.
 
 ## Flags
 

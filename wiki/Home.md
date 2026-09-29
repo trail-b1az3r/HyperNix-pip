@@ -13,9 +13,11 @@ reachable if you already knew the filename. Fixed.)
 
 | Guide | Covers |
 |---|---|
-| [CLI](CLI.md) | Every subcommand (all 34), every flag, typical invocations. |
+| [CLI](CLI.md) | Every subcommand (all 41), every companion command, every flag, typical invocations. |
+| [Architecture](Architecture.md) | Generated chart of the package's subsystems and how they connect, rebuilt by the `arch-map` workflow. |
 | [HyperNix Studio](../desktop/README.md) | The Qt desktop client: models, chat, a workspace the model may edit, and why it cannot run a command. |
-| [ggml-hnx](../native/ggml-hnx/README.md) | Building a llama.cpp that reads HyperNix sub-bit models. |
+| [ggml-hnx](../native/ggml-hnx/README.md) | Building a llama.cpp that reads every HyperNix type (sub-bit, codebook, FP8) and runs Q8_K weights. |
+| [Runtime](Runtime.md) | `hypernix runtime` — using that llama.cpp from LM Studio and other applications. |
 | [Kitchen](Kitchen.md) | pans / microwave / table / sink / instant_pot / coffee_maker / pressure_cooker / pressure_cooker_v3. |
 | [CoffeeMaker](CoffeeMaker.md) | Scheduled training/eval runs — brew on a timer instead of babysitting a run. |
 | [Blender](Blender.md) | Interleaves/mixes multiple input data streams into one. |
@@ -23,6 +25,7 @@ reachable if you already knew the filename. Fixed.)
 | [HuggingFace Models](HuggingFace-Models.md) | Every model currently published under the `ray0rf1re` HF account. |
 | [Roadmap](Roadmap.md) | Planned features and releases. |
 | [Changelog](Changelog.md) | Full per-release notes — features, fixes, UX papercuts. |
+| [Changelog guide](Changelog-guide.md) | The format and editorial rules every changelog entry follows: categories, symbols, and what a release summary needs. |
 | [Release Timeline](Release-Timeline.md) | Auto-updated commit-by-commit timeline of public releases. |
 
 **Downloading, converting, quantizing**
@@ -30,16 +33,16 @@ reachable if you already knew the filename. Fixed.)
 | Guide | Covers |
 |---|---|
 | [Download](Download.md) | `download_model`, short-name resolution, offline cache, gated repos. |
-| [Convert](Convert.md) | Safetensors/PyTorch checkpoint → GGUF (fp32/fp16), architecture-agnostic tensor naming. |
+| [Convert](Convert.md) | Safetensors/PyTorch checkpoint → GGUF (fp32/fp16), architecture-agnostic tensor naming, and `convert -P -Q` to quantise in the same step. |
 | [Quantization](Quantization.md) | GGUF pipeline, k-quants, `HyperNixQuantizer`, `pressure_cooker_v3` QAT. |
-| [HyprSlug](HyprSlug.md) | Quantise a GGUF with no llama.cpp at all — the upstream types (`Q4_K_M` and friends) *and* the sub-bit tiers (`IQ0.9_L`, `IQ0.75_M`, `IQ0.5_XXXL`), which `llama-quantize` cannot produce. |
+| [HyprSlug](HyprSlug.md) | Quantise a GGUF — or a hyperNix0x-v2 model — with no llama.cpp at all: the upstream types (`Q4_K_M` and friends), `Q8_K`, the HyperNix tiers, and the `hnx_Q6_H` hybrids (`q6h`, `q6h4`, `q6h2`), none of which `llama-quantize` can produce. |
 | [Imatrix](Imatrix.md) | Measure an importance matrix from activations, and read anyone else's — both llama.cpp's binary format and JSON. |
 | [Dflash2](Dflash2.md) | A draft model carried inside the model it drafts for. Speculative decoding from one file, with the same tokens out. |
 | [HnxRun](HnxRun.md) | The runtime for the models llama.cpp cannot read — loads and runs a sub-bit GGUF, so a 0.5-bit quantisation has somewhere to go. |
 | [Devices](Devices.md) | CUDA (including the sm_61 / GTX 1080 trap), ROCm, Metal, Intel, Vulkan and CPU — what runs where, and which torch wheel. |
-| [LowBit](LowBit.md) | Every GGML type at 200 and above: `IQ0.25_UXL`, `INT1`, `FP2`, `INT4` — the two families, and what each rate really costs. |
-| [HyprSlug-Headers](HyprSlug-Headers.md)
-- [ModelIndex](ModelIndex.md) — `hypernix-t1 index`, a folder of GGUFs into a model registry | `hypernix hyprslug-headers` — self-describing headers, the compat export, and the server that lets LM Studio reach a sub-bit model without converting it. |
+| [LowBit](LowBit.md) | Every GGML type at 200 and above: the sub-bit tiers, `INT1`, `HNX_1375BIT`, and the codebooks `INT8`, `INT4`, `INT3`, `INT2`, `FP2`, `FP8` — what each stores, what it costs, and where it runs. |
+| [HyprSlug-Headers](HyprSlug-Headers.md) | `hypernix hyprslug-headers` — self-describing headers, the compat export, and the server that lets LM Studio reach a sub-bit model without converting it. |
+| [ModelIndex](ModelIndex.md) | `hypernix-t1 index` — a folder of GGUFs, symlinked folders included, into a model registry. |
 | [PipelineMechanics](PipelineMechanics.md) | The small support modules gluing download → convert → quantize together. |
 
 **Training core**
@@ -49,7 +52,7 @@ reachable if you already knew the filename. Fixed.)
 | [Training](Training.md) · [Model Training Guide](Model-Training-Guide.md) | `init_from_scratch`, `expand_checkpoint`, `train`, AutoModel fallback, `compute_framework`, `abbicus`. |
 | [Abbicus](Abbicus.md) | Automatic token regulation and curriculum tuning by model size / step. |
 | [Optimizers](Optimizers.md) | The custom AdamW-family optimizer modules (`pressure_cooker` and relatives). |
-| [Pressure Cooker v3](Pressure-Cooker-V3.md) | `PressureCookerV3`, V3Plus QAT, `StovetopV3CookerPlus`, `CookerLite`. |
+| [Pressure Cooker v3](Pressure-Cooker-V3.md) | `PressureCookerV3`, V3Plus QAT, `StovetopV3CookerPlus` (deprecated with V1–V3; `CookerLite` lives on as a V4). |
 | [Pressure Cooker v4](Pressure-Cooker-V4.md) | Optimized quantization-aware training mechanism and optimizer wrapper. |
 | [Pressure Cooker v5](Pressure-Cooker-V5.md) | Flagship ORCP optimizer — quantized momentum, QAT, MTP support, V5+/V5S variants. |
 | [Pressure Cooker v6](Pressure-Cooker-V6.md) | Speed-first optimizer — single fused momentum buffer, `torch._foreach_*` multi-tensor updates; `PressureCookerV6V` adds CUDA graph capture + optional `torch.compile`. |
@@ -130,6 +133,8 @@ reachable if you already knew the filename. Fixed.)
 |---|---|
 | [T1-API](T1-API.md) | `hypernix.t1api` — controlled HTTP gateway into HyperNix-pip (model registry, auth, routing, modules, servers, jobs, events, billing, the LM Studio bridge, HyperLink and HyperLink on the web, web accounts, MCP, backups, governed inference), every route and every setting. Released: **T1 v1.1.26.9.0.0**, current in 0.72.6.post3. |
 | [T1-API Security Checklist](T1-API-Security-Checklist.md) | What to check before exposing a deployment — one page, per-item, with the config field each maps to, including every opt-in feature and keeping the server current. |
+| [HyperLink-OnDevice](HyperLink-OnDevice.md) | HyperLink's on-phone models: search Hugging Face, download a GGUF and run it on the iPhone. |
+| [HyperLink-Sync](HyperLink-Sync.md) | HyperLink's sync, push notifications and search — how a phone that sleeps catches up. |
 | [Waiter-TUI](Waiter-TUI.md) | `waiter` — the official T1 API client CLI/TUI (`waiter serv`, `models`, `usage`, `hyperlink`, `version`, `help`). Beta 3 complete: every spec flag wired, full curses TUI (`-G`). |
 
 Surfaces documented inside those pages rather than on their own:
@@ -143,6 +148,8 @@ Surfaces documented inside those pages rather than on their own:
 | The bootstrap key a new server issues itself (loopback-only, 3 days, once) | [T1-API § The first key a new server has](T1-API.md#the-first-key-a-new-server-has) |
 | T2P billing keys, and a server refusing or separating them | [T1-API § Billing keys](T1-API.md#billing-keys-t2p-and-refusing-them) |
 | The HyperLink iOS app and pairing | [T1-API § HyperLink](T1-API.md#hyperlink) |
+| Linking a model already on the server into HyperLink, and symlinked model folders | [T1-API § HyperLink](T1-API.md#hyperlink) (`/hyperlink/models/link`) |
+| Nightly builds (`PUBLIC_RELEASE_NIGHTLY`) | [scripts/README](../scripts/README.md#githubscripts), [Changelog](Changelog.md) |
 | `HYPERNIX_TOOL_POLICY` — consent before the AI agent runs a side-effecting tool | [CLI § Environment variables](CLI.md#environment-variables) |
 
 **Reference / meta**
@@ -314,14 +321,14 @@ still importable: `system.old_fridge` (memory), `data.mediocre_fridge`
                  HyperLinkClient · ToolPolicy · ToolRunner
 ```
 
-This map is maintained by hand. 0.72.6 plans to generate it — see
-[Roadmap](Roadmap.md) — with beta features on a second chart and
-not-yet-built links in red.
+This map is maintained by hand. The generated one is
+[Architecture](Architecture.md), rebuilt by the `arch-map` workflow on
+every release.
 
 ## Design principles
 
-- **Small, inspectable modules.** Every subsystem is <~300 LOC and
-  usable in isolation.
+- **Small, inspectable modules.** Each subsystem is usable in isolation,
+  and most are a single file you can read in one sitting.
 - **No hard dependencies on the big stuff.** `transformers`, `matplotlib`,
   and `llama-cpp-python` are all loaded lazily when first needed.
   `HYPERNIX_AUTO_INSTALL=0` disables runtime pip calls.
@@ -336,7 +343,11 @@ not-yet-built links in red.
 Recent releases (see [Changelog](Changelog.md) for the full per-release
 notes going all the way back to 0.2.0):
 
-- **0.72.4** (in progress) — **Training administration**: `hypernix.training.monitor` reports what a run is doing (progress, loss history, checkpoints, ETA) and reconciles it against the actual process, so a crashed trainer is reported *stale* rather than left claiming to run. `GET /training/*` and stop/pause/resume over HTTP, plus `hypernix-t1 training` for when the API is the thing in trouble — admin-only unless trusted-network mode is on, with the destructive half behind a second opt-in. **HyperLink knows which machine it is talking to**: each installation gets a stable fingerprint the app pins at pairing time and re-checks on every reconnection, because an address can end up pointing at a different machine and a server *name* authenticates nothing. Tailnet peer discovery (`GET /hyperlink/peers`, admin-only, every row explicitly unverified), keyless connections on a trusted network, an admin credential store that forgets on restart, and the app finally has an icon — the current HyperNix mark, generated from the SVG with the geometry pinned by a test. **`native/ggml-hnx`**: a llama.cpp that can actually read a sub-bit model, cross-checked block-for-block against the Python encoder that wrote every such file. **HyperNix Studio**, a Qt 6 desktop client — model switching, chat, a workspace the model may edit with per-call approval, and no way whatsoever to run a command. **[`hnx gather`](Gather.md)**: a crawler that turns a site into a corpus — `-W`/`-L` sites, `-T` threads, `-Q` depth, seven output formats including a merged single-document one, compression, and optional upload to GitHub or Hugging Face; robots.txt and a per-host delay on by default, a host's own `Crawl-delay` overriding yours, and `-f js` that *saves* JavaScript without running any of it. **hyperNix0x-v2 in Neo oven**: `preheat_brewed()` / `new_brewed()`, and plain `preheat()` recognises a Brewer checkpoint by looking inside it rather than by unpickling it. **[`fuse box`](FuseBox.md)**: a thermal governor for a training run — it holds a card at a temperature you chose by pacing the loop or lowering a power limit, and trips like a fuse past a hard limit. It is explicitly *not* a speedup: holding a temperature costs throughput, the module measures how much and prints it, and the simulation establishing that runs on every CI build. See the [Changelog](Changelog.md) for the whole of it.
+- **0.72.6.post3** — **Brewer models run in llama.cpp**: `brew export --format gguf` writes the `llama` architecture, checked against real llama.cpp to within 0.0025 of PyTorch's logits. **hyprslug** gains `Q8_K`, `INT3`, `FP8` and three hybrids chosen per tensor (`q6h`, `q6h4`, `q6h2`), and takes a hyperNix0x-v2 model as input; `native/ggml-hnx` runs all of them. **`hnx convert -P -Q`** converts safetensors and quantises in one step. **Model sync** (`T1_MODEL_SYNC`, `hypernix-sync`) mirrors `~/.hypernix/models` into the T1 server's folder, and **symlinked models** finally show up in HyperLink, which can now link a model already on the server. `hypernix-t1 upgrade`, a hand-over to the server's own copy, and `launch-script -1`. the Codacy scan's crash is fixed, and nightly builds sit behind `PUBLIC_RELEASE_NIGHTLY`.
+- **0.72.6.post1–post2** — **HyperLink on the web**, served by the T1 API on port 37965 to this machine and the tailnet; HyperLink tool calling fixed; `HyperNix.3-mini` as the default model; moving LM Studio's model onto the HyperNix runner.
+- **0.72.6** — v2.1 (T2C) keys sealed with Rotorvault; `waiter serv` flags that group in any order; Siri on App Intents 2.0; `hypernix.elements` (magnesium, carbon); **hyped-pro as an OpenTUI app** with git and file editing; HyperLink models that call tools, the T1 API included; `hypernix.dilute`, `hypernix.neuron`, and `tvtop-max`. Fixed Pressure Cooker V4, V5, V5S and V6 never training through `NeoOven.train`, and twenty-three Neo Oven presets with broken RoPE.
+- **0.72.5** — `HNX_1375BIT`, the one-bit tier that keeps magnitude; quantisation-aware training; T1 v1.0.26.9.2.3 web accounts; hyprslug drafts (`dflash1`/`dflash2`) and multi-quant bundles; HyperLink CarPlay, Siri, themes and attachments.
+- **0.72.4** — **Training administration**: `hypernix.training.monitor` reports what a run is doing (progress, loss history, checkpoints, ETA) and reconciles it against the actual process, so a crashed trainer is reported *stale* rather than left claiming to run. `GET /training/*` and stop/pause/resume over HTTP, plus `hypernix-t1 training` for when the API is the thing in trouble — admin-only unless trusted-network mode is on, with the destructive half behind a second opt-in. **HyperLink knows which machine it is talking to**: each installation gets a stable fingerprint the app pins at pairing time and re-checks on every reconnection, because an address can end up pointing at a different machine and a server *name* authenticates nothing. Tailnet peer discovery (`GET /hyperlink/peers`, admin-only, every row explicitly unverified), keyless connections on a trusted network, an admin credential store that forgets on restart, and the app finally has an icon — the current HyperNix mark, generated from the SVG with the geometry pinned by a test. **`native/ggml-hnx`**: a llama.cpp that can actually read a sub-bit model, cross-checked block-for-block against the Python encoder that wrote every such file. **HyperNix Studio**, a Qt 6 desktop client — model switching, chat, a workspace the model may edit with per-call approval, and no way whatsoever to run a command. **[`hnx gather`](Gather.md)**: a crawler that turns a site into a corpus — `-W`/`-L` sites, `-T` threads, `-Q` depth, seven output formats including a merged single-document one, compression, and optional upload to GitHub or Hugging Face; robots.txt and a per-host delay on by default, a host's own `Crawl-delay` overriding yours, and `-f js` that *saves* JavaScript without running any of it. **hyperNix0x-v2 in Neo oven**: `preheat_brewed()` / `new_brewed()`, and plain `preheat()` recognises a Brewer checkpoint by looking inside it rather than by unpickling it. **[`fuse box`](FuseBox.md)**: a thermal governor for a training run — it holds a card at a temperature you chose by pacing the loop or lowering a power limit, and trips like a fuse past a hard limit. It is explicitly *not* a speedup: holding a temperature costs throughput, the module measures how much and prints it, and the simulation establishing that runs on every CI build. See the [Changelog](Changelog.md) for the whole of it.
 - **0.72.3** — T1 v1.0.2026.8.1.1. A new server can be set up without knowing anything: first start mints itself a **bootstrap admin key** that works only from that machine, expires after three days, and is minted once — which is what `waiter hyperlink pair` had no way to do on a fresh install. **`hypernix-t1`**, one dependency-free executable for the whole server lifecycle (start/stop/kill/restart/status/logs/create/configure/test/key/autostart/remove). **HyperLink connects**: three separate bugs each produced the same silent timeout — the server advertised port 8000 whatever port it was on, iOS ATS blocked Tailscale's 100.64.0.0/10 (shared address space, not RFC 1918), and a missing tailnet said nothing about why — all fixed, and the app takes a T2S key as well as a pairing code. **T2P billing keys** carry a spend cap and provider references, never administrator rights and never card data; `T1_BILLING_KEY_POLICY` lets a server accept them, refuse them at its own payment page, or require payment on a *separate* key. The **AI agent asks before it runs anything** (`HYPERNIX_TOOL_POLICY`) — tool calls are parsed out of the model's own reply, so a file it read could previously run shell commands. `gkey` gains `-v v1|v2|v2short` and `gkey version`, and finally honours `T1_KEYMASTER_DIR`, which the server was already reading. New **`hypernix.system.vram`**: allocator tuning (`expandable_segments`), activation checkpointing, optimizer-in-backward, optimizer-state offload, and peak measurement — each opt-in, each reversible, and each refusing rather than silently doing nothing, since every one of them is invisible when it quietly fails. Reachable from `hypernix train run`. CI and the public release gate on a **live server**: two jobs mint their own T2 keys, drive a real API and a booted iPhone simulator against a fake model, and delete every key they made — nothing publishes until both are green.
 - **0.72.2** (`.post1`–`.post5`) — **`install-t1.sh`**, an interactive T1 API installer that writes a configuration matching the deployment kind you describe (bash 3.2, so a stock macOS runs it). Then five fix bumps: the admin key the installer printed was invisible to the server it configured (`T1_KEYMASTER_DIR`); `waiter` explains an unreachable server instead of restating the errno, and gains `waiter help <topic>`; T2S keys were refused as malformed by a length check that predated them; and — the last one — **every key `gkey` ever minted carried server ID `00001-A1`**, because the counter lived in memory and each `gkey` run is its own process. `POST /t1/auth/undo` could never undo anything either, for two independent reasons.
 - **0.72.1** — T1 v1.0.26.8.1.0. **The T2 key family**: T1's structure plus an access level (1–9), an optional admin password, and an SSPKID. A T2 key converts to a valid T1 key and authenticates against the store that already holds it, so there is no migration. Round-tripping 3000 keys caught a real conversion bug — the T2 special alphabet excluded `-`, so any T1 key whose specials contained one converted to a *different* key that then failed to authenticate.

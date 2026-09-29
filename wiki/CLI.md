@@ -1,8 +1,8 @@
 # CLI reference
 
 `hypernix` ships a console script, `hypernix` (also aliased to `hnx` for brevity), which dispatches
-to **34 subcommands** plus the `all` pipeline as the default (see `_SUBCOMMANDS`
-in `src/hypernix/cli.py`). Most subcommands wrap one library function, so
+to **41 subcommands** plus the `all` pipeline as the default (see `_SUBCOMMANDS`
+in `src/hypernix/interfaces/cli.py`; five more names are aliases). Most subcommands wrap one library function, so
 they're easy to script; a few (`brew`, `cli`, `net`, `gkey`) are themselves
 small sub-CLIs with their own sub-subcommands.
 
@@ -18,7 +18,9 @@ Core pipeline:
   info                   package + optional GGUF header summary
   upload                 push files to a HuggingFace repo
   doctor                 environment diagnostic (pass --fix to install deps)
+  path                   put hypernix's console scripts on your PATH
   fetch-llama-quantize   pre-seed the llama-quantize cache
+  hyprslug-headers       self-describing GGUF headers + the sub-bit server
 
 Training & inference:
   train                  init / expand / run training utilities
@@ -29,15 +31,18 @@ Training & inference:
   camo / camouflage      RLHF/RLAF alignment scaffolding
   fizzle / fiz           architecture fuse/merge module
   stml                   VRAM -> trainable-context-length calculator
+  neuron                 small networks that act: RL, imitation, supervised
+  dilute                 best-of-n sampling: many answers, keep the good ones
 
 Assistants & dashboards:
   cli                    interactive TUI/CLI menu over all of the above
-  pipeline               ASR -> LLM -> TTS pipeline (see note below)
-  assistant              interactive assistant REPL (see note below)
-  vera                   Vera assistant CLI
-  tvtop                  classic live training dashboard
-  cctvtop                Python training dashboard w/ hardware metrics + optional VNC
+  pipeline               ASR -> LLM -> TTS pipeline (LLM stage a stub; see note)
+  assistant              interactive assistant REPL over a real model, optional voice
+  vera                   check a script: syntax, smoke tests, errors explained
+  tvtop                  the classic training dashboard
+  cctvtop                training dashboard w/ hardware metrics + optional VNC
   map                    steampunk schematic TUI for model/training state
+  wakeup                 train a wake word, then listen for it
 
 Data & infra:
   scavenger              search + pull HF datasets under storage/quality budgets
@@ -45,26 +50,30 @@ Data & infra:
   fusebox                GPU thermal governor for a run (see FuseBox.md)
   runtime                use the HyperNix llama.cpp from LM Studio etc.
   websearch              non-API web search utility
-  net                    Tailscale mesh connect / export / log tailing
+  net                    Tailscale peers: connect, expose ports, sync storage, run on peers
   gkey                   API key issuance, scoping, revocation (Gatekeeper + Keymaster)
   config                 HyperNix configuration management
   prot / protect         hardware health monitoring and protection
   wiki                   this documentation, read straight from installed source
+  devices                GPUs/accelerators here, and what each supports
+  errors                 look up an error code (L#-NNNNN.kS)
+  elements               addons: hydrogen, carbon, magnesium, your own
 
 Shortcuts:
   --auto-oven            download default snapshot + run code completion
                          (equivalent to `hypernix oven --auto ...`)
 
+Also accepted: tvtop (cctvtop) · fiz (fizzle) · camouflage (camo) ·
+               protect (prot) · fuse-box (fusebox)
+
 Run `hypernix <subcommand> --help` for per-command flags.
 ```
 
-> **Known limitations — read before relying on these:** `hypernix pipeline`
-> and `hypernix assistant` both accept an LLM-selection flag (`--llm`,
-> `--model`) but currently **ignore it**. Internally they call a hardcoded
-> stub responder that returns a small set of canned/simulated replies —
-> not real inference from any model you point them at. The ASR and TTS
-> stages, and every other subcommand on this page, are real. See the
-> `pipeline` and `assistant` sections below for specifics.
+> **Known limitation:** `hypernix pipeline`'s LLM stage is still a
+> stub — `--llm` is accepted and not read, and the reply is canned. Its
+> ASR and TTS stages are real, and so is `hypernix assistant`, which
+> dispatches to a real model. See the `pipeline` and `assistant` section
+> below.
 
 ## Additional Companion Scripts
 
@@ -74,20 +83,35 @@ authoritative list):
 
 * `hnx` — Short alias for `hypernix`.
 * `hypernix-quantize` — Alias for `hypernix` (historical name, predates the `quantize` subcommand naming).
-* `tvtop` — Classic TUI training dashboard.
+* `tvtop` — The same dashboard as `cctvtop` since v0.70.4b12. (Careful: `hypernix tvtop` is still the classic one; the standalone classic is `tvtop-older`.)
 * `tvtop-old` / `tvtop-plus-plus` / `tvtoppp` — Older TUI dashboard generations, kept for compatibility.
 * `tvtop-older` — Original single-panel dashboard.
 * `cctvtop` — Python training dashboard with hardware metrics and optional VNC (same as `hypernix cctvtop`).
 * `hyped` — Configurable high-quality chat TUI with a model/persona configurator.
 * `hyped-pro` — The terminal client, built on [OpenTUI](https://opentui.com/docs/) (TypeScript on Bun, the stack opencode's TUI uses) in the site's colours. Markdown replies, a model picker (ctrl+p), esc to stop a reply, `/noodle`, `/t1`, `/key`, `/retry`. Git: `/git` (status, add, commit, switch, restore, log, push, pull — `/git help`), `/diff` coloured per file, and the branch in the header. Files: `/files` to browse, `/edit <path>` to edit (ctrl+s save; a file changed on disk since it was opened is not overwritten). The model's commits, branch switches, discards and deletions wait for a `y`. Needs Bun 1.3+; the first run installs `@opentui/core`. `--model <name>` picks the model; `HYPED_PRO_BUN` points at a bun that is not on PATH.
-* `hyped-plus` / `hyped+` — The previous hyped-pro: the Node.js readline TUI backed by the same Python dispatch layer (cloud APIs, auto-downloaded local models, Gatekeeper routing), slash autocompletion, price estimator, system prompt compactor, and a `/gui` desktop mode (Qt6 X11/Wayland, GTK4 fallback). Needs only Node.js.
+* `hyped-plus` — The previous hyped-pro (called `hyped+` in its first releases; that name is no longer installed): the Node.js readline TUI backed by the same Python dispatch layer (cloud APIs, auto-downloaded local models, Gatekeeper routing), slash autocompletion, price estimator, system prompt compactor, and a `/gui` desktop mode (Qt6 X11/Wayland, GTK4 fallback). Needs only Node.js.
 * `hyped-pro-gui` — Launch the hyped-pro desktop GUI directly, without the TUI.
+* `hyped-agent` — The agentic TUI `hyped` used to be, before `hyped` became the simple one.
+* `tvtop-pro` / `tvtoppro` — tvtop++'s numbers with btop++'s presentation and themes ([TvTopPro](TvTopPro.md)).
+* `tvtop-max` / `tvtopmax` — tvtop-pro on OpenTUI, with the run's script, modules, architecture, Pressure Cooker and logs on screen; `-s` for a phone ([TvTopMax](TvTopMax.md)).
+* `ups` — Uninterruptible-power-supply mode for training: checkpoints when severe weather or a power problem is detected.
+* `hyprslug` / `doomslug` / `doomslugthedestroyer` / `dstd` — The quantiser: llama.cpp types and mixes, the HyperNix tiers, and the hybrids, with no llama.cpp needed ([HyprSlug](HyprSlug.md)).
+* `hnx-imatrix` — Measure an importance matrix, or convert one between `.imatrix` and JSON ([Imatrix](Imatrix.md)).
+* `hyprslug-headers` / `hnx-headers` — Same as `hypernix hyprslug-headers` ([HyprSlug-Headers](HyprSlug-Headers.md)).
+* `dflash1` — Derive a standalone speculative-decoding draft (`--model-draft`).
+* `dflash2` — Put a draft model inside the model it drafts for ([Dflash2](Dflash2.md)).
+* `hnx-bundle` / `multiquant` — Several quantisations of one model in one GGUF: build, list, extract, strip.
+* `steamroller` — The descending quantiser, stepping a model down tier by tier ([Quantization](Quantization.md)).
+* `hnx-scriptgen` / `scriptgen` — The training-script builder: a GUI, with a command-line fallback on a headless box.
+* `noodle` — Run a noodle swarm from the command line; the same executor hyped-pro's `/noodle` uses.
+* `t1-accounts` — Manage T1 web accounts on the server they live on: list, create, reset, disable, sessions ([T1 API](T1-API.md)).
+* `hypernix-sync` / `t1-sync` — Mirror `~/.hypernix/models` into the T1 server's models folder ([T1 API](T1-API.md#model-sync)).
 * `multilama` — Unified interface over multiple llama.cpp variants (vanilla, ik_llama.cpp, PrismML fork, KoboldCpp).
 * `eth` — Ethanol GPU overclock and VRAM helper. Refuses to apply changes without `--confirm`.
 * `gkey` — Same as `hypernix gkey`, as its own executable.
 * `hnx-map` — Same as `hypernix map`, as its own executable.
 * `waiter` — The official [T1 API client](Waiter-TUI.md) CLI/TUI. Client-side only: stdlib `urllib`, no `[t1api]` extra needed.
-* `hypernix-t1` — Start, stop, configure, test and autostart a local T1 API server (see below). A shell program, so it ships via `script-files` rather than `[project.scripts]`.
+* `hypernix-t1` / `hnx-t1` — Start, stop, configure, test and autostart a local T1 API server (see below). A shell program, so it ships via `script-files` rather than `[project.scripts]`.
 
 ## `all` — the classic pipeline
 
@@ -196,9 +220,11 @@ hypernix quantize --source ./out-fp16.gguf --output ./out-q4.gguf --type q4_k_m
 | `--quantize-embeddings` / `--no-…` | tier's default |
 | `--quantize-output` / `--no-…` | tier's default |
 
-`-hnx` is what the sub-bit tiers need: `llama-quantize` has never heard
-of `IQ0.9_L`, `IQ0.75_M` or `IQ0.5_XXXL`, so nothing is looked for,
-downloaded or built.
+`-hnx` is what the HyperNix targets need: `llama-quantize` has never
+heard of the sub-bit tiers (`IQ0.9_L`, `IQ0.75_M`, `IQ0.5_XXXL`), the
+codebooks (`INT3`, `FP8`…), `Q8_K` as a weight, or the hybrids (`q6h`,
+`q6h4`, `q6h2`), so nothing is looked for, downloaded or built. See
+[HyprSlug](HyprSlug.md).
 
 ```bash
 hypernix quantize --source model.f32.gguf --output model.iq05.gguf \
@@ -391,6 +417,17 @@ hypernix oven --repo-id nix2.5 --save-pt ./nix.pt
 
 Shortcut: `hypernix --auto-oven --prompt "..."` == `hypernix oven --auto --prompt "..."`.
 
+| Flag | |
+|---|---|
+| `--repo-id ID` / `--model-dir DIR` | the model: a short name or Hugging Face id, or a local snapshot |
+| `--revision REV`, `--token TOKEN` | Hugging Face revision and token, for a gated or pinned download |
+| `--device DEV`, `--dtype float32\|float16\|bfloat16` | where and in what precision to load it |
+| `--prompt TEXT` | text to complete; not with `--fill-prefix` |
+| `--fill-prefix`, `--fill-suffix` | fill in the middle |
+| `--max-new-tokens`, `--temperature`, `--top-k`, `--top-p`, `--seed` | sampling |
+| `--save-pt PATH` | also write a self-contained bundle `torch.load` reads |
+| `--quiet` | no progress output |
+
 ## `chat`
 
 ```bash
@@ -409,6 +446,16 @@ rather than per turn.
 ```bash
 hypernix chat --model-dir model.iq05.gguf --cache-bytes 2G
 ```
+
+| Flag | |
+|---|---|
+| `--system TEXT` | a system prompt prepended to every turn |
+| `--message TEXT` | run one turn and exit |
+| `--cache-bytes N` | memory to spend keeping sub-bit weights decoded (`512M`, `2G`), largest tensors first; ignored for models llama.cpp runs |
+| `--hnx-device auto\|cpu\|cuda\|cuda:1\|mps\|xpu` | where a sub-bit model runs; a named device that cannot run says why instead of quietly using the CPU |
+
+The rest (`--repo-id`, `--model-dir`, `--revision`, `--token`,
+`--device`, `--dtype`, sampling, `--seed`, `--quiet`) are `oven`'s.
 
 ## `brew`
 
@@ -446,27 +493,29 @@ what a Brewer block is, so it runs in any llama.cpp build, LM Studio, and
 the `native/ggml-hnx` patched build alike; see
 [Model-Training-Guide § Running a brewed model in llama.cpp](Model-Training-Guide.md#running-a-brewed-model-in-llamacpp).
 
-## `pipeline` and `assistant` — current limitations
-
-Both of these are real, runnable REPLs — but the LLM stage in each is
-currently a **hardcoded stub**, not a live model:
+## `pipeline` and `assistant`
 
 ```bash
-hypernix pipeline --audio recording.wav --asr whisper --llm nix2.5 --tts piper
-hypernix assistant --model nix2.5
+hypernix assistant --model nix2.5            # chat with a real model
+hypernix assistant -m nix2.5 --voice         # and speak the replies
+hypernix pipeline --audio recording.wav --asr whisper --tts piper -o reply.wav
+hypernix pipeline --active                   # record from the microphone
 ```
 
-- `pipeline`'s `--llm` value is accepted but never read; the "LLM" stage
-  always calls an internal `SimpleLLM` class that returns a short
-  simulated response string.
-- `assistant`'s `--model` value is accepted but never read; replies come
-  from a small hardcoded demo responder ("I'm a demo assistant — integrate
-  a real LLM for full responses!").
-- The ASR and TTS stages of `pipeline`, and everything else in this
-  document, call real code paths.
+**`assistant`** is a real chat REPL. Turns go through the same provider
+registry as `hyped` (a local snapshot, a local GGUF, or a cloud API), so
+`--model`/`-m` picks the model; without it the default set by
+`hypernix config dmodel` is used, and with neither it says how to pick
+one. `--voice`/`-v` speaks replies (also `/voice` in the session). Inside
+it: `/model`, `/persona`, `/models`, `/personas`, `/system`, `/voice`,
+`/listen`, `/reset`, `/save`, `/quit`.
 
-If you need real generation today, use `chat`, `generate`, or `oven`
-directly against a downloaded model — those are fully wired up.
+**`pipeline`** runs speech in, speech out (`--audio`/`-a` a file, or
+`--active` to record until Ctrl+C; `--asr`, `--tts`, `--prompt`/`-p` for
+the system prompt, `--output`/`-o`). Its ASR and TTS stages are real.
+**Its LLM stage is still a stub**: `--llm` is accepted and not read, and
+the reply is a canned "I heard: …" string. For real generation use
+`assistant`, `chat`, `generate` or `oven`.
 
 ## `cli`
 
@@ -480,13 +529,34 @@ and evaluation without needing to remember individual subcommand flags.
 
 ## `tvtop` / `cctvtop`
 
+Two different dashboards, and the names are easy to mix up:
+
+| You type | You get |
+|---|---|
+| `hypernix tvtop` | the classic dashboard (`hypernix.monitoring.tv`) |
+| `hypernix cctvtop`, or the `cctvtop` or `tvtop` command | the pure-Python dashboard with hardware metrics and a remote-desktop panel (`hypernix.monitoring.cctvtop`) |
+
 ```bash
-hypernix tvtop      # classic single-panel dashboard, tails a training log
-hypernix cctvtop     # richer dashboard with hardware telemetry, optional VNC
+hypernix tvtop --log train.log --small     # classic
+hypernix cctvtop                           # ~/checkpoints/train.log, then ./checkpoints/, then the newest training log here
+hypernix cctvtop --log run.log --remote-desktop
 ```
 
-Run `hypernix tvtop --help` / `hypernix cctvtop --help` for the full flag
-set — both are primarily driven by pointing them at a training log file.
+`hypernix tvtop` takes `--log PATH`, `--refresh SECONDS`, `-s`/`--small`,
+`--ascii` and `--no-color`, and finds the newest `*.log` under the
+current folder with `step N/M loss=X` lines when `--log` is not given.
+
+`cctvtop` takes `--log PATH` and the remote-desktop flags:
+`--remote-desktop` starts a VNC server with a password, bound to
+localhost (`--remote-desktop-listen localhost|tailscale|lan|all`,
+`--remote-desktop-view-only`, `--remote-desktop-insecure` for no
+password, which it says on screen), and `--remote-desktop-status` prints
+what is running and exits. Without `--remote-desktop` nothing is
+started. See [Dashboards](Dashboards.md).
+
+The other generations are their own commands: `tvtop-older`,
+`tvtop-old` / `tvtop-plus-plus`, [`tvtop-pro`](TvTopPro.md) and
+[`tvtop-max`](TvTopMax.md).
 
 ## `camo` / `camouflage`
 
@@ -502,11 +572,13 @@ number of steps.
 ## `fizzle` / `fiz`
 
 ```bash
-hypernix fizzle --help
+hypernix fiz model1 openai/whisper-tiny model2 Qwen/Qwen1.5-0.5B \
+    loRA1 ./my_qwen_lora --out ./my_fuzed_model
 ```
 
-The Fuzed Architecture module — fuses/merges model weights and LoRA
-adapters. See `hypernix fizzle --help` for the current flag set.
+The Fuzed Architecture module: fuses model weights and LoRA adapters.
+Models are given as `model1 <id or link>`, `model2 …`, adapters as
+`loRA1 <path>`, …, and `--out DIR` is where the result goes.
 
 ## `stml`
 
@@ -515,7 +587,9 @@ hypernix stml --vram 8 --params 3 --precision fp16 --batch-size 1
 ```
 
 Calculates a trainable context length given available VRAM (GB), model
-size (billions of params), batch size, and precision. Useful before
+size (billions of params), batch size, and precision (`fp32`, `fp16`,
+`int8`, `int4`). `--num-layers`, `--num-heads` and `--head-dim` replace
+the shape it would otherwise estimate from the parameter count. Useful before
 `train run` to avoid an OOM crash mid-run.
 
 ## `scavenger`
@@ -526,8 +600,10 @@ hypernix scavenger --keywords "code,python" --max-storage 20 \
 ```
 
 Searches HuggingFace datasets and pulls them under a storage/quality
-budget (`--max-storage` in GB, `--min-likes`, `--max-age`, etc.) instead
-of downloading everything that matches a keyword.
+budget instead of downloading everything that matches a keyword:
+`--max-storage` (GB), `--max-total` (datasets), `--min-entries`,
+`--min-likes`, `--max-age` (days), `--data-type`, and `--limit` (results
+per search query).
 
 ## `gather`
 
@@ -566,8 +642,9 @@ hnx fusebox plan                      # what underclocking would do
 hnx fusebox restore                   # undo what a crashed run left
 ```
 
-Holds a GPU at a temperature you chose, and trips like a fuse if it goes
-past `--trip` anyway. Two levers: pausing between steps (free, needs no
+Holds a GPU at a temperature you chose (`--target`), and trips like a
+fuse if it goes past `--trip` anyway; a tripped run waits until the card
+is back below `--reset`. Two levers: pausing between steps (free, needs no
 privileges, on by default) and lowering a power limit (`--underclock`,
 needs root and `--yes`, outlives the process).
 
@@ -600,7 +677,9 @@ OpenAI-compatible server anything can point at and changes nothing on
 the machine; `install` replaces the libraries LM Studio bundles, which
 needs `--yes`, is backed up, and is undone by `restore`.
 
-Full documentation in [Runtime](Runtime.md).
+`--build DIR` points at a llama.cpp build other than the one `build.sh`
+makes (or `$HNX_LLAMA_BUILD`), and `--json` is machine-readable. Full
+documentation in [Runtime](Runtime.md).
 
 ## `websearch`
 
@@ -608,21 +687,35 @@ Full documentation in [Runtime](Runtime.md).
 hypernix websearch "llama.cpp quantization formats" -n 5 --json
 ```
 
-A non-API web search utility (`-e` to pick an engine, `--json` for
-machine-readable output) — useful in scripts/agents that need search
+A non-API web search utility (`-n`/`--max-results`, `-e`/`--engine
+auto|duckduckgo|bing`, `--json` for machine-readable output) — useful in scripts/agents that need search
 results without a paid search-provider API key.
 
 ## `net`
 
 ```bash
-hypernix net connect 100.64.0.5        # connect to a Tailscale mesh peer
-hypernix net mport 8080                # expose the mesh port locally
-hypernix net export 8080 --apply       # export a local port to the mesh
-hypernix net tail acheck ./train.log   # tail a remote log; add -r to resume
+hypernix net status                    # tailscale status
+hypernix net m-ip                      # this machine's tailnet IP
+hypernix net connect 100.64.0.5        # SSH to a peer
+hypernix net ex-port 8080              # print the `tailscale serve` command; --apply runs it
+hypernix net tail acheck train.py      # is train.py on each peer? -r runs it there
+hypernix net tail stop train.py        # stop it on the peers
 ```
 
-Distributed network manager built on Tailscale — mainly for driving
-`tvtop`/`cctvtop` against a training run happening on another machine.
+A distributed network manager on Tailscale and SSH. The subcommands:
+
+| | |
+|---|---|
+| `config` | view or edit `~/.hypernix/net.json` |
+| `auto-setup`, `m-setup` | configure Tailscale and SSH keys, or print how to by hand |
+| `status`, `m-ip` | `tailscale status`, and this machine's tailnet IPv4 |
+| `connect IP` | SSH to a peer |
+| `a-il` | find the online peers and add their host keys |
+| `mutli-a-port PORT` | record an active port in the config (the name is spelled that way) |
+| `ex-port PORT [--apply]` | expose a port across the tailnet with `tailscale serve` |
+| `s-storage` | rsync the storage folder to every peer |
+| `onef-all` | mark this node as the central storage node and print its IP |
+| `tail acheck FILE [-r]`, `tail stop FILE` | check each peer for a Python file and optionally run it; stop it again |
 
 ## `gkey`
 
@@ -793,7 +886,20 @@ hypernix vera --help
 hypernix prot --help
 ```
 
-`vera` is a separate assistant CLI. `prot`/`protect` blanks the monitor,
+`vera FILE` checks a HyperNix script: it verifies the syntax, runs smoke
+tests, and explains a failure with a local model.
+
+| Flag | |
+|---|---|
+| `-dr`, `--dry-run` | run the file with its dry-run flag |
+| `-C`, `--full-run` | run the file for real |
+| `-FT`, `--function-test`, `-q`/`--depth 1-10` | test each argument on its own, to that depth |
+| `-t`/`--timeout N`, `-T ml\|s\|M\|h` | per-stage limit, and its unit |
+| `-tt`/`--total-timeout SECONDS` | a limit on the whole run |
+| `-Na`, `--no-ai` | print the raw error, load no model |
+| `-m`, `--pick-model`, `--models-dir DIR` | choose the GGUF that explains, from `~/.hypernix/models` or DIR |
+
+`prot`/`protect` blanks the monitor,
 puts the terminal into raw mode, and waits for a wake word typed blind —
 type it and the screen comes back. It can also log CPU and memory to
 `~/.hypernix/protect_health.log` while it waits, since the screen is off

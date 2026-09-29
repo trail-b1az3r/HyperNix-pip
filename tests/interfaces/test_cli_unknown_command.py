@@ -139,8 +139,10 @@ class TestTheMenuMatchesTheDispatcher:
     #: Alternative spellings of a command that is listed under its other
     #: name. Not listing these keeps the table readable; they appear in
     #: the "Also accepted" line instead.
+    #: `tvtop` is not one: `hypernix tvtop` is the classic dashboard and
+    #: `cctvtop` another, so it has its own row.
     KNOWN_ALIASES = {
-        "camouflage", "protect", "fuse-box", "fiz", "tvtop",
+        "camouflage", "protect", "fuse-box", "fiz",
     }
 
     def test_everything_dispatchable_is_discoverable(self, menu):
@@ -162,3 +164,13 @@ class TestTheMenuMatchesTheDispatcher:
     def test_help_still_exits_zero(self):
         code, _out, _err = _run("--help")
         assert code == 0
+
+
+def test_tvtop_is_not_listed_as_an_alias_of_cctvtop():
+    """They dispatch to different dashboards; the help said otherwise."""
+    out = io.StringIO()
+    with redirect_stdout(out):
+        cli._print_usage()
+    menu = out.getvalue()
+    assert "tvtop (cctvtop)" not in menu
+    assert re.search(r"│ tvtop\s+│", menu)

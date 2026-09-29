@@ -67,6 +67,39 @@ convert_to_gguf(
 No llama.cpp installation needed for this stage — it uses the
 pure-Python `gguf` library. Produces fp32 or fp16 tensors.
 
+## One step: `hypernix convert -P`
+
+```bash
+hnx convert ./snapshot -P -Q Q4_K_M                 # safetensors -> F16 -> Q4_K_M
+hnx convert ./snapshot/model.safetensors -P -Q q6h4 -o model.q6h4.gguf
+hnx convert ./brewer_models/mine -P -Q FP8          # a hyperNix0x-v2 model
+```
+
+Converts a safetensors model and quantises the result with
+[hyprslug](HyprSlug.md), deleting the F16 in between. A `.gguf` is
+quantised as it is. Any hyprslug target works, including the HyperNix
+tiers and hybrids. See [CLI](CLI.md#convert).
+
+## Without llama.cpp: `-hnx` and hyprslug
+
+`hypernix quantize ... -hnx`, `steamroller ... -hnx` and `hyprslug`
+itself quantise in Python, with no `llama-quantize` looked for,
+downloaded or built. They write every upstream type below (`Q2_K` to
+`Q8_0`, and the `_S`/`_M`/`_L` mixes) plus what `llama-quantize` cannot:
+
+| Targets | What | Runs in |
+|---|---|---|
+| `IQ0.9_L` … `IQ0.25_UXL`, `INT1`, `HNX_1375BIT` | sub-bit and one-bit | HnxRun, patched llama.cpp |
+| `INT8`, `INT4`, `INT3`, `INT2`, `FP2`, `FP8` | fixed codebooks | HnxRun, patched llama.cpp |
+| `Q8_K` | llama.cpp's activation block, as a weight | HnxRun, patched llama.cpp |
+| `hnx_Q6_H_k` (`q6h`), `hnx_Q6_H_4` (`q6h4`), `hnx_Q6_H_2` (`q6h2`) | hybrids chosen per tensor by role and depth | patched llama.cpp |
+| `FP32`, `FP16`, `BF16` | width conversions | any llama.cpp |
+
+"Patched llama.cpp" is a build with
+[`native/ggml-hnx`](../native/ggml-hnx/README.md). See
+[HyprSlug](HyprSlug.md) for the recipes and [LowBit](LowBit.md) for the
+types.
+
 ## `quantize_gguf`
 
 Drives the `llama-quantize` binary. The full alias table lives in
@@ -112,7 +145,7 @@ for s in quant_by_category("k"):
 # Pick the largest quant that fits in a target byte budget
 fp16_bytes = 2_000_000_000  # 2 GB
 spec = quant_for_size(target_size_bytes=900_000_000, fp16_size_bytes=fp16_bytes)
-print("recommend:", spec.name)                   # e.g. "Q4_K_M"
+print("recommend:", spec.name)                   # "Q6_K" for this budget
 
 # Estimate output size without running llama-quantize
 print(quant_estimate_size("q4km", fp16_bytes))   # ≈ 603 MB

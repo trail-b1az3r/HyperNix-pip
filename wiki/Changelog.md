@@ -553,6 +553,20 @@ Historical wording and technical detail are retained during format normalization
     nothing at all, or re-ran the module as `hypernix.<flat>` and renamed
     it for everyone. The real spec is now put back after the import.
 
+🐛 Fixed HnxRun and `hnxtorch` refusing FP8 and INT3 layers.
+  - Both kept their own list of codebook types, which stopped at INT4,
+    FP2, INT8 and INT2, so a file with the new types failed to load. They
+    now read the list from `hypernix.quant.lowbit`, and a test decodes
+    every codebook type through both.
+
+🐛 Fixed `hypernix --help` listing `tvtop` as another name for `cctvtop`.
+  - `hypernix tvtop` runs the classic dashboard; it is the `tvtop`
+    console script that runs cctvtop. The help now says so.
+
+🐛 Fixed `scripts/update_json_stats.py` writing to `docs/v1/json` when run
+  by hand. Its default is `docs/public/v1/json`, where the workflow and
+  the site read it.
+
 ### Documentation
 
 📚 Changed the README and `examples/t1api/.env.example` for the T1 server
@@ -569,6 +583,21 @@ Historical wording and technical detail are retained during format normalization
   server (164 paths; they were a month old).
   - The example generator now replaces the recording machine's name with
     a placeholder, as it already did ids and timestamps.
+
+📚 Changed `scripts/README.md`, `native/ggml-hnx/README.md` and the wiki
+  to match the code.
+  - `scripts/README.md` lists every script in `scripts/` and
+    `.github/scripts/`, what runs it, and which have tests.
+  - The ggml-hnx README covers all eleven HNX types, Q8_K and what runs
+    where: a patched llama.cpp runs them on the CPU only, and the CUDA
+    kernels are in the standalone library, for the five sign types.
+  - `CLI.md` corrects `assistant` (it runs real models; only
+    `pipeline`'s LLM stage is a stub), `tvtop` and `cctvtop`, `vera`,
+    and the `net` subcommands, and adds `convert -P -Q`. `LowBit.md`,
+    `Quantization.md`, `Convert.md`, `HnxRun.md`, `ModelIndex.md`,
+    `Dashboards.md`, `Runtime.md`, the Pressure Cooker pages, `Home.md`
+    and `Roadmap.md` are brought up to date, and `HuggingFace-Models.md`
+    lists the 55 public models.
 
 ### Site Changes
 

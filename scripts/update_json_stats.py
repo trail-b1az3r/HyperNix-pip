@@ -3,7 +3,7 @@
 update_json_stats.py
 
 Fetches current PyPI download stats for the `hypernix` package and writes
-them to docs/v1/json. The running daily history is split into three windows:
+them to docs/public/v1/json. The running daily history is split into three windows:
   - recent (last 30 days, day-by-day)
   - three_month (31-90 days ago, collapsed into a summary)
   - older (90+ days ago, collapsed into a summary)
@@ -22,7 +22,7 @@ Data sources:
 
 Environment variables (set by the workflow):
   PYPI_PACKAGE        package name on PyPI (default: hypernix)
-  JSON_PATH           path to the JSON file to update (default: docs/v1/json)
+  JSON_PATH           path to the JSON file to update (default: docs/public/v1/json)
   MANUAL_RUN_REASON   optional note when triggered via workflow_dispatch
 """
 
@@ -34,7 +34,7 @@ from datetime import UTC, datetime, timedelta
 import requests
 
 PACKAGE = os.environ.get("PYPI_PACKAGE", "hypernix")
-JSON_PATH = os.environ.get("JSON_PATH", "docs/v1/json")
+JSON_PATH = os.environ.get("JSON_PATH", "docs/public/v1/json")
 MANUAL_RUN_REASON = os.environ.get("MANUAL_RUN_REASON", "").strip()
 
 PYPI_JSON_URL = f"https://pypi.org/pypi/{PACKAGE}/json"

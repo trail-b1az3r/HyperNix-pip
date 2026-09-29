@@ -56,7 +56,17 @@ __all__ = [
 #: into the wrong decoder.
 _SUBBIT = {200: "sign_scale_l", 201: "pair_code_m", 202: "quad_code_xxxl",
            203: "quarter_code_uxl", 204: "int1_binary"}
-_LOWBIT = {205: "INT4", 206: "FP2"}
+#: From lowbit's own table, so a codec added there is decoded here; a
+#: literal list stopped at INT4 and FP2 and left INT8, INT2, INT3 and FP8
+#: undecodable.
+def _lowbit_types() -> dict[int, str]:
+    from ..quant.gguf import GGMLType
+    from ..quant.lowbit import CODECS
+
+    return {int(GGMLType[f"HNX_{name}"]): name for name in CODECS}
+
+
+_LOWBIT = _lowbit_types()
 
 
 def supports(ggml_type: int) -> bool:
@@ -201,9 +211,9 @@ def dequantize_lowbit(packed, codec_name: str):
         return torch.zeros(0, dtype=torch.float32, device=packed.device)
     scales = _scales(blocks)
     codes = _unpack(blocks[:, 2:].contiguous(), codec.code_bits, BLOCK_SIZE)
-    levels = torch.tensor(
-        codec.levels, dtype=torch.float32, device=packed.device
-    )
+    # Indexed by the stored code, not the sorted levels: FP8 stores the
+    # E4M3 byte itself, and the two orders only agree for the integers.
+    levels = torch.from_numpy(codec.decode_table).to(packed.device)
     return (levels[codes] * scales[:, None]).reshape(-1)
 
 

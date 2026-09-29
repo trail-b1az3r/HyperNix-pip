@@ -93,10 +93,50 @@ Progress shown via `tqdm`.
 - `hypernix.arch` (`ArchInfo`, `infer_arch`, `iter_state_dict_names`, `map_tensor_name`) — internal
 - Standard library: `json`, `collections.abc`, `pathlib`, `typing`
 
+## Convert and quantise in one step: `-P` (0.72.6.post3)
+
+```bash
+hnx convert ./snapshot -P -Q Q4_K_M
+hnx convert ./snapshot/model.safetensors -P -Q q6h4 -o model.q6h4.gguf
+hnx convert ./brewer_models/mine -P -Q FP8 --keep-intermediate
+```
+
+```python
+from hypernix.quant.convertq import convert_and_quantize
+
+result = convert_and_quantize("./snapshot", "Q4_K_M")   # -> ./snapshot.Q4_K_M.gguf
+print(result.output, result.kind, result.report.describe())
+```
+
+`hypernix.quant.convertq` runs `convert_to_gguf` and then
+[hyprslug](HyprSlug.md), so any hyprslug target works: llama.cpp's
+types and mixes, the HyperNix tiers, `Q8_K` and the hybrids. What it
+does depends on the source:
+
+| Source | `kind` | What happens |
+|---|---|---|
+| A Hugging Face folder, or a `.safetensors` in one | `safetensors` | `convert_to_gguf` to F16, then hyprslug |
+| A hyperNix0x-v2 (Brewer) folder or `.pt` | `brewer` | hyprslug exports it to a llama.cpp GGUF itself, then quantises |
+| A `.gguf` | `gguf` | hyprslug only |
+
+The target is checked before anything is converted, and the F16 copy is
+staged beside the output (not in `/tmp`, which is often a small tmpfs)
+and deleted unless `--keep-intermediate` is given. The output defaults
+to `<model>.<target>.gguf` beside the model.
+
+## hyperNix0x-v2 (Brewer) models
+
+`convert_to_gguf` is for Hugging Face-shaped checkpoints. A Brewer
+model has its own exporter, `hypernix.models.brewer_gguf.export_gguf`
+(`brew export --format gguf`), which writes the `llama` architecture
+that any llama.cpp runs. See [Model Training
+Guide](Model-Training-Guide.md#running-a-brewed-model-in-llamacpp).
+
 ---
 
 ## See also
 
 - [Download](Download.md) — produces the snapshot directory this module consumes
 - [Quantization](Quantization.md) — the k-quant step that typically follows `convert_to_gguf`
+- [HyprSlug](HyprSlug.md) — the quantiser `-P` uses
 - [Architectures](Architectures.md) — `infer_arch` / tensor-name mapping internals

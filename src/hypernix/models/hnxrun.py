@@ -232,7 +232,19 @@ _SUB_BIT_PACKINGS = {
 #: HNX fixed-codebook GGML type -> the codec name lowbit.py knows it by.
 #: These carry magnitude, so there is nothing to fold: every weight has
 #: its own code and the matmul is the ordinary one.
-_LOW_BIT_CODECS = {205: "INT4", 206: "FP2"}
+#:
+#: Built from lowbit's own table rather than written out: a literal here
+#: stopped at INT4 and FP2, so INT8, INT2 and later INT3 and FP8 files
+#: quantised fine and then could not be run by the one runtime that
+#: exists to run them.
+def _low_bit_codecs() -> dict[int, str]:
+    from ..quant.gguf import GGMLType
+    from ..quant.lowbit import CODECS
+
+    return {int(GGMLType[f"HNX_{name}"]): name for name in CODECS}
+
+
+_LOW_BIT_CODECS = _low_bit_codecs()
 
 
 def _dequantize(raw: bytes, ggml_type: int, elements: int):

@@ -6,16 +6,18 @@
 #   ./build.sh --check /path          report what would change; touch nothing
 #
 # What comes out is a normal llama.cpp -- llama-cli, llama-server, the
-# lot -- that additionally understands IQ0.9_L, IQ0.75_M, IQ0.5_XXXL,
-# IQ0.25_UXL and INT1. LM Studio ships its own llama.cpp build, so
+# lot -- that additionally understands every HyperNix type (ids 200-211:
+# the sub-bit tiers, INT1, HNX_1375BIT, and the INT8/INT4/INT3/INT2/FP2/
+# FP8 codebooks) and runs Q8_K as a weight. LM Studio ships its own llama.cpp build, so
 # pointing it at this one is a matter of replacing the runtime it
 # loads; see README.md, which also says plainly where that is fragile.
 #
 # The GPU backends are the upstream ones, untouched: -DGGML_CUDA=ON and
-# -DGGML_HIPBLAS=ON work exactly as they do upstream. The sub-bit types
-# themselves are CPU-only for now -- there is a CUDA kernel to write and
-# it is not written -- so a sub-bit tensor is dequantised on the CPU and
-# the rest of the graph runs wherever you sent it. That is slower than a
+# -DGGML_HIPBLAS=ON work exactly as they do upstream. The HyperNix types
+# run on llama.cpp's CPU backend while the rest of the graph runs
+# wherever you sent it. The CUDA kernels in ggml-hnx-cuda.cu build into
+# the standalone library (cmake -DGGML_HNX_CUDA=ON in this folder) and
+# are not wired into llama.cpp's CUDA backend. That is slower than a
 # native kernel and still much faster than not loading at all.
 set -euo pipefail
 

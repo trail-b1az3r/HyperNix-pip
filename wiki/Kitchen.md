@@ -229,7 +229,8 @@ subclass. No separate scheduler object — the schedule is driven by
 `PressureCookerV3._step`.
 
 ```python
-from hypernix.pressure_cooker_v3 import PressureCookerV3, StovetopV3Cooker, CookerLite
+from hypernix.pressure_cooker_v3 import PressureCookerV3, StovetopV3Cooker
+from hypernix.optimizers.pressure_cooker_v4 import CookerLite   # a V4 now
 
 opt = PressureCookerV3(
     model.parameters(),
@@ -270,7 +271,7 @@ most cases. `PressureCookerV3` is a single-object answer when you want:
 ### Hardware-Specific Variants
 If you are running on specialized hardware, use the explicit variants:
 - **`StovetopV3Cooker`**: Automatically disables fused and foreach kernels to run safely on older CUDA 6.1 (Pascal) GPUs like the GTX 1080.
-- **`CookerLite`**: Strips out lookahead and EMA by default and forces safe CPU-only operations for a much faster training loop on non-GPU hardware.
+- **`CookerLite`**: Strips out lookahead and EMA by default and forces safe CPU-only operations for a much faster training loop on non-GPU hardware. It moved to `pressure_cooker_v4` and is a `PressureCookerV4` subclass now; `from hypernix import CookerLite` finds it either way.
 
 Introspection helpers:
 

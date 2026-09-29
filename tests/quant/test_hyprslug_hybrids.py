@@ -321,3 +321,31 @@ class TestBrewerInput:
         # The staged F16 copy is gone.
         assert [p.name for p in out.parent.iterdir()] == [out.name]
         assert "hyperNix0x-v2" in report.describe()
+
+
+class TestTheRuntimesReadEveryCodebook:
+    """hnxrun and hnxtorch each kept their own list of codebook types,
+    written out by hand, and both stopped at INT4 and FP2: INT8, INT2,
+    INT3 and FP8 files quantised and then could not be run."""
+
+    @pytest.mark.parametrize("name", sorted(lowbit.CODECS))
+    def test_hnxrun_decodes_it_exactly(self, name):
+        from hypernix.models import hnxrun
+
+        x = _gaussian(256 * 4, 11)
+        raw = lowbit.quantize_array(x, name)
+        ggml_type = int(GGMLType[f"HNX_{name}"])
+        np.testing.assert_array_equal(
+            hnxrun._dequantize(raw, ggml_type, x.size), lowbit.dequantize_array(raw, name))
+
+    @pytest.mark.parametrize("name", sorted(lowbit.CODECS))
+    def test_hnxtorch_decodes_it_exactly(self, name):
+        torch = pytest.importorskip("torch")
+        from hypernix.models import hnxtorch
+
+        x = _gaussian(256 * 4, 12)
+        raw = lowbit.quantize_array(x, name)
+        ggml_type = int(GGMLType[f"HNX_{name}"])
+        assert hnxtorch.supports(ggml_type)
+        decoded = hnxtorch.decode(torch.frombuffer(bytearray(raw), dtype=torch.uint8), ggml_type)
+        np.testing.assert_array_equal(decoded.numpy(), lowbit.dequantize_array(raw, name))
