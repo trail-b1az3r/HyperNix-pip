@@ -315,7 +315,7 @@ class AttachmentStore:
         params.append(int(limit))
         with self.backend.connect() as conn:
             rows = conn.execute(
-                f"SELECT * FROM hyperlink_files {where} ORDER BY created_at DESC LIMIT ?",
+                f"SELECT * FROM hyperlink_files {where} ORDER BY created_at DESC LIMIT ?",  # nosec B608 - values are bound parameters; interpolated SQL is fixed or allowlisted
                 tuple(params),
             ).fetchall()
         return [_from_row(r) for r in rows]
@@ -391,7 +391,7 @@ class AttachmentStore:
         params = (owner,) if owner is not None else ()
         with self.backend.connect() as conn:
             rows = conn.execute(
-                f"SELECT DISTINCT sha256, size_bytes FROM hyperlink_files {where}", params
+                f"SELECT DISTINCT sha256, size_bytes FROM hyperlink_files {where}", params  # nosec B608 - values are bound parameters; interpolated SQL is fixed or allowlisted
             ).fetchall()
         return sum(int(r["size_bytes"]) for r in rows)
 

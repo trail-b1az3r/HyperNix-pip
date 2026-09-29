@@ -104,7 +104,7 @@ class Expanded:
 
 
 def _is_option(token: str) -> bool:
-    return token.startswith("-") and token != "-" and not token[1:].replace(".", "", 1).isdigit()
+    return token.startswith("-") and token != "-" and not token[1:].replace(".", "", 1).isdigit()  # nosec B105 - an empty default, a prefix or an error-code name, not a credential
 
 
 def _expand_cluster(token: str) -> list[str]:

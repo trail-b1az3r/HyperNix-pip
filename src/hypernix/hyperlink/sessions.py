@@ -280,13 +280,10 @@ class ChatSessionStore:
         # the app's home screen and it is fetched on every foreground.
         with self.backend.connect() as conn:
             rows = conn.execute(
-                f"""SELECT s.*,
-                           (SELECT COUNT(*) FROM hyperlink_messages m
-                             WHERE m.session_id = s.session_id) AS message_count
-                    FROM hyperlink_sessions s
-                    {where}
-                    ORDER BY s.updated_at DESC
-                    LIMIT ? OFFSET ?""",
+                "SELECT s.*, (SELECT COUNT(*) FROM hyperlink_messages m "  # nosec B608 - values are bound parameters; {where} is fixed clauses
+                "WHERE m.session_id = s.session_id) AS message_count "
+                f"FROM hyperlink_sessions s {where} "
+                "ORDER BY s.updated_at DESC LIMIT ? OFFSET ?",
                 tuple(params),
             ).fetchall()
         sessions = []
@@ -335,7 +332,7 @@ class ChatSessionStore:
         params.extend([time.time(), session_id])
         with self._lock, self.backend.connect() as conn:
             conn.execute(
-                f"UPDATE hyperlink_sessions SET {', '.join(fields)} WHERE session_id = ?",
+                f"UPDATE hyperlink_sessions SET {', '.join(fields)} WHERE session_id = ?",  # nosec B608 - values are bound parameters; interpolated SQL is fixed or allowlisted
                 tuple(params),
             )
         return self.get(session_id, owner=owner)
@@ -672,7 +669,7 @@ class ChatSessionStore:
         params = (owner,) if owner is not None else ()
         with self.backend.connect() as conn:
             sessions = conn.execute(
-                f"SELECT COUNT(*) AS n FROM hyperlink_sessions {where}", params
+                f"SELECT COUNT(*) AS n FROM hyperlink_sessions {where}", params  # nosec B608 - values are bound parameters; interpolated SQL is fixed or allowlisted
             ).fetchone()
             if owner is not None:
                 messages = conn.execute(

@@ -267,7 +267,7 @@ scripts/
 
 The icon is generated, not hand-placed: run
 `python ios/scripts/make_appicon.py` after changing the mark, and
-`tests/test_ios_appicon.py` checks the committed PNGs still match what
+`tests/ios/test_ios_appicon.py` checks the committed PNGs still match what
 the script would write and that the geometry still matches
 `hypernix-icon.svg`.
 

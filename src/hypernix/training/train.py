@@ -817,7 +817,7 @@ def train(
         thermal_target_c: Keep the GPU at or below this temperature by
             pausing briefly between steps. This *costs* throughput --
             around 12-24% for a target that actually bites, measured in
-            ``tests/test_fusebox.py`` -- and buys a cooler card, not a
+            ``tests/training/test_fusebox.py`` -- and buys a cooler card, not a
             faster run; the cost is printed when the run ends. See
             :mod:`hypernix.system.fusebox`. ``None``
             (default) reads ``$HNX_THERMAL_TARGET``; without that, no

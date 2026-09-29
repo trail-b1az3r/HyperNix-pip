@@ -120,7 +120,9 @@ def _from_lms(model_id: str, dirs: list[Path]) -> LMStudioFile | None:
                     path = base / relative
                     break
         if path.is_dir():
-            ggufs = sorted(path.rglob("*.gguf"), key=lambda p: p.stat().st_size, reverse=True)
+            from ..system.linkwalk import walk_files
+
+            ggufs = sorted(walk_files(path, ".gguf"), key=lambda p: p.stat().st_size, reverse=True)
             path = ggufs[0] if ggufs else path
         if path.is_file():
             return LMStudioFile(model_id, path, "lms")
@@ -138,9 +140,11 @@ def _from_scan(model_id: str, dirs: list[Path]) -> LMStudioFile | None:
     tail = _normalise(model_id.rsplit("/", 1)[-1])
     if not tail:
         return None
+    from ..system.linkwalk import walk_files
+
     matches: list[Path] = []
     for base in dirs:
-        for path in base.rglob("*.gguf"):
+        for path in walk_files(base, ".gguf"):
             name = path.name.lower()
             if "mmproj" in name or name.endswith(".part"):
                 continue

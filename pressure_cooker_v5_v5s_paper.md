@@ -208,7 +208,7 @@ Grounded in the classes' own constructors and docstrings, not aspirational:
 
 ## 7. Verification
 
-Test suite state at the time of writing (full repository, `pytest`): **1475 passed, 1 skipped** (a CUDA-only test, expected to skip on a CPU-only machine), **0 failed**, against this paper's own bug fixes applied (§9 of the accompanying README changelog). `tests/test_v0705_all.py` and `tests/test_v051_1.py` -- the two files most directly exercising the V5/V5S/V5Plus classes -- pass **77/77**. `ruff check src tests` also passes cleanly: 64 pre-existing lint findings elsewhere in the codebase (import sorting, and `isinstance(x, (A, B))` -> PEP 604 `isinstance(x, A | B)`) were fixed alongside the changes described here -- mechanical, behavior-preserving fixes, re-verified against the full test suite after applying them, and unrelated to `pressure_cooker_v5`/`v5s` specifically.
+Test suite state at the time of writing (full repository, `pytest`): **1475 passed, 1 skipped** (a CUDA-only test, expected to skip on a CPU-only machine), **0 failed**, against this paper's own bug fixes applied (§9 of the accompanying README changelog). `tests/optimizers/test_v0705_all.py` and `tests/optimizers/test_v051_1.py` -- the two files most directly exercising the V5/V5S/V5Plus classes -- pass **77/77**. `ruff check src tests` also passes cleanly: 64 pre-existing lint findings elsewhere in the codebase (import sorting, and `isinstance(x, (A, B))` -> PEP 604 `isinstance(x, A | B)`) were fixed alongside the changes described here -- mechanical, behavior-preserving fixes, re-verified against the full test suite after applying them, and unrelated to `pressure_cooker_v5`/`v5s` specifically.
 
 ## 8. Reproducibility
 
@@ -223,7 +223,7 @@ python scripts/benchmark_v5.py               # -> Table in §5, AdamW vs. V5, H=
 python scripts/benchmark_v5s.py              # -> Table in §5, AdamW vs. V5 vs. V5S, H=1024
 
 pytest tests/ -q                              # -> §7 (full suite)
-pytest tests/test_v0705_all.py tests/test_v051_1.py -q   # -> §7 (V5-specific subset)
+pytest tests/optimizers/test_v0705_all.py tests/optimizers/test_v051_1.py -q   # -> §7 (V5-specific subset)
 ```
 
 Environment this paper's own numbers were measured in: Python 3.12.3, PyTorch 2.13.0+cu130, `hypernix` 0.71.3, Linux (CPU-only sandbox, Intel Xeon @ 2.80GHz). GPU-specific numbers are cited from the repository's own pre-existing `01_ram_and_training_time.pdf` / `02_optimizer_speed_and_memory.pdf` (generated on an NVIDIA GeForce GTX 1080 per `03_gpu_utilization_and_vram.pdf`) rather than re-measured, since no GPU was available while writing this paper — anyone with CUDA hardware, including a Pascal card, can re-run the three scripts above directly to get device-specific numbers.

@@ -135,7 +135,7 @@ opt = PressureCookerV6(
   stable runs will never trip. Turn it on for extra robustness on
   unstable runs.
 
-Tested on more than a toy MLP: `tests/test_pressure_cooker_v6.py`
+Tested on more than a toy MLP: `tests/optimizers/test_pressure_cooker_v6.py`
 includes a small but structurally real transformer block (token
 embedding + multi-head attention + LayerNorm + GELU MLP + output head —
 1-D, 2-D, and embedding-table parameters all in the same optimizer) to
@@ -197,7 +197,7 @@ at capture time (normally "batch is finite, apply the update") is safe
 to repeat unconditionally.
 
 **Verification note, stated plainly:** this package's test suite
-(`tests/test_pressure_cooker_v6.py`) exercises everything that doesn't
+(`tests/optimizers/test_pressure_cooker_v6.py`) exercises everything that doesn't
 strictly require CUDA — the constructor's device-check guard, the
 inherited SSTM update rule (including that the fused and non-fused code
 paths produce identical numbers), and the `torch.compile`

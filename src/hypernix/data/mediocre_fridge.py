@@ -114,7 +114,7 @@ def synthesize_judge_corpus(
     ``good_ratio`` of them keep the reference answer and get the
     ``GOOD`` label, while the rest are mangled and get ``BAD``.
     """
-    rng = random.Random(seed)
+    rng = random.Random(seed)  # nosec B311 - seeded for reproducibility (shuffles, splits, jitter); nothing secret
     out = Path(out_path)
     out.parent.mkdir(parents=True, exist_ok=True)
 

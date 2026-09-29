@@ -115,6 +115,114 @@ python_bin() {
   fi
 }
 
+# The installed HyperNix version for interpreter $1, or nothing.
+hypernix_version() {
+  "$1" -c 'import importlib.metadata as m; print(m.version("hypernix"))' 2>/dev/null
+}
+
+# The Python this copy of hypernix-t1 was installed with: pip puts the
+# script next to its interpreter. Nothing when run from a checkout.
+own_python() {
+  local here p
+  here="$(cd "$(dirname "$0")" 2>/dev/null && pwd)" || return 1
+  for p in "$here/python3" "$here/python"; do
+    if [ -x "$p" ]; then printf '%s' "$p"; return 0; fi
+  done
+  return 1
+}
+
+# True when the HyperNix beside this script is newer than the server's.
+own_is_newer() {
+  local py own theirs mine
+  py="$(python_bin)"; [ -n "$py" ] || return 1
+  own="$(own_python)" || return 1
+  [ "$(dirname "$own")" = "$(cd "$(dirname "$py")" 2>/dev/null && pwd)" ] && return 1
+  theirs="$(hypernix_version "$py")" || return 1
+  mine="$(hypernix_version "$own")" || return 1
+  [ -n "$theirs" ] && [ -n "$mine" ] && [ "$theirs" != "$mine" ] || return 1
+  "$own" - "$mine" "$theirs" <<'EOF' 2>/dev/null
+import sys
+try:
+    from packaging.version import Version
+except ImportError:
+    from pip._vendor.packaging.version import Version
+sys.exit(0 if Version(sys.argv[1]) > Version(sys.argv[2]) else 1)
+EOF
+}
+
+# Run the hypernix-t1 installed with the server's own Python instead of
+# this one, when that is a different script. `pip install -U` into the
+# server's venv upgrades the copy in venv/bin, not whichever copy is first
+# on PATH -- and two builds of one version report the same version, so
+# the stale check cannot tell them apart. Reported from a real server:
+# the venv had the fixed model sync, the hnx-t1 on PATH did not, and
+# status described the old behaviour. The server's copy matches the code
+# the server runs, so it is the one to believe. Not when this copy is
+# the newer one: then it stays, and says the server is behind.
+use_servers_copy() {
+  [ -n "${HNX_T1_DELEGATED:-}" ] && return 0
+  local theirs here
+  # Only the private venv install-t1.sh makes: that is a copy installed
+  # for this server. The system python3's neighbour is anybody's.
+  [ -x "$CONFIG_DIR/venv/bin/python" ] || return 0
+  theirs="$CONFIG_DIR/venv/bin/hypernix-t1"
+  [ -f "$theirs" ] || return 0
+  here="$(cd "$(dirname "$0")" 2>/dev/null && pwd)/$(basename "$0")"
+  [ "$theirs" -ef "$here" ] && return 0
+  if command -v cmp >/dev/null 2>&1 && cmp -s "$theirs" "$here"; then
+    return 0
+  fi
+  own_is_newer && return 0
+  export HNX_T1_DELEGATED=1
+  exec "${BASH:-bash}" "$theirs" "$@"
+}
+
+# Say so when the hypernix-t1 first on PATH is a different script from
+# the server's and too old to hand over to it (before 0.72.6.post3). That
+# copy describes the code it came with, not the code the server runs, and
+# upgrading the server never touches it. A symlink to the server's copy
+# fixes it for good: it then follows every upgrade. hnx-t1 runs the
+# hypernix-t1 beside it, so linking that one covers both names.
+warn_if_path_copy_cannot_hand_over() {
+  local mine first
+  mine="$CONFIG_DIR/venv/bin/hypernix-t1"
+  [ -f "$mine" ] || return 0
+  first="$(command -v hypernix-t1 2>/dev/null)" || return 0
+  [ -n "$first" ] && [ -f "$first" ] || return 0
+  [ "$first" -ef "$mine" ] && return 0
+  grep -q "use_servers_copy" "$first" 2>/dev/null && return 0
+  warn "$first is an older hypernix-t1 than the server's, and runs instead of it."
+  dim  "     Point it at the server's, so it follows every upgrade:"
+  dim  "       ln -sf $mine $first"
+}
+
+# Say so when the server runs an older HyperNix than the one that came
+# with this script. The usual cause: `pip install -U hypernix` in your
+# own shell upgrades that environment, while the server keeps running
+# from the private venv install-t1.sh made -- so an upgrade looks like
+# it did nothing, and new features (the HyperLink site) never appear.
+warn_if_stale() {
+  local py own theirs mine
+  py="$(python_bin)"; [ -n "$py" ] || return 0
+  own="$(own_python)" || return 0
+  # Same environment? Compare folders, not files: a venv's python is a
+  # link to the base interpreter, so two venvs' pythons are one file.
+  [ "$(dirname "$own")" = "$(cd "$(dirname "$py")" 2>/dev/null && pwd)" ] && return 0
+  theirs="$(hypernix_version "$py")" || return 0
+  mine="$(hypernix_version "$own")" || return 0
+  [ -n "$theirs" ] && [ -n "$mine" ] && [ "$theirs" != "$mine" ] || return 0
+  "$own" - "$mine" "$theirs" <<'PYEOF' 2>/dev/null || return 0
+import sys
+try:
+    from packaging.version import Version
+except ImportError:
+    from pip._vendor.packaging.version import Version
+sys.exit(0 if Version(sys.argv[1]) > Version(sys.argv[2]) else 1)
+PYEOF
+  warn "The server runs HyperNix $theirs ($py), older than the $mine this command came with."
+  dim  "     Upgrade the server's own Python:  hypernix-t1 upgrade"
+}
+
 require_installed() {
   local py; py="$(python_bin)"
   [ -n "$py" ] || die "No python3 found."
@@ -371,7 +479,7 @@ logind_kills_user_processes() {
 }
 
 cmd_start() {
-  load_env; require_installed
+  load_env; require_installed; warn_if_stale
   local existing owner
   existing="$(running_pid || true)"
   if [ -n "$existing" ]; then
@@ -496,6 +604,37 @@ cmd_restart() {
   cmd_start
 }
 
+cmd_upgrade() {
+  # Upgrade HyperNix in the Python the server runs on -- which is the
+  # private venv when install-t1.sh made one, not whatever `pip` your
+  # shell finds -- then restart the server so it runs the new code.
+  load_env
+  local spec="hypernix[t1api]" py before after
+  case "${1:-}" in
+    "") ;;
+    --main) spec="hypernix[t1api] @ git+https://github.com/trail-b1az3r/HyperNix-pip@main" ;;
+    -*) die "Unknown option: $1 (try --main, or a pip requirement such as 'hypernix[t1api]==0.72.7')" ;;
+    *) spec="$1" ;;
+  esac
+  py="$(python_bin)"; [ -n "$py" ] || die "No python3 found."
+  before="$(hypernix_version "$py")" || before=""
+  say "Upgrading HyperNix in $py (now ${before:-not installed})…"
+  "$py" -m pip install -U "$spec" \
+    || die "pip could not upgrade it. The command was: $py -m pip install -U '$spec'"
+  after="$(hypernix_version "$py")" || after=""
+  if [ "$before" = "$after" ]; then
+    ok "HyperNix $after is already the newest."
+  else
+    ok "HyperNix ${before:-(none)} → $after"
+  fi
+  if [ -n "$(running_pid || true)" ]; then
+    say "Restarting so the server runs it…"
+    cmd_restart
+  else
+    dim "     Start it with:  hypernix-t1 start"
+  fi
+}
+
 cmd_status() {
   load_env
   local pid owner
@@ -547,6 +686,66 @@ value = fingerprint()
 print(" ".join(value[i:i + 8] for i in range(0, len(value), 8)))
 ' 2>/dev/null || true)"
   [ -n "$ident" ] && dim "     identity  $ident"
+  local installed
+  installed="$(hypernix_version "$(python_bin)")" || installed=""
+  [ -n "$installed" ] && dim "     hypernix  $installed ($(python_bin))"
+  warn_if_stale
+  warn_if_path_copy_cannot_hand_over
+  case "$(setting T1_MODEL_SYNC 0 | tr '[:upper:]' '[:lower:]')" in
+    1|true|yes|on)
+      # Asked of the server's own code rather than worked out here: which
+      # folders it mirrors is the server's decision, and a script that
+      # guesses can describe a build that is not the one running.
+      T1_CONFIG_DIR="${T1_CONFIG_DIR:-$CONFIG_DIR}" "$(python_bin)" - <<'PYEOF' || true
+import os
+import sys
+from pathlib import Path
+
+try:
+    from hypernix.t1api import modelsync
+    from hypernix.t1api.config import T1APIConfig
+except Exception as exc:  # noqa: BLE001
+    print(f"     models    this HyperNix cannot sync models ({exc})")
+    sys.exit(0)
+
+
+def warn(text):
+    print(f"  ! {text}", file=sys.stderr)
+
+
+if "models_source" not in getattr(T1APIConfig, "__dataclass_fields__", {}):
+    print("     models    this build mirrors T1_HF_DOWNLOAD_DIR, which install-t1.sh")
+    print("               points at the models folder itself: hypernix-t1 upgrade --main")
+    sys.exit(0)
+
+cfg = T1APIConfig.from_env(load_dotenv=False)
+src = Path(os.path.abspath(modelsync.source_for(cfg)))
+dst = Path(os.path.abspath(modelsync.target_for(cfg)))
+print(f"     models    {dst}")
+print(f"               mirrored from {src} (T1_MODEL_SYNC; hypernix-t1 sync)")
+if dst == src or src in dst.parents:
+    warn("the models folder is the folder it mirrors, or inside it: nothing is synced. "
+         "Set T1_MODELS_SOURCE to the shared folder.")
+elif dst in src.parents:
+    warn("the folder it mirrors is inside the models folder: nothing is synced. "
+         "Set T1_MODELS_SOURCE to the shared folder.")
+elif not src.is_dir():
+    warn(f"{src} does not exist, so there is nothing to mirror yet.")
+elif dst.is_dir():
+    linked = own = 0
+    for root, _dirs, files in os.walk(dst):
+        for name in files:
+            if name == modelsync.MANIFEST:
+                continue
+            if (Path(root) / name).is_symlink():
+                linked += 1
+            else:
+                own += 1
+    extra = f", {own} of its own" if own else ""
+    print(f"               {linked} file(s) linked{extra}")
+PYEOF
+      ;;
+  esac
   if [ -n "$pid" ]; then
     # HyperLink on the web (0.72.6.post1): where it is, and whether it
     # answers there, asked from outside the server.
@@ -554,7 +753,14 @@ print(" ".join(value[i:i + 8] for i in range(0, len(value), 8)))
       HX_API_URL="$url" \
       "$(python_bin)" -c '
 import os
-from hypernix.t1api.hyperlink_web import status_lines
+try:
+    from hypernix.t1api.hyperlink_web import status_lines
+except ImportError:
+    import hypernix
+    print("     web       none: HyperNix %s has no HyperLink site (0.72.6.post1 added it)"
+          % hypernix.__version__)
+    print("               get it with:  hypernix-t1 upgrade")
+    raise SystemExit
 enabled = os.environ["T1_WEB_ENABLED"].strip().lower() in ("1", "true", "yes", "on")
 try:
     port = int(os.environ["T1_WEB_PORT"])
@@ -659,6 +865,10 @@ T1_ENVIRONMENT=development
 # \`hypernix-t1 status\` says where it is and whether it answers.
 T1_WEB_ENABLED=1
 T1_WEB_PORT=37965
+# Mirror ~/.hypernix/models into this server's own folder by symlink,
+# and serve from it. \`hypernix-t1 sync\` does the same by hand.
+T1_MODEL_SYNC=1
+T1_MODELS_DIR=$CONFIG_DIR/models
 EOF
   chmod 600 "$ENV_FILE"
   mkdir -p "$CONFIG_DIR/keymaster"
@@ -811,6 +1021,15 @@ cmd_index() {
     exec "$py" -m hypernix.t1api.modelindex_cli "$@"
 }
 
+cmd_sync() {
+  # Mirror ~/.hypernix/models into this server's own models folder, by
+  # symlink. The same code the server runs with T1_MODEL_SYNC=1.
+  load_env
+  local py; py="$(python_bin)"
+  T1_CONFIG_DIR="${T1_CONFIG_DIR:-$CONFIG_DIR}" \
+    exec "$py" -m hypernix.t1api.modelsync_cli "$@"
+}
+
 cmd_autostart() {
   local action="on" write_only=0
   while [ $# -gt 0 ]; do
@@ -926,6 +1145,9 @@ hypernix-t1 — manage a T1 API server (also installed as hnx-t1)
   stop                  Ask it to stop, and wait
   kill                  Force it to stop, losing in-flight requests
   restart               Stop (or kill) then start
+  upgrade [--main|SPEC] Upgrade HyperNix in the Python the server runs on
+                        (its private venv, if it has one), then restart it.
+                        --main installs the newest code from GitHub.
   status                Is it running, where, and what version
   logs [N|-f]           Last N lines, or follow
 
@@ -933,12 +1155,17 @@ hypernix-t1 — manage a T1 API server (also installed as hnx-t1)
                         Set up a new server. Runs install-t1.sh when it is
                         available (the guided setup); otherwise writes a
                         minimal local-only configuration.
+  sync [--dry-run] [--index] [--watch S]
+                        Mirror ~/.hypernix/models into this server's own
+                        models folder (~/.hypernix/t1api/models) as
+                        symlinks, removing links whose file has gone.
+                        T1_MODEL_SYNC=1 has the server do it itself.
   index [--dir D] [-o FILE] [--refresh] [--dry-run]
                         Read every .gguf under D (default ./hypernix/models)
                         and write the model registry from what the files
                         say. Entries you have already edited are left
                         alone unless --refresh.
-  launch-script -$ 'CMD' [--shell bash|fish]  (fish: quote it, '-$')
+  launch-script -1 'CMD' [--shell bash|fish]
   override lms move-dir [FOLDER] [--move-files]
                         Point LM Studio's models folder at FOLDER
                         (default ~/.hypernix/models); \`override lms revert\` undoes it
@@ -971,6 +1198,7 @@ USAGE
 }
 
 main() {
+  use_servers_copy "$@"
   local cmd="${1:-status}"
   if [ $# -gt 0 ]; then shift; fi
   case "$cmd" in
@@ -979,6 +1207,7 @@ main() {
     stop)              cmd_stop "$@" ;;
     kill|force-stop)   cmd_kill "$@" ;;
     restart)           cmd_restart "$@" ;;
+    upgrade|update)    cmd_upgrade "$@" ;;
     status)            cmd_status "$@" ;;
     logs)              cmd_logs "$@" ;;
     create)            cmd_create "$@" ;;
@@ -986,6 +1215,7 @@ main() {
     test)              cmd_test "$@" ;;
     key|keys)          cmd_key "$@" ;;
     index)             cmd_index "$@" ;;
+    sync)              cmd_sync "$@" ;;
     built-in-runner|builtin-runner)
                        cmd_runner built-in-runner "$@" ;;
     runner)            cmd_runner runner "$@" ;;

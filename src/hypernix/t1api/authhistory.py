@@ -245,10 +245,12 @@ class AuthHistory:
         return self._latest(undone=True, order="ASC")
 
     def _latest(self, *, undone: bool, order: str) -> AuthHistoryEntry | None:
+        if order not in ("ASC", "DESC"):
+            raise ValueError(f"order must be ASC or DESC, not {order!r}")
         clause = "undone_at IS NOT NULL" if undone else "undone_at IS NULL"
         with self.backend.connect() as conn:
             row = conn.execute(
-                f"SELECT * FROM t1_auth_history WHERE {clause} ORDER BY seq {order} LIMIT 1"
+                f"SELECT * FROM t1_auth_history WHERE {clause} ORDER BY seq {order} LIMIT 1"  # nosec B608 - values are bound parameters; interpolated SQL is fixed or allowlisted
             ).fetchone()
         return self._from_row(row) if row is not None else None
 
@@ -299,7 +301,7 @@ class AuthHistory:
         clause = "" if include_undone else "WHERE undone_at IS NULL"
         with self.backend.connect() as conn:
             rows = conn.execute(
-                f"SELECT * FROM t1_auth_history {clause} ORDER BY seq DESC LIMIT ?", (int(limit),)
+                f"SELECT * FROM t1_auth_history {clause} ORDER BY seq DESC LIMIT ?", (int(limit),)  # nosec B608 - values are bound parameters; interpolated SQL is fixed or allowlisted
             ).fetchall()
         return [self._from_row(r) for r in rows]
 

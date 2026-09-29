@@ -212,7 +212,7 @@ containment check is the boundary between a language model and
 somebody's filesystem, so this is not a cosmetic gap: a Windows port
 needs a real path comparison (case-folded, root-name aware) and a
 Windows build to test it against, not a guess from a Linux machine.
-Until then `tests/test_studio_core.py` skips the compile-and-run halves
+Until then `tests/desktop/test_studio_core.py` skips the compile-and-run halves
 on Windows and says why. The source-level guarantees — no `system`, no
 `popen`, no `exec`, no `QProcess`, no shell in the tool list — are
 checked on every platform, because those read the file rather than the
@@ -226,4 +226,4 @@ the client's parsing of them is not.
 
 The core half — `ToolPolicy` and `ToolRunner`, where being wrong costs
 someone their files — is 110 checks across two suites, run by `ctest`
-and by `tests/test_studio_core.py`.
+and by `tests/desktop/test_studio_core.py`.

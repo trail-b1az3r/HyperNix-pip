@@ -751,6 +751,7 @@ class InteractiveCLI:
                 # nosec B602 - `/system <cmd>` is an operator-typed shell
                 # escape, the same as `!` in a REPL. No model output reaches
                 # here; shell=True is the feature being asked for.
+                # nosemgrep: python.lang.security.audit.subprocess-shell-true.subprocess-shell-true
                 command, shell=True, capture_output=True, text=True, timeout=60, check=False,  # noqa: S602
             )
         except (OSError, subprocess.SubprocessError) as exc:

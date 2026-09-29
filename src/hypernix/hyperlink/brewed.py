@@ -37,6 +37,8 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
+from hypernix.security.safeurl import urlopen as safe_urlopen
+
 logger = logging.getLogger(__name__)
 
 __all__ = [
@@ -139,7 +141,8 @@ def describe(path: str | Path) -> dict[str, Any]:
         params = BrewerConfig.from_dict(config).approx_params()
     except Exception:  # noqa: BLE001 - a count is a nicety, not a requirement
         params = 0
-    detail = "native HyperNix model (hyperNix0x-v2), served without llama.cpp"
+    detail = ("native HyperNix model (hyperNix0x-v2); the runner serves it through "
+              "llama.cpp when there is a build, converting it once, else in PyTorch")
     if matches_default(name) or folder.name == DEFAULT_MODEL_DIR:
         detail = ("the default model: a small base model that completes text. "
                   "It does not follow instructions or call tools")
@@ -197,7 +200,7 @@ def download(
             request.add_header("Authorization", f"Bearer {token}")
         logger.info("brewed: fetching %s/%s", repo, filename)
         try:
-            with urllib.request.urlopen(request, timeout=timeout) as response, \
+            with safe_urlopen(request, timeout=timeout) as response, \
                     partial.open("wb") as out:  # noqa: S310
                 while True:
                     block = response.read(1 << 20)

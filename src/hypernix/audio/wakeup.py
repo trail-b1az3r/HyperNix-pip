@@ -254,7 +254,7 @@ def augment(
 ) -> list[float]:
     """One augmented copy of *samples*, fitted to the window."""
     config = config or AugmentConfig()
-    rng = rng or random.Random()
+    rng = rng or random.Random()  # nosec B311 - seeded for reproducibility (shuffles, splits, jitter); nothing secret
 
     out = _change_speed(samples, rng.uniform(*config.speed))
     out = _apply_gain(out, rng.uniform(*config.gain_db))
@@ -512,7 +512,7 @@ def build_dataset(
     noisy teaches the model to detect noise.
     """
     config = config or WakeUpConfig()
-    rng = random.Random(seed)
+    rng = random.Random(seed)  # nosec B311 - seeded for reproducibility (shuffles, splits, jitter); nothing secret
     filters = mel_filterbank(config.mel)
     dataset = WakeUpDataset(config=config)
 
@@ -635,7 +635,7 @@ def train_wakeword(
     labels = torch.tensor(dataset.labels, dtype=torch.float32)
 
     indices = list(range(len(labels)))
-    random.Random(seed).shuffle(indices)
+    random.Random(seed).shuffle(indices)  # nosec B311 - seeded for reproducibility (shuffles, splits, jitter); nothing secret
     split = max(1, int(len(indices) * (1 - validation_split)))
     train_index, val_index = indices[:split], indices[split:] or indices[:1]
 
@@ -656,7 +656,7 @@ def train_wakeword(
 
     for epoch in range(epochs):
         model.train()
-        random.Random(epoch).shuffle(train_index)
+        random.Random(epoch).shuffle(train_index)  # nosec B311 - seeded for reproducibility (shuffles, splits, jitter); nothing secret
         total_loss = 0.0
         for start in range(0, len(train_index), batch_size):
             batch = train_index[start:start + batch_size]
@@ -837,12 +837,12 @@ class WakeUpDetector:
 
 def load_detector(path: str | Path, **kwargs: Any) -> WakeUpDetector:
     """Load a model saved by :func:`save_wakeword`."""
-    import torch
+    from ..security.safeload import load_checkpoint
 
     path = Path(path)
     if not path.exists():
         raise WakeUpError(f"No wake-word model at {path}")
-    payload = torch.load(path, map_location="cpu", weights_only=False)
+    payload = load_checkpoint(path)
     if not isinstance(payload, dict) or "hypernix.wakeup" not in payload:
         raise WakeUpError(
             f"{path} is not a HyperNix wake-word model (saved by a different tool?)."

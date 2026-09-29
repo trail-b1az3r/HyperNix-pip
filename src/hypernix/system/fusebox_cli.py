@@ -50,7 +50,7 @@ what the numbers mean
 
 this is not a speedup, and does not claim to be
   Holding a temperature costs throughput. Measured against a thermal
-  model (see tests/test_fusebox.py), running flat out and taking the
+  model (see tests/training/test_fusebox.py), running flat out and taking the
   driver's own throttling is faster than either lever here: a lowered
   power limit costs 2-7%, and pausing between steps costs 12-24%. A
   throttled card still does most of the work; a paused one does none.

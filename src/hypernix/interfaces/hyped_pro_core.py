@@ -56,6 +56,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from hypernix.security.safeurl import urlopen as safe_urlopen
+
 log = logging.getLogger("hypernix.hyped_pro_core")
 
 # ---------------------------------------------------------------------------
@@ -486,7 +488,7 @@ def _http_post_json(url: str, headers: dict[str, str], body: dict[str, Any], tim
     data = json.dumps(body).encode("utf-8")
     req = urllib.request.Request(url, data=data, headers=headers, method="POST")
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
+        with safe_urlopen(req, timeout=timeout) as resp:
             raw = resp.read().decode("utf-8")
     except urllib.error.HTTPError as exc:
         raw_err = exc.read().decode("utf-8", errors="replace")
@@ -966,7 +968,7 @@ def _t1_url_from_local_server() -> tuple[str, str] | None:
         return None
     # A server bound to every interface is reachable on loopback, and
     # "0.0.0.0" is not an address a client can connect to.
-    if host in ("", "0.0.0.0", "::", "[::]"):
+    if host in ("", "0.0.0.0", "::", "[::]"):  # nosec B104 - compares against or binds 0.0.0.0 only where the caller chose LAN access
         host = "127.0.0.1"
     if ":" in host and not host.startswith("["):
         host = f"[{host}]"

@@ -37,6 +37,8 @@ import urllib.parse
 import urllib.request
 from typing import Any
 
+from hypernix.security.safeurl import urlopen as safe_urlopen
+
 USER_AGENTS = [
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15",
@@ -61,7 +63,7 @@ def _search_duckduckgo(query: str, max_results: int = 10) -> list[dict[str, str]
         q_enc = urllib.parse.quote_plus(query)
         url = f"https://html.duckduckgo.com/html/?q={q_enc}"
         req = _get_request(url)
-        with urllib.request.urlopen(req, timeout=12) as resp:
+        with safe_urlopen(req, timeout=12) as resp:
             body = resp.read().decode("utf-8", errors="ignore")
 
         # Parse DuckDuckGo html result blocks
@@ -103,7 +105,7 @@ def _search_bing(query: str, max_results: int = 10) -> list[dict[str, str]]:
         q_enc = urllib.parse.quote_plus(query)
         url = f"https://www.bing.com/search?q={q_enc}"
         req = _get_request(url)
-        with urllib.request.urlopen(req, timeout=12) as resp:
+        with safe_urlopen(req, timeout=12) as resp:
             body = resp.read().decode("utf-8", errors="ignore")
 
         blocks = re.findall(r'<li class="b_algo"[^>]*>(.*?)</li>', body, re.DOTALL)

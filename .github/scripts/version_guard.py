@@ -33,7 +33,7 @@ the tag push is a thing people legitimately do.
 
 **Will the release's own tests pass on the version it writes?** The
 release bumps the version and then runs the whole suite, and
-`tests/test_changelog_format.py` holds the changelog's newest entry to
+`tests/docs/test_changelog_format.py` holds the changelog's newest entry to
 the version the package reports. So a tree prepared as 0.72.6.rc3 and
 dispatched as 0.72.6 built for ten minutes and then failed: "changelog
 newest is 0.72.6.rc3, package is 0.72.6". Nothing about that needs the
@@ -121,7 +121,7 @@ def tag_points_at(tag: str, repo: Path) -> str | None:
     return _git("rev-list", "-n", "1", tag, repo=repo)
 
 
-#: The newest entry's header, as tests/test_changelog_format.py holds it:
+#: The newest entry's header, as tests/docs/test_changelog_format.py holds it:
 #: `<version> — <YYYY-MM-DD>`, except that a .postN, which goes to PyPI as
 #: a patch, is `<version> — patch N - <headline>` (wiki/Changelog-guide.md).
 _HEADER = re.compile(r"^\d+\.\d+[\w.]* — \d{4}-\d{2}-\d{2}$")
@@ -152,7 +152,7 @@ def wanted_header(pep440: str, today: str) -> str:
 def newest_changelog_header(changelog: Path) -> str | None:
     """The header of the newest version entry, or None when there is none.
 
-    Found the way tests/test_changelog_format.py finds it: the first
+    Found the way tests/docs/test_changelog_format.py finds it: the first
     `## ` heading that starts with a digit.
     """
     if not changelog.is_file():
@@ -170,7 +170,7 @@ def _base(version: str) -> str:
 def check_changelog(pep440: str, repo: Path) -> None:
     """Refuse a release whose changelog the release's own tests will reject.
 
-    The rules are tests/test_changelog_format.py's, applied to the
+    The rules are tests/docs/test_changelog_format.py's, applied to the
     version the bump step is about to write rather than the one the
     tree has now: the newest entry has a `<version> — <date>` header, or
     `<version> — patch N - <headline>` for a .postN, and its version is

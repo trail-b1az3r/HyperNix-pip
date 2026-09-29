@@ -9,7 +9,7 @@ What this does not do, measured
 The obvious pitch for a module like this is "slow down now to go faster
 later" -- ease off before the driver throttles, and win back more than
 you gave up. That was the design brief, and it does not survive being
-simulated. ``tests/test_fusebox.py::TestTheThroughputClaim`` runs a
+simulated. ``tests/training/test_fusebox.py::TestTheThroughputClaim`` runs a
 first-order thermal model against three strategies and the ordering
 does not change across the useful range of cooling quality and throttle
 severity:
@@ -553,7 +553,9 @@ class Governor:
             )
 
         # Below the fuse: proportional easing around the target.
-        assert hot is not None  # cpu_trip alone is handled above
+        # cpu_trip alone is handled above
+        if hot is None:
+            raise AssertionError('hot is not None')
         over = hot - self.policy.target_c
         if over > 0:
             self._hot_streak += 1

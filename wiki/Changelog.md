@@ -218,6 +218,113 @@ Historical wording and technical detail are retained during format normalization
 
 ### Added
 
+๋࣭⭑ Added three hybrid quantisations to hyprslug: `hnx_Q6_H_k` (`q6h`),
+  `hnx_Q6_H_4` (`q6h4`) and `hnx_Q6_H_2` (`q6h2`).
+  - Each tensor's format is chosen from its role and its depth: the
+    output head, `attn_v` and `ffn_down` get the most bits, the first and
+    last eighth of the layers more than the middle, and the aggressive
+    formats land only on the middle layers' `ffn_gate`/`ffn_up`.
+  - `q6h` mixes Q8_K, Q6_K and Q3_K (about 5.9 bits/weight on a 7B
+    llama). `q6h4` mixes Q6_K, Q5_K, Q4_K, INT3 and Q2_K (about 4.8).
+    `q6h2` is `q6h4` with IQ1_XS for Q2_K, Q3_K_L's formats for Q4_K_S,
+    and no INT3 (about 4.5).
+  - IQ1_XS is not a llama.cpp type (upstream has IQ1_S and IQ1_M). Here
+    it names `HNX_1375BIT`, the HyperNix one-bit type below IQ1_S.
+  - The token embedding is always a stock K-quant, because llama.cpp's
+    `get_rows` aborts on anything else.
+  - The file records `hypernix.hybrid`, `hypernix.ingredients` and
+    `hypernix.needs: ggml-hnx`, and a `general.file_type` from 1301 up
+    rather than claiming Q6_K.
+
+✨ Added `Q8_K`, `INT3` and `FP8` to hyprslug and to `native/ggml-hnx`.
+  - `Q8_K` is llama.cpp's own block used as a weight. Stock llama.cpp
+    only quantises activations to it; the patch now gives it a `to_float`
+    and an int8 x int8 `vec_dot`.
+  - `INT3` (type 210, 3.06 bits/weight) is the codebook between INT2 and
+    INT4. `FP8` (type 211, 8.06) stores E4M3 floats as their own bytes
+    against an FP16 block scale.
+  - Checked in patched llama.cpp on a trained 8-layer hyperNix0x-v2
+    model. For every new target and every hybrid, the logits from the
+    quantised file matched the logits from the same weights dequantised
+    to F32, to within 0.7% of the range; INT3 and FP8 matched to within
+    0.01%.
+
+✨ Added nightly builds to `public-release.yml`, behind a setting.
+  - Set the repository variable `PUBLIC_RELEASE_NIGHTLY` to `true`, and
+    the workflow builds the default branch at 03:23 UTC. A night with no
+    new commits is skipped. "Run workflow" with `nightly` ticked makes
+    one by hand, whatever the setting.
+  - A nightly runs the same lint, full test suite and live integration
+    jobs as a release, then replaces the rolling `nightly` GitHub
+    prerelease. Its version is the tree's plus a local label
+    (`0.72.6.post3+nightly.20260930.1a2b3c4`).
+  - It never bumps or commits the version, never makes a `v*` tag, and
+    never goes to PyPI or TestPyPI. No package index accepts a local
+    version anyway, so a nightly cannot be published by mistake.
+  - The HyperLink IPA is left out unless `PUBLIC_RELEASE_NIGHTLY_IPA` is
+    also `true`, since it needs a macOS runner every night.
+  - `.github/scripts/release_plan.py` decides whether a run is a
+    release, a nightly or nothing, and `tests/repo/test_release_plan.py`
+    (23) covers it and the workflow's guards.
+
+✨ Added linking a model that is already on the server, from HyperLink.
+  - The web app's Runner page and the iOS app's Runner screen take a path
+    on the server: a `.gguf`, a folder with one in it, or a hyperNix0x-v2
+    model folder. It is symlinked into the models folder, not copied, and
+    can be loaded straight away.
+  - A linked model shows where it points, with "Remove link", which
+    removes only the link. `POST /hyperlink/models/link` and
+    `DELETE /hyperlink/models/link/{name}` are admin only, accept only
+    model files and folders, and take one plain name segment.
+
+✨ Added `-P` and `-Q` to `hypernix convert` (and `hnx convert`).
+  - `hnx convert ./snapshot -P -Q q6h4` converts a safetensors model to a
+    GGUF, then quantises it with hyprslug to any target it knows. It
+    accepts a Hugging Face folder or a `.safetensors` in one, a Brewer
+    folder or `.pt`, or a `.gguf`, which is quantised as it is.
+  - The output defaults to `<model>.<target>.gguf` beside the model. The
+    F16 copy is staged beside it and deleted, unless
+    `--keep-intermediate` is given. `-Q` implies `-P`, and a bad target
+    is refused before anything is converted.
+
+✨ Added hyperNix0x-v2 (Brewer) models as hyprslug input.
+  - `hyprslug brewer_models/mymodel q6h4` takes a model folder or a `.pt`
+    checkpoint. It exports an F16 GGUF beside the output, quantises that,
+    and deletes it.
+
+✨ Added a real GGUF export for Brewer (hyperNix0x-v2) models, which run in
+  any llama.cpp: stock, LM Studio's, and the `native/ggml-hnx` patched one.
+  - `brew export --format gguf` wrote an `HNXG` file, a JSON header and raw
+    F32 tensors that no llama.cpp could open, patched or not. It now writes
+    the `llama` architecture, which is what a Brewer block is; the old file
+    is `--format hnxg`.
+  - `brew gguf SOURCE` converts any Brewer folder or `.pt`, HyperNix.3-mini
+    included: `hnx brew gguf ~/.hypernix/models/HyperNix.3-mini`.
+  - Q and K are permuted from Brewer's half rotation to llama.cpp's pair
+    rotation, the tokenizer goes inside the file (a byte-level BPE
+    `tokenizer.json`, or a `brew train` character vocabulary rebuilt as
+    byte-level BPE), and a sliding-window model's context is capped at the
+    window, where llama.cpp is exact.
+  - `--outtype f32|f16|bf16|q8_0`, and the Brewer config kept in the file
+    under `hypernix.brewer.*`.
+✨ Added llama.cpp serving for brewed models in the runner.
+  - With a llama.cpp build, a brewed folder is converted to GGUF once,
+    cached in `<T1_CONFIG_DIR>/cache/brewed-gguf` until its weights change,
+    and served by llama.cpp: a KV cache, quantised weights and a GPU layer
+    split, none of which the PyTorch server has.
+  - Without one, or without a tokenizer, the PyTorch server serves it as
+    before. `HYPERNIX_BREWED_BACKEND=torch` always uses it; `=llama`
+    requires llama.cpp and says why when it cannot.
+𖥔 Added `Brewer.save()` and `Brewer.from_dir()`: the model folder
+  (`config.json`, `model.safetensors`, `char_vocab.json`) that NeoOven, the
+  runner, `brew gguf` and the catalogue all read.
+𖥔 Added zero-padding of the FFN to a multiple of 256 in the GGUF, on by
+  default (`--pad-ffn`). HyperNix.3-mini's `d_ff` is 2203, so every
+  `ffn_down` fell back to F16 in `llama-quantize`; padded, it quantises to
+  Q4_K/Q6_K, and zero rows and columns change no output.
+𖥔 Added `char_vocab.json` to NeoOven's tokenizer loading, so a
+  character-level brewed model chats in Python too.
+
 ✨ Added HyperLink on the web at `/` on the T1 API's own port.
   - The page opens at the server's address, `http://127.0.0.1:8000/` or
     whatever `T1_PORT` is, as well as on port 37965, for the same callers:
@@ -228,17 +335,207 @@ Historical wording and technical detail are retained during format normalization
 𖥔 Added the API-port address to the startup line and to
   `hypernix-t1 status`, which says whether the page answers there.
 
+✨ Added `hypernix-t1 upgrade`, which upgrades HyperNix in the Python the
+  server runs on, then restarts the server.
+  - That is the private venv when `install-t1.sh` made one. A `pip install
+    -U hypernix` in your own shell upgrades a different environment, so
+    the server kept running the old version, and `hypernix-t1 version`
+    still said 0.72.6, with no HyperLink site on any port.
+  - `--main` installs the newest code from GitHub; any pip requirement,
+    such as `'hypernix[t1api]==0.72.7'`, works too.
+✨ Added model sync: `~/.hypernix/models` mirrored into the T1 server's
+  own `~/.hypernix/t1api/models`, one symlink per file.
+  - `T1_MODEL_SYNC=1` has the server sync at startup, after each download
+    and before a model list, and serve its local models from the mirror
+    (`T1_MODELS_DIR`). New configs from `hypernix-t1 create` and
+    `install-t1.sh` have it on; it is off otherwise.
+  - `hypernix-sync`, also `t1-sync` and `hypernix-t1 sync`, does it by
+    hand, with `--dry-run`, `--index` (write the registry from the result)
+    and `--watch`.
+  - Links whose file is gone are removed. A real file, or a link of your
+    own, in the T1 folder is never replaced, and downloads in progress
+    are skipped.
+  - The folder mirrored is `T1_MODELS_SOURCE`, default
+    `~/.hypernix/models`, and not the download folder: `install-t1.sh`
+    points `T1_HF_DOWNLOAD_DIR` at the T1 folder itself, so a server it
+    made would have mirrored that folder into itself and synced nothing.
+  - `hypernix-t1 status` names both folders when it is on, and warns when
+    they are one folder, when one is inside the other, or when the shared
+    one does not exist.
+✨ Added the hand-off from `hypernix-t1` to the copy in the server's venv.
+  - `pip install -U` into `~/.hypernix/t1api/venv` upgrades the copy in
+    `venv/bin`, not the `hnx-t1` first on `PATH`, and both report the same
+    version. Seen on a real server: the venv had the fixed model sync, and
+    `status` from the other copy still described the old one.
+  - Whichever copy runs now hands over to the venv's when it is a
+    different script, unless it is the newer of the two, in which case it
+    stays and warns that the server is behind.
+  - `status` asks the server's own code which folders it mirrors, and
+    counts the files linked.
+  - A copy from before this cannot hand over. `status` says when one is
+    first on `PATH`, and gives the `ln -sf` that points it at the
+    server's copy for good.
+𖥔 Added the server's HyperNix version to `hypernix-t1 status`, and a
+  warning from `status` and `start` when it is older than the one that
+  came with `hypernix-t1` itself.
+𖥔 Added a line to `hypernix-t1 status` when the installed HyperNix has no
+  HyperLink site at all, where it used to print nothing about the site.
+
 ### Changed
+
+⚠️ Changed `hypernix-t1 launch-script -$ 'CMD'` to `-1 'CMD'`.
+  - No shell typed `-$` reliably: bash reads `-$'...'` as one quoted word
+    and `-$NAME` as a variable, and fish refuses a bare `$`. `-1` needs
+    no quoting anywhere. `--shell-command` is unchanged, and `-$` is
+    still accepted, unlisted, so existing scripts keep working.
 
 🔧 Changed Bandit's `assert_used` check (B101) to skip `tests/`, in a new
   `[tool.bandit]` section of `pyproject.toml` that the security scan
   already reads when present.
   - pytest's asserts are how a test checks its result, and B101 reported
     every one, over eleven thousand, as a code-scanning alert on each PR
-    that touched a test. It still reports the 29 in the package itself,
-    and every other Bandit check still runs on the tests.
+    that touched a test. The 29 in the package itself are now real
+    checks (see Security).
+
+🔧 Changed the security scanners so each one runs and reports.
+  - The security scan's CodeQL job, and `codeql.yml`, are removed. The
+    repository uses GitHub's CodeQL default setup, which runs on every
+    push and pull request, and while it is on GitHub refuses results from
+    an advanced CodeQL workflow, so both only ever failed. Turn default
+    setup off in Settings if CodeQL should run from the workflow instead.
+  - A `.gitleaksignore` lists the five gitleaks findings in history,
+    each reviewed and none a secret (variable names, an allocator
+    setting, a test id); anything new is still reported.
+  - A `.codacy.yml` excludes the binary assets and generated site data
+    from Codacy, whose report step crashed on every run reading one of
+    them as text.
+
+🔧 Changed `tests/` into one folder per package, named like the folder
+  under `src/hypernix/` it tests, plus `ios/`, `desktop/`, `docs/` and
+  `repo/`; `tests/README.md` lists them.
+  - `pytest tests/t1api` runs one area. Every folder is on the import
+    path, so the shared helpers still import the same way.
+  - `scripts/autofix_scope.py` now looks for tests in every folder; it
+    only read `tests/test_*.py`, so it would have found none.
+
+### Security
+
+𖢥 Fixed the security gate's 16 Semgrep errors.
+  - `public-release.yml` and `ios.yml` wrote `${{ inputs.version }}` and
+    `inputs.allow_downgrade` into `run:` scripts, so a dispatched version
+    string was shell text. They now arrive as environment variables, and
+    the version bump's Python heredoc is quoted and reads them from there.
+  - `release.yml` and `public-release.yml` called `ios.yml` with
+    `secrets: inherit`. `ios.yml` now declares the five signing secrets it
+    uses, all optional, and both callers pass exactly those.
+  - `remote_desktop` passed `$DISPLAY` straight to `x11vnc -display`; it
+    is now used only when it is a display name, else `:0`.
+  - The operator's `/system` shell escape, hyped's consent-gated
+    `run_command` and `run_background_command`, the hyped-pro and
+    tvtop-max launchers and hyped-pro's interpreter probe are intended as
+    they are, and carry a `nosemgrep` marker for their one rule beside
+    Bandit's `nosec` and the reason.
+
+𖢥 Fixed checkpoints being unpickled, which runs any code in the file.
+  - Six `torch.load(..., weights_only=False)` calls (wake-word models,
+    brewed `model.pt`, oven bundles, `quant.convert`, brewer resume) now
+    go through `hypernix.security.safeload.load_checkpoint`, which loads
+    with `weights_only=True`. Every checkpoint HyperNix writes is tensors
+    and plain data, so they all still load.
+  - A file that needs full unpickling is refused with the reason, unless
+    `HYPERNIX_TRUST_PICKLE=1` is set for a file the person trusts.
+
+🔒 Changed MCP to keep an unexpected error's text on the server.
+  - A tool that raised sent `str(exc)` to the remote client, which can
+    name files and settings. The client now gets an incident id, and the
+    server's log has the traceback under that id.
+
+🔒 Changed the key store to check that a key's file is inside the store.
+  - Besides the key id pattern, the normalised path must be under the
+    store before a key file is read, written or deleted.
+
+𖢥 Fixed the Codacy scan, which had crashed on every run since 2026-09-08.
+  - Its SARIF writer died with `MalformedInputException` because the
+    analysis container's JVM defaulted to ASCII, and the action passes
+    only four environment variables into Docker. The workflow now runs
+    `codacy/codacy-analysis-cli:4.0.0` itself with UTF-8 set, so a new
+    report can be uploaded and the alerts from the last good run
+    (about 20,000 on GitHub) can close.
+  - `.github/scripts/codacy_sarif_filter.py` keeps the report to
+    findings about correctness and security: style-only tools
+    (duplication, Markdown, CSS lint), pylint's convention, refactor and
+    info messages, and Python findings in `tests/` and `build/` are
+    dropped, and what is left is capped below GitHub's 25,000-per-run
+    limit, most severe first. The job summary lists what was dropped.
+  - Most of the drop in the alert count comes from this filter and the
+    `.codacy.yml` exclusions, not from code changes; the code changes
+    are the entries below.
+
+🔒 Changed every `urlopen` in the package to refuse anything but http and https.
+  - `hypernix.security.safeurl.urlopen` checks the scheme before opening,
+    so a `file://` or `ftp://` URL from a setting or a model's link is
+    refused with `UnsafeURLError`. 26 modules use it.
+
+🔒 Changed the SQLite stores to allowlist what is put into SQL text.
+  - The account updater takes only its own columns, and the auth
+    history's sort order only `ASC` or `DESC`; every value was already a
+    bound parameter. The remaining interpolated queries carry a `nosec`
+    marker saying why.
+
+🔒 Changed 29 `assert` checks in the package into real errors.
+  - `python -O` strips `assert`, so those checks (hyprslug, storage,
+    pairing, fusebox and others) would have silently stopped running.
+    They raise `AssertionError` as before, without depending on it.
+
+🔧 Changed the Bandit configuration.
+  - `[tool.bandit]` in `pyproject.toml` excludes `tests` and `build`, and
+    skips B404 and B603 (importing `subprocess`, and calling it with a
+    list and no shell). Every other finding kept in the code has a
+    `nosec` marker with its reason.
+  - Bandit went from about 1,087 findings to 107: 53 `try/except/pass`,
+    25 Hugging Face downloads without a pinned revision, 18 commands
+    found on `PATH`, and a handful of low-severity others.
 
 ### Fixed
+
+𖢥 Fixed symlinked models being invisible to HyperLink.
+  - `ln -s /data/qwen ~/.hypernix/models/qwen` is the obvious way to keep
+    a large model on another disk, and every model scanner walked past
+    it: `Path.rglob` never descends into a symlinked folder. The model
+    picker, the runner, `hypernix-t1 index`, the downloaded-models list
+    and the LM Studio handover now walk through links, and stop at a link
+    back up the tree.
+  - A link whose target has gone (moved, or on a disk that is not
+    mounted) is listed as not runnable, with the target it points at,
+    instead of vanishing. Loading one says why, up front.
+
+🐛 Fixed `hnx_quantize_rows` in `native/ggml-hnx` writing sign bits for
+  the codebook types.
+  - INT4, FP2, INT8 and INT2 went through the sign-and-scale encoder, so
+    a C caller got noise. They now get the nearest level. hyprslug never
+    used this path, so no file it wrote was affected.
+
+🐛 Fixed hyprslug's summary for a recipe printing `()` and `0.000 where
+  it packed`.
+  - A recipe has several formats, listed under `mix`, not one packing.
+
+𖢥 Fixed `brew train` throwing away its character vocabulary.
+  - It built the table from the corpus, trained on it, and kept it in
+    memory only, so a model it trained could never turn its output ids
+    back into text, in Python or anywhere else. The vocabulary is now
+    returned, saved as `char_vocab.json` and put in every checkpoint, and
+    training further keeps the ids it already has.
+  - A corpus with more characters than the model has embeddings was a
+    warning followed by an IndexError (a device-side assert on CUDA) some
+    way into the run. It is refused before training starts.
+𖢥 Fixed the `brew` commands working only within one process.
+  - `brew new` then `brew train` in a second command found nothing, since
+    the registry lived in memory. `brew train` saved no weights, and
+    ignored `--lr`, `--batch-size` and `--device`.
+  - `brew export` built a fresh, randomly initialised model and exported
+    that, whatever had been trained. It now reads the model's folder, and
+    refuses one with no trained weights.
+  - Each command works on `./brewer_models/<name>` or `--dir`.
 
 𖢥 Fixed the server's own address answering 404 instead of HyperLink on the web.
   - From a server log: the server on `0.0.0.0:8001`, the browser at
@@ -246,14 +543,101 @@ Historical wording and technical detail are retained during format normalization
     own port, 37965, and 0.72.6.post1 said so nowhere, so the address
     people tried first was the one address that did not serve it.
 
+𖢥 Fixed `importlib.reload` of a module first imported by its flat name
+  (`hypernix.pressure_cooker` for `hypernix.optimizers.pressure_cooker`).
+  - The alias left its own spec on the real module, so a reload did
+    nothing at all, or re-ran the module as `hypernix.<flat>` and renamed
+    it for everyone. The real spec is now put back after the import.
+
+### Documentation
+
+📚 Changed the README and `examples/t1api/.env.example` for the T1 server
+  as it is now.
+  - The README says what the 0.72.6 patches changed on the T1 server, and
+    lists every `hypernix-t1` command.
+  - The example `.env` gains the settings it lacked: web accounts,
+    `T1_HYPERLINK_TEACH_TOOLS`, and the `T1_HOST`, `T1_PORT` and
+    `T1_START_TIMEOUT` that `hypernix-t1` reads.
+
+📚 Changed `examples/t1api`: the README starts with `hypernix-t1`, says
+  where models go and how sync works under systemd and in a container,
+  and `API-EXAMPLES.md` and `openapi.json` are regenerated from a live
+  server (164 paths; they were a month old).
+  - The example generator now replaces the recording machine's name with
+    a placeholder, as it already did ids and timestamps.
+
+### Site Changes
+
+🛜 Changed the T1 API page to cover every route the server has and every
+  setting it reads, checked against the code.
+  - The endpoint reference gains the 71 routes it did not list (inference,
+    the runner, memory, compaction, noodle, accounts, backups, MCP,
+    HyperLink preferences, sync, push, search and more), each with who
+    may call it.
+  - New sections: web accounts, MCP, backup and restore, and governed
+    inference. The configuration section lists all 46 settings it
+    lacked, and which are read by the tools rather than the server.
+  - The quickstart copied `.env.t1api.example`, which does not exist; it
+    now starts with `hypernix-t1 create`, and says which Python the
+    server runs from.
+𖥔 Added "Opt-in features" and "Staying current" to the T1 security
+  checklist, and the 0.72.6.post3 protections to the T1 API's Security
+  section.
+𖥔 Added every `hypernix-t1` command to the CLI page's table (`version`,
+  `index`, `built-in-runner`, `chat`, `training`, `launch-script`,
+  `override`, `start-foreground`), and a fuller `status`.
+🛜 Changed the documentation site's T1 route list to include the HyperLink
+  web routes on the API's port, which it could not see.
+
 ### Tests
 
-🧪 Added two tests to `tests/test_hyperlink_web.py` (now 22): the page on
+🧪 Added `tests/hyperlink/test_model_links.py` (29): walking through links
+  and not looping, broken links, linking and unlinking, and the routes.
+🧪 Added `tests/quant/test_convert_pipeline.py` (14) for `convert -P`.
+🧪 Added `tests/quant/test_hyprslug_hybrids.py` (54): Q8_K's block and
+  bsums, INT3 and FP8 round trips, FP8 codes being E4M3 bytes, where each
+  hybrid puts each format, and Brewer folders as input.
+  - `hnx_selftest` now cross-checks the six codebook types against Python
+    (99 blocks, exact), and checks the Q8_K dot product.
+🧪 Added `tests/security/test_safeurl.py` (12) and
+  `tests/repo/test_codacy_sarif_filter.py` (3).
+🧪 Added `tests/models/test_brewer_gguf.py` (28), including a check that
+  llama.cpp's pair rotation on the permuted weights gives Brewer's
+  attention scores exactly, and that without the permutation it does not;
+  the FFN padding changing no output; the tokenizers; and `brew new`,
+  `train` and `export` as separate runs.
+  - Also run against llama.cpp built from source, stock and with
+    ggml-hnx patched in: logits matched PyTorch within 0.0025 at every
+    position in f32 and f16, tokenization matched exactly with
+    multi-byte characters, and greedy generation produced the same text.
+🧪 Added six runner tests: converted once and cached, converted again for
+  new weights, PyTorch without llama.cpp or a tokenizer, and the
+  `HYPERNIX_BREWED_BACKEND` choices.
+
+🧪 Added two tests to `tests/hyperlink/test_hyperlink_web.py` (now 22): the page on
   the API's port for loopback and tailnet peers (IPv4 and IPv6) and not
   for LAN or public ones, and neither when the site is off.
   - A server started with `hypernix-t1`, bound to `0.0.0.0:8001` as in
     the log, was driven in Chromium at `http://127.0.0.1:8001/`: the page,
     keyless sign-in and a chat; the machine's LAN address got a 404.
+
+🧪 Added `tests/security/test_safeload.py` (3): a plain checkpoint loads, one with
+  code in it is refused and the code does not run, and trusting it loads it.
+🧪 Added `tests/t1api/test_hypernix_t1_upgrade.py` (18): `upgrade` runs pip
+  in the server's own Python, `--main` and a requirement, the warning when
+  the server's HyperNix is older, and none when it is not.
+🧪 Added `tests/t1api/test_modelsync.py` (27): linking, relinking and
+  pruning, your own files left alone, in-progress downloads skipped,
+  the catalogue finding synced models and checkpoints, a server with sync
+  on serving from the mirror, the CLI's exit codes and `.env` settings,
+  `hypernix-t1 sync` and `status`, and an `install-t1.sh`-style config
+  syncing from the shared folder.
+🧪 Added a test that a reload after a flat-name import keeps the real name,
+  in a fresh interpreter. The pressure-cooker check that importing does
+  not warn now runs in one too, so it no longer swaps out the classes
+  other tests hold.
+🧪 Added an MCP test that an internal error's text stays in the server's
+  log and the client gets only the incident id.
 
 ### Known Issues
 

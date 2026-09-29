@@ -211,7 +211,7 @@ draws on every backend.
 
 **What the tests learned from it.** A placement bug is invisible on a
 one-device machine, so more tests of the ordinary kind could not have
-found it. `tests/test_hnx_device_placement.py` uses `device="meta"` —
+found it. `tests/models/test_hnx_device_placement.py` uses `device="meta"` —
 tensors that allocate nothing but still carry a device identity torch
 enforces — which makes "would break on MPS" an ordinary assertion that
 fails on a CPU-only box. Alongside it, an audit parses the runtime

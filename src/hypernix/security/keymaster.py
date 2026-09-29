@@ -502,14 +502,25 @@ class Keymaster:
     # ------------------------------------------------------------------
 
     def _key_path(self, key_id: str) -> Path:
-        if not _KEY_ID.fullmatch(key_id or ""):
-            raise ValueError(f"not a key id: {key_id!r}")
-        return self._store / f"{key_id}.json"
+        return self._in_store(key_id, f"{key_id}.json")
 
     def _archive_path(self, key_id: str) -> Path:
+        return self._in_store(key_id, os.path.join(_ARCHIVE_SUBDIR, f"{key_id}.json"))
+
+    def _in_store(self, key_id: str, relative: str) -> Path:
+        """A file in the store named from *key_id*, which may come from HTTP.
+
+        The id must look like one, and the joined, normalised path must
+        still be under the store: two checks, so neither a new id format
+        nor a new caller can make a file name out of `../`.
+        """
         if not _KEY_ID.fullmatch(key_id or ""):
             raise ValueError(f"not a key id: {key_id!r}")
-        return self._store / _ARCHIVE_SUBDIR / f"{key_id}.json"
+        base = os.path.abspath(self._store)
+        path = os.path.normpath(os.path.join(base, relative))
+        if not path.startswith(base + os.sep):
+            raise ValueError(f"not a key id: {key_id!r}")
+        return Path(path)
 
     def _encrypt(self, text: str) -> str:
         if self._cipher is None:

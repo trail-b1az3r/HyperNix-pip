@@ -238,7 +238,7 @@ def pick_best(
         raise ValueError("nothing to pick from")
     best = max(c.score for c in candidates)
     tied = [c for c in candidates if c.score == best]
-    winner = random.Random(seed).choice(tied)
+    winner = random.Random(seed).choice(tied)  # nosec B311 - seeded for reproducibility (shuffles, splits, jitter); nothing secret
     rest = [c for c in candidates if c is not winner]
     return winner, rest
 

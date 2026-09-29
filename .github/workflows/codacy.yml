@@ -38,24 +38,39 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Execute Codacy Analysis CLI and generate a SARIF output with the security issues identified during the analysis
+      # The analysis crashed on every run since 2026-09-08, inside its SARIF
+      # writer (java.nio.charset.MalformedInputException): it reads each
+      # flagged file with the JVM's default charset, which in its container
+      # is ASCII, and this repository's files are UTF-8 with non-ASCII text.
+      # codacy-analysis-cli-action passes only four fixed variables into the
+      # container, so the same pinned CLI is run here with the charset set.
       - name: Run Codacy Analysis CLI
-        uses: codacy/codacy-analysis-cli-action@d840f886c4bd4edc059706d09c6a1586111c540b
-        with:
-          # Check https://github.com/codacy/codacy-analysis-cli#project-token to get your project token from your Codacy repository
-          # You can also omit the token and run the tools that support default configurations
-          project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
-          verbose: true
-          output: results.sarif
-          format: sarif
-          # Adjust severity of non-security issues
-          gh-code-scanning-compat: true
-          # Force 0 exit code to allow SARIF file generation
-          # This will handover control about PR rejection to the GitHub side
-          max-allowed-issues: 2147483647
+        env:
+          CODACY_PROJECT_TOKEN: ${{ secrets.CODACY_PROJECT_TOKEN }}
+          CODACY_ANALYSIS_CLI_VERSION: "4.0.0"
+        run: |
+          token=()
+          if [ -n "$CODACY_PROJECT_TOKEN" ]; then token=(--project-token "$CODACY_PROJECT_TOKEN"); fi
+          docker run --rm \
+            --env CODACY_CODE="$PWD" \
+            --env JAVA_TOOL_OPTIONS="-Dfile.encoding=UTF-8 -Dsun.jnu.encoding=UTF-8" \
+            --env LANG=C.UTF-8 --env LC_ALL=C.UTF-8 \
+            --volume /var/run/docker.sock:/var/run/docker.sock \
+            --volume "$PWD":"$PWD" \
+            --volume /tmp:/tmp \
+            "codacy/codacy-analysis-cli:${CODACY_ANALYSIS_CLI_VERSION}" -- \
+            analyze --directory "$PWD" --verbose "${token[@]}" \
+              --format sarif --output "$PWD/results.sarif" \
+              --max-allowed-issues 2147483647 --gh-code-scanning-compat
+
+      # GitHub refuses a SARIF run over 25,000 results, and pylint alone has
+      # 37,000 here. Keep the security findings, errors and warnings; drop
+      # formatting. The job summary lists what was kept per tool.
+      - name: Keep the SARIF to security findings and GitHub's limits
+        run: python3 .github/scripts/codacy_sarif_filter.py results.sarif
 
       # Upload the SARIF file generated in the previous step
       - name: Upload SARIF results file
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: results.sarif

@@ -92,7 +92,7 @@ class CountertopBlender:
     name: str = "CountertopBlender"
 
     def __iter__(self) -> Iterator[str]:
-        rng = random.Random(self.seed)
+        rng = random.Random(self.seed)  # nosec B311 - seeded for reproducibility (shuffles, splits, jitter); nothing secret
         iters = [iter(_open_stream(s)) for s in self.sources]
         weights = list(self.weights) if self.weights else [1.0] * len(iters)
         if len(weights) != len(iters):
@@ -123,7 +123,7 @@ class HighPowerBlender:
     _buffered: list[str] = field(default_factory=list, repr=False)
 
     def __iter__(self) -> Iterator[str]:
-        rng = random.Random(self.seed)
+        rng = random.Random(self.seed)  # nosec B311 - seeded for reproducibility (shuffles, splits, jitter); nothing secret
         pool: list[str] = []
         for s in self.sources:
             pool.extend(_open_stream(s))

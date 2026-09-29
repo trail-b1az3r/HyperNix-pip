@@ -59,6 +59,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from hypernix.security.safeurl import urlopen as safe_urlopen
+
 logger = logging.getLogger(__name__)
 
 __all__ = [
@@ -388,7 +390,7 @@ class RobotsCache:
                 request = urllib.request.Request(  # noqa: S310 - scheme checked
                     f"{base}/robots.txt", headers=headers
                 )
-                opened = urllib.request.urlopen(request, timeout=self.timeout)  # noqa: S310
+                opened = safe_urlopen(request, timeout=self.timeout)
             with opened as response:
                 parser.parse(
                     response.read(512 * 1024).decode("utf-8", errors="replace")
@@ -616,7 +618,7 @@ def fetch(
         opened = (
             _open_pinned(normalized_url, dict(request.header_items()), timeout)
             if public_only
-            else urllib.request.urlopen(request, timeout=timeout)  # noqa: S310
+            else safe_urlopen(request, timeout=timeout)
         )
         with opened as response:
             page.status = response.status
@@ -1405,7 +1407,7 @@ def _inline_images(
             )
             if limiter is not None:
                 limiter.wait(urllib.parse.urlsplit(src).netloc)
-            with urllib.request.urlopen(request, timeout=timeout) as response:  # noqa: S310
+            with safe_urlopen(request, timeout=timeout) as response:
                 kind = response.headers.get("Content-Type", "image/png")
                 raw = response.read(MAX_INLINE_IMAGE_BYTES + 1)
         except Exception:  # noqa: BLE001 - a missing image is not a failure

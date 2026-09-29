@@ -122,7 +122,7 @@ def ensure_bootstrap_key(keymaster: Any, *, ttl_seconds: int = BOOTSTRAP_TTL_SEC
         return BootstrapKey(
             key_id=existing.key_id,
             key="",
-            password="",
+            password="",  # nosec B106 - an empty default, not a credential
             expires_at=existing.expires_at or 0.0,
             created=False,
         )

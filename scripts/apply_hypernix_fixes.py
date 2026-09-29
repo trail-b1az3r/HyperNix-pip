@@ -56,7 +56,7 @@ EDITS = [
      '    def __enter__(self) -> "Spinner":',
      "    def __enter__(self) -> Spinner:"),
 
-    ("tests/test_v0704b11_features.py",
+    ("tests/models/test_v0704b11_features.py",
      '        assert __version__.startswith("0.70.4")',
      '        assert __version__.startswith("0.70.")'),
 ]

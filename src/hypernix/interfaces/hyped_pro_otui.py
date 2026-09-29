@@ -281,6 +281,10 @@ def cli_main(argv: list[str] | None = None) -> int:
     command = command_for(bun, app, forward)
     _debug(debug, f"exec {command}")
     try:
+        # The launcher's job: run this package's own Bun app with the
+        # person's arguments and environment, as an argv list with no
+        # shell, so nothing in either is interpreted as a command.
+        # nosemgrep: python.lang.security.audit.dangerous-subprocess-use-tainted-env-args.dangerous-subprocess-use-tainted-env-args
         return subprocess.call(command, env=env)
     except KeyboardInterrupt:
         return 130

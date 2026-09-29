@@ -1,0 +1,13 @@
+# gitleaks: findings reviewed and not secrets. One fingerprint per line
+# (commit:file:rule:line); anything new is still reported.
+
+# src/hypernix/t1api/routers/auth.py: key_family=ctx.t2_family or "T1" -- a key *format* name, not a key
+0068bbf2daa279a146730571d5b7ce0d60f60188:src/hypernix/t1api/routers/auth.py:generic-api-key:40
+# tests/test_launch_script.py: the names of the environment variables a key is read from
+a8aca68689d0f1855991315e717d8dad44165b14:tests/test_launch_script.py:generic-api-key:362
+# src/hypernix/t1api/launchscript_cli.py: the names of the environment variables a key is read from
+a8aca68689d0f1855991315e717d8dad44165b14:src/hypernix/t1api/launchscript_cli.py:generic-api-key:70
+# wiki/VRAM.md: a PyTorch allocator setting, garbage_collection_threshold=0.8
+a7aeafff047f1650ef9599cd1605097d986e5425:wiki/VRAM.md:generic-api-key:63
+# tests/test_t1api_beta3_security.py: a made-up key id for a rate-limit test
+7efe554887fb3810f3f40e86324180f78f78f170:tests/test_t1api_beta3_security.py:generic-api-key:181

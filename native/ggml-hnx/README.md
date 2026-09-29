@@ -41,6 +41,33 @@ correlate, so a repeat is right more often than a coin.
 Bit order is LSB-first within each byte and continuous across the block
 payload.
 
+### The codebook types, and Q8_K
+
+The other family stores every weight, as a code into a fixed table,
+against the same FP16 block scale:
+
+| type | id | code bits | block bytes | bits/weight |
+|---|---|---|---|---|
+| `INT4` | 205 | 4 | 130 | 4.062 |
+| `FP2` | 206 | 2 | 66 | 2.062 |
+| `INT8` | 208 | 8 | 258 | 8.062 |
+| `INT2` | 209 | 2 | 66 | 2.062 |
+| `INT3` | 210 | 3 | 98 | 3.062 |
+| `FP8` | 211 | 8 | 258 | 8.062 |
+
+`FP8`'s codes are E4M3 bytes, decoded through a 256-entry table. The two
+NaN codes read as zero, and hyprslug never writes them.
+
+The patch also gives upstream's `Q8_K` what a weight type needs. It adds
+a `to_float` in `ggml.c`, and a `vec_dot` against Q8_K activations in
+`ggml-cpu.c`: an int8 x int8 sum per block, times the two FP32 scales.
+Both go *inside* upstream's own `[GGML_TYPE_Q8_K]` entries. A second
+initialiser for the same index would come first, and C keeps the last
+one. hyprslug's `Q8_K` and `hnx_Q6_H_k` targets need this.
+
+`hnx_selftest` checks every one of these against vectors from Python,
+exactly, including all 256 FP8 codes.
+
 ## Build it
 
 ```bash
@@ -135,7 +162,7 @@ hide precisely the errors this exists to catch. The vectors include
 all-positive, all-negative, alternating and group-aligned blocks,
 because a uniform block passes with the bit order reversed.
 
-`tests/test_ggml_hnx.py` runs all of it from the Python suite, so it is
+`tests/quant/test_ggml_hnx.py` runs all of it from the Python suite, so it is
 covered by CI rather than by remembering to run `ctest`.
 
 ## Using it with LM Studio

@@ -21,7 +21,7 @@ is optimised for a quantiser that never ships, and the result is
 *worse* than not training at all -- it has spent its capacity adapting
 to the wrong boundaries. So :func:`fake_quantize` is checked against
 :mod:`hypernix.quant.subbit` element for element, and
-``tests/test_qat.py`` fails if they ever part company.
+``tests/quant/test_qat.py`` fails if they ever part company.
 
 That is not a hypothetical worry in this package. The row-length bug
 shipped because the writer and the reader shared a misconception and

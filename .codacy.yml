@@ -1,0 +1,38 @@
+# Codacy (.github/workflows/codacy.yml) reads this, when the analysis runs
+# without a project token; with one, Codacy's own settings apply, and the
+# workflow's SARIF filter (.github/scripts/codacy_sarif_filter.py) is what
+# keeps the upload to security findings either way.
+#
+# The analysis crashed on every run while writing its SARIF report
+# (java.nio.charset.MalformedInputException reading a file's lines). The
+# cause was the JVM's ASCII default charset against UTF-8 files, fixed in
+# the workflow. None of the paths below is source to analyse either.
+exclude_paths:
+  - "assets/**"
+  - "**/*.png"
+  - "**/*.ico"
+  - "**/*.pdf"
+  - "**/*.so"
+  - "docs/public/v1/**"
+  - "src/hypernix.egg-info/**"
+  - "build/**"
+  - "**/*.gguf"
+  - "**/*.safetensors"
+
+# A test's assert is how it checks its result, and B101 on every one of
+# them was 11,000 alerts. The Bandit workflow skips tests the same way
+# (pyproject.toml [tool.bandit]); pylint and prospector style on tests is
+# not a security finding either.
+engines:
+  bandit:
+    exclude_paths:
+      - "tests/**"
+  pylint:
+    exclude_paths:
+      - "tests/**"
+  pylintpython3:
+    exclude_paths:
+      - "tests/**"
+  prospector:
+    exclude_paths:
+      - "tests/**"

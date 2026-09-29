@@ -75,6 +75,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from hypernix.security.safeurl import urlopen as safe_urlopen
+
 _HYPERNIX_VERSION = "0.71.4b6"
 _USER_AGENT = f"hypernix/multilama {_HYPERNIX_VERSION} (+https://github.com/trail-b1az3r/hypernix-pip)"
 
@@ -243,7 +245,7 @@ def _http_get(url: str, accept: str = "application/json") -> bytes:
     token = os.environ.get("GITHUB_TOKEN")
     if token:
         req.add_header("Authorization", f"Bearer {token}")
-    with urllib.request.urlopen(req, timeout=60) as resp:
+    with safe_urlopen(req, timeout=60) as resp:
         return resp.read()
 
 
@@ -275,7 +277,7 @@ def _download_to_temp(url: str) -> Path:
     fh, path = tempfile.mkstemp(prefix="hypernix-multilama-", suffix=".zip")
     os.close(fh)
     dest = Path(path)
-    with urllib.request.urlopen(req, timeout=300) as resp, dest.open("wb") as out:
+    with safe_urlopen(req, timeout=300) as resp, dest.open("wb") as out:
         shutil.copyfileobj(resp, out, length=1 << 20)
     return dest
 
@@ -451,7 +453,7 @@ def _wait_for_health(port: int, proc: subprocess.Popen, timeout: float = 120.0) 
                 f"see its output above on this terminal.",
             )
         try:
-            with urllib.request.urlopen(url, timeout=2) as resp:
+            with safe_urlopen(url, timeout=2) as resp:
                 if resp.status == 200:
                     return
         except (urllib.error.URLError, ConnectionError, OSError):
@@ -515,7 +517,7 @@ def _post_chat_completion(
         body["tools"] = tools
     req = urllib.request.Request(url, data=json.dumps(body).encode("utf-8"), headers={"Content-Type": "application/json"}, method="POST")
     try:
-        with urllib.request.urlopen(req, timeout=600) as resp:
+        with safe_urlopen(req, timeout=600) as resp:
             data = json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
         raise MultiLlamaError("ML-SERVER-003", f"HTTP {exc.code} from local server: {exc.read().decode(errors='replace')[:400]}") from exc

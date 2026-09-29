@@ -105,7 +105,7 @@ class Fryer:
         # the global torch RNG state.  Previously two callers with
         # the same seed but different global RNG states got
         # different noise.
-        rng_py = random.Random(self.seed)
+        rng_py = random.Random(self.seed)  # nosec B311 - seeded for reproducibility (shuffles, splits, jitter); nothing secret
         touched: dict[str, int] = {}
         for pname, p in self.model.named_parameters():
             if not p.requires_grad and not self._should_fry_frozen():

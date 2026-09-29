@@ -36,6 +36,8 @@ from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
+from hypernix.security.safeurl import urlopen as safe_urlopen
+
 from .errors import T1Error, T1TransportError, T1ValidationError
 from .models import (
     CostReport,
@@ -687,7 +689,7 @@ class T1Client:
         import urllib.request
 
         request = urllib.request.Request(url, headers=headers, method="GET")
-        with self.transport._urlopen(request) if self.transport._opener else urllib.request.urlopen(
+        with self.transport._urlopen(request) if self.transport._opener else safe_urlopen(
             request, timeout=timeout
         ) as response:
             for raw_line in response:

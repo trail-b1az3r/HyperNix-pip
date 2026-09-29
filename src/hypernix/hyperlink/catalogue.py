@@ -93,6 +93,11 @@ class CatalogueModel:
     #: What the runtime itself said about images, when it said anything.
     #: LM Studio lists a vision model as "vlm".
     vision: bool | None = None
+    #: When the model is in the models folder through a symlink: the
+    #: link's name there (what DELETE /hyperlink/models/link/{name}
+    #: takes) and where it points.
+    link_name: str = ""
+    linked_to: str = ""
 
     @property
     def supports_images(self) -> bool | None:
@@ -122,6 +127,8 @@ class CatalogueModel:
             # True, False, or None for "nothing says either way" — the app
             # shows the photo button, hides it, or shows it with a warning.
             "supports_images": self.supports_images,
+            "link_name": self.link_name,
+            "linked_to": self.linked_to,
         }
 
 
@@ -177,10 +184,12 @@ def _gguf_files(root: Path) -> list[Path]:
     """
     if not root.exists():
         return []
+    from ..system.linkwalk import walk_files
+
     found: list[Path] = []
-    for path in sorted(root.rglob("*.gguf")):
-        if not path.is_file():
-            continue
+    # Through symlinked folders: rglob skips them, which hid every model
+    # linked in from another disk.
+    for path in walk_files(root, ".gguf"):
         name = path.name.lower()
         if name.endswith(".part") or ".part." in name:
             continue
@@ -188,6 +197,30 @@ def _gguf_files(root: Path) -> list[Path]:
             continue
         found.append(path)
     return found
+
+
+def _link_for(path: str, directory: Path) -> tuple[str, str]:
+    """``(link name, target)`` when *path* is reached through a symlink
+    at the top of *directory* -- the kind ``POST /hyperlink/models/link``
+    makes, and ``ln -s`` does. ``("", "")`` otherwise.
+    """
+    import os
+
+    if not path:
+        return "", ""
+    try:
+        relative = Path(path).relative_to(directory)
+    except ValueError:
+        return "", ""
+    if not relative.parts:
+        return "", ""
+    top = directory / relative.parts[0]
+    if not top.is_symlink():
+        return "", ""
+    try:
+        return top.name, os.readlink(top)
+    except OSError:
+        return top.name, ""
 
 
 def local_models(root: Path | str | None = None) -> tuple[list[CatalogueModel], SourceReport]:
@@ -249,6 +282,22 @@ def local_models(root: Path | str | None = None) -> tuple[list[CatalogueModel], 
     for folder in brewed_dirs(directory):
         facts = describe(folder)
         models.append(CatalogueModel(source="local", runnable=True, **facts))
+    # A link whose target has gone: moved, deleted, or on a disk that is
+    # not mounted. Listed, not skipped, because the model vanishing from
+    # the picker with no reason is the thing people ask about.
+    from ..system.linkwalk import broken_links
+
+    for link, target in broken_links(directory):
+        if not (link.suffix.lower() == ".gguf" or "." not in link.name):
+            continue
+        models.append(CatalogueModel(
+            model_id=f"local:{link.name}", name=link.stem or link.name,
+            source="local", path=str(link), runnable=False,
+            detail=f"a symlink to {target}, which does not exist "
+                   f"(moved, deleted, or its disk is not mounted)",
+        ))
+    for model in models:
+        model.link_name, model.linked_to = _link_for(model.path, directory)
     if not models:
         # The directory is there and readable, so the source *worked* --
         # it just has nothing to offer. Reporting that as a bare path

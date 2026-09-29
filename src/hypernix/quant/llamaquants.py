@@ -277,6 +277,38 @@ def _q8_0_decode(raw: np.ndarray) -> np.ndarray:
     return q * d[:, None]
 
 
+def _q8_k_encode(x: np.ndarray) -> bytes:
+    """``quantize_row_q8_K_ref``, in float32 the way ggml computes it.
+
+    Q8_K is what llama.cpp quantises *activations* to before a K-quant
+    dot product, so it is exact where it has to be: an FP32 scale rather
+    than FP16, and the scale taken from the signed value of largest
+    magnitude so that value lands on -127 exactly. ``bsums`` are the
+    sixteen 16-code partial sums the K-quant kernels use to fold in a
+    block minimum without a second pass.
+    """
+    xf = x.astype(np.float32)
+    idx = np.argmax(np.abs(xf), axis=1)
+    peak = xf[np.arange(xf.shape[0]), idx]
+    nonzero = peak != 0
+    iscale = np.where(nonzero, np.float32(-127.0) / np.where(nonzero, peak, 1), 0).astype(np.float32)
+    q = _nearest_int((xf * iscale[:, None]).astype(np.float32))
+    q = np.minimum(q, 127).astype(np.int8)
+    d = np.where(nonzero, np.float32(1.0) / np.where(nonzero, iscale, 1), 0).astype(np.float32)
+    bsums = q.reshape(-1, 16, 16).astype(np.int16).sum(axis=2).astype("<i2")
+    out = np.empty((x.shape[0], 292), dtype=np.uint8)
+    out[:, 0:4] = d.astype("<f4").view(np.uint8).reshape(-1, 4)
+    out[:, 4:260] = q.view(np.uint8)
+    out[:, 260:292] = bsums.view(np.uint8).reshape(-1, 32)
+    return out.tobytes()
+
+
+def _q8_k_decode(raw: np.ndarray) -> np.ndarray:
+    d = raw[:, 0:4].copy().view("<f4").astype(np.float32).reshape(-1)
+    q = raw[:, 4:260].view(np.int8).astype(np.float32)
+    return q * d[:, None]
+
+
 def _sym_lowbits(x: np.ndarray, nmax_half: int) -> tuple[np.ndarray, np.ndarray]:
     """The Q4_0/Q5_0 quantiser: one signed scale, values offset to unsigned.
 
@@ -896,6 +928,9 @@ FORMATS: dict[str, BlockFormat] = {
     "Q4_K": BlockFormat("Q4_K", int(GGMLType.Q4_K), QK_K, 144, _q4_k_encode, _q4_k_decode, True),
     "Q5_K": BlockFormat("Q5_K", int(GGMLType.Q5_K), QK_K, 176, _q5_k_encode, _q5_k_decode, True),
     "Q6_K": BlockFormat("Q6_K", int(GGMLType.Q6_K), QK_K, 210, _q6_k_encode, _q6_k_decode, True),
+    # Upstream uses Q8_K only for activations, so stock llama.cpp has no
+    # CPU kernel that takes it as a *weight*; ggml-hnx's patch adds one.
+    "Q8_K": BlockFormat("Q8_K", int(GGMLType.Q8_K), QK_K, 292, _plain(_q8_k_encode), _q8_k_decode),
 }
 
 #: ``GGML type id -> BlockFormat``, for callers that have a type not a name.

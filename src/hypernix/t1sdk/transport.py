@@ -39,6 +39,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from hypernix.security.safeurl import urlopen as safe_urlopen
+
 from .errors import T1TransportError, exception_for
 
 logger = logging.getLogger(__name__)
@@ -73,7 +75,7 @@ class RetryPolicy:
         base = min(self.initial_backoff * (self.backoff_multiplier ** (attempt - 1)), self.max_backoff)
         # Jitter so a fleet of clients retrying after one outage doesn't
         # come back in lockstep and cause the next one.
-        return base + random.uniform(0, self.jitter * base)
+        return base + random.uniform(0, self.jitter * base)  # nosec B311 - seeded for reproducibility (shuffles, splits, jitter); nothing secret
 
 
 @dataclass
@@ -288,8 +290,8 @@ class HTTPTransport:
         if self._opener is not None:
             return self._opener(request, timeout=self.timeout)
         if self._ssl_context is not None:
-            return urllib.request.urlopen(request, timeout=self.timeout, context=self._ssl_context)
-        return urllib.request.urlopen(request, timeout=self.timeout)
+            return safe_urlopen(request, timeout=self.timeout, context=self._ssl_context)
+        return safe_urlopen(request, timeout=self.timeout)
 
     # ------------------------------------------------------------------
 

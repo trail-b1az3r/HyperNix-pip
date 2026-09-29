@@ -49,7 +49,7 @@ _DEFAULTS: dict[str, Any] = {
     "default_model":       None,
     "default_model_type":  None,   # "hf" | "openai" | "anthropic" | "gemini" | "local" | "experimental"
     "download_dir":        str(Path.home() / ".hypernix" / "models"),
-    "hf_token":            None,
+    "hf_token":            None,  # nosec B105 - an empty default, a prefix or an error-code name, not a credential
     "preferred_quant":     None,
     "auto_update":         True,
     "telemetry":           False,

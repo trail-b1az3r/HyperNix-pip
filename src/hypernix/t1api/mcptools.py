@@ -50,6 +50,7 @@ class ServerContext:
 
 def _catalogue(context: ServerContext):
     from ..hyperlink.catalogue import collect
+    from .modelsync import serving_dir
 
     bridge = None
     if getattr(context.config, "lmstudio_enabled", False):
@@ -65,7 +66,7 @@ def _catalogue(context: ServerContext):
     return collect(
         registry=context.registry,
         bridge=bridge,
-        local_dir=getattr(context.config, "hf_download_dir", "") or None,
+        local_dir=serving_dir(context.config),
     )
 
 

@@ -56,6 +56,8 @@ static void test_block_sizes(void) {
         { HNX_TYPE_IQ0_5,  18, 0.5625f },
         { HNX_TYPE_IQ0_25,  8, 0.2500f },
         { HNX_TYPE_INT1,   34, 1.0625f },
+        { HNX_TYPE_INT3,   98, 3.0625f },
+        { HNX_TYPE_FP8,   258, 8.0625f },
     };
     for (size_t i = 0; i < sizeof(expected) / sizeof(expected[0]); i++) {
         char label[96];
@@ -78,7 +80,8 @@ static void test_block_sizes(void) {
         /* group and kept have to be consistent with the block size, or
          * the decoder walks off the payload. */
         const size_t codes = HNX_BLOCK_SIZE / (size_t)info->group;
-        const size_t payload = (codes * (size_t)info->kept + 7) / 8;
+        const size_t bits = info->levels ? (size_t)info->level_bits : (size_t)info->kept;
+        const size_t payload = (codes * bits + 7) / 8;
         snprintf(label, sizeof(label), "%s payload arithmetic closes", info->name);
         check(payload + 2 == expected[i].bytes, label);
     }
@@ -222,6 +225,69 @@ static void test_round_trip_and_dot(void) {
     }
 }
 
+/* --- the codebook types and Q8_K ---------------------------------------- */
+
+static void test_codebooks_and_q8_k(void) {
+    printf("codebook round trip, and Q8_K as a weight\n");
+    const int types[] = { HNX_TYPE_INT4, HNX_TYPE_FP2, HNX_TYPE_INT8,
+                          HNX_TYPE_INT2, HNX_TYPE_INT3, HNX_TYPE_FP8 };
+    float weights[2 * HNX_BLOCK_SIZE];
+    float other[2 * HNX_BLOCK_SIZE];
+    for (size_t i = 0; i < 2 * HNX_BLOCK_SIZE; i++) {
+        weights[i] = (float)(((int)(i * 37u) % 41) - 20) / 70.0f;
+        other[i] = (float)(((int)(i * 53u) % 29) - 14) / 3.0f;
+    }
+    for (size_t t = 0; t < sizeof(types) / sizeof(types[0]); t++) {
+        const hnx_type_info *info = hnx_type_lookup(types[t]);
+        unsigned char packed[2 * 258];
+        float decoded[2 * HNX_BLOCK_SIZE];
+        char label[128];
+        hnx_quantize_rows(types[t], weights, packed, 2, NULL);
+        hnx_dequantize_rows(types[t], packed, decoded, 2);
+        /* The peak lands on the codebook's peak level, so the peak
+         * weight comes back to within one FP16 rounding of the scale. */
+        double err = 0.0, norm = 0.0;
+        for (size_t i = 0; i < 2 * HNX_BLOCK_SIZE; i++) {
+            err += (decoded[i] - weights[i]) * (decoded[i] - weights[i]);
+            norm += weights[i] * weights[i];
+        }
+        snprintf(label, sizeof(label), "%s encodes as a codebook, not as signs", info->name);
+        check(err < 0.5 * norm, label);
+        double expected = 0.0;
+        for (size_t i = 0; i < 2 * HNX_BLOCK_SIZE; i++) expected += (double)decoded[i] * other[i];
+        const float actual = hnx_vec_dot(types[t], packed, other, 2);
+        snprintf(label, sizeof(label), "%s vec_dot matches the expanded dot", info->name);
+        check(fabs(actual - expected) <= 1e-3 * (fabs(expected) + 1.0), label);
+    }
+
+    /* Q8_K x Q8_K: two blocks built by hand, so the expected value is
+     * exact integer arithmetic times the two scales. */
+    unsigned char a[2 * HNX_Q8K_BYTES], b[2 * HNX_Q8K_BYTES];
+    memset(a, 0, sizeof(a));
+    memset(b, 0, sizeof(b));
+    double want = 0.0;
+    for (int blk = 0; blk < 2; blk++) {
+        const float da = 0.5f + (float)blk, db = -0.25f;
+        memcpy(a + blk * HNX_Q8K_BYTES, &da, sizeof(da));
+        memcpy(b + blk * HNX_Q8K_BYTES, &db, sizeof(db));
+        long dot = 0;
+        for (int i = 0; i < HNX_BLOCK_SIZE; i++) {
+            const int8_t qa = (int8_t)((i * 7) % 255 - 127);
+            const int8_t qb = (int8_t)((i * 11) % 200 - 100);
+            a[blk * HNX_Q8K_BYTES + 4 + i] = (unsigned char)qa;
+            b[blk * HNX_Q8K_BYTES + 4 + i] = (unsigned char)qb;
+            dot += (long)qa * qb;
+        }
+        want += (double)da * (double)db * (double)dot;
+    }
+    const float got = hnx_vec_dot_q8_k(a, b, 2);
+    check(fabs(got - want) <= 1e-6 * fabs(want) + 1e-3, "Q8_K dot is d_a * d_b * sum(qa * qb)");
+    float back[2 * HNX_BLOCK_SIZE];
+    hnx_dequantize_q8_k(a, back, 2);
+    check(back[HNX_BLOCK_SIZE + 3] == 1.5f * (float)(int8_t)a[HNX_Q8K_BYTES + 4 + 3],
+          "Q8_K decodes to d * q");
+}
+
 /* --- refusals ----------------------------------------------------------- */
 
 static void test_refusals(void) {
@@ -280,7 +346,10 @@ static int compare_vectors(const char *path) {
             fclose(handle);
             return 1;
         }
-        unsigned char packed[64];
+        /* Sized for the widest block (INT8, FP8: 258 bytes). The block
+         * size was checked against the C table above, so a record can
+         * never ask for more than this. */
+        unsigned char packed[2 + HNX_BLOCK_SIZE];
         float expected[HNX_BLOCK_SIZE];
         if (fread(packed, 1, bytes, handle) != bytes ||
             fread(expected, sizeof(float), HNX_BLOCK_SIZE, handle) != HNX_BLOCK_SIZE) {
@@ -329,6 +398,7 @@ int main(int argc, char **argv) {
     test_fp16();
     test_sign_mapping();
     test_round_trip_and_dot();
+    test_codebooks_and_q8_k();
     test_refusals();
 
     if (argc > 1) {

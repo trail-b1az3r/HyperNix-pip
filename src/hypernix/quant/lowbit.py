@@ -1,4 +1,4 @@
-"""hypernix.quant.lowbit — the fixed-codebook types: INT8, INT4, INT2, INT1, FP2.
+"""hypernix.quant.lowbit — the fixed-codebook types: FP8, INT8, INT4, INT3, INT2, INT1, FP2.
 
 Three formats that name themselves after the width of one weight: a
 block is 256 weights, one FP16 scale, and a code per weight indexing a
@@ -38,6 +38,8 @@ Name     bits   levels                block bytes   bpw
 =======  =====  ====================  ============  =====
 INT8         8  -128 .. 127                   258  8.062
 INT4         4  -8 .. 7                       130  4.062
+FP8          8  E4M3, ±448                    258  8.062
+INT3         3  -4 .. 3                        98  3.062
 INT2         2  -2, -1, 0, +1                   66  2.062
 FP2          2  -2, -1, +1, +2                  66  2.062
 INT1         1  -1, +1                          34  1.062
@@ -105,6 +107,27 @@ module, and lands at 8.0625 — a smaller file, a coarser scale, and a
 tensor whose row-length constraint matches the rest of HyperNix rather
 than being the one exception. Prefer ``Q8_0`` when the file has to load
 in stock llama.cpp, which will refuse this one by type id.
+
+INT3 is the gap between INT2 and INT4
+-------------------------------------
+Eight levels, two's complement like the others: ``-4 .. 3``. Three bits
+do not divide a byte, so a block's 768 code bits run across byte
+boundaries; :func:`_pack_codes` was written for that case before there
+was a codec that needed it.
+
+FP8 is E4M3, stored as E4M3
+---------------------------
+The OCP "E4M3FN" float: one sign bit, four exponent bits biased by 7,
+three mantissa bits, no infinities, and ``S.1111.111`` as NaN. That is
+253 distinct finite values from -448 to 448, spaced the way a float is:
+dense near zero, where a Gaussian keeps its mass.
+
+The code stored for each weight is the E4M3 byte itself, not an index
+into the sorted table the encoder searches. :attr:`Codec.wire` is that
+mapping. It costs nothing here and it means a kernel with native FP8
+arithmetic can read the codes as FP8 and multiply by the block scale,
+where an index would need a lookup first. The encoder never writes a NaN
+byte, and a decoder given one reads it as zero rather than spreading it.
 """
 from __future__ import annotations
 
@@ -119,6 +142,7 @@ __all__ = [
     "dequantize_array",
     "packed_block_bytes",
     "is_supported",
+    "e4m3_value",
 ]
 
 #: Weights per block, matching the K-quant family and :mod:`subbit`, so a
@@ -147,6 +171,9 @@ class Codec:
     #: The levels a code indexes, in code order. Multiplied by the
     #: block's FP16 scale to reconstruct.
     levels: tuple[float, ...]
+    #: The code stored for each entry of :attr:`levels`, when that is not
+    #: simply its index. ``None`` for the integer codebooks.
+    wire: tuple[int, ...] | None = None
 
     @property
     def payload_bytes(self) -> int:
@@ -179,8 +206,47 @@ class Codec:
         levels = np.asarray(self.levels, dtype=np.float32)
         return (levels[:-1] + levels[1:]) * 0.5
 
+    @property
+    def decode_table(self):
+        """The level each stored code means, indexed by the code."""
+        import numpy as np
+
+        table = np.zeros(1 << self.code_bits, dtype=np.float32)
+        if self.wire is None:
+            table[: len(self.levels)] = self.levels
+        else:
+            table[list(self.wire)] = self.levels
+        return table
+
+
+def e4m3_value(code: int) -> float:
+    """The value of one E4M3 (FN) byte; NaN for the two NaN codes."""
+    sign = -1.0 if code & 0x80 else 1.0
+    exponent = (code >> 3) & 0xF
+    mantissa = code & 0x7
+    if exponent == 0xF and mantissa == 0x7:
+        return float("nan")
+    if exponent == 0:
+        return sign * (mantissa / 8.0) * 2.0 ** -6
+    return sign * (1.0 + mantissa / 8.0) * 2.0 ** (exponent - 7)
+
+
+def _e4m3_codec() -> Codec:
+    by_value: dict[float, int] = {}
+    for code in range(256):
+        value = e4m3_value(code)
+        if value != value:                 # NaN: never written
+            continue
+        # -0.0 == 0.0, so the first code seen (0x00, positive zero) wins
+        # and the encoder never produces 0x80.
+        by_value.setdefault(value, code)
+    levels = tuple(sorted(by_value))
+    return Codec("FP8", 8, levels, tuple(by_value[v] for v in levels))
+
 
 CODECS: dict[str, Codec] = {
+    #: E4M3 floats against an FP16 block scale; codes are E4M3 bytes.
+    "FP8": _e4m3_codec(),
     #: Signed 8-bit over a 256-weight block. Not Q8_0 -- same code width,
     #: eight times the block, so the file is smaller and the scale is
     #: coarser. See the module docstring.
@@ -193,6 +259,8 @@ CODECS: dict[str, Codec] = {
     #: reconstruction error and better than it on anything that skips
     #: zeros. See the module docstring.
     "INT2": Codec("INT2", 2, (-2.0, -1.0, 0.0, 1.0)),
+    #: Signed 3-bit two's complement. Codes cross byte boundaries.
+    "INT3": Codec("INT3", 3, tuple(float(v) for v in range(-4, 4))),
     #: Sign and exponent, no mantissa, no zero. See the module docstring.
     "FP2": Codec("FP2", 2, (-2.0, -1.0, 1.0, 2.0)),
 }
@@ -296,6 +364,8 @@ def quantize_array(values, name: str) -> bytes:
         best_scales = np.where(take, scales, best_scales)
         best_codes = np.where(take[:, None], codes, best_codes)
 
+    if codec.wire is not None:
+        best_codes = np.asarray(codec.wire, dtype=np.uint8)[best_codes]
     payload = _pack_codes(best_codes, codec.code_bits)
     scale_bytes = best_scales.astype(np.float16).view(np.uint8).reshape(-1, 2)
     return np.concatenate([scale_bytes, payload], axis=1).tobytes()
@@ -322,5 +392,4 @@ def dequantize_array(data: bytes, name: str):
         np.ascontiguousarray(blocks[:, 2:]), codec.code_bits, BLOCK_SIZE
     )
 
-    levels = np.asarray(codec.levels, dtype=np.float32)
-    return (levels[codes] * scales[:, None]).reshape(-1)
+    return (codec.decode_table[codes] * scales[:, None]).reshape(-1)

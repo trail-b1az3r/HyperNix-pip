@@ -155,7 +155,7 @@ class Demonstrations:
         if count < 2:
             raise ValueError("need at least two demonstrations to split")
         order = list(range(count))
-        random.Random(seed).shuffle(order)
+        random.Random(seed).shuffle(order)  # nosec B311 - seeded for reproducibility (shuffles, splits, jitter); nothing secret
         cut = max(1, int(count * (1.0 - holdout)))
         train, test = Demonstrations(), Demonstrations()
         for position, index in enumerate(order):
@@ -200,7 +200,7 @@ class ReplayBuffer:
             raise ValueError("a replay buffer needs room for at least one step")
         self.capacity = capacity
         self._items: deque[Transition] = deque(maxlen=capacity)
-        self._random = random.Random(seed)
+        self._random = random.Random(seed)  # nosec B311 - seeded for reproducibility (shuffles, splits, jitter); nothing secret
 
     def __len__(self) -> int:
         return len(self._items)

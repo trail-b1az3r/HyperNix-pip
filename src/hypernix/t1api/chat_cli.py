@@ -29,6 +29,8 @@ import urllib.error
 import urllib.request
 from typing import Any
 
+from hypernix.security.safeurl import urlopen as safe_urlopen
+
 from . import runner_cli
 from .localserver import config_dir
 
@@ -86,7 +88,7 @@ def _frames(url: str, key: str, payload: dict[str, Any]):
     if key:
         request.add_header("Authorization", f"Bearer {key}")
     try:
-        response = urllib.request.urlopen(request, timeout=900)  # noqa: S310 - the server this machine runs
+        response = safe_urlopen(request, timeout=900)
     except urllib.error.HTTPError as error:
         body = error.read() or b"{}"
         try:

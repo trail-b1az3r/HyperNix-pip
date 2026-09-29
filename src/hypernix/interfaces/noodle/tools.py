@@ -51,6 +51,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from hypernix.security.safeurl import urlopen as safe_urlopen
+
 logger = logging.getLogger(__name__)
 
 __all__ = [
@@ -598,7 +600,7 @@ def _web_search(ctx: ToolContext, args: dict[str, Any]) -> ToolResult:
     )
     req = urllib.request.Request(url, headers={"User-Agent": "hypernix-noodle/0.72.1"})
     try:
-        with urllib.request.urlopen(req, timeout=20) as resp:  # noqa: S310
+        with safe_urlopen(req, timeout=20) as resp:
             payload = json.loads(resp.read().decode("utf-8", "replace") or "{}")
     except Exception as exc:  # noqa: BLE001 - reported to the model, not raised
         raise ToolError(f"Search failed: {exc}", code="search_failed") from exc
@@ -680,7 +682,8 @@ def _update_memory(ctx: ToolContext, args: dict[str, Any]) -> ToolResult:
     else:
         memory[key] = {"value": args.get("value"), "updated_at": time.time()}
         message = f"Remembered {key!r}"
-    assert ctx.memory_path is not None
+    if ctx.memory_path is None:
+        raise AssertionError('ctx.memory_path is not None')
     ctx.memory_path.write_text(json.dumps(memory, indent=2, default=str), encoding="utf-8")
     ctx.record("update_memory", {"key": key, "deleted": bool(args.get("delete"))})
     return ToolResult(True, message, tool="update_memory", data={"keys": len(memory)})

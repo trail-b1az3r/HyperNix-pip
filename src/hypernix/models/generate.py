@@ -33,6 +33,26 @@ class _ByteTokenizer:
         return bytes(b & 0xFF for b in ids).decode("utf-8", errors="replace")
 
 
+class _CharTokenizer:
+    """The character vocabulary ``brew train`` saves as ``char_vocab.json``.
+
+    Same interface as :class:`_ByteTokenizer`, so everything that runs a
+    byte-level model runs one of these. A character the model never saw
+    has no id and is dropped, which is what llama.cpp does with the GGUF
+    ``brew gguf`` writes from the same file.
+    """
+
+    def __init__(self, chars: list[str]) -> None:
+        self.chars = list(chars)
+        self.ids = {c: i for i, c in enumerate(self.chars)}
+
+    def encode(self, text: str) -> list[int]:
+        return [self.ids[c] for c in text if c in self.ids]
+
+    def decode(self, ids: list[int]) -> str:
+        return "".join(self.chars[i] for i in ids if 0 <= i < len(self.chars))
+
+
 def _try_fast(model_dir: Path) -> Any:
     from transformers import AutoTokenizer
     return AutoTokenizer.from_pretrained(str(model_dir), use_fast=True)
@@ -46,6 +66,9 @@ def _try_slow(model_dir: Path) -> Any:
 def _load_tokenizer(model_dir: Path) -> tuple[Any, str]:
     """Return (tokenizer, kind). kind is 'hf' or 'byte'.
 
+    A ``char_vocab.json`` (a ``brew train`` model) is a byte-kind tokenizer
+    over its own characters.
+
     Tries fast tokenizer first. If the local ``tokenizers`` crate is too old
     to parse the repo's ``tokenizer.json`` (a common failure mode looks like
     ``data did not match any variant of untagged enum ModelWrapper``),
@@ -55,6 +78,10 @@ def _load_tokenizer(model_dir: Path) -> tuple[Any, str]:
     the byte tokenizer with an upgrade hint.
     """
     has_fast = (model_dir / "tokenizer.json").exists()
+    if not has_fast and (model_dir / "char_vocab.json").is_file():
+        from hypernix.models.brewer_gguf import read_char_vocab
+
+        return _CharTokenizer(read_char_vocab(model_dir / "char_vocab.json")), "byte"
     has_slow = (model_dir / "tokenizer.model").exists() or (
         (model_dir / "vocab.json").exists() and (model_dir / "merges.txt").exists()
     )

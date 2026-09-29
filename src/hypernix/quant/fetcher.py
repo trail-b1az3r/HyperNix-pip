@@ -23,6 +23,8 @@ import zipfile
 from collections.abc import Iterable
 from pathlib import Path
 
+from hypernix.security.safeurl import urlopen as safe_urlopen
+
 LLAMA_CPP_REPO = "ggml-org/llama.cpp"
 _LATEST_API = f"https://api.github.com/repos/{LLAMA_CPP_REPO}/releases/latest"
 _LIST_API = f"https://api.github.com/repos/{LLAMA_CPP_REPO}/releases"
@@ -121,7 +123,7 @@ def _http_get(url: str, accept: str = "application/json") -> bytes:
     token = os.environ.get("GITHUB_TOKEN")
     if token:
         req.add_header("Authorization", f"Bearer {token}")
-    with urllib.request.urlopen(req, timeout=60) as resp:
+    with safe_urlopen(req, timeout=60) as resp:
         return resp.read()
 
 
@@ -147,7 +149,7 @@ def _download_to_temp(url: str) -> Path:
     fh, path = tempfile.mkstemp(prefix="hypernix-llama-", suffix=".zip")
     os.close(fh)
     dest = Path(path)
-    with urllib.request.urlopen(req, timeout=300) as resp, dest.open("wb") as out:
+    with safe_urlopen(req, timeout=300) as resp, dest.open("wb") as out:
         shutil.copyfileobj(resp, out, length=1 << 20)
     return dest
 

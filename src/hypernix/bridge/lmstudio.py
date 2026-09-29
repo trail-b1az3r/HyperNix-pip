@@ -55,6 +55,8 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from typing import Any
 
+from hypernix.security.safeurl import urlopen as safe_urlopen
+
 __all__ = [
     "LMStudioBridge",
     "LMStudioError",
@@ -304,7 +306,7 @@ class LMStudioBridge:
             headers["Accept"] = "text/event-stream"
         req = urllib.request.Request(self._url(path), data=data, headers=headers, method=method)
         try:
-            resp = urllib.request.urlopen(req, timeout=timeout or self.timeout)  # noqa: S310
+            resp = safe_urlopen(req, timeout=timeout or self.timeout)
         except urllib.error.HTTPError as exc:
             detail = _read_error_detail(exc)
             raise LMStudioError(
@@ -396,7 +398,7 @@ class LMStudioBridge:
             method="OPTIONS",
         )
         try:
-            with urllib.request.urlopen(req, timeout=self.connect_timeout) as resp:  # noqa: S310
+            with safe_urlopen(req, timeout=self.connect_timeout) as resp:
                 allow = resp.headers.get("Access-Control-Allow-Origin", "")
         except urllib.error.HTTPError as exc:
             allow = exc.headers.get("Access-Control-Allow-Origin", "") if exc.headers else ""

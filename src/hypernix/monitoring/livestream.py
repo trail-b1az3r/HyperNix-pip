@@ -418,7 +418,8 @@ class LiveStreamServer:
     # -- connections --------------------------------------------------
 
     def _accept_loop(self) -> None:
-        assert self._server is not None
+        if self._server is None:
+            raise AssertionError('self._server is not None')
         while not self._stop.is_set():
             try:
                 sock, address = self._server.accept()
@@ -446,7 +447,7 @@ class LiveStreamServer:
             return
 
         key = ""
-        supplied_token = ""
+        supplied_token = ""  # nosec B105 - an empty default, a prefix or an error-code name, not a credential
         for line in request.split("\r\n"):
             lowered = line.lower()
             if lowered.startswith("sec-websocket-key:"):

@@ -416,7 +416,8 @@ class FlashFreezer(Freezer):
                 sleep_for = self.backoff_s * (2 ** attempt)
                 time.sleep(min(sleep_for, 60.0))
                 self.wait_for(self.min_free_gb, timeout_s=sleep_for)
-        assert last_exc is not None
+        if last_exc is None:
+            raise AssertionError('last_exc is not None')
         raise last_exc
 
 

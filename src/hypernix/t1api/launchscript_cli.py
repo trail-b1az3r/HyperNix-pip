@@ -198,13 +198,15 @@ def main(argv: list[str] | None = None) -> int:
 
     run = parser.add_argument_group("running")
     run.add_argument(
-        "-$", "--shell-command", dest="shell_command", default="", metavar="CMD",
-        help="Run a shell command instead of a script: -$ 'make -j8 && ./train'. "
-             "Leave a space after -$ (bash reads -$'...' as one quoted word), "
-             "and in fish quote the flag: '-$' or use --shell-command.",
+        "-1", "--shell-command", dest="shell_command", default="", metavar="CMD",
+        help="Run a shell command instead of a script: -1 'make -j8 && ./train'.",
     )
+    # The flag used to be -$, which no shell types reliably: bash reads
+    # -$'...' as one ANSI-quoted word and -$VAR as an expansion, and fish
+    # refuses a bare $. Still accepted so existing scripts keep working.
+    run.add_argument("-$", dest="shell_command", default="", help=argparse.SUPPRESS)
     run.add_argument("--shell", default="auto", choices=["auto", "bash", "fish", "zsh", "sh"],
-                     help="Shell for -$. auto is bash, then fish, then sh.")
+                     help="Shell for -1. auto is bash, then fish, then sh.")
     run.add_argument("--name", default="", help="A name to refer to the job by.")
     run.add_argument("--env", action="append", default=[], metavar="NAME=VALUE",
                      help="Set a variable for the job. Repeatable.")
@@ -295,11 +297,11 @@ def _dispatch(args, store: JobStore, who: str, parser) -> int:
             stop(job, store)
             shell = shell_command_of(job)
             if shell is not None:
-                # A -$ job. Its command[-1] is the command text, and
+                # A -1 job. Its command[-1] is the command text, and
                 # relaunching that as a script path would fail with
                 # "No such script".
                 fresh = launch_shell(
-                    shell[1], shell=shell[0], name=job.name, cwd=job.cwd,
+                    shell[1], shell=shell[0], name=job.name, cwd=job.cwd,  # nosec B604 - `shell` here names a shell (bash, zsh, fish), it is not shell=True
                     timeout=job.timeout, priority=job.priority, gpu=job.gpu,
                     cpu=job.cpu, store=store,
                 )
@@ -315,10 +317,10 @@ def _dispatch(args, store: JobStore, who: str, parser) -> int:
     if args.shell_command:
         if args.script:
             raise LaunchError(
-                "give either a script or -$ 'command', not both"
+                "give either a script or -1 'command', not both"
             )
         job = launch_shell(
-            args.shell_command, shell=args.shell, name=args.name,
+            args.shell_command, shell=args.shell, name=args.name,  # nosec B604 - `shell` here names a shell (bash, zsh, fish), it is not shell=True
             cwd=args.cwd or None, env=_parse_env(args.env),
             timeout=args.timeout, log_file=args.log_file or None,
             priority=args.priority, gpu=args.gpu, cpu=args.cpu, store=store,

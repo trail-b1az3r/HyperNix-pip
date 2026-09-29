@@ -49,6 +49,47 @@ static const float HNX_LEVELS_INT8[256] = {
     HNX_I8_64(-128), HNX_I8_64(-64), HNX_I8_64(0), HNX_I8_64(64),
 };
 
+static const float HNX_LEVELS_INT3[8] = {
+    -4.0f, -3.0f, -2.0f, -1.0f, 0.0f, 1.0f, 2.0f, 3.0f,
+};
+/* E4M3 by byte, generated from hypernix.quant.lowbit.e4m3_value and
+ * checked against it by the selftest vectors. 0x7f and 0xff are the NaN
+ * codes and read as zero. */
+static const float HNX_LEVELS_FP8[256] = {
+    0.0f, 0.001953125f, 0.00390625f, 0.005859375f, 0.0078125f, 0.009765625f, 0.01171875f, 0.013671875f,  /* 0x00 */
+    0.015625f, 0.017578125f, 0.01953125f, 0.021484375f, 0.0234375f, 0.025390625f, 0.02734375f, 0.029296875f,  /* 0x08 */
+    0.03125f, 0.03515625f, 0.0390625f, 0.04296875f, 0.046875f, 0.05078125f, 0.0546875f, 0.05859375f,  /* 0x10 */
+    0.0625f, 0.0703125f, 0.078125f, 0.0859375f, 0.09375f, 0.1015625f, 0.109375f, 0.1171875f,  /* 0x18 */
+    0.125f, 0.140625f, 0.15625f, 0.171875f, 0.1875f, 0.203125f, 0.21875f, 0.234375f,  /* 0x20 */
+    0.25f, 0.28125f, 0.3125f, 0.34375f, 0.375f, 0.40625f, 0.4375f, 0.46875f,  /* 0x28 */
+    0.5f, 0.5625f, 0.625f, 0.6875f, 0.75f, 0.8125f, 0.875f, 0.9375f,  /* 0x30 */
+    1.0f, 1.125f, 1.25f, 1.375f, 1.5f, 1.625f, 1.75f, 1.875f,  /* 0x38 */
+    2.0f, 2.25f, 2.5f, 2.75f, 3.0f, 3.25f, 3.5f, 3.75f,  /* 0x40 */
+    4.0f, 4.5f, 5.0f, 5.5f, 6.0f, 6.5f, 7.0f, 7.5f,  /* 0x48 */
+    8.0f, 9.0f, 10.0f, 11.0f, 12.0f, 13.0f, 14.0f, 15.0f,  /* 0x50 */
+    16.0f, 18.0f, 20.0f, 22.0f, 24.0f, 26.0f, 28.0f, 30.0f,  /* 0x58 */
+    32.0f, 36.0f, 40.0f, 44.0f, 48.0f, 52.0f, 56.0f, 60.0f,  /* 0x60 */
+    64.0f, 72.0f, 80.0f, 88.0f, 96.0f, 104.0f, 112.0f, 120.0f,  /* 0x68 */
+    128.0f, 144.0f, 160.0f, 176.0f, 192.0f, 208.0f, 224.0f, 240.0f,  /* 0x70 */
+    256.0f, 288.0f, 320.0f, 352.0f, 384.0f, 416.0f, 448.0f, 0.0f,  /* 0x78 */
+    -0.0f, -0.001953125f, -0.00390625f, -0.005859375f, -0.0078125f, -0.009765625f, -0.01171875f, -0.013671875f,  /* 0x80 */
+    -0.015625f, -0.017578125f, -0.01953125f, -0.021484375f, -0.0234375f, -0.025390625f, -0.02734375f, -0.029296875f,  /* 0x88 */
+    -0.03125f, -0.03515625f, -0.0390625f, -0.04296875f, -0.046875f, -0.05078125f, -0.0546875f, -0.05859375f,  /* 0x90 */
+    -0.0625f, -0.0703125f, -0.078125f, -0.0859375f, -0.09375f, -0.1015625f, -0.109375f, -0.1171875f,  /* 0x98 */
+    -0.125f, -0.140625f, -0.15625f, -0.171875f, -0.1875f, -0.203125f, -0.21875f, -0.234375f,  /* 0xa0 */
+    -0.25f, -0.28125f, -0.3125f, -0.34375f, -0.375f, -0.40625f, -0.4375f, -0.46875f,  /* 0xa8 */
+    -0.5f, -0.5625f, -0.625f, -0.6875f, -0.75f, -0.8125f, -0.875f, -0.9375f,  /* 0xb0 */
+    -1.0f, -1.125f, -1.25f, -1.375f, -1.5f, -1.625f, -1.75f, -1.875f,  /* 0xb8 */
+    -2.0f, -2.25f, -2.5f, -2.75f, -3.0f, -3.25f, -3.5f, -3.75f,  /* 0xc0 */
+    -4.0f, -4.5f, -5.0f, -5.5f, -6.0f, -6.5f, -7.0f, -7.5f,  /* 0xc8 */
+    -8.0f, -9.0f, -10.0f, -11.0f, -12.0f, -13.0f, -14.0f, -15.0f,  /* 0xd0 */
+    -16.0f, -18.0f, -20.0f, -22.0f, -24.0f, -26.0f, -28.0f, -30.0f,  /* 0xd8 */
+    -32.0f, -36.0f, -40.0f, -44.0f, -48.0f, -52.0f, -56.0f, -60.0f,  /* 0xe0 */
+    -64.0f, -72.0f, -80.0f, -88.0f, -96.0f, -104.0f, -112.0f, -120.0f,  /* 0xe8 */
+    -128.0f, -144.0f, -160.0f, -176.0f, -192.0f, -208.0f, -224.0f, -240.0f,  /* 0xf0 */
+    -256.0f, -288.0f, -320.0f, -352.0f, -384.0f, -416.0f, -448.0f, 0.0f,  /* 0xf8 */
+};
+
 static const hnx_type_info HNX_TYPES[] = {
     { HNX_TYPE_IQ0_9,  "IQ0.9_L",     8, 7, sizeof(hnx_block_iq0_9),  0.9375f,  0, 0 , NULL, 0 },
     { HNX_TYPE_IQ0_75, "IQ0.75_M",    4, 3, sizeof(hnx_block_iq0_75), 0.8125f,  0, 0 , NULL, 0 },
@@ -60,6 +101,8 @@ static const hnx_type_info HNX_TYPES[] = {
     { HNX_TYPE_FP2,    "FP2",         1, 1, sizeof(hnx_block_fp2),    2.0625f,  0, 0, HNX_LEVELS_FP2,  2 },
     { HNX_TYPE_INT8,   "INT8",        1, 1, sizeof(hnx_block_int8),   8.0625f,  0, 0, HNX_LEVELS_INT8, 8 },
     { HNX_TYPE_INT2,   "INT2",        1, 1, sizeof(hnx_block_int2),   2.0625f,  0, 0, HNX_LEVELS_INT2, 2 },
+    { HNX_TYPE_INT3,   "INT3",        1, 1, sizeof(hnx_block_int3),   3.0625f,  0, 0, HNX_LEVELS_INT3, 3 },
+    { HNX_TYPE_FP8,    "FP8",         1, 1, sizeof(hnx_block_fp8),    8.0625f,  0, 0, HNX_LEVELS_FP8,  8 },
 };
 static const size_t HNX_TYPE_COUNT = sizeof(HNX_TYPES) / sizeof(HNX_TYPES[0]);
 
@@ -78,6 +121,9 @@ _Static_assert(sizeof(hnx_block_int4)   == 130, "INT4 block must be 130 bytes");
 _Static_assert(sizeof(hnx_block_fp2)    == 66, "FP2 block must be 66 bytes");
 _Static_assert(sizeof(hnx_block_int8)   == 258, "INT8 block must be 258 bytes");
 _Static_assert(sizeof(hnx_block_int2)   == 66, "INT2 block must be 66 bytes");
+_Static_assert(sizeof(hnx_block_int3)   == 98, "INT3 block must be 98 bytes");
+_Static_assert(sizeof(hnx_block_fp8)    == 258, "FP8 block must be 258 bytes");
+_Static_assert(sizeof(hnx_block_q8_k)   == HNX_Q8K_BYTES, "Q8_K block must be 292 bytes");
 #endif
 
 const hnx_type_info *hnx_type_lookup(int type) {
@@ -412,11 +458,61 @@ float hnx_vec_dot(int type, const void *x, const float *y, size_t nblocks) {
  * maximum: that minimises a different thing and makes every
  * reconstruction systematically too large.
  */
+/* The codebook types: scale from the block's peak, then each weight to
+ * the nearest level. Python searches seventeen shrink factors for the
+ * scale and so lands slightly closer; this is the plain version, for a C
+ * caller and for the selftest's round trip, and every file it writes
+ * decodes the same way Python's do. Before, the codebook types fell
+ * through to the sign-writing loop below and came out as noise. */
+static void hnx_quantize_codebook(const hnx_type_info *info, const float *src,
+                                  uint8_t *out, size_t nblocks) {
+    const int ncodes = 1 << info->level_bits;
+    float peak_level = 0.0f;
+    for (int c = 0; c < ncodes; c++) {
+        if (fabsf(info->levels[c]) > peak_level) peak_level = fabsf(info->levels[c]);
+    }
+    for (size_t b = 0; b < nblocks; b++) {
+        const float *w = src + b * HNX_BLOCK_SIZE;
+        float amax = 0.0f;
+        for (size_t i = 0; i < HNX_BLOCK_SIZE; i++) {
+            if (isfinite(w[i]) && fabsf(w[i]) > amax) amax = fabsf(w[i]);
+        }
+        const uint16_t d = hnx_fp32_to_fp16(peak_level > 0.0f ? amax / peak_level : 0.0f);
+        const float scale = hnx_fp16_to_fp32(d);
+        memcpy(out, &d, sizeof(d));
+        uint8_t *payload = out + 2;
+        memset(payload, 0, info->block_bytes - 2);
+        size_t bit = 0;
+        for (size_t i = 0; i < HNX_BLOCK_SIZE; i++) {
+            const float target = (scale > 0.0f && isfinite(w[i])) ? w[i] / scale : 0.0f;
+            int best = 0;
+            float best_error = INFINITY;
+            for (int c = 0; c < ncodes; c++) {
+                /* Strict < keeps the first of equal levels, so a zero
+                 * is always 0x00: FP8 never writes -0 (0x80) or a NaN
+                 * code (0x7f, 0xff), whose table entries are zero too. */
+                const float error = fabsf(info->levels[c] - target);
+                if (error < best_error) { best_error = error; best = c; }
+            }
+            for (int k = 0; k < info->level_bits; k++) {
+                if ((best >> k) & 1) payload[bit >> 3] |= (uint8_t)(1u << (bit & 7));
+                bit++;
+            }
+        }
+        out += info->block_bytes;
+    }
+}
+
 size_t hnx_quantize_rows(int type, const float *src, void *dst, size_t nblocks,
                          const float *importance) {
     const hnx_type_info *info = hnx_type_lookup(type);
     if (info == NULL || src == NULL || dst == NULL) return 0;
     uint8_t *out = (uint8_t *)dst;
+
+    if (info->levels) {
+        hnx_quantize_codebook(info, src, out, nblocks);
+        return nblocks * info->block_bytes;
+    }
 
     for (size_t b = 0; b < nblocks; b++) {
         const float *w = src + b * HNX_BLOCK_SIZE;
@@ -454,4 +550,41 @@ size_t hnx_quantize_rows(int type, const float *src, void *dst, size_t nblocks,
         out += info->block_bytes;
     }
     return nblocks * info->block_bytes;
+}
+
+/* --- Q8_K as a weight -----------------------------------------------------
+ *
+ * Read field by field with memcpy rather than through the struct, so an
+ * unaligned tensor in a mmapped file is read correctly on every target.
+ */
+float hnx_vec_dot_q8_k(const void *x, const void *y, size_t nblocks) {
+    if (x == NULL || y == NULL) return 0.0f;
+    const uint8_t *a = (const uint8_t *)x;
+    const uint8_t *b = (const uint8_t *)y;
+    double total = 0.0;
+    for (size_t k = 0; k < nblocks; k++) {
+        float da, db;
+        memcpy(&da, a, sizeof(da));
+        memcpy(&db, b, sizeof(db));
+        const int8_t *qa = (const int8_t *)(a + 4);
+        const int8_t *qb = (const int8_t *)(b + 4);
+        int32_t acc = 0;
+        for (size_t i = 0; i < HNX_BLOCK_SIZE; i++) acc += (int32_t)qa[i] * (int32_t)qb[i];
+        total += (double)da * (double)db * (double)acc;
+        a += HNX_Q8K_BYTES;
+        b += HNX_Q8K_BYTES;
+    }
+    return (float)total;
+}
+
+void hnx_dequantize_q8_k(const void *src, float *dst, size_t nblocks) {
+    if (src == NULL || dst == NULL) return;
+    const uint8_t *in = (const uint8_t *)src;
+    for (size_t k = 0; k < nblocks; k++) {
+        float d;
+        memcpy(&d, in, sizeof(d));
+        const int8_t *q = (const int8_t *)(in + 4);
+        for (size_t i = 0; i < HNX_BLOCK_SIZE; i++) dst[k * HNX_BLOCK_SIZE + i] = d * (float)q[i];
+        in += HNX_Q8K_BYTES;
+    }
 }

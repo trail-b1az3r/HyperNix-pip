@@ -354,7 +354,7 @@ class MemoryStore:
                 chunk = ids[start:start + 400]
                 marks = ",".join("?" for _ in chunk)
                 for row in conn.execute(
-                    f"SELECT * FROM hyperlink_memories WHERE owner = ? "  # noqa: S608 - placeholders only
+                    f"SELECT * FROM hyperlink_memories WHERE owner = ? "  # nosec B608 - values are bound parameters; interpolated SQL is fixed or allowlisted
                     f"AND memory_id IN ({marks})",
                     (owner, *chunk),
                 ).fetchall():

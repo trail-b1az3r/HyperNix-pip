@@ -76,7 +76,8 @@ _COLUMNS: dict[str, str] = {
     "account_id": "account_id",
     "endpoint": "endpoint",
 }
-assert set(_COLUMNS) == set(GROUPABLE)
+if not (set(_COLUMNS) == set(GROUPABLE)):
+    raise AssertionError('set(_COLUMNS) == set(GROUPABLE)')
 
 
 class UsageStore:
@@ -224,7 +225,7 @@ class UsageStore:
     ) -> dict[str, Any]:
         where, params = self._where(filters, since=since, until=until)
         query = (
-            "SELECT COALESCE(SUM(requests),0) AS requests, "
+            "SELECT COALESCE(SUM(requests),0) AS requests, "  # nosec B608 - values are bound parameters; interpolated SQL is fixed or allowlisted
             "COALESCE(SUM(input_tokens),0) AS input_tokens, "
             "COALESCE(SUM(output_tokens),0) AS output_tokens "
             "FROM usage_events" + where
@@ -249,7 +250,7 @@ class UsageStore:
             raise ValueError(f"{group_by!r} is not a groupable usage dimension")
         where, params = self._where(filters, since=since, until=until)
         query = (
-            f"SELECT {column} AS group_key, "
+            f"SELECT {column} AS group_key, "  # nosec B608 - values are bound parameters; interpolated SQL is fixed or allowlisted
             "COALESCE(SUM(requests),0) AS requests, "
             "COALESCE(SUM(input_tokens),0) AS input_tokens, "
             "COALESCE(SUM(output_tokens),0) AS output_tokens "
@@ -275,7 +276,7 @@ class UsageStore:
         """Raw usage events, newest first — backs GET /usage/history."""
         where, params = self._where(filters, since=since, until=until)
         query = (
-            "SELECT key_id, model_id, input_tokens, output_tokens, requests, endpoint, "
+            "SELECT key_id, model_id, input_tokens, output_tokens, requests, endpoint, "  # nosec B608 - values are bound parameters; interpolated SQL is fixed or allowlisted
             "server_id, module_id, user_id, account_id, ts FROM usage_events"
             f"{where} ORDER BY ts DESC LIMIT ? OFFSET ?"
         )
@@ -306,7 +307,7 @@ class UsageStore:
         forecasting from a 30-day-old one."""
         where, params = self._where(filters, since=None, until=None)
         with self._lock, self.backend.connect() as conn:
-            row = conn.execute(f"SELECT MIN(ts) AS first_ts FROM usage_events{where}", params).fetchone()
+            row = conn.execute(f"SELECT MIN(ts) AS first_ts FROM usage_events{where}", params).fetchone()  # nosec B608 - values are bound parameters; interpolated SQL is fixed or allowlisted
         return row["first_ts"] if row and row["first_ts"] is not None else None
 
     def event_count(self) -> int:

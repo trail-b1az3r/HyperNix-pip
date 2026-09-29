@@ -706,10 +706,20 @@ class _FlatAliasLoader:
         self._real_name = real_name
 
     def create_module(self, spec: Any) -> Any:
-        return importlib.import_module(self._real_name)
+        module = importlib.import_module(self._real_name)
+        self._real_spec = module.__spec__
+        return module
 
     def exec_module(self, module: Any) -> None:
-        """No-op: :meth:`create_module` returned an already-executed module."""
+        """Nothing to run: :meth:`create_module` returned an already-executed
+        module. But the import system has just set this alias's spec on
+        it, so put the real one back: ``importlib.reload`` reads the name
+        from ``__spec__`` and would otherwise re-run the module as
+        ``hypernix.<flat>``, renaming it for everyone."""
+        real_spec = getattr(self, "_real_spec", None)
+        if real_spec is not None:
+            module.__spec__ = real_spec
+            module.__loader__ = real_spec.loader
 
     # ``runpy`` (``python -m hypernix.cli``), ``inspect.getsource`` and
     # ``linecache`` don't go through create_module — they ask the loader for

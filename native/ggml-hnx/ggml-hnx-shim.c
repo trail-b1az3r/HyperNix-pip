@@ -46,5 +46,23 @@ HNX_SHIM(int4,   HNX_TYPE_INT4)
 HNX_SHIM(fp2,    HNX_TYPE_FP2)
 HNX_SHIM(int8,   HNX_TYPE_INT8)
 HNX_SHIM(int2,   HNX_TYPE_INT2)
+HNX_SHIM(int3,   HNX_TYPE_INT3)
+HNX_SHIM(fp8,    HNX_TYPE_FP8)
 
 #undef HNX_SHIM
+
+/* Q8_K as a weight. Its activations are Q8_K too (vec_dot_type), which
+ * ggml quantises with upstream's own quantize_row_q8_K, so y is Q8_K
+ * blocks here and not floats. */
+void hnx_ggml_to_float_q8_K(const void *x, float *y, int64_t k) {
+    if (k <= 0) return;
+    hnx_dequantize_q8_k(x, y, ((size_t)k + HNX_BLOCK_SIZE - 1) / HNX_BLOCK_SIZE);
+}
+
+void hnx_ggml_vec_dot_q8_K(int n, float *s, size_t bs, const void *x,
+                           size_t bx, const void *y, size_t by, int nrc) {
+    (void) bs; (void) bx; (void) by; (void) nrc;
+    if (s == NULL) return;
+    if (n <= 0) { *s = 0.0f; return; }
+    *s = hnx_vec_dot_q8_k(x, y, (size_t)n / HNX_BLOCK_SIZE);
+}

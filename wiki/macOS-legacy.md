@@ -74,7 +74,7 @@ torch_compat.scaled_dot_product_attention(q, k, v, is_causal=True)
 torch_compat.describe()           # one-shot summary dict
 ```
 
-Every path in this table is exercised by `tests/test_shakers_and_torchcompat.py`.
+Every path in this table is exercised by `tests/data/test_shakers_and_torchcompat.py`.
 
 ## Manual install (without the script)
 

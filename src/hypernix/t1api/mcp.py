@@ -41,6 +41,7 @@ from __future__ import annotations
 import inspect
 import json
 import logging
+import secrets
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from typing import Any, Protocol, runtime_checkable
@@ -280,9 +281,16 @@ class MCPServer:
             result = self._call(method, params, set(scopes), is_admin)
         except ToolError as exc:
             return self._ok(identifier, error_result(str(exc)))
-        except Exception as exc:  # noqa: BLE001 - a bad handler is a 500, not a crash
-            logger.exception("t1api.mcp: %s failed", method)
-            return self._error(identifier, JSONRPC_INTERNAL_ERROR, str(exc))
+        except Exception:  # noqa: BLE001 - a bad handler is a 500, not a crash
+            # The exception's text stays in this server's log. It can name
+            # files, settings or internals, and the caller is a remote
+            # client; it gets an id to quote instead.
+            incident = secrets.token_hex(4)
+            logger.exception("t1api.mcp: %s failed (incident %s)", method, incident)
+            return self._error(
+                identifier, JSONRPC_INTERNAL_ERROR,
+                f"{method} failed on the server (incident {incident}; the server's log has the details)",
+            )
 
         if result is _METHOD_NOT_FOUND:
             return self._error(

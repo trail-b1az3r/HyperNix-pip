@@ -88,7 +88,7 @@ class T1Access:
 
     __slots__ = ("base_url", "token", "allow_mutating", "only")
 
-    def __init__(self, base_url: str, token: str = "", *,
+    def __init__(self, base_url: str, token: str = "", *,  # nosec B107 - an empty default, not a credential
                  allow_mutating: bool = False, only: list[str] | None = None) -> None:
         self.base_url = base_url
         self.token = token

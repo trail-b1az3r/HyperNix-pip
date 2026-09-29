@@ -371,7 +371,7 @@ class AccountStore:
     def get(self, account_id: str) -> Account | None:
         with self.backend.connect() as conn:
             row = conn.execute(
-                f"SELECT {self._COLUMNS} FROM t1_accounts WHERE account_id = ?",
+                f"SELECT {self._COLUMNS} FROM t1_accounts WHERE account_id = ?",  # nosec B608 - values are bound parameters; interpolated SQL is fixed or allowlisted
                 (account_id,),
             ).fetchone()
         return self._row_to_account(row) if row else None
@@ -379,7 +379,7 @@ class AccountStore:
     def by_username(self, username: str) -> Account | None:
         with self.backend.connect() as conn:
             row = conn.execute(
-                f"SELECT {self._COLUMNS} FROM t1_accounts WHERE username = ?",
+                f"SELECT {self._COLUMNS} FROM t1_accounts WHERE username = ?",  # nosec B608 - values are bound parameters; interpolated SQL is fixed or allowlisted
                 (self.normalise_username(username),),
             ).fetchone()
         return self._row_to_account(row) if row else None
@@ -392,7 +392,7 @@ class AccountStore:
     def list_accounts(self, limit: int = 100) -> list[Account]:
         with self.backend.connect() as conn:
             rows = conn.execute(
-                f"SELECT {self._COLUMNS} FROM t1_accounts "
+                f"SELECT {self._COLUMNS} FROM t1_accounts "  # nosec B608 - values are bound parameters; interpolated SQL is fixed or allowlisted
                 "ORDER BY created_at ASC LIMIT ?",
                 (int(limit),),
             ).fetchall()
@@ -598,10 +598,16 @@ class AccountStore:
     def _update(self, account_id: str, values: dict[str, Any]) -> None:
         if not values:
             return
+        # Column names are interpolated, so they come from the table's own
+        # list and nowhere else, whatever a caller passes.
+        known = {c.strip() for c in self._COLUMNS.split(",")}
+        unknown = [c for c in values if c not in known]
+        if unknown:
+            raise ValueError(f"not t1_accounts columns: {unknown}")
         assignments = ", ".join(f"{column} = ?" for column in values)
         with self.backend.connect() as conn:
             conn.execute(
-                f"UPDATE t1_accounts SET {assignments} WHERE account_id = ?",
+                f"UPDATE t1_accounts SET {assignments} WHERE account_id = ?",  # nosec B608 - values are bound parameters; interpolated SQL is fixed or allowlisted
                 (*values.values(), account_id),
             )
 

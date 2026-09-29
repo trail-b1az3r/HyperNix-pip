@@ -25,6 +25,8 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+from hypernix.security.safeurl import urlopen as safe_urlopen
+
 __all__ = [
     "DEFAULT_HOST",
     "DEFAULT_PORT",
@@ -68,7 +70,7 @@ def _env_file_values() -> dict[str, str]:
 def _client_host(host: str) -> str:
     # A server bound to every interface is reachable on loopback, and
     # 0.0.0.0 is not an address a client can connect to.
-    if host in ("", "0.0.0.0", "::", "[::]"):
+    if host in ("", "0.0.0.0", "::", "[::]"):  # nosec B104 - compares against or binds 0.0.0.0 only where the caller chose LAN access
         return DEFAULT_HOST
     if ":" in host and not host.startswith("["):
         return f"[{host}]"
@@ -102,7 +104,7 @@ def is_t1_api(base_url: str, *, timeout: float = 0.6) -> bool:
     neighbouring port (a Jupyter, a dev server) is not mistaken for it.
     """
     try:
-        with urllib.request.urlopen(f"{base_url.rstrip('/')}/health", timeout=timeout) as response:  # noqa: S310 - loopback URL built here
+        with safe_urlopen(f"{base_url.rstrip('/')}/health", timeout=timeout) as response:
             body = json.loads(response.read(4096) or b"{}")
     except (OSError, ValueError, urllib.error.URLError):
         return False

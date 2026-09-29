@@ -43,7 +43,7 @@ set -euo pipefail
 # `curl ... | bash`, where there is no checkout to read and no hypernix
 # installed yet to ask. So they are a *fallback*, `derive_versions`
 # below replaces them whenever the script is run from a clone, and
-# tests/test_install_script.py fails if the fallback drifts from the
+# tests/repo/test_install_script.py fails if the fallback drifts from the
 # package again.
 VERSION="0.72.6.post3"
 T1_API_VERSION="1.1.26.9.0.0"
@@ -1135,6 +1135,16 @@ T1_HYPERLINK_PORT=$BIND_PORT
 # says where it is and whether it answers.
 T1_WEB_ENABLED=1
 T1_WEB_PORT=37965
+
+# Mirror ~/.hypernix/models (where HyperLink downloads land) into this
+# server's own models folder by symlink, and serve from it. Synced at
+# startup, after each download and before a model list; 'hypernix-t1
+# sync' does the same by hand.
+T1_MODEL_SYNC=1
+T1_MODELS_DIR=$CONFIG_DIR/models
+# The folder mirrored (default ~/.hypernix/models, of the user the server
+# runs as). Not T1_HF_DOWNLOAD_DIR below, which is the folder above.
+# T1_MODELS_SOURCE=/path/to/shared/models
 $(if [ -n "$PUBLIC_URL" ]; then printf 'T1_HYPERLINK_PUBLIC_URL=%s\n' "$PUBLIC_URL"; else printf '# T1_HYPERLINK_PUBLIC_URL=https://t1.example.com\n'; fi)
 
 # Whether an address must be explicitly allowed before it can reach any

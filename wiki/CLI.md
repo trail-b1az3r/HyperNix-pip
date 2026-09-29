@@ -12,7 +12,7 @@ usage: hypernix <subcommand> [options]  (or: hnx <subcommand> [options])
 Core pipeline:
   all                    download -> convert -> [quantize]
   download               fetch a HuggingFace snapshot
-  convert                produce fp32 / fp16 GGUF from a snapshot
+  convert                produce fp32 / fp16 GGUF; -P -Q TARGET also quantises
   quantize               run llama-quantize on an fp16 / fp32 GGUF
   verify                 read-validate a GGUF and print headers
   info                   package + optional GGUF header summary
@@ -143,17 +143,38 @@ Prints the local snapshot path to stdout.
 
 ```bash
 hypernix convert --model-dir ./snapshot --output ./out-fp16.gguf --dtype fp16
+
+# -P: convert and quantise in one step (hnx is the same command)
+hypernix convert ./snapshot -P -Q Q4_K_M
+hnx convert ./snapshot/model.safetensors -P -Q q6h4 -o model.q6h4.gguf
+hnx convert ./brewer_models/mine -P -Q FP8
 ```
 
 | Flag | Default |
 |---|---|
-| `--model-dir PATH` | required |
-| `--output PATH` | required |
+| `MODEL` (or `--model-dir PATH`) | required |
+| `-o`, `--output PATH` | required without `-P`; with it, `<model>.<target>.gguf` beside the model |
+| `-P`, `--pipeline` | off. Converts safetensors to a GGUF, then quantises it with [hyprslug](HyprSlug.md) to the `-Q` target |
+| `-Q`, `--quant TARGET` | none. Any hyprslug target: `Q4_K_M`, `Q8_0`, `INT3`, `FP8`, `IQ0.5`, the hybrids `q6h`/`q6h4`/`q6h2`. Implies `-P` |
+| `--keep-intermediate` | off. With `-P`, keep the F16 GGUF beside the output |
+| `--imatrix PATH` | none. With `-P`, an importance matrix for hyprslug |
 | `--dtype` | `fp16` (`fp16` / `f16` / `fp32` / `f32`) |
 | `--arch NAME` | `hypernix` |
 | `--name NAME` | `HyperNix` |
 | `--n-head N` | from config |
 | `--context-length N` | from config |
+
+What `-P` does with each kind of model:
+
+| Model | What happens |
+|---|---|
+| Hugging Face folder, or a `.safetensors` in one | converted to an F16 GGUF, quantised, and the F16 copy deleted |
+| hyperNix0x-v2 (Brewer) folder or `.pt` | exported to a llama.cpp GGUF by hyprslug, then quantised |
+| `.gguf` | quantised as it is |
+
+The target is checked before anything is converted, so a typo in `-Q`
+costs nothing. The F16 copy is staged beside the output, not in `/tmp`,
+because it is the biggest file in the pipeline.
 
 ## `quantize`
 
@@ -395,9 +416,15 @@ hypernix chat --model-dir model.iq05.gguf --cache-bytes 2G
 # One-shot pipeline from a recipe file:
 hypernix brew recipe.json --set output_dir=./out
 
-# Architecture-builder sub-CLI (brewer):
-hypernix brew new --preset small --out-dir ./arch
+# Architecture-builder sub-CLI (brewer). Each model is a folder,
+# ./brewer_models/<name>, so these work across separate runs:
+hypernix brew new --preset cpu-nano --name my-model
+hypernix brew train --name my-model --data corpus.txt --steps 2000   # saves the folder
+hypernix brew export --name my-model --outtype f16                   # a GGUF llama.cpp runs
 hypernix brew list
+
+# Any Brewer model folder or .pt, HyperNix.3-mini included, to GGUF:
+hypernix brew gguf ~/.hypernix/models/HyperNix.3-mini --outtype q8_0
 ```
 
 A path ending in `.json` is treated as an `instant_pot` recipe and run
@@ -405,6 +432,19 @@ end-to-end (download/convert/quantize/etc. as described in the recipe).
 Anything else dispatches into the `brewer` architecture-builder sub-CLI,
 with presets from `33m`/`micro`/`small`/`medium`/`large` (GPU) through
 `cpu-nano`/`cpu-tiny`/`cpu-small` (CPU-only).
+
+| Brewer command | |
+|---|---|
+| `new --preset P --name N [--save-dir D]` | write `D/N/config.json` (default `./brewer_models/N`) |
+| `train --name N \| --dir D --data F` | train, continuing from saved weights if there are any, and save `model.safetensors` and `char_vocab.json` into the folder. `--steps`, `--lr`, `--batch-size`, `--device` all apply |
+| `export --name N \| --dir D` | `--format gguf` (default; runs in llama.cpp), `pt`, or `hnxg` (the old binary, not GGUF). `--outtype f32\|f16\|bf16\|q8_0`, `--tokenizer`, `--context`. Refuses a folder with no trained weights |
+| `gguf SOURCE` | any Brewer folder (config.json + weights + tokenizer) or `.pt` to a GGUF; `--pad-ffn 256` (default) keeps every tensor k-quantisable |
+| `list` | the folders in `./brewer_models`, whether each is trained, and its GGUFs |
+
+A Brewer GGUF is written as llama.cpp's `llama` architecture, which is
+what a Brewer block is, so it runs in any llama.cpp build, LM Studio, and
+the `native/ggml-hnx` patched build alike; see
+[Model-Training-Guide § Running a brewed model in llama.cpp](Model-Training-Guide.md#running-a-brewed-model-in-llamacpp).
 
 ## `pipeline` and `assistant` — current limitations
 
@@ -534,7 +574,7 @@ needs root and `--yes`, outlives the process).
 **It is not a speedup and does not claim to be.** Holding a temperature
 costs throughput — a power limit 2–7 %, pausing 12–24 % — and the module
 prints what it cost when the run ends. What you buy is the temperature.
-The measurement is in `tests/test_fusebox.py`, and the reasoning is in
+The measurement is in `tests/training/test_fusebox.py`, and the reasoning is in
 [FuseBox](FuseBox.md).
 
 It never raises a power limit above the card's default, never escalates
@@ -641,7 +681,10 @@ hnx-t1 status                            # hnx-t1 is the same program, shorter
 hypernix-t1 create                       # set up a server (hands off to install-t1.sh)
 hypernix-t1 create --non-interactive     # …or unattended, accepting every default
 hypernix-t1 start                        # start / stop / kill / restart / status
+hypernix-t1 version                      # HyperNix + T1 versions, and the Python it runs as
 hypernix-t1 logs -f                      # follow the log (or `logs 200`)
+hypernix-t1 upgrade                      # upgrade HyperNix in the server's own Python, and restart
+hypernix-t1 sync                         # mirror ~/.hypernix/models into ~/.hypernix/t1api/models
 hypernix-t1 test                         # health, status, and a real end-to-end probe
 hypernix-t1 key create -v v2 --level 5   # gkey, against this server's own store
 hypernix-t1 configure                    # open the config in $EDITOR
@@ -651,6 +694,24 @@ hypernix-t1 remove                       # tear it back down
 
 `hnx-t1` (0.72.6) is an alias, not a copy: it runs the `hypernix-t1` next
 to it, so every subcommand, flag and exit code is the same.
+
+When the server has a private venv (`~/.hypernix/t1api/venv`, made by
+`install-t1.sh`), whichever `hypernix-t1` you run hands over to the copy
+installed in that venv if it is a different script. That copy came with
+the code the server actually runs, which the one first on your `PATH` may
+not have: `pip install -U` into the venv upgrades only the venv's copy,
+and two builds of one version cannot be told apart by their version. The
+one exception is a copy newer than the server's HyperNix, which keeps
+running and warns that the server is behind.
+
+A copy from before 0.72.6.post3 cannot hand over, and `status` (run from
+the server's copy) says so when one is first on `PATH`, with the fix: a
+symlink to the server's copy, which then follows every upgrade.
+
+```bash
+~/.hypernix/t1api/venv/bin/hypernix-t1 status     # the server's own copy
+ln -sf ~/.hypernix/t1api/venv/bin/hypernix-t1 "$(command -v hypernix-t1)"
+```
 
 A single dependency-free shell program covering the whole lifecycle of a
 [T1 API](T1-API.md) server, so running one does not mean remembering a
@@ -662,13 +723,23 @@ uvicorn invocation or hunting for a pid.
 | `stop` | `SIGTERM`, then wait 15s. Still there? It says so and points at `kill` rather than escalating on its own. |
 | `kill` | `SIGKILL`, immediately. In-flight requests are lost, and it says so. |
 | `restart` | `stop`, escalating to `kill` if needed, then `start` |
-| `status` | pid, address, version, whether `/health` actually answers |
+| `upgrade` | `pip install -U 'hypernix[t1api]'` in the Python the server runs on (its private venv, when it has one), then restart; `--main` installs from GitHub. `status` and `start` warn when that Python's HyperNix is older than `hypernix-t1`'s own |
+| `status` | pid, address, config/key/log paths, this server's identity fingerprint, the HyperNix version and the Python it runs on, where HyperLink on the web answers (or that this HyperNix has none), and the T1 version from `/status`. When the server is not running, the stale pid, anything else on its port, and the last lines of the log. |
+| `version` | the HyperNix and T1 versions, and the Python the server runs as — the line to read first when an upgrade seems to have done nothing |
 | `logs` | tail; `-f` to follow |
 | `create` | hands off to `install-t1.sh` when it is available — the guided setup, and every flag passes through (`--non-interactive`, `--yes`, …). Installed from a wheel there is no checkout and no installer, so it writes a **minimal** local-only config instead (`--host`, `--port`, `--force`) and says plainly what that does not cover: no allowlist, no rate limits, no pricing, no model registry. |
 | `configure` | open the config in `$EDITOR`; with none set it prints the path rather than picking an editor for you |
 | `test` | not a health ping — `/health`, then `/status`, then (in a checkout) the same end-to-end probe CI runs, reported per stage |
 | `key` | pass straight through to `gkey`, against **this server's** key store — `hypernix-t1 key create -v v2 --level 5` |
 | `autostart` | `on` / `off` / `status` — a systemd **user** service, with an absolute `ExecStart` because systemd rejects a relative one at load |
+| `sync` | mirror `~/.hypernix/models` into this server's own `~/.hypernix/t1api/models`, one symlink per file, removing links whose file has gone (`--dry-run`, `--index`, `--watch S`). Also installed as `hypernix-sync` and `t1-sync`; `T1_MODEL_SYNC=1` has the server do it itself — see [T1-API § Model sync](T1-API.md#model-sync) |
+| `index` | read every `.gguf` in a folder and write the model registry from what the files say — see [ModelIndex](ModelIndex.md) |
+| `built-in-runner` | also `runner`: serve a model from this server's own llama.cpp instead of LM Studio — see [below](#hypernix-t1-built-in-runner) |
+| `chat` | send a message to the served model and print the reply — see [below](#hypernix-t1-chat) |
+| `training` | what training is doing on this machine, with pause / resume / stop; runs started by `launch-script` show up on their own |
+| `launch-script` | run a script, or a command with `-1 'CMD'`, so it survives an ssh disconnect: supervised, with its logs and exit status kept, and `--status` / `--logs` / `--stop` from any later session |
+| `override lms move-dir` | point LM Studio's models folder at `~/.hypernix/models` (or a folder you name); `override lms revert` undoes it |
+| `start-foreground` | run in this terminal instead of the background; what the systemd unit uses |
 | `remove` | stop, disable, delete the config — but **keeps the key store**, which is not recoverable and may still be in use elsewhere. Confirmed by typing the word, not by `y`. |
 
 The pid file is checked against the process actually running under it, so
@@ -790,8 +861,13 @@ off, so `start` loads the only model on the machine as it did before.
 
 **Native HyperNix models.** A folder with a brewer `config.json` and
 weights, like HyperNix.3-mini or anything `hnx brew` trained, is served
-by `hypernix.hyperlink.brewed_server` in PyTorch instead of llama.cpp,
-over the same OpenAI API, so HyperLink cannot tell the difference. The
+through llama.cpp when there is a llama.cpp build: it is converted to a
+GGUF once, cached in `<T1_CONFIG_DIR>/cache/brewed-gguf` and converted
+again only when its weights change. Otherwise, or when it cannot be
+converted (no tokenizer), `hypernix.hyperlink.brewed_server` serves it in
+PyTorch. Either way it is the same OpenAI API, so HyperLink cannot tell
+the difference. `HYPERNIX_BREWED_BACKEND=torch` always uses PyTorch;
+`=llama` requires llama.cpp and says why when it cannot. The
 chat is written out as a `User:` / `Assistant:` transcript, which is the
 only format a base model can continue.
 

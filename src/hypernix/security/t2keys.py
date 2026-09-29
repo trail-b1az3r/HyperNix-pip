@@ -900,7 +900,7 @@ class T2KeyGenerator:
                 "drop the password."
             )
         else:
-            password = ""
+            password = ""  # nosec B105 - an empty default, a prefix or an error-code name, not a credential
 
         body = "".join(secrets.choice(_BODY_CHARS) for _ in range(body_length))
         ll = "".join(secrets.choice(string.ascii_lowercase) for _ in range(2))
@@ -1104,7 +1104,8 @@ class T2KeyGenerator:
         # Always T2 — the signature pins the family, but saying so here
         # means a later edit that parameterises it cannot quietly produce
         # an admin T2S or T2P.
-        assert wrapped.family is T2Type.T2
+        if wrapped.family is not T2Type.T2:
+            raise AssertionError('wrapped.family is T2Type.T2')
         password = password or generate_admin_password()
         ok, reason = validate_admin_password(password)
         if not ok:

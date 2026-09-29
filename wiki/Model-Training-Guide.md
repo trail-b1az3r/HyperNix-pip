@@ -90,10 +90,15 @@ optional sliding-window attention. Seven presets ship:
 | `large`      |     36 |    3.5 B | 103 724 | 40 GB+, or several |
 
 ```bash
-hnx brew new   --preset small --name my-model --save-dir ./models
-hnx brew train --name my-model --data corpus.txt --steps 2000
+hnx brew new    --preset small --name my-model        # ./brewer_models/my-model
+hnx brew train  --name my-model --data corpus.txt --steps 2000
 hnx brew export --name my-model --format gguf --out my-model.gguf
 ```
+
+Each model is a folder (`config.json`, `model.safetensors`, and for a
+character-level model `char_vocab.json`), so the three commands can run
+days apart. With `--save-dir D` on `new`, point the others at the folder
+with `--dir D/my-model`.
 
 **Pick the smallest preset that fits your data, not the largest that fits
 your GPU.** A 458 M model on 10 MB of text memorises it; a 9 M model on
@@ -258,6 +263,45 @@ hyprslug my-model.gguf --draft dflash2 -o my-model.with-draft.gguf
 at any point. See [Quantization](Quantization.md) for what each tier
 costs and [Dflash2](Dflash2.md) for the draft.
 
+### Running a brewed model in llama.cpp
+
+A `hyperNix0x-v2` model is a Llama-shaped transformer, and `brew export`
+and `brew gguf` write it as llama.cpp's `llama` architecture, so it runs
+in every llama.cpp build: stock, LM Studio's, and the
+[`native/ggml-hnx`](../native/ggml-hnx/README.md) patched one.
+
+```bash
+hnx brew gguf ~/.hypernix/models/HyperNix.3-mini          # f16, beside the weights
+llama-cli -m ~/.hypernix/models/HyperNix.3-mini/hypernix.3-mini.f16.gguf -p "The river"
+```
+
+Before this, `--format gguf` wrote an `HNXG` file, a JSON header and raw
+F32 tensors that no llama.cpp could open. What the export does now:
+
+- **RoPE.** Brewer rotates the two halves of each head; llama.cpp rotates
+  adjacent pairs. Q and K are permuted to match, the same transform
+  llama.cpp's own converter applies to every Llama checkpoint.
+- **The tokenizer goes inside the file.** A byte-level BPE
+  `tokenizer.json` (HyperNix.3-mini's kind) becomes llama.cpp's `gpt2`
+  vocabulary. A model `brew train` trained on characters uses the
+  `char_vocab.json` it now saves, rebuilt as a byte-level vocabulary so
+  accented and other multi-byte characters work. Before this, `brew
+  train` kept its character table in memory only, so its models could
+  never turn their output back into text, anywhere.
+- **Sliding-window models** get a context capped at the window, where
+  llama.cpp's attention is identical to Brewer's (`--context full` keeps
+  the trained length and says what that costs).
+- **The FFN is zero-padded to a multiple of 256.** HyperNix.3-mini's
+  `d_ff` is 2203; a row that is not a whole number of k-quant blocks
+  falls back to F16 in `llama-quantize` and `hyprslug`. Zero rows and
+  columns add exactly nothing to the output.
+
+Checked against llama.cpp built from source, stock and with ggml-hnx
+patched in: logits matched PyTorch to within 0.0025 at every position in
+f32 and f16, and tokenization matched exactly. The runner uses the same
+conversion: with a llama.cpp build it serves a brewed model through it,
+which gives it a KV cache, quantised weights and a GPU layer split.
+
 **If you know at the start that the model is shipping at 4 bits or
 below,** train it that way: [`qat`](LowBit.md) puts the quantisation in
 the forward pass so the model is told what is going to happen to it.
@@ -323,7 +367,7 @@ print(maker.mean_score())
 "
 
 # 6. Ship
-hnx brew export --name my-model --format gguf --out my-model.f16.gguf
+hnx brew export --name my-model --format gguf --outtype f16 --out my-model.f16.gguf
 hyprslug my-model.f16.gguf --multi Q8_0,Q4_K_M -o my-model.gguf
 hyprslug my-model.gguf --draft dflash2 -o my-model.final.gguf
 ```
@@ -351,7 +395,8 @@ with apron(seed=1234):                      # reproducible, and stays that way
         batch_size=batch,
         log_callback=lambda step, loss: print(f"step {step} loss={loss:.4f}"),
     )
-    brewer.export(out_path=Path("my-model.f16.gguf"), fmt="gguf")
+    brewer.save()                                   # the folder, vocabulary included
+    brewer.export(out_path=Path("my-model.f16.gguf"), fmt="gguf", outtype="f16")
 ```
 
 `Brewer.train` runs its own loop, so `cake_pan` does not slot into it —

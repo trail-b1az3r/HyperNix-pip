@@ -39,6 +39,7 @@ from typing import Any
 
 from hypernix.chat import menu as _menu
 from hypernix.models.download import KNOWN_MODELS
+from hypernix.security.safeurl import urlopen as safe_urlopen
 
 try:
     import readline  # noqa: F401
@@ -1000,6 +1001,7 @@ class ToolRegistry:
             # DANGEROUS_TOOLS). shell=True is the tool's stated purpose.
             res = subprocess.run(  # nosec B602 - consent-gated shell tool
                 command,
+                # nosemgrep: python.lang.security.audit.subprocess-shell-true.subprocess-shell-true
                 shell=True,  # noqa: S602
                 cwd=cwd or os.getcwd(),
                 capture_output=True,
@@ -1033,7 +1035,7 @@ class ToolRegistry:
     def _execute_script(self, code: str) -> str:
         try:
             loc: dict[str, Any] = {}
-            exec(code, {}, loc)
+            exec(code, {}, loc)  # nosec B102 - runs code the user wrote or approved (consent-gated tool)
             return f"Executed script successfully. Result symbols: {list(loc.keys())}"
         except Exception as exc:  # noqa: BLE001
             return f"Script Execution Error: {exc}"
@@ -1043,7 +1045,7 @@ class ToolRegistry:
             q_enc = urllib.parse.quote_plus(query)
             url = f"https://html.duckduckgo.com/html/?q={q_enc}"
             req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (X11; Linux x86_64)"})
-            with urllib.request.urlopen(req, timeout=10) as resp:
+            with safe_urlopen(req, timeout=10) as resp:
                 body = resp.read().decode("utf-8", errors="ignore")
             # Basic HTML result extraction
             titles = re.findall(r'<a class="result__url"[^>]*>(.*?)</a>', body)
@@ -1060,7 +1062,7 @@ class ToolRegistry:
     def _fetch_url(self, url: str) -> str:
         try:
             req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (X11; Linux x86_64)"})
-            with urllib.request.urlopen(req, timeout=10) as resp:
+            with safe_urlopen(req, timeout=10) as resp:
                 html_raw = resp.read().decode("utf-8", errors="ignore")
             # Any case, and junk before the end tag's `>`, as browsers allow.
             text = re.sub(r'<script\b.*?</script\b[^>]*>', '', html_raw,
@@ -1320,6 +1322,7 @@ class ToolRegistry:
         try:
             # nosec B602 - consent-gated, as above.
             proc = subprocess.Popen(  # nosec B602 - consent-gated shell tool
+                # nosemgrep: python.lang.security.audit.subprocess-shell-true.subprocess-shell-true
                 command, shell=True,  # noqa: S602
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                 start_new_session=True,
@@ -1486,7 +1489,7 @@ class OvenRunner:
             method="POST",
         )
         try:
-            with urllib.request.urlopen(req, timeout=30) as resp:
+            with safe_urlopen(req, timeout=30) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
                 return data["choices"][0]["message"]["content"]
         except Exception as exc:  # noqa: BLE001
@@ -1522,7 +1525,7 @@ class OvenRunner:
             method="POST",
         )
         try:
-            with urllib.request.urlopen(req, timeout=30) as resp:
+            with safe_urlopen(req, timeout=30) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
                 return data["content"][0]["text"]
         except Exception as exc:  # noqa: BLE001
@@ -1538,7 +1541,7 @@ class OvenRunner:
             method="POST",
         )
         try:
-            with urllib.request.urlopen(req, timeout=30) as resp:
+            with safe_urlopen(req, timeout=30) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
                 return data.get("reply", str(data))
         except Exception as exc:  # noqa: BLE001

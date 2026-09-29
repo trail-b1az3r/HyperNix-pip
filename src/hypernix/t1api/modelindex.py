@@ -331,7 +331,13 @@ def index_directory(
         )
     if not root.is_dir():
         raise IndexError_(f"Not a directory: {root}")
-    return [inspect(p) for p in sorted(root.rglob("*.gguf"))]
+    from ..system.linkwalk import broken_links, walk_files
+
+    # Through symlinked folders, which rglob skips; dangling links are
+    # inspected too, so they are reported as unreadable, not left out.
+    paths = list(walk_files(root, ".gguf"))
+    paths += [link for link, _ in broken_links(root) if link.suffix.lower() == ".gguf"]
+    return [inspect(p) for p in sorted(paths)]
 
 
 def write_registry(

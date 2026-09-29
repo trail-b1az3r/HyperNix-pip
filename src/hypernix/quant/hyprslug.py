@@ -69,6 +69,8 @@ __all__ = [
     "QuantizeReport",
     "quantize_gguf",
     "resolve_recipe",
+    "is_brewer_source",
+    "IQ1_XS",
     "resolve_target",
     "resolve_width",
     "all_targets",
@@ -106,6 +108,10 @@ TIER_TYPES: dict[str, tuple[int, str]] = {
     "INT4": (int(GGMLType.HNX_INT4), "INT4"),
     "INT2": (int(GGMLType.HNX_INT2), "INT2"),
     "FP2": (int(GGMLType.HNX_FP2), "FP2"),
+    # 0.72.6.post3: the 3-bit integer between INT2 and INT4, and E4M3
+    # floats stored as E4M3 bytes. See hypernix.quant.lowbit.
+    "INT3": (int(GGMLType.HNX_INT3), "INT3"),
+    "FP8": (int(GGMLType.HNX_FP8), "FP8"),
 }
 
 
@@ -260,7 +266,10 @@ def file_type_for(spec: TargetSpec) -> int:
         return _FILE_TYPES[spec.width]
     if spec.kind == "tier":
         return HNX_FILE_TYPE_BASE + (spec.ggml_type - 200)
-    assert spec.recipe is not None
+    if spec.recipe is None:
+        raise AssertionError('spec.recipe is not None')
+    if spec.recipe.file_type:
+        return spec.recipe.file_type
     return _FILE_TYPES.get(spec.recipe.name, _FILE_TYPES.get(spec.recipe.base, 1))
 
 
@@ -284,10 +293,23 @@ class Recipe:
     overrides: tuple[tuple[str, str], ...] = ()
     output: str = ""
     embeddings: str = ""
+    #: A per-tensor rule that also sees the layer: ``(lowered name,
+    #: layer index or -1, layer count) -> format``. Used by the hybrids,
+    #: which spend bits by depth as well as by role. Returning ``""``
+    #: falls through to the fields above.
+    rule: Callable[[str, int, int], str] | None = None
+    #: The average rate, when it is not the base format's.
+    estimate: float = 0.0
+    #: ``general.file_type`` when upstream has no number for this mix.
+    file_type: int = 0
 
-    def format_for(self, tensor_name: str) -> str:
-        """The block format *tensor_name* should be written in."""
+    def format_for(self, tensor_name: str, layer: int = -1, n_layers: int = 0) -> str:
+        """The block format (or HyperNix tier) *tensor_name* should get."""
         lowered = tensor_name.lower()
+        if self.rule is not None:
+            chosen = self.rule(lowered, layer, n_layers)
+            if chosen:
+                return chosen
         if self.output and (lowered.startswith("output.") or lowered == "output.weight"):
             return self.output
         if self.embeddings and ("token_embd" in lowered or "tok_embeddings" in lowered):
@@ -299,7 +321,30 @@ class Recipe:
 
     @property
     def bits_per_weight(self) -> float:
+        if self.estimate:
+            return self.estimate
         return llamaquants.FORMATS[self.base].bits_per_weight
+
+    @property
+    def ingredients(self) -> tuple[str, ...]:
+        """Every format this recipe can write, base first."""
+        seen = [self.base]
+        for fmt in (self.output, self.embeddings, *(f for _, f in self.overrides),
+                    *_HYBRID_INGREDIENTS.get(self.name, ())):
+            if fmt and fmt not in seen:
+                seen.append(fmt)
+        return tuple(seen)
+
+    @property
+    def needs_patched_llamacpp(self) -> bool:
+        """True when stock llama.cpp cannot run what this writes.
+
+        Q8_K has no weight kernel upstream, and the HyperNix tiers have
+        no type id there at all; ggml-hnx's patch adds both.
+        """
+        return any(
+            _ingredient(fmt) in TIER_TYPES or fmt == "Q8_K" for fmt in self.ingredients
+        )
 
 
 # The tensors llama.cpp widens in a "_M" mix. attn_v and ffn_down are
@@ -335,7 +380,7 @@ def _register(recipe: Recipe) -> None:
 
 
 for _plain_name in ("Q4_0", "Q4_1", "Q5_0", "Q5_1", "Q8_0",
-                    "Q2_K", "Q3_K", "Q4_K", "Q5_K", "Q6_K"):
+                    "Q2_K", "Q3_K", "Q4_K", "Q5_K", "Q6_K", "Q8_K"):
     _register(Recipe(
         _plain_name, _plain_name,
         f"{llamaquants.FORMATS[_plain_name].bits_per_weight:.2f} bits per weight, "
@@ -358,6 +403,187 @@ _register(_mix("Q5_K_S", "Q5_K", "Q5_K", (),
                "5-bit k-quant, small."))
 _register(_mix("Q5_K_M", "Q5_K", "Q6_K", _M_WIDENS,
                "5-bit k-quant, medium."))
+
+#: ``general.file_type`` for what upstream has no number for. Past the
+#: tier range (1200 + type id - 200), for the same reason those are:
+#: a reader that knows them gets the truth, and one that does not gets
+#: an unknown number rather than a false "Q6_K".
+HNX_RECIPE_FILE_TYPE_BASE = 1300
+RECIPES["Q8_K"] = Recipe(
+    "Q8_K", "Q8_K",
+    "9.125 bits per weight: llama.cpp's activation format used as a "
+    "weight, an FP32 scale per 256. Token embeddings at Q8_0.",
+    # llama.cpp's CPU get_rows has no Q8_K case and aborts on it, so the
+    # one tensor read that way gets the nearest type it can read.
+    embeddings="Q8_0",
+    file_type=HNX_RECIPE_FILE_TYPE_BASE,
+)
+
+
+# --- The hybrids ------------------------------------------------------------
+#
+# "Auto" in the sense that nobody picks a format per tensor: the rule
+# does, from the tensor's role and its depth. Two things decide it,
+# and both are what llama.cpp's own mixes lean on:
+#
+# * Role. attn_v and ffn_down move perplexity most per bit, the output
+#   head is read for every token, and ffn_gate/ffn_up are the bulk of
+#   the parameters and take the cut best.
+# * Depth. The first and last eighth of the layers carry more than the
+#   middle -- the same `use_more_bits` pattern upstream uses -- so the
+#   aggressive formats only ever land in the middle.
+#
+# The token embedding stays a stock K-quant in every hybrid. It is read
+# with get_rows, and llama.cpp's CPU get_rows has no case for a HyperNix
+# type or for Q8_K: it aborts. A file that loads and then dies on the
+# first token is worse than one a step bigger.
+
+def _layer_of(lowered: str) -> int:
+    if lowered.startswith("blk."):
+        head, _, _rest = lowered[4:].partition(".")
+        if head.isdigit():
+            return int(head)
+    return -1
+
+
+def _depth(layer: int, n_layers: int) -> str:
+    """``edge`` (first/last eighth), ``core`` (middle half) or ``shoulder``."""
+    if layer < 0 or n_layers <= 0:
+        return "shoulder"
+    eighth = max(1, n_layers // 8)
+    if layer < eighth or layer >= n_layers - eighth:
+        return "edge"
+    if n_layers // 4 <= layer < n_layers - n_layers // 4:
+        return "core"
+    return "shoulder"
+
+
+def _more_bits(layer: int, n_layers: int) -> bool:
+    """llama.cpp's ``use_more_bits``: the edges, and every third layer."""
+    if layer < 0 or n_layers <= 0:
+        return True
+    eighth = n_layers // 8
+    return layer < eighth or layer >= 7 * n_layers // 8 or (layer - eighth) % 3 == 2
+
+
+def _role(lowered: str) -> str:
+    if _is_output_head(lowered):
+        return "output"
+    if _is_embedding(lowered):
+        return "embed"
+    for role in ("attn_v.", "attn_k.", "attn_q.", "attn_qkv", "attn_output",
+                 "ffn_down", "ffn_gate", "ffn_up"):
+        if role in lowered:
+            return role.rstrip(".")
+    return "other"
+
+
+def _q6h_k(lowered: str, layer: int, n_layers: int) -> str:
+    """hnx_Q6_H_k: Q8_K where it counts, Q6_K around it, Q3_K_M's cut
+    (Q3_K) on the feed-forward bulk of the middle layers."""
+    role = _role(lowered)
+    if role == "output":
+        return "Q8_K"
+    if role == "embed":
+        return "Q6_K"
+    if role in ("attn_v", "ffn_down"):
+        return "Q8_K" if _more_bits(layer, n_layers) else "Q6_K"
+    if role in ("ffn_gate", "ffn_up"):
+        return "Q6_K" if _depth(layer, n_layers) == "edge" else "Q3_K"
+    return "Q6_K"
+
+
+def _q6h_4(lowered: str, layer: int, n_layers: int) -> str:
+    """hnx_Q6_H_4: Q6_K where it counts, Q5_K and Q4_K_S's Q4_K through
+    the rest, and INT3 and Q2_K on the middle layers' feed-forward."""
+    role = _role(lowered)
+    depth = _depth(layer, n_layers)
+    if role == "output" or role == "attn_v":
+        return "Q6_K"
+    if role == "embed":
+        return "Q4_K"
+    if role == "ffn_down":
+        return "Q6_K" if _more_bits(layer, n_layers) else "Q5_K"
+    if role in ("attn_q", "attn_k"):
+        return "Q4_K"
+    if role in ("attn_output", "attn_qkv"):
+        return "Q5_K"
+    if role in ("ffn_gate", "ffn_up"):
+        if depth == "edge":
+            return "Q5_K"
+        if depth == "shoulder":
+            return "Q4_K"
+        return "Q2_K" if role == "ffn_gate" else "INT3"
+    return "Q6_K"
+
+
+def _q6h_2(lowered: str, layer: int, n_layers: int) -> str:
+    """hnx_Q6_H_2: hnx_Q6_H_4 with IQ1_XS for Q2_K, Q3_K_L for Q4_K_S,
+    and no INT3 (its slot takes Q3_K_L's Q3_K)."""
+    role = _role(lowered)
+    depth = _depth(layer, n_layers)
+    if role == "output" or role == "attn_v":
+        return "Q6_K"
+    if role == "embed":
+        return "Q3_K"
+    if role == "ffn_down":
+        return "Q6_K" if _more_bits(layer, n_layers) else "Q5_K"
+    if role == "attn_q":
+        return "Q3_K"
+    if role in ("attn_k", "attn_output", "attn_qkv"):
+        # Q3_K_L widens attn_k to Q5_K; attn_output was Q5_K already.
+        return "Q5_K"
+    if role in ("ffn_gate", "ffn_up"):
+        if depth == "edge":
+            return "Q5_K"
+        if depth == "shoulder":
+            return "Q3_K"
+        return "IQ1_XS" if role == "ffn_gate" else "Q3_K"
+    return "Q6_K"
+
+
+#: The ``estimate`` on each is the average over a 7B llama's tensors
+#: (32 layers, 4096 wide, 11008 feed-forward, 32000 vocabulary); a
+#: GQA model with a large vocabulary lands 0.1-0.2 lower.
+#: What each hybrid can write, for :attr:`Recipe.ingredients`.
+_HYBRID_INGREDIENTS: dict[str, tuple[str, ...]] = {
+    "hnx_Q6_H_k": ("Q8_K", "Q6_K", "Q3_K"),
+    "hnx_Q6_H_4": ("Q6_K", "Q5_K", "Q4_K", "INT3", "Q2_K"),
+    "hnx_Q6_H_2": ("Q6_K", "Q5_K", "Q3_K", "IQ1_XS"),
+}
+
+#: IQ1_XS is not a llama.cpp type: upstream's one-bit types are IQ1_S
+#: (1.5625 bpw) and IQ1_M (1.75), both built on a 2048-entry grid and
+#: unusable without an imatrix. The HyperNix type below IQ1_S is
+#: HNX_1375BIT -- every sign plus a magnitude per 16 weights, 1.375 bpw
+#: -- so that is what the name means here.
+IQ1_XS = "HNX_1375BIT"
+
+_register(Recipe(
+    "hnx_Q6_H_k", "Q6_K",
+    "HyperNix hybrid: Q8_K on the head and on attn_v/ffn_down in the "
+    "layers that matter, Q6_K around it, Q3_K on the middle layers' "
+    "ffn_gate/ffn_up.",
+    rule=_q6h_k, estimate=5.9, file_type=HNX_RECIPE_FILE_TYPE_BASE + 1,
+))
+_register(Recipe(
+    "hnx_Q6_H_4", "Q6_K",
+    "HyperNix hybrid: Q6_K head and attn_v, Q5_K/Q4_K through the rest, "
+    "INT3 and Q2_K on the middle layers' ffn_up/ffn_gate.",
+    rule=_q6h_4, estimate=4.8, file_type=HNX_RECIPE_FILE_TYPE_BASE + 2,
+))
+_register(Recipe(
+    "hnx_Q6_H_2", "Q6_K",
+    "HyperNix hybrid: hnx_Q6_H_4 with IQ1_XS (HNX_1375BIT) for Q2_K, "
+    "Q3_K_L's formats for Q4_K_S, and no INT3.",
+    rule=_q6h_2, estimate=4.5, file_type=HNX_RECIPE_FILE_TYPE_BASE + 3,
+))
+
+
+def _ingredient(fmt: str) -> str:
+    """A recipe's format name as the encoder knows it."""
+    return IQ1_XS if fmt == "IQ1_XS" else fmt
+
 
 #: Source types this can read element-wise without help.
 #:
@@ -450,6 +676,15 @@ RECIPE_ALIASES: dict[str, str] = {
     "Q4": "Q4_K_M",
     "Q3": "Q3_K_M",
     "Q2": "Q2_K_S",
+    # The hybrids, by the short names people type.
+    "Q6H": "hnx_Q6_H_k",
+    "Q6HK": "hnx_Q6_H_k",
+    "HNXQ6H": "hnx_Q6_H_k",
+    "Q6H4": "hnx_Q6_H_4",
+    "HNXQ6H4": "hnx_Q6_H_4",
+    "Q6H2": "hnx_Q6_H_2",
+    "HNXQ6H2": "hnx_Q6_H_2",
+    "Q8K": "Q8_K",
 }
 
 
@@ -472,7 +707,12 @@ TARGET_ALIASES: dict[str, str] = {
     "I8": "INT8",
     "I4": "INT4",
     "I2": "INT2",
+    "I3": "INT3",
     "I1": "INT1",
+    "IQ1XS": "HNX_1375BIT",
+    "FP8E4M3": "FP8",
+    "E4M3": "FP8",
+    "F8": "FP8",
     "F32": "FP32",
     "FLOAT32": "FP32",
     "F16": "FP16",
@@ -525,7 +765,9 @@ def resolve_recipe(tier: str) -> Recipe | None:
         return RECIPES[key]
     squashed = key.replace("_", "")
     for name, recipe in RECIPES.items():
-        if name.replace("_", "") == squashed:
+        # Upper-cased because the hybrids keep the lower-case prefix
+        # they were named with: hnx_Q6_H_k.
+        if name.upper().replace("_", "") == squashed:
             return recipe
     aliased = RECIPE_ALIASES.get(squashed)
     return RECIPES[aliased] if aliased else None
@@ -731,6 +973,9 @@ class QuantizeReport:
     #: actually exceeded 65504 — which is rare, and the reason the count
     #: is here rather than left to be discovered from an eval.
     f16_overflows: dict[str, int] = field(default_factory=dict)
+    #: What the source was before hyprslug made a GGUF of it, when it was
+    #: not one: ``"hyperNix0x-v2"`` for a Brewer folder or checkpoint.
+    converted_from: str = ""
 
     @property
     def weights_saturated(self) -> int:
@@ -805,17 +1050,23 @@ class QuantizeReport:
             "f16_overflows": dict(sorted(self.f16_overflows.items())),
             "weights_saturated": self.weights_saturated,
             "seconds": round(self.seconds, 2),
+            "converted_from": self.converted_from,
         }
 
     def describe(self) -> str:
+        # A recipe has no single packing -- its tensors are in several
+        # formats, listed under "mix" -- so the per-packing rate would
+        # print as 0.000 and the header as "()".
+        rate = (
+            f" ({self.tier_bits_per_weight:.3f} where it packed)" if self.packing else ""
+        )
         lines = [
-            f"{self.tier}  ({self.packing})",
+            f"{self.tier}  ({self.packing})" if self.packing else self.tier,
             f"  {self.source_bytes / 1e6:.1f} MB -> {self.output_bytes / 1e6:.1f} MB "
             f"({self.compression:.1f}x)",
             f"  {self.tensors_quantized}/{self.tensors_total} tensors packed, "
             f"{self.quantized_fraction * 100:.1f}% of weights",
-            f"  {self.effective_bits_per_weight:.2f} bits/weight over the whole file "
-            f"({self.tier_bits_per_weight:.3f} where it packed)",
+            f"  {self.effective_bits_per_weight:.2f} bits/weight over the whole file{rate}",
         ]
         if self.name_is_misleading:
             over = self.effective_bits_per_weight / self.tier_bits_per_weight
@@ -835,6 +1086,8 @@ class QuantizeReport:
             lines.append("    To get the size the tier is named for:")
             lines.append("      --quantize-embeddings --quantize-output")
             lines.append("")
+        if self.converted_from:
+            lines.append(f"  from a {self.converted_from} model, via an F16 GGUF")
         if len(self.formats) > 1:
             mix = ", ".join(f"{fmt} x{count}" for fmt, count in sorted(self.formats.items()))
             lines.append(f"  mix: {mix}")
@@ -956,6 +1209,9 @@ def plan_tensors(
     if quantize_output is None:
         quantize_output = spec.kind in ("recipe", "width")
 
+    n_layers = 1 + max(
+        (_layer_of(t.name.lower()) for t in model.tensors), default=-1,
+    )
     plans: list[TensorPlan] = []
     for tensor in model.tensors:
         lowered = tensor.name.lower()
@@ -987,8 +1243,14 @@ def plan_tensors(
             ))
             continue
 
-        chosen = spec.recipe.format_for(tensor.name) if spec.recipe else ""
-        block = llamaquants.FORMATS[chosen].block if spec.recipe else BLOCK_SIZE
+        chosen = (
+            _ingredient(spec.recipe.format_for(tensor.name, _layer_of(lowered), n_layers))
+            if spec.recipe else ""
+        )
+        block = (
+            llamaquants.FORMATS[chosen].block
+            if chosen in llamaquants.FORMATS else BLOCK_SIZE
+        )
         do_it, reason = _should_quantize(
             tensor,
             block=block,
@@ -997,6 +1259,10 @@ def plan_tensors(
         )
         if not do_it:
             plans.append(TensorPlan(tensor, tensor.ggml_type, "", reason))
+        elif spec.recipe is not None and chosen in TIER_TYPES:
+            # A hybrid's HyperNix ingredient: the tier's type, and its
+            # name as the encoding so encode_tensor knows the packing.
+            plans.append(TensorPlan(tensor, TIER_TYPES[chosen][0], chosen))
         elif spec.recipe is not None:
             plans.append(TensorPlan(
                 tensor, llamaquants.FORMATS[chosen].ggml_type, chosen,
@@ -1042,6 +1308,14 @@ def encode_tensor(
                 plan.name, len(importance), len(values),
             )
         importance = expanded
+    if plan.encoding in TIER_TYPES:
+        packing = TIER_TYPES[plan.encoding][1]
+        try:
+            if packing in CODECS:
+                return lowbit_quantize(values, packing), 0
+            return quantize_tensor(values, packing, importance), 0
+        except (SubBitError, LowBitError) as exc:
+            raise HyprslugError(f"{plan.name}: {exc}") from exc
     if plan.encoding == "sub-bit":
         try:
             if spec.packing in CODECS:
@@ -1104,11 +1378,19 @@ def write_provenance(
             f"HyperNix {spec.name} ({_bits_per_weight(spec.packing):.3f} bpw)"
         )
     else:
-        assert spec.recipe is not None
+        if spec.recipe is None:
+            raise AssertionError('spec.recipe is not None')
         _set("hypernix.sub_bit", False)
         _set("hypernix.base_format", spec.recipe.base)
+        if spec.recipe.rule is not None:
+            _set("hypernix.hybrid", True)
+            _set("hypernix.ingredients", ",".join(
+                _ingredient(fmt) for fmt in spec.recipe.ingredients))
+        if spec.recipe.needs_patched_llamacpp:
+            _set("hypernix.needs", "ggml-hnx")
+        rate = "bpw est." if spec.recipe.estimate else "bpw base"
         description = (
-            f"{spec.recipe.name} ({spec.recipe.bits_per_weight:.2f} bpw base) "
+            f"{spec.recipe.name} ({spec.recipe.bits_per_weight:.2f} {rate}) "
             f"via hyprslug"
         )
     if prefix:
@@ -1130,6 +1412,22 @@ def load_imatrix(path: str | Path) -> dict[str, list[float]]:
         return Imatrix.load(path).to_simple_dict()
     except ImatrixError as exc:
         raise HyprslugError(f"Could not read imatrix {path}: {exc}") from exc
+
+
+def is_brewer_source(path: str | Path) -> bool:
+    """True for a ``hyperNix0x-v2`` (Brewer) model folder or ``.pt``.
+
+    These are not GGUFs, and they are not Hugging Face folders either --
+    a Brewer ``config.json`` has ``d_model`` where Hugging Face has
+    ``hidden_size`` -- so they need :mod:`hypernix.models.brewer_gguf`
+    before anything here can read them.
+    """
+    candidate = Path(path)
+    if candidate.is_file():
+        return candidate.suffix.lower() == ".pt"
+    from ..hyperlink.brewed import is_brewed_dir
+
+    return is_brewed_dir(candidate)
 
 
 def quantize_gguf(
@@ -1160,6 +1458,12 @@ def quantize_gguf(
     spec = target_spec(tier)
     if not source_path.exists():
         raise HyprslugError(f"No such model: {source_path}")
+    if is_brewer_source(source_path):
+        return _quantize_brewer(
+            source_path, destination_path, tier,
+            imatrix=imatrix, quantize_embeddings=quantize_embeddings,
+            quantize_output=quantize_output, progress=progress,
+        )
 
     weights_by_tensor: dict[str, list[float]] = {}
     if isinstance(imatrix, dict):
@@ -1250,4 +1554,33 @@ def quantize_gguf(
             progress({"event": "done", **report.to_dict()})
         except Exception:  # noqa: BLE001
             logger.debug("hyprslug: progress callback raised", exc_info=True)
+    return report
+
+
+def _quantize_brewer(
+    source: Path,
+    destination: Path,
+    tier: str,
+    **options: Any,
+) -> QuantizeReport:
+    """A ``hyperNix0x-v2`` model: export to an F16 GGUF, then quantise that.
+
+    The intermediate goes beside the destination rather than in the
+    system temp directory, which on a lot of machines is a small tmpfs
+    and a model's F16 copy is the largest file in the pipeline. It is
+    removed afterwards whatever happens.
+    """
+    import tempfile
+
+    from ..models.brewer_gguf import GGUFExportError, export_gguf
+
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix=".hyprslug-", dir=destination.parent) as scratch:
+        staged = Path(scratch) / "model.f16.gguf"
+        try:
+            export_gguf(source, staged, outtype="f16")
+        except (GGUFExportError, OSError, ValueError) as exc:
+            raise HyprslugError(f"Could not convert {source} to GGUF: {exc}") from exc
+        report = quantize_gguf(staged, destination, tier, **options)
+    report.converted_from = "hyperNix0x-v2"
     return report

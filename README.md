@@ -14,9 +14,9 @@
 
 ## What's fixed in this update
 
-The first section below covers what the 0.72.6 line has added so far
-(published as `0.72.5.post14` to `post17`, then `0.72.6.rc1` and `rc2`),
-and the one after it covers 0.72.5. [`wiki/Changelog.md`](wiki/Changelog.md) is the canonical
+The first section below covers the 0.72.6 line (published as
+`0.72.5.post14` to `post17`, `0.72.6.rc1` to `rc3`, `0.72.6`, and the
+patches `0.72.6.post1` onward), and the one after it covers 0.72.5. [`wiki/Changelog.md`](wiki/Changelog.md) is the canonical
 per-release history, and [`wiki/Roadmap.md`](wiki/Roadmap.md) says what
 is next.
 
@@ -102,6 +102,30 @@ GPU and training progress, it shows:
 It finds the busiest Python run, its script and its log by itself, and
 it reads the script without running it. `tvtop-max -s` lays it out for
 a phone. [TvTopMax](wiki/TvTopMax.md).
+
+**The T1 server in the 0.72.6 patches.** The T1 contract is still
+v1.1.26.9.0.0; these add to it.
+- **HyperLink on the web.** The server hosts a site that works like the
+  app, at `http://127.0.0.1:37965` and on its Tailscale address, and
+  since post3 also at `/` on the API's own port. Never on the LAN.
+  [T1 API](wiki/T1-API.md#hyperlink-on-the-web-0726post1).
+- **`hypernix-t1 upgrade`** upgrades HyperNix in the Python the server
+  actually runs on, its private venv, and restarts it; `status` and
+  `start` warn when that has fallen behind. If an upgrade seemed to do
+  nothing, `hypernix-t1 version` shows why.
+- **Model sync.** `T1_MODEL_SYNC=1` mirrors `~/.hypernix/models` into
+  the server's own `~/.hypernix/t1api/models`, one symlink per file, and
+  serves from it; `hypernix-sync` does it by hand.
+  [T1 API](wiki/T1-API.md#model-sync).
+- **Brewer models run in llama.cpp.** `brew export --format gguf` wrote a
+  file no llama.cpp could open; it now writes a real GGUF (as `llama`),
+  and `hnx brew gguf <folder>` converts HyperNix.3-mini or anything
+  brewed. The runner serves brewed models through llama.cpp when it has
+  a build. [Training guide](wiki/Model-Training-Guide.md#running-a-brewed-model-in-llamacpp).
+- **Safer by default:** checkpoints never unpickled, MCP errors that keep
+  their details on the server, key files confined to the key store. The
+  [security checklist](wiki/T1-API-Security-Checklist.md) now covers
+  every opt-in feature.
 
 **Also in 0.72.6:**
 - **HyperLink's default system prompt.** When a reply comes from
@@ -251,7 +275,7 @@ ways in, and renaming.
   first sentence: see [Siri](ios/README.md#siri).
 - Every theme's text clears WCAG AA against its own bubble, the two
   bubbles are told apart by luminance, and so are "connected" and
-  "failed" — checked in `tests/test_hyperlink_ios_wiring.py`, which found
+  "failed" — checked in `tests/ios/test_hyperlink_ios_wiring.py`, which found
   three that were not.
 - A chat can be renamed. The server has taken a title on
   `PATCH /hyperlink/sessions/{id}` since HyperLink shipped, and nothing
@@ -434,7 +458,7 @@ Click a category below to expand it.
 |---|---|
 | `hypernix.download` | Pull snapshots from the Hub (short-name resolution, gated repos, offline cache). |
 | `hypernix.train` | `HyperNixConfig`, `HyperNixModel`, `init_from_scratch`, `expand_checkpoint`, `train`. Non-HyperNix archs route through `AutoModelForCausalLM`. |
-| `hypernix.brewer` | `hyperNix0x-v2` architecture preset family — `Brewer(config).build()` for a from-scratch `BrewerModel`. GPU-oriented presets `33m` / `micro` / `small` / `medium` / `large` (33.6M-3.5B params), plus `cpu-nano` / `cpu-tiny` / `cpu-small` (2.1M/9.2M/26.5M params) sized for CPU-only training and inference. `custom_arch(**kwargs)` for a fully bespoke config. Also available as `hypernix brew new --preset <name>`. |
+| `hypernix.brewer` | `hyperNix0x-v2` architecture preset family — `Brewer(config).build()` for a from-scratch `BrewerModel`; `brew export` / `brew gguf` write a GGUF any llama.cpp runs (as `llama`). GPU-oriented presets `33m` / `micro` / `small` / `medium` / `large` (33.6M-3.5B params), plus `cpu-nano` / `cpu-tiny` / `cpu-small` (2.1M/9.2M/26.5M params) sized for CPU-only training and inference. `custom_arch(**kwargs)` for a fully bespoke config. Also available as `hypernix brew new --preset <name>`. |
 | `hypernix.instant_pot` | `brew(recipe)` — one-shot end-to-end pipeline. Also available as `hypernix brew recipe.json`. |
 | `hypernix.coffee_maker` | 3 tiers (drip / french-press / percolator) + `cold_brew` type for long checkpointed runs. |
 | `hypernix.deep_fryer` | 2-tier model-weight perturbation: `LightFry` (regulariser) / `HeavyFry` (severe, for bad-model negatives). In-place, reversible via snapshot. |
@@ -605,6 +629,14 @@ pip install "hypernix[llama-cpp]"     # + bundled llama-cpp-python
 pip install "hypernix[train]"         # + transformers, accelerate
 pip install hypernix                  # core only
 ```
+
+Nightly builds, when the maintainers have them switched on, are the
+rolling [`nightly` prerelease](https://github.com/trail-b1az3r/HyperNix-pip/releases/tag/nightly):
+the branch as of last night, after lint, the full test suite and the
+live integration jobs, and nothing more. Install the wheel by its URL:
+`pip install https://github.com/trail-b1az3r/HyperNix-pip/releases/download/nightly/<wheel>`.
+`hypernix --version` then reads something like
+`0.72.6.post3+nightly.20260930.1a2b3c4`.
 
 Setting up the **T1 API** server specifically? `./install-t1.sh` is a
 guided installer — it asks what kind of deployment this is (bind
@@ -803,8 +835,9 @@ than a step in the pipeline:
 | `hnx-map` | The steampunk schematic TUI. |
 | `hnx-scriptgen` | The training-script builder. |
 | `waiter` | The T1 API's client TUI/CLI. Needs no server extra. `waiter serv` letters can be grouped (`-ArEK <key> -I <ip>`). |
-| `hypernix-t1` (`hnx-t1`) | Runs a T1 server: `start`, `stop`, `status`, `logs`, `test`, `autostart`, `launch-script`, `override`. |
+| `hypernix-t1` (`hnx-t1`) | Runs a T1 server: `create`, `start`, `stop`, `restart`, `status`, `version`, `upgrade`, `sync`, `logs`, `test`, `built-in-runner`, `chat`, `index`, `training`, `autostart`, `launch-script`, `override`. |
 | `t1-accounts` | Web accounts for a T1 server: create, reset, unlock, and the four deployment modes. |
+| `hypernix-sync` (`t1-sync`) | Mirrors `~/.hypernix/models` into the T1 server's own `~/.hypernix/t1api/models` by symlink; `T1_MODEL_SYNC=1` has the server do it itself. |
 | `gkey` | Gatekeeper + Keymaster, in one place. |
 | `multilama` | One interface over vanilla llama.cpp, ik_llama.cpp, PrismML and KoboldCpp. |
 | `noodle` | The autonomous multi-agent executor, standalone. |

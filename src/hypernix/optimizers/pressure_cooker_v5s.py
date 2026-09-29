@@ -241,8 +241,8 @@ def volumetric_oscillation_score(
     Returns:
         Scalar oscillation score in [-1, 1].
     """
-    assert abs(fast_weight + med_weight + ultra_weight - 1.0) < 1e-6, \
-        "Weights must sum to 1"
+    if not (abs(fast_weight + med_weight + ultra_weight - 1.0) < 1e-6):
+        raise AssertionError("Weights must sum to 1")
     # Negate cosines: positive cosine = agreement = low oscillation
     vos = -(fast_weight * fast_cos + med_weight * med_cos + ultra_weight * ultra_cos)
     return float(max(-1.0, min(1.0, vos)))

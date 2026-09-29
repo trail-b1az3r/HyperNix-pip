@@ -195,6 +195,9 @@ steamroller = "hypernix.quant.steamroller_cli:cli_main"
 noodle = "hypernix.interfaces.noodle.cli:cli_main"
 # T1 v1.0.26.9.2.3: web accounts — sign up for a T1 key without having one.
 t1-accounts = "hypernix.t1api.accounts_cli:cli_main"
+# 0.72.6.post3: mirror ~/.hypernix/models into ~/.hypernix/t1api/models.
+hypernix-sync = "hypernix.t1api.modelsync_cli:cli_main"
+t1-sync = "hypernix.t1api.modelsync_cli:cli_main"
 
 [project.urls]
 Homepage = "https://trail-b1az3r.github.io/HyperNix-pip/"
@@ -264,5 +267,17 @@ addopts = "-ra"
 # that touched a test. B101 still applies to the package itself, where an
 # assert stripped by `python -O` could be a real bug; every other Bandit
 # check still runs on the tests.
+[tool.bandit]
+# Shipped code only. The tests hold dummy passwords, asserts, temp paths
+# and subprocess calls by the hundred, none of which is deployed, and each
+# was an alert in the Security tab. The installed build/ tree is a copy of
+# src/, which is scanned.
+exclude_dirs = ["tests", "build"]
+# B404 flags `import subprocess` and B603 flags every subprocess call made
+# *without* a shell, the form Bandit itself recommends. Neither is a
+# defect; the checks that matter here stay on: B602/B604/B605 (a shell),
+# B607 (a partial path), B310 (URL schemes) and the rest.
+skips = ["B404", "B603"]
+
 [tool.bandit.assert_used]
 skips = ["*/tests/*", "tests/*"]

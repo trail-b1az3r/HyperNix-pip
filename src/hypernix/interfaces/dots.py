@@ -304,7 +304,7 @@ def load_dot(path: Path, config: Config) -> None:
         "__name__": "hyped_dot",
     }
     try:
-        exec(compile(source, str(path), "exec"), namespace)   # noqa: S102
+        exec(compile(source, str(path), "exec"), namespace)   # nosec B102 - runs code the user wrote or approved (consent-gated tool)
     except Exception as exc:  # noqa: BLE001
         # Named with the file and the line, because the alternative is a
         # traceback through this module that looks like hyped is broken.

@@ -383,8 +383,12 @@ async function stop() {
 async function loadModels() {
   try {
     const data = await api("/hyperlink/models");
-    state.models = (data.models || []).filter((m) => m.runnable !== false);
-  } catch { state.models = []; }
+    // Everything, for the runner page, which says why a model cannot
+    // run (a link whose target has gone, say); the picker only offers
+    // the ones that can.
+    state.allModels = data.models || [];
+    state.models = state.allModels.filter((m) => m.runnable !== false);
+  } catch { state.models = []; state.allModels = []; }
   const picker = $("model-picker");
   picker.replaceChildren();
   const auto = document.createElement("option");
@@ -437,7 +441,7 @@ async function loadRunner() {
   await loadAdopt();
   const list = $("runner-models");
   list.replaceChildren();
-  for (const model of state.models.filter((m) => m.path)) {
+  for (const model of (state.allModels || state.models).filter((m) => m.path)) {
     const item = document.createElement("li");
     const grow = document.createElement("div");
     grow.className = "grow";
@@ -447,27 +451,72 @@ async function loadRunner() {
     detail.className = "muted";
     detail.textContent = model.detail || model.architecture || "";
     grow.append(name, detail);
-    const load = document.createElement("button");
-    load.textContent = model.loaded ? "Loaded" : "Load";
-    load.disabled = model.loaded;
-    load.addEventListener("click", async () => {
-      load.disabled = true;
-      load.textContent = "Loading…";
-      try { await api("/runner/load", { method: "POST", body: { model_id: model.model_id } }); }
-      catch (e) { runnerError(e.message); }
-      await loadModels();
-      loadRunner();
-    });
-    item.append(grow, load);
+    if (model.linked_to) {
+      const from = document.createElement("div");
+      from.className = "muted";
+      from.textContent = `linked from ${model.linked_to}`;
+      grow.append(from);
+    }
+    item.append(grow);
+    if (model.runnable !== false) {
+      const load = document.createElement("button");
+      load.textContent = model.loaded ? "Loaded" : "Load";
+      load.disabled = model.loaded;
+      load.addEventListener("click", async () => {
+        load.disabled = true;
+        load.textContent = "Loading…";
+        try { await api("/runner/load", { method: "POST", body: { model_id: model.model_id } }); }
+        catch (e) { runnerError(e.message); }
+        await loadModels();
+        loadRunner();
+      });
+      item.append(load);
+    }
+    if (model.link_name) {
+      const unlink = document.createElement("button");
+      unlink.textContent = "Remove link";
+      unlink.title = "Removes the link from the models folder. The model itself is not touched.";
+      unlink.addEventListener("click", async () => {
+        if (!confirm(`Remove ${model.link_name} from the list? The file it points at stays.`)) return;
+        try {
+          await api(`/hyperlink/models/link/${encodeURIComponent(model.link_name)}`, { method: "DELETE" });
+        } catch (e) { runnerError(e.message); }
+        await loadModels();
+        loadRunner();
+      });
+      item.append(unlink);
+    }
     list.append(item);
   }
   if (!list.children.length) {
     const none = document.createElement("li");
     none.className = "muted";
     none.textContent = "No model with a file on this machine yet. Put a .gguf under " +
-      "~/.hypernix/models, or run `hypernix-t1 runner start` for the default model.";
+      "~/.hypernix/models, link one below, or run `hypernix-t1 runner start` for the default model.";
     list.append(none);
   }
+}
+
+async function linkModel(event) {
+  event.preventDefault();
+  runnerError("");
+  const path = $("link-path").value.trim();
+  if (!path) return;
+  const button = $("link-submit");
+  button.disabled = true;
+  try {
+    const made = await api("/hyperlink/models/link", {
+      method: "POST", body: { path, name: $("link-name").value.trim() },
+    });
+    $("link-path").value = "";
+    $("link-name").value = "";
+    $("link-note").textContent = `Linked ${made.name} → ${made.linked_to}`;
+  } catch (e) {
+    runnerError(e.status === 403 ? "Linking a model needs an admin key." : e.message);
+  }
+  button.disabled = false;
+  await loadModels();
+  loadRunner();
 }
 
 async function loadAdopt() {
@@ -671,6 +720,7 @@ function wire() {
     });
   }
   $("refresh-runner").addEventListener("click", loadRunner);
+  $("link-form").addEventListener("submit", linkModel);
   $("remember").addEventListener("submit", async (event) => {
     event.preventDefault();
     const text = $("remember-text").value.trim();

@@ -24,10 +24,23 @@ Two layers, because the environment variable alone is not enough:
 from __future__ import annotations
 
 import os
+import sys
 import tempfile
 from pathlib import Path
 
 import pytest
+
+# Tests live in one folder per package they cover (tests/t1api,
+# tests/quant, ...), and a few import a helper from a test in another
+# folder (test_hnxrun's model writer, test_hyprslug_headers' GGUF
+# builder). Every test folder is on the path, after everything else so it
+# never shadows a real module, and those imports work wherever the file
+# lives.
+_TESTS = Path(__file__).resolve().parent
+for _folder in sorted(p for p in _TESTS.iterdir()
+                      if p.is_dir() and not p.name.startswith(("_", "."))):
+    if str(_folder) not in sys.path:
+        sys.path.append(str(_folder))
 
 #: Where the stores land unless told otherwise.
 REAL_HOME = Path.home() / ".hypernix"
@@ -54,6 +67,9 @@ STORAGE_KEYS = (
     # real port 37965 for the HyperLink web site. Tests of the site turn
     # it on themselves.
     "T1_WEB_ENABLED",
+    # Likewise: a server started by a test must not mirror the real
+    # ~/.hypernix/models. Tests of the sync pass their own folders.
+    "T1_MODEL_SYNC",
 )
 
 
@@ -72,6 +88,7 @@ def _redirect_environment() -> None:
     # the training monitor.
     os.environ.setdefault("T1_CONFIG_DIR", str(_SESSION_ROOT / "config"))
     os.environ.setdefault("T1_WEB_ENABLED", "0")
+    os.environ.setdefault("T1_MODEL_SYNC", "0")
 
 
 def clear_t1_config(monkeypatch) -> None:
