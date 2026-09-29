@@ -1,3 +1,39 @@
+# scripts/
+
+Everything here is run by hand or by a workflow; none of it is imported
+by the `hypernix` package. Repository automation that only CI runs
+lives in [`.github/scripts/`](#githubscripts) instead.
+
+| Script | What it is for | Run by |
+|---|---|---|
+| [`autofix`, `autofix-B`, `autofix-E`, `autofix-F`, `autofix_scope.py`](#autofix) | Classify a CI failure and repair the one class each script owns | you; `ci.yml`'s `triage` reads their commit trailers |
+| `generate_docs_data.py` | Writes `docs/public/v1/{api-deep,t1-api,code-stats,changelog}.json` for the docs site, from the source tree and git history | `update-docs-data.yml` |
+| `t1api_examples.py` | Drives a real T1 API and records `examples/t1api/API-EXAMPLES.md` and `openapi.json`. Rerun after changing a route | you |
+| `update_json_stats.py` | PyPI download statistics into `docs/public/v1/json` | `update-json-stats.yml` (daily) |
+| `ci/fake_model_server.py` | An OpenAI-shaped model that answers with canned text, for the integration jobs | `ci.yml`, `public-release.yml` |
+| `ci/integration_probe.py` | Mints its own key, chats through a running T1 API, and deletes every key it made | same |
+| `ci/wait_for_http.py` | Waits for a server to answer, and says why when it never does | same |
+| `benchmark_v5.py`, `benchmark_v5s.py`, `benchmark_v6.py` | Pressure Cooker V5 / V5S / V6 against AdamW, each on its own identically seeded model. CUDA when there is one | you |
+| `measure_optimizer_memory.py` | Exact optimizer-state bytes per parameter for AdamW and Pressure Cooker V5 / V5S / V6 | you |
+| `install_deps.sh` | Cross-distro bootstrap into `./.venv`, preferring Python 3.12 | you |
+| `install_macos_legacy.sh` | Intel Macs on Catalina / Big Sur that cannot run PyTorch 2.x: torch 1.13 and `hypernix[legacy-torch]` | you |
+| `quantize_i7_7660u.sh` | Quantise `ray0rf1re/hyper-nix.1` to GGUF on a 2-core laptop CPU, one quant at a time | you |
+| `apply_hypernix_fixes.py` | **Obsolete.** A one-off CI repair from before the package was split into subpackages; every file it edits has since moved, so it changes nothing. Kept for history | nobody |
+
+## `.github/scripts/`
+
+| Script | What it does | Run by |
+|---|---|---|
+| `version_guard.py` | Refuses a release version that goes backwards, or that names code a tag already names, and prints the PEP 440 spelling | `public-release.yml` |
+| `release_plan.py` | Decides whether a run is a release, a nightly, or nothing: the nightly setting (`PUBLIC_RELEASE_NIGHTLY`), and skipping nights with no change but the stat bots' | `public-release.yml` |
+| `codacy_sarif_filter.py` | Cuts Codacy's SARIF to correctness and security findings, under GitHub's 25,000-result limit | `codacy.yml` |
+| `security_autofix.py` | Turns open code-scanning and Dependabot alerts into fixes on an autofix branch | `security-autofix.yml` |
+| `update_readme.py` | Rewrites the README header between its markers with the current PyPI version | `update-readme.yml` |
+
+`version_guard.py`, `release_plan.py` and `codacy_sarif_filter.py` have
+tests under `tests/repo/`; `security_autofix.py` and `update_readme.py`
+do not.
+
 # autofix
 
 Three repair scripts, one router, and a shared scope module. Each script

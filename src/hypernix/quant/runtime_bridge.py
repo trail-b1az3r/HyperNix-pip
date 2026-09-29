@@ -57,6 +57,9 @@ __all__ = [
     "Build",
     "find_build",
     "candidate_build_dirs",
+    "recorded_build",
+    "model_types",
+    "HNX_TYPE_SYMBOLS",
     "home",
     "backup_dir",
     "manifest_path",
@@ -123,6 +126,14 @@ class Build:
     #: looking for the decoder's symbols, not by trusting the path.
     patched: bool = False
     note: str = ""
+    #: The HNX type ids this build can read, one decoder symbol each. A
+    #: build patched before a type was added is patched and still
+    #: cannot read that type: gguf.cpp refuses the whole file.
+    hnx_types: frozenset[int] = frozenset()
+
+    def missing(self, types: set[int] | frozenset[int]) -> list[int]:
+        """The HNX type ids among *types* this build cannot read."""
+        return sorted(t for t in types if t >= HNX_FIRST_TYPE and t not in self.hnx_types)
 
     def to_dict(self) -> dict[str, Any]:
         payload = asdict(self)
@@ -131,7 +142,36 @@ class Build:
         payload["libraries"] = {k: str(v) for k, v in self.libraries.items()}
         payload["server"] = str(self.server) if self.server else None
         payload["cli"] = str(self.cli) if self.cli else None
+        payload["hnx_types"] = sorted(self.hnx_types)
         return payload
+
+
+#: The first HyperNix type id; everything below is upstream's.
+HNX_FIRST_TYPE = 200
+
+#: ``type id -> the decoder symbol a patched build exports for it``.
+#: One per type, so a build can be asked about each type separately.
+HNX_TYPE_SYMBOLS: dict[int, str] = {
+    200: "iq0_9", 201: "iq0_75", 202: "iq0_5", 203: "iq0_25",
+    204: "int1", 205: "int4", 206: "fp2", 207: "hnx1375",
+    208: "int8", 209: "int2", 210: "int3", 211: "fp8",
+}
+
+
+def recorded_build() -> Path | None:
+    """The build ``native/ggml-hnx/build.sh`` last made, if it said.
+
+    build.sh writes its build directory to ``~/.hypernix/llama-build``.
+    Without that, a server installed with pip -- not from the checkout
+    -- has no way to know where the checkout is, and finds only a stock
+    llama.cpp, or nothing.
+    """
+    pointer = Path.home() / ".hypernix" / "llama-build"
+    try:
+        text = pointer.read_text(encoding="utf-8").strip()
+    except OSError:
+        return None
+    return Path(text).expanduser() if text else None
 
 
 def candidate_build_dirs() -> list[Path]:
@@ -140,7 +180,10 @@ def candidate_build_dirs() -> list[Path]:
     override = os.environ.get("HNX_LLAMA_BUILD")
     if override:
         paths.append(Path(override).expanduser())
-    # The one build.sh makes.
+    recorded = recorded_build()
+    if recorded is not None:
+        paths.append(recorded)
+    # The one build.sh makes, when running from the checkout.
     here = Path(__file__).resolve().parents[3]
     paths.append(here / "native" / "ggml-hnx" / "llama.cpp" / "build")
     paths.append(Path.home() / "llama.cpp" / "build")
@@ -166,11 +209,56 @@ def _looks_patched(library: Path) -> bool:
     return b"hnx_ggml_to_float_iq0_5" in blob or b"IQ0.5_XXXL" in blob
 
 
-def find_build(explicit: str | Path | None = None) -> Build:
-    """Locate a built llama.cpp. Raises if there is not one."""
-    roots = [Path(explicit).expanduser()] if explicit else candidate_build_dirs()
+def _registered_types(library: Path) -> frozenset[int]:
+    """The HNX type ids whose decoder *library* carries."""
+    try:
+        blob = library.read_bytes()
+    except OSError:
+        return frozenset()
+    return frozenset(
+        type_id for type_id, suffix in HNX_TYPE_SYMBOLS.items()
+        if f"hnx_ggml_to_float_{suffix}".encode() + b"\0" in blob
+    )
 
+
+def find_build(explicit: str | Path | None = None, *,
+               need: set[int] | frozenset[int] = frozenset()) -> Build:
+    """Locate a built llama.cpp. Raises if there is not one.
+
+    *explicit*, or ``HNX_LLAMA_BUILD``, is used as given. Otherwise,
+    searching, the first patched build that reads every
+    type in *need* wins. When none does, the one that reads the most
+    types is returned, and the caller asks it what it is ``missing``.
+    Returning the first build of any kind was how a stock
+    ``~/llama.cpp`` shadowed a patched build further down the list, and
+    a sub-bit model failed with "invalid ggml type 210".
+    """
+    # HNX_LLAMA_BUILD is a person naming the build: used as named, and
+    # reported on if it cannot read the model, never passed over.
+    explicit = explicit or os.environ.get("HNX_LLAMA_BUILD") or None
+    roots = [Path(explicit).expanduser()] if explicit else candidate_build_dirs()
+    found: list[Build] = []
     tried: list[str] = []
+    for build in _builds_in(roots, tried):
+        if explicit or (build.patched and not build.missing(need)):
+            return build
+        found.append(build)
+    if found:
+        # Nothing reads everything: the one that reads the most. The
+        # caller checks ``missing`` and says what is wrong with it.
+        return max(found, key=lambda b: (len(b.hnx_types), b.patched))
+
+    raise BridgeError(
+        "No built llama.cpp found. Looked in:\n  "
+        + "\n  ".join(tried)
+        + "\n\nBuild one with:\n  ./native/ggml-hnx/build.sh\n"
+        "or point at an existing build with HNX_LLAMA_BUILD=/path/to/build"
+    )
+
+
+def _builds_in(roots: list[Path], tried: list[str]):
+    """Every build under *roots*, in order."""
+    seen: set[str] = set()
     for root in roots:
         # Accept either the build directory or the checkout above it.
         for build_root in (root, root / "build"):
@@ -178,6 +266,10 @@ def find_build(explicit: str | Path | None = None) -> Build:
             if not bin_dir.is_dir():
                 tried.append(str(bin_dir))
                 continue
+            real = os.path.realpath(bin_dir)
+            if real in seen:
+                break
+            seen.add(real)
             suffix = _library_suffix()
             libraries = {}
             for stem in CORE_LIBRARIES:
@@ -198,6 +290,7 @@ def find_build(explicit: str | Path | None = None) -> Build:
                 server=server if server.is_file() else None,
                 cli=cli if cli.is_file() else None,
                 patched=_looks_patched(base),
+                hnx_types=_registered_types(base),
             )
             if not build.patched:
                 build.note = (
@@ -205,14 +298,20 @@ def find_build(explicit: str | Path | None = None) -> Build:
                     "run ordinary GGUFs and refuse the sub-bit types. Run "
                     "native/ggml-hnx/build.sh to make a patched one."
                 )
-            return build
+            elif build.missing(set(HNX_TYPE_SYMBOLS)):
+                build.note = (
+                    "This build was patched before some HyperNix types were "
+                    "added and cannot read them. Run native/ggml-hnx/build.sh "
+                    "again to rebuild it."
+                )
+            yield build
+            break
 
-    raise BridgeError(
-        "No built llama.cpp found. Looked in:\n  "
-        + "\n  ".join(tried)
-        + "\n\nBuild one with:\n  ./native/ggml-hnx/build.sh\n"
-        "or point at an existing build with HNX_LLAMA_BUILD=/path/to/build"
-    )
+
+def model_types(path: str | Path) -> frozenset[int]:
+    """The ggml type ids of every tensor in the GGUF at *path*."""
+    from .gguf import GGUFFile
+    return frozenset(int(t.ggml_type) for t in GGUFFile.read(path).tensors)
 
 
 # ---------------------------------------------------------------------------

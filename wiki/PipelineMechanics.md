@@ -118,17 +118,22 @@ exit_code = run(fix=False)
 
 ### Checks performed
 
+A **mandatory** check failing makes the exit code `1`. Everything else
+is reported and never fails the run.
+
 | Check | Mandatory? | Notes |
 |---|---|---|
 | OS | ✅ | Linux/macOS/Windows; on Linux also reports the detected distro id. |
-| Python | ✅ | Expects 3.10–3.13 (3.12 is the CI target, no functional difference for users). |
+| Python | ✅ | `PYTHON_RANGE`, 3.10–3.14 -- the same range as `requires-python` (a test keeps them equal). |
 | torch | ✅ | Floor is 1.13 (last 1.x release, needed for `hypernix.torch_compat` on old Intel Macs). Recommends ≥2.7 for native `nn.RMSNorm` + fused SDPA; 1.13–2.7 still works via the compat shim but without `torch.compile`/FlashAttention. |
-| gguf | ✅ | Plain import check. |
-| huggingface_hub | ✅ | Plain import check. |
-| safetensors | ✅ | Plain import check. |
-| sentencepiece | optional | Plain import check. |
-| llama-quantize | ✅ | Calls `quantize._find_llama_quantize(auto_fetch=False)` — deliberately does **not** trigger an auto-fetch during a diagnostic run; only reports what's already resolvable. |
-| auto-fetch cache | informational | Always reports `True` — just shows whether the fetcher's cache is populated, not whether that's good or bad. |
+| numpy, safetensors, huggingface_hub, gguf, tqdm, rich, sentencepiece | ✅ | Every dependency in `pyproject.toml` but torch, one line each (`_REQUIRED_IMPORTS`; a test keeps it equal to the dependency list). |
+| GPU | informational | The card, its memory, and the brewer preset and optimizer that fit it -- the table in the [Model Training Guide](Model-Training-Guide.md). No GPU gives the `cpu-*` presets; several suggest `lazy_suzan`; Apple GPUs are reported as MPS. |
+| llama-quantize | optional | `quantize._find_llama_quantize(auto_fetch=False)` -- deliberately does **not** download during a diagnostic. Not finding one is `[--]`, not a failure: `hypernix quantize` fetches a prebuilt one the first time it needs it, and `hypernix fetch-llama-quantize` does it now. |
+| auto-fetch cache | informational | Whether the fetcher's cache is populated. |
+| patched llama.cpp | optional | The build `runtime_bridge.find_build` would use, and whether it reads every HyperNix type. A stock build, or one patched before INT3/FP8, is `[--]` with the fix (`native/ggml-hnx/build.sh`). Only the HNX types need it. |
+| models folder | optional | `$HYPERNIX_MODELS_DIR`, else the config's `download_dir`, else `~/.hypernix/models` -- not created by looking. Counts GGUF and safetensors files through symlinks, and reports a link whose target has gone. |
+| extras | informational | Which `pip install 'hypernix[...]'` extras are present (`llama-cpp`, `train`, `t1api`, `t1api-pg`, `security`, `elements`, `gui`), by `find_spec`, without importing them. |
+| console scripts on PATH | optional | `hypernix path --apply` fixes it; `--fix` does too, outside a virtualenv. |
 | `nice` / `ionice` | optional, POSIX-only | Skipped entirely on Windows. |
 
 `_check_import(mod, minver=None)` — imports the module, reads
@@ -139,18 +144,23 @@ version anywhere in the function body — currently unused.
 
 ### `--fix` behavior
 
-Installs/upgrades `_RUNTIME_DEPS` (`numpy`, `safetensors`,
-`huggingface-hub`, `gguf`, `tqdm`, `sentencepiece`) and `_OPTIONAL_DEPS`
-(`tokenizers`, `transformers`) via `hypernix.deps.ensure(..., upgrade=True)`.
-**`torch` is deliberately never installed or upgraded by `--fix`** — it's
-absent from both dependency tuples specifically so users keep control
-over their own CUDA/CPU build choice (see `hypernix.deps.PROTECTED`).
+Installs/upgrades `_RUNTIME_DEPS` (every `pyproject.toml` dependency but
+torch: `numpy`, `safetensors`, `huggingface-hub`, `gguf`, `tqdm`,
+`rich`, `sentencepiece`) and `_OPTIONAL_DEPS` (`tokenizers`,
+`transformers`, `accelerate` -- the `train` extra) via
+`hypernix.deps.ensure(..., upgrade=True)`, then puts the console scripts
+on PATH if they are not. **`torch` is deliberately never installed or
+upgraded by `--fix`** — it's absent from both dependency tuples
+specifically so users keep control over their own CUDA/CPU build choice
+(see `hypernix.deps.PROTECTED`).
 
 ### Required modules
 
 - `hypernix.deps`, `hypernix.fetcher` (`cache_dir`, `cached_binary`),
-  `hypernix.quantize` (`_detect_distro_id`, `_find_llama_quantize`) — internal
-- Standard library: `importlib`, `platform`, `shutil`, `sys`, `pathlib`
+  `hypernix.quantize` (`_detect_distro_id`, `_find_llama_quantize`),
+  `hypernix.quant.runtime_bridge` (`find_build`), `hypernix.system.linkwalk`,
+  `hypernix.system.pathfix` — internal
+- Standard library: `importlib`, `os`, `platform`, `shutil`, `sys`, `pathlib`
 
 ---
 

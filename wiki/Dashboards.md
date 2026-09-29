@@ -1,35 +1,20 @@
-# Training Dashboards — `tv`, `tvtop_plus_plus`, and the `tvtop*` console scripts
+# Training Dashboards — `tv`, `tvtop_plus_plus`, `cctvtop`, and the `tvtop*` commands
 
-Three live btop++-style terminal dashboards for watching a training run:
-the original `tv` (`TVTop`), the "premium" `tvtop_plus_plus`
-(`TVTopPlusPlus`), and a C++-accelerated `cctvtop` requiring an optional
-compiled extension. All three tail a training log, parse `step N/M
-loss=X` -style lines, and render CPU/RAM/GPU vitals alongside training
-progress.
+Terminal dashboards for watching a training run. Each tails a training
+log, parses `step N/M loss=X`-style lines, and draws CPU/RAM/GPU vitals
+beside the run's progress:
 
-**⚠️ Console script mapping does not match the README / package
-docstrings.** The README states "Console script `tvtop` now launches
-the premium `tvtop_plus_plus` dashboard by default; use `tvtop-old` for
-the classic view." The actual `pyproject.toml` entry points (as of this
-writing) are:
+| Command | Runs | What it is |
+|---|---|---|
+| `tvtop-older` | `hypernix.monitoring.tv` | the original dashboard, stdlib only |
+| `hypernix tvtop` | `hypernix.monitoring.tv` | the same one, from `hypernix` |
+| `tvtop-old`, `tvtop-plus-plus`, `tvtoppp` | `hypernix.monitoring.tvtop_plus_plus` | the Rich dashboard with themes and a spinner |
+| `tvtop`, `cctvtop`, `hypernix cctvtop` | `hypernix.monitoring.cctvtop` | tvtop++ plus hardware metrics and a remote-desktop panel, pure Python |
+| `tvtop-pro`, `tvtoppro` | `hypernix.monitoring.tvtoppro` | tvtop++'s numbers in btop++'s presentation ([TvTopPro](TvTopPro.md)) |
+| `tvtop-max`, `tvtopmax` | `hypernix.monitoring.tvtop_max` | tvtop-pro on OpenTUI, with the run's script, modules and logs ([TvTopMax](TvTopMax.md)) |
 
-| Script | Actually runs |
-|---|---|
-| `tvtop` | `hypernix.cctvtop:cli_main` — the **C++-accelerated** dashboard |
-| `cctvtop` | same as `tvtop` |
-| `tvtop-old` | `hypernix.tvtop_plus_plus:cli_main` — the **premium** dashboard (not "classic"!) |
-| `tvtop-older` | `hypernix.tv:cli_main` — the actual original/classic dashboard |
-| `tvtop-plus-plus` / `tvtoppp` | `hypernix.tvtop_plus_plus:cli_main` |
-
-Practically: `cctvtop` (and therefore the bare `tvtop` command) requires
-the optional `cctvtop_ext` C++ extension, **not built by default** — if
-it's missing, running `tvtop` prints `cctvtop_ext C++ module not found`
-and exits with status 1. If you just `pip install hypernix` and run
-`tvtop` expecting a dashboard, you'll likely hit this. Use `tvtop-old`
-(premium Rich dashboard) or `tvtop-older` (original) directly, or build
-the extension per `cctvtop --help`'s instructions
-(`pip install -e .` with `BUILD_CCTVTOP=1`, or `python setup.py
-build_ext --inplace`).
+The one trap: **`tvtop` and `hypernix tvtop` are different dashboards**.
+The standalone command is `cctvtop`; the subcommand is the original.
 
 ---
 
@@ -184,26 +169,37 @@ a blank training panel.
 
 ---
 
-## `hypernix.cctvtop` — the C++-accelerated dashboard
+## `hypernix.cctvtop` — hardware metrics and a remote desktop
 
 ```bash
-cctvtop --help
+cctvtop                                   # ~/checkpoints/train.log, ./checkpoints/train.log, then auto-detect
+cctvtop --log run.log
+cctvtop --remote-desktop                  # start VNC, password, localhost only
+cctvtop --remote-desktop --remote-desktop-listen tailscale
+cctvtop --remote-desktop-status           # what is running; exit 1 if nothing
 ```
 
-A thin Python wrapper (`cli_main`) that imports a compiled
-`hypernix.cctvtop_ext` C++ extension module and, if present, tails the
-most recently modified `*.log` under the cwd through it. If the
-extension isn't importable, prints `cctvtop_ext C++ module not found.
-Did you compile the package?` and exits with status `1` — this is the
-module actually mapped to the plain `tvtop` command, so a fresh install
-without the compiled extension will hit this every time `tvtop` is run
-bare.
+A `TVTopPlusPlus` subclass: tvtop++'s panels plus a remote-desktop
+panel, all in Python. It looks for the log at `~/checkpoints/train.log`,
+then `./checkpoints/train.log`, then the newest training-shaped log
+under the current folder, and says where it looked when it finds none.
 
-### Required modules
+Nothing is started unless `--remote-desktop` is passed. Then it starts
+a VNC server with a password, bound to localhost
+(`--remote-desktop-listen localhost|tailscale|lan|all`,
+`--remote-desktop-view-only`, and `--remote-desktop-insecure` for no
+password, which it prints a warning about). A server that fails to
+start stops the dashboard with the reason rather than showing "not
+running", and on exit it stops only a server it started itself. The
+panel logic lives in `hypernix.monitoring.remote_desktop`.
 
-`hypernix.cctvtop_ext` — a compiled C++ extension, **not built by
-default**. Build via `pip install -e .` with `BUILD_CCTVTOP=1` set, or
-`python setup.py build_ext --inplace`.
+### The old C++ extension
+
+`cctvtop` used to wrap a compiled `hypernix.cctvtop_ext` and exit with
+"cctvtop_ext C++ module not found" when it had not been built, which
+made the bare `tvtop` command fail on a fresh install. It no longer
+imports it. `setup.py` can still build it (`BUILD_CCTVTOP=1`), but
+nothing in the package uses it.
 
 ---
 

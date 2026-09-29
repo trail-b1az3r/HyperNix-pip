@@ -445,15 +445,25 @@ class ManagedRunner:
         if not model_path.is_file():
             raise ManagedError(f"No such model: {model_path}")
 
-        from ..quant.runtime_bridge import BridgeError, find_build, serve_argv
+        from ..quant.gguf import GGUFError
+        from ..quant.runtime_bridge import BridgeError, find_build, model_types, serve_argv
 
         try:
-            build = find_build()
+            types = model_types(model_path)
+        except (GGUFError, OSError):
+            types = frozenset()     # llama-server says what is wrong with it
+        try:
+            build = find_build(need=types)
         except BridgeError as exc:
             raise ManagedError(
                 f"{exc}\n\nThis is what HyperNix serves models with when LM "
                 f"Studio is not involved."
             ) from exc
+        missing = build.missing(types)
+        if missing:
+            # Refused here, in words, rather than handed to llama-server
+            # to fail on as "invalid ggml type 210. should be in [0, 43)".
+            raise ManagedError(_unreadable_types_message(model_path, build, missing))
 
         placement = plan_placement(
             file_bytes=model_path.stat().st_size,
@@ -498,10 +508,14 @@ class ManagedRunner:
             self._current = record
 
         if not self._wait_until_ready(process, timeout):
+            code = process.poll()
             output = self._drain(process)
             self.unload()
+            what = (f"llama-server exited (code {code}) while loading {record.model_id}"
+                    if code is not None
+                    else f"{record.model_id} did not start within {timeout:.0f}s")
             raise ManagedError(
-                f"{record.model_id} did not start within {timeout:.0f}s.\n"
+                f"{what}.\n"
                 f"Placement was: {placement.reason}\n"
                 f"Last output:\n{output[-2000:]}"
             )
@@ -556,10 +570,13 @@ class ManagedRunner:
             self._process = process
             self._current = record
         if not self._wait_until_ready(process, timeout):
+            code = process.poll()
             output = self._drain(process)
             self.unload()
+            what = (f"the HyperNix model server exited (code {code}) while loading {alias}"
+                    if code is not None else f"{alias} did not start within {timeout:.0f}s")
             raise ManagedError(
-                f"{alias} did not start within {timeout:.0f}s.\n"
+                f"{what}.\n"
                 f"Last output:\n{output[-2000:]}"
             )
         return record
@@ -745,6 +762,25 @@ class ManagedPool:
             "base_urls": self.base_urls,
             "model": current.to_dict() if current else None,
         }
+
+
+def _unreadable_types_message(model: Path, build: Any, missing: list[int]) -> str:
+    """Why *build* cannot open *model*, and the one command that fixes it."""
+    from ..quant.ggufcheck import _type_name  # noqa: PLC2701
+
+    names = ", ".join(f"{_type_name(t)} ({t})" for t in missing)
+    if build.patched:
+        why = (f"The llama.cpp at {build.bin_dir} was patched before these "
+               f"types were added.")
+        fix = "Rebuild it: ./native/ggml-hnx/build.sh"
+    else:
+        why = (f"The llama.cpp at {build.bin_dir} is a stock build, which reads "
+               f"no HyperNix types.")
+        fix = ("Build the patched one: ./native/ggml-hnx/build.sh (it records "
+               "where it built, so this server finds it), or point at one with "
+               "HNX_LLAMA_BUILD=/path/to/build")
+    return (f"{model.name} uses {names}, and no llama.cpp build here can read "
+            f"{'it' if len(missing) == 1 else 'them'}.\n{why}\n{fix}")
 
 
 def allocate_ports(

@@ -534,7 +534,7 @@ Click a category below to expand it.
 |---|---|
 | `hypernix.smoke_alarm` | Training-step planner & monitor. `RadsAlarm` (constants, lightest), `GasAlarm` (CPU/GPU presets), `ModernAlarm` (warmup-measured), `AutoAlarm` (selector). Plus `storage_warning()` for disk-space checks before a long run. |
 | `hypernix.table` | Dead-simple tabular viewer: `from_training_log`, `from_judge_corpus`, `filter`, `select`, `show`. |
-| `hypernix.tvtop` | Backwards-compatibility shim — all functionality moved to `hypernix.tv`. Re-exports everything so `import hypernix.tvtop` continues to work. Console script `tvtop` now launches the `tvtop_plus_plus` dashboard by default; use `tvtop-old` for the classic view. |
+| `hypernix.tvtop` | Backwards-compatibility shim — all functionality moved to `hypernix.tv`. Re-exports everything so `import hypernix.tvtop` continues to work. The `tvtop` command runs `cctvtop` (tvtop++ plus hardware metrics and a remote-desktop panel), while `hypernix tvtop` and `tvtop-older` run this original one; see [Dashboards](wiki/Dashboards.md). |
 | `hypernix.wiki_cli` | *(v0.70.5)* `hnx` / `hypenix` command — auto-generating wiki from source docstrings. `hnx`, `hnx -q`, `hnx -b`. |
 | `hypernix.vera` | *(v0.70.5)* Module verification — syntax, docstrings, types, smoke tests. `hnx vera <file>` / `hnx vera --all`. |
 
@@ -618,7 +618,7 @@ Five new modules + major optimizer rewrites:
 - **`pressure_cooker` V2** — Quantization-aware training with fp16/bf16/fp64 mixed-precision, QAT hooks for Q8/Q6/Q5.5/Q4M, plus 10 upgrades (mixed-precision autodetect, QAT hooks, gradient-checkpointing integration, adaptive per-layer gradient clipping, EMA weight shadowing, DDP/FSDP-aware distributed training, dynamic loss scaling with overflow backoff, parameter freeze/unfreeze callbacks, an LR finder, and metrics streaming to tvtop)
 - **`pressure_cooker_v3`** — ZeRO-1/2 optimizations, FP8 support, `QuantDtype` enum + `QuantConfig` dataclass
 - **`workshop`** — Model frameworks for TTS/ASR/LLM/Vision with pre-built templates, nano-nano collection support, 30+ architectures (LiquidAI LFM2.5, MiniCPM5, Gemma 4, Qwen3.5, Phi-4, DeepSeek-V2.x, and others)
-- **`tvtop`** — Now launches the premium `tvtop_plus_plus` dashboard by default; use `tvtop-old` for the classic view
+- **`tvtop`** — Runs `cctvtop` (tvtop++ plus hardware metrics and a remote-desktop panel); `tvtop-old` is tvtop++ and `tvtop-older` the original. See [Dashboards](wiki/Dashboards.md)
 
 ## Install
 

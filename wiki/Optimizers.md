@@ -9,6 +9,10 @@ speed-first V6 line, both documented on their own pages:
 [Pressure Cooker V6 / V6V](Pressure-Cooker-V6.md). (V3 is also documented
 separately: [Pressure Cooker V3](Pressure-Cooker-V3.md).)
 
+**Deprecated since 0.72.6:** the original `PressureCooker` (v1, below)
+and `PressureCookerV3`. Constructing either warns with a `FutureWarning`
+naming V4 (kept) or V5/V6 as the replacement; importing does not warn.
+
 **Accuracy note:** `pressure_cooker.py`'s module docstring used to list
 `PressureCookerV2` / `PressureCookerV2Plus` and a "WORKSHOP INTEGRATION"
 / "TTS/ASR PIPELINES" section (`WorkshopFramework`, `TTSEngine`,

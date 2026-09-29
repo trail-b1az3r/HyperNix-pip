@@ -39,8 +39,10 @@
  * Correctness
  * -----------
  * The bit order, group stride and repeat rule are the CPU
- * implementation's, and `hnx_selftest --cuda` checks the two agree on
- * the same vectors the CPU side is checked against. They have to: a
+ * implementation's. tests/quant/test_ggml_hnx.py checks the launcher
+ * geometry against the CPU table and, with nvcc present, the PTX; a
+ * numeric comparison against the CPU decoder on a GPU is still to be
+ * written. It matters: a
  * kernel that decodes one bit differently produces a model that runs at
  * full speed and talks nonsense, which is the failure mode this whole
  * directory is arranged around catching.
@@ -173,7 +175,7 @@ __global__ void hnx_dequantize(
 // The five types, as (group, kept, block_bytes). Kept beside the launchers
 // rather than derived from hnx_type_lookup at runtime, because these have
 // to be compile-time constants for the templates above — and a mismatch
-// with the CPU table is what hnx_selftest --cuda exists to catch.
+// with the CPU table is what tests/quant/test_ggml_hnx.py checks for.
 #define HNX_CUDA_LAUNCHERS(suffix, group, kept, bytes)                        \
     extern "C" void hnx_cuda_mul_mat_vec_##suffix(                            \
         const void* x, const float* y, float* dst, int nblocks, int nrows,    \

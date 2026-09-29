@@ -1,7 +1,9 @@
 # `runtime` — the HyperNix llama.cpp, from other applications
 
-`native/ggml-hnx` builds a llama.cpp that reads the sub-bit types. This
-is how everything else gets to use it.
+`native/ggml-hnx` builds a llama.cpp that reads every HyperNix type (the
+sub-bit tiers, `HNX_1375BIT`, the `INT8`/`INT4`/`INT3`/`INT2`/`FP2`/`FP8`
+codebooks) and runs `Q8_K` weights, so the `hnx_Q6_H` hybrids load too.
+This is how everything else gets to use it.
 
 ```bash
 hnx runtime status                # what is built, detected, installed
@@ -21,7 +23,7 @@ and closing it puts everything back. It works with applications this has
 never heard of, and it does not care what version of them you have.
 
 **`install` copies the patched libraries over the ones LM Studio
-bundles**, so LM Studio loads a sub-bit model natively. Nicer when it
+bundles**, so LM Studio loads a HyperNix model natively. Nicer when it
 works, and it is surgery on somebody else's application. Read the
 guarantees below before using it.
 
@@ -107,9 +109,31 @@ dlopens a llama.cpp can be pointed at it.
 
 ## Which build it uses
 
-In order: `--build`, then `$HNX_LLAMA_BUILD`, then the one
-`native/ggml-hnx/build.sh` makes, then `~/llama.cpp/build`. `status`
-says which it found and whether it carries the decoder:
+`--build` or `$HNX_LLAMA_BUILD` is used as named. Otherwise it looks,
+in order, at the build `native/ggml-hnx/build.sh` recorded in
+`~/.hypernix/llama-build`, the one in this checkout, `~/llama.cpp/build`
+and `~/.hypernix/llama.cpp/build` -- and takes the first *patched* build
+that reads every HyperNix type the model uses, not the first build of
+any kind. A stock `~/llama.cpp` no longer shadows the patched build.
+
+build.sh writes `~/.hypernix/llama-build` because a T1 server installed
+with pip cannot know where your checkout is. Without it, that server
+found only a stock llama.cpp, and a sub-bit model failed inside
+llama-server with `invalid ggml type 210. should be in [0, 43)`.
+
+Each type is checked on its own: a patched build exports one decoder
+symbol per type (`hnx_ggml_to_float_int3`, ...), so a build patched
+before INT3 and FP8 existed is recognised as one that cannot read them.
+The runner refuses such a model before starting anything, and says
+which types are missing and whether to build or rebuild:
+
+```
+HyperNix.3-mini.gguf uses INT3 (210), and no llama.cpp build here can read it.
+The llama.cpp at /home/me/llama.cpp/build/bin is a stock build, which reads no HyperNix types.
+Build the patched one: ./native/ggml-hnx/build.sh (it records where it built, ...)
+```
+
+`status` says which build it found and whether it carries the decoder:
 
 ```
   build      /home/me/HyperNix-pip/native/ggml-hnx/llama.cpp/build/bin  (patched)
@@ -123,6 +147,6 @@ exists and cannot compute with it.
 
 ## See also
 
-- [HyprSlug](HyprSlug.md) — making the sub-bit files.
+- [HyprSlug](HyprSlug.md) — making the files: sub-bit tiers, codebooks, `Q8_K` and the hybrids.
 - [Studio](../desktop/README.md) — the desktop app, which runs them
   in-process without any of this.

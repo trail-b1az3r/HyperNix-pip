@@ -1,4 +1,10 @@
-# ggml-hnx — HyperNix sub-1-bit types for llama.cpp
+# ggml-hnx — the HyperNix types for llama.cpp
+
+A patch that teaches llama.cpp every GGML type HyperNix writes (ids 200
+to 211: the sub-bit tiers, `INT1`, `HNX_1375BIT`, and the `INT8`,
+`INT4`, `INT3`, `INT2`, `FP2` and `FP8` codebooks) and gives upstream's
+`Q8_K` the weight kernel it lacks. Everything hyprslug writes, the
+`hnx_Q6_H` hybrids included, runs in a llama.cpp built this way.
 
 ## The problem this solves
 
@@ -79,6 +85,14 @@ exactly, including all 256 FP8 codes.
 GPU backends are upstream's, untouched: `-DGGML_CUDA=ON` and
 `-DGGML_HIPBLAS=ON` are passed straight through.
 
+When it finishes, `build.sh` writes the build directory to
+`~/.hypernix/llama-build`. The T1 runner, `hnx runtime` and `hnx doctor`
+read it, so a server installed with pip uses this build rather than a
+stock llama.cpp it finds first (`HNX_LLAMA_BUILD` still overrides it).
+They also check the build per type: one patched before INT3 and FP8
+existed is reported as needing a rebuild, not handed a model it cannot
+open. See [Runtime](../../wiki/Runtime.md#which-build-it-uses).
+
 Test the decoder on its own, without cloning 200 MB of upstream:
 
 ```bash
@@ -126,7 +140,7 @@ rm -rf native/ggml-hnx/llama.cpp && ./build.sh
 | `ggml-hnx-shim.h` / `.c` | ggml's calling convention over the decoder. |
 | `ggml-hnx-cuda.cu` / `-cuda.h` | the GPU kernels. Opt-in; see below. |
 | `hnx_selftest.c` | the checks, including the cross-check against Python. |
-| `tools/gen_vectors.py` | packs blocks with `hypernix.quant.subbit` and records what it decodes them to. |
+| `tools/gen_vectors.py` | packs blocks with `hypernix.quant.subbit` and `hypernix.quant.lowbit` and records what they decode them to. |
 | `tools/patch_llamacpp.py` | registers the types in a checkout. |
 | `build.sh` | clone, patch, verify, build. |
 
@@ -162,20 +176,33 @@ hide precisely the errors this exists to catch. The vectors include
 all-positive, all-negative, alternating and group-aligned blocks,
 because a uniform block passes with the bit order reversed.
 
+The codebook types are checked the same way and just as exactly, since
+both sides compute `level × scale` in float32 from the same table: nine
+blocks of each of the six, 99 records in all, with every FP8 byte
+reachable. `hnx_selftest` also checks each codebook's round trip and
+dot product, and the Q8_K dot product against hand-built blocks.
+
 `tests/quant/test_ggml_hnx.py` runs all of it from the Python suite, so it is
 covered by CI rather than by remembering to run `ctest`.
 
 ## Using it with LM Studio
 
-LM Studio ships its own llama.cpp runtime and swapping it is
-version-specific and unsupported by them. In outline: build here, find
-the runtime directory LM Studio loads (`~/.lmstudio/extensions/backends`
-on Linux at the time of writing), and place the built libraries where it
-looks. Expect this to break when LM Studio updates, and expect no help
-from them if it does.
+LM Studio ships its own llama.cpp runtime. `hnx runtime` handles the
+two ways to use this build with it:
 
-The supported route is HyperNix's own stack, which loads these types
-directly: `hnx run`, the T1 API's `/inference/*`, and HyperNix Studio.
+```bash
+hnx runtime serve model.gguf    # an OpenAI-compatible server LM Studio can point at; changes nothing
+hnx runtime install --yes       # replace the libraries LM Studio bundles (backed up)
+hnx runtime restore --yes       # put them back
+```
+
+`install` is version-specific, will break when LM Studio updates, and is
+unsupported by LM Studio. See [Runtime](../../wiki/Runtime.md).
+
+HyperNix's own stack also loads these types directly, without this
+build: `hypernix chat` and `hypernix generate` (through
+[HnxRun](../../wiki/HnxRun.md)), the T1 API's runner and `/inference/*`,
+and HyperNix Studio.
 
 ## What this does not do
 
@@ -184,8 +211,19 @@ weight a model stops being a slightly worse version of itself and
 becomes a different, much worse model. This makes such a file loadable
 and *correct*; accuracy is not something a decoder can give back.
 
-**CUDA is opt-in.** `-DGGML_HNX_CUDA=ON` builds
-`ggml-hnx-cuda.cu`: two kernels per type, one warp per row, a shuffle
+**In llama.cpp, these types run on the CPU backend.** In a CUDA build
+their tensors are computed on the CPU and the rest of the graph goes to
+the GPU. The patch does not register a CUDA kernel for any of them.
+
+**CUDA kernels exist for the five sign-only types** (`IQ0.9_L`,
+`IQ0.75_M`, `IQ0.5_XXXL`, `IQ0.25_UXL`, `INT1`), in the standalone
+library only: `cmake -DGGML_HNX_CUDA=ON` in this folder builds
+`ggml-hnx-cuda.cu`. `tests/quant/test_ggml_hnx.py` checks their
+compile-time geometry against the CPU table and, where `nvcc` is
+installed, that they compile to the expected kernels. Nothing yet runs
+them against the CPU decoder on a GPU, and wiring them into llama.cpp's
+CUDA backend is not done either. Two
+kernels per type, one warp per row, a shuffle
 reduction and no shared memory. The dot product never materialises a
 row — every weight is ±scale, so a block reduces to `scale · Σ(±y)`,
 which means a row that would be 1 KB in F32 is 30 bytes of L2 and the
