@@ -154,3 +154,115 @@ class TestTheWorkflow:
     def test_no_step_reads_the_raw_version_input_after_the_plan(self, text):
         after = text.split("\n  cut:\n", 1)[1]
         assert "${{ inputs.version }}" not in after
+
+
+sys.path.insert(0, str(SCRIPT.parent))
+import release_plan  # noqa: E402
+
+STAT = ("chore: update JSON stats (scheduled)", ["docs/public/v1/json"])
+DOCS = ("chore: refresh generated docs data and release summaries",
+        ["docs/public/v1/t1-api.json", "docs/public/v1/api-deep.json"])
+README = ("Auto-update README header (hourly)", ["README.md"])
+CODE = ("hyprslug: a fix", ["src/hypernix/quant/hyprslug.py"])
+
+
+class TestStatUpdatesDoNotMakeANightly:
+    """The stat bots commit all day; a nightly of nothing but their
+    commits is the same code as last night's under a new name."""
+
+    def _plan(self, since):
+        return release_plan.plan(
+            event="schedule", version="", nightly=False, enabled=True,
+            head=HEAD, last_nightly="0" * 40, date="20260930", base="0.72.6", since=since,
+        )
+
+    def test_only_stat_commits_is_skipped(self):
+        out = self._plan([STAT, DOCS, README])
+        assert out["run"] == "false"
+        assert "only stat updates" in out["reason"] and "3 commits" in out["reason"]
+
+    def test_one_real_commit_among_them_builds(self):
+        assert self._plan([STAT, CODE, DOCS])["run"] == "true"
+
+    def test_history_it_cannot_compare_builds(self):
+        assert self._plan(None)["run"] == "true"
+
+    def test_by_hand_it_builds_anyway(self):
+        out = release_plan.plan(
+            event="workflow_dispatch", version="", nightly=True, enabled=False,
+            head=HEAD, last_nightly="0" * 40, date="20260930", base="0.72.6", since=[STAT],
+        )
+        assert out["run"] == "true"
+
+    @pytest.mark.parametrize("subject,files", [STAT, DOCS, README])
+    def test_each_bot_commit_is_recognised(self, subject, files):
+        assert release_plan.is_stat_update(subject, files)
+
+    def test_a_bot_subject_on_code_is_not_a_stat_update(self):
+        """Both the subject and the files have to match: a stat commit
+        that strays outside its files is a change like any other."""
+        assert not release_plan.is_stat_update(README[0], ["README.md", "src/hypernix/cli.py"])
+        assert not release_plan.is_stat_update(STAT[0], ["docs/public/v1/json-extra/x"])
+
+    def test_a_person_editing_the_stat_files_is_a_change(self):
+        assert not release_plan.is_stat_update("docs: fix the README intro", ["README.md"])
+
+    def test_an_empty_commit_is_not_a_stat_update(self):
+        assert not release_plan.is_stat_update(STAT[0], [])
+
+
+class TestAgainstARealRepository:
+    @pytest.fixture
+    def repo(self, tmp_path):
+        def git(*args):
+            return subprocess.run(["git", *args], cwd=tmp_path, capture_output=True,
+                                  text=True, check=True).stdout.strip()
+
+        git("init", "-q", "-b", "main")
+        git("config", "user.email", "t@example.com")
+        git("config", "user.name", "t")
+        (tmp_path / "pyproject.toml").write_text('version = "0.72.6"\n')
+        (tmp_path / "README.md").write_text("x\n")
+        git("add", "-A")
+        git("commit", "-qm", "start")
+
+        def commit(subject, path, text):
+            target = tmp_path / path
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(text)
+            git("add", "-A")
+            git("commit", "-qm", subject)
+            return git("rev-parse", "HEAD")
+
+        return tmp_path, git, commit
+
+    def _run(self, root, last, head):
+        done = subprocess.run(
+            [sys.executable, str(SCRIPT), "--event", "schedule", "--enabled", "true",
+             "--head", head, "--last-nightly", last, "--date", "20260930",
+             "--pyproject", "pyproject.toml"],
+            cwd=root, capture_output=True, text=True, check=True,
+        )
+        return dict(line.split("=", 1) for line in done.stdout.splitlines())
+
+    def test_stat_commits_since_the_tag_skip_the_night(self, repo):
+        root, git, commit = repo
+        last = git("rev-parse", "HEAD")
+        commit("chore: update JSON stats (scheduled)", "docs/public/v1/json", "1")
+        head = commit("Auto-update README header (hourly)", "README.md", "y\n")
+        assert self._run(root, last, head)["run"] == "false"
+
+    def test_a_real_commit_since_the_tag_builds(self, repo):
+        root, git, commit = repo
+        last = git("rev-parse", "HEAD")
+        commit("chore: update JSON stats (scheduled)", "docs/public/v1/json", "1")
+        head = commit("fix: a real change", "src/x.py", "print(1)\n")
+        assert self._run(root, last, head)["run"] == "true"
+
+    def test_a_tag_off_the_branch_builds(self, repo):
+        root, git, commit = repo
+        git("checkout", "-qb", "side")
+        side = commit("elsewhere", "side.txt", "s")
+        git("checkout", "-q", "main")
+        head = commit("chore: update JSON stats (scheduled)", "docs/public/v1/json", "1")
+        assert self._run(root, side, head)["run"] == "true"
