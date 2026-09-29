@@ -132,6 +132,15 @@ def _resolve(model_id: str, config: T1APIConfig, registry) -> tuple[str, dict]:
                     f"disk — it came from {model.source}. Only a local GGUF or "
                     f"HyperNix model folder can be loaded by the runner.",
                 )
+            if not Path(model.path).exists():
+                # A symlink whose target has gone. The catalogue lists it
+                # so the app can say why; loading it would fail later
+                # with a far less useful error.
+                raise T1APIError(
+                    T1ErrorCode.VALIDATION_ERROR,
+                    f"{model_id} cannot be loaded: {model.detail or 'its file is missing'}.",
+                    details={"model_id": model_id, "path": model.path},
+                )
             return model.path, model.to_dict()
     from ...hyperlink.brewed import BrewedError, describe, download, matches_default
 

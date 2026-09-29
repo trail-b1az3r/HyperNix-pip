@@ -1912,6 +1912,8 @@ search are covered in [HyperLink sync](HyperLink-Sync.md).
 | POST | `/hyperlink/preferences/reset` | bearer | back to the defaults |
 | POST | `/hyperlink/models/download` | bearer | download a model onto the **server**, as a job |
 | GET | `/hyperlink/models/downloaded` | bearer | what is already on the server's disk |
+| POST | `/hyperlink/models/link` | admin | list a model already on the server (a .gguf, a folder with one, or a hyperNix0x-v2 folder) by symlinking it into the models folder |
+| DELETE | `/hyperlink/models/link/{name}` | admin | remove such a link; never the model it points at |
 | GET | `/hyperlink/sync` | bearer | the change feed since a cursor |
 | POST | `/hyperlink/sync/claim` | bearer | claim an idempotency key before sending a turn |
 | GET/POST | `/hyperlink/push` | bearer | list / register this device's APNs token |

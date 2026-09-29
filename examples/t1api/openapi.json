@@ -3792,6 +3792,58 @@
         "title": "ModelDetailResponse",
         "type": "object"
       },
+      "ModelLinkRequest": {
+        "description": "A model already on the server, to list in HyperLink by symlink.",
+        "properties": {
+          "name": {
+            "default": "",
+            "title": "Name",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "title": "ModelLinkRequest",
+        "type": "object"
+      },
+      "ModelLinkResponse": {
+        "properties": {
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "linked_to": {
+            "title": "Linked To",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "request_id": {
+            "title": "Request Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "path",
+          "linked_to",
+          "kind",
+          "request_id"
+        ],
+        "title": "ModelLinkResponse",
+        "type": "object"
+      },
       "ModelListResponse": {
         "properties": {
           "count": {
@@ -10887,6 +10939,125 @@
           }
         },
         "summary": "List Downloaded",
+        "tags": [
+          "hyperlink"
+        ]
+      }
+    },
+    "/hyperlink/models/link": {
+      "post": {
+        "description": "List a model that is already on the server, by symlinking it in.\n\nAdmin only: the caller names a path on the server's disk, and while\nonly a .gguf or a model folder is accepted, choosing what the server\nreads from where is the operator's call. The link goes in the folder\nthe model picker reads, so the model is loadable at once.",
+        "operationId": "link_model_route_hyperlink_models_link_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModelLinkRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelLinkResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Link Model Route",
+        "tags": [
+          "hyperlink"
+        ]
+      }
+    },
+    "/hyperlink/models/link/{name}": {
+      "delete": {
+        "description": "Remove a model link. Only ever a link: never the model it points at.",
+        "operationId": "unlink_model_route_hyperlink_models_link__name__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelLinkResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Unlink Model Route",
         "tags": [
           "hyperlink"
         ]

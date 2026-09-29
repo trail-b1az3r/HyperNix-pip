@@ -59,6 +59,16 @@
         <h2>Models on this server</h2>
         <ul class="list" id="runner-models"></ul>
         <p class="error" id="runner-error" hidden></p>
+        <form class="card" id="link-form">
+          <h2>Link a model already on the server</h2>
+          <p class="muted">A .gguf, a folder with one in it, or a hyperNix0x-v2 model folder,
+            anywhere on the server's disk. It is symlinked into the models folder, not copied.
+            Admins only.</p>
+          <input id="link-path" placeholder="/data/models/qwen3-8b-q4_k_m.gguf" autocomplete="off" required>
+          <input id="link-name" placeholder="Name in the list (optional)" autocomplete="off">
+          <button id="link-submit" type="submit">Link</button>
+          <p class="muted" id="link-note"></p>
+        </form>
       </section>
 
       <section class="view" id="view-memory" hidden>

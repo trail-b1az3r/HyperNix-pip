@@ -990,6 +990,41 @@ final class AppState {
         }
     }
 
+    /// List a model already on the server by symlinking it into the
+    /// models folder. Admin only; the server says so if not.
+    @discardableResult
+    func linkServerModel(path: String, name: String = "") async -> ModelLinkResult? {
+        runnerBusy = true
+        runnerError = nil
+        defer { runnerBusy = false }
+        do {
+            let made = try await client.linkModel(path: path, name: name)
+            await refreshModels()
+            return made
+        } catch {
+            runnerError = (error as? HyperLinkError)?.errorDescription
+                ?? error.localizedDescription
+            return nil
+        }
+    }
+
+    /// Remove a model link. The model it points at is not touched.
+    @discardableResult
+    func unlinkServerModel(_ name: String) async -> Bool {
+        runnerBusy = true
+        runnerError = nil
+        defer { runnerBusy = false }
+        do {
+            _ = try await client.unlinkModel(name: name)
+            await refreshModels()
+            return true
+        } catch {
+            runnerError = (error as? HyperLinkError)?.errorDescription
+                ?? error.localizedDescription
+            return false
+        }
+    }
+
     /// Where this model's layers would go. Changes nothing.
     func planLoad(
         modelID: String, gpuLayers: Int?, backend: String,

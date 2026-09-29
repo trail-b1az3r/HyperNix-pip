@@ -109,6 +109,8 @@ from ..schemas import (
     MessageListResponse,
     MessageSummary,
     ModelCatalogueResponse,
+    ModelLinkRequest,
+    ModelLinkResponse,
     PairingCodeResponse,
     PairingCreateRequest,
     PairingRedeemRequest,
@@ -2245,18 +2247,38 @@ def list_downloaded(
 ) -> DownloadedModelsResponse:
     """What is already on this server's disk."""
     _require_enabled(config)
+    from ...system.linkwalk import link_target, walk_files
+
     root = Path(config.hf_download_dir or (Path.home() / ".hypernix" / "models"))
     models: list[dict[str, Any]] = []
     if root.exists():
         for entry in sorted(root.iterdir()):
-            if not entry.is_dir():
+            if entry.name.startswith("."):
                 continue
-            files = [f for f in entry.rglob("*") if f.is_file() and not f.name.endswith(".part")]
-            partial = [f for f in entry.rglob("*.part")]
+            linked_to = link_target(entry) if entry.is_symlink() else ""
+            if linked_to and not entry.exists():
+                models.append({
+                    "name": entry.name, "path": str(entry), "linked_to": linked_to,
+                    "broken": True, "file_count": 0, "total_bytes": 0,
+                    "has_gguf": False, "incomplete_files": [],
+                })
+                continue
+            if entry.is_dir():
+                # Through symlinked folders: rglob does not follow them,
+                # so a model linked in from another disk read as empty.
+                every = list(walk_files(entry))
+            elif entry.suffix.lower() == ".gguf":
+                every = [entry]          # a GGUF (or a link to one) at the top
+            else:
+                continue
+            files = [f for f in every if not f.name.endswith(".part")]
+            partial = [f for f in every if f.name.endswith(".part")]
             models.append(
                 {
                     "name": entry.name,
                     "path": str(entry),
+                    "linked_to": linked_to,
+                    "broken": False,
                     "file_count": len(files),
                     "total_bytes": sum(f.stat().st_size for f in files),
                     "has_gguf": any(f.suffix.lower() == ".gguf" for f in files),
@@ -2268,6 +2290,83 @@ def list_downloaded(
     return DownloadedModelsResponse(
         models=models, count=len(models), directory=str(root), request_id=request_id
     )
+
+
+def _link_error(exc: Exception) -> T1APIError:
+    conflict = bool(getattr(exc, "conflict", False))
+    missing = bool(getattr(exc, "missing", False))
+    return T1APIError(
+        T1ErrorCode.CONFLICT if conflict else
+        T1ErrorCode.NOT_FOUND if missing else T1ErrorCode.VALIDATION_ERROR,
+        str(exc),
+        http_status=409 if conflict else 404 if missing else 400,
+    )
+
+
+def _links_dir(config: T1APIConfig) -> Path:
+    """The folder the model picker reads: where a link has to go."""
+    from ...hyperlink.catalogue import DEFAULT_LOCAL_DIR
+    from ..modelsync import serving_dir
+
+    return serving_dir(config) or DEFAULT_LOCAL_DIR
+
+
+@router.post("/models/link", response_model=ModelLinkResponse)
+def link_model_route(
+    payload: ModelLinkRequest,
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    config: T1APIConfig = Depends(get_config),
+    request_id: str = Depends(get_request_id),
+) -> ModelLinkResponse:
+    """List a model that is already on the server, by symlinking it in.
+
+    Admin only: the caller names a path on the server's disk, and while
+    only a .gguf or a model folder is accepted, choosing what the server
+    reads from where is the operator's call. The link goes in the folder
+    the model picker reads, so the model is loadable at once.
+    """
+    _require_enabled(config)
+    require_hyperlink_admin(principal)
+    from ...hyperlink.modellinks import ModelLinkError, link_model
+    from ..modelsync import source_for
+
+    if getattr(config, "model_sync", False):
+        # With T1_MODEL_SYNC on, everything in the sync source is linked
+        # in already -- and a second link into it would be pruned by the
+        # next sync as one the mirror did not make.
+        source = source_for(config)
+        wanted = Path(payload.path).expanduser()
+        if wanted.is_absolute() and wanted.resolve().is_relative_to(source.resolve()):
+            raise T1APIError(
+                T1ErrorCode.VALIDATION_ERROR,
+                f"{wanted} is inside {source}, which T1_MODEL_SYNC mirrors already; "
+                f"it is in the list without a link.",
+                http_status=400,
+            )
+    try:
+        made = link_model(payload.path, _links_dir(config), payload.name)
+    except ModelLinkError as exc:
+        raise _link_error(exc) from exc
+    return ModelLinkResponse(**made, request_id=request_id)
+
+
+@router.delete("/models/link/{name}", response_model=ModelLinkResponse)
+def unlink_model_route(
+    name: str,
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    config: T1APIConfig = Depends(get_config),
+    request_id: str = Depends(get_request_id),
+) -> ModelLinkResponse:
+    """Remove a model link. Only ever a link: never the model it points at."""
+    _require_enabled(config)
+    require_hyperlink_admin(principal)
+    from ...hyperlink.modellinks import ModelLinkError, unlink_model
+
+    try:
+        removed = unlink_model(name, _links_dir(config))
+    except ModelLinkError as exc:
+        raise _link_error(exc) from exc
+    return ModelLinkResponse(**removed, request_id=request_id)
 
 
 @router.get("/models", response_model=ModelCatalogueResponse)

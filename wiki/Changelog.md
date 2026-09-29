@@ -249,6 +249,16 @@ Historical wording and technical detail are retained during format normalization
     to F32, to within 0.7% of the range; INT3 and FP8 matched to within
     0.01%.
 
+✨ Added linking a model that is already on the server, from HyperLink.
+  - The web app's Runner page and the iOS app's Runner screen take a path
+    on the server: a `.gguf`, a folder with one in it, or a hyperNix0x-v2
+    model folder. It is symlinked into the models folder, not copied, and
+    can be loaded straight away.
+  - A linked model shows where it points, with "Remove link", which
+    removes only the link. `POST /hyperlink/models/link` and
+    `DELETE /hyperlink/models/link/{name}` are admin only, accept only
+    model files and folders, and take one plain name segment.
+
 ✨ Added `-P` and `-Q` to `hypernix convert` (and `hnx convert`).
   - `hnx convert ./snapshot -P -Q q6h4` converts a safetensors model to a
     GGUF, then quantises it with hyprslug to any target it knows. It
@@ -470,6 +480,17 @@ Historical wording and technical detail are retained during format normalization
 
 ### Fixed
 
+𖢥 Fixed symlinked models being invisible to HyperLink.
+  - `ln -s /data/qwen ~/.hypernix/models/qwen` is the obvious way to keep
+    a large model on another disk, and every model scanner walked past
+    it: `Path.rglob` never descends into a symlinked folder. The model
+    picker, the runner, `hypernix-t1 index`, the downloaded-models list
+    and the LM Studio handover now walk through links, and stop at a link
+    back up the tree.
+  - A link whose target has gone (moved, or on a disk that is not
+    mounted) is listed as not runnable, with the target it points at,
+    instead of vanishing. Loading one says why, up front.
+
 🐛 Fixed `hnx_quantize_rows` in `native/ggml-hnx` writing sign bits for
   the codebook types.
   - INT4, FP2, INT8 and INT2 went through the sign-and-scale encoder, so
@@ -552,6 +573,8 @@ Historical wording and technical detail are retained during format normalization
 
 ### Tests
 
+🧪 Added `tests/hyperlink/test_model_links.py` (29): walking through links
+  and not looping, broken links, linking and unlinking, and the routes.
 🧪 Added `tests/quant/test_convert_pipeline.py` (14) for `convert -P`.
 🧪 Added `tests/quant/test_hyprslug_hybrids.py` (54): Q8_K's block and
   bsums, INT3 and FP8 round trips, FP8 codes being E4M3 bytes, where each

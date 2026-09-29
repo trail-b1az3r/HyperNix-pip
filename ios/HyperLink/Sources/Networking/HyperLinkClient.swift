@@ -898,6 +898,24 @@ actor HyperLinkClient {
         try await post("/runner/load", body: request, as: RunnerStatus.self, timeout: 600)
     }
 
+    /// List a model that is already on the server by symlinking it into
+    /// the models folder. *path* is a path on the server: a .gguf, a
+    /// folder with one in it, or a hyperNix0x-v2 model folder. Admin only.
+    func linkModel(path: String, name: String = "") async throws -> ModelLinkResult {
+        struct Body: Encodable { let path: String; let name: String }
+        return try await post("/hyperlink/models/link", body: Body(path: path, name: name),
+                              as: ModelLinkResult.self, timeout: 30)
+    }
+
+    /// Remove a model link. The server removes only a link, never the
+    /// model it points at.
+    func unlinkModel(name: String) async throws -> ModelLinkResult {
+        let escaped = name.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? name
+        return try decode(ModelLinkResult.self,
+                          from: await send(path: "/hyperlink/models/link/\(escaped)",
+                                           method: "DELETE", timeout: 15))
+    }
+
     /// Whether "Move to the HyperNix runner" applies to this caller, and
     /// what LM Studio has loaded. Admins and tailnet devices only.
     func runnerAdoptPreview() async throws -> AdoptPreview {

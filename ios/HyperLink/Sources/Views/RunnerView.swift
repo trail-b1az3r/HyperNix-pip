@@ -30,11 +30,23 @@ struct RunnerView: View {
     /// The LM Studio model whose move is being confirmed.
     @State private var moving: String?
 
+    /// "Link a model already on the server": its path there, and an
+    /// optional name for the list.
+    @State private var linkPath = ""
+    @State private var linkName = ""
+    @State private var linkNote = ""
+
     private var loadable: [CatalogueModel] {
         // Only models with a file on this machine. A model the bridge
         // borrowed from LM Studio has no path here, and the runner
         // cannot load what it cannot open.
         state.catalogue.models.filter { $0.runnable && !$0.path.isEmpty }
+    }
+
+    /// Links whose target has gone: shown with the reason, and a way to
+    /// remove them, rather than vanishing from the list unexplained.
+    private var brokenLinks: [CatalogueModel] {
+        state.catalogue.models.filter { !$0.runnable && !$0.linkName.isEmpty }
     }
 
     var body: some View {
@@ -56,6 +68,8 @@ struct RunnerView: View {
                 runningSection
                 lmStudioSection
                 loadableSection
+                brokenLinkSection
+                linkSection
             }
 
             if let error = state.runnerError {
@@ -214,6 +228,12 @@ struct RunnerView: View {
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
+                            if !model.linkedTo.isEmpty {
+                                Label("linked from \(model.linkedTo)", systemImage: "link")
+                                    .font(.caption2)
+                                    .foregroundStyle(.tertiary)
+                                    .lineLimit(1)
+                            }
                         }
                         Spacer()
                         if model.modelID == state.runner.model?.modelID {
@@ -223,13 +243,83 @@ struct RunnerView: View {
                     }
                 }
                 .disabled(state.runnerBusy)
+                .swipeActions {
+                    if !model.linkName.isEmpty {
+                        Button("Remove link", role: .destructive) {
+                            Task { await state.unlinkServerModel(model.linkName) }
+                        }
+                    }
+                }
             }
         } header: {
             Text("On this server")
         } footer: {
             Text(
                 "Loading one replaces whatever is running. You will see where "
-                + "its layers go before anything happens."
+                + "its layers go before anything happens. Swipe a linked model "
+                + "to remove the link; the file it points at stays."
+            )
+        }
+    }
+
+    @ViewBuilder
+    private var brokenLinkSection: some View {
+        if !brokenLinks.isEmpty {
+            Section("Links that point nowhere") {
+                ForEach(brokenLinks) { model in
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(model.name.isEmpty ? model.linkName : model.name)
+                        Text(model.detail)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .swipeActions {
+                        Button("Remove link", role: .destructive) {
+                            Task { await state.unlinkServerModel(model.linkName) }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// A model already on the server's disk, listed by a symlink rather
+    /// than a copy. The path is the server's, not the phone's.
+    @ViewBuilder
+    private var linkSection: some View {
+        Section {
+            TextField("/data/models/qwen3-8b-q4_k_m.gguf", text: $linkPath)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .font(.callout.monospaced())
+            TextField("Name in the list (optional)", text: $linkName)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+            Button {
+                Task {
+                    if let made = await state.linkServerModel(
+                        path: linkPath.trimmingCharacters(in: .whitespaces),
+                        name: linkName.trimmingCharacters(in: .whitespaces)
+                    ) {
+                        linkNote = "Linked \(made.name) → \(made.linkedTo)"
+                        linkPath = ""
+                        linkName = ""
+                    }
+                }
+            } label: {
+                Label("Link", systemImage: "link.badge.plus")
+            }
+            .disabled(state.runnerBusy || linkPath.trimmingCharacters(in: .whitespaces).isEmpty)
+            if !linkNote.isEmpty {
+                Text(linkNote).font(.caption).foregroundStyle(.secondary)
+            }
+        } header: {
+            Text("Link a model already on the server")
+        } footer: {
+            Text(
+                "A .gguf, a folder with one in it, or a hyperNix0x-v2 model folder, "
+                + "anywhere on the server's disk. It is symlinked into the models "
+                + "folder, not copied, and can be loaded straight away. Admins only."
             )
         }
     }

@@ -834,12 +834,19 @@ struct CatalogueModel: Decodable, Identifiable, Equatable, Sendable {
     /// nothing says either way. The composer hides the photo options for
     /// false and warns for nil rather than guessing.
     let supportsImages: Bool?
+    /// When the model is in the server's models folder through a
+    /// symlink: the link's name there, and what it points at. The link
+    /// can be removed from the app; the model it points at cannot.
+    let linkName: String
+    let linkedTo: String
 
     var id: String { modelID }
 
     enum CodingKeys: String, CodingKey {
         case modelID = "model_id"
         case supportsImages = "supports_images"
+        case linkName = "link_name"
+        case linkedTo = "linked_to"
         case name, source, path, quant, loaded, runnable, detail
         case sizeBytes = "size_bytes"
         case architecture
@@ -870,6 +877,8 @@ struct CatalogueModel: Decodable, Identifiable, Equatable, Sendable {
         detail = try c.decodeIfPresent(String.self, forKey: .detail) ?? ""
         alsoIn = try c.decodeIfPresent([String].self, forKey: .alsoIn) ?? []
         supportsImages = try c.decodeIfPresent(Bool.self, forKey: .supportsImages)
+        linkName = try c.decodeIfPresent(String.self, forKey: .linkName) ?? ""
+        linkedTo = try c.decodeIfPresent(String.self, forKey: .linkedTo) ?? ""
     }
 
     /// Where this came from, in words for a label.
@@ -1833,6 +1842,23 @@ struct MemoryList: Decodable, Equatable, Sendable {
 
 /// `GET /runner/adopt`: whether this caller may move LM Studio's model
 /// onto the HyperNix runner, and what LM Studio has loaded.
+/// `POST /hyperlink/models/link` and `DELETE /hyperlink/models/link/{name}`:
+/// a model already on the server, listed by a symlink in its models folder.
+struct ModelLinkResult: Decodable, Equatable, Sendable {
+    let name: String
+    /// The link, inside the models folder.
+    let path: String
+    /// What it points at.
+    let linkedTo: String
+    /// "gguf", "folder" or "hypernix" when made; "removed" when unlinked.
+    let kind: String
+
+    enum CodingKeys: String, CodingKey {
+        case name, path, kind
+        case linkedTo = "linked_to"
+    }
+}
+
 struct AdoptPreview: Decodable, Equatable, Sendable {
     let allowed: Bool
     let why: String

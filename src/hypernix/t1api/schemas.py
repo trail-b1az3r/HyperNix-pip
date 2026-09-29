@@ -1481,6 +1481,27 @@ class DownloadedModelsResponse(BaseModel):
     request_id: str
 
 
+class ModelLinkRequest(BaseModel):
+    """A model already on the server, to list in HyperLink by symlink."""
+
+    #: Absolute path on the server: a .gguf, a folder with one in it, or a
+    #: hyperNix0x-v2 model folder.
+    path: str
+    #: What to call it in the models folder. Defaults to the path's name.
+    name: str = ""
+
+
+class ModelLinkResponse(BaseModel):
+    name: str
+    #: The link, inside the models folder.
+    path: str
+    #: What it points at.
+    linked_to: str
+    #: "gguf" | "folder" | "hypernix" when made; "removed" when unlinked.
+    kind: str
+    request_id: str
+
+
 class RunnerLoadRequest(BaseModel):
     model_id: str
     #: Layers to put on the GPU. None means work it out from what is
