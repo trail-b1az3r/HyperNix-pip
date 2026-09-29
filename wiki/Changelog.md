@@ -249,6 +249,24 @@ Historical wording and technical detail are retained during format normalization
     to F32, to within 0.7% of the range; INT3 and FP8 matched to within
     0.01%.
 
+✨ Added nightly builds to `public-release.yml`, behind a setting.
+  - Set the repository variable `PUBLIC_RELEASE_NIGHTLY` to `true`, and
+    the workflow builds the default branch at 03:23 UTC. A night with no
+    new commits is skipped. "Run workflow" with `nightly` ticked makes
+    one by hand, whatever the setting.
+  - A nightly runs the same lint, full test suite and live integration
+    jobs as a release, then replaces the rolling `nightly` GitHub
+    prerelease. Its version is the tree's plus a local label
+    (`0.72.6.post3+nightly.20260930.1a2b3c4`).
+  - It never bumps or commits the version, never makes a `v*` tag, and
+    never goes to PyPI or TestPyPI. No package index accepts a local
+    version anyway, so a nightly cannot be published by mistake.
+  - The HyperLink IPA is left out unless `PUBLIC_RELEASE_NIGHTLY_IPA` is
+    also `true`, since it needs a macOS runner every night.
+  - `.github/scripts/release_plan.py` decides whether a run is a
+    release, a nightly or nothing, and `tests/repo/test_release_plan.py`
+    (23) covers it and the workflow's guards.
+
 ✨ Added linking a model that is already on the server, from HyperLink.
   - The web app's Runner page and the iOS app's Runner screen take a path
     on the server: a `.gguf`, a folder with one in it, or a hyperNix0x-v2

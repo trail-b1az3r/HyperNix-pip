@@ -630,6 +630,14 @@ pip install "hypernix[train]"         # + transformers, accelerate
 pip install hypernix                  # core only
 ```
 
+Nightly builds, when the maintainers have them switched on, are the
+rolling [`nightly` prerelease](https://github.com/trail-b1az3r/HyperNix-pip/releases/tag/nightly):
+the branch as of last night, after lint, the full test suite and the
+live integration jobs, and nothing more. Install the wheel by its URL:
+`pip install https://github.com/trail-b1az3r/HyperNix-pip/releases/download/nightly/<wheel>`.
+`hypernix --version` then reads something like
+`0.72.6.post3+nightly.20260930.1a2b3c4`.
+
 Setting up the **T1 API** server specifically? `./install-t1.sh` is a
 guided installer — it asks what kind of deployment this is (bind
 address, key policy, allowlist, rate limits, cost accounting, models,
