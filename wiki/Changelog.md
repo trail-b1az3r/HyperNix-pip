@@ -309,13 +309,19 @@ Historical wording and technical detail are retained during format normalization
 
 ### Changed
 
+⚠️ Changed `hypernix-t1 launch-script -$ 'CMD'` to `-1 'CMD'`.
+  - No shell typed `-$` reliably: bash reads `-$'...'` as one quoted word
+    and `-$NAME` as a variable, and fish refuses a bare `$`. `-1` needs
+    no quoting anywhere. `--shell-command` is unchanged, and `-$` is
+    still accepted, unlisted, so existing scripts keep working.
+
 🔧 Changed Bandit's `assert_used` check (B101) to skip `tests/`, in a new
   `[tool.bandit]` section of `pyproject.toml` that the security scan
   already reads when present.
   - pytest's asserts are how a test checks its result, and B101 reported
     every one, over eleven thousand, as a code-scanning alert on each PR
-    that touched a test. It still reports the 29 in the package itself,
-    and every other Bandit check still runs on the tests.
+    that touched a test. The 29 in the package itself are now real
+    checks (see Security).
 
 🔧 Changed the security scanners so each one runs and reports.
   - The security scan's CodeQL job, and `codeql.yml`, are removed. The

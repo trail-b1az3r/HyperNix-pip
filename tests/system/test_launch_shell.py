@@ -1,4 +1,4 @@
-"""`hypernix-t1 launch-script -$ '<command>'` — a shell command as a job.
+"""`hypernix-t1 launch-script -1 '<command>'` — a shell command as a job.
 
 What these tests are for
 ------------------------
@@ -137,38 +137,54 @@ class TestTheCli:
         monkeypatch.chdir(tmp_path)
         return store
 
-    def test_dollar_flag_starts_a_job(self, cli, capsys):
-        assert launchscript_cli.main(["-$", "echo via-cli", "--name", "viacli"]) == 0
+    def test_the_short_flag_starts_a_job(self, cli, capsys):
+        assert launchscript_cli.main(["-1", "echo via-cli", "--name", "viacli"]) == 0
         assert "started viacli" in capsys.readouterr().out
         job = cli.find("viacli")
         settle(job, cli)
         assert "via-cli" in read_logs(job)
 
-    def test_the_long_form_for_fish_users(self, cli):
-        """A bare `$` is a syntax error in fish, so `-$` cannot be typed
-        there unquoted. The long form exists for them."""
+    def test_the_long_form(self, cli):
         assert launchscript_cli.main(["--shell-command", "true", "--name", "long"]) == 0
         assert cli.find("long") is not None
+
+    def test_the_old_dollar_flag_still_works(self, cli):
+        """-$ was the flag until it proved untypable: bash reads -$'...'
+        as one word and -$VAR as a variable, and fish refuses a bare $.
+        Scripts written against it keep working."""
+        assert launchscript_cli.main(["-$", "true", "--name", "dollar"]) == 0
+        assert cli.find("dollar") is not None
+
+    def test_a_script_argument_of_minus_one_after_the_separator(self, cli, tmp_path):
+        """With -1 an option, argparse stops reading -1 as a number; after
+        `--` it must still reach the script untouched."""
+        script = tmp_path / "echo.sh"
+        script.write_text('echo "got:$1"\n')
+        assert launchscript_cli.main([str(script), "--name", "neg", "--", "-1"]) == 0
+        job = cli.find("neg")
+        settle(job, cli)
+        assert "got:-1" in read_logs(job)
 
     def test_a_script_and_a_command_together_is_refused(self, cli, tmp_path, capsys):
         script = tmp_path / "s.sh"
         script.write_text("true\n")
-        assert launchscript_cli.main([str(script), "-$", "true"]) == 1
+        assert launchscript_cli.main([str(script), "-1", "true"]) == 1
         assert "not both" in capsys.readouterr().err
 
     def test_restart_reruns_the_command_not_a_script(self, cli, capsys):
         """The bug in the restart path: it relaunched `command[-1]` as a
         script path, which for a shell job is the command text — "No
         such script: echo restarted"."""
-        launchscript_cli.main(["-$", "echo restarted-ok", "--name", "again"])
+        launchscript_cli.main(["-1", "echo restarted-ok", "--name", "again"])
         settle(cli.find("again"), cli)
         assert launchscript_cli.main(["--restart", "again"]) == 0
         fresh = cli.find("again")
         settle(fresh, cli)
         assert "restarted-ok" in read_logs(fresh)
 
-    def test_the_help_warns_about_quoting(self, capsys):
+    def test_the_help_shows_the_new_flag(self, capsys):
         with pytest.raises(SystemExit):
             launchscript_cli.main(["--help"])
         text = capsys.readouterr().out
-        assert "--shell-command" in text and "fish" in text
+        assert "-1 CMD, --shell-command CMD" in text
+        assert "-$" not in text

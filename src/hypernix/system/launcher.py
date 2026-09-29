@@ -324,7 +324,7 @@ def launch_shell(
     store: JobStore | None = None,
     supervisor: Supervisor | None = None,
 ) -> Job:
-    """Start a shell command detached — ``launch-script -$ '...'``.
+    """Start a shell command detached — ``launch-script -1 '...'``.
 
     The same job as a script gets: it survives the SSH connection
     closing, has logs, a status, and can be stopped. The command is
@@ -333,7 +333,7 @@ def launch_shell(
     """
     _require_posix()
     if not (command_text or "").strip():
-        raise LaunchError("-$ needs a command, e.g. -$ 'make -j8 && ./run'")
+        raise LaunchError("-1 needs a command, e.g. -1 'make -j8 && ./run'")
     binary = resolve_shell(shell)
     return _start(
         [binary, "-c", command_text],

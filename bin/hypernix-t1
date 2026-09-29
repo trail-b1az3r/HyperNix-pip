@@ -1165,7 +1165,7 @@ hypernix-t1 — manage a T1 API server (also installed as hnx-t1)
                         and write the model registry from what the files
                         say. Entries you have already edited are left
                         alone unless --refresh.
-  launch-script -$ 'CMD' [--shell bash|fish]  (fish: quote it, '-$')
+  launch-script -1 'CMD' [--shell bash|fish]
   override lms move-dir [FOLDER] [--move-files]
                         Point LM Studio's models folder at FOLDER
                         (default ~/.hypernix/models); \`override lms revert\` undoes it

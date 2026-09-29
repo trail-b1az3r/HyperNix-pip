@@ -716,7 +716,7 @@ uvicorn invocation or hunting for a pid.
 | `built-in-runner` | also `runner`: serve a model from this server's own llama.cpp instead of LM Studio — see [below](#hypernix-t1-built-in-runner) |
 | `chat` | send a message to the served model and print the reply — see [below](#hypernix-t1-chat) |
 | `training` | what training is doing on this machine, with pause / resume / stop; runs started by `launch-script` show up on their own |
-| `launch-script` | run a script, or a command with `-$ 'CMD'`, so it survives an ssh disconnect: supervised, with its logs and exit status kept, and `--status` / `--logs` / `--stop` from any later session |
+| `launch-script` | run a script, or a command with `-1 'CMD'`, so it survives an ssh disconnect: supervised, with its logs and exit status kept, and `--status` / `--logs` / `--stop` from any later session |
 | `override lms move-dir` | point LM Studio's models folder at `~/.hypernix/models` (or a folder you name); `override lms revert` undoes it |
 | `start-foreground` | run in this terminal instead of the background; what the systemd unit uses |
 | `remove` | stop, disable, delete the config — but **keeps the key store**, which is not recoverable and may still be in use elsewhere. Confirmed by typing the word, not by `y`. |
