@@ -25,6 +25,9 @@ capability with every one of those applied.
 0.72.6 adds: t2c — ``/auth/t2c/*``, the public key and device
 registration behind v2.1 (T2C) keys — and privacy: ``/privacy/conceal``
 (conceal mode, 36-hour retention) and the public ``/server/info``.
+0.72.6.post3 adds: code -- ``/code``, sandboxes that run code, with
+permissions in the ``/web/v1/config`` grammar. Off unless the operator
+sets ``T1_CODE_SANDBOX=1``.
 0.72.4 adds: training — progress, logs, checkpoints, machine
 resources and the stop/pause/resume controls, admin-gated unless the
 server is explicitly in trusted-network mode.
@@ -50,6 +53,7 @@ from . import (
     backup,
     billing,
     bridge,
+    code,
     compact,
     config,
     events,
@@ -115,6 +119,9 @@ ALL_ROUTERS = (
     mcp.router,
     # 0.72.6 pt2 -- keyless web search for HyperLink and hyperchat.
     web.router,
+    # Code sandboxes. Off unless T1_CODE_SANDBOX; the reads say how to
+    # turn it on, the rest refuse.
+    code.router,
 )
 
 __all__ = [
