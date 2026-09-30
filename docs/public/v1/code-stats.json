@@ -1,7 +1,7 @@
 {
   "definition": "non-blank source lines across repository code roots: src, scripts, tests, examples, bin, native, docs/src",
-  "total_lines": 220168,
-  "code_files": 708,
+  "total_lines": 220846,
+  "code_files": 710,
   "top_files": [
     {
       "path": "src/hypernix/t1api/routers/hyperlink.py",
@@ -29,7 +29,7 @@
     },
     {
       "path": "src/hypernix/interfaces/cli.py",
-      "lines": 1483
+      "lines": 1487
     },
     {
       "path": "src/hypernix/models/neo_oven.py",
@@ -80,16 +80,16 @@
       "lines": 1063
     },
     {
+      "path": "src/hypernix/models/hnxrun.py",
+      "lines": 1059
+    },
+    {
       "path": "src/hypernix/security/gkey_cli.py",
       "lines": 1058
     },
     {
       "path": "src/hypernix/interfaces/hyped_pro_app/src/app.ts",
       "lines": 1051
-    },
-    {
-      "path": "src/hypernix/models/hnxrun.py",
-      "lines": 1050
     },
     {
       "path": "tests/repo/test_install_script.py",
@@ -127,12 +127,12 @@
   "contributors": [
     {
       "author": "Claude",
-      "additions": 208605,
-      "deletions": 13887,
-      "net": 194718,
-      "changes": 222492,
-      "commits": 229,
-      "files": 1463
+      "additions": 209568,
+      "deletions": 13959,
+      "net": 195609,
+      "changes": 223527,
+      "commits": 232,
+      "files": 1469
     },
     {
       "author": "minerofthesoal",
@@ -190,6 +190,6 @@
     }
   ],
   "history_available": true,
-  "commit": "727ffcd3ff16c4df34cfee9429d0900fd4edd5a0",
+  "commit": "4953798ea0bfee086c0ed2c962d96e8e99ea8e38",
   "generated_at": null
 }

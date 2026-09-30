@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-api-deep",
   "generated_at": "2026-09-20T21:20:57Z",
-  "commit": "727ffcd3ff16c4df34cfee9429d0900fd4edd5a0",
+  "commit": "4953798ea0bfee086c0ed2c962d96e8e99ea8e38",
   "history_available": true,
   "source_root": "src/hypernix",
   "modules": [
@@ -9554,7 +9554,7 @@
     {
       "module": "hypernix.hyperlink.managed",
       "source": "src/hypernix/hyperlink/managed.py",
-      "line_count": 724,
+      "line_count": 757,
       "summary": "hyperlink.managed \u2014 running a model without LM Studio.",
       "api": [
         {
@@ -9636,7 +9636,7 @@
             {
               "name": "unload",
               "signature": "def unloadself -> bool",
-              "line": 567,
+              "line": 584,
               "doc": "Stop whatever is running. True if something was."
             }
           ]
@@ -9645,55 +9645,55 @@
           "kind": "class",
           "name": "ManagedPool",
           "signature": "class ManagedPool",
-          "line": 632,
+          "line": 649,
           "doc": "N copies of one model, on N consecutive ports.",
           "methods": [
             {
               "name": "instances",
               "signature": "def instancesself -> int",
-              "line": 679,
+              "line": 696,
               "doc": ""
             },
             {
               "name": "ports",
               "signature": "def portsself -> list[int]",
-              "line": 683,
+              "line": 700,
               "doc": ""
             },
             {
               "name": "current",
               "signature": "def currentself -> ManagedModel | None",
-              "line": 687,
+              "line": 704,
               "doc": "What the pool is serving, from the first live instance."
             },
             {
               "name": "live",
               "signature": "def liveself -> list[ManagedRunner]",
-              "line": 696,
+              "line": 713,
               "doc": ""
             },
             {
               "name": "base_urls",
               "signature": "def base_urlsself -> list[str]",
-              "line": 700,
+              "line": 717,
               "doc": ""
             },
             {
               "name": "load",
               "signature": "def loadself, path: str | Path, **kwargs: Any -> list[ManagedModel]",
-              "line": 703,
+              "line": 720,
               "doc": "Start every instance on *path*, or leave none of them running."
             },
             {
               "name": "unload",
               "signature": "def unloadself -> bool",
-              "line": 728,
+              "line": 745,
               "doc": ""
             },
             {
               "name": "to_dict",
               "signature": "def to_dictself -> dict[str, Any]",
-              "line": 738,
+              "line": 755,
               "doc": ""
             }
           ]
@@ -9702,21 +9702,21 @@
           "kind": "function",
           "name": "allocate_ports",
           "signature": "def allocate_portsstart: int, count: int, *, avoid: Iterable[int]=(), ceiling: int=65535 -> list[int]",
-          "line": 750,
+          "line": 786,
           "doc": "*count* ports from *start* upwards, skipping *avoid*."
         },
         {
           "kind": "function",
           "name": "brewed_cache_dir",
           "signature": "def brewed_cache_dir -> Path",
-          "line": 782,
+          "line": 818,
           "doc": "``<T1_CONFIG_DIR>/cache/brewed-gguf``: beside the server, not in the model."
         },
         {
           "kind": "function",
           "name": "brewed_gguf_for",
           "signature": "def brewed_gguf_forfolder: Path -> Path | None",
-          "line": 790,
+          "line": 826,
           "doc": "A GGUF of the brewed model in *folder* for llama.cpp, or ``None``."
         }
       ],
@@ -9727,6 +9727,18 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "e010f8c9",
+          "date": "2026-09-29",
+          "author": "Claude",
+          "subject": "doctor: check what the package needs now; runner: pick a llama.cpp that reads the model",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _unreadable_types_message(model: Path, build: Any, missing: list[int]) -> str:"
+            }
+          ]
+        },
         {
           "sha": "99ddc1ae",
           "date": "2026-09-29",
@@ -12936,14 +12948,14 @@
     {
       "module": "hypernix.interfaces.cli",
       "source": "src/hypernix/interfaces/cli.py",
-      "line_count": 1483,
+      "line_count": 1487,
       "summary": "Command-line interface for the hypernix package.",
       "api": [
         {
           "kind": "function",
           "name": "main",
           "signature": "def mainargv: list[str] | None=None -> int",
-          "line": 1214,
+          "line": 1218,
           "doc": ""
         }
       ],
@@ -12954,6 +12966,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "a939eaaa",
+          "date": "2026-09-29",
+          "author": "Claude",
+          "subject": "docs: bring the native and scripts READMEs and every wiki page up to date",
+          "api_changes": []
+        },
         {
           "sha": "448bcc9d",
           "date": "2026-09-29",
@@ -13025,13 +13044,6 @@
           "date": "2026-09-09",
           "author": "Claude",
           "subject": "0.72.4.dev11 \u2014 beta 1 full: fuse box, and a claim that did not survive measurement",
-          "api_changes": []
-        },
-        {
-          "sha": "1946651d",
-          "date": "2026-09-09",
-          "author": "Claude",
-          "subject": "0.72.4.dev10 \u2014 beta 1 pt 1: gather, and hyperNix0x-v2 in Neo oven",
           "api_changes": []
         }
       ]
@@ -18209,7 +18221,7 @@
     {
       "module": "hypernix.models.hnxrun",
       "source": "src/hypernix/models/hnxrun.py",
-      "line_count": 1050,
+      "line_count": 1059,
       "summary": "hypernix.models.hnxrun \u2014 run a GGUF, including the sub-bit ones.",
       "api": [
         {
@@ -18266,91 +18278,91 @@
           "kind": "class",
           "name": "PackedWeight",
           "signature": "class PackedWeight",
-          "line": 292,
+          "line": 304,
           "doc": "A quantised weight that stays packed in memory.",
           "methods": [
             {
               "name": "on_accelerator",
               "signature": "def on_acceleratorself -> bool",
-              "line": 381,
+              "line": 393,
               "doc": "Whether this weight lives somewhere that is not the CPU."
             },
             {
               "name": "packed_on_device",
               "signature": "def packed_on_deviceself",
-              "line": 406,
+              "line": 418,
               "doc": "The packed bytes as a uint8 tensor on this weight's device."
             },
             {
               "name": "nbytes",
               "signature": "def nbytesself -> int",
-              "line": 421,
+              "line": 433,
               "doc": "What this weight costs in memory, pinned or not."
             },
             {
               "name": "device_bytes",
               "signature": "def device_bytesself -> int",
-              "line": 428,
+              "line": 440,
               "doc": "What this weight occupies in the device's own memory."
             },
             {
               "name": "dense_bytes",
               "signature": "def dense_bytesself -> int",
-              "line": 447,
+              "line": 459,
               "doc": "What pinning this weight would cost."
             },
             {
               "name": "pinned",
               "signature": "def pinnedself -> bool",
-              "line": 455,
+              "line": 467,
               "doc": ""
             },
             {
               "name": "pin",
               "signature": "def pinself -> None",
-              "line": 458,
+              "line": 470,
               "doc": "Decode once and keep it, trading the memory for the time."
             },
             {
               "name": "unpin",
               "signature": "def unpinself -> None",
-              "line": 470,
+              "line": 482,
               "doc": ""
             },
             {
               "name": "rows",
               "signature": "def rowsself -> int",
-              "line": 474,
+              "line": 486,
               "doc": ""
             },
             {
               "name": "columns",
               "signature": "def columnsself -> int",
-              "line": 478,
+              "line": 490,
               "doc": ""
             },
             {
               "name": "rows_slice",
               "signature": "def rows_sliceself, start: int, stop: int",
-              "line": 500,
+              "line": 512,
               "doc": "Rows ``[start, stop)``, unpacking only the groups they touch."
             },
             {
               "name": "select",
               "signature": "def selectself, indices",
-              "line": 510,
+              "line": 522,
               "doc": "The rows *indices* names, unpacked and nothing else."
             },
             {
               "name": "to_dense",
               "signature": "def to_denseself",
-              "line": 523,
+              "line": 535,
               "doc": "The whole tensor as float32, for a caller that wants it."
             },
             {
               "name": "matmul_t",
               "signature": "def matmul_tself, x, *, chunk_rows: int=0",
-              "line": 601,
+              "line": 613,
               "doc": "``x @ self.T``, unpacking the weight a chunk of rows at a time."
             }
           ]
@@ -18359,55 +18371,55 @@
           "kind": "class",
           "name": "LoadedModel",
           "signature": "class LoadedModel",
-          "line": 671,
+          "line": 683,
           "doc": "A GGUF, dequantised and ready to run.",
           "methods": [
             {
               "name": "device_bytes",
               "signature": "def device_bytesself -> int",
-              "line": 687,
+              "line": 699,
               "doc": "What this model occupies on an accelerator."
             },
             {
               "name": "sub_bit",
               "signature": "def sub_bitself -> bool",
-              "line": 705,
+              "line": 717,
               "doc": ""
             },
             {
               "name": "resident_bytes",
               "signature": "def resident_bytesself -> int",
-              "line": 709,
+              "line": 721,
               "doc": "What the weights occupy in memory, packed or not."
             },
             {
               "name": "weight_count",
               "signature": "def weight_countself -> int",
-              "line": 714,
+              "line": 726,
               "doc": ""
             },
             {
               "name": "resident_bits_per_weight",
               "signature": "def resident_bits_per_weightself -> float",
-              "line": 718,
+              "line": 730,
               "doc": "The number that says whether this is still a sub-bit model."
             },
             {
               "name": "packed_in_memory",
               "signature": "def packed_in_memoryself -> int",
-              "line": 729,
+              "line": 741,
               "doc": "How many tensors are still in their on-disk form."
             },
             {
               "name": "pinned_in_memory",
               "signature": "def pinned_in_memoryself -> int",
-              "line": 738,
+              "line": 750,
               "doc": "How many packed weights were decoded once and kept."
             },
             {
               "name": "describe",
               "signature": "def describeself -> str",
-              "line": 744,
+              "line": 756,
               "doc": ""
             }
           ]
@@ -18416,42 +18428,42 @@
           "kind": "function",
           "name": "load_model",
           "signature": "def load_modelpath: str | Path, *, device: str='cpu', materialize: bool=False, cache_bytes: int=0 -> LoadedModel",
-          "line": 801,
+          "line": 813,
           "doc": "Read a GGUF, keeping quantised tensors packed in memory."
         },
         {
           "kind": "function",
           "name": "describe",
           "signature": "def describepath: str | Path -> dict[str, Any]",
-          "line": 933,
+          "line": 945,
           "doc": "Architecture and packing, without running anything."
         },
         {
           "kind": "function",
           "name": "forward",
           "signature": "def forwardmodel: LoadedModel, token_ids, *, cache: _Cache | None=None, start_position: int=0",
-          "line": 1026,
+          "line": 1038,
           "doc": "Logits for the last position of *token_ids*."
         },
         {
           "kind": "function",
           "name": "generate_tokens",
           "signature": "def generate_tokensmodel: LoadedModel, prompt_ids, *, max_new_tokens: int=32, temperature: float=0.0, top_k: int=0, seed: int | None=None, stop_ids=() -> list[int]",
-          "line": 1130,
+          "line": 1142,
           "doc": "Continue *prompt_ids*. ``temperature=0`` is greedy and deterministic."
         },
         {
           "kind": "function",
           "name": "continue_text",
           "signature": "def continue_textmodel: LoadedModel, prompt: str, *, max_new_tokens: int=32, temperature: float=0.0, top_k: int=0, seed: int | None=None -> str",
-          "line": 1186,
+          "line": 1198,
           "doc": "Continue *prompt* with a model that is already loaded."
         },
         {
           "kind": "function",
           "name": "generate_text",
           "signature": "def generate_textpath: str | Path, prompt: str, *, max_new_tokens: int=32, temperature: float=0.0, top_k: int=0, seed: int | None=None, device: str='cpu', cache_bytes: int=0 -> str",
-          "line": 1230,
+          "line": 1242,
           "doc": "Load *path* and continue *prompt*."
         }
       ],
@@ -18462,6 +18474,18 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "a939eaaa",
+          "date": "2026-09-29",
+          "author": "Claude",
+          "subject": "docs: bring the native and scripts READMEs and every wiki page up to date",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _low_bit_codecs() -> dict[int, str]:"
+            }
+          ]
+        },
         {
           "sha": "9cc43526",
           "date": "2026-09-11",
@@ -18598,102 +18622,6 @@
               "text": "def _spend_cache_budget(tensors: dict, budget: int) -> int:"
             }
           ]
-        },
-        {
-          "sha": "4c26095f",
-          "date": "2026-09-02",
-          "author": "Claude",
-          "subject": "Sub-bit in memory too, not only on disk",
-          "api_changes": [
-            {
-              "kind": "added",
-              "text": "def _block_geometry(ggml_type: int) -> tuple[int, int]:"
-            },
-            {
-              "kind": "added",
-              "text": "class PackedWeight:"
-            },
-            {
-              "kind": "added",
-              "text": "def __init__(self, raw: bytes, ggml_type: int, shape: tuple[int, ...], device: str):"
-            },
-            {
-              "kind": "added",
-              "text": "def nbytes(self) -> int:"
-            },
-            {
-              "kind": "added",
-              "text": "def rows(self) -> int:"
-            },
-            {
-              "kind": "added",
-              "text": "def columns(self) -> int:"
-            },
-            {
-              "kind": "added",
-              "text": "def _decode_groups(self, first_group: int, last_group: int):"
-            },
-            {
-              "kind": "added",
-              "text": "def rows_slice(self, start: int, stop: int):"
-            },
-            {
-              "kind": "added",
-              "text": "def select(self, indices):"
-            },
-            {
-              "kind": "added",
-              "text": "def to_dense(self):"
-            },
-            {
-              "kind": "added",
-              "text": "def matmul_t(self, x, *, chunk_rows: int = 0):"
-            },
-            {
-              "kind": "added",
-              "text": "def _linear(x, weight, *, chunk_rows: int = 0):"
-            },
-            {
-              "kind": "added",
-              "text": "def _embed(weight, ids):"
-            },
-            {
-              "kind": "added",
-              "text": "def _weight_shape(weight) -> tuple[int, ...]:"
-            },
-            {
-              "kind": "added",
-              "text": "def _weight_bytes(weight) -> int:"
-            },
-            {
-              "kind": "added",
-              "text": "def _weight_elements(weight) -> int:"
-            },
-            {
-              "kind": "added",
-              "text": "def resident_bytes(self) -> int:"
-            },
-            {
-              "kind": "added",
-              "text": "def weight_count(self) -> int:"
-            },
-            {
-              "kind": "added",
-              "text": "def resident_bits_per_weight(self) -> float:"
-            },
-            {
-              "kind": "added",
-              "text": "def packed_in_memory(self) -> int:"
-            },
-            {
-              "kind": "removed",
-              "text": "def load_model(path: str | Path, *, device: str = \"cpu\") -> LoadedModel:"
-            },
-            {
-              "kind": "added",
-              "text": "def load_model("
-            }
-          ]
         }
       ]
     },
@@ -18813,49 +18741,49 @@
     {
       "module": "hypernix.models.hnxtorch",
       "source": "src/hypernix/models/hnxtorch.py",
-      "line_count": 178,
+      "line_count": 185,
       "summary": "hypernix.models.hnxtorch \u2014 decode the extension types on the accelerator.",
       "api": [
         {
           "kind": "function",
           "name": "supports",
           "signature": "def supportsggml_type: int -> bool",
-          "line": 62,
+          "line": 72,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "to_device_bytes",
           "signature": "def to_device_bytesraw: bytes, device: Any",
-          "line": 67,
+          "line": 77,
           "doc": "Packed bytes as a ``uint8`` tensor on *device*."
         },
         {
           "kind": "function",
           "name": "stored_signs",
           "signature": "def stored_signspacked, packing: str",
-          "line": 120,
+          "line": 130,
           "doc": "The stored signs, scaled, without expanding the dropped ones."
         },
         {
           "kind": "function",
           "name": "dequantize_subbit",
           "signature": "def dequantize_subbitpacked, packing: str",
-          "line": 173,
+          "line": 183,
           "doc": "A whole sign-and-scale tensor, flat, on *packed*'s device."
         },
         {
           "kind": "function",
           "name": "dequantize_lowbit",
           "signature": "def dequantize_lowbitpacked, codec_name: str",
-          "line": 192,
+          "line": 202,
           "doc": "A whole fixed-codebook tensor, flat, on *packed*'s device."
         },
         {
           "kind": "function",
           "name": "decode",
           "signature": "def decodepacked, ggml_type: int",
-          "line": 210,
+          "line": 220,
           "doc": "Dispatch to the right decoder for *ggml_type*."
         }
       ],
@@ -18865,6 +18793,18 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "a939eaaa",
+          "date": "2026-09-29",
+          "author": "Claude",
+          "subject": "docs: bring the native and scripts READMEs and every wiki page up to date",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _lowbit_types() -> dict[int, str]:"
+            }
+          ]
+        },
         {
           "sha": "9cc43526",
           "date": "2026-09-11",
@@ -31320,14 +31260,14 @@
     {
       "module": "hypernix.quant.runtime_bridge",
       "source": "src/hypernix/quant/runtime_bridge.py",
-      "line_count": 473,
+      "line_count": 559,
       "summary": "runtime_bridge \u2014 using the HyperNix llama.cpp from other applications.",
       "api": [
         {
           "kind": "class",
           "name": "BridgeError",
           "signature": "class BridgeError",
-          "line": 72,
+          "line": 75,
           "doc": "Something is missing or does not look like what it claims.",
           "methods": []
         },
@@ -31335,92 +31275,112 @@
           "kind": "function",
           "name": "home",
           "signature": "def home -> Path",
-          "line": 76,
+          "line": 79,
           "doc": "Where this keeps backups and its manifest."
         },
         {
           "kind": "function",
           "name": "backup_dir",
           "signature": "def backup_dir -> Path",
-          "line": 84,
+          "line": 87,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "manifest_path",
           "signature": "def manifest_path -> Path",
-          "line": 88,
+          "line": 91,
           "doc": ""
         },
         {
           "kind": "class",
           "name": "Build",
           "signature": "class Build",
-          "line": 114,
+          "line": 117,
           "doc": "A built llama.cpp, and whether it is one of ours.",
           "methods": [
             {
+              "name": "missing",
+              "signature": "def missingself, types: set[int] | frozenset[int] -> list[int]",
+              "line": 134,
+              "doc": "The HNX type ids among *types* this build cannot read."
+            },
+            {
               "name": "to_dict",
               "signature": "def to_dictself -> dict[str, Any]",
-              "line": 127,
+              "line": 138,
               "doc": ""
             }
           ]
         },
         {
           "kind": "function",
+          "name": "recorded_build",
+          "signature": "def recorded_build -> Path | None",
+          "line": 161,
+          "doc": "The build ``native/ggml-hnx/build.sh`` last made, if it said."
+        },
+        {
+          "kind": "function",
           "name": "candidate_build_dirs",
           "signature": "def candidate_build_dirs -> list[Path]",
-          "line": 137,
+          "line": 177,
           "doc": "Where a build might be, most specific first."
         },
         {
           "kind": "function",
           "name": "find_build",
-          "signature": "def find_buildexplicit: str | Path | None=None -> Build",
-          "line": 169,
+          "signature": "def find_buildexplicit: str | Path | None=None, *, need: set[int] | frozenset[int]=frozenset() -> Build",
+          "line": 224,
           "doc": "Locate a built llama.cpp. Raises if there is not one."
+        },
+        {
+          "kind": "function",
+          "name": "model_types",
+          "signature": "def model_typespath: str | Path -> frozenset[int]",
+          "line": 311,
+          "doc": "The ggml type ids of every tensor in the GGUF at *path*."
         },
         {
           "kind": "function",
           "name": "serve_argv",
           "signature": "def serve_argvbuild: Build, model: str | Path, *, host: str='127.0.0.1', port: int=8080, gpu_layers: int=0, context: int=0, alias: str='' -> list[str]",
-          "line": 222,
+          "line": 321,
           "doc": "The command line that starts the patched server."
         },
         {
           "kind": "function",
           "name": "lmstudio_runtime_dirs",
           "signature": "def lmstudio_runtime_dirs -> list[Path]",
-          "line": 274,
+          "line": 373,
           "doc": "Directories where LM Studio keeps a llama.cpp runtime."
         },
         {
           "kind": "function",
           "name": "detect_targets",
           "signature": "def detect_targets -> list[dict[str, Any]]",
-          "line": 319,
+          "line": 418,
           "doc": "Applications on this machine that could take the runtime."
         },
         {
           "kind": "function",
           "name": "install",
           "signature": "def installbuild: Build, target_dir: str | Path, *, confirmed: bool=False, dry_run: bool=False -> dict[str, Any]",
-          "line": 354,
+          "line": 453,
           "doc": "Put the patched libraries into *target_dir*, reversibly."
         },
         {
           "kind": "function",
           "name": "restore",
           "signature": "def restore*, confirmed: bool=False, which: str='' -> dict[str, Any]",
-          "line": 462,
+          "line": 561,
           "doc": "Put back what :func:`install` replaced."
         },
         {
           "kind": "function",
           "name": "status",
           "signature": "def statusexplicit_build: str | Path | None=None -> dict[str, Any]",
-          "line": 533,
+          "line": 632,
           "doc": "What is built, what is detected, and what is installed."
         }
       ],
@@ -31430,6 +31390,42 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "e010f8c9",
+          "date": "2026-09-29",
+          "author": "Claude",
+          "subject": "doctor: check what the package needs now; runner: pick a llama.cpp that reads the model",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def missing(self, types: set[int] | frozenset[int]) -> list[int]:"
+            },
+            {
+              "kind": "added",
+              "text": "def recorded_build() -> Path | None:"
+            },
+            {
+              "kind": "removed",
+              "text": "def find_build(explicit: str | Path | None = None) -> Build:"
+            },
+            {
+              "kind": "added",
+              "text": "def _registered_types(library: Path) -> frozenset[int]:"
+            },
+            {
+              "kind": "added",
+              "text": "def find_build(explicit: str | Path | None = None, *,"
+            },
+            {
+              "kind": "added",
+              "text": "def _builds_in(roots: list[Path], tried: list[str]):"
+            },
+            {
+              "kind": "added",
+              "text": "def model_types(path: str | Path) -> frozenset[int]:"
+            }
+          ]
+        },
         {
           "sha": "fb4e2168",
           "date": "2026-09-09",
@@ -36543,14 +36539,14 @@
     {
       "module": "hypernix.system.doctor",
       "source": "src/hypernix/system/doctor.py",
-      "line_count": 177,
+      "line_count": 314,
       "summary": "Environment diagnostic for the hypernix package.",
       "api": [
         {
           "kind": "function",
           "name": "run",
           "signature": "def run*, fix: bool=False -> int",
-          "line": 137,
+          "line": 295,
           "doc": "Run the environment check. If ``fix`` is True, pip-install missing deps."
         }
       ],
@@ -36558,6 +36554,38 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "e010f8c9",
+          "date": "2026-09-29",
+          "author": "Claude",
+          "subject": "doctor: check what the package needs now; runner: pick a llama.cpp that reads the model",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _check_gpu() -> tuple[bool, str]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _preset_for(gib: float | None) -> tuple[str, str]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _check_patched_llamacpp() -> tuple[bool, str]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _models_dir() -> Path:"
+            },
+            {
+              "kind": "added",
+              "text": "def _check_models_dir() -> tuple[bool, str]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _check_extras() -> tuple[bool, str]:"
+            }
+          ]
+        },
         {
           "sha": "879b000b",
           "date": "2026-08-22",
