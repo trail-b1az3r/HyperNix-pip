@@ -311,6 +311,16 @@ class T1APIConfig:
     hyperlink_shell_timeout: float = field(
         default_factory=lambda: _float_env("T1_HYPERLINK_SHELL_TIMEOUT", 60.0)
     )
+    # /code: sandboxes that run code. Off unless the person running the
+    # server turns it on, for the same reason as the shell: it runs
+    # programs on this machine. The permissions (/code/create/sandbox/
+    # perms) only ever narrow what this allows; they cannot switch it on.
+    code_sandbox: bool = field(default_factory=lambda: _bool_env("T1_CODE_SANDBOX", False))
+    # Where sandboxes live. Temporary by default: a sandbox is scratch
+    # space, and expires (s7) whether or not anybody deletes it.
+    code_sandbox_dir: str | None = field(
+        default_factory=lambda: os.environ.get("T1_CODE_SANDBOX_DIR")
+    )
     # MCP: this server described so an assistant can read it for itself.
     # Off by default. It is a second, differently-shaped way in to the
     # same capabilities, and a surface nobody asked for is a surface
