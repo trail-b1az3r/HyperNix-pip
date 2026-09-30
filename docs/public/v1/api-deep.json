@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-api-deep",
   "generated_at": "2026-09-20T21:20:57Z",
-  "commit": "cb1f8da877840db90e67faa1e20eb7e518a68cf8",
+  "commit": "f6ab07fadc9e70e1d50ecaa6e0f6e834ea97b852",
   "history_available": true,
   "source_root": "src/hypernix",
   "modules": [
@@ -43274,9 +43274,278 @@
       ]
     },
     {
+      "module": "hypernix.t1api.codebox",
+      "source": "src/hypernix/t1api/codebox.py",
+      "line_count": 545,
+      "summary": "``/code`` \u2014 sandboxes that run code, and the permissions they run under.",
+      "api": [
+        {
+          "kind": "class",
+          "name": "SandboxError",
+          "signature": "class SandboxError",
+          "line": 131,
+          "doc": "A request the sandbox refused. ``code`` says which kind.",
+          "methods": []
+        },
+        {
+          "kind": "class",
+          "name": "CodePerms",
+          "signature": "class CodePerms",
+          "line": 146,
+          "doc": "What every sandbox may do. The defaults are the cautious ones.",
+          "methods": [
+            {
+              "name": "to_dict",
+              "signature": "def to_dictself -> dict[str, Any]",
+              "line": 157,
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "apply_perms",
+          "signature": "def apply_permsperms: CodePerms, raw: str -> tuple[CodePerms, list[str], list[str]]",
+          "line": 255,
+          "doc": "Apply a directive string. Returns ``(new perms, changed, asked)``."
+        },
+        {
+          "kind": "function",
+          "name": "network_isolation",
+          "signature": "def network_isolation -> list[str] | None",
+          "line": 295,
+          "doc": "The argv prefix that runs a command with no network, or ``None``."
+        },
+        {
+          "kind": "function",
+          "name": "available_languages",
+          "signature": "def available_languages -> dict[str, str]",
+          "line": 319,
+          "doc": "``name -> interpreter path`` for the languages installed here."
+        },
+        {
+          "kind": "class",
+          "name": "RunResult",
+          "signature": "class RunResult",
+          "line": 353,
+          "doc": "",
+          "methods": [
+            {
+              "name": "to_dict",
+              "signature": "def to_dictself -> dict[str, Any]",
+              "line": 364,
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "kind": "class",
+          "name": "Sandbox",
+          "signature": "class Sandbox",
+          "line": 379,
+          "doc": "",
+          "methods": [
+            {
+              "name": "files",
+              "signature": "def filesself -> list[dict[str, Any]]",
+              "line": 387,
+              "doc": ""
+            },
+            {
+              "name": "bytes_used",
+              "signature": "def bytes_usedself -> int",
+              "line": 396,
+              "doc": ""
+            },
+            {
+              "name": "to_dict",
+              "signature": "def to_dictself, perms: CodePerms -> dict[str, Any]",
+              "line": 406,
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "kind": "class",
+          "name": "SandboxStore",
+          "signature": "class SandboxStore",
+          "line": 418,
+          "doc": "Every sandbox on this server, each a directory under one base.",
+          "methods": [
+            {
+              "name": "create",
+              "signature": "def createself, owner: str, perms: CodePerms, *, name: str='', files: dict[str, str] | None=None -> Sandbox",
+              "line": 438,
+              "doc": ""
+            },
+            {
+              "name": "get",
+              "signature": "def getself, box_id: str, owner: str, *, is_admin: bool=False -> Sandbox",
+              "line": 460,
+              "doc": ""
+            },
+            {
+              "name": "list",
+              "signature": "def listself, owner: str, *, is_admin: bool=False -> list[Sandbox]",
+              "line": 470,
+              "doc": ""
+            },
+            {
+              "name": "delete",
+              "signature": "def deleteself, box: Sandbox -> None",
+              "line": 474,
+              "doc": ""
+            },
+            {
+              "name": "expire",
+              "signature": "def expireself, perms: CodePerms -> list[str]",
+              "line": 480,
+              "doc": ""
+            },
+            {
+              "name": "write",
+              "signature": "def writeself, box: Sandbox, relative: str, content: str, perms: CodePerms -> Path",
+              "line": 503,
+              "doc": ""
+            },
+            {
+              "name": "read",
+              "signature": "def readself, box: Sandbox, relative: str -> tuple[str, bool]",
+              "line": 517,
+              "doc": ""
+            },
+            {
+              "name": "remove",
+              "signature": "def removeself, box: Sandbox, relative: str -> None",
+              "line": 525,
+              "doc": ""
+            },
+            {
+              "name": "run",
+              "signature": "def runself, box: Sandbox, perms: CodePerms, *, language: str='', code: str | None=None, path: str='', stdin: str='', args: list[str] | None=None -> RunResult",
+              "line": 536,
+              "doc": ""
+            }
+          ]
+        }
+      ],
+      "errors": [
+        "GrammarError",
+        "SandboxError"
+      ],
+      "deprecations": [],
+      "required_modules": [],
+      "changes": [
+        {
+          "sha": "858eefd0",
+          "date": "2026-09-30",
+          "author": "Claude",
+          "subject": "t1api: /code \u2014 sandboxes that run code, with perms in the web settings grammar",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class SandboxError(ValueError):"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, message: str, *, code: str = \"invalid\", status: int = 400):"
+            },
+            {
+              "kind": "added",
+              "text": "class CodePerms:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_dict(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _show(value: Any) -> Any:"
+            },
+            {
+              "kind": "added",
+              "text": "def _switch(value: str) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def _between(low: int, high: int):"
+            },
+            {
+              "kind": "added",
+              "text": "def parse(value: str) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def _languages(value: str) -> tuple[str, ...]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _normalise(raw: str) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def apply_perms(perms: CodePerms, raw: str) -> tuple[CodePerms, list[str], list[str]]:"
+            },
+            {
+              "kind": "added",
+              "text": "def network_isolation() -> list[str] | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def available_languages() -> dict[str, str]:"
+            },
+            {
+              "kind": "added",
+              "text": "class RunResult:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_dict(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "class Sandbox:"
+            },
+            {
+              "kind": "added",
+              "text": "def files(self) -> list[dict[str, Any]]:"
+            },
+            {
+              "kind": "added",
+              "text": "def bytes_used(self) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_dict(self, perms: CodePerms) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "class SandboxStore:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, base: str | Path | None = None) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def create(self, owner: str, perms: CodePerms, *, name: str = \"\","
+            },
+            {
+              "kind": "added",
+              "text": "def get(self, box_id: str, owner: str, *, is_admin: bool = False) -> Sandbox:"
+            },
+            {
+              "kind": "added",
+              "text": "def list(self, owner: str, *, is_admin: bool = False) -> list[Sandbox]:"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "module": "hypernix.t1api.config",
       "source": "src/hypernix/t1api/config.py",
-      "line_count": 649,
+      "line_count": 659,
       "summary": "t1api.config \u2014 environment-variable configuration for the T1 API.",
       "api": [
         {
@@ -43289,55 +43558,55 @@
             {
               "name": "from_env",
               "signature": "def from_envcls, *, load_dotenv: bool=True, dotenv_path: str | Path='.env' -> T1APIConfig",
-              "line": 506,
+              "line": 516,
               "doc": ""
             },
             {
               "name": "is_production",
               "signature": "def is_productionself -> bool",
-              "line": 516,
+              "line": 526,
               "doc": ""
             },
             {
               "name": "storage_backend",
               "signature": "def storage_backendself -> str",
-              "line": 520,
+              "line": 530,
               "doc": ""
             },
             {
               "name": "tls_settings",
               "signature": "def tls_settingsself -> TLSSettings",
-              "line": 523,
+              "line": 533,
               "doc": ""
             },
             {
               "name": "rate_limit_rules",
               "signature": "def rate_limit_rulesself -> Any",
-              "line": 535,
+              "line": 545,
               "doc": "Parsed rate-limit rules, or None to use the defaults."
             },
             {
               "name": "describe_secrets",
               "signature": "def describe_secretsself -> dict[str, bool]",
-              "line": 553,
+              "line": 563,
               "doc": "Which secrets are set. Values never included \u2014 this is what ``GET /status`` uses to tell an operator what's missing without telling anyone what it is."
             },
             {
               "name": "public_dict",
               "signature": "def public_dictself -> dict[str, object]",
-              "line": 567,
+              "line": 577,
               "doc": "Explicit allowlist of config surfaced by GET /config. Never includes ``token_secret``, ``deploy_secret``, ``database_url``, or any future secret field."
             },
             {
               "name": "production_problems",
               "signature": "def production_problemsself -> list[str]",
-              "line": 609,
+              "line": 619,
               "doc": "Every reason this config is unsafe for production, as text."
             },
             {
               "name": "validate_for_production",
               "signature": "def validate_for_productionself, *, strict: bool | None=None -> None",
-              "line": 701,
+              "line": 711,
               "doc": "Raise ``CONFIG_INVALID`` if this config is unsafe for production."
             }
           ]
@@ -43349,6 +43618,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "858eefd0",
+          "date": "2026-09-30",
+          "author": "Claude",
+          "subject": "t1api: /code \u2014 sandboxes that run code, with perms in the web settings grammar",
+          "api_changes": []
+        },
         {
           "sha": "216b2a30",
           "date": "2026-09-28",
@@ -43396,13 +43672,6 @@
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "0.72.6 pt2: hyperchat, and three things HyperLink was showing wrong",
-          "api_changes": []
-        },
-        {
-          "sha": "4d487fc5",
-          "date": "2026-09-22",
-          "author": "Claude",
-          "subject": "t1api: MCP server support, with plugins",
           "api_changes": []
         }
       ]
@@ -47842,13 +48111,20 @@
     {
       "module": "hypernix.t1api.routers",
       "source": "src/hypernix/t1api/routers/__init__.py",
-      "line_count": 141,
+      "line_count": 148,
       "summary": "t1api.routers \u2014 one module per resource group, matching the spec's 'PRIMARY ENDPOINT SET'.",
       "api": [],
       "errors": [],
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "858eefd0",
+          "date": "2026-09-30",
+          "author": "Claude",
+          "subject": "t1api: /code \u2014 sandboxes that run code, with perms in the web settings grammar",
+          "api_changes": []
+        },
         {
           "sha": "0068bbf2",
           "date": "2026-09-23",
@@ -47896,13 +48172,6 @@
           "date": "2026-09-16",
           "author": "Claude",
           "subject": "t1: /chat/compact/* \u2014 making a long conversation fit again",
-          "api_changes": []
-        },
-        {
-          "sha": "6c58a994",
-          "date": "2026-09-16",
-          "author": "Claude",
-          "subject": "Fix the CI build break, and ship an IPA that can run a model",
           "api_changes": []
         }
       ]
@@ -48733,6 +49002,222 @@
             {
               "kind": "added",
               "text": "def _first_choice(envelope: dict) -> tuple[str, str]:"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "module": "hypernix.t1api.routers.code",
+      "source": "src/hypernix/t1api/routers/code.py",
+      "line_count": 374,
+      "summary": "``/code`` \u2014 run code in sandboxes on this server.",
+      "api": [
+        {
+          "kind": "function",
+          "name": "code_index",
+          "signature": "def code_indexrequest: Request, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> dict[str, Any]",
+          "line": 149,
+          "doc": "Whether this server runs code, what with, and where to go next."
+        },
+        {
+          "kind": "function",
+          "name": "code_create_help",
+          "signature": "def code_create_helprequest: Request, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> dict[str, Any]",
+          "line": 172,
+          "doc": "What can be created, and the body each takes."
+        },
+        {
+          "kind": "function",
+          "name": "code_run_once",
+          "signature": "def code_run_oncerequest: Request, body: dict[str, Any]=Body(...), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), audit=Depends(get_audit_log), request_id: str=Depends(get_request_id) -> dict[str, Any]",
+          "line": 191,
+          "doc": "Run ``code`` once, in a sandbox that is deleted before this returns."
+        },
+        {
+          "kind": "function",
+          "name": "code_sandboxes",
+          "signature": "def code_sandboxesrequest: Request, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> dict[str, Any]",
+          "line": 222,
+          "doc": "Your sandboxes (every sandbox, for an admin)."
+        },
+        {
+          "kind": "function",
+          "name": "code_create_sandbox",
+          "signature": "def code_create_sandboxrequest: Request, body: dict[str, Any] | None=Body(default=None), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), audit=Depends(get_audit_log), request_id: str=Depends(get_request_id) -> JSONResponse",
+          "line": 238,
+          "doc": "A sandbox that stays until it is deleted or sits idle past s7."
+        },
+        {
+          "kind": "function",
+          "name": "code_perms_read",
+          "signature": "def code_perms_readrequest: Request, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> dict[str, Any]",
+          "line": 271,
+          "doc": "What every sandbox may do, and what this machine can enforce."
+        },
+        {
+          "kind": "function",
+          "name": "code_perms_write",
+          "signature": "def code_perms_writedirectives: str, request: Request, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), audit=Depends(get_audit_log), request_id: str=Depends(get_request_id) -> dict[str, Any]",
+          "line": 282,
+          "doc": "``perms/s2?:=on|s3?:=120``, or ``perms|s1=?;s2?:=on``."
+        },
+        {
+          "kind": "function",
+          "name": "code_sandbox_read",
+          "signature": "def code_sandbox_readbox_id: str, request: Request, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> dict[str, Any]",
+          "line": 333,
+          "doc": ""
+        },
+        {
+          "kind": "function",
+          "name": "code_sandbox_delete",
+          "signature": "def code_sandbox_deletebox_id: str, request: Request, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> dict[str, Any]",
+          "line": 345,
+          "doc": ""
+        },
+        {
+          "kind": "function",
+          "name": "code_file_read",
+          "signature": "def code_file_readbox_id: str, path: str, request: Request, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> dict[str, Any]",
+          "line": 358,
+          "doc": ""
+        },
+        {
+          "kind": "function",
+          "name": "code_file_write",
+          "signature": "def code_file_writebox_id: str, path: str, request: Request, body: dict[str, Any]=Body(...), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> dict[str, Any]",
+          "line": 375,
+          "doc": ""
+        },
+        {
+          "kind": "function",
+          "name": "code_file_delete",
+          "signature": "def code_file_deletebox_id: str, path: str, request: Request, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> dict[str, Any]",
+          "line": 397,
+          "doc": ""
+        },
+        {
+          "kind": "function",
+          "name": "code_sandbox_run",
+          "signature": "def code_sandbox_runbox_id: str, request: Request, body: dict[str, Any]=Body(...), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), audit=Depends(get_audit_log), request_id: str=Depends(get_request_id) -> dict[str, Any]",
+          "line": 414,
+          "doc": "Run a file in the sandbox (``path``), or new code (``code``)."
+        }
+      ],
+      "errors": [
+        "T1APIError"
+      ],
+      "deprecations": [],
+      "required_modules": [
+        {
+          "module": "fastapi",
+          "extra": "t1api",
+          "requirement": "fastapi>=0.110,<1"
+        }
+      ],
+      "changes": [
+        {
+          "sha": "858eefd0",
+          "date": "2026-09-30",
+          "author": "Claude",
+          "subject": "t1api: /code \u2014 sandboxes that run code, with perms in the web settings grammar",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _perms(request: Request) -> cb.CodePerms:"
+            },
+            {
+              "kind": "added",
+              "text": "def _store(request: Request, config: T1APIConfig) -> cb.SandboxStore:"
+            },
+            {
+              "kind": "added",
+              "text": "def _who(principal: HyperLinkPrincipal) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _may_run(principal: HyperLinkPrincipal) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def _require_runner(principal: HyperLinkPrincipal, config: T1APIConfig) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _refused(exc: cb.SandboxError) -> T1APIError:"
+            },
+            {
+              "kind": "added",
+              "text": "def _audit(audit, action: str, principal, request_id: str, details: dict[str, Any]) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _machine(config: T1APIConfig) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"\")"
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/\")"
+            },
+            {
+              "kind": "added",
+              "text": "def code_index("
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/create\")"
+            },
+            {
+              "kind": "added",
+              "text": "def code_create_help("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/create\")"
+            },
+            {
+              "kind": "added",
+              "text": "def code_run_once("
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/create/sandbox\")"
+            },
+            {
+              "kind": "added",
+              "text": "def code_sandboxes("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/create/sandbox\")"
+            },
+            {
+              "kind": "added",
+              "text": "def code_create_sandbox("
+            },
+            {
+              "kind": "added",
+              "text": "def _perms_body(perms: cb.CodePerms, request_id: str, **extra: Any) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/create/sandbox/perms\")"
+            },
+            {
+              "kind": "added",
+              "text": "def code_perms_read("
+            },
+            {
+              "kind": "added",
+              "text": "@router.get(\"/create/sandbox/perms{directives:path}\")"
+            },
+            {
+              "kind": "added",
+              "text": "def code_perms_write("
             }
           ]
         }

@@ -17,14 +17,25 @@
       "patch": 3,
       "headline": "HyperLink on the web opens at the server's own address",
       "highlights": [
+        "Added /code, sandboxes that run code on the T1 server.",
         "Added three hybrid quantisations to hyprslug: hnx_Q6_H_k (q6h), hnx_Q6_H_4 (q6h4) and hnx_Q6_H_2 (q6h2).",
         "Added Q8_K, INT3 and FP8 to hyprslug and to native/ggml-hnx.",
         "Added nightly builds to public-release.yml, behind a setting.",
         "Added linking a model that is already on the server, from HyperLink.",
-        "Added -P and -Q to hypernix convert (and hnx convert).",
-        "Added hyperNix0x-v2 (Brewer) models as hyprslug input."
+        "Added -P and -Q to hypernix convert (and hnx convert)."
       ],
       "changes": [
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "Added /code, sandboxes that run code on the T1 server.",
+          "details": [
+            "POST /code/create runs a snippet once; POST /code/create/sandbox makes one that stays, with files to write, read and run under /code/sandbox/{id}. Each level of the tree describes the next on a GET.",
+            "What sandboxes may do \u2014 execute, network, timeout, languages, disk, memory, idle time \u2014 is s1..s7 at /code/create/sandbox/perms, in the web search settings' grammar: perms/s2?:=on|s3?:=120, or perms|s1=?;s2?:=on. Reading is open; changing needs an admin key.",
+            "Off unless the operator sets T1_CODE_SANDBOX=1, and running needs an admin key or write. No shell, a minimal environment, paths held inside the sandbox, memory/file/CPU limits and a timeout that kills the process group. With the network off a run gets a network namespace of its\u2026"
+          ]
+        },
         {
           "symbol": "\u0e4b\u08ed\u2b51",
           "label": "major",
