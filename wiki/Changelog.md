@@ -218,6 +218,23 @@ Historical wording and technical detail are retained during format normalization
 
 ### Added
 
+✨ Added `/code`, sandboxes that run code on the T1 server.
+  - `POST /code/create` runs a snippet once; `POST /code/create/sandbox`
+    makes one that stays, with files to write, read and run under
+    `/code/sandbox/{id}`. Each level of the tree describes the next on a
+    `GET`.
+  - What sandboxes may do — execute, network, timeout, languages, disk,
+    memory, idle time — is `s1`..`s7` at `/code/create/sandbox/perms`,
+    in the web search settings' grammar: `perms/s2?:=on|s3?:=120`, or
+    `perms|s1=?;s2?:=on`. Reading is open; changing needs an admin key.
+  - Off unless the operator sets `T1_CODE_SANDBOX=1`, and running needs
+    an admin key or `write`. No shell, a minimal environment, paths held
+    inside the sandbox, memory/file/CPU limits and a timeout that kills
+    the process group. With the network off a run gets a network
+    namespace of its own, and is refused where that is not possible
+    rather than run with the network on. It is not a container: code
+    runs as the server's user, which is why it is off by default.
+
 ๋࣭⭑ Added three hybrid quantisations to hyprslug: `hnx_Q6_H_k` (`q6h`),
   `hnx_Q6_H_4` (`q6h4`) and `hnx_Q6_H_2` (`q6h2`).
   - Each tensor's format is chosen from its role and its depth: the

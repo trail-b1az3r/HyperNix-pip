@@ -1856,6 +1856,16 @@ it — `s3` exists for people who have one and would rather use it. See
 | POST | `/web/v1/summarize` | bearer | `text` or `url`; extractive with no model loaded |
 | GET | `/web/v1/config` | bearer | the three settings — **never** the API key |
 | GET | `/web/v1/config/s1?=k\|s2?:=…` | bearer, **admin** | change them; see the grammar below |
+| GET | `/code` | bearer | whether this server runs code, the installed languages, the permissions |
+| GET | `/code/create` | bearer | what can be created, and the body each takes |
+| POST | `/code/create` | bearer, **write** | run `code` once in a throwaway sandbox; needs `T1_CODE_SANDBOX` |
+| GET | `/code/create/sandbox` | bearer | your sandboxes (every one, for an admin) |
+| POST | `/code/create/sandbox` | bearer, **write** | a sandbox that stays: `{"name", "files": {path: text}}` |
+| GET | `/code/create/sandbox/perms` | bearer | the seven sandbox permissions |
+| GET | `/code/create/sandbox/perms/s2?:=on\|s3?:=…` | bearer; **admin** to change | read or change them; `perms\|s1=?;s2?:=on` works too — see below |
+| GET, DELETE | `/code/sandbox/{id}` | bearer | one sandbox and its files; delete it |
+| GET, PUT, DELETE | `/code/sandbox/{id}/files/{path}` | bearer; **write** to PUT | read, write (`{"content"}`) or delete a file |
+| POST | `/code/sandbox/{id}/run` | bearer, **write** | `{"path"}` or `{"code", "language"}`, optional `stdin`, `args` |
 | GET | `/runner/hyperchat` | bearer | pool or queue, the core budget, and the live queue depth |
 
 **The rest of the surface (0.72.5 – 0.72.6.post3)**
@@ -2019,6 +2029,71 @@ default. It is redacted on the way into all three — by the grammar, not
 by comparison against a stored value, because a *refused* config string
 still carried a key and at that moment there is nothing to compare it
 to. No response ever contains it.
+
+### Code sandboxes
+
+`/code` runs code on this server, in sandboxes. It is **off** unless the
+person running the server sets `T1_CODE_SANDBOX=1`; until then the reads
+say how to turn it on and everything that would run code is a `403`.
+Creating a sandbox or running code needs an admin key or a key with
+`write` — running code is a shell with extra steps, and a read-only token
+is not a shell.
+
+The permissions use the web search grammar above, with three additions:
+`;` divides as well as `|`, a clause may follow `perms` directly, and
+`s1=?` reads a setting.
+
+```
+/code/create/sandbox/perms/s2?:=on|s3?:=120
+/code/create/sandbox/perms|s1=?;s2?:=on
+```
+
+| Setting | Name | Values | Default |
+|---|---|---|---|
+| `s1` | `execute` | `on`, `off` | on |
+| `s2` | `network` | `off`, `on` | off |
+| `s3` | `timeout` | 1–600 seconds | 30 |
+| `s4` | `languages` | `python`, `bash`, `sh`, `node`, `fish`, or `all` | python, bash |
+| `s5` | `disk` | 1–4096 MB per sandbox | 64 |
+| `s6` | `memory` | 32–65536 MB per run | 512 |
+| `s7` | `ttl` | 1–1440 minutes an idle sandbox is kept | 60 |
+
+The names work in place of the numbers (`network?:=on`). `s1=` reads as
+well as `s1=?`: a `?` that ends a URL is dropped by HTTP along with the
+empty query after it, so `perms|s2=?` arrives as `perms|s2=`. `s2=on` —
+an `=` with neither `?` nor colon — is refused with the right spelling in
+the message, for the reason `s2?=google` is: it reads like a change, and
+guessing either way would leave somebody wrong about whether their
+sandbox has a network. A request that only reads is open to any
+credential; one that changes something needs an admin key. Changes are
+all or nothing, and are the server's until it restarts, like the web
+search settings.
+
+What a run gets:
+
+* **No shell.** The code is written to a file and its interpreter is
+  started with an argv list.
+* **A minimal environment** — `PATH`, `HOME` (the sandbox), `LANG`,
+  `TMPDIR` — so no API key the server holds reaches the code.
+* **Paths inside the sandbox**, symlinks included, checked by noodle's
+  `ToolContext`.
+* **Limits set before the interpreter starts:** memory by `RLIMIT_DATA`
+  (`RLIMIT_AS` stops Node from starting at all — V8 reserves gigabytes of
+  address space it never uses), file size by `RLIMIT_FSIZE`, CPU by
+  `RLIMIT_CPU`, and the whole process group killed at the timeout.
+  Output past 200 000 characters a stream is cut, and marked `truncated`.
+* **Network off** is a new network namespace (`unshare -rn`). Where that
+  is not available — macOS, Windows, a kernel without user namespaces —
+  a run with the network off is **refused**, not run with the network on.
+  `s2?:=on` is how an admin accepts that. `GET /code` says which this
+  machine is (`network_isolation`).
+
+It is a boundary for code that is wrong, not for code that is hostile: a
+sandbox is not a VM or a container, and code in one runs as the server's
+user and can read what that user can read outside it. That is why it is
+off by default. Sandboxes live in `T1_CODE_SANDBOX_DIR` (a temporary
+folder by default); a caller may hold eight, another caller's sandbox is
+a `404`, and every run is audited before it starts.
 
 ### Several prompts at once
 
@@ -2322,6 +2397,8 @@ T1 v1.0.26.8.0.1 added:
 | `T1_HYPERLINK_SHELL` | `0` | let paired phones run shell commands here (see below) |
 | `T1_HYPERLINK_SHELL_TIMEOUT` | `60` | seconds before a shell command's process group is killed |
 | `T1_HYPERLINK_SHELL_ROOT` | home directory | a shell command's working directory must be inside this directory |
+| `T1_CODE_SANDBOX` | `0` | run code in sandboxes over `/code` (see Code sandboxes) |
+| `T1_CODE_SANDBOX_DIR` | a temporary folder | where sandboxes live; only folders named like a sandbox are ever removed |
 | `T1_SERVER_DESCRIPTION` | — | 0.72.6: shown by `GET /server/info` (`waiter serv -Y`) |
 | `T1_SERVER_OWNER` | — | 0.72.6: who runs this server, for `/server/info` |
 | `T1_SERVER_URL` | `T1_HYPERLINK_PUBLIC_URL` | 0.72.6: this server's public address, for `/server/info` |
