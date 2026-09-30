@@ -1008,3 +1008,26 @@ timeline
     0.72.6.post2 : No commits found
 ```
 
+## Release v0.72.6.post3 (2026-09-30)
+
+```mermaid
+timeline
+    title Release v0.72.6.post3 Commits
+    0.72.6.post3
+        : 944653b2 - chore- refresh generated docs data and release summaries
+        : cb1f8da8 - chore- refresh generated docs data and release summaries
+        : 16a3c07e - docs- /code in T1-API, the .env example and the changelog
+        : 858eefd0 - t1api- /code — sandboxes that run code, with perms in the web settings grammar
+        : f629743c - chore- refresh generated docs data and release summaries
+        : 4953798e - chore- update JSON stats (scheduled)
+        : e010f8c9 - doctor- check what the package needs now; runner- pick a llama.cpp that reads the model
+        : a939eaaa - docs- bring the native and scripts READMEs and every wiki page up to date
+        : d08461fb - Nightly- stat-bot commits alone do not make a new nightly
+        : efdd8f05 - chore- refresh generated docs data and release summaries
+        : ac96ea38 - public-release- nightly builds behind PUBLIC_RELEASE_NIGHTLY
+        : 99636442 - HyperLink- symlinked models load, and models can be linked from the app
+        : 448bcc9d - hypernix convert -P -Q- safetensors to any hyprslug quant in one step
+        : 7e6e59a3 - hyprslug- Q8_K, INT3, FP8, the hnx_Q6_H hybrids, and Brewer input
+        : fdb60dd8 - hypernix-t1 launch-script- -1 'CMD' replaces -$ 'CMD'
+```
+
