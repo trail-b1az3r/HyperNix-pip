@@ -445,13 +445,17 @@ class ManagedRunner:
         if not model_path.is_file():
             raise ManagedError(f"No such model: {model_path}")
 
-        from ..quant.gguf import GGUFError
-        from ..quant.runtime_bridge import BridgeError, find_build, model_types, serve_argv
+        from ..quant.gguf import GGUFError, GGUFFile
+        from ..quant.runtime_bridge import BridgeError, find_build, serve_argv
 
         try:
-            types = model_types(model_path)
+            header = GGUFFile.read(model_path)
         except (GGUFError, OSError):
-            types = frozenset()     # llama-server says what is wrong with it
+            header = None           # llama-server says what is wrong with it
+        types = (frozenset(int(t.ggml_type) for t in header.tensors)
+                 if header is not None else frozenset())
+        if header is not None and header.metadata.get("general.architecture") == "hypernix":
+            raise ManagedError(_hypernix_architecture_message(model_path))
         try:
             build = find_build(need=types)
         except BridgeError as exc:
@@ -762,6 +766,22 @@ class ManagedPool:
             "base_urls": self.base_urls,
             "model": current.to_dict() if current else None,
         }
+
+
+def _hypernix_architecture_message(model: Path) -> str:
+    """Why a GGUF labelled `hypernix` will not load, and how to remake it."""
+    return (
+        f"{model.name} says its architecture is 'hypernix', which no llama.cpp "
+        f"knows -- the HyperNix patch adds number formats, not architectures, so "
+        f"a patched build refuses it too (\"unknown model architecture: "
+        f"'hypernix'\").\n"
+        f"It was written by the generic converter, which older versions also used "
+        f"for hyperNix0x-v2 models saved without a config.json. Export it again "
+        f"from the model folder -- it is now written as 'llama', as "
+        f"HyperNix.3-mini is:\n"
+        f"  hnx convert /path/to/model-folder -o {model.stem}.gguf\n"
+        f"or, for a training run's checkpoint: hnx brew gguf runs/<name>/checkpoints/latest.pt"
+    )
 
 
 def _unreadable_types_message(model: Path, build: Any, missing: list[int]) -> str:

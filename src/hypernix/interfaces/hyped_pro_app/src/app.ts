@@ -523,10 +523,30 @@ export class App {
       return
     }
     const wanted = this.options.model ?? process.env.HYPED_PRO_MODEL ?? this.prefs.model
-    const found = wanted ? findModel(this.catalog.models, wanted).model : undefined
+    let found = wanted ? findModel(this.catalog.models, wanted).model : undefined
+    if (wanted && !found) found = await this.resolveModel(wanted, false)
     if (wanted && !found) this.note(`No model called "${wanted}" — using ${this.catalog.models[0]?.short}.`)
     this.model = found ?? this.catalog.models[0]
     this.refreshHeader()
+  }
+
+  // A model the catalog does not list: a path to a .gguf or a model
+  // folder, a name in ~/.hypernix/models, or a Hugging Face repo id
+  // (org/name, or org/name:file.gguf). The Python side decides; this
+  // only remembers what it said, so the picker shows it from then on.
+  private async resolveModel(name: string, report: boolean): Promise<ModelInfo | undefined> {
+    if (!this.catalog) return undefined
+    try {
+      const model = await this.bridge.call<ModelInfo>("resolve", { model: name })
+      if (!this.catalog.models.some((m) => m.short === model.short)) this.catalog.models.push(model)
+      return model
+    } catch (e) {
+      if (report) {
+        const err = e as BridgeError
+        this.error(err.message, err.code)
+      }
+      return undefined
+    }
   }
 
   private selectModel(model: ModelInfo): void {
@@ -595,7 +615,16 @@ export class App {
         const { model, matches } = findModel(this.catalog.models, rest)
         if (model) this.selectModel(model)
         else if (matches.length) this.error(`"${rest}" matches ${matches.map((m) => m.short).join(", ")}`)
-        else this.error(`No model called "${rest}". /models lists them.`)
+        else
+          // Not in the catalog is not "cannot run": a file, a folder or a
+          // Hugging Face repo runs too. The error, if any, says which of
+          // those it tried.
+          void this.resolveModel(rest, true).then((resolved) => {
+            if (resolved) {
+              this.selectModel(resolved)
+              this.note(`Model: ${modelLabel(resolved)} — ${resolved.notes ?? resolved.repo}`)
+            }
+          })
         return
       }
       case "new":

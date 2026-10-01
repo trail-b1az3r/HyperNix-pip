@@ -58,6 +58,8 @@ from typing import Any
 
 from hypernix.security.safeurl import urlopen as safe_urlopen
 
+logger = logging.getLogger(__name__)
+
 log = logging.getLogger("hypernix.hyped_pro_core")
 
 # ---------------------------------------------------------------------------
@@ -334,12 +336,185 @@ MODELS: list[ModelDef] = [
 
 _MODELS_BY_SHORT: dict[str, ModelDef] = {m.short: m for m in MODELS}
 
+#: Models named outside the catalog, resolved once and kept, so the name
+#: the TUI shows is the name every later call finds.
+_RESOLVED: dict[str, ModelDef] = {}
+
+#: What a model outside the catalog is shown with.
+LOCAL_BADGE = "\u25c6"
+
+_HF_REPO = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]*/[A-Za-z0-9][A-Za-z0-9_.-]*")
+_WEIGHT_NAMES = ("model.safetensors", "pytorch_model.bin", "model.pt", "weights.pt")
+
 
 def get_model(short: str) -> ModelDef:
-    m = _MODELS_BY_SHORT.get(short)
+    """The model *short* names: a catalog entry, or anything resolvable.
+
+    The catalog is what hyped-pro recommends, not everything it can run.
+    A name outside it is a local ``.gguf``, a model folder or a Brewer
+    ``.pt`` (by path, or by name in the models folder), or a Hugging Face
+    repo id -- ``org/name``, or ``org/name:file.gguf`` for one quant of a
+    GGUF repo. See :func:`resolve_model`.
+    """
+    m = _MODELS_BY_SHORT.get(short) or _RESOLVED.get(short)
+    if m is not None:
+        return m
+    m = resolve_model(short)
     if m is None:
-        raise HypedProError("HPC-CFG-001", f"unknown model {short!r}")
+        raise HypedProError(
+            "HPC-CFG-001",
+            f"unknown model {short!r}: not in the catalog, not a .gguf or model "
+            f"folder on this machine (by path, or by name in {_models_dir()}), "
+            f"and not a Hugging Face repo id (org/name, or org/name:file.gguf).",
+        )
+    _RESOLVED[short] = m
     return m
+
+
+def _models_dir() -> Path:
+    from hypernix.system.config import get_models_dir
+    return get_models_dir(create=False)
+
+
+def is_local_path(model: ModelDef) -> bool:
+    """Whether *model* is a file or folder on this machine, not a repo id."""
+    return model.vendor == "huggingface" and Path(model.repo).expanduser().is_absolute()
+
+
+def _is_model_folder(path: Path) -> bool:
+    """A Hugging Face snapshot or a Brewer model, by what is in it."""
+    if not path.is_dir():
+        return False
+    if (path / "config.json").is_file() and any((path / n).is_file() for n in _WEIGHT_NAMES):
+        return True
+    if any(path.glob("*.safetensors")) and (path / "config.json").is_file():
+        return True
+    from hypernix.models.brewer_gguf import has_brewer_weights
+    return has_brewer_weights(path)
+
+
+def _local_def(path: Path, short: str) -> ModelDef | None:
+    path = path.expanduser().resolve()
+    if path.is_file() and path.suffix.lower() == ".gguf":
+        return ModelDef(short, str(path.parent), "huggingface", LOCAL_BADGE, DEFAULT_GGUF_CTX,
+                        notes=f"local GGUF {path}", format="gguf", gguf_filename=path.name)
+    if (path.is_file() and path.suffix.lower() == ".pt") or _is_model_folder(path):
+        return ModelDef(short, str(path), "huggingface", LOCAL_BADGE, _context_of(path),
+                        notes=f"local model {path}")
+    return None
+
+
+def _context_of(path: Path) -> int:
+    """The context a local model was trained for, from its config."""
+    try:
+        data = json.loads((path / "config.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return 2048
+    for key in ("max_position_embeddings", "max_seq_len", "n_positions"):
+        if isinstance(data.get(key), int) and data[key] > 0:
+            return int(data[key])
+    return 2048
+
+
+def _pick_gguf(repo: str) -> str:
+    """One GGUF from a repo: Q4_K_M if there is one, the way most people
+    would choose, then Q5_K_M, Q8_0, and otherwise the first single file."""
+    _require("huggingface_hub", "huggingface_hub")
+    from huggingface_hub import HfApi
+
+    try:
+        files = [f for f in HfApi().list_repo_files(repo) if f.lower().endswith(".gguf")]
+    except Exception as exc:  # noqa: BLE001
+        raise HypedProError(
+            "HPC-CFG-001",
+            f"could not list {repo!r} to choose a GGUF ({exc}). Name the file: "
+            f"{repo}:<file>.gguf",
+        ) from exc
+    whole = [f for f in files if "-of-" not in f] or files
+    if not whole:
+        raise HypedProError("HPC-CFG-001", f"{repo!r} has no .gguf files.")
+    for wanted in ("q4_k_m", "q5_k_m", "q8_0"):
+        for name in sorted(whole):
+            if wanted in name.lower():
+                return name
+    return sorted(whole)[0]
+
+
+def resolve_model(name: str, *, allow_remote: bool = True) -> ModelDef | None:
+    """A model outside the catalog, or ``None`` if *name* is not one.
+
+    In order: a path to a ``.gguf``, a model folder or a Brewer ``.pt``;
+    the same by name in the models folder (exactly -- no fuzzy matching,
+    so a typo is an error, not a different model); then, with
+    *allow_remote*, a Hugging Face repo id.
+    """
+    text = (name or "").strip()
+    if not text:
+        return None
+    path = Path(text).expanduser()
+    if path.exists():
+        return _local_def(path, text)
+    directory = _models_dir()
+    for candidate in (directory / text, directory / f"{text}.gguf"):
+        if candidate.exists():
+            found = _local_def(candidate, text)
+            if found is not None:
+                return found
+    for local in local_models():
+        if local.short.lower() == text.lower():
+            return local
+    if not allow_remote:
+        return None
+    repo, _, filename = text.partition(":")
+    if not _HF_REPO.fullmatch(repo):
+        return None
+    if filename or "gguf" in repo.lower():
+        return ModelDef(text, repo, "huggingface", LOCAL_BADGE, DEFAULT_GGUF_CTX,
+                        notes=f"from Hugging Face ({repo})", format="gguf",
+                        gguf_filename=filename or _pick_gguf(repo))
+    return ModelDef(text, repo, "huggingface", LOCAL_BADGE, 2048,
+                    notes=f"from Hugging Face ({repo}); downloaded on first use")
+
+
+def local_models(directory: str | Path | None = None) -> list[ModelDef]:
+    """Every runnable model in the models folder, catalog or not.
+
+    GGUF files anywhere under it (through symlinks), and model folders --
+    Hugging Face snapshots and Brewer models -- at the top level and one
+    below. A name the catalog already uses is left to the catalog.
+    """
+    from hypernix.system.linkwalk import walk_files
+
+    root = Path(directory).expanduser() if directory else _models_dir()
+    if not root.is_dir():
+        return []
+    found: dict[str, ModelDef] = {}
+    for path in walk_files(root, ".gguf"):
+        short = path.stem
+        if short not in _MODELS_BY_SHORT and short not in found:
+            found[short] = _local_def(path, short)  # type: ignore[assignment]
+    try:
+        tops = sorted(p for p in root.iterdir() if p.is_dir())
+    except OSError:
+        tops = []
+    for folder in tops + [c for p in tops for c in sorted(p.iterdir()) if c.is_dir()]:
+        short = folder.name
+        if short in _MODELS_BY_SHORT or short in found or not _is_model_folder(folder):
+            continue
+        made = _local_def(folder, short)
+        if made is not None:
+            found[short] = made
+    return [m for m in found.values() if m is not None]
+
+
+def model_json(m: ModelDef) -> dict[str, Any]:
+    """One model as the bridge sends it to the TUI."""
+    return {
+        "short": m.short, "repo": m.repo, "vendor": m.vendor,
+        "kind": m.kind, "badge": m.badge,
+        "context_window": m.context_window, "notes": m.notes,
+        "format": m.format, "gguf_filename": m.gguf_filename, "gguf_backend": m.gguf_backend,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -404,6 +579,9 @@ def _is_downloaded_gguf(model: ModelDef) -> tuple[bool, Path | None]:
 
 
 def is_downloaded(model: ModelDef) -> tuple[bool, Path]:
+    if is_local_path(model):
+        local = Path(model.repo) / model.gguf_filename if model.format == "gguf" else Path(model.repo)
+        return local.exists(), local
     if model.format == "gguf":
         found, path = _is_downloaded_gguf(model)
         return found, (path or Path())
@@ -431,6 +609,13 @@ def ensure_downloaded(model: ModelDef, quiet: bool = False) -> Path:
     will read from. Raises HypedProError on failure — it never returns a
     path that doesn't actually verify.
     """
+    if is_local_path(model):
+        found, path = is_downloaded(model)
+        if not found:
+            raise HypedProError("HPC-LOCAL-001", f"{path} is gone (it was there when "
+                                                 f"{model.short!r} was chosen).")
+        return path
+
     _require("huggingface_hub", "huggingface_hub")
 
     if model.format == "gguf":
@@ -649,7 +834,10 @@ def _get_oven(model: ModelDef, quiet: bool = True):
     if oven is not None:
         return oven
     try:
-        oven = preheat(repo_id=model.repo, device=device, dtype=dtype, quiet=quiet)
+        if is_local_path(model):
+            oven = preheat(local_dir=model.repo, device=device, dtype=dtype, quiet=quiet)
+        else:
+            oven = preheat(repo_id=model.repo, device=device, dtype=dtype, quiet=quiet)
     except ImportError as exc:
         # preheat() can lazily need transformers (AutoModel fallback for
         # non-native architectures) even when torch itself is fine.
@@ -1124,8 +1312,11 @@ def _resolve_local_model(server_model_id: str) -> ModelDef | None:
     """
     mapped = t1_api_model_map().get(server_model_id)
     if mapped:
-        return _MODELS_BY_SHORT.get(mapped)
-    return _MODELS_BY_SHORT.get(server_model_id)
+        return _MODELS_BY_SHORT.get(mapped) or resolve_model(mapped, allow_remote=False)
+    # Then the catalog, then a model on this machine of exactly that name
+    # -- what a server that indexed ~/.hypernix/models routes to.
+    return (_MODELS_BY_SHORT.get(server_model_id)
+            or resolve_model(server_model_id, allow_remote=False))
 
 
 def _estimate_tokens(text: str) -> int:
@@ -1343,6 +1534,26 @@ def send_chat_message(
     return {"content": content, "thinking": thinking}
 
 
+def _safe_local_models() -> list[ModelDef]:
+    try:
+        return local_models()
+    except Exception:  # noqa: BLE001 - a broken folder must not hide the catalog
+        logger.debug("hyped_pro_core: listing local models failed", exc_info=True)
+        return []
+
+
+def send_local(model: ModelDef, messages: list[dict[str, str]], *, system: str | None = None,
+               max_tokens: int = 512, temperature: float = 0.7,
+               should_stop: Callable[[], bool] | None = None) -> str:
+    """One turn against a local model, with no tools: what hyped (basic) runs."""
+    ensure_downloaded(model, quiet=True)
+    if model.format == "gguf":
+        return send_local_chat_gguf(model, messages, system=system, max_tokens=max_tokens,
+                                    temperature=temperature, enable_tools=False)
+    return send_local_chat(model, messages, system=system, max_new_tokens=max_tokens,
+                           temperature=temperature, should_stop=should_stop)
+
+
 def catalog_json() -> dict[str, Any]:
     """Serializable view of MODELS + PROVIDERS for the bridge's `catalog` cmd."""
     return {
@@ -1356,13 +1567,8 @@ def catalog_json() -> dict[str, Any]:
             }
             for v, p in PROVIDERS.items()
         },
-        "models": [
-            {
-                "short": m.short, "repo": m.repo, "vendor": m.vendor,
-                "kind": m.kind, "badge": m.badge,
-                "context_window": m.context_window, "notes": m.notes,
-                "format": m.format, "gguf_filename": m.gguf_filename, "gguf_backend": m.gguf_backend,
-            }
-            for m in MODELS
-        ],
+        # The catalog, then every model on this machine it does not name:
+        # what is in ~/.hypernix/models is runnable whether or not anybody
+        # wrote a catalog entry for it.
+        "models": [model_json(m) for m in MODELS + _safe_local_models()],
     }

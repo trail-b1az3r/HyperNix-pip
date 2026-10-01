@@ -338,3 +338,117 @@ class TestNeoOvenReachesIt:
 
         assert oven.model is not None
         assert "nonsense" in caplog.text or oven.tokenizer is not None
+
+
+# ---------------------------------------------------------------------------
+# Every layout a Brewer model is found in
+# ---------------------------------------------------------------------------
+#
+# preheat_brewed loaded one layout -- a folder with config.json -- and
+# failed or misbehaved on the others a training run produces: a folder
+# uploaded with no config.json, a model.pt that is a whole training
+# checkpoint, weights from a torch.compile'd model, and a run's
+# checkpoints/latest.pt (which loaded with the byte fallback tokenizer
+# and generated nonsense). Every model also reported a 2048-token
+# context, whatever it was trained at.
+
+def _tiny():
+    from hypernix.training.brewer import BrewerConfig
+    return BrewerConfig(vocab_size=300, n_layers=2, n_heads=4, n_kv_heads=2, d_model=32,
+                        d_ff=40, max_seq_len=64, use_sliding_window=False, name="tiny")
+
+
+def _tokenizer(folder):
+    pytest.importorskip("tokenizers")
+    from tokenizers import Tokenizer, decoders, models, pre_tokenizers, trainers
+
+    folder.mkdir(parents=True, exist_ok=True)
+    tok = Tokenizer(models.BPE())
+    tok.pre_tokenizer = pre_tokenizers.ByteLevel(add_prefix_space=False)
+    tok.decoder = decoders.ByteLevel()
+    tok.train_from_iterator(["the quick brown fox " * 20], trainers.BpeTrainer(
+        vocab_size=300, special_tokens=["<|endoftext|>"],
+        initial_alphabet=pre_tokenizers.ByteLevel.alphabet()))
+    tok.save(str(folder / "tokenizer.json"))
+
+
+def _weights(cfg, prefix=""):
+    from hypernix.training.brewer import BrewerModel
+    torch.manual_seed(0)
+    model = BrewerModel(cfg)
+    return model, {prefix + k: v.contiguous() for k, v in model.state_dict().items()}
+
+
+def _layout(tmp_path, kind):
+    pytest.importorskip("safetensors")
+    from safetensors.torch import save_file
+
+    cfg = _tiny()
+    model, state = _weights(cfg, "_orig_mod." if kind == "compiled" else "")
+    folder = tmp_path / kind
+    folder.mkdir()
+    untied = {k: v for k, v in state.items() if not k.endswith("lm_head.weight")}
+    if kind == "uploaded":            # no config.json; config in the checkpoint; tokenizer/
+        save_file(untied, str(folder / "model.safetensors"))
+        torch.save({"config": cfg.to_dict(), "model_state_dict": state}, folder / "model.pt")
+        _tokenizer(folder / "tokenizer")
+        return folder, model
+    cfg.save(folder / "config.json")
+    _tokenizer(folder)
+    if kind == "checkpoint_as_model_pt":
+        torch.save({"config": cfg.to_dict(), "model_state_dict": state, "step": 9},
+                   folder / "model.pt")
+    else:
+        save_file(untied, str(folder / "model.safetensors"))
+    return folder, model
+
+
+@pytest.mark.parametrize("kind", ["plain", "uploaded", "checkpoint_as_model_pt", "compiled"])
+def test_every_layout_loads_the_same_weights(tmp_path, kind):
+    folder, original = _layout(tmp_path, kind)
+    loaded, _cfg = brewer_adapter.load(folder)
+    ids = torch.tensor([[1, 2, 3, 4]])
+    with torch.no_grad():
+        assert torch.allclose(loaded.inner(ids), original(ids), atol=1e-6)
+
+
+def test_an_uploaded_folder_is_recognised(tmp_path):
+    folder, _ = _layout(tmp_path, "uploaded")
+    assert brewer_adapter.is_brewer_checkpoint(folder)
+
+
+@pytest.mark.parametrize("kind", ["plain", "uploaded"])
+def test_preheat_finds_the_tokenizer_and_the_trained_context(tmp_path, kind):
+    from hypernix.models.neo_oven import preheat_brewed
+
+    folder, _ = _layout(tmp_path, kind)
+    oven = preheat_brewed(folder, device="cpu")
+    assert oven.tokenizer_kind == "hf"
+    assert oven._max_context() == 64
+
+
+def test_a_runs_latest_checkpoint_uses_the_runs_tokenizer(tmp_path):
+    from hypernix.models.neo_oven import preheat_brewed
+
+    cfg = _tiny()
+    _model, state = _weights(cfg)
+    run = tmp_path / "runs" / "mini"
+    (run / "checkpoints").mkdir(parents=True)
+    _tokenizer(run / "tokenizer")
+    torch.save({"config": cfg.to_dict(), "model_state_dict": state},
+               run / "checkpoints" / "latest.pt")
+    oven = preheat_brewed(run / "checkpoints" / "latest.pt", device="cpu")
+    assert oven.tokenizer_kind == "hf"
+
+
+def test_a_folder_with_no_config_anywhere_says_where_it_looked(tmp_path):
+    pytest.importorskip("safetensors")
+    from safetensors.torch import save_file
+
+    _model, state = _weights(_tiny())
+    folder = tmp_path / "bare"
+    folder.mkdir()
+    save_file({k: v for k, v in state.items() if not k.endswith("lm_head.weight")},
+              str(folder / "model.safetensors"))
+    with pytest.raises(ValueError, match="config.json"):
+        brewer_adapter.load(folder)

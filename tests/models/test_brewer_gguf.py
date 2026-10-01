@@ -416,3 +416,112 @@ def test_brew_gguf_converts_a_downloaded_folder(tmp_path, capsys):
     brewer_mod.cli_main(["gguf", str(folder), "--outtype", "q8_0"])
     assert (folder / "HyperNix.3-mini-like.q8_0.gguf").is_file()
     assert "llama-cli -m" in capsys.readouterr().out
+
+
+# ---------------------------------------------------------------------------
+# A model saved without config.json (as a training run uploads it)
+# ---------------------------------------------------------------------------
+#
+# From a report: HyperNix.3-mini ran in a patched llama.cpp and the newer
+# 3.1-mini did not -- "unknown model architecture: 'hypernix'". The newer
+# model's folder, like hypernix.3-mini-Beta on the Hub, has
+# model.safetensors, a model.pt checkpoint and tokenizer/, but no
+# config.json. It was not recognised as Brewer, went to the generic
+# converter, and came out labelled `hypernix` -- a name no llama.cpp has.
+
+
+def _run_folder(tmp_path: Path, cfg: BrewerConfig, *, checkpoint: bool = True) -> tuple[Path, BrewerModel]:
+    """model.safetensors + model.pt (a training checkpoint) + tokenizer/, no config.json."""
+    folder, model = _folder(tmp_path, cfg)
+    (folder / "config.json").unlink()
+    tok = folder / "tokenizer"
+    tok.mkdir()
+    for name in ("tokenizer.json", "tokenizer_config.json"):
+        (folder / name).rename(tok / name)
+    if checkpoint:
+        torch.save({"arch": "hypernix0x-v2", "config": cfg.to_dict(),
+                    "model_state_dict": model.state_dict(), "step": 7}, folder / "model.pt")
+    return folder, model
+
+
+def test_a_folder_without_config_json_is_still_brewer(tmp_path):
+    from hypernix.quant.convertq import source_kind
+    from hypernix.quant.hyprslug import is_brewer_source
+
+    folder, _ = _run_folder(tmp_path, _config())
+    assert is_brewer_source(folder)
+    assert source_kind(folder) == "brewer"
+
+
+def test_it_exports_the_same_file_as_with_config_json(tmp_path):
+    cfg = _config()
+    (tmp_path / "a").mkdir()
+    (tmp_path / "b").mkdir()
+    with_config, _ = _folder(tmp_path / "a", cfg)
+    without, _ = _run_folder(tmp_path / "b", cfg)
+    export_gguf(with_config, tmp_path / "a.gguf", outtype="f32")
+    export_gguf(without, tmp_path / "b.gguf", outtype="f32")
+    assert (tmp_path / "a.gguf").read_bytes() == (tmp_path / "b.gguf").read_bytes()
+    fields, _ = _read(tmp_path / "b.gguf")
+    assert fields["general.architecture"] == "llama"
+
+
+def test_the_generic_converter_hands_brewer_models_over(tmp_path):
+    """`hnx convert FOLDER -o x.gguf` (no -P) used convert_to_gguf, which
+    wrote `hypernix` and did not permute Q/K. It now writes llama."""
+    from hypernix.quant.convert import convert_to_gguf
+
+    for name, make in (("with", _folder), ("without", _run_folder)):
+        (tmp_path / name).mkdir()
+        folder, _ = make(tmp_path / name, _config())
+        out = convert_to_gguf(folder, tmp_path / f"{name}.gguf", dtype="fp16")
+        fields, tensors = _read(out)
+        assert fields["general.architecture"] == "llama", name
+        assert "blk.0.attn_q.weight" in tensors
+
+
+def test_a_config_in_the_safetensors_header(tmp_path):
+    cfg = _config()
+    folder, model = _run_folder(tmp_path, cfg, checkpoint=False)
+    state = {k: v.contiguous() for k, v in model.state_dict().items()
+             if not (cfg.tie_embeddings and k == "lm_head.weight")}
+    save_file(state, str(folder / "model.safetensors"), metadata={"config": json.dumps(cfg.to_dict())})
+    export_gguf(folder, tmp_path / "m.gguf", outtype="f32")
+    fields, _ = _read(tmp_path / "m.gguf")
+    assert fields["llama.block_count"] == 2
+
+
+def test_a_training_runs_latest_checkpoint(tmp_path):
+    """runs/<name>/checkpoints/latest.pt, with the tokenizer in runs/<name>/tokenizer."""
+    cfg = _config()
+    run = tmp_path / "runs" / "mini"
+    (run / "checkpoints").mkdir(parents=True)
+    (run / "tokenizer").mkdir()
+    _bpe_tokenizer(run / "tokenizer")
+    torch.manual_seed(0)
+    model = BrewerModel(cfg)
+    torch.save({"config": cfg.to_dict(), "model_state_dict": model.state_dict(), "step": 3},
+               run / "checkpoints" / "latest.pt")
+    report = export_gguf(run / "checkpoints" / "latest.pt", tmp_path / "r.gguf", outtype="f32")
+    fields, _ = _read(tmp_path / "r.gguf")
+    assert fields["general.architecture"] == "llama"
+    assert report.tokenizer == "tokenizer.json"
+
+
+def test_no_config_anywhere_says_where_it_looked(tmp_path):
+    folder, _ = _run_folder(tmp_path, _config(), checkpoint=False)
+    with pytest.raises(GGUFExportError) as caught:
+        export_gguf(folder, tmp_path / "x.gguf")
+    message = str(caught.value)
+    assert "config.json" in message and "latest.pt" in message
+
+
+def test_a_hugging_face_folder_is_not_taken_for_brewer(tmp_path):
+    from hypernix.models.brewer_gguf import has_brewer_weights
+
+    folder = tmp_path / "hf"
+    folder.mkdir()
+    save_file({"model.embed_tokens.weight": torch.zeros(4, 4),
+               "model.layers.0.self_attn.q_proj.weight": torch.zeros(4, 4)},
+              str(folder / "model.safetensors"))
+    assert not has_brewer_weights(folder)

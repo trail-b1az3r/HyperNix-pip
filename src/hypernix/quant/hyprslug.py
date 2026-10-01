@@ -1427,7 +1427,15 @@ def is_brewer_source(path: str | Path) -> bool:
         return candidate.suffix.lower() == ".pt"
     from ..hyperlink.brewed import is_brewed_dir
 
-    return is_brewed_dir(candidate)
+    if is_brewed_dir(candidate):
+        return True
+    # A folder uploaded from a training run has no config.json, and was
+    # taken for a Hugging Face one: the generic converter then wrote
+    # `general.architecture = hypernix`, which no llama.cpp opens. Its
+    # tensor names say what it is.
+    from ..models.brewer_gguf import has_brewer_weights
+
+    return has_brewer_weights(candidate)
 
 
 def quantize_gguf(

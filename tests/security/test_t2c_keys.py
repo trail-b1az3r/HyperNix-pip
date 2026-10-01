@@ -230,8 +230,11 @@ class TestGkey:
         """The point of v2.1 is a key that is never written down in the clear."""
         code, text = _gkey("create", "-v", "v2.1")
         assert code == 0, text
-        assert "T1_" not in text
-        assert "T2_" not in text.replace("T2C_", "").replace("T2CK_", "")
+        # A key starts a token. Matching "T1_" anywhere also matched it
+        # inside the random base64url of the kit -- "...eET2_aGW..." -- and
+        # failed about one run in a hundred with nothing printed in clear.
+        key = re.compile(r"(?<![A-Za-z0-9_-])T[12]_")
+        assert not key.search(text), text
 
 
 # ---------------------------------------------------------------------------

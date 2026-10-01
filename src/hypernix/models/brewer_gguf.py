@@ -63,6 +63,7 @@ __all__ = [
     "OUTTYPES",
     "brewer_to_llama_name",
     "export_gguf",
+    "has_brewer_weights",
     "load_source",
     "read_char_vocab",
     "write_char_vocab",
@@ -130,6 +131,110 @@ class ExportReport:
 _WEIGHT_FILES = ("model.safetensors", "model.pt", "pytorch_model.bin", "weights.pt")
 
 
+#: Where a training run keeps a checkpoint that carries its config, most
+#: specific first. ``train_hypernix3_mini.py`` writes ``checkpoints/
+#: latest.pt`` as ``{"config", "model_state_dict", ...}``; a folder
+#: uploaded from a run often has that file as ``model.pt``.
+_CHECKPOINT_NAMES = ("checkpoints/latest.pt", "latest.pt", "model.pt")
+
+
+def _folder_config(path: Path) -> tuple[Any, dict[str, Any] | None]:
+    """``(BrewerConfig, checkpoint or None)`` for a model folder.
+
+    ``config.json`` first; then a config stored in the safetensors
+    header; then a training checkpoint beside the weights, which carries
+    both. A folder uploaded straight from a training run has no
+    ``config.json`` -- HyperNix.3-mini's beta has ``model.safetensors``,
+    ``model.pt`` and ``tokenizer/`` -- and refusing it sent people to the
+    generic converter, whose file no llama.cpp opens.
+    """
+    from ..training.brewer import BrewerConfig
+
+    config_path = path / "config.json"
+    if config_path.is_file():
+        return BrewerConfig.load(config_path), None
+
+    stored = _safetensors_config(path / "model.safetensors")
+    if stored is not None:
+        return BrewerConfig.from_dict(stored), None
+
+    from ..security.safeload import UntrustedCheckpoint, load_checkpoint
+
+    refused: list[str] = []
+    names = list(_CHECKPOINT_NAMES) + sorted(p.name for p in path.glob("*.pt"))
+    for name in dict.fromkeys(names):
+        candidate = path / name
+        if not candidate.is_file():
+            continue
+        try:
+            payload = load_checkpoint(candidate)
+        except UntrustedCheckpoint as exc:
+            refused.append(str(exc))
+            continue
+        if isinstance(payload, dict) and "config" in payload and "model_state_dict" in payload:
+            return BrewerConfig.from_dict(payload["config"]), payload
+    hint = ("\n\n" + refused[0]) if refused else ""
+    raise GGUFExportError(
+        f"No config for the model in {path}: no config.json, no config in "
+        f"model.safetensors, and no training checkpoint "
+        f"({', '.join(_CHECKPOINT_NAMES)}) carrying one. Copy the config.json "
+        f"from the training run (runs/<name>/final/config.json) beside the "
+        f"weights, or convert the run's checkpoints/latest.pt instead.{hint}"
+    )
+
+
+def _safetensors_config(weights: Path) -> dict[str, Any] | None:
+    """A Brewer config kept in a safetensors header, if there is one."""
+    if not weights.is_file():
+        return None
+    try:
+        from safetensors import safe_open
+
+        with safe_open(str(weights), framework="np") as handle:
+            meta = handle.metadata() or {}
+    except Exception:  # noqa: BLE001 - no header config is the common case
+        return None
+    for key in ("config", "hypernix.brewer.config", "brewer_config"):
+        if meta.get(key):
+            try:
+                data = json.loads(meta[key])
+            except ValueError:
+                continue
+            if isinstance(data, dict) and "d_model" in data:
+                return data
+    return None
+
+
+def has_brewer_weights(path: str | Path) -> bool:
+    """Whether a folder's safetensors hold Brewer tensors, by name alone.
+
+    Reads the header, not the weights. ``embed.embed.weight`` and
+    ``blocks.N.attn.q_proj.weight`` are Brewer's names and nobody else's.
+    """
+    weights = Path(path) / "model.safetensors"
+    if not weights.is_file():
+        return False
+    try:
+        from safetensors import safe_open
+
+        with safe_open(str(weights), framework="np") as handle:
+            keys = list(handle.keys())
+    except Exception:  # noqa: BLE001 - unreadable is not Brewer
+        return False
+    return any(k.endswith("embed.embed.weight") for k in keys) and any(
+        ".attn.q_proj.weight" in k and "blocks." in k for k in keys)
+
+
+def _tokenizer_folder(folder: Path) -> Path | None:
+    """Where the model's ``tokenizer.json`` is: beside the weights, in a
+    ``tokenizer/`` folder there (as a training run writes it), or in the
+    run's ``tokenizer/`` when the source is ``checkpoints/latest.pt``."""
+    for candidate in (folder, folder / "tokenizer", folder.parent / "tokenizer"):
+        if (candidate / "tokenizer.json").is_file():
+            return candidate
+    return None
+
+
 def _strip_prefix(state: dict[str, Any]) -> dict[str, Any]:
     """Drop a wrapper prefix (``_orig_mod.`` from torch.compile, ``model.``)."""
     anchor = next((k for k in state if k.endswith("embed.embed.weight")), None)
@@ -152,17 +257,19 @@ def load_source(source: str | Path) -> tuple[dict[str, Any], Any, dict[str, Any]
     path = Path(source).expanduser()
     extras: dict[str, Any] = {}
     if path.is_dir():
-        config_path = path / "config.json"
-        if not config_path.is_file():
-            raise GGUFExportError(f"No config.json in {path}; is it a Brewer model folder?")
-        config = BrewerConfig.load(config_path)
+        config, checkpoint = _folder_config(path)
         weights = next((path / n for n in _WEIGHT_FILES if (path / n).is_file()), None)
-        if weights is None:
+        if weights is None and checkpoint is None:
             raise GGUFExportError(
-                f"{path} has a config.json but no weights ({', '.join(_WEIGHT_FILES)}): "
+                f"{path} has a config but no weights ({', '.join(_WEIGHT_FILES)}): "
                 f"there is nothing to run yet. Train it first."
             )
-        if weights.suffix == ".safetensors":
+        if checkpoint is not None and (weights is None or weights.suffix != ".safetensors"):
+            # The checkpoint the config came from carries the weights too.
+            state = checkpoint["model_state_dict"]
+            if checkpoint.get("char_vocab"):
+                extras["char_vocab"] = list(checkpoint["char_vocab"])
+        elif weights.suffix == ".safetensors":
             from safetensors.torch import load_file
 
             state = load_file(str(weights), device="cpu")
@@ -394,8 +501,9 @@ def _find_vocab(extras: dict[str, Any], tokenizer: str | Path | None) -> _Vocab:
             raise GGUFExportError(f"No tokenizer.json at {path}.")
         return _json_vocab(folder)
     folder = extras.get("folder")
-    if folder is not None and (Path(folder) / "tokenizer.json").is_file():
-        return _json_vocab(Path(folder))
+    found = _tokenizer_folder(Path(folder)) if folder is not None else None
+    if found is not None:
+        return _json_vocab(found)
     if extras.get("char_vocab"):
         return _char_vocab(extras["char_vocab"])
     raise GGUFExportError(
