@@ -3,6 +3,61 @@
   "source": "wiki/Changelog.md",
   "entries": [
     {
+      "version": "0.72.6.post4",
+      "key": "0.72.6.post4",
+      "aliases": [
+        "0.72.6-post4",
+        "0.72.6.post4"
+      ],
+      "kind": "post",
+      "heading": "0.72.6.post4 \u2014 patch 4 - hyped, hyped-pro and Neo Oven run any HyperNix model",
+      "date": "",
+      "title": "patch 4 - hyped, hyped-pro and Neo Oven run any HyperNix model",
+      "summary": "hyped, hyped-pro and Neo Oven run any HyperNix model",
+      "patch": 4,
+      "headline": "hyped, hyped-pro and Neo Oven run any HyperNix model",
+      "highlights": [
+        "Fixed hyped-pro and hyped refusing models nobody wrote a catalog entry for.",
+        "Fixed Neo Oven loading hyperNix0x-v2 models from anything but a folder with a config.json.",
+        "Fixed a hyperNix0x-v2 model saved without a config.json converting to a GGUF no llama.cpp opens."
+      ],
+      "changes": [
+        {
+          "symbol": "\ud81a\udca5",
+          "label": "major fix",
+          "category": "Fixed",
+          "text": "Fixed hyped-pro and hyped refusing models nobody wrote a catalog entry for.",
+          "details": [
+            "hyped-pro refused any name outside its catalog (HPC-CFG-001), and its picker listed nothing that was on disk. It now also runs a path to a .gguf, a model folder or a Brewer .pt, a model in /.hypernix/models by name (exactly: a typo is an error, not a different model), and a\u2026",
+            "A T1 server routing to a model it had indexed got \"this client has no local model for it\": a model here of exactly that name is used.",
+            "hyped (basic) could not run a local model at all (\"this build cannot run it directly\"), found only .gguf files, and did not follow a symlinked folder. It runs any of the above itself, with no tools, and /model takes a path, a name or a repo id.",
+            "hyped sent its T1 turns to /v1/chat/completions on the T1 server, which has no such route: every reply was a 404. It now asks /runner/status where the loaded model answers and talks to that."
+          ]
+        },
+        {
+          "symbol": "\ud81a\udca5",
+          "label": "major fix",
+          "category": "Fixed",
+          "text": "Fixed Neo Oven loading hyperNix0x-v2 models from anything but a folder with a config.json.",
+          "details": [
+            "preheat_brewed (and brewer_adapter.load) failed on a folder uploaded from a training run with no config.json, on a model.pt that is a whole training checkpoint, and on weights saved from a torch.compiled model (orig_mod.). A run's checkpoints/latest.pt loaded with the byte\u2026",
+            "Every Brewer model reported a 2048-token context: NeoOven read only max_position_embeddings, and a Brewer config calls it max_seq_len. HyperNix.3-mini, trained at 512, ran RoPE far past anything it had seen once a conversation grew."
+          ]
+        },
+        {
+          "symbol": "\ud81a\udca5",
+          "label": "major fix",
+          "category": "Fixed",
+          "text": "Fixed a hyperNix0x-v2 model saved without a config.json converting to a GGUF no llama.cpp opens.",
+          "details": [
+            "From a report: HyperNix.3-mini ran in a patched llama.cpp and HyperNix.3.1-mini said unknown model architecture: 'hypernix'. A folder uploaded from a training run -- model.safetensors, model.pt, tokenizer/, no config.json -- was not recognised as Brewer, so it went to the\u2026",
+            "A folder is now Brewer by its tensor names when it has no config. The config is read from the safetensors header or a training checkpoint beside the weights, and the tokenizer from tokenizer/. convert_to_gguf hands Brewer models to the llama exporter, so hnx convert, -P, hnx\u2026",
+            "An existing hypernix-labelled GGUF is refused by the T1 runner before llama-server starts, with the command that exports it again, and hnx convert says when it has written one."
+          ]
+        }
+      ]
+    },
+    {
       "version": "0.72.6.post3",
       "key": "0.72.6.post3",
       "aliases": [
@@ -336,39 +391,6 @@
           "details": [
             "[tool.bandit] in pyproject.toml excludes tests and build, and skips B404 and B603 (importing subprocess, and calling it with a list and no shell). Every other finding kept in the code has a nosec marker with its reason.",
             "Bandit went from about 1,087 findings to 107: 53 try/except/pass, 25 Hugging Face downloads without a pinned revision, 18 commands found on PATH, and a handful of low-severity others."
-          ]
-        },
-        {
-          "symbol": "\ud81a\udca5",
-          "label": "major fix",
-          "category": "Fixed",
-          "text": "Fixed hyped-pro and hyped refusing models nobody wrote a catalog entry for.",
-          "details": [
-            "hyped-pro refused any name outside its catalog (HPC-CFG-001), and its picker listed nothing that was on disk. It now also runs a path to a .gguf, a model folder or a Brewer .pt, a model in /.hypernix/models by name (exactly: a typo is an error, not a different model), and a\u2026",
-            "A T1 server routing to a model it had indexed got \"this client has no local model for it\": a model here of exactly that name is used.",
-            "hyped (basic) could not run a local model at all (\"this build cannot run it directly\"), found only .gguf files, and did not follow a symlinked folder. It runs any of the above itself, with no tools, and /model takes a path, a name or a repo id.",
-            "hyped sent its T1 turns to /v1/chat/completions on the T1 server, which has no such route: every reply was a 404. It now asks /runner/status where the loaded model answers and talks to that."
-          ]
-        },
-        {
-          "symbol": "\ud81a\udca5",
-          "label": "major fix",
-          "category": "Fixed",
-          "text": "Fixed Neo Oven loading hyperNix0x-v2 models from anything but a folder with a config.json.",
-          "details": [
-            "preheat_brewed (and brewer_adapter.load) failed on a folder uploaded from a training run with no config.json, on a model.pt that is a whole training checkpoint, and on weights saved from a torch.compiled model (orig_mod.). A run's checkpoints/latest.pt loaded with the byte\u2026",
-            "Every Brewer model reported a 2048-token context: NeoOven read only max_position_embeddings, and a Brewer config calls it max_seq_len. HyperNix.3-mini, trained at 512, ran RoPE far past anything it had seen once a conversation grew."
-          ]
-        },
-        {
-          "symbol": "\ud81a\udca5",
-          "label": "major fix",
-          "category": "Fixed",
-          "text": "Fixed a hyperNix0x-v2 model saved without a config.json converting to a GGUF no llama.cpp opens.",
-          "details": [
-            "From a report: HyperNix.3-mini ran in a patched llama.cpp and HyperNix.3.1-mini said unknown model architecture: 'hypernix'. A folder uploaded from a training run -- model.safetensors, model.pt, tokenizer/, no config.json -- was not recognised as Brewer, so it went to the\u2026",
-            "A folder is now Brewer by its tensor names when it has no config. The config is read from the safetensors header or a training checkpoint beside the weights, and the tokenizer from tokenizer/. convert_to_gguf hands Brewer models to the llama exporter, so hnx convert, -P, hnx\u2026",
-            "An existing hypernix-labelled GGUF is refused by the T1 runner before llama-server starts, with the command that exports it again, and hnx convert says when it has written one."
           ]
         },
         {
@@ -1425,99 +1447,7 @@
         "On the built-in runner, the tool format went in as a second system message ahead of the first. A backend that keeps only the first system message then dropped the person's own instructions and the default prompt. It is now added to the end of the one system message.",
         "The assistant's reply bubble had a hole in its tail. A dark triangle with a light rim sat at the bottom-left corner of every model reply, and the person's own bubbles looked right. The tail is drawn for the right side and mirrored for the left, and mirroring reverses a path's\u2026"
       ],
-      "changes": [
-        {
-          "symbol": "\ud81a\udd54",
-          "label": "minor",
-          "category": "Added",
-          "text": "Tools on the streaming route. Ordinary answers still stream as they are written. A tool call written as text (<tool_call>, [TOOL_CALLS], <|python_tag|>, a JSON block) is held back rather than shown, including one split across chunks. Streamed structured calls are assembled from\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udd17",
-          "label": "API",
-          "category": "API Changes",
-          "text": "The third release candidate: a HyperLink model has its tools on the route the app actually uses.",
-          "details": []
-        },
-        {
-          "symbol": "\ud81a\udca5",
-          "label": "major fix",
-          "category": "Fixed",
-          "text": "A HyperLink model said it had no tools, and it was right. Reported from an iPhone: gemma-4-e4b, asked to use HyperNix's T1 API, said nothing had been provided to it. Three bugs lined up. The app streams its replies, and /chat/stream never offered a tool; only /chat did. Even\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\ud81a\udca5",
-          "label": "major fix",
-          "category": "Fixed",
-          "text": "The T1 API tools are now offered in every HyperLink chat whose caller has a credential, on both routes. They run with that credential, and loading or unloading models is still offered only to a caller with write or admin. The memory tools follow Auto-memory. Noodle's workspace\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\ud81a\udca5",
-          "label": "major fix",
-          "category": "Fixed",
-          "text": "On the built-in runner, the tool format went in as a second system message ahead of the first. A backend that keeps only the first system message then dropped the person's own instructions and the default prompt. It is now added to the end of the one system message.",
-          "details": []
-        },
-        {
-          "symbol": "\ud81a\udca5",
-          "label": "major fix",
-          "category": "Fixed",
-          "text": "The assistant's reply bubble had a hole in its tail. A dark triangle with a light rim sat at the bottom-left corner of every model reply, and the person's own bubbles looked right. The tail is drawn for the right side and mirrored for the left, and mirroring reverses a path's\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udc1b",
-          "label": "fix",
-          "category": "Fixed",
-          "text": "The model's name under a reply sat 5pt left of the bubble, under its tail. It now lines up with the bubble.",
-          "details": []
-        },
-        {
-          "symbol": "\ud81a\udca5",
-          "label": "major fix",
-          "category": "Fixed",
-          "text": "tvtop-max opened to empty panels and no header. Reported from a phone. Before reading its first request, the bridge searched for a training log with three recursive / globs over the working directory. Started from a home directory full of models, virtualenvs and caches, that\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\ud81a\udca5",
-          "label": "major fix",
-          "category": "Fixed",
-          "text": "The training-log search that tvtop, tvtop-pro and tvtop-max share is bounded: 5 folders deep, 2 seconds, 50,000 entries. It skips virtualenvs, node_modules, site-packages and hidden folders, except .hypernix and .runs, where training runs are kept.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udc1b",
-          "label": "fix",
-          "category": "Fixed",
-          "text": "tvtop-max's phone layout pushed its footer (keys, status) off the bottom of the screen, because its scrolling column took its content's full height. It now fits between the header and the footer, and its panels leave room for the scrollbar.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83e\uddea",
-          "label": "tests",
-          "category": "Tests",
-          "text": "15 tests in tests/test_hyperlink_stream_tools.py, the main one the screenshot itself: a default server under a real uvicorn and a paired phone on /chat/stream. The model writes <tool_call> for server_version, the server calls itself with the phone's token, and the phone gets\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\ud83e\uddea",
-          "label": "tests",
-          "category": "Tests",
-          "text": "The bubble tail: tests/test_hyperlink_bubble_tail.py reads the tail's coordinates from the Swift, shows that the mirrored tails wind in opposite directions and overlap their bubbles, and requires the union; it fails on the old shape. BubbleShapeTests.swift checks on a simulator\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\ud83e\uddea",
-          "label": "tests",
-          "category": "Tests",
-          "text": "tvtop-max's slow start: a frame is answered while discovery is still running, info waits for it, a failed search still lets info answer, and the bridge serves at once. The log search stays within its depth, time and size limits and skips heavy and hidden folders, but finds a\u2026",
-          "details": []
-        }
-      ]
+      "changes": []
     },
     {
       "version": "0.72.6.rc2",

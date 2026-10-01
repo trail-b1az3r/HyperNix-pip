@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-api-deep",
   "generated_at": "2026-09-20T21:20:57Z",
-  "commit": "723687ab1cfc71b0b077bacc95f08a22f7ae94ac",
+  "commit": "d944ec1f3b4a47d23a1f7297d944366d7e665f64",
   "history_available": true,
   "source_root": "src/hypernix",
   "modules": [
@@ -17,6 +17,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "11086864",
+          "date": "2026-10-01",
+          "author": "Claude",
+          "subject": "release: 0.72.6.post4 -- its own changelog entry and version",
+          "api_changes": []
+        },
         {
           "sha": "3c3bd1be",
           "date": "2026-09-28",
@@ -64,13 +71,6 @@
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "0.72.6.rc2: tvtop-max, and HyperLink's default system prompt",
-          "api_changes": []
-        },
-        {
-          "sha": "848cfa6a",
-          "date": "2026-09-23",
-          "author": "Claude",
-          "subject": "0.72.6.rc1: prepare the tree, and fix what the first release run hit",
           "api_changes": []
         }
       ]
