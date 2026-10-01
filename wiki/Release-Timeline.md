@@ -1031,3 +1031,21 @@ timeline
         : fdb60dd8 - hypernix-t1 launch-script- -1 'CMD' replaces -$ 'CMD'
 ```
 
+## Release v0.72.6.post4 (2026-10-01)
+
+```mermaid
+timeline
+    title Release v0.72.6.post4 Commits
+    0.72.6.post4
+        : 5071a035 - chore- refresh generated docs data and release summaries
+        : 11086864 - release- 0.72.6.post4 -- its own changelog entry and version
+        : fe0159c2 - chore- refresh generated docs data and release summaries
+        : 9d5186ed - hyped, hyped-pro and Neo Oven run models outside the catalog, in any layout
+        : 3327d117 - chore- update JSON stats (scheduled)
+        : 4b7fe9d5 - t1api- serve /inference from the HyperNix runner
+        : 34ccaa58 - convert- a Brewer model saved without config.json exports as llama, not hypernix
+        : 022ee992 - chore- refresh generated docs data and release summaries
+        : 8bd42f6e - chore- refresh generated docs data and release summaries
+        : f6ab07fa - Auto-update README header (hourly)
+```
+
