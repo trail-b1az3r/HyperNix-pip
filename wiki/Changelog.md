@@ -214,6 +214,62 @@ Historical wording and technical detail are retained during format normalization
   every one of the ~50 per-module wiki pages against source — those were
   spot-checked, not exhaustively re-verified.
 
+## 0.72.6.post4 — patch 4 - hyped, hyped-pro and Neo Oven run any HyperNix model
+
+### Fixed
+
+𖢥 Fixed hyped-pro and hyped refusing models nobody wrote a catalog entry
+  for.
+  - hyped-pro refused any name outside its catalog (`HPC-CFG-001`), and
+    its picker listed nothing that was on disk. It now also runs a path
+    to a `.gguf`, a model folder or a Brewer `.pt`, a model in
+    `~/.hypernix/models` by name (exactly: a typo is an error, not a
+    different model), and a Hugging Face repo id (`org/name`, or
+    `org/name:file.gguf`). The picker lists what is on disk, and the
+    TUI asks the Python side to resolve a name it does not know.
+  - A T1 server routing to a model it had indexed got "this client has
+    no local model for it": a model here of exactly that name is used.
+  - hyped (basic) could not run a local model at all ("this build cannot
+    run it directly"), found only `.gguf` files, and did not follow a
+    symlinked folder. It runs any of the above itself, with no tools,
+    and `/model` takes a path, a name or a repo id.
+  - hyped sent its T1 turns to `/v1/chat/completions` on the T1 server,
+    which has no such route: every reply was a 404. It now asks
+    `/runner/status` where the loaded model answers and talks to that.
+
+𖢥 Fixed Neo Oven loading hyperNix0x-v2 models from anything but a
+  folder with a `config.json`.
+  - `preheat_brewed` (and `brewer_adapter.load`) failed on a folder
+    uploaded from a training run with no `config.json`, on a `model.pt`
+    that is a whole training checkpoint, and on weights saved from a
+    `torch.compile`d model (`_orig_mod.`). A run's
+    `checkpoints/latest.pt` loaded with the byte fallback tokenizer, so
+    it generated nonsense. It now shares the GGUF exporter's loader,
+    which reads all of them, and finds the tokenizer in `tokenizer/`.
+  - Every Brewer model reported a 2048-token context: NeoOven read only
+    `max_position_embeddings`, and a Brewer config calls it
+    `max_seq_len`. HyperNix.3-mini, trained at 512, ran RoPE far past
+    anything it had seen once a conversation grew.
+
+𖢥 Fixed a hyperNix0x-v2 model saved without a `config.json` converting
+  to a GGUF no llama.cpp opens.
+  - From a report: HyperNix.3-mini ran in a patched llama.cpp and
+    HyperNix.3.1-mini said `unknown model architecture: 'hypernix'`. A
+    folder uploaded from a training run -- `model.safetensors`,
+    `model.pt`, `tokenizer/`, no `config.json` -- was not recognised as
+    Brewer, so it went to the generic converter, which labels its output
+    `hypernix` and does not permute Q and K for llama.cpp's RoPE. Plain
+    `hnx convert` did the same to every Brewer folder.
+  - A folder is now Brewer by its tensor names when it has no config.
+    The config is read from the safetensors header or a training
+    checkpoint beside the weights, and the tokenizer from `tokenizer/`.
+    `convert_to_gguf` hands Brewer models to the llama exporter, so
+    `hnx convert`, `-P`, `hnx all` and `instant_pot` all write `llama`
+    -- checked by loading and generating with the patched llama.cpp.
+  - An existing `hypernix`-labelled GGUF is refused by the T1 runner
+    before llama-server starts, with the command that exports it again,
+    and `hnx convert` says when it has written one.
+
 ## 0.72.6.post3 — patch 3 - HyperLink on the web opens at the server's own address
 
 ### Added
@@ -518,58 +574,6 @@ Historical wording and technical detail are retained during format normalization
     found on `PATH`, and a handful of low-severity others.
 
 ### Fixed
-
-𖢥 Fixed hyped-pro and hyped refusing models nobody wrote a catalog entry
-  for.
-  - hyped-pro refused any name outside its catalog (`HPC-CFG-001`), and
-    its picker listed nothing that was on disk. It now also runs a path
-    to a `.gguf`, a model folder or a Brewer `.pt`, a model in
-    `~/.hypernix/models` by name (exactly: a typo is an error, not a
-    different model), and a Hugging Face repo id (`org/name`, or
-    `org/name:file.gguf`). The picker lists what is on disk, and the
-    TUI asks the Python side to resolve a name it does not know.
-  - A T1 server routing to a model it had indexed got "this client has
-    no local model for it": a model here of exactly that name is used.
-  - hyped (basic) could not run a local model at all ("this build cannot
-    run it directly"), found only `.gguf` files, and did not follow a
-    symlinked folder. It runs any of the above itself, with no tools,
-    and `/model` takes a path, a name or a repo id.
-  - hyped sent its T1 turns to `/v1/chat/completions` on the T1 server,
-    which has no such route: every reply was a 404. It now asks
-    `/runner/status` where the loaded model answers and talks to that.
-
-𖢥 Fixed Neo Oven loading hyperNix0x-v2 models from anything but a
-  folder with a `config.json`.
-  - `preheat_brewed` (and `brewer_adapter.load`) failed on a folder
-    uploaded from a training run with no `config.json`, on a `model.pt`
-    that is a whole training checkpoint, and on weights saved from a
-    `torch.compile`d model (`_orig_mod.`). A run's
-    `checkpoints/latest.pt` loaded with the byte fallback tokenizer, so
-    it generated nonsense. It now shares the GGUF exporter's loader,
-    which reads all of them, and finds the tokenizer in `tokenizer/`.
-  - Every Brewer model reported a 2048-token context: NeoOven read only
-    `max_position_embeddings`, and a Brewer config calls it
-    `max_seq_len`. HyperNix.3-mini, trained at 512, ran RoPE far past
-    anything it had seen once a conversation grew.
-
-𖢥 Fixed a hyperNix0x-v2 model saved without a `config.json` converting
-  to a GGUF no llama.cpp opens.
-  - From a report: HyperNix.3-mini ran in a patched llama.cpp and
-    HyperNix.3.1-mini said `unknown model architecture: 'hypernix'`. A
-    folder uploaded from a training run -- `model.safetensors`,
-    `model.pt`, `tokenizer/`, no `config.json` -- was not recognised as
-    Brewer, so it went to the generic converter, which labels its output
-    `hypernix` and does not permute Q and K for llama.cpp's RoPE. Plain
-    `hnx convert` did the same to every Brewer folder.
-  - A folder is now Brewer by its tensor names when it has no config.
-    The config is read from the safetensors header or a training
-    checkpoint beside the weights, and the tokenizer from `tokenizer/`.
-    `convert_to_gguf` hands Brewer models to the llama exporter, so
-    `hnx convert`, `-P`, `hnx all` and `instant_pot` all write `llama`
-    -- checked by loading and generating with the patched llama.cpp.
-  - An existing `hypernix`-labelled GGUF is refused by the T1 runner
-    before llama-server starts, with the command that exports it again,
-    and `hnx convert` says when it has written one.
 
 𖢥 Fixed symlinked models being invisible to HyperLink.
   - `ln -s /data/qwen ~/.hypernix/models/qwen` is the obvious way to keep
