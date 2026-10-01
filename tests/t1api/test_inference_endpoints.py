@@ -508,3 +508,260 @@ class TestItDoesNotDuplicateTheBridge:
                 headers=_auth(key),
             )
         assert response.status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# The HyperNix runner as a backend
+# ---------------------------------------------------------------------------
+
+RUNNER_URL = "http://127.0.0.1:8781"
+LMSTUDIO_URL = "http://lmstudio.test:1234"
+
+
+class _Loaded:
+    def __init__(self, model_id: str) -> None:
+        self.model_id = model_id
+
+
+class _Runner:
+    """Stands in for ManagedRunner: one model, or none."""
+
+    def __init__(self, model_id: str | None = "model-a", base_url: str = RUNNER_URL) -> None:
+        self.base_url = base_url
+        self._model = _Loaded(model_id) if model_id else None
+
+    @property
+    def current(self):
+        return self._model
+
+
+class _BrokenRunner(_Runner):
+    @property
+    def current(self):
+        raise RuntimeError("the runner's lock is wedged")
+
+
+def _clients():
+    """Patch the bridge so each backend gets its own fake, keyed by address.
+
+    The runner and LM Studio are both reached through the same OpenAI
+    client class, so one shared mock could not show which one answered.
+    """
+    made: dict[str, mock.MagicMock] = {}
+
+    def factory(*args, base_url=None, **kwargs):
+        fake = made.setdefault(base_url, mock.MagicMock(name=f"client@{base_url}"))
+        fake.base_url = base_url
+        fake.chat.return_value = _envelope(f"from {base_url}")
+        fake.list_models.return_value = []
+        return fake
+
+    return made, mock.patch(BRIDGE, side_effect=factory)
+
+
+def _app_with(km, gk, tmp_path, *, runner, lmstudio: bool = True):
+    config = T1APIConfig(
+        token_secret="test-secret-value-that-is-long-enough",
+        db_path=str(tmp_path / "t1.sqlite3"),
+        module_storage_dir=str(tmp_path / "modules"),
+        hyperlink_files_dir=str(tmp_path / "files"),
+        lmstudio_url=LMSTUDIO_URL if lmstudio else "",
+        lmstudio_enabled=lmstudio,
+        default_plan="free",
+    )
+    registry = ModelRegistry()
+    registry.register(_model("model-a"))
+    registry.register(_model("model-b"))
+    app = create_app(config=config, keymaster=km, gatekeeper=gk, registry=registry)
+    app.state.t1_runner = runner
+    return TestClient(app, client=("127.0.0.1", 5000))
+
+
+def _chat(client, key, model="model-a"):
+    return client.post(
+        "/inference/chat",
+        json={"model": model, "messages": [{"role": "user", "content": "hi"}]},
+        headers=_auth(key),
+    )
+
+
+class TestTheHyperNixRunnerAnswers:
+    def test_it_serves_its_loaded_model_with_no_lm_studio_at_all(self, km, gk, tmp_path, key):
+        """The case that used to be a 501: a server that runs its own
+        model and has no LM Studio installed."""
+        client = _app_with(km, gk, tmp_path, runner=_Runner("model-a"), lmstudio=False)
+        made, patch = _clients()
+        with patch:
+            response = _chat(client, key)
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["backend_name"] == "hypernix"
+        assert body["backend"] == RUNNER_URL
+        assert body["content"] == f"from {RUNNER_URL}"
+        assert body["model"] == "model-a" and body["substituted"] is False
+
+    def test_it_comes_before_lm_studio_for_its_own_model(self, km, gk, tmp_path, key):
+        client = _app_with(km, gk, tmp_path, runner=_Runner("model-a"))
+        made, patch = _clients()
+        with patch:
+            body = _chat(client, key).json()
+        assert body["backend_name"] == "hypernix"
+        assert LMSTUDIO_URL not in made or not made[LMSTUDIO_URL].chat.called
+
+    def test_it_is_metered_like_any_other_backend(self, km, gk, tmp_path, key):
+        client = _app_with(km, gk, tmp_path, runner=_Runner("model-a"), lmstudio=False)
+        made, patch = _clients()
+        with patch:
+            body = _chat(client, key).json()
+        assert body["input_tokens"] == 11 and body["output_tokens"] == 7
+        assert body["cost"] > 0
+
+
+class TestItNeverAnswersAsAnotherModel:
+    def test_another_model_goes_to_lm_studio(self, km, gk, tmp_path, key):
+        client = _app_with(km, gk, tmp_path, runner=_Runner("model-a"))
+        made, patch = _clients()
+        with patch:
+            body = _chat(client, key, model="model-b").json()
+        assert body["backend_name"] == "lmstudio"
+        assert body["backend"] == LMSTUDIO_URL
+        assert RUNNER_URL not in made or not made[RUNNER_URL].chat.called
+
+    def test_another_model_without_lm_studio_is_refused_not_substituted(self, km, gk, tmp_path, key):
+        """Replying from whatever is loaded is the silent substitution
+        this surface exists to forbid."""
+        client = _app_with(km, gk, tmp_path, runner=_Runner("model-a"), lmstudio=False)
+        made, patch = _clients()
+        with patch:
+            response = _chat(client, key, model="model-b")
+        assert response.status_code == 503
+        error = response.json()["error"]
+        assert error["code"] == "MODEL_UNAVAILABLE"
+        assert "model-a" in error["message"] and "/runner/load" in error["message"]
+        assert error["details"]["loaded"] == "model-a"
+        assert not any(c.chat.called for c in made.values())
+
+    def test_the_backend_is_chosen_for_the_model_that_actually_runs(self, km, gk, tmp_path, key):
+        """After the cascade, not before: if fallback picks the loaded
+        model, the runner serves it."""
+        client = _app_with(km, gk, tmp_path, runner=_Runner("model-b"), lmstudio=False)
+        made, patch = _clients()
+        with patch, mock.patch(
+            "hypernix.t1api.routers.inference._resolve", return_value=("model-b", True)
+        ):
+            response = client.post(
+                "/inference/chat",
+                json={"model": "model-a", "allow_fallback": True,
+                      "messages": [{"role": "user", "content": "hi"}]},
+                headers=_auth(key),
+            )
+        body = response.json()
+        assert response.status_code == 200, response.text
+        assert body["model"] == "model-b" and body["substituted"] is True
+        assert body["backend_name"] == "hypernix"
+
+    def test_a_broken_runner_does_not_hide_lm_studio(self, km, gk, tmp_path, key):
+        client = _app_with(km, gk, tmp_path, runner=_BrokenRunner())
+        made, patch = _clients()
+        with patch:
+            body = _chat(client, key).json()
+        assert body["backend_name"] == "lmstudio"
+
+    def test_no_backend_at_all_names_both_remedies(self, km, gk, tmp_path, key):
+        client = _app_with(km, gk, tmp_path, runner=_Runner(None), lmstudio=False)
+        response = _chat(client, key)
+        assert response.status_code == 501
+        message = response.json()["error"]["message"]
+        assert "T1_LMSTUDIO_URL" in message and "/runner/load" in message
+
+
+class TestTheRunnerIsListed:
+    def test_a_loaded_runner_is_listed_and_preferred(self, km, gk, tmp_path, key):
+        client = _app_with(km, gk, tmp_path, runner=_Runner("model-a"))
+        made, patch = _clients()
+        with patch:
+            body = client.get("/inference/backends", headers=_auth(key)).json()
+        names = [b["name"] for b in body["backends"]]
+        assert names == ["lmstudio", "hypernix"]   # LM Studio stays where old clients look
+        runner = body["backends"][1]
+        assert runner["reachable"] is True
+        assert runner["model_id"] == "model-a"
+        assert runner["kind"] == "hypernix-runner"
+        assert body["default"] == "hypernix"
+
+    def test_a_runner_that_does_not_answer_is_reported_down(self, km, gk, tmp_path, key):
+        client = _app_with(km, gk, tmp_path, runner=_Runner("model-a"))
+        made, patch = _clients()
+        with patch:
+            # Make the runner's probe fail; LM Studio still answers.
+            from hypernix.t1api.routers import inference as router
+
+            original = router.LMStudioBridge.side_effect
+
+            def factory(*args, base_url=None, **kwargs):
+                fake = original(*args, base_url=base_url, **kwargs)
+                if base_url == RUNNER_URL:
+                    fake.list_models.side_effect = LMStudioError("connection refused")
+                return fake
+
+            router.LMStudioBridge.side_effect = factory
+            body = client.get("/inference/backends", headers=_auth(key)).json()
+        runner = body["backends"][1]
+        assert runner["reachable"] is False and "refused" in runner["detail"]
+        assert body["default"] == "lmstudio"
+
+    def test_an_idle_runner_says_how_to_load_one(self, km, gk, tmp_path, key):
+        client = _app_with(km, gk, tmp_path, runner=_Runner(None), lmstudio=False)
+        body = client.get("/inference/backends", headers=_auth(key)).json()
+        runner = body["backends"][1]
+        assert runner["name"] == "hypernix" and runner["reachable"] is False
+        assert "/runner/load" in runner["detail"]
+        assert body["default"] == ""
+
+
+class TestTheRunnerStreamsAndEmbeds:
+    def test_a_stream_names_the_runner(self, km, gk, tmp_path, key):
+        client = _app_with(km, gk, tmp_path, runner=_Runner("model-a"), lmstudio=False)
+        made, patch = _clients()
+        with patch:
+            from hypernix.t1api.routers import inference as router
+
+            original = router.LMStudioBridge.side_effect
+
+            def factory(*args, base_url=None, **kwargs):
+                fake = original(*args, base_url=base_url, **kwargs)
+                fake.chat_stream.return_value = iter([{"choices": [{"delta": {"content": "hi"}}]}])
+                return fake
+
+            router.LMStudioBridge.side_effect = factory
+            response = client.post(
+                "/inference/chat/stream",
+                json={"model": "model-a", "messages": [{"role": "user", "content": "hi"}]},
+                headers=_auth(key),
+            )
+        assert response.status_code == 200
+        assert '"backend_name": "hypernix"' in response.text
+        assert "data: [DONE]" in response.text
+
+    def test_embeddings_for_the_loaded_model_come_from_the_runner(self, km, gk, tmp_path, key):
+        client = _app_with(km, gk, tmp_path, runner=_Runner("model-a"), lmstudio=False)
+        made, patch = _clients()
+        with patch:
+            from hypernix.t1api.routers import inference as router
+
+            original = router.LMStudioBridge.side_effect
+
+            def factory(*args, base_url=None, **kwargs):
+                fake = original(*args, base_url=base_url, **kwargs)
+                fake.embeddings.return_value = {"data": [{"embedding": [0.1, 0.2]}],
+                                                "usage": {"prompt_tokens": 3}}
+                return fake
+
+            router.LMStudioBridge.side_effect = factory
+            body = client.post(
+                "/inference/embeddings",
+                json={"model": "model-a", "input": ["hello"]},
+                headers=_auth(key),
+            ).json()
+        assert body["backend_name"] == "hypernix"
+        assert body["dimensions"] == 2
