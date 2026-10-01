@@ -909,9 +909,18 @@ class NeoOven:
         near-universal HF one, but not every architecture's config carries
         it — reading it unguarded turned a loadable model into an
         AttributeError at the first generated token rather than at load
-        time. 2048 is the conservative fallback.
+        time. A Brewer config's ``max_seq_len`` is the same limit; 2048 is
+        the fallback when there is neither.
         """
-        return int(getattr(self.model.config, "max_position_embeddings", 2048) or 2048)
+        config = self.model.config
+        # A Brewer config calls it max_seq_len. Falling through to 2048
+        # let HyperNix.3-mini (trained at 512) run RoPE four times past
+        # anything it had seen once a conversation grew.
+        for name in ("max_position_embeddings", "max_seq_len", "n_positions"):
+            value = getattr(config, name, None)
+            if value:
+                return int(value)
+        return 2048
 
     @torch.no_grad()
     def _run(
@@ -1477,7 +1486,15 @@ def preheat_brewed(
     model.to(dev, dtype=tdtype)
     model.eval()
 
-    source = Path(tokenizer_source) if tokenizer_source else Path(path)
+    # Beside the weights, in tokenizer/ there (as a training run writes
+    # it), or in the run's tokenizer/ for checkpoints/latest.pt. Looking
+    # only at *path* loaded a run's checkpoint with the byte fallback,
+    # and every word it generated was nonsense.
+    from .brewer_gguf import _tokenizer_folder
+
+    given = Path(tokenizer_source) if tokenizer_source else Path(path)
+    folder = given if given.is_dir() else given.parent
+    source = _tokenizer_folder(folder) or given
     try:
         tok, kind = _load_tokenizer(source)
     except Exception:  # noqa: BLE001 - a missing tokenizer is not fatal here

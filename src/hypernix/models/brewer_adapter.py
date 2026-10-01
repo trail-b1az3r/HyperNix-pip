@@ -233,7 +233,11 @@ def is_brewer_checkpoint(path: str | Path) -> bool:
     if candidate.is_dir():
         config = candidate / "config.json"
         if not config.is_file():
-            return False
+            # Uploaded straight from a training run: no config.json, but
+            # the safetensors header names Brewer's tensors.
+            from .brewer_gguf import has_brewer_weights
+
+            return has_brewer_weights(candidate)
         try:
             data = json.loads(config.read_text(encoding="utf-8"))
         except (OSError, ValueError):
@@ -282,69 +286,56 @@ def _is_tied_head(key: str, config: Any) -> bool:
 def load(path: str | Path, *, device: str | None = None) -> tuple[Any, Any]:
     """``(adapted_model, config)`` from a checkpoint or a save directory.
 
-    Accepts both layouts brewer writes: a ``.pt`` holding
-    ``{"config", "model_state_dict"}``, and a directory with a
-    ``config.json`` beside a weights file.
+    Accepts every layout a Brewer model is found in: a ``.pt`` holding
+    ``{"config", "model_state_dict"}``, a directory with a ``config.json``
+    beside a weights file, and a directory uploaded from a training run
+    with no ``config.json`` at all. See
+    :func:`hypernix.models.brewer_gguf.load_source`.
     """
     from ..training import brewer
 
-    torch = _torch()
+    _torch()  # a clear error when torch is missing, before anything else
     candidate = Path(path)
 
-    if candidate.is_dir():
-        config_path = candidate / "config.json"
-        if not config_path.is_file():
-            raise FileNotFoundError(f"No config.json in {candidate}")
-        config = brewer.BrewerConfig.load(config_path)
+    weight_names = ("model.safetensors", "model.pt", "pytorch_model.bin", "weights.pt")
+    if (candidate.is_dir() and (candidate / "config.json").is_file()
+            and not any((candidate / n).is_file() for n in weight_names)
+            and not (candidate / "checkpoints" / "latest.pt").is_file()):
+        # A config with no weights is a *shape*, which is a legitimate
+        # thing to load -- `hnx brew new` writes exactly that. Said out
+        # loud rather than returning random weights silently.
+        config = brewer.BrewerConfig.load(candidate / "config.json")
         model = brewer.BrewerModel(config)
-        safetensors_path = candidate / "model.safetensors"
-        weights = next(
-            (candidate / name for name in
-             ("model.pt", "pytorch_model.bin", "weights.pt")
-             if (candidate / name).is_file()),
-            None,
+        logger.warning(
+            "brewer_adapter: %s has a config but no weights; the model is "
+            "randomly initialised.", candidate,
         )
-        if safetensors_path.is_file():
-            # Preferred when both are there, as they are on the Hub: a
-            # safetensors file is tensors and nothing else, where a .pt is
-            # a pickle that torch.load has to be told not to run.
-            from safetensors.torch import load_file
-
-            state = load_file(str(safetensors_path), device="cpu")
-            # Tied embeddings are saved once; the head shares the table.
-            missing, unexpected = model.load_state_dict(state, strict=False)
-            if unexpected or [k for k in missing if not _is_tied_head(k, config)]:
-                raise ValueError(
-                    f"{safetensors_path} does not match its config.json: "
-                    f"missing {missing[:5]}, unexpected {unexpected[:5]}"
-                )
-            if config.tie_embeddings and hasattr(model, "tie_weights"):
-                model.tie_weights()
-        elif weights is None:
-            # A config with no weights is a *shape*, which is a legitimate
-            # thing to load -- `hnx brew new` writes exactly that. Said
-            # out loud rather than returning random weights silently.
-            logger.warning(
-                "brewer_adapter: %s has a config but no weights; the model is "
-                "randomly initialised.", candidate,
-            )
-        else:
-            state = torch.load(weights, map_location="cpu", weights_only=True)
-            model.load_state_dict(state)
     else:
-        # brewer's checkpoint is its config as a plain dict alongside the
-        # tensors, which weights_only loading reads without running any
-        # of the file. A model.pt from a hub is a program otherwise.
-        from ..security.safeload import load_checkpoint
-        payload = load_checkpoint(candidate)
-        if not isinstance(payload, dict) or "model_state_dict" not in payload:
-            raise ValueError(
-                f"{candidate} is not a {ARCH_NAME} checkpoint "
-                f"(no model_state_dict)"
-            )
-        config = brewer.BrewerConfig.from_dict(payload["config"])
+        # One loader for every layout, shared with the GGUF exporter: a
+        # folder with config.json, one uploaded from a training run with
+        # none (the config is in the safetensors header or a checkpoint
+        # beside it), a model.pt that is a whole training checkpoint
+        # rather than a state dict, a run's checkpoints/latest.pt, and
+        # weights saved from a torch.compile'd model (`_orig_mod.`).
+        # Safetensors is preferred when both are there: it is tensors and
+        # nothing else, where a .pt is a pickle torch.load has to be told
+        # not to run.
+        from .brewer_gguf import GGUFExportError, load_source
+
+        try:
+            state, config, _extras = load_source(candidate)
+        except GGUFExportError as exc:
+            raise ValueError(str(exc)) from exc
         model = brewer.BrewerModel(config)
-        model.load_state_dict(payload["model_state_dict"])
+        # Tied embeddings are saved once; the head shares the table.
+        missing, unexpected = model.load_state_dict(state, strict=False)
+        if unexpected or [k for k in missing if not _is_tied_head(k, config)]:
+            raise ValueError(
+                f"The model in {candidate} does not match its config: "
+                f"missing {missing[:5]}, unexpected {unexpected[:5]}"
+            )
+        if config.tie_embeddings and hasattr(model, "tie_weights"):
+            model.tie_weights()
 
     adapted = wrap(model)
     if device:

@@ -228,18 +228,21 @@ def get_default_model() -> str | None:
     return _load_config().get("default_model")
 
 
-def get_models_dir() -> Path:
-    """Public API: return the unified models directory used across all modules."""
+def get_models_dir(*, create: bool = True) -> Path:
+    """Public API: return the unified models directory used across all modules.
+
+    ``create=False`` only says where it is: listing models should not
+    make a folder appear.
+    """
     import os
     env_dir = os.getenv("HYPERNIX_MODELS_DIR")
     if env_dir:
-        p = Path(env_dir)
+        p = Path(env_dir).expanduser()
+    else:
+        cfg = _load_config()
+        p = Path(cfg.get("download_dir") or str(Path.home() / ".hypernix" / "models")).expanduser()
+    if create:
         p.mkdir(parents=True, exist_ok=True)
-        return p
-    cfg = _load_config()
-    d_dir = cfg.get("download_dir") or str(Path.home() / ".hypernix" / "models")
-    p = Path(d_dir)
-    p.mkdir(parents=True, exist_ok=True)
     return p
 
 

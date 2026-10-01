@@ -259,6 +259,12 @@ def dispatch(req: dict[str, Any], cancel: threading.Event | None = None) -> dict
         if cmd == "catalog":
             return _ok(id_, core.catalog_json())
 
+        if cmd == "resolve":
+            # A model the catalog does not name: a path, a name in the
+            # models folder, or a Hugging Face repo id. HPC-CFG-001 with
+            # what was tried when it is none of those.
+            return _ok(id_, core.model_json(core.get_model(str(req.get("model") or ""))))
+
         if cmd == "is_downloaded":
             model = core.get_model(req["model"])
             downloaded, path = core.is_downloaded(model)

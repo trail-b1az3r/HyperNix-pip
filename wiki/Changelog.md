@@ -519,6 +519,39 @@ Historical wording and technical detail are retained during format normalization
 
 ### Fixed
 
+𖢥 Fixed hyped-pro and hyped refusing models nobody wrote a catalog entry
+  for.
+  - hyped-pro refused any name outside its catalog (`HPC-CFG-001`), and
+    its picker listed nothing that was on disk. It now also runs a path
+    to a `.gguf`, a model folder or a Brewer `.pt`, a model in
+    `~/.hypernix/models` by name (exactly: a typo is an error, not a
+    different model), and a Hugging Face repo id (`org/name`, or
+    `org/name:file.gguf`). The picker lists what is on disk, and the
+    TUI asks the Python side to resolve a name it does not know.
+  - A T1 server routing to a model it had indexed got "this client has
+    no local model for it": a model here of exactly that name is used.
+  - hyped (basic) could not run a local model at all ("this build cannot
+    run it directly"), found only `.gguf` files, and did not follow a
+    symlinked folder. It runs any of the above itself, with no tools,
+    and `/model` takes a path, a name or a repo id.
+  - hyped sent its T1 turns to `/v1/chat/completions` on the T1 server,
+    which has no such route: every reply was a 404. It now asks
+    `/runner/status` where the loaded model answers and talks to that.
+
+𖢥 Fixed Neo Oven loading hyperNix0x-v2 models from anything but a
+  folder with a `config.json`.
+  - `preheat_brewed` (and `brewer_adapter.load`) failed on a folder
+    uploaded from a training run with no `config.json`, on a `model.pt`
+    that is a whole training checkpoint, and on weights saved from a
+    `torch.compile`d model (`_orig_mod.`). A run's
+    `checkpoints/latest.pt` loaded with the byte fallback tokenizer, so
+    it generated nonsense. It now shares the GGUF exporter's loader,
+    which reads all of them, and finds the tokenizer in `tokenizer/`.
+  - Every Brewer model reported a 2048-token context: NeoOven read only
+    `max_position_embeddings`, and a Brewer config calls it
+    `max_seq_len`. HyperNix.3-mini, trained at 512, ran RoPE far past
+    anything it had seen once a conversation grew.
+
 𖢥 Fixed a hyperNix0x-v2 model saved without a `config.json` converting
   to a GGUF no llama.cpp opens.
   - From a report: HyperNix.3-mini ran in a patched llama.cpp and

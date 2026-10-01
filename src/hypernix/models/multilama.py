@@ -399,6 +399,12 @@ def ensure_binary(backend: LlamaBackend, *, quiet: bool = False) -> Path:
 
 
 def resolve_gguf(repo_id: str, filename: str, *, quiet: bool = False) -> Path:
+    # A GGUF already on this machine: *repo_id* is its folder. Looked for
+    # first so a model in ~/.hypernix/models is never sent to the Hub,
+    # where a local path is not a repository and the lookup can only fail.
+    local = Path(repo_id).expanduser() / filename if filename else Path(repo_id).expanduser()
+    if local.is_file():
+        return local
     try:
         from huggingface_hub import hf_hub_download
     except ImportError as exc:

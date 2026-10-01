@@ -159,8 +159,7 @@ def discover_backend(config: Config, *, timeout: float = 2.0) -> Backend:
 
     local = _first_local_model(config)
     if local is not None:
-        return Backend("local", model=str(local),
-                       detail=f"local model {local.name}")
+        return local_backend(local)
 
     return Backend(
         "none",
@@ -178,12 +177,56 @@ def models_dir(config: Config) -> Path:
     return Path.home() / ".hypernix" / "models"
 
 
+def local_models(config: Config) -> list[Path]:
+    """Every model on this machine hyped can run, in the models folder.
+
+    GGUF files anywhere under it, through symlinked folders, and model
+    folders -- Hugging Face snapshots and hyperNix0x-v2 (Brewer) models,
+    HyperNix.3-mini's kind. It used to be ``rglob("*.gguf")``, which saw
+    no model folder at all and walked straight past a symlinked one.
+    """
+    from . import hyped_pro_core as core
+
+    paths = []
+    for model in core.local_models(models_dir(config)):
+        repo = Path(model.repo)
+        paths.append(repo / model.gguf_filename if model.format == "gguf" else repo)
+    return sorted(paths)
+
+
 def _first_local_model(config: Config) -> Path | None:
-    directory = models_dir(config)
-    if not directory.is_dir():
-        return None
-    found = sorted(directory.rglob("*.gguf"))
+    if config.model:
+        # A model the dots (or --model) name, when it is a file or folder
+        # here: that is the one asked for, not the first one found.
+        from . import hyped_pro_core as core
+
+        named = core.resolve_model(config.model, allow_remote=False)
+        if named is not None:
+            return _model_path(named)
+    found = local_models(config)
     return found[0] if found else None
+
+
+def _model_path(model) -> Path:
+    repo = Path(model.repo)
+    return repo / model.gguf_filename if model.format == "gguf" else repo
+
+
+def local_backend(path: Path | str) -> Backend:
+    """Talk to a model on this machine, run in this process."""
+    return Backend("local", model=str(path), detail=f"local model {Path(path).name}, run here")
+
+
+def is_local(model) -> bool:
+    from . import hyped_pro_core as core
+    return core.is_local_path(model)
+
+
+def _size(path: Path) -> int:
+    if path.is_file():
+        return path.stat().st_size
+    from hypernix.system.linkwalk import walk_files
+    return sum(f.stat().st_size for f in walk_files(path))
 
 
 # ---------------------------------------------------------------------------
@@ -410,21 +453,47 @@ class Session:
 
     def cmd_model(self, argument: str) -> None:
         if not argument:
-            self.say(self.config.model or "(whatever the server has loaded)")
+            if self.backend.kind == "local":
+                self.say(self.backend.model)
+            else:
+                self.say(self.config.model or "(whatever the server has loaded)")
+            return
+        from . import hyped_pro_core as core
+
+        # Anything runnable, not only what a server has registered: a
+        # path, a name in the models folder, or a Hugging Face repo id.
+        try:
+            model = core.get_model(argument)
+        except core.HypedProError as exc:
+            if self.backend.kind == "t1":
+                # Perhaps a name the server knows; it will say if not.
+                self.config.model = argument
+                self.say(self.paint.ok(f"model is now {argument} (on the server)"))
+                return
+            self.warn(exc.message)
+            return
+        if model.kind != "local" or model.vendor in ("t1", "t1api"):
+            self.warn(f"{argument} is a {model.vendor} model; hyped runs local models. "
+                      f"hyped-pro talks to cloud ones.")
             return
         self.config.model = argument
-        self.say(self.paint.ok(f"model is now {argument}"))
+        self.backend = local_backend(_model_path(model) if is_local(model) else argument)
+        self.messages.clear()
+        self.say(self.paint.ok(f"model is now {model.short}, run here"))
 
     def cmd_models(self, _argument: str = "") -> None:
         directory = models_dir(self.config)
-        found = sorted(directory.rglob("*.gguf")) if directory.is_dir() else []
+        found = local_models(self.config)
         if not found:
             self.say(self.paint.dim(f"nothing in {directory}"))
             self.say("Try /search qwen3 to find one.")
             return
         for path in found:
-            size = path.stat().st_size / 1e9
-            self.say(f"  {path.name}  {self.paint.dim(f'{size:.1f} GB')}")
+            size = _size(path) / 1e9
+            kind = "gguf" if path.suffix.lower() == ".gguf" else "folder"
+            self.say(f"  {path.name}  {self.paint.dim(f'{size:.1f} GB {kind}')}")
+        self.say()
+        self.say(self.paint.dim("/model <name> to use one"))
 
     def cmd_search(self, argument: str) -> None:
         if not argument:
@@ -525,12 +594,11 @@ class Session:
         return reply
 
     def _ask(self, settings: Settings) -> str:
+        if self.backend.kind == "local":
+            return self._ask_local(settings)
         if self.backend.kind != "t1":
-            raise RuntimeError(
-                "a local GGUF is present but this build cannot run it "
-                "directly — start a server with `hypernix-t1 start` and it "
-                "will be used"
-            )
+            raise RuntimeError(self.backend.detail or "nothing to talk to")
+        base = self._runner_url()
         body: dict[str, Any] = {
             "messages": (
                 ([{"role": "system", "content": settings.system}]
@@ -544,7 +612,7 @@ class Session:
             body["model"] = settings.model
 
         request = urllib.request.Request(
-            f"{self.backend.base_url}/v1/chat/completions",
+            f"{base}/v1/chat/completions",
             data=json.dumps(body).encode(),
             method="POST",
         )
@@ -557,6 +625,46 @@ class Session:
         if not choices:
             raise RuntimeError("the server returned no reply")
         return str(choices[0].get("message", {}).get("content", ""))
+
+    def _runner_url(self) -> str:
+        """Where the T1 server's loaded model answers.
+
+        The T1 server has no ``/v1/chat/completions`` of its own -- this
+        posted there, and every reply was a 404. The model it serves is
+        the runner's (llama-server, or the PyTorch server for a Brewer
+        model), on the address ``/runner/status`` gives.
+        """
+        request = urllib.request.Request(f"{self.backend.base_url}/runner/status", method="GET")
+        if self.backend.token:
+            request.add_header("Authorization", f"Bearer {self.backend.token}")
+        try:
+            with safe_urlopen(request, timeout=10) as response:
+                status = json.loads(response.read() or b"{}")
+        except urllib.error.HTTPError as exc:
+            if exc.code in (401, 403):
+                raise RuntimeError(
+                    f"the T1 server at {self.backend.base_url} wants a key: set token "
+                    f"in your dots, or T1_KEY") from exc
+            raise
+        if not status.get("loaded"):
+            raise RuntimeError(
+                f"the T1 server at {self.backend.base_url} has no model loaded. Load one "
+                f"there (hnx-t1 runner load <model>), or /model <a model here> to run "
+                f"it in hyped")
+        return str(status.get("base_url") or "").rstrip("/") or self.backend.base_url
+
+    def _ask_local(self, settings: Settings) -> str:
+        """One turn against a model on this machine, with no tools."""
+        from . import hyped_pro_core as core
+
+        try:
+            model = core.get_model(self.backend.model)
+            return core.send_local(
+                model, list(self.messages), system=settings.system or None,
+                max_tokens=settings.max_tokens, temperature=settings.temperature,
+            )
+        except core.HypedProError as exc:
+            raise RuntimeError(exc.message) from exc
 
 
 # ---------------------------------------------------------------------------
