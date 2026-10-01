@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-api-deep",
   "generated_at": "2026-09-20T21:20:57Z",
-  "commit": "8bd42f6e0b8477f461603084661d23968a8eee03",
+  "commit": "723687ab1cfc71b0b077bacc95f08a22f7ae94ac",
   "history_available": true,
   "source_root": "src/hypernix",
   "modules": [
@@ -9554,7 +9554,7 @@
     {
       "module": "hypernix.hyperlink.managed",
       "source": "src/hypernix/hyperlink/managed.py",
-      "line_count": 757,
+      "line_count": 775,
       "summary": "hyperlink.managed \u2014 running a model without LM Studio.",
       "api": [
         {
@@ -9636,7 +9636,7 @@
             {
               "name": "unload",
               "signature": "def unloadself -> bool",
-              "line": 584,
+              "line": 588,
               "doc": "Stop whatever is running. True if something was."
             }
           ]
@@ -9645,55 +9645,55 @@
           "kind": "class",
           "name": "ManagedPool",
           "signature": "class ManagedPool",
-          "line": 649,
+          "line": 653,
           "doc": "N copies of one model, on N consecutive ports.",
           "methods": [
             {
               "name": "instances",
               "signature": "def instancesself -> int",
-              "line": 696,
+              "line": 700,
               "doc": ""
             },
             {
               "name": "ports",
               "signature": "def portsself -> list[int]",
-              "line": 700,
+              "line": 704,
               "doc": ""
             },
             {
               "name": "current",
               "signature": "def currentself -> ManagedModel | None",
-              "line": 704,
+              "line": 708,
               "doc": "What the pool is serving, from the first live instance."
             },
             {
               "name": "live",
               "signature": "def liveself -> list[ManagedRunner]",
-              "line": 713,
+              "line": 717,
               "doc": ""
             },
             {
               "name": "base_urls",
               "signature": "def base_urlsself -> list[str]",
-              "line": 717,
+              "line": 721,
               "doc": ""
             },
             {
               "name": "load",
               "signature": "def loadself, path: str | Path, **kwargs: Any -> list[ManagedModel]",
-              "line": 720,
+              "line": 724,
               "doc": "Start every instance on *path*, or leave none of them running."
             },
             {
               "name": "unload",
               "signature": "def unloadself -> bool",
-              "line": 745,
+              "line": 749,
               "doc": ""
             },
             {
               "name": "to_dict",
               "signature": "def to_dictself -> dict[str, Any]",
-              "line": 755,
+              "line": 759,
               "doc": ""
             }
           ]
@@ -9702,21 +9702,21 @@
           "kind": "function",
           "name": "allocate_ports",
           "signature": "def allocate_portsstart: int, count: int, *, avoid: Iterable[int]=(), ceiling: int=65535 -> list[int]",
-          "line": 786,
+          "line": 806,
           "doc": "*count* ports from *start* upwards, skipping *avoid*."
         },
         {
           "kind": "function",
           "name": "brewed_cache_dir",
           "signature": "def brewed_cache_dir -> Path",
-          "line": 818,
+          "line": 838,
           "doc": "``<T1_CONFIG_DIR>/cache/brewed-gguf``: beside the server, not in the model."
         },
         {
           "kind": "function",
           "name": "brewed_gguf_for",
           "signature": "def brewed_gguf_forfolder: Path -> Path | None",
-          "line": 826,
+          "line": 846,
           "doc": "A GGUF of the brewed model in *folder* for llama.cpp, or ``None``."
         }
       ],
@@ -9727,6 +9727,18 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "34ccaa58",
+          "date": "2026-10-01",
+          "author": "Claude",
+          "subject": "convert: a Brewer model saved without config.json exports as llama, not hypernix",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _hypernix_architecture_message(model: Path) -> str:"
+            }
+          ]
+        },
         {
           "sha": "e010f8c9",
           "date": "2026-09-29",
@@ -12948,14 +12960,14 @@
     {
       "module": "hypernix.interfaces.cli",
       "source": "src/hypernix/interfaces/cli.py",
-      "line_count": 1487,
+      "line_count": 1500,
       "summary": "Command-line interface for the hypernix package.",
       "api": [
         {
           "kind": "function",
           "name": "main",
           "signature": "def mainargv: list[str] | None=None -> int",
-          "line": 1218,
+          "line": 1234,
           "doc": ""
         }
       ],
@@ -12966,6 +12978,18 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "34ccaa58",
+          "date": "2026-10-01",
+          "author": "Claude",
+          "subject": "convert: a Brewer model saved without config.json exports as llama, not hypernix",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _note_architecture(path) -> None:"
+            }
+          ]
+        },
         {
           "sha": "a939eaaa",
           "date": "2026-09-29",
@@ -13037,13 +13061,6 @@
           "date": "2026-09-09",
           "author": "Claude",
           "subject": "0.72.4.post4 \u2014 hnx runtime, and the reason hnx gather printed the usage table",
-          "api_changes": []
-        },
-        {
-          "sha": "e1e71f1d",
-          "date": "2026-09-09",
-          "author": "Claude",
-          "subject": "0.72.4.dev11 \u2014 beta 1 full: fuse box, and a claim that did not survive measurement",
           "api_changes": []
         }
       ]
@@ -13566,7 +13583,7 @@
     {
       "module": "hypernix.interfaces.hyped_basic",
       "source": "src/hypernix/interfaces/hyped_basic.py",
-      "line_count": 539,
+      "line_count": 629,
       "summary": "hyped \u2014 a local AI you can talk to, and nothing you have to set up.",
       "api": [
         {
@@ -13628,119 +13645,140 @@
           "kind": "function",
           "name": "models_dir",
           "signature": "def models_dirconfig: Config -> Path",
-          "line": 175,
+          "line": 174,
+          "doc": ""
+        },
+        {
+          "kind": "function",
+          "name": "local_models",
+          "signature": "def local_modelsconfig: Config -> list[Path]",
+          "line": 180,
+          "doc": "Every model on this machine hyped can run, in the models folder."
+        },
+        {
+          "kind": "function",
+          "name": "local_backend",
+          "signature": "def local_backendpath: Path | str -> Backend",
+          "line": 215,
+          "doc": "Talk to a model on this machine, run in this process."
+        },
+        {
+          "kind": "function",
+          "name": "is_local",
+          "signature": "def is_localmodel -> bool",
+          "line": 220,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "search_huggingface",
           "signature": "def search_huggingfacequery: str, *, token: str='', limit: int=20, timeout: float=15.0 -> list[dict[str, Any]]",
-          "line": 194,
+          "line": 237,
           "doc": "GGUF repositories matching *query*, most downloaded first."
         },
         {
           "kind": "function",
           "name": "list_gguf_files",
           "signature": "def list_gguf_filesrepo: str, *, token: str='', timeout: float=15.0 -> list[str]",
-          "line": 239,
+          "line": 282,
           "doc": "The .gguf files in a repository, smallest name first."
         },
         {
           "kind": "function",
           "name": "download_gguf",
           "signature": "def download_ggufrepo: str, filename: str, destination: Path, *, token: str='', on_progress: Callable[[int, int], None] | None=None -> Path",
-          "line": 260,
+          "line": 303,
           "doc": "Fetch one file. Returns where it landed."
         },
         {
           "kind": "class",
           "name": "Session",
           "signature": "class Session",
-          "line": 305,
+          "line": 348,
           "doc": "One conversation, and the commands that act on it.",
           "methods": [
             {
               "name": "say",
               "signature": "def sayself, text: str='' -> None",
-              "line": 319,
+              "line": 362,
               "doc": ""
             },
             {
               "name": "warn",
               "signature": "def warnself, text: str -> None",
-              "line": 322,
+              "line": 365,
               "doc": ""
             },
             {
               "name": "builtin_commands",
               "signature": "def builtin_commandsself -> dict[str, Callable[[str], None]]",
-              "line": 327,
+              "line": 370,
               "doc": ""
             },
             {
               "name": "handle_command",
               "signature": "def handle_commandself, line: str -> bool",
-              "line": 341,
+              "line": 384,
               "doc": "True if *line* was a command. False means it is a message."
             },
             {
               "name": "cmd_help",
               "signature": "def cmd_helpself, _argument: str='' -> None",
-              "line": 370,
+              "line": 413,
               "doc": ""
             },
             {
               "name": "cmd_quit",
               "signature": "def cmd_quitself, _argument: str='' -> None",
-              "line": 390,
+              "line": 433,
               "doc": ""
             },
             {
               "name": "cmd_clear",
               "signature": "def cmd_clearself, _argument: str='' -> None",
-              "line": 393,
+              "line": 436,
               "doc": ""
             },
             {
               "name": "cmd_where",
               "signature": "def cmd_whereself, _argument: str='' -> None",
-              "line": 397,
+              "line": 440,
               "doc": ""
             },
             {
               "name": "cmd_config",
               "signature": "def cmd_configself, _argument: str='' -> None",
-              "line": 400,
+              "line": 443,
               "doc": ""
             },
             {
               "name": "cmd_model",
               "signature": "def cmd_modelself, argument: str -> None",
-              "line": 411,
+              "line": 454,
               "doc": ""
             },
             {
               "name": "cmd_models",
               "signature": "def cmd_modelsself, _argument: str='' -> None",
-              "line": 418,
+              "line": 484,
               "doc": ""
             },
             {
               "name": "cmd_search",
               "signature": "def cmd_searchself, argument: str -> None",
-              "line": 429,
+              "line": 498,
               "doc": ""
             },
             {
               "name": "cmd_download",
               "signature": "def cmd_downloadself, argument: str -> None",
-              "line": 453,
+              "line": 522,
               "doc": ""
             },
             {
               "name": "send",
               "signature": "def sendself, text: str -> str",
-              "line": 507,
+              "line": 576,
               "doc": "One exchange. Returns the reply."
             }
           ]
@@ -13749,21 +13787,21 @@
           "kind": "function",
           "name": "banner",
           "signature": "def bannersession: Session -> Iterator[str]",
-          "line": 567,
+          "line": 675,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "main",
           "signature": "def mainargv: list[str] | None=None -> int",
-          "line": 576,
+          "line": 684,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "cli_main",
           "signature": "def cli_mainargv: list[str] | None=None -> int",
-          "line": 640,
+          "line": 748,
           "doc": ""
         }
       ],
@@ -13788,6 +13826,42 @@
       ],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "9d5186ed",
+          "date": "2026-10-01",
+          "author": "Claude",
+          "subject": "hyped, hyped-pro and Neo Oven run models outside the catalog, in any layout",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def local_models(config: Config) -> list[Path]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _model_path(model) -> Path:"
+            },
+            {
+              "kind": "added",
+              "text": "def local_backend(path: Path | str) -> Backend:"
+            },
+            {
+              "kind": "added",
+              "text": "def is_local(model) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def _size(path: Path) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def _runner_url(self) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _ask_local(self, settings: Settings) -> str:"
+            }
+          ]
+        },
         {
           "sha": "99ddc1ae",
           "date": "2026-09-29",
@@ -13966,7 +14040,7 @@
     {
       "module": "hypernix.interfaces.hyped_pro_bridge",
       "source": "src/hypernix/interfaces/hyped_pro_bridge.py",
-      "line_count": 514,
+      "line_count": 519,
       "summary": "hyped_pro_bridge \u2014 stdio JSON worker used by the Node ``hyped_pro.ts`` TUI.",
       "api": [
         {
@@ -13980,14 +14054,14 @@
           "kind": "function",
           "name": "serve",
           "signature": "def serve -> int",
-          "line": 537,
+          "line": 543,
           "doc": "Read JSON requests from stdin, write JSON responses to stdout, forever."
         },
         {
           "kind": "function",
           "name": "cli_main",
           "signature": "def cli_mainargv: list[str] | None=None -> int",
-          "line": 588,
+          "line": 594,
           "doc": "One-shot mode for scripting/debugging: build a single request from argv and print the response, instead of entering the stdio loop."
         }
       ],
@@ -13997,6 +14071,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "9d5186ed",
+          "date": "2026-10-01",
+          "author": "Claude",
+          "subject": "hyped, hyped-pro and Neo Oven run models outside the catalog, in any layout",
+          "api_changes": []
+        },
         {
           "sha": "73dd59fd",
           "date": "2026-09-23",
@@ -14111,27 +14192,20 @@
               "text": "def _run_background(req: dict[str, Any], event: threading.Event) -> None:"
             }
           ]
-        },
-        {
-          "sha": "879b000b",
-          "date": "2026-08-22",
-          "author": "Claude",
-          "subject": "0.71.5rc2 \u2014 T1 API Beta 4, hyped-pro, and PATH setup",
-          "api_changes": []
         }
       ]
     },
     {
       "module": "hypernix.interfaces.hyped_pro_core",
       "source": "src/hypernix/interfaces/hyped_pro_core.py",
-      "line_count": 1192,
+      "line_count": 1366,
       "summary": "hyped_pro_core \u2014 shared provider/model registry and real dispatch logic for hyped+ (hyped-pro).",
       "api": [
         {
           "kind": "class",
           "name": "HypedProError",
           "signature": "class HypedProError",
-          "line": 68,
+          "line": 70,
           "doc": "A real, coded failure \u2014 never silently swallowed into a fake reply.",
           "methods": []
         },
@@ -14139,7 +14213,7 @@
           "kind": "class",
           "name": "ProviderInfo",
           "signature": "class ProviderInfo",
-          "line": 87,
+          "line": 89,
           "doc": "",
           "methods": []
         },
@@ -14147,13 +14221,13 @@
           "kind": "class",
           "name": "ModelDef",
           "signature": "class ModelDef",
-          "line": 183,
+          "line": 185,
           "doc": "",
           "methods": [
             {
               "name": "kind",
               "signature": "def kindself -> str",
-              "line": 207,
+              "line": 209,
               "doc": ""
             }
           ]
@@ -14162,133 +14236,168 @@
           "kind": "function",
           "name": "get_model",
           "signature": "def get_modelshort: str -> ModelDef",
-          "line": 338,
-          "doc": ""
+          "line": 350,
+          "doc": "The model *short* names: a catalog entry, or anything resolvable."
+        },
+        {
+          "kind": "function",
+          "name": "is_local_path",
+          "signature": "def is_local_pathmodel: ModelDef -> bool",
+          "line": 379,
+          "doc": "Whether *model* is a file or folder on this machine, not a repo id."
+        },
+        {
+          "kind": "function",
+          "name": "resolve_model",
+          "signature": "def resolve_modelname: str, *, allow_remote: bool=True -> ModelDef | None",
+          "line": 443,
+          "doc": "A model outside the catalog, or ``None`` if *name* is not one."
+        },
+        {
+          "kind": "function",
+          "name": "local_models",
+          "signature": "def local_modelsdirectory: str | Path | None=None -> list[ModelDef]",
+          "line": 479,
+          "doc": "Every runnable model in the models folder, catalog or not."
+        },
+        {
+          "kind": "function",
+          "name": "model_json",
+          "signature": "def model_jsonm: ModelDef -> dict[str, Any]",
+          "line": 510,
+          "doc": "One model as the bridge sends it to the TUI."
         },
         {
           "kind": "function",
           "name": "local_snapshot_dir",
           "signature": "def local_snapshot_dirmodel: ModelDef -> Path",
-          "line": 378,
+          "line": 553,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "is_downloaded",
           "signature": "def is_downloadedmodel: ModelDef -> tuple[bool, Path]",
-          "line": 406,
+          "line": 581,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "ensure_downloaded",
           "signature": "def ensure_downloadedmodel: ModelDef, quiet: bool=False -> Path",
-          "line": 422,
+          "line": 600,
           "doc": "Download ``model``'s weights if they aren't already cached."
         },
         {
           "kind": "function",
           "name": "send_cloud_chat",
           "signature": "def send_cloud_chatmodel: ModelDef, messages: list[dict[str, str]], system: str | None=None, api_key: str | None=None, max_tokens: int=1024, temperature: float=0.7, max_thinking_tokens: int | None=None, enable_tools: bool=True, max_tool_rounds: int=8 -> str",
-          "line": 507,
+          "line": 692,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "send_local_chat",
           "signature": "def send_local_chatmodel: ModelDef, messages: list[dict[str, str]], system: str | None=None, max_new_tokens: int=256, temperature: float=0.7, should_stop: Callable[[], bool] | None=None -> str",
-          "line": 673,
+          "line": 861,
           "doc": "One chat turn against a local safetensors snapshot."
         },
         {
           "kind": "function",
           "name": "send_local_chat_gguf",
           "signature": "def send_local_chat_ggufmodel: ModelDef, messages: list[dict[str, str]], system: str | None=None, max_tokens: int=512, temperature: float=0.7, enable_tools: bool=True, max_tool_rounds: int=8 -> str",
-          "line": 750,
+          "line": 938,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "send_t1_chat",
           "signature": "def send_t1_chatmodel: ModelDef, messages: list[dict[str, str]], t1_key: str | None=None, system: str | None=None, max_tokens: int | None=None -> str",
-          "line": 814,
+          "line": 1002,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "t1_api_url",
           "signature": "def t1_api_url -> str",
-          "line": 889,
+          "line": 1077,
           "doc": "The T1 API base URL hyped-pro talks to. See :func:`t1_api_url_source`."
         },
         {
           "kind": "function",
           "name": "t1_api_url_source",
           "signature": "def t1_api_url_source -> tuple[str, str]",
-          "line": 894,
+          "line": 1082,
           "doc": "``(url, where it came from)``, first match wins:"
         },
         {
           "kind": "function",
           "name": "set_t1_api_url",
           "signature": "def set_t1_api_urlurl: str -> None",
-          "line": 978,
+          "line": 1166,
           "doc": "Persist the T1 API base URL to ``~/.hypernix/config.json``."
         },
         {
           "kind": "function",
           "name": "t1_api_model_map",
           "signature": "def t1_api_model_map -> dict[str, str]",
-          "line": 985,
+          "line": 1173,
           "doc": "Server ``model_id`` -> local catalog ``short``, from config."
         },
         {
           "kind": "function",
           "name": "t1_api_client",
           "signature": "def t1_api_client*, api_key: str | None=None, url: str | None=None",
-          "line": 1007,
+          "line": 1195,
           "doc": "A configured :class:`hypernix.t1sdk.T1Client`."
         },
         {
           "kind": "function",
           "name": "t1_api_status",
           "signature": "def t1_api_status*, api_key: str | None=None, url: str | None=None -> dict[str, Any]",
-          "line": 1085,
+          "line": 1273,
           "doc": "Server identity, this key's identity, and its plan \u2014 for ``/t1api``."
         },
         {
           "kind": "function",
           "name": "send_t1_api_chat",
           "signature": "def send_t1_api_chatmessages: list[dict[str, str]], *, system: str | None=None, api_key: str | None=None, url: str | None=None, max_tokens: int | None=None, enable_tools: bool=True, model_id: str | None=None, should_stop: Callable[[], bool] | None=None -> str",
-          "line": 1143,
+          "line": 1334,
           "doc": "One chat turn routed by a T1 API server and run locally."
         },
         {
           "kind": "function",
           "name": "extract_thinking",
           "signature": "def extract_thinkingtext: str -> tuple[str, str | None]",
-          "line": 1250,
+          "line": 1441,
           "doc": "Split a reply into (visible_text, thinking_text_or_None)."
         },
         {
           "kind": "function",
           "name": "strip_thinking",
           "signature": "def strip_thinkingtext: str -> str",
-          "line": 1275,
+          "line": 1466,
           "doc": "Remove inline <think>/<thinking>/<reasoning> blocks from a reply."
         },
         {
           "kind": "function",
           "name": "send_chat_message",
           "signature": "def send_chat_messagemodel_short: str, messages: list[dict[str, str]], system: str | None=None, api_key: str | None=None, max_tokens: int | None=None, max_thinking_tokens: int | None=None, hide_thinking: bool=True, enable_tools: bool=True, t1_api_model_id: str | None=None, should_stop: Callable[[], bool] | None=None -> dict[str, str | None]",
-          "line": 1288,
+          "line": 1479,
           "doc": "Returns {\"content\": <visible reply>, \"thinking\": <extracted thinking or None>}. When hide_thinking is True, thinking is always None (and simply removed from content, same as before) \u2014 when False, it's extracted rather than discarded, so a caller that wants to *show* thinking (e.g. hyped_pro.ts's /settings thinking-display, in its own color) has real content to render, not just a flag."
+        },
+        {
+          "kind": "function",
+          "name": "send_local",
+          "signature": "def send_localmodel: ModelDef, messages: list[dict[str, str]], *, system: str | None=None, max_tokens: int=512, temperature: float=0.7, should_stop: Callable[[], bool] | None=None -> str",
+          "line": 1545,
+          "doc": "One turn against a local model, with no tools: what hyped (basic) runs."
         },
         {
           "kind": "function",
           "name": "catalog_json",
           "signature": "def catalog_json -> dict[str, Any]",
-          "line": 1346,
+          "line": 1557,
           "doc": "Serializable view of MODELS + PROVIDERS for the bridge's `catalog` cmd."
         }
       ],
@@ -14298,6 +14407,58 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "9d5186ed",
+          "date": "2026-10-01",
+          "author": "Claude",
+          "subject": "hyped, hyped-pro and Neo Oven run models outside the catalog, in any layout",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _models_dir() -> Path:"
+            },
+            {
+              "kind": "added",
+              "text": "def is_local_path(model: ModelDef) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def _is_model_folder(path: Path) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def _local_def(path: Path, short: str) -> ModelDef | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _context_of(path: Path) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def _pick_gguf(repo: str) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def resolve_model(name: str, *, allow_remote: bool = True) -> ModelDef | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def local_models(directory: str | Path | None = None) -> list[ModelDef]:"
+            },
+            {
+              "kind": "added",
+              "text": "def model_json(m: ModelDef) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _safe_local_models() -> list[ModelDef]:"
+            },
+            {
+              "kind": "added",
+              "text": "def send_local(model: ModelDef, messages: list[dict[str, str]], *, system: str | None = None,"
+            }
+          ]
+        },
         {
           "sha": "99ddc1ae",
           "date": "2026-09-29",
@@ -17295,7 +17456,7 @@
     {
       "module": "hypernix.models.brewer_adapter",
       "source": "src/hypernix/models/brewer_adapter.py",
-      "line_count": 297,
+      "line_count": 287,
       "summary": "hyperNix0x-v2 models, in every place NeoOven works.",
       "api": [
         {
@@ -17331,18 +17492,24 @@
           "kind": "function",
           "name": "load",
           "signature": "def loadpath: str | Path, *, device: str | None=None -> tuple[Any, Any]",
-          "line": 282,
+          "line": 286,
           "doc": "``(adapted_model, config)`` from a checkpoint or a save directory."
         }
       ],
       "errors": [
-        "FileNotFoundError",
         "RuntimeError",
         "ValueError"
       ],
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "9d5186ed",
+          "date": "2026-10-01",
+          "author": "Claude",
+          "subject": "hyped, hyped-pro and Neo Oven run models outside the catalog, in any layout",
+          "api_changes": []
+        },
         {
           "sha": "bf1bcf1b",
           "date": "2026-09-29",
@@ -17446,28 +17613,28 @@
     {
       "module": "hypernix.models.brewer_gguf",
       "source": "src/hypernix/models/brewer_gguf.py",
-      "line_count": 532,
+      "line_count": 622,
       "summary": "hyperNix0x-v2 (Brewer) models as real GGUF files llama.cpp runs.",
       "api": [
         {
           "kind": "function",
           "name": "write_char_vocab",
           "signature": "def write_char_vocabpath: str | Path, chars: list[str] -> Path",
-          "line": 77,
+          "line": 78,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "read_char_vocab",
           "signature": "def read_char_vocabpath: str | Path -> list[str]",
-          "line": 84,
+          "line": 85,
           "doc": ""
         },
         {
           "kind": "class",
           "name": "GGUFExportError",
           "signature": "class GGUFExportError",
-          "line": 97,
+          "line": 98,
           "doc": "The model or its tokenizer cannot be written as a runnable GGUF.",
           "methods": []
         },
@@ -17475,42 +17642,49 @@
           "kind": "class",
           "name": "ExportReport",
           "signature": "class ExportReport",
-          "line": 102,
+          "line": 103,
           "doc": "",
           "methods": [
             {
               "name": "to_dict",
               "signature": "def to_dictself -> dict[str, Any]",
-              "line": 114,
+              "line": 115,
               "doc": ""
             },
             {
               "name": "summary",
               "signature": "def summaryself -> str",
-              "line": 117,
+              "line": 118,
               "doc": ""
             }
           ]
         },
         {
           "kind": "function",
+          "name": "has_brewer_weights",
+          "signature": "def has_brewer_weightspath: str | Path -> bool",
+          "line": 208,
+          "doc": "Whether a folder's safetensors hold Brewer tensors, by name alone."
+        },
+        {
+          "kind": "function",
           "name": "load_source",
           "signature": "def load_sourcesource: str | Path -> tuple[dict[str, Any], Any, dict[str, Any]]",
-          "line": 144,
+          "line": 249,
           "doc": "``(state_dict, BrewerConfig, extras)`` from a model folder or a ``.pt``."
         },
         {
           "kind": "function",
           "name": "brewer_to_llama_name",
           "signature": "def brewer_to_llama_namename: str -> str | None",
-          "line": 221,
+          "line": 328,
           "doc": "The llama.cpp tensor name for a Brewer one, or ``None`` if it has none."
         },
         {
           "kind": "function",
           "name": "export_gguf",
           "signature": "def export_ggufsource: str | Path | None=None, out_path: str | Path | None=None, *, state_dict: dict[str, Any] | None=None, config: Any=None, char_vocab: list[str] | None=None, tokenizer: str | Path | None=None, outtype: str='f16', context: str | int='auto', pad_ffn_to: int=DEFAULT_FFN_MULTIPLE, name: str | None=None -> ExportReport",
-          "line": 412,
+          "line": 520,
           "doc": "Write a Brewer model as a GGUF llama.cpp loads as ``llama``."
         }
       ],
@@ -17520,6 +17694,30 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "34ccaa58",
+          "date": "2026-10-01",
+          "author": "Claude",
+          "subject": "convert: a Brewer model saved without config.json exports as llama, not hypernix",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _folder_config(path: Path) -> tuple[Any, dict[str, Any] | None]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _safetensors_config(weights: Path) -> dict[str, Any] | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def has_brewer_weights(path: str | Path) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def _tokenizer_folder(folder: Path) -> Path | None:"
+            }
+          ]
+        },
         {
           "sha": "bf1bcf1b",
           "date": "2026-09-29",
@@ -18953,7 +19151,7 @@
     {
       "module": "hypernix.models.multilama",
       "source": "src/hypernix/models/multilama.py",
-      "line_count": 630,
+      "line_count": 636,
       "summary": "hypernix.multilama \u2014 one interface over several llama.cpp variants.",
       "api": [
         {
@@ -19011,32 +19209,32 @@
           "kind": "function",
           "name": "shutdown_all_servers",
           "signature": "def shutdown_all_servers -> None",
-          "line": 499,
+          "line": 505,
           "doc": "Terminate every server subprocess this module has launched."
         },
         {
           "kind": "class",
           "name": "MultiLlama",
           "signature": "class MultiLlama",
-          "line": 537,
+          "line": 543,
           "doc": "A loaded GGUF model, backed by whichever llama.cpp variant answered ``load()``. Construct via :func:`load`, not directly.",
           "methods": [
             {
               "name": "chat_message",
               "signature": "def chat_messageself, messages: list[dict[str, str]], system: str | None=None, max_tokens: int=512, temperature: float=0.7, tools: list[dict[str, Any]] | None=None -> dict[str, Any]",
-              "line": 552,
+              "line": 558,
               "doc": "Like :meth:`chat`, but returns the raw OpenAI-style message dict (``{\"role\": ..., \"content\": ..., \"tool_calls\": [...]}``) instead of just the text \u2014 needed by callers running their own tool-call loop. Tool-calling support depends on the GGUF's chat template actually having one; a model/template without it just never populates ``tool_calls``, same as any OpenAI-compatible server."
             },
             {
               "name": "chat",
               "signature": "def chatself, messages: list[dict[str, str]], system: str | None=None, max_tokens: int=512, temperature: float=0.7 -> str",
-              "line": 588,
+              "line": 594,
               "doc": ""
             },
             {
               "name": "close",
               "signature": "def closeself -> None",
-              "line": 598,
+              "line": 604,
               "doc": ""
             }
           ]
@@ -19045,28 +19243,28 @@
           "kind": "function",
           "name": "load",
           "signature": "def loadrepo_id: str, filename: str, backend: str='vanilla', n_gpu_layers: int=-1, n_ctx: int=8192, quiet: bool=False -> MultiLlama",
-          "line": 606,
+          "line": 612,
           "doc": "Load a GGUF model through ``backend`` (see :data:`BACKENDS`)."
         },
         {
           "kind": "function",
           "name": "auto_select_backend",
           "signature": "def auto_select_backendrepo_id: str, filename: str -> str",
-          "line": 645,
+          "line": 651,
           "doc": "Best-effort default backend for a given GGUF, based on naming conventions already in use across the ecosystem. Callers with better information (a known quant type, a specific fork requirement) should just pass ``backend=`` to :func:`load` directly instead of relying on this \u2014 it's a starting guess, not a resolver."
         },
         {
           "kind": "function",
           "name": "status_json",
           "signature": "def status_json -> dict[str, Any]",
-          "line": 662,
+          "line": 668,
           "doc": "Serializable availability report for every registered backend \u2014 what a `doctor`/`list`-style command shows."
         },
         {
           "kind": "function",
           "name": "cli_main",
           "signature": "def cli_mainargv: list[str] | None=None -> int",
-          "line": 721,
+          "line": 727,
           "doc": ""
         }
       ],
@@ -19077,6 +19275,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "9d5186ed",
+          "date": "2026-10-01",
+          "author": "Claude",
+          "subject": "hyped, hyped-pro and Neo Oven run models outside the catalog, in any layout",
+          "api_changes": []
+        },
         {
           "sha": "99ddc1ae",
           "date": "2026-09-29",
@@ -19395,7 +19600,7 @@
     {
       "module": "hypernix.models.neo_oven",
       "source": "src/hypernix/models/neo_oven.py",
-      "line_count": 1475,
+      "line_count": 1491,
       "summary": "neo_oven \u2014 Unified, production-ready model management, generation, and data utilities.",
       "api": [
         {
@@ -19584,73 +19789,73 @@
             {
               "name": "complete",
               "signature": "def completeself, prompt: str, *, max_new_tokens: int=256, temperature: float=0.2, top_k: int=40, top_p: float=0.95, stop: tuple[str, ...]=DEFAULT_STOPS, seed: int | None=None, should_stop: Callable[[], bool] | None=None -> str",
-              "line": 1032,
+              "line": 1041,
               "doc": "Continue ``prompt`` as code / text."
             },
             {
               "name": "fill",
               "signature": "def fillself, prefix: str, suffix: str, *, max_new_tokens: int=128, temperature: float=0.2, top_k: int=40, top_p: float=0.95, stop: tuple[str, ...]=FIM_STOPS, seed: int | None=None, should_stop: Callable[[], bool] | None=None -> str",
-              "line": 1052,
+              "line": 1061,
               "doc": "Fill-in-the-middle generation (starcoder FIM convention)."
             },
             {
               "name": "chat",
               "signature": "def chatself, messages: list[dict[str, str]], *, max_new_tokens: int=256, temperature: float=0.7, top_k: int=40, top_p: float=0.95, seed: int | None=None, should_stop: Callable[[], bool] | None=None -> str",
-              "line": 1089,
+              "line": 1098,
               "doc": "Run a chat turn given a ``[{\"role\": ..., \"content\": ...}]`` list."
             },
             {
               "name": "stream",
               "signature": "def streamself, prompt: str, *, max_new_tokens: int=256, temperature: float=0.7, top_k: int=40, top_p: float=0.95, stop: tuple[str, ...]=DEFAULT_STOPS, seed: int | None=None, should_stop: Callable[[], bool] | None=None",
-              "line": 1110,
+              "line": 1119,
               "doc": "Token-by-token generator. Yields decoded text as it arrives."
             },
             {
               "name": "generate_batch",
               "signature": "def generate_batchself, prompts: list[str], *, max_new_tokens: int=128, temperature: float=0.7, top_k: int=40, top_p: float=0.95, stop: tuple[str, ...]=DEFAULT_STOPS, seed: int | None=None, should_stop: Callable[[], bool] | None=None -> list[str]",
-              "line": 1198,
+              "line": 1207,
               "doc": "Generate completions for multiple prompts sequentially."
             },
             {
               "name": "freeze_backbone",
               "signature": "def freeze_backboneself, prefix: str='embed_tokens' -> int",
-              "line": 1240,
+              "line": 1249,
               "doc": "Freeze parameters matching ``prefix``. Returns frozen count."
             },
             {
               "name": "unfreeze_backbone",
               "signature": "def unfreeze_backboneself, prefix: str='*' -> int",
-              "line": 1244,
+              "line": 1253,
               "doc": "Unfreeze parameters matching ``prefix``. Returns unfrozen count."
             },
             {
               "name": "memory_stats",
               "signature": "def memory_statsself -> ParamStats",
-              "line": 1248,
+              "line": 1257,
               "doc": "Return :class:`ParamStats` for the loaded model."
             },
             {
               "name": "vram",
               "signature": "def vramself -> dict[str, float]",
-              "line": 1252,
+              "line": 1261,
               "doc": "Return CUDA VRAM usage in MB. Empty dict on CPU-only systems."
             },
             {
               "name": "build_judge_corpus",
               "signature": "def build_judge_corpusself, prompts: Sequence[str], *, max_new_tokens: int=64, temperature: float=0.7, label_rule: Callable[[str, str], str] | None=None -> JudgeCorpus",
-              "line": 1260,
+              "line": 1269,
               "doc": "Generate responses and return a :class:`JudgeCorpus` for reward model training."
             },
             {
               "name": "train",
               "signature": "def trainself, dataset_path: Path | str, out_dir: Path | str | None=None, *, steps: int=1000, batch_size: int=2, context_length: int=512, lr: float=0.0003, weight_decay: float=0.1, grad_clip: float=1.0, log_every: int=10, save_every: int=500, seed: int | None=None, quiet: bool=False, optimizer_class: type | None=None, use_abbicus: bool=False, use_turbo_abbicus: bool=False, use_stml: bool=False, untrained_max_context: int=8192, segment_length: int=512, compute_framework: Any | None=None, metrics: bool | TrainingMetrics=False -> Path",
-              "line": 1276,
+              "line": 1285,
               "doc": "Continue-pretrain on a raw-text file."
             },
             {
               "name": "save_pt",
               "signature": "def save_ptself, out_path: Path | str -> Path",
-              "line": 1426,
+              "line": 1435,
               "doc": "Save a self-contained torch.load()-able bundle."
             }
           ]
@@ -19659,77 +19864,77 @@
           "kind": "function",
           "name": "preheat_brewed",
           "signature": "def preheat_brewedpath: Path | str, *, tokenizer_source: Path | str | None=None, device: str | None=None, dtype: str='float32' -> NeoOven",
-          "line": 1445,
+          "line": 1454,
           "doc": "Load a ``hyperNix0x-v2`` model into a :class:`NeoOven`."
         },
         {
           "kind": "function",
           "name": "new_brewed",
           "signature": "def new_brewedout_dir: Path | str, *, preset: str='small', device: str | None=None, dtype: str='float32', tokenizer_source: Path | str | None=None -> NeoOven",
-          "line": 1496,
+          "line": 1513,
           "doc": "A fresh, untrained ``hyperNix0x-v2`` model in a :class:`NeoOven`."
         },
         {
           "kind": "function",
           "name": "preheat",
           "signature": "def preheatrepo_id: str='ray0rf1re/hyper-nix.1', *, local_dir: Path | str | None=None, revision: str | None=None, token: str | None=None, device: str | None=None, dtype: str='float32', quiet: bool=False -> NeoOven",
-          "line": 1539,
+          "line": 1556,
           "doc": "Download (if necessary) + load a HyperNix snapshot into a :class:`NeoOven`."
         },
         {
           "kind": "function",
           "name": "new_oven",
           "signature": "def new_ovenout_dir: Path | str, *, arch: str='hypernix', vocab_size: int=32000, hidden_size: int=1024, intermediate_size: int=4096, num_hidden_layers: int=16, num_attention_heads: int=16, num_key_value_heads: int | None=None, max_position_embeddings: int=2048, tokenizer_source: Path | str | None=None, device: str | None=None, dtype: str='float32', seed: int | None=None -> NeoOven",
-          "line": 1594,
+          "line": 1611,
           "doc": "Create a fresh untrained :class:`NeoOven` from an architecture preset."
         },
         {
           "kind": "function",
           "name": "bake_code",
           "signature": "def bake_codesource: NeoOven | Path | str, prompt: str, **kwargs: Any -> str",
-          "line": 1638,
+          "line": 1655,
           "doc": "Convenience: accepts a preheated NeoOven or a snapshot path/URL."
         },
         {
           "kind": "function",
           "name": "fill_middle",
           "signature": "def fill_middlesource: NeoOven | Path | str, prefix: str, suffix: str, **kwargs: Any -> str",
-          "line": 1644,
+          "line": 1661,
           "doc": "Convenience FIM API \u2014 accepts a preheated NeoOven or a snapshot path."
         },
         {
           "kind": "function",
           "name": "load_pt",
           "signature": "def load_ptpt_path: Path | str, *, device: str | None=None -> NeoOven",
-          "line": 1650,
+          "line": 1667,
           "doc": "Rehydrate a NeoOven from a ``save_pt`` bundle."
         },
         {
           "kind": "function",
           "name": "plot_loss_curve",
           "signature": "def plot_loss_curvepairs: Sequence[tuple[int, float]], out_path: Path | str, *, title: str='Training loss' -> Path",
-          "line": 1680,
+          "line": 1697,
           "doc": "Alias for new_fridge.plot_loss_curve \u2014 kept for compatibility."
         },
         {
           "kind": "function",
           "name": "plot_score_distribution",
           "signature": "def plot_score_distributionscores: Sequence[float], out_path: Path | str, *, title: str='Judge score distribution', bins: int=20 -> Path",
-          "line": 1685,
+          "line": 1702,
           "doc": "Alias for new_fridge.plot_score_distribution \u2014 kept for compatibility."
         },
         {
           "kind": "function",
           "name": "plot_round_losses",
           "signature": "def plot_round_lossesrounds: Sequence[Sequence[tuple[int, float]]], out_path: Path | str, *, title: str='Multi-round training loss', round_labels: Sequence[str] | None=None -> Path",
-          "line": 1690,
+          "line": 1707,
           "doc": "Alias for new_fridge.plot_round_losses \u2014 kept for compatibility."
         },
         {
           "kind": "function",
           "name": "synthesize_judge_corpus",
           "signature": "def synthesize_judge_corpusn: int, out_path: Path | str, *, seed: int | None=0, good_ratio: float=0.5 -> Path",
-          "line": 1696,
+          "line": 1713,
           "doc": "Alias for the old mediocre_fridge.synthesize_judge_corpus."
         }
       ],
@@ -19749,6 +19954,13 @@
         }
       ],
       "changes": [
+        {
+          "sha": "9d5186ed",
+          "date": "2026-10-01",
+          "author": "Claude",
+          "subject": "hyped, hyped-pro and Neo Oven run models outside the catalog, in any layout",
+          "api_changes": []
+        },
         {
           "sha": "99ddc1ae",
           "date": "2026-09-29",
@@ -27131,7 +27343,7 @@
     {
       "module": "hypernix.quant.convert",
       "source": "src/hypernix/quant/convert.py",
-      "line_count": 238,
+      "line_count": 249,
       "summary": "Convert a HyperNix PyTorch checkpoint to GGUF (fp32 or fp16).",
       "api": [
         {
@@ -27170,6 +27382,13 @@
         }
       ],
       "changes": [
+        {
+          "sha": "34ccaa58",
+          "date": "2026-10-01",
+          "author": "Claude",
+          "subject": "convert: a Brewer model saved without config.json exports as llama, not hypernix",
+          "api_changes": []
+        },
         {
           "sha": "b4381824",
           "date": "2026-09-27",
@@ -28651,7 +28870,7 @@
     {
       "module": "hypernix.quant.hyprslug",
       "source": "src/hypernix/quant/hyprslug.py",
-      "line_count": 1405,
+      "line_count": 1412,
       "summary": "hypernix.quant.hyprslug \u2014 quantise a GGUF without llama.cpp.",
       "api": [
         {
@@ -28896,7 +29115,7 @@
           "kind": "function",
           "name": "quantize_gguf",
           "signature": "def quantize_ggufsource: str | Path, destination: str | Path, tier: str, *, imatrix: str | Path | dict[str, list[float]] | None=None, quantize_embeddings: bool | None=None, quantize_output: bool | None=None, progress: Callable[[dict], None] | None=None -> QuantizeReport",
-          "line": 1433,
+          "line": 1441,
           "doc": "Quantise *source* to *tier*, writing *destination*."
         }
       ],
@@ -28913,6 +29132,13 @@
         }
       ],
       "changes": [
+        {
+          "sha": "34ccaa58",
+          "date": "2026-10-01",
+          "author": "Claude",
+          "subject": "convert: a Brewer model saved without config.json exports as llama, not hypernix",
+          "api_changes": []
+        },
         {
           "sha": "7e6e59a3",
           "date": "2026-09-29",
@@ -29109,22 +29335,6 @@
           "author": "Claude",
           "subject": "0.72.4.post16 \u2014 ne[0], not the element count",
           "api_changes": []
-        },
-        {
-          "sha": "afb85f81",
-          "date": "2026-09-03",
-          "author": "Claude",
-          "subject": "Five new quant types, and hyprslug-headers",
-          "api_changes": [
-            {
-              "kind": "added",
-              "text": "def _extension_packing(ggml_type: int) -> str:"
-            },
-            {
-              "kind": "added",
-              "text": "def _bits_per_weight(packing: str) -> float:"
-            }
-          ]
         }
       ]
     },
@@ -36013,7 +36223,7 @@
     {
       "module": "hypernix.system.config",
       "source": "src/hypernix/system/config.py",
-      "line_count": 456,
+      "line_count": 458,
       "summary": "hypernix.config \u2014 Configuration management for HyperNix.",
       "api": [
         {
@@ -36040,7 +36250,7 @@
         {
           "kind": "function",
           "name": "get_models_dir",
-          "signature": "def get_models_dir -> Path",
+          "signature": "def get_models_dir*, create: bool=True -> Path",
           "line": 231,
           "doc": "Public API: return the unified models directory used across all modules."
         },
@@ -36048,35 +36258,35 @@
           "kind": "function",
           "name": "get_hf_token",
           "signature": "def get_hf_token -> str | None",
-          "line": 246,
+          "line": 249,
           "doc": "Public API: return the HuggingFace token from environment or config."
         },
         {
           "kind": "function",
           "name": "get_provider_key",
           "signature": "def get_provider_keyvendor: str -> str | None",
-          "line": 255,
+          "line": 258,
           "doc": "Public API: return the API key for a cloud vendor."
         },
         {
           "kind": "function",
           "name": "set_provider_key",
           "signature": "def set_provider_keyvendor: str, key: str -> None",
-          "line": 273,
+          "line": 276,
           "doc": "Public API: persist an API key for a cloud vendor to disk."
         },
         {
           "kind": "function",
           "name": "clear_provider_key",
           "signature": "def clear_provider_keyvendor: str -> None",
-          "line": 287,
+          "line": 290,
           "doc": "Public API: remove a persisted provider key (env var is untouched)."
         },
         {
           "kind": "function",
           "name": "cli_main",
           "signature": "def cli_mainraw: list[str] -> int",
-          "line": 526,
+          "line": 529,
           "doc": "Entry point for ``hnx config`` / ``hypernix config``."
         }
       ],
@@ -36086,6 +36296,22 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "9d5186ed",
+          "date": "2026-10-01",
+          "author": "Claude",
+          "subject": "hyped, hyped-pro and Neo Oven run models outside the catalog, in any layout",
+          "api_changes": [
+            {
+              "kind": "removed",
+              "text": "def get_models_dir() -> Path:"
+            },
+            {
+              "kind": "added",
+              "text": "def get_models_dir(*, create: bool = True) -> Path:"
+            }
+          ]
+        },
         {
           "sha": "99ddc1ae",
           "date": "2026-09-29",
@@ -50080,49 +50306,49 @@
     {
       "module": "hypernix.t1api.routers.inference",
       "source": "src/hypernix/t1api/routers/inference.py",
-      "line_count": 484,
+      "line_count": 588,
       "summary": "``/inference`` \u2014 the governed inference surface.",
       "api": [
         {
           "kind": "function",
           "name": "list_backends",
-          "signature": "def list_backendsctx: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> InferenceBackendsResponse",
-          "line": 264,
+          "signature": "def list_backendsctx: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id), runner=Depends(get_runner) -> InferenceBackendsResponse",
+          "line": 353,
           "doc": "What this server can actually dispatch to, and whether it answers."
         },
         {
           "kind": "function",
           "name": "inference_chat",
-          "signature": "def inference_chatpayload: InferenceChatRequest, ctx: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), registry=Depends(get_registry), meter=Depends(get_usage_meter), engine=Depends(get_routing_engine), keys=Depends(get_key_directory), costs=Depends(get_cost_calculator), request_id: str=Depends(get_request_id) -> InferenceResponse",
-          "line": 305,
+          "signature": "def inference_chatpayload: InferenceChatRequest, ctx: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), registry=Depends(get_registry), meter=Depends(get_usage_meter), engine=Depends(get_routing_engine), keys=Depends(get_key_directory), costs=Depends(get_cost_calculator), request_id: str=Depends(get_request_id), runner=Depends(get_runner) -> InferenceResponse",
+          "line": 418,
           "doc": "A chat completion, through the registry, the cascade and the meter."
         },
         {
           "kind": "function",
           "name": "inference_completions",
-          "signature": "def inference_completionspayload: InferenceCompletionRequest, ctx: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), registry=Depends(get_registry), meter=Depends(get_usage_meter), engine=Depends(get_routing_engine), keys=Depends(get_key_directory), costs=Depends(get_cost_calculator), request_id: str=Depends(get_request_id) -> InferenceResponse",
-          "line": 329,
+          "signature": "def inference_completionspayload: InferenceCompletionRequest, ctx: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), registry=Depends(get_registry), meter=Depends(get_usage_meter), engine=Depends(get_routing_engine), keys=Depends(get_key_directory), costs=Depends(get_cost_calculator), request_id: str=Depends(get_request_id), runner=Depends(get_runner) -> InferenceResponse",
+          "line": 443,
           "doc": "A plain prompt, sent as a single user turn."
         },
         {
           "kind": "function",
           "name": "inference_chat_stream",
-          "signature": "def inference_chat_streampayload: InferenceChatRequest, ctx: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), registry=Depends(get_registry), meter=Depends(get_usage_meter), engine=Depends(get_routing_engine), keys=Depends(get_key_directory), request_id: str=Depends(get_request_id) -> StreamingResponse",
-          "line": 361,
+          "signature": "def inference_chat_streampayload: InferenceChatRequest, ctx: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), registry=Depends(get_registry), meter=Depends(get_usage_meter), engine=Depends(get_routing_engine), keys=Depends(get_key_directory), request_id: str=Depends(get_request_id), runner=Depends(get_runner) -> StreamingResponse",
+          "line": 476,
           "doc": "The same governed path, streamed."
         },
         {
           "kind": "function",
           "name": "inference_embeddings",
-          "signature": "def inference_embeddingspayload: InferenceEmbeddingsRequest, ctx: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), registry=Depends(get_registry), meter=Depends(get_usage_meter), keys=Depends(get_key_directory), request_id: str=Depends(get_request_id) -> InferenceEmbeddingsResponse",
-          "line": 447,
+          "signature": "def inference_embeddingspayload: InferenceEmbeddingsRequest, ctx: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), registry=Depends(get_registry), meter=Depends(get_usage_meter), keys=Depends(get_key_directory), request_id: str=Depends(get_request_id), runner=Depends(get_runner) -> InferenceEmbeddingsResponse",
+          "line": 565,
           "doc": "Embeddings, under the same registry and quota rules as generation."
         },
         {
           "kind": "function",
           "name": "inference_token_count",
           "signature": "def inference_token_countpayload: InferenceTokenCountRequest, ctx: AuthContext=Depends(get_auth_context), registry=Depends(get_registry), meter=Depends(get_usage_meter), costs=Depends(get_cost_calculator), request_id: str=Depends(get_request_id) -> InferenceTokenCountResponse",
-          "line": 504,
+          "line": 625,
           "doc": "Size a request before committing to it."
         }
       ],
@@ -50138,6 +50364,42 @@
         }
       ],
       "changes": [
+        {
+          "sha": "4b7fe9d5",
+          "date": "2026-10-01",
+          "author": "Claude",
+          "subject": "t1api: serve /inference from the HyperNix runner",
+          "api_changes": [
+            {
+              "kind": "removed",
+              "text": "def _require_backend(config: T1APIConfig) -> LMStudioBridge:"
+            },
+            {
+              "kind": "added",
+              "text": "class _Dispatch:"
+            },
+            {
+              "kind": "added",
+              "text": "def address(self) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _loaded_model(runner: Any) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _lmstudio(config: T1APIConfig, *, timeout: float | None = None) -> LMStudioBridge | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _runner_client(runner: Any, config: T1APIConfig, *, timeout: float | None = None) -> LMStudioBridge:"
+            },
+            {
+              "kind": "added",
+              "text": "def _select_backend(config: T1APIConfig, runner: Any, model_id: str) -> _Dispatch:"
+            }
+          ]
+        },
         {
           "sha": "547dfa47",
           "date": "2026-09-02",
@@ -52671,7 +52933,7 @@
     {
       "module": "hypernix.t1api.schemas",
       "source": "src/hypernix/t1api/schemas.py",
-      "line_count": 1630,
+      "line_count": 1639,
       "summary": "t1api.schemas \u2014 Pydantic v2 request/response models for the T1 API.",
       "api": [
         {
@@ -53902,7 +54164,7 @@
           "kind": "class",
           "name": "InferenceEmbeddingsRequest",
           "signature": "class InferenceEmbeddingsRequest",
-          "line": 1820,
+          "line": 1825,
           "doc": "",
           "methods": []
         },
@@ -53910,7 +54172,7 @@
           "kind": "class",
           "name": "InferenceEmbeddingsResponse",
           "signature": "class InferenceEmbeddingsResponse",
-          "line": 1825,
+          "line": 1830,
           "doc": "",
           "methods": []
         },
@@ -53918,7 +54180,7 @@
           "kind": "class",
           "name": "InferenceTokenCountRequest",
           "signature": "class InferenceTokenCountRequest",
-          "line": 1834,
+          "line": 1840,
           "doc": "",
           "methods": []
         },
@@ -53926,7 +54188,7 @@
           "kind": "class",
           "name": "InferenceTokenCountResponse",
           "signature": "class InferenceTokenCountResponse",
-          "line": 1842,
+          "line": 1848,
           "doc": "",
           "methods": []
         },
@@ -53934,7 +54196,7 @@
           "kind": "class",
           "name": "InferenceBackend",
           "signature": "class InferenceBackend",
-          "line": 1855,
+          "line": 1861,
           "doc": "",
           "methods": []
         },
@@ -53942,7 +54204,7 @@
           "kind": "class",
           "name": "InferenceBackendsResponse",
           "signature": "class InferenceBackendsResponse",
-          "line": 1863,
+          "line": 1872,
           "doc": "",
           "methods": []
         },
@@ -53950,7 +54212,7 @@
           "kind": "class",
           "name": "TrainingRunItem",
           "signature": "class TrainingRunItem",
-          "line": 1874,
+          "line": 1883,
           "doc": "One run, as ``training.monitor`` reconciled it.",
           "methods": []
         },
@@ -53958,7 +54220,7 @@
           "kind": "class",
           "name": "TrainingRunListResponse",
           "signature": "class TrainingRunListResponse",
-          "line": 1905,
+          "line": 1914,
           "doc": "",
           "methods": []
         },
@@ -53966,7 +54228,7 @@
           "kind": "class",
           "name": "TrainingRunResponse",
           "signature": "class TrainingRunResponse",
-          "line": 1913,
+          "line": 1922,
           "doc": "",
           "methods": []
         },
@@ -53974,7 +54236,7 @@
           "kind": "class",
           "name": "TrainingLogResponse",
           "signature": "class TrainingLogResponse",
-          "line": 1918,
+          "line": 1927,
           "doc": "",
           "methods": []
         },
@@ -53982,7 +54244,7 @@
           "kind": "class",
           "name": "TrainingCheckpointItem",
           "signature": "class TrainingCheckpointItem",
-          "line": 1930,
+          "line": 1939,
           "doc": "",
           "methods": []
         },
@@ -53990,7 +54252,7 @@
           "kind": "class",
           "name": "TrainingCheckpointListResponse",
           "signature": "class TrainingCheckpointListResponse",
-          "line": 1937,
+          "line": 1946,
           "doc": "",
           "methods": []
         },
@@ -53998,7 +54260,7 @@
           "kind": "class",
           "name": "TrainingResourcesResponse",
           "signature": "class TrainingResourcesResponse",
-          "line": 1944,
+          "line": 1953,
           "doc": "",
           "methods": []
         },
@@ -54006,7 +54268,7 @@
           "kind": "class",
           "name": "TrainingControlResponse",
           "signature": "class TrainingControlResponse",
-          "line": 1953,
+          "line": 1962,
           "doc": "",
           "methods": []
         },
@@ -54014,7 +54276,7 @@
           "kind": "class",
           "name": "SyncChange",
           "signature": "class SyncChange",
-          "line": 1965,
+          "line": 1974,
           "doc": "",
           "methods": []
         },
@@ -54022,7 +54284,7 @@
           "kind": "class",
           "name": "SyncPageResponse",
           "signature": "class SyncPageResponse",
-          "line": 1976,
+          "line": 1985,
           "doc": "",
           "methods": []
         },
@@ -54030,7 +54292,7 @@
           "kind": "class",
           "name": "SyncClaimRequest",
           "signature": "class SyncClaimRequest",
-          "line": 1988,
+          "line": 1997,
           "doc": "",
           "methods": []
         },
@@ -54038,7 +54300,7 @@
           "kind": "class",
           "name": "SyncClaimResponse",
           "signature": "class SyncClaimResponse",
-          "line": 1992,
+          "line": 2001,
           "doc": "",
           "methods": []
         },
@@ -54046,7 +54308,7 @@
           "kind": "class",
           "name": "PushRegisterRequest",
           "signature": "class PushRegisterRequest",
-          "line": 2002,
+          "line": 2011,
           "doc": "",
           "methods": []
         },
@@ -54054,7 +54316,7 @@
           "kind": "class",
           "name": "PushRegistrationSummary",
           "signature": "class PushRegistrationSummary",
-          "line": 2012,
+          "line": 2021,
           "doc": "",
           "methods": []
         },
@@ -54062,7 +54324,7 @@
           "kind": "class",
           "name": "PushRegistrationResponse",
           "signature": "class PushRegistrationResponse",
-          "line": 2027,
+          "line": 2036,
           "doc": "",
           "methods": []
         },
@@ -54070,7 +54332,7 @@
           "kind": "class",
           "name": "PushRegistrationListResponse",
           "signature": "class PushRegistrationListResponse",
-          "line": 2032,
+          "line": 2041,
           "doc": "",
           "methods": []
         },
@@ -54078,7 +54340,7 @@
           "kind": "class",
           "name": "PushEventsRequest",
           "signature": "class PushEventsRequest",
-          "line": 2039,
+          "line": 2048,
           "doc": "",
           "methods": []
         },
@@ -54086,7 +54348,7 @@
           "kind": "class",
           "name": "SearchSnippet",
           "signature": "class SearchSnippet",
-          "line": 2043,
+          "line": 2052,
           "doc": "",
           "methods": []
         },
@@ -54094,7 +54356,7 @@
           "kind": "class",
           "name": "SearchHit",
           "signature": "class SearchHit",
-          "line": 2051,
+          "line": 2060,
           "doc": "",
           "methods": []
         },
@@ -54102,7 +54364,7 @@
           "kind": "class",
           "name": "SearchResponse",
           "signature": "class SearchResponse",
-          "line": 2063,
+          "line": 2072,
           "doc": "",
           "methods": []
         }
@@ -54117,6 +54379,13 @@
         }
       ],
       "changes": [
+        {
+          "sha": "4b7fe9d5",
+          "date": "2026-10-01",
+          "author": "Claude",
+          "subject": "t1api: serve /inference from the HyperNix runner",
+          "api_changes": []
+        },
         {
           "sha": "99636442",
           "date": "2026-09-29",
@@ -54177,26 +54446,6 @@
             {
               "kind": "added",
               "text": "class VersionResponse(BaseModel):"
-            }
-          ]
-        },
-        {
-          "sha": "faee5534",
-          "date": "2026-09-16",
-          "author": "Claude",
-          "subject": "A HyperNix model runner, settings, memory and tool calling",
-          "api_changes": [
-            {
-              "kind": "added",
-              "text": "class BackendsResponse(BaseModel):"
-            },
-            {
-              "kind": "added",
-              "text": "class PreferencesRequest(BaseModel):"
-            },
-            {
-              "kind": "added",
-              "text": "class PreferencesResponse(BaseModel):"
             }
           ]
         }

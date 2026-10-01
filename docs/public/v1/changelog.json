@@ -342,6 +342,39 @@
           "symbol": "\ud81a\udca5",
           "label": "major fix",
           "category": "Fixed",
+          "text": "Fixed hyped-pro and hyped refusing models nobody wrote a catalog entry for.",
+          "details": [
+            "hyped-pro refused any name outside its catalog (HPC-CFG-001), and its picker listed nothing that was on disk. It now also runs a path to a .gguf, a model folder or a Brewer .pt, a model in /.hypernix/models by name (exactly: a typo is an error, not a different model), and a\u2026",
+            "A T1 server routing to a model it had indexed got \"this client has no local model for it\": a model here of exactly that name is used.",
+            "hyped (basic) could not run a local model at all (\"this build cannot run it directly\"), found only .gguf files, and did not follow a symlinked folder. It runs any of the above itself, with no tools, and /model takes a path, a name or a repo id.",
+            "hyped sent its T1 turns to /v1/chat/completions on the T1 server, which has no such route: every reply was a 404. It now asks /runner/status where the loaded model answers and talks to that."
+          ]
+        },
+        {
+          "symbol": "\ud81a\udca5",
+          "label": "major fix",
+          "category": "Fixed",
+          "text": "Fixed Neo Oven loading hyperNix0x-v2 models from anything but a folder with a config.json.",
+          "details": [
+            "preheat_brewed (and brewer_adapter.load) failed on a folder uploaded from a training run with no config.json, on a model.pt that is a whole training checkpoint, and on weights saved from a torch.compiled model (orig_mod.). A run's checkpoints/latest.pt loaded with the byte\u2026",
+            "Every Brewer model reported a 2048-token context: NeoOven read only max_position_embeddings, and a Brewer config calls it max_seq_len. HyperNix.3-mini, trained at 512, ran RoPE far past anything it had seen once a conversation grew."
+          ]
+        },
+        {
+          "symbol": "\ud81a\udca5",
+          "label": "major fix",
+          "category": "Fixed",
+          "text": "Fixed a hyperNix0x-v2 model saved without a config.json converting to a GGUF no llama.cpp opens.",
+          "details": [
+            "From a report: HyperNix.3-mini ran in a patched llama.cpp and HyperNix.3.1-mini said unknown model architecture: 'hypernix'. A folder uploaded from a training run -- model.safetensors, model.pt, tokenizer/, no config.json -- was not recognised as Brewer, so it went to the\u2026",
+            "A folder is now Brewer by its tensor names when it has no config. The config is read from the safetensors header or a training checkpoint beside the weights, and the tokenizer from tokenizer/. convert_to_gguf hands Brewer models to the llama exporter, so hnx convert, -P, hnx\u2026",
+            "An existing hypernix-labelled GGUF is refused by the T1 runner before llama-server starts, with the command that exports it again, and hnx convert says when it has written one."
+          ]
+        },
+        {
+          "symbol": "\ud81a\udca5",
+          "label": "major fix",
+          "category": "Fixed",
           "text": "Fixed symlinked models being invisible to HyperLink.",
           "details": [
             "ln -s /data/qwen /.hypernix/models/qwen is the obvious way to keep a large model on another disk, and every model scanner walked past it: Path.rglob never descends into a symlinked folder. The model picker, the runner, hypernix-t1 index, the downloaded-models list and the LM\u2026",
@@ -4085,16 +4118,16 @@
   ],
   "unreleased": {
     "heading": "Unreleased",
-    "summary": "PressureCookerV6 / PressureCookerV6V \u2014 new speed-first optimizer generation, deliberately the opposite tradeoff from V5/V5S's memory-first design. PressureCookerV6 (\"Single-State Trust Momentum\") drops V5's whole feature set \u2014 no oscillation tracking, no curvature estimate, no\u2026 \u00b7 V6 production-hardening pass \u2014 grad_accum_steps and torch.cuda.amp.GradScaler integration, same contract as pressure_cooker.InductionCooker (unscale \u2192 skip cleanly on non-finite instead of corrupting momentum state \u2192 update()), plus an opt-in skip_on_nonfinite for plain\u2026 \u00b7 scripts/benchmark_v6.py (new) and scripts/measure_optimizer_memory.py (extended) \u2014 real measurement tools cited above, not hand-typed numbers. Both auto-detect CUDA and report whichever device they actually ran on; benchmark_v6.py prints an explicit note when it falls back to\u2026",
+    "summary": "The HyperNix runner is a /inference backend \u2014 the governed inference surface (/inference/chat, /completions, /chat/stream, /embeddings) now dispatches to this server's own runner when the model it has loaded (/runner/load, hypernix-t1 built-in-runner start) is exactly the model\u2026 \u00b7 backend_name on inference responses \u2014 InferenceResponse, InferenceEmbeddingsResponse and the stream's opening frame report which backend answered: hypernix or lmstudio. backend keeps its old meaning (the address) for existing clients. \u00b7 GET /inference/backends lists the runner \u2014 a hypernix row (kind: hypernix-runner, probed, with the loaded model_id) after the lmstudio row, which stays first where older clients look for it. default follows the real preference: the runner when it answers, otherwise LM Studio\u2026",
     "highlights": [
+      "The HyperNix runner is a /inference backend \u2014 the governed inference surface (/inference/chat, /completions, /chat/stream, /embeddings) now dispatches to this server's own runner when the model it has loaded (/runner/load, hypernix-t1 built-in-runner start) is exactly the model\u2026",
+      "backend_name on inference responses \u2014 InferenceResponse, InferenceEmbeddingsResponse and the stream's opening frame report which backend answered: hypernix or lmstudio. backend keeps its old meaning (the address) for existing clients.",
+      "GET /inference/backends lists the runner \u2014 a hypernix row (kind: hypernix-runner, probed, with the loaded model_id) after the lmstudio row, which stays first where older clients look for it. default follows the real preference: the runner when it answers, otherwise LM Studio\u2026",
+      "The no-backend refusal names both remedies \u2014 NOT_SUPPORTED (501) now says to load a model on the built-in runner or set T1_LMSTUDIO_URL/T1_LMSTUDIO_ENABLED, instead of naming only LM Studio.",
       "PressureCookerV6 / PressureCookerV6V \u2014 new speed-first optimizer generation, deliberately the opposite tradeoff from V5/V5S's memory-first design. PressureCookerV6 (\"Single-State Trust Momentum\") drops V5's whole feature set \u2014 no oscillation tracking, no curvature estimate, no\u2026",
       "V6 production-hardening pass \u2014 grad_accum_steps and torch.cuda.amp.GradScaler integration, same contract as pressure_cooker.InductionCooker (unscale \u2192 skip cleanly on non-finite instead of corrupting momentum state \u2192 update()), plus an opt-in skip_on_nonfinite for plain\u2026",
       "scripts/benchmark_v6.py (new) and scripts/measure_optimizer_memory.py (extended) \u2014 real measurement tools cited above, not hand-typed numbers. Both auto-detect CUDA and report whichever device they actually ran on; benchmark_v6.py prints an explicit note when it falls back to\u2026",
-      "CUDA graph capture + dynamic V6 features don't mix safely \u2014 now documented, not silently wrong. CUDA graphs bake in whichever Python-level branch ran during warmup_graph, permanently: replay always re-executes the same recorded kernels regardless of what later batches look\u2026",
-      "tests/test_pressure_cooker_v6.py \u2014 new, real test coverage (not a stub): construction/config, loss actually decreasing under several configurations (nesterov, no-trust-ratio, no-foreach), fused vs. non-fused paths producing numerically identical trajectories, weight decay\u2026",
-      "hypernix.init / wiki_cli.py \u2014 PressureCookerV6 and PressureCookerV6V wired into the top-level lazy-import system (all, LAZY_ATTRS, the TYPE_CHECKING import block) and into hnx-wiki's module\u2192page map, matching how every prior generation is exposed \u2014 import hypernix\u2026",
-      "wiki/Pressure-Cooker-V6.md (new), wiki/Optimizers.md, wiki/Home.md \u2014 new dedicated page for V6/V6V with the measured numbers, usage examples, and the CUDA-graph caveat above. Optimizers.md's intro also got a small accuracy fix while touching this page: it previously called V4\u2026",
-      "Docs site: full holiday/observance calendar. Extended the existing Christmas / Christmas Eve / Halloween / Thanksgiving / July 4th / Pride Month banner system (getActiveSiteEvent/EventBanner in docs/src/App.tsx) with 14 more: Trans Day of Visibility (Mar 31), Transgender Day of\u2026"
+      "CUDA graph capture + dynamic V6 features don't mix safely \u2014 now documented, not silently wrong. CUDA graphs bake in whichever Python-level branch ran during warmup_graph, permanently: replay always re-executes the same recorded kernels regardless of what later batches look\u2026"
     ]
   }
 }

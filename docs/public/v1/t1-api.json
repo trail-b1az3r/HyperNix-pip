@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-t1-api",
   "generated_at": "2026-09-20T21:20:58Z",
-  "commit": "8bd42f6e0b8477f461603084661d23968a8eee03",
+  "commit": "723687ab1cfc71b0b077bacc95f08a22f7ae94ac",
   "history_available": true,
   "server_extra": "pip install 'hypernix[t1api]'",
   "client_install": "pip install hypernix",
@@ -8980,49 +8980,49 @@
     {
       "module": "hypernix.t1api.routers.inference",
       "source": "src/hypernix/t1api/routers/inference.py",
-      "line_count": 484,
+      "line_count": 588,
       "summary": "``/inference`` \u2014 the governed inference surface.",
       "api": [
         {
           "kind": "function",
           "name": "list_backends",
-          "signature": "def list_backendsctx: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> InferenceBackendsResponse",
-          "line": 264,
+          "signature": "def list_backendsctx: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id), runner=Depends(get_runner) -> InferenceBackendsResponse",
+          "line": 353,
           "doc": "What this server can actually dispatch to, and whether it answers."
         },
         {
           "kind": "function",
           "name": "inference_chat",
-          "signature": "def inference_chatpayload: InferenceChatRequest, ctx: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), registry=Depends(get_registry), meter=Depends(get_usage_meter), engine=Depends(get_routing_engine), keys=Depends(get_key_directory), costs=Depends(get_cost_calculator), request_id: str=Depends(get_request_id) -> InferenceResponse",
-          "line": 305,
+          "signature": "def inference_chatpayload: InferenceChatRequest, ctx: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), registry=Depends(get_registry), meter=Depends(get_usage_meter), engine=Depends(get_routing_engine), keys=Depends(get_key_directory), costs=Depends(get_cost_calculator), request_id: str=Depends(get_request_id), runner=Depends(get_runner) -> InferenceResponse",
+          "line": 418,
           "doc": "A chat completion, through the registry, the cascade and the meter."
         },
         {
           "kind": "function",
           "name": "inference_completions",
-          "signature": "def inference_completionspayload: InferenceCompletionRequest, ctx: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), registry=Depends(get_registry), meter=Depends(get_usage_meter), engine=Depends(get_routing_engine), keys=Depends(get_key_directory), costs=Depends(get_cost_calculator), request_id: str=Depends(get_request_id) -> InferenceResponse",
-          "line": 329,
+          "signature": "def inference_completionspayload: InferenceCompletionRequest, ctx: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), registry=Depends(get_registry), meter=Depends(get_usage_meter), engine=Depends(get_routing_engine), keys=Depends(get_key_directory), costs=Depends(get_cost_calculator), request_id: str=Depends(get_request_id), runner=Depends(get_runner) -> InferenceResponse",
+          "line": 443,
           "doc": "A plain prompt, sent as a single user turn."
         },
         {
           "kind": "function",
           "name": "inference_chat_stream",
-          "signature": "def inference_chat_streampayload: InferenceChatRequest, ctx: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), registry=Depends(get_registry), meter=Depends(get_usage_meter), engine=Depends(get_routing_engine), keys=Depends(get_key_directory), request_id: str=Depends(get_request_id) -> StreamingResponse",
-          "line": 361,
+          "signature": "def inference_chat_streampayload: InferenceChatRequest, ctx: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), registry=Depends(get_registry), meter=Depends(get_usage_meter), engine=Depends(get_routing_engine), keys=Depends(get_key_directory), request_id: str=Depends(get_request_id), runner=Depends(get_runner) -> StreamingResponse",
+          "line": 476,
           "doc": "The same governed path, streamed."
         },
         {
           "kind": "function",
           "name": "inference_embeddings",
-          "signature": "def inference_embeddingspayload: InferenceEmbeddingsRequest, ctx: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), registry=Depends(get_registry), meter=Depends(get_usage_meter), keys=Depends(get_key_directory), request_id: str=Depends(get_request_id) -> InferenceEmbeddingsResponse",
-          "line": 447,
+          "signature": "def inference_embeddingspayload: InferenceEmbeddingsRequest, ctx: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), registry=Depends(get_registry), meter=Depends(get_usage_meter), keys=Depends(get_key_directory), request_id: str=Depends(get_request_id), runner=Depends(get_runner) -> InferenceEmbeddingsResponse",
+          "line": 565,
           "doc": "Embeddings, under the same registry and quota rules as generation."
         },
         {
           "kind": "function",
           "name": "inference_token_count",
           "signature": "def inference_token_countpayload: InferenceTokenCountRequest, ctx: AuthContext=Depends(get_auth_context), registry=Depends(get_registry), meter=Depends(get_usage_meter), costs=Depends(get_cost_calculator), request_id: str=Depends(get_request_id) -> InferenceTokenCountResponse",
-          "line": 504,
+          "line": 625,
           "doc": "Size a request before committing to it."
         }
       ],
@@ -9038,6 +9038,42 @@
         }
       ],
       "changes": [
+        {
+          "sha": "4b7fe9d5",
+          "date": "2026-10-01",
+          "author": "Claude",
+          "subject": "t1api: serve /inference from the HyperNix runner",
+          "api_changes": [
+            {
+              "kind": "removed",
+              "text": "def _require_backend(config: T1APIConfig) -> LMStudioBridge:"
+            },
+            {
+              "kind": "added",
+              "text": "class _Dispatch:"
+            },
+            {
+              "kind": "added",
+              "text": "def address(self) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _loaded_model(runner: Any) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _lmstudio(config: T1APIConfig, *, timeout: float | None = None) -> LMStudioBridge | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _runner_client(runner: Any, config: T1APIConfig, *, timeout: float | None = None) -> LMStudioBridge:"
+            },
+            {
+              "kind": "added",
+              "text": "def _select_backend(config: T1APIConfig, runner: Any, model_id: str) -> _Dispatch:"
+            }
+          ]
+        },
         {
           "sha": "547dfa47",
           "date": "2026-09-02",
@@ -11583,7 +11619,7 @@
     {
       "module": "hypernix.t1api.schemas",
       "source": "src/hypernix/t1api/schemas.py",
-      "line_count": 1630,
+      "line_count": 1639,
       "summary": "t1api.schemas \u2014 Pydantic v2 request/response models for the T1 API.",
       "api": [
         {
@@ -12814,7 +12850,7 @@
           "kind": "class",
           "name": "InferenceEmbeddingsRequest",
           "signature": "class InferenceEmbeddingsRequest",
-          "line": 1820,
+          "line": 1825,
           "doc": "",
           "methods": []
         },
@@ -12822,7 +12858,7 @@
           "kind": "class",
           "name": "InferenceEmbeddingsResponse",
           "signature": "class InferenceEmbeddingsResponse",
-          "line": 1825,
+          "line": 1830,
           "doc": "",
           "methods": []
         },
@@ -12830,7 +12866,7 @@
           "kind": "class",
           "name": "InferenceTokenCountRequest",
           "signature": "class InferenceTokenCountRequest",
-          "line": 1834,
+          "line": 1840,
           "doc": "",
           "methods": []
         },
@@ -12838,7 +12874,7 @@
           "kind": "class",
           "name": "InferenceTokenCountResponse",
           "signature": "class InferenceTokenCountResponse",
-          "line": 1842,
+          "line": 1848,
           "doc": "",
           "methods": []
         },
@@ -12846,7 +12882,7 @@
           "kind": "class",
           "name": "InferenceBackend",
           "signature": "class InferenceBackend",
-          "line": 1855,
+          "line": 1861,
           "doc": "",
           "methods": []
         },
@@ -12854,7 +12890,7 @@
           "kind": "class",
           "name": "InferenceBackendsResponse",
           "signature": "class InferenceBackendsResponse",
-          "line": 1863,
+          "line": 1872,
           "doc": "",
           "methods": []
         },
@@ -12862,7 +12898,7 @@
           "kind": "class",
           "name": "TrainingRunItem",
           "signature": "class TrainingRunItem",
-          "line": 1874,
+          "line": 1883,
           "doc": "One run, as ``training.monitor`` reconciled it.",
           "methods": []
         },
@@ -12870,7 +12906,7 @@
           "kind": "class",
           "name": "TrainingRunListResponse",
           "signature": "class TrainingRunListResponse",
-          "line": 1905,
+          "line": 1914,
           "doc": "",
           "methods": []
         },
@@ -12878,7 +12914,7 @@
           "kind": "class",
           "name": "TrainingRunResponse",
           "signature": "class TrainingRunResponse",
-          "line": 1913,
+          "line": 1922,
           "doc": "",
           "methods": []
         },
@@ -12886,7 +12922,7 @@
           "kind": "class",
           "name": "TrainingLogResponse",
           "signature": "class TrainingLogResponse",
-          "line": 1918,
+          "line": 1927,
           "doc": "",
           "methods": []
         },
@@ -12894,7 +12930,7 @@
           "kind": "class",
           "name": "TrainingCheckpointItem",
           "signature": "class TrainingCheckpointItem",
-          "line": 1930,
+          "line": 1939,
           "doc": "",
           "methods": []
         },
@@ -12902,7 +12938,7 @@
           "kind": "class",
           "name": "TrainingCheckpointListResponse",
           "signature": "class TrainingCheckpointListResponse",
-          "line": 1937,
+          "line": 1946,
           "doc": "",
           "methods": []
         },
@@ -12910,7 +12946,7 @@
           "kind": "class",
           "name": "TrainingResourcesResponse",
           "signature": "class TrainingResourcesResponse",
-          "line": 1944,
+          "line": 1953,
           "doc": "",
           "methods": []
         },
@@ -12918,7 +12954,7 @@
           "kind": "class",
           "name": "TrainingControlResponse",
           "signature": "class TrainingControlResponse",
-          "line": 1953,
+          "line": 1962,
           "doc": "",
           "methods": []
         },
@@ -12926,7 +12962,7 @@
           "kind": "class",
           "name": "SyncChange",
           "signature": "class SyncChange",
-          "line": 1965,
+          "line": 1974,
           "doc": "",
           "methods": []
         },
@@ -12934,7 +12970,7 @@
           "kind": "class",
           "name": "SyncPageResponse",
           "signature": "class SyncPageResponse",
-          "line": 1976,
+          "line": 1985,
           "doc": "",
           "methods": []
         },
@@ -12942,7 +12978,7 @@
           "kind": "class",
           "name": "SyncClaimRequest",
           "signature": "class SyncClaimRequest",
-          "line": 1988,
+          "line": 1997,
           "doc": "",
           "methods": []
         },
@@ -12950,7 +12986,7 @@
           "kind": "class",
           "name": "SyncClaimResponse",
           "signature": "class SyncClaimResponse",
-          "line": 1992,
+          "line": 2001,
           "doc": "",
           "methods": []
         },
@@ -12958,7 +12994,7 @@
           "kind": "class",
           "name": "PushRegisterRequest",
           "signature": "class PushRegisterRequest",
-          "line": 2002,
+          "line": 2011,
           "doc": "",
           "methods": []
         },
@@ -12966,7 +13002,7 @@
           "kind": "class",
           "name": "PushRegistrationSummary",
           "signature": "class PushRegistrationSummary",
-          "line": 2012,
+          "line": 2021,
           "doc": "",
           "methods": []
         },
@@ -12974,7 +13010,7 @@
           "kind": "class",
           "name": "PushRegistrationResponse",
           "signature": "class PushRegistrationResponse",
-          "line": 2027,
+          "line": 2036,
           "doc": "",
           "methods": []
         },
@@ -12982,7 +13018,7 @@
           "kind": "class",
           "name": "PushRegistrationListResponse",
           "signature": "class PushRegistrationListResponse",
-          "line": 2032,
+          "line": 2041,
           "doc": "",
           "methods": []
         },
@@ -12990,7 +13026,7 @@
           "kind": "class",
           "name": "PushEventsRequest",
           "signature": "class PushEventsRequest",
-          "line": 2039,
+          "line": 2048,
           "doc": "",
           "methods": []
         },
@@ -12998,7 +13034,7 @@
           "kind": "class",
           "name": "SearchSnippet",
           "signature": "class SearchSnippet",
-          "line": 2043,
+          "line": 2052,
           "doc": "",
           "methods": []
         },
@@ -13006,7 +13042,7 @@
           "kind": "class",
           "name": "SearchHit",
           "signature": "class SearchHit",
-          "line": 2051,
+          "line": 2060,
           "doc": "",
           "methods": []
         },
@@ -13014,7 +13050,7 @@
           "kind": "class",
           "name": "SearchResponse",
           "signature": "class SearchResponse",
-          "line": 2063,
+          "line": 2072,
           "doc": "",
           "methods": []
         }
@@ -13029,6 +13065,13 @@
         }
       ],
       "changes": [
+        {
+          "sha": "4b7fe9d5",
+          "date": "2026-10-01",
+          "author": "Claude",
+          "subject": "t1api: serve /inference from the HyperNix runner",
+          "api_changes": []
+        },
         {
           "sha": "99636442",
           "date": "2026-09-29",
@@ -13089,26 +13132,6 @@
             {
               "kind": "added",
               "text": "class VersionResponse(BaseModel):"
-            }
-          ]
-        },
-        {
-          "sha": "faee5534",
-          "date": "2026-09-16",
-          "author": "Claude",
-          "subject": "A HyperNix model runner, settings, memory and tool calling",
-          "api_changes": [
-            {
-              "kind": "added",
-              "text": "class BackendsResponse(BaseModel):"
-            },
-            {
-              "kind": "added",
-              "text": "class PreferencesRequest(BaseModel):"
-            },
-            {
-              "kind": "added",
-              "text": "class PreferencesResponse(BaseModel):"
             }
           ]
         }
@@ -17333,7 +17356,7 @@
       "handler": "list_backends",
       "response_model": "InferenceBackendsResponse",
       "source": "src/hypernix/t1api/routers/inference.py",
-      "line": 263,
+      "line": 352,
       "tag": "inference"
     },
     {
@@ -17343,7 +17366,7 @@
       "handler": "inference_chat",
       "response_model": "InferenceResponse",
       "source": "src/hypernix/t1api/routers/inference.py",
-      "line": 304,
+      "line": 417,
       "tag": "inference"
     },
     {
@@ -17353,7 +17376,7 @@
       "handler": "inference_chat_stream",
       "response_model": null,
       "source": "src/hypernix/t1api/routers/inference.py",
-      "line": 360,
+      "line": 475,
       "tag": "inference"
     },
     {
@@ -17363,7 +17386,7 @@
       "handler": "inference_completions",
       "response_model": "InferenceResponse",
       "source": "src/hypernix/t1api/routers/inference.py",
-      "line": 328,
+      "line": 442,
       "tag": "inference"
     },
     {
@@ -17373,7 +17396,7 @@
       "handler": "inference_embeddings",
       "response_model": "InferenceEmbeddingsResponse",
       "source": "src/hypernix/t1api/routers/inference.py",
-      "line": 446,
+      "line": 564,
       "tag": "inference"
     },
     {
@@ -17383,7 +17406,7 @@
       "handler": "inference_token_count",
       "response_model": "InferenceTokenCountResponse",
       "source": "src/hypernix/t1api/routers/inference.py",
-      "line": 503,
+      "line": 624,
       "tag": "inference"
     },
     {

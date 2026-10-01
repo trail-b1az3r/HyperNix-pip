@@ -1,7 +1,7 @@
 {
   "definition": "non-blank source lines across repository code roots: src, scripts, tests, examples, bin, native, docs/src",
-  "total_lines": 222116,
-  "code_files": 713,
+  "total_lines": 223251,
+  "code_files": 714,
   "top_files": [
     {
       "path": "src/hypernix/t1api/routers/hyperlink.py",
@@ -25,23 +25,27 @@
     },
     {
       "path": "src/hypernix/t1api/schemas.py",
-      "lines": 1630
+      "lines": 1639
     },
     {
       "path": "src/hypernix/interfaces/cli.py",
-      "lines": 1487
+      "lines": 1500
     },
     {
       "path": "src/hypernix/models/neo_oven.py",
-      "lines": 1475
+      "lines": 1491
     },
     {
       "path": "src/hypernix/quant/hyprslug.py",
-      "lines": 1405
+      "lines": 1412
     },
     {
       "path": "src/hypernix/monitoring/tv.py",
       "lines": 1378
+    },
+    {
+      "path": "src/hypernix/interfaces/hyped_pro_core.py",
+      "lines": 1366
     },
     {
       "path": "src/hypernix/data/gather.py",
@@ -50,10 +54,6 @@
     {
       "path": "src/hypernix/training/brewer.py",
       "lines": 1247
-    },
-    {
-      "path": "src/hypernix/interfaces/hyped_pro_core.py",
-      "lines": 1192
     },
     {
       "path": "src/hypernix/system/fusebox.py",
@@ -72,6 +72,10 @@
       "lines": 1100
     },
     {
+      "path": "src/hypernix/interfaces/hyped_pro_app/src/app.ts",
+      "lines": 1079
+    },
+    {
       "path": "tests/ios/test_hyperlink_ios_wiring.py",
       "lines": 1065
     },
@@ -86,10 +90,6 @@
     {
       "path": "src/hypernix/security/gkey_cli.py",
       "lines": 1058
-    },
-    {
-      "path": "src/hypernix/interfaces/hyped_pro_app/src/app.ts",
-      "lines": 1051
     },
     {
       "path": "tests/repo/test_install_script.py",
@@ -127,12 +127,12 @@
   "contributors": [
     {
       "author": "Claude",
-      "additions": 211093,
-      "deletions": 13959,
-      "net": 197134,
-      "changes": 225052,
-      "commits": 234,
-      "files": 1472
+      "additions": 212600,
+      "deletions": 14105,
+      "net": 198495,
+      "changes": 226705,
+      "commits": 237,
+      "files": 1476
     },
     {
       "author": "minerofthesoal",
@@ -176,7 +176,7 @@
       "deletions": 242,
       "net": 35,
       "changes": 519,
-      "commits": 18,
+      "commits": 20,
       "files": 5
     },
     {
@@ -190,6 +190,6 @@
     }
   ],
   "history_available": true,
-  "commit": "8bd42f6e0b8477f461603084661d23968a8eee03",
+  "commit": "723687ab1cfc71b0b077bacc95f08a22f7ae94ac",
   "generated_at": null
 }
