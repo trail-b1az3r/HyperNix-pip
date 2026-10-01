@@ -30,20 +30,40 @@ substitution of an exhausted model is precisely what the spec forbids; a
 caller that wants the cascade has to say so, and the response says which
 model really ran.
 
-The backend today is the LM Studio bridge, which is the only one this
-server can reach. ``GET /inference/backends`` reports what is actually
-available rather than a hard-coded list, so a client can tell "no backend
-configured" from "the backend is down" without parsing an error string.
+Two backends can answer, chosen per request for the model that is about
+to run (after the cascade, never before):
+
+* ``hypernix`` — this server's own runner (:mod:`hypernix.hyperlink.managed`),
+  when the model it has loaded is *exactly* that model. It is the
+  process the operator started on purpose and it is holding the VRAM.
+* ``lmstudio`` — the LM Studio bridge, when it is enabled.
+
+HyperLink chat can answer from "whatever the runner has loaded", because
+a person is talking to the model on the status screen. This surface
+cannot: the caller names a model, the registry, the quota and the price
+all refer to that model, and replying from a different one because it
+happened to be loaded would be the silent substitution this module exists
+to forbid. So a runner serving another model is skipped, and if nothing
+else can serve the request the refusal says what is loaded and how to
+load the one that was asked for.
+
+``GET /inference/backends`` reports both, probed rather than declared, so
+a client can tell "no backend configured" from "the backend is down"
+without parsing an error string. Every response names the backend that
+answered in ``backend_name``; ``backend`` stays the address it always was.
 """
 from __future__ import annotations
 
 import json
 import logging
+from dataclasses import dataclass
+from typing import Any
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 
 from ...bridge.lmstudio import LMStudioBridge, LMStudioError
+from ...hyperlink.inference import HYPERNIX, LMSTUDIO
 from ..auth import AuthContext
 from ..config import T1APIConfig
 from ..deps import (
@@ -54,6 +74,7 @@ from ..deps import (
     get_registry,
     get_request_id,
     get_routing_engine,
+    get_runner,
     get_usage_meter,
 )
 from ..errors import T1APIError, T1ErrorCode
@@ -90,20 +111,86 @@ def _messages_text(messages: list[InferenceMessage]) -> str:
     return "\n".join(f"{m.role}: {m.content}" for m in messages)
 
 
-def _require_backend(config: T1APIConfig) -> LMStudioBridge:
-    """The inference backend, or a refusal that names what to configure."""
+@dataclass(frozen=True)
+class _Dispatch:
+    """A client, and the honest name for where its answers come from."""
+
+    client: LMStudioBridge
+    #: The wire value: ``hypernix`` or ``lmstudio``.
+    name: str
+
+    @property
+    def address(self) -> str:
+        return self.client.base_url
+
+
+def _loaded_model(runner: Any) -> str:
+    """The model this server's own runner is serving, or ``""``.
+
+    ``runner.current`` checks the llama.cpp process is still alive, so a
+    runner whose model crashed out reads as empty here rather than as a
+    socket nobody is listening on.
+    """
+    if runner is None:
+        return ""
+    try:
+        current = runner.current
+    except Exception:  # noqa: BLE001 - a broken runner must not hide LM Studio
+        logger.debug("t1api.inference: the runner could not be asked", exc_info=True)
+        return ""
+    return str(getattr(current, "model_id", "") or "") if current is not None else ""
+
+
+def _lmstudio(config: T1APIConfig, *, timeout: float | None = None) -> LMStudioBridge | None:
     if not config.lmstudio_enabled or not config.lmstudio_url:
-        raise T1APIError(
-            T1ErrorCode.NOT_SUPPORTED,
-            "This server has no inference backend configured. Set "
-            "T1_LMSTUDIO_URL (and T1_LMSTUDIO_ENABLED=1) to point it at one.",
-            details={"backends": []},
-            http_status=501,
-        )
+        return None
     return LMStudioBridge(
         base_url=config.lmstudio_url,
         api_key=config.lmstudio_api_key or None,
-        timeout=config.lmstudio_timeout_seconds,
+        timeout=timeout if timeout is not None else config.lmstudio_timeout_seconds,
+    )
+
+
+def _runner_client(runner: Any, config: T1APIConfig, *, timeout: float | None = None) -> LMStudioBridge:
+    # llama-server speaks the OpenAI API, so the bridge is already a
+    # correct client for it (see hypernix.hyperlink.inference).
+    return LMStudioBridge(
+        base_url=runner.base_url,
+        timeout=timeout if timeout is not None else config.lmstudio_timeout_seconds,
+    )
+
+
+def _select_backend(config: T1APIConfig, runner: Any, model_id: str) -> _Dispatch:
+    """The backend that serves *model_id*, or a refusal that names both.
+
+    The runner first, but only for the model it actually has loaded; then
+    LM Studio; then nothing — and "nothing" distinguishes "the runner is
+    serving something else" (load the right model) from "no backend at
+    all" (set one up).
+    """
+    loaded = _loaded_model(runner)
+    if loaded and loaded == model_id:
+        return _Dispatch(_runner_client(runner, config), HYPERNIX)
+    bridge = _lmstudio(config)
+    if bridge is not None:
+        return _Dispatch(bridge, LMSTUDIO)
+    if loaded:
+        raise T1APIError(
+            T1ErrorCode.MODEL_UNAVAILABLE,
+            f"{model_id} is not loaded. This server's HyperNix runner is serving "
+            f"{loaded}. Load {model_id} with POST /runner/load, or point the server "
+            "at LM Studio (T1_LMSTUDIO_URL and T1_LMSTUDIO_ENABLED=1).",
+            details={"backends": [HYPERNIX], "loaded": loaded, "requested": model_id},
+            http_status=503,
+        )
+    raise T1APIError(
+        T1ErrorCode.NOT_SUPPORTED,
+        "This server has no inference backend configured. Load a model on its "
+        "built-in HyperNix runner (POST /runner/load, or `hypernix-t1 "
+        "built-in-runner start`), or set T1_LMSTUDIO_URL (and "
+        "T1_LMSTUDIO_ENABLED=1) to point it at LM Studio.",
+        details={"backends": []},
+        http_status=501,
     )
 
 
@@ -190,6 +277,7 @@ def _complete(
     *,
     ctx: AuthContext,
     config: T1APIConfig,
+    runner: Any,
     keys,
     engine,
     registry,
@@ -216,9 +304,9 @@ def _complete(
         allow_fallback=allow_fallback,
     )
 
-    bridge = _require_backend(config)
+    dispatch = _select_backend(config, runner, model)
     envelope = _run_chat(
-        bridge=bridge, model=model,
+        bridge=dispatch.client, model=model,
         messages=[m.model_dump() for m in messages],
         temperature=temperature, max_tokens=max_tokens, top_p=top_p, stop=stop,
     )
@@ -253,7 +341,8 @@ def _complete(
         output_tokens=output_tokens,
         cost=round(input_cost + output_cost, 8),
         currency=currency,
-        backend=bridge.base_url,
+        backend=dispatch.address,
+        backend_name=dispatch.name,
         substituted=substituted,
         raw=envelope,
         request_id=request_id,
@@ -265,38 +354,62 @@ def list_backends(
     ctx: AuthContext = Depends(get_auth_context),
     config: T1APIConfig = Depends(get_config),
     request_id: str = Depends(get_request_id),
+    runner=Depends(get_runner),
 ) -> InferenceBackendsResponse:
     """What this server can actually dispatch to, and whether it answers.
 
     Probed rather than declared, so "no backend configured" and "the
     backend is down" are two different answers instead of one error
     string a client has to parse.
+
+    LM Studio stays first in the list, where clients written before the
+    runner could answer have always found it. ``default`` follows the
+    real preference: the runner, for the model it has loaded, when it
+    answers; otherwise LM Studio.
     """
+    probe_timeout = min(10.0, float(config.lmstudio_timeout_seconds or 10))
     backends: list[InferenceBackend] = []
-    if config.lmstudio_enabled and config.lmstudio_url:
-        bridge = LMStudioBridge(
-            base_url=config.lmstudio_url,
-            api_key=config.lmstudio_api_key or None,
-            timeout=min(10.0, float(config.lmstudio_timeout_seconds or 10)),
-        )
+    bridge = _lmstudio(config, timeout=probe_timeout)
+    if bridge is not None:
         try:
             bridge.list_models()
             reachable, detail = True, "answered"
         except LMStudioError as exc:
             reachable, detail = False, str(exc)
         backends.append(InferenceBackend(
-            name="lmstudio", kind="openai-compatible",
+            name=LMSTUDIO, kind="openai-compatible",
             reachable=reachable, detail=detail, address=bridge.base_url,
         ))
     else:
         backends.append(InferenceBackend(
-            name="lmstudio", kind="openai-compatible", reachable=False,
+            name=LMSTUDIO, kind="openai-compatible", reachable=False,
             detail="disabled (T1_LMSTUDIO_ENABLED=0 or no T1_LMSTUDIO_URL)",
         ))
 
+    loaded = _loaded_model(runner)
+    if loaded:
+        client = _runner_client(runner, config, timeout=probe_timeout)
+        try:
+            client.list_models()
+            reachable, detail = True, f"serving {loaded}"
+        except LMStudioError as exc:
+            reachable, detail = False, str(exc)
+        backends.append(InferenceBackend(
+            name=HYPERNIX, kind="hypernix-runner", reachable=reachable,
+            detail=detail, address=client.base_url, model_id=loaded,
+        ))
+    else:
+        backends.append(InferenceBackend(
+            name=HYPERNIX, kind="hypernix-runner", reachable=False,
+            detail="nothing loaded (POST /runner/load, or `hypernix-t1 built-in-runner start`)",
+            address=getattr(runner, "base_url", "") if runner is not None else "",
+        ))
+
+    reachable_names = {b.name for b in backends if b.reachable}
+    default = next((n for n in (HYPERNIX, LMSTUDIO) if n in reachable_names), "")
     return InferenceBackendsResponse(
         backends=backends,
-        default=next((b.name for b in backends if b.reachable), ""),
+        default=default,
         request_id=request_id,
     )
 
@@ -312,10 +425,11 @@ def inference_chat(
     keys=Depends(get_key_directory),
     costs=Depends(get_cost_calculator),
     request_id: str = Depends(get_request_id),
+    runner=Depends(get_runner),
 ) -> InferenceResponse:
     """A chat completion, through the registry, the cascade and the meter."""
     return _complete(
-        ctx=ctx, config=config, keys=keys, engine=engine, registry=registry,
+        ctx=ctx, config=config, runner=runner, keys=keys, engine=engine, registry=registry,
         meter=meter, costs=costs, request_id=request_id,
         requested_model=payload.model, messages=payload.messages,
         temperature=payload.temperature, max_tokens=payload.max_tokens,
@@ -336,6 +450,7 @@ def inference_completions(
     keys=Depends(get_key_directory),
     costs=Depends(get_cost_calculator),
     request_id: str = Depends(get_request_id),
+    runner=Depends(get_runner),
 ) -> InferenceResponse:
     """A plain prompt, sent as a single user turn.
 
@@ -346,7 +461,7 @@ def inference_completions(
     if not payload.prompt.strip():
         raise T1APIError(T1ErrorCode.VALIDATION_ERROR, "prompt must not be empty")
     return _complete(
-        ctx=ctx, config=config, keys=keys, engine=engine, registry=registry,
+        ctx=ctx, config=config, runner=runner, keys=keys, engine=engine, registry=registry,
         meter=meter, costs=costs, request_id=request_id,
         requested_model=payload.model,
         messages=[InferenceMessage(role="user", content=payload.prompt)],
@@ -367,6 +482,7 @@ def inference_chat_stream(
     engine=Depends(get_routing_engine),
     keys=Depends(get_key_directory),
     request_id: str = Depends(get_request_id),
+    runner=Depends(get_runner),
 ) -> StreamingResponse:
     """The same governed path, streamed.
 
@@ -388,7 +504,8 @@ def inference_chat_stream(
         model_id=payload.model, input_tokens=estimated,
         allow_fallback=payload.allow_fallback,
     )
-    bridge = _require_backend(config)
+    dispatch = _select_backend(config, runner, model)
+    bridge = dispatch.client
     messages = [m.model_dump() for m in payload.messages]
     key_id = ctx.key_id
 
@@ -399,6 +516,7 @@ def inference_chat_stream(
             "requested_model": payload.model,
             "substituted": substituted,
             "backend": bridge.base_url,
+            "backend_name": dispatch.name,
         }
         yield f": hypernix inference open {json.dumps(header)}\n\n".encode()
         try:
@@ -452,6 +570,7 @@ def inference_embeddings(
     meter=Depends(get_usage_meter),
     keys=Depends(get_key_directory),
     request_id: str = Depends(get_request_id),
+    runner=Depends(get_runner),
 ) -> InferenceEmbeddingsResponse:
     """Embeddings, under the same registry and quota rules as generation.
 
@@ -465,7 +584,8 @@ def inference_embeddings(
     keys.assert_model_allowed(ctx.key_id, payload.model)
     meter.assert_not_exhausted(ctx.key_id, payload.model)
 
-    bridge = _require_backend(config)
+    dispatch = _select_backend(config, runner, payload.model)
+    bridge = dispatch.client
     if not hasattr(bridge, "embeddings"):
         raise T1APIError(
             T1ErrorCode.NOT_SUPPORTED,
@@ -496,6 +616,7 @@ def inference_embeddings(
         dimensions=len(vectors[0]) if vectors else 0,
         input_tokens=input_tokens,
         backend=bridge.base_url,
+        backend_name=dispatch.name,
         request_id=request_id,
     )
 

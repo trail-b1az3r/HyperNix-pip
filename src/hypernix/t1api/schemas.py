@@ -1811,7 +1811,12 @@ class InferenceResponse(BaseModel):
     output_tokens: int = 0
     cost: float = 0.0
     currency: str = "USD"
+    #: Where the answer came from, as an address. Kept for clients that
+    #: predate ``backend_name``.
     backend: str = ""
+    #: Which backend answered: ``hypernix`` (this server's own runner) or
+    #: ``lmstudio``.
+    backend_name: str = ""
     substituted: bool = False
     raw: dict[str, Any] = Field(default_factory=dict)
     request_id: str
@@ -1828,6 +1833,7 @@ class InferenceEmbeddingsResponse(BaseModel):
     dimensions: int = 0
     input_tokens: int = 0
     backend: str = ""
+    backend_name: str = ""
     request_id: str
 
 
@@ -1858,6 +1864,9 @@ class InferenceBackend(BaseModel):
     reachable: bool
     detail: str = ""
     address: str = ""
+    #: The one model this backend serves, when it serves exactly one (the
+    #: HyperNix runner). Empty for LM Studio, which decides for itself.
+    model_id: str = ""
 
 
 class InferenceBackendsResponse(BaseModel):

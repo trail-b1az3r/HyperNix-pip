@@ -1576,7 +1576,7 @@ straight to LM Studio; these do not. Every call:
 2. requires the model through the registry (`MODEL_NOT_SUPPORTED` if it is not there);
 3. checks the key's assignment allows that model;
 4. refuses an exhausted key **before** anything runs;
-5. dispatches to whichever backend the server has; and
+5. dispatches to a backend that serves *that* model; and
 6. meters the tokens actually spent, and prices them.
 
 Fallback down the plan's cascade is opt-in (`allow_fallback: true`), and
@@ -1584,6 +1584,29 @@ the response names the model that really ran. `GET /inference/backends`
 reports what can answer right now, so a client can tell "none configured"
 from "down". `POST /inference/tokens` sizes and prices a request without
 running it.
+
+### Backends
+
+Two backends can answer, chosen per request for the model that is about to
+run (after the cascade):
+
+| Backend | `backend_name` | Serves |
+|---|---|---|
+| The built-in HyperNix runner | `hypernix` | exactly the model it has loaded (`POST /runner/load`, `hypernix-t1 built-in-runner start`) |
+| The LM Studio bridge | `lmstudio` | whatever LM Studio can load (`T1_LMSTUDIO_URL`, `T1_LMSTUDIO_ENABLED=1`) |
+
+The runner comes first for its own model; every other model goes to LM
+Studio. HyperLink chat answers from whatever the runner has loaded, but
+`/inference` never does: a caller asking for `model-b` while the runner
+serves `model-a`, on a server without LM Studio, gets `MODEL_UNAVAILABLE`
+(503) naming the loaded model, not an answer from `model-a`. With neither
+backend available the refusal is `NOT_SUPPORTED` (501) and names both
+remedies.
+
+Responses carry `backend_name` (`hypernix` / `lmstudio`) next to `backend`
+(the address, unchanged). `GET /inference/backends` lists `lmstudio` first
+and `hypernix` second (with the loaded `model_id`), each probed; `default`
+is the runner when it answers, otherwise LM Studio.
 
 ## Model sync
 
@@ -1891,7 +1914,7 @@ is a key with `write`, or a trusted origin on a server with
 
 | Method | Path | Auth | Notes |
 |---|---|---|---|
-| GET | `/inference/backends` | bearer | what can answer, and whether it does |
+| GET | `/inference/backends` | bearer | what can answer (LM Studio and the HyperNix runner), and whether it does |
 | POST | `/inference/chat` | bearer | a chat completion through the registry, the cascade and the meter |
 | POST | `/inference/chat/stream` | bearer | the same, streamed |
 | POST | `/inference/completions` | bearer | a plain prompt, sent as one user turn |

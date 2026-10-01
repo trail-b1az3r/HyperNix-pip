@@ -36,6 +36,39 @@ Historical wording and technical detail are retained during format normalization
 
 ## Unreleased
 
+### Added
+
+✨ **The HyperNix runner is a `/inference` backend** — the governed
+  inference surface (`/inference/chat`, `/completions`, `/chat/stream`,
+  `/embeddings`) now dispatches to this server's own runner when the model
+  it has loaded (`/runner/load`, `hypernix-t1 built-in-runner start`) is
+  exactly the model about to run, and to LM Studio otherwise. A server
+  with no LM Studio installed used to load a model through its own runner
+  and then answer every `/inference` call with a 501; it now serves that
+  model under the same registry, quota, cascade and metering rules. Unlike
+  HyperLink chat, which answers from whatever is loaded, `/inference`
+  never replies from a different model than the one that was resolved: a
+  runner serving another model is skipped, and with no LM Studio the
+  request is refused with `MODEL_UNAVAILABLE`, naming what is loaded and
+  how to load the one asked for.
+
+### API Changes
+
+🔗 **`backend_name` on inference responses** — `InferenceResponse`,
+  `InferenceEmbeddingsResponse` and the stream's opening frame report
+  which backend answered: `hypernix` or `lmstudio`. `backend` keeps its
+  old meaning (the address) for existing clients.
+
+🔗 **`GET /inference/backends` lists the runner** — a `hypernix` row
+  (`kind: hypernix-runner`, probed, with the loaded `model_id`) after the
+  `lmstudio` row, which stays first where older clients look for it.
+  `default` follows the real preference: the runner when it answers,
+  otherwise LM Studio. `InferenceBackend` gains `model_id`.
+
+⚠️ **The no-backend refusal names both remedies** — `NOT_SUPPORTED`
+  (501) now says to load a model on the built-in runner *or* set
+  `T1_LMSTUDIO_URL`/`T1_LMSTUDIO_ENABLED`, instead of naming only LM Studio.
+
 ### Performance
 
 ✨ **`PressureCookerV6` / `PressureCookerV6V`** — new speed-first optimizer
@@ -104,6 +137,14 @@ Historical wording and technical detail are retained during format normalization
   the always-taken branch is known to be safe to repeat unconditionally).
 
 ### Tests
+
+🧪 **Runner-as-backend coverage** — 13 cases in
+  `tests/t1api/test_inference_endpoints.py`: the runner serving its model
+  with no LM Studio, preference over LM Studio, metering, routing another
+  model to LM Studio, refusing rather than substituting, choosing the
+  backend after the cascade, a broken runner not hiding LM Studio, the
+  two-remedy refusal, listing/probing/defaults, and streaming and
+  embeddings through the runner.
 
 🔧 **`tests/test_pressure_cooker_v6.py`** — new, real test coverage (not
   a stub): construction/config, loss actually decreasing under several
