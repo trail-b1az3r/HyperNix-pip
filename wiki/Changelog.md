@@ -519,6 +519,25 @@ Historical wording and technical detail are retained during format normalization
 
 ### Fixed
 
+𖢥 Fixed a hyperNix0x-v2 model saved without a `config.json` converting
+  to a GGUF no llama.cpp opens.
+  - From a report: HyperNix.3-mini ran in a patched llama.cpp and
+    HyperNix.3.1-mini said `unknown model architecture: 'hypernix'`. A
+    folder uploaded from a training run -- `model.safetensors`,
+    `model.pt`, `tokenizer/`, no `config.json` -- was not recognised as
+    Brewer, so it went to the generic converter, which labels its output
+    `hypernix` and does not permute Q and K for llama.cpp's RoPE. Plain
+    `hnx convert` did the same to every Brewer folder.
+  - A folder is now Brewer by its tensor names when it has no config.
+    The config is read from the safetensors header or a training
+    checkpoint beside the weights, and the tokenizer from `tokenizer/`.
+    `convert_to_gguf` hands Brewer models to the llama exporter, so
+    `hnx convert`, `-P`, `hnx all` and `instant_pot` all write `llama`
+    -- checked by loading and generating with the patched llama.cpp.
+  - An existing `hypernix`-labelled GGUF is refused by the T1 runner
+    before llama-server starts, with the command that exports it again,
+    and `hnx convert` says when it has written one.
+
 𖢥 Fixed symlinked models being invisible to HyperLink.
   - `ln -s /data/qwen ~/.hypernix/models/qwen` is the obvious way to keep
     a large model on another disk, and every model scanner walked past

@@ -73,9 +73,9 @@ ALL = set(bridge.HNX_TYPE_SYMBOLS)
 BEFORE_INT3 = ALL - {int(GGMLType.HNX_INT3), int(GGMLType.HNX_FP8)}
 
 
-def gguf_with(path: Path, *types: int) -> Path:
+def gguf_with(path: Path, *types: int, arch: str = "llama") -> Path:
     writer = GGUFWriter(path)
-    writer.set_metadata("general.architecture", "llama")
+    writer.set_metadata("general.architecture", arch)
     for i, kind in enumerate(types):
         writer.add_tensor(f"blk.{i}.ffn_up.weight", (256, 1), int(kind))
     writer.write(lambda t: b"\0" * t.nbytes)
@@ -165,6 +165,18 @@ class TestTheRunnerRefusesInWords:
             ManagedRunner(port=18999).load(model)
         text = str(caught.value)
         assert "INT3 (210), FP8 (211)" in text and "patched before" in text
+
+    def test_a_file_labelled_hypernix_is_refused_with_the_fix(self, tmp_path, monkeypatch):
+        """No llama.cpp, patched or not, has an architecture called
+        `hypernix`; the old generic converter wrote it. Say so, and how to
+        export the model again, instead of starting llama-server to fail."""
+        fake_build(Path.home() / "llama.cpp", types=ALL)
+        model = gguf_with(tmp_path / "HyperNix.3.1-mini.gguf", GGMLType.F32, arch="hypernix")
+        self._no_start(monkeypatch)
+        with pytest.raises(ManagedError) as caught:
+            ManagedRunner(port=18999).load(model)
+        text = str(caught.value)
+        assert "'hypernix'" in text and "hnx convert" in text and "'llama'" in text
 
     def test_an_ordinary_model_on_a_stock_build_still_starts(self, tmp_path):
         """Stock llama.cpp is fine for a model with no HyperNix types."""

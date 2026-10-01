@@ -191,6 +191,20 @@ def convert_to_gguf(
     output = Path(output)
     output.parent.mkdir(parents=True, exist_ok=True)
 
+    from .hyprslug import is_brewer_source
+
+    if is_brewer_source(model_dir):
+        # A hyperNix0x-v2 (Brewer) model is a Llama block with its RoPE
+        # halves the other way round. This converter would write it under
+        # the name `hypernix`, which no llama.cpp knows, and without the
+        # Q/K permutation llama.cpp's rotation needs -- so it goes to the
+        # exporter that does both, and writes `llama`.
+        from ..models.brewer_gguf import export_gguf
+
+        export_gguf(model_dir, output, outtype="f16" if dtype in {"fp16", "f16"} else "f32",
+                    name=None if name == "HyperNix" else name)
+        return output
+
     cfg = _load_config(model_dir)
     state = _collect_state_dict(model_dir)
     arch: ArchInfo = infer_arch(state, hint_n_head=n_head_hint or cfg.get("num_attention_heads"))

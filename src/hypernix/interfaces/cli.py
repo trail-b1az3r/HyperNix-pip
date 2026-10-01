@@ -556,8 +556,24 @@ def _run_convert(raw: list[str]) -> int:
             arch_name=ns.arch, name=ns.name,
             n_head_hint=ns.n_head, context_length=ns.context_length,
         )
+    _note_architecture(out)
     print(out)
     return 0
+
+
+def _note_architecture(path) -> None:
+    """Say so when a GGUF was written under a name llama.cpp does not know."""
+    from hypernix.quant.gguf import GGUFFile
+
+    try:
+        arch = GGUFFile.read(path).metadata.get("general.architecture", "")
+    except Exception:  # noqa: BLE001 - a note, never a failure
+        return
+    if arch == "hypernix":
+        print("note: written as general.architecture=hypernix. HnxRun runs it; llama.cpp, "
+              "patched or not, does not know that architecture. A hyperNix0x-v2 (Brewer) "
+              "model is written as llama instead -- this one was not recognised as one.",
+              file=sys.stderr)
 
 
 def _run_convert_pipeline(ns: argparse.Namespace, source: str) -> int:

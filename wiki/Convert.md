@@ -128,9 +128,29 @@ to `<model>.<target>.gguf` beside the model.
 
 `convert_to_gguf` is for Hugging Face-shaped checkpoints. A Brewer
 model has its own exporter, `hypernix.models.brewer_gguf.export_gguf`
-(`brew export --format gguf`), which writes the `llama` architecture
-that any llama.cpp runs. See [Model Training
-Guide](Model-Training-Guide.md#running-a-brewed-model-in-llamacpp).
+(`hnx brew gguf SOURCE`), which writes the `llama` architecture that any
+llama.cpp runs, with Q and K permuted for llama.cpp's RoPE layout. See
+[Model Training Guide](Model-Training-Guide.md#running-a-brewed-model-in-llamacpp).
+
+`convert_to_gguf` hands a Brewer model to that exporter itself, so
+`hnx convert FOLDER -o out.gguf` and `-P` both write `llama` for one.
+A folder counts as Brewer when its `config.json` says so, or, without
+one, when its `model.safetensors` holds Brewer's tensor names
+(`embed.embed.weight`, `blocks.N.attn.q_proj.weight`). That second case
+is a folder uploaded straight from a training run: `model.safetensors`,
+`model.pt` and `tokenizer/`, no `config.json`. Its config is found in
+the safetensors header or in a training checkpoint beside the weights
+(`checkpoints/latest.pt`, `latest.pt`, `model.pt`), and its tokenizer in
+`tokenizer/`. With no config anywhere the export says where it looked.
+
+Before this, such a folder went through the generic path and came out
+as `general.architecture = hypernix`. No llama.cpp has that
+architecture — the HNX patch adds number formats, not architectures —
+so a patched build said `unknown model architecture: 'hypernix'`.
+A file like that is not repaired in place (its Q and K were never
+permuted); export it again from the model folder. The T1 runner
+refuses one up front and prints the command, and `hnx convert` notes
+when it has written one.
 
 ---
 
