@@ -294,6 +294,9 @@ release candidates; the [Changelog](Changelog.md) has each batch.
 
 ## 0.72.7 — planned: Python 3.12 → 3.15
 
+**Status:** implemented on the 0.72.7 branch — what was done, what was
+measured and the tested matrix are on [Python 3.12–3.15](Python-3.15.md).
+
 A real migration, not a `python_requires` edit. Final target:
 
 | Python | |

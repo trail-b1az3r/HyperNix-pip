@@ -67,6 +67,8 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
+from .._compat import flatten
+
 logger = logging.getLogger(__name__)
 
 __all__ = [
@@ -690,9 +692,7 @@ def install(*, host: str = "127.0.0.1", port: int = 1234,
     )
 
     roots = lmstudio_roots() if scan_lmstudio else []
-    models: list[dict[str, Any]] = []
-    for root in roots:
-        models.extend(scan(root))
+    models: list[dict[str, Any]] = flatten(scan(root) for root in roots)
     needs_runtime = [m for m in models if m.get("extension")]
 
     return {

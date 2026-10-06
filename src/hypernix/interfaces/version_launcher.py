@@ -47,11 +47,13 @@ class PythonVersion(NamedTuple):
         return (self.major, self.minor)
 
 
-# Priority order: prefer 3.12, then 3.13, then 3.14
+# Priority order: prefer 3.12, then 3.13, 3.14 and 3.15 -- the
+# versions hyperNix-pip supports (requires-python >=3.12,<3.16).
 VERSION_PRIORITY = [
     PythonVersion(3, 12),
     PythonVersion(3, 13),
     PythonVersion(3, 14),
+    PythonVersion(3, 15),
 ]
 
 

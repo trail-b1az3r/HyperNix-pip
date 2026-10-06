@@ -35,6 +35,7 @@ from __future__ import annotations
 import io
 import re
 from dataclasses import dataclass, field
+from typing import Any
 
 __all__ = [
     "CompressResult",
@@ -59,6 +60,8 @@ MAX_PIXELS = 160_000_000
 #: Lossless WebP larger than this is re-encoded lossy instead.
 LOSSLESS_CEILING = 1_500_000
 WEBP_QUALITY = 85
+#: libwebp's effort, 0-6; see _as_webp for why not 6.
+WEBP_METHOD = 4
 
 SVG_TYPE = "image/svg+xml"
 
@@ -304,7 +307,10 @@ def _fit(image, notes: list[str]):
 def _as_webp(image, *, lossless: bool, animated: bool) -> bytes:
     out = io.BytesIO()
     mode = "RGBA" if "A" in image.getbands() or image.mode in ("P", "LA") else "RGB"
-    options = {"format": "WEBP", "method": 6}
+    # method 4, not 6: measured on a 640x480 screenshot and a 1600x1200
+    # photo (benchmarks/bench.py), 6 made the same lossless file 50x
+    # slower (1.2 s and 3.5 s per upload) and saved ~1% on lossy ones.
+    options: dict[str, Any] = {"format": "WEBP", "method": WEBP_METHOD}
     if lossless:
         options.update(lossless=True, quality=100)
     else:

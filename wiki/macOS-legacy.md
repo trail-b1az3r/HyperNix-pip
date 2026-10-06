@@ -136,9 +136,13 @@ Intel Mac.
   `test_shakers_and_torchcompat.py` tests, but a real torch-1.13
   install is verified manually.  File an issue if you hit a
   regression.
-* **No wheels for Python 3.11+**.  `torch==1.13.1` is Python 3.8 –
-  3.10 only.  `hypernix`'s stated floor is Python 3.10, so use
-  3.10 on the legacy path.
+* **The legacy path ends at hypernix 0.72.6.post4.**  `torch==1.13.1`
+  is Python 3.8 – 3.10 only, and from 0.72.7 hyperNix-pip requires
+  Python 3.12 or newer (it supports 3.12, 3.13, 3.14 and 3.15).  On
+  3.10, `pip install "hypernix[legacy-torch]"` -- what the script runs --
+  skips every release whose `Requires-Python` excludes 3.10 and installs
+  0.72.6.post4, the last that runs on torch 1.13.  It gets security
+  fixes only as far as that release has them.
 * **GGUF + large models**: large snapshots may exceed RAM on old
   Macs.  Prefer already-quantized `.q4_k_m.gguf` files if you can
   find them on the Hub and run inference via `llama.cpp` rather

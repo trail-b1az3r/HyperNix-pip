@@ -190,9 +190,11 @@ class TestNoModuleIsMissed:
 
     @staticmethod
     def _modules() -> list[Path]:
+        from hypernix._compat import is_py315_only
+
         return [
             p for p in (SRC / "hypernix").rglob("*.py")
-            if "__pycache__" not in p.parts
+            if "__pycache__" not in p.parts and not is_py315_only(p)
         ]
 
     @staticmethod

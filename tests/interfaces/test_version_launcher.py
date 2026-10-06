@@ -39,10 +39,8 @@ class TestPythonVersion:
 
     def test_version_priority_order(self):
         """Test that VERSION_PRIORITY is in correct order."""
-        assert len(VERSION_PRIORITY) == 3
-        assert VERSION_PRIORITY[0].version_tuple == (3, 12)
-        assert VERSION_PRIORITY[1].version_tuple == (3, 13)
-        assert VERSION_PRIORITY[2].version_tuple == (3, 14)
+        # Exactly the supported range, requires-python >=3.12,<3.16.
+        assert [v.version_tuple for v in VERSION_PRIORITY] == [(3, 12), (3, 13), (3, 14), (3, 15)]
 
 
 class TestCheckHypernixInstalled:

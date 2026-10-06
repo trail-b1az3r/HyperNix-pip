@@ -243,9 +243,11 @@ def scan_python(root: Path, *, skip: Sequence[str] = ()) -> list[Finding]:
     skip_parts = {".git", "__pycache__", "node_modules", ".venv", "build", "dist"}
     skip_parts.update(skip)
 
+    from .._compat import is_py315_only
+
     for path in sorted(root.rglob("*.py")):
-        if skip_parts & set(path.parts):
-            continue
+        if skip_parts & set(path.parts) or is_py315_only(path):
+            continue  # 3.15-only syntax this interpreter cannot read; not a bug
         try:
             source = path.read_text(encoding="utf-8")
             tree = ast.parse(source, filename=str(path))

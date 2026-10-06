@@ -36,6 +36,17 @@ Historical wording and technical detail are retained during format normalization
 
 ## Unreleased
 
+### Breaking Changes
+
+❌ hyperNix-pip requires Python 3.12 or newer and officially supports
+  Python 3.12, 3.13, 3.14 and 3.15 (`Requires-Python >=3.12,<3.16`).
+  - 3.10 and 3.11 are no longer supported. pip on those Pythons skips
+    this release and installs 0.72.6.post4, the last that runs there;
+    that is also where the torch 1.13 legacy-Mac path now ends
+    ([macOS-legacy](macOS-legacy.md)).
+  - `install-t1.sh`, `hypernix doctor` and the `hnx` launcher look for
+    3.12-3.15 and say so when they find none.
+
 ### Added
 
 ✨ Added `hypernix-t1 runner auto` (`POST /runner/auto`).
@@ -114,6 +125,10 @@ Historical wording and technical detail are retained during format normalization
 
 ### Performance
 
+⚡ Images sent into HyperLink convert ~50x faster: WebP is encoded at
+  effort 4 rather than 6, which gave byte-identical lossless files and
+  lossy ones ~1% smaller for 1.2 s per screenshot and 3.5 s per photo.
+
 ✨ **`PressureCookerV6` / `PressureCookerV6V`** — new speed-first optimizer
   generation, deliberately the opposite tradeoff from V5/V5S's
   memory-first design. `PressureCookerV6` ("Single-State Trust Momentum")
@@ -165,6 +180,27 @@ Historical wording and technical detail are retained during format normalization
   an explicit note when it falls back to CPU rather than letting a CPU
   number pass silently as if it were representative of GPU performance.
 
+### Compatibility
+
+✨ Python 3.15 support, with its new features used where they measurably
+  help and nowhere they would break 3.12-3.14
+  ([Python 3.12–3.15](Python-3.15.md)).
+  - PEP 810, lazy imports: `__lazy_modules__` in the two modules where an
+    import was paid for and not used -- numpy behind every quant CLI's
+    `--help`, huggingface_hub behind `hyped`. On 3.12-3.14 the list is an
+    ordinary variable and nothing changes.
+  - PEP 798, unpacking in comprehensions: in `hypernix._compat`, whose
+    `*_py315.py` modules hold the 3.15 syntax and are imported only
+    there; every tool that parses the whole tree skips them on older
+    interpreters.
+  - PEP 799, the `profiling` package: `hypernix._profiling` gives one API
+    over `profiling.tracing` (3.15) and `cProfile` (before), and runs
+    `profiling.sampling` on 3.15, refusing clearly elsewhere.
+  - PEP 831, frame pointers: native builds inherit the interpreter's
+    `sysconfig` flags and never switch frame pointers off
+    (`hypernix._native_flags`, `setup.py`'s optional extension,
+    ggml-hnx's `GGML_HNX_FRAME_POINTERS`).
+
 ### Fixed
 
 🐛 Fixed `hypernix-t1` reading a `.env` saved with Windows line endings:
@@ -195,6 +231,15 @@ Historical wording and technical detail are retained during format normalization
   warns; the docstring spells out the mechanism and what to do instead
   (don't graph-capture with those features enabled, or capture only once
   the always-taken branch is known to be safe to repeat unconditionally).
+
+### Dependencies and Packaging
+
+📦 Classifiers and `python_requires` in `pyproject.toml` and `setup.cfg`
+  say 3.12-3.15; mypy joins the `dev` extra and checks the modules this
+  release adds (strict) and reworks, on 3.12 and 3.15 in CI.
+📦 CI tests every OS on 3.12, 3.13, 3.14 and 3.15, plus a 3.15-only job
+  for the four PEPs and a benchmark job per version
+  (`benchmarks/bench.py`).
 
 ### Tests
 
@@ -314,6 +359,18 @@ Historical wording and technical detail are retained during format normalization
   wiki's index, and the license text. It did not attempt to line-edit
   every one of the ~50 per-module wiki pages against source — those were
   spot-checked, not exhaustively re-verified.
+
+### Known Issues
+
+⚠️ PyTorch publishes no CPython 3.15 wheels yet (2.14.1 stops at cp314),
+  so `pip install hypernix` on 3.15 cannot resolve torch from PyPI.
+  Everything that does not use torch -- the T1 API, HyperLink, the CLIs,
+  the quantisers' metadata tools -- runs; CI installs the rest and the
+  package with `--no-deps`. sentencepiece also has no cp315 wheel and
+  builds from source there (a C++ compiler and CMake). The `gui-qt`
+  extra (PySide6) declares `<3.15`; rawpy and pillow-jxl-plugin in the
+  `images` extra have no cp315 wheels.
+
 
 ## 0.72.6.post4 — patch 4 - hyped, hyped-pro and Neo Oven run any HyperNix model
 

@@ -22,7 +22,7 @@
 #     rather than clobbered, and every generated file says at the top that
 #     it was generated and by what.
 #
-# Requires: bash 3.2+ (the macOS system bash), python3 3.10+, and pip.
+# Requires: bash 3.2+ (the macOS system bash), Python 3.12-3.15, and pip.
 # Deliberately avoids bash 4 features (associative arrays, ${x,,}) so it
 # runs on a stock macOS without anyone installing a newer bash first.
 
@@ -338,14 +338,17 @@ preflight() {
   # actually using — a venv's, or the one a version manager put on PATH.
   # The versioned names are the fallback for a machine where `python3` is
   # too old, newest first.
-  local search="python3 python3.14 python3.13 python3.12 python3.11 python"
+  local search="python3 python3.15 python3.14 python3.13 python3.12 python"
   local candidate
+  # hyperNix-pip supports Python 3.12 through 3.15 (requires-python
+  # >=3.12,<3.16); an interpreter outside that cannot install it.
+  local PY_SUPPORTED='import sys; sys.exit(0 if (3, 12) <= sys.version_info[:2] < (3, 16) else 1)'
 
   if [ -n "$PYTHON_OVERRIDE" ]; then
     command -v "$PYTHON_OVERRIDE" >/dev/null 2>&1 \
       || die "--python $PYTHON_OVERRIDE: not found."
-    "$PYTHON_OVERRIDE" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)' 2>/dev/null \
-      || die "--python $PYTHON_OVERRIDE: needs python >= 3.10."
+    "$PYTHON_OVERRIDE" -c "$PY_SUPPORTED" 2>/dev/null \
+      || die "--python $PYTHON_OVERRIDE: needs Python 3.12 to 3.15."
     PYTHON="$(command -v "$PYTHON_OVERRIDE")"
   fi
 
@@ -359,7 +362,7 @@ preflight() {
   if [ -z "$PYTHON" ]; then
     for candidate in $search; do
       command -v "$candidate" >/dev/null 2>&1 || continue
-      "$candidate" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)' 2>/dev/null || continue
+      "$candidate" -c "$PY_SUPPORTED" 2>/dev/null || continue
       if "$candidate" -c 'import hypernix' >/dev/null 2>&1; then
         PYTHON="$(command -v "$candidate")"
         break
@@ -371,14 +374,14 @@ preflight() {
   if [ -z "$PYTHON" ]; then
     for candidate in $search; do
       command -v "$candidate" >/dev/null 2>&1 || continue
-      if "$candidate" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)' 2>/dev/null; then
+      if "$candidate" -c "$PY_SUPPORTED" 2>/dev/null; then
         PYTHON="$(command -v "$candidate")"
         break
       fi
     done
   fi
 
-  [ -n "$PYTHON" ] || die "No python3 >= 3.10 found. Install one and re-run."
+  [ -n "$PYTHON" ] || die "No Python 3.12 to 3.15 found. Install one and re-run."
 
   # Command substitution captures stdout only, so anything the interpreter
   # writes to stderr at startup lands on the terminal verbatim. A stale

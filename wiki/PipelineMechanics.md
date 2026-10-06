@@ -124,7 +124,7 @@ is reported and never fails the run.
 | Check | Mandatory? | Notes |
 |---|---|---|
 | OS | ✅ | Linux/macOS/Windows; on Linux also reports the detected distro id. |
-| Python | ✅ | `PYTHON_RANGE`, 3.10–3.14 -- the same range as `requires-python` (a test keeps them equal). |
+| Python | ✅ | `PYTHON_RANGE`, 3.12–3.15 -- the same range as `requires-python` (a test keeps them equal). |
 | torch | ✅ | Floor is 1.13 (last 1.x release, needed for `hypernix.torch_compat` on old Intel Macs). Recommends ≥2.7 for native `nn.RMSNorm` + fused SDPA; 1.13–2.7 still works via the compat shim but without `torch.compile`/FlashAttention. |
 | numpy, safetensors, huggingface_hub, gguf, tqdm, rich, sentencepiece | ✅ | Every dependency in `pyproject.toml` but torch, one line each (`_REQUIRED_IMPORTS`; a test keeps it equal to the dependency list). |
 | GPU | informational | The card, its memory, and the brewer preset and optimizer that fit it -- the table in the [Model Training Guide](Model-Training-Guide.md). No GPU gives the `cpu-*` presets; several suggest `lazy_suzan`; Apple GPUs are reported as MPS. |

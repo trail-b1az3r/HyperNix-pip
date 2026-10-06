@@ -276,7 +276,7 @@ hypernix doctor              # report
 hypernix doctor --fix        # install missing runtime deps
 ```
 
-Reports the OS and distro, Python (3.10–3.14), torch, and every other
+Reports the OS and distro, Python (3.12–3.15), torch, and every other
 dependency in `pyproject.toml` (numpy, safetensors, huggingface-hub,
 gguf, tqdm, rich, sentencepiece) -- those decide the exit code. Then,
 without failing the run: the GPU and the brewer preset and optimizer it

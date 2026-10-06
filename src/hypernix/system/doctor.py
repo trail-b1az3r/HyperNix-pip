@@ -26,7 +26,7 @@ from hypernix.quant.quantize import _detect_distro_id, _find_llama_quantize  # n
 from hypernix.system import deps
 
 #: The Python versions ``requires-python`` accepts, inclusive.
-PYTHON_RANGE: tuple[tuple[int, int], tuple[int, int]] = ((3, 10), (3, 14))
+PYTHON_RANGE: tuple[tuple[int, int], tuple[int, int]] = ((3, 12), (3, 15))
 
 #: ``pyproject.toml``'s ``dependencies`` without torch -- what
 #: ``doctor --fix`` may install. ``torch`` is intentionally absent: see

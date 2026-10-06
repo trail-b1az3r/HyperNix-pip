@@ -74,6 +74,7 @@ is off by default and needs an operator to create sandboxes.
 """
 from __future__ import annotations
 
+import builtins
 import logging
 import os
 import re
@@ -490,7 +491,7 @@ class SandboxStore:
         if _ID.match(box.root.name):
             shutil.rmtree(box.root, ignore_errors=True)
 
-    def expire(self, perms: CodePerms) -> list[str]:
+    def expire(self, perms: CodePerms) -> builtins.list[str]:
         cutoff = time.time() - perms.ttl_minutes * 60
         with self._lock:
             old = [b for b in self._boxes.values() if b.last_used < cutoff]
@@ -547,7 +548,7 @@ class SandboxStore:
     # -- running --------------------------------------------------------
 
     def run(self, box: Sandbox, perms: CodePerms, *, language: str = "", code: str | None = None,
-            path: str = "", stdin: str = "", args: list[str] | None = None) -> RunResult:
+            path: str = "", stdin: str = "", args: builtins.list[str] | None = None) -> RunResult:
         if not perms.execute:
             raise SandboxError("running code is off (s1). An admin can turn it on with "
                                "/code/create/sandbox/perms/s1?:=on", code="execute_off", status=403)
@@ -593,7 +594,7 @@ class SandboxStore:
                     code="network_unenforceable", status=501)
             prefix = isolation
 
-        limits = {"memory_bytes": perms.memory_mb * 2**20,
+        limits: dict[str, Any] = {"memory_bytes": perms.memory_mb * 2**20,
                   "file_bytes": perms.disk_mb * 2**20,
                   "cpu_seconds": perms.timeout + 1,
                   "wall_seconds": perms.timeout}

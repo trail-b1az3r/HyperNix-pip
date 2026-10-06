@@ -201,7 +201,7 @@ Three properties worth knowing:
 `--config-dir` puts everything, including the key store, under one
 directory, so two T1 servers on one machine do not share credentials.
 
-Requires bash 3.2+ (the stock macOS shell), python3 3.10+, and pip.
+Requires bash 3.2+ (the stock macOS shell), Python 3.12–3.15, and pip.
 
 ### By hand
 

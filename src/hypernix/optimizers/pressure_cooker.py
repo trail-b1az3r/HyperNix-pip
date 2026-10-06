@@ -483,13 +483,10 @@ class ProCooker(InductionCooker):
 # ---------------------------------------------------------------------------
 
 def _flatten_params(params) -> list[torch.nn.Parameter]:
-    out = []
-    for p in params:
-        if isinstance(p, dict):
-            out.extend(p.get("params", []))
-        else:
-            out.append(p)
-    return out
+    """Parameters from a list that may mix tensors and param-group dicts."""
+    from .._compat import flatten
+
+    return flatten(p.get("params", []) if isinstance(p, dict) else (p,) for p in params)
 
 
 def _is_pre_volta(device: torch.device) -> bool:

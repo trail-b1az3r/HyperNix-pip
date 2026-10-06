@@ -43,6 +43,11 @@ one array operation across every block at once.
 """
 from __future__ import annotations
 
+# PEP 810: on Python 3.15+ these imports are deferred to first use; on
+# 3.12-3.14 the list is an ordinary variable and they run as before.
+# Every quant CLI imports this module, and `--help` has no use for numpy.
+__lazy_modules__ = ["numpy"]
+
 from dataclasses import dataclass
 
 import numpy as np

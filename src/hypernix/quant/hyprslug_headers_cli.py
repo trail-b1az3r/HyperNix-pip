@@ -14,6 +14,7 @@ import json
 import sys
 from pathlib import Path
 
+from .._compat import flatten
 from .hyprslug_headers import (
     FALLBACKS,
     HEADER_VERSION,
@@ -265,9 +266,7 @@ def _dispatch(args, parser) -> int:
             print("No LM Studio model directory found. Pass one explicitly, "
                   "or set LMSTUDIO_HOME.", file=sys.stderr)
             return 1
-        rows: list[dict] = []
-        for root in roots:
-            rows.extend(scan(root))
+        rows: list[dict] = flatten(scan(root) for root in roots)
         _print(rows, args.as_json, _human_scan)
         return 0
 

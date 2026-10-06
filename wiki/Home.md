@@ -24,6 +24,7 @@ reachable if you already knew the filename. Fixed.)
 | [Architectures](Architectures.md) | `ARCH_PRESETS` seed registry and `KNOWN_MODELS` short-name registry. |
 | [HuggingFace Models](HuggingFace-Models.md) | Every model currently published under the `ray0rf1re` HF account. |
 | [Roadmap](Roadmap.md) | Planned features and releases. |
+| [Python 3.12–3.15](Python-3.15.md) | Supported Pythons, the 3.15 features hyperNix-pip uses (PEP 798/799/810/831), the dependency audit, benchmarks and the tested matrix. |
 | [Changelog](Changelog.md) | Full per-release notes — features, fixes, UX papercuts. |
 | [Changelog guide](Changelog-guide.md) | The format and editorial rules every changelog entry follows: categories, symbols, and what a release summary needs. |
 | [Release Timeline](Release-Timeline.md) | Auto-updated commit-by-commit timeline of public releases. |
