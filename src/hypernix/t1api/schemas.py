@@ -1515,6 +1515,14 @@ class RunnerLoadRequest(BaseModel):
     total_layers: int | None = None
 
 
+class RunnerAutoRequest(BaseModel):
+    #: "last": the model loaded last that is still here. "most": the one
+    #: loaded most often.
+    prefer: str = "last"
+    #: Say what would be loaded, and load nothing.
+    dry_run: bool = False
+
+
 class RunnerStatusResponse(BaseModel):
     loaded: bool = False
     model: dict[str, Any] = Field(default_factory=dict)

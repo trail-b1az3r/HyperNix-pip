@@ -1178,11 +1178,13 @@ hypernix-t1 — manage a T1 API server (also installed as hnx-t1)
                         What training is doing on this machine, and the
                         controls. Runs launched with launch-script appear
                         here on their own.
-  built-in-runner [start [MODEL]|status|plan MODEL|stop]
+  built-in-runner [start [MODEL]|auto|status|plan MODEL|stop]
                         Serve a model out of this server's own llama.cpp
                         instead of forwarding to LM Studio. \`start\` with
                         no model named picks the one on this machine when
-                        there is only one. Also spelled \`runner\`.
+                        there is only one. \`auto\` loads the model loaded
+                        last (--most-used: most often), on the backend used
+                        most, with its last settings. Also spelled \`runner\`.
   chat [-s SYSTEM] [--new] MESSAGE
                         Send a message to the served model and print the
                         reply. Carries on the same chat until --new.

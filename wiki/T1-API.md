@@ -1843,7 +1843,7 @@ where noted.
 | GET | `/hyperlink/sessions/{id}/messages` | bearer | `?after_seq=` for incremental sync |
 | POST | `/hyperlink/sessions/{id}/chat` | bearer | one turn; both messages persisted |
 | POST | `/hyperlink/sessions/{id}/chat/stream` | bearer | the same turn, streamed |
-| POST | `/hyperlink/files` | bearer | multipart upload |
+| POST | `/hyperlink/files` | bearer | multipart upload. Images are converted on arrival: rasters to WebP (EXIF and GPS dropped, EXIF rotation applied, long edge capped at 2048, animation kept), SVG kept and sanitized. PNG, JPEG, GIF, WebP, BMP, TIFF, AVIF, JPEG 2000, ICO, QOI, PSD and DNG with Pillow; HEIC/HEIF, JPEG XL and raw development with `pip install 'hypernix[images]'`. What cannot be decoded is stored as sent, and `metadata.image` says why. `T1_HYPERLINK_IMAGE_COMPRESS=0` stores everything as sent |
 | GET | `/hyperlink/files` | bearer | list; `?session_id=` to scope |
 | GET/DELETE | `/hyperlink/files/{id}` | bearer | download (always `attachment`) / delete |
 | POST | `/hyperlink/models/resolve` | bearer | merge a Hugging Face page + file link |
@@ -1930,6 +1930,7 @@ is a key with `write`, or a trusted origin on a server with
 | POST | `/runner/plan` | bearer | where a model's layers would go; changes nothing |
 | POST | `/runner/load` | bearer, **admin, partial admin, or a switch grant** (`T1_RUNNER_SWITCH_PERM`) | load a model, replacing what was running; the default model is downloaded the first time |
 | POST | `/runner/unload` | as `load` | stop serving; unloading nothing is a success |
+| POST | `/runner/auto` | as `load` | load what this server usually runs: the last model loaded that is still here (`{"prefer": "most"}`: loaded most often), on the backend used most, with that model's last settings; `{"dry_run": true}` names it and loads nothing. With no history, the default model. `hypernix-t1 runner auto` |
 
 *HyperLink, beyond pairing and sessions.* Sync, notifications and
 search are covered in [HyperLink sync](HyperLink-Sync.md).
@@ -2429,6 +2430,7 @@ T1 v1.0.26.8.0.1 added:
 | `T1_HYPERLINK_PORT` | `8000` | the port advertised to clients |
 | `T1_HYPERLINK_FILES_DIR` | `~/.hypernix/hyperlink/files` | attachment blobs |
 | `T1_HYPERLINK_MAX_UPLOAD_BYTES` | `67108864` | enforced on bytes read, not `Content-Length` |
+| `T1_HYPERLINK_IMAGE_COMPRESS` | `1` | convert uploaded images to WebP (SVG: sanitized) on arrival; `0` stores them as sent |
 | `T1_HYPERLINK_PAIRING_TTL` | `600` | how long a pairing code lives |
 | `T1_HF_TOKEN` / `HF_TOKEN` | — | secret; for resolving gated repositories |
 

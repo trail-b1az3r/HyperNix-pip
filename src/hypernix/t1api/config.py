@@ -361,6 +361,12 @@ class T1APIConfig:
     hyperlink_max_upload_bytes: int = field(
         default_factory=lambda: _int_env("T1_HYPERLINK_MAX_UPLOAD_BYTES", 64 * 1024 * 1024)
     )
+    # Images sent into HyperLink are converted on arrival: WebP for rasters
+    # (EXIF and GPS dropped, long edge capped), SVG kept and sanitized.
+    # See hypernix.hyperlink.imagecodec. Off stores uploads exactly as sent.
+    hyperlink_image_compress: bool = field(
+        default_factory=lambda: _bool_env("T1_HYPERLINK_IMAGE_COMPRESS", True)
+    )
     #: HyperLink on the web (0.72.6.post1): the server also hosts a site
     #: that works like the app, on this port, bound to 127.0.0.1 and this
     #: machine's Tailscale address only (never the LAN). Off with

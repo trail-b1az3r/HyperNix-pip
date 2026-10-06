@@ -49,6 +49,7 @@ from ..deps import (
 )
 from ..errors import T1APIError, T1ErrorCode
 from ..schemas import (
+    RunnerAutoRequest,
     RunnerLoadRequest,
     RunnerPlanResponse,
     RunnerStatusResponse,
@@ -260,10 +261,81 @@ def runner_load(
         "runner: %s loaded %s (%s)",
         principal.label, payload.model_id, current.placement.reason,
     )
+    _remember(payload.model_id, payload.backend, current, gpu_layers=payload.gpu_layers,
+              context_length=payload.context_length, total_layers=payload.total_layers)
     return RunnerStatusResponse(
         loaded=True, model=current.to_dict(), base_url=runner.base_url,
         backends=list(BACKENDS), request_id=request_id,
     )
+
+
+def _remember(model_id: str, backend: str, current, **settings) -> None:
+    """Add a successful load to the history `runner auto` reads."""
+    from ...hyperlink.runner_history import LoadRecord, record
+
+    try:
+        record(LoadRecord(model_id=model_id, backend=backend or "auto",
+                          resolved_backend=getattr(current.placement, "backend", ""),
+                          **settings))
+    except OSError:
+        # A history that cannot be written loses `auto` a data point; it
+        # must not turn a load that worked into a reported failure.
+        logger.warning("runner: could not record the load of %s", model_id, exc_info=True)
+
+
+@router.post("/auto", response_model=RunnerStatusResponse)
+def runner_auto(
+    payload: RunnerAutoRequest | None = None,
+    principal: HyperLinkPrincipal = Depends(require_switch),
+    runner=Depends(get_runner),
+    registry=Depends(get_registry),
+    config: T1APIConfig = Depends(get_config),
+    request_id: str = Depends(get_request_id),
+) -> RunnerStatusResponse:
+    """Load what this server usually runs, the way it was last run.
+
+    The last model loaded (``{"prefer": "most"}``: the one loaded most
+    often), on the backend used most often, with that model's last
+    settings -- see :mod:`hypernix.hyperlink.runner_history`. With no
+    history, the default model, as ``runner start`` does. ``{"dry_run":
+    true}`` says what it would load and loads nothing.
+    """
+    from ...hyperlink.brewed import default_model_id
+    from ...hyperlink.runner_history import AutoChoice, choose, read
+
+    payload = payload or RunnerAutoRequest()
+    prefer = payload.prefer
+    if prefer not in ("last", "most"):
+        raise T1APIError(T1ErrorCode.VALIDATION_ERROR, "prefer is 'last' or 'most'")
+
+    from ..modelsync import serving_dir
+
+    catalogue = collect(registry=registry, bridge=None, local_dir=serving_dir(config))
+    loadable = {m.model_id for m in catalogue.models if m.path and m.runnable}
+    choice = choose(read(), loadable=loadable, prefer=prefer)
+    if choice is None:
+        default = default_model_id()
+        if not default:
+            raise T1APIError(
+                T1ErrorCode.NOT_FOUND,
+                "Nothing has been loaded on this server yet (or nothing it loaded is "
+                "still here), and the default model is turned off. Load one by name: "
+                "hnx-t1 runner start <model>.",
+                details={"loadable": sorted(loadable)[:20]},
+                http_status=404,
+            )
+        choice = AutoChoice(model_id=default, backend="auto", gpu_layers=None,
+                            context_length=None, total_layers=None,
+                            why=f"{default}: no load history yet, so the default model")
+    if payload.dry_run:
+        return RunnerStatusResponse(
+            loaded=False, model={"auto": choice.to_dict()}, base_url=runner.base_url,
+            backends=list(BACKENDS), request_id=request_id,
+        )
+    status = runner_load(RunnerLoadRequest(**choice.payload()), principal, runner,
+                         registry, config, request_id)
+    status.model = {**status.model, "auto": choice.to_dict()}
+    return status
 
 
 @router.post("/unload", response_model=RunnerStatusResponse)
@@ -465,6 +537,9 @@ def runner_adopt(
 
     logger.info("runner: %s moved %s from LM Studio (%s, file via %s)",
                 principal.label, wanted, how, found.found_by)
+    _remember(wanted, str(body.get("backend") or "auto"), current,
+              gpu_layers=body.get("gpu_layers"),
+              context_length=int(body.get("context_length") or 0) or None)
     return RunnerStatusResponse(
         loaded=True, model=current.to_dict(), base_url=runner.base_url,
         backends=list(BACKENDS), request_id=request_id,

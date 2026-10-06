@@ -38,6 +38,32 @@ Historical wording and technical detail are retained during format normalization
 
 ### Added
 
+✨ Added `hypernix-t1 runner auto` (`POST /runner/auto`).
+  - Loads what the server usually runs: the last model loaded that is
+    still here (`--most-used`: the one loaded most often), on the
+    backend used most, with that model's last settings. `--dry-run`
+    names the choice and loads nothing. With no history yet it starts
+    the default model, as `runner start` does.
+  - Every successful load (and every model moved over from LM Studio)
+    is remembered in `<T1 config dir>/runner-history.json`, newest 200.
+
+✨ Added image conversion for everything sent into HyperLink.
+  - Rasters are stored as WebP: lossless for lossless sources unless
+    that comes out over 1.5 MB, quality 85 for photos. EXIF, GPS and
+    maker notes are dropped, EXIF rotation applied, the long edge capped
+    at 2048 px, and animations kept. A WebP or AVIF that would only grow
+    is kept as it was.
+  - SVG stays SVG, with scripts, event handlers, `foreignObject`,
+    `javascript:` and external references, and the DOCTYPE removed. It
+    is treated as text a model can read, not as a picture.
+  - Recognised by their bytes: PNG, JPEG, GIF, WebP, BMP, TIFF, AVIF,
+    HEIC/HEIF, JPEG XL, JPEG 2000, DNG, ICO, QOI, PSD and SVG. Pillow
+    (now in the `t1api` extra) converts most; the new `images` extra
+    adds HEIC, JPEG XL and raw development. Without `rawpy` a DNG is
+    converted from its embedded full-size preview. What cannot be
+    decoded is stored as sent, with the reason in its metadata.
+    `T1_HYPERLINK_IMAGE_COMPRESS=0` turns it off.
+
 ✨ **The HyperNix runner is a `/inference` backend** — the governed
   inference surface (`/inference/chat`, `/completions`, `/chat/stream`,
   `/embeddings`) now dispatches to this server's own runner when the model
@@ -123,6 +149,13 @@ Historical wording and technical detail are retained during format normalization
   number pass silently as if it were representative of GPU performance.
 
 ### Fixed
+
+𖢥 Fixed linking a model saved without a `config.json` into HyperLink.
+  - A hyperNix0x-v2 folder uploaded straight from a training run (as
+    HyperNix.3.1-mini's is) was refused by `POST /hyperlink/models/link`
+    as "no .gguf in it", and left out of the model list and the runner
+    even when it was already in the models folder. It is now recognised
+    by its tensor names, linked, listed and loadable.
 
 🐛 **CUDA graph capture + dynamic V6 features don't mix safely — now
   documented, not silently wrong.** CUDA graphs bake in whichever

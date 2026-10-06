@@ -2031,13 +2031,30 @@ async def upload_file(
             f"{file.filename or 'file'} exceeds the {limit}-byte upload limit for this server",
             http_status=413,
         )
+    filename = file.filename or "upload"
+    declared = file.content_type or ""
+    metadata: dict[str, Any] | None = None
+    if getattr(config, "hyperlink_image_compress", True):
+        # Images become WebP (SVG stays SVG, sanitized) before they are
+        # stored: smaller over cellular, no GPS in the EXIF, and a size a
+        # vision model takes. Off the event loop -- a 48-megapixel photo
+        # is a second of CPU.
+        from starlette.concurrency import run_in_threadpool
+
+        from ...hyperlink.imagecodec import compress
+
+        converted = await run_in_threadpool(compress, data, filename, declared=declared)
+        if converted is not None:
+            data, filename, declared = converted.data, converted.filename, converted.content_type
+            metadata = {"image": converted.metadata()}
     record = store.put(
         data,
-        filename=file.filename or "upload",
+        filename=filename,
         owner=principal.owner,
         device_id=principal.device_id,
         session_id=session_id,
-        declared_type=file.content_type or "",
+        declared_type=declared,
+        metadata=metadata,
     )
     return AttachmentResponse(file=AttachmentSummary(**record.to_dict()), request_id=request_id)
 
