@@ -108,7 +108,36 @@ def _estimate_tokens(text: str) -> int:
 
 
 def _messages_text(messages: list[InferenceMessage]) -> str:
-    return "\n".join(f"{m.role}: {m.content}" for m in messages)
+    def text(content) -> str:
+        if isinstance(content, str):
+            return content
+        # The text parts, plus a token-ish allowance per image (~765 is
+        # what a 1024px image costs most vision encoders).
+        words = [str(p.get("text", "")) for p in content if p.get("type") == "text"]
+        images = sum(1 for p in content if p.get("type") == "image_url")
+        return " ".join(words) + " x" * (765 * 4 * images)
+
+    return "\n".join(f"{m.role}: {text(m.content)}" for m in messages)
+
+
+def _vision(dispatch, runner, messages: list[dict]) -> list[dict]:
+    """Images re-encoded for the backend; a runner model without a vision
+    projector refuses them with a 400 rather than a 500 from llama-server."""
+    from ...hyperlink.imagecodec import ImagesNotSupported, vision_messages
+
+    images_ok, who = True, "this model"
+    if dispatch.name == "hypernix":
+        try:
+            current = runner.current if runner is not None else None
+        except Exception:  # noqa: BLE001 -- a wedged runner fails later, by its own route
+            current = None
+        images_ok = bool(getattr(current, "supports_images", False))
+        who = f"the runner's model ({getattr(current, 'model_id', '?')})"
+    try:
+        return vision_messages(messages, images_ok=images_ok, refuse=True, who=who)
+    except ImagesNotSupported as exc:
+        raise T1APIError(T1ErrorCode.VALIDATION_ERROR, str(exc), http_status=400,
+                         details={"backend": dispatch.name}) from exc
 
 
 @dataclass(frozen=True)
@@ -307,7 +336,7 @@ def _complete(
     dispatch = _select_backend(config, runner, model)
     envelope = _run_chat(
         bridge=dispatch.client, model=model,
-        messages=[m.model_dump() for m in messages],
+        messages=_vision(dispatch, runner, [m.model_dump() for m in messages]),
         temperature=temperature, max_tokens=max_tokens, top_p=top_p, stop=stop,
     )
 
@@ -506,7 +535,7 @@ def inference_chat_stream(
     )
     dispatch = _select_backend(config, runner, model)
     bridge = dispatch.client
-    messages = [m.model_dump() for m in payload.messages]
+    messages = _vision(dispatch, runner, [m.model_dump() for m in payload.messages])
     key_id = ctx.key_id
 
     def _events():

@@ -134,7 +134,7 @@ class TestRunningOne:
         config = Config(server="http://127.0.0.1:9", models_dir=str(models_dir))
         backend = discover_backend(config, timeout=0.2)
         assert backend.kind == "local"
-        session = Session(config, backend=backend, out=open(os.devnull, "w"))
+        session = Session(config, backend=backend, out=open(os.devnull, "w", encoding="utf-8"))
         session.config.settings_for = lambda _text: Settings(max_tokens=4)
         reply = session.send("the quick")
         assert "could not answer" not in reply
@@ -145,7 +145,7 @@ class TestRunningOne:
 
         folder = _brewed(tmp_path / "elsewhere" / "picked")
         session = Session(Config(models_dir=str(models_dir)), backend=Backend("none"),
-                          out=open(os.devnull, "w"))
+                          out=open(os.devnull, "w", encoding="utf-8"))
         session.cmd_model(str(folder))
         assert session.backend.kind == "local"
         assert Path(session.backend.model) == folder.resolve()
@@ -197,7 +197,7 @@ def test_hyped_talks_to_the_t1_servers_runner():
         threading.Thread(target=server.serve_forever, daemon=True).start()
     try:
         session = Session(Config(), backend=Backend("t1", base_url=f"http://127.0.0.1:{t1.server_port}"),
-                          out=open(os.devnull, "w"))
+                          out=open(os.devnull, "w", encoding="utf-8"))
         assert session.send("hello") == "from the runner"
     finally:
         runner.shutdown()

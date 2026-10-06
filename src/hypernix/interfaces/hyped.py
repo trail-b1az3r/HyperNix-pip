@@ -1272,7 +1272,7 @@ class ToolRegistry:
             return f"Error: '{path}' does not exist."
         try:
             import tempfile
-            with tempfile.NamedTemporaryFile(mode="w", suffix=".patch", delete=False) as tmp:
+            with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".patch", delete=False) as tmp:
                 tmp.write(patch)
                 tmp_path = tmp.name
             result = subprocess.run(

@@ -346,6 +346,13 @@ class ManagedModel:
     #: client works against it unchanged — which is the point: nothing
     #: downstream has to learn a second protocol.
     base_url: str = ""
+    #: The vision projector loaded with it, "" for none. A model takes
+    #: images through the runner exactly when this is set.
+    mmproj: str = ""
+
+    @property
+    def supports_images(self) -> bool:
+        return bool(self.mmproj)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -358,6 +365,8 @@ class ManagedModel:
             "started_at": self.started_at,
             "uptime_seconds": round(max(0.0, time.time() - self.started_at), 1),
             "placement": self.placement.to_dict(),
+            "mmproj": self.mmproj,
+            "supports_images": self.supports_images,
         }
 
 
@@ -417,8 +426,12 @@ class ManagedRunner:
         context_length: int = 0,
         total_layers: int = 0,
         timeout: float = DEFAULT_START_TIMEOUT,
+        mmproj: str | None = None,
     ) -> ManagedModel:
         """Start serving *path*, replacing whatever was running.
+
+        *mmproj* is the vision projector: ``None`` finds the one beside
+        the model (``mmproj-*.gguf``), ``""`` loads none.
 
         Unloads first rather than starting a second process: two
         llama.cpp servers on one machine will each try to take the VRAM
@@ -446,7 +459,7 @@ class ManagedRunner:
             raise ManagedError(f"No such model: {model_path}")
 
         from ..quant.gguf import GGUFError, GGUFFile
-        from ..quant.runtime_bridge import BridgeError, find_build, serve_argv
+        from ..quant.runtime_bridge import BridgeError, find_build, find_mmproj, serve_argv
 
         try:
             header = GGUFFile.read(model_path)
@@ -479,10 +492,14 @@ class ManagedRunner:
 
         self.unload()
 
+        projector = find_mmproj(model_path) if mmproj is None else (
+            Path(mmproj).expanduser() if mmproj else None)
+        if projector is not None and not projector.is_file():
+            raise ManagedError(f"No vision projector at {projector}.")
         argv = serve_argv(
             build, model_path, host=self.host, port=self.port,
             gpu_layers=placement.gpu_layers, context=context_length,
-            alias=model_id or model_path.stem,
+            alias=model_id or model_path.stem, mmproj=projector,
         )
         logger.info("managed: starting %s", " ".join(argv))
         try:
@@ -505,6 +522,7 @@ class ManagedRunner:
             context_length=context_length,
             pid=process.pid,
             base_url=self.base_url,
+            mmproj=str(projector) if projector else "",
         )
 
         with self._lock:

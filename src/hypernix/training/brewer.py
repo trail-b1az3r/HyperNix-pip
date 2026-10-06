@@ -119,11 +119,11 @@ class BrewerConfig:
         return cls(**{k: v for k, v in d.items() if k in cls.__dataclass_fields__})
 
     def save(self, path: str | Path) -> None:
-        Path(path).write_text(json.dumps(self.to_dict(), indent=2))
+        Path(path).write_text(json.dumps(self.to_dict(), indent=2), encoding="utf-8")
 
     @classmethod
     def load(cls, path: str | Path) -> BrewerConfig:
-        return cls.from_dict(json.loads(Path(path).read_text()))
+        return cls.from_dict(json.loads(Path(path).read_text(encoding="utf-8")))
 
     def approx_params(self) -> int:
         """Rough parameter count estimate (millions would be /1e6)."""

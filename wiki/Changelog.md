@@ -64,6 +64,23 @@ Historical wording and technical detail are retained during format normalization
     decoded is stored as sent, with the reason in its metadata.
     `T1_HYPERLINK_IMAGE_COMPRESS=0` turns it off.
 
+✨ Added images on the HyperNix runner, not only through LM Studio.
+  - A model's vision projector (`mmproj-*.gguf`) beside it -- or beside
+    the file a link points at -- is found and passed to llama-server as
+    `--mmproj`; `/runner/load` takes `mmproj` to name one ("" for none).
+    `/runner/status` reports `mmproj` and `supports_images`.
+  - Every image is re-encoded to PNG (with transparency) or JPEG on the
+    way to the model: llama.cpp cannot decode the WebP uploads are
+    stored as.
+  - In HyperLink, a runner model without a projector gets a note in
+    place of the picture instead of a failed turn. `/inference` takes
+    OpenAI-style content parts and refuses images for such a model with
+    a 400 naming the missing `--mmproj`.
+
+✨ `/code` sandbox results list any limit the kernel refused under
+  `limits.not_enforced` (macOS takes no memory limit) instead of every
+  run failing before it started.
+
 ✨ **The HyperNix runner is a `/inference` backend** — the governed
   inference surface (`/inference/chat`, `/completions`, `/chat/stream`,
   `/embeddings`) now dispatches to this server's own runner when the model
@@ -149,6 +166,16 @@ Historical wording and technical detail are retained during format normalization
   number pass silently as if it were representative of GPU performance.
 
 ### Fixed
+
+🐛 Fixed `hypernix-t1` reading a `.env` saved with Windows line endings:
+  every value kept a trailing CR, so the host bound nothing and the port
+  read as taken.
+
+🧪 Fixed the test suite on Windows and macOS: files and child-process
+  output read as UTF-8 rather than the locale code page, scripts run by
+  Git Bash rather than the WSL launcher, and browser detection, help
+  formatting (Python 3.14's argparse) and the C decoder harness made
+  platform-independent.
 
 𖢥 Fixed linking a model saved without a `config.json` into HyperLink.
   - A hyperNix0x-v2 folder uploaded straight from a training run (as

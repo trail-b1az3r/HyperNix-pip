@@ -464,14 +464,21 @@ class TestDetectBrowsers:
     def test_it_groups_by_family(self):
         found = ws.detect_browsers(
             path_lookup=lambda name: "/usr/bin/" + name
-            if name in ("firefox", "brave-browser") else None
+            if name in ("firefox", "brave-browser") else None,
+            app_exists=lambda app: False,
         )
         assert found["firefox"] == ["firefox"]
         assert found["chromium"] == ["brave-browser"]
 
     def test_a_machine_with_no_browsers(self):
-        found = ws.detect_browsers(path_lookup=lambda name: None)
+        found = ws.detect_browsers(path_lookup=lambda name: None, app_exists=lambda app: False)
         assert found == {"firefox": [], "chromium": []}
+
+    def test_mac_app_bundles_count(self):
+        """A Mac's browsers are bundles in /Applications, not on PATH."""
+        found = ws.detect_browsers(path_lookup=lambda name: None, platform="darwin",
+                                   app_exists=lambda app: "Firefox" in app)
+        assert found == {"firefox": ["Firefox"], "chromium": []}
 
     def test_auto_prefers_what_is_actually_installed(self, monkeypatch):
         monkeypatch.setattr(ws, "detect_browsers",

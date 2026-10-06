@@ -167,7 +167,7 @@ class TestVera:
         from hypernix.vera import HyperNixVerifier
         v = HyperNixVerifier()
 
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
+        with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
             f.write('"""A test module."""\n')
             f.write("def hello():\n")
             f.write('    """Say hello."""\n')
@@ -183,7 +183,7 @@ class TestVera:
         from hypernix.vera import HyperNixVerifier
         v = HyperNixVerifier()
 
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
+        with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
             f.write("def hello(\n")
             f.flush()
             result = v.verify_file(Path(f.name))
@@ -196,7 +196,7 @@ class TestVera:
         from hypernix.vera import HyperNixVerifier
         v = HyperNixVerifier(strict=False)
 
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
+        with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
             f.write("def hello():\n")
             f.write("    return 'hello'\n")
             f.flush()
@@ -210,7 +210,7 @@ class TestVera:
         from hypernix.vera import HyperNixVerifier
         v = HyperNixVerifier(strict=True)
 
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
+        with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
             f.write("def hello():\n")
             f.write("    return 'hello'\n")
             f.flush()

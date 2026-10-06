@@ -58,6 +58,7 @@ __all__ = [
     "find_build",
     "candidate_build_dirs",
     "recorded_build",
+    "find_mmproj",
     "model_types",
     "HNX_TYPE_SYMBOLS",
     "home",
@@ -318,9 +319,57 @@ def model_types(path: str | Path) -> frozenset[int]:
 # Serving — the route that changes nothing
 # ---------------------------------------------------------------------------
 
+def _mmproj_files(folder: Path) -> list[Path]:
+    try:
+        return sorted(p for p in folder.iterdir()
+                      if p.is_file() and p.suffix.lower() == ".gguf" and "mmproj" in p.name.lower())
+    except OSError:
+        return []
+
+
+def find_mmproj(model: str | Path) -> Path | None:
+    """The vision projector that goes with *model*, if it has one.
+
+    llama-server accepts images only when started with ``--mmproj``; a
+    vision model without its projector answers every picture with "image
+    input is not supported". LM Studio and Hugging Face repos keep the
+    projector (``mmproj-*.gguf``) beside the weights, so that is where it
+    is looked for -- beside the file as named, and beside the file a
+    symlink points at. With several, the one sharing most of the model's
+    name wins, then the higher-precision one (f16 before f32 before
+    quantised: the projector is small, and its precision is what the
+    image encoder runs at).
+    """
+    path = Path(model).expanduser()
+    if "mmproj" in path.name.lower():
+        return None
+    folders = [path.parent]
+    try:
+        real = path.resolve()
+        if real.parent != path.parent:
+            folders.append(real.parent)
+    except OSError:
+        pass
+    found: list[Path] = []
+    for folder in folders:
+        found += [f for f in _mmproj_files(folder) if f not in found]
+    if not found:
+        return None
+    stem = path.stem.lower().replace("_", "-")
+    words = {w for w in stem.replace(".", "-").split("-") if len(w) > 1}
+
+    def score(candidate: Path) -> tuple[int, int]:
+        name = candidate.stem.lower().replace("_", "-")
+        shared = len(words & {w for w in name.replace(".", "-").split("-") if len(w) > 1})
+        precision = 2 if "f16" in name or "bf16" in name else 1 if "f32" in name else 0
+        return shared, precision
+
+    return max(found, key=score)
+
+
 def serve_argv(build: Build, model: str | Path, *, host: str = "127.0.0.1",
                port: int = 8080, gpu_layers: int = 0,
-               context: int = 0, alias: str = "") -> list[str]:
+               context: int = 0, alias: str = "", mmproj: str | Path | None = None) -> list[str]:
     """The command line that starts the patched server.
 
     Returned rather than run, so the caller can print it, and so the one
@@ -348,6 +397,8 @@ def serve_argv(build: Build, model: str | Path, *, host: str = "127.0.0.1",
         argv += ["-c", str(int(context))]
     if alias:
         argv += ["--alias", alias]
+    if mmproj:
+        argv += ["--mmproj", str(Path(mmproj).expanduser())]
     return argv
 
 

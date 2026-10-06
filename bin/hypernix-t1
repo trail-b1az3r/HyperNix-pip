@@ -83,6 +83,10 @@ load_env() {
   # Read, do not source: .env is a file people edit by hand, and sourcing
   # runs whatever ends up in it.
   while IFS= read -r line; do
+    # A .env saved on Windows (Notepad, or Python's write_text there) ends
+    # its lines in CRLF; the CR would ride into every value -- a host of
+    # "127.0.0.1\r" binds nothing and reads as a port in use.
+    line="${line%$'\r'}"
     case "$line" in
       ''|'#'*) continue ;;
       *=*) ;;

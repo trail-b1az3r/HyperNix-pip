@@ -1175,6 +1175,29 @@ def _fence_language(filename: str) -> str:
     }.get(suffix, "")
 
 
+def _vision(wire: list[dict[str, Any]], backend, runner) -> list[dict[str, Any]]:
+    """Images in a form the answering backend reads -- or a note instead.
+
+    Uploads are stored as WebP, which llama.cpp cannot decode, so every
+    image is re-encoded to PNG or JPEG on the way out. On the built-in
+    runner a model loaded without a vision projector (and every
+    PyTorch-served hyperNix0x-v2 model) cannot take images at all: the
+    picture becomes a line in the message saying so, rather than a 500
+    from llama-server that loses the whole turn.
+    """
+    from ...hyperlink.imagecodec import vision_messages
+
+    images_ok = True
+    if backend.is_hypernix:
+        try:
+            current = runner.current if runner is not None else None
+        except Exception:  # noqa: BLE001 -- a wedged runner fails later, by its own route
+            current = None
+        images_ok = bool(getattr(current, "supports_images", False))
+    return vision_messages(wire, images_ok=images_ok,
+                           who=backend.model_id or "the loaded model")
+
+
 def _chat_backend(config: T1APIConfig, runner=None):
     """What answers this turn: this server's own runner, or LM Studio.
 
@@ -1297,6 +1320,7 @@ def chat_turn(
         memories.prompt_block(owner=principal.owner) if settings.auto_memory else "",
         default_prompt_for(config, backend),
     )
+    wire = _vision(wire, backend, runner)
     sampling = _effort_settings(settings, payload)
 
     started = time.monotonic()
@@ -1468,6 +1492,7 @@ def chat_turn_stream(
         memories.prompt_block(owner=principal.owner) if settings.auto_memory else "",
         default_prompt_for(config, backend),
     )
+    wire = _vision(wire, backend, runner)
     sampling = _effort_settings(settings, payload)
     setup = _tool_setup(config, principal, settings, request, memories, session_id)
     requested_model = (

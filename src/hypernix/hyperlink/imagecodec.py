@@ -38,6 +38,10 @@ from dataclasses import dataclass, field
 
 __all__ = [
     "CompressResult",
+    "ImagesNotSupported",
+    "VISION_TYPES",
+    "vision_messages",
+    "vision_ready",
     "MAX_EDGE",
     "MAX_PIXELS",
     "RASTER_TYPES",
@@ -386,3 +390,104 @@ def compress(data: bytes, filename: str = "", *, declared: str = "") -> Compress
     return CompressResult(encoded, "image/webp", _webp_name(filename), converted=True,
                           original_type=kind, original_bytes=len(data),
                           width=width, height=height, notes=notes)
+
+
+# ---------------------------------------------------------------------------
+# Sending to a model
+# ---------------------------------------------------------------------------
+
+#: What every vision backend decodes. llama.cpp's image loader (stb_image)
+#: reads no WebP, AVIF or HEIC, so an upload stored as WebP is re-encoded
+#: on the way out -- the bytes kept at rest stay small, the bytes sent are
+#: ones the model server can read.
+VISION_TYPES = frozenset({"image/png", "image/jpeg"})
+
+
+class ImagesNotSupported(ValueError):
+    """The model about to answer cannot see images."""
+
+
+def vision_ready(data: bytes, content_type: str) -> tuple[bytes, str]:
+    """*data* as PNG (alpha, or lossless) or JPEG, for a model to read."""
+    if content_type in VISION_TYPES:
+        return data, content_type
+    try:
+        Image = _pillow()
+        with Image.open(io.BytesIO(data)) as image:
+            image.load()
+            keep_alpha = "A" in image.getbands() or image.mode == "P"
+            out = io.BytesIO()
+            if keep_alpha:
+                image.convert("RGBA").save(out, "PNG", optimize=True)
+                return out.getvalue(), "image/png"
+            image.convert("RGB").save(out, "JPEG", quality=90)
+            return out.getvalue(), "image/jpeg"
+    except Exception:  # noqa: BLE001 - send what there is; the backend says if it cannot
+        return data, content_type
+
+
+def _data_url_parts(url: str) -> tuple[str, bytes] | None:
+    import base64
+
+    match = re.match(r"data:([\w.+/-]+);base64,(.*)", url, re.S)
+    if not match:
+        return None
+    try:
+        return match.group(1).lower(), base64.b64decode(match.group(2), validate=False)
+    except ValueError:
+        return None
+
+
+def vision_messages(messages: list[dict], *, images_ok: bool = True,
+                    refuse: bool = False, who: str = "this model") -> list[dict]:
+    """OpenAI-style messages with every inline image readable by the backend.
+
+    ``image_url`` parts holding a ``data:`` URL are re-encoded to PNG or
+    JPEG (:func:`vision_ready`). When *images_ok* is false -- the model
+    has no vision projector -- each image becomes a one-line note in the
+    text, or, with *refuse*, :class:`ImagesNotSupported` is raised: an
+    API caller is told; a chat says it in the conversation.
+    """
+    import base64
+
+    out: list[dict] = []
+    for message in messages:
+        content = message.get("content")
+        if not isinstance(content, list):
+            out.append(message)
+            continue
+        parts: list[dict] = []
+        notes: list[str] = []
+        for part in content:
+            if not (isinstance(part, dict) and part.get("type") == "image_url"):
+                parts.append(part)
+                continue
+            if not images_ok:
+                if refuse:
+                    raise ImagesNotSupported(
+                        f"{who} cannot see images: it was loaded without a vision projector "
+                        f"(mmproj). Load a vision model with its mmproj-*.gguf beside it, "
+                        f"or send text only.")
+                notes.append(f"[an image was attached, but {who} cannot see images: it has "
+                             f"no vision projector (mmproj) loaded]")
+                continue
+            url = (part.get("image_url") or {}).get("url", "") if isinstance(
+                part.get("image_url"), dict) else str(part.get("image_url") or "")
+            decoded = _data_url_parts(url)
+            if decoded is None:
+                parts.append(part)
+                continue
+            ctype, raw = decoded
+            data, ctype = vision_ready(raw, ctype)
+            encoded = base64.b64encode(data).decode("ascii")
+            parts.append({"type": "image_url", "image_url": {"url": f"data:{ctype};base64,{encoded}"}})
+        if notes:
+            text_parts = [p for p in parts if isinstance(p, dict) and p.get("type") == "text"]
+            if text_parts:
+                text_parts[0]["text"] = str(text_parts[0].get("text", "")) + "\n\n" + "\n".join(notes)
+            else:
+                parts.insert(0, {"type": "text", "text": "\n".join(notes)})
+        only_text = all(isinstance(p, dict) and p.get("type") == "text" for p in parts)
+        out.append({**message, "content": "\n\n".join(p.get("text", "") for p in parts)
+                    if only_text else parts})
+    return out

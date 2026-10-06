@@ -247,6 +247,7 @@ def runner_load(
             backend=payload.backend,
             context_length=payload.context_length or 0,
             total_layers=payload.total_layers or 0,
+            mmproj=payload.mmproj,
         )
     except ManagedError as exc:
         # 400 rather than 500: "there is no built llama.cpp" and "this

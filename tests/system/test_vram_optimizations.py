@@ -542,7 +542,7 @@ class TestTrainingIntegration:
         import ast
         import pathlib
 
-        source = pathlib.Path("src/hypernix/training/train.py").read_text()
+        source = pathlib.Path("src/hypernix/training/train.py").read_text(encoding="utf-8")
         tree = ast.parse(source)
         fn = next(
             node for node in tree.body
@@ -559,7 +559,7 @@ class TestTrainingIntegration:
     def test_the_cli_exposes_them_and_passes_them_through(self):
         import pathlib
 
-        source = pathlib.Path("src/hypernix/interfaces/cli.py").read_text()
+        source = pathlib.Path("src/hypernix/interfaces/cli.py").read_text(encoding="utf-8")
         for flag in (
             "--gradient-checkpointing",
             "--checkpoint-every",
@@ -584,7 +584,7 @@ class TestTrainingIntegration:
         import ast
         import pathlib
 
-        source = pathlib.Path("src/hypernix/training/train.py").read_text()
+        source = pathlib.Path("src/hypernix/training/train.py").read_text(encoding="utf-8")
         tree = ast.parse(source)
         fn = next(
             node for node in tree.body

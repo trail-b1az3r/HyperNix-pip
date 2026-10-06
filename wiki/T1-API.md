@@ -2261,6 +2261,22 @@ If it does not open (0.72.6.post2):
   answering" means nothing is serving a model: load one from the Runner
   tab, or start LM Studio's server.
 
+#### Images on the runner (0.72.7)
+
+A model takes images on the runner when it is loaded with its vision
+projector. `POST /runner/load` finds an `mmproj-*.gguf` beside the model
+(or beside the file a link points at) and passes it to llama-server as
+`--mmproj`; `"mmproj": "/path/to/mmproj.gguf"` names one, `"mmproj": ""`
+loads none. `/runner/status` reports `mmproj` and `supports_images`.
+
+Images are re-encoded to PNG (with transparency) or JPEG before they
+reach the model, since llama.cpp cannot decode WebP. `/inference/chat`
+and `/inference/chat/stream` accept OpenAI-style content parts
+(`[{"type": "text", ...}, {"type": "image_url", "image_url": {"url":
+"data:image/...;base64,..."}}]`); for a runner model without a
+projector they answer 400, naming the missing `--mmproj`. HyperLink chat
+instead replaces the picture with a note and still answers.
+
 #### Moving a model out of LM Studio (0.72.6.post1)
 
 | Route | What it does |

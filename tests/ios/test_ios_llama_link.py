@@ -134,7 +134,7 @@ class TestTheEngineMatchesTheDesktop:
 
     @staticmethod
     def _ref(path: Path) -> str:
-        found = re.search(r'LLAMA_REF="\$\{LLAMA_REF:-([^}"]+)\}"', path.read_text())
+        found = re.search(r'LLAMA_REF="\$\{LLAMA_REF:-([^}"]+)\}"', path.read_text(encoding="utf-8"))
         assert found, f"no LLAMA_REF in {path}"
         return found.group(1)
 

@@ -346,12 +346,12 @@ class TestTheCommandLine:
 
     @pytest.mark.parametrize("command", ["generate", "chat"])
     def test_both_commands_take_a_device(self, command):
-        source = Path("src/hypernix/interfaces/cli.py").read_text()
+        source = Path("src/hypernix/interfaces/cli.py").read_text(encoding="utf-8")
         body = source.split(f"def _run_{command}(")[1].split("\ndef ")[0]
         assert "--hnx-device" in body
         assert "device=ns.hnx_device" in body
 
     def test_serve_takes_one_too(self):
-        source = Path("src/hypernix/quant/hyprslug_headers_cli.py").read_text()
+        source = Path("src/hypernix/quant/hyprslug_headers_cli.py").read_text(encoding="utf-8")
         assert '"--device"' in source
         assert "device=args.device" in source

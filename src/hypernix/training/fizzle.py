@@ -165,7 +165,7 @@ class FuzedModelArch(nn.Module if nn else object):
                 for c in self.components
             ]
         }
-        with open(self.output_dir / "fuzed_config.json", "w") as f:
+        with open(self.output_dir / "fuzed_config.json", "w", encoding="utf-8") as f:
             json.dump(config_map, f, indent=2)
             
         print("[fizzle] Save complete.", file=sys.stderr)

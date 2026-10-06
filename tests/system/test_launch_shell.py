@@ -186,5 +186,6 @@ class TestTheCli:
         with pytest.raises(SystemExit):
             launchscript_cli.main(["--help"])
         text = capsys.readouterr().out
-        assert "-1 CMD, --shell-command CMD" in text
+        # Python 3.14's argparse names the metavar once: "-1, --shell-command CMD".
+        assert "-1 CMD, --shell-command CMD" in text or "-1, --shell-command CMD" in text
         assert "-$" not in text

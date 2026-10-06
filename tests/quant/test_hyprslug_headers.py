@@ -334,7 +334,7 @@ class TestScanningAndInstalling:
         result = headers.install()
         config = Path(result["config"])
         assert config.is_file()
-        payload = json.loads(config.read_text())
+        payload = json.loads(config.read_text(encoding="utf-8"))
         assert payload["header_version"] == headers.HEADER_VERSION
         assert set(payload["types"]) == set(TIER_TYPES)
         assert len(result["models_needing_the_runtime"]) == 1

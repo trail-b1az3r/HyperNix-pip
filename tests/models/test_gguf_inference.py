@@ -338,13 +338,13 @@ class TestTheSizeFlagParses:
 
 class TestTheCLIRoutesToIt:
     def test_generate_checks_for_a_gguf(self):
-        source = Path("src/hypernix/interfaces/cli.py").read_text()
+        source = Path("src/hypernix/interfaces/cli.py").read_text(encoding="utf-8")
         generate = source.split("def _run_generate(")[1].split("\ndef ")[0]
         assert "is_gguf" in generate
         assert "generate_with_gguf" in generate
 
     def test_chat_checks_for_a_gguf(self):
-        source = Path("src/hypernix/interfaces/cli.py").read_text()
+        source = Path("src/hypernix/interfaces/cli.py").read_text(encoding="utf-8")
         chat = source.split("def _run_chat(")[1].split("\ndef ")[0]
         assert "is_gguf" in chat
         assert "load_gguf" in chat
@@ -352,13 +352,13 @@ class TestTheCLIRoutesToIt:
     def test_chat_loads_the_model_once_not_per_turn(self):
         """A GGUF load is seconds to minutes; paying it per message would
         make the REPL unusable."""
-        source = Path("src/hypernix/interfaces/cli.py").read_text()
+        source = Path("src/hypernix/interfaces/cli.py").read_text(encoding="utf-8")
         chat = source.split("def _run_chat(")[1].split("\ndef ")[0]
         turn = chat.split("def turn(")[1]
         assert "load_gguf" not in turn, "the model is reloaded on every turn"
 
     def test_both_help_texts_mention_gguf(self):
-        source = Path("src/hypernix/interfaces/cli.py").read_text()
+        source = Path("src/hypernix/interfaces/cli.py").read_text(encoding="utf-8")
         for name in ("_run_generate", "_run_chat"):
             body = source.split(f"def {name}(")[1].split("\ndef ")[0]
             assert ".gguf" in body, name
