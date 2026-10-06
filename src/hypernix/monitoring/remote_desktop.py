@@ -421,7 +421,7 @@ def _ensure_password(backend: str) -> tuple[Path | None, str]:
             )
     else:
         # wayvnc reads a plain-text file. 0600 below is doing the work.
-        target.write_text(plain)
+        target.write_text(plain, encoding="utf-8")
     # Before returning, not after: the file is written by a subprocess
     # with the process umask, and a world-readable VNC password is the
     # same problem as no password with extra steps.

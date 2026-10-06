@@ -306,7 +306,7 @@ class TestBrewerInput:
     def test_a_hugging_face_folder_is_not(self, tmp_path):
         hf = tmp_path / "hf"
         hf.mkdir()
-        (hf / "config.json").write_text(json.dumps({"hidden_size": 256, "num_hidden_layers": 2}))
+        (hf / "config.json").write_text(json.dumps({"hidden_size": 256, "num_hidden_layers": 2}), encoding="utf-8")
         (hf / "model.safetensors").write_bytes(b"")
         assert not is_brewer_source(hf)
 

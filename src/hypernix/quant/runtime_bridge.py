@@ -274,8 +274,13 @@ def _builds_in(roots: list[Path], tried: list[str]):
             suffix = _library_suffix()
             libraries = {}
             for stem in CORE_LIBRARIES:
-                found = bin_dir / f"{stem}{suffix}"
-                if found.is_file():
+                # MSVC names Windows DLLs without the lib prefix (ggml-base.dll,
+                # llama.dll); MinGW keeps it. Both are the same library.
+                names = [f"{stem}{suffix}"]
+                if suffix == ".dll" and stem.startswith("lib"):
+                    names.append(f"{stem[3:]}{suffix}")
+                found = next((bin_dir / n for n in names if (bin_dir / n).is_file()), None)
+                if found is not None:
                     libraries[stem] = found
             if not libraries:
                 tried.append(f"{bin_dir} (no libraries)")

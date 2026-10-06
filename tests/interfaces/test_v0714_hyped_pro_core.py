@@ -278,13 +278,13 @@ def test_openai_tool_loop_executes_tool_and_returns_final_answer(monkeypatch, tm
     reply = core.send_cloud_chat(model, [{"role": "user", "content": "make a file"}])
     assert reply == "done"
     assert calls["n"] == 2
-    assert (tmp_path / "out.txt").read_text() == "hello"
+    assert (tmp_path / "out.txt").read_text(encoding="utf-8") == "hello"
 
 
 def test_anthropic_tool_loop_executes_tool_and_returns_final_answer(monkeypatch, tmp_path):
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
     monkeypatch.setenv("HYPED_PRO_WORKSPACE", str(tmp_path))
-    (tmp_path / "existing.txt").write_text("needle in a haystack")
+    (tmp_path / "existing.txt").write_text("needle in a haystack", encoding="utf-8")
     calls = {"n": 0}
 
     def fake_post(url, headers, body, timeout=60):

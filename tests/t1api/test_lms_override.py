@@ -45,7 +45,7 @@ class TestFinding:
     def test_the_older_internal_location(self, lms_home):
         (lms_home / ".internal").mkdir()
         path = lms_home / ".internal" / "app-settings.json"
-        path.write_text("{}")
+        path.write_text("{}", encoding="utf-8")
         assert lo.find_settings() == path
 
     def test_no_explicit_folder_means_home_models(self, lms_home):
@@ -57,7 +57,7 @@ class TestFinding:
         monkeypatch.delenv("LMSTUDIO_HOME", raising=False)
         monkeypatch.setattr(lo.Path, "home", classmethod(lambda cls: tmp_path))
         elsewhere = tmp_path / "somewhere-else"
-        (tmp_path / ".lmstudio-home-pointer").write_text(str(elsewhere))
+        (tmp_path / ".lmstudio-home-pointer").write_text(str(elsewhere), encoding="utf-8")
         assert lo.lmstudio_homes()[0] == elsewhere
 
 
@@ -66,7 +66,7 @@ class TestSetting:
         settings = write_settings(lms_home, {})
         target = tmp_path / "shared-models"
         change = lo.set_models_dir(target)
-        assert json.loads(settings.read_text())[lo.SETTING_KEY] == str(target)
+        assert json.loads(settings.read_text(encoding="utf-8"))[lo.SETTING_KEY] == str(target)
         assert change.after == str(target)
 
     def test_the_default_is_the_hypernix_models_folder(self, lms_home, tmp_path):
@@ -81,7 +81,7 @@ class TestSetting:
         settings = write_settings(lms_home, {"theme": "dark", "nested": {"a": [1, 2]},
                                              "gpuOffload": 33})
         lo.set_models_dir(tmp_path / "m")
-        data = json.loads(settings.read_text())
+        data = json.loads(settings.read_text(encoding="utf-8"))
         assert data["theme"] == "dark"
         assert data["nested"] == {"a": [1, 2]}
         assert data["gpuOffload"] == 33
@@ -90,7 +90,7 @@ class TestSetting:
         settings = write_settings(lms_home, {lo.SETTING_KEY: "/old"})
         change = lo.set_models_dir(tmp_path / "m")
         assert change.backup is not None
-        assert json.loads(change.backup.read_text())[lo.SETTING_KEY] == "/old"
+        assert json.loads(change.backup.read_text(encoding="utf-8"))[lo.SETTING_KEY] == "/old"
         assert change.before == "/old"
         assert settings.exists()
 
@@ -98,7 +98,7 @@ class TestSetting:
         settings = write_settings(lms_home, {lo.SETTING_KEY: "/old", "theme": "dark"})
         lo.set_models_dir(tmp_path / "m")
         lo.revert()
-        assert json.loads(settings.read_text()) == {lo.SETTING_KEY: "/old", "theme": "dark"}
+        assert json.loads(settings.read_text(encoding="utf-8")) == {lo.SETTING_KEY: "/old", "theme": "dark"}
 
     def test_revert_with_nothing_to_revert_says_so(self, lms_home):
         write_settings(lms_home, {})
@@ -109,10 +109,10 @@ class TestSetting:
         """Either LM Studio is mid-write or it is damaged, and replacing
         it with ours throws away settings we cannot see."""
         settings = lms_home / "settings.json"
-        settings.write_text("{not json")
+        settings.write_text("{not json", encoding="utf-8")
         with pytest.raises(lo.LMSOverrideError):
             lo.set_models_dir(tmp_path / "m")
-        assert settings.read_text() == "{not json"
+        assert settings.read_text(encoding="utf-8") == "{not json"
 
     def test_it_refuses_while_lmstudio_runs(self, lms_home, tmp_path, monkeypatch):
         """LM Studio can write its settings on exit, which would quietly
@@ -131,7 +131,7 @@ class TestSetting:
     def test_a_file_where_the_folder_should_be_is_refused(self, lms_home, tmp_path):
         write_settings(lms_home, {})
         blocker = tmp_path / "blocker"
-        blocker.write_text("x")
+        blocker.write_text("x", encoding="utf-8")
         with pytest.raises(lo.LMSOverrideError):
             lo.set_models_dir(blocker)
 
@@ -156,7 +156,7 @@ class TestSetting:
         monkeypatch.setattr(lo.os, "replace", explode)
         with pytest.raises(OSError):
             lo.set_models_dir(tmp_path / "m")
-        assert json.loads(settings.read_text()) == {"theme": "dark"}
+        assert json.loads(settings.read_text(encoding="utf-8")) == {"theme": "dark"}
         assert not list(lms_home.glob("*.tmp"))
 
 
@@ -235,6 +235,6 @@ class TestTheCli:
 
     def test_the_bash_wrapper_routes_override(self):
         from pathlib import Path
-        text = (Path(__file__).resolve().parents[2] / "bin" / "hypernix-t1").read_text()
+        text = (Path(__file__).resolve().parents[2] / "bin" / "hypernix-t1").read_text(encoding="utf-8")
         assert "override)          cmd_override" in text
         assert "hypernix.t1api.lmsoverride" in text

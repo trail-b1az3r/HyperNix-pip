@@ -42,6 +42,14 @@ for _folder in sorted(p for p in _TESTS.iterdir()
     if str(_folder) not in sys.path:
         sys.path.append(str(_folder))
 
+# Child Python processes write UTF-8 to their pipes. On Windows they
+# would otherwise write the code page (cp1252): a deprecation line's
+# em dash arrives as byte 0x97, the suite's UTF-8 decode of it fails in
+# subprocess's reader thread, and the test sees stdout=None. Python 3.15
+# makes this the default (PEP 686); until then it is asked for.
+os.environ.setdefault("PYTHONUTF8", "1")
+os.environ.setdefault("PYTHONIOENCODING", "utf-8")
+
 #: Where the stores land unless told otherwise.
 REAL_HOME = Path.home() / ".hypernix"
 

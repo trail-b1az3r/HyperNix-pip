@@ -332,7 +332,7 @@ class TestWritingTraces:
             DiluteConfig(target_traces=3),
         )
         path = result.write_jsonl(tmp_path / "out" / "traces.jsonl")
-        lines = [json.loads(line) for line in path.read_text().splitlines()]
+        lines = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
         assert "_dilute" in lines[0]          # the run's own summary first
         assert len(lines) == 4
         assert lines[1]["chosen"]["text"].startswith("q")
@@ -345,7 +345,7 @@ class TestWritingTraces:
             DiluteConfig(target_traces=9),
         )
         path = result.write_jsonl(tmp_path / "traces.jsonl")
-        header = json.loads(path.read_text().splitlines()[0])["_dilute"]
+        header = json.loads(path.read_text(encoding="utf-8").splitlines()[0])["_dilute"]
         assert header["stopped_because"] == "out-of-prompts"
         assert header["reached_target"] is False
 
@@ -393,7 +393,7 @@ class TestJitDistil:
                             handle.flush()),
         )
         next(stream)
-        assert len(written.read_text().splitlines()) == 1
+        assert len(written.read_text(encoding="utf-8").splitlines()) == 1
         handle.close()
 
     def test_a_caller_can_stop_it_early(self):
@@ -751,21 +751,21 @@ class TestPromptFile:
         from hypernix.dilute.cli import _prompts
 
         path = tmp_path / "p.txt"
-        path.write_text("first\n\nsecond\n   \nthird\n")
+        path.write_text("first\n\nsecond\n   \nthird\n", encoding="utf-8")
         assert _prompts(str(path)) == ["first", "second", "third"]
 
     def test_jsonl_with_a_prompt_field(self, tmp_path):
         from hypernix.dilute.cli import _prompts
 
         path = tmp_path / "p.jsonl"
-        path.write_text('{"prompt": "a"}\n{"prompt": "b"}\n')
+        path.write_text('{"prompt": "a"}\n{"prompt": "b"}\n', encoding="utf-8")
         assert _prompts(str(path)) == ["a", "b"]
 
     def test_a_json_list(self, tmp_path):
         from hypernix.dilute.cli import _prompts
 
         path = tmp_path / "p.json"
-        path.write_text('["a", "b"]')
+        path.write_text('["a", "b"]', encoding="utf-8")
         assert _prompts(str(path)) == ["a", "b"]
 
     def test_a_missing_file_says_so(self, tmp_path):
@@ -778,7 +778,7 @@ class TestPromptFile:
 class TestCliRuns:
     def _prompt_file(self, tmp_path):
         path = tmp_path / "p.txt"
-        path.write_text("\n".join(f"q{i}" for i in range(6)))
+        path.write_text("\n".join(f"q{i}" for i in range(6)), encoding="utf-8")
         return str(path)
 
     def test_run_writes_a_file(self, tmp_path, monkeypatch):
@@ -791,7 +791,7 @@ class TestCliRuns:
             "-o", str(out), "--traces", "3", "--length", "8",
         ])
         assert code == 0
-        assert len(out.read_text().splitlines()) == 4   # header + 3
+        assert len(out.read_text(encoding="utf-8").splitlines()) == 4   # header + 3
 
     def test_jit_writes_each_trace_as_it_is_made(self, tmp_path, monkeypatch):
         """Not at the end: the reason to use jit is that a killed run
@@ -803,7 +803,7 @@ class TestCliRuns:
 
         def watcher(prompt, *, temperature=0.8, **_):
             if out.exists():
-                seen.append(len(out.read_text().splitlines()))
+                seen.append(len(out.read_text(encoding="utf-8").splitlines()))
             return echo_generator(prompt, temperature=temperature)
 
         monkeypatch.setattr(cli, "_generator", lambda args: watcher)
@@ -811,7 +811,7 @@ class TestCliRuns:
             "jit", "--prompts", self._prompt_file(tmp_path),
             "-o", str(out), "--traces", "4", "--length", "8", "-q",
         ])
-        assert len(out.read_text().splitlines()) == 4
+        assert len(out.read_text(encoding="utf-8").splitlines()) == 4
         assert max(seen) >= 3, "the file only filled up at the end"
 
     def test_inspect_flags_a_trace_set_of_pure_ties(self, tmp_path, capsys):
@@ -826,7 +826,7 @@ class TestCliRuns:
              "rejected": []}
             for _ in range(10)
         ]
-        path.write_text("\n".join(json.dumps(r) for r in rows))
+        path.write_text("\n".join(json.dumps(r) for r in rows), encoding="utf-8")
         assert cli.main(["inspect", str(path)]) == 0
         out = capsys.readouterr().out
         assert "not separating" in out
@@ -841,7 +841,7 @@ class TestCliRuns:
              "rejected": []}
             for i in range(10)
         ]
-        path.write_text("\n".join(json.dumps(r) for r in rows))
+        path.write_text("\n".join(json.dumps(r) for r in rows), encoding="utf-8")
         cli.main(["inspect", str(path)])
         out = capsys.readouterr().out
         assert "not separating" not in out
@@ -855,7 +855,7 @@ class TestCliRuns:
             json.dumps({"_dilute": {"traces": 1}}) + "\n"
             + json.dumps({"prompt": "q", "margin": 0.5,
                           "chosen": {"text": "a", "score": 1.0}}) + "\n"
-        )
+        , encoding="utf-8")
         cli.main(["inspect", str(path)])
         assert "1 trace(s)" in capsys.readouterr().out
 

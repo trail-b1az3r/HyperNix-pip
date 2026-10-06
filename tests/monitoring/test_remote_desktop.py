@@ -102,6 +102,7 @@ class TestBugOneFalseRunning:
     RUNNING with an address that refused every connection.
     """
 
+    @pytest.mark.skipif(os.name == "nt", reason="x11vnc is X11-only; the stand-in is a shell script on a POSIX PATH")
     def test_a_server_that_died_is_not_running(self, tmp_path, monkeypatch):
         binary = tmp_path / "x11vnc"
         binary.write_text(
@@ -109,7 +110,7 @@ class TestBugOneFalseRunning:
             "if [ \"$1\" = '-storepasswd' ]; then : > \"$3\"; exit 0; fi\n"
             "echo 'x11vnc: cannot open display \":0\"' >&2\n"
             "exit 1\n"
-        )
+        , encoding="utf-8")
         binary.chmod(0o755)
         monkeypatch.setenv("PATH", f"{tmp_path}:{os.environ['PATH']}")
         monkeypatch.setenv("XDG_SESSION_TYPE", "x11")
@@ -273,6 +274,7 @@ class TestBugFiveNoPasswordOnEveryInterface:
         with pytest.raises(rd.RemoteDesktopError, match="Unknown listen mode"):
             rd._listen_args("x11vnc", "everywhere")
 
+    @pytest.mark.skipif(os.name == "nt", reason="POSIX mode bits; Windows guards a profile's files by ACL, and chmod there only sets read-only")
     def test_a_generated_password_is_not_world_readable(self, tmp_path, monkeypatch):
         """Written by a subprocess, so it gets the process umask. A
         world-readable VNC password is the same problem as no password
@@ -285,10 +287,10 @@ class TestBugFiveNoPasswordOnEveryInterface:
     def test_an_existing_password_is_not_replaced(self, tmp_path, monkeypatch):
         monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path))
         first, plain = rd._ensure_password("wayvnc")
-        first.write_text("set-by-hand")
+        first.write_text("set-by-hand", encoding="utf-8")
         again, second_plain = rd._ensure_password("wayvnc")
         assert again == first
-        assert again.read_text() == "set-by-hand"
+        assert again.read_text(encoding="utf-8") == "set-by-hand"
         # Empty, because the stored form cannot be read back.
         assert second_plain == ""
 

@@ -433,7 +433,7 @@ class TestFormModel:
         model = FormModel()
         model.set("epochs", 1.5)
         path = model.save(tmp_path / "train.py")
-        ast.parse(path.read_text())
+        ast.parse(path.read_text(encoding="utf-8"))
         assert not model.dirty
 
     def test_presets_round_trip(self):
@@ -563,7 +563,7 @@ class TestNoodleTools:
             {"path": "a.txt", "old_text": "x", "new_text": "y", "replace_all": True},
         )
         assert result.ok
-        assert (tmp_path / "a.txt").read_text() == "y\ny\n"
+        assert (tmp_path / "a.txt").read_text(encoding="utf-8") == "y\ny\n"
 
     def test_the_write_budget_is_enforced(self, tmp_path):
         ctx = ToolContext(root=tmp_path, max_writes=3)

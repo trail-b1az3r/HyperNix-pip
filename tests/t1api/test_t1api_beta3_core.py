@@ -859,7 +859,7 @@ class TestProductionValidation:
         key = tmp_path / "k.pem"
         ca = tmp_path / "ca.pem"
         for path in (cert, key, ca):
-            path.write_text("x")
+            path.write_text("x", encoding="utf-8")
         config = T1APIConfig(
             environment="production",
             token_secret="a" * 64,

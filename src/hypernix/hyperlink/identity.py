@@ -101,7 +101,11 @@ def _read_or_create_seed(path: Path) -> bytes:
         # between the two there is a window where the seed is readable
         # by every user on the box, and the whole value of the seed is
         # that only this machine has it.
-        handle = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        # O_BINARY on Windows: the default text mode writes every 0x0A in
+        # the seed as CR LF, so the file read back is not the seed written
+        # and the fingerprint changed on every restart that had one.
+        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_BINARY", 0)
+        handle = os.open(path, flags, 0o600)
         try:
             os.write(handle, seed)
         finally:

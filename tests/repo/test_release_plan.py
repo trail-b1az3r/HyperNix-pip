@@ -34,7 +34,7 @@ def run(*args: str, pyproject: Path) -> tuple[int, dict[str, str], str]:
 @pytest.fixture
 def pyproject(tmp_path) -> Path:
     path = tmp_path / "pyproject.toml"
-    path.write_text('[project]\nname = "hypernix"\nversion = "0.72.6.post3"\n')
+    path.write_text('[project]\nname = "hypernix"\nversion = "0.72.6.post3"\n', encoding="utf-8")
     return path
 
 
@@ -221,15 +221,15 @@ class TestAgainstARealRepository:
         git("init", "-q", "-b", "main")
         git("config", "user.email", "t@example.com")
         git("config", "user.name", "t")
-        (tmp_path / "pyproject.toml").write_text('version = "0.72.6"\n')
-        (tmp_path / "README.md").write_text("x\n")
+        (tmp_path / "pyproject.toml").write_text('version = "0.72.6"\n', encoding="utf-8")
+        (tmp_path / "README.md").write_text("x\n", encoding="utf-8")
         git("add", "-A")
         git("commit", "-qm", "start")
 
         def commit(subject, path, text):
             target = tmp_path / path
             target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(text)
+            target.write_text(text, encoding="utf-8")
             git("add", "-A")
             git("commit", "-qm", subject)
             return git("rev-parse", "HEAD")

@@ -237,7 +237,7 @@ def _try_load_config(items):
         for c in candidates:
             if c.exists():
                 try:
-                    return HyperNixConfig.from_dict(json.loads(c.read_text()))
+                    return HyperNixConfig.from_dict(json.loads(c.read_text(encoding="utf-8")))
                 except Exception:  # noqa: BLE001
                     continue
     return None

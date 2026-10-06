@@ -550,3 +550,17 @@ class TestBoundedLogSearch:
             (tmp_path / f"d{i}" / "x.log").write_text("x", encoding="utf-8")
         assert len(tv._log_candidates(tmp_path, seconds=0)) <= 1
         assert len(tv._log_candidates(tmp_path, max_entries=5)) < 30
+
+
+def test_a_windows_command_line_keeps_its_backslashes(monkeypatch):
+    """POSIX shlex reads `\\` as an escape: C:\\Users\\me\\train.py came out
+    as C:Usersmetrain.py, and no Windows run was ever matched."""
+    import types
+
+    from hypernix.monitoring import run_inspect
+
+    monkeypatch.setattr(run_inspect, "os", types.SimpleNamespace(name="nt"))
+    assert run_inspect._split_command(r"python -u C:\Users\me\train.py --lr 1") == [
+        "python", "-u", r"C:\Users\me\train.py", "--lr", "1"]
+    assert run_inspect._split_command(r'"C:\Program Files\py\python.exe" "C:\a b\t.py"') == [
+        r"C:\Program Files\py\python.exe", r"C:\a b\t.py"]

@@ -33,10 +33,10 @@ def test_security_findings_stay_and_formatting_goes(tmp_path):
         _run("flawfinder", [_result("FF1", "native/ggml-hnx/ggml-hnx.c", "error")]),
     ]}
     path = tmp_path / "results.sarif"
-    path.write_text(json.dumps(sarif))
+    path.write_text(json.dumps(sarif), encoding="utf-8")
     assert flt.main(["x", str(path)]) == 0
     runs = {r["tool"]["driver"]["name"]: [x["ruleId"] for x in r["results"]]
-            for r in json.loads(path.read_text())["runs"]}
+            for r in json.loads(path.read_text(encoding="utf-8"))["runs"]}
     assert runs["Bandit"] == ["B608"]
     assert sorted(runs["pylint"]) == ["PyLint_E1101", "PyLint_W0703"]
     assert runs["duplication"] == [] and runs["remark-lint"] == []
@@ -53,7 +53,7 @@ def test_a_run_is_capped_most_severe_first(monkeypatch):
 
 
 def test_the_workflow_sets_the_charset_and_filters():
-    text = (ROOT / ".github" / "workflows" / "codacy.yml").read_text()
+    text = (ROOT / ".github" / "workflows" / "codacy.yml").read_text(encoding="utf-8")
     assert "-Dfile.encoding=UTF-8" in text
     assert "codacy_sarif_filter.py results.sarif" in text
     assert text.index("codacy_sarif_filter.py results") < text.index("uses: github/codeql-action/upload-sarif")

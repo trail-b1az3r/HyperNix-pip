@@ -1217,7 +1217,7 @@ class TestTheInstallerKnowsWhatVersionItIs:
             script = Path(handle.name)
         try:
             printed = subprocess.run(
-                ["bash", script.name], cwd=REPO_ROOT,
+                [BASH, script.name], cwd=REPO_ROOT,
                 capture_output=True, encoding="utf-8", check=True,
             ).stdout.split()
         finally:

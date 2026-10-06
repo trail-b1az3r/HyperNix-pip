@@ -489,7 +489,7 @@ class TestSteamrollerActuallyQuantises:
         import json
         sidecar = out.with_suffix(out.suffix + ".hypernix.json")
         assert sidecar.exists()
-        recorded = json.loads(sidecar.read_text())
+        recorded = json.loads(sidecar.read_text(encoding="utf-8"))
         assert recorded["hypernix.tier"] == "IQ0.75_M"
         assert recorded["hypernix.report"]["tensors_quantized"] == 1
 

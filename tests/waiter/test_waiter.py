@@ -222,7 +222,7 @@ class TestLocalConfig:
         store = WaiterConfigStore(tmp_path / "cfg.jsonl", encrypt=True)
         cfg = WaiterLocalConfig(server="s", key="k")
         store.save(cfg)
-        raw = (tmp_path / "cfg.jsonl").read_text()
+        raw = (tmp_path / "cfg.jsonl").read_text(encoding="utf-8")
         assert "server" not in raw  # not plaintext on disk
         assert store.load() == cfg
 

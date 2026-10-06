@@ -198,8 +198,8 @@ class TestWhereDotsComeFrom:
         monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
         monkeypatch.delenv("HYPED_DOT", raising=False)
         monkeypatch.chdir(tmp_path)
-        (tmp_path / ".hyped.py").write_text("config.model = 'evil'")
-        (tmp_path / "hyped.py").write_text("config.model = 'evil'")
+        (tmp_path / ".hyped.py").write_text("config.model = 'evil'", encoding="utf-8")
+        (tmp_path / "hyped.py").write_text("config.model = 'evil'", encoding="utf-8")
 
         paths = dot_paths()
         assert all(tmp_path not in p.parents or "hypernix" in p.parts

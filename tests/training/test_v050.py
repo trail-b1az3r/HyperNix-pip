@@ -160,7 +160,7 @@ def test_cutting_board_writes_files(tmp_path: Path) -> None:
     rows = [f"line {i}" for i in range(20)]
     paths = CuttingBoard(seed=0).slice_to_files(rows, tmp_path)
     assert paths["train"].exists() and paths["val"].exists() and paths["test"].exists()
-    assert sum(1 for _ in paths["train"].read_text().splitlines()) == 16
+    assert sum(1 for _ in paths["train"].read_text(encoding="utf-8").splitlines()) == 16
 
 
 def test_stratified_split_preserves_class_ratio() -> None:
@@ -488,7 +488,7 @@ def test_microwave_recognises_real_snapshot(tmp_path: Path) -> None:
 
     real = tmp_path / "real-snap"
     real.mkdir()
-    (real / "config.json").write_text("{}")
+    (real / "config.json").write_text("{}", encoding="utf-8")
 
     fake_preheat = MagicMock()
     with patch("hypernix.old_oven.preheat", fake_preheat):

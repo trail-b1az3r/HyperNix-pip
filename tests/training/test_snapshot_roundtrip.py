@@ -47,7 +47,7 @@ def test_verify_snapshot_missing_weights_raises(tmp_path: Path) -> None:
 
     d = tmp_path / "config-only"
     d.mkdir()
-    (d / "config.json").write_text("{}")
+    (d / "config.json").write_text("{}", encoding="utf-8")
     with pytest.raises(FileNotFoundError, match="no weight files"):
         verify_snapshot(d)
 

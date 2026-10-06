@@ -269,7 +269,7 @@ class TestTheFileFormats:
 
     def test_the_simple_json_is_what_hyprslug_reads(self, measured, tmp_path):
         path = measured.save_json(tmp_path / "simple.json", simple=True)
-        data = json.loads(path.read_text())
+        data = json.loads(path.read_text(encoding="utf-8"))
         assert isinstance(data, dict)
         assert isinstance(data["blk.0.attn_q.weight"], list)
         assert Imatrix.load(path).to_simple_dict().keys() == data.keys()
@@ -293,7 +293,7 @@ class TestTheFileFormats:
 
     def test_something_that_is_neither_is_refused_clearly(self, tmp_path):
         path = tmp_path / "notes.txt"
-        path.write_text("this is just some prose about quantisation")
+        path.write_text("this is just some prose about quantisation", encoding="utf-8")
         with pytest.raises(ImatrixError, match="not a llama.cpp imatrix"):
             Imatrix.load(path)
 

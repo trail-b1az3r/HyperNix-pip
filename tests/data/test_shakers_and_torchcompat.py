@@ -168,7 +168,7 @@ def test_pepper_shakers_plug_into_sink(tmp_path) -> None:
     Sink(path=out_path).pour(pepper_shaker.SmallShaker(
         source=["alpha beta", "gamma delta"], rate=1.0, seed=0,
     ))
-    assert out_path.read_text().strip() == "[MASK] [MASK]\n[MASK] [MASK]".strip()
+    assert out_path.read_text(encoding="utf-8").strip() == "[MASK] [MASK]\n[MASK] [MASK]".strip()
 
 
 # ---------------------------------------------------------------------------

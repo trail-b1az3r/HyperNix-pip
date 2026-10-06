@@ -32,17 +32,17 @@ def tree(tmp_path):
     (package / "alpha").mkdir(parents=True)
     (package / "beta").mkdir(parents=True)
 
-    (package / "__init__.py").write_text('"""demo — the root."""\n')
+    (package / "__init__.py").write_text('"""demo — the root."""\n', encoding="utf-8")
     (package / "alpha" / "__init__.py").write_text(
         '"""alpha — does the work."""\n'
         "import torch\n"
         "from demo.beta import thing\n"
-    )
+    , encoding="utf-8")
     (package / "beta" / "__init__.py").write_text(
         '"""beta — not settled yet."""\n'
         "__beta__ = True\n"
         "__planned__ = ('demo.gamma',)\n"
-    )
+    , encoding="utf-8")
     return tmp_path
 
 
@@ -73,7 +73,7 @@ class TestReadingTheTree:
         assert read_architecture(tmp_path, "nope").modules == {}
 
     def test_a_broken_file_does_not_stop_the_walk(self, tree):
-        (tree / "src" / "demo" / "bad.py").write_text("def f(:\n")
+        (tree / "src" / "demo" / "bad.py").write_text("def f(:\n", encoding="utf-8")
         assert read_architecture(tree, "demo").modules
 
 
@@ -96,7 +96,7 @@ class TestRendering:
         """Rather than an empty chart, which reads as a rendering bug."""
         package = tmp_path / "src" / "demo"
         package.mkdir(parents=True)
-        (package / "__init__.py").write_text('"""demo."""\n')
+        (package / "__init__.py").write_text('"""demo."""\n', encoding="utf-8")
         assert "nothing in beta" in render_mermaid(
             read_architecture(tmp_path, "demo")
         )
@@ -107,7 +107,7 @@ class TestRendering:
         for index in range(40):
             module = package / f"m{index:02d}"
             module.mkdir(parents=True)
-            (module / "__init__.py").write_text(f'"""m{index} — a module."""\n')
+            (module / "__init__.py").write_text(f'"""m{index} — a module."""\n', encoding="utf-8")
         chart = render_mermaid(read_architecture(tmp_path, "demo"), max_modules=5)
         assert sum(1 for line in chart.splitlines() if '["m' in line) <= 5
 
@@ -128,7 +128,7 @@ class TestUpdatingInPlace:
 
                 Prose below the chart.
                 """)
-        )
+        , encoding="utf-8")
         return page
 
     def test_it_replaces_rather_than_appends(self, tmp_path):
@@ -136,7 +136,7 @@ class TestUpdatingInPlace:
         charts and no way to tell which is current."""
         page = self._page(tmp_path, "OLD CHART")
         update_in_place(page, "NEW CHART")
-        text = page.read_text()
+        text = page.read_text(encoding="utf-8")
         assert "NEW CHART" in text
         assert "OLD CHART" not in text
         assert text.count(CHART_START) == 1
@@ -144,7 +144,7 @@ class TestUpdatingInPlace:
     def test_the_surrounding_prose_survives(self, tmp_path):
         page = self._page(tmp_path)
         update_in_place(page, "NEW")
-        text = page.read_text()
+        text = page.read_text(encoding="utf-8")
         assert "Prose above the chart." in text
         assert "Prose below the chart." in text
 
@@ -158,7 +158,7 @@ class TestUpdatingInPlace:
         """Rather than guessing where the chart goes and overwriting
         somebody's page."""
         page = tmp_path / "Plain.md"
-        page.write_text("# Just a page\n")
+        page.write_text("# Just a page\n", encoding="utf-8")
         with pytest.raises(ValueError, match="markers"):
             update_in_place(page, "CHART")
 

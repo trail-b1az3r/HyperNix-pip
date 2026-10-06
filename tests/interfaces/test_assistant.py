@@ -9,6 +9,7 @@ announced a server it never started.
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 import wave
@@ -222,7 +223,9 @@ class TestRealOutputs:
         assert "Wrote" not in out
 
     def test_shell_command_reports_output_and_exit_status(self, capsys) -> None:
-        assistant.InteractiveCLI()._run_shell("echo marker-line; exit 3")
+        # The user's shell: sh on POSIX, cmd.exe on Windows, where `;` is not a separator.
+        command = "echo marker-line & exit 3" if os.name == "nt" else "echo marker-line; exit 3"
+        assistant.InteractiveCLI()._run_shell(command)
         out = capsys.readouterr().out
         assert "marker-line" in out
         assert "exit status 3" in out

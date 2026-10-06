@@ -8,6 +8,7 @@ ejects another application's model.
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import time
 
@@ -49,7 +50,7 @@ class TestFindingTheFile:
 
     def test_nothing_says_where_it_looked(self, tmp_path, monkeypatch):
         monkeypatch.setattr(handover, "_lms", lambda: None)
-        with pytest.raises(HandoverError, match=str(tmp_path)):
+        with pytest.raises(HandoverError, match=re.escape(str(tmp_path))):
             find_lmstudio_file("nothing-like-it", dirs=[tmp_path])
 
     def test_lms_says_exactly_which_file(self, tmp_path, monkeypatch):

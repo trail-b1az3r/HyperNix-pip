@@ -60,12 +60,12 @@ def stub_tailscale(tmp_path, monkeypatch):
             # PATHEXT is what lets shutil.which find this without an
             # extension, and CreateProcess runs a .cmd through cmd.exe.
             script = tmp_path / "tailscale_stub.py"
-            script.write_text(body)
+            script.write_text(body, encoding="utf-8")
             binary = tmp_path / "tailscale.cmd"
-            binary.write_text(f'@"{sys.executable}" "{script}" %*\n')
+            binary.write_text(f'@"{sys.executable}" "{script}" %*\n', encoding="utf-8")
         else:
             binary = tmp_path / "tailscale"
-            binary.write_text(f"#!{sys.executable}\n{body}")
+            binary.write_text(f"#!{sys.executable}\n{body}", encoding="utf-8")
             binary.chmod(0o755)
         monkeypatch.setenv("PATH", f"{tmp_path}{os.pathsep}{os.environ['PATH']}")
         return binary
@@ -137,7 +137,7 @@ class TestATSCoversTailscale:
     @pytest.fixture(scope="class")
     def ats(self):
         yaml = pytest.importorskip("yaml")
-        project = yaml.safe_load((REPO_ROOT / "ios" / "project.yml").read_text())
+        project = yaml.safe_load((REPO_ROOT / "ios" / "project.yml").read_text(encoding="utf-8"))
         return project["targets"]["HyperLink"]["info"]["properties"][
             "NSAppTransportSecurity"
         ]

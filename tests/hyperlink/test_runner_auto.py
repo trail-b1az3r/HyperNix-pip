@@ -64,7 +64,7 @@ class TestTheFile:
 
     def test_a_damaged_file_is_no_history(self, tmp_path):
         path = tmp_path / "h.json"
-        path.write_text("{not json")
+        path.write_text("{not json", encoding="utf-8")
         assert rh.read(path) == []
 
     def test_it_lives_in_the_t1_config_dir(self, tmp_path, monkeypatch):

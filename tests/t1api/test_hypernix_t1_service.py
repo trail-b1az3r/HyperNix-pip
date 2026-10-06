@@ -17,12 +17,27 @@ import tempfile
 from pathlib import Path
 
 import pytest
-from shell_support import BASH, NO_BASH_REASON
+from shell_support import BASH, NO_BASH_REASON, shell_path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "bin" / "hypernix-t1"
 
 pytestmark = pytest.mark.skipif(BASH is None, reason=NO_BASH_REASON)
+
+
+def _named(path: Path, output: str) -> bool:
+    """Whether *output* names *path*, in any spelling a shell gives it.
+
+    On POSIX there is one. Git Bash on Windows prints `$T1_CONFIG_DIR/venv`
+    (a native prefix, then forward slashes) or `/c/...` for what it found
+    on PATH, so the test asks about each.
+    """
+    spellings = {str(path), path.as_posix()}
+    spellings.update(shell_path(path, style=style) for style in ("posix", "mount", "native"))
+    if len(path.parts) > 3:
+        head = Path(*path.parts[:-3])
+        spellings.add(f"{head}/{'/'.join(path.parts[-3:])}")
+    return any(spelling in output for spelling in spellings)
 
 
 def _function_body(source: str, name: str) -> str:
@@ -607,7 +622,8 @@ class TestTheInstallAdviceNamesTheInterpreter:
         result = self._start(config)
         output = result.stdout + result.stderr
 
-        assert f"{python} -m pip install" in output
+        assert "-m pip install" in output
+        assert _named(python, output.split(" -m pip install")[0][-400:])
 
     def test_a_bare_pip_is_no_longer_suggested(self, tmp_path):
         """The whole defect: `pip install` with no interpreter on it."""
@@ -653,7 +669,7 @@ class TestTheInstallAdviceNamesTheInterpreter:
         output = result.stdout + result.stderr
 
         assert "It *is* installed for" in output
-        assert str(elsewhere / "python3") in output
+        assert _named(elsewhere / "python3", output)
 
     def test_it_offers_deleting_the_venv_as_the_other_way_out(self, tmp_path):
         import os
@@ -718,6 +734,8 @@ class TestStartOutlivesTheShell:
         )
 
     @NEEDS_A_SERVER
+    @pytest.mark.skipif(os.name == "nt", reason="Git Bash has no setsid at all, so every start test there already takes this path; "
+                        "the symlinked POSIX userland this builds needs privileges on Windows")
     def test_it_starts_when_there_is_no_setsid_on_path(self, configured, tmp_path):
         """The macOS shape: everything present except setsid.
 
@@ -1263,7 +1281,7 @@ class TestItKnowsWhatVersionItIs:
         from hypernix.t1api.version import T1_VERSION
 
         result = subprocess.run(
-            ["bash", str(REPO_ROOT / "bin" / "hypernix-t1"), "version"],
+            [BASH, str(REPO_ROOT / "bin" / "hypernix-t1"), "version"],
             capture_output=True, encoding="utf-8",
             env={**os.environ, "T1_CONFIG_DIR": str(tmp_path), "NO_COLOR": "1"},
         )
@@ -1278,7 +1296,7 @@ class TestItKnowsWhatVersionItIs:
         import subprocess
 
         result = subprocess.run(
-            ["bash", str(REPO_ROOT / "bin" / "hypernix-t1"), "version"],
+            [BASH, str(REPO_ROOT / "bin" / "hypernix-t1"), "version"],
             capture_output=True, encoding="utf-8",
             env={**os.environ, "T1_CONFIG_DIR": str(tmp_path), "NO_COLOR": "1"},
         )
@@ -1295,7 +1313,7 @@ class TestItKnowsWhatVersionItIs:
         empty.chmod(0o755)
 
         result = subprocess.run(
-            ["bash", str(REPO_ROOT / "bin" / "hypernix-t1"), "version"],
+            [BASH, str(REPO_ROOT / "bin" / "hypernix-t1"), "version"],
             capture_output=True, encoding="utf-8",
             env={
                 **os.environ,

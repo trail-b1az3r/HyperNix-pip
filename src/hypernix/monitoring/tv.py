@@ -1406,7 +1406,7 @@ def _log_candidates(start: Path, *, max_depth: int = LOG_SEARCH_DEPTH,
                        and (not d.startswith(".") or d in _HIDDEN_LOG_DIRS)]
         found.extend(Path(root) / name for name in files if name.lower().endswith(".log"))
         seen += len(files) + len(dirs)
-        if seen > max_entries or time.monotonic() > deadline:
+        if seen > max_entries or time.monotonic() >= deadline:
             break
     return found
 

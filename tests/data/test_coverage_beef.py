@@ -42,7 +42,7 @@ def test_lunchbox_empty_box_still_packs(tmp_path: Path) -> None:
     box = Lunchbox()
     # No records → pack_jsonl writes an empty file cleanly (no crash).
     p = box.pack_jsonl(tmp_path / "empty.jsonl")
-    assert p.read_text() == ""
+    assert p.read_text(encoding="utf-8") == ""
 
 
 def test_lunchbox_unicode_roundtrips(tmp_path: Path) -> None:
@@ -441,7 +441,7 @@ def test_evaluator_to_lunchbox_end_to_end(tmp_path: Path) -> None:
     p = box.pack_jsonl(tmp_path / "eval.jsonl")
 
     # Read back as a Table and assert schema fidelity.
-    rows = [json.loads(line) for line in p.read_text().splitlines()]
+    rows = [json.loads(line) for line in p.read_text(encoding="utf-8").splitlines()]
     t = Table.from_rows(rows)
 
     assert len(t) == 2
@@ -505,7 +505,7 @@ def test_pick_pan_roundtrips_through_sink(tmp_path: Path) -> None:
 
     cleaned = pans.pick_pan("sauce-pan", source=src)
     out = sink.Sink(path=tmp_path / "clean.txt").pour(cleaned)
-    assert out.read_text() == "hello world\nmore stuff\n"
+    assert out.read_text(encoding="utf-8") == "hello world\nmore stuff\n"
 
 
 def test_ensure_no_orphan_modules() -> None:

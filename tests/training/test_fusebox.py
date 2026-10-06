@@ -669,7 +669,7 @@ class TestItPutsThingsBack:
         control.set_power_limit(0, 250.0)
 
         assert state.is_file()
-        saved = json.loads(state.read_text())
+        saved = json.loads(state.read_text(encoding="utf-8"))
         assert saved["applied"] == {"0": 250.0}
         assert saved["original"] == {"0": 300.0}
 
@@ -693,7 +693,7 @@ class TestItPutsThingsBack:
 
     def test_a_corrupt_state_file_is_not_an_error(self, tmp_path):
         state = tmp_path / "state.json"
-        state.write_text("{ this is not json")
+        state.write_text("{ this is not json", encoding="utf-8")
 
         assert fusebox.ClockControl(state_file=state).load_state() is False
 
@@ -751,7 +751,7 @@ class TestTheCLI:
         state = tmp_path / "state.json"
         state.write_text(json.dumps({
             "original": {"0": 300.0}, "applied": {"0": 250.0},
-        }))
+        }), encoding="utf-8")
         monkeypatch.setenv("HNX_FUSEBOX_STATE", str(state))
 
         code = fusebox_main(["restore"])
@@ -774,7 +774,7 @@ class TestTheCLI:
         state = tmp_path / "state.json"
         state.write_text(json.dumps({
             "original": {"0": 300.0}, "applied": {"0": 250.0},
-        }))
+        }), encoding="utf-8")
         monkeypatch.setenv("HNX_FUSEBOX_STATE", str(state))
 
         code = fusebox_main(["status"])

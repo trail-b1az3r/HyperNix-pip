@@ -184,7 +184,7 @@ def test_cold_brew_persists_checkpoint(tmp_path: Path) -> None:
     final = cb.brew()
     assert final == {"phase": 2}
     assert ck.exists()
-    on_disk = json.loads(ck.read_text())
+    on_disk = json.loads(ck.read_text(encoding="utf-8"))
     assert on_disk["next_phase"] == 3
 
 
@@ -192,7 +192,7 @@ def test_cold_brew_resumes_from_checkpoint(tmp_path: Path) -> None:
     from hypernix import coffee_maker
 
     ck = tmp_path / "ck.json"
-    ck.write_text(json.dumps({"state": {"phase": 1}, "next_phase": 2}))
+    ck.write_text(json.dumps({"state": {"phase": 1}, "next_phase": 2}), encoding="utf-8")
     calls = []
 
     def phase_fn(state, phase):

@@ -48,8 +48,8 @@ def fake_build(root: Path, *, patched: bool = True) -> Path:
               if patched else b"nothing to see")
     for stem in bridge.CORE_LIBRARIES:
         (bin_dir / f"{stem}{_suffix()}").write_bytes(b"ELF" + marker)
-    server = bin_dir / "llama-server"
-    server.write_text("#!/bin/sh\nexit 0\n")
+    server = bin_dir / ("llama-server.exe" if _suffix() == ".dll" else "llama-server")
+    server.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
     server.chmod(0o755)
     return root / "build"
 
@@ -77,6 +77,22 @@ class TestFindingTheBuild:
 
         assert set(build.libraries) == set(bridge.CORE_LIBRARIES)
         assert build.server is not None
+
+    def test_an_msvc_build_without_the_lib_prefix_is_found(self, tmp_path, monkeypatch):
+        """MSVC names the DLLs ggml-base.dll and llama.dll; MinGW keeps
+        the lib prefix. A Windows build is found either way."""
+        monkeypatch.setattr(bridge, "_library_suffix", lambda: ".dll")
+        bin_dir = tmp_path / "build" / "bin"
+        bin_dir.mkdir(parents=True)
+        for stem in bridge.CORE_LIBRARIES:
+            (bin_dir / f"{stem[3:]}.dll").write_bytes(b"MZ")
+        (bin_dir / "llama-server.exe").write_bytes(b"MZ")
+
+        build = bridge.find_build(tmp_path / "build")
+
+        assert set(build.libraries) == set(bridge.CORE_LIBRARIES)
+        assert build.libraries["libllama"].name == "llama.dll"
+        assert build.server == bin_dir / "llama-server.exe"
 
     def test_the_checkout_above_the_build_is_accepted_too(self, tmp_path):
         """`--build ~/llama.cpp` is what people type."""
@@ -195,7 +211,7 @@ class TestInstallRefuses:
         build = bridge.find_build(fake_build(tmp_path / "b"))
         ordinary = tmp_path / "Documents"
         ordinary.mkdir()
-        (ordinary / "notes.txt").write_text("hello")
+        (ordinary / "notes.txt").write_text("hello", encoding="utf-8")
 
         with pytest.raises(bridge.BridgeError, match="does not look like"):
             bridge.install(build, ordinary, confirmed=True)
@@ -324,7 +340,7 @@ class TestDetection:
         monkeypatch.setenv("LMSTUDIO_HOME", str(tmp_path / "lms"))
         empty = tmp_path / "lms" / "extensions" / "backends" / "nothing"
         empty.mkdir(parents=True)
-        (empty / "manifest.json").write_text("{}")
+        (empty / "manifest.json").write_text("{}", encoding="utf-8")
 
         assert bridge.detect_targets() == []
 

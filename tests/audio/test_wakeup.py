@@ -113,7 +113,7 @@ class TestReadingAudio:
     def test_iter_finds_only_audio(self, tmp_path):
         _write_wav(tmp_path / "a.wav", _tone(440, 0.05))
         _write_wav(tmp_path / "nested" / "b.wav", _tone(880, 0.05))
-        (tmp_path / "notes.txt").write_text("not audio")
+        (tmp_path / "notes.txt").write_text("not audio", encoding="utf-8")
         found = iter_audio_files(tmp_path)
         assert [p.name for p in found] == ["a.wav", "b.wav"]
 

@@ -359,7 +359,7 @@ class TestTheTiersLlamaCppCanActuallyLoad:
         """
         import re
 
-        text = self.PATCH.read_text()
+        text = self.PATCH.read_text(encoding="utf-8")
         return {
             int(value)
             for value in re.findall(
@@ -382,7 +382,7 @@ class TestTheTiersLlamaCppCanActuallyLoad:
 
         from hypernix.quant.ggufcheck import LLAMA_CPP_REGISTERED_TYPES
 
-        text = self.PATCH.read_text()
+        text = self.PATCH.read_text(encoding="utf-8")
         count = int(re.search(r"^HNX_TYPE_COUNT\s*=\s*(\d+)", text, re.M).group(1))
         assert count == max(LLAMA_CPP_REGISTERED_TYPES) + 1
 

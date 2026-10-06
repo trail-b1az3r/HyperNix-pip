@@ -212,6 +212,11 @@ class TestItDoesNotLockAScreenItDidNotBlank:
     screen promises the opposite of what happened."""
 
     def test_it_refuses_rather_than_entering_raw_mode(self, monkeypatch, capsys):
+        if not protect.HAS_TERMIOS:
+            # Windows has no raw mode to enter: the refusal comes first and says so.
+            assert protect.start_protection() == 1
+            assert "POSIX terminal" in capsys.readouterr().out
+            return
         monkeypatch.setattr(blanking.shutil, "which", lambda name: None)
         monkeypatch.setattr(
             protect.termios, "tcgetattr",

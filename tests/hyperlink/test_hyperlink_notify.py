@@ -93,6 +93,10 @@ class TestThePayloadFits:
             ("short", "fine"),
             ("empty", ""),
         ],
+        # Named, not the body: pytest puts the test id in
+        # PYTEST_CURRENT_TEST, and Windows refuses an environment value
+        # over 32767 characters -- which "\U0001f525" * 4000 is.
+        ids=lambda value: value if len(value) < 40 else "body",
     )
     def test_it_fits_whatever_the_body_is(self, name, body):
         built = build_apns_payload(

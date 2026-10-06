@@ -19,6 +19,7 @@ import ast
 import importlib.metadata
 import importlib.util
 import json
+import os
 import re
 import shlex
 import sys
@@ -125,6 +126,19 @@ _PYTHON_VALUE_OPTIONS = {"-W", "-X", "--check-hash-based-pycs"}
 _PYTHON = re.compile(r"^(python|pypy)[\d.]*(\.exe)?$", re.IGNORECASE)
 
 
+def _split_command(command: str) -> list[str]:
+    """A command line as argv, in the platform's own quoting.
+
+    POSIX ``shlex`` reads a backslash as an escape, so a Windows path
+    (``C:\\Users\\me\\train.py``) came out as ``C:Usersmetrain.py`` and no
+    script was ever matched there.
+    """
+    if os.name != "nt":
+        return shlex.split(command)
+    return [token[1:-1] if len(token) > 1 and token[0] == token[-1] == '"' else token
+            for token in shlex.split(command, posix=False)]
+
+
 def script_from_command(command: str | list[str], cwd: str | Path | None = None) -> Path | None:
     """The ``.py`` file a command line runs, or ``None``.
 
@@ -137,7 +151,7 @@ def script_from_command(command: str | list[str], cwd: str | Path | None = None)
     options first, so for those it is the first ``.py`` argument. A
     relative path is taken from the process's working directory.
     """
-    argv = shlex.split(command) if isinstance(command, str) else list(command)
+    argv = _split_command(command) if isinstance(command, str) else list(command)
     base = Path(cwd) if cwd else Path.cwd()
 
     def found(arg: str) -> Path | None:

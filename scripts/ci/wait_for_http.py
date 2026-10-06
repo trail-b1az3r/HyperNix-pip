@@ -76,7 +76,7 @@ def wait_for(
     print(f"  ✗ {name} never answered {url}", file=sys.stderr)
     print(f"    {attempts} attempts over {timeout:.0f}s, last: {last}", file=sys.stderr)
     if log is not None and log.exists():
-        text = log.read_text(errors="replace").strip()
+        text = log.read_text(errors="replace", encoding="utf-8").strip()
         print(f"    --- {log} ---", file=sys.stderr)
         print(text or "    (empty — the process wrote nothing)", file=sys.stderr)
     elif log is not None:

@@ -32,6 +32,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from shell_support import BASH, NO_BASH_REASON
 
 NATIVE = Path(__file__).resolve().parents[2] / "native" / "ggml-hnx"
 TOOLS = NATIVE / "tools"
@@ -557,8 +558,9 @@ class TestTheBuildScript:
         assert "using the checkout already at" in text
         assert "this script pins" in text
 
+    @pytest.mark.skipif(BASH is None, reason=NO_BASH_REASON)
     def test_it_is_still_valid_shell(self):
-        result = subprocess.run(["bash", "-n", str(self.SCRIPT)],
+        result = subprocess.run([BASH, "-n", str(self.SCRIPT)],
                                 capture_output=True, text=True, check=False)
 
         assert result.returncode == 0, result.stderr

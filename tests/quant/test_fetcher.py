@@ -74,7 +74,7 @@ def test_fetch_walks_back_when_latest_has_no_match(tmp_path, monkeypatch):
     def fake_extract(zip_path, target_dir):
         target_dir.mkdir(parents=True, exist_ok=True)
         bin_path = target_dir / "llama-quantize"
-        bin_path.write_text("#!/bin/sh\n")
+        bin_path.write_text("#!/bin/sh\n", encoding="utf-8")
         bin_path.chmod(0o755)
         return bin_path
 

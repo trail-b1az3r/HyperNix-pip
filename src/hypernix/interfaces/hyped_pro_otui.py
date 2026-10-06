@@ -129,7 +129,7 @@ def find_bun(env: dict[str, str] | None = None, *, debug: bool = False) -> str:
 
 def app_version(app_dir: Path = APP_DIR) -> str:
     try:
-        return str(json.loads((app_dir / "package.json").read_text())["version"])
+        return str(json.loads((app_dir / "package.json").read_text(encoding="utf-8"))["version"])
     except (OSError, ValueError, KeyError):
         return "unknown"
 

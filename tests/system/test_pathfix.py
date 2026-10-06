@@ -183,12 +183,12 @@ def test_ensure_on_path_writes_a_marked_block(tmp_path, monkeypatch):
     scripts.mkdir()
     monkeypatch.setenv("PATH", "/usr/bin")
     profile = tmp_path / "rc"
-    profile.write_text("# my shell\nalias ll='ls -l'\n")
+    profile.write_text("# my shell\nalias ll='ls -l'\n", encoding="utf-8")
 
     result = pathfix.ensure_on_path(directory=scripts, shell="bash", profile=profile)
 
     assert result.changed and result.status == "written"
-    text = profile.read_text()
+    text = profile.read_text(encoding="utf-8")
     assert pathfix.BLOCK_START in text and pathfix.BLOCK_END in text
     # as_posix: the block is a bash snippet, so the path in it uses
     # forward slashes even when a Windows host wrote the file.
@@ -224,12 +224,12 @@ def test_ensure_on_path_is_idempotent(tmp_path, monkeypatch, shell):
     profile = tmp_path / "rc"
 
     pathfix.ensure_on_path(directory=scripts, shell=shell, profile=profile)
-    first = profile.read_text()
+    first = profile.read_text(encoding="utf-8")
     second_result = pathfix.ensure_on_path(directory=scripts, shell=shell, profile=profile)
 
     assert second_result.status == "already-configured"
     assert not second_result.changed
-    assert profile.read_text() == first
+    assert profile.read_text(encoding="utf-8") == first
     assert first.count(pathfix.BLOCK_START) == 1
 
 
@@ -245,7 +245,7 @@ def test_ensure_on_path_replaces_a_block_pointing_elsewhere(tmp_path, monkeypatc
     pathfix.ensure_on_path(directory=old_scripts, shell="bash", profile=profile)
     pathfix.ensure_on_path(directory=new_scripts, shell="bash", profile=profile)
 
-    text = profile.read_text()
+    text = profile.read_text(encoding="utf-8")
     assert text.count(pathfix.BLOCK_START) == 1
     assert new_scripts.as_posix() in text
     assert old_scripts.as_posix() not in text
@@ -260,7 +260,7 @@ def test_ensure_on_path_creates_missing_parent_dirs(tmp_path, monkeypatch):
     result = pathfix.ensure_on_path(directory=scripts, shell="fish", profile=profile)
 
     assert result.changed
-    assert "fish_add_path" in profile.read_text()
+    assert "fish_add_path" in profile.read_text(encoding="utf-8")
 
 
 def test_ensure_on_path_reports_unwritable_profile(tmp_path, monkeypatch):
@@ -291,7 +291,7 @@ def test_ensure_on_path_force_writes_even_when_on_path(tmp_path, monkeypatch):
                                     profile=profile, force=True)
 
     assert result.changed
-    assert scripts.as_posix() in profile.read_text()
+    assert scripts.as_posix() in profile.read_text(encoding="utf-8")
 
 
 def test_ensure_on_path_unknown_shell_explains_instead_of_writing(tmp_path, monkeypatch):
@@ -312,13 +312,13 @@ def test_remove_from_path_strips_only_the_block(tmp_path, monkeypatch):
     scripts.mkdir()
     monkeypatch.setenv("PATH", "/usr/bin")
     profile = tmp_path / "rc"
-    profile.write_text("# top\nalias ll='ls -l'\n")
+    profile.write_text("# top\nalias ll='ls -l'\n", encoding="utf-8")
 
     pathfix.ensure_on_path(directory=scripts, shell="bash", profile=profile)
     result = pathfix.remove_from_path(shell="bash", profile=profile)
 
     assert result.changed and result.status == "removed"
-    text = profile.read_text()
+    text = profile.read_text(encoding="utf-8")
     assert pathfix.BLOCK_START not in text
     assert pathfix.BLOCK_END not in text
     assert "alias ll='ls -l'" in text
@@ -327,23 +327,23 @@ def test_remove_from_path_strips_only_the_block(tmp_path, monkeypatch):
 
 def test_remove_from_path_when_nothing_to_remove(tmp_path):
     profile = tmp_path / "rc"
-    profile.write_text("# nothing here\n")
+    profile.write_text("# nothing here\n", encoding="utf-8")
     result = pathfix.remove_from_path(shell="bash", profile=profile)
     assert result.status == "not-configured"
     assert not result.changed
-    assert profile.read_text() == "# nothing here\n"
+    assert profile.read_text(encoding="utf-8") == "# nothing here\n"
 
 
 def test_remove_from_path_handles_a_truncated_block(tmp_path):
     """A half-written block must not make the file un-fixable."""
     profile = tmp_path / "rc"
-    profile.write_text(f"# top\n{pathfix.BLOCK_START}\nexport PATH=broken\n")
+    profile.write_text(f"# top\n{pathfix.BLOCK_START}\nexport PATH=broken\n", encoding="utf-8")
 
     result = pathfix.remove_from_path(shell="bash", profile=profile)
 
     assert result.changed
-    assert pathfix.BLOCK_START not in profile.read_text()
-    assert "# top" in profile.read_text()
+    assert pathfix.BLOCK_START not in profile.read_text(encoding="utf-8")
+    assert "# top" in profile.read_text(encoding="utf-8")
 
 
 def test_round_trip_leaves_the_file_semantically_unchanged(tmp_path, monkeypatch):
@@ -352,12 +352,12 @@ def test_round_trip_leaves_the_file_semantically_unchanged(tmp_path, monkeypatch
     monkeypatch.setenv("PATH", "/usr/bin")
     profile = tmp_path / "rc"
     original = "# top\nexport EDITOR=vim\n"
-    profile.write_text(original)
+    profile.write_text(original, encoding="utf-8")
 
     pathfix.ensure_on_path(directory=scripts, shell="bash", profile=profile)
     pathfix.remove_from_path(shell="bash", profile=profile)
 
-    assert profile.read_text().strip() == original.strip()
+    assert profile.read_text(encoding="utf-8").strip() == original.strip()
 
 
 # ---------------------------------------------------------------------------
@@ -452,7 +452,7 @@ def test_autoconfigure_writes_once_and_announces_it(fake_home, not_isolated, mon
     # Which spelling of the directory lands in the file depends on the shell
     # this platform detects -- forward slashes for a POSIX shell, native
     # separators for PowerShell -- so ask the module rather than guessing.
-    written = _expected_profile().read_text()
+    written = _expected_profile().read_text(encoding="utf-8")
     assert pathfix.snippet_for_shell(scripts, pathfix.detect_shell()) in written
     # It must say what it did, and how to opt out.
     joined = "\n".join(said)
@@ -478,7 +478,7 @@ def test_autoconfigure_does_not_retry_after_the_first_attempt(fake_home, not_iso
     assert second.status == "skipped"
     assert "already attempted" in second.message
     assert said == []
-    assert pathfix.BLOCK_START not in profile.read_text()
+    assert pathfix.BLOCK_START not in profile.read_text(encoding="utf-8")
 
 
 # ---------------------------------------------------------------------------
@@ -522,10 +522,10 @@ def test_cli_apply_then_undo(fake_home, capsys, tmp_path, monkeypatch):
     profile = tmp_path / "rc"
 
     assert pathfix.cli_main(["--apply", "--shell", "bash", "--profile", str(profile)]) == 0
-    assert pathfix.BLOCK_START in profile.read_text()
+    assert pathfix.BLOCK_START in profile.read_text(encoding="utf-8")
 
     assert pathfix.cli_main(["--undo", "--shell", "bash", "--profile", str(profile)]) == 0
-    assert pathfix.BLOCK_START not in profile.read_text()
+    assert pathfix.BLOCK_START not in profile.read_text(encoding="utf-8")
 
 
 def test_cli_apply_refuses_inside_a_virtualenv(fake_home, capsys, tmp_path, monkeypatch):

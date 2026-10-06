@@ -174,7 +174,7 @@ class TestJudgeCorpus:
     def test_synthesize_judge_corpus_shim(self, tmp_path):
         out = synthesize_judge_corpus(8, tmp_path / "judge.txt", seed=0)
         assert out.exists()
-        lines = out.read_text().strip().splitlines()
+        lines = out.read_text(encoding="utf-8").strip().splitlines()
         assert len(lines) == 8
 
 
@@ -196,7 +196,7 @@ class TestTrainingMetrics:
         m.on_step(1, 1.5)
         m.on_step(2, 1.2)
         out = m.to_jsonl(tmp_path / "steps.jsonl")
-        lines = out.read_text().strip().splitlines()
+        lines = out.read_text(encoding="utf-8").strip().splitlines()
         assert len(lines) == 2
         first = json.loads(lines[0])
         assert first["step"] == 1

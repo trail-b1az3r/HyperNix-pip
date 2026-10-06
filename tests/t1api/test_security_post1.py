@@ -183,6 +183,7 @@ class TestKeyIdsAreNotPaths:
         assert km._key_path(meta.key_id).parent == km._store
 
 
+@pytest.mark.skipif(os.name == "nt", reason="POSIX mode bits; Windows guards a profile's files by ACL, and chmod there only sets read-only")
 class TestWaitersConfigIsNeverReadable:
     """The key sat in a file written under the default umask and chmodded
     afterwards. It is now created 0600."""
@@ -202,7 +203,7 @@ class TestWaitersConfigIsNeverReadable:
         from hypernix.waiter.local_config import WaiterConfigStore, WaiterLocalConfig
 
         path = tmp_path / "waiter.jsonl"
-        path.write_text("{}\n")
+        path.write_text("{}\n", encoding="utf-8")
         path.chmod(0o644)
         WaiterConfigStore(path).save(WaiterLocalConfig(server="http://x", key="T1_secret"))
         assert stat.S_IMODE(path.stat().st_mode) == 0o600

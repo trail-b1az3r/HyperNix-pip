@@ -31,7 +31,7 @@ def test_download_model_uses_first_choice_on_success(tmp_path: Path) -> None:
 
     target = tmp_path / "Nix-ai__Nix-2.7a"
     target.mkdir()
-    (target / "config.json").write_text("{}")
+    (target / "config.json").write_text("{}", encoding="utf-8")
 
     calls: list[str] = []
 
@@ -55,7 +55,7 @@ def test_download_model_falls_through_on_404(tmp_path: Path) -> None:
 
     target = tmp_path / "nix_2_5"
     target.mkdir()
-    (target / "config.json").write_text("{}")
+    (target / "config.json").write_text("{}", encoding="utf-8")
 
     calls: list[str] = []
 

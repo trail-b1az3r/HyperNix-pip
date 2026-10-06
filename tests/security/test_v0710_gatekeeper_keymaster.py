@@ -461,7 +461,7 @@ class TestKeymaster:
         km.export(path=out)
         km.stop()
         assert out.exists()
-        data = json.loads(out.read_text())
+        data = json.loads(out.read_text(encoding="utf-8"))
         assert "keys" in data
 
     def test_import_keys(self, tmp_path):
@@ -750,7 +750,7 @@ class TestGatekeeper:
         gk.stop()
         log_path = tmp_path / "gk" / "access.log"
         assert log_path.exists()
-        lines = log_path.read_text().strip().splitlines()
+        lines = log_path.read_text(encoding="utf-8").strip().splitlines()
         assert len(lines) >= 1
         entry = json.loads(lines[0])
         assert entry["key_id"] == meta.key_id

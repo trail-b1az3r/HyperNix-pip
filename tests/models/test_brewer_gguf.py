@@ -66,7 +66,7 @@ def _bpe_tokenizer(folder: Path, vocab_size: int = 300) -> None:
     )
     tok.save(str(folder / "tokenizer.json"))
     (folder / "tokenizer_config.json").write_text(json.dumps(
-        {"bos_token": "<|endoftext|>", "eos_token": "<|endoftext|>", "pad_token": "<|pad|>"}))
+        {"bos_token": "<|endoftext|>", "eos_token": "<|endoftext|>", "pad_token": "<|pad|>"}), encoding="utf-8")
 
 
 def _folder(tmp_path: Path, cfg: BrewerConfig, *, tokenizer: bool = True) -> tuple[Path, BrewerModel]:
@@ -331,7 +331,7 @@ def test_a_compiled_models_prefix_is_stripped(tmp_path):
 
 def test_the_dataset_keeps_a_models_ids_and_appends_new_characters(tmp_path):
     corpus = tmp_path / "c.txt"
-    corpus.write_text("abcabc zz" * 20)
+    corpus.write_text("abcabc zz" * 20, encoding="utf-8")
     ds = _SimpleTextDataset(corpus, 8, vocab=["z", "a"])
     assert ds.chars[:2] == ["z", "a"]
     assert set(ds.chars) == set("abc z")
@@ -339,7 +339,7 @@ def test_the_dataset_keeps_a_models_ids_and_appends_new_characters(tmp_path):
 
 def test_training_returns_the_vocabulary_and_refuses_overflow(tmp_path):
     corpus = tmp_path / "c.txt"
-    corpus.write_text("hello world " * 200)
+    corpus.write_text("hello world " * 200, encoding="utf-8")
     cfg = _config(vocab_size=64, max_seq_len=16)
     chars = train_model(BrewerModel(cfg), cfg, corpus, steps=2, batch_size=2, device="cpu")
     assert set(chars) == set("helo wrd")
@@ -350,7 +350,7 @@ def test_training_returns_the_vocabulary_and_refuses_overflow(tmp_path):
 
 def test_save_and_from_dir_round_trip(tmp_path):
     corpus = tmp_path / "c.txt"
-    corpus.write_text("round trip text " * 100)
+    corpus.write_text("round trip text " * 100, encoding="utf-8")
     brewer = Brewer(_config(vocab_size=64, max_seq_len=16, name="rt"), save_dir=tmp_path / "rt")
     brewer.train(corpus, steps=2, batch_size=2, device="cpu")
     folder = brewer.save()
@@ -389,7 +389,7 @@ def test_brew_new_train_export_across_separate_runs(tmp_path, monkeypatch, capsy
 
     monkeypatch.chdir(tmp_path)
     corpus = tmp_path / "c.txt"
-    corpus.write_text("brew it and run it " * 200)
+    corpus.write_text("brew it and run it " * 200, encoding="utf-8")
     brewer_mod.cli_main(["new", "--preset", "cpu-nano", "--name", "cli"])
     brewer_mod.BREWER_REGISTRY.clear()              # a new process knows nothing
 

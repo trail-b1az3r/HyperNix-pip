@@ -67,7 +67,7 @@ def server(tmp_path):
     """A config dir whose private venv has HyperNix 0.72.6."""
     config = tmp_path / "t1api"
     version = tmp_path / "venv_version"
-    version.write_text("0.72.6\n")
+    version.write_text("0.72.6\n", encoding="utf-8")
     pip_log = tmp_path / "pip.log"
     stub_python(config / "venv" / "bin" / "python", version, pip_log)
     return {"home": tmp_path, "config": config, "version": version, "pip_log": pip_log}
@@ -76,7 +76,7 @@ def server(tmp_path):
 def test_upgrade_runs_pip_in_the_servers_own_python(server):
     result = run(SCRIPT, "upgrade", home=server["home"], config=server["config"])
     assert result.returncode == 0, result.output
-    assert server["pip_log"].read_text().split("\n")[0] == "-m pip install -U hypernix[t1api]"
+    assert server["pip_log"].read_text(encoding="utf-8").split("\n")[0] == "-m pip install -U hypernix[t1api]"
     assert "0.72.6 → 0.72.6.post3" in result.output
     assert "hypernix-t1 start" in result.output
 
@@ -84,14 +84,14 @@ def test_upgrade_runs_pip_in_the_servers_own_python(server):
 def test_upgrade_main_installs_from_github(server):
     result = run(SCRIPT, "upgrade", "--main", home=server["home"], config=server["config"])
     assert result.returncode == 0, result.output
-    assert "git+https://github.com/trail-b1az3r/HyperNix-pip@main" in server["pip_log"].read_text()
+    assert "git+https://github.com/trail-b1az3r/HyperNix-pip@main" in server["pip_log"].read_text(encoding="utf-8")
 
 
 def test_upgrade_takes_a_requirement(server):
     result = run(SCRIPT, "upgrade", "hypernix[t1api]==0.72.7",
                  home=server["home"], config=server["config"])
     assert result.returncode == 0, result.output
-    assert "hypernix[t1api]==0.72.7" in server["pip_log"].read_text()
+    assert "hypernix[t1api]==0.72.7" in server["pip_log"].read_text(encoding="utf-8")
 
 
 def test_upgrade_refuses_an_unknown_option(server):
@@ -102,7 +102,7 @@ def test_upgrade_refuses_an_unknown_option(server):
 
 
 def test_upgrade_says_when_nothing_changed(server):
-    server["version"].write_text("0.72.6.post3\n")
+    server["version"].write_text("0.72.6.post3\n", encoding="utf-8")
     result = run(SCRIPT, "upgrade", home=server["home"], config=server["config"])
     assert result.returncode == 0, result.output
     assert "already the newest" in result.output
@@ -115,7 +115,7 @@ def _installed_copy(tmp_path: Path, version: str) -> Path:
     script = envbin / "hypernix-t1"
     shutil.copy(SCRIPT, script)
     own_version = tmp_path / "own_version"
-    own_version.write_text(version + "\n")
+    own_version.write_text(version + "\n", encoding="utf-8")
     stub_python(envbin / "python3", own_version)
     return script
 
@@ -136,7 +136,7 @@ def test_no_warning_when_the_versions_match(server, tmp_path):
 
 
 def test_no_warning_when_the_server_is_newer(server, tmp_path):
-    server["version"].write_text("0.72.7\n")
+    server["version"].write_text("0.72.7\n", encoding="utf-8")
     script = _installed_copy(tmp_path, "0.72.6.post3")
     result = run(script, "status", home=server["home"], config=server["config"])
     assert "older than" not in result.output

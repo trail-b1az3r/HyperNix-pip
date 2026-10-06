@@ -122,7 +122,7 @@ class TestTheLoop:
         )
         assert [r.tool for r in rounds] == ["create_file"]
         assert rounds[0].ok
-        assert (tmp_path / "a.txt").read_text() == "hi"
+        assert (tmp_path / "a.txt").read_text(encoding="utf-8") == "hi"
         assert extract(final)[0] == "Made a.txt."
 
     def test_the_transcript_pairs_every_call_with_a_reply(self, context):

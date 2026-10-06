@@ -396,11 +396,11 @@ class TemperatureModule(Module):
         readings: list[Reading] = []
         for zone in sorted(self.ROOT.glob("thermal_zone*")):
             try:
-                millidegrees = int((zone / "temp").read_text().strip())
+                millidegrees = int((zone / "temp").read_text(encoding="utf-8").strip())
             except (OSError, ValueError):
                 continue
             try:
-                label = (zone / "type").read_text().strip()
+                label = (zone / "type").read_text(encoding="utf-8").strip()
             except OSError:
                 label = zone.name
             celsius = millidegrees / 1000.0

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import ast
 import importlib.util
+import os
 import subprocess
 import sys
 import textwrap
@@ -117,7 +118,10 @@ class TestDiscovery:
             [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider",
              "--collect-only", node_id],
             cwd=REPO_ROOT, capture_output=True, text=True, encoding="utf-8", timeout=300,
-            env={"PYTHONPATH": str(SRC), "PATH": "/usr/bin:/bin:/usr/local/bin"},
+            env={"PYTHONPATH": str(SRC), "PATH": "/usr/bin:/bin:/usr/local/bin",
+                 # Windows cannot start Python's socket layer (WinError 10106)
+                 # without these, and asyncio imports it.
+                 **{k: os.environ[k] for k in ("SYSTEMROOT", "WINDIR") if k in os.environ}},
         )
         assert proc.returncode == 0, proc.stdout + proc.stderr
 

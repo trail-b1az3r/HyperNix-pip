@@ -168,7 +168,7 @@ class TestQAProcessor:
         f.write_text(
             json.dumps({"question": "1+1?", "answer": "2"}) + "\n"
             + json.dumps({"question": "2+2?", "answer": "4"}) + "\n"
-        )
+        , encoding="utf-8")
         proc = QAProcessor(source=f, format_mode="question_answer")
         out = list(proc)
         assert len(out) == 2

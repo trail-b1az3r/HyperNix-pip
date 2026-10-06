@@ -159,7 +159,7 @@ class TestTheCli:
         """With -1 an option, argparse stops reading -1 as a number; after
         `--` it must still reach the script untouched."""
         script = tmp_path / "echo.sh"
-        script.write_text('echo "got:$1"\n')
+        script.write_text('echo "got:$1"\n', encoding="utf-8")
         assert launchscript_cli.main([str(script), "--name", "neg", "--", "-1"]) == 0
         job = cli.find("neg")
         settle(job, cli)
@@ -167,7 +167,7 @@ class TestTheCli:
 
     def test_a_script_and_a_command_together_is_refused(self, cli, tmp_path, capsys):
         script = tmp_path / "s.sh"
-        script.write_text("true\n")
+        script.write_text("true\n", encoding="utf-8")
         assert launchscript_cli.main([str(script), "-1", "true"]) == 1
         assert "not both" in capsys.readouterr().err
 

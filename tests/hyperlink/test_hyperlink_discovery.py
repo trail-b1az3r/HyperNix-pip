@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from pathlib import Path
 
 import pytest
@@ -70,6 +71,7 @@ class TestTheFingerprint:
 
         assert identity.fingerprint(tmp_path / "a") == first
 
+    @pytest.mark.skipif(os.name == "nt", reason="POSIX mode bits; Windows guards a profile's files by ACL, and chmod there only sets read-only")
     def test_the_seed_is_not_world_readable(self, tmp_path):
         """Anyone who can read the seed can claim to be this machine."""
         identity.fingerprint(tmp_path)

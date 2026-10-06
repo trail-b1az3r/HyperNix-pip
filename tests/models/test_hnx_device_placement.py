@@ -162,7 +162,7 @@ class TestEveryTensorFactorySaysWhereItGoes:
     @pytest.mark.parametrize("module", RUNTIME_MODULES)
     def test_the_audit_finds_something_to_audit(self, module):
         """Guard against the audit passing by looking at nothing."""
-        tree = ast.parse((_source_root() / module).read_text())
+        tree = ast.parse((_source_root() / module).read_text(encoding="utf-8"))
 
         found = list(_torch_factory_calls(tree))
 
@@ -170,7 +170,7 @@ class TestEveryTensorFactorySaysWhereItGoes:
 
     @pytest.mark.parametrize("module", RUNTIME_MODULES)
     def test_no_factory_relies_on_the_default_device(self, module):
-        tree = ast.parse((_source_root() / module).read_text())
+        tree = ast.parse((_source_root() / module).read_text(encoding="utf-8"))
         moved = _wrapped_in_a_move(tree)
 
         naive = [
@@ -206,7 +206,7 @@ class TestTheSeededDrawHappensOnTheCpu:
     """
 
     def test_the_probability_vector_is_moved_before_it_is_drawn_from(self):
-        tree = ast.parse((_source_root() / "hnxrun.py").read_text())
+        tree = ast.parse((_source_root() / "hnxrun.py").read_text(encoding="utf-8"))
 
         draws = [
             node for node in ast.walk(tree)
@@ -229,7 +229,7 @@ class TestTheSeededDrawHappensOnTheCpu:
 
     def test_the_generator_is_a_cpu_one(self):
         """The other half of the pair, so the two cannot drift apart."""
-        tree = ast.parse((_source_root() / "hnxrun.py").read_text())
+        tree = ast.parse((_source_root() / "hnxrun.py").read_text(encoding="utf-8"))
 
         generators = [
             node for node in ast.walk(tree)

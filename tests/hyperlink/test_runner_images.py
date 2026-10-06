@@ -97,7 +97,7 @@ def test_the_runner_starts_llama_server_with_the_projector(tmp_path, monkeypatch
     (tmp_path / "mmproj-vl-f16.gguf").write_bytes(b"GGUF")
     with pytest.raises(ManagedError):
         ManagedRunner(port=18998).load(model, timeout=10)
-    assert f"--mmproj {tmp_path / 'mmproj-vl-f16.gguf'}" in seen.read_text()
+    assert f"--mmproj {tmp_path / 'mmproj-vl-f16.gguf'}" in seen.read_text(encoding="utf-8")
 
 
 # ---------------------------------------------------------------------------

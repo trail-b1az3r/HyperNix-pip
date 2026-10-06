@@ -18,10 +18,25 @@ import subprocess
 _MARKER = "hypernix-bash-ok"
 
 
-def _probe() -> str | None:
-    path = shutil.which("bash")
-    if path is None:
-        return None
+def _candidates() -> list[str]:
+    """``bash`` on PATH, then -- on Windows, where that is usually the WSL
+    stub in System32 -- the Git Bash that comes with Git for Windows."""
+    import os
+
+    found = [shutil.which("bash")]
+    if os.name == "nt":
+        git = shutil.which("git")
+        if git:
+            # ...\Git\cmd\git.exe -> ...\Git\bin\bash.exe
+            root = os.path.dirname(os.path.dirname(git))
+            found.append(os.path.join(root, "bin", "bash.exe"))
+        for base in (os.environ.get("ProgramFiles"), os.environ.get("ProgramW6432")):
+            if base:
+                found.append(os.path.join(base, "Git", "bin", "bash.exe"))
+    return [path for path in found if path and os.path.isfile(path)]
+
+
+def _works(path: str) -> bool:
     try:
         result = subprocess.run(
             [path, "-c", f"echo {_MARKER}"],
@@ -30,13 +45,18 @@ def _probe() -> str | None:
             check=False,
         )
     except (OSError, subprocess.SubprocessError):
-        return None
+        return False
     # Bytes, not text: the WSL stub answers in UTF-16LE, and decoding that
     # as UTF-8 either raises or produces NUL-separated characters that no
     # substring check would match anyway.
-    if result.returncode != 0 or _MARKER.encode() not in result.stdout:
-        return None
-    return path
+    return result.returncode == 0 and _MARKER.encode() in result.stdout
+
+
+def _probe() -> str | None:
+    for path in _candidates():
+        if _works(path):
+            return path
+    return None
 
 
 #: The bash to run scripts with, or None when there is no usable one.
@@ -80,7 +100,7 @@ def _write_shim(bindir, style: str) -> None:
 
     interpreter = shell_path(sys.executable, style=style)
     shim = bindir / "python3"
-    shim.write_text(f'#!/bin/sh\nexec "{interpreter}" "$@"\n')
+    shim.write_text(f'#!/bin/sh\nexec "{interpreter}" "$@"\n', encoding="utf-8")
     shim.chmod(0o755)
 
 
