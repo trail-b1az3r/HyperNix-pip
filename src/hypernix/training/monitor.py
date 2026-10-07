@@ -324,7 +324,7 @@ class TrainingMonitor:
 
     # -- controls ---------------------------------------------------
 
-    def _signal(self, run: TrainingRun, sig: int, what: str) -> None:
+    def _signal(self, run: TrainingRun, sig: int | None, what: str) -> None:
         if not run.is_active:
             raise TrainingError(
                 f"{run.run_id} has already ended ({run.state}), so it cannot "
@@ -337,8 +337,20 @@ class TrainingMonitor:
             )
         if not _alive(run.pid):
             raise TrainingError(f"{run.run_id} is not running.")
+        if sig is None:
+            # Checked after the state, so a finished run is still "already
+            # ended" rather than a lecture about the platform.
+            raise TrainingError(
+                f"{run.run_id} cannot be {what} on Windows: pausing is "
+                f"SIGSTOP/SIGCONT job control, which Windows does not have. "
+                f"Stopping works."
+            )
         try:
-            os.killpg(os.getpgid(run.pid), sig)
+            if hasattr(os, "killpg"):
+                os.killpg(os.getpgid(run.pid), sig)
+            else:
+                # Windows: TerminateProcess on the trainer itself.
+                os.kill(run.pid, sig)
         except (ProcessLookupError, PermissionError, OSError) as exc:
             raise TrainingError(f"could not {what} {run.run_id}: {exc}") from exc
 
@@ -350,13 +362,13 @@ class TrainingMonitor:
         is also why pausing does not make the card available to anything
         else.
         """
-        self._signal(run, signal.SIGSTOP, "paused")
+        self._signal(run, getattr(signal, "SIGSTOP", None), "paused")
         run.state = RunState.PAUSED.value
         self._persist(run)
         return run
 
     def resume(self, run: TrainingRun) -> TrainingRun:
-        self._signal(run, signal.SIGCONT, "resumed")
+        self._signal(run, getattr(signal, "SIGCONT", None), "resumed")
         run.state = RunState.RUNNING.value
         self._persist(run)
         return run
@@ -371,7 +383,8 @@ class TrainingMonitor:
         """
         if not run.is_active:
             raise TrainingError(f"{run.run_id} has already ended ({run.state}).")
-        if run.state == RunState.PAUSED.value and run.pid and _alive(run.pid):
+        if (run.state == RunState.PAUSED.value and run.pid and _alive(run.pid)
+                and hasattr(os, "killpg")):
             # A stopped process cannot handle SIGTERM. Wake it first, or
             # it sits frozen forever and "stop" silently did nothing.
             try:

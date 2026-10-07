@@ -723,7 +723,13 @@ class TestReadingRuns:
         assert "gpus" in response.json()
 
 
+POSIX_JOB_CONTROL = pytest.mark.skipif(
+    os.name == "nt", reason="pause is SIGSTOP job control, which Windows does not have"
+)
+
+
 class TestControlsOverHTTP:
+    @POSIX_JOB_CONTROL
     def test_pausing_says_the_card_is_not_released(
         self, client, runs_root, admin_key
     ):
@@ -749,6 +755,26 @@ class TestControlsOverHTTP:
                 os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
             except OSError:
                 pass
+            proc.wait(timeout=5)
+
+    def test_pausing_without_job_control_says_so(
+        self, client, runs_root, admin_key, monkeypatch
+    ):
+        """Windows: a 409 that names the reason, not a 500 from a missing
+        signal.SIGSTOP. Simulated anywhere by taking the signal away."""
+        monkeypatch.delattr(signal, "SIGSTOP", raising=False)
+        proc = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(120)"])
+        try:
+            reporter = ProgressReporter("run-1", total_steps=10, root=runs_root)
+            reporter.run.pid = proc.pid
+            reporter._write()
+
+            response = client.post("/training/runs/run-1/pause", headers=_auth(admin_key))
+
+            assert response.status_code == 409, response.text
+            assert "Windows" in response.json()["error"]["message"]
+        finally:
+            proc.kill()
             proc.wait(timeout=5)
 
     def test_pausing_a_finished_run_is_409_not_500(self, client, a_run, admin_key):
@@ -859,7 +885,13 @@ class TestTheTrainerSideHook:
         assert run.is_active is False
 
 
+LAUNCH_SCRIPT_IS_POSIX = pytest.mark.skipif(
+    os.name == "nt", reason="launch-script is POSIX only and refuses on Windows (setsid + /bin/sh)"
+)
+
+
 class TestTheLauncherHandOff:
+    @LAUNCH_SCRIPT_IS_POSIX
     def test_it_tells_the_job_what_to_report_as(self, tmp_path):
         """``launch-script ./train.py`` has to be enough. If the run id
         had to be passed by hand, the runs people most want to watch —
@@ -889,6 +921,7 @@ class TestTheLauncherHandOff:
         assert "NAME=qwen-sft" in output
         assert f"LOG={job.log_path}" in output
 
+    @LAUNCH_SCRIPT_IS_POSIX
     def test_the_run_id_is_the_job_id_not_the_name(self, tmp_path):
         """So relaunching a job of the same name supersedes nothing.
         The monitor still resolves the name, because ``get`` falls back

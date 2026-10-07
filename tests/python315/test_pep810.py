@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import ast
 import json
+import os
 import re
 import subprocess
 import sys
@@ -86,13 +87,24 @@ def test_the_lazy_keyword_stays_in_3_15_only_files():
     assert not offenders
 
 
+def _child_env() -> dict[str, str]:
+    """A near-empty environment, so nothing the runner set changes what
+    imports. Windows keeps the variables a process cannot start without:
+    no SYSTEMROOT, and asyncio's Winsock setup fails with WinError 10106."""
+    env = {"PYTHONPATH": str(SRC), "PATH": os.environ.get("PATH", "/usr/bin:/bin")}
+    for name in ("SYSTEMROOT", "WINDIR", "TEMP", "TMP"):
+        if name in os.environ:
+            env[name] = os.environ[name]
+    return env
+
+
 def _probe(module: str, names: list[str], *, lazy: bool = True) -> dict:
     """Import *module* in a fresh interpreter; report which *names* loaded."""
     off = "" if lazy else "sys.set_lazy_imports_filter(lambda *args: False)\n"
     code = (f"import sys, json\n{off}import {module}\n"
             f"print(json.dumps({{n: n in sys.modules for n in {names!r}}}))")
     done = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, encoding="utf-8", errors="replace",
-                          env={"PYTHONPATH": str(SRC), "PATH": "/usr/bin:/bin"}, check=False)
+                          env=_child_env(), check=False)
     assert done.returncode == 0, done.stderr
     return json.loads(done.stdout.strip().splitlines()[-1])
 
@@ -119,7 +131,7 @@ def test_a_deferred_import_resolves_on_first_use():
             "np = lq.np\nassert np.zeros(2).sum() == 0 and 'numpy' in sys.modules\n"
             "print('ok')")
     done = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, encoding="utf-8", errors="replace",
-                          env={"PYTHONPATH": str(SRC), "PATH": "/usr/bin:/bin"}, check=False)
+                          env=_child_env(), check=False)
     assert done.returncode == 0 and "ok" in done.stdout, done.stderr
 
 

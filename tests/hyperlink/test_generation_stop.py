@@ -242,7 +242,11 @@ class TestItActuallyStopsTheModel:
 
         import hypernix.t1api.routers.hyperlink as router
 
-        state = {"produced": itertools.count(), "closed": threading.Event()}
+        # `started` rather than a fixed sleep: on a slow runner (Windows,
+        # 3.15) the stream had not begun after a second, so the stop found
+        # nothing running and the test blamed the stop.
+        state = {"produced": itertools.count(), "closed": threading.Event(),
+                 "started": threading.Event()}
 
         class Endless:
             base_url = "http://fake"
@@ -251,6 +255,7 @@ class TestItActuallyStopsTheModel:
                 try:
                     while True:
                         next(state["produced"])
+                        state["started"].set()
                         clock.sleep(0.01)
                         yield {
                             "model": "endless",
@@ -299,7 +304,8 @@ class TestItActuallyStopsTheModel:
 
         reader = threading.Thread(target=read, daemon=True)
         reader.start()
-        clock.sleep(1.0)
+        assert endless["started"].wait(timeout=60), "the stream never started"
+        clock.sleep(0.3)  # let some content through first
 
         before = next(endless["produced"])
         stopped = app_client.post(f"/hyperlink/sessions/{session}/chat/stop").json()
@@ -341,7 +347,8 @@ class TestItActuallyStopsTheModel:
 
         reader = threading.Thread(target=read, daemon=True)
         reader.start()
-        clock.sleep(1.0)
+        assert endless["started"].wait(timeout=60), "the stream never started"
+        clock.sleep(0.3)  # let some content through first
         app_client.post(f"/hyperlink/sessions/{session}/chat/stop")
         reader.join(timeout=15)
 

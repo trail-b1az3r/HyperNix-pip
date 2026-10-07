@@ -293,8 +293,12 @@ server_pid() {
     # question — "is the process already identified by $pid one of ours?"
     # — and pgrep cannot be scoped to a known PID. The fragility SC2009
     # warns about, matching some other process, is what -p rules out.
+    # -ww: without it ps cuts the line at 80 columns when not on a
+    # terminal, and an interpreter under a long path (a CI toolcache, a
+    # pyenv prefix) pushes "hypernix.t1api" past the cut -- the server's
+    # own manager then decided the server was someone else's.
     # shellcheck disable=SC2009
-    ps -p "$pid" -o args= 2>/dev/null | grep -q "hypernix.t1api" || return 1
+    ps -ww -p "$pid" -o args= 2>/dev/null | grep -q "hypernix.t1api" || return 1
   fi
   printf '%s' "$pid"
 }
