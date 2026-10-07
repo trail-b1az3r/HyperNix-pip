@@ -1049,3 +1049,26 @@ timeline
         : f6ab07fa - Auto-update README header (hourly)
 ```
 
+## Release v0.72.7 (2026-10-07)
+
+```mermaid
+timeline
+    title Release v0.72.7 Commits
+    0.72.7
+        : c763500c - chore- refresh generated docs data and release summaries
+        : 55aadbb6 - Windows- never probe a pid with os.kill(pid, 0)
+        : 8b25e66f - 0.72.7- version, changelog heading and the measured benchmark results
+        : 2137d41b - Python 3.15 without torch- say so, and skip what needs it
+        : 07034ed9 - chore- update JSON stats (scheduled)
+        : 0a5db23c - Windows CI- the remaining 26, and the 3.12-3.15 matrix fixes it found
+        : e29949ad - chore- refresh generated docs data and release summaries
+        : 1a35b713 - 0.72.7 step 3- Python 3.12-3.15 -- requires-python, PEP 798/799/810/831
+        : 316780e9 - 0.72.7 step 2- Windows CI -- real bugs fixed, tests made platform-honest
+        : d595eb4a - 0.72.7 step 2- images on the HyperNix runner; macOS/Linux CI and first Windows fixes
+        : d3fa96c1 - chore- refresh generated docs data and release summaries
+        : 203b7112 - 0.72.7 step 1- link config-less models, `runner auto`, images converted on upload
+        : 721b8155 - chore- refresh generated docs data and release summaries
+        : c570f302 - chore- refresh generated docs data and release summaries
+        : b577f6b8 - chore- update JSON stats (scheduled)
+```
+
