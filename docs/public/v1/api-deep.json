@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-api-deep",
   "generated_at": "2026-09-20T21:20:57Z",
-  "commit": "55aadbb6367d6396569be3981f0265d0e4d3931e",
+  "commit": "ae88dc3c22dda03a6481b0b1d2191b1f48255526",
   "history_available": true,
   "source_root": "src/hypernix",
   "modules": [
@@ -61027,6 +61027,22 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "ae88dc3c",
+          "date": "2026-10-07",
+          "author": "Claude",
+          "subject": "Windows and 3.15 CI: training controls, ps width, test races",
+          "api_changes": [
+            {
+              "kind": "removed",
+              "text": "def _signal(self, run: TrainingRun, sig: int, what: str) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _signal(self, run: TrainingRun, sig: int | None, what: str) -> None:"
+            }
+          ]
+        },
         {
           "sha": "55aadbb6",
           "date": "2026-10-07",
