@@ -950,7 +950,8 @@ def crawl(plan: CrawlPlan, *, on_page=None) -> CrawlResult:
         # The level, in chunks, so the deadline is honoured inside a
         # level as well as between them.
         batch: list[tuple[str, int]] = []
-        for url, url_depth in level:
+        unconsidered: list[tuple[str, int]] = []
+        for index, (url, url_depth) in enumerate(level):
             reason = admissible(url, url_depth)
             if reason:
                 result.skipped[url] = reason
@@ -959,6 +960,7 @@ def crawl(plan: CrawlPlan, *, on_page=None) -> CrawlResult:
                 continue
             batch.append((url, url_depth))
             if len(result.pages) + len(batch) >= plan.max_pages:
+                unconsidered = level[index + 1:]
                 break
 
         if not batch:
@@ -983,6 +985,11 @@ def crawl(plan: CrawlPlan, *, on_page=None) -> CrawlResult:
         for start in range(0, len(batch), CLOCK_CHECK_EVERY):
             if deadline is not None and time.time() >= deadline:
                 out_of_time = True
+                # Back on the queue, ahead of the next level: they were
+                # taken off it but never fetched, and a crawl that stopped
+                # on the clock must still say how much it left undone.
+                queue.extendleft(reversed(batch[start:] + unconsidered))
+                unconsidered = []
                 break
             chunk = batch[start : start + CLOCK_CHECK_EVERY]
 
@@ -1011,6 +1018,9 @@ def crawl(plan: CrawlPlan, *, on_page=None) -> CrawlResult:
                     if link not in seen:
                         seen.add(link)
                         queue.append((link, page.depth + 1))
+
+        # Cut off by the page ceiling: what it never looked at is queued.
+        queue.extendleft(reversed(unconsidered))
 
         if out_of_time:
             result.stopped_because = "max-seconds"

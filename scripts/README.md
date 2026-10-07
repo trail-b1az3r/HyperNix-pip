@@ -13,6 +13,7 @@ lives in [`.github/scripts/`](#githubscripts) instead.
 | `ci/fake_model_server.py` | An OpenAI-shaped model that answers with canned text, for the integration jobs | `ci.yml`, `public-release.yml` |
 | `ci/integration_probe.py` | Mints its own key, chats through a running T1 API, and deletes every key it made | same |
 | `ci/wait_for_http.py` | Waits for a server to answer, and says why when it never does | same |
+| `ci/resolve_docs_conflicts.py` | Merges the base branch into a PR; when every conflict is in `docs/public/v1`, each file takes the version from whichever branch changed it last. Any other conflict is left untouched and reported | `resolve-docs-conflicts.yml` (every PR) |
 | `benchmark_v5.py`, `benchmark_v5s.py`, `benchmark_v6.py` | Pressure Cooker V5 / V5S / V6 against AdamW, each on its own identically seeded model. CUDA when there is one | you |
 | `measure_optimizer_memory.py` | Exact optimizer-state bytes per parameter for AdamW and Pressure Cooker V5 / V5S / V6 | you |
 | `install_deps.sh` | Cross-distro bootstrap into `./.venv`, preferring Python 3.12 | you |

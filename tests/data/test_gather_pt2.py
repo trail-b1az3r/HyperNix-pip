@@ -126,6 +126,42 @@ class TestStopping:
         assert result.complete is True
         assert result.left_queued == 0
 
+    @staticmethod
+    def _star(leaves: int, *, slow: float = 0.0):
+        """A root linking to *leaves* pages that link nowhere."""
+        def body(path: str) -> bytes:
+            if path == "/":
+                links = "".join(f'<a href="/leaf/{i}">x</a>' for i in range(leaves))
+                return f"<html>{links}</html>".encode()
+            time.sleep(slow)
+            return b"<html>leaf</html>"
+        return serve(body)
+
+    def test_a_level_cut_short_by_the_clock_still_counts_what_it_skipped(
+        self, monkeypatch
+    ):
+        """URLs taken off the queue for a level and never fetched were
+        dropped, so a crawl stopped on the clock could report nothing
+        left -- the Windows runner, slower per request, found it."""
+        import hypernix.data.gather as gather
+
+        monkeypatch.setattr(gather, "CLOCK_CHECK_EVERY", 5)
+        base = self._star(40, slow=0.1)
+        result = crawl(CrawlPlan(sites=[base], depth=2, delay=0.0,
+                                 respect_robots=False, max_pages=1000,
+                                 max_seconds=1))
+        assert result.stopped_because == "max-seconds"
+        assert result.left_queued > 0
+        assert len(result.pages) + result.left_queued == 41
+
+    def test_a_level_cut_short_by_the_page_ceiling_counts_the_rest(self):
+        base = self._star(10)
+        result = crawl(CrawlPlan(sites=[base], depth=2, delay=0.0,
+                                 respect_robots=False, max_pages=4))
+        assert result.stopped_because == "max-pages"
+        assert len(result.pages) == 4
+        assert result.left_queued == 7
+
     @pytest.mark.slow
     def test_a_faceted_trap_is_stopped_by_the_clock(self):
         """Thirty unique links per page. The queue never empties, so the

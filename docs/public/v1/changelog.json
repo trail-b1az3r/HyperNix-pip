@@ -4113,5 +4113,15 @@
       "changes": []
     }
   ],
-  "unreleased": null
+  "unreleased": {
+    "heading": "Unreleased",
+    "summary": "llama-easy: make any Llama model faster in one line ([llama-easy](Llama-Easy.md)). A Hugging Face Hub kernel, ray0rf1re/llama-easy, with Triton RMSNorm, rotary position embeddings and the SwiGLU gate: get_kernel(\"ray0rf1re/llama-easy\", version=1\u2026 \u00b7 The hypernix.timer timers measure with time.perf_counter. They used time.monotonic, which on Windows before Python 3.13 advances in 15.6 ms ticks, so an IntervalTimer shorter than that could not be seen to elapse until the next tick. \u00b7 hypernix gather reports what it left undone when it stops part-way through a level. URLs already taken off the queue for that level but not yet fetched were dropped, so a crawl stopped by --max-seconds or --max-pages could claim nothing was left, and one cut off by the page\u2026",
+    "highlights": [
+      "llama-easy: make any Llama model faster in one line ([llama-easy](Llama-Easy.md)). A Hugging Face Hub kernel, ray0rf1re/llama-easy, with Triton RMSNorm, rotary position embeddings and the SwiGLU gate: get_kernel(\"ray0rf1re/llama-easy\", version=1\u2026",
+      "The hypernix.timer timers measure with time.perf_counter. They used time.monotonic, which on Windows before Python 3.13 advances in 15.6 ms ticks, so an IntervalTimer shorter than that could not be seen to elapse until the next tick.",
+      "hypernix gather reports what it left undone when it stops part-way through a level. URLs already taken off the queue for that level but not yet fetched were dropped, so a crawl stopped by --max-seconds or --max-pages could claim nothing was left, and one cut off by the page\u2026",
+      "lts/0.72.6 branch: the source of 0.72.6.post4 -- exactly the commit tagged v0.72.6.post4 -- the last release for Python 3.10 and 3.11 and for torch 1.13 on older Macs.",
+      "Pull requests no longer conflict over generated docs data. docs/public/v1 is rewritten on main every hour, so any pull request that also regenerated it conflicted on every file. .github/workflows/resolve-docs-conflicts.yml runs when a pull request is opened or updated and after\u2026"
+    ]
+  }
 }

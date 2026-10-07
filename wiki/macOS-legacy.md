@@ -142,7 +142,9 @@ Intel Mac.
   3.10, `pip install "hypernix[legacy-torch]"` -- what the script runs --
   skips every release whose `Requires-Python` excludes 3.10 and installs
   0.72.6.post4, the last that runs on torch 1.13.  It gets security
-  fixes only as far as that release has them.
+  fixes only as far as that release has them.  Its source is the
+  `lts/0.72.6` branch (the commit tagged `v0.72.6.post4`), for building
+  or patching it yourself.
 * **GGUF + large models**: large snapshots may exceed RAM on old
   Macs.  Prefer already-quantized `.q4_k_m.gguf` files if you can
   find them on the Hub and run inference via `llama.cpp` rather

@@ -1,14 +1,14 @@
 {
   "kind": "hypernix-api-deep",
   "generated_at": "2026-09-20T21:20:57Z",
-  "commit": "12cbbe39f2d88c521b9bc4d8121c559a5ff96980",
+  "commit": "95788c3b9222b95a52c80722fa01e68980dfc567",
   "history_available": true,
   "source_root": "src/hypernix",
   "modules": [
     {
       "module": "hypernix",
       "source": "src/hypernix/__init__.py",
-      "line_count": 945,
+      "line_count": 947,
       "summary": "hypernix \u2014 end-to-end toolkit for HyperNix-family PyTorch models.",
       "api": [],
       "errors": [
@@ -17,6 +17,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "bfdd3dff",
+          "date": "2026-10-07",
+          "author": "Claude",
+          "subject": "llama-essir: a Hugging Face Hub kernel for Llama models, auto-published",
+          "api_changes": []
+        },
         {
           "sha": "8b25e66f",
           "date": "2026-10-07",
@@ -64,13 +71,6 @@
           "date": "2026-09-24",
           "author": "Claude",
           "subject": "0.72.6: a release its own tests would reject cannot be started",
-          "api_changes": []
-        },
-        {
-          "sha": "471493b0",
-          "date": "2026-09-24",
-          "author": "Claude",
-          "subject": "0.72.6.rc3: a HyperLink model has its tools on the route the app uses",
           "api_changes": []
         }
       ]
@@ -3084,7 +3084,7 @@
     {
       "module": "hypernix.data.gather",
       "source": "src/hypernix/data/gather.py",
-      "line_count": 1321,
+      "line_count": 1330,
       "summary": "gather \u2014 crawl a site into a dataset.",
       "api": [
         {
@@ -3266,14 +3266,14 @@
           "kind": "function",
           "name": "probe_rate_limit",
           "signature": "def probe_rate_limiturl: str, *, requests: int=5, delay: float=0.5, timeout: float=15.0 -> dict[str, Any]",
-          "line": 1045,
+          "line": 1055,
           "doc": "Find out what a host will tolerate, before a long crawl does."
         },
         {
           "kind": "function",
           "name": "write_output",
           "signature": "def write_outputplan: CrawlPlan, result: CrawlResult -> list[Path]",
-          "line": 1261,
+          "line": 1271,
           "doc": "Write *result* in ``plan.fmt``. Returns what it wrote."
         }
       ],
@@ -3285,6 +3285,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "24476662",
+          "date": "2026-10-07",
+          "author": "Claude",
+          "subject": "gather: count the URLs a level was cut off before fetching",
+          "api_changes": []
+        },
         {
           "sha": "99ddc1ae",
           "date": "2026-09-29",
@@ -33230,7 +33237,7 @@
     {
       "module": "hypernix.runtime",
       "source": "src/hypernix/runtime/__init__.py",
-      "line_count": 5,
+      "line_count": 6,
       "summary": "hypernix.runtime \u2014 running models, and letting them use tools.",
       "api": [],
       "errors": [],
@@ -33238,11 +33245,147 @@
       "required_modules": [],
       "changes": [
         {
+          "sha": "d13f3063",
+          "date": "2026-10-07",
+          "author": "Claude",
+          "subject": "llama-easy: rename from llama-essir, and make it one call to use",
+          "api_changes": []
+        },
+        {
+          "sha": "bfdd3dff",
+          "date": "2026-10-07",
+          "author": "Claude",
+          "subject": "llama-essir: a Hugging Face Hub kernel for Llama models, auto-published",
+          "api_changes": []
+        },
+        {
           "sha": "5bfb35d9",
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "0.72.6 pt3: T1 tools for local models, and HyperLink swipe, memories, search, on-device",
           "api_changes": []
+        }
+      ]
+    },
+    {
+      "module": "hypernix.runtime.hub_kernels",
+      "source": "src/hypernix/runtime/hub_kernels.py",
+      "line_count": 177,
+      "summary": "Run Llama-architecture models on the llama-easy Hub kernel.",
+      "api": [
+        {
+          "kind": "class",
+          "name": "KernelsUnavailable",
+          "signature": "class KernelsUnavailable",
+          "line": 71,
+          "doc": "The ``kernels`` library is not installed.",
+          "methods": []
+        },
+        {
+          "kind": "function",
+          "name": "load",
+          "signature": "def load*, version: int=VERSION, local_path: str | Path | None=None -> ModuleType",
+          "line": 85,
+          "doc": "The kernel module itself: ``rms_norm``, ``rotary``, ``silu_and_mul``, ``apply_rotary_transformers`` and ``layers``."
+        },
+        {
+          "kind": "function",
+          "name": "kernel_mapping",
+          "signature": "def kernel_mapping*, version: int=VERSION, local_path: str | Path | None=None -> dict[str, dict[str, Any]]",
+          "line": 99,
+          "doc": "The ``kernels`` layer mapping for the three Llama hooks, per device."
+        },
+        {
+          "kind": "function",
+          "name": "kernelize_llama",
+          "signature": "def kernelize_llamamodel: nn.Module, *, mode: str='inference', device: str | None=None, version: int=VERSION, local_path: str | Path | None=None, use_fallback: bool=True -> nn.Module",
+          "line": 121,
+          "doc": "Swap *model*'s RMSNorm, rotary embedding and SwiGLU gate for the llama-easy kernels, in place; returns the model."
+        },
+        {
+          "kind": "function",
+          "name": "kernel_config",
+          "signature": "def kernel_config*, version: int=VERSION, local_path: str | Path | None=None -> Any",
+          "line": 164,
+          "doc": "A Transformers ``KernelConfig`` for this kernel, for ``from_pretrained(..., kernel_config=...)``: Transformers then swaps the layers in itself as it loads the model, on the model's device."
+        },
+        {
+          "kind": "function",
+          "name": "from_pretrained",
+          "signature": "def from_pretrainedmodel_id: str | Path, *, version: int=VERSION, local_path: str | Path | None=None, **kwargs: Any -> nn.Module",
+          "line": 185,
+          "doc": "``AutoModelForCausalLM.from_pretrained``, then the kernel swapped in."
+        }
+      ],
+      "errors": [
+        "ValueError"
+      ],
+      "deprecations": [],
+      "required_modules": [],
+      "changes": [
+        {
+          "sha": "d13f3063",
+          "date": "2026-10-07",
+          "author": "Claude",
+          "subject": "llama-easy: rename from llama-essir, and make it one call to use",
+          "api_changes": [
+            {
+              "kind": "removed",
+              "text": "def _repository(kernels: ModuleType, kind: str, name: str, version: int,"
+            },
+            {
+              "kind": "added",
+              "text": "def _repository(kernels: ModuleType, layer: str, version: int, local_path: str | Path | None) -> Any:"
+            },
+            {
+              "kind": "added",
+              "text": "def kernel_config(*, version: int = VERSION, local_path: str | Path | None = None) -> Any:"
+            },
+            {
+              "kind": "added",
+              "text": "def from_pretrained("
+            },
+            {
+              "kind": "added",
+              "text": "def _device_type(model: nn.Module) -> str:"
+            }
+          ]
+        },
+        {
+          "sha": "bfdd3dff",
+          "date": "2026-10-07",
+          "author": "Claude",
+          "subject": "llama-essir: a Hugging Face Hub kernel for Llama models, auto-published",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class KernelsUnavailable(ImportError):"
+            },
+            {
+              "kind": "added",
+              "text": "def _kernels() -> ModuleType:"
+            },
+            {
+              "kind": "added",
+              "text": "def load(*, version: int = VERSION, local_path: str | Path | None = None) -> ModuleType:"
+            },
+            {
+              "kind": "added",
+              "text": "def kernel_mapping("
+            },
+            {
+              "kind": "added",
+              "text": "def _repository(kernels: ModuleType, kind: str, name: str, version: int,"
+            },
+            {
+              "kind": "added",
+              "text": "def kernelize_llama("
+            },
+            {
+              "kind": "added",
+              "text": "def _mode(kernels: ModuleType, mode: str) -> Any:"
+            }
+          ]
         }
       ]
     },
@@ -59131,44 +59274,44 @@
     {
       "module": "hypernix.timing.timer",
       "source": "src/hypernix/timing/timer.py",
-      "line_count": 195,
+      "line_count": 198,
       "summary": "timer \u2014 countdown / interval / pomodoro helpers.",
       "api": [
         {
           "kind": "class",
           "name": "BaseTimer",
           "signature": "class BaseTimer",
-          "line": 34,
+          "line": 37,
           "doc": "",
           "methods": [
             {
               "name": "start",
               "signature": "def startself -> BaseTimer",
-              "line": 38,
+              "line": 41,
               "doc": ""
             },
             {
               "name": "reset",
               "signature": "def resetself -> BaseTimer",
-              "line": 42,
+              "line": 45,
               "doc": ""
             },
             {
               "name": "elapsed",
               "signature": "def elapsedself -> float",
-              "line": 46,
+              "line": 49,
               "doc": ""
             },
             {
               "name": "expired",
               "signature": "def expiredself -> bool",
-              "line": 51,
+              "line": 54,
               "doc": ""
             },
             {
               "name": "remaining",
               "signature": "def remainingself -> float",
-              "line": 54,
+              "line": 57,
               "doc": ""
             }
           ]
@@ -59177,7 +59320,7 @@
           "kind": "class",
           "name": "KitchenTimer",
           "signature": "class KitchenTimer",
-          "line": 63,
+          "line": 66,
           "doc": "Plain countdown timer.",
           "methods": []
         },
@@ -59185,19 +59328,19 @@
           "kind": "class",
           "name": "EggTimer",
           "signature": "class EggTimer",
-          "line": 76,
+          "line": 79,
           "doc": "Countdown with an explicit ``rang`` flag plus an ``on_ring`` callback fired exactly once when the timer first expires.",
           "methods": [
             {
               "name": "check",
               "signature": "def checkself -> bool",
-              "line": 83,
+              "line": 86,
               "doc": "Poll the timer. When it first crosses ``duration`` seconds, fire ``on_ring`` (if set) and flip ``rang``. Returns the new value of ``rang``."
             },
             {
               "name": "reset",
               "signature": "def resetself -> EggTimer",
-              "line": 93,
+              "line": 96,
               "doc": ""
             }
           ]
@@ -59206,25 +59349,25 @@
           "kind": "class",
           "name": "IntervalTimer",
           "signature": "class IntervalTimer",
-          "line": 104,
+          "line": 107,
           "doc": "Fires every ``interval_seconds``. Use ``should_fire()`` inside a training loop to throttle expensive operations (log emit, checkpoint save, eval) without rolling your own time math.",
           "methods": [
             {
               "name": "start",
               "signature": "def startself -> IntervalTimer",
-              "line": 117,
+              "line": 120,
               "doc": ""
             },
             {
               "name": "reset",
               "signature": "def resetself -> IntervalTimer",
-              "line": 122,
+              "line": 125,
               "doc": ""
             },
             {
               "name": "should_fire",
               "signature": "def should_fireself -> bool",
-              "line": 128,
+              "line": 131,
               "doc": "Advance the deadline + return True when the interval has elapsed since the last fire. Idempotent within a single interval \u2014 calling it 1000x in a tight loop fires once per ``interval_seconds`` only."
             }
           ]
@@ -59233,31 +59376,31 @@
           "kind": "class",
           "name": "PomodoroTimer",
           "signature": "class PomodoroTimer",
-          "line": 158,
+          "line": 161,
           "doc": "Alternates between work and rest blocks. Default: 25 min work, 5 min rest (the classic Pomodoro).",
           "methods": [
             {
               "name": "start",
               "signature": "def startself -> PomodoroTimer",
-              "line": 174,
+              "line": 177,
               "doc": ""
             },
             {
               "name": "reset",
               "signature": "def resetself -> PomodoroTimer",
-              "line": 183,
+              "line": 186,
               "doc": ""
             },
             {
               "name": "state",
               "signature": "def stateself -> str",
-              "line": 192,
+              "line": 195,
               "doc": ""
             },
             {
               "name": "tick",
               "signature": "def tickself -> str",
-              "line": 195,
+              "line": 198,
               "doc": "Advance the timer state if the current phase has elapsed and return the (possibly newly switched-to) state."
             }
           ]
@@ -59266,7 +59409,7 @@
           "kind": "function",
           "name": "timer",
           "signature": "def timerkind: str='kitchen', **kw -> BaseTimer",
-          "line": 226,
+          "line": 229,
           "doc": ""
         }
       ],
@@ -59276,6 +59419,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "8db6617c",
+          "date": "2026-10-07",
+          "author": "Claude",
+          "subject": "timer: perf_counter, not monotonic, for sub-tick intervals on Windows",
+          "api_changes": []
+        },
         {
           "sha": "8c25846c",
           "date": "2026-08-21",

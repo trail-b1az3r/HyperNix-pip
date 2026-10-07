@@ -1,7 +1,7 @@
 {
   "definition": "non-blank source lines across repository code roots: src, scripts, tests, examples, bin, native, docs/src",
-  "total_lines": 225728,
-  "code_files": 731,
+  "total_lines": 227165,
+  "code_files": 746,
   "top_files": [
     {
       "path": "src/hypernix/t1api/routers/hyperlink.py",
@@ -49,7 +49,7 @@
     },
     {
       "path": "src/hypernix/data/gather.py",
-      "lines": 1321
+      "lines": 1330
     },
     {
       "path": "src/hypernix/training/brewer.py",
@@ -117,7 +117,7 @@
     },
     {
       "path": "src/hypernix/__init__.py",
-      "lines": 945
+      "lines": 947
     },
     {
       "path": "tests/security/test_v0710_gatekeeper_keymaster.py",
@@ -127,12 +127,12 @@
   "contributors": [
     {
       "author": "Claude",
-      "additions": 216282,
-      "deletions": 14640,
-      "net": 201642,
-      "changes": 230922,
-      "commits": 247,
-      "files": 1585
+      "additions": 218080,
+      "deletions": 14834,
+      "net": 203246,
+      "changes": 232914,
+      "commits": 251,
+      "files": 1620
     },
     {
       "author": "minerofthesoal",
@@ -171,6 +171,15 @@
       "files": 407
     },
     {
+      "author": "t",
+      "additions": 434,
+      "deletions": 0,
+      "net": 434,
+      "changes": 434,
+      "commits": 1,
+      "files": 3
+    },
+    {
       "author": "Rayla",
       "additions": 277,
       "deletions": 242,
@@ -190,6 +199,6 @@
     }
   ],
   "history_available": true,
-  "commit": "12cbbe39f2d88c521b9bc4d8121c559a5ff96980",
+  "commit": "95788c3b9222b95a52c80722fa01e68980dfc567",
   "generated_at": null
 }

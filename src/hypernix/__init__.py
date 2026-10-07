@@ -404,9 +404,11 @@ MODULE_CATEGORIES: dict[str, tuple[str, ...]] = {
         "magnesium",
         "natural_gas",
     ),
-    # Letting a model use tools: reading calls out of whatever it wrote,
-    # and the T1 API's endpoints offered to it as tools.
+    # Running models: Hub kernels for Llama-architecture layers, reading
+    # tool calls out of whatever a model wrote, and the T1 API's
+    # endpoints offered to it as tools.
     "runtime": (
+        "hub_kernels",
         "t1tools",
         "toolcalls",
     ),

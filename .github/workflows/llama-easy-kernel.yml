@@ -1,0 +1,124 @@
+name: llama-easy kernel
+
+# Tests the llama-easy Hub kernel (native/llama-easy) on every change to
+# it, and on main -- or when run by hand -- builds it with kernel-builder
+# and publishes it to https://huggingface.co/ray0rf1re/llama-easy.
+#
+# Publishing needs, once: kernel-creation access for the account
+# (huggingface.co/settings/account, "Request Kernels Creation") and a
+# write token in the repository secret HF_TOKEN. Without the secret the
+# kernel is still tested and the upload is skipped with a notice.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "native/llama-easy/**"
+      - "src/hypernix/runtime/hub_kernels.py"
+      - "tests/runtime/test_hub_kernels.py"
+      - ".github/workflows/llama-easy-kernel.yml"
+  pull_request:
+    paths:
+      - "native/llama-easy/**"
+      - "src/hypernix/runtime/hub_kernels.py"
+      - "tests/runtime/test_hub_kernels.py"
+      - ".github/workflows/llama-easy-kernel.yml"
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Build and upload to the Hub after the tests pass"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+# Never cancel a run part-way through an upload.
+concurrency:
+  group: llama-easy-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  # The kernel-builder these files were validated with (check-config and
+  # create-pyproject). Bump deliberately, like any other toolchain.
+  KERNEL_BUILDER: "github:huggingface/kernels/a7a21b11c8c378dc3b720e00be04085f7486b39c#kernel-builder"
+
+jobs:
+  test:
+    name: test (CPU path + Triton interpreter)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install triton kernels transformers pytest
+          pip install -e .
+
+      - name: Kernel tests
+        run: python -m pytest tests/runtime/test_hub_kernels.py -v
+
+  publish:
+    name: build and upload to the Hub
+    needs: test
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish)
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+    steps:
+      - name: Without HF_TOKEN there is nothing to upload with
+        if: env.HF_TOKEN == ''
+        run: |
+          echo "::notice title=llama-easy not published::Add a Hugging Face write token as the repository secret HF_TOKEN to publish ray0rf1re/llama-easy."
+
+      - uses: actions/checkout@v4
+        if: env.HF_TOKEN != ''
+
+      - name: Make room for the Torch builds Nix fetches
+        if: env.HF_TOKEN != ''
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h /
+
+      # As huggingface/kernels' install.sh does it: Determinate Nix, with
+      # the Hugging Face binary cache, so Torch is downloaded, not built.
+      - name: Install Nix with the Hugging Face cache
+        if: env.HF_TOKEN != ''
+        run: |
+          curl -fsSL https://install.determinate.systems/nix | sh -s -- install --no-confirm \
+            --extra-conf "trusted-users = root $USER" \
+            --extra-conf "extra-trusted-substituters = https://huggingface.cachix.org" \
+            --extra-conf "extra-substituters = https://huggingface.cachix.org" \
+            --extra-conf "extra-trusted-public-keys = huggingface.cachix.org-1:ynTPbLS0W8ofXd9fDjk1KvoFky9K2jhxe6r4nXAkc/o="
+          echo "/nix/var/nix/profiles/default/bin" >> "$GITHUB_PATH"
+
+      - name: Check build.toml
+        if: env.HF_TOKEN != ''
+        working-directory: native/llama-easy
+        run: nix run "$KERNEL_BUILDER" -- check-config .
+
+      - name: Build and upload
+        if: env.HF_TOKEN != ''
+        working-directory: native/llama-easy
+        run: |
+          nix run "$KERNEL_BUILDER" -- build-and-upload -L \
+            --output-json "$RUNNER_TEMP/upload.json" .
+
+      - name: Summary
+        if: env.HF_TOKEN != ''
+        run: |
+          {
+            echo "### ray0rf1re/llama-easy published"
+            echo
+            echo "https://huggingface.co/ray0rf1re/llama-easy"
+            echo
+            echo '```json'
+            cat "$RUNNER_TEMP/upload.json"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

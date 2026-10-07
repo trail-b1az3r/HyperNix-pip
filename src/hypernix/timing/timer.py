@@ -21,7 +21,10 @@ Four tiers, all sharing the same ``BaseTimer`` interface
                                   cycles automatically.
 
 All four work on a monotonic clock so they're robust against
-wall-time jumps.
+wall-time jumps: ``time.perf_counter``, not ``time.monotonic``. Before
+Python 3.13 Windows' monotonic clock ticks every ~15.6 ms, so a short
+interval could not be seen to elapse for up to a tick; perf_counter is
+monotonic too, and high-resolution everywhere.
 """
 from __future__ import annotations
 
@@ -36,7 +39,7 @@ class BaseTimer:
     started_at: float | None = field(default=None, init=False)
 
     def start(self) -> BaseTimer:
-        self.started_at = time.monotonic()
+        self.started_at = time.perf_counter()
         return self
 
     def reset(self) -> BaseTimer:
@@ -46,7 +49,7 @@ class BaseTimer:
     def elapsed(self) -> float:
         if self.started_at is None:
             return 0.0
-        return time.monotonic() - self.started_at
+        return time.perf_counter() - self.started_at
 
     def expired(self) -> bool:
         return self.started_at is not None and self.elapsed() >= self.duration
@@ -133,7 +136,7 @@ class IntervalTimer(BaseTimer):
         if self.next_fire is None:
             self.start()
             return True
-        now = time.monotonic()
+        now = time.perf_counter()
         if now >= self.next_fire:
             # Re-anchor to *now* rather than incrementing the stale
             # deadline. Incrementing (``next_fire += interval_seconds``)
@@ -172,7 +175,7 @@ class PomodoroTimer(BaseTimer):
         self.duration = self.work_seconds
 
     def start(self) -> PomodoroTimer:
-        now = time.monotonic()
+        now = time.perf_counter()
         self.started_at = now
         self._phase_start = now
         self._state = "work"
@@ -199,7 +202,7 @@ class PomodoroTimer(BaseTimer):
             self.start()
             return self._state
         phase_dur = self.work_seconds if self._state == "work" else self.rest_seconds
-        if time.monotonic() - self._phase_start >= phase_dur:
+        if time.perf_counter() - self._phase_start >= phase_dur:
             if self._state == "work":
                 self._state = "rest"
                 self.duration = self.rest_seconds
@@ -207,7 +210,7 @@ class PomodoroTimer(BaseTimer):
                 self._state = "work"
                 self.duration = self.work_seconds
                 self.cycles += 1
-            self._phase_start = time.monotonic()
+            self._phase_start = time.perf_counter()
         return self._state
 
 

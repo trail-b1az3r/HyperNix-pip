@@ -34,6 +34,63 @@ Historical wording and technical detail are retained during format normalization
 
 > Format normalized to `wiki/Changelog-guide.md`; release wording and historical detail are preserved.
 
+## Unreleased
+
+### Added
+
+๋࣭⭑ **llama-easy: make any Llama model faster in one line**
+  ([llama-easy](Llama-Easy.md)). A Hugging Face Hub kernel,
+  `ray0rf1re/llama-easy`, with Triton RMSNorm, rotary position
+  embeddings and the SwiGLU gate:
+  `get_kernel("ray0rf1re/llama-easy", version=1, trust_remote_code=True).kernelize(model)`
+  swaps them into any Llama-architecture Transformers model and reports
+  what it swapped.
+  - Also through Transformers' `from_pretrained(..., kernel_config=...)`,
+    and from hyperNix-pip as `hypernix.hub_kernels.from_pretrained(id)` /
+    `kernelize_llama(model)`, which trust that one repository only and
+    never pull in kernels for other hooks.
+  - `native/llama-easy` is the kernel-builder project (`torch-noarch`:
+    one build per backend for every Torch and GPU generation). The ops
+    are Torch custom ops, so `torch.compile` traces through them.
+  - `.github/workflows/llama-easy-kernel.yml` tests every change and
+    publishes from `main` with `kernel-builder build-and-upload`, once
+    the account has kernel-creation access and the repository has an
+    `HF_TOKEN` secret.
+
+### Fixed
+
+🐛 The `hypernix.timer` timers measure with `time.perf_counter`. They used
+  `time.monotonic`, which on Windows before Python 3.13 advances in
+  ~15.6 ms ticks, so an `IntervalTimer` shorter than that could not be
+  seen to elapse until the next tick.
+
+🐛 `hypernix gather` reports what it left undone when it stops part-way
+  through a level. URLs already taken off the queue for that level but
+  not yet fetched were dropped, so a crawl stopped by `--max-seconds` or
+  `--max-pages` could claim nothing was left, and one cut off by the page
+  ceiling could even report `done`.
+
+### Dependencies and Packaging
+
+📦 **`lts/0.72.6` branch**: the source of 0.72.6.post4 -- exactly the
+  commit tagged `v0.72.6.post4` -- the last release for Python 3.10 and
+  3.11 and for torch 1.13 on older Macs.
+
+### Site Changes
+
+🔧 **Pull requests no longer conflict over generated docs data.**
+  `docs/public/v1` is rewritten on `main` every hour, so any pull
+  request that also regenerated it conflicted on every file.
+  `.github/workflows/resolve-docs-conflicts.yml` runs when a pull request
+  is opened or updated and after each of those hourly jobs: it merges
+  the base branch in and, when all the conflicts are in `docs/public/v1`,
+  gives each file the version from the branch that changed it most
+  recently, pushes the merge, and says on the pull request which side
+  each file came from. A conflict anywhere else is left for a person,
+  with the files named in the same comment. Forks are skipped, since
+  their branches cannot be pushed to. With an `AUTOFIX_TOKEN` secret the
+  merge is pushed with it, so CI runs on the result.
+
 ## 0.72.7 — 2026-10-07
 
 ### Breaking Changes
