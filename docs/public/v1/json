@@ -9,10 +9,6 @@
       "window_days": 30,
       "daily": [
         {
-          "date": "2026-09-06",
-          "downloads": 11
-        },
-        {
           "date": "2026-09-07",
           "downloads": 12
         },
@@ -132,15 +128,15 @@
     },
     "three_month": {
       "days": 55,
-      "total_downloads": 3552,
-      "from": "2026-07-08",
-      "to": "2026-09-05"
+      "total_downloads": 3521,
+      "from": "2026-07-09",
+      "to": "2026-09-06"
     },
     "older": {
-      "days": 72,
-      "total_downloads": 5826,
+      "days": 73,
+      "total_downloads": 5868,
       "from": "2026-04-21",
-      "to": "2026-07-07"
+      "to": "2026-07-08"
     }
   },
   "python_versions": [
@@ -183,5 +179,5 @@
       "downloads": 18
     }
   ],
-  "updated_at": "2026-10-06T01:27:35.602016Z"
+  "updated_at": "2026-10-07T00:10:36.783597Z"
 }
