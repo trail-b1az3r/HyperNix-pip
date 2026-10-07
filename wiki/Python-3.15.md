@@ -171,7 +171,59 @@ in fresh processes where startup is the thing measured.
 
     python benchmarks/bench.py --repeat 7 --json bench.json
 
-<!-- RESULTS -->
+### Results
+
+From CI run 37549870364 (the `benchmarks` job, `ubuntu-latest`, x86-64,
+`--repeat 7`, medians in ms). **Each Python ran on a different hosted
+runner**, so treat differences between columns of less than about 1.5×
+as machine noise: the bare interpreter alone spans 8.6–13.5 ms. The
+same-process comparisons in the last table are the reliable ones.
+
+| Benchmark | 3.12.14 | 3.13.15 | 3.14.7 | 3.15.0rc3 |
+| --- | ---: | ---: | ---: | ---: |
+| `python -c pass` | 12.33 | 8.60 | 13.47 | 8.88 |
+| `import hypernix` | 27.11 | 13.20 | 22.26 | 13.87 |
+| `hnx --help` | 111.76 | 61.64 | 102.15 | 58.11 |
+| `hyprslug --help` | 142.89 | 78.65 | 151.19 | 55.57 |
+| `gkey --help` | 89.71 | 51.52 | 81.92 | 46.53 |
+| runner CLI `--help` | 83.89 | 48.22 | 89.49 | 62.80 |
+| `import hypernix.t1api.app` | 997 | 512 | 958 | 607 |
+| `import hypernix.hyperlink.managed` | 100.33 | 58.29 | 101.10 | 64.78 |
+| `import hypernix.interfaces.hyped` | 291.03 | 162.85 | 307.65 | 56.12¹ |
+| `import hypernix.quant.hyprslug` | 134.14 | 72.74 | 138.99 | 37.74¹ |
+| `import hypernix.quant.convert` | 1543 | 865 | 1562 | — (needs torch) |
+| `create_app()` | 68.37 | 54.16 | 70.62 | 47.01 |
+| `GET /health` | 2.89 | 1.37 | 2.66 | 1.43 |
+| authenticated `GET /hyperlink/models` | 4.83 | 2.62 | 4.63 | 2.71 |
+| JSON dumps, 400-message chat | 0.39 | 0.25 | 0.35 | 0.13 |
+| JSON loads, 400-message chat | 0.25 | 0.16 | 0.26 | 0.14 |
+| image PNG → WebP (640×480) | 21.72 | 14.51 | 21.65 | 14.21 |
+| sub-bit quantise (64 blocks) | 2.53 | 1.46 | 2.16 | 1.49 |
+| deterministic profiler overhead | 1.73× | 1.96× | 1.68× | 2.82×² |
+
+¹ PEP 810 at work, not a faster machine: `hyped` and `hyprslug` reach
+`numpy` only through `hypernix.quant.llamaquants`, whose `__lazy_modules__`
+defers it. On the 3.15 test box, importing both loads 182 modules with
+lazy imports on and 553 with them filtered off (numpy among them).
+² `profiling.tracing` on 3.15 vs `cProfile` before it. One run, with a
+±1.5 ms spread on a 7.8 ms measurement; not yet a reliable regression
+signal.
+
+**Python 3.15 only — same process, same machine:**
+
+| Benchmark | With the 3.15 feature | Without | Gain |
+| --- | ---: | ---: | ---: |
+| `import hypernix.quant.llamaquants` (PEP 810 vs filter off) | 23.59 | 92.34 | 3.9× |
+| `import hypernix.models.download` (PEP 810 vs filter off) | 22.73 | 203.90 | 9.0× |
+| flatten 5000 rows (PEP 798 vs `itertools.chain`) | 0.07 | 0.18 | 2.6× |
+| merge 5000 dicts (PEP 798 vs an update loop) | 0.12 | 0.25 | 2.1× |
+
+The PEP 810 gain is the import being deferred, not removed: the first
+attribute access on `numpy` or `huggingface_hub` still pays for it. It
+is a real saving for the commands that never touch them (`--help`, the
+T1 API's request path, the header tools).
+
+<!-- TESTED -->
 
 ## Known issues
 

@@ -34,7 +34,7 @@ Historical wording and technical detail are retained during format normalization
 
 > Format normalized to `wiki/Changelog-guide.md`; release wording and historical detail are preserved.
 
-## Unreleased
+## 0.72.7 — 2026-10-07
 
 ### Breaking Changes
 
@@ -188,11 +188,14 @@ Historical wording and technical detail are retained during format normalization
   - PEP 810, lazy imports: `__lazy_modules__` in the two modules where an
     import was paid for and not used -- numpy behind every quant CLI's
     `--help`, huggingface_hub behind `hyped`. On 3.12-3.14 the list is an
-    ordinary variable and nothing changes.
+    ordinary variable and nothing changes. Measured on 3.15.0rc3:
+    `import hypernix.quant.llamaquants` 92.3 -> 23.6 ms (3.9x),
+    `import hypernix.models.download` 203.9 -> 22.7 ms (9.0x).
   - PEP 798, unpacking in comprehensions: in `hypernix._compat`, whose
     `*_py315.py` modules hold the 3.15 syntax and are imported only
     there; every tool that parses the whole tree skips them on older
-    interpreters.
+    interpreters. Flattening 5000 rows is 2.6x faster than
+    `itertools.chain`, merging 5000 dicts 2.1x faster than an update loop.
   - PEP 799, the `profiling` package: `hypernix._profiling` gives one API
     over `profiling.tracing` (3.15) and `cProfile` (before), and runs
     `profiling.sampling` on 3.15, refusing clearly elsewhere.
@@ -246,36 +249,6 @@ Historical wording and technical detail are retained during format normalization
 📦 CI tests every OS on 3.12, 3.13, 3.14 and 3.15, plus a 3.15-only job
   for the four PEPs and a benchmark job per version
   (`benchmarks/bench.py`).
-
-### Tests
-
-🧪 **Runner-as-backend coverage** — 13 cases in
-  `tests/t1api/test_inference_endpoints.py`: the runner serving its model
-  with no LM Studio, preference over LM Studio, metering, routing another
-  model to LM Studio, refusing rather than substituting, choosing the
-  backend after the cascade, a broken runner not hiding LM Studio, the
-  two-remedy refusal, listing/probing/defaults, and streaming and
-  embeddings through the runner.
-
-🔧 **`tests/test_pressure_cooker_v6.py`** — new, real test coverage (not
-  a stub): construction/config, loss actually decreasing under several
-  configurations (nesterov, no-trust-ratio, no-foreach), fused vs.
-  non-fused paths producing numerically identical trajectories, weight
-  decay applying under a zero gradient, multi-param-group support,
-  state-dict round-tripping, optimizer-state byte count vs. AdamW,
-  gradient accumulation gating, GradScaler skip/apply/momentum-untouched
-  behavior, `skip_on_nonfinite` on and off, and — deliberately not just a
-  toy `nn.Linear` stack — a small transformer block (token embedding +
-  multi-head attention + LayerNorm + GELU MLP + output head) to confirm
-  V6 handles realistic parameter-shape heterogeneity. `PressureCookerV6V`
-  CUDA-only paths (construction on real CUDA tensors, graph capture, a
-  compiled step actually executing on a GPU) are marked
-  `skipif(not torch.cuda.is_available())` and were not exercised on real
-  CUDA hardware while writing this — this environment has no GPU. That
-  code reuses `ProCooker`'s already-shipped `warmup_graph`/`replay_graph`
-  implementation verbatim rather than inventing a new one, which is the
-  best available substitute for hardware verification, not a replacement
-  for it — stated plainly in the V6 wiki page too.
 
 ### Documentation
 
@@ -366,6 +339,36 @@ Historical wording and technical detail are retained during format normalization
   every one of the ~50 per-module wiki pages against source — those were
   spot-checked, not exhaustively re-verified.
 
+### Tests
+
+🧪 **Runner-as-backend coverage** — 13 cases in
+  `tests/t1api/test_inference_endpoints.py`: the runner serving its model
+  with no LM Studio, preference over LM Studio, metering, routing another
+  model to LM Studio, refusing rather than substituting, choosing the
+  backend after the cascade, a broken runner not hiding LM Studio, the
+  two-remedy refusal, listing/probing/defaults, and streaming and
+  embeddings through the runner.
+
+🔧 **`tests/test_pressure_cooker_v6.py`** — new, real test coverage (not
+  a stub): construction/config, loss actually decreasing under several
+  configurations (nesterov, no-trust-ratio, no-foreach), fused vs.
+  non-fused paths producing numerically identical trajectories, weight
+  decay applying under a zero gradient, multi-param-group support,
+  state-dict round-tripping, optimizer-state byte count vs. AdamW,
+  gradient accumulation gating, GradScaler skip/apply/momentum-untouched
+  behavior, `skip_on_nonfinite` on and off, and — deliberately not just a
+  toy `nn.Linear` stack — a small transformer block (token embedding +
+  multi-head attention + LayerNorm + GELU MLP + output head) to confirm
+  V6 handles realistic parameter-shape heterogeneity. `PressureCookerV6V`
+  CUDA-only paths (construction on real CUDA tensors, graph capture, a
+  compiled step actually executing on a GPU) are marked
+  `skipif(not torch.cuda.is_available())` and were not exercised on real
+  CUDA hardware while writing this — this environment has no GPU. That
+  code reuses `ProCooker`'s already-shipped `warmup_graph`/`replay_graph`
+  implementation verbatim rather than inventing a new one, which is the
+  best available substitute for hardware verification, not a replacement
+  for it — stated plainly in the V6 wiki page too.
+
 ### Known Issues
 
 ⚠️ PyTorch publishes no CPython 3.15 wheels yet (2.14.1 stops at cp314),
@@ -376,7 +379,6 @@ Historical wording and technical detail are retained during format normalization
   builds from source there (a C++ compiler and CMake). The `gui-qt`
   extra (PySide6) declares `<3.15`; rawpy and pillow-jxl-plugin in the
   `images` extra have no cp315 wheels.
-
 
 ## 0.72.6.post4 — patch 4 - hyped, hyped-pro and Neo Oven run any HyperNix model
 

@@ -3,6 +3,249 @@
   "source": "wiki/Changelog.md",
   "entries": [
     {
+      "version": "0.72.7",
+      "key": "0.72.7",
+      "aliases": [
+        "0.72.7"
+      ],
+      "kind": "stable",
+      "heading": "0.72.7 \u2014 2026-10-07",
+      "date": "2026-10-07",
+      "title": "",
+      "summary": "hyperNix-pip requires Python 3.12 or newer and officially supports Python 3.12, 3.13, 3.14 and 3.15 (Requires-Python >=3.12,<3.16).",
+      "patch": null,
+      "headline": "",
+      "highlights": [
+        "hyperNix-pip requires Python 3.12 or newer and officially supports Python 3.12, 3.13, 3.14 and 3.15 (Requires-Python >=3.12,<3.16).",
+        "Added hypernix-t1 runner auto (POST /runner/auto).",
+        "Added image conversion for everything sent into HyperLink.",
+        "Added images on the HyperNix runner, not only through LM Studio.",
+        "/code sandbox results list any limit the kernel refused under limits.not_enforced (macOS takes no memory limit) instead of every run failing before it started.",
+        "The HyperNix runner is a /inference backend \u2014 the governed inference surface (/inference/chat, /completions, /chat/stream, /embeddings) now dispatches to this server's own runner when the model it has loaded (/runner/load, hypernix-t1 built-in-runner start) is exactly the model\u2026"
+      ],
+      "changes": [
+        {
+          "symbol": "\u274c",
+          "label": "breaking",
+          "category": "Breaking Changes",
+          "text": "hyperNix-pip requires Python 3.12 or newer and officially supports Python 3.12, 3.13, 3.14 and 3.15 (Requires-Python >=3.12,<3.16).",
+          "details": [
+            "3.10 and 3.11 are no longer supported. pip on those Pythons skips this release and installs 0.72.6.post4, the last that runs there; that is also where the torch 1.13 legacy-Mac path now ends ([macOS-legacy](macOS-legacy.md)).",
+            "install-t1.sh, hypernix doctor and the hnx launcher look for 3.12-3.15 and say so when they find none."
+          ]
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "Added hypernix-t1 runner auto (POST /runner/auto).",
+          "details": [
+            "Loads what the server usually runs: the last model loaded that is still here (--most-used: the one loaded most often), on the backend used most, with that model's last settings. --dry-run names the choice and loads nothing. With no history yet it starts the default model, as\u2026",
+            "Every successful load (and every model moved over from LM Studio) is remembered in <T1 config dir>/runner-history.json, newest 200."
+          ]
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "Added image conversion for everything sent into HyperLink.",
+          "details": [
+            "Rasters are stored as WebP: lossless for lossless sources unless that comes out over 1.5 MB, quality 85 for photos. EXIF, GPS and maker notes are dropped, EXIF rotation applied, the long edge capped at 2048 px, and animations kept. A WebP or AVIF that would only grow is kept as\u2026",
+            "SVG stays SVG, with scripts, event handlers, foreignObject, javascript: and external references, and the DOCTYPE removed. It is treated as text a model can read, not as a picture.",
+            "Recognised by their bytes: PNG, JPEG, GIF, WebP, BMP, TIFF, AVIF, HEIC/HEIF, JPEG XL, JPEG 2000, DNG, ICO, QOI, PSD and SVG. Pillow (now in the t1api extra) converts most; the new images extra adds HEIC, JPEG XL and raw development. Without rawpy a DNG is converted from its\u2026"
+          ]
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "Added images on the HyperNix runner, not only through LM Studio.",
+          "details": [
+            "A model's vision projector (mmproj-.gguf) beside it -- or beside the file a link points at -- is found and passed to llama-server as --mmproj; /runner/load takes mmproj to name one (\"\" for none). /runner/status reports mmproj and supports_images.",
+            "Every image is re-encoded to PNG (with transparency) or JPEG on the way to the model: llama.cpp cannot decode the WebP uploads are stored as.",
+            "In HyperLink, a runner model without a projector gets a note in place of the picture instead of a failed turn. /inference takes OpenAI-style content parts and refuses images for such a model with a 400 naming the missing --mmproj."
+          ]
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "/code sandbox results list any limit the kernel refused under limits.not_enforced (macOS takes no memory limit) instead of every run failing before it started.",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "The HyperNix runner is a /inference backend \u2014 the governed inference surface (/inference/chat, /completions, /chat/stream, /embeddings) now dispatches to this server's own runner when the model it has loaded (/runner/load, hypernix-t1 built-in-runner start) is exactly the model\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udd17",
+          "label": "API",
+          "category": "API Changes",
+          "text": "backend_name on inference responses \u2014 InferenceResponse, InferenceEmbeddingsResponse and the stream's opening frame report which backend answered: hypernix or lmstudio. backend keeps its old meaning (the address) for existing clients.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udd17",
+          "label": "API",
+          "category": "API Changes",
+          "text": "GET /inference/backends lists the runner \u2014 a hypernix row (kind: hypernix-runner, probed, with the loaded model_id) after the lmstudio row, which stays first where older clients look for it. default follows the real preference: the runner when it answers, otherwise LM Studio\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\u26a0\ufe0f",
+          "label": "error codes",
+          "category": "API Changes",
+          "text": "The no-backend refusal names both remedies \u2014 NOT_SUPPORTED (501) now says to load a model on the built-in runner or set T1_LMSTUDIO_URL/T1_LMSTUDIO_ENABLED, instead of naming only LM Studio.",
+          "details": []
+        },
+        {
+          "symbol": "\u26a1",
+          "label": "performance",
+          "category": "Performance",
+          "text": "Images sent into HyperLink convert 50x faster: WebP is encoded at effort 4 rather than 6, which gave byte-identical lossless files and lossy ones 1% smaller for 1.2 s per screenshot and 3.5 s per photo.",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Performance",
+          "text": "PressureCookerV6 / PressureCookerV6V \u2014 new speed-first optimizer generation, deliberately the opposite tradeoff from V5/V5S's memory-first design. PressureCookerV6 (\"Single-State Trust Momentum\") drops V5's whole feature set \u2014 no oscillation tracking, no curvature estimate, no\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Performance",
+          "text": "V6 production-hardening pass \u2014 grad_accum_steps and torch.cuda.amp.GradScaler integration, same contract as pressure_cooker.InductionCooker (unscale \u2192 skip cleanly on non-finite instead of corrupting momentum state \u2192 update()), plus an opt-in skip_on_nonfinite for plain\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udd27",
+          "label": "internal",
+          "category": "Performance",
+          "text": "scripts/benchmark_v6.py (new) and scripts/measure_optimizer_memory.py (extended) \u2014 real measurement tools cited above, not hand-typed numbers. Both auto-detect CUDA and report whichever device they actually ran on; benchmark_v6.py prints an explicit note when it falls back to\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Compatibility",
+          "text": "Python 3.15 support, with its new features used where they measurably help and nowhere they would break 3.12-3.14 ([Python 3.12\u20133.15](Python-3.15.md)).",
+          "details": [
+            "PEP 810, lazy imports: lazy_modules in the two modules where an import was paid for and not used -- numpy behind every quant CLI's --help, huggingface_hub behind hyped. On 3.12-3.14 the list is an ordinary variable and nothing changes. Measured on 3.15.0rc3: import\u2026",
+            "PEP 798, unpacking in comprehensions: in hypernix.compat, whose py315.py modules hold the 3.15 syntax and are imported only there; every tool that parses the whole tree skips them on older interpreters. Flattening 5000 rows is 2.6x faster than itertools.chain, merging 5000\u2026",
+            "PEP 799, the profiling package: hypernix.profiling gives one API over profiling.tracing (3.15) and cProfile (before), and runs profiling.sampling on 3.15, refusing clearly elsewhere.",
+            "PEP 831, frame pointers: native builds inherit the interpreter's sysconfig flags and never switch frame pointers off (hypernix.native_flags, setup.py's optional extension, ggml-hnx's GGML_HNX_FRAME_POINTERS)."
+          ]
+        },
+        {
+          "symbol": "\u26a0\ufe0f",
+          "label": "error codes",
+          "category": "Fixed",
+          "text": "hypernix-t1 start, start-foreground and restart refuse on native Windows shells (Git Bash, MSYS2, Cygwin) and name WSL or the direct uvicorn command instead. They used to start the server and then report it as \"exited during startup\": Python returns a Windows pid and kill -0\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udc1b",
+          "label": "fix",
+          "category": "Fixed",
+          "text": "Fixed hypernix-t1 reading a .env saved with Windows line endings: every value kept a trailing CR, so the host bound nothing and the port read as taken.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83e\uddea",
+          "label": "tests",
+          "category": "Fixed",
+          "text": "Fixed the test suite on Windows and macOS: files and child-process output read as UTF-8 rather than the locale code page, scripts run by Git Bash rather than the WSL launcher, and browser detection, help formatting (Python 3.14's argparse) and the C decoder harness made\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\ud81a\udca5",
+          "label": "major fix",
+          "category": "Fixed",
+          "text": "Fixed linking a model saved without a config.json into HyperLink.",
+          "details": [
+            "A hyperNix0x-v2 folder uploaded straight from a training run (as HyperNix.3.1-mini's is) was refused by POST /hyperlink/models/link as \"no .gguf in it\", and left out of the model list and the runner even when it was already in the models folder. It is now recognised by its\u2026"
+          ]
+        },
+        {
+          "symbol": "\ud83d\udc1b",
+          "label": "fix",
+          "category": "Fixed",
+          "text": "CUDA graph capture + dynamic V6 features don't mix safely \u2014 now documented, not silently wrong. CUDA graphs bake in whichever Python-level branch ran during warmup_graph, permanently: replay always re-executes the same recorded kernels regardless of what later batches look\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udce6",
+          "label": "packaging",
+          "category": "Dependencies and Packaging",
+          "text": "Classifiers and python_requires in pyproject.toml and setup.cfg say 3.12-3.15; mypy joins the dev extra and checks the modules this release adds (strict) and reworks, on 3.12 and 3.15 in CI.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udce6",
+          "label": "packaging",
+          "category": "Dependencies and Packaging",
+          "text": "CI tests every OS on 3.12, 3.13, 3.14 and 3.15, plus a 3.15-only job for the four PEPs and a benchmark job per version (benchmarks/bench.py).",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udcda",
+          "label": "docs",
+          "category": "Documentation",
+          "text": "hypernix.init / wiki_cli.py \u2014 PressureCookerV6 and PressureCookerV6V wired into the top-level lazy-import system (all, LAZY_ATTRS, the TYPE_CHECKING import block) and into hnx-wiki's module\u2192page map, matching how every prior generation is exposed \u2014 import hypernix\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udcda",
+          "label": "docs",
+          "category": "Documentation",
+          "text": "wiki/Pressure-Cooker-V6.md (new), wiki/Optimizers.md, wiki/Home.md \u2014 new dedicated page for V6/V6V with the measured numbers, usage examples, and the CUDA-graph caveat above. Optimizers.md's intro also got a small accuracy fix while touching this page: it previously called V4\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udedc",
+          "label": "site",
+          "category": "Site Changes",
+          "text": "Docs site: full holiday/observance calendar. Extended the existing Christmas / Christmas Eve / Halloween / Thanksgiving / July 4th / Pride Month banner system (getActiveSiteEvent/EventBanner in docs/src/App.tsx) with 14 more: Trans Day of Visibility (Mar 31), Transgender Day of\u2026",
+          "details": [
+            "wiki/CLI.md documented 13 of the CLI's 34 real subcommands and claimed that was the complete set. Added full sections for brew, pipeline, assistant, cli, tvtop, cctvtop, fizzle/fiz, camo/camouflage, prot/protect, net, wiki, vera, scavenger, config, gkey, map, websearch, stml\u2026",
+            "\ud83d\udc1b The docs site's (docs/src/App.tsx) \"API Reference\" tab was worse than stale \u2014 cross-checking it against the real source with an AST parser showed most of the listed functions (download_snapshot, resolve_short_name, Session.add, EMA.update, etc.) don't exist anywhere in the\u2026",
+            "\ud83d\udc1b The docs site's CLI_COMMANDS array listed hypernix complete and hypernix eval, neither of which exist, and had wrong flags for convert/quantize (invented --repo-id/--quants args that don't match the real argparse definitions). Rebuilt from the real subcommand set; added the\u2026",
+            "\ud83d\udc1b License was misrepresented on the docs site \u2014 two hardcoded \"Licensed under Apache-2.0\" strings, despite LICENSE being a custom dual license (LLU-0.1 / HOS-1.0). Fixed there and in the README, which previously just said \"LLU-0.1\" with no mention of the HOS-1.0 option.",
+            "\ud83d\udc1b pipeline and assistant accept --llm/--model flags that are silently ignored \u2014 both call a hardcoded stub responder, not the model you pass. This isn't new in this pass, but it wasn't documented anywhere either; now flagged explicitly in CLI.md and the docs site instead of\u2026",
+            "\ud83d\udc1b wiki_cli.py's own --help text told users to invoke it as bare hnx <module>; it's only reachable as hnx wiki <module> (a subcommand of the main CLI). Also fixed the actual bug behind that: bare hnx wiki with zero arguments printed the --help block instead of the table of\u2026",
+            "\ud83d\udcda wiki/Home.md's \"Topic guides\" index only linked 19 of the 55 pages that exist; the other 36 were only reachable if you already knew the filename. Rebuilt the index to cover everything, grouped by theme.",
+            "\u2728 New page: [wiki/HuggingFace-Models.md](HuggingFace-Models.md) \u2014 catalogs all 54 models currently published under the ray0rf1re HF account, grouped by family, with short-name cross-references into hypernix.download.KNOWN_MODELS where they exist. Scope note: this pass covered\u2026"
+          ]
+        },
+        {
+          "symbol": "\ud83e\uddea",
+          "label": "tests",
+          "category": "Tests",
+          "text": "Runner-as-backend coverage \u2014 13 cases in tests/t1api/test_inference_endpoints.py: the runner serving its model with no LM Studio, preference over LM Studio, metering, routing another model to LM Studio, refusing rather than substituting, choosing the backend after the cascade\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udd27",
+          "label": "internal",
+          "category": "Tests",
+          "text": "tests/test_pressure_cooker_v6.py \u2014 new, real test coverage (not a stub): construction/config, loss actually decreasing under several configurations (nesterov, no-trust-ratio, no-foreach), fused vs. non-fused paths producing numerically identical trajectories, weight decay\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\u26a0\ufe0f",
+          "label": "error codes",
+          "category": "Known Issues",
+          "text": "PyTorch publishes no CPython 3.15 wheels yet (2.14.1 stops at cp314), so pip install hypernix on 3.15 cannot resolve torch from PyPI. Everything that does not use torch -- the T1 API, HyperLink, the CLIs, the quantisers' metadata tools -- runs; CI installs the rest and the\u2026",
+          "details": []
+        }
+      ]
+    },
+    {
       "version": "0.72.6.post4",
       "key": "0.72.6.post4",
       "aliases": [
@@ -1227,204 +1470,7 @@
         "hyped-pro is an OpenTUI app that works with git and edits files (post16), and tvtop-max is tvtop-pro on the same stack, with panels for the run's script, modules, model, Pressure Cooker, log and warnings (rc2).",
         "HyperLink models call tools, including the T1 API as tools, on both chat routes (post16, rc3); models run on the iPhone itself; chats are named, compressed and can be made private; memories are organised (post16); and a reply from this server's own runner gets a default system\u2026"
       ],
-      "changes": [
-        {
-          "symbol": "\u0e4b\u08ed\u2b51",
-          "label": "major",
-          "category": "Beta / Dev \u2192 Release Summary",
-          "text": "v2.1 (T2C) keys, sealed with Rotorvault under a key that changes every day, and conceal mode for a server (0.72.5.post17).",
-          "details": []
-        },
-        {
-          "symbol": "\u0e4b\u08ed\u2b51",
-          "label": "major",
-          "category": "Beta / Dev \u2192 Release Summary",
-          "text": "waiter serv letters group in any order, with flags to update, install kits, conceal, and seal the key as a v2.1 kit (post17).",
-          "details": []
-        },
-        {
-          "symbol": "\u0e4b\u08ed\u2b51",
-          "label": "major",
-          "category": "Beta / Dev \u2192 Release Summary",
-          "text": "Siri can name chats and models, on App Intents 2.0 (post17, rc1).",
-          "details": []
-        },
-        {
-          "symbol": "\u0e4b\u08ed\u2b51",
-          "label": "major",
-          "category": "Beta / Dev \u2192 Release Summary",
-          "text": "hypernix.elements with magnesium and carbon, and the L#-NNNNN.kS error codes across the T1 API (post16).",
-          "details": []
-        },
-        {
-          "symbol": "\u0e4b\u08ed\u2b51",
-          "label": "major",
-          "category": "Beta / Dev \u2192 Release Summary",
-          "text": "hyped-pro is an OpenTUI app that works with git and edits files (post16), and tvtop-max is tvtop-pro on the same stack, with panels for the run's script, modules, model, Pressure Cooker, log and warnings (rc2).",
-          "details": []
-        },
-        {
-          "symbol": "\u0e4b\u08ed\u2b51",
-          "label": "major",
-          "category": "Beta / Dev \u2192 Release Summary",
-          "text": "HyperLink models call tools, including the T1 API as tools, on both chat routes (post16, rc3); models run on the iPhone itself; chats are named, compressed and can be made private; memories are organised (post16); and a reply from this server's own runner gets a default system\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\u0e4b\u08ed\u2b51",
-          "label": "major",
-          "category": "Beta / Dev \u2192 Release Summary",
-          "text": "hypernix.dilute, hyperchat with several prompts in flight, and keyless /web/v1 search (post15).",
-          "details": []
-        },
-        {
-          "symbol": "\u0e4b\u08ed\u2b51",
-          "label": "major",
-          "category": "Beta / Dev \u2192 Release Summary",
-          "text": "hypernix.neuron and hypernix.audio.processor (post14).",
-          "details": []
-        },
-        {
-          "symbol": "\ud81a\udca5",
-          "label": "major fix",
-          "category": "Beta / Dev \u2192 Release Summary",
-          "text": "Pressure Cooker V4, V5, V5S and V6 never trained through NeoOven.train, and twenty-three presets had broken RoPE (post16).",
-          "details": []
-        },
-        {
-          "symbol": "\ud81a\udca5",
-          "label": "major fix",
-          "category": "Beta / Dev \u2192 Release Summary",
-          "text": "Neo Oven's presets named the wrong architectures (post15).",
-          "details": []
-        },
-        {
-          "symbol": "\ud81a\udca5",
-          "label": "major fix",
-          "category": "Beta / Dev \u2192 Release Summary",
-          "text": "The server could be made to fetch its own network, and a public-only fetch could be steered to a private address (post16, post17).",
-          "details": []
-        },
-        {
-          "symbol": "\ud81a\udca5",
-          "label": "major fix",
-          "category": "Beta / Dev \u2192 Release Summary",
-          "text": "A HyperLink model said it had no tools, and the assistant's reply bubble had a hole in its tail (rc3).",
-          "details": []
-        },
-        {
-          "symbol": "\ud81a\udca5",
-          "label": "major fix",
-          "category": "Beta / Dev \u2192 Release Summary",
-          "text": "tvtop-max opened to empty panels, and a run kept under .runs was never found (rc3).",
-          "details": []
-        },
-        {
-          "symbol": "\ud83e\uddea",
-          "label": "tests",
-          "category": "Beta / Dev \u2192 Release Summary",
-          "text": "Each candidate added its own tests: the Siri phrases, the version spellings, the default prompt, tvtop-max's panels and bridge, the tools on the streaming route, and the bubble tail.",
-          "details": []
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "0.72.6, released. Three release candidates and four batches published as 0.72.5.post14 to post17 went into it; the summary below says what shipped, and those entries say how. New since 0.72.6.rc3: HyperLink keeps its own copy of your memories and syncs it from the server as\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\u0e4b\u08ed\u2b51",
-          "label": "major",
-          "category": "Added",
-          "text": "HyperLink syncs memories from the server as they change. The app used to fetch /memory/list whole: the first 200, when the Memories screen appeared or a reply ended, with any error swallowed. A fact the model wrote mid-chat reached the phone only if somebody happened to be\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\ud81a\udd54",
-          "label": "minor",
-          "category": "Added",
-          "text": "GET /memory/sync?cursor=N answers with what changed since the cursor: the current state of each memory touched and the ids of those deleted, evictions by the auto-memory budget included. Every memory write logs itself in the same transaction, one row per memory, numbered by a\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\ud81a\udd54",
-          "label": "minor",
-          "category": "Added",
-          "text": "A chat turn that remembers or forgets something sends a memory frame with the new cursor after done, and the app syncs while the reply is still on screen.",
-          "details": []
-        },
-        {
-          "symbol": "\ud81a\udd54",
-          "label": "minor",
-          "category": "Added",
-          "text": "The app keeps each server's copy on disk, excluded from backups, and shows it at launch and offline. It syncs on launch, on every return to the foreground, on the memory frame, and after each edit, and overlapping syncs run once more rather than twice at once. When the server\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udd27",
-          "label": "internal",
-          "category": "Changed",
-          "text": "The guard runs before torch is installed, so a refusal costs seconds. After the bump, a new \"Preflight\" step runs the tests a version bump can break: the changelog format, the installer's baked version, both OpenTUI apps' package.json and app.ts, and the guard's own. They take\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udd27",
-          "label": "internal",
-          "category": "Changed",
-          "text": "Check a release before dispatching it, from the repository root, with python .github/scripts/version_guard.py 0.72.6.",
-          "details": []
-        },
-        {
-          "symbol": "\ud81a\udca5",
-          "label": "major fix",
-          "category": "Fixed",
-          "text": "A release could be started that was certain to fail. 0.72.6 was dispatched against a changelog whose newest entry was 0.72.6.rc3. The release bumped the version, built, ran the suite for ten minutes, and failed: \"changelog newest is 0.72.6.rc3, package is 0.72.6\". The version\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\ud81a\udca5",
-          "label": "major fix",
-          "category": "Fixed",
-          "text": "The guard (.github/scripts/version_guard.py) now checks the changelog against the version the bump is about to write, for every release, forward, equal or a permitted downgrade. It refuses unless the newest entry is that version (ignoring a .postN, as the test does) under a\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\ud81a\udca5",
-          "label": "major fix",
-          "category": "Fixed",
-          "text": "The first 0.72.6 run failed after its build, at the commit. main moved while it built (the stats bot committed), so the push was rejected, and the retry's git rebase refused to start: the install and the build rewrite the tracked src/hypernix.egg-info, and a rebase will not run\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udc1b",
-          "label": "fix",
-          "category": "Fixed",
-          "text": "The bump step spelled 0.72.6.postr1 as 0.72.6..post1, which is not a version. It now asks the guard for the spelling (version_guard.py --print-pep440), so the version checked is the one written.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udc1b",
-          "label": "fix",
-          "category": "Fixed",
-          "text": "tests/test_changelog_format.py rejected the ### Beta / Dev \u2192 Release Summary heading that Changelog-guide.md requires of a stable release. It now accepts it, and checks that the guide still names it.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83e\uddea",
-          "label": "tests",
-          "category": "Tests",
-          "text": "tests/test_version_guard.py: the release that failed is refused up front and names the heading to add; a stable entry above the candidates lets it through; equal versions and downgrades are held to the same rule; undated headers, no entries and no changelog are refused; the\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\ud83e\uddea",
-          "label": "tests",
-          "category": "Tests",
-          "text": "tests/test_hyperlink_memory_sync.py (22): first sync, deltas with edits, deletions and evictions, paging and its cap, the whole set for a stale, expired or foreign cursor, ownership, memories from before the log, the endpoint, and a real streamed turn whose update_memory call\u2026",
-          "details": []
-        }
-      ]
+      "changes": []
     },
     {
       "version": "0.72.6.rc3",
@@ -4046,18 +4092,5 @@
       "changes": []
     }
   ],
-  "unreleased": {
-    "heading": "Unreleased",
-    "summary": "The HyperNix runner is a /inference backend \u2014 the governed inference surface (/inference/chat, /completions, /chat/stream, /embeddings) now dispatches to this server's own runner when the model it has loaded (/runner/load, hypernix-t1 built-in-runner start) is exactly the model\u2026 \u00b7 backend_name on inference responses \u2014 InferenceResponse, InferenceEmbeddingsResponse and the stream's opening frame report which backend answered: hypernix or lmstudio. backend keeps its old meaning (the address) for existing clients. \u00b7 GET /inference/backends lists the runner \u2014 a hypernix row (kind: hypernix-runner, probed, with the loaded model_id) after the lmstudio row, which stays first where older clients look for it. default follows the real preference: the runner when it answers, otherwise LM Studio\u2026",
-    "highlights": [
-      "The HyperNix runner is a /inference backend \u2014 the governed inference surface (/inference/chat, /completions, /chat/stream, /embeddings) now dispatches to this server's own runner when the model it has loaded (/runner/load, hypernix-t1 built-in-runner start) is exactly the model\u2026",
-      "backend_name on inference responses \u2014 InferenceResponse, InferenceEmbeddingsResponse and the stream's opening frame report which backend answered: hypernix or lmstudio. backend keeps its old meaning (the address) for existing clients.",
-      "GET /inference/backends lists the runner \u2014 a hypernix row (kind: hypernix-runner, probed, with the loaded model_id) after the lmstudio row, which stays first where older clients look for it. default follows the real preference: the runner when it answers, otherwise LM Studio\u2026",
-      "The no-backend refusal names both remedies \u2014 NOT_SUPPORTED (501) now says to load a model on the built-in runner or set T1_LMSTUDIO_URL/T1_LMSTUDIO_ENABLED, instead of naming only LM Studio.",
-      "PressureCookerV6 / PressureCookerV6V \u2014 new speed-first optimizer generation, deliberately the opposite tradeoff from V5/V5S's memory-first design. PressureCookerV6 (\"Single-State Trust Momentum\") drops V5's whole feature set \u2014 no oscillation tracking, no curvature estimate, no\u2026",
-      "V6 production-hardening pass \u2014 grad_accum_steps and torch.cuda.amp.GradScaler integration, same contract as pressure_cooker.InductionCooker (unscale \u2192 skip cleanly on non-finite instead of corrupting momentum state \u2192 update()), plus an opt-in skip_on_nonfinite for plain\u2026",
-      "scripts/benchmark_v6.py (new) and scripts/measure_optimizer_memory.py (extended) \u2014 real measurement tools cited above, not hand-typed numbers. Both auto-detect CUDA and report whichever device they actually ran on; benchmark_v6.py prints an explicit note when it falls back to\u2026",
-      "CUDA graph capture + dynamic V6 features don't mix safely \u2014 now documented, not silently wrong. CUDA graphs bake in whichever Python-level branch ran during warmup_graph, permanently: replay always re-executes the same recorded kernels regardless of what later batches look\u2026"
-    ]
-  }
+  "unreleased": null
 }

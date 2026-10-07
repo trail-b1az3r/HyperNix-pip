@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-api-deep",
   "generated_at": "2026-09-20T21:20:57Z",
-  "commit": "c570f3024491f20fd2793139a4fa030f0bf7add8",
+  "commit": "2137d41b2ad86742f986796976d846ad6d5ab747",
   "history_available": true,
   "source_root": "src/hypernix",
   "modules": [
@@ -105,6 +105,310 @@
           "author": "minerofthesoal",
           "subject": "Replace entire repository with new local version",
           "api_changes": []
+        }
+      ]
+    },
+    {
+      "module": "hypernix._compat",
+      "source": "src/hypernix/_compat/__init__.py",
+      "line_count": 27,
+      "summary": "Where Python-version-specific code lives, behind one import.",
+      "api": [
+        {
+          "kind": "function",
+          "name": "is_py315_only",
+          "signature": "def is_py315_onlypath: str | PurePath -> bool",
+          "line": 28,
+          "doc": "Whether *path* is a module this interpreter cannot parse because it is written in 3.15-only syntax. Always False on 3.15+."
+        }
+      ],
+      "errors": [],
+      "deprecations": [],
+      "required_modules": [],
+      "changes": [
+        {
+          "sha": "1a35b713",
+          "date": "2026-10-06",
+          "author": "Claude",
+          "subject": "0.72.7 step 3: Python 3.12-3.15 -- requires-python, PEP 798/799/810/831",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def is_py315_only(path: str | PurePath) -> bool:"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "module": "hypernix._compat._iter_legacy",
+      "source": "src/hypernix/_compat/_iter_legacy.py",
+      "line_count": 16,
+      "summary": "Flattening for Python 3.12-3.14 (see :mod:`hypernix._compat`).",
+      "api": [
+        {
+          "kind": "function",
+          "name": "flatten",
+          "signature": "def flatteniterables: Iterable[Iterable[T]] -> list[T]",
+          "line": 8,
+          "doc": "Every item of every iterable, in order, as one list."
+        },
+        {
+          "kind": "function",
+          "name": "union",
+          "signature": "def unioniterables: Iterable[Iterable[T]] -> set[T]",
+          "line": 13,
+          "doc": "Every item of every iterable, as one set."
+        },
+        {
+          "kind": "function",
+          "name": "merge",
+          "signature": "def mergemappings: Iterable[Mapping[K, V]] -> dict[K, V]",
+          "line": 18,
+          "doc": "The mappings combined left to right; a later key wins."
+        }
+      ],
+      "errors": [],
+      "deprecations": [],
+      "required_modules": [],
+      "changes": [
+        {
+          "sha": "1a35b713",
+          "date": "2026-10-06",
+          "author": "Claude",
+          "subject": "0.72.7 step 3: Python 3.12-3.15 -- requires-python, PEP 798/799/810/831",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def flatten[T](iterables: Iterable[Iterable[T]]) -> list[T]:"
+            },
+            {
+              "kind": "added",
+              "text": "def union[T](iterables: Iterable[Iterable[T]]) -> set[T]:"
+            },
+            {
+              "kind": "added",
+              "text": "def merge[K, V](mappings: Iterable[Mapping[K, V]]) -> dict[K, V]:"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "module": "hypernix._native_flags",
+      "source": "src/hypernix/_native_flags/__init__.py",
+      "line_count": 90,
+      "summary": "Compiler flags for HyperNix's native code that keep Python's (PEP 831).",
+      "api": [
+        {
+          "kind": "function",
+          "name": "python_cflags",
+          "signature": "def python_cflagsconfig_vars: dict[str, str | None] | None=None -> list[str]",
+          "line": 45,
+          "doc": "The ``CFLAGS`` this interpreter was built with, as a list (empty on MSVC)."
+        },
+        {
+          "kind": "function",
+          "name": "frame_pointer_flags",
+          "signature": "def frame_pointer_flagsconfig_vars: dict[str, str | None] | None=None -> list[str]",
+          "line": 52,
+          "doc": "The frame-pointer flags the interpreter itself was built with."
+        },
+        {
+          "kind": "function",
+          "name": "merge_flags",
+          "signature": "def merge_flagsbase: list[str], extra: list[str] -> list[str]",
+          "line": 66,
+          "doc": "*base*, then *extra*, without letting *extra* undo frame pointers."
+        },
+        {
+          "kind": "function",
+          "name": "extension_compile_args",
+          "signature": "def extension_compile_argsextra: list[str], *, compiler: str='unix', config_vars: dict[str, str | None] | None=None -> list[str]",
+          "line": 82,
+          "doc": "``extra_compile_args`` for a setuptools ``Extension``."
+        },
+        {
+          "kind": "function",
+          "name": "cmake_flags",
+          "signature": "def cmake_flagsconfig_vars: dict[str, str | None] | None=None -> list[str]",
+          "line": 106,
+          "doc": "``-D`` arguments that carry the inherited frame-pointer flags into a CMake build (llama.cpp, ggml-hnx). Empty when there are none to carry."
+        }
+      ],
+      "errors": [],
+      "deprecations": [],
+      "required_modules": [],
+      "changes": [
+        {
+          "sha": "0a5db23c",
+          "date": "2026-10-07",
+          "author": "Claude",
+          "subject": "Windows CI: the remaining 26, and the 3.12-3.15 matrix fixes it found",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def python_cflags(config_vars: dict[str, str | None] | None = None) -> list[str]:"
+            },
+            {
+              "kind": "added",
+              "text": "def frame_pointer_flags(config_vars: dict[str, str | None] | None = None) -> list[str]:"
+            },
+            {
+              "kind": "added",
+              "text": "def merge_flags(base: list[str], extra: list[str]) -> list[str]:"
+            },
+            {
+              "kind": "added",
+              "text": "def extension_compile_args(extra: list[str], *, compiler: str = \"unix\","
+            },
+            {
+              "kind": "added",
+              "text": "def _msvc(flag: str) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def cmake_flags(config_vars: dict[str, str | None] | None = None) -> list[str]:"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "module": "hypernix._profiling",
+      "source": "src/hypernix/_profiling/__init__.py",
+      "line_count": 155,
+      "summary": "One way to profile HyperNix on every supported Python (PEP 799).",
+      "api": [
+        {
+          "kind": "class",
+          "name": "SamplingUnavailable",
+          "signature": "class SamplingUnavailable",
+          "line": 69,
+          "doc": "Sampling was asked for on a Python that has no sampling profiler.",
+          "methods": []
+        },
+        {
+          "kind": "function",
+          "name": "new_tracer",
+          "signature": "def new_tracer -> Any",
+          "line": 73,
+          "doc": "A fresh deterministic profiler from the best module this Python has."
+        },
+        {
+          "kind": "class",
+          "name": "TraceRun",
+          "signature": "class TraceRun",
+          "line": 91,
+          "doc": "What :func:`trace` collected, usable once the block has exited.",
+          "methods": [
+            {
+              "name": "stats",
+              "signature": "def statsself -> Any",
+              "line": 99,
+              "doc": "The run as ``pstats.Stats``."
+            },
+            {
+              "name": "report",
+              "signature": "def reportself, *, sort: str='cumulative', limit: int=25 -> str",
+              "line": 109,
+              "doc": "The top *limit* rows, sorted by *sort*, as text."
+            },
+            {
+              "name": "dump",
+              "signature": "def dumpself, path: str | os.PathLike[str] -> None",
+              "line": 118,
+              "doc": "Write the run as a ``.pstats`` file (snakeviz, ``pstats``)."
+            }
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "trace",
+          "signature": "def trace -> Iterator[TraceRun]",
+          "line": 124,
+          "doc": "Deterministically profile the ``with`` block."
+        },
+        {
+          "kind": "function",
+          "name": "profile_call",
+          "signature": "def profile_callfn: Callable[..., T], /, *args: Any, **kwargs: Any -> tuple[T, Any]",
+          "line": 134,
+          "doc": "Call ``fn(*args, **kwargs)`` under the deterministic profiler."
+        },
+        {
+          "kind": "function",
+          "name": "sampling_argv",
+          "signature": "def sampling_argv*, pid: int | None=None, script: str | os.PathLike[str] | None=None, script_args: list[str] | None=None, duration: float | None=None, rate: str | int | None=None, output: str | os.PathLike[str] | None=None, fmt: str='pstats', all_threads: bool=True, python: str | None=None -> list[str]",
+          "line": 144,
+          "doc": "The command line that samples a process (``attach``) or a script (``run``)."
+        },
+        {
+          "kind": "function",
+          "name": "sample",
+          "signature": "def sample*, timeout: float | None=None, **kwargs: Any -> Any",
+          "line": 183,
+          "doc": "Run :func:`sampling_argv` and return the ``CompletedProcess``."
+        }
+      ],
+      "errors": [
+        "RuntimeError",
+        "ValueError"
+      ],
+      "deprecations": [],
+      "required_modules": [],
+      "changes": [
+        {
+          "sha": "1a35b713",
+          "date": "2026-10-06",
+          "author": "Claude",
+          "subject": "0.72.7 step 3: Python 3.12-3.15 -- requires-python, PEP 798/799/810/831",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class SamplingUnavailable(RuntimeError):"
+            },
+            {
+              "kind": "added",
+              "text": "def new_tracer() -> Any:"
+            },
+            {
+              "kind": "added",
+              "text": "``cProfile.Profile`` before it -- the same class under two names, so"
+            },
+            {
+              "kind": "added",
+              "text": "class TraceRun:"
+            },
+            {
+              "kind": "added",
+              "text": "def stats(self) -> Any:"
+            },
+            {
+              "kind": "added",
+              "text": "def report(self, *, sort: str = \"cumulative\", limit: int = 25) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def dump(self, path: str | os.PathLike[str]) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def trace() -> Iterator[TraceRun]:"
+            },
+            {
+              "kind": "added",
+              "text": "def profile_call[T](fn: Callable[..., T], /, *args: Any, **kwargs: Any) -> tuple[T, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def sampling_argv(*, pid: int | None = None, script: str | os.PathLike[str] | None = None,"
+            },
+            {
+              "kind": "added",
+              "text": "def sample(*, timeout: float | None = None, **kwargs: Any) -> Any:"
+            }
+          ]
         }
       ]
     },
@@ -6713,7 +7017,7 @@
     {
       "module": "hypernix.evaluation.new_fridge",
       "source": "src/hypernix/evaluation/new_fridge.py",
-      "line_count": 120,
+      "line_count": 134,
       "summary": "new_fridge \u2014 graphing and analytics.",
       "api": [
         {
@@ -6727,21 +7031,21 @@
           "kind": "function",
           "name": "plot_loss_curve",
           "signature": "def plot_loss_curvepairs: Sequence[tuple[int, float]], out_path: Path | str, *, title: str='Training loss' -> Path",
-          "line": 65,
+          "line": 85,
           "doc": "Save a loss curve as a PNG. Returns the path written."
         },
         {
           "kind": "function",
           "name": "plot_score_distribution",
           "signature": "def plot_score_distributionscores: Sequence[float], out_path: Path | str, *, title: str='Judge score distribution', bins: int=20 -> Path",
-          "line": 91,
+          "line": 111,
           "doc": "Histogram of judge scores (one pass through a dataset)."
         },
         {
           "kind": "function",
           "name": "plot_round_losses",
           "signature": "def plot_round_lossesrounds: Sequence[Sequence[tuple[int, float]]], out_path: Path | str, *, title: str='Multi-round training loss', round_labels: Sequence[str] | None=None -> Path",
-          "line": 115,
+          "line": 135,
           "doc": "Plot loss curves for multiple training rounds (e.g. from :mod:`tupperware`)."
         }
       ],
@@ -6757,6 +7061,30 @@
       ],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "316780e9",
+          "date": "2026-10-06",
+          "author": "Claude",
+          "subject": "0.72.7 step 2: Windows CI -- real bugs fixed, tests made platform-honest",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class _FilePlots:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, figure_cls: Any) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def subplots(self, figsize: tuple[float, float]) -> tuple[Any, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def close(fig: Any) -> None:"
+            }
+          ]
+        },
         {
           "sha": "27222ca8",
           "date": "2026-09-10",
@@ -7396,7 +7724,7 @@
     {
       "module": "hypernix.hyperlink.brewed",
       "source": "src/hypernix/hyperlink/brewed.py",
-      "line_count": 192,
+      "line_count": 205,
       "summary": "Native HyperNix models, and HyperNix.3-mini as the runner's default.",
       "api": [
         {
@@ -7432,21 +7760,21 @@
           "kind": "function",
           "name": "brewed_dirs",
           "signature": "def brewed_dirsroot: str | Path -> list[Path]",
-          "line": 117,
+          "line": 126,
           "doc": "Native checkpoints in *root* and its immediate subfolders."
         },
         {
           "kind": "function",
           "name": "describe",
           "signature": "def describepath: str | Path -> dict[str, Any]",
-          "line": 131,
+          "line": 140,
           "doc": "What the catalogue shows for one native model."
         },
         {
           "kind": "function",
           "name": "download",
           "signature": "def downloadrepo: str=DEFAULT_MODEL_REPO, dest: str | Path | None=None, *, models_dir: str | Path | None=None, timeout: float=120.0 -> Path",
-          "line": 168,
+          "line": 183,
           "doc": "Fetch *repo*'s safetensors, config and tokenizer into *dest*."
         }
       ],
@@ -7456,6 +7784,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "203b7112",
+          "date": "2026-10-06",
+          "author": "Claude",
+          "subject": "0.72.7 step 1: link config-less models, `runner auto`, images converted on upload",
+          "api_changes": []
+        },
         {
           "sha": "99ddc1ae",
           "date": "2026-09-29",
@@ -8171,39 +8506,39 @@
     {
       "module": "hypernix.hyperlink.files",
       "source": "src/hypernix/hyperlink/files.py",
-      "line_count": 374,
+      "line_count": 382,
       "summary": "hyperlink.files \u2014 the attachment store behind \"send a photo\" and \"upload\".",
       "api": [
         {
           "kind": "function",
           "name": "sniff_content_type",
           "signature": "def sniff_content_typedata: bytes, *, filename: str='', declared: str='' -> str",
-          "line": 92,
+          "line": 99,
           "doc": "Decide a content type from the bytes, then the name, then the claim."
         },
         {
           "kind": "class",
           "name": "Attachment",
           "signature": "class Attachment",
-          "line": 133,
+          "line": 141,
           "doc": "",
           "methods": [
             {
               "name": "is_image",
               "signature": "def is_imageself -> bool",
-              "line": 146,
+              "line": 154,
               "doc": ""
             },
             {
               "name": "is_text",
               "signature": "def is_textself -> bool",
-              "line": 150,
+              "line": 158,
               "doc": ""
             },
             {
               "name": "to_dict",
               "signature": "def to_dictself -> dict[str, Any]",
-              "line": 155,
+              "line": 163,
               "doc": ""
             }
           ]
@@ -8212,61 +8547,61 @@
           "kind": "class",
           "name": "AttachmentStore",
           "signature": "class AttachmentStore",
-          "line": 172,
+          "line": 180,
           "doc": "Blobs on disk, metadata in SQL.",
           "methods": [
             {
               "name": "put",
               "signature": "def putself, data: bytes, *, filename: str, owner: str, device_id: str='', session_id: str='', declared_type: str='', metadata: dict[str, Any] | None=None -> Attachment",
-              "line": 205,
+              "line": 213,
               "doc": "Store bytes and return the attachment record."
             },
             {
               "name": "get",
               "signature": "def getself, file_id: str, *, owner: str | None=None -> Attachment",
-              "line": 276,
+              "line": 284,
               "doc": ""
             },
             {
               "name": "read",
               "signature": "def readself, file_id: str, *, owner: str | None=None -> bytes",
-              "line": 290,
+              "line": 298,
               "doc": ""
             },
             {
               "name": "path_for",
               "signature": "def path_forself, file_id: str, *, owner: str | None=None -> Path",
-              "line": 300,
+              "line": 308,
               "doc": "On-disk path, for callers that stream rather than read."
             },
             {
               "name": "list_files",
               "signature": "def list_filesself, *, owner: str | None=None, session_id: str | None=None, limit: int=100 -> list[Attachment]",
-              "line": 304,
+              "line": 312,
               "doc": ""
             },
             {
               "name": "data_url",
               "signature": "def data_urlself, file_id: str, *, owner: str | None=None -> str",
-              "line": 323,
+              "line": 331,
               "doc": "``data:image/png;base64,\u2026`` \u2014 the form vision models take."
             },
             {
               "name": "text_of",
               "signature": "def text_ofself, file_id: str, *, owner: str | None=None, max_chars: int=200000 -> str",
-              "line": 343,
+              "line": 351,
               "doc": "Decoded text of a text attachment, truncated with a marker."
             },
             {
               "name": "delete",
               "signature": "def deleteself, file_id: str, *, owner: str | None=None -> bool",
-              "line": 363,
+              "line": 371,
               "doc": "Drop the record, and the blob when no record still needs it."
             },
             {
               "name": "usage_bytes",
               "signature": "def usage_bytesself, *, owner: str | None=None -> int",
-              "line": 383,
+              "line": 391,
               "doc": "Total distinct bytes stored, deduplicated by hash."
             }
           ]
@@ -8278,6 +8613,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "203b7112",
+          "date": "2026-10-06",
+          "author": "Claude",
+          "subject": "0.72.7 step 1: link config-less models, `runner auto`, images converted on upload",
+          "api_changes": []
+        },
         {
           "sha": "99ddc1ae",
           "date": "2026-09-29",
@@ -9402,7 +9744,7 @@
     {
       "module": "hypernix.hyperlink.identity",
       "source": "src/hypernix/hyperlink/identity.py",
-      "line_count": 116,
+      "line_count": 120,
       "summary": "Which machine this is, said in a way a name cannot fake.",
       "api": [
         {
@@ -9416,7 +9758,7 @@
           "kind": "function",
           "name": "fingerprint",
           "signature": "def fingerprintconfig_dir: str | Path | None=None -> str",
-          "line": 129,
+          "line": 133,
           "doc": "This installation's stable identifier, as 32 hex characters."
         }
       ],
@@ -9424,6 +9766,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "316780e9",
+          "date": "2026-10-06",
+          "author": "Claude",
+          "subject": "0.72.7 step 2: Windows CI -- real bugs fixed, tests made platform-honest",
+          "api_changes": []
+        },
         {
           "sha": "9b956c33",
           "date": "2026-09-08",
@@ -9449,6 +9798,170 @@
             {
               "kind": "added",
               "text": "def fingerprint(config_dir: str | Path | None = None) -> str:"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "module": "hypernix.hyperlink.imagecodec",
+      "source": "src/hypernix/hyperlink/imagecodec.py",
+      "line_count": 429,
+      "summary": "Images sent into HyperLink: recognised by their bytes, stored as WebP.",
+      "api": [
+        {
+          "kind": "class",
+          "name": "CompressResult",
+          "signature": "class CompressResult",
+          "line": 87,
+          "doc": "",
+          "methods": [
+            {
+              "name": "metadata",
+              "signature": "def metadataself -> dict",
+              "line": 98,
+              "doc": "What is kept beside the attachment about the conversion."
+            }
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "sniff_image",
+          "signature": "def sniff_imagedata: bytes, filename: str='' -> str",
+          "line": 120,
+          "doc": "The image type of *data* by its bytes, or ``\"\"`` if not an image."
+        },
+        {
+          "kind": "function",
+          "name": "sanitize_svg",
+          "signature": "def sanitize_svgdata: bytes -> bytes",
+          "line": 206,
+          "doc": "SVG with nothing that runs, fetches, or expands."
+        },
+        {
+          "kind": "function",
+          "name": "compress",
+          "signature": "def compressdata: bytes, filename: str='', *, declared: str='' -> CompressResult | None",
+          "line": 335,
+          "doc": "Convert an image upload, or ``None`` if *data* is not an image."
+        },
+        {
+          "kind": "class",
+          "name": "ImagesNotSupported",
+          "signature": "class ImagesNotSupported",
+          "line": 412,
+          "doc": "The model about to answer cannot see images.",
+          "methods": []
+        },
+        {
+          "kind": "function",
+          "name": "vision_ready",
+          "signature": "def vision_readydata: bytes, content_type: str -> tuple[bytes, str]",
+          "line": 416,
+          "doc": "*data* as PNG (alpha, or lossless) or JPEG, for a model to read."
+        },
+        {
+          "kind": "function",
+          "name": "vision_messages",
+          "signature": "def vision_messagesmessages: list[dict], *, images_ok: bool=True, refuse: bool=False, who: str='this model' -> list[dict]",
+          "line": 447,
+          "doc": "OpenAI-style messages with every inline image readable by the backend."
+        }
+      ],
+      "errors": [
+        "ValueError"
+      ],
+      "deprecations": [],
+      "required_modules": [],
+      "changes": [
+        {
+          "sha": "1a35b713",
+          "date": "2026-10-06",
+          "author": "Claude",
+          "subject": "0.72.7 step 3: Python 3.12-3.15 -- requires-python, PEP 798/799/810/831",
+          "api_changes": []
+        },
+        {
+          "sha": "d595eb4a",
+          "date": "2026-10-06",
+          "author": "Claude",
+          "subject": "0.72.7 step 2: images on the HyperNix runner; macOS/Linux CI and first Windows fixes",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class ImagesNotSupported(ValueError):"
+            },
+            {
+              "kind": "added",
+              "text": "def vision_ready(data: bytes, content_type: str) -> tuple[bytes, str]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _data_url_parts(url: str) -> tuple[str, bytes] | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def vision_messages(messages: list[dict], *, images_ok: bool = True,"
+            }
+          ]
+        },
+        {
+          "sha": "203b7112",
+          "date": "2026-10-06",
+          "author": "Claude",
+          "subject": "0.72.7 step 1: link config-less models, `runner auto`, images converted on upload",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class CompressResult:"
+            },
+            {
+              "kind": "added",
+              "text": "def metadata(self) -> dict:"
+            },
+            {
+              "kind": "added",
+              "text": "def sniff_image(data: bytes, filename: str = \"\") -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _is_dng(data: bytes) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def _looks_svg(data: bytes) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def sanitize_svg(data: bytes) -> bytes:"
+            },
+            {
+              "kind": "added",
+              "text": "def _pillow():"
+            },
+            {
+              "kind": "added",
+              "text": "def _dng_preview(data: bytes) -> bytes | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _open(data: bytes, kind: str, notes: list[str]):"
+            },
+            {
+              "kind": "added",
+              "text": "def _fit(image, notes: list[str]):"
+            },
+            {
+              "kind": "added",
+              "text": "def _as_webp(image, *, lossless: bool, animated: bool) -> bytes:"
+            },
+            {
+              "kind": "added",
+              "text": "def _webp_name(filename: str) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def compress(data: bytes, filename: str = \"\", *, declared: str = \"\") -> CompressResult | None:"
             }
           ]
         }
@@ -9554,7 +10067,7 @@
     {
       "module": "hypernix.hyperlink.managed",
       "source": "src/hypernix/hyperlink/managed.py",
-      "line_count": 775,
+      "line_count": 791,
       "summary": "hyperlink.managed \u2014 running a model without LM Studio.",
       "api": [
         {
@@ -9601,9 +10114,15 @@
           "doc": "What is loaded right now.",
           "methods": [
             {
+              "name": "supports_images",
+              "signature": "def supports_imagesself -> bool",
+              "line": 354,
+              "doc": ""
+            },
+            {
               "name": "to_dict",
               "signature": "def to_dictself -> dict[str, Any]",
-              "line": 350,
+              "line": 357,
               "doc": ""
             }
           ]
@@ -9612,31 +10131,31 @@
           "kind": "class",
           "name": "ManagedRunner",
           "signature": "class ManagedRunner",
-          "line": 364,
+          "line": 373,
           "doc": "The llama.cpp server process this server owns.",
           "methods": [
             {
               "name": "current",
               "signature": "def currentself -> ManagedModel | None",
-              "line": 384,
+              "line": 393,
               "doc": "What is loaded, or None."
             },
             {
               "name": "base_url",
               "signature": "def base_urlself -> str",
-              "line": 405,
+              "line": 414,
               "doc": ""
             },
             {
               "name": "load",
-              "signature": "def loadself, path: str | Path, *, model_id: str='', gpu_layers: int | None=None, backend: str='auto', context_length: int=0, total_layers: int=0, timeout: float=DEFAULT_START_TIMEOUT -> ManagedModel",
-              "line": 410,
+              "signature": "def loadself, path: str | Path, *, model_id: str='', gpu_layers: int | None=None, backend: str='auto', context_length: int=0, total_layers: int=0, timeout: float=DEFAULT_START_TIMEOUT, mmproj: str | None=None -> ManagedModel",
+              "line": 419,
               "doc": "Start serving *path*, replacing whatever was running."
             },
             {
               "name": "unload",
               "signature": "def unloadself -> bool",
-              "line": 588,
+              "line": 606,
               "doc": "Stop whatever is running. True if something was."
             }
           ]
@@ -9645,55 +10164,55 @@
           "kind": "class",
           "name": "ManagedPool",
           "signature": "class ManagedPool",
-          "line": 653,
+          "line": 671,
           "doc": "N copies of one model, on N consecutive ports.",
           "methods": [
             {
               "name": "instances",
               "signature": "def instancesself -> int",
-              "line": 700,
+              "line": 718,
               "doc": ""
             },
             {
               "name": "ports",
               "signature": "def portsself -> list[int]",
-              "line": 704,
+              "line": 722,
               "doc": ""
             },
             {
               "name": "current",
               "signature": "def currentself -> ManagedModel | None",
-              "line": 708,
+              "line": 726,
               "doc": "What the pool is serving, from the first live instance."
             },
             {
               "name": "live",
               "signature": "def liveself -> list[ManagedRunner]",
-              "line": 717,
+              "line": 735,
               "doc": ""
             },
             {
               "name": "base_urls",
               "signature": "def base_urlsself -> list[str]",
-              "line": 721,
+              "line": 739,
               "doc": ""
             },
             {
               "name": "load",
               "signature": "def loadself, path: str | Path, **kwargs: Any -> list[ManagedModel]",
-              "line": 724,
+              "line": 742,
               "doc": "Start every instance on *path*, or leave none of them running."
             },
             {
               "name": "unload",
               "signature": "def unloadself -> bool",
-              "line": 749,
+              "line": 767,
               "doc": ""
             },
             {
               "name": "to_dict",
               "signature": "def to_dictself -> dict[str, Any]",
-              "line": 759,
+              "line": 777,
               "doc": ""
             }
           ]
@@ -9702,21 +10221,21 @@
           "kind": "function",
           "name": "allocate_ports",
           "signature": "def allocate_portsstart: int, count: int, *, avoid: Iterable[int]=(), ceiling: int=65535 -> list[int]",
-          "line": 806,
+          "line": 824,
           "doc": "*count* ports from *start* upwards, skipping *avoid*."
         },
         {
           "kind": "function",
           "name": "brewed_cache_dir",
           "signature": "def brewed_cache_dir -> Path",
-          "line": 838,
+          "line": 856,
           "doc": "``<T1_CONFIG_DIR>/cache/brewed-gguf``: beside the server, not in the model."
         },
         {
           "kind": "function",
           "name": "brewed_gguf_for",
           "signature": "def brewed_gguf_forfolder: Path -> Path | None",
-          "line": 846,
+          "line": 864,
           "doc": "A GGUF of the brewed model in *folder* for llama.cpp, or ``None``."
         }
       ],
@@ -9727,6 +10246,18 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "d595eb4a",
+          "date": "2026-10-06",
+          "author": "Claude",
+          "subject": "0.72.7 step 2: images on the HyperNix runner; macOS/Linux CI and first Windows fixes",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def supports_images(self) -> bool:"
+            }
+          ]
+        },
         {
           "sha": "34ccaa58",
           "date": "2026-10-01",
@@ -11491,6 +12022,129 @@
       ]
     },
     {
+      "module": "hypernix.hyperlink.runner_history",
+      "source": "src/hypernix/hyperlink/runner_history.py",
+      "line_count": 133,
+      "summary": "What the runner has loaded, so ``hnx-t1 runner auto`` can load it again.",
+      "api": [
+        {
+          "kind": "class",
+          "name": "LoadRecord",
+          "signature": "class LoadRecord",
+          "line": 43,
+          "doc": "",
+          "methods": [
+            {
+              "name": "from_dict",
+              "signature": "def from_dictcls, data: dict[str, Any] -> LoadRecord",
+              "line": 54,
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "kind": "class",
+          "name": "AutoChoice",
+          "signature": "class AutoChoice",
+          "line": 60,
+          "doc": "",
+          "methods": [
+            {
+              "name": "payload",
+              "signature": "def payloadself -> dict[str, Any]",
+              "line": 68,
+              "doc": "The ``/runner/load`` body this choice amounts to."
+            },
+            {
+              "name": "to_dict",
+              "signature": "def to_dictself -> dict[str, Any]",
+              "line": 74,
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "history_path",
+          "signature": "def history_pathconfig_dir: str | Path | None=None -> Path",
+          "line": 78,
+          "doc": ""
+        },
+        {
+          "kind": "function",
+          "name": "read",
+          "signature": "def readpath: str | Path | None=None -> list[LoadRecord]",
+          "line": 84,
+          "doc": "Every remembered load, oldest first. A damaged file is no history."
+        },
+        {
+          "kind": "function",
+          "name": "record",
+          "signature": "def recordentry: LoadRecord, path: str | Path | None=None -> None",
+          "line": 102,
+          "doc": "Append *entry*, keeping the newest :data:`MAX_RECORDS`."
+        },
+        {
+          "kind": "function",
+          "name": "choose",
+          "signature": "def chooserecords: list[LoadRecord], *, loadable: set[str] | None=None, prefer: str='last' -> AutoChoice | None",
+          "line": 124,
+          "doc": "What ``auto`` loads, or ``None`` when there is nothing to go on."
+        }
+      ],
+      "errors": [
+        "ValueError"
+      ],
+      "deprecations": [],
+      "required_modules": [],
+      "changes": [
+        {
+          "sha": "203b7112",
+          "date": "2026-10-06",
+          "author": "Claude",
+          "subject": "0.72.7 step 1: link config-less models, `runner auto`, images converted on upload",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class LoadRecord:"
+            },
+            {
+              "kind": "added",
+              "text": "def from_dict(cls, data: dict[str, Any]) -> LoadRecord:"
+            },
+            {
+              "kind": "added",
+              "text": "class AutoChoice:"
+            },
+            {
+              "kind": "added",
+              "text": "def payload(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_dict(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def history_path(config_dir: str | Path | None = None) -> Path:"
+            },
+            {
+              "kind": "added",
+              "text": "def read(path: str | Path | None = None) -> list[LoadRecord]:"
+            },
+            {
+              "kind": "added",
+              "text": "def record(entry: LoadRecord, path: str | Path | None = None) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def choose(records: list[LoadRecord], *, loadable: set[str] | None = None,"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "module": "hypernix.hyperlink.search",
       "source": "src/hypernix/hyperlink/search.py",
       "line_count": 407,
@@ -12960,7 +13614,7 @@
     {
       "module": "hypernix.interfaces.cli",
       "source": "src/hypernix/interfaces/cli.py",
-      "line_count": 1500,
+      "line_count": 1518,
       "summary": "Command-line interface for the hypernix package.",
       "api": [
         {
@@ -12978,6 +13632,22 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "2137d41b",
+          "date": "2026-10-07",
+          "author": "Claude",
+          "subject": "Python 3.15 without torch: say so, and skip what needs it",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _needs_torch(cmd: str) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _dispatch(cmd: str, rest: list[str]) -> int:"
+            }
+          ]
+        },
         {
           "sha": "34ccaa58",
           "date": "2026-10-01",
@@ -13055,13 +13725,6 @@
               "text": "def _unknown_command(typed: str) -> int:"
             }
           ]
-        },
-        {
-          "sha": "fb4e2168",
-          "date": "2026-09-09",
-          "author": "Claude",
-          "subject": "0.72.4.post4 \u2014 hnx runtime, and the reason hnx gather printed the usage table",
-          "api_changes": []
         }
       ]
     },
@@ -13433,6 +14096,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "d595eb4a",
+          "date": "2026-10-06",
+          "author": "Claude",
+          "subject": "0.72.7 step 2: images on the HyperNix runner; macOS/Linux CI and first Windows fixes",
+          "api_changes": []
+        },
         {
           "sha": "99ddc1ae",
           "date": "2026-09-29",
@@ -15236,6 +15906,13 @@
       "required_modules": [],
       "changes": [
         {
+          "sha": "316780e9",
+          "date": "2026-10-06",
+          "author": "Claude",
+          "subject": "0.72.7 step 2: Windows CI -- real bugs fixed, tests made platform-honest",
+          "api_changes": []
+        },
+        {
           "sha": "8de7d19d",
           "date": "2026-09-27",
           "author": "Claude",
@@ -16959,7 +17636,7 @@
     {
       "module": "hypernix.interfaces.version_launcher",
       "source": "src/hypernix/interfaces/version_launcher.py",
-      "line_count": 162,
+      "line_count": 164,
       "summary": "HyperNix multi-version launcher.",
       "api": [
         {
@@ -16987,35 +17664,35 @@
           "kind": "function",
           "name": "check_hypernix_installed",
           "signature": "def check_hypernix_installedpy_exe: str -> bool",
-          "line": 58,
+          "line": 60,
           "doc": "Check if hypernix is installed for the given Python executable."
         },
         {
           "kind": "function",
           "name": "installed_version",
           "signature": "def installed_versionpy_exe: str -> str",
-          "line": 72,
+          "line": 74,
           "doc": "The hypernix version `py_exe` has, or \"\" if it has none."
         },
         {
           "kind": "function",
           "name": "find_best_python",
           "signature": "def find_best_python -> str | None",
-          "line": 84,
+          "line": 86,
           "doc": "The interpreter to run the CLI on, or None if none has hypernix."
         },
         {
           "kind": "function",
           "name": "run_with_selected_python",
           "signature": "def run_with_selected_pythonargs: list[str] -> int",
-          "line": 113,
+          "line": 115,
           "doc": "Run the CLI on the selected interpreter."
         },
         {
           "kind": "function",
           "name": "main",
           "signature": "def mainargv: list[str] | None=None -> int",
-          "line": 181,
+          "line": 183,
           "doc": "Main entry point for the multi-version launcher."
         }
       ],
@@ -17023,6 +17700,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "1a35b713",
+          "date": "2026-10-06",
+          "author": "Claude",
+          "subject": "0.72.7 step 3: Python 3.12-3.15 -- requires-python, PEP 798/799/810/831",
+          "api_changes": []
+        },
         {
           "sha": "fb4e2168",
           "date": "2026-09-09",
@@ -17815,14 +18499,14 @@
     {
       "module": "hypernix.models.download",
       "source": "src/hypernix/models/download.py",
-      "line_count": 698,
+      "line_count": 702,
       "summary": "Fetch the HyperNix model snapshot from the HuggingFace Hub.",
       "api": [
         {
           "kind": "class",
           "name": "ModelInfo",
           "signature": "class ModelInfo",
-          "line": 27,
+          "line": 32,
           "doc": "Metadata for a known model on the HuggingFace Hub.",
           "methods": []
         },
@@ -17830,28 +18514,28 @@
           "kind": "function",
           "name": "resolve_repo_id",
           "signature": "def resolve_repo_idname_or_repo_id: str -> str",
-          "line": 510,
+          "line": 515,
           "doc": "Resolve a short name (``\"nano-mini\"``) to a full ``org/repo`` id."
         },
         {
           "kind": "function",
           "name": "resolve_model_info",
           "signature": "def resolve_model_infoname_or_repo_id: str -> ModelInfo | None",
-          "line": 523,
+          "line": 528,
           "doc": "Return the :class:`ModelInfo` for a known short-or-full name, else None."
         },
         {
           "kind": "function",
           "name": "verify_snapshot",
           "signature": "def verify_snapshotmodel_dir: Path | str -> list[str]",
-          "line": 576,
+          "line": 581,
           "doc": "Verify a downloaded snapshot contains everything `convert` needs."
         },
         {
           "kind": "function",
           "name": "download_model",
           "signature": "def download_modelrepo_id: str='ray0rf1re/hyper-nix.1', revision: str | None=None, cache_dir: str | None=None, local_dir: str | None=None, model_dir_name: str | None=None, token: str | None=None, quiet: bool=False, verify: bool=True -> Path",
-          "line": 609,
+          "line": 614,
           "doc": "Download a full HuggingFace model snapshot and return its directory."
         }
       ],
@@ -17868,6 +18552,13 @@
         }
       ],
       "changes": [
+        {
+          "sha": "1a35b713",
+          "date": "2026-10-06",
+          "author": "Claude",
+          "subject": "0.72.7 step 3: Python 3.12-3.15 -- requires-python, PEP 798/799/810/831",
+          "api_changes": []
+        },
         {
           "sha": "879b000b",
           "date": "2026-08-22",
@@ -19492,6 +20183,13 @@
       ],
       "changes": [
         {
+          "sha": "d595eb4a",
+          "date": "2026-10-06",
+          "author": "Claude",
+          "subject": "0.72.7 step 2: images on the HyperNix runner; macOS/Linux CI and first Windows fixes",
+          "api_changes": []
+        },
+        {
           "sha": "8c25846c",
           "date": "2026-08-21",
           "author": "Claude",
@@ -19600,7 +20298,7 @@
     {
       "module": "hypernix.models.neo_oven",
       "source": "src/hypernix/models/neo_oven.py",
-      "line_count": 1491,
+      "line_count": 1505,
       "summary": "neo_oven \u2014 Unified, production-ready model management, generation, and data utilities.",
       "api": [
         {
@@ -19723,19 +20421,19 @@
           "kind": "class",
           "name": "JudgeExample",
           "signature": "class JudgeExample",
-          "line": 589,
+          "line": 609,
           "doc": "A (prompt, response, label) training triple for a judge / reward model.",
           "methods": [
             {
               "name": "format_text",
               "signature": "def format_textself -> str",
-              "line": 595,
+              "line": 615,
               "doc": "Serialize to the canonical plain-text delimiter format."
             },
             {
               "name": "to_dict",
               "signature": "def to_dictself -> dict[str, str]",
-              "line": 603,
+              "line": 623,
               "doc": ""
             }
           ]
@@ -19744,37 +20442,37 @@
           "kind": "class",
           "name": "JudgeCorpus",
           "signature": "class JudgeCorpus",
-          "line": 641,
+          "line": 661,
           "doc": "A collection of JudgeExamples for reward model / judge training.",
           "methods": [
             {
               "name": "from_pairs",
               "signature": "def from_pairscls, pairs: Sequence[tuple[str, str]], n: int, *, seed: int | None=0, good_ratio: float=0.5 -> JudgeCorpus",
-              "line": 656,
+              "line": 676,
               "doc": "Build a corpus of ``n`` examples from ``(prompt, good_response)`` pairs."
             },
             {
               "name": "from_oven",
               "signature": "def from_ovencls, oven: NeoOven, prompts: Sequence[str], *, max_new_tokens: int=64, temperature: float=0.7, label_rule: Callable[[str, str], str] | None=None -> JudgeCorpus",
-              "line": 680,
+              "line": 700,
               "doc": "Collect real responses from a NeoOven and wrap them as JudgeExamples."
             },
             {
               "name": "from_hf_dataset",
               "signature": "def from_hf_datasetcls, dataset_name: str, prompt_col: str='prompt', response_col: str='response', label_col: str | None=None, *, split: str='train', max_examples: int | None=None -> JudgeCorpus",
-              "line": 704,
+              "line": 724,
               "doc": "Build a corpus from a HuggingFace dataset."
             },
             {
               "name": "save",
               "signature": "def saveself, out_path: str | Path, *, fmt: str='jsonl' -> Path",
-              "line": 738,
+              "line": 758,
               "doc": "Write corpus to disk."
             },
             {
               "name": "load",
               "signature": "def loadcls, path: str | Path, *, fmt: str='jsonl' -> JudgeCorpus",
-              "line": 757,
+              "line": 777,
               "doc": "Load a corpus written by :meth:`save`."
             }
           ]
@@ -19783,79 +20481,79 @@
           "kind": "class",
           "name": "NeoOven",
           "signature": "class NeoOven",
-          "line": 810,
+          "line": 830,
           "doc": "Production-ready model wrapper for generation, training, and evaluation.",
           "methods": [
             {
               "name": "complete",
               "signature": "def completeself, prompt: str, *, max_new_tokens: int=256, temperature: float=0.2, top_k: int=40, top_p: float=0.95, stop: tuple[str, ...]=DEFAULT_STOPS, seed: int | None=None, should_stop: Callable[[], bool] | None=None -> str",
-              "line": 1041,
+              "line": 1061,
               "doc": "Continue ``prompt`` as code / text."
             },
             {
               "name": "fill",
               "signature": "def fillself, prefix: str, suffix: str, *, max_new_tokens: int=128, temperature: float=0.2, top_k: int=40, top_p: float=0.95, stop: tuple[str, ...]=FIM_STOPS, seed: int | None=None, should_stop: Callable[[], bool] | None=None -> str",
-              "line": 1061,
+              "line": 1081,
               "doc": "Fill-in-the-middle generation (starcoder FIM convention)."
             },
             {
               "name": "chat",
               "signature": "def chatself, messages: list[dict[str, str]], *, max_new_tokens: int=256, temperature: float=0.7, top_k: int=40, top_p: float=0.95, seed: int | None=None, should_stop: Callable[[], bool] | None=None -> str",
-              "line": 1098,
+              "line": 1118,
               "doc": "Run a chat turn given a ``[{\"role\": ..., \"content\": ...}]`` list."
             },
             {
               "name": "stream",
               "signature": "def streamself, prompt: str, *, max_new_tokens: int=256, temperature: float=0.7, top_k: int=40, top_p: float=0.95, stop: tuple[str, ...]=DEFAULT_STOPS, seed: int | None=None, should_stop: Callable[[], bool] | None=None",
-              "line": 1119,
+              "line": 1139,
               "doc": "Token-by-token generator. Yields decoded text as it arrives."
             },
             {
               "name": "generate_batch",
               "signature": "def generate_batchself, prompts: list[str], *, max_new_tokens: int=128, temperature: float=0.7, top_k: int=40, top_p: float=0.95, stop: tuple[str, ...]=DEFAULT_STOPS, seed: int | None=None, should_stop: Callable[[], bool] | None=None -> list[str]",
-              "line": 1207,
+              "line": 1227,
               "doc": "Generate completions for multiple prompts sequentially."
             },
             {
               "name": "freeze_backbone",
               "signature": "def freeze_backboneself, prefix: str='embed_tokens' -> int",
-              "line": 1249,
+              "line": 1269,
               "doc": "Freeze parameters matching ``prefix``. Returns frozen count."
             },
             {
               "name": "unfreeze_backbone",
               "signature": "def unfreeze_backboneself, prefix: str='*' -> int",
-              "line": 1253,
+              "line": 1273,
               "doc": "Unfreeze parameters matching ``prefix``. Returns unfrozen count."
             },
             {
               "name": "memory_stats",
               "signature": "def memory_statsself -> ParamStats",
-              "line": 1257,
+              "line": 1277,
               "doc": "Return :class:`ParamStats` for the loaded model."
             },
             {
               "name": "vram",
               "signature": "def vramself -> dict[str, float]",
-              "line": 1261,
+              "line": 1281,
               "doc": "Return CUDA VRAM usage in MB. Empty dict on CPU-only systems."
             },
             {
               "name": "build_judge_corpus",
               "signature": "def build_judge_corpusself, prompts: Sequence[str], *, max_new_tokens: int=64, temperature: float=0.7, label_rule: Callable[[str, str], str] | None=None -> JudgeCorpus",
-              "line": 1269,
+              "line": 1289,
               "doc": "Generate responses and return a :class:`JudgeCorpus` for reward model training."
             },
             {
               "name": "train",
               "signature": "def trainself, dataset_path: Path | str, out_dir: Path | str | None=None, *, steps: int=1000, batch_size: int=2, context_length: int=512, lr: float=0.0003, weight_decay: float=0.1, grad_clip: float=1.0, log_every: int=10, save_every: int=500, seed: int | None=None, quiet: bool=False, optimizer_class: type | None=None, use_abbicus: bool=False, use_turbo_abbicus: bool=False, use_stml: bool=False, untrained_max_context: int=8192, segment_length: int=512, compute_framework: Any | None=None, metrics: bool | TrainingMetrics=False -> Path",
-              "line": 1285,
+              "line": 1305,
               "doc": "Continue-pretrain on a raw-text file."
             },
             {
               "name": "save_pt",
               "signature": "def save_ptself, out_path: Path | str -> Path",
-              "line": 1435,
+              "line": 1455,
               "doc": "Save a self-contained torch.load()-able bundle."
             }
           ]
@@ -19864,77 +20562,77 @@
           "kind": "function",
           "name": "preheat_brewed",
           "signature": "def preheat_brewedpath: Path | str, *, tokenizer_source: Path | str | None=None, device: str | None=None, dtype: str='float32' -> NeoOven",
-          "line": 1454,
+          "line": 1474,
           "doc": "Load a ``hyperNix0x-v2`` model into a :class:`NeoOven`."
         },
         {
           "kind": "function",
           "name": "new_brewed",
           "signature": "def new_brewedout_dir: Path | str, *, preset: str='small', device: str | None=None, dtype: str='float32', tokenizer_source: Path | str | None=None -> NeoOven",
-          "line": 1513,
+          "line": 1533,
           "doc": "A fresh, untrained ``hyperNix0x-v2`` model in a :class:`NeoOven`."
         },
         {
           "kind": "function",
           "name": "preheat",
           "signature": "def preheatrepo_id: str='ray0rf1re/hyper-nix.1', *, local_dir: Path | str | None=None, revision: str | None=None, token: str | None=None, device: str | None=None, dtype: str='float32', quiet: bool=False -> NeoOven",
-          "line": 1556,
+          "line": 1576,
           "doc": "Download (if necessary) + load a HyperNix snapshot into a :class:`NeoOven`."
         },
         {
           "kind": "function",
           "name": "new_oven",
           "signature": "def new_ovenout_dir: Path | str, *, arch: str='hypernix', vocab_size: int=32000, hidden_size: int=1024, intermediate_size: int=4096, num_hidden_layers: int=16, num_attention_heads: int=16, num_key_value_heads: int | None=None, max_position_embeddings: int=2048, tokenizer_source: Path | str | None=None, device: str | None=None, dtype: str='float32', seed: int | None=None -> NeoOven",
-          "line": 1611,
+          "line": 1631,
           "doc": "Create a fresh untrained :class:`NeoOven` from an architecture preset."
         },
         {
           "kind": "function",
           "name": "bake_code",
           "signature": "def bake_codesource: NeoOven | Path | str, prompt: str, **kwargs: Any -> str",
-          "line": 1655,
+          "line": 1675,
           "doc": "Convenience: accepts a preheated NeoOven or a snapshot path/URL."
         },
         {
           "kind": "function",
           "name": "fill_middle",
           "signature": "def fill_middlesource: NeoOven | Path | str, prefix: str, suffix: str, **kwargs: Any -> str",
-          "line": 1661,
+          "line": 1681,
           "doc": "Convenience FIM API \u2014 accepts a preheated NeoOven or a snapshot path."
         },
         {
           "kind": "function",
           "name": "load_pt",
           "signature": "def load_ptpt_path: Path | str, *, device: str | None=None -> NeoOven",
-          "line": 1667,
+          "line": 1687,
           "doc": "Rehydrate a NeoOven from a ``save_pt`` bundle."
         },
         {
           "kind": "function",
           "name": "plot_loss_curve",
           "signature": "def plot_loss_curvepairs: Sequence[tuple[int, float]], out_path: Path | str, *, title: str='Training loss' -> Path",
-          "line": 1697,
+          "line": 1717,
           "doc": "Alias for new_fridge.plot_loss_curve \u2014 kept for compatibility."
         },
         {
           "kind": "function",
           "name": "plot_score_distribution",
           "signature": "def plot_score_distributionscores: Sequence[float], out_path: Path | str, *, title: str='Judge score distribution', bins: int=20 -> Path",
-          "line": 1702,
+          "line": 1722,
           "doc": "Alias for new_fridge.plot_score_distribution \u2014 kept for compatibility."
         },
         {
           "kind": "function",
           "name": "plot_round_losses",
           "signature": "def plot_round_lossesrounds: Sequence[Sequence[tuple[int, float]]], out_path: Path | str, *, title: str='Multi-round training loss', round_labels: Sequence[str] | None=None -> Path",
-          "line": 1707,
+          "line": 1727,
           "doc": "Alias for new_fridge.plot_round_losses \u2014 kept for compatibility."
         },
         {
           "kind": "function",
           "name": "synthesize_judge_corpus",
           "signature": "def synthesize_judge_corpusn: int, out_path: Path | str, *, seed: int | None=0, good_ratio: float=0.5 -> Path",
-          "line": 1713,
+          "line": 1733,
           "doc": "Alias for the old mediocre_fridge.synthesize_judge_corpus."
         }
       ],
@@ -19954,6 +20652,30 @@
         }
       ],
       "changes": [
+        {
+          "sha": "316780e9",
+          "date": "2026-10-06",
+          "author": "Claude",
+          "subject": "0.72.7 step 2: Windows CI -- real bugs fixed, tests made platform-honest",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class _FilePlots:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, figure_cls: Any) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def subplots(self, figsize: tuple[float, float]) -> tuple[Any, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def close(fig: Any) -> None:"
+            }
+          ]
+        },
         {
           "sha": "9d5186ed",
           "date": "2026-10-01",
@@ -20043,110 +20765,6 @@
             {
               "kind": "added",
               "text": "def _advance(text: str) -> str:"
-            }
-          ]
-        },
-        {
-          "sha": "8c25846c",
-          "date": "2026-08-21",
-          "author": "Claude",
-          "subject": "Group hypernix modules into category packages",
-          "api_changes": [
-            {
-              "kind": "added",
-              "text": "class ParamStats:"
-            },
-            {
-              "kind": "added",
-              "text": "def megabytes(self) -> float:"
-            },
-            {
-              "kind": "added",
-              "text": "def __str__(self) -> str:"
-            },
-            {
-              "kind": "added",
-              "text": "def _match_any(name: str, patterns: tuple[str, ...]) -> bool:"
-            },
-            {
-              "kind": "added",
-              "text": "def _unwrap_model(model: nn.Module) -> nn.Module:"
-            },
-            {
-              "kind": "added",
-              "text": "def unwrap_model(model: nn.Module) -> nn.Module:"
-            },
-            {
-              "kind": "added",
-              "text": "def freeze(model: nn.Module, patterns: Iterable[str] = (\"embed_tokens\",)) -> int:"
-            },
-            {
-              "kind": "added",
-              "text": "def unfreeze(model: nn.Module, patterns: Iterable[str] = (\"*\",)) -> int:"
-            },
-            {
-              "kind": "added",
-              "text": "def parameter_stats(model: nn.Module) -> ParamStats:"
-            },
-            {
-              "kind": "added",
-              "text": "def offload_to_cpu(model: nn.Module, patterns: Iterable[str] = (\"embed_tokens\",)) -> int:"
-            },
-            {
-              "kind": "added",
-              "text": "def chill_cache() -> None:"
-            },
-            {
-              "kind": "added",
-              "text": "def vram_stats() -> dict[str, float]:"
-            },
-            {
-              "kind": "added",
-              "text": "def parse_training_log(text: str) -> list[dict[str, Any]]:"
-            },
-            {
-              "kind": "added",
-              "text": "class TrainingMetrics:"
-            },
-            {
-              "kind": "added",
-              "text": "def __init__("
-            },
-            {
-              "kind": "added",
-              "text": "def on_step(self, step: int, loss: float, **kwargs: Any) -> None:"
-            },
-            {
-              "kind": "added",
-              "text": "def plot_loss(self, out_path: str | Path, *, title: str = \"Training Loss\") -> Path:"
-            },
-            {
-              "kind": "added",
-              "text": "def plot_score_distribution("
-            },
-            {
-              "kind": "added",
-              "text": "def plot_round_losses("
-            },
-            {
-              "kind": "added",
-              "text": "def to_jsonl(self, out_path: str | Path) -> Path:"
-            },
-            {
-              "kind": "added",
-              "text": "def close(self) -> None:"
-            },
-            {
-              "kind": "added",
-              "text": "def _load_matplotlib() -> Any:"
-            },
-            {
-              "kind": "added",
-              "text": "def _plot_pairs("
-            },
-            {
-              "kind": "added",
-              "text": "def _plot_histogram("
             }
           ]
         }
@@ -20518,6 +21136,13 @@
         }
       ],
       "changes": [
+        {
+          "sha": "316780e9",
+          "date": "2026-10-06",
+          "author": "Claude",
+          "subject": "0.72.7 step 2: Windows CI -- real bugs fixed, tests made platform-honest",
+          "api_changes": []
+        },
         {
           "sha": "8c25846c",
           "date": "2026-08-21",
@@ -21113,6 +21738,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "d595eb4a",
+          "date": "2026-10-06",
+          "author": "Claude",
+          "subject": "0.72.7 step 2: images on the HyperNix runner; macOS/Linux CI and first Windows fixes",
+          "api_changes": []
+        },
         {
           "sha": "8c25846c",
           "date": "2026-08-21",
@@ -22035,6 +22667,13 @@
       "required_modules": [],
       "changes": [
         {
+          "sha": "316780e9",
+          "date": "2026-10-06",
+          "author": "Claude",
+          "subject": "0.72.7 step 2: Windows CI -- real bugs fixed, tests made platform-honest",
+          "api_changes": []
+        },
+        {
           "sha": "99ddc1ae",
           "date": "2026-09-29",
           "author": "Claude",
@@ -22153,14 +22792,14 @@
     {
       "module": "hypernix.monitoring.run_inspect",
       "source": "src/hypernix/monitoring/run_inspect.py",
-      "line_count": 501,
+      "line_count": 512,
       "summary": "hypernix.monitoring.run_inspect \u2014 what a training run is made of.",
       "api": [
         {
           "kind": "class",
           "name": "ImportInfo",
           "signature": "class ImportInfo",
-          "line": 55,
+          "line": 56,
           "doc": "",
           "methods": []
         },
@@ -22168,7 +22807,7 @@
           "kind": "class",
           "name": "Finding",
           "signature": "class Finding",
-          "line": 68,
+          "line": 69,
           "doc": "",
           "methods": []
         },
@@ -22176,7 +22815,7 @@
           "kind": "class",
           "name": "ArchInfo",
           "signature": "class ArchInfo",
-          "line": 79,
+          "line": 80,
           "doc": "",
           "methods": []
         },
@@ -22184,7 +22823,7 @@
           "kind": "class",
           "name": "CookerInfo",
           "signature": "class CookerInfo",
-          "line": 93,
+          "line": 94,
           "doc": "",
           "methods": []
         },
@@ -22192,13 +22831,13 @@
           "kind": "class",
           "name": "ScriptReport",
           "signature": "class ScriptReport",
-          "line": 103,
+          "line": 104,
           "doc": "",
           "methods": [
             {
               "name": "to_dict",
               "signature": "def to_dictself -> dict[str, Any]",
-              "line": 111,
+              "line": 112,
               "doc": ""
             }
           ]
@@ -22207,42 +22846,42 @@
           "kind": "function",
           "name": "script_from_command",
           "signature": "def script_from_commandcommand: str | list[str], cwd: str | Path | None=None -> Path | None",
-          "line": 128,
+          "line": 142,
           "doc": "The ``.py`` file a command line runs, or ``None``."
         },
         {
           "kind": "function",
           "name": "hypernix_module_info",
           "signature": "def hypernix_module_infodotted: str -> tuple[str, str] | None",
-          "line": 217,
+          "line": 231,
           "doc": "``(summary, deprecated_instead)`` for a ``hypernix.*`` module, or ``None`` when there is no such file."
         },
         {
           "kind": "function",
           "name": "cooker_catalogue",
           "signature": "def cooker_catalogue -> dict[str, tuple[str, str]]",
-          "line": 260,
+          "line": 274,
           "doc": "Every Pressure Cooker class: ``name -> (generation, summary)``."
         },
         {
           "kind": "function",
           "name": "analyze_script",
           "signature": "def analyze_scriptpath: str | Path -> ScriptReport",
-          "line": 504,
+          "line": 518,
           "doc": "Everything tvtop-max can tell about a training script, from its source."
         },
         {
           "kind": "function",
           "name": "arch_from_folder",
           "signature": "def arch_from_folderfolder: str | Path -> ArchInfo",
-          "line": 538,
+          "line": 552,
           "doc": "The architecture from a ``config.json`` in *folder*, or nothing."
         },
         {
           "kind": "function",
           "name": "findings_from_log",
           "signature": "def findings_from_loglines: list[str] -> list[Finding]",
-          "line": 567,
+          "line": 581,
           "doc": "Errors and warnings in a log's tail, each counted once per message."
         }
       ],
@@ -22250,6 +22889,18 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "316780e9",
+          "date": "2026-10-06",
+          "author": "Claude",
+          "subject": "0.72.7 step 2: Windows CI -- real bugs fixed, tests made platform-honest",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _split_command(command: str) -> list[str]:"
+            }
+          ]
+        },
         {
           "sha": "c81b29d2",
           "date": "2026-09-23",
@@ -22859,6 +23510,13 @@
       "required_modules": [],
       "changes": [
         {
+          "sha": "316780e9",
+          "date": "2026-10-06",
+          "author": "Claude",
+          "subject": "0.72.7 step 2: Windows CI -- real bugs fixed, tests made platform-honest",
+          "api_changes": []
+        },
+        {
           "sha": "3d07cc0e",
           "date": "2026-09-09",
           "author": "Claude",
@@ -23078,6 +23736,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "316780e9",
+          "date": "2026-10-06",
+          "author": "Claude",
+          "subject": "0.72.7 step 2: Windows CI -- real bugs fixed, tests made platform-honest",
+          "api_changes": []
+        },
         {
           "sha": "32762dfc",
           "date": "2026-09-24",
@@ -24080,6 +24745,20 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "316780e9",
+          "date": "2026-10-06",
+          "author": "Claude",
+          "subject": "0.72.7 step 2: Windows CI -- real bugs fixed, tests made platform-honest",
+          "api_changes": []
+        },
+        {
+          "sha": "d595eb4a",
+          "date": "2026-10-06",
+          "author": "Claude",
+          "subject": "0.72.7 step 2: images on the HyperNix runner; macOS/Linux CI and first Windows fixes",
+          "api_changes": []
+        },
         {
           "sha": "6576f39d",
           "date": "2026-09-23",
@@ -25733,7 +26412,7 @@
     {
       "module": "hypernix.optimizers.pressure_cooker",
       "source": "src/hypernix/optimizers/pressure_cooker.py",
-      "line_count": 572,
+      "line_count": 568,
       "summary": "pressure_cooker \u2014 custom AdamW optimizer with device-tuned tiers.",
       "api": [
         {
@@ -25818,13 +26497,13 @@
           "kind": "class",
           "name": "UniversalCooker",
           "signature": "class UniversalCooker",
-          "line": 513,
+          "line": 510,
           "doc": "Factory that returns the right tier for the model's device.",
           "methods": [
             {
               "name": "select",
               "signature": "def selectcls, params, *, prefer_speed: bool=True, variant: str='v5s', **kwargs: Any -> Optimizer",
-              "line": 549,
+              "line": 546,
               "doc": ""
             }
           ]
@@ -25833,42 +26512,42 @@
           "kind": "function",
           "name": "pressure_cooker",
           "signature": "def pressure_cookerparams: Iterable[torch.nn.Parameter] | Iterable[dict], **kwargs: Any -> PressureCooker",
-          "line": 612,
+          "line": 609,
           "doc": "Construct a :class:`PressureCooker` from keyword arguments."
         },
         {
           "kind": "function",
           "name": "stovetop_cooker",
           "signature": "def stovetop_cookerparams, **kw: Any -> StovetopCooker",
-          "line": 632,
+          "line": 629,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "electric_cooker",
           "signature": "def electric_cookerparams, **kw: Any -> ElectricCooker",
-          "line": 636,
+          "line": 633,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "induction_cooker",
           "signature": "def induction_cookerparams, **kw: Any -> InductionCooker",
-          "line": 640,
+          "line": 637,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "pro_cooker",
           "signature": "def pro_cookerparams, **kw: Any -> ProCooker",
-          "line": 644,
+          "line": 641,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "universal_cooker",
           "signature": "def universal_cookerparams, *, prefer_speed: bool=True, variant: str='v5s', **kw: Any -> Optimizer",
-          "line": 648,
+          "line": 645,
           "doc": "Return the best-fit cooker for the detected parameter device."
         }
       ],
@@ -25885,6 +26564,13 @@
         }
       ],
       "changes": [
+        {
+          "sha": "1a35b713",
+          "date": "2026-10-06",
+          "author": "Claude",
+          "subject": "0.72.7 step 3: Python 3.12-3.15 -- requires-python, PEP 798/799/810/831",
+          "api_changes": []
+        },
         {
           "sha": "589ebbdc",
           "date": "2026-09-23",
@@ -27382,6 +28068,13 @@
         }
       ],
       "changes": [
+        {
+          "sha": "316780e9",
+          "date": "2026-10-06",
+          "author": "Claude",
+          "subject": "0.72.7 step 2: Windows CI -- real bugs fixed, tests made platform-honest",
+          "api_changes": []
+        },
         {
           "sha": "34ccaa58",
           "date": "2026-10-01",
@@ -29471,14 +30164,14 @@
     {
       "module": "hypernix.quant.hyprslug_headers",
       "source": "src/hypernix/quant/hyprslug_headers.py",
-      "line_count": 648,
+      "line_count": 647,
       "summary": "hypernix.quant.hyprslug_headers \u2014 self-describing headers for any GGUF.",
       "api": [
         {
           "kind": "class",
           "name": "HeaderError",
           "signature": "class HeaderError",
-          "line": 102,
+          "line": 104,
           "doc": "A header could not be read, written, or acted on.",
           "methods": []
         },
@@ -29486,31 +30179,31 @@
           "kind": "class",
           "name": "Header",
           "signature": "class Header",
-          "line": 126,
+          "line": 128,
           "doc": "Everything a loader needs to decode a type it has never seen.",
           "methods": [
             {
               "name": "is_extension",
               "signature": "def is_extensionself -> bool",
-              "line": 165,
+              "line": 167,
               "doc": ""
             },
             {
               "name": "to_metadata",
               "signature": "def to_metadataself -> dict[str, Any]",
-              "line": 168,
+              "line": 170,
               "doc": "The GGUF metadata keys this header writes."
             },
             {
               "name": "to_dict",
               "signature": "def to_dictself -> dict[str, Any]",
-              "line": 181,
+              "line": 183,
               "doc": ""
             },
             {
               "name": "describe",
               "signature": "def describeself -> str",
-              "line": 184,
+              "line": 186,
               "doc": ""
             }
           ]
@@ -29519,84 +30212,84 @@
           "kind": "function",
           "name": "header_for_type",
           "signature": "def header_for_typeggml_type: int -> Header",
-          "line": 198,
+          "line": 200,
           "doc": "The header describing *ggml_type*, built from the codec itself."
         },
         {
           "kind": "function",
           "name": "resolve_model_path",
           "signature": "def resolve_model_pathpath: str | Path -> Path",
-          "line": 269,
+          "line": 271,
           "doc": "A ``.gguf`` file, from either a file or the folder holding one."
         },
         {
           "kind": "function",
           "name": "read_header",
           "signature": "def read_headerpath: str | Path -> Header",
-          "line": 311,
+          "line": 313,
           "doc": "The header stamped into *path*, or one derived from its tensors."
         },
         {
           "kind": "function",
           "name": "stamp",
           "signature": "def stamppath: str | Path, destination: str | Path | None=None -> Header",
-          "line": 354,
+          "line": 356,
           "doc": "Write the ``hyprslug.header.*`` block into *path*."
         },
         {
           "kind": "function",
           "name": "wrap",
           "signature": "def wrappath: str | Path, destination: str | Path, *, to: str='', progress=None -> dict[str, Any]",
-          "line": 407,
+          "line": 409,
           "doc": "Re-encode *path* into a type stock ``llama.cpp`` can read."
         },
         {
           "kind": "function",
           "name": "install_model",
           "signature": "def install_modelpath: str | Path, *, to: str='', publisher: str='HyperNix', name: str='', root: str | Path | None=None, progress=None -> dict[str, Any]",
-          "line": 484,
+          "line": 486,
           "doc": "Put a loadable copy of *path* where LM Studio and Bionic look."
         },
         {
           "kind": "function",
           "name": "runtime_dir",
           "signature": "def runtime_dir -> Path",
-          "line": 565,
+          "line": 567,
           "doc": "Where the installed runtime keeps its configuration."
         },
         {
           "kind": "function",
           "name": "lmstudio_roots",
           "signature": "def lmstudio_roots -> list[Path]",
-          "line": 573,
+          "line": 575,
           "doc": "Model directories LM Studio (and Bionic) are known to use."
         },
         {
           "kind": "function",
           "name": "tier_in_name",
           "signature": "def tier_in_namepath: str | Path -> str",
-          "line": 601,
+          "line": 603,
           "doc": "The tier a filename *claims*, or \"\" if it names none."
         },
         {
           "kind": "function",
           "name": "scan",
           "signature": "def scanroot: str | Path -> list[dict[str, Any]]",
-          "line": 617,
+          "line": 619,
           "doc": "Every GGUF under *root*, classified by whether llama.cpp can read it."
         },
         {
           "kind": "function",
           "name": "serve_command",
           "signature": "def serve_commandmodel: str | Path, *, host: str='127.0.0.1', port: int=1234, cache_bytes: int=0 -> list[str]",
-          "line": 652,
+          "line": 654,
           "doc": "The argv that serves *model* over an OpenAI-compatible endpoint."
         },
         {
           "kind": "function",
           "name": "install",
           "signature": "def install*, host: str='127.0.0.1', port: int=1234, scan_lmstudio: bool=True -> dict[str, Any]",
-          "line": 664,
+          "line": 666,
           "doc": "Set up the runtime and report what it found."
         },
         {
@@ -29620,6 +30313,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "1a35b713",
+          "date": "2026-10-06",
+          "author": "Claude",
+          "subject": "0.72.7 step 3: Python 3.12-3.15 -- requires-python, PEP 798/799/810/831",
+          "api_changes": []
+        },
         {
           "sha": "ac0053d7",
           "date": "2026-09-03",
@@ -29745,21 +30445,21 @@
     {
       "module": "hypernix.quant.hyprslug_headers_cli",
       "source": "src/hypernix/quant/hyprslug_headers_cli.py",
-      "line_count": 301,
+      "line_count": 300,
       "summary": "``hypernix hyprslug-headers`` \u2014 the runtime, and the three ways out.",
       "api": [
         {
           "kind": "function",
           "name": "main",
           "signature": "def mainargv: list[str] | None=None -> int",
-          "line": 152,
+          "line": 153,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "cli_main",
           "signature": "def cli_main -> None",
-          "line": 342,
+          "line": 341,
           "doc": "Console-script entry point."
         }
       ],
@@ -29767,6 +30467,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "1a35b713",
+          "date": "2026-10-06",
+          "author": "Claude",
+          "subject": "0.72.7 step 3: Python 3.12-3.15 -- requires-python, PEP 798/799/810/831",
+          "api_changes": []
+        },
         {
           "sha": "50375561",
           "date": "2026-09-03",
@@ -30273,14 +30980,14 @@
     {
       "module": "hypernix.quant.llamaquants",
       "source": "src/hypernix/quant/llamaquants.py",
-      "line_count": 852,
+      "line_count": 856,
       "summary": "hypernix.quant.llamaquants \u2014 the llama.cpp block formats, in Python.",
       "api": [
         {
           "kind": "class",
           "name": "LlamaQuantError",
           "signature": "class LlamaQuantError",
-          "line": 77,
+          "line": 82,
           "doc": "A tensor could not be encoded or decoded in the requested format.",
           "methods": []
         },
@@ -30288,27 +30995,27 @@
           "kind": "function",
           "name": "make_qx_quants",
           "signature": "def make_qx_quantsx: np.ndarray, nmax: int, *, rmse_type: int=1, qw: np.ndarray | None=None -> tuple[np.ndarray, np.ndarray]",
-          "line": 103,
+          "line": 108,
           "doc": "Symmetric quantisation of each row of *x* to ``[-nmax, nmax-1]``."
         },
         {
           "kind": "function",
           "name": "make_qkx2_quants",
           "signature": "def make_qkx2_quantsx: np.ndarray, weights: np.ndarray, nmax: int, *, rmin: float=-1.0, rdelta: float=0.1, nstep: int=20, use_mad: bool=False -> tuple[np.ndarray, np.ndarray, np.ndarray]",
-          "line": 178,
+          "line": 183,
           "doc": "Asymmetric quantisation of each row of *x* to ``[0, nmax]``."
         },
         {
           "kind": "class",
           "name": "BlockFormat",
           "signature": "class BlockFormat",
-          "line": 895,
+          "line": 900,
           "doc": "One llama.cpp block type: its shape, and how to get in and out.",
           "methods": [
             {
               "name": "bits_per_weight",
               "signature": "def bits_per_weightself -> float",
-              "line": 907,
+              "line": 912,
               "doc": ""
             }
           ]
@@ -30317,21 +31024,21 @@
           "kind": "function",
           "name": "is_supported",
           "signature": "def is_supportedname_or_type: str | int -> bool",
-          "line": 950,
+          "line": 955,
           "doc": "True if this module can encode and decode *name_or_type*."
         },
         {
           "kind": "function",
           "name": "quantize_array",
           "signature": "def quantize_arrayvalues, name_or_type: str | int, importance=None -> bytes",
-          "line": 973,
+          "line": 978,
           "doc": "Encode a flat sequence of floats into *name_or_type*'s blocks."
         },
         {
           "kind": "function",
           "name": "dequantize_array",
           "signature": "def dequantize_arrayraw: bytes, name_or_type: str | int -> np.ndarray",
-          "line": 1010,
+          "line": 1015,
           "doc": "Decode *raw* back to float32, as llama.cpp would read it."
         }
       ],
@@ -30353,6 +31060,13 @@
         }
       ],
       "changes": [
+        {
+          "sha": "1a35b713",
+          "date": "2026-10-06",
+          "author": "Claude",
+          "subject": "0.72.7 step 3: Python 3.12-3.15 -- requires-python, PEP 798/799/810/831",
+          "api_changes": []
+        },
         {
           "sha": "7e6e59a3",
           "date": "2026-09-29",
@@ -31470,14 +32184,14 @@
     {
       "module": "hypernix.quant.runtime_bridge",
       "source": "src/hypernix/quant/runtime_bridge.py",
-      "line_count": 559,
+      "line_count": 608,
       "summary": "runtime_bridge \u2014 using the HyperNix llama.cpp from other applications.",
       "api": [
         {
           "kind": "class",
           "name": "BridgeError",
           "signature": "class BridgeError",
-          "line": 75,
+          "line": 76,
           "doc": "Something is missing or does not look like what it claims.",
           "methods": []
         },
@@ -31485,40 +32199,40 @@
           "kind": "function",
           "name": "home",
           "signature": "def home -> Path",
-          "line": 79,
+          "line": 80,
           "doc": "Where this keeps backups and its manifest."
         },
         {
           "kind": "function",
           "name": "backup_dir",
           "signature": "def backup_dir -> Path",
-          "line": 87,
+          "line": 88,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "manifest_path",
           "signature": "def manifest_path -> Path",
-          "line": 91,
+          "line": 92,
           "doc": ""
         },
         {
           "kind": "class",
           "name": "Build",
           "signature": "class Build",
-          "line": 117,
+          "line": 118,
           "doc": "A built llama.cpp, and whether it is one of ours.",
           "methods": [
             {
               "name": "missing",
               "signature": "def missingself, types: set[int] | frozenset[int] -> list[int]",
-              "line": 134,
+              "line": 135,
               "doc": "The HNX type ids among *types* this build cannot read."
             },
             {
               "name": "to_dict",
               "signature": "def to_dictself -> dict[str, Any]",
-              "line": 138,
+              "line": 139,
               "doc": ""
             }
           ]
@@ -31527,70 +32241,77 @@
           "kind": "function",
           "name": "recorded_build",
           "signature": "def recorded_build -> Path | None",
-          "line": 161,
+          "line": 162,
           "doc": "The build ``native/ggml-hnx/build.sh`` last made, if it said."
         },
         {
           "kind": "function",
           "name": "candidate_build_dirs",
           "signature": "def candidate_build_dirs -> list[Path]",
-          "line": 177,
+          "line": 178,
           "doc": "Where a build might be, most specific first."
         },
         {
           "kind": "function",
           "name": "find_build",
           "signature": "def find_buildexplicit: str | Path | None=None, *, need: set[int] | frozenset[int]=frozenset() -> Build",
-          "line": 224,
+          "line": 225,
           "doc": "Locate a built llama.cpp. Raises if there is not one."
         },
         {
           "kind": "function",
           "name": "model_types",
           "signature": "def model_typespath: str | Path -> frozenset[int]",
-          "line": 311,
+          "line": 317,
           "doc": "The ggml type ids of every tensor in the GGUF at *path*."
         },
         {
           "kind": "function",
+          "name": "find_mmproj",
+          "signature": "def find_mmprojmodel: str | Path -> Path | None",
+          "line": 335,
+          "doc": "The vision projector that goes with *model*, if it has one."
+        },
+        {
+          "kind": "function",
           "name": "serve_argv",
-          "signature": "def serve_argvbuild: Build, model: str | Path, *, host: str='127.0.0.1', port: int=8080, gpu_layers: int=0, context: int=0, alias: str='' -> list[str]",
-          "line": 321,
+          "signature": "def serve_argvbuild: Build, model: str | Path, *, host: str='127.0.0.1', port: int=8080, gpu_layers: int=0, context: int=0, alias: str='', mmproj: str | Path | None=None -> list[str]",
+          "line": 375,
           "doc": "The command line that starts the patched server."
         },
         {
           "kind": "function",
           "name": "lmstudio_runtime_dirs",
           "signature": "def lmstudio_runtime_dirs -> list[Path]",
-          "line": 373,
+          "line": 429,
           "doc": "Directories where LM Studio keeps a llama.cpp runtime."
         },
         {
           "kind": "function",
           "name": "detect_targets",
           "signature": "def detect_targets -> list[dict[str, Any]]",
-          "line": 418,
+          "line": 474,
           "doc": "Applications on this machine that could take the runtime."
         },
         {
           "kind": "function",
           "name": "install",
           "signature": "def installbuild: Build, target_dir: str | Path, *, confirmed: bool=False, dry_run: bool=False -> dict[str, Any]",
-          "line": 453,
+          "line": 509,
           "doc": "Put the patched libraries into *target_dir*, reversibly."
         },
         {
           "kind": "function",
           "name": "restore",
           "signature": "def restore*, confirmed: bool=False, which: str='' -> dict[str, Any]",
-          "line": 561,
+          "line": 617,
           "doc": "Put back what :func:`install` replaced."
         },
         {
           "kind": "function",
           "name": "status",
           "signature": "def statusexplicit_build: str | Path | None=None -> dict[str, Any]",
-          "line": 632,
+          "line": 688,
           "doc": "What is built, what is detected, and what is installed."
         }
       ],
@@ -31600,6 +32321,33 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "316780e9",
+          "date": "2026-10-06",
+          "author": "Claude",
+          "subject": "0.72.7 step 2: Windows CI -- real bugs fixed, tests made platform-honest",
+          "api_changes": []
+        },
+        {
+          "sha": "d595eb4a",
+          "date": "2026-10-06",
+          "author": "Claude",
+          "subject": "0.72.7 step 2: images on the HyperNix runner; macOS/Linux CI and first Windows fixes",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _mmproj_files(folder: Path) -> list[Path]:"
+            },
+            {
+              "kind": "added",
+              "text": "def find_mmproj(model: str | Path) -> Path | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def score(candidate: Path) -> tuple[int, int]:"
+            }
+          ]
+        },
         {
           "sha": "e010f8c9",
           "date": "2026-09-29",
@@ -35739,7 +36487,7 @@
     {
       "module": "hypernix.system.autoscan",
       "source": "src/hypernix/system/autoscan.py",
-      "line_count": 600,
+      "line_count": 601,
       "summary": "hypernix.system.autoscan \u2014 the twice-weekly sweep, and its release gate.",
       "api": [
         {
@@ -35806,42 +36554,42 @@
           "kind": "function",
           "name": "scan_security",
           "signature": "def scan_securityroot: Path, *, skip: Sequence[str]=() -> list[Finding]",
-          "line": 354,
+          "line": 356,
           "doc": "Pattern scan for the handful of things that are never fine."
         },
         {
           "kind": "function",
           "name": "apply_maintenance",
           "signature": "def apply_maintenanceroot: Path, *, dry_run: bool=False -> tuple[list[str], list[str]]",
-          "line": 388,
+          "line": 390,
           "doc": "Run the safe automatic fixes. ``(fixed, errors)``."
         },
         {
           "kind": "function",
           "name": "ruff_findings",
           "signature": "def ruff_findingsroot: Path -> list[Finding]",
-          "line": 431,
+          "line": 433,
           "doc": "Whatever ruff still reports, as cosmetic findings."
         },
         {
           "kind": "function",
           "name": "is_stable_version",
           "signature": "def is_stable_versionversion: str -> bool",
-          "line": 469,
+          "line": 471,
           "doc": "True for a plain release, false for anything pre-release."
         },
         {
           "kind": "function",
           "name": "next_post_version",
           "signature": "def next_post_versionversion: str -> str",
-          "line": 480,
+          "line": 482,
           "doc": "``1.2.3`` -> ``1.2.3.post1``; ``1.2.3.post4`` -> ``1.2.3.post5``."
         },
         {
           "kind": "class",
           "name": "ReleaseDecision",
           "signature": "class ReleaseDecision",
-          "line": 495,
+          "line": 497,
           "doc": "Whether to release, and \u2014 always \u2014 why not.",
           "methods": []
         },
@@ -35849,21 +36597,21 @@
           "kind": "function",
           "name": "should_release",
           "signature": "def should_releasereport: ScanReport, latest_version: str, *, minimum_fixes: int=MINIMUM_FIXES_FOR_RELEASE -> ReleaseDecision",
-          "line": 508,
+          "line": 510,
           "doc": "The gate. Every clause here is a way to say no."
         },
         {
           "kind": "function",
           "name": "advise",
           "signature": "def advisereport: ScanReport, diff: str, decision: ReleaseDecision, *, api_key: str | None=None, max_diff_chars: int=60000 -> dict",
-          "line": 572,
+          "line": 574,
           "doc": "Ask Claude whether the sweep's changes are safe to publish."
         },
         {
           "kind": "function",
           "name": "run",
           "signature": "def runroot: Path, *, fix: bool=True -> ScanReport",
-          "line": 700,
+          "line": 702,
           "doc": "A whole sweep: scan, optionally fix, scan again."
         }
       ],
@@ -35873,6 +36621,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "1a35b713",
+          "date": "2026-10-06",
+          "author": "Claude",
+          "subject": "0.72.7 step 3: Python 3.12-3.15 -- requires-python, PEP 798/799/810/831",
+          "api_changes": []
+        },
         {
           "sha": "c8dfa2f4",
           "date": "2026-09-22",
@@ -36050,6 +36805,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "0a5db23c",
+          "date": "2026-10-07",
+          "author": "Claude",
+          "subject": "Windows CI: the remaining 26, and the 3.12-3.15 matrix fixes it found",
+          "api_changes": []
+        },
         {
           "sha": "3816faa3",
           "date": "2026-09-16",
@@ -36780,6 +37542,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "1a35b713",
+          "date": "2026-10-06",
+          "author": "Claude",
+          "subject": "0.72.7 step 3: Python 3.12-3.15 -- requires-python, PEP 798/799/810/831",
+          "api_changes": []
+        },
         {
           "sha": "e010f8c9",
           "date": "2026-09-29",
@@ -39367,6 +40136,13 @@
       "required_modules": [],
       "changes": [
         {
+          "sha": "d595eb4a",
+          "date": "2026-10-06",
+          "author": "Claude",
+          "subject": "0.72.7 step 2: images on the HyperNix runner; macOS/Linux CI and first Windows fixes",
+          "api_changes": []
+        },
+        {
           "sha": "9262ff74",
           "date": "2026-09-25",
           "author": "Rayla",
@@ -40564,6 +41340,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "d595eb4a",
+          "date": "2026-10-06",
+          "author": "Claude",
+          "subject": "0.72.7 step 2: images on the HyperNix runner; macOS/Linux CI and first Windows fixes",
+          "api_changes": []
+        },
         {
           "sha": "3816faa3",
           "date": "2026-09-16",
@@ -43502,14 +44285,14 @@
     {
       "module": "hypernix.t1api.codebox",
       "source": "src/hypernix/t1api/codebox.py",
-      "line_count": 545,
+      "line_count": 571,
       "summary": "``/code`` \u2014 sandboxes that run code, and the permissions they run under.",
       "api": [
         {
           "kind": "class",
           "name": "SandboxError",
           "signature": "class SandboxError",
-          "line": 131,
+          "line": 134,
           "doc": "A request the sandbox refused. ``code`` says which kind.",
           "methods": []
         },
@@ -43517,13 +44300,13 @@
           "kind": "class",
           "name": "CodePerms",
           "signature": "class CodePerms",
-          "line": 146,
+          "line": 149,
           "doc": "What every sandbox may do. The defaults are the cautious ones.",
           "methods": [
             {
               "name": "to_dict",
               "signature": "def to_dictself -> dict[str, Any]",
-              "line": 157,
+              "line": 160,
               "doc": ""
             }
           ]
@@ -43532,34 +44315,34 @@
           "kind": "function",
           "name": "apply_perms",
           "signature": "def apply_permsperms: CodePerms, raw: str -> tuple[CodePerms, list[str], list[str]]",
-          "line": 255,
+          "line": 258,
           "doc": "Apply a directive string. Returns ``(new perms, changed, asked)``."
         },
         {
           "kind": "function",
           "name": "network_isolation",
           "signature": "def network_isolation -> list[str] | None",
-          "line": 295,
+          "line": 298,
           "doc": "The argv prefix that runs a command with no network, or ``None``."
         },
         {
           "kind": "function",
           "name": "available_languages",
           "signature": "def available_languages -> dict[str, str]",
-          "line": 319,
+          "line": 322,
           "doc": "``name -> interpreter path`` for the languages installed here."
         },
         {
           "kind": "class",
           "name": "RunResult",
           "signature": "class RunResult",
-          "line": 353,
+          "line": 367,
           "doc": "",
           "methods": [
             {
               "name": "to_dict",
               "signature": "def to_dictself -> dict[str, Any]",
-              "line": 364,
+              "line": 378,
               "doc": ""
             }
           ]
@@ -43568,25 +44351,25 @@
           "kind": "class",
           "name": "Sandbox",
           "signature": "class Sandbox",
-          "line": 379,
+          "line": 393,
           "doc": "",
           "methods": [
             {
               "name": "files",
               "signature": "def filesself -> list[dict[str, Any]]",
-              "line": 387,
+              "line": 401,
               "doc": ""
             },
             {
               "name": "bytes_used",
               "signature": "def bytes_usedself -> int",
-              "line": 396,
+              "line": 410,
               "doc": ""
             },
             {
               "name": "to_dict",
               "signature": "def to_dictself, perms: CodePerms -> dict[str, Any]",
-              "line": 406,
+              "line": 420,
               "doc": ""
             }
           ]
@@ -43595,61 +44378,61 @@
           "kind": "class",
           "name": "SandboxStore",
           "signature": "class SandboxStore",
-          "line": 418,
+          "line": 432,
           "doc": "Every sandbox on this server, each a directory under one base.",
           "methods": [
             {
               "name": "create",
               "signature": "def createself, owner: str, perms: CodePerms, *, name: str='', files: dict[str, str] | None=None -> Sandbox",
-              "line": 438,
+              "line": 452,
               "doc": ""
             },
             {
               "name": "get",
               "signature": "def getself, box_id: str, owner: str, *, is_admin: bool=False -> Sandbox",
-              "line": 460,
+              "line": 474,
               "doc": ""
             },
             {
               "name": "list",
               "signature": "def listself, owner: str, *, is_admin: bool=False -> list[Sandbox]",
-              "line": 470,
+              "line": 484,
               "doc": ""
             },
             {
               "name": "delete",
               "signature": "def deleteself, box: Sandbox -> None",
-              "line": 474,
+              "line": 488,
               "doc": ""
             },
             {
               "name": "expire",
-              "signature": "def expireself, perms: CodePerms -> list[str]",
-              "line": 480,
+              "signature": "def expireself, perms: CodePerms -> builtins.list[str]",
+              "line": 494,
               "doc": ""
             },
             {
               "name": "write",
               "signature": "def writeself, box: Sandbox, relative: str, content: str, perms: CodePerms -> Path",
-              "line": 503,
+              "line": 517,
               "doc": ""
             },
             {
               "name": "read",
               "signature": "def readself, box: Sandbox, relative: str -> tuple[str, bool]",
-              "line": 517,
+              "line": 531,
               "doc": ""
             },
             {
               "name": "remove",
               "signature": "def removeself, box: Sandbox, relative: str -> None",
-              "line": 525,
+              "line": 539,
               "doc": ""
             },
             {
               "name": "run",
-              "signature": "def runself, box: Sandbox, perms: CodePerms, *, language: str='', code: str | None=None, path: str='', stdin: str='', args: list[str] | None=None -> RunResult",
-              "line": 536,
+              "signature": "def runself, box: Sandbox, perms: CodePerms, *, language: str='', code: str | None=None, path: str='', stdin: str='', args: builtins.list[str] | None=None -> RunResult",
+              "line": 550,
               "doc": ""
             }
           ]
@@ -43662,6 +44445,29 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "1a35b713",
+          "date": "2026-10-06",
+          "author": "Claude",
+          "subject": "0.72.7 step 3: Python 3.12-3.15 -- requires-python, PEP 798/799/810/831",
+          "api_changes": [
+            {
+              "kind": "removed",
+              "text": "def expire(self, perms: CodePerms) -> list[str]:"
+            },
+            {
+              "kind": "added",
+              "text": "def expire(self, perms: CodePerms) -> builtins.list[str]:"
+            }
+          ]
+        },
+        {
+          "sha": "d595eb4a",
+          "date": "2026-10-06",
+          "author": "Claude",
+          "subject": "0.72.7 step 2: images on the HyperNix runner; macOS/Linux CI and first Windows fixes",
+          "api_changes": []
+        },
         {
           "sha": "858eefd0",
           "date": "2026-09-30",
@@ -43771,7 +44577,7 @@
     {
       "module": "hypernix.t1api.config",
       "source": "src/hypernix/t1api/config.py",
-      "line_count": 659,
+      "line_count": 665,
       "summary": "t1api.config \u2014 environment-variable configuration for the T1 API.",
       "api": [
         {
@@ -43784,55 +44590,55 @@
             {
               "name": "from_env",
               "signature": "def from_envcls, *, load_dotenv: bool=True, dotenv_path: str | Path='.env' -> T1APIConfig",
-              "line": 516,
+              "line": 522,
               "doc": ""
             },
             {
               "name": "is_production",
               "signature": "def is_productionself -> bool",
-              "line": 526,
+              "line": 532,
               "doc": ""
             },
             {
               "name": "storage_backend",
               "signature": "def storage_backendself -> str",
-              "line": 530,
+              "line": 536,
               "doc": ""
             },
             {
               "name": "tls_settings",
               "signature": "def tls_settingsself -> TLSSettings",
-              "line": 533,
+              "line": 539,
               "doc": ""
             },
             {
               "name": "rate_limit_rules",
               "signature": "def rate_limit_rulesself -> Any",
-              "line": 545,
+              "line": 551,
               "doc": "Parsed rate-limit rules, or None to use the defaults."
             },
             {
               "name": "describe_secrets",
               "signature": "def describe_secretsself -> dict[str, bool]",
-              "line": 563,
+              "line": 569,
               "doc": "Which secrets are set. Values never included \u2014 this is what ``GET /status`` uses to tell an operator what's missing without telling anyone what it is."
             },
             {
               "name": "public_dict",
               "signature": "def public_dictself -> dict[str, object]",
-              "line": 577,
+              "line": 583,
               "doc": "Explicit allowlist of config surfaced by GET /config. Never includes ``token_secret``, ``deploy_secret``, ``database_url``, or any future secret field."
             },
             {
               "name": "production_problems",
               "signature": "def production_problemsself -> list[str]",
-              "line": 619,
+              "line": 625,
               "doc": "Every reason this config is unsafe for production, as text."
             },
             {
               "name": "validate_for_production",
               "signature": "def validate_for_productionself, *, strict: bool | None=None -> None",
-              "line": 711,
+              "line": 717,
               "doc": "Raise ``CONFIG_INVALID`` if this config is unsafe for production."
             }
           ]
@@ -43844,6 +44650,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "203b7112",
+          "date": "2026-10-06",
+          "author": "Claude",
+          "subject": "0.72.7 step 1: link config-less models, `runner auto`, images converted on upload",
+          "api_changes": []
+        },
         {
           "sha": "858eefd0",
           "date": "2026-09-30",
@@ -43891,13 +44704,6 @@
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "HyperLink: model titles, compression, private chats, organised memory, images, shell, tails",
-          "api_changes": []
-        },
-        {
-          "sha": "bca36d0f",
-          "date": "2026-09-23",
-          "author": "Claude",
-          "subject": "0.72.6 pt2: hyperchat, and three things HyperLink was showing wrong",
           "api_changes": []
         }
       ]
@@ -49822,7 +50628,7 @@
     {
       "module": "hypernix.t1api.routers.hyperlink",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line_count": 2337,
+      "line_count": 2373,
       "summary": "``/hyperlink`` \u2014 the surface the iOS app talks to.",
       "api": [
         {
@@ -49955,217 +50761,217 @@
           "kind": "function",
           "name": "chat_turn",
           "signature": "def chat_turnsession_id: str, payload: HyperLinkChatRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: ChatSessionStore=Depends(get_session_store), files: AttachmentStore=Depends(get_attachment_store), memories: MemoryStore=Depends(get_memory_store), preferences=Depends(get_preference_store), runner=Depends(get_runner), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id), request: Request=None -> HyperLinkChatResponse",
-          "line": 1242,
+          "line": 1265,
           "doc": "Append the user's message, run the model, append the reply."
         },
         {
           "kind": "function",
           "name": "chat_turn_stream",
           "signature": "def chat_turn_streamsession_id: str, payload: HyperLinkChatRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: ChatSessionStore=Depends(get_session_store), files: AttachmentStore=Depends(get_attachment_store), generations: GenerationRegistry=Depends(get_generation_registry), memories: MemoryStore=Depends(get_memory_store), preferences=Depends(get_preference_store), runner=Depends(get_runner), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id), request: Request=None -> StreamingResponse",
-          "line": 1407,
+          "line": 1431,
           "doc": "The same turn, streamed token by token."
         },
         {
           "kind": "function",
           "name": "stop_generation",
           "signature": "def stop_generationsession_id: str, generation_id: str | None=Query(default=None), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), generations: GenerationRegistry=Depends(get_generation_registry), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> GenerationStopResponse",
-          "line": 1665,
+          "line": 1690,
           "doc": "Stop a streamed reply that is still being generated."
         },
         {
           "kind": "function",
           "name": "shell_status",
           "signature": "def shell_statusprincipal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config) -> dict[str, Any]",
-          "line": 1706,
+          "line": 1731,
           "doc": "Whether this server accepts shell commands, so the app can say why not."
         },
         {
           "kind": "function",
           "name": "run_shell",
           "signature": "def run_shellrequest_body: dict[str, Any], principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), audit=Depends(get_audit_log), request_id: str=Depends(get_request_id) -> dict[str, Any]",
-          "line": 1726,
+          "line": 1751,
           "doc": "Run one command on this machine and return its output."
         },
         {
           "kind": "function",
           "name": "server_hardware",
           "signature": "def server_hardwareprincipal: HyperLinkPrincipal=Depends(require_hyperlink_operator), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> HardwareResponse",
-          "line": 1768,
+          "line": 1793,
           "doc": "What this machine is doing: CPU, memory, swap, disks, GPUs."
         },
         {
           "kind": "function",
           "name": "list_backends",
           "signature": "def list_backendsprincipal: HyperLinkPrincipal=Depends(get_hyperlink_principal), runner=Depends(get_runner), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> BackendsResponse",
-          "line": 1814,
+          "line": 1839,
           "doc": "What could answer a message, and what would answer one now."
         },
         {
           "kind": "function",
           "name": "read_preferences",
           "signature": "def read_preferencesprincipal: HyperLinkPrincipal=Depends(get_hyperlink_principal), preferences=Depends(get_preference_store), runner=Depends(get_runner), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> PreferencesResponse",
-          "line": 1840,
+          "line": 1865,
           "doc": "This person's settings, and the bounds the server will accept."
         },
         {
           "kind": "function",
           "name": "write_preferences",
           "signature": "def write_preferencespayload: PreferencesRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), preferences=Depends(get_preference_store), runner=Depends(get_runner), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> PreferencesResponse",
-          "line": 1861,
+          "line": 1886,
           "doc": "Change some settings. Unsent fields are left alone."
         },
         {
           "kind": "function",
           "name": "reset_preferences",
           "signature": "def reset_preferencesprincipal: HyperLinkPrincipal=Depends(get_hyperlink_principal), preferences=Depends(get_preference_store), runner=Depends(get_runner), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> PreferencesResponse",
-          "line": 1887,
+          "line": 1912,
           "doc": "Back to the defaults."
         },
         {
           "kind": "function",
           "name": "server_upgrade",
           "signature": "def server_upgradeprincipal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> UpgradeResponse",
-          "line": 1903,
+          "line": 1928,
           "doc": "What is installed here, and the exact commands to update it."
         },
         {
           "kind": "function",
           "name": "server_uptime",
           "signature": "def server_uptimeprincipal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> UptimeResponse",
-          "line": 1941,
+          "line": 1966,
           "doc": "How long the server, and the machine under it, have been up."
         },
         {
           "kind": "function",
           "name": "list_generations",
           "signature": "def list_generationssession_id: str | None=Query(default=None), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), generations: GenerationRegistry=Depends(get_generation_registry), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> GenerationListResponse",
-          "line": 1968,
+          "line": 1993,
           "doc": "What is generating right now, for this caller."
         },
         {
           "kind": "function",
           "name": "upload_file",
           "signature": "async def upload_filefile: UploadFile=File(...), session_id: str=Form(default=''), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: AttachmentStore=Depends(get_attachment_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> AttachmentResponse",
-          "line": 2010,
+          "line": 2035,
           "doc": "Upload one image, document or source file."
         },
         {
           "kind": "function",
           "name": "list_attachments",
           "signature": "def list_attachmentssession_id: str | None=Query(default=None), limit: int=Query(default=100, ge=1, le=500), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: AttachmentStore=Depends(get_attachment_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> AttachmentListResponse",
-          "line": 2046,
+          "line": 2088,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "download_file",
           "signature": "def download_filefile_id: str, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: AttachmentStore=Depends(get_attachment_store), config: T1APIConfig=Depends(get_config) -> Response",
-          "line": 2065,
+          "line": 2107,
           "doc": "The raw bytes."
         },
         {
           "kind": "function",
           "name": "delete_file",
           "signature": "def delete_filefile_id: str, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: AttachmentStore=Depends(get_attachment_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> GenericOkResponse",
-          "line": 2092,
+          "line": 2134,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "resolve_model_link",
           "signature": "def resolve_model_linkpayload: HFResolveRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> HFResolveResponse",
-          "line": 2110,
+          "line": 2152,
           "doc": "Turn a model page and/or a direct file link into a download plan."
         },
         {
           "kind": "function",
           "name": "download_model",
           "signature": "def download_modelpayload: HFDownloadRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id), jobs=Depends(get_job_queue) -> HFDownloadResponse",
-          "line": 2167,
+          "line": 2209,
           "doc": "Start downloading a model onto the **server**, not the phone."
         },
         {
           "kind": "function",
           "name": "list_downloaded",
           "signature": "def list_downloadedprincipal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> DownloadedModelsResponse",
-          "line": 2243,
+          "line": 2285,
           "doc": "What is already on this server's disk."
         },
         {
           "kind": "function",
           "name": "link_model_route",
           "signature": "def link_model_routepayload: ModelLinkRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> ModelLinkResponse",
-          "line": 2315,
+          "line": 2357,
           "doc": "List a model that is already on the server, by symlinking it in."
         },
         {
           "kind": "function",
           "name": "unlink_model_route",
           "signature": "def unlink_model_routename: str, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> ModelLinkResponse",
-          "line": 2354,
+          "line": 2396,
           "doc": "Remove a model link. Only ever a link: never the model it points at."
         },
         {
           "kind": "function",
           "name": "model_catalogue",
           "signature": "def model_catalogueprincipal: HyperLinkPrincipal=Depends(get_hyperlink_principal), registry: ModelRegistry=Depends(get_registry), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> ModelCatalogueResponse",
-          "line": 2373,
+          "line": 2415,
           "doc": "Everything runnable here: the registry, LM Studio, and the disk."
         },
         {
           "kind": "function",
           "name": "sync_changes",
           "signature": "def sync_changescursor: int=Query(default=0, ge=0), limit: int=Query(default=100, ge=1, le=500), session_id: str | None=Query(default=None), entities: str | None=Query(default=None, description='Comma-separated: session,message,device,attachment'), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: SyncStore=Depends(get_sync_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> SyncPageResponse",
-          "line": 2427,
+          "line": 2469,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "claim_client_message",
           "signature": "def claim_client_messagepayload: SyncClaimRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: SyncStore=Depends(get_sync_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> SyncClaimResponse",
-          "line": 2458,
+          "line": 2500,
           "doc": "Claim an idempotency key before sending a turn."
         },
         {
           "kind": "function",
           "name": "register_push",
           "signature": "def register_pushpayload: PushRegisterRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: NotificationStore=Depends(get_notification_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> PushRegistrationResponse",
-          "line": 2490,
+          "line": 2532,
           "doc": "Register this device's APNs token."
         },
         {
           "kind": "function",
           "name": "list_push",
           "signature": "def list_pushinclude_disabled: bool=Query(default=False), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: NotificationStore=Depends(get_notification_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> PushRegistrationListResponse",
-          "line": 2522,
+          "line": 2564,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "set_push_events",
           "signature": "def set_push_eventsregistration_id: str, payload: PushEventsRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: NotificationStore=Depends(get_notification_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> PushRegistrationResponse",
-          "line": 2542,
+          "line": 2584,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "unregister_push",
           "signature": "def unregister_pushregistration_id: str, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: NotificationStore=Depends(get_notification_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> GenericOkResponse",
-          "line": 2560,
+          "line": 2602,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "list_push_events",
           "signature": "def list_push_eventsconfig: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> dict",
-          "line": 2574,
+          "line": 2616,
           "doc": "What a device may subscribe to."
         },
         {
           "kind": "function",
           "name": "search_history",
           "signature": "def search_historyq: str=Query(min_length=1, max_length=500), limit: int=Query(default=25, ge=1, le=200), session_id: str | None=Query(default=None), include_archived: bool=Query(default=False), roles: str | None=Query(default=None, description='Comma-separated'), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), index: SearchIndex=Depends(get_search_index), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> SearchResponse",
-          "line": 2612,
+          "line": 2654,
           "doc": "Search this owner's sessions and messages."
         }
       ],
@@ -50181,6 +50987,25 @@
         }
       ],
       "changes": [
+        {
+          "sha": "d595eb4a",
+          "date": "2026-10-06",
+          "author": "Claude",
+          "subject": "0.72.7 step 2: images on the HyperNix runner; macOS/Linux CI and first Windows fixes",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _vision(wire: list[dict[str, Any]], backend, runner) -> list[dict[str, Any]]:"
+            }
+          ]
+        },
+        {
+          "sha": "203b7112",
+          "date": "2026-10-06",
+          "author": "Claude",
+          "subject": "0.72.7 step 1: link config-less models, `runner auto`, images converted on upload",
+          "api_changes": []
+        },
         {
           "sha": "99636442",
           "date": "2026-09-29",
@@ -50252,103 +51077,55 @@
               "text": "def _teach_tools(backend) -> bool:"
             }
           ]
-        },
-        {
-          "sha": "3fc645bf",
-          "date": "2026-09-24",
-          "author": "Claude",
-          "subject": "HyperLink: memories sync from the server as they change",
-          "api_changes": [
-            {
-              "kind": "added",
-              "text": "def _memory_head(store: MemoryStore | None, owner: str) -> int:"
-            }
-          ]
-        },
-        {
-          "sha": "471493b0",
-          "date": "2026-09-24",
-          "author": "Claude",
-          "subject": "0.72.6.rc3: a HyperLink model has its tools on the route the app uses",
-          "api_changes": [
-            {
-              "kind": "removed",
-              "text": "def _chat_with_tools(bridge, wire, model, sampling, config, principal, t1=None,"
-            },
-            {
-              "kind": "added",
-              "text": "def _tool_summary(record) -> str:"
-            },
-            {
-              "kind": "added",
-              "text": "class _ToolSetup:"
-            },
-            {
-              "kind": "added",
-              "text": "def __init__(self, context, t1, workspace: bool) -> None:"
-            },
-            {
-              "kind": "added",
-              "text": "def _tool_setup(config, principal, settings, request, memory_store, session_id):"
-            },
-            {
-              "kind": "added",
-              "text": "def _chat_with_tools(bridge, wire, model, sampling, setup: _ToolSetup, teach_format=False):"
-            },
-            {
-              "kind": "added",
-              "text": "def ask_stream(messages, tools):"
-            }
-          ]
         }
       ]
     },
     {
       "module": "hypernix.t1api.routers.inference",
       "source": "src/hypernix/t1api/routers/inference.py",
-      "line_count": 588,
+      "line_count": 613,
       "summary": "``/inference`` \u2014 the governed inference surface.",
       "api": [
         {
           "kind": "function",
           "name": "list_backends",
           "signature": "def list_backendsctx: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id), runner=Depends(get_runner) -> InferenceBackendsResponse",
-          "line": 353,
+          "line": 382,
           "doc": "What this server can actually dispatch to, and whether it answers."
         },
         {
           "kind": "function",
           "name": "inference_chat",
           "signature": "def inference_chatpayload: InferenceChatRequest, ctx: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), registry=Depends(get_registry), meter=Depends(get_usage_meter), engine=Depends(get_routing_engine), keys=Depends(get_key_directory), costs=Depends(get_cost_calculator), request_id: str=Depends(get_request_id), runner=Depends(get_runner) -> InferenceResponse",
-          "line": 418,
+          "line": 447,
           "doc": "A chat completion, through the registry, the cascade and the meter."
         },
         {
           "kind": "function",
           "name": "inference_completions",
           "signature": "def inference_completionspayload: InferenceCompletionRequest, ctx: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), registry=Depends(get_registry), meter=Depends(get_usage_meter), engine=Depends(get_routing_engine), keys=Depends(get_key_directory), costs=Depends(get_cost_calculator), request_id: str=Depends(get_request_id), runner=Depends(get_runner) -> InferenceResponse",
-          "line": 443,
+          "line": 472,
           "doc": "A plain prompt, sent as a single user turn."
         },
         {
           "kind": "function",
           "name": "inference_chat_stream",
           "signature": "def inference_chat_streampayload: InferenceChatRequest, ctx: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), registry=Depends(get_registry), meter=Depends(get_usage_meter), engine=Depends(get_routing_engine), keys=Depends(get_key_directory), request_id: str=Depends(get_request_id), runner=Depends(get_runner) -> StreamingResponse",
-          "line": 476,
+          "line": 505,
           "doc": "The same governed path, streamed."
         },
         {
           "kind": "function",
           "name": "inference_embeddings",
           "signature": "def inference_embeddingspayload: InferenceEmbeddingsRequest, ctx: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), registry=Depends(get_registry), meter=Depends(get_usage_meter), keys=Depends(get_key_directory), request_id: str=Depends(get_request_id), runner=Depends(get_runner) -> InferenceEmbeddingsResponse",
-          "line": 565,
+          "line": 594,
           "doc": "Embeddings, under the same registry and quota rules as generation."
         },
         {
           "kind": "function",
           "name": "inference_token_count",
           "signature": "def inference_token_countpayload: InferenceTokenCountRequest, ctx: AuthContext=Depends(get_auth_context), registry=Depends(get_registry), meter=Depends(get_usage_meter), costs=Depends(get_cost_calculator), request_id: str=Depends(get_request_id) -> InferenceTokenCountResponse",
-          "line": 625,
+          "line": 654,
           "doc": "Size a request before committing to it."
         }
       ],
@@ -50364,6 +51141,22 @@
         }
       ],
       "changes": [
+        {
+          "sha": "d595eb4a",
+          "date": "2026-10-06",
+          "author": "Claude",
+          "subject": "0.72.7 step 2: images on the HyperNix runner; macOS/Linux CI and first Windows fixes",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def text(content) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _vision(dispatch, runner, messages: list[dict]) -> list[dict]:"
+            }
+          ]
+        },
         {
           "sha": "4b7fe9d5",
           "date": "2026-10-01",
@@ -51429,63 +52222,70 @@
     {
       "module": "hypernix.t1api.routers.runner",
       "source": "src/hypernix/t1api/routers/runner.py",
-      "line_count": 411,
+      "line_count": 478,
       "summary": "``/runner/*`` \u2014 loading, unloading and switching the served model.",
       "api": [
         {
           "kind": "function",
           "name": "require_switch",
           "signature": "def require_switchprincipal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config) -> HyperLinkPrincipal",
-          "line": 77,
+          "line": 78,
           "doc": "Admin, partial admin, or an explicit switch grant."
         },
         {
           "kind": "function",
           "name": "runner_status",
           "signature": "def runner_statusprincipal: HyperLinkPrincipal=Depends(get_hyperlink_principal), runner=Depends(get_runner), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> RunnerStatusResponse",
-          "line": 167,
+          "line": 168,
           "doc": "What is loaded, where its layers are, and how long it has been up."
         },
         {
           "kind": "function",
           "name": "runner_plan",
           "signature": "def runner_planpayload: RunnerLoadRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), registry=Depends(get_registry), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> RunnerPlanResponse",
-          "line": 190,
+          "line": 191,
           "doc": "Where this model's layers would go. Changes nothing."
         },
         {
           "kind": "function",
           "name": "runner_load",
           "signature": "def runner_loadpayload: RunnerLoadRequest, principal: HyperLinkPrincipal=Depends(require_switch), runner=Depends(get_runner), registry=Depends(get_registry), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> RunnerStatusResponse",
-          "line": 226,
+          "line": 227,
           "doc": "Load a model, replacing whatever was running."
+        },
+        {
+          "kind": "function",
+          "name": "runner_auto",
+          "signature": "def runner_autopayload: RunnerAutoRequest | None=None, principal: HyperLinkPrincipal=Depends(require_switch), runner=Depends(get_runner), registry=Depends(get_registry), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> RunnerStatusResponse",
+          "line": 288,
+          "doc": "Load what this server usually runs, the way it was last run."
         },
         {
           "kind": "function",
           "name": "runner_unload",
           "signature": "def runner_unloadprincipal: HyperLinkPrincipal=Depends(require_switch), runner=Depends(get_runner), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> RunnerStatusResponse",
-          "line": 270,
+          "line": 343,
           "doc": "Stop serving. Unloading nothing is a success, not an error."
         },
         {
           "kind": "function",
           "name": "runner_hyperchat",
           "signature": "def runner_hyperchatrequest: Request, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> dict",
-          "line": 286,
+          "line": 359,
           "doc": "Whether prompts run side by side or wait in line, and how deep."
         },
         {
           "kind": "function",
           "name": "runner_adopt_preview",
           "signature": "def runner_adopt_previewrequest: Request, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), runner=Depends(get_runner), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> dict",
-          "line": 371,
+          "line": 444,
           "doc": "Whether \"Move to the HyperNix runner\" applies here, and to what."
         },
         {
           "kind": "function",
           "name": "runner_adopt",
           "signature": "def runner_adoptrequest: Request, payload: dict | None=None, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), runner=Depends(get_runner), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> RunnerStatusResponse",
-          "line": 397,
+          "line": 470,
           "doc": "Unload LM Studio's model and load the same file on the runner."
         }
       ],
@@ -51501,6 +52301,33 @@
         }
       ],
       "changes": [
+        {
+          "sha": "d595eb4a",
+          "date": "2026-10-06",
+          "author": "Claude",
+          "subject": "0.72.7 step 2: images on the HyperNix runner; macOS/Linux CI and first Windows fixes",
+          "api_changes": []
+        },
+        {
+          "sha": "203b7112",
+          "date": "2026-10-06",
+          "author": "Claude",
+          "subject": "0.72.7 step 1: link config-less models, `runner auto`, images converted on upload",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _remember(model_id: str, backend: str, current, **settings) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/auto\", response_model=RunnerStatusResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def runner_auto("
+            }
+          ]
+        },
         {
           "sha": "99636442",
           "date": "2026-09-29",
@@ -52769,7 +53596,7 @@
     {
       "module": "hypernix.t1api.runner_cli",
       "source": "src/hypernix/t1api/runner_cli.py",
-      "line_count": 395,
+      "line_count": 429,
       "summary": "``hypernix-t1 built-in-runner`` \u2014 load, unload and inspect the served model.",
       "api": [
         {
@@ -52784,21 +53611,21 @@
           "kind": "function",
           "name": "build_parser",
           "signature": "def build_parser -> argparse.ArgumentParser",
-          "line": 301,
+          "line": 306,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "main",
           "signature": "def mainargv: list[str] | None=None -> int",
-          "line": 356,
+          "line": 369,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "cli_main",
           "signature": "def cli_mainargv: list[str] | None=None -> int",
-          "line": 469,
+          "line": 508,
           "doc": ""
         }
       ],
@@ -52806,6 +53633,18 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "203b7112",
+          "date": "2026-10-06",
+          "author": "Claude",
+          "subject": "0.72.7 step 1: link config-less models, `runner auto`, images converted on upload",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _auto(url: str, key: str, args: argparse.Namespace) -> int:"
+            }
+          ]
+        },
         {
           "sha": "99ddc1ae",
           "date": "2026-09-29",
@@ -52933,7 +53772,7 @@
     {
       "module": "hypernix.t1api.schemas",
       "source": "src/hypernix/t1api/schemas.py",
-      "line_count": 1639,
+      "line_count": 1650,
       "summary": "t1api.schemas \u2014 Pydantic v2 request/response models for the T1 API.",
       "api": [
         {
@@ -53970,9 +54809,17 @@
         },
         {
           "kind": "class",
+          "name": "RunnerAutoRequest",
+          "signature": "class RunnerAutoRequest",
+          "line": 1521,
+          "doc": "",
+          "methods": []
+        },
+        {
+          "kind": "class",
           "name": "RunnerStatusResponse",
           "signature": "class RunnerStatusResponse",
-          "line": 1518,
+          "line": 1529,
           "doc": "",
           "methods": []
         },
@@ -53980,7 +54827,7 @@
           "kind": "class",
           "name": "RunnerPlanResponse",
           "signature": "class RunnerPlanResponse",
-          "line": 1529,
+          "line": 1540,
           "doc": "",
           "methods": []
         },
@@ -53988,7 +54835,7 @@
           "kind": "class",
           "name": "NoodleRunRequest",
           "signature": "class NoodleRunRequest",
-          "line": 1537,
+          "line": 1548,
           "doc": "",
           "methods": []
         },
@@ -53996,7 +54843,7 @@
           "kind": "class",
           "name": "NoodleToolsResponse",
           "signature": "class NoodleToolsResponse",
-          "line": 1542,
+          "line": 1553,
           "doc": "",
           "methods": []
         },
@@ -54004,7 +54851,7 @@
           "kind": "class",
           "name": "NoodleWorkspaceResponse",
           "signature": "class NoodleWorkspaceResponse",
-          "line": 1555,
+          "line": 1566,
           "doc": "",
           "methods": []
         },
@@ -54012,7 +54859,7 @@
           "kind": "class",
           "name": "CompactRequest",
           "signature": "class CompactRequest",
-          "line": 1563,
+          "line": 1574,
           "doc": "",
           "methods": []
         },
@@ -54020,7 +54867,7 @@
           "kind": "class",
           "name": "CompactResponse",
           "signature": "class CompactResponse",
-          "line": 1574,
+          "line": 1585,
           "doc": "",
           "methods": []
         },
@@ -54028,7 +54875,7 @@
           "kind": "class",
           "name": "MemoryCreateRequest",
           "signature": "class MemoryCreateRequest",
-          "line": 1591,
+          "line": 1602,
           "doc": "",
           "methods": []
         },
@@ -54036,7 +54883,7 @@
           "kind": "class",
           "name": "MemoryUpdateRequest",
           "signature": "class MemoryUpdateRequest",
-          "line": 1604,
+          "line": 1615,
           "doc": "",
           "methods": []
         },
@@ -54044,7 +54891,7 @@
           "kind": "class",
           "name": "MemoryResponse",
           "signature": "class MemoryResponse",
-          "line": 1612,
+          "line": 1623,
           "doc": "",
           "methods": []
         },
@@ -54052,7 +54899,7 @@
           "kind": "class",
           "name": "MemoryListResponse",
           "signature": "class MemoryListResponse",
-          "line": 1617,
+          "line": 1628,
           "doc": "",
           "methods": []
         },
@@ -54060,7 +54907,7 @@
           "kind": "class",
           "name": "HardwareResponse",
           "signature": "class HardwareResponse",
-          "line": 1627,
+          "line": 1638,
           "doc": "One sample of what the machine is doing.",
           "methods": []
         },
@@ -54068,7 +54915,7 @@
           "kind": "class",
           "name": "UptimeResponse",
           "signature": "class UptimeResponse",
-          "line": 1649,
+          "line": 1660,
           "doc": "How long the server and the machine have been up.",
           "methods": []
         },
@@ -54076,7 +54923,7 @@
           "kind": "class",
           "name": "GenerationStopResponse",
           "signature": "class GenerationStopResponse",
-          "line": 1665,
+          "line": 1676,
           "doc": "What Stop actually stopped. An empty list is a success.",
           "methods": []
         },
@@ -54084,7 +54931,7 @@
           "kind": "class",
           "name": "GenerationListResponse",
           "signature": "class GenerationListResponse",
-          "line": 1673,
+          "line": 1684,
           "doc": "",
           "methods": []
         },
@@ -54092,7 +54939,7 @@
           "kind": "class",
           "name": "BackendsResponse",
           "signature": "class BackendsResponse",
-          "line": 1679,
+          "line": 1690,
           "doc": "Every thing that could answer a message, and whether it can now.",
           "methods": []
         },
@@ -54100,7 +54947,7 @@
           "kind": "class",
           "name": "PreferencesRequest",
           "signature": "class PreferencesRequest",
-          "line": 1693,
+          "line": 1704,
           "doc": "A partial update. Every field optional, and that is the point.",
           "methods": []
         },
@@ -54108,7 +54955,7 @@
           "kind": "class",
           "name": "PreferencesResponse",
           "signature": "class PreferencesResponse",
-          "line": 1716,
+          "line": 1727,
           "doc": "",
           "methods": []
         },
@@ -54116,7 +54963,7 @@
           "kind": "class",
           "name": "UpgradeResponse",
           "signature": "class UpgradeResponse",
-          "line": 1731,
+          "line": 1742,
           "doc": "What this server is running, and the commands to change it.",
           "methods": []
         },
@@ -54124,7 +54971,7 @@
           "kind": "class",
           "name": "ModelCatalogueResponse",
           "signature": "class ModelCatalogueResponse",
-          "line": 1746,
+          "line": 1757,
           "doc": "Every model this server can offer, from every source it has.",
           "methods": []
         },
@@ -54132,7 +54979,7 @@
           "kind": "class",
           "name": "InferenceMessage",
           "signature": "class InferenceMessage",
-          "line": 1774,
+          "line": 1785,
           "doc": "",
           "methods": []
         },
@@ -54140,7 +54987,7 @@
           "kind": "class",
           "name": "InferenceChatRequest",
           "signature": "class InferenceChatRequest",
-          "line": 1779,
+          "line": 1792,
           "doc": "",
           "methods": []
         },
@@ -54148,7 +54995,7 @@
           "kind": "class",
           "name": "InferenceCompletionRequest",
           "signature": "class InferenceCompletionRequest",
-          "line": 1792,
+          "line": 1805,
           "doc": "",
           "methods": []
         },
@@ -54156,7 +55003,7 @@
           "kind": "class",
           "name": "InferenceResponse",
           "signature": "class InferenceResponse",
-          "line": 1802,
+          "line": 1815,
           "doc": "",
           "methods": []
         },
@@ -54164,7 +55011,7 @@
           "kind": "class",
           "name": "InferenceEmbeddingsRequest",
           "signature": "class InferenceEmbeddingsRequest",
-          "line": 1825,
+          "line": 1838,
           "doc": "",
           "methods": []
         },
@@ -54172,7 +55019,7 @@
           "kind": "class",
           "name": "InferenceEmbeddingsResponse",
           "signature": "class InferenceEmbeddingsResponse",
-          "line": 1830,
+          "line": 1843,
           "doc": "",
           "methods": []
         },
@@ -54180,7 +55027,7 @@
           "kind": "class",
           "name": "InferenceTokenCountRequest",
           "signature": "class InferenceTokenCountRequest",
-          "line": 1840,
+          "line": 1853,
           "doc": "",
           "methods": []
         },
@@ -54188,7 +55035,7 @@
           "kind": "class",
           "name": "InferenceTokenCountResponse",
           "signature": "class InferenceTokenCountResponse",
-          "line": 1848,
+          "line": 1861,
           "doc": "",
           "methods": []
         },
@@ -54196,7 +55043,7 @@
           "kind": "class",
           "name": "InferenceBackend",
           "signature": "class InferenceBackend",
-          "line": 1861,
+          "line": 1874,
           "doc": "",
           "methods": []
         },
@@ -54204,7 +55051,7 @@
           "kind": "class",
           "name": "InferenceBackendsResponse",
           "signature": "class InferenceBackendsResponse",
-          "line": 1872,
+          "line": 1885,
           "doc": "",
           "methods": []
         },
@@ -54212,7 +55059,7 @@
           "kind": "class",
           "name": "TrainingRunItem",
           "signature": "class TrainingRunItem",
-          "line": 1883,
+          "line": 1896,
           "doc": "One run, as ``training.monitor`` reconciled it.",
           "methods": []
         },
@@ -54220,7 +55067,7 @@
           "kind": "class",
           "name": "TrainingRunListResponse",
           "signature": "class TrainingRunListResponse",
-          "line": 1914,
+          "line": 1927,
           "doc": "",
           "methods": []
         },
@@ -54228,7 +55075,7 @@
           "kind": "class",
           "name": "TrainingRunResponse",
           "signature": "class TrainingRunResponse",
-          "line": 1922,
+          "line": 1935,
           "doc": "",
           "methods": []
         },
@@ -54236,7 +55083,7 @@
           "kind": "class",
           "name": "TrainingLogResponse",
           "signature": "class TrainingLogResponse",
-          "line": 1927,
+          "line": 1940,
           "doc": "",
           "methods": []
         },
@@ -54244,7 +55091,7 @@
           "kind": "class",
           "name": "TrainingCheckpointItem",
           "signature": "class TrainingCheckpointItem",
-          "line": 1939,
+          "line": 1952,
           "doc": "",
           "methods": []
         },
@@ -54252,7 +55099,7 @@
           "kind": "class",
           "name": "TrainingCheckpointListResponse",
           "signature": "class TrainingCheckpointListResponse",
-          "line": 1946,
+          "line": 1959,
           "doc": "",
           "methods": []
         },
@@ -54260,7 +55107,7 @@
           "kind": "class",
           "name": "TrainingResourcesResponse",
           "signature": "class TrainingResourcesResponse",
-          "line": 1953,
+          "line": 1966,
           "doc": "",
           "methods": []
         },
@@ -54268,7 +55115,7 @@
           "kind": "class",
           "name": "TrainingControlResponse",
           "signature": "class TrainingControlResponse",
-          "line": 1962,
+          "line": 1975,
           "doc": "",
           "methods": []
         },
@@ -54276,7 +55123,7 @@
           "kind": "class",
           "name": "SyncChange",
           "signature": "class SyncChange",
-          "line": 1974,
+          "line": 1987,
           "doc": "",
           "methods": []
         },
@@ -54284,7 +55131,7 @@
           "kind": "class",
           "name": "SyncPageResponse",
           "signature": "class SyncPageResponse",
-          "line": 1985,
+          "line": 1998,
           "doc": "",
           "methods": []
         },
@@ -54292,7 +55139,7 @@
           "kind": "class",
           "name": "SyncClaimRequest",
           "signature": "class SyncClaimRequest",
-          "line": 1997,
+          "line": 2010,
           "doc": "",
           "methods": []
         },
@@ -54300,7 +55147,7 @@
           "kind": "class",
           "name": "SyncClaimResponse",
           "signature": "class SyncClaimResponse",
-          "line": 2001,
+          "line": 2014,
           "doc": "",
           "methods": []
         },
@@ -54308,7 +55155,7 @@
           "kind": "class",
           "name": "PushRegisterRequest",
           "signature": "class PushRegisterRequest",
-          "line": 2011,
+          "line": 2024,
           "doc": "",
           "methods": []
         },
@@ -54316,7 +55163,7 @@
           "kind": "class",
           "name": "PushRegistrationSummary",
           "signature": "class PushRegistrationSummary",
-          "line": 2021,
+          "line": 2034,
           "doc": "",
           "methods": []
         },
@@ -54324,7 +55171,7 @@
           "kind": "class",
           "name": "PushRegistrationResponse",
           "signature": "class PushRegistrationResponse",
-          "line": 2036,
+          "line": 2049,
           "doc": "",
           "methods": []
         },
@@ -54332,7 +55179,7 @@
           "kind": "class",
           "name": "PushRegistrationListResponse",
           "signature": "class PushRegistrationListResponse",
-          "line": 2041,
+          "line": 2054,
           "doc": "",
           "methods": []
         },
@@ -54340,7 +55187,7 @@
           "kind": "class",
           "name": "PushEventsRequest",
           "signature": "class PushEventsRequest",
-          "line": 2048,
+          "line": 2061,
           "doc": "",
           "methods": []
         },
@@ -54348,7 +55195,7 @@
           "kind": "class",
           "name": "SearchSnippet",
           "signature": "class SearchSnippet",
-          "line": 2052,
+          "line": 2065,
           "doc": "",
           "methods": []
         },
@@ -54356,7 +55203,7 @@
           "kind": "class",
           "name": "SearchHit",
           "signature": "class SearchHit",
-          "line": 2060,
+          "line": 2073,
           "doc": "",
           "methods": []
         },
@@ -54364,7 +55211,7 @@
           "kind": "class",
           "name": "SearchResponse",
           "signature": "class SearchResponse",
-          "line": 2072,
+          "line": 2085,
           "doc": "",
           "methods": []
         }
@@ -54379,6 +55226,25 @@
         }
       ],
       "changes": [
+        {
+          "sha": "d595eb4a",
+          "date": "2026-10-06",
+          "author": "Claude",
+          "subject": "0.72.7 step 2: images on the HyperNix runner; macOS/Linux CI and first Windows fixes",
+          "api_changes": []
+        },
+        {
+          "sha": "203b7112",
+          "date": "2026-10-06",
+          "author": "Claude",
+          "subject": "0.72.7 step 1: link config-less models, `runner auto`, images converted on upload",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class RunnerAutoRequest(BaseModel):"
+            }
+          ]
+        },
         {
           "sha": "4b7fe9d5",
           "date": "2026-10-01",
@@ -54429,25 +55295,6 @@
           "author": "Claude",
           "subject": "0.72.6 pt2: hyperchat, and three things HyperLink was showing wrong",
           "api_changes": []
-        },
-        {
-          "sha": "46047fec",
-          "date": "2026-09-16",
-          "author": "Claude",
-          "subject": "models: reconcile \"Models registered 44\" with an empty picker",
-          "api_changes": []
-        },
-        {
-          "sha": "a75a750b",
-          "date": "2026-09-16",
-          "author": "Claude",
-          "subject": "t1api: add GET /version, and stop a stale process looking like a wrong number",
-          "api_changes": [
-            {
-              "kind": "added",
-              "text": "class VersionResponse(BaseModel):"
-            }
-          ]
         }
       ]
     },
@@ -55731,7 +56578,7 @@
     {
       "module": "hypernix.t1api.websearch",
       "source": "src/hypernix/t1api/websearch.py",
-      "line_count": 570,
+      "line_count": 573,
       "summary": "Keyless web search for HyperLink and hyperchat, and its settings grammar.",
       "api": [
         {
@@ -55795,7 +56642,7 @@
         {
           "kind": "function",
           "name": "detect_browsers",
-          "signature": "def detect_browsers*, path_lookup=None -> dict[str, list[str]]",
+          "signature": "def detect_browsers*, path_lookup=None, app_exists=None, platform: str | None=None -> dict[str, list[str]]",
           "line": 342,
           "doc": "Which browser families are installed, and what was found."
         },
@@ -55803,27 +56650,27 @@
           "kind": "function",
           "name": "resolve_family",
           "signature": "def resolve_familysettings: WebSettings -> str",
-          "line": 367,
+          "line": 370,
           "doc": "The family to present as, with `auto` resolved against the machine."
         },
         {
           "kind": "function",
           "name": "redact",
           "signature": "def redacttext: str, settings: WebSettings | None=None -> str",
-          "line": 384,
+          "line": 387,
           "doc": "A query string with any API key taken out of it."
         },
         {
           "kind": "class",
           "name": "SearchHit",
           "signature": "class SearchHit",
-          "line": 422,
+          "line": 425,
           "doc": "",
           "methods": [
             {
               "name": "to_dict",
               "signature": "def to_dictself -> dict[str, str]",
-              "line": 428,
+              "line": 431,
               "doc": ""
             }
           ]
@@ -55832,13 +56679,13 @@
           "kind": "class",
           "name": "SearchOutcome",
           "signature": "class SearchOutcome",
-          "line": 434,
+          "line": 437,
           "doc": "",
           "methods": [
             {
               "name": "to_dict",
               "signature": "def to_dictself -> dict[str, Any]",
-              "line": 443,
+              "line": 446,
               "doc": ""
             }
           ]
@@ -55847,28 +56694,28 @@
           "kind": "function",
           "name": "allowed",
           "signature": "def allowedurl: str, allowlist: Iterable[str] -> bool",
-          "line": 461,
+          "line": 464,
           "doc": "Host is in the allowlist, or is a subdomain of an entry in it."
         },
         {
           "kind": "function",
           "name": "search",
           "signature": "def searchquery: str, *, depth: int=DEFAULT_DEPTH, settings: WebSettings | None=None, backend=None -> SearchOutcome",
-          "line": 473,
+          "line": 476,
           "doc": "Run a search under *settings*. No API key needed for any of it."
         },
         {
           "kind": "function",
           "name": "split_sentences",
           "signature": "def split_sentencestext: str -> list[str]",
-          "line": 568,
+          "line": 571,
           "doc": "Good enough for scoring, and does not cut on `Dr.` or `e.g.`."
         },
         {
           "kind": "function",
           "name": "summarize",
           "signature": "def summarizetext: str, *, sentences: int=5, query: str='', model=None -> dict[str, Any]",
-          "line": 585,
+          "line": 588,
           "doc": "A real summary, with or without a model."
         }
       ],
@@ -55878,6 +56725,22 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "d595eb4a",
+          "date": "2026-10-06",
+          "author": "Claude",
+          "subject": "0.72.7 step 2: images on the HyperNix runner; macOS/Linux CI and first Windows fixes",
+          "api_changes": [
+            {
+              "kind": "removed",
+              "text": "def detect_browsers(*, path_lookup=None) -> dict[str, list[str]]:"
+            },
+            {
+              "kind": "added",
+              "text": "def detect_browsers(*, path_lookup=None, app_exists=None,"
+            }
+          ]
+        },
         {
           "sha": "6066ce53",
           "date": "2026-09-23",
@@ -59140,6 +60003,20 @@
       ],
       "changes": [
         {
+          "sha": "316780e9",
+          "date": "2026-10-06",
+          "author": "Claude",
+          "subject": "0.72.7 step 2: Windows CI -- real bugs fixed, tests made platform-honest",
+          "api_changes": []
+        },
+        {
+          "sha": "d595eb4a",
+          "date": "2026-10-06",
+          "author": "Claude",
+          "subject": "0.72.7 step 2: images on the HyperNix runner; macOS/Linux CI and first Windows fixes",
+          "api_changes": []
+        },
+        {
           "sha": "bf1bcf1b",
           "date": "2026-09-29",
           "author": "Claude",
@@ -59827,6 +60704,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "d595eb4a",
+          "date": "2026-10-06",
+          "author": "Claude",
+          "subject": "0.72.7 step 2: images on the HyperNix runner; macOS/Linux CI and first Windows fixes",
+          "api_changes": []
+        },
         {
           "sha": "8c25846c",
           "date": "2026-08-21",
@@ -60971,6 +61855,20 @@
         }
       ],
       "changes": [
+        {
+          "sha": "316780e9",
+          "date": "2026-10-06",
+          "author": "Claude",
+          "subject": "0.72.7 step 2: Windows CI -- real bugs fixed, tests made platform-honest",
+          "api_changes": []
+        },
+        {
+          "sha": "d595eb4a",
+          "date": "2026-10-06",
+          "author": "Claude",
+          "subject": "0.72.7 step 2: images on the HyperNix runner; macOS/Linux CI and first Windows fixes",
+          "api_changes": []
+        },
         {
           "sha": "d0a33e29",
           "date": "2026-09-28",

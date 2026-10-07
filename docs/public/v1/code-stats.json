@@ -1,11 +1,11 @@
 {
   "definition": "non-blank source lines across repository code roots: src, scripts, tests, examples, bin, native, docs/src",
-  "total_lines": 223251,
-  "code_files": 714,
+  "total_lines": 225593,
+  "code_files": 729,
   "top_files": [
     {
       "path": "src/hypernix/t1api/routers/hyperlink.py",
-      "lines": 2337
+      "lines": 2373
     },
     {
       "path": "src/hypernix/interfaces/hyped.py",
@@ -25,15 +25,15 @@
     },
     {
       "path": "src/hypernix/t1api/schemas.py",
-      "lines": 1639
+      "lines": 1650
     },
     {
       "path": "src/hypernix/interfaces/cli.py",
-      "lines": 1500
+      "lines": 1518
     },
     {
       "path": "src/hypernix/models/neo_oven.py",
-      "lines": 1491
+      "lines": 1505
     },
     {
       "path": "src/hypernix/quant/hyprslug.py",
@@ -60,16 +60,16 @@
       "lines": 1176
     },
     {
+      "path": "tests/t1api/test_hypernix_t1_service.py",
+      "lines": 1145
+    },
+    {
       "path": "src/hypernix/monitoring/map.py",
       "lines": 1122
     },
     {
       "path": "docs/src/lib/data/learn-lessons.ts",
       "lines": 1112
-    },
-    {
-      "path": "tests/t1api/test_hypernix_t1_service.py",
-      "lines": 1100
     },
     {
       "path": "src/hypernix/interfaces/hyped_pro_app/src/app.ts",
@@ -127,12 +127,12 @@
   "contributors": [
     {
       "author": "Claude",
-      "additions": 212605,
-      "deletions": 14110,
-      "net": 198495,
-      "changes": 226715,
-      "commits": 238,
-      "files": 1476
+      "additions": 216074,
+      "deletions": 14603,
+      "net": 201471,
+      "changes": 230677,
+      "commits": 244,
+      "files": 1582
     },
     {
       "author": "minerofthesoal",
@@ -190,6 +190,6 @@
     }
   ],
   "history_available": true,
-  "commit": "c570f3024491f20fd2793139a4fa030f0bf7add8",
+  "commit": "2137d41b2ad86742f986796976d846ad6d5ab747",
   "generated_at": null
 }
