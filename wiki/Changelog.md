@@ -212,6 +212,21 @@ Historical wording and technical detail are retained during format normalization
   report it as "exited during startup": Python returns a Windows pid and
   `kill -0` there understands only MSYS ones. Everything else works.
 
+𖢥 Checking whether a training run or launched job is still alive no longer
+  sends Ctrl+C on Windows. The check was `os.kill(pid, 0)`, and on Windows
+  signal 0 is `CTRL_C_EVENT`: the training monitor asked about its own
+  process and interrupted itself. It now asks the kernel
+  (`hypernix.system.pids.alive`).
+
+🛡️ Pausing or resuming a training run on Windows answers 409 with the
+  reason (pause is SIGSTOP/SIGCONT job control, which Windows lacks)
+  instead of a 500, and stopping one terminates the trainer instead of
+  failing on `os.killpg`.
+
+🐛 `hypernix-t1 status` and `stop` recognise their own server when Python
+  lives under a long path: `ps` cut the command line at 80 columns, past
+  `hypernix.t1api`, so the manager decided the server was someone else's.
+
 🐛 Fixed `hypernix-t1` reading a `.env` saved with Windows line endings:
   every value kept a trailing CR, so the host bound nothing and the port
   read as taken.

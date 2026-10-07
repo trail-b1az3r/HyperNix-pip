@@ -1,7 +1,7 @@
 {
   "definition": "non-blank source lines across repository code roots: src, scripts, tests, examples, bin, native, docs/src",
-  "total_lines": 225593,
-  "code_files": 729,
+  "total_lines": 225728,
+  "code_files": 731,
   "top_files": [
     {
       "path": "src/hypernix/t1api/routers/hyperlink.py",
@@ -61,7 +61,7 @@
     },
     {
       "path": "tests/t1api/test_hypernix_t1_service.py",
-      "lines": 1145
+      "lines": 1146
     },
     {
       "path": "src/hypernix/monitoring/map.py",
@@ -93,7 +93,7 @@
     },
     {
       "path": "tests/repo/test_install_script.py",
-      "lines": 1026
+      "lines": 1030
     },
     {
       "path": "src/hypernix/optimizers/pressure_cooker_v5s.py",
@@ -127,12 +127,12 @@
   "contributors": [
     {
       "author": "Claude",
-      "additions": 216074,
-      "deletions": 14603,
-      "net": 201471,
-      "changes": 230677,
-      "commits": 244,
-      "files": 1582
+      "additions": 216201,
+      "deletions": 14628,
+      "net": 201573,
+      "changes": 230829,
+      "commits": 246,
+      "files": 1584
     },
     {
       "author": "minerofthesoal",
@@ -190,6 +190,6 @@
     }
   ],
   "history_available": true,
-  "commit": "2137d41b2ad86742f986796976d846ad6d5ab747",
+  "commit": "55aadbb6367d6396569be3981f0265d0e4d3931e",
   "generated_at": null
 }

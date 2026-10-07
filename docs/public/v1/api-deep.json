@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-api-deep",
   "generated_at": "2026-09-20T21:20:57Z",
-  "commit": "2137d41b2ad86742f986796976d846ad6d5ab747",
+  "commit": "55aadbb6367d6396569be3981f0265d0e4d3931e",
   "history_available": true,
   "source_root": "src/hypernix",
   "modules": [
@@ -17,6 +17,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "8b25e66f",
+          "date": "2026-10-07",
+          "author": "Claude",
+          "subject": "0.72.7: version, changelog heading and the measured benchmark results",
+          "api_changes": []
+        },
         {
           "sha": "11086864",
           "date": "2026-10-01",
@@ -64,13 +71,6 @@
           "date": "2026-09-24",
           "author": "Claude",
           "subject": "0.72.6.rc3: a HyperLink model has its tools on the route the app uses",
-          "api_changes": []
-        },
-        {
-          "sha": "c81b29d2",
-          "date": "2026-09-23",
-          "author": "Claude",
-          "subject": "0.72.6.rc2: tvtop-max, and HyperLink's default system prompt",
           "api_changes": []
         }
       ]
@@ -39589,14 +39589,14 @@
     {
       "module": "hypernix.system.launcher",
       "source": "src/hypernix/system/launcher.py",
-      "line_count": 619,
+      "line_count": 613,
       "summary": "Run a script so it outlives the terminal that started it.",
       "api": [
         {
           "kind": "class",
           "name": "LaunchError",
           "signature": "class LaunchError",
-          "line": 58,
+          "line": 60,
           "doc": "A job could not be started, stopped or found.",
           "methods": []
         },
@@ -39604,7 +39604,7 @@
           "kind": "class",
           "name": "JobStatus",
           "signature": "class JobStatus",
-          "line": 62,
+          "line": 64,
           "doc": "",
           "methods": []
         },
@@ -39612,7 +39612,7 @@
           "kind": "class",
           "name": "Supervisor",
           "signature": "class Supervisor",
-          "line": 72,
+          "line": 74,
           "doc": "",
           "methods": []
         },
@@ -39620,32 +39620,32 @@
           "kind": "function",
           "name": "default_root",
           "signature": "def default_root -> Path",
-          "line": 102,
+          "line": 104,
           "doc": "Where job records live."
         },
         {
           "kind": "class",
           "name": "Job",
           "signature": "class Job",
-          "line": 110,
+          "line": 112,
           "doc": "",
           "methods": [
             {
               "name": "exit_file",
               "signature": "def exit_fileself -> Path",
-              "line": 133,
+              "line": 135,
               "doc": ""
             },
             {
               "name": "to_dict",
               "signature": "def to_dictself -> dict",
-              "line": 136,
+              "line": 138,
               "doc": ""
             },
             {
               "name": "is_terminal",
               "signature": "def is_terminalself -> bool",
-              "line": 140,
+              "line": 142,
               "doc": ""
             }
           ]
@@ -39654,31 +39654,31 @@
           "kind": "class",
           "name": "JobStore",
           "signature": "class JobStore",
-          "line": 154,
+          "line": 156,
           "doc": "Job records as one JSON file each, under *root*.",
           "methods": [
             {
               "name": "save",
               "signature": "def saveself, job: Job -> None",
-              "line": 163,
+              "line": 165,
               "doc": ""
             },
             {
               "name": "load",
               "signature": "def loadself, job_id: str -> Job | None",
-              "line": 172,
+              "line": 174,
               "doc": ""
             },
             {
               "name": "list",
               "signature": "def listself -> list[Job]",
-              "line": 180,
+              "line": 182,
               "doc": ""
             },
             {
               "name": "find",
               "signature": "def findself, needle: str -> Job | None",
-              "line": 190,
+              "line": 192,
               "doc": "By job id, or by name \u2014 whichever the caller had to hand."
             }
           ]
@@ -39687,56 +39687,56 @@
           "kind": "function",
           "name": "available_supervisor",
           "signature": "def available_supervisor -> Supervisor",
-          "line": 220,
+          "line": 222,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "launch",
           "signature": "def launchscript: str | Path, *, args: list[str] | None=None, name: str='', cwd: str | Path | None=None, env: dict[str, str] | None=None, timeout: int=0, log_file: str | Path | None=None, priority: int=0, gpu: str='', cpu: str='', store: JobStore | None=None, supervisor: Supervisor | None=None -> Job",
-          "line": 254,
+          "line": 256,
           "doc": "Start *script* detached, and return its :class:`Job` record."
         },
         {
           "kind": "function",
           "name": "resolve_shell",
           "signature": "def resolve_shellshell: str='auto' -> str",
-          "line": 294,
+          "line": 296,
           "doc": "The path of the shell to run a command with."
         },
         {
           "kind": "function",
           "name": "launch_shell",
           "signature": "def launch_shellcommand_text: str, *, shell: str='auto', name: str='', cwd: str | Path | None=None, env: dict[str, str] | None=None, timeout: int=0, log_file: str | Path | None=None, priority: int=0, gpu: str='', cpu: str='', store: JobStore | None=None, supervisor: Supervisor | None=None -> Job",
-          "line": 312,
+          "line": 314,
           "doc": "Start a shell command detached \u2014 ``launch-script -1 '...'``."
         },
         {
           "kind": "function",
           "name": "shell_command_of",
           "signature": "def shell_command_ofjob: Job -> tuple[str, str] | None",
-          "line": 346,
+          "line": 348,
           "doc": "``(shell, command)`` if *job* was started by :func:`launch_shell`."
         },
         {
           "kind": "function",
           "name": "refresh",
           "signature": "def refreshjob: Job, store: JobStore | None=None -> Job",
-          "line": 587,
+          "line": 589,
           "doc": "Update *job*'s status from the system, and persist any change."
         },
         {
           "kind": "function",
           "name": "stop",
           "signature": "def stopjob: Job, store: JobStore | None=None, *, timeout: float=10.0 -> Job",
-          "line": 685,
+          "line": 680,
           "doc": "Ask the job to stop, then insist."
         },
         {
           "kind": "function",
           "name": "read_logs",
           "signature": "def read_logsjob: Job, *, tail: int=200 -> str",
-          "line": 713,
+          "line": 708,
           "doc": ""
         }
       ],
@@ -39746,6 +39746,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "55aadbb6",
+          "date": "2026-10-07",
+          "author": "Claude",
+          "subject": "Windows: never probe a pid with os.kill(pid, 0)",
+          "api_changes": []
+        },
         {
           "sha": "fdb60dd8",
           "date": "2026-09-29",
@@ -39837,110 +39844,6 @@
           "author": "Claude",
           "subject": "0.72.4.dev6 \u2014 one way to ask about a GPU, whoever made it",
           "api_changes": []
-        },
-        {
-          "sha": "a8aca686",
-          "date": "2026-09-08",
-          "author": "Claude",
-          "subject": "0.72.4.dev5 \u2014 hypernix-t1 launch-script",
-          "api_changes": [
-            {
-              "kind": "added",
-              "text": "class LaunchError(RuntimeError):"
-            },
-            {
-              "kind": "added",
-              "text": "class JobStatus(StrEnum):"
-            },
-            {
-              "kind": "added",
-              "text": "class Supervisor(StrEnum):"
-            },
-            {
-              "kind": "added",
-              "text": "def default_root() -> Path:"
-            },
-            {
-              "kind": "added",
-              "text": "class Job:"
-            },
-            {
-              "kind": "added",
-              "text": "def exit_file(self) -> Path:"
-            },
-            {
-              "kind": "added",
-              "text": "def to_dict(self) -> dict:"
-            },
-            {
-              "kind": "added",
-              "text": "def is_terminal(self) -> bool:"
-            },
-            {
-              "kind": "added",
-              "text": "def _slug(text: str) -> str:"
-            },
-            {
-              "kind": "added",
-              "text": "class JobStore:"
-            },
-            {
-              "kind": "added",
-              "text": "def __init__(self, root: str | Path | None = None) -> None:"
-            },
-            {
-              "kind": "added",
-              "text": "def _path(self, job_id: str) -> Path:"
-            },
-            {
-              "kind": "added",
-              "text": "def save(self, job: Job) -> None:"
-            },
-            {
-              "kind": "added",
-              "text": "def load(self, job_id: str) -> Job | None:"
-            },
-            {
-              "kind": "added",
-              "text": "def list(self) -> list[Job]:"
-            },
-            {
-              "kind": "added",
-              "text": "def find(self, needle: str) -> Job | None:"
-            },
-            {
-              "kind": "added",
-              "text": "def _user_bus_available() -> bool:"
-            },
-            {
-              "kind": "added",
-              "text": "def available_supervisor() -> Supervisor:"
-            },
-            {
-              "kind": "added",
-              "text": "def _interpreter_for(script: Path) -> list[str]:"
-            },
-            {
-              "kind": "added",
-              "text": "def launch("
-            },
-            {
-              "kind": "added",
-              "text": "def _launch_systemd(job, command, working, env, log_path, timeout, priority, cpu) -> None:"
-            },
-            {
-              "kind": "added",
-              "text": "def _launch_setsid(job, command, working, env, log_path, timeout, priority) -> None:"
-            },
-            {
-              "kind": "added",
-              "text": "def refresh(job: Job, store: JobStore | None = None) -> Job:"
-            },
-            {
-              "kind": "added",
-              "text": "def _refresh_systemd(job: Job) -> None:"
-            }
-          ]
         }
       ]
     },
@@ -41282,6 +41185,42 @@
             {
               "kind": "added",
               "text": "def cli_main(argv: list[str] | None = None) -> int:"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "module": "hypernix.system.pids",
+      "source": "src/hypernix/system/pids.py",
+      "line_count": 50,
+      "summary": "Whether a process id names a running process, on every platform.",
+      "api": [
+        {
+          "kind": "function",
+          "name": "alive",
+          "signature": "def alivepid: int -> bool",
+          "line": 20,
+          "doc": "True when ``pid`` is a running process (one we may not signal counts)."
+        }
+      ],
+      "errors": [],
+      "deprecations": [],
+      "required_modules": [],
+      "changes": [
+        {
+          "sha": "55aadbb6",
+          "date": "2026-10-07",
+          "author": "Claude",
+          "subject": "Windows: never probe a pid with os.kill(pid, 0)",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def alive(pid: int) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def _alive_windows(pid: int) -> bool:"
             }
           ]
         }
@@ -60932,14 +60871,14 @@
     {
       "module": "hypernix.training.monitor",
       "source": "src/hypernix/training/monitor.py",
-      "line_count": 376,
+      "line_count": 383,
       "summary": "What training is doing, and the controls for it.",
       "api": [
         {
           "kind": "class",
           "name": "TrainingError",
           "signature": "class TrainingError",
-          "line": 54,
+          "line": 56,
           "doc": "A training control could not be applied.",
           "methods": []
         },
@@ -60947,7 +60886,7 @@
           "kind": "class",
           "name": "RunState",
           "signature": "class RunState",
-          "line": 58,
+          "line": 60,
           "doc": "",
           "methods": []
         },
@@ -60955,44 +60894,44 @@
           "kind": "function",
           "name": "default_root",
           "signature": "def default_root -> Path",
-          "line": 69,
+          "line": 71,
           "doc": ""
         },
         {
           "kind": "class",
           "name": "TrainingRun",
           "signature": "class TrainingRun",
-          "line": 76,
+          "line": 78,
           "doc": "One run, as the trainer last described itself.",
           "methods": [
             {
               "name": "progress",
               "signature": "def progressself -> float | None",
-              "line": 103,
+              "line": 105,
               "doc": "Fraction complete, or None when the schedule is unknown."
             },
             {
               "name": "percent",
               "signature": "def percentself -> float | None",
-              "line": 117,
+              "line": 119,
               "doc": ""
             },
             {
               "name": "eta_seconds",
               "signature": "def eta_secondsself -> float | None",
-              "line": 122,
+              "line": 124,
               "doc": "Seconds remaining, from the rate achieved so far."
             },
             {
               "name": "is_active",
               "signature": "def is_activeself -> bool",
-              "line": 145,
+              "line": 147,
               "doc": ""
             },
             {
               "name": "to_dict",
               "signature": "def to_dictself -> dict",
-              "line": 150,
+              "line": 152,
               "doc": ""
             }
           ]
@@ -61001,37 +60940,37 @@
           "kind": "class",
           "name": "ProgressReporter",
           "signature": "class ProgressReporter",
-          "line": 158,
+          "line": 160,
           "doc": "Written by the trainer. One atomic rewrite per update.",
           "methods": [
             {
               "name": "path",
               "signature": "def pathself -> Path",
-              "line": 204,
+              "line": 206,
               "doc": ""
             },
             {
               "name": "update",
               "signature": "def updateself, *, step: int | None=None, epoch: int | None=None, state: str=RunState.RUNNING.value, **metrics: float -> None",
-              "line": 220,
+              "line": 222,
               "doc": ""
             },
             {
               "name": "checkpoint",
               "signature": "def checkpointself, path: str | Path -> None",
-              "line": 241,
+              "line": 243,
               "doc": ""
             },
             {
               "name": "failed",
               "signature": "def failedself, error: str -> None",
-              "line": 246,
+              "line": 248,
               "doc": "Shorthand, so a caller never has to spell the state itself."
             },
             {
               "name": "finished",
               "signature": "def finishedself, *, state: str=RunState.FINISHED.value, error: str='' -> None",
-              "line": 250,
+              "line": 252,
               "doc": ""
             }
           ]
@@ -61040,43 +60979,43 @@
           "kind": "class",
           "name": "TrainingMonitor",
           "signature": "class TrainingMonitor",
-          "line": 265,
+          "line": 267,
           "doc": "Reads runs, and applies the controls.",
           "methods": [
             {
               "name": "runs",
               "signature": "def runsself -> list[TrainingRun]",
-              "line": 285,
+              "line": 287,
               "doc": ""
             },
             {
               "name": "get",
               "signature": "def getself, run_id: str -> TrainingRun | None",
-              "line": 295,
+              "line": 297,
               "doc": ""
             },
             {
               "name": "pause",
               "signature": "def pauseself, run: TrainingRun -> TrainingRun",
-              "line": 343,
+              "line": 357,
               "doc": "SIGSTOP the run's process group."
             },
             {
               "name": "resume",
               "signature": "def resumeself, run: TrainingRun -> TrainingRun",
-              "line": 356,
+              "line": 370,
               "doc": ""
             },
             {
               "name": "stop",
               "signature": "def stopself, run: TrainingRun -> TrainingRun",
-              "line": 362,
+              "line": 376,
               "doc": "SIGTERM the run's process group, if there is still one."
             },
             {
               "name": "resources",
               "signature": "def resourcesself -> dict",
-              "line": 398,
+              "line": 413,
               "doc": "GPU, CPU and RAM, for the same panel as the run itself."
             }
           ]
@@ -61088,6 +61027,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "55aadbb6",
+          "date": "2026-10-07",
+          "author": "Claude",
+          "subject": "Windows: never probe a pid with os.kill(pid, 0)",
+          "api_changes": []
+        },
         {
           "sha": "3cd859b2",
           "date": "2026-09-08",

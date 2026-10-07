@@ -807,7 +807,7 @@ class TestStartOutlivesTheShell:
             pid = int((config / "server.pid").read_text(encoding="utf-8").strip())
             assert pids.alive(pid), f"pid {pid} is gone"
             argv = subprocess.run(
-                ["ps", "-p", str(pid), "-o", "args="],
+                ["ps", "-ww", "-p", str(pid), "-o", "args="],
                 capture_output=True, text=True, encoding="utf-8",
             ).stdout
             assert "hypernix.t1api" in argv, f"pid {pid} is not the server: {argv!r}"
