@@ -17,6 +17,7 @@ for backwards-compatibility" and then said nothing at all.
 from __future__ import annotations
 
 import ast
+import importlib.util
 import os
 import re
 import subprocess
@@ -55,8 +56,19 @@ def run_import(module: str, *, env_extra: dict[str, str] | None = None,
     )
 
 
+#: Deprecated modules that import torch at the top; on a Python with no
+#: torch wheel they cannot be imported at all, announcement or not.
+IMPORTS_TORCH = {"hypernix.models.old_oven", "hypernix.system.old_fridge"}
+TORCH_MISSING = importlib.util.find_spec("torch") is None
+
+
 @pytest.mark.parametrize("module", sorted(DEPRECATED))
 class TestEachDeprecatedModuleAnnouncesItself:
+    @pytest.fixture(autouse=True)
+    def _needs_torch(self, module):
+        if TORCH_MISSING and module in IMPORTS_TORCH:
+            pytest.skip(f"{module} imports torch, which has no wheel for this Python")
+
     def test_it_says_so_on_import(self, module):
         done = run_import(module)
         assert done.returncode == 0, done.stdout + done.stderr

@@ -163,6 +163,9 @@ class TestAnalyzeScript:
         assert "nothing in the script saves a checkpoint" in text
 
     def test_a_careful_script_has_fewer_findings(self, tmp_path):
+        # The analyser checks each import is installed; without torch it
+        # rightly reports that, which is not what this test is about.
+        pytest.importorskip("torch", reason="the script under analysis imports torch")
         report = analyze_script(_script(tmp_path, """
             import torch
             from hypernix.models.neo_oven import new_oven

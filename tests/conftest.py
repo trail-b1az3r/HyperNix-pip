@@ -207,3 +207,27 @@ def pytest_make_collect_report(collector):
         report.outcome = "skipped"
         report.longrepr = (str(collector.path), 0,
                            "Skipped: needs torch, which has no wheel for this Python")
+
+
+def _needs_missing_torch(excinfo) -> bool:
+    """Whether a test failed only because torch is not installed here."""
+    exc = excinfo.value
+    while exc is not None:
+        if isinstance(exc, ModuleNotFoundError) and (exc.name or "").split(".")[0] == "torch":
+            return True
+        if "PyTorch is not installed" in str(exc):
+            return True
+        exc = exc.__cause__ or exc.__context__
+    return False
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_makereport(item, call):
+    """The same, for a test that imports torch inside its body or a fixture."""
+    outcome = yield
+    report = outcome.get_result()
+    if (TORCH_MISSING and report.failed and call.excinfo is not None
+            and _needs_missing_torch(call.excinfo)):
+        report.outcome = "skipped"
+        report.longrepr = (str(item.path), item.location[1] or 0,
+                           "Skipped: needs torch, which has no wheel for this Python")
