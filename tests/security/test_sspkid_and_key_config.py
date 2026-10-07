@@ -113,7 +113,7 @@ class TestTheRegistryOutlivesTheProcess:
         """Losing assignments is bad; refusing to boot is worse."""
         path = tmp_path / "sspkid"
         path.mkdir()
-        (path / "registry.json").write_text("{ this is not json")
+        (path / "registry.json").write_text("{ this is not json", encoding="utf-8")
 
         registry = ServerKeyRegistry(store_dir=tmp_path)
         assert len(registry) == 0
@@ -129,7 +129,7 @@ class TestTheRegistryOutlivesTheProcess:
 class TestReadingTheConfig:
     def _write(self, tmp_path: Path, *lines: str) -> Path:
         path = tmp_path / "fleet.jsonl"
-        path.write_text("\n".join(lines) + "\n")
+        path.write_text("\n".join(lines) + "\n", encoding="utf-8")
         return path
 
     def test_later_lines_win(self, tmp_path):
@@ -202,7 +202,7 @@ class TestReadingTheConfig:
 
     def test_an_oversized_config_is_refused(self, tmp_path):
         path = tmp_path / "huge.jsonl"
-        path.write_text('{"server_id": "00042-C1"}\n' * (MAX_CONFIG_BYTES // 10))
+        path.write_text('{"server_id": "00042-C1"}\n' * (MAX_CONFIG_BYTES // 10), encoding="utf-8")
         with pytest.raises(KeyConfigError, match="log, not a config"):
             load_key_config(str(path))
 
@@ -255,7 +255,7 @@ class TestResolvingWhatWasTyped:
 def _gkey(*argv: str, store: Path) -> subprocess.CompletedProcess:
     return subprocess.run(
         [sys.executable, "-m", "hypernix.security.gkey_cli", *argv],
-        capture_output=True, text=True, timeout=120,
+        capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120,
         env={
             **os.environ,
             "T1_KEYMASTER_DIR": str(store),
@@ -268,7 +268,7 @@ def _gkey(*argv: str, store: Path) -> subprocess.CompletedProcess:
 class TestGkeyCreateCon:
     def test_it_applies_both_fields(self, tmp_path):
         config = tmp_path / "fleet.jsonl"
-        config.write_text(json.dumps({"server_id": "00042-C1", "sspkid_index": 4}) + "\n")
+        config.write_text(json.dumps({"server_id": "00042-C1", "sspkid_index": 4}) + "\n", encoding="utf-8")
         store = tmp_path / "store"
 
         result = _gkey("create", "--type", "user", "-Con", str(config), store=store)
@@ -280,7 +280,7 @@ class TestGkeyCreateCon:
     def test_the_assignment_is_visible_to_another_process(self, tmp_path):
         """The whole point of persisting it."""
         config = tmp_path / "fleet.jsonl"
-        config.write_text(json.dumps({"server_id": "00042-C1", "sspkid_index": 4}) + "\n")
+        config.write_text(json.dumps({"server_id": "00042-C1", "sspkid_index": 4}) + "\n", encoding="utf-8")
         store = tmp_path / "store"
         _gkey("create", "--type", "user", "-Con", str(config), store=store)
 
@@ -289,7 +289,7 @@ class TestGkeyCreateCon:
 
     def test_a_second_key_cannot_take_the_same_sspkid(self, tmp_path):
         config = tmp_path / "fleet.jsonl"
-        config.write_text(json.dumps({"server_id": "00042-C1", "sspkid_index": 4}) + "\n")
+        config.write_text(json.dumps({"server_id": "00042-C1", "sspkid_index": 4}) + "\n", encoding="utf-8")
         store = tmp_path / "store"
         _gkey("create", "--type", "user", "-Con", str(config), store=store)
 
@@ -311,7 +311,7 @@ class TestGkeyCreateCon:
 
     def test_a_bad_server_id_is_refused(self, tmp_path):
         config = tmp_path / "fleet.jsonl"
-        config.write_text(json.dumps({"server_id": "not-an-id"}) + "\n")
+        config.write_text(json.dumps({"server_id": "not-an-id"}) + "\n", encoding="utf-8")
         result = _gkey(
             "create", "--type", "user", "-Con", str(config), store=tmp_path / "store"
         )

@@ -5,7 +5,7 @@
 
 <p align="center">
   <img alt="PyPI" src="https://img.shields.io/badge/PyPI-v0.72.6.post4-ff2d55?style=for-the-badge&logo=pypi&logoColor=white" />
-  <img alt="Python" src="https://img.shields.io/badge/Python-3.10--3.14-00c9ff?style=for-the-badge&logo=python&logoColor=white" />
+  <img alt="Python" src="https://img.shields.io/badge/Python-3.12--3.15-00c9ff?style=for-the-badge&logo=python&logoColor=white" />
   <img alt="License" src="https://img.shields.io/badge/License-HOS%20/%20LLU-00c853?style=for-the-badge" />
 </p>
 <!-- README_HEADER_END -->
@@ -46,7 +46,18 @@ is next.
 - [License](#license)
 
 
-Cross-platform: Linux, macOS, Windows. Python 3.10 - 3.14.
+Cross-platform: Linux, macOS, Windows. hyperNix-pip requires Python 3.12 or newer and officially supports Python 3.12, 3.13, 3.14, and 3.15.
+
+### Python 3.15 modernization
+
+0.72.7 moves the floor to 3.12 and adds 3.15, using four of its features
+where they measurably help and nowhere they would break 3.12–3.14:
+PEP 810 lazy imports (`__lazy_modules__`), PEP 798 unpacking in
+comprehensions (behind `hypernix._compat`), PEP 799's `profiling` package
+(`hypernix._profiling`) and PEP 831 frame pointers in native builds. The
+dependency audit, benchmarks and the tested matrix are on the
+[Python 3.12–3.15](wiki/Python-3.15.md) wiki page. On 3.15, PyTorch has
+no wheel yet; everything that does not need torch runs.
 
 ## What's new: 0.72.6 — daily keys, conceal, and a quicker waiter
 

@@ -239,7 +239,7 @@ class TestThemes:
 
     def test_a_json_theme_loads(self, tmp_path):
         path = tmp_path / "t.json"
-        path.write_text(json.dumps({"name": "j", "colors": {"hi_fg": "#123456"}}))
+        path.write_text(json.dumps({"name": "j", "colors": {"hi_fg": "#123456"}}), encoding="utf-8")
         assert load_theme(str(path))["hi_fg"] == "#123456"
 
     def test_an_unknown_name_lists_the_ones_that_exist(self):

@@ -536,7 +536,7 @@ class TestTheTuiAndGuiAreWiredUp:
         from pathlib import Path
 
         root = Path(__file__).resolve().parents[2]
-        return (root / relative).read_text()
+        return (root / relative).read_text(encoding="utf-8")
 
     def test_the_tui_registers_the_command(self):
         source = self._read("src/hypernix/hyped_pro.ts")

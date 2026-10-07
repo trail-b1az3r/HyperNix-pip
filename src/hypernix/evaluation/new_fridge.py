@@ -51,15 +51,35 @@ def parse_training_log(text: str) -> list[tuple[int, float]]:
     return pairs
 
 
+class _FilePlots:
+    """Figures drawn straight to a file, with no pyplot.
+
+    pyplot picks a GUI backend on first use -- Tk on Windows -- and a
+    Python without a working Tk then cannot write a PNG at all. These
+    plots only ever go to disk, so they never need one.
+    """
+
+    def __init__(self, figure_cls: Any) -> None:
+        self._figure = figure_cls
+
+    def subplots(self, figsize: tuple[float, float]) -> tuple[Any, Any]:
+        fig = self._figure(figsize=figsize)
+        return fig, fig.subplots()
+
+    @staticmethod
+    def close(fig: Any) -> None:
+        """Nothing to release: the figure was never registered with pyplot."""
+
+
 def _load_matplotlib() -> Any:
-    """Return a matplotlib.pyplot module, installing matplotlib if needed."""
+    """File-only plotting, installing matplotlib if needed."""
     try:
-        import matplotlib.pyplot as plt  # type: ignore
-        return plt
+        from matplotlib.figure import Figure  # type: ignore
+        return _FilePlots(Figure)
     except ModuleNotFoundError:
         deps.ensure(["matplotlib>=3.7"], reimport=["matplotlib", "matplotlib.pyplot"])
-        import matplotlib.pyplot as plt  # type: ignore
-        return plt
+        from matplotlib.figure import Figure  # type: ignore
+        return _FilePlots(Figure)
 
 
 def plot_loss_curve(

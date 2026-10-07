@@ -30,14 +30,14 @@ def load_config() -> dict:
     if not NET_CONFIG_FILE.exists():
         return {"ports": [], "storage_dir": str(Path.home() / "hypernix_storage")}
     try:
-        with open(NET_CONFIG_FILE) as f:
+        with open(NET_CONFIG_FILE, encoding="utf-8") as f:
             return json.load(f)
     except Exception:
         return {"ports": [], "storage_dir": str(Path.home() / "hypernix_storage")}
 
 def save_config(cfg: dict) -> None:
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-    with open(NET_CONFIG_FILE, "w") as f:
+    with open(NET_CONFIG_FILE, "w", encoding="utf-8") as f:
         json.dump(cfg, f, indent=2)
 
 def run_cmd(cmd: list[str], capture: bool = True) -> str:

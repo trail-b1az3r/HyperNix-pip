@@ -315,7 +315,7 @@ class TestTheVersionTheRequestAskedFor:
 
         printed = subprocess.run(
             [sys.executable, str(IOS / "scripts" / "app_version.py")],
-            capture_output=True, text=True, check=True,
+            capture_output=True, text=True, encoding="utf-8", errors="replace", check=True,
         ).stdout.strip()
         assert printed == "1.1.26.9.0.0"
 

@@ -466,7 +466,7 @@ class TestTheWrapperReachesIt:
     def _wrapper() -> str:
         from pathlib import Path
 
-        return (Path(__file__).resolve().parents[2] / "bin" / "hypernix-t1").read_text()
+        return (Path(__file__).resolve().parents[2] / "bin" / "hypernix-t1").read_text(encoding="utf-8")
 
     def test_both_spellings_dispatch(self):
         text = self._wrapper()

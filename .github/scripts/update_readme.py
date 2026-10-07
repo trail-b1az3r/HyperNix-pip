@@ -29,7 +29,7 @@ new_header = f"""<!-- README_HEADER_START -->
 
 <p align="center">
   <img alt="PyPI" src="https://img.shields.io/badge/PyPI-v{version}-ff2d55?style=for-the-badge&logo=pypi&logoColor=white" />
-  <img alt="Python" src="https://img.shields.io/badge/Python-3.10--3.14-00c9ff?style=for-the-badge&logo=python&logoColor=white" />
+  <img alt="Python" src="https://img.shields.io/badge/Python-3.12--3.15-00c9ff?style=for-the-badge&logo=python&logoColor=white" />
   <img alt="License" src="https://img.shields.io/badge/License-HOS%20/%20LLU-00c853?style=for-the-badge" />
 </p>
 <!-- README_HEADER_END -->"""

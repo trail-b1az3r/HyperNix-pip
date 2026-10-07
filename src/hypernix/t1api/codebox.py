@@ -57,8 +57,10 @@ Running code sent over an API is running code on this machine, so:
   launcher, not ``preexec_fn``, which is unsafe in a threaded server):
   memory by ``RLIMIT_DATA`` (``RLIMIT_AS`` refuses Node outright, which
   reserves gigabytes of address space it never uses), file size by
-  ``RLIMIT_FSIZE``, and CPU time by ``RLIMIT_CPU``. The wall-clock
-  timeout kills the whole process group.
+  ``RLIMIT_FSIZE``, and CPU time by ``RLIMIT_CPU``. A limit the kernel
+  refuses (macOS takes no memory limit) is listed under ``not_enforced``
+  in the run's ``limits``, never claimed. The wall-clock timeout kills
+  the whole process group.
 * ``network off`` is enforced with a new network namespace
   (``unshare -rn``), which has no interface but a downed loopback. Where
   that is not available -- macOS, Windows, a kernel without user
@@ -72,6 +74,7 @@ is off by default and needs an operator to create sandboxes.
 """
 from __future__ import annotations
 
+import builtins
 import logging
 import os
 import re
@@ -328,19 +331,30 @@ def available_languages() -> dict[str, str]:
 
 # Sets the limits, then becomes the interpreter. Run as a separate
 # process rather than through preexec_fn, which may deadlock in a
-# threaded program -- and the T1 server is one.
+# threaded program -- and the T1 server is one. A limit the kernel
+# refuses (macOS takes no data-segment limit: EINVAL) is written to the
+# report file and the run goes on, so the result can say which limits
+# held instead of every run failing.
 _LAUNCHER = """\
 import os, sys
+refused = []
 try:
     import resource
     mem, fsize, cpu = (int(v) for v in sys.argv[1:4])
     data = getattr(resource, "RLIMIT_DATA", resource.RLIMIT_AS)
-    for which, value in ((data, mem), (resource.RLIMIT_FSIZE, fsize), (resource.RLIMIT_CPU, cpu)):
+    for name, which, value in (("memory_bytes", data, mem), ("file_bytes", resource.RLIMIT_FSIZE, fsize),
+                               ("cpu_seconds", resource.RLIMIT_CPU, cpu)):
         if value > 0:
-            resource.setrlimit(which, (value, value))
+            try:
+                resource.setrlimit(which, (value, value))
+            except (ValueError, OSError):
+                refused.append(name)
 except ImportError:
-    pass
-os.execvp(sys.argv[4], sys.argv[4:])
+    refused = ["memory_bytes", "file_bytes", "cpu_seconds"]
+if refused:
+    with open(sys.argv[4], "w") as report:
+        report.write(" ".join(refused))
+os.execvp(sys.argv[5], sys.argv[5:])
 """
 
 
@@ -477,7 +491,7 @@ class SandboxStore:
         if _ID.match(box.root.name):
             shutil.rmtree(box.root, ignore_errors=True)
 
-    def expire(self, perms: CodePerms) -> list[str]:
+    def expire(self, perms: CodePerms) -> builtins.list[str]:
         cutoff = time.time() - perms.ttl_minutes * 60
         with self._lock:
             old = [b for b in self._boxes.values() if b.last_used < cutoff]
@@ -534,7 +548,7 @@ class SandboxStore:
     # -- running --------------------------------------------------------
 
     def run(self, box: Sandbox, perms: CodePerms, *, language: str = "", code: str | None = None,
-            path: str = "", stdin: str = "", args: list[str] | None = None) -> RunResult:
+            path: str = "", stdin: str = "", args: builtins.list[str] | None = None) -> RunResult:
         if not perms.execute:
             raise SandboxError("running code is off (s1). An admin can turn it on with "
                                "/code/create/sandbox/perms/s1?:=on", code="execute_off", status=403)
@@ -580,15 +594,17 @@ class SandboxStore:
                     code="network_unenforceable", status=501)
             prefix = isolation
 
-        limits = {"memory_bytes": perms.memory_mb * 2**20,
+        limits: dict[str, Any] = {"memory_bytes": perms.memory_mb * 2**20,
                   "file_bytes": perms.disk_mb * 2**20,
                   "cpu_seconds": perms.timeout + 1,
                   "wall_seconds": perms.timeout}
-        argv = [*prefix, sys.executable, "-c", _LAUNCHER,
-                str(limits["memory_bytes"]), str(limits["file_bytes"]), str(limits["cpu_seconds"]),
-                installed[language], str(target), *[str(a) for a in (args or [])]]
         scratch = box.root / ".hnx" / "tmp"
         scratch.mkdir(parents=True, exist_ok=True)
+        report = box.root / ".hnx" / "limits-refused"
+        report.unlink(missing_ok=True)
+        argv = [*prefix, sys.executable, "-c", _LAUNCHER,
+                str(limits["memory_bytes"]), str(limits["file_bytes"]), str(limits["cpu_seconds"]),
+                str(report), installed[language], str(target), *[str(a) for a in (args or [])]]
         env = {"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "HOME": str(box.root),
                "LANG": os.environ.get("LANG", "C.UTF-8"), "TMPDIR": str(scratch),
                "PYTHONDONTWRITEBYTECODE": "1"}
@@ -615,6 +631,16 @@ class SandboxStore:
             stdout, cut_out = _tail(out)
             stderr, cut_err = _tail(err)
         box.last_used = time.time()
+        try:
+            refused = report.read_text(encoding="utf-8").split()
+            report.unlink()
+        except OSError:
+            refused = []
+        for name in refused:
+            # Not enforced here: say so rather than report a limit that did not hold.
+            limits[name] = None
+        if refused:
+            limits["not_enforced"] = refused
         return RunResult(language=language, exit_code=None if timed_out else proc.returncode,
                          stdout=stdout, stderr=stderr, elapsed=elapsed, timed_out=timed_out,
                          truncated=cut_out or cut_err, network=perms.network, limits=limits)

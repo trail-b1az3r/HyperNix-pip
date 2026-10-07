@@ -78,7 +78,7 @@ def tree(tmp_path):
 
 def head_of(repo: Path) -> str:
     return subprocess.run(["git", "rev-parse", "HEAD"], cwd=repo, check=True,
-                          capture_output=True, text=True).stdout.strip()
+                          capture_output=True, text=True, encoding="utf-8", errors="replace").stdout.strip()
 
 
 def call(version: str, repo: Path, **kw):
@@ -399,7 +399,7 @@ class TestTheWorkflowActuallyCallsIt:
     def test_print_pep440(self, typed, written):
         done = subprocess.run(
             [sys.executable, str(GUARD), "--print-pep440", typed],
-            capture_output=True, text=True, timeout=60,
+            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60,
         )
         assert done.returncode == 0, done.stderr
         assert done.stdout.strip() == written
@@ -408,7 +408,7 @@ class TestTheWorkflowActuallyCallsIt:
         repo = tree("0.72.4.post5")
         done = subprocess.run(
             [sys.executable, str(GUARD), "0.72.4.post5", "--repo", str(repo)],
-            capture_output=True, text=True, timeout=60,
+            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60,
         )
         assert done.returncode == 0, done.stdout + done.stderr
         assert "already prepared with" in done.stdout

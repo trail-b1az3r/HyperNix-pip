@@ -42,7 +42,7 @@ class TestWhereTheServerIs:
         assert localserver.configured_url()[0] == "http://127.0.0.1:8001"
 
     def test_t1_port_from_the_servers_env_file(self, _isolated):
-        (_isolated / ".env").write_text("T1_HOST=0.0.0.0\nT1_PORT='8001'\n")
+        (_isolated / ".env").write_text("T1_HOST=0.0.0.0\nT1_PORT='8001'\n", encoding="utf-8")
         url, source = localserver.configured_url()
         assert url == "http://127.0.0.1:8001", "0.0.0.0 is reached on loopback"
         assert ".env" in source
@@ -177,7 +177,7 @@ class TestChat:
     def test_the_chat_is_carried_on(self, t1_like, _isolated, capsys):
         url, seen = t1_like
         chat_cli.main(["--url", url, "first"])
-        assert (_isolated / "cli_session").read_text().strip() == "sess_1"
+        assert (_isolated / "cli_session").read_text(encoding="utf-8").strip() == "sess_1"
 
     def test_quiet_prints_only_the_reply(self, t1_like, capsys):
         url, _ = t1_like
@@ -195,6 +195,6 @@ class TestChat:
     def test_the_shell_wrapper_dispatches_it(self):
         from pathlib import Path
 
-        script = (Path(__file__).resolve().parents[2] / "bin" / "hypernix-t1").read_text()
+        script = (Path(__file__).resolve().parents[2] / "bin" / "hypernix-t1").read_text(encoding="utf-8")
         assert "chat)              cmd_chat" in script
         assert "hypernix.t1api.chat_cli" in script

@@ -39,6 +39,8 @@ from dataclasses import asdict, dataclass, field
 from enum import StrEnum
 from pathlib import Path
 
+from hypernix.system import pids
+
 logger = logging.getLogger(__name__)
 
 __all__ = [
@@ -421,15 +423,8 @@ class TrainingMonitor:
 
 
 def _alive(pid: int) -> bool:
-    try:
-        os.kill(pid, 0)
-    except ProcessLookupError:
-        return False
-    except PermissionError:
-        return True
-    except OSError:
-        return False
-    return True
+    # Not os.kill(pid, 0): on Windows that sends Ctrl+C to the console.
+    return pids.alive(pid)
 
 
 def _stopped(pid: int) -> bool:

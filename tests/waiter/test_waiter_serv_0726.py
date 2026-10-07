@@ -55,7 +55,7 @@ class TestBundle:
 
     def test_b_works_strings_out(self, tmp_path):
         cfg = tmp_path / "cfg.jsonl"
-        cfg.write_text("{}")
+        cfg.write_text("{}", encoding="utf-8")
         result = expand(["-bA", "T2_keyish", "100.64.0.7", "8123", "plan=pro", str(cfg)])
         assert result.argv[:2] == ["--bundle", "--auto"]
         assert dict(result.assigned) == {
@@ -102,8 +102,8 @@ def _make_kit(root, name="hello-kit", kind="waiter", body="def main(argv):\n    
     (folder / "kit.json").write_text(json.dumps({
         "name": name, "version": "1.0.0", "kind": kind, "description": "says hi",
         "commands": {"hi": "hello:main"} if kind == "waiter" else {},
-    }))
-    (folder / "hello.py").write_text(body)
+    }), encoding="utf-8")
+    (folder / "hello.py").write_text(body, encoding="utf-8")
     return folder
 
 
@@ -157,7 +157,7 @@ class TestKits:
 
         folder = tmp_path / "bad"
         folder.mkdir()
-        (folder / "kit.json").write_text(json.dumps({"name": "Bad Name", "version": "1"}))
+        (folder / "kit.json").write_text(json.dumps({"name": "Bad Name", "version": "1"}), encoding="utf-8")
         with pytest.raises(KitError, match="lowercase"):
             install(folder)
 
@@ -186,8 +186,8 @@ class TestLock:
 
         path = tmp_path / "cfg.jsonl"
         WaiterConfigStore(path, password="correct horse").save(WaiterLocalConfig(server="s", key="T1_k"))
-        assert path.read_text().startswith(LOCK_PREFIX)
-        assert "T1_k" not in path.read_text()
+        assert path.read_text(encoding="utf-8").startswith(LOCK_PREFIX)
+        assert "T1_k" not in path.read_text(encoding="utf-8")
         with pytest.raises(WaiterConfigLocked, match="locked"):
             WaiterConfigStore(path).load()
         with pytest.raises(WaiterConfigLocked, match="wrong password"):
@@ -197,17 +197,17 @@ class TestLock:
         assert cfg.key == "T1_k"
         # Once opened it stays locked on the next save.
         store.save(cfg)
-        assert path.read_text().startswith(LOCK_PREFIX)
+        assert path.read_text(encoding="utf-8").startswith(LOCK_PREFIX)
 
     def test_the_cli_locks_and_later_commands_read_it(self, tmp_path, monkeypatch, capsys):
         pytest.importorskip("cryptography")
         from hypernix.waiter.cli import main
 
         path = tmp_path / "cfg.jsonl"
-        path.write_text(json.dumps({"server": "10.9.9.9", "key": "T1_saved"}))
+        path.write_text(json.dumps({"server": "10.9.9.9", "key": "T1_saved"}), encoding="utf-8")
         monkeypatch.setenv("HNX_WAITER_PASSWORD", "a long password")
         assert main(["serv", "-e", "-F", str(path)]) == 0
-        assert "T1_saved" not in path.read_text()
+        assert "T1_saved" not in path.read_text(encoding="utf-8")
         capsys.readouterr()
         assert main(["config", "-F", str(path), "--json"]) == 0
         assert json.loads(capsys.readouterr().out)["server"] == "10.9.9.9"
@@ -277,7 +277,7 @@ class TestAgainstTheServer:
         assert _serv("-ArEK", live["user"].key, "-I", "http://testserver", "-F", str(live["cfg"])) == 0
         saved = WaiterConfigStore(live["cfg"]).load()
         assert saved.key.startswith("T2CK_")
-        assert live["user"].key not in live["cfg"].read_text()
+        assert live["user"].key not in live["cfg"].read_text(encoding="utf-8")
         out = capsys.readouterr()
         assert "v2.1" in out.out + out.err
 

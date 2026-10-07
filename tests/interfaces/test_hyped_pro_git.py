@@ -26,7 +26,7 @@ pytestmark = pytest.mark.skipif(shutil.which("git") is None, reason="git not ins
 
 
 def sh(repo: Path, *args: str) -> str:
-    return subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True, text=True).stdout
+    return subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True, text=True, encoding="utf-8", errors="replace").stdout
 
 
 @pytest.fixture
@@ -532,7 +532,7 @@ def test_the_bridge_serves_events_on_its_own_lines(repo, monkeypatch):
     )
     env = dict(os.environ, HYPED_PRO_WORKSPACE=str(repo), PYTHONUNBUFFERED="1")
     proc = subprocess.Popen([sys.executable, "-c", script], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE, text=True, env=env)
+                            stderr=subprocess.PIPE, text=True, encoding="utf-8", errors="replace", env=env)
     lines: queue.Queue = queue.Queue()
     threading.Thread(target=lambda: [lines.put(line) for line in proc.stdout], daemon=True).start()
 

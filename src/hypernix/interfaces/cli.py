@@ -1270,6 +1270,28 @@ def main(argv: list[str] | None = None) -> int:
         return _unknown_command(raw[0])
 
     cmd, rest = raw[0], raw[1:]
+    try:
+        return _dispatch(cmd, rest)
+    except ModuleNotFoundError as exc:
+        # A subcommand that trains, converts or runs a PyTorch model on a
+        # Python PyTorch has no wheel for (3.15, until it ships one): say
+        # so, rather than a traceback ending in an import line.
+        if (exc.name or "").split(".")[0] != "torch":
+            raise
+        print(_needs_torch(cmd), file=sys.stderr)
+        return 2
+
+
+def _needs_torch(cmd: str) -> str:
+    version = ".".join(str(part) for part in sys.version_info[:2])
+    return (f"hypernix {cmd} needs PyTorch, which is not installed for Python {version}.\n"
+            f"  Install it (pip install torch), or use Python 3.12-3.14: PyTorch has no\n"
+            f"  wheel for every new Python on its first day. Commands that do not run a\n"
+            f"  model -- download, info, verify, hyprslug-headers, doctor, the T1 API and\n"
+            f"  HyperLink -- work without it.")
+
+
+def _dispatch(cmd: str, rest: list[str]) -> int:
     if cmd == "all":
         return _run_all(rest)
     if cmd == "download":

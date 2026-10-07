@@ -97,7 +97,7 @@ class TestZippingCannotReachOut:
         """Planted by an earlier tool call, which is why containment is
         checked after resolving rather than before."""
         secret = tmp_path / "secret.txt"
-        secret.write_text("password")
+        secret.write_text("password", encoding="utf-8")
         (workspace.root / "link.txt").symlink_to(secret)
         assert not run_tool(workspace, "zip", {"paths": "link.txt"}).ok
 
@@ -109,7 +109,7 @@ class TestUnzipping:
         (workspace.root / "a.txt").unlink()
         result = run_tool(workspace, "unzip", {"path": "out.zip"})
         assert result.ok
-        assert (workspace.root / "a.txt").read_text() == "hello"
+        assert (workspace.root / "a.txt").read_text(encoding="utf-8") == "hello"
 
     def test_a_zip_slip_is_refused(self, workspace, tmp_path):
         """An archive entry named `../../etc/cron.d/x` extracts exactly

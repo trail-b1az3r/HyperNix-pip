@@ -1513,6 +1513,17 @@ class RunnerLoadRequest(BaseModel):
     #: The model's layer count, when the caller knows it. Without one, a
     #: partial offload has no denominator and the plan is all-or-nothing.
     total_layers: int | None = None
+    #: The vision projector: None finds the mmproj-*.gguf beside the
+    #: model, "" loads none, a path loads that one.
+    mmproj: str | None = None
+
+
+class RunnerAutoRequest(BaseModel):
+    #: "last": the model loaded last that is still here. "most": the one
+    #: loaded most often.
+    prefer: str = "last"
+    #: Say what would be loaded, and load nothing.
+    dry_run: bool = False
 
 
 class RunnerStatusResponse(BaseModel):
@@ -1773,7 +1784,9 @@ class ModelCatalogueResponse(BaseModel):
 
 class InferenceMessage(BaseModel):
     role: str
-    content: str
+    #: Text, or OpenAI's list of parts -- ``{"type": "text", "text": ...}``
+    #: and ``{"type": "image_url", "image_url": {"url": "data:..."}}``.
+    content: str | list[dict[str, Any]]
 
 
 class InferenceChatRequest(BaseModel):

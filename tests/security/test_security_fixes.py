@@ -346,7 +346,7 @@ class TestBindDefaults:
         from pathlib import Path
 
         root = Path(__file__).resolve().parents[2]
-        source = (root / "src/hypernix/t1api/app.py").read_text()
+        source = (root / "src/hypernix/t1api/app.py").read_text(encoding="utf-8")
         docstring = source.split('"""')[1]
         # The runnable lines, not the prose around them — the docstring
         # goes on to explain what 0.0.0.0 would do, and mentioning it is

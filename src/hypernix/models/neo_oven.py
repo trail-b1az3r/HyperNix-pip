@@ -502,15 +502,35 @@ class TrainingMetrics:
                 pass
 
 
+class _FilePlots:
+    """Figures drawn straight to a file, with no pyplot.
+
+    pyplot picks a GUI backend on first use -- Tk on Windows -- and a
+    Python without a working Tk then cannot write a PNG at all. These
+    plots only ever go to disk, so they never need one.
+    """
+
+    def __init__(self, figure_cls: Any) -> None:
+        self._figure = figure_cls
+
+    def subplots(self, figsize: tuple[float, float]) -> tuple[Any, Any]:
+        fig = self._figure(figsize=figsize)
+        return fig, fig.subplots()
+
+    @staticmethod
+    def close(fig: Any) -> None:
+        """Nothing to release: the figure was never registered with pyplot."""
+
+
 def _load_matplotlib() -> Any:
     try:
-        import matplotlib.pyplot as plt  # type: ignore
-        return plt
+        from matplotlib.figure import Figure  # type: ignore
+        return _FilePlots(Figure)
     except ModuleNotFoundError:
         from hypernix.system import deps
         deps.ensure(["matplotlib>=3.7"], reimport=["matplotlib", "matplotlib.pyplot"])
-        import matplotlib.pyplot as plt  # type: ignore
-        return plt
+        from matplotlib.figure import Figure  # type: ignore
+        return _FilePlots(Figure)
 
 
 def _plot_pairs(

@@ -69,10 +69,15 @@ Examples:
   hypernix-t1 built-in-runner start qwen3-8b --gpu-layers 24
   hypernix-t1 built-in-runner status
   hypernix-t1 built-in-runner plan qwen3-8b
+  hypernix-t1 built-in-runner auto             # what this server usually runs
   hypernix-t1 built-in-runner stop
 
 `start` with no model named picks the one model on this machine that
 can be loaded, and refuses to guess when there is more than one.
+
+`auto` loads the model loaded last (--most-used: loaded most often) that
+is still here, on the backend used most, with that model's last settings.
+With no history it starts the default model, as `start` does.
 
 `plan` says where a model's layers would go and changes nothing.
 Loading evicts whatever people are currently talking to, so seeing the
@@ -348,6 +353,14 @@ def build_parser() -> argparse.ArgumentParser:
         action.add_argument("model_id", help="the model to act on")
         _load_options(action)
 
+    auto = sub.add_parser(
+        "auto", help="load what this server usually runs: the last model loaded, "
+                     "on the backend used most, with its last settings")
+    auto.add_argument("--most-used", action="store_true",
+                      help="the model loaded most often, rather than the last one")
+    auto.add_argument("--dry-run", action="store_true",
+                      help="say what would be loaded, and load nothing")
+
     sub.add_parser("unload", help="stop serving; unloading nothing is a success")
     sub.add_parser("stop", help="the same as unload")
     return parser
@@ -388,6 +401,9 @@ def _run(parser: argparse.ArgumentParser, args: argparse.Namespace, url: str, ke
     if command == "start":
         return _start(url, key, args)
 
+    if command == "auto":
+        return _auto(url, key, args)
+
     if command == "status":
         status, body = _request("GET", f"{url}/runner/status", key)
     elif command in ("unload", "stop"):
@@ -417,6 +433,29 @@ def _run(parser: argparse.ArgumentParser, args: argparse.Namespace, url: str, ke
         print("Unloaded." if body.get("was_running") else "Nothing was running.")
     else:
         _print_status(body)
+    return 0
+
+
+def _auto(url: str, key: str, args: argparse.Namespace) -> int:
+    """``auto`` -- the server picks, from what it has loaded before."""
+    body_in = {"prefer": "most" if args.most_used else "last", "dry_run": args.dry_run}
+    status, body = _request("POST", f"{url}/runner/auto", key, body_in)
+    if status >= 400:
+        return _fail(status, body)
+    if args.json:
+        print(json.dumps(body, indent=2))
+        return 0
+    choice = ((body or {}).get("model") or {}).get("auto") or {}
+    if choice.get("why"):
+        print(f"Auto: {choice['why']}.", file=sys.stderr)
+    if args.dry_run:
+        settings = ", ".join(f"{k}={choice[k]}" for k in
+                             ("backend", "gpu_layers", "context_length", "total_layers")
+                             if choice.get(k) not in (None, ""))
+        print(f"Would load {choice.get('model_id', '?')}" + (f" ({settings})" if settings else ""))
+        print("Nothing has changed -- this was a dry run.")
+        return 0
+    _print_status(body)
     return 0
 
 

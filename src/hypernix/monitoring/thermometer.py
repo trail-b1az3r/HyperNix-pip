@@ -75,11 +75,11 @@ def _read_cpu_temp_sysfs() -> tuple[float | None, dict[str, float]]:
     by_src: dict[str, float] = {}
     for zone in base.glob("thermal_zone*"):
         try:
-            t = int((zone / "temp").read_text().strip()) / 1000.0
+            t = int((zone / "temp").read_text(encoding="utf-8").strip()) / 1000.0
         except Exception:  # noqa: BLE001
             continue
         try:
-            tname = (zone / "type").read_text().strip()
+            tname = (zone / "type").read_text(encoding="utf-8").strip()
         except Exception:  # noqa: BLE001
             tname = zone.name
         by_src[f"{zone.name}:{tname}"] = t

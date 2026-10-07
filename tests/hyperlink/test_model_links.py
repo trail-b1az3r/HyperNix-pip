@@ -113,7 +113,7 @@ class TestLinking:
         brew = tmp_path / "brew"
         brew.mkdir()
         (brew / "config.json").write_text(json.dumps(
-            {"d_model": 64, "n_layers": 2, "n_heads": 4, "n_kv_heads": 2, "vocab_size": 64}))
+            {"d_model": 64, "n_layers": 2, "n_heads": 4, "n_kv_heads": 2, "vocab_size": 64}), encoding="utf-8")
         (brew / "model.safetensors").write_bytes(b"x")
         assert link_model(brew, models)["kind"] == "hypernix"
 
@@ -129,7 +129,7 @@ class TestLinking:
 
     def test_it_refuses_a_file_that_is_not_a_model(self, disks, tmp_path):
         models, _ = disks
-        (tmp_path / "passwords.txt").write_text("x")
+        (tmp_path / "passwords.txt").write_text("x", encoding="utf-8")
         with pytest.raises(ModelLinkError, match="not a .gguf"):
             link_model(tmp_path / "passwords.txt", models)
 

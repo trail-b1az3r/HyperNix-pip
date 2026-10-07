@@ -110,7 +110,7 @@ class TestTheDeprecatedOnes:
         src = Path(__file__).resolve().parents[2] / "src"
         result = subprocess.run(
             [sys.executable, "-c", code],
-            capture_output=True, text=True, timeout=300,
+            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=300,
             env={**os.environ, "PYTHONPATH": str(src)},
         )
         assert "deprecated" not in result.stderr, result.stderr
@@ -190,7 +190,7 @@ class TestTheWholeBaseClassFamilyThroughTrain:
             max_position_embeddings=64, seed=0, device="cpu",
         )
         data = tmp_path / "data.txt"
-        data.write_text("hello world, this is a tiny corpus. " * 40)
+        data.write_text("hello world, this is a tiny corpus. " * 40, encoding="utf-8")
         oven.train(data, tmp_path / "out", steps=2, batch_size=1,
                    context_length=32, lr=1e-3, log_every=100, save_every=0,
                    quiet=True, optimizer_class=_optimizer(dotted))
@@ -213,7 +213,7 @@ class TestV4ThroughTrain:
             max_position_embeddings=64, seed=0, device="cpu",
         )
         data = tmp_path / "data.txt"
-        data.write_text("hello world, this is a tiny corpus. " * 40)
+        data.write_text("hello world, this is a tiny corpus. " * 40, encoding="utf-8")
         out = oven.train(data, tmp_path / "out", steps=3, batch_size=1,
                          context_length=32, lr=1e-3, log_every=100,
                          save_every=0, quiet=True,

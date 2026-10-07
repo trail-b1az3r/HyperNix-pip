@@ -32,6 +32,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from shell_support import BASH, NO_BASH_REASON
 
 NATIVE = Path(__file__).resolve().parents[2] / "native" / "ggml-hnx"
 TOOLS = NATIVE / "tools"
@@ -66,7 +67,7 @@ def selftest(tmp_path_factory) -> Path:
             str(NATIVE / "ggml-hnx.c"), str(NATIVE / "hnx_selftest.c"),
             "-lm", "-o", str(out),
         ],
-        capture_output=True, text=True, check=False,
+        capture_output=True, text=True, encoding="utf-8", errors="replace", check=False,
     )
     if result.returncode != 0:
         pytest.fail(f"ggml-hnx.c does not compile cleanly:\n{result.stderr}")
@@ -87,7 +88,7 @@ class TestTheDecoderCompilesAndPasses:
 
     def test_the_self_contained_checks_pass(self, selftest):
         result = subprocess.run(
-            [str(selftest)], capture_output=True, text=True, check=False
+            [str(selftest)], capture_output=True, text=True, encoding="utf-8", errors="replace", check=False
         )
 
         assert result.returncode == 0, result.stdout + result.stderr
@@ -101,7 +102,7 @@ class TestTheCAgreesWithPython:
         vectors = tmp_path / "vectors.bin"
         generated = subprocess.run(
             [sys.executable, str(TOOLS / "gen_vectors.py"), str(vectors)],
-            capture_output=True, text=True, check=False,
+            capture_output=True, text=True, encoding="utf-8", errors="replace", check=False,
             cwd=str(Path(__file__).resolve().parents[2]),
         )
         assert generated.returncode == 0, generated.stdout + generated.stderr
@@ -109,7 +110,7 @@ class TestTheCAgreesWithPython:
 
         result = subprocess.run(
             [str(selftest), str(vectors)],
-            capture_output=True, text=True, check=False,
+            capture_output=True, text=True, encoding="utf-8", errors="replace", check=False,
         )
 
         assert result.returncode == 0, result.stdout + result.stderr
@@ -187,7 +188,7 @@ class TestTheShimCompilesAgainstGgmlsSignatures:
                 f"-I{NATIVE}", "-c", str(NATIVE / "ggml-hnx-shim.c"),
                 "-o", str(tmp_path / "shim.o"),
             ],
-            capture_output=True, text=True, check=False,
+            capture_output=True, text=True, encoding="utf-8", errors="replace", check=False,
         )
 
         assert result.returncode == 0, result.stderr
@@ -557,9 +558,10 @@ class TestTheBuildScript:
         assert "using the checkout already at" in text
         assert "this script pins" in text
 
+    @pytest.mark.skipif(BASH is None, reason=NO_BASH_REASON)
     def test_it_is_still_valid_shell(self):
-        result = subprocess.run(["bash", "-n", str(self.SCRIPT)],
-                                capture_output=True, text=True, check=False)
+        result = subprocess.run([BASH, "-n", str(self.SCRIPT)],
+                                capture_output=True, text=True, encoding="utf-8", errors="replace", check=False)
 
         assert result.returncode == 0, result.stderr
 
@@ -674,7 +676,7 @@ class TestTheCudaKernels:
         result = subprocess.run(
             [nvcc, "-std=c++17", "-O2", f"-I{NATIVE}", "-c",
              str(NATIVE / "ggml-hnx-cuda.cu"), "-o", str(tmp_path / "cuda.o")],
-            capture_output=True, text=True, check=False,
+            capture_output=True, text=True, encoding="utf-8", errors="replace", check=False,
         )
 
         assert result.returncode == 0, result.stderr
@@ -693,7 +695,7 @@ class TestTheCudaKernels:
         result = subprocess.run(
             [nvcc, "-std=c++17", "-O2", f"-I{NATIVE}", "-ptx",
              str(NATIVE / "ggml-hnx-cuda.cu"), "-o", str(ptx)],
-            capture_output=True, text=True, check=False,
+            capture_output=True, text=True, encoding="utf-8", errors="replace", check=False,
         )
         assert result.returncode == 0, result.stderr
         text = ptx.read_text(encoding="utf-8")

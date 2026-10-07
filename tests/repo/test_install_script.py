@@ -693,8 +693,12 @@ class TestTheYesFlag:
         ) + "\n"
         target = tmp_path / "cfg"
         result = subprocess.run(
+            # The interpreter under test, not whichever python3 the
+            # installer finds first on PATH: with several Pythons
+            # installed it rightly picks another one, which has no
+            # hypernix for `--install skip` to configure.
             [BASH, str(SCRIPT), "--yes", "--install", "skip",
-             "--config-dir", str(target)],
+             "--python", Path(sys.executable).as_posix(), "--config-dir", str(target)],
             input=answers,
             capture_output=True,
             text=True, encoding="utf-8",
@@ -1217,7 +1221,7 @@ class TestTheInstallerKnowsWhatVersionItIs:
             script = Path(handle.name)
         try:
             printed = subprocess.run(
-                ["bash", script.name], cwd=REPO_ROOT,
+                [BASH, script.name], cwd=REPO_ROOT,
                 capture_output=True, encoding="utf-8", check=True,
             ).stdout.split()
         finally:

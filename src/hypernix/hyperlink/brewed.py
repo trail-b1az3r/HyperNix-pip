@@ -109,7 +109,16 @@ def is_brewed_dir(path: str | Path) -> bool:
     if not folder.is_dir():
         return False
     config = _config(folder)
-    if config is None or not _BREWER_KEYS <= set(config):
+    if config is None:
+        # Uploaded straight from a training run, as HyperNix.3.1-mini's
+        # beta is: no config.json, and the safetensors header names
+        # Brewer's tensors. Refusing it made the folder impossible to
+        # link from HyperLink ("has no .gguf in it") and invisible to the
+        # model list, though every loader now reads it.
+        from ..models.brewer_gguf import has_brewer_weights
+
+        return has_brewer_weights(folder)
+    if not _BREWER_KEYS <= set(config):
         return False
     return any((folder / name).is_file() for name in _WEIGHTS)
 
@@ -131,7 +140,13 @@ def brewed_dirs(root: str | Path) -> list[Path]:
 def describe(path: str | Path) -> dict[str, Any]:
     """What the catalogue shows for one native model."""
     folder = Path(path)
-    config = _config(folder) or {}
+    config = _config(folder)
+    if config is None:
+        # No config.json: the safetensors header may carry one. Never a
+        # .pt here -- listing a model must not unpickle anything.
+        from ..models.brewer_gguf import _safetensors_config
+
+        config = _safetensors_config(folder / "model.safetensors") or {}
     weights = next((folder / n for n in _WEIGHTS if (folder / n).is_file()), None)
     size = weights.stat().st_size if weights is not None else 0
     name = str(config.get("name") or folder.name)

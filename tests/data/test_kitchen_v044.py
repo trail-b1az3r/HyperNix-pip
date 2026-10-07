@@ -285,7 +285,7 @@ def test_sink_write_appends(tmp_path: Path) -> None:
     s = Sink(path=tmp_path / "out.txt")
     s.write("line one")
     s.write("line two\n")   # already has newline
-    assert (tmp_path / "out.txt").read_text() == "line one\nline two\n"
+    assert (tmp_path / "out.txt").read_text(encoding="utf-8") == "line one\nline two\n"
 
 
 def test_sink_dedupe_skips_duplicates(tmp_path: Path) -> None:
@@ -295,7 +295,7 @@ def test_sink_dedupe_skips_duplicates(tmp_path: Path) -> None:
     assert s.write("hello") is True
     assert s.write("hello") is False
     assert s.write("world") is True
-    assert (tmp_path / "u.txt").read_text() == "hello\nworld\n"
+    assert (tmp_path / "u.txt").read_text(encoding="utf-8") == "hello\nworld\n"
 
 
 def test_sink_rotates_when_over_budget(tmp_path: Path) -> None:
@@ -316,7 +316,7 @@ def test_sink_pour_from_pan(tmp_path: Path) -> None:
     src = tmp_path / "in.txt"
     src.write_text("  line one \n\n  line  two  \n", encoding="utf-8")
     out = Sink(path=tmp_path / "out.txt").pour(SaucePan(src))
-    assert out.read_text() == "line one\nline two\n"
+    assert out.read_text(encoding="utf-8") == "line one\nline two\n"
 
 
 # ---------------------------------------------------------------------------

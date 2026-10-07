@@ -15,6 +15,7 @@ string, not a bare Python traceback.
 """
 from __future__ import annotations
 
+import importlib.util
 import os
 import subprocess
 import sys
@@ -45,7 +46,7 @@ def _run(args: list[str], *, timeout: int = TIMEOUT_SHORT) -> subprocess.Complet
         cwd=str(REPO_ROOT),
         env=env,
         capture_output=True,
-        text=True,
+        text=True, encoding="utf-8", errors="replace",
         timeout=timeout,
         check=False,
     )
@@ -111,9 +112,24 @@ ALL_SUBCOMMANDS = [
 ]
 
 
+#: Subcommands that load a PyTorch model; on a Python with no torch wheel
+#: (3.15, for now) they say so instead of running.
+NEEDS_TORCH = {"all", "convert", "train", "generate", "oven", "chat"}
+TORCH_MISSING = importlib.util.find_spec("torch") is None
+
+
+def _refuses_for_missing_torch(cp: subprocess.CompletedProcess, cmd: str) -> None:
+    assert cp.returncode == 2, cp.stderr
+    assert f"hypernix {cmd} needs PyTorch" in cp.stderr
+    _no_traceback(cp)
+
+
 @pytest.mark.parametrize("cmd", ALL_SUBCOMMANDS)
 def test_subcommand_help(cmd: str) -> None:
     cp = _run([cmd, "--help"])
+    if TORCH_MISSING and cmd in NEEDS_TORCH:
+        _refuses_for_missing_torch(cp, cmd)
+        return
     assert cp.returncode == 0, f"{cmd} --help failed:\n{cp.stderr}"
     # argparse always writes "usage:" on --help
     assert "usage" in cp.stdout.lower() or "usage" in cp.stderr.lower()
@@ -193,6 +209,9 @@ def test_train_init_half_flags(tmp_path: Path) -> None:
         "--num-attention-heads", "2",
         "--max-position-embeddings", "16",
     ], timeout=TIMEOUT_LONG)
+    if TORCH_MISSING:
+        _refuses_for_missing_torch(cp, "train")
+        return
     assert cp.returncode == 0, f"stderr: {cp.stderr}"
     _no_traceback(cp)
     assert (out_dir / "config.json").exists()
@@ -215,6 +234,9 @@ def test_train_init_all_flags(tmp_path: Path) -> None:
         "--tie-word-embeddings",
         "--seed", "42",
     ], timeout=TIMEOUT_LONG)
+    if TORCH_MISSING:
+        _refuses_for_missing_torch(cp, "train")
+        return
     assert cp.returncode == 0, f"stderr: {cp.stderr}"
     _no_traceback(cp)
     assert (out_dir / "config.json").exists()

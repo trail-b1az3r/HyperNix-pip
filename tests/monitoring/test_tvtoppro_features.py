@@ -236,7 +236,7 @@ class TestDiscovery:
             "    def available(self): return False\n"
             "    def unavailable_reason(self): return 'no flux capacitor'\n"
             "    def poll(self): return Panel(title='absent')\n"
-        )
+        , encoding="utf-8")
         _loaded, problems = load_modules("absent", user_dir=module_dir)
         assert problems == [("absent", "no flux capacitor")]
 
@@ -252,7 +252,7 @@ class TestDiscovery:
             "    title = 'mine'\n"
             "    def poll(self):\n"
             "        return Panel(title='mine', readings=[Reading('hi', '42')])\n"
-        )
+        , encoding="utf-8")
         loaded, problems = load_modules("mine", user_dir=module_dir)
         assert problems == []
         assert loaded[0].poll().readings[0].value == "42"
@@ -262,7 +262,7 @@ class TestDiscovery:
         cannot debug."""
         module_dir = tmp_path / "modules"
         module_dir.mkdir()
-        (module_dir / "bad.py").write_text("import nonexistent_module_xyz\n")
+        (module_dir / "bad.py").write_text("import nonexistent_module_xyz\n", encoding="utf-8")
         found = discover(user_dir=module_dir)
         assert isinstance(found["bad"], str)
         assert "ModuleNotFoundError" in found["bad"]
@@ -270,7 +270,7 @@ class TestDiscovery:
     def test_a_file_with_no_module_says_so(self, tmp_path):
         module_dir = tmp_path / "modules"
         module_dir.mkdir()
-        (module_dir / "empty.py").write_text("x = 1\n")
+        (module_dir / "empty.py").write_text("x = 1\n", encoding="utf-8")
         found = discover(user_dir=module_dir)
         assert "defines no Module" in found["empty"]
 
@@ -278,7 +278,7 @@ class TestDiscovery:
         """So a shared helper next to the modules is not itself loaded."""
         module_dir = tmp_path / "modules"
         module_dir.mkdir()
-        (module_dir / "_helpers.py").write_text("raise RuntimeError('boom')\n")
+        (module_dir / "_helpers.py").write_text("raise RuntimeError('boom')\n", encoding="utf-8")
         assert "_helpers" not in discover(user_dir=module_dir)
 
 
@@ -330,12 +330,12 @@ class TestBuiltinModules:
 class TestStaleness:
     def test_a_fresh_log_is_not_stale(self, tmp_path):
         log = tmp_path / "train.log"
-        log.write_text("step 1/10 loss=1.0\n")
+        log.write_text("step 1/10 loss=1.0\n", encoding="utf-8")
         assert not stale_log.is_stale(log)
 
     def test_an_old_log_is(self, tmp_path):
         log = tmp_path / "train.log"
-        log.write_text("step 1/10 loss=1.0\n")
+        log.write_text("step 1/10 loss=1.0\n", encoding="utf-8")
         old = time.time() - 30 * 86400
         os.utime(log, (old, old))
         assert stale_log.is_stale(log)
@@ -350,7 +350,7 @@ class TestStaleness:
 
     def test_the_threshold_is_honoured(self, tmp_path):
         log = tmp_path / "train.log"
-        log.write_text("x\n")
+        log.write_text("x\n", encoding="utf-8")
         old = time.time() - 3600
         os.utime(log, (old, old))
         assert stale_log.is_stale(log, threshold_seconds=60)
@@ -358,7 +358,7 @@ class TestStaleness:
 
     def test_investigate_short_circuits_on_a_fresh_log(self, tmp_path):
         log = tmp_path / "train.log"
-        log.write_text("step 1/10 loss=1.0\n")
+        log.write_text("step 1/10 loss=1.0\n", encoding="utf-8")
         report = stale_log.investigate(log)
         assert not report.stale
         assert report.process is None
@@ -367,7 +367,7 @@ class TestStaleness:
         """"Show me what is actually training" is a reasonable thing to
         ask on purpose, not only as a consequence of a stale file."""
         log = tmp_path / "train.log"
-        log.write_text("step 1/10 loss=1.0\n")
+        log.write_text("step 1/10 loss=1.0\n", encoding="utf-8")
         assert stale_log.investigate(log, force=True).stale
 
     def test_it_never_raises(self, tmp_path, monkeypatch):

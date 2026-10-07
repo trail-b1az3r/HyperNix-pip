@@ -24,7 +24,9 @@ The store is deliberately dumb about *content*. It sniffs enough of a
 magic number to label a file as an image (which decides whether the chat
 layer may send it to a vision model) and otherwise treats everything as
 opaque bytes. It does not transcode, resize, or parse. A store that
-parses attachments is a store that can be attacked with one.
+parses attachments is a store that can be attacked with one. Images
+sent through HyperLink are converted *before* they get here, by
+:mod:`hypernix.hyperlink.imagecodec`, in the upload route.
 """
 from __future__ import annotations
 
@@ -52,8 +54,11 @@ DEFAULT_MAX_BYTES = 64 * 1024 * 1024        # 64 MiB — a phone photo is ~5
 DEFAULT_MAX_IMAGE_BYTES = 24 * 1024 * 1024
 
 IMAGE_TYPES = frozenset(
-    {"image/png", "image/jpeg", "image/gif", "image/webp", "image/heic", "image/bmp"}
+    {"image/png", "image/jpeg", "image/gif", "image/webp", "image/heic", "image/bmp",
+     "image/avif"}
 )
+#: Vector images are XML a model reads as text, not pixels it can see.
+SVG_TYPE = "image/svg+xml"
 
 #: (offset, magic bytes, content type). Ordered most-specific first.
 _MAGIC: tuple[tuple[int, bytes, str], ...] = (
@@ -65,6 +70,8 @@ _MAGIC: tuple[tuple[int, bytes, str], ...] = (
     (0, b"%PDF-", "application/pdf"),
     (0, b"PK\x03\x04", "application/zip"),
     (0, b"GGUF", "application/x-gguf"),
+    (8, b"WEBP", "image/webp"),
+    (4, b"ftypavif", "image/avif"),
     (4, b"ftypheic", "image/heic"),
     (4, b"ftypheix", "image/heic"),
     (4, b"ftypmif1", "image/heic"),
@@ -111,6 +118,7 @@ def sniff_content_type(data: bytes, *, filename: str = "", declared: str = "") -
         ".yaml": "text/yaml", ".toml": "text/toml", ".csv": "text/csv",
         ".html": "text/html", ".css": "text/css", ".sql": "text/x-sql",
         ".gguf": "application/x-gguf", ".pdf": "application/pdf",
+        ".svg": SVG_TYPE, ".webp": "image/webp",
     }
     if suffix in by_suffix:
         return by_suffix[suffix]
@@ -149,7 +157,7 @@ class Attachment:
     @property
     def is_text(self) -> bool:
         return self.content_type.startswith("text/") or self.content_type in (
-            "application/json",
+            "application/json", SVG_TYPE,
         )
 
     def to_dict(self) -> dict[str, Any]:

@@ -113,7 +113,7 @@ class TestReadingAudio:
     def test_iter_finds_only_audio(self, tmp_path):
         _write_wav(tmp_path / "a.wav", _tone(440, 0.05))
         _write_wav(tmp_path / "nested" / "b.wav", _tone(880, 0.05))
-        (tmp_path / "notes.txt").write_text("not audio")
+        (tmp_path / "notes.txt").write_text("not audio", encoding="utf-8")
         found = iter_audio_files(tmp_path)
         assert [p.name for p in found] == ["a.wav", "b.wav"]
 
@@ -271,7 +271,7 @@ class TestTheDatasetSaysWhatIsWrongWithIt:
     def test_negatives_are_augmented_too(self):
         """Clean negatives against noisy positives teaches the model to
         detect noise."""
-        source = Path("src/hypernix/audio/wakeup.py").read_text()
+        source = Path("src/hypernix/audio/wakeup.py").read_text(encoding="utf-8")
         build = source.split("def build_dataset(")[1].split("\ndef ")[0]
         assert "for group, positive in" in build
 
@@ -427,7 +427,7 @@ class TestItActuallyLearns:
     def test_the_loss_is_weighted_for_the_class_imbalance(self):
         """Negatives outnumber positives by design; unweighted, the model
         learns that answering 'no' is right most of the time."""
-        source = Path("src/hypernix/audio/wakeup.py").read_text()
+        source = Path("src/hypernix/audio/wakeup.py").read_text(encoding="utf-8")
         assert "pos_weight" in source
 
     def test_training_on_nothing_is_refused(self):
@@ -498,7 +498,7 @@ class TestStreamingDetection:
 
     def test_it_returns_rather_than_calls_back(self):
         """This module has no business ringing a bell."""
-        source = Path("src/hypernix/audio/wakeup.py").read_text()
+        source = Path("src/hypernix/audio/wakeup.py").read_text(encoding="utf-8")
         push = source.split("    def push(")[1].split("\n\ndef ")[0]
         assert "return {" in push
 
@@ -544,7 +544,7 @@ class TestSavingAndLoading:
 
 class TestTheCLI:
     def test_it_is_registered_as_a_subcommand(self):
-        source = Path("src/hypernix/interfaces/cli.py").read_text()
+        source = Path("src/hypernix/interfaces/cli.py").read_text(encoding="utf-8")
         assert '"wakeup",' in source
         assert 'cmd == "wakeup"' in source
 

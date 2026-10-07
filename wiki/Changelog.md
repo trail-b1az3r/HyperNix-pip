@@ -34,9 +34,63 @@ Historical wording and technical detail are retained during format normalization
 
 > Format normalized to `wiki/Changelog-guide.md`; release wording and historical detail are preserved.
 
-## Unreleased
+## 0.72.7 — 2026-10-07
+
+### Breaking Changes
+
+❌ hyperNix-pip requires Python 3.12 or newer and officially supports
+  Python 3.12, 3.13, 3.14 and 3.15 (`Requires-Python >=3.12,<3.16`).
+  - 3.10 and 3.11 are no longer supported. pip on those Pythons skips
+    this release and installs 0.72.6.post4, the last that runs there;
+    that is also where the torch 1.13 legacy-Mac path now ends
+    ([macOS-legacy](macOS-legacy.md)).
+  - `install-t1.sh`, `hypernix doctor` and the `hnx` launcher look for
+    3.12-3.15 and say so when they find none.
 
 ### Added
+
+✨ Added `hypernix-t1 runner auto` (`POST /runner/auto`).
+  - Loads what the server usually runs: the last model loaded that is
+    still here (`--most-used`: the one loaded most often), on the
+    backend used most, with that model's last settings. `--dry-run`
+    names the choice and loads nothing. With no history yet it starts
+    the default model, as `runner start` does.
+  - Every successful load (and every model moved over from LM Studio)
+    is remembered in `<T1 config dir>/runner-history.json`, newest 200.
+
+✨ Added image conversion for everything sent into HyperLink.
+  - Rasters are stored as WebP: lossless for lossless sources unless
+    that comes out over 1.5 MB, quality 85 for photos. EXIF, GPS and
+    maker notes are dropped, EXIF rotation applied, the long edge capped
+    at 2048 px, and animations kept. A WebP or AVIF that would only grow
+    is kept as it was.
+  - SVG stays SVG, with scripts, event handlers, `foreignObject`,
+    `javascript:` and external references, and the DOCTYPE removed. It
+    is treated as text a model can read, not as a picture.
+  - Recognised by their bytes: PNG, JPEG, GIF, WebP, BMP, TIFF, AVIF,
+    HEIC/HEIF, JPEG XL, JPEG 2000, DNG, ICO, QOI, PSD and SVG. Pillow
+    (now in the `t1api` extra) converts most; the new `images` extra
+    adds HEIC, JPEG XL and raw development. Without `rawpy` a DNG is
+    converted from its embedded full-size preview. What cannot be
+    decoded is stored as sent, with the reason in its metadata.
+    `T1_HYPERLINK_IMAGE_COMPRESS=0` turns it off.
+
+✨ Added images on the HyperNix runner, not only through LM Studio.
+  - A model's vision projector (`mmproj-*.gguf`) beside it -- or beside
+    the file a link points at -- is found and passed to llama-server as
+    `--mmproj`; `/runner/load` takes `mmproj` to name one ("" for none).
+    `/runner/status` reports `mmproj` and `supports_images`.
+  - Every image is re-encoded to PNG (with transparency) or JPEG on the
+    way to the model: llama.cpp cannot decode the WebP uploads are
+    stored as.
+  - In HyperLink, a runner model without a projector gets a note in
+    place of the picture instead of a failed turn. `/inference` takes
+    OpenAI-style content parts and refuses images for such a model with
+    a 400 naming the missing `--mmproj`.
+
+✨ `/code` sandbox results list any limit the kernel refused under
+  `limits.not_enforced` (macOS takes no memory limit) instead of every
+  run failing before it started.
 
 ✨ **The HyperNix runner is a `/inference` backend** — the governed
   inference surface (`/inference/chat`, `/completions`, `/chat/stream`,
@@ -70,6 +124,10 @@ Historical wording and technical detail are retained during format normalization
   `T1_LMSTUDIO_URL`/`T1_LMSTUDIO_ENABLED`, instead of naming only LM Studio.
 
 ### Performance
+
+⚡ Images sent into HyperLink convert ~50x faster: WebP is encoded at
+  effort 4 rather than 6, which gave byte-identical lossless files and
+  lossy ones ~1% smaller for 1.2 s per screenshot and 3.5 s per photo.
 
 ✨ **`PressureCookerV6` / `PressureCookerV6V`** — new speed-first optimizer
   generation, deliberately the opposite tradeoff from V5/V5S's
@@ -122,7 +180,54 @@ Historical wording and technical detail are retained during format normalization
   an explicit note when it falls back to CPU rather than letting a CPU
   number pass silently as if it were representative of GPU performance.
 
+### Compatibility
+
+✨ Python 3.15 support, with its new features used where they measurably
+  help and nowhere they would break 3.12-3.14
+  ([Python 3.12–3.15](Python-3.15.md)).
+  - PEP 810, lazy imports: `__lazy_modules__` in the two modules where an
+    import was paid for and not used -- numpy behind every quant CLI's
+    `--help`, huggingface_hub behind `hyped`. On 3.12-3.14 the list is an
+    ordinary variable and nothing changes. Measured on 3.15.0rc3:
+    `import hypernix.quant.llamaquants` 92.3 -> 23.6 ms (3.9x),
+    `import hypernix.models.download` 203.9 -> 22.7 ms (9.0x).
+  - PEP 798, unpacking in comprehensions: in `hypernix._compat`, whose
+    `*_py315.py` modules hold the 3.15 syntax and are imported only
+    there; every tool that parses the whole tree skips them on older
+    interpreters. Flattening 5000 rows is 2.6x faster than
+    `itertools.chain`, merging 5000 dicts 2.1x faster than an update loop.
+  - PEP 799, the `profiling` package: `hypernix._profiling` gives one API
+    over `profiling.tracing` (3.15) and `cProfile` (before), and runs
+    `profiling.sampling` on 3.15, refusing clearly elsewhere.
+  - PEP 831, frame pointers: native builds inherit the interpreter's
+    `sysconfig` flags and never switch frame pointers off
+    (`hypernix._native_flags`, `setup.py`'s optional extension,
+    ggml-hnx's `GGML_HNX_FRAME_POINTERS`).
+
 ### Fixed
+
+⚠️ `hypernix-t1 start`, `start-foreground` and `restart` refuse on native
+  Windows shells (Git Bash, MSYS2, Cygwin) and name WSL or the direct
+  `uvicorn` command instead. They used to start the server and then
+  report it as "exited during startup": Python returns a Windows pid and
+  `kill -0` there understands only MSYS ones. Everything else works.
+
+🐛 Fixed `hypernix-t1` reading a `.env` saved with Windows line endings:
+  every value kept a trailing CR, so the host bound nothing and the port
+  read as taken.
+
+🧪 Fixed the test suite on Windows and macOS: files and child-process
+  output read as UTF-8 rather than the locale code page, scripts run by
+  Git Bash rather than the WSL launcher, and browser detection, help
+  formatting (Python 3.14's argparse) and the C decoder harness made
+  platform-independent.
+
+𖢥 Fixed linking a model saved without a `config.json` into HyperLink.
+  - A hyperNix0x-v2 folder uploaded straight from a training run (as
+    HyperNix.3.1-mini's is) was refused by `POST /hyperlink/models/link`
+    as "no .gguf in it", and left out of the model list and the runner
+    even when it was already in the models folder. It is now recognised
+    by its tensor names, linked, listed and loadable.
 
 🐛 **CUDA graph capture + dynamic V6 features don't mix safely — now
   documented, not silently wrong.** CUDA graphs bake in whichever
@@ -136,35 +241,14 @@ Historical wording and technical detail are retained during format normalization
   (don't graph-capture with those features enabled, or capture only once
   the always-taken branch is known to be safe to repeat unconditionally).
 
-### Tests
+### Dependencies and Packaging
 
-🧪 **Runner-as-backend coverage** — 13 cases in
-  `tests/t1api/test_inference_endpoints.py`: the runner serving its model
-  with no LM Studio, preference over LM Studio, metering, routing another
-  model to LM Studio, refusing rather than substituting, choosing the
-  backend after the cascade, a broken runner not hiding LM Studio, the
-  two-remedy refusal, listing/probing/defaults, and streaming and
-  embeddings through the runner.
-
-🔧 **`tests/test_pressure_cooker_v6.py`** — new, real test coverage (not
-  a stub): construction/config, loss actually decreasing under several
-  configurations (nesterov, no-trust-ratio, no-foreach), fused vs.
-  non-fused paths producing numerically identical trajectories, weight
-  decay applying under a zero gradient, multi-param-group support,
-  state-dict round-tripping, optimizer-state byte count vs. AdamW,
-  gradient accumulation gating, GradScaler skip/apply/momentum-untouched
-  behavior, `skip_on_nonfinite` on and off, and — deliberately not just a
-  toy `nn.Linear` stack — a small transformer block (token embedding +
-  multi-head attention + LayerNorm + GELU MLP + output head) to confirm
-  V6 handles realistic parameter-shape heterogeneity. `PressureCookerV6V`
-  CUDA-only paths (construction on real CUDA tensors, graph capture, a
-  compiled step actually executing on a GPU) are marked
-  `skipif(not torch.cuda.is_available())` and were not exercised on real
-  CUDA hardware while writing this — this environment has no GPU. That
-  code reuses `ProCooker`'s already-shipped `warmup_graph`/`replay_graph`
-  implementation verbatim rather than inventing a new one, which is the
-  best available substitute for hardware verification, not a replacement
-  for it — stated plainly in the V6 wiki page too.
+📦 Classifiers and `python_requires` in `pyproject.toml` and `setup.cfg`
+  say 3.12-3.15; mypy joins the `dev` extra and checks the modules this
+  release adds (strict) and reworks, on 3.12 and 3.15 in CI.
+📦 CI tests every OS on 3.12, 3.13, 3.14 and 3.15, plus a 3.15-only job
+  for the four PEPs and a benchmark job per version
+  (`benchmarks/bench.py`).
 
 ### Documentation
 
@@ -254,6 +338,47 @@ Historical wording and technical detail are retained during format normalization
   wiki's index, and the license text. It did not attempt to line-edit
   every one of the ~50 per-module wiki pages against source — those were
   spot-checked, not exhaustively re-verified.
+
+### Tests
+
+🧪 **Runner-as-backend coverage** — 13 cases in
+  `tests/t1api/test_inference_endpoints.py`: the runner serving its model
+  with no LM Studio, preference over LM Studio, metering, routing another
+  model to LM Studio, refusing rather than substituting, choosing the
+  backend after the cascade, a broken runner not hiding LM Studio, the
+  two-remedy refusal, listing/probing/defaults, and streaming and
+  embeddings through the runner.
+
+🔧 **`tests/test_pressure_cooker_v6.py`** — new, real test coverage (not
+  a stub): construction/config, loss actually decreasing under several
+  configurations (nesterov, no-trust-ratio, no-foreach), fused vs.
+  non-fused paths producing numerically identical trajectories, weight
+  decay applying under a zero gradient, multi-param-group support,
+  state-dict round-tripping, optimizer-state byte count vs. AdamW,
+  gradient accumulation gating, GradScaler skip/apply/momentum-untouched
+  behavior, `skip_on_nonfinite` on and off, and — deliberately not just a
+  toy `nn.Linear` stack — a small transformer block (token embedding +
+  multi-head attention + LayerNorm + GELU MLP + output head) to confirm
+  V6 handles realistic parameter-shape heterogeneity. `PressureCookerV6V`
+  CUDA-only paths (construction on real CUDA tensors, graph capture, a
+  compiled step actually executing on a GPU) are marked
+  `skipif(not torch.cuda.is_available())` and were not exercised on real
+  CUDA hardware while writing this — this environment has no GPU. That
+  code reuses `ProCooker`'s already-shipped `warmup_graph`/`replay_graph`
+  implementation verbatim rather than inventing a new one, which is the
+  best available substitute for hardware verification, not a replacement
+  for it — stated plainly in the V6 wiki page too.
+
+### Known Issues
+
+⚠️ PyTorch publishes no CPython 3.15 wheels yet (2.14.1 stops at cp314),
+  so `pip install hypernix` on 3.15 cannot resolve torch from PyPI.
+  Everything that does not use torch -- the T1 API, HyperLink, the CLIs,
+  the quantisers' metadata tools -- runs; CI installs the rest and the
+  package with `--no-deps`. sentencepiece also has no cp315 wheel and
+  builds from source there (a C++ compiler and CMake). The `gui-qt`
+  extra (PySide6) declares `<3.15`; rawpy and pillow-jxl-plugin in the
+  `images` extra have no cp315 wheels.
 
 ## 0.72.6.post4 — patch 4 - hyped, hyped-pro and Neo Oven run any HyperNix model
 

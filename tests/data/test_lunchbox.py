@@ -98,7 +98,7 @@ def test_pack_jsonl_has_every_column_per_row(tmp_path: Path) -> None:
     box.add(id="r2", prompt="Q2", latency_s=0.3)
 
     out = box.pack_jsonl(tmp_path / "data.jsonl")
-    lines = [json.loads(line) for line in out.read_text().splitlines()]
+    lines = [json.loads(line) for line in out.read_text(encoding="utf-8").splitlines()]
 
     # Every row carries every column — the whole point of the packer.
     for row in lines:

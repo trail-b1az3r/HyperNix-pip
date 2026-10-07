@@ -83,7 +83,7 @@ def _build(name: str, sources: list[str], tmp_path: Path) -> Path:
              str(TESTS / f"{name}.cpp"),
              *[str(SRC / s) for s in sources],
              "-pthread", "-o", str(out)],
-            capture_output=True, text=True, check=False,
+            capture_output=True, text=True, encoding="utf-8", errors="replace", check=False,
         )
         if result.returncode != 0:
             pytest.fail(
@@ -100,7 +100,7 @@ class TestTheCatalogue:
 
     def test_it_compiles_and_every_check_passes(self, tmp_path):
         binary = _build("model_catalogue_test", ["ModelCatalogue.cpp"], tmp_path)
-        result = subprocess.run([str(binary)], capture_output=True, text=True,
+        result = subprocess.run([str(binary)], capture_output=True, text=True, encoding="utf-8", errors="replace",
                                 check=False)
 
         assert result.returncode == 0, result.stdout + result.stderr
@@ -153,7 +153,7 @@ class TestTheEngineWithoutLlamaCpp:
     def test_it_compiles_and_the_stub_is_honest(self, tmp_path):
         binary = _build("local_engine_test",
                         ["LocalEngine.cpp", "ModelCatalogue.cpp"], tmp_path)
-        result = subprocess.run([str(binary)], capture_output=True, text=True,
+        result = subprocess.run([str(binary)], capture_output=True, text=True, encoding="utf-8", errors="replace",
                                 check=False)
 
         assert result.returncode == 0, result.stdout + result.stderr

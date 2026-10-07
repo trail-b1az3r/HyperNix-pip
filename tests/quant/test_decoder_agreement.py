@@ -43,7 +43,17 @@ HARNESS = r"""
 #include <stdio.h>
 #include <stdlib.h>
 #include "ggml-hnx.h"
+#ifdef _WIN32
+#include <fcntl.h>
+#include <io.h>
+#endif
 int main(int argc, char **argv) {
+#ifdef _WIN32
+    /* Text-mode stdio would end the input at the first 0x1A byte and
+       rewrite every 0x0A it writes; the packed blocks are binary. */
+    _setmode(_fileno(stdin), _O_BINARY);
+    _setmode(_fileno(stdout), _O_BINARY);
+#endif
     int type = atoi(argv[1]);
     size_t nb = (size_t)atoi(argv[2]);
     size_t bb = hnx_block_bytes(type);

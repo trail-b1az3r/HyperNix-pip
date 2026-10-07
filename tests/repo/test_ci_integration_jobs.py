@@ -217,20 +217,20 @@ class TestTheProbeScript:
     def test_it_deletes_its_keys_in_a_finally(self):
         """Teardown belongs in `finally`, not after the last assert: the
         interesting case is the run that failed."""
-        source = (SCRIPTS / "integration_probe.py").read_text()
+        source = (SCRIPTS / "integration_probe.py").read_text(encoding="utf-8")
         finally_block = source[source.index("    finally:"):]
         assert "revoke_key" in finally_block
 
     def test_it_bypasses_the_proxy(self):
         """CI runners set HTTP_PROXY more often than not, and a proxy in
         between answers a different question than "is this server up"."""
-        source = (SCRIPTS / "integration_probe.py").read_text()
+        source = (SCRIPTS / "integration_probe.py").read_text(encoding="utf-8")
         assert "ProxyHandler({})" in source
 
     def test_it_waits_rather_than_sleeping_a_fixed_time(self):
         """A fixed sleep is either too short on a loaded runner or wasted
         time on a fast one, and is the usual reason CI is flaky."""
-        source = (SCRIPTS / "integration_probe.py").read_text()
+        source = (SCRIPTS / "integration_probe.py").read_text(encoding="utf-8")
         assert "def wait_for(" in source
 
 

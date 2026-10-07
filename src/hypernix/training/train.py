@@ -145,7 +145,7 @@ class HyperNixConfig:
 
     @classmethod
     def from_json(cls, path: Path | str) -> HyperNixConfig:
-        return cls.from_dict(json.loads(Path(path).read_text()))
+        return cls.from_dict(json.loads(Path(path).read_text(encoding="utf-8")))
 
     @property
     def head_dim(self) -> int:
@@ -349,7 +349,7 @@ def save_snapshot(
     """
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
-    (out / "config.json").write_text(json.dumps(model.config.to_dict(), indent=2))
+    (out / "config.json").write_text(json.dumps(model.config.to_dict(), indent=2), encoding="utf-8")
     state = {k: v.detach().contiguous().cpu() for k, v in model.state_dict().items()}
     # When weights are tied, `embed_tokens.weight` and `lm_head.weight` share
     # memory, which safetensors rejects. Drop the redundant lm_head tensor —
@@ -562,7 +562,7 @@ def load_snapshot(model_dir: Path | str):
     Returns ``(model, config)``.
     """
     model_dir = Path(model_dir)
-    cfg_raw = json.loads((model_dir / "config.json").read_text())
+    cfg_raw = json.loads((model_dir / "config.json").read_text(encoding="utf-8"))
     model_type = cfg_raw.get("model_type", "hypernix")
 
     if model_type == "nano-nano":

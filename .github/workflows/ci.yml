@@ -61,6 +61,25 @@ jobs:
       - run: pip install "ruff>=0.5"
       - run: ruff check src tests
 
+  # Static types for the modules 0.72.7 adds or reworks ([tool.mypy] in
+  # pyproject.toml), checked against the oldest and the newest Python
+  # hyperNix-pip supports.
+  typecheck:
+    name: mypy (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.15"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          allow-prereleases: true
+      - run: pip install "mypy>=1.11"
+      - run: mypy --python-version ${{ matrix.python-version }}
+
   test:
     name: test (py${{ matrix.python-version }} on ${{ matrix.os }})
     needs: triage
@@ -70,16 +89,23 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, ubuntu-22.04, macos-latest, windows-latest]
-        python-version: ["3.11", "3.12", "3.13", "3.14"]
+        # hyperNix-pip requires Python 3.12 or newer and supports 3.12-3.15.
+        python-version: ["3.12", "3.13", "3.14", "3.15"]
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+          allow-prereleases: true
           cache: pip
 
+      # PyTorch publishes no CPython 3.15 wheels yet (torch 2.14.1 stops at
+      # cp314). On 3.15 everything else is installed and the package itself
+      # with --no-deps; the tests that need torch skip and say so. Remove
+      # this branch when torch ships cp315 wheels.
       - name: Install torch (CPU wheels)
+        if: matrix.python-version != '3.15'
         run: |
           python -m pip install --upgrade pip
           pip install --index-url https://download.pytorch.org/whl/cpu torch
@@ -88,7 +114,16 @@ jobs:
         run: pip install "rich>=13"
 
       - name: Editable install + dev extras
-        run: pip install -e ".[dev,security,t1api]"
+        shell: bash
+        run: |
+          if [ "${{ matrix.python-version }}" = "3.15" ]; then
+            python -m pip install --upgrade pip
+            python scripts/ci/requirements_without_torch.py dev security t1api > reqs.txt
+            pip install -r reqs.txt
+            pip install --no-deps -e .
+          else
+            pip install -e ".[dev,security,t1api]"
+          fi
 
       - name: pytest
         run: pytest -q
@@ -105,6 +140,7 @@ jobs:
         run: tvtop --help
 
       - name: New module import checks (v0.70.0)
+        if: matrix.python-version != '3.15'   # these modules import torch
         run: |
           python -c "from hypernix.pressure_cooker_v3 import PressureCookerV3, PressureCookerV3Plus, PressureCookerV2Plus; print('pressure_cooker_v3 OK')"
           python -c "from hypernix.compute_framework import ComputeFramework, ComputeArch; print('compute_framework OK')"
@@ -125,6 +161,72 @@ jobs:
         run: |
           python setup.py --name
           python setup.py --version
+
+  # The four Python 3.15 features hyperNix-pip uses (PEP 798, 799, 810,
+  # 831), verbosely, on 3.15 itself; the same suite also runs inside every
+  # `test` job, where on 3.12-3.14 it checks the compatibility boundary.
+  python315:
+    name: Python 3.15 features (PEP 798/799/810/831)
+    needs: triage
+    if: needs.triage.outputs.narrow != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.15"
+          allow-prereleases: true
+      - name: Install (no torch wheel for 3.15 yet)
+        run: |
+          python -m pip install --upgrade pip setuptools
+          python scripts/ci/requirements_without_torch.py dev security t1api > reqs.txt
+          pip install -r reqs.txt
+          pip install --no-deps -e .
+      - name: Interpreter facts the suite relies on
+        run: |
+          python -c "import sys, sysconfig; print(sys.version); print(sysconfig.get_config_var('CFLAGS'))"
+      - run: pytest -v tests/python315
+      - name: Native build keeps frame pointers (PEP 831)
+        run: |
+          cmake -S native/ggml-hnx -B build-fp -DCMAKE_BUILD_TYPE=Release
+          cmake --build build-fp -j
+          ctest --test-dir build-fp --output-on-failure
+          objdump -d build-fp/libggml-hnx.a | grep -A3 "<hnx_dequantize_rows>:" | grep -Eq "mov[q]?[[:space:]]+%rsp,[[:space:]]*%rbp"
+
+  # Startup, import, API, serialisation, native and profiling timings on
+  # every supported Python, saved as an artifact. Informational: shared
+  # runners are too noisy to gate on, so compare runs, not single numbers.
+  benchmarks:
+    name: benchmarks (py${{ matrix.python-version }})
+    needs: triage
+    if: needs.triage.outputs.narrow != 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13", "3.14", "3.15"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          allow-prereleases: true
+          cache: pip
+      - name: Install
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          if [ "${{ matrix.python-version }}" != "3.15" ]; then
+            pip install --index-url https://download.pytorch.org/whl/cpu torch
+          fi
+          python scripts/ci/requirements_without_torch.py security t1api > reqs.txt
+          pip install -r reqs.txt "httpx"
+          pip install --no-deps -e .
+      - run: python benchmarks/bench.py --repeat 7 --json bench-${{ matrix.python-version }}.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bench-${{ matrix.python-version }}
+          path: bench-${{ matrix.python-version }}.json
 
   # ---------------------------------------------------------------------
   # Live integration: a real server, a real key, a fake model.

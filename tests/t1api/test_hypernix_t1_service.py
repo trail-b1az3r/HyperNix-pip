@@ -17,12 +17,36 @@ import tempfile
 from pathlib import Path
 
 import pytest
-from shell_support import BASH, NO_BASH_REASON
+from shell_support import BASH, NO_BASH_REASON, shell_path
+
+from hypernix.system import pids
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "bin" / "hypernix-t1"
 
 pytestmark = pytest.mark.skipif(BASH is None, reason=NO_BASH_REASON)
+
+#: `start`, `start-foreground` and `restart` refuse on Git Bash, MSYS2 and
+#: Cygwin (see TestWindowsSaysWhatWorks): Python hands back a Windows pid
+#: and `kill -0` there understands only MSYS ones. Tests that start a
+#: server are POSIX tests.
+STARTS_A_SERVER = pytest.mark.skipif(
+    os.name == "nt", reason="hypernix-t1 refuses to start a server on native Windows; use WSL")
+
+
+def _named(path: Path, output: str) -> bool:
+    """Whether *output* names *path*, in any spelling a shell gives it.
+
+    On POSIX there is one. Git Bash on Windows prints `$T1_CONFIG_DIR/venv`
+    (a native prefix, then forward slashes) or `/c/...` for what it found
+    on PATH, so the test asks about each.
+    """
+    spellings = {str(path), path.as_posix()}
+    spellings.update(shell_path(path, style=style) for style in ("posix", "mount", "native"))
+    if len(path.parts) > 3:
+        head = Path(*path.parts[:-3])
+        spellings.add(f"{head}/{'/'.join(path.parts[-3:])}")
+    return any(spelling in output for spelling in spellings)
 
 
 def _function_body(source: str, name: str) -> str:
@@ -313,6 +337,7 @@ NEEDS_A_SERVER = pytest.mark.skipif(
 
 
 @NEEDS_A_SERVER
+@STARTS_A_SERVER
 class TestAgainstARealServer:
     def test_start_status_and_stop(self, configured):
         home, config = configured
@@ -558,6 +583,7 @@ class TestItIsActuallyInstalled:
         assert "recursive-include bin *" in manifest
 
 
+@STARTS_A_SERVER
 class TestTheInstallAdviceNamesTheInterpreter:
     """"It is installed already" — and it was, for a different python.
 
@@ -607,7 +633,8 @@ class TestTheInstallAdviceNamesTheInterpreter:
         result = self._start(config)
         output = result.stdout + result.stderr
 
-        assert f"{python} -m pip install" in output
+        assert "-m pip install" in output
+        assert _named(python, output.split(" -m pip install")[0][-400:])
 
     def test_a_bare_pip_is_no_longer_suggested(self, tmp_path):
         """The whole defect: `pip install` with no interpreter on it."""
@@ -653,7 +680,7 @@ class TestTheInstallAdviceNamesTheInterpreter:
         output = result.stdout + result.stderr
 
         assert "It *is* installed for" in output
-        assert str(elsewhere / "python3") in output
+        assert _named(elsewhere / "python3", output)
 
     def test_it_offers_deleting_the_venv_as_the_other_way_out(self, tmp_path):
         import os
@@ -677,6 +704,7 @@ class TestTheInstallAdviceNamesTheInterpreter:
         assert self._start(config).returncode != 0
 
 
+@STARTS_A_SERVER
 class TestStartOutlivesTheShell:
     """`start` has to leave a server running, on every supported machine.
 
@@ -718,6 +746,8 @@ class TestStartOutlivesTheShell:
         )
 
     @NEEDS_A_SERVER
+    @pytest.mark.skipif(os.name == "nt", reason="Git Bash has no setsid at all, so every start test there already takes this path; "
+                        "the symlinked POSIX userland this builds needs privileges on Windows")
     def test_it_starts_when_there_is_no_setsid_on_path(self, configured, tmp_path):
         """The macOS shape: everything present except setsid.
 
@@ -775,7 +805,7 @@ class TestStartOutlivesTheShell:
             started = run("start", home=home, config=config, timeout=180)
             assert started.returncode == 0, started.stdout + started.stderr
             pid = int((config / "server.pid").read_text(encoding="utf-8").strip())
-            os.kill(pid, 0)  # raises if it is gone
+            assert pids.alive(pid), f"pid {pid} is gone"
             argv = subprocess.run(
                 ["ps", "-p", str(pid), "-o", "args="],
                 capture_output=True, text=True, encoding="utf-8",
@@ -880,6 +910,7 @@ class TestLogoutDoesNotTakeTheServerWithIt:
         assert result.stdout.strip().endswith("QUIET"), result.stdout + result.stderr
 
 
+@STARTS_A_SERVER
 class TestStartDoesNotReportSomeoneElsesServer:
     """`start` said Running with a pid; `status` a second later said not
     running. From a screenshot, and reproduced exactly.
@@ -1076,6 +1107,7 @@ esac
 """
 
 
+@STARTS_A_SERVER
 class TestItKnowsAboutTheAutostartService:
     """`status` reported an eight-hour-old, perfectly healthy service as
     "not running", because it read only its own pid file.
@@ -1263,7 +1295,7 @@ class TestItKnowsWhatVersionItIs:
         from hypernix.t1api.version import T1_VERSION
 
         result = subprocess.run(
-            ["bash", str(REPO_ROOT / "bin" / "hypernix-t1"), "version"],
+            [BASH, str(REPO_ROOT / "bin" / "hypernix-t1"), "version"],
             capture_output=True, encoding="utf-8",
             env={**os.environ, "T1_CONFIG_DIR": str(tmp_path), "NO_COLOR": "1"},
         )
@@ -1278,7 +1310,7 @@ class TestItKnowsWhatVersionItIs:
         import subprocess
 
         result = subprocess.run(
-            ["bash", str(REPO_ROOT / "bin" / "hypernix-t1"), "version"],
+            [BASH, str(REPO_ROOT / "bin" / "hypernix-t1"), "version"],
             capture_output=True, encoding="utf-8",
             env={**os.environ, "T1_CONFIG_DIR": str(tmp_path), "NO_COLOR": "1"},
         )
@@ -1295,7 +1327,7 @@ class TestItKnowsWhatVersionItIs:
         empty.chmod(0o755)
 
         result = subprocess.run(
-            ["bash", str(REPO_ROOT / "bin" / "hypernix-t1"), "version"],
+            [BASH, str(REPO_ROOT / "bin" / "hypernix-t1"), "version"],
             capture_output=True, encoding="utf-8",
             env={
                 **os.environ,
@@ -1306,3 +1338,27 @@ class TestItKnowsWhatVersionItIs:
         )
         assert result.returncode == 0, result.stderr
         assert "hypernix-t1" in result.stdout
+
+
+class TestWindowsSaysWhatWorks:
+    """On a native Windows bash the commands that start a server refuse,
+    by name, and say what to do instead -- rather than starting one and
+    then reporting it as "exited during startup"."""
+
+    @pytest.mark.parametrize("command", ["start", "start-foreground", "restart"])
+    def test_it_refuses_and_names_the_alternatives(self, tmp_path, command):
+        result = run(command, home=tmp_path / "home", config=tmp_path / "cfg",
+                     extra_env={"HNX_T1_UNAME": "MINGW64_NT-10.0-26100"})
+        assert result.returncode == 2
+        assert "this is Windows" in result.output
+        assert "WSL" in result.output and "uvicorn hypernix.t1api.app:create_app" in result.output
+
+    def test_the_rest_still_work_there(self, tmp_path):
+        result = run("help", home=tmp_path / "home", config=tmp_path / "cfg",
+                     extra_env={"HNX_T1_UNAME": "MSYS_NT-10.0"})
+        assert result.returncode == 0 and "Start it in the background" in result.output
+
+    def test_posix_is_unaffected(self, tmp_path):
+        result = run("start", home=tmp_path / "home", config=tmp_path / "cfg",
+                     extra_env={"HNX_T1_UNAME": "Linux"})
+        assert "this is Windows" not in result.output

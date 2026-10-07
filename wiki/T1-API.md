@@ -201,7 +201,14 @@ Three properties worth knowing:
 `--config-dir` puts everything, including the key store, under one
 directory, so two T1 servers on one machine do not share credentials.
 
-Requires bash 3.2+ (the stock macOS shell), python3 3.10+, and pip.
+Requires bash 3.2+ (the stock macOS shell), Python 3.12–3.15, and pip.
+On native Windows shells (Git Bash, MSYS2, Cygwin) `start`,
+`start-foreground` and `restart` refuse and say what to do instead: run
+`hypernix-t1` inside WSL, or start the server directly with
+`python -m uvicorn hypernix.t1api.app:create_app --factory`. Starting
+and tracking a server needs POSIX process control those shells only
+emulate. Everything else (`status`, `stop`, `create`, `key`, `runner`,
+`chat`, `index`, `sync`, …) works there.
 
 ### By hand
 
@@ -1843,7 +1850,7 @@ where noted.
 | GET | `/hyperlink/sessions/{id}/messages` | bearer | `?after_seq=` for incremental sync |
 | POST | `/hyperlink/sessions/{id}/chat` | bearer | one turn; both messages persisted |
 | POST | `/hyperlink/sessions/{id}/chat/stream` | bearer | the same turn, streamed |
-| POST | `/hyperlink/files` | bearer | multipart upload |
+| POST | `/hyperlink/files` | bearer | multipart upload. Images are converted on arrival: rasters to WebP (EXIF and GPS dropped, EXIF rotation applied, long edge capped at 2048, animation kept), SVG kept and sanitized. PNG, JPEG, GIF, WebP, BMP, TIFF, AVIF, JPEG 2000, ICO, QOI, PSD and DNG with Pillow; HEIC/HEIF, JPEG XL and raw development with `pip install 'hypernix[images]'`. What cannot be decoded is stored as sent, and `metadata.image` says why. `T1_HYPERLINK_IMAGE_COMPRESS=0` stores everything as sent |
 | GET | `/hyperlink/files` | bearer | list; `?session_id=` to scope |
 | GET/DELETE | `/hyperlink/files/{id}` | bearer | download (always `attachment`) / delete |
 | POST | `/hyperlink/models/resolve` | bearer | merge a Hugging Face page + file link |
@@ -1930,6 +1937,7 @@ is a key with `write`, or a trusted origin on a server with
 | POST | `/runner/plan` | bearer | where a model's layers would go; changes nothing |
 | POST | `/runner/load` | bearer, **admin, partial admin, or a switch grant** (`T1_RUNNER_SWITCH_PERM`) | load a model, replacing what was running; the default model is downloaded the first time |
 | POST | `/runner/unload` | as `load` | stop serving; unloading nothing is a success |
+| POST | `/runner/auto` | as `load` | load what this server usually runs: the last model loaded that is still here (`{"prefer": "most"}`: loaded most often), on the backend used most, with that model's last settings; `{"dry_run": true}` names it and loads nothing. With no history, the default model. `hypernix-t1 runner auto` |
 
 *HyperLink, beyond pairing and sessions.* Sync, notifications and
 search are covered in [HyperLink sync](HyperLink-Sync.md).
@@ -2260,6 +2268,22 @@ If it does not open (0.72.6.post2):
   answering" means nothing is serving a model: load one from the Runner
   tab, or start LM Studio's server.
 
+#### Images on the runner (0.72.7)
+
+A model takes images on the runner when it is loaded with its vision
+projector. `POST /runner/load` finds an `mmproj-*.gguf` beside the model
+(or beside the file a link points at) and passes it to llama-server as
+`--mmproj`; `"mmproj": "/path/to/mmproj.gguf"` names one, `"mmproj": ""`
+loads none. `/runner/status` reports `mmproj` and `supports_images`.
+
+Images are re-encoded to PNG (with transparency) or JPEG before they
+reach the model, since llama.cpp cannot decode WebP. `/inference/chat`
+and `/inference/chat/stream` accept OpenAI-style content parts
+(`[{"type": "text", ...}, {"type": "image_url", "image_url": {"url":
+"data:image/...;base64,..."}}]`); for a runner model without a
+projector they answer 400, naming the missing `--mmproj`. HyperLink chat
+instead replaces the picture with a note and still answers.
+
 #### Moving a model out of LM Studio (0.72.6.post1)
 
 | Route | What it does |
@@ -2429,6 +2453,7 @@ T1 v1.0.26.8.0.1 added:
 | `T1_HYPERLINK_PORT` | `8000` | the port advertised to clients |
 | `T1_HYPERLINK_FILES_DIR` | `~/.hypernix/hyperlink/files` | attachment blobs |
 | `T1_HYPERLINK_MAX_UPLOAD_BYTES` | `67108864` | enforced on bytes read, not `Content-Length` |
+| `T1_HYPERLINK_IMAGE_COMPRESS` | `1` | convert uploaded images to WebP (SVG: sanitized) on arrival; `0` stores them as sent |
 | `T1_HYPERLINK_PAIRING_TTL` | `600` | how long a pairing code lives |
 | `T1_HF_TOKEN` / `HF_TOKEN` | — | secret; for resolving gated repositories |
 

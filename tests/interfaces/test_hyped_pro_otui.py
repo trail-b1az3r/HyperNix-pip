@@ -242,7 +242,7 @@ def test_a_ready_app_runs_where_it_is(tmp_path: Path) -> None:
     source = _app_copy(tmp_path)
     marker = source / launcher.DEPENDENCY_MARKER
     marker.parent.mkdir(parents=True)
-    marker.write_text("{}")
+    marker.write_text("{}", encoding="utf-8")
     bun = tmp_path / "no-such-bun"  # never called
     assert launcher.prepare_app(source, bun=str(bun)) == source
 
@@ -277,7 +277,7 @@ def test_a_read_only_app_is_copied_home_by_version(tmp_path: Path, monkeypatch: 
     # Second run: already installed, bun install is not run again, but the
     # sources are refreshed.
     (target / ".install-args").unlink()
-    (source / "src" / "theme.ts").write_text("// changed\n")
+    (source / "src" / "theme.ts").write_text("// changed\n", encoding="utf-8")
     assert launcher.prepare_app(source, bun=str(bun), env={"HYPERNIX_HOME": str(home)}) == target
     assert not (target / ".install-args").exists()
     assert (target / "src" / "theme.ts").read_text(encoding="utf-8") == "// changed\n"
@@ -393,7 +393,7 @@ def _bun() -> str | None:
 @pytest.mark.skipif(not (APP / launcher.DEPENDENCY_MARKER).is_file(), reason="run `bun install` in hyped_pro_app")
 def test_bun_suite_passes() -> None:
     result = subprocess.run(
-        [_bun(), "test"], cwd=APP, capture_output=True, text=True, timeout=300, check=False
+        [_bun(), "test"], cwd=APP, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=300, check=False
     )
     output = result.stdout + result.stderr
     assert result.returncode == 0, output

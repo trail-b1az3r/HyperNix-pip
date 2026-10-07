@@ -40,7 +40,7 @@ pytestmark = pytest.mark.skipif(
 
 @pytest.fixture(scope="module")
 def project() -> dict:
-    return yaml.safe_load((IOS / "project.yml").read_text())
+    return yaml.safe_load((IOS / "project.yml").read_text(encoding="utf-8"))
 
 
 @pytest.fixture(scope="module")
@@ -52,11 +52,11 @@ def swift(name: str) -> str:
     """One Swift file's text, by filename anywhere under Sources."""
     matches = list(SOURCES.rglob(name))
     assert matches, f"{name} is not in {SOURCES}"
-    return matches[0].read_text()
+    return matches[0].read_text(encoding="utf-8")
 
 
 def all_swift() -> str:
-    return "\n".join(path.read_text() for path in SOURCES.rglob("*.swift"))
+    return "\n".join(path.read_text(encoding="utf-8") for path in SOURCES.rglob("*.swift"))
 
 
 class TestEverySourceFileIsBuilt:
@@ -390,7 +390,7 @@ _MEMBER = re.compile(r"\b(?:func|var|let|case)\s+([A-Za-z_]\w*)")
 def sources() -> dict[str, str]:
     """Every Swift file, comments and strings removed, keyed by name."""
     return {
-        path.name: _strip_noise(path.read_text())
+        path.name: _strip_noise(path.read_text(encoding="utf-8"))
         for path in sorted(SOURCES.rglob("*.swift"))
     }
 
@@ -708,7 +708,7 @@ class TestEveryThemeIsReadable:
         claiming otherwise is a promise the picker then repeats to the
         user."""
         code = "\n".join(
-            _strip_noise(path.read_text()) for path in SOURCES.rglob("*.swift")
+            _strip_noise(path.read_text(encoding="utf-8")) for path in SOURCES.rglob("*.swift")
         )
         assert "carPlayTint" not in code
 
@@ -769,7 +769,7 @@ class TestOnlyRealCarPlayTypes:
         rather than in CI."""
         used: set[str] = set()
         for path in (SOURCES / "CarPlay").glob("*.swift"):
-            text = _strip_noise(path.read_text())
+            text = _strip_noise(path.read_text(encoding="utf-8"))
             used |= set(re.findall(r"\b(CP[A-Z][A-Za-z0-9]*)\b", text))
         invented = used - CARPLAY_API
         assert not invented, (
@@ -898,7 +898,7 @@ class TestSwiftShapesThatDoNotCompile:
         )
 
     def test_that_check_matches_the_form_that_actually_shipped(self):
-        """Guarding the guard.
+        r"""Guarding the guard.
 
         The first version of the pattern above was `\?\?\s*await`, and
         the line that broke the build was

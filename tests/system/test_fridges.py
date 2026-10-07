@@ -108,7 +108,7 @@ def test_synthesize_judge_corpus_is_deterministic(tmp_path: Path) -> None:
     b = tmp_path / "b.txt"
     mediocre_fridge.synthesize_judge_corpus(n=30, out_path=a, seed=42)
     mediocre_fridge.synthesize_judge_corpus(n=30, out_path=b, seed=42)
-    assert a.read_text() == b.read_text()
+    assert a.read_text(encoding="utf-8") == b.read_text(encoding="utf-8")
 
 
 def test_judge_example_format() -> None:
@@ -125,7 +125,7 @@ def test_good_ratio_all_good(tmp_path: Path) -> None:
 
     out = tmp_path / "g.txt"
     mediocre_fridge.synthesize_judge_corpus(n=10, out_path=out, seed=1, good_ratio=1.0)
-    text = out.read_text()
+    text = out.read_text(encoding="utf-8")
     assert text.count(mediocre_fridge.LABEL_GOOD) == 10
     assert text.count(mediocre_fridge.LABEL_BAD) == 0
 

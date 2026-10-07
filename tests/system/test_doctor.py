@@ -67,7 +67,8 @@ class TestTheGpuLine:
 
     def test_it_never_fails_the_check(self):
         ok, message = doctor._check_gpu()
-        assert ok and "preset" in message or "MPS" in message or "failed" in message
+        assert ok and "preset" in message or "MPS" in message or "failed" in message \
+            or "torch not importable" in message
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="symlinks need privileges on Windows")

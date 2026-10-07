@@ -27,7 +27,7 @@ def test_everything_else_is_refused(url):
 
 def test_a_file_url_never_reaches_urllib(monkeypatch, tmp_path):
     secret = tmp_path / ".env"
-    secret.write_text("T1_TOKEN_SECRET=x")
+    secret.write_text("T1_TOKEN_SECRET=x", encoding="utf-8")
     called = []
     monkeypatch.setattr(urllib.request, "urlopen", lambda *a, **k: called.append(a))
     with pytest.raises(UnsafeURLError):

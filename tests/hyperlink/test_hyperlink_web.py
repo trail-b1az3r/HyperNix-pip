@@ -260,38 +260,38 @@ class TestWhereItListens:
 class TestThePageItself:
     def test_it_is_dark(self):
         """Dark whatever the system is set to (asked for in 0.72.6.post1)."""
-        css = (WEB / "app.css").read_text()
+        css = (WEB / "app.css").read_text(encoding="utf-8")
         root = css[css.index(":root {"):css.index("}", css.index(":root {"))]
         assert "color-scheme: dark" in root and "--bg: #0e0e13" in root
         assert "prefers-color-scheme: light" not in css
-        assert '<meta name="color-scheme" content="dark">' in (WEB / "index.html").read_text()
+        assert '<meta name="color-scheme" content="dark">' in (WEB / "index.html").read_text(encoding="utf-8")
 
     def test_a_failed_reply_keeps_its_error_on_screen(self):
         """0.72.6.post2: the page redrew the chat from the server after a
         reply, which wiped the error, so a message with nothing to answer
         it (no model loaded, LM Studio not running) showed nothing at all."""
-        js = (WEB / "app.js").read_text()
+        js = (WEB / "app.js").read_text(encoding="utf-8")
         send = js[js.index("async function send"):js.index("async function stop")]
         redraw = send.index("await openSession(sessionId)")
         assert "if (failed)" in send[redraw:], "the error is re-shown after the redraw"
         assert "metadata.error" in js  # and drawn from the server's copy
         assert "Runner tab" in js
-        css = (WEB / "app.css").read_text()
+        css = (WEB / "app.css").read_text(encoding="utf-8")
         assert ".meta.error { color: var(--danger)" in css
 
     def test_no_inline_script_so_the_policy_can_forbid_it(self):
-        html = (WEB / "index.html").read_text()
+        html = (WEB / "index.html").read_text(encoding="utf-8")
         assert re.findall(r"<script(?![^>]*\bsrc=)", html) == []
         assert "onclick=" not in html and "javascript:" not in html
 
     def test_model_text_only_reaches_innerhtml_through_render(self):
-        js = (WEB / "app.js").read_text()
+        js = (WEB / "app.js").read_text(encoding="utf-8")
         for match in re.finditer(r"\.innerHTML\s*=\s*([^;]+);", js):
             assert match.group(1).strip().startswith("render("), match.group(0)
 
     @pytest.mark.skipif(shutil.which("node") is None, reason="needs node")
     def test_render_escapes_what_a_model_writes(self):
-        js = (WEB / "app.js").read_text()
+        js = (WEB / "app.js").read_text(encoding="utf-8")
         functions = js[js.index("function escapeHtml"):js.index("function shortModel")]
         script = functions + """
 const cases = [
@@ -303,7 +303,7 @@ const cases = [
 ];
 console.log(JSON.stringify(cases));
 """
-        done = subprocess.run(["node", "-e", script], capture_output=True, text=True, timeout=30)
+        done = subprocess.run(["node", "-e", script], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30)
         assert done.returncode == 0, done.stderr
         out = json.loads(done.stdout)
         assert "<script" not in out[0] and "&lt;script&gt;" in out[0]

@@ -341,7 +341,7 @@ class NetworkModule(Module):
     def _counters(self) -> dict[str, float]:
         totals = {"rx": 0.0, "tx": 0.0}
         try:
-            lines = Path("/proc/net/dev").read_text().splitlines()[2:]
+            lines = Path("/proc/net/dev").read_text(encoding="utf-8").splitlines()[2:]
         except OSError:
             return totals
         for line in lines:
@@ -396,11 +396,11 @@ class TemperatureModule(Module):
         readings: list[Reading] = []
         for zone in sorted(self.ROOT.glob("thermal_zone*")):
             try:
-                millidegrees = int((zone / "temp").read_text().strip())
+                millidegrees = int((zone / "temp").read_text(encoding="utf-8").strip())
             except (OSError, ValueError):
                 continue
             try:
-                label = (zone / "type").read_text().strip()
+                label = (zone / "type").read_text(encoding="utf-8").strip()
             except OSError:
                 label = zone.name
             celsius = millidegrees / 1000.0
@@ -477,7 +477,7 @@ class SwapModule(Module):
     def poll(self) -> Panel:
         values: dict[str, int] = {}
         try:
-            for line in Path("/proc/meminfo").read_text().splitlines():
+            for line in Path("/proc/meminfo").read_text(encoding="utf-8").splitlines():
                 key, _, rest = line.partition(":")
                 if key in ("SwapTotal", "SwapFree", "SwapCached"):
                     values[key] = int(rest.split()[0]) * 1024

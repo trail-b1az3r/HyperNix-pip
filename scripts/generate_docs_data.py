@@ -614,7 +614,12 @@ def build_module(path: Path, *, t1: bool = False) -> dict[str, Any]:
 
 
 def source_files(root: Path) -> list[Path]:
-    return sorted(p for p in root.rglob("*.py") if not any(part in EXCLUDED_DIRS for part in p.parts))
+    # *_py315.py modules are 3.15-syntax twins of a module already listed
+    # (see hypernix._compat); 3.12-3.14 cannot parse them, and the data
+    # must come out the same whichever Python generates it.
+    return sorted(p for p in root.rglob("*.py")
+                  if not any(part in EXCLUDED_DIRS for part in p.parts)
+                  and not p.name.endswith("_py315.py"))
 
 
 def git_code_contributions() -> tuple[list[dict[str, Any]], bool]:

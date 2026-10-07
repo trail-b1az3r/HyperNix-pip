@@ -138,7 +138,7 @@ class TestItSurvivesTheParent:
                 f"j = launch({str(work)!r}, name='survivor', store=store)\n"
                 "print(j.job_id)"
             )],
-            capture_output=True, text=True, timeout=60, check=True,
+            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60, check=True,
         )
         job_id = launcher.stdout.strip()
 

@@ -63,8 +63,8 @@ def fake_build(root: Path, *, types: set[int] | None = None, server: str = "exit
         blob += f"hnx_ggml_to_float_{bridge.HNX_TYPE_SYMBOLS[type_id]}".encode() + b"\0"
     for stem in bridge.CORE_LIBRARIES:
         (bin_dir / f"{stem}{bridge._library_suffix()}").write_bytes(blob)
-    script = bin_dir / "llama-server"
-    script.write_text(f"#!/bin/sh\n{server}\n")
+    script = bin_dir / ("llama-server.exe" if bridge._library_suffix() == ".dll" else "llama-server")
+    script.write_text(f"#!/bin/sh\n{server}\n", encoding="utf-8")
     script.chmod(0o755)
     return root / "build"
 
@@ -124,7 +124,7 @@ class TestWhichBuildIsChosen:
     def test_build_sh_records_where_it_built(self, tmp_path):
         patched = fake_build(tmp_path / "anywhere", types=ALL)
         (Path.home() / ".hypernix").mkdir()
-        (Path.home() / ".hypernix" / "llama-build").write_text(f"{patched}\n")
+        (Path.home() / ".hypernix" / "llama-build").write_text(f"{patched}\n", encoding="utf-8")
         assert bridge.recorded_build() == patched
         assert bridge.find_build().bin_dir == patched / "bin"
 

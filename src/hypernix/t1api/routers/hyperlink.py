@@ -1175,6 +1175,29 @@ def _fence_language(filename: str) -> str:
     }.get(suffix, "")
 
 
+def _vision(wire: list[dict[str, Any]], backend, runner) -> list[dict[str, Any]]:
+    """Images in a form the answering backend reads -- or a note instead.
+
+    Uploads are stored as WebP, which llama.cpp cannot decode, so every
+    image is re-encoded to PNG or JPEG on the way out. On the built-in
+    runner a model loaded without a vision projector (and every
+    PyTorch-served hyperNix0x-v2 model) cannot take images at all: the
+    picture becomes a line in the message saying so, rather than a 500
+    from llama-server that loses the whole turn.
+    """
+    from ...hyperlink.imagecodec import vision_messages
+
+    images_ok = True
+    if backend.is_hypernix:
+        try:
+            current = runner.current if runner is not None else None
+        except Exception:  # noqa: BLE001 -- a wedged runner fails later, by its own route
+            current = None
+        images_ok = bool(getattr(current, "supports_images", False))
+    return vision_messages(wire, images_ok=images_ok,
+                           who=backend.model_id or "the loaded model")
+
+
 def _chat_backend(config: T1APIConfig, runner=None):
     """What answers this turn: this server's own runner, or LM Studio.
 
@@ -1297,6 +1320,7 @@ def chat_turn(
         memories.prompt_block(owner=principal.owner) if settings.auto_memory else "",
         default_prompt_for(config, backend),
     )
+    wire = _vision(wire, backend, runner)
     sampling = _effort_settings(settings, payload)
 
     started = time.monotonic()
@@ -1468,6 +1492,7 @@ def chat_turn_stream(
         memories.prompt_block(owner=principal.owner) if settings.auto_memory else "",
         default_prompt_for(config, backend),
     )
+    wire = _vision(wire, backend, runner)
     sampling = _effort_settings(settings, payload)
     setup = _tool_setup(config, principal, settings, request, memories, session_id)
     requested_model = (
@@ -2031,13 +2056,30 @@ async def upload_file(
             f"{file.filename or 'file'} exceeds the {limit}-byte upload limit for this server",
             http_status=413,
         )
+    filename = file.filename or "upload"
+    declared = file.content_type or ""
+    metadata: dict[str, Any] | None = None
+    if getattr(config, "hyperlink_image_compress", True):
+        # Images become WebP (SVG stays SVG, sanitized) before they are
+        # stored: smaller over cellular, no GPS in the EXIF, and a size a
+        # vision model takes. Off the event loop -- a 48-megapixel photo
+        # is a second of CPU.
+        from starlette.concurrency import run_in_threadpool
+
+        from ...hyperlink.imagecodec import compress
+
+        converted = await run_in_threadpool(compress, data, filename, declared=declared)
+        if converted is not None:
+            data, filename, declared = converted.data, converted.filename, converted.content_type
+            metadata = {"image": converted.metadata()}
     record = store.put(
         data,
-        filename=file.filename or "upload",
+        filename=filename,
         owner=principal.owner,
         device_id=principal.device_id,
         session_id=session_id,
-        declared_type=file.content_type or "",
+        declared_type=declared,
+        metadata=metadata,
     )
     return AttachmentResponse(file=AttachmentSummary(**record.to_dict()), request_id=request_id)
 

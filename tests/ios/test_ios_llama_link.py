@@ -25,6 +25,7 @@ import re
 from pathlib import Path
 
 import pytest
+from shell_support import BASH, NO_BASH_REASON
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 IOS = REPO_ROOT / "ios"
@@ -134,7 +135,7 @@ class TestTheEngineMatchesTheDesktop:
 
     @staticmethod
     def _ref(path: Path) -> str:
-        found = re.search(r'LLAMA_REF="\$\{LLAMA_REF:-([^}"]+)\}"', path.read_text())
+        found = re.search(r'LLAMA_REF="\$\{LLAMA_REF:-([^}"]+)\}"', path.read_text(encoding="utf-8"))
         assert found, f"no LLAMA_REF in {path}"
         return found.group(1)
 
@@ -306,7 +307,7 @@ class TestItDegradesWithoutTheEngine:
             empty = Path(tmp) / "llama.xcframework"
             empty.mkdir()
             assert not _prepare().engine_present(empty)
-            (empty / "Info.plist").write_text("<plist/>")
+            (empty / "Info.plist").write_text("<plist/>", encoding="utf-8")
             assert _prepare().engine_present(empty)
 
     def test_ci_runs_the_generator_before_generating(self):
@@ -328,9 +329,10 @@ class TestItDegradesWithoutTheEngine:
 
 
 class TestTheBuildScript:
+    @pytest.mark.skipif(BASH is None, reason=NO_BASH_REASON)
     def test_it_parses(self):
         import subprocess
-        subprocess.run(["bash", "-n", str(BUILD_SCRIPT)], check=True)
+        subprocess.run([BASH, "-n", str(BUILD_SCRIPT)], check=True)
 
     def test_it_refuses_a_non_mac_rather_than_failing_late(self):
         """An xcframework needs xcodebuild, which does not
@@ -452,6 +454,7 @@ class TestAReleaseShipsTheEngine:
             )
 
 
+@pytest.mark.skipif(BASH is None, reason=NO_BASH_REASON)
 class TestTheEngineDecisionIsMadeForEveryTrigger:
     """The decision step, run as the shell actually runs it.
 
@@ -487,16 +490,16 @@ class TestTheEngineDecisionIsMadeForEveryTrigger:
             output = Path(work) / "github_output"
             output.touch()
             subprocess.run(
-                ["bash", "-c", script],
+                [BASH, "-c", script],
                 env={
                     **os.environ,
                     "REQUESTED": requested,
                     "EVENT": event,
                     "GITHUB_OUTPUT": str(output),
                 },
-                check=True, capture_output=True, text=True,
+                check=True, capture_output=True, text=True, encoding="utf-8", errors="replace",
             )
-            written = output.read_text()
+            written = output.read_text(encoding="utf-8")
         assert "build=" in written, "the step wrote no decision at all"
         return "build=true" in written
 
@@ -556,7 +559,7 @@ class TestRequireEngine:
         module = _prepare()
         framework = tmp_path / "llama.xcframework"
         framework.mkdir()
-        (framework / "Info.plist").write_text("<plist/>")
+        (framework / "Info.plist").write_text("<plist/>", encoding="utf-8")
         monkeypatch.setattr(module, "FRAMEWORK", framework)
         assert module.main(["--require-engine", "--check"]) == 0
 

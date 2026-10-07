@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from shell_support import BASH
 
 from hypernix.t1api import modelsync
 from hypernix.t1api.modelsync import MANIFEST, serving_dir, sync
@@ -27,12 +28,12 @@ def folders(tmp_path):
     repo = source / "unsloth__gemma"
     (repo / "sub").mkdir(parents=True)
     (repo / "gemma.gguf").write_bytes(b"GGUF two")
-    (repo / "sub" / "README.md").write_text("card")
+    (repo / "sub" / "README.md").write_text("card", encoding="utf-8")
     brewed = source / "HyperNix.3-mini"
     brewed.mkdir()
     from hypernix.hyperlink.brewed import _BREWER_KEYS
 
-    (brewed / "config.json").write_text(json.dumps({k: 1 for k in _BREWER_KEYS}))
+    (brewed / "config.json").write_text(json.dumps({k: 1 for k in _BREWER_KEYS}), encoding="utf-8")
     (brewed / "model.safetensors").write_bytes(b"w")
     return source, target
 
@@ -164,7 +165,7 @@ def test_nested_folders_are_refused(tmp_path):
 def test_manifest_lists_only_folders_it_made(folders):
     source, target = folders
     sync(source, target)
-    made = json.loads((target / MANIFEST).read_text())["folders"]
+    made = json.loads((target / MANIFEST).read_text(encoding="utf-8"))["folders"]
     assert sorted(made) == ["HyperNix.3-mini", "unsloth__gemma", "unsloth__gemma/sub"]
 
 
@@ -236,7 +237,7 @@ def test_cli_reads_the_servers_env_file(folders, tmp_path, monkeypatch, capsys):
     source, target = folders
     config = tmp_path / "cfg"
     config.mkdir()
-    (config / ".env").write_text(f"T1_MODELS_SOURCE={source}\nT1_MODELS_DIR={target}\n")
+    (config / ".env").write_text(f"T1_MODELS_SOURCE={source}\nT1_MODELS_DIR={target}\n", encoding="utf-8")
     for name in ("T1_MODELS_SOURCE", "T1_MODELS_DIR"):
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setenv("T1_CONFIG_DIR", str(config))
@@ -248,10 +249,10 @@ def test_hypernix_t1_sync_runs_it(folders, tmp_path):
     source, target = folders
     config = tmp_path / "cfg"
     config.mkdir()
-    (config / ".env").write_text(f"T1_MODELS_SOURCE={source}\nT1_MODELS_DIR={target}\n")
+    (config / ".env").write_text(f"T1_MODELS_SOURCE={source}\nT1_MODELS_DIR={target}\n", encoding="utf-8")
     result = subprocess.run(
-        ["bash", str(REPO_ROOT / "bin" / "hypernix-t1"), "sync"],
-        capture_output=True, text=True, timeout=120,
+        [BASH, str(REPO_ROOT / "bin" / "hypernix-t1"), "sync"],
+        capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120,
         env={**os.environ, "HOME": str(tmp_path), "T1_CONFIG_DIR": str(config),
              "PYTHONPATH": str(REPO_ROOT / "src"), "NO_COLOR": "1",
              "PATH": os.path.dirname(sys.executable) + os.pathsep + os.environ.get("PATH", "")},
@@ -300,10 +301,10 @@ def test_a_server_with_sync_on_serves_from_the_mirror(folders, monkeypatch, tmp_
 def test_status_names_the_mirror(tmp_path):
     config = tmp_path / "cfg"
     config.mkdir()
-    (config / ".env").write_text(f"T1_MODEL_SYNC=1\nT1_MODELS_DIR={tmp_path / 'mirror'}\n")
+    (config / ".env").write_text(f"T1_MODEL_SYNC=1\nT1_MODELS_DIR={tmp_path / 'mirror'}\n", encoding="utf-8")
     result = subprocess.run(
-        ["bash", str(REPO_ROOT / "bin" / "hypernix-t1"), "status"],
-        capture_output=True, text=True, timeout=120,
+        [BASH, str(REPO_ROOT / "bin" / "hypernix-t1"), "status"],
+        capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120,
         env={**os.environ, "HOME": str(tmp_path), "T1_CONFIG_DIR": str(config),
              "PYTHONPATH": str(REPO_ROOT / "src"), "NO_COLOR": "1"},
     )
@@ -327,7 +328,7 @@ def _installer_style(tmp_path):
     (config / ".env").write_text(
         f"T1_HF_DOWNLOAD_DIR={config}/models\n"
         f"T1_MODEL_SYNC=1\nT1_MODELS_DIR={config}/models\n"
-    )
+    , encoding="utf-8")
     return home, shared, config
 
 
@@ -362,8 +363,8 @@ def test_the_server_with_an_installer_config_syncs_too(tmp_path, monkeypatch):
 def test_status_shows_the_shared_folder_as_the_source(tmp_path):
     home, shared, config = _installer_style(tmp_path)
     result = subprocess.run(
-        ["bash", str(REPO_ROOT / "bin" / "hypernix-t1"), "status"],
-        capture_output=True, text=True, timeout=120,
+        [BASH, str(REPO_ROOT / "bin" / "hypernix-t1"), "status"],
+        capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120,
         env={**os.environ, "HOME": str(home), "T1_CONFIG_DIR": str(config),
              "PYTHONPATH": str(REPO_ROOT / "src"), "NO_COLOR": "1"},
     )
@@ -377,10 +378,10 @@ def test_status_warns_when_the_folders_are_one(tmp_path):
     config.mkdir()
     (config / ".env").write_text(
         f"T1_MODEL_SYNC=1\nT1_MODELS_DIR={config}/models\nT1_MODELS_SOURCE={config}/models\n"
-    )
+    , encoding="utf-8")
     result = subprocess.run(
-        ["bash", str(REPO_ROOT / "bin" / "hypernix-t1"), "status"],
-        capture_output=True, text=True, timeout=120,
+        [BASH, str(REPO_ROOT / "bin" / "hypernix-t1"), "status"],
+        capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120,
         env={**os.environ, "HOME": str(tmp_path), "T1_CONFIG_DIR": str(config),
              "PYTHONPATH": str(REPO_ROOT / "src"), "NO_COLOR": "1"},
     )
@@ -392,8 +393,8 @@ def test_status_counts_the_links(tmp_path):
     sync(shared, config / "models")
     (config / "models" / "downloaded.gguf").write_bytes(b"GGUF")   # a real file
     result = subprocess.run(
-        ["bash", str(REPO_ROOT / "bin" / "hypernix-t1"), "status"],
-        capture_output=True, text=True, timeout=120,
+        [BASH, str(REPO_ROOT / "bin" / "hypernix-t1"), "status"],
+        capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120,
         env={**os.environ, "HOME": str(home), "T1_CONFIG_DIR": str(config),
              "PYTHONPATH": str(REPO_ROOT / "src"), "NO_COLOR": "1"},
     )

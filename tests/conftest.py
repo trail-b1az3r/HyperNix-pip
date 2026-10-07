@@ -42,6 +42,14 @@ for _folder in sorted(p for p in _TESTS.iterdir()
     if str(_folder) not in sys.path:
         sys.path.append(str(_folder))
 
+# Child Python processes write UTF-8 to their pipes. On Windows they
+# would otherwise write the code page (cp1252): a deprecation line's
+# em dash arrives as byte 0x97, the suite's UTF-8 decode of it fails in
+# subprocess's reader thread, and the test sees stdout=None. Python 3.15
+# makes this the default (PEP 686); until then it is asked for.
+os.environ.setdefault("PYTHONUTF8", "1")
+os.environ.setdefault("PYTHONIOENCODING", "utf-8")
+
 #: Where the stores land unless told otherwise.
 REAL_HOME = Path.home() / ".hypernix"
 
@@ -173,3 +181,53 @@ def _isolate_the_environment() -> None:
             del os.environ[name]
         os.environ.update(saved)
         _redirect_environment()
+
+
+# ---------------------------------------------------------------------------
+# A Python that torch has no wheel for (CPython 3.15, as of torch 2.14.1)
+# ---------------------------------------------------------------------------
+
+import importlib.util  # noqa: E402
+
+#: True when torch cannot be imported here at all -- not installed, because
+#: PyTorch publishes no wheel for this interpreter. Never true where torch
+#: is installed, so a broken torch still fails loudly.
+TORCH_MISSING = importlib.util.find_spec("torch") is None
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_make_collect_report(collector):
+    """A test module that imports torch is skipped, by name and reason,
+    where torch does not exist -- rather than stopping the whole run with a
+    collection error. Any other import failure still fails."""
+    outcome = yield
+    report = outcome.get_result()
+    if (TORCH_MISSING and report.failed
+            and "No module named 'torch'" in str(report.longrepr)):
+        report.outcome = "skipped"
+        report.longrepr = (str(collector.path), 0,
+                           "Skipped: needs torch, which has no wheel for this Python")
+
+
+def _needs_missing_torch(excinfo) -> bool:
+    """Whether a test failed only because torch is not installed here."""
+    exc = excinfo.value
+    while exc is not None:
+        if isinstance(exc, ModuleNotFoundError) and (exc.name or "").split(".")[0] == "torch":
+            return True
+        if "PyTorch is not installed" in str(exc):
+            return True
+        exc = exc.__cause__ or exc.__context__
+    return False
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_makereport(item, call):
+    """The same, for a test that imports torch inside its body or a fixture."""
+    outcome = yield
+    report = outcome.get_result()
+    if (TORCH_MISSING and report.failed and call.excinfo is not None
+            and _needs_missing_torch(call.excinfo)):
+        report.outcome = "skipped"
+        report.longrepr = (str(item.path), item.location[1] or 0,
+                           "Skipped: needs torch, which has no wheel for this Python")

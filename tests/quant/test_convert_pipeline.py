@@ -48,7 +48,7 @@ def snapshot(tmp_path) -> Path:
         "model_type": "llama", "hidden_size": D, "intermediate_size": FF,
         "num_hidden_layers": LAYERS, "num_attention_heads": 4,
         "num_key_value_heads": 4, "vocab_size": VOCAB,
-    }))
+    }), encoding="utf-8")
     return folder
 
 
@@ -65,13 +65,13 @@ class TestWhatItAccepts:
         folder = tmp_path / "brew"
         folder.mkdir()
         (folder / "config.json").write_text(json.dumps(
-            {"d_model": 256, "n_layers": 2, "n_heads": 4, "n_kv_heads": 2, "vocab_size": 64}))
+            {"d_model": 256, "n_layers": 2, "n_heads": 4, "n_kv_heads": 2, "vocab_size": 64}), encoding="utf-8")
         (folder / "model.safetensors").write_bytes(b"")
         assert source_kind(folder) == "brewer"
         assert source_kind(folder / "model.safetensors") == "brewer"
 
     def test_other_things_are_refused(self, tmp_path):
-        (tmp_path / "notes.txt").write_text("x")
+        (tmp_path / "notes.txt").write_text("x", encoding="utf-8")
         assert source_kind(tmp_path / "notes.txt") == ""
         assert source_kind(tmp_path) == ""
         with pytest.raises(ConvertQuantizeError, match="not safetensors"):

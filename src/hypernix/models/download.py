@@ -16,6 +16,11 @@ the resulting directory can actually be consumed by ``hypernix convert``
 """
 from __future__ import annotations
 
+# PEP 810: on Python 3.15+ these imports are deferred to first use; on
+# 3.12-3.14 the list is an ordinary variable and they run as before.
+# hyped imports KNOWN_MODELS from here; only a download needs huggingface_hub.
+__lazy_modules__ = ["huggingface_hub"]
+
 import sys
 from dataclasses import dataclass
 from pathlib import Path

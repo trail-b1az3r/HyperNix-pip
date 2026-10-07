@@ -25,7 +25,7 @@ def run(*args: str, pyproject: Path) -> tuple[int, dict[str, str], str]:
     done = subprocess.run(
         [sys.executable, str(SCRIPT), "--head", HEAD, "--date", "20260930",
          "--pyproject", str(pyproject), *args],
-        capture_output=True, text=True, check=False,
+        capture_output=True, text=True, encoding="utf-8", errors="replace", check=False,
     )
     values = dict(line.split("=", 1) for line in done.stdout.splitlines() if "=" in line)
     return done.returncode, values, done.stderr
@@ -34,7 +34,7 @@ def run(*args: str, pyproject: Path) -> tuple[int, dict[str, str], str]:
 @pytest.fixture
 def pyproject(tmp_path) -> Path:
     path = tmp_path / "pyproject.toml"
-    path.write_text('[project]\nname = "hypernix"\nversion = "0.72.6.post3"\n')
+    path.write_text('[project]\nname = "hypernix"\nversion = "0.72.6.post3"\n', encoding="utf-8")
     return path
 
 
@@ -216,20 +216,20 @@ class TestAgainstARealRepository:
     def repo(self, tmp_path):
         def git(*args):
             return subprocess.run(["git", *args], cwd=tmp_path, capture_output=True,
-                                  text=True, check=True).stdout.strip()
+                                  text=True, encoding="utf-8", errors="replace", check=True).stdout.strip()
 
         git("init", "-q", "-b", "main")
         git("config", "user.email", "t@example.com")
         git("config", "user.name", "t")
-        (tmp_path / "pyproject.toml").write_text('version = "0.72.6"\n')
-        (tmp_path / "README.md").write_text("x\n")
+        (tmp_path / "pyproject.toml").write_text('version = "0.72.6"\n', encoding="utf-8")
+        (tmp_path / "README.md").write_text("x\n", encoding="utf-8")
         git("add", "-A")
         git("commit", "-qm", "start")
 
         def commit(subject, path, text):
             target = tmp_path / path
             target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(text)
+            target.write_text(text, encoding="utf-8")
             git("add", "-A")
             git("commit", "-qm", subject)
             return git("rev-parse", "HEAD")
@@ -241,7 +241,7 @@ class TestAgainstARealRepository:
             [sys.executable, str(SCRIPT), "--event", "schedule", "--enabled", "true",
              "--head", head, "--last-nightly", last, "--date", "20260930",
              "--pyproject", "pyproject.toml"],
-            cwd=root, capture_output=True, text=True, check=True,
+            cwd=root, capture_output=True, text=True, encoding="utf-8", errors="replace", check=True,
         )
         return dict(line.split("=", 1) for line in done.stdout.splitlines())
 

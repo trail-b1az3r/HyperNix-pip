@@ -297,7 +297,7 @@ class TestTheCommandLine:
     def _run(self, *argv):
         return subprocess.run(
             [sys.executable, "-m", "hypernix.quant.hyprslug_cli", *argv],
-            capture_output=True, text=True, timeout=300,
+            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=300,
             env={"PYTHONPATH": str(REPO_ROOT / "src"), "PATH": "/usr/bin:/bin"},
         )
 

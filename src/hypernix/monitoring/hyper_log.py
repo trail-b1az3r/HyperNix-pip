@@ -172,7 +172,7 @@ class HyperLogger:
             
         # Log to file in tvtop format silently
         try:
-            with open("train.log", "a") as f:
+            with open("train.log", "a", encoding="utf-8") as f:
                 f.write(f"step {step}/{self.state.total_steps} loss={loss:.4f} lr={lr:.2e} tput={tput:.2f}\n")
         except Exception:
             pass

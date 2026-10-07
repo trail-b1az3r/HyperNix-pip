@@ -54,12 +54,12 @@ class TestRecognisingOne:
         assert brewed.brewed_dirs(tiny.parent) == [tiny]
 
     def test_a_hugging_face_folder_is_not(self, tmp_path):
-        (tmp_path / "config.json").write_text(json.dumps({"hidden_size": 64, "model_type": "llama"}))
+        (tmp_path / "config.json").write_text(json.dumps({"hidden_size": 64, "model_type": "llama"}), encoding="utf-8")
         (tmp_path / "model.safetensors").write_bytes(b"x")
         assert not brewed.is_brewed_dir(tmp_path)
 
     def test_a_config_without_weights_is_not(self, tiny, tmp_path):
-        (tmp_path / "config.json").write_text((tiny / "config.json").read_text())
+        (tmp_path / "config.json").write_text((tiny / "config.json").read_text(encoding="utf-8"), encoding="utf-8")
         assert not brewed.is_brewed_dir(tmp_path)
 
     def test_its_description(self, tiny):
@@ -87,9 +87,9 @@ class TestLoadingSafetensors:
     def test_a_mismatched_file_is_refused(self, tiny, tmp_path):
         from hypernix.models import brewer_adapter
 
-        config = json.loads((tiny / "config.json").read_text())
+        config = json.loads((tiny / "config.json").read_text(encoding="utf-8"))
         config["n_layers"] = 3
-        (tmp_path / "config.json").write_text(json.dumps(config))
+        (tmp_path / "config.json").write_text(json.dumps(config), encoding="utf-8")
         (tmp_path / "model.safetensors").write_bytes((tiny / "model.safetensors").read_bytes())
         with pytest.raises(ValueError, match="does not match"):
             brewer_adapter.load(tmp_path)

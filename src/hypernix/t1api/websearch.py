@@ -339,14 +339,17 @@ def parse_search_query(raw: str) -> tuple[str, int]:
 # ---------------------------------------------------------------------------
 
 
-def detect_browsers(*, path_lookup=None) -> dict[str, list[str]]:
+def detect_browsers(*, path_lookup=None, app_exists=None,
+                    platform: str | None = None) -> dict[str, list[str]]:
     """Which browser families are installed, and what was found.
 
     Used for `s1: auto` and reported by `/web/v1/config` so the choice
     can be made from what is actually there rather than from a list of
-    what might be.
+    what might be. *path_lookup* and *app_exists* stand in for the PATH
+    and for the macOS ``/Applications`` bundles.
     """
     which = path_lookup or shutil.which
+    exists = app_exists or (lambda app: Path(app).exists())
     found: dict[str, list[str]] = {"firefox": [], "chromium": []}
     for binary in _FIREFOX_BINARIES:
         if which(binary):
@@ -354,12 +357,12 @@ def detect_browsers(*, path_lookup=None) -> dict[str, list[str]]:
     for binary in _CHROMIUM_BINARIES:
         if which(binary):
             found["chromium"].append(binary)
-    if sys.platform == "darwin":
+    if (platform or sys.platform) == "darwin":
         for app, family in _MAC_APPS.items():
             # macOS browsers are bundles, not binaries on PATH, so
             # `which` finds none of them and the setting would report an
             # empty machine on the platform most likely to have four.
-            if Path(app).exists():
+            if exists(app):
                 found[family].append(Path(app).stem)
     return {family: sorted(set(names)) for family, names in found.items()}
 

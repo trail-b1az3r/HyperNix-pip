@@ -15,7 +15,7 @@
 # So there is one config file, one place the keys live, and one command
 # that reads both.
 #
-# Requires: bash 3.2+, python3 3.10+ with hypernix[t1api] installed.
+# Requires: bash 3.2+, Python 3.12-3.15 with hypernix[t1api] installed.
 
 set -euo pipefail
 
@@ -83,6 +83,10 @@ load_env() {
   # Read, do not source: .env is a file people edit by hand, and sourcing
   # runs whatever ends up in it.
   while IFS= read -r line; do
+    # A .env saved on Windows (Notepad, or Python's write_text there) ends
+    # its lines in CRLF; the CR would ride into every value -- a host of
+    # "127.0.0.1\r" binds nothing and reads as a port in use.
+    line="${line%$'\r'}"
     case "$line" in
       ''|'#'*) continue ;;
       *=*) ;;
@@ -1178,11 +1182,13 @@ hypernix-t1 — manage a T1 API server (also installed as hnx-t1)
                         What training is doing on this machine, and the
                         controls. Runs launched with launch-script appear
                         here on their own.
-  built-in-runner [start [MODEL]|status|plan MODEL|stop]
+  built-in-runner [start [MODEL]|auto|status|plan MODEL|stop]
                         Serve a model out of this server's own llama.cpp
                         instead of forwarding to LM Studio. \`start\` with
                         no model named picks the one on this machine when
-                        there is only one. Also spelled \`runner\`.
+                        there is only one. \`auto\` loads the model loaded
+                        last (--most-used: most often), on the backend used
+                        most, with its last settings. Also spelled \`runner\`.
   chat [-s SYSTEM] [--new] MESSAGE
                         Send a message to the served model and print the
                         reply. Carries on the same chat until --new.
@@ -1197,7 +1203,34 @@ Config: $CONFIG_DIR
 USAGE
 }
 
+# Starting the server needs POSIX process control: a new session, and a
+# pid that `kill -0` and the signals below understand. Git Bash, MSYS2 and
+# Cygwin on Windows give a Windows pid from Python and an MSYS pid to
+# `kill`, so a healthy server reads as one that "exited during startup"
+# and could not be stopped cleanly. Those commands say so and name what
+# works; everything that only reads config or hands over to a Python CLI
+# (status, stop, create, key, runner, chat, index, sync, ...) is unchanged.
+# HNX_T1_UNAME stands in for `uname -s`, for the tests.
+native_windows() {
+  case "${HNX_T1_UNAME:-$(uname -s 2>/dev/null || echo unknown)}" in
+    MINGW*|MSYS*|CYGWIN*) return 0 ;;
+  esac
+  return 1
+}
+
+refuse_on_windows() {
+  native_windows || return 0
+  err "hypernix-t1 $1 manages the server as a Linux/macOS process; this is Windows."
+  printf '%s\n' \
+    "    Run hypernix-t1 inside WSL, or start the server directly:" \
+    "      python -m uvicorn hypernix.t1api.app:create_app --factory --host 127.0.0.1 --port 8000" >&2
+  exit 2
+}
+
 main() {
+  case "${1:-status}" in
+    start|start-foreground|restart) refuse_on_windows "$1" ;;
+  esac
   use_servers_copy "$@"
   local cmd="${1:-status}"
   if [ $# -gt 0 ]; then shift; fi

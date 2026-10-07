@@ -28,7 +28,10 @@ leaving an empty list and no cause.
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
+
+import pytest
 
 from hypernix.t1api.registry import (
     REGISTRY_NAMES,
@@ -315,6 +318,8 @@ class TestIndexingThenServingNeedsNoConfiguration:
         assert "T1_MODEL_REGISTRY_PATH" in capsys.readouterr().out
 
 
+@pytest.mark.skipif(os.name == "nt", reason="Windows will not delete a directory a process is "
+                    "standing in, so there is no deleted working directory to survive")
 class TestAWorkingDirectoryThatIsGone:
     """A process can outlive the directory it was started in.
 
@@ -347,15 +352,18 @@ class TestAWorkingDirectoryThatIsGone:
         import shutil
         import tempfile
 
-        home = os.getcwd()
-        gone = tempfile.mkdtemp(prefix="hypernix-gone-")
-        try:
-            os.chdir(gone)
-            shutil.rmtree(gone)
+        def attempt():
             try:
                 return ("ok", work())
             except BaseException as exc:  # noqa: BLE001 - reported, not swallowed
                 return ("raised", f"{type(exc).__name__}: {exc}")
+
+        home = os.getcwd()
+        gone_dir = tempfile.mkdtemp(prefix="hypernix-gone-")
+        try:
+            os.chdir(gone_dir)
+            shutil.rmtree(gone_dir)
+            return attempt()
         finally:
             os.chdir(home)
 
@@ -366,7 +374,7 @@ class TestAWorkingDirectoryThatIsGone:
 
     def test_discovery_survives_it(self, tmp_path, monkeypatch):
         """The one that stopped the server coming up."""
-        (tmp_path / "models.json").write_text(json.dumps([entry("m")]))
+        (tmp_path / "models.json").write_text(json.dumps([entry("m")]), encoding="utf-8")
         monkeypatch.setenv("T1_CONFIG_DIR", str(tmp_path))
 
         outcome, result = self._in_a_deleted_directory(discover)
@@ -374,7 +382,7 @@ class TestAWorkingDirectoryThatIsGone:
         assert result == tmp_path / "models.json"
 
     def test_the_server_still_loads_its_registry(self, tmp_path, monkeypatch):
-        (tmp_path / "models.json").write_text(json.dumps([entry("qwen3-8b")]))
+        (tmp_path / "models.json").write_text(json.dumps([entry("qwen3-8b")]), encoding="utf-8")
         monkeypatch.setenv("T1_CONFIG_DIR", str(tmp_path))
 
         outcome, result = self._in_a_deleted_directory(

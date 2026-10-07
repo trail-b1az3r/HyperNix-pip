@@ -489,7 +489,7 @@ class TestSteamrollerActuallyQuantises:
         import json
         sidecar = out.with_suffix(out.suffix + ".hypernix.json")
         assert sidecar.exists()
-        recorded = json.loads(sidecar.read_text())
+        recorded = json.loads(sidecar.read_text(encoding="utf-8"))
         assert recorded["hypernix.tier"] == "IQ0.75_M"
         assert recorded["hypernix.report"]["tensors_quantized"] == 1
 
@@ -546,7 +546,7 @@ class TestTheCLI:
     def test_the_module_runs_under_dash_m(self):
         """Without a __main__ guard it imports, runs nothing and exits 0
         — which looks exactly like a quantisation that wrote no file."""
-        source = Path("src/hypernix/quant/steamroller_cli.py").read_text()
+        source = Path("src/hypernix/quant/steamroller_cli.py").read_text(encoding="utf-8")
         assert '__name__ == "__main__"' in source
 
 
@@ -741,6 +741,6 @@ class TestTheHyprslugCLI:
 
     def test_all_four_names_are_installed(self):
         """People type all four; one implementation."""
-        pyproject = Path("pyproject.toml").read_text()
+        pyproject = Path("pyproject.toml").read_text(encoding="utf-8")
         for alias in ALIASES:
             assert f'{alias} = "hypernix.quant.hyprslug_cli:cli_main"' in pyproject, alias

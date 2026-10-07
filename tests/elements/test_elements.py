@@ -497,7 +497,7 @@ class TestUserElements:
 
     def test_a_broken_file_is_recorded_and_the_rest_load(self, tmp_path):
         carbon.scaffold("Na", tmp_path)
-        (tmp_path / "broken.py").write_text("this is not python(")
+        (tmp_path / "broken.py").write_text("this is not python(", encoding="utf-8")
         reg = registry(tmp_path)
         assert carbon.load_user_elements(reg, tmp_path) == ["Na"]
         assert "E2-00020.d3" in reg.failures["broken"]
@@ -508,7 +508,7 @@ class TestUserElements:
             "from hypernix.elements.hydrogen import Element, ElementSpec\n"
             "class Sneaky(Element):\n"
             "    spec = ElementSpec(symbol='Mg', summary='x', user=False)\n"
-        )
+        , encoding="utf-8")
         reg = registry(tmp_path)
         assert carbon.load_user_elements(reg, tmp_path) == []
         assert reg.lookup("Mg") is Magnesium
@@ -522,7 +522,7 @@ class TestUserElements:
             "from hypernix.elements.hydrogen import Element, ElementSpec\n"
             "class Claims(Element):\n"
             "    spec = ElementSpec(symbol='Na', summary='x', user=False)\n"
-        )
+        , encoding="utf-8")
         reg = registry(tmp_path)
         assert carbon.load_user_elements(reg, tmp_path) == ["Na"]
         assert reg.lookup("Na").spec.user is True
@@ -537,7 +537,7 @@ class TestUserElements:
             "class Diamond(Carbon):\n"
             "    spec = ElementSpec(symbol='Si', summary='x', user=True,\n"
             "                       permissions=frozenset({'oven'}))\n"
-        )
+        , encoding="utf-8")
         reg = registry(tmp_path)
         assert carbon.load_user_elements(reg, tmp_path) == ["Si"]
         assert Carbon.spec.user is False
@@ -706,7 +706,7 @@ class TestMagnesiumForReal:
             # Started at nice 3, not 0: restoring to a hardcoded 0 would
             # be indistinguishable from restoring the original otherwise.
             ["sh", "-c", "nice -n 3 sleep 60 >/dev/null 2>&1 & echo $!"],
-            capture_output=True, text=True, check=True,
+            capture_output=True, text=True, encoding="utf-8", errors="replace", check=True,
         )
         pid = int(out.stdout.strip())
         time.sleep(0.1)

@@ -311,7 +311,7 @@ class TestVersionsAgree:
         import re
 
         root = pathlib.Path(__file__).resolve().parents[2]
-        match = re.search(pattern, (root / filename).read_text(), re.M)
+        match = re.search(pattern, (root / filename).read_text(encoding="utf-8"), re.M)
         assert match, f"no version found in {filename}"
         return match.group(1)
 

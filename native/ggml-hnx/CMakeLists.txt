@@ -35,6 +35,22 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(ggml-hnx PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
+# Frame pointers, as CPython 3.15 is built (PEP 831), so perf, py-spy and
+# `profiling.sampling --native` can walk a stack through the decoder. Only
+# the flags this compiler accepts, and none on MSVC, which has no such
+# flag; GGML_HNX_FRAME_POINTERS=OFF for the last few percent instead.
+option(GGML_HNX_FRAME_POINTERS "Keep frame pointers (PEP 831)" ON)
+if(GGML_HNX_FRAME_POINTERS AND NOT MSVC)
+    include(CheckCCompilerFlag)
+    foreach(flag -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer)
+        string(MAKE_C_IDENTIFIER "HNX_HAS${flag}" var)
+        check_c_compiler_flag(${flag} ${var})
+        if(${var})
+            target_compile_options(ggml-hnx PRIVATE ${flag})
+        endif()
+    endforeach()
+endif()
+
 if(GGML_HNX_CUDA)
     enable_language(CUDA)
     target_sources(ggml-hnx PRIVATE ggml-hnx-cuda.cu)

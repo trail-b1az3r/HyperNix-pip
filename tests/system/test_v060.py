@@ -317,7 +317,7 @@ class TestThermometer:
             dt.read()
         # Validate the line is JSON-loadable even if all sensor fields are None.
         if path.exists() and path.stat().st_size > 0:
-            row = json.loads(path.read_text().splitlines()[0])
+            row = json.loads(path.read_text(encoding="utf-8").splitlines()[0])
             assert "timestamp" in row
 
 

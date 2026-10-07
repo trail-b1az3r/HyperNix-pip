@@ -47,7 +47,7 @@ def test_falls_back_to_path_scan_when_neither_preferred_version_available(monkey
     monkeypatch.setattr(hyped_pro.shutil, "which", lambda name: None)  # neither 3.12 nor 3.14 on PATH
 
     fake_python = tmp_path / "python3.11"
-    fake_python.write_text("#!/bin/sh\n")
+    fake_python.write_text("#!/bin/sh\n", encoding="utf-8")
     fake_python.chmod(0o755)
     monkeypatch.setenv("PATH", str(tmp_path))
     monkeypatch.setattr(hyped_pro, "_has_hypernix", lambda path: path == str(fake_python))

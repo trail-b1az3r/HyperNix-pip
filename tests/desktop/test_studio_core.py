@@ -82,7 +82,7 @@ def _build_headers_only(name: str, tmp_path: Path) -> Path:
         result = subprocess.run(
             [compiler, "-std=c++17", "-O1", "-Wall", "-Wextra", "-Werror",
              str(TESTS / f"{name}.cpp"), "-o", str(out)],
-            capture_output=True, text=True, check=False,
+            capture_output=True, text=True, encoding="utf-8", errors="replace", check=False,
         )
         if result.returncode != 0:
             pytest.fail(
@@ -109,7 +109,7 @@ def _build(name: str, tmp_path: Path) -> Path:
                 str(SRC / "ToolPolicy.cpp"), str(SRC / "ToolRunner.cpp"),
                 "-o", str(out),
             ],
-            capture_output=True, text=True, check=False,
+            capture_output=True, text=True, encoding="utf-8", errors="replace", check=False,
         )
         if result.returncode != 0:
             pytest.fail(
@@ -127,7 +127,7 @@ class TestTheToolPolicy:
     def test_it_compiles_and_every_check_passes(self, tmp_path):
         binary = _build("tool_policy_test", tmp_path)
         result = subprocess.run(
-            [str(binary)], capture_output=True, text=True, check=False
+            [str(binary)], capture_output=True, text=True, encoding="utf-8", errors="replace", check=False
         )
 
         assert result.returncode == 0, result.stdout + result.stderr
@@ -151,7 +151,7 @@ class TestTheSettingsRules:
     def test_it_compiles_and_every_check_passes(self, tmp_path):
         binary = _build_headers_only("settings_rules_test", tmp_path)
         result = subprocess.run(
-            [str(binary)], capture_output=True, text=True, check=False
+            [str(binary)], capture_output=True, text=True, encoding="utf-8", errors="replace", check=False
         )
 
         assert result.returncode == 0, result.stdout + result.stderr
@@ -161,7 +161,7 @@ class TestTheSettingsRules:
         """fish where a person types, bash where a machine runs it."""
         binary = _build_headers_only("settings_rules_test", tmp_path)
         out = subprocess.run(
-            [str(binary)], capture_output=True, text=True, check=False
+            [str(binary)], capture_output=True, text=True, encoding="utf-8", errors="replace", check=False
         ).stdout
         assert "interactive shell is fish" in out
         assert "coding shell is bash" in out
@@ -174,7 +174,7 @@ class TestTheToolRunner:
     def test_it_compiles_and_every_check_passes(self, tmp_path):
         binary = _build("tool_runner_test", tmp_path)
         result = subprocess.run(
-            [str(binary)], capture_output=True, text=True, check=False
+            [str(binary)], capture_output=True, text=True, encoding="utf-8", errors="replace", check=False
         )
 
         assert result.returncode == 0, result.stdout + result.stderr

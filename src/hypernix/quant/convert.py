@@ -29,7 +29,7 @@ def _collect_state_dict(model_dir: Path) -> dict[str, torch.Tensor]:
     if st_index.exists():
         from safetensors.torch import load_file
 
-        shard_map = json.loads(st_index.read_text())["weight_map"]
+        shard_map = json.loads(st_index.read_text(encoding="utf-8"))["weight_map"]
         for shard in sorted(set(shard_map.values())):
             state.update(load_file(str(model_dir / shard)))
         return state
@@ -51,7 +51,7 @@ def _collect_state_dict(model_dir: Path) -> dict[str, torch.Tensor]:
 
     bin_index = model_dir / "pytorch_model.bin.index.json"
     if bin_index.exists():
-        shard_map = json.loads(bin_index.read_text())["weight_map"]
+        shard_map = json.loads(bin_index.read_text(encoding="utf-8"))["weight_map"]
         for shard in sorted(set(shard_map.values())):
             state.update(torch.load(model_dir / shard, map_location="cpu", weights_only=True))
         return state
@@ -85,7 +85,7 @@ def _load_config(model_dir: Path) -> dict[str, Any]:
     cfg = model_dir / "config.json"
     if cfg.exists():
         try:
-            return json.loads(cfg.read_text())
+            return json.loads(cfg.read_text(encoding="utf-8"))
         except json.JSONDecodeError:
             return {}
     return {}
@@ -96,7 +96,7 @@ def _load_tokenizer_tokens(model_dir: Path) -> dict[str, Any] | None:
     tok_json = model_dir / "tokenizer.json"
     if tok_json.exists():
         try:
-            data = json.loads(tok_json.read_text())
+            data = json.loads(tok_json.read_text(encoding="utf-8"))
         except json.JSONDecodeError:
             return None
         model = data.get("model") or {}
@@ -130,7 +130,7 @@ def _load_tokenizer_tokens(model_dir: Path) -> dict[str, Any] | None:
 
     vocab_txt = model_dir / "vocab.txt"
     if vocab_txt.exists():
-        tokens = [line.rstrip("\n") for line in vocab_txt.read_text().splitlines()]
+        tokens = [line.rstrip("\n") for line in vocab_txt.read_text(encoding="utf-8").splitlines()]
         return {"tokens": tokens, "kind": "wordpiece"}
 
     return None

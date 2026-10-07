@@ -80,7 +80,7 @@ def load_config() -> dict:
     if not CONFIG_FILE.exists():
         return {"wake_word": DEFAULT_WAKE_WORD, "health_checks": True}
     try:
-        with open(CONFIG_FILE) as f:
+        with open(CONFIG_FILE, encoding="utf-8") as f:
             return json.load(f)
     except Exception:
         return {"wake_word": DEFAULT_WAKE_WORD, "health_checks": True}
@@ -88,7 +88,7 @@ def load_config() -> dict:
 
 def save_config(cfg: dict) -> None:
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-    with open(CONFIG_FILE, "w") as f:
+    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
         json.dump(cfg, f, indent=2)
 
 
@@ -146,7 +146,7 @@ def _health_monitor_thread(stop_event: threading.Event) -> None:
         # Log to file to avoid breaking raw mode terminal
         log_file = CONFIG_DIR / "protect_health.log"
         try:
-            with open(log_file, "a") as f:
+            with open(log_file, "a", encoding="utf-8") as f:
                 f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} - CPU: {cpu}% MEM: {mem}%\n")
         except Exception:
             pass

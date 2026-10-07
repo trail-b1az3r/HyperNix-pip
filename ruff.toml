@@ -1,6 +1,11 @@
 line-length = 100
 target-version = "py312"
 
+# Modules written in 3.15-only syntax (PEP 798's `[*it for it in its]`,
+# see hypernix._compat). Ruff's parser does not read every form of it
+# yet; tests/python315 compiles and runs them under 3.15 instead.
+extend-exclude = ["src/hypernix/**/*_py315.py"]
+
 [lint]
 select = ["E", "F", "I", "UP", "B"]
 ignore = ["E501"]

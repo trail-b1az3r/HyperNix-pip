@@ -136,7 +136,7 @@ def test_hf_model_prefix_stripped_on_load(tmp_path: Path) -> None:
     snap.mkdir()
     # Real HF Llama configs don't include rope_style; drop it so inference kicks in.
     hf_like = {k: v for k, v in cfg.to_dict().items() if k != "rope_style"}
-    (snap / "config.json").write_text(json.dumps(hf_like))
+    (snap / "config.json").write_text(json.dumps(hf_like), encoding="utf-8")
     # Prefix every non-lm_head weight with "model." to mimic HF Llama.
     prefixed = {
         (f"model.{k}" if not k.startswith("lm_head") else k): v
@@ -207,7 +207,7 @@ def test_load_snapshot_dispatches_to_nano_nano(tmp_path: Path) -> None:
 
     snap = tmp_path / "nano"
     snap.mkdir()
-    (snap / "config.json").write_text(json.dumps(cfg.to_dict()))
+    (snap / "config.json").write_text(json.dumps(cfg.to_dict()), encoding="utf-8")
     state = {k: v.detach().cpu().contiguous() for k, v in model.state_dict().items()}
     # Drop the tied output tensor — safetensors refuses shared memory.
     if state.get("output.weight") is not None and state["output.weight"].data_ptr() == state["tok_embeddings.weight"].data_ptr():

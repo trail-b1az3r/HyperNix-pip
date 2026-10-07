@@ -192,9 +192,9 @@ class TestServerIdsAdvance:
         km = Keymaster(store_dir=store, auto_rotate=False)
         meta = km.create(key_type=KeyType.USER, scopes={KeyScope.READ})
         path = store / f"{meta.key_id}.json"
-        data = json.loads(path.read_text())
+        data = json.loads(path.read_text(encoding="utf-8"))
         data["server_id"] = "not-a-server-id"
-        path.write_text(json.dumps(data))
+        path.write_text(json.dumps(data), encoding="utf-8")
 
         reopened = Keymaster(store_dir=store, auto_rotate=False)
         assert reopened.create(key_type=KeyType.USER, scopes={KeyScope.READ}).server_id

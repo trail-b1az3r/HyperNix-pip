@@ -197,7 +197,14 @@ class TestRunning:
         perms = cb.CodePerms(network=True, memory_mb=64, timeout=10)
         box = store.create("me", perms)
         result = store.run(box, perms, code="b = bytearray(512 * 2**20)")
-        assert result.exit_code != 0 and "MemoryError" in result.stderr
+        if "memory_bytes" in result.limits.get("not_enforced", ()):
+            # macOS takes no data-segment limit. The run still happens,
+            # and the result says the limit did not hold rather than
+            # reporting one that never applied.
+            assert sys.platform == "darwin", result.limits
+            assert result.limits["memory_bytes"] is None
+        else:
+            assert result.exit_code != 0 and "MemoryError" in result.stderr
 
     def test_a_file_cannot_outgrow_the_disk_budget(self, store):
         perms = cb.CodePerms(network=True, disk_mb=1, timeout=10)

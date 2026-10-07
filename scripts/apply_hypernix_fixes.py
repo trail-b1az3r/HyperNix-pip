@@ -66,7 +66,7 @@ def main() -> int:
     ok = True
     for relpath, old, new in EDITS:
         path = REPO / relpath
-        text = path.read_text()
+        text = path.read_text(encoding="utf-8")
         count = text.count(old)
         if count == 0:
             print(f"SKIP  {relpath}: pattern not found (already fixed?) -> {old[:60]!r}")
@@ -75,7 +75,7 @@ def main() -> int:
             print(f"WARN  {relpath}: pattern occurs {count} times, expected 1 -> {old[:60]!r}")
             ok = False
             continue
-        path.write_text(text.replace(old, new, 1))
+        path.write_text(text.replace(old, new, 1), encoding="utf-8")
         print(f"OK    {relpath}: applied fix -> {old[:60]!r}")
     return 0 if ok else 1
 

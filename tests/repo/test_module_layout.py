@@ -99,7 +99,7 @@ class TestFlatNameCompat:
         )
         result = subprocess.run(
             [sys.executable, "-c", code],
-            capture_output=True, text=True, timeout=120,
+            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120,
             env={**os.environ, "PYTHONPATH": str(SRC)},
         )
         assert result.returncode == 0, result.stderr
@@ -135,7 +135,7 @@ def test_runpy_through_a_flat_alias() -> None:
     }
     proc = subprocess.run(
         [sys.executable, "-m", "hypernix.cli", "--help"],
-        cwd=str(REPO_ROOT), env=env, capture_output=True, text=True, timeout=120,
+        cwd=str(REPO_ROOT), env=env, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120,
     )
     assert proc.returncode == 0, proc.stderr
     assert "Traceback" not in proc.stderr

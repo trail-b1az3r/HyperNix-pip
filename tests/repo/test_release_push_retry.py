@@ -22,11 +22,12 @@ import textwrap
 from pathlib import Path
 
 import pytest
+from shell_support import BASH
 
 ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW = ROOT / ".github" / "workflows" / "public-release.yml"
 
-pytestmark = pytest.mark.skipif(shutil.which("git") is None or shutil.which("bash") is None,
+pytestmark = pytest.mark.skipif(shutil.which("git") is None or BASH is None,
                                 reason="needs git and bash")
 
 #: Every file the step stages, so `git add` finds them all.
@@ -58,7 +59,7 @@ def step_script(name: str = "Commit version bump") -> str:
 
 def git(*args: str, cwd: Path) -> str:
     return subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True,
-                          text=True).stdout.strip()
+                          text=True, encoding="utf-8", errors="replace").stdout.strip()
 
 
 @pytest.fixture
@@ -94,8 +95,8 @@ def run_step(runner: Path) -> subprocess.CompletedProcess:
     script = runner.parent / "step.sh"
     script.write_text(step_script(), encoding="utf-8")
     env = {**os.environ, "BRANCH": "main", "VERSION": "0.72.6"}
-    return subprocess.run(["bash", "-e", str(script)], cwd=runner, env=env,
-                          capture_output=True, text=True, timeout=120)
+    return subprocess.run([BASH, "-e", str(script)], cwd=runner, env=env,
+                          capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120)
 
 
 def release_leftovers(runner: Path) -> None:
@@ -126,7 +127,7 @@ def test_the_failure_main_moved_mid_release_with_a_dirty_tree(repos):
     assert history[0] == "hypernix v0.72.6 [skip ci]"
     assert git("rev-parse", "main~1", cwd=origin) == bot, "the bump sits on top of what arrived"
     # The build's leftovers were put back, and never pushed.
-    assert (runner / "src/hypernix.egg-info/PKG-INFO").read_text() == "Version: 0.72.6\n"
+    assert (runner / "src/hypernix.egg-info/PKG-INFO").read_text(encoding="utf-8") == "Version: 0.72.6\n"
     assert "rc3" in git("show", "main:src/hypernix.egg-info/PKG-INFO", cwd=origin)
 
 

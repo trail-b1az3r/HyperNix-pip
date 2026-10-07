@@ -5,6 +5,8 @@
 # Targets:
 #   * macOS 10.15 Catalina / 11 Big Sur on Intel
 #   * Python 3.8 / 3.9 / 3.10 (torch 1.13 does not support 3.11+)
+#   * hypernix 0.72.6.post4, the last release for those Pythons: from
+#     0.72.7 it requires Python 3.12+, and pip on 3.10 skips it on its own
 #   * No Apple Silicon / no MPS (this is the Intel-only path)
 #
 # What it does:
