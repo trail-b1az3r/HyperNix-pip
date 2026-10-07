@@ -49,6 +49,22 @@ Historical wording and technical detail are retained during format normalization
 
 ### Added
 
+๋࣭⭑ **llama-essir, a Hugging Face Hub kernel for Llama models**
+  ([llama-essir](Llama-Essir.md)). Triton RMSNorm, rotary position
+  embeddings and the SwiGLU gate, published as
+  `ray0rf1re/llama-essir` and swapped into any Llama-architecture
+  Transformers model by `kernels.kernelize`.
+  - `native/llama-essir` is the kernel-builder project (`torch-noarch`:
+    one build per backend for every Torch and GPU generation). The ops
+    are Torch custom ops, so `torch.compile` traces through them; the
+    CPU runs their PyTorch definition.
+  - `hypernix.hub_kernels.kernelize_llama(model)` and `load()`, with
+    trust given to that one repository only.
+  - `.github/workflows/llama-essir-kernel.yml` tests every change and
+    publishes from `main` with `kernel-builder build-and-upload`, once
+    the account has kernel-creation access and the repository has an
+    `HF_TOKEN` secret.
+
 ✨ Added `hypernix-t1 runner auto` (`POST /runner/auto`).
   - Loads what the server usually runs: the last model loaded that is
     still here (`--most-used`: the one loaded most often), on the

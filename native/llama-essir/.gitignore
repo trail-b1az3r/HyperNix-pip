@@ -1,0 +1,8 @@
+# kernel-builder and local_build.py output
+build/
+result/
+# create-pyproject's generated files
+metadata-*.json
+pyproject.toml
+setup.py
+torch-ext/llama_essir/_ops.py

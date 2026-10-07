@@ -1,7 +1,7 @@
 {
   "definition": "non-blank source lines across repository code roots: src, scripts, tests, examples, bin, native, docs/src",
-  "total_lines": 225772,
-  "code_files": 731,
+  "total_lines": 226622,
+  "code_files": 743,
   "top_files": [
     {
       "path": "src/hypernix/t1api/routers/hyperlink.py",
@@ -117,7 +117,7 @@
     },
     {
       "path": "src/hypernix/__init__.py",
-      "lines": 945
+      "lines": 947
     },
     {
       "path": "tests/security/test_v0710_gatekeeper_keymaster.py",
@@ -190,6 +190,6 @@
     }
   ],
   "history_available": true,
-  "commit": "8db6617cbdcac1cf4f3c3b9f6fbe80c9eb1bd21c",
+  "commit": "86d95a05c8d494532a81c1afc9f0758e39455498",
   "generated_at": null
 }

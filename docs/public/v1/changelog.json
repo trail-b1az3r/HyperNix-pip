@@ -17,11 +17,11 @@
       "headline": "",
       "highlights": [
         "hyperNix-pip requires Python 3.12 or newer and officially supports Python 3.12, 3.13, 3.14 and 3.15 (Requires-Python >=3.12,<3.16).",
+        "llama-essir, a Hugging Face Hub kernel for Llama models ([llama-essir](Llama-Essir.md)). Triton RMSNorm, rotary position embeddings and the SwiGLU gate, published as ray0rf1re/llama-essir and swapped into any Llama-architecture Transformers model by kernels.kernelize.",
         "Added hypernix-t1 runner auto (POST /runner/auto).",
         "Added image conversion for everything sent into HyperLink.",
         "Added images on the HyperNix runner, not only through LM Studio.",
-        "/code sandbox results list any limit the kernel refused under limits.not_enforced (macOS takes no memory limit) instead of every run failing before it started.",
-        "The HyperNix runner is a /inference backend \u2014 the governed inference surface (/inference/chat, /completions, /chat/stream, /embeddings) now dispatches to this server's own runner when the model it has loaded (/runner/load, hypernix-t1 built-in-runner start) is exactly the model\u2026"
+        "/code sandbox results list any limit the kernel refused under limits.not_enforced (macOS takes no memory limit) instead of every run failing before it started."
       ],
       "changes": [
         {
@@ -32,6 +32,17 @@
           "details": [
             "3.10 and 3.11 are no longer supported. pip on those Pythons skips this release and installs 0.72.6.post4, the last that runs there; that is also where the torch 1.13 legacy-Mac path now ends ([macOS-legacy](macOS-legacy.md)).",
             "install-t1.sh, hypernix doctor and the hnx launcher look for 3.12-3.15 and say so when they find none."
+          ]
+        },
+        {
+          "symbol": "\u0e4b\u08ed\u2b51",
+          "label": "major",
+          "category": "Added",
+          "text": "llama-essir, a Hugging Face Hub kernel for Llama models ([llama-essir](Llama-Essir.md)). Triton RMSNorm, rotary position embeddings and the SwiGLU gate, published as ray0rf1re/llama-essir and swapped into any Llama-architecture Transformers model by kernels.kernelize.",
+          "details": [
+            "native/llama-essir is the kernel-builder project (torch-noarch: one build per backend for every Torch and GPU generation). The ops are Torch custom ops, so torch.compile traces through them; the CPU runs their PyTorch definition.",
+            "hypernix.hub_kernels.kernelize_llama(model) and load(), with trust given to that one repository only.",
+            ".github/workflows/llama-essir-kernel.yml tests every change and publishes from main with kernel-builder build-and-upload, once the account has kernel-creation access and the repository has an HF_TOKEN secret."
           ]
         },
         {

@@ -18,6 +18,7 @@ reachable if you already knew the filename. Fixed.)
 | [HyperNix Studio](../desktop/README.md) | The Qt desktop client: models, chat, a workspace the model may edit, and why it cannot run a command. |
 | [ggml-hnx](../native/ggml-hnx/README.md) | Building a llama.cpp that reads every HyperNix type (sub-bit, codebook, FP8) and runs Q8_K weights. |
 | [Runtime](Runtime.md) | `hypernix runtime` — using that llama.cpp from LM Studio and other applications. |
+| [llama-essir](Llama-Essir.md) | The Hugging Face Hub kernel for Llama models: Triton RMSNorm, RoPE and SwiGLU, `kernelize_llama`, and how it auto-publishes. |
 | [Kitchen](Kitchen.md) | pans / microwave / table / sink / instant_pot / coffee_maker / pressure_cooker / pressure_cooker_v3. |
 | [CoffeeMaker](CoffeeMaker.md) | Scheduled training/eval runs — brew on a timer instead of babysitting a run. |
 | [Blender](Blender.md) | Interleaves/mixes multiple input data streams into one. |

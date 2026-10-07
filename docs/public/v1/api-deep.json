@@ -1,14 +1,14 @@
 {
   "kind": "hypernix-api-deep",
   "generated_at": "2026-09-20T21:20:57Z",
-  "commit": "8db6617cbdcac1cf4f3c3b9f6fbe80c9eb1bd21c",
+  "commit": "86d95a05c8d494532a81c1afc9f0758e39455498",
   "history_available": true,
   "source_root": "src/hypernix",
   "modules": [
     {
       "module": "hypernix",
       "source": "src/hypernix/__init__.py",
-      "line_count": 945,
+      "line_count": 947,
       "summary": "hypernix \u2014 end-to-end toolkit for HyperNix-family PyTorch models.",
       "api": [],
       "errors": [
@@ -33237,7 +33237,7 @@
     {
       "module": "hypernix.runtime",
       "source": "src/hypernix/runtime/__init__.py",
-      "line_count": 5,
+      "line_count": 6,
       "summary": "hypernix.runtime \u2014 running models, and letting them use tools.",
       "api": [],
       "errors": [],
@@ -33252,6 +33252,49 @@
           "api_changes": []
         }
       ]
+    },
+    {
+      "module": "hypernix.runtime.hub_kernels",
+      "source": "src/hypernix/runtime/hub_kernels.py",
+      "line_count": 127,
+      "summary": "Run Llama-architecture models on the llama-essir Hub kernel.",
+      "api": [
+        {
+          "kind": "class",
+          "name": "KernelsUnavailable",
+          "signature": "class KernelsUnavailable",
+          "line": 60,
+          "doc": "The ``kernels`` library is not installed.",
+          "methods": []
+        },
+        {
+          "kind": "function",
+          "name": "load",
+          "signature": "def load*, version: int=VERSION, local_path: str | Path | None=None -> ModuleType",
+          "line": 74,
+          "doc": "The kernel module itself: ``rms_norm``, ``rotary``, ``silu_and_mul``, ``apply_rotary_transformers`` and ``layers``."
+        },
+        {
+          "kind": "function",
+          "name": "kernel_mapping",
+          "signature": "def kernel_mapping*, version: int=VERSION, local_path: str | Path | None=None -> dict[str, dict[str, Any]]",
+          "line": 88,
+          "doc": "The ``kernels`` layer mapping for the three Llama hooks, per device."
+        },
+        {
+          "kind": "function",
+          "name": "kernelize_llama",
+          "signature": "def kernelize_llamamodel: nn.Module, *, mode: str='inference', device: str | None=None, version: int=VERSION, local_path: str | Path | None=None, use_fallback: bool=True -> nn.Module",
+          "line": 120,
+          "doc": "Swap *model*'s RMSNorm, rotary embedding and SwiGLU gate for the llama-essir kernels, in place; returns the model."
+        }
+      ],
+      "errors": [
+        "ValueError"
+      ],
+      "deprecations": [],
+      "required_modules": [],
+      "changes": []
     },
     {
       "module": "hypernix.runtime.t1tools",
