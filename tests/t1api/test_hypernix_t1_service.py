@@ -19,6 +19,8 @@ from pathlib import Path
 import pytest
 from shell_support import BASH, NO_BASH_REASON, shell_path
 
+from hypernix.system import pids
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "bin" / "hypernix-t1"
 
@@ -803,7 +805,7 @@ class TestStartOutlivesTheShell:
             started = run("start", home=home, config=config, timeout=180)
             assert started.returncode == 0, started.stdout + started.stderr
             pid = int((config / "server.pid").read_text(encoding="utf-8").strip())
-            os.kill(pid, 0)  # raises if it is gone
+            assert pids.alive(pid), f"pid {pid} is gone"
             argv = subprocess.run(
                 ["ps", "-p", str(pid), "-o", "args="],
                 capture_output=True, text=True, encoding="utf-8",
