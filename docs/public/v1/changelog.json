@@ -253,6 +253,13 @@
           "details": []
         },
         {
+          "symbol": "\ud83d\udd27",
+          "label": "internal",
+          "category": "Site Changes",
+          "text": "Pull requests no longer conflict over generated docs data. docs/public/v1 is rewritten on main every hour, so any pull request that also regenerated it conflicted on every file. .github/workflows/resolve-docs-conflicts.yml runs when a pull request is opened or updated and after\u2026",
+          "details": []
+        },
+        {
           "symbol": "\ud83d\udedc",
           "label": "site",
           "category": "Site Changes",

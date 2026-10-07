@@ -315,6 +315,19 @@ Historical wording and technical detail are retained during format normalization
 
 ### Site Changes
 
+🔧 **Pull requests no longer conflict over generated docs data.**
+  `docs/public/v1` is rewritten on `main` every hour, so any pull
+  request that also regenerated it conflicted on every file.
+  `.github/workflows/resolve-docs-conflicts.yml` runs when a pull request
+  is opened or updated and after each of those hourly jobs: it merges
+  the base branch in and, when all the conflicts are in `docs/public/v1`,
+  gives each file the version from the branch that changed it most
+  recently, pushes the merge, and says on the pull request which side
+  each file came from. A conflict anywhere else is left for a person,
+  with the files named in the same comment. Forks are skipped, since
+  their branches cannot be pushed to. With an `AUTOFIX_TOKEN` secret the
+  merge is pushed with it, so CI runs on the result.
+
 🛜 **Docs site: full holiday/observance calendar.** Extended the
   existing Christmas / Christmas Eve / Halloween / Thanksgiving / July
   4th / Pride Month banner system (`getActiveSiteEvent`/`EventBanner` in

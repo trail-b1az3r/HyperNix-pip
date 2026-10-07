@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-api-deep",
   "generated_at": "2026-09-20T21:20:57Z",
-  "commit": "bfdd3dff196268d9fbabeb9c3e957e3a52f547dd",
+  "commit": "d13f30636f4156fabb63229f5daeaa1187f914b4",
   "history_available": true,
   "source_root": "src/hypernix",
   "modules": [
@@ -33245,6 +33245,13 @@
       "required_modules": [],
       "changes": [
         {
+          "sha": "d13f3063",
+          "date": "2026-10-07",
+          "author": "Claude",
+          "subject": "llama-easy: rename from llama-essir, and make it one call to use",
+          "api_changes": []
+        },
+        {
           "sha": "bfdd3dff",
           "date": "2026-10-07",
           "author": "Claude",
@@ -33316,6 +33323,34 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "d13f3063",
+          "date": "2026-10-07",
+          "author": "Claude",
+          "subject": "llama-easy: rename from llama-essir, and make it one call to use",
+          "api_changes": [
+            {
+              "kind": "removed",
+              "text": "def _repository(kernels: ModuleType, kind: str, name: str, version: int,"
+            },
+            {
+              "kind": "added",
+              "text": "def _repository(kernels: ModuleType, layer: str, version: int, local_path: str | Path | None) -> Any:"
+            },
+            {
+              "kind": "added",
+              "text": "def kernel_config(*, version: int = VERSION, local_path: str | Path | None = None) -> Any:"
+            },
+            {
+              "kind": "added",
+              "text": "def from_pretrained("
+            },
+            {
+              "kind": "added",
+              "text": "def _device_type(model: nn.Module) -> str:"
+            }
+          ]
+        },
         {
           "sha": "bfdd3dff",
           "date": "2026-10-07",
