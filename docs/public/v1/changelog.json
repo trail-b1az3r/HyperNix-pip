@@ -166,6 +166,13 @@
           "symbol": "\ud83d\udc1b",
           "label": "fix",
           "category": "Fixed",
+          "text": "hypernix gather reports what it left undone when it stops part-way through a level. URLs already taken off the queue for that level but not yet fetched were dropped, so a crawl stopped by --max-seconds or --max-pages could claim nothing was left, and one cut off by the page\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udc1b",
+          "label": "fix",
+          "category": "Fixed",
           "text": "hypernix-t1 status and stop recognise their own server when Python lives under a long path: ps cut the command line at 80 columns, past hypernix.t1api, so the manager decided the server was someone else's.",
           "details": []
         },

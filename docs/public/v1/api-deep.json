@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-api-deep",
   "generated_at": "2026-09-20T21:20:57Z",
-  "commit": "ae88dc3c22dda03a6481b0b1d2191b1f48255526",
+  "commit": "b7bf3f094764dff12e3a0cd9372fa4dcbdd5c74e",
   "history_available": true,
   "source_root": "src/hypernix",
   "modules": [
@@ -3084,7 +3084,7 @@
     {
       "module": "hypernix.data.gather",
       "source": "src/hypernix/data/gather.py",
-      "line_count": 1321,
+      "line_count": 1330,
       "summary": "gather \u2014 crawl a site into a dataset.",
       "api": [
         {
@@ -3266,14 +3266,14 @@
           "kind": "function",
           "name": "probe_rate_limit",
           "signature": "def probe_rate_limiturl: str, *, requests: int=5, delay: float=0.5, timeout: float=15.0 -> dict[str, Any]",
-          "line": 1045,
+          "line": 1055,
           "doc": "Find out what a host will tolerate, before a long crawl does."
         },
         {
           "kind": "function",
           "name": "write_output",
           "signature": "def write_outputplan: CrawlPlan, result: CrawlResult -> list[Path]",
-          "line": 1261,
+          "line": 1271,
           "doc": "Write *result* in ``plan.fmt``. Returns what it wrote."
         }
       ],

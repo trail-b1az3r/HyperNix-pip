@@ -1,6 +1,6 @@
 {
   "definition": "non-blank source lines across repository code roots: src, scripts, tests, examples, bin, native, docs/src",
-  "total_lines": 225728,
+  "total_lines": 225769,
   "code_files": 731,
   "top_files": [
     {
@@ -49,7 +49,7 @@
     },
     {
       "path": "src/hypernix/data/gather.py",
-      "lines": 1321
+      "lines": 1330
     },
     {
       "path": "src/hypernix/training/brewer.py",
@@ -190,5 +190,6 @@
     }
   ],
   "history_available": true,
-  "commit": "ae88dc3c22dda03a6481b0b1d2191b1f48255526"
+  "commit": "b7bf3f094764dff12e3a0cd9372fa4dcbdd5c74e",
+  "generated_at": null
 }

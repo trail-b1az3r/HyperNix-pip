@@ -223,6 +223,12 @@ Historical wording and technical detail are retained during format normalization
   instead of a 500, and stopping one terminates the trainer instead of
   failing on `os.killpg`.
 
+🐛 `hypernix gather` reports what it left undone when it stops part-way
+  through a level. URLs already taken off the queue for that level but
+  not yet fetched were dropped, so a crawl stopped by `--max-seconds` or
+  `--max-pages` could claim nothing was left, and one cut off by the page
+  ceiling could even report `done`.
+
 🐛 `hypernix-t1 status` and `stop` recognise their own server when Python
   lives under a long path: `ps` cut the command line at 80 columns, past
   `hypernix.t1api`, so the manager decided the server was someone else's.
