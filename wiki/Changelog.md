@@ -49,18 +49,21 @@ Historical wording and technical detail are retained during format normalization
 
 ### Added
 
-๋࣭⭑ **llama-essir, a Hugging Face Hub kernel for Llama models**
-  ([llama-essir](Llama-Essir.md)). Triton RMSNorm, rotary position
-  embeddings and the SwiGLU gate, published as
-  `ray0rf1re/llama-essir` and swapped into any Llama-architecture
-  Transformers model by `kernels.kernelize`.
-  - `native/llama-essir` is the kernel-builder project (`torch-noarch`:
+๋࣭⭑ **llama-easy: make any Llama model faster in one line**
+  ([llama-easy](Llama-Easy.md)). A Hugging Face Hub kernel,
+  `ray0rf1re/llama-easy`, with Triton RMSNorm, rotary position
+  embeddings and the SwiGLU gate:
+  `get_kernel("ray0rf1re/llama-easy", version=1, trust_remote_code=True).kernelize(model)`
+  swaps them into any Llama-architecture Transformers model and reports
+  what it swapped.
+  - Also through Transformers' `from_pretrained(..., kernel_config=...)`,
+    and from hyperNix-pip as `hypernix.hub_kernels.from_pretrained(id)` /
+    `kernelize_llama(model)`, which trust that one repository only and
+    never pull in kernels for other hooks.
+  - `native/llama-easy` is the kernel-builder project (`torch-noarch`:
     one build per backend for every Torch and GPU generation). The ops
-    are Torch custom ops, so `torch.compile` traces through them; the
-    CPU runs their PyTorch definition.
-  - `hypernix.hub_kernels.kernelize_llama(model)` and `load()`, with
-    trust given to that one repository only.
-  - `.github/workflows/llama-essir-kernel.yml` tests every change and
+    are Torch custom ops, so `torch.compile` traces through them.
+  - `.github/workflows/llama-easy-kernel.yml` tests every change and
     publishes from `main` with `kernel-builder build-and-upload`, once
     the account has kernel-creation access and the repository has an
     `HF_TOKEN` secret.

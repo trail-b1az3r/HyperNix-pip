@@ -1,8 +1,8 @@
-name: llama-essir kernel
+name: llama-easy kernel
 
-# Tests the llama-essir Hub kernel (native/llama-essir) on every change to
+# Tests the llama-easy Hub kernel (native/llama-easy) on every change to
 # it, and on main -- or when run by hand -- builds it with kernel-builder
-# and publishes it to https://huggingface.co/ray0rf1re/llama-essir.
+# and publishes it to https://huggingface.co/ray0rf1re/llama-easy.
 #
 # Publishing needs, once: kernel-creation access for the account
 # (huggingface.co/settings/account, "Request Kernels Creation") and a
@@ -13,16 +13,16 @@ on:
   push:
     branches: [main]
     paths:
-      - "native/llama-essir/**"
+      - "native/llama-easy/**"
       - "src/hypernix/runtime/hub_kernels.py"
       - "tests/runtime/test_hub_kernels.py"
-      - ".github/workflows/llama-essir-kernel.yml"
+      - ".github/workflows/llama-easy-kernel.yml"
   pull_request:
     paths:
-      - "native/llama-essir/**"
+      - "native/llama-easy/**"
       - "src/hypernix/runtime/hub_kernels.py"
       - "tests/runtime/test_hub_kernels.py"
-      - ".github/workflows/llama-essir-kernel.yml"
+      - ".github/workflows/llama-easy-kernel.yml"
   workflow_dispatch:
     inputs:
       publish:
@@ -35,7 +35,7 @@ permissions:
 
 # Never cancel a run part-way through an upload.
 concurrency:
-  group: llama-essir-${{ github.ref }}
+  group: llama-easy-${{ github.ref }}
   cancel-in-progress: false
 
 env:
@@ -75,7 +75,7 @@ jobs:
       - name: Without HF_TOKEN there is nothing to upload with
         if: env.HF_TOKEN == ''
         run: |
-          echo "::notice title=llama-essir not published::Add a Hugging Face write token as the repository secret HF_TOKEN to publish ray0rf1re/llama-essir."
+          echo "::notice title=llama-easy not published::Add a Hugging Face write token as the repository secret HF_TOKEN to publish ray0rf1re/llama-easy."
 
       - uses: actions/checkout@v4
         if: env.HF_TOKEN != ''
@@ -100,12 +100,12 @@ jobs:
 
       - name: Check build.toml
         if: env.HF_TOKEN != ''
-        working-directory: native/llama-essir
+        working-directory: native/llama-easy
         run: nix run "$KERNEL_BUILDER" -- check-config .
 
       - name: Build and upload
         if: env.HF_TOKEN != ''
-        working-directory: native/llama-essir
+        working-directory: native/llama-easy
         run: |
           nix run "$KERNEL_BUILDER" -- build-and-upload -L \
             --output-json "$RUNNER_TEMP/upload.json" .
@@ -114,9 +114,9 @@ jobs:
         if: env.HF_TOKEN != ''
         run: |
           {
-            echo "### ray0rf1re/llama-essir published"
+            echo "### ray0rf1re/llama-easy published"
             echo
-            echo "https://huggingface.co/ray0rf1re/llama-essir"
+            echo "https://huggingface.co/ray0rf1re/llama-easy"
             echo
             echo '```json'
             cat "$RUNNER_TEMP/upload.json"

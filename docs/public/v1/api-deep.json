@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-api-deep",
   "generated_at": "2026-09-20T21:20:57Z",
-  "commit": "86d95a05c8d494532a81c1afc9f0758e39455498",
+  "commit": "bfdd3dff196268d9fbabeb9c3e957e3a52f547dd",
   "history_available": true,
   "source_root": "src/hypernix",
   "modules": [
@@ -17,6 +17,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "bfdd3dff",
+          "date": "2026-10-07",
+          "author": "Claude",
+          "subject": "llama-essir: a Hugging Face Hub kernel for Llama models, auto-published",
+          "api_changes": []
+        },
         {
           "sha": "8b25e66f",
           "date": "2026-10-07",
@@ -64,13 +71,6 @@
           "date": "2026-09-24",
           "author": "Claude",
           "subject": "0.72.6: a release its own tests would reject cannot be started",
-          "api_changes": []
-        },
-        {
-          "sha": "471493b0",
-          "date": "2026-09-24",
-          "author": "Claude",
-          "subject": "0.72.6.rc3: a HyperLink model has its tools on the route the app uses",
           "api_changes": []
         }
       ]
@@ -33245,6 +33245,13 @@
       "required_modules": [],
       "changes": [
         {
+          "sha": "bfdd3dff",
+          "date": "2026-10-07",
+          "author": "Claude",
+          "subject": "llama-essir: a Hugging Face Hub kernel for Llama models, auto-published",
+          "api_changes": []
+        },
+        {
           "sha": "5bfb35d9",
           "date": "2026-09-23",
           "author": "Claude",
@@ -33256,14 +33263,14 @@
     {
       "module": "hypernix.runtime.hub_kernels",
       "source": "src/hypernix/runtime/hub_kernels.py",
-      "line_count": 127,
-      "summary": "Run Llama-architecture models on the llama-essir Hub kernel.",
+      "line_count": 177,
+      "summary": "Run Llama-architecture models on the llama-easy Hub kernel.",
       "api": [
         {
           "kind": "class",
           "name": "KernelsUnavailable",
           "signature": "class KernelsUnavailable",
-          "line": 60,
+          "line": 71,
           "doc": "The ``kernels`` library is not installed.",
           "methods": []
         },
@@ -33271,22 +33278,36 @@
           "kind": "function",
           "name": "load",
           "signature": "def load*, version: int=VERSION, local_path: str | Path | None=None -> ModuleType",
-          "line": 74,
+          "line": 85,
           "doc": "The kernel module itself: ``rms_norm``, ``rotary``, ``silu_and_mul``, ``apply_rotary_transformers`` and ``layers``."
         },
         {
           "kind": "function",
           "name": "kernel_mapping",
           "signature": "def kernel_mapping*, version: int=VERSION, local_path: str | Path | None=None -> dict[str, dict[str, Any]]",
-          "line": 88,
+          "line": 99,
           "doc": "The ``kernels`` layer mapping for the three Llama hooks, per device."
         },
         {
           "kind": "function",
           "name": "kernelize_llama",
           "signature": "def kernelize_llamamodel: nn.Module, *, mode: str='inference', device: str | None=None, version: int=VERSION, local_path: str | Path | None=None, use_fallback: bool=True -> nn.Module",
-          "line": 120,
-          "doc": "Swap *model*'s RMSNorm, rotary embedding and SwiGLU gate for the llama-essir kernels, in place; returns the model."
+          "line": 121,
+          "doc": "Swap *model*'s RMSNorm, rotary embedding and SwiGLU gate for the llama-easy kernels, in place; returns the model."
+        },
+        {
+          "kind": "function",
+          "name": "kernel_config",
+          "signature": "def kernel_config*, version: int=VERSION, local_path: str | Path | None=None -> Any",
+          "line": 164,
+          "doc": "A Transformers ``KernelConfig`` for this kernel, for ``from_pretrained(..., kernel_config=...)``: Transformers then swaps the layers in itself as it loads the model, on the model's device."
+        },
+        {
+          "kind": "function",
+          "name": "from_pretrained",
+          "signature": "def from_pretrainedmodel_id: str | Path, *, version: int=VERSION, local_path: str | Path | None=None, **kwargs: Any -> nn.Module",
+          "line": 185,
+          "doc": "``AutoModelForCausalLM.from_pretrained``, then the kernel swapped in."
         }
       ],
       "errors": [
@@ -33294,7 +33315,44 @@
       ],
       "deprecations": [],
       "required_modules": [],
-      "changes": []
+      "changes": [
+        {
+          "sha": "bfdd3dff",
+          "date": "2026-10-07",
+          "author": "Claude",
+          "subject": "llama-essir: a Hugging Face Hub kernel for Llama models, auto-published",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class KernelsUnavailable(ImportError):"
+            },
+            {
+              "kind": "added",
+              "text": "def _kernels() -> ModuleType:"
+            },
+            {
+              "kind": "added",
+              "text": "def load(*, version: int = VERSION, local_path: str | Path | None = None) -> ModuleType:"
+            },
+            {
+              "kind": "added",
+              "text": "def kernel_mapping("
+            },
+            {
+              "kind": "added",
+              "text": "def _repository(kernels: ModuleType, kind: str, name: str, version: int,"
+            },
+            {
+              "kind": "added",
+              "text": "def kernelize_llama("
+            },
+            {
+              "kind": "added",
+              "text": "def _mode(kernels: ModuleType, mode: str) -> Any:"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.runtime.t1tools",

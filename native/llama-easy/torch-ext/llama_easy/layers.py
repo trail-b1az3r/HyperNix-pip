@@ -11,7 +11,7 @@ from __future__ import annotations
 import torch
 import torch.nn as nn
 
-from .op import rms_norm, silu_and_mul
+from .op import apply_rotary_transformers, rms_norm, silu_and_mul
 
 
 class RMSNorm(nn.Module):
@@ -37,3 +37,21 @@ class SiluAndMul(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return silu_and_mul(x)
+
+
+class ApplyRotary(nn.Module):
+    """For Transformers' ``rotary_pos_emb`` hook (``apply_rotary_pos_emb``),
+    as a layer, which is what a Transformers ``KernelConfig`` names."""
+
+    can_torch_compile: bool = True
+    has_backward: bool = False
+
+    def forward(
+        self,
+        q: torch.Tensor,
+        k: torch.Tensor,
+        cos: torch.Tensor,
+        sin: torch.Tensor,
+        unsqueeze_dim: int = 1,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        return apply_rotary_transformers(q, k, cos, sin, unsqueeze_dim)

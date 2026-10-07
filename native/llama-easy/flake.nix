@@ -1,5 +1,5 @@
 {
-  description = "llama-essir: Triton kernels for Llama-architecture models";
+  description = "llama-easy: Triton kernels for Llama-architecture models";
 
   inputs = {
     kernel-builder.url = "github:huggingface/kernels";

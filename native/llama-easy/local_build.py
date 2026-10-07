@@ -3,13 +3,13 @@
 
 For tests and local development only: releases are built and uploaded
 by ``kernel-builder build-and-upload`` (see ``.github/workflows/
-llama-essir-kernel.yml``). The output is the same shape kernel-builder
+llama-easy-kernel.yml``). The output is the same shape kernel-builder
 produces for a ``torch-noarch`` kernel -- ``build/torch-<backend>/``
 with the package, a generated ``_ops.py``, a ``metadata.json`` and the
 compatibility package -- so ``kernels.get_local_kernel(<dir>)`` and
-``LOCAL_KERNELS=ray0rf1re/llama-essir=<dir>`` load it like the Hub copy.
+``LOCAL_KERNELS=ray0rf1re/llama-easy=<dir>`` load it like the Hub copy.
 
-    python native/llama-essir/local_build.py [--out DIR]
+    python native/llama-easy/local_build.py [--out DIR]
 """
 
 from __future__ import annotations
@@ -113,7 +113,7 @@ def build(out: Path, unique_id: str = "local") -> list[Path]:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--out", type=Path, default=HERE / "result",
-                        help="where to put build/ (default: native/llama-essir/result)")
+                        help="where to put build/ (default: native/llama-easy/result)")
     args = parser.parse_args(argv)
     for variant in build(args.out):
         print(variant)

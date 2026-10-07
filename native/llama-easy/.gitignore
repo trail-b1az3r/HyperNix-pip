@@ -5,4 +5,4 @@ result/
 metadata-*.json
 pyproject.toml
 setup.py
-torch-ext/llama_essir/_ops.py
+torch-ext/llama_easy/_ops.py

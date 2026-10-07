@@ -1,5 +1,5 @@
 [general]
-name = "llama-essir"
+name = "llama-easy"
 version = 1
 edition = 6
 # The repository's own licence (see LICENSE at its root) -- not a stock
@@ -12,7 +12,7 @@ backends = [
 ]
 
 [general.hub]
-repo-id = "ray0rf1re/llama-essir"
+repo-id = "ray0rf1re/llama-easy"
 
 # Triton and plain PyTorch only: nothing is compiled ahead of time, so one
 # build per backend runs on every Torch and every GPU generation.

@@ -1,4 +1,4 @@
-"""llama-essir, the Hub kernel in native/llama-essir, and its loader.
+"""llama-easy, the Hub kernel in native/llama-easy, and its loader.
 
 Everything here loads the kernel the way a user does -- through the
 ``kernels`` library, from a build laid out exactly as kernel-builder
@@ -27,14 +27,14 @@ kernels = pytest.importorskip("kernels")
 from hypernix import hub_kernels  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
-KERNEL = ROOT / "native" / "llama-essir"
+KERNEL = ROOT / "native" / "llama-easy"
 HAS_TRITON = importlib.util.find_spec("triton") is not None
 HAS_TRANSFORMERS = importlib.util.find_spec("transformers") is not None
 EPS = {torch.float32: 1e-6, torch.bfloat16: 2**-7, torch.float16: 2**-10}
 
 
 def _local_build():
-    spec = importlib.util.spec_from_file_location("llama_essir_local_build", KERNEL / "local_build.py")
+    spec = importlib.util.spec_from_file_location("llama_easy_local_build", KERNEL / "local_build.py")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -42,12 +42,12 @@ def _local_build():
 
 @pytest.fixture(scope="module")
 def build_dir(tmp_path_factory) -> Path:
-    """A kernel-builder build when LLAMA_ESSIR_BUILD names one (the
+    """A kernel-builder build when LLAMA_EASY_BUILD names one (the
     directory holding its ``build/``), else local_build.py's."""
-    given = os.environ.get("LLAMA_ESSIR_BUILD")
+    given = os.environ.get("LLAMA_EASY_BUILD")
     if given:
         return Path(given)
-    out = tmp_path_factory.mktemp("llama-essir")
+    out = tmp_path_factory.mktemp("llama-easy")
     _local_build().build(out)
     return out
 
@@ -73,7 +73,7 @@ class TestTheBuild:
 
     def test_metadata_names_the_kernel_and_its_backend(self, build_dir):
         meta = json.loads((build_dir / "build" / "torch-cuda" / "metadata.json").read_text(encoding="utf-8"))
-        assert meta["name"] == "llama-essir" and meta["version"] == hub_kernels.VERSION
+        assert meta["name"] == "llama-easy" and meta["version"] == hub_kernels.VERSION
         assert meta["backend"] == {"type": "cuda"}
 
     def test_the_hub_repo_and_version_agree_with_build_toml(self):
@@ -85,14 +85,14 @@ class TestTheBuild:
 
     def test_it_loads_and_exports_its_api(self, kernel):
         assert set(kernel.__all__) == {
-            "apply_rotary_transformers", "layers", "rms_norm", "rotary", "silu_and_mul"}
-        assert kernel.layers.RMSNorm and kernel.layers.SiluAndMul
+            "apply_rotary_transformers", "kernelize", "layers", "rms_norm", "rotary", "silu_and_mul"}
+        assert kernel.layers.RMSNorm and kernel.layers.SiluAndMul and kernel.layers.ApplyRotary
 
     def test_kernel_python_parses_as_python_3_9(self):
         """The Hub requires kernels to run on Python 3.9 and later."""
         import ast
 
-        for path in (KERNEL / "torch-ext" / "llama_essir").glob("*.py"):
+        for path in (KERNEL / "torch-ext" / "llama_easy").glob("*.py"):
             ast.parse(path.read_text(encoding="utf-8"), filename=str(path), feature_version=(3, 9))
 
     def test_kernel_python_imports_only_what_the_hub_allows(self):
@@ -101,7 +101,7 @@ class TestTheBuild:
         import ast
 
         allowed = set(sys.stdlib_module_names) | {"torch", "triton"}
-        for path in (KERNEL / "torch-ext" / "llama_essir").glob("*.py"):
+        for path in (KERNEL / "torch-ext" / "llama_easy").glob("*.py"):
             for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
                 if isinstance(node, ast.Import):
                     roots = [alias.name.split(".")[0] for alias in node.names]
@@ -201,11 +201,25 @@ _INTERPRETED = textwrap.dedent("""
 
     assert k.rms_norm(torch.empty(0, 64), torch.ones(64)).shape == (0, 64)
     assert k.silu_and_mul(torch.empty(0, 8)).shape == (0, 4)
+
+    # A whole model, Triton kernels throughout.
+    from transformers import LlamaConfig, LlamaForCausalLM
+    config = LlamaConfig(vocab_size=128, hidden_size=64, intermediate_size=128,
+                         num_hidden_layers=2, num_attention_heads=4, num_key_value_heads=2)
+    model = LlamaForCausalLM(config).eval()
+    ids = torch.randint(0, 128, (2, 9))
+    with torch.no_grad():
+        before = model(ids).logits
+        k.kernelize(model)
+        assert model.llama_easy_kernelized == {"RMSNorm": 5, "rotary_pos_emb": 1}
+        after = model(ids).logits
+    worst["model-logits"] = (after - before).abs().max().item()
+    assert worst["model-logits"] < 1e-4, worst
     print("ok", worst)
 """)
 
 
-@pytest.mark.skipif(not HAS_TRITON, reason="needs triton")
+@pytest.mark.skipif(not (HAS_TRITON and HAS_TRANSFORMERS), reason="needs triton and transformers")
 def test_the_triton_kernels_themselves(build_dir, tmp_path):
     script = tmp_path / "interpreted.py"
     script.write_text(_INTERPRETED, encoding="utf-8")
@@ -244,10 +258,73 @@ class TestInALlamaModel:
         repos._find_capability.cache_clear()
 
     def test_the_layers_pass_kernels_own_checks(self, kernel):
-        from kernels.layer.layer import _validate_layer
-        from transformers.models.llama.modeling_llama import LlamaRMSNorm
+        from kernels.layer.layer import _create_func_module, _validate_layer
+        from transformers.models.llama.modeling_llama import LlamaRMSNorm, apply_rotary_pos_emb
 
-        _validate_layer(check_cls=LlamaRMSNorm, cls=kernel.layers.RMSNorm, repo="llama-essir")
+        _validate_layer(check_cls=LlamaRMSNorm, cls=kernel.layers.RMSNorm, repo="llama-easy")
+        # The rotary hook is a function; kernels checks a layer against the
+        # module it wraps the original function in.
+        original = getattr(apply_rotary_pos_emb, "forward", apply_rotary_pos_emb)
+        _validate_layer(check_cls=_create_func_module(original), cls=kernel.layers.ApplyRotary,
+                        repo="llama-easy")
+
+    def test_the_kernels_own_kernelize_is_one_call(self, model, kernel):
+        """get_kernel(...).kernelize(model): no mapping, nothing but torch."""
+        ids = torch.randint(0, 128, (2, 9))
+        with torch.no_grad():
+            before = model(ids).logits
+        assert kernel.kernelize(model) is model
+        # Two norms per layer and the final one; one shared rotary function.
+        assert model.llama_easy_kernelized == {"RMSNorm": 5, "rotary_pos_emb": 1}
+        norm = model.model.layers[1].post_attention_layernorm
+        assert norm.forward.__func__ is kernel.layers.RMSNorm.forward
+        rotary = model.model.layers[0].self_attn._kernel_funcs["rotary_pos_emb"]
+        assert rotary.forward.__func__ is kernel.layers.ApplyRotary.forward
+        with torch.no_grad():
+            after = model(ids).logits
+        torch.testing.assert_close(after, before)
+
+    def test_kernelize_says_when_it_found_nothing(self, kernel):
+        model = torch.nn.Sequential(torch.nn.Linear(4, 4), torch.nn.LayerNorm(4))
+        kernel.kernelize(model)
+        assert model.llama_easy_kernelized == {"RMSNorm": 0, "rotary_pos_emb": 0}
+
+    def test_transformers_kernel_config(self, model, build_dir, pretend_gpu, monkeypatch):
+        """from_pretrained(..., kernel_config=kernel_config()) -- here as the
+        set_use_kernels call it makes, with Transformers told the model is
+        on a GPU, since it refuses a kernel_config for a CPU model."""
+        import transformers.integrations.hub_kernels as transformers_hub
+        import transformers.utils.kernel_config as transformers_config
+
+        monkeypatch.setattr(transformers_config, "infer_device", lambda model: "cuda")
+        monkeypatch.setattr(transformers_hub, "get_device_type", lambda device: "cuda")
+        ids = torch.randint(0, 128, (2, 9))
+        with torch.no_grad():
+            before = model(ids).logits
+
+        model.set_use_kernels(True, hub_kernels.kernel_config(local_path=build_dir))
+
+        norm = model.model.layers[0].input_layernorm.forward.__func__
+        rotary = model.model.layers[0].self_attn._kernel_funcs["rotary_pos_emb"].forward.__func__
+        assert norm.__qualname__ == "RMSNorm.forward" and "llama_easy" in norm.__module__
+        assert rotary.__qualname__ == "ApplyRotary.forward" and "llama_easy" in rotary.__module__
+        with torch.no_grad():
+            after = model(ids).logits
+        torch.testing.assert_close(after, before)
+
+    def test_the_hub_kernel_config_names_this_repository(self):
+        config = hub_kernels.kernel_config()
+        assert config.kernel_mapping == {
+            "RMSNorm": ("ray0rf1re/llama-easy:RMSNorm", {"version": 1, "trust_remote_code": True}),
+            "rotary_pos_emb": ("ray0rf1re/llama-easy:ApplyRotary", {"version": 1, "trust_remote_code": True}),
+        }
+
+    def test_from_pretrained_on_the_cpu_loads_the_model_unchanged(self, model, build_dir, tmp_path):
+        model.save_pretrained(tmp_path / "tiny")
+        loaded = hub_kernels.from_pretrained(tmp_path / "tiny", local_path=build_dir)
+        assert type(loaded).__name__ == "LlamaForCausalLM"
+        norm = loaded.model.layers[0].input_layernorm
+        assert norm.forward.__func__ is type(norm).forward
 
     def test_kernelize_swaps_the_llama_layers_and_keeps_the_logits(self, model, build_dir, pretend_gpu):
         ids = torch.randint(0, 128, (2, 9))
@@ -258,7 +335,7 @@ class TestInALlamaModel:
 
         norm = model.model.layers[0].input_layernorm
         assert norm.forward.__func__.__module__.endswith(".layers"), norm.forward
-        assert "llama_essir" in norm.forward.__func__.__module__
+        assert "llama_easy" in norm.forward.__func__.__module__
         with torch.no_grad():
             after = model(ids).logits
         torch.testing.assert_close(after, before)
@@ -286,6 +363,26 @@ class TestTheLoader:
             assert set(per_device) == set(hub_kernels.DEVICES)
             for repo in per_device.values():
                 assert repo._trust_remote_code == [hub_kernels.REPO_ID]
+
+    def test_kernelize_applies_only_this_kernel(self, monkeypatch):
+        """Not the global mapping too: Transformers registers its own, and
+        inheriting it would download kernels for hooks nobody asked for."""
+        seen = {}
+
+        class Recorder:
+            def __init__(self, mapping, inherit_mapping=True):
+                seen["inherit"] = inherit_mapping
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc):
+                return False
+
+        monkeypatch.setattr(kernels, "use_kernel_mapping", Recorder)
+        monkeypatch.setattr(kernels, "kernelize", lambda model, **kw: model)
+        hub_kernels.kernelize_llama(torch.nn.Linear(2, 2), device="cuda")
+        assert seen == {"inherit": False}
 
     def test_the_hub_mapping_pins_the_major_version(self):
         repo = hub_kernels.kernel_mapping()["RMSNorm"]["cuda"]
