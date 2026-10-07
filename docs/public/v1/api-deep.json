@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-api-deep",
   "generated_at": "2026-09-20T21:20:57Z",
-  "commit": "b7bf3f094764dff12e3a0cd9372fa4dcbdd5c74e",
+  "commit": "2447666285d795f2127932a812b31cf1f5f3f0f3",
   "history_available": true,
   "source_root": "src/hypernix",
   "modules": [
@@ -3285,6 +3285,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "24476662",
+          "date": "2026-10-07",
+          "author": "Claude",
+          "subject": "gather: count the URLs a level was cut off before fetching",
+          "api_changes": []
+        },
         {
           "sha": "99ddc1ae",
           "date": "2026-09-29",
@@ -59131,44 +59138,44 @@
     {
       "module": "hypernix.timing.timer",
       "source": "src/hypernix/timing/timer.py",
-      "line_count": 195,
+      "line_count": 198,
       "summary": "timer \u2014 countdown / interval / pomodoro helpers.",
       "api": [
         {
           "kind": "class",
           "name": "BaseTimer",
           "signature": "class BaseTimer",
-          "line": 34,
+          "line": 37,
           "doc": "",
           "methods": [
             {
               "name": "start",
               "signature": "def startself -> BaseTimer",
-              "line": 38,
+              "line": 41,
               "doc": ""
             },
             {
               "name": "reset",
               "signature": "def resetself -> BaseTimer",
-              "line": 42,
+              "line": 45,
               "doc": ""
             },
             {
               "name": "elapsed",
               "signature": "def elapsedself -> float",
-              "line": 46,
+              "line": 49,
               "doc": ""
             },
             {
               "name": "expired",
               "signature": "def expiredself -> bool",
-              "line": 51,
+              "line": 54,
               "doc": ""
             },
             {
               "name": "remaining",
               "signature": "def remainingself -> float",
-              "line": 54,
+              "line": 57,
               "doc": ""
             }
           ]
@@ -59177,7 +59184,7 @@
           "kind": "class",
           "name": "KitchenTimer",
           "signature": "class KitchenTimer",
-          "line": 63,
+          "line": 66,
           "doc": "Plain countdown timer.",
           "methods": []
         },
@@ -59185,19 +59192,19 @@
           "kind": "class",
           "name": "EggTimer",
           "signature": "class EggTimer",
-          "line": 76,
+          "line": 79,
           "doc": "Countdown with an explicit ``rang`` flag plus an ``on_ring`` callback fired exactly once when the timer first expires.",
           "methods": [
             {
               "name": "check",
               "signature": "def checkself -> bool",
-              "line": 83,
+              "line": 86,
               "doc": "Poll the timer. When it first crosses ``duration`` seconds, fire ``on_ring`` (if set) and flip ``rang``. Returns the new value of ``rang``."
             },
             {
               "name": "reset",
               "signature": "def resetself -> EggTimer",
-              "line": 93,
+              "line": 96,
               "doc": ""
             }
           ]
@@ -59206,25 +59213,25 @@
           "kind": "class",
           "name": "IntervalTimer",
           "signature": "class IntervalTimer",
-          "line": 104,
+          "line": 107,
           "doc": "Fires every ``interval_seconds``. Use ``should_fire()`` inside a training loop to throttle expensive operations (log emit, checkpoint save, eval) without rolling your own time math.",
           "methods": [
             {
               "name": "start",
               "signature": "def startself -> IntervalTimer",
-              "line": 117,
+              "line": 120,
               "doc": ""
             },
             {
               "name": "reset",
               "signature": "def resetself -> IntervalTimer",
-              "line": 122,
+              "line": 125,
               "doc": ""
             },
             {
               "name": "should_fire",
               "signature": "def should_fireself -> bool",
-              "line": 128,
+              "line": 131,
               "doc": "Advance the deadline + return True when the interval has elapsed since the last fire. Idempotent within a single interval \u2014 calling it 1000x in a tight loop fires once per ``interval_seconds`` only."
             }
           ]
@@ -59233,31 +59240,31 @@
           "kind": "class",
           "name": "PomodoroTimer",
           "signature": "class PomodoroTimer",
-          "line": 158,
+          "line": 161,
           "doc": "Alternates between work and rest blocks. Default: 25 min work, 5 min rest (the classic Pomodoro).",
           "methods": [
             {
               "name": "start",
               "signature": "def startself -> PomodoroTimer",
-              "line": 174,
+              "line": 177,
               "doc": ""
             },
             {
               "name": "reset",
               "signature": "def resetself -> PomodoroTimer",
-              "line": 183,
+              "line": 186,
               "doc": ""
             },
             {
               "name": "state",
               "signature": "def stateself -> str",
-              "line": 192,
+              "line": 195,
               "doc": ""
             },
             {
               "name": "tick",
               "signature": "def tickself -> str",
-              "line": 195,
+              "line": 198,
               "doc": "Advance the timer state if the current phase has elapsed and return the (possibly newly switched-to) state."
             }
           ]
@@ -59266,7 +59273,7 @@
           "kind": "function",
           "name": "timer",
           "signature": "def timerkind: str='kitchen', **kw -> BaseTimer",
-          "line": 226,
+          "line": 229,
           "doc": ""
         }
       ],

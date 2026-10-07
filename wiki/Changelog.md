@@ -223,6 +223,11 @@ Historical wording and technical detail are retained during format normalization
   instead of a 500, and stopping one terminates the trainer instead of
   failing on `os.killpg`.
 
+🐛 The `hypernix.timer` timers measure with `time.perf_counter`. They used
+  `time.monotonic`, which on Windows before Python 3.13 advances in
+  ~15.6 ms ticks, so an `IntervalTimer` shorter than that could not be
+  seen to elapse until the next tick.
+
 🐛 `hypernix gather` reports what it left undone when it stops part-way
   through a level. URLs already taken off the queue for that level but
   not yet fetched were dropped, so a crawl stopped by `--max-seconds` or
