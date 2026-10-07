@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-api-deep",
   "generated_at": "2026-09-20T21:20:57Z",
-  "commit": "2447666285d795f2127932a812b31cf1f5f3f0f3",
+  "commit": "8db6617cbdcac1cf4f3c3b9f6fbe80c9eb1bd21c",
   "history_available": true,
   "source_root": "src/hypernix",
   "modules": [
@@ -59283,6 +59283,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "8db6617c",
+          "date": "2026-10-07",
+          "author": "Claude",
+          "subject": "timer: perf_counter, not monotonic, for sub-tick intervals on Windows",
+          "api_changes": []
+        },
         {
           "sha": "8c25846c",
           "date": "2026-08-21",

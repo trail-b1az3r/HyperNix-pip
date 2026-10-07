@@ -223,7 +223,42 @@ attribute access on `numpy` or `huggingface_hub` still pays for it. It
 is a real saving for the commands that never touch them (`--help`, the
 T1 API's request path, the header tools).
 
-<!-- TESTED -->
+## What was tested
+
+Only what actually ran is listed. "Pass" means the whole job was green:
+pytest, the CLI smoke tests and the `setup.py` check after it.
+
+**CI, full test suite** (`ci.yml`, run 37585342208, the 0.72.7 head):
+
+| | 3.12 | 3.13 | 3.14 | 3.15.0rc3 |
+| --- | --- | --- | --- | --- |
+| ubuntu-latest | pass | pass | pass | pass¹ |
+| ubuntu-22.04 | pass | pass | pass | pass¹ |
+| windows-latest | pass | pass | pass | pass¹ |
+| macos-latest (arm64) | pass² | pass² | pass² | pass¹ ² |
+
+¹ Without torch, which has no 3.15 wheel: the tests that need it skip,
+by name, with that reason; everything else runs.
+² From run 37575260834, one commit series earlier: macOS runners were
+still queued when this was written. The two changes since (the `gather`
+queue accounting and the timer clock) are platform-neutral Python and
+were tested on Linux and Windows in run 37585342208.
+
+Also green in that run: ruff, mypy on 3.12 and 3.15, the Python 3.15
+feature job (PEP 798/799/810/831 tests verbosely, plus a CMake build of
+ggml-hnx whose object code is checked for frame-pointer prologues), the
+benchmarks on all four versions, the native and CUDA kernel builds, and
+the sdist + wheel build.
+
+**Locally** (Linux x86-64; CPython 3.12.15, 3.13.12, 3.14.8, 3.15.0rc3;
+torch 2.14.0 CPU on 3.12–3.14): the full suite on each, 9,344, 9,348,
+9,348 and 7,802 tests passing. Fixes made after those runs were re-tested
+locally on 3.12 and 3.15 by the suites they touch, and in full by CI.
+
+Not tested: Python 3.15 with torch (none exists to install), PySide6 on
+3.15 (it declares `<3.15`), and a free-threaded (`t`) build of any
+version.
+
 
 ## Known issues
 
