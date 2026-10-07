@@ -17,11 +17,11 @@
       "headline": "",
       "highlights": [
         "hyperNix-pip requires Python 3.12 or newer and officially supports Python 3.12, 3.13, 3.14 and 3.15 (Requires-Python >=3.12,<3.16).",
-        "llama-easy: make any Llama model faster in one line ([llama-easy](Llama-Easy.md)). A Hugging Face Hub kernel, ray0rf1re/llama-easy, with Triton RMSNorm, rotary position embeddings and the SwiGLU gate: get_kernel(\"ray0rf1re/llama-easy\", version=1\u2026",
         "Added hypernix-t1 runner auto (POST /runner/auto).",
         "Added image conversion for everything sent into HyperLink.",
         "Added images on the HyperNix runner, not only through LM Studio.",
-        "/code sandbox results list any limit the kernel refused under limits.not_enforced (macOS takes no memory limit) instead of every run failing before it started."
+        "/code sandbox results list any limit the kernel refused under limits.not_enforced (macOS takes no memory limit) instead of every run failing before it started.",
+        "The HyperNix runner is a /inference backend \u2014 the governed inference surface (/inference/chat, /completions, /chat/stream, /embeddings) now dispatches to this server's own runner when the model it has loaded (/runner/load, hypernix-t1 built-in-runner start) is exactly the model\u2026"
       ],
       "changes": [
         {
@@ -32,17 +32,6 @@
           "details": [
             "3.10 and 3.11 are no longer supported. pip on those Pythons skips this release and installs 0.72.6.post4, the last that runs there; that is also where the torch 1.13 legacy-Mac path now ends ([macOS-legacy](macOS-legacy.md)).",
             "install-t1.sh, hypernix doctor and the hnx launcher look for 3.12-3.15 and say so when they find none."
-          ]
-        },
-        {
-          "symbol": "\u0e4b\u08ed\u2b51",
-          "label": "major",
-          "category": "Added",
-          "text": "llama-easy: make any Llama model faster in one line ([llama-easy](Llama-Easy.md)). A Hugging Face Hub kernel, ray0rf1re/llama-easy, with Triton RMSNorm, rotary position embeddings and the SwiGLU gate: get_kernel(\"ray0rf1re/llama-easy\", version=1\u2026",
-          "details": [
-            "Also through Transformers' from_pretrained(..., kernel_config=...), and from hyperNix-pip as hypernix.hub_kernels.from_pretrained(id) / kernelize_llama(model), which trust that one repository only and never pull in kernels for other hooks.",
-            "native/llama-easy is the kernel-builder project (torch-noarch: one build per backend for every Torch and GPU generation). The ops are Torch custom ops, so torch.compile traces through them.",
-            ".github/workflows/llama-easy-kernel.yml tests every change and publishes from main with kernel-builder build-and-upload, once the account has kernel-creation access and the repository has an HF_TOKEN secret."
           ]
         },
         {
@@ -177,20 +166,6 @@
           "symbol": "\ud83d\udc1b",
           "label": "fix",
           "category": "Fixed",
-          "text": "The hypernix.timer timers measure with time.perf_counter. They used time.monotonic, which on Windows before Python 3.13 advances in 15.6 ms ticks, so an IntervalTimer shorter than that could not be seen to elapse until the next tick.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udc1b",
-          "label": "fix",
-          "category": "Fixed",
-          "text": "hypernix gather reports what it left undone when it stops part-way through a level. URLs already taken off the queue for that level but not yet fetched were dropped, so a crawl stopped by --max-seconds or --max-pages could claim nothing was left, and one cut off by the page\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udc1b",
-          "label": "fix",
-          "category": "Fixed",
           "text": "hypernix-t1 status and stop recognise their own server when Python lives under a long path: ps cut the command line at 80 columns, past hypernix.t1api, so the manager decided the server was someone else's.",
           "details": []
         },
@@ -250,13 +225,6 @@
           "label": "docs",
           "category": "Documentation",
           "text": "wiki/Pressure-Cooker-V6.md (new), wiki/Optimizers.md, wiki/Home.md \u2014 new dedicated page for V6/V6V with the measured numbers, usage examples, and the CUDA-graph caveat above. Optimizers.md's intro also got a small accuracy fix while touching this page: it previously called V4\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udd27",
-          "label": "internal",
-          "category": "Site Changes",
-          "text": "Pull requests no longer conflict over generated docs data. docs/public/v1 is rewritten on main every hour, so any pull request that also regenerated it conflicted on every file. .github/workflows/resolve-docs-conflicts.yml runs when a pull request is opened or updated and after\u2026",
           "details": []
         },
         {
@@ -4145,5 +4113,15 @@
       "changes": []
     }
   ],
-  "unreleased": null
+  "unreleased": {
+    "heading": "Unreleased",
+    "summary": "llama-easy: make any Llama model faster in one line ([llama-easy](Llama-Easy.md)). A Hugging Face Hub kernel, ray0rf1re/llama-easy, with Triton RMSNorm, rotary position embeddings and the SwiGLU gate: get_kernel(\"ray0rf1re/llama-easy\", version=1\u2026 \u00b7 The hypernix.timer timers measure with time.perf_counter. They used time.monotonic, which on Windows before Python 3.13 advances in 15.6 ms ticks, so an IntervalTimer shorter than that could not be seen to elapse until the next tick. \u00b7 hypernix gather reports what it left undone when it stops part-way through a level. URLs already taken off the queue for that level but not yet fetched were dropped, so a crawl stopped by --max-seconds or --max-pages could claim nothing was left, and one cut off by the page\u2026",
+    "highlights": [
+      "llama-easy: make any Llama model faster in one line ([llama-easy](Llama-Easy.md)). A Hugging Face Hub kernel, ray0rf1re/llama-easy, with Triton RMSNorm, rotary position embeddings and the SwiGLU gate: get_kernel(\"ray0rf1re/llama-easy\", version=1\u2026",
+      "The hypernix.timer timers measure with time.perf_counter. They used time.monotonic, which on Windows before Python 3.13 advances in 15.6 ms ticks, so an IntervalTimer shorter than that could not be seen to elapse until the next tick.",
+      "hypernix gather reports what it left undone when it stops part-way through a level. URLs already taken off the queue for that level but not yet fetched were dropped, so a crawl stopped by --max-seconds or --max-pages could claim nothing was left, and one cut off by the page\u2026",
+      "lts/0.72.6 branch: the source of 0.72.6.post4 -- exactly the commit tagged v0.72.6.post4 -- the last release for Python 3.10 and 3.11 and for torch 1.13 on older Macs.",
+      "Pull requests no longer conflict over generated docs data. docs/public/v1 is rewritten on main every hour, so any pull request that also regenerated it conflicted on every file. .github/workflows/resolve-docs-conflicts.yml runs when a pull request is opened or updated and after\u2026"
+    ]
+  }
 }

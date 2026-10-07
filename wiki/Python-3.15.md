@@ -3,7 +3,8 @@
 **hyperNix-pip requires Python 3.12 or newer and officially supports
 Python 3.12, 3.13, 3.14, and 3.15.** `Requires-Python` is
 `>=3.12,<3.16`; 3.10 and 3.11 stop at 0.72.6.post4, which pip installs
-there on its own.
+there on its own. Its source is the `lts/0.72.6` branch, which points at
+exactly the commit that release was built from.
 
 This page is what changed in 0.72.7 to get there, how hyperNix-pip uses
 Python 3.15's new features without breaking 3.12–3.14, what the

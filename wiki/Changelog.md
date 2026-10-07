@@ -34,18 +34,7 @@ Historical wording and technical detail are retained during format normalization
 
 > Format normalized to `wiki/Changelog-guide.md`; release wording and historical detail are preserved.
 
-## 0.72.7 — 2026-10-07
-
-### Breaking Changes
-
-❌ hyperNix-pip requires Python 3.12 or newer and officially supports
-  Python 3.12, 3.13, 3.14 and 3.15 (`Requires-Python >=3.12,<3.16`).
-  - 3.10 and 3.11 are no longer supported. pip on those Pythons skips
-    this release and installs 0.72.6.post4, the last that runs there;
-    that is also where the torch 1.13 legacy-Mac path now ends
-    ([macOS-legacy](macOS-legacy.md)).
-  - `install-t1.sh`, `hypernix doctor` and the `hnx` launcher look for
-    3.12-3.15 and say so when they find none.
+## Unreleased
 
 ### Added
 
@@ -67,6 +56,55 @@ Historical wording and technical detail are retained during format normalization
     publishes from `main` with `kernel-builder build-and-upload`, once
     the account has kernel-creation access and the repository has an
     `HF_TOKEN` secret.
+
+### Fixed
+
+🐛 The `hypernix.timer` timers measure with `time.perf_counter`. They used
+  `time.monotonic`, which on Windows before Python 3.13 advances in
+  ~15.6 ms ticks, so an `IntervalTimer` shorter than that could not be
+  seen to elapse until the next tick.
+
+🐛 `hypernix gather` reports what it left undone when it stops part-way
+  through a level. URLs already taken off the queue for that level but
+  not yet fetched were dropped, so a crawl stopped by `--max-seconds` or
+  `--max-pages` could claim nothing was left, and one cut off by the page
+  ceiling could even report `done`.
+
+### Dependencies and Packaging
+
+📦 **`lts/0.72.6` branch**: the source of 0.72.6.post4 -- exactly the
+  commit tagged `v0.72.6.post4` -- the last release for Python 3.10 and
+  3.11 and for torch 1.13 on older Macs.
+
+### Site Changes
+
+🔧 **Pull requests no longer conflict over generated docs data.**
+  `docs/public/v1` is rewritten on `main` every hour, so any pull
+  request that also regenerated it conflicted on every file.
+  `.github/workflows/resolve-docs-conflicts.yml` runs when a pull request
+  is opened or updated and after each of those hourly jobs: it merges
+  the base branch in and, when all the conflicts are in `docs/public/v1`,
+  gives each file the version from the branch that changed it most
+  recently, pushes the merge, and says on the pull request which side
+  each file came from. A conflict anywhere else is left for a person,
+  with the files named in the same comment. Forks are skipped, since
+  their branches cannot be pushed to. With an `AUTOFIX_TOKEN` secret the
+  merge is pushed with it, so CI runs on the result.
+
+## 0.72.7 — 2026-10-07
+
+### Breaking Changes
+
+❌ hyperNix-pip requires Python 3.12 or newer and officially supports
+  Python 3.12, 3.13, 3.14 and 3.15 (`Requires-Python >=3.12,<3.16`).
+  - 3.10 and 3.11 are no longer supported. pip on those Pythons skips
+    this release and installs 0.72.6.post4, the last that runs there;
+    that is also where the torch 1.13 legacy-Mac path now ends
+    ([macOS-legacy](macOS-legacy.md)).
+  - `install-t1.sh`, `hypernix doctor` and the `hnx` launcher look for
+    3.12-3.15 and say so when they find none.
+
+### Added
 
 ✨ Added `hypernix-t1 runner auto` (`POST /runner/auto`).
   - Loads what the server usually runs: the last model loaded that is
@@ -242,17 +280,6 @@ Historical wording and technical detail are retained during format normalization
   instead of a 500, and stopping one terminates the trainer instead of
   failing on `os.killpg`.
 
-🐛 The `hypernix.timer` timers measure with `time.perf_counter`. They used
-  `time.monotonic`, which on Windows before Python 3.13 advances in
-  ~15.6 ms ticks, so an `IntervalTimer` shorter than that could not be
-  seen to elapse until the next tick.
-
-🐛 `hypernix gather` reports what it left undone when it stops part-way
-  through a level. URLs already taken off the queue for that level but
-  not yet fetched were dropped, so a crawl stopped by `--max-seconds` or
-  `--max-pages` could claim nothing was left, and one cut off by the page
-  ceiling could even report `done`.
-
 🐛 `hypernix-t1 status` and `stop` recognise their own server when Python
   lives under a long path: `ps` cut the command line at 80 columns, past
   `hypernix.t1api`, so the manager decided the server was someone else's.
@@ -314,19 +341,6 @@ Historical wording and technical detail are retained during format normalization
   asserting a staleness-prone "newest" claim.
 
 ### Site Changes
-
-🔧 **Pull requests no longer conflict over generated docs data.**
-  `docs/public/v1` is rewritten on `main` every hour, so any pull
-  request that also regenerated it conflicted on every file.
-  `.github/workflows/resolve-docs-conflicts.yml` runs when a pull request
-  is opened or updated and after each of those hourly jobs: it merges
-  the base branch in and, when all the conflicts are in `docs/public/v1`,
-  gives each file the version from the branch that changed it most
-  recently, pushes the merge, and says on the pull request which side
-  each file came from. A conflict anywhere else is left for a person,
-  with the files named in the same comment. Forks are skipped, since
-  their branches cannot be pushed to. With an `AUTOFIX_TOKEN` secret the
-  merge is pushed with it, so CI runs on the result.
 
 🛜 **Docs site: full holiday/observance calendar.** Extended the
   existing Christmas / Christmas Eve / Halloween / Thanksgiving / July
