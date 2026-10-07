@@ -129,7 +129,30 @@ def run_tests(node_ids: list[str], *, verbose: bool = False) -> RunResult:
     log = proc.stdout + proc.stderr
     if verbose:
         say(log)
-    return RunResult(log=log, returncode=proc.returncode, **_parse(log))
+    parsed = _parse(log)
+    parsed["failures"] = _restore_ids(parsed["failures"], node_ids)
+    return RunResult(log=log, returncode=proc.returncode, **parsed)
+
+
+def _restore_ids(failures: dict[str, str], requested: list[str]) -> dict[str, str]:
+    """Reported node ids, put back to the ones that were asked for.
+
+    pytest reports a test by its path relative to the rootdir, and when
+    there is none -- on Windows, a --tests-dir on C: and the repo on D:
+    -- it reports the file part as empty: ``::test_name``. That names no
+    file, so it is matched back to the one requested id with that test
+    name; an ambiguous one is left as it was, and reported as such.
+    """
+    by_name: dict[str, list[str]] = {}
+    for node_id in requested:
+        by_name.setdefault(node_id.partition("::")[2], []).append(node_id)
+    restored = {}
+    for node_id, message in failures.items():
+        file_part, _, name = node_id.partition("::")
+        if not file_part.strip() and len(by_name.get(name, [])) == 1:
+            node_id = by_name[name][0]
+        restored[node_id] = message
+    return restored
 
 
 def _env() -> dict[str, str]:

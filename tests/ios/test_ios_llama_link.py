@@ -497,7 +497,7 @@ class TestTheEngineDecisionIsMadeForEveryTrigger:
                     "EVENT": event,
                     "GITHUB_OUTPUT": str(output),
                 },
-                check=True, capture_output=True, text=True,
+                check=True, capture_output=True, text=True, encoding="utf-8", errors="replace",
             )
             written = output.read_text(encoding="utf-8")
         assert "build=" in written, "the step wrote no decision at all"

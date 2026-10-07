@@ -84,7 +84,7 @@ class TestTheRedirectsPointAtVariablesSomethingReads:
         for name in conftest.STORAGE_KEYS:
             found = subprocess.run(
                 ["grep", "-rl", name, str(source)],
-                capture_output=True, text=True,
+                capture_output=True, text=True, encoding="utf-8", errors="replace",
             )
             assert found.stdout.strip(), (
                 f"tests/conftest.py redirects {name}, which nothing under "

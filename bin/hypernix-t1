@@ -1203,7 +1203,34 @@ Config: $CONFIG_DIR
 USAGE
 }
 
+# Starting the server needs POSIX process control: a new session, and a
+# pid that `kill -0` and the signals below understand. Git Bash, MSYS2 and
+# Cygwin on Windows give a Windows pid from Python and an MSYS pid to
+# `kill`, so a healthy server reads as one that "exited during startup"
+# and could not be stopped cleanly. Those commands say so and name what
+# works; everything that only reads config or hands over to a Python CLI
+# (status, stop, create, key, runner, chat, index, sync, ...) is unchanged.
+# HNX_T1_UNAME stands in for `uname -s`, for the tests.
+native_windows() {
+  case "${HNX_T1_UNAME:-$(uname -s 2>/dev/null || echo unknown)}" in
+    MINGW*|MSYS*|CYGWIN*) return 0 ;;
+  esac
+  return 1
+}
+
+refuse_on_windows() {
+  native_windows || return 0
+  err "hypernix-t1 $1 manages the server as a Linux/macOS process; this is Windows."
+  printf '%s\n' \
+    "    Run hypernix-t1 inside WSL, or start the server directly:" \
+    "      python -m uvicorn hypernix.t1api.app:create_app --factory --host 127.0.0.1 --port 8000" >&2
+  exit 2
+}
+
 main() {
+  case "${1:-status}" in
+    start|start-foreground|restart) refuse_on_windows "$1" ;;
+  esac
   use_servers_copy "$@"
   local cmd="${1:-status}"
   if [ $# -gt 0 ]; then shift; fi

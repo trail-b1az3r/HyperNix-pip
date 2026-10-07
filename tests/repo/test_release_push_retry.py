@@ -59,7 +59,7 @@ def step_script(name: str = "Commit version bump") -> str:
 
 def git(*args: str, cwd: Path) -> str:
     return subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True,
-                          text=True).stdout.strip()
+                          text=True, encoding="utf-8", errors="replace").stdout.strip()
 
 
 @pytest.fixture
@@ -96,7 +96,7 @@ def run_step(runner: Path) -> subprocess.CompletedProcess:
     script.write_text(step_script(), encoding="utf-8")
     env = {**os.environ, "BRANCH": "main", "VERSION": "0.72.6"}
     return subprocess.run([BASH, "-e", str(script)], cwd=runner, env=env,
-                          capture_output=True, text=True, timeout=120)
+                          capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120)
 
 
 def release_leftovers(runner: Path) -> None:

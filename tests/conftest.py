@@ -181,3 +181,29 @@ def _isolate_the_environment() -> None:
             del os.environ[name]
         os.environ.update(saved)
         _redirect_environment()
+
+
+# ---------------------------------------------------------------------------
+# A Python that torch has no wheel for (CPython 3.15, as of torch 2.14.1)
+# ---------------------------------------------------------------------------
+
+import importlib.util  # noqa: E402
+
+#: True when torch cannot be imported here at all -- not installed, because
+#: PyTorch publishes no wheel for this interpreter. Never true where torch
+#: is installed, so a broken torch still fails loudly.
+TORCH_MISSING = importlib.util.find_spec("torch") is None
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_make_collect_report(collector):
+    """A test module that imports torch is skipped, by name and reason,
+    where torch does not exist -- rather than stopping the whole run with a
+    collection error. Any other import failure still fails."""
+    outcome = yield
+    report = outcome.get_result()
+    if (TORCH_MISSING and report.failed
+            and "No module named 'torch'" in str(report.longrepr)):
+        report.outcome = "skipped"
+        report.longrepr = (str(collector.path), 0,
+                           "Skipped: needs torch, which has no wheel for this Python")

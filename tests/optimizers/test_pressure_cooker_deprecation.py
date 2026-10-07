@@ -110,7 +110,7 @@ class TestTheDeprecatedOnes:
         src = Path(__file__).resolve().parents[2] / "src"
         result = subprocess.run(
             [sys.executable, "-c", code],
-            capture_output=True, text=True, timeout=300,
+            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=300,
             env={**os.environ, "PYTHONPATH": str(src)},
         )
         assert "deprecated" not in result.stderr, result.stderr

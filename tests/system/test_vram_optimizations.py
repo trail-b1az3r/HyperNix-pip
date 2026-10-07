@@ -59,7 +59,7 @@ class TestImportsWithoutTorch:
                 "import sys; from hypernix.system import vram; "
                 "print('torch' in sys.modules)",
             ],
-            capture_output=True, text=True, check=False,
+            capture_output=True, text=True, encoding="utf-8", errors="replace", check=False,
             env={**os.environ, "PYTHONPATH": "src"},
         )
         assert result.returncode == 0, result.stderr

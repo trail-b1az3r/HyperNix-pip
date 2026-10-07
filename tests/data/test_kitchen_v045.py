@@ -493,7 +493,7 @@ def test_cli_brew_runs_from_json(tiny_snapshot: Path, tmp_path: Path) -> None:
     env = _cli_subprocess_env()
     cp = subprocess.run(
         [sys.executable, "-m", "hypernix.cli", "brew", str(recipe_path)],
-        env=env, capture_output=True, text=True, timeout=180, check=False,
+        env=env, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=180, check=False,
     )
     assert cp.returncode == 0, cp.stderr
     assert (tmp_path / "brewed" / "config.json").exists()
@@ -506,7 +506,7 @@ def test_cli_brew_rejects_bad_override(tmp_path: Path) -> None:
     env = _cli_subprocess_env()
     cp = subprocess.run(
         [sys.executable, "-m", "hypernix.cli", "brew", str(rp), "--set", "bad_format"],
-        env=env, capture_output=True, text=True, timeout=30, check=False,
+        env=env, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30, check=False,
     )
     assert cp.returncode != 0
     assert "Traceback" not in cp.stderr

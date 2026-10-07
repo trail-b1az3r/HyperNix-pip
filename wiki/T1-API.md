@@ -202,6 +202,13 @@ Three properties worth knowing:
 directory, so two T1 servers on one machine do not share credentials.
 
 Requires bash 3.2+ (the stock macOS shell), Python 3.12–3.15, and pip.
+On native Windows shells (Git Bash, MSYS2, Cygwin) `start`,
+`start-foreground` and `restart` refuse and say what to do instead: run
+`hypernix-t1` inside WSL, or start the server directly with
+`python -m uvicorn hypernix.t1api.app:create_app --factory`. Starting
+and tracking a server needs POSIX process control those shells only
+emulate. Everything else (`status`, `stop`, `create`, `key`, `runner`,
+`chat`, `index`, `sync`, …) works there.
 
 ### By hand
 

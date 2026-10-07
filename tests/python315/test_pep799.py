@@ -105,5 +105,5 @@ def test_sampling_runs_a_script_for_real(tmp_path):
 def test_cprofile_is_still_there_on_3_15():
     """Nothing is removed: code that imports cProfile keeps working."""
     done = subprocess.run([sys.executable, "-c", "import cProfile; cProfile.Profile()"],
-                          capture_output=True, text=True, check=False)
+                          capture_output=True, text=True, encoding="utf-8", errors="replace", check=False)
     assert done.returncode == 0, done.stderr

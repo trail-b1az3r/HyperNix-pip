@@ -13,7 +13,7 @@ in as "prot doesn't make the monitors black":
     accepts the request, does nothing, and exits 0.
 
 So the screen stayed on and the exit status said it had not. Add
-``check=False``, two ``DEVNULL``\s and an ``except Exception: pass`` on
+``check=False``, two ``DEVNULL`` streams and an ``except Exception: pass`` on
 top, as ``protect`` had, and there was no way to find out.
 
 Enabling DPMS first fixes it, and the fix has to be in one place,

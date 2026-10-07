@@ -28,7 +28,10 @@ leaving an empty list and no cause.
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
+
+import pytest
 
 from hypernix.t1api.registry import (
     REGISTRY_NAMES,
@@ -315,6 +318,8 @@ class TestIndexingThenServingNeedsNoConfiguration:
         assert "T1_MODEL_REGISTRY_PATH" in capsys.readouterr().out
 
 
+@pytest.mark.skipif(os.name == "nt", reason="Windows will not delete a directory a process is "
+                    "standing in, so there is no deleted working directory to survive")
 class TestAWorkingDirectoryThatIsGone:
     """A process can outlive the directory it was started in.
 
@@ -352,16 +357,6 @@ class TestAWorkingDirectoryThatIsGone:
                 return ("ok", work())
             except BaseException as exc:  # noqa: BLE001 - reported, not swallowed
                 return ("raised", f"{type(exc).__name__}: {exc}")
-
-        if os.name == "nt":
-            # Windows will not delete a directory a process is standing in,
-            # so the state cannot be made for real. What code sees in it on
-            # POSIX -- getcwd() raising FileNotFoundError -- can be.
-            from unittest import mock
-
-            gone = FileNotFoundError(2, "No such file or directory")
-            with mock.patch("os.getcwd", side_effect=gone):
-                return attempt()
 
         home = os.getcwd()
         gone_dir = tempfile.mkdtemp(prefix="hypernix-gone-")

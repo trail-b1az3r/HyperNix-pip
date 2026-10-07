@@ -209,7 +209,7 @@ def test_ruff_check_passes_on_src_and_tests() -> None:
         [sys.executable, "-m", "ruff", "check", "src", "tests"],
         cwd=REPO_ROOT,
         capture_output=True,
-        text=True,
+        text=True, encoding="utf-8", errors="replace",
     )
     assert result.returncode == 0, result.stdout + result.stderr
 

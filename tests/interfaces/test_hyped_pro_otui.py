@@ -393,7 +393,7 @@ def _bun() -> str | None:
 @pytest.mark.skipif(not (APP / launcher.DEPENDENCY_MARKER).is_file(), reason="run `bun install` in hyped_pro_app")
 def test_bun_suite_passes() -> None:
     result = subprocess.run(
-        [_bun(), "test"], cwd=APP, capture_output=True, text=True, timeout=300, check=False
+        [_bun(), "test"], cwd=APP, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=300, check=False
     )
     output = result.stdout + result.stderr
     assert result.returncode == 0, output

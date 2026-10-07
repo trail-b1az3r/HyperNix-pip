@@ -68,7 +68,7 @@ print("OK")
         proc = subprocess.run(
             [sys.executable, "-c", script],
             env={"PYTHONPATH": str(SRC), "PATH": "/usr/bin:/bin:/usr/local/bin"},
-            capture_output=True, text=True, timeout=120,
+            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120,
         )
         assert proc.returncode == 0, proc.stderr
         assert proc.stdout.strip().splitlines()[-1] == "OK"

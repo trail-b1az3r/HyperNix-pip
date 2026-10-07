@@ -91,7 +91,7 @@ def _probe(module: str, names: list[str], *, lazy: bool = True) -> dict:
     off = "" if lazy else "sys.set_lazy_imports_filter(lambda *args: False)\n"
     code = (f"import sys, json\n{off}import {module}\n"
             f"print(json.dumps({{n: n in sys.modules for n in {names!r}}}))")
-    done = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True,
+    done = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, encoding="utf-8", errors="replace",
                           env={"PYTHONPATH": str(SRC), "PATH": "/usr/bin:/bin"}, check=False)
     assert done.returncode == 0, done.stderr
     return json.loads(done.stdout.strip().splitlines()[-1])
@@ -118,7 +118,7 @@ def test_a_deferred_import_resolves_on_first_use():
             "assert 'numpy' not in sys.modules\n"
             "np = lq.np\nassert np.zeros(2).sum() == 0 and 'numpy' in sys.modules\n"
             "print('ok')")
-    done = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True,
+    done = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, encoding="utf-8", errors="replace",
                           env={"PYTHONPATH": str(SRC), "PATH": "/usr/bin:/bin"}, check=False)
     assert done.returncode == 0 and "ok" in done.stdout, done.stderr
 

@@ -706,7 +706,7 @@ class TestMagnesiumForReal:
             # Started at nice 3, not 0: restoring to a hardcoded 0 would
             # be indistinguishable from restoring the original otherwise.
             ["sh", "-c", "nice -n 3 sleep 60 >/dev/null 2>&1 & echo $!"],
-            capture_output=True, text=True, check=True,
+            capture_output=True, text=True, encoding="utf-8", errors="replace", check=True,
         )
         pid = int(out.stdout.strip())
         time.sleep(0.1)

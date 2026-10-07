@@ -25,7 +25,7 @@ def run(*args: str, pyproject: Path) -> tuple[int, dict[str, str], str]:
     done = subprocess.run(
         [sys.executable, str(SCRIPT), "--head", HEAD, "--date", "20260930",
          "--pyproject", str(pyproject), *args],
-        capture_output=True, text=True, check=False,
+        capture_output=True, text=True, encoding="utf-8", errors="replace", check=False,
     )
     values = dict(line.split("=", 1) for line in done.stdout.splitlines() if "=" in line)
     return done.returncode, values, done.stderr
@@ -216,7 +216,7 @@ class TestAgainstARealRepository:
     def repo(self, tmp_path):
         def git(*args):
             return subprocess.run(["git", *args], cwd=tmp_path, capture_output=True,
-                                  text=True, check=True).stdout.strip()
+                                  text=True, encoding="utf-8", errors="replace", check=True).stdout.strip()
 
         git("init", "-q", "-b", "main")
         git("config", "user.email", "t@example.com")
@@ -241,7 +241,7 @@ class TestAgainstARealRepository:
             [sys.executable, str(SCRIPT), "--event", "schedule", "--enabled", "true",
              "--head", head, "--last-nightly", last, "--date", "20260930",
              "--pyproject", "pyproject.toml"],
-            cwd=root, capture_output=True, text=True, check=True,
+            cwd=root, capture_output=True, text=True, encoding="utf-8", errors="replace", check=True,
         )
         return dict(line.split("=", 1) for line in done.stdout.splitlines())
 

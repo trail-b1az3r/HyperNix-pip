@@ -303,7 +303,7 @@ const cases = [
 ];
 console.log(JSON.stringify(cases));
 """
-        done = subprocess.run(["node", "-e", script], capture_output=True, text=True, timeout=30)
+        done = subprocess.run(["node", "-e", script], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30)
         assert done.returncode == 0, done.stderr
         out = json.loads(done.stdout)
         assert "<script" not in out[0] and "&lt;script&gt;" in out[0]

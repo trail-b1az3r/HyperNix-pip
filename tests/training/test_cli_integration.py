@@ -45,7 +45,7 @@ def _run(args: list[str], *, timeout: int = TIMEOUT_SHORT) -> subprocess.Complet
         cwd=str(REPO_ROOT),
         env=env,
         capture_output=True,
-        text=True,
+        text=True, encoding="utf-8", errors="replace",
         timeout=timeout,
         check=False,
     )

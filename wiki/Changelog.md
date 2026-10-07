@@ -203,6 +203,12 @@ Historical wording and technical detail are retained during format normalization
 
 ### Fixed
 
+⚠️ `hypernix-t1 start`, `start-foreground` and `restart` refuse on native
+  Windows shells (Git Bash, MSYS2, Cygwin) and name WSL or the direct
+  `uvicorn` command instead. They used to start the server and then
+  report it as "exited during startup": Python returns a Windows pid and
+  `kill -0` there understands only MSYS ones. Everything else works.
+
 🐛 Fixed `hypernix-t1` reading a `.env` saved with Windows line endings:
   every value kept a trailing CR, so the host bound nothing and the port
   read as taken.

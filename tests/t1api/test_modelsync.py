@@ -252,7 +252,7 @@ def test_hypernix_t1_sync_runs_it(folders, tmp_path):
     (config / ".env").write_text(f"T1_MODELS_SOURCE={source}\nT1_MODELS_DIR={target}\n", encoding="utf-8")
     result = subprocess.run(
         [BASH, str(REPO_ROOT / "bin" / "hypernix-t1"), "sync"],
-        capture_output=True, text=True, timeout=120,
+        capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120,
         env={**os.environ, "HOME": str(tmp_path), "T1_CONFIG_DIR": str(config),
              "PYTHONPATH": str(REPO_ROOT / "src"), "NO_COLOR": "1",
              "PATH": os.path.dirname(sys.executable) + os.pathsep + os.environ.get("PATH", "")},
@@ -304,7 +304,7 @@ def test_status_names_the_mirror(tmp_path):
     (config / ".env").write_text(f"T1_MODEL_SYNC=1\nT1_MODELS_DIR={tmp_path / 'mirror'}\n", encoding="utf-8")
     result = subprocess.run(
         [BASH, str(REPO_ROOT / "bin" / "hypernix-t1"), "status"],
-        capture_output=True, text=True, timeout=120,
+        capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120,
         env={**os.environ, "HOME": str(tmp_path), "T1_CONFIG_DIR": str(config),
              "PYTHONPATH": str(REPO_ROOT / "src"), "NO_COLOR": "1"},
     )
@@ -364,7 +364,7 @@ def test_status_shows_the_shared_folder_as_the_source(tmp_path):
     home, shared, config = _installer_style(tmp_path)
     result = subprocess.run(
         [BASH, str(REPO_ROOT / "bin" / "hypernix-t1"), "status"],
-        capture_output=True, text=True, timeout=120,
+        capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120,
         env={**os.environ, "HOME": str(home), "T1_CONFIG_DIR": str(config),
              "PYTHONPATH": str(REPO_ROOT / "src"), "NO_COLOR": "1"},
     )
@@ -381,7 +381,7 @@ def test_status_warns_when_the_folders_are_one(tmp_path):
     , encoding="utf-8")
     result = subprocess.run(
         [BASH, str(REPO_ROOT / "bin" / "hypernix-t1"), "status"],
-        capture_output=True, text=True, timeout=120,
+        capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120,
         env={**os.environ, "HOME": str(tmp_path), "T1_CONFIG_DIR": str(config),
              "PYTHONPATH": str(REPO_ROOT / "src"), "NO_COLOR": "1"},
     )
@@ -394,7 +394,7 @@ def test_status_counts_the_links(tmp_path):
     (config / "models" / "downloaded.gguf").write_bytes(b"GGUF")   # a real file
     result = subprocess.run(
         [BASH, str(REPO_ROOT / "bin" / "hypernix-t1"), "status"],
-        capture_output=True, text=True, timeout=120,
+        capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120,
         env={**os.environ, "HOME": str(home), "T1_CONFIG_DIR": str(config),
              "PYTHONPATH": str(REPO_ROOT / "src"), "NO_COLOR": "1"},
     )

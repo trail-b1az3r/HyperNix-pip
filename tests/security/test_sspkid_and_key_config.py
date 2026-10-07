@@ -255,7 +255,7 @@ class TestResolvingWhatWasTyped:
 def _gkey(*argv: str, store: Path) -> subprocess.CompletedProcess:
     return subprocess.run(
         [sys.executable, "-m", "hypernix.security.gkey_cli", *argv],
-        capture_output=True, text=True, timeout=120,
+        capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120,
         env={
             **os.environ,
             "T1_KEYMASTER_DIR": str(store),

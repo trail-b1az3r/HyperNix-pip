@@ -84,7 +84,7 @@ def test_this_3_15_interpreter_was_built_with_them():
 
 def test_setup_py_uses_it():
     text = (ROOT / "setup.py").read_text(encoding="utf-8")
-    assert "_native_flags.py" in text and "extension_compile_args" in text
+    assert "_native_flags" in text and "extension_compile_args" in text
     assert 'cmdclass={"build_ext": _BuildExt}' in text
 
 
@@ -127,7 +127,7 @@ def test_a_setuptools_extension_is_built_with_them(tmp_path):
         "import importlib.util, sys\n"
         "from setuptools import Extension, setup\n"
         "from setuptools.command.build_ext import build_ext\n"
-        f"spec = importlib.util.spec_from_file_location('nf', {str(ROOT / 'src/hypernix/_native_flags.py')!r})\n"
+        f"spec = importlib.util.spec_from_file_location('nf', {str(ROOT / 'src/hypernix/_native_flags/__init__.py')!r})\n"
         "nf = importlib.util.module_from_spec(spec); spec.loader.exec_module(nf)\n"
         "class B(build_ext):\n"
         "    def build_extensions(self):\n"
@@ -138,7 +138,7 @@ def test_a_setuptools_extension_is_built_with_them(tmp_path):
         "setup(name='m', ext_modules=[Extension('m', ['m.c'], extra_compile_args=['-O3',"
         " '-fomit-frame-pointer'])], cmdclass={'build_ext': B})\n", encoding="utf-8")
     done = subprocess.run([sys.executable, "setup.py", "-v", "build_ext", "--inplace"],
-                          cwd=tmp_path, capture_output=True, text=True, check=False)
+                          cwd=tmp_path, capture_output=True, text=True, encoding="utf-8", errors="replace", check=False)
     assert done.returncode == 0, done.stdout[-3000:] + done.stderr[-3000:]
     compile_line = next(line for line in (done.stdout + done.stderr).splitlines()
                         if " -c " in line and "m.c" in line)

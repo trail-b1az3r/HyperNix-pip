@@ -24,6 +24,13 @@ SCRIPT = REPO_ROOT / "bin" / "hypernix-t1"
 
 pytestmark = pytest.mark.skipif(BASH is None, reason=NO_BASH_REASON)
 
+#: `start`, `start-foreground` and `restart` refuse on Git Bash, MSYS2 and
+#: Cygwin (see TestWindowsSaysWhatWorks): Python hands back a Windows pid
+#: and `kill -0` there understands only MSYS ones. Tests that start a
+#: server are POSIX tests.
+STARTS_A_SERVER = pytest.mark.skipif(
+    os.name == "nt", reason="hypernix-t1 refuses to start a server on native Windows; use WSL")
+
 
 def _named(path: Path, output: str) -> bool:
     """Whether *output* names *path*, in any spelling a shell gives it.
@@ -328,6 +335,7 @@ NEEDS_A_SERVER = pytest.mark.skipif(
 
 
 @NEEDS_A_SERVER
+@STARTS_A_SERVER
 class TestAgainstARealServer:
     def test_start_status_and_stop(self, configured):
         home, config = configured
@@ -573,6 +581,7 @@ class TestItIsActuallyInstalled:
         assert "recursive-include bin *" in manifest
 
 
+@STARTS_A_SERVER
 class TestTheInstallAdviceNamesTheInterpreter:
     """"It is installed already" — and it was, for a different python.
 
@@ -693,6 +702,7 @@ class TestTheInstallAdviceNamesTheInterpreter:
         assert self._start(config).returncode != 0
 
 
+@STARTS_A_SERVER
 class TestStartOutlivesTheShell:
     """`start` has to leave a server running, on every supported machine.
 
@@ -898,6 +908,7 @@ class TestLogoutDoesNotTakeTheServerWithIt:
         assert result.stdout.strip().endswith("QUIET"), result.stdout + result.stderr
 
 
+@STARTS_A_SERVER
 class TestStartDoesNotReportSomeoneElsesServer:
     """`start` said Running with a pid; `status` a second later said not
     running. From a screenshot, and reproduced exactly.
@@ -1094,6 +1105,7 @@ esac
 """
 
 
+@STARTS_A_SERVER
 class TestItKnowsAboutTheAutostartService:
     """`status` reported an eight-hour-old, perfectly healthy service as
     "not running", because it read only its own pid file.
@@ -1324,3 +1336,27 @@ class TestItKnowsWhatVersionItIs:
         )
         assert result.returncode == 0, result.stderr
         assert "hypernix-t1" in result.stdout
+
+
+class TestWindowsSaysWhatWorks:
+    """On a native Windows bash the commands that start a server refuse,
+    by name, and say what to do instead -- rather than starting one and
+    then reporting it as "exited during startup"."""
+
+    @pytest.mark.parametrize("command", ["start", "start-foreground", "restart"])
+    def test_it_refuses_and_names_the_alternatives(self, tmp_path, command):
+        result = run(command, home=tmp_path / "home", config=tmp_path / "cfg",
+                     extra_env={"HNX_T1_UNAME": "MINGW64_NT-10.0-26100"})
+        assert result.returncode == 2
+        assert "this is Windows" in result.output
+        assert "WSL" in result.output and "uvicorn hypernix.t1api.app:create_app" in result.output
+
+    def test_the_rest_still_work_there(self, tmp_path):
+        result = run("help", home=tmp_path / "home", config=tmp_path / "cfg",
+                     extra_env={"HNX_T1_UNAME": "MSYS_NT-10.0"})
+        assert result.returncode == 0 and "Start it in the background" in result.output
+
+    def test_posix_is_unaffected(self, tmp_path):
+        result = run("start", home=tmp_path / "home", config=tmp_path / "cfg",
+                     extra_env={"HNX_T1_UNAME": "Linux"})
+        assert "this is Windows" not in result.output

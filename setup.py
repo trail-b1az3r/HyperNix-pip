@@ -14,9 +14,9 @@ from setuptools.command.build_ext import build_ext
 
 
 def _native_flags():
-    """hypernix/_native_flags.py, loaded by path: the package is not
+    """hypernix/_native_flags/__init__.py, loaded by path: the package is not
     importable while it is being built."""
-    path = Path(__file__).resolve().parent / "src" / "hypernix" / "_native_flags.py"
+    path = Path(__file__).resolve().parent / "src" / "hypernix" / "_native_flags" / "__init__.py"
     spec = importlib.util.spec_from_file_location("_hypernix_native_flags", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)

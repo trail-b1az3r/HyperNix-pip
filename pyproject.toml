@@ -279,7 +279,7 @@ python_version = "3.12"
 files = [
     "src/hypernix/_compat",
     "src/hypernix/_profiling",
-    "src/hypernix/_native_flags.py",
+    "src/hypernix/_native_flags",
     "src/hypernix/hyperlink/runner_history.py",
     "src/hypernix/hyperlink/imagecodec.py",
     "src/hypernix/t1api/codebox.py",

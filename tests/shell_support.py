@@ -110,7 +110,7 @@ def _python3_works(entry: str) -> bool:
         result = subprocess.run(
             [BASH, "-c", f'PATH="{entry}:/usr/bin:/bin"; exec python3 -c '
                          f'"print(\'{marker}\')"'],
-            capture_output=True, text=True, timeout=60, check=False,
+            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60, check=False,
         )
     except (OSError, subprocess.SubprocessError):
         return False
