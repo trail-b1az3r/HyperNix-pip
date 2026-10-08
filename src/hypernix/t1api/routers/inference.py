@@ -59,7 +59,7 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
 
 from ...bridge.lmstudio import LMStudioBridge, LMStudioError
@@ -77,6 +77,7 @@ from ..deps import (
     get_runner,
     get_usage_meter,
 )
+from ..disconnect import while_listened_to
 from ..errors import T1APIError, T1ErrorCode
 from ..schemas import (
     InferenceBackend,
@@ -504,6 +505,7 @@ def inference_completions(
 @router.post("/chat/stream")
 def inference_chat_stream(
     payload: InferenceChatRequest,
+    request: Request,
     ctx: AuthContext = Depends(get_auth_context),
     config: T1APIConfig = Depends(get_config),
     registry=Depends(get_registry),
@@ -580,7 +582,8 @@ def inference_chat_stream(
         yield b"data: [DONE]\n\n"
 
     return StreamingResponse(
-        _events(),
+        # Stops reading the backend when the caller goes; see t1api.disconnect.
+        while_listened_to(request, _events(), what=f"{dispatch.name} at {bridge.base_url}"),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

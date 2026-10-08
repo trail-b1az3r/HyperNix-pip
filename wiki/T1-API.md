@@ -1592,6 +1592,15 @@ reports what can answer right now, so a client can tell "none configured"
 from "down". `POST /inference/tokens` sizes and prices a request without
 running it.
 
+A caller that leaves `/inference/chat/stream` (or
+`/bridge/lmstudio/chat/stream`) part-way stops the reply: T1 closes its
+stream to the backend at once, and llama.cpp and LM Studio stop
+generating. Before this, the `@app.middleware` stack hid the disconnect,
+so T1 read the backend to the end of the reply and the runner's slot
+stayed busy with it while later requests waited. The non-streaming
+`/inference/chat` cannot do this: a client that gives up on it leaves the
+backend writing the whole reply. Clients with a timeout should stream.
+
 ### Backends
 
 Two backends can answer, chosen per request for the model that is about to

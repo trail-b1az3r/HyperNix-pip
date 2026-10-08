@@ -3,6 +3,95 @@
   "source": "wiki/Changelog.md",
   "entries": [
     {
+      "version": "0.72.7.post1",
+      "key": "0.72.7.post1",
+      "aliases": [
+        "0.72.7-post1",
+        "0.72.7.post1"
+      ],
+      "kind": "post",
+      "heading": "0.72.7.post1 \u2014 patch 1 - T1 streams stop the model when the caller leaves, and llama-easy",
+      "date": "",
+      "title": "patch 1 - T1 streams stop the model when the caller leaves, and llama-easy",
+      "summary": "T1 streams stop the model when the caller leaves, and llama-easy",
+      "patch": 1,
+      "headline": "T1 streams stop the model when the caller leaves, and llama-easy",
+      "highlights": [
+        "llama-easy: make any Llama model faster in one line ([llama-easy](Llama-Easy.md)). A Hugging Face Hub kernel, ray0rf1re/llama-easy, with Triton RMSNorm, rotary position embeddings and the SwiGLU gate: get_kernel(\"ray0rf1re/llama-easy\", version=1\u2026",
+        "Fixed T1 streams leaving the backend writing a reply after the caller had gone. /inference/chat/stream and /bridge/lmstudio/chat/stream relay the backend's stream, but the @app.middleware(\"http\") stack hid a client's disconnect from them: Starlette stopped iterating the\u2026",
+        "Added tests/t1api/test_stream_disconnect.py, which runs T1 under uvicorn against a fake LM Studio and fails without the fix.",
+        "Documented in [T1 API \u2192 Governed inference](T1-API.md#governed-inference) that leaving a stream stops the reply and the non-streaming endpoint does not, so clients with a timeout should stream.",
+        "The hypernix.timer timers measure with time.perf_counter. They used time.monotonic, which on Windows before Python 3.13 advances in 15.6 ms ticks, so an IntervalTimer shorter than that could not be seen to elapse until the next tick.",
+        "hypernix gather reports what it left undone when it stops part-way through a level. URLs already taken off the queue for that level but not yet fetched were dropped, so a crawl stopped by --max-seconds or --max-pages could claim nothing was left, and one cut off by the page\u2026"
+      ],
+      "changes": [
+        {
+          "symbol": "\u0e4b\u08ed\u2b51",
+          "label": "major",
+          "category": "Added",
+          "text": "llama-easy: make any Llama model faster in one line ([llama-easy](Llama-Easy.md)). A Hugging Face Hub kernel, ray0rf1re/llama-easy, with Triton RMSNorm, rotary position embeddings and the SwiGLU gate: get_kernel(\"ray0rf1re/llama-easy\", version=1\u2026",
+          "details": [
+            "Also through Transformers' from_pretrained(..., kernel_config=...), and from hyperNix-pip as hypernix.hub_kernels.from_pretrained(id) / kernelize_llama(model), which trust that one repository only and never pull in kernels for other hooks.",
+            "native/llama-easy is the kernel-builder project (torch-noarch: one build per backend for every Torch and GPU generation). The ops are Torch custom ops, so torch.compile traces through them.",
+            ".github/workflows/llama-easy-kernel.yml tests every change and publishes from main with kernel-builder build-and-upload, once the account has kernel-creation access and the repository has an HF_TOKEN secret."
+          ]
+        },
+        {
+          "symbol": "\ud81a\udca5",
+          "label": "major fix",
+          "category": "Fixed",
+          "text": "Fixed T1 streams leaving the backend writing a reply after the caller had gone. /inference/chat/stream and /bridge/lmstudio/chat/stream relay the backend's stream, but the @app.middleware(\"http\") stack hid a client's disconnect from them: Starlette stopped iterating the\u2026",
+          "details": [
+            "t1api.disconnect.ClientGoneWatch, a pure ASGI middleware registered outside that stack, waits for http.disconnect after the request body and closes what the stream registered; while_listened_to() relays a stream and registers that closer.",
+            "A 60 s reply dropped by its caller after 3 s now stops 0.1 s later instead of running to the end.",
+            "HyperLink chat streams are unchanged: they finish a reply for the session when an app disconnects, and keep their own stop."
+          ]
+        },
+        {
+          "symbol": "\ud83e\uddea",
+          "label": "tests",
+          "category": "Fixed",
+          "text": "Added tests/t1api/test_stream_disconnect.py, which runs T1 under uvicorn against a fake LM Studio and fails without the fix.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udcda",
+          "label": "docs",
+          "category": "Fixed",
+          "text": "Documented in [T1 API \u2192 Governed inference](T1-API.md#governed-inference) that leaving a stream stops the reply and the non-streaming endpoint does not, so clients with a timeout should stream.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udc1b",
+          "label": "fix",
+          "category": "Fixed",
+          "text": "The hypernix.timer timers measure with time.perf_counter. They used time.monotonic, which on Windows before Python 3.13 advances in 15.6 ms ticks, so an IntervalTimer shorter than that could not be seen to elapse until the next tick.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udc1b",
+          "label": "fix",
+          "category": "Fixed",
+          "text": "hypernix gather reports what it left undone when it stops part-way through a level. URLs already taken off the queue for that level but not yet fetched were dropped, so a crawl stopped by --max-seconds or --max-pages could claim nothing was left, and one cut off by the page\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udce6",
+          "label": "packaging",
+          "category": "Dependencies and Packaging",
+          "text": "lts/0.72.6 branch: the source of 0.72.6.post4 -- exactly the commit tagged v0.72.6.post4 -- the last release for Python 3.10 and 3.11 and for torch 1.13 on older Macs.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udd27",
+          "label": "internal",
+          "category": "Site Changes",
+          "text": "Pull requests no longer conflict over generated docs data. docs/public/v1 is rewritten on main every hour, so any pull request that also regenerated it conflicted on every file. .github/workflows/resolve-docs-conflicts.yml runs when a pull request is opened or updated and after\u2026",
+          "details": []
+        }
+      ]
+    },
+    {
       "version": "0.72.7",
       "key": "0.72.7",
       "aliases": [
@@ -4113,15 +4202,5 @@
       "changes": []
     }
   ],
-  "unreleased": {
-    "heading": "Unreleased",
-    "summary": "llama-easy: make any Llama model faster in one line ([llama-easy](Llama-Easy.md)). A Hugging Face Hub kernel, ray0rf1re/llama-easy, with Triton RMSNorm, rotary position embeddings and the SwiGLU gate: get_kernel(\"ray0rf1re/llama-easy\", version=1\u2026 \u00b7 The hypernix.timer timers measure with time.perf_counter. They used time.monotonic, which on Windows before Python 3.13 advances in 15.6 ms ticks, so an IntervalTimer shorter than that could not be seen to elapse until the next tick. \u00b7 hypernix gather reports what it left undone when it stops part-way through a level. URLs already taken off the queue for that level but not yet fetched were dropped, so a crawl stopped by --max-seconds or --max-pages could claim nothing was left, and one cut off by the page\u2026",
-    "highlights": [
-      "llama-easy: make any Llama model faster in one line ([llama-easy](Llama-Easy.md)). A Hugging Face Hub kernel, ray0rf1re/llama-easy, with Triton RMSNorm, rotary position embeddings and the SwiGLU gate: get_kernel(\"ray0rf1re/llama-easy\", version=1\u2026",
-      "The hypernix.timer timers measure with time.perf_counter. They used time.monotonic, which on Windows before Python 3.13 advances in 15.6 ms ticks, so an IntervalTimer shorter than that could not be seen to elapse until the next tick.",
-      "hypernix gather reports what it left undone when it stops part-way through a level. URLs already taken off the queue for that level but not yet fetched were dropped, so a crawl stopped by --max-seconds or --max-pages could claim nothing was left, and one cut off by the page\u2026",
-      "lts/0.72.6 branch: the source of 0.72.6.post4 -- exactly the commit tagged v0.72.6.post4 -- the last release for Python 3.10 and 3.11 and for torch 1.13 on older Macs.",
-      "Pull requests no longer conflict over generated docs data. docs/public/v1 is rewritten on main every hour, so any pull request that also regenerated it conflicted on every file. .github/workflows/resolve-docs-conflicts.yml runs when a pull request is opened or updated and after\u2026"
-    ]
-  }
+  "unreleased": null
 }

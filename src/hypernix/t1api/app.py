@@ -87,6 +87,7 @@ from .config import T1APIConfig
 from .cost import CostCalculator
 from .db import SQLBackend, make_backend
 from .deploy import DeploymentCoordinator
+from .disconnect import ClientGoneWatch
 from .errors import T1APIError, T1ErrorCode
 from .events import EventBus
 from .jobs import JobQueue
@@ -596,6 +597,10 @@ def create_app(
                 "Strict-Transport-Security", "max-age=31536000; includeSubDomains"
             )
         return response
+
+    # Outside every @app.middleware("http") layer above, which hide a
+    # client's disconnect from streaming endpoints (see t1api.disconnect).
+    app.add_middleware(ClientGoneWatch)
 
     def _error_response(request: Request, exc: T1APIError) -> JSONResponse:
         """Render a T1APIError as the documented JSON envelope.
