@@ -1,0 +1,51 @@
+name: notify moded-llama
+
+# Tells hypernix-ai/moded-llama to rebuild when native/ggml-hnx changes on
+# main. That repository holds llama.cpp patched with this folder, and
+# publishes CPU and CUDA builds of it as releases; its hypernix-build
+# workflow does the work. This is only the doorbell.
+#
+# Needs, once: a repository secret MODED_LLAMA_DISPATCH_TOKEN -- a
+# fine-grained personal access token with access to hypernix-ai/moded-llama
+# and the "Contents: read and write" permission (that is what GitHub asks
+# for to send a repository_dispatch). The built-in GITHUB_TOKEN cannot do it:
+# it has no access to other repositories.
+#
+# Without the secret nothing breaks: moded-llama also checks this folder
+# every six hours and rebuilds if it changed, so a missing token costs up to
+# six hours, not a missed build.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "native/ggml-hnx/**"
+      - ".github/workflows/notify-moded-llama.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: repository_dispatch to hypernix-ai/moded-llama
+        env:
+          TOKEN: ${{ secrets.MODED_LLAMA_DISPATCH_TOKEN }}
+          SHA: ${{ github.sha }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "::notice::MODED_LLAMA_DISPATCH_TOKEN is not set; moded-llama will notice this change within six hours on its own."
+            exit 0
+          fi
+          code="$(curl -sS -o response.txt -w '%{http_code}' -X POST \
+            -H "Authorization: Bearer $TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/hypernix-ai/moded-llama/dispatches \
+            -d "{\"event_type\":\"hypernix-native-updated\",\"client_payload\":{\"sha\":\"$SHA\"}}")"
+          if [ "$code" != "204" ]; then
+            echo "::error::GitHub answered $code: $(cat response.txt)"
+            exit 1
+          fi
+          echo "moded-llama notified for $SHA"
