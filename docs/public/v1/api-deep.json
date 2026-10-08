@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-api-deep",
   "generated_at": "2026-09-20T21:20:57Z",
-  "commit": "95788c3b9222b95a52c80722fa01e68980dfc567",
+  "commit": "8df5003c3d880e5f6451e31c6165aaad8d467ea4",
   "history_available": true,
   "source_root": "src/hypernix",
   "modules": [
@@ -17,6 +17,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "a1f0806d",
+          "date": "2026-10-08",
+          "author": "Claude",
+          "subject": "release: 0.72.7.post1 -- its own changelog entry and version",
+          "api_changes": []
+        },
         {
           "sha": "bfdd3dff",
           "date": "2026-10-07",
@@ -64,13 +71,6 @@
           "date": "2026-09-26",
           "author": "Claude",
           "subject": "0.72.6.post1: version, changelog and docs; simpler path guards",
-          "api_changes": []
-        },
-        {
-          "sha": "6abb9484",
-          "date": "2026-09-24",
-          "author": "Claude",
-          "subject": "0.72.6: a release its own tests would reject cannot be started",
           "api_changes": []
         }
       ]
@@ -42917,14 +42917,14 @@
     {
       "module": "hypernix.t1api.app",
       "source": "src/hypernix/t1api/app.py",
-      "line_count": 698,
+      "line_count": 702,
       "summary": "t1api.app \u2014 ``create_app()``, the T1 API's FastAPI factory.",
       "api": [
         {
           "kind": "function",
           "name": "create_app",
           "signature": "def create_app*, config: T1APIConfig | None=None, keymaster: Keymaster | None=None, gatekeeper: Gatekeeper | None=None, registry: ModelRegistry | None=None, usage_store: UsageStore | None=None, routing_table: RoutingTable | None=None, server_registry: ServerRegistry | None=None, module_registry: ModuleRegistry | None=None, job_queue: JobQueue | None=None, event_bus: EventBus | None=None, billing_ledger: BillingLedger | None=None, backend: SQLBackend | None=None, audit_log: AuditLog | None=None, network_policy: NetworkPolicy | None=None, rate_limiter: RateLimiter | None=None, key_directory: KeyDirectory | None=None, transport: ModuleTransport | None=None, device_registry: DeviceRegistry | None=None, session_store: ChatSessionStore | None=None, attachment_store: AttachmentStore | None=None, sync_store: SyncStore | None=None, notification_store: NotificationStore | None=None, search_index: SearchIndex | None=None, auth_history: AuthHistory | None=None, backup_store: BackupStore | None=None, server_key_registry: ServerKeyRegistry | None=None, accounts: AccountStore | None=None, webauth: WebAuthSettings | None=None, mount_prefix: str | None=None, validate_production: bool | None=None -> FastAPI",
-          "line": 217,
+          "line": 218,
           "doc": "Build a fully-wired T1 API FastAPI app."
         }
       ],
@@ -42941,6 +42941,13 @@
         }
       ],
       "changes": [
+        {
+          "sha": "91cd2708",
+          "date": "2026-10-08",
+          "author": "Claude",
+          "subject": "t1api: a caller leaving a stream stops the backend's reply",
+          "api_changes": []
+        },
         {
           "sha": "999d2e1b",
           "date": "2026-09-28",
@@ -42993,13 +43000,6 @@
           "date": "2026-09-16",
           "author": "Claude",
           "subject": "t1: run a model without LM Studio, and switch it from the API",
-          "api_changes": []
-        },
-        {
-          "sha": "6c58a994",
-          "date": "2026-09-16",
-          "author": "Claude",
-          "subject": "Fix the CI build break, and ship an IPA that can run a model",
           "api_changes": []
         }
       ]
@@ -45717,6 +45717,81 @@
             {
               "kind": "added",
               "text": "def get_training_monitor(request: Request):"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "module": "hypernix.t1api.disconnect",
+      "source": "src/hypernix/t1api/disconnect.py",
+      "line_count": 101,
+      "summary": "Knowing when a streaming caller has gone.",
+      "api": [
+        {
+          "kind": "class",
+          "name": "ClientGoneWatch",
+          "signature": "class ClientGoneWatch",
+          "line": 34,
+          "doc": "Sets ``scope[SCOPE_KEY]`` when the client disconnects.",
+          "methods": []
+        },
+        {
+          "kind": "function",
+          "name": "client_gone",
+          "signature": "def client_gonerequest: Any -> bool",
+          "line": 83,
+          "doc": ""
+        },
+        {
+          "kind": "function",
+          "name": "while_listened_to",
+          "signature": "async def while_listened_torequest: Any, events: Iterator[bytes], *, what: str='' -> AsyncIterator[bytes]",
+          "line": 106,
+          "doc": "Relay *events* (a sync generator, run off the event loop) until it ends or the caller has gone; either way it is closed, and with it the backend stream it was reading."
+        }
+      ],
+      "errors": [],
+      "deprecations": [],
+      "required_modules": [],
+      "changes": [
+        {
+          "sha": "91cd2708",
+          "date": "2026-10-08",
+          "author": "Claude",
+          "subject": "t1api: a caller leaving a stream stops the backend's reply",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class ClientGoneWatch:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, app: Any) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "async def __call__(self, scope: dict, receive: Any, send: Any) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "async def tracked_receive() -> dict:"
+            },
+            {
+              "kind": "added",
+              "text": "async def watch() -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def client_gone(request: Any) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def _close(events: Iterator[bytes], what: str) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "async def while_listened_to(request: Any, events: Iterator[bytes], *, what: str = \"\") -> AsyncIterator[bytes]:"
             }
           ]
         }
@@ -50011,35 +50086,35 @@
     {
       "module": "hypernix.t1api.routers.bridge",
       "source": "src/hypernix/t1api/routers/bridge.py",
-      "line_count": 276,
+      "line_count": 279,
       "summary": "``/bridge/lmstudio`` \u2014 the T1 API's window onto an LM Studio server.",
       "api": [
         {
           "kind": "function",
           "name": "bridge_status",
           "signature": "def bridge_statusrequest: Request, discover_hosts: bool=Query(default=False, alias='discover', description='Also sweep localhost and the tailnet for other LM Studio servers (admin).'), ctx: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> BridgeStatusResponse",
-          "line": 111,
+          "line": 112,
           "doc": "Is LM Studio reachable, and is anything loaded in it?"
         },
         {
           "kind": "function",
           "name": "bridge_models",
           "signature": "def bridge_modelsbase_url: str | None=Query(default=None, description='Admin-only per-request override'), ctx: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> BridgeModelsResponse",
-          "line": 160,
+          "line": 161,
           "doc": "Everything LM Studio has, with the loaded ones marked."
         },
         {
           "kind": "function",
           "name": "bridge_chat",
           "signature": "def bridge_chatpayload: BridgeChatRequest, ctx: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> BridgeChatResponse",
-          "line": 189,
+          "line": 190,
           "doc": "One completion from LM Studio, unwrapped into a flat response."
         },
         {
           "kind": "function",
           "name": "bridge_chat_stream",
-          "signature": "def bridge_chat_streampayload: BridgeChatRequest, ctx: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> StreamingResponse",
-          "line": 239,
+          "signature": "def bridge_chat_streampayload: BridgeChatRequest, request: Request, ctx: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> StreamingResponse",
+          "line": 240,
           "doc": "Server-sent events, relayed from LM Studio essentially verbatim."
         }
       ],
@@ -50055,6 +50130,13 @@
         }
       ],
       "changes": [
+        {
+          "sha": "91cd2708",
+          "date": "2026-10-08",
+          "author": "Claude",
+          "subject": "t1api: a caller leaving a stream stops the backend's reply",
+          "api_changes": []
+        },
         {
           "sha": "c7eabfd7",
           "date": "2026-08-23",
@@ -51165,49 +51247,49 @@
     {
       "module": "hypernix.t1api.routers.inference",
       "source": "src/hypernix/t1api/routers/inference.py",
-      "line_count": 613,
+      "line_count": 616,
       "summary": "``/inference`` \u2014 the governed inference surface.",
       "api": [
         {
           "kind": "function",
           "name": "list_backends",
           "signature": "def list_backendsctx: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id), runner=Depends(get_runner) -> InferenceBackendsResponse",
-          "line": 382,
+          "line": 383,
           "doc": "What this server can actually dispatch to, and whether it answers."
         },
         {
           "kind": "function",
           "name": "inference_chat",
           "signature": "def inference_chatpayload: InferenceChatRequest, ctx: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), registry=Depends(get_registry), meter=Depends(get_usage_meter), engine=Depends(get_routing_engine), keys=Depends(get_key_directory), costs=Depends(get_cost_calculator), request_id: str=Depends(get_request_id), runner=Depends(get_runner) -> InferenceResponse",
-          "line": 447,
+          "line": 448,
           "doc": "A chat completion, through the registry, the cascade and the meter."
         },
         {
           "kind": "function",
           "name": "inference_completions",
           "signature": "def inference_completionspayload: InferenceCompletionRequest, ctx: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), registry=Depends(get_registry), meter=Depends(get_usage_meter), engine=Depends(get_routing_engine), keys=Depends(get_key_directory), costs=Depends(get_cost_calculator), request_id: str=Depends(get_request_id), runner=Depends(get_runner) -> InferenceResponse",
-          "line": 472,
+          "line": 473,
           "doc": "A plain prompt, sent as a single user turn."
         },
         {
           "kind": "function",
           "name": "inference_chat_stream",
-          "signature": "def inference_chat_streampayload: InferenceChatRequest, ctx: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), registry=Depends(get_registry), meter=Depends(get_usage_meter), engine=Depends(get_routing_engine), keys=Depends(get_key_directory), request_id: str=Depends(get_request_id), runner=Depends(get_runner) -> StreamingResponse",
-          "line": 505,
+          "signature": "def inference_chat_streampayload: InferenceChatRequest, request: Request, ctx: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), registry=Depends(get_registry), meter=Depends(get_usage_meter), engine=Depends(get_routing_engine), keys=Depends(get_key_directory), request_id: str=Depends(get_request_id), runner=Depends(get_runner) -> StreamingResponse",
+          "line": 506,
           "doc": "The same governed path, streamed."
         },
         {
           "kind": "function",
           "name": "inference_embeddings",
           "signature": "def inference_embeddingspayload: InferenceEmbeddingsRequest, ctx: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), registry=Depends(get_registry), meter=Depends(get_usage_meter), keys=Depends(get_key_directory), request_id: str=Depends(get_request_id), runner=Depends(get_runner) -> InferenceEmbeddingsResponse",
-          "line": 594,
+          "line": 597,
           "doc": "Embeddings, under the same registry and quota rules as generation."
         },
         {
           "kind": "function",
           "name": "inference_token_count",
           "signature": "def inference_token_countpayload: InferenceTokenCountRequest, ctx: AuthContext=Depends(get_auth_context), registry=Depends(get_registry), meter=Depends(get_usage_meter), costs=Depends(get_cost_calculator), request_id: str=Depends(get_request_id) -> InferenceTokenCountResponse",
-          "line": 654,
+          "line": 657,
           "doc": "Size a request before committing to it."
         }
       ],
@@ -51223,6 +51305,13 @@
         }
       ],
       "changes": [
+        {
+          "sha": "91cd2708",
+          "date": "2026-10-08",
+          "author": "Claude",
+          "subject": "t1api: a caller leaving a stream stops the backend's reply",
+          "api_changes": []
+        },
         {
           "sha": "d595eb4a",
           "date": "2026-10-06",
