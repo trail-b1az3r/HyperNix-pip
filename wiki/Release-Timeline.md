@@ -1072,3 +1072,26 @@ timeline
         : b577f6b8 - chore- update JSON stats (scheduled)
 ```
 
+## Release v0.72.7.post1 (2026-10-08)
+
+```mermaid
+timeline
+    title Release v0.72.7.post1 Commits
+    0.72.7.post1
+        : c351919a - docs data- restore the generated files; add only the 0.72.7.post1 entry
+        : a1f0806d - release- 0.72.7.post1 -- its own changelog entry and version
+        : 0d47f715 - wiki/Changelog- T1 streams stop the backend when the caller leaves
+        : 42ae0215 - wiki- a caller leaving an inference stream stops the reply
+        : 91cd2708 - t1api- a caller leaving a stream stops the backend's reply
+        : 8a990892 - build(deps)- bump source-map-js from 1.2.1 to 1.2.2 in /docs
+        : e69686ed - chore- update JSON stats (scheduled)
+        : 4e2b9951 - Changelog- what 0.72.7 did not ship goes under Unreleased; lts/0.72.6
+        : 151a354a - Auto-resolve docs/public/v1 merge conflicts on pull requests
+        : 0b752ed8 - chore- refresh generated docs data and release summaries
+        : 12cbbe39 - chore- refresh generated docs data and release summaries
+        : d13f3063 - llama-easy- rename from llama-essir, and make it one call to use
+        : bfdd3dff - llama-essir- a Hugging Face Hub kernel for Llama models, auto-published
+        : 22ae2e3f - Auto-update README header (hourly)
+        : 86d95a05 - wiki/Python-3.15- what was actually tested
+```
+
