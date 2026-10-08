@@ -59,6 +59,29 @@ Historical wording and technical detail are retained during format normalization
 
 ### Fixed
 
+𖢥 Fixed T1 streams leaving the backend writing a reply after the caller had gone.
+  `/inference/chat/stream` and `/bridge/lmstudio/chat/stream` relay the
+  backend's stream, but the `@app.middleware("http")` stack hid a client's
+  disconnect from them: Starlette stopped iterating the response without
+  closing it, and `request.is_disconnected()` never turned true. The
+  backend stream stayed open, so llama.cpp (or LM Studio) kept writing the
+  whole reply in its one slot and every later request waited — the runner
+  answered `/v1/models` but no chat. Found benchmarking a small model
+  through T1 with RSOSTB, where one timed-out request held the runner.
+  - `t1api.disconnect.ClientGoneWatch`, a pure ASGI middleware registered
+    outside that stack, waits for `http.disconnect` after the request body
+    and closes what the stream registered; `while_listened_to()` relays a
+    stream and registers that closer.
+  - A 60 s reply dropped by its caller after 3 s now stops 0.1 s later
+    instead of running to the end.
+  - HyperLink chat streams are unchanged: they finish a reply for the
+    session when an app disconnects, and keep their own stop.
+🧪 Added `tests/t1api/test_stream_disconnect.py`, which runs T1 under uvicorn
+  against a fake LM Studio and fails without the fix.
+📚 Documented in [T1 API → Governed inference](T1-API.md#governed-inference)
+  that leaving a stream stops the reply and the non-streaming endpoint does
+  not, so clients with a timeout should stream.
+
 🐛 The `hypernix.timer` timers measure with `time.perf_counter`. They used
   `time.monotonic`, which on Windows before Python 3.13 advances in
   ~15.6 ms ticks, so an `IntervalTimer` shorter than that could not be
