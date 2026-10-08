@@ -34,7 +34,7 @@ Historical wording and technical detail are retained during format normalization
 
 > Format normalized to `wiki/Changelog-guide.md`; release wording and historical detail are preserved.
 
-## Unreleased
+## 0.72.7.post1 — patch 1 - T1 streams stop the model when the caller leaves, and llama-easy
 
 ### Added
 

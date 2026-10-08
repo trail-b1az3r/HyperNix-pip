@@ -23,13 +23,13 @@ import pytest
 pytest.importorskip("fastapi")
 uvicorn = pytest.importorskip("uvicorn")
 
+from test_inference_endpoints import _model  # noqa: E402
+
 from hypernix.security.gatekeeper import Gatekeeper  # noqa: E402
 from hypernix.security.keymaster import Keymaster, KeyScope, KeyType  # noqa: E402
 from hypernix.t1api.app import create_app  # noqa: E402
 from hypernix.t1api.config import T1APIConfig  # noqa: E402
 from hypernix.t1api.registry import ModelRegistry  # noqa: E402
-
-from test_inference_endpoints import _model  # noqa: E402
 
 PIECES = 400          # a 20 s reply at one piece per 50 ms
 
