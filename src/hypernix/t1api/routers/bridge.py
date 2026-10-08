@@ -31,6 +31,7 @@ from ...bridge.lmstudio import LMStudioBridge, LMStudioError, discover
 from ..auth import AuthContext
 from ..config import T1APIConfig
 from ..deps import get_auth_context, get_config, get_request_id
+from ..disconnect import while_listened_to
 from ..errors import T1APIError, T1ErrorCode
 from ..schemas import (
     BridgeChatRequest,
@@ -238,6 +239,7 @@ def bridge_chat(
 @router.post("/chat/stream")
 def bridge_chat_stream(
     payload: BridgeChatRequest,
+    request: Request,
     ctx: AuthContext = Depends(get_auth_context),
     config: T1APIConfig = Depends(get_config),
     request_id: str = Depends(get_request_id),
@@ -280,7 +282,8 @@ def bridge_chat_stream(
         yield b"data: [DONE]\n\n"
 
     return StreamingResponse(
-        _events(),
+        # Stops reading LM Studio when the caller goes; see t1api.disconnect.
+        while_listened_to(request, _events(), what=f"LM Studio at {bridge.base_url}"),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
