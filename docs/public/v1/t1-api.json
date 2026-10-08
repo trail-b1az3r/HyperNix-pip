@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-t1-api",
   "generated_at": "2026-10-07T05:12:17Z",
-  "commit": "0d47f715b93401ff177cc088b0311892fad01cbe",
+  "commit": "95788c3b9222b95a52c80722fa01e68980dfc567",
   "history_available": true,
   "server_extra": "pip install 'hypernix[t1api]'",
   "client_install": "pip install hypernix",
@@ -27,10 +27,38 @@
       ],
       "changes": [
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "c7eabfd7",
+          "date": "2026-08-23",
+          "author": "Claude",
+          "subject": "T1 v1.0.26.8.0.1: the LM Studio bridge and HyperLink",
+          "api_changes": []
+        },
+        {
+          "sha": "879b000b",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5rc2 \u2014 T1 API Beta 4, hyped-pro, and PATH setup",
+          "api_changes": []
+        },
+        {
+          "sha": "604a8342",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
+          "api_changes": []
+        },
+        {
+          "sha": "604ec86f",
+          "date": "2026-08-20",
+          "author": "minerofthesoal",
+          "subject": "b2",
+          "api_changes": []
+        },
+        {
+          "sha": "f836d298",
+          "date": "2026-08-18",
+          "author": "minerofthesoal",
+          "subject": "0.71.5b1-part one of four for the api",
           "api_changes": [
             {
               "kind": "added",
@@ -276,10 +304,10 @@
           "api_changes": []
         },
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "2324f0fa",
+          "date": "2026-09-15",
+          "author": "Mason",
+          "subject": "t1 v1.0.26.9.2.3: sign up for a key without already having one",
           "api_changes": [
             {
               "kind": "added",
@@ -413,10 +441,17 @@
       ],
       "changes": [
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "a97d518a",
+          "date": "2026-09-15",
+          "author": "Claude",
+          "subject": "docs: a README that describes this release, and two claims made true",
+          "api_changes": []
+        },
+        {
+          "sha": "2324f0fa",
+          "date": "2026-09-15",
+          "author": "Mason",
+          "subject": "t1 v1.0.26.9.2.3: sign up for a key without already having one",
           "api_changes": [
             {
               "kind": "added",
@@ -481,14 +516,14 @@
     {
       "module": "hypernix.t1api.app",
       "source": "src/hypernix/t1api/app.py",
-      "line_count": 702,
+      "line_count": 698,
       "summary": "t1api.app \u2014 ``create_app()``, the T1 API's FastAPI factory.",
       "api": [
         {
           "kind": "function",
           "name": "create_app",
           "signature": "def create_app*, config: T1APIConfig | None=None, keymaster: Keymaster | None=None, gatekeeper: Gatekeeper | None=None, registry: ModelRegistry | None=None, usage_store: UsageStore | None=None, routing_table: RoutingTable | None=None, server_registry: ServerRegistry | None=None, module_registry: ModuleRegistry | None=None, job_queue: JobQueue | None=None, event_bus: EventBus | None=None, billing_ledger: BillingLedger | None=None, backend: SQLBackend | None=None, audit_log: AuditLog | None=None, network_policy: NetworkPolicy | None=None, rate_limiter: RateLimiter | None=None, key_directory: KeyDirectory | None=None, transport: ModuleTransport | None=None, device_registry: DeviceRegistry | None=None, session_store: ChatSessionStore | None=None, attachment_store: AttachmentStore | None=None, sync_store: SyncStore | None=None, notification_store: NotificationStore | None=None, search_index: SearchIndex | None=None, auth_history: AuthHistory | None=None, backup_store: BackupStore | None=None, server_key_registry: ServerKeyRegistry | None=None, accounts: AccountStore | None=None, webauth: WebAuthSettings | None=None, mount_prefix: str | None=None, validate_production: bool | None=None -> FastAPI",
-          "line": 218,
+          "line": 217,
           "doc": "Build a fully-wired T1 API FastAPI app."
         }
       ],
@@ -505,13 +540,6 @@
         }
       ],
       "changes": [
-        {
-          "sha": "91cd2708",
-          "date": "2026-10-08",
-          "author": "Claude",
-          "subject": "t1api: a caller leaving a stream stops the backend's reply",
-          "api_changes": []
-        },
         {
           "sha": "999d2e1b",
           "date": "2026-09-28",
@@ -534,72 +562,44 @@
           "api_changes": []
         },
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "0068bbf2",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "T1: conceal mode with 36-hour retention, and a public /server/info",
           "api_changes": [
             {
               "kind": "added",
-              "text": "def _announce_bootstrap_key(key: Any, cfg: T1APIConfig) -> None:"
-            },
-            {
-              "kind": "added",
-              "text": "def create_app("
-            },
-            {
-              "kind": "added",
               "text": "async def _lifespan(lifespan_app):"
-            },
-            {
-              "kind": "added",
-              "text": "async def _rate_limit(request: Request, call_next):"
-            },
-            {
-              "kind": "added",
-              "text": "async def _mtls(request: Request, call_next):"
-            },
-            {
-              "kind": "added",
-              "text": "async def _network_policy(request: Request, call_next):"
-            },
-            {
-              "kind": "added",
-              "text": "async def _request_id_and_timing(request: Request, call_next):"
-            },
-            {
-              "kind": "added",
-              "text": "def _error_response(request: Request, exc: T1APIError) -> JSONResponse:"
-            },
-            {
-              "kind": "added",
-              "text": "async def _t1_error_handler(request: Request, exc: T1APIError) -> JSONResponse:"
-            },
-            {
-              "kind": "added",
-              "text": "def _make_hf_download_handler(cfg: T1APIConfig):"
-            },
-            {
-              "kind": "added",
-              "text": "def handler(payload: dict, cancel_event: object = None) -> dict:"
-            },
-            {
-              "kind": "added",
-              "text": "def _check_cancelled(_progress) -> None:"
-            },
-            {
-              "kind": "added",
-              "text": "def _unprefixed(path: str, prefix: str) -> str:"
-            },
-            {
-              "kind": "added",
-              "text": "def _credential_fingerprint(request: Request) -> str:"
-            },
-            {
-              "kind": "added",
-              "text": "def _transport_cert(request: Request) -> dict | None:"
             }
           ]
+        },
+        {
+          "sha": "589ebbdc",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "0.72.6 pt3: elements, error codes, and the optimizers that never trained",
+          "api_changes": []
+        },
+        {
+          "sha": "faee5534",
+          "date": "2026-09-16",
+          "author": "Claude",
+          "subject": "A HyperNix model runner, settings, memory and tool calling",
+          "api_changes": []
+        },
+        {
+          "sha": "cc94bf5a",
+          "date": "2026-09-16",
+          "author": "Claude",
+          "subject": "t1: run a model without LM Studio, and switch it from the API",
+          "api_changes": []
+        },
+        {
+          "sha": "6c58a994",
+          "date": "2026-09-16",
+          "author": "Claude",
+          "subject": "Fix the CI build break, and ship an IPA that can run a model",
+          "api_changes": []
         }
       ]
     },
@@ -712,10 +712,24 @@
           "api_changes": []
         },
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "0068bbf2",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "T1: conceal mode with 36-hour retention, and a public /server/info",
+          "api_changes": []
+        },
+        {
+          "sha": "7efe5548",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "Fix the CI failures on macOS and Windows",
+          "api_changes": []
+        },
+        {
+          "sha": "604a8342",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
           "api_changes": [
             {
               "kind": "added",
@@ -909,31 +923,58 @@
           "api_changes": []
         },
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "462b479d",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "v2.1 (T2C) keys, sealed with Rotorvault",
           "api_changes": [
             {
               "kind": "added",
-              "text": "def _b64url_encode(raw: bytes) -> str:"
+              "text": "def t2c(self):"
             },
             {
               "kind": "added",
-              "text": "def _b64url_decode(s: str) -> bytes:"
-            },
+              "text": "def _validate_t2c(self, key_str: str) -> AuthContext:"
+            }
+          ]
+        },
+        {
+          "sha": "55378e12",
+          "date": "2026-09-01",
+          "author": "Claude",
+          "subject": "T2P billing keys, and a server's right to refuse them",
+          "api_changes": []
+        },
+        {
+          "sha": "8af94c41",
+          "date": "2026-08-27",
+          "author": "Claude",
+          "subject": "T2S keys: fix the refusal, and let the phone actually enter one",
+          "api_changes": [
             {
               "kind": "added",
-              "text": "class AuthContext:"
-            },
+              "text": "def _authenticate_with_reload(self, key_str: str) -> AuthContext:"
+            }
+          ]
+        },
+        {
+          "sha": "56a9e0b3",
+          "date": "2026-08-26",
+          "author": "Claude",
+          "subject": "install-t1.sh: an interactive installer, and two bugs it exposed",
+          "api_changes": [
             {
               "kind": "added",
-              "text": "def key_id(self) -> str:"
-            },
-            {
-              "kind": "added",
-              "text": "def is_admin(self) -> bool:"
-            },
+              "text": "def _accepted_families(self) -> list[str]:"
+            }
+          ]
+        },
+        {
+          "sha": "370119db",
+          "date": "2026-08-26",
+          "author": "Claude",
+          "subject": "T1 v1.0.26.8.1.0: T2 recognition, auth undo/redo, and backups",
+          "api_changes": [
             {
               "kind": "added",
               "text": "def via_t2(self) -> bool:"
@@ -944,69 +985,32 @@
             },
             {
               "kind": "added",
-              "text": "class ScopedToken:"
-            },
-            {
-              "kind": "added",
-              "text": "class T1AuthService:"
-            },
-            {
-              "kind": "added",
-              "text": "def __init__("
-            },
+              "text": "def _validate_t2(self, key_str: str) -> AuthContext:"
+            }
+          ]
+        },
+        {
+          "sha": "7a624da3",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3: two bugs found by running against a real server",
+          "api_changes": [
             {
               "kind": "added",
               "text": "def _maybe_reload_keys(self) -> bool:"
             },
             {
               "kind": "added",
-              "text": "def t2c(self):"
-            },
-            {
-              "kind": "added",
-              "text": "def _validate_t2c(self, key_str: str) -> AuthContext:"
-            },
-            {
-              "kind": "added",
-              "text": "def _accepted_families(self) -> list[str]:"
-            },
-            {
-              "kind": "added",
-              "text": "def validate_key(self, key_str: str) -> AuthContext:"
-            },
-            {
-              "kind": "added",
-              "text": "def _authenticate_with_reload(self, key_str: str) -> AuthContext:"
-            },
-            {
-              "kind": "added",
-              "text": "def _validate_t2(self, key_str: str) -> AuthContext:"
-            },
-            {
-              "kind": "added",
               "text": "def _validate_uncached(self, key_str: str) -> AuthContext:"
-            },
-            {
-              "kind": "added",
-              "text": "def issue_scoped_token("
-            },
-            {
-              "kind": "added",
-              "text": "def verify_scoped_token(self, token: str) -> AuthContext:"
-            },
-            {
-              "kind": "added",
-              "text": "def check_quota(self, key_id: str, *, endpoint: str = \"\", model: str = \"\", tokens_requested: int = 0) -> None:"
-            },
-            {
-              "kind": "added",
-              "text": "def rotate_own_key(self, key_id: str) -> KeyMeta:"
-            },
-            {
-              "kind": "added",
-              "text": "def admin_rotate(self, *, requester: AuthContext, target_key_id: str, promote_to_admin: bool = False) -> KeyMeta:"
             }
           ]
+        },
+        {
+          "sha": "8c25846c",
+          "date": "2026-08-21",
+          "author": "Claude",
+          "subject": "Group hypernix modules into category packages",
+          "api_changes": []
         }
       ]
     },
@@ -1118,10 +1122,10 @@
           "api_changes": []
         },
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "370119db",
+          "date": "2026-08-26",
+          "author": "Claude",
+          "subject": "T1 v1.0.26.8.1.0: T2 recognition, auth undo/redo, and backups",
           "api_changes": [
             {
               "kind": "added",
@@ -1311,10 +1315,10 @@
       ],
       "changes": [
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "370119db",
+          "date": "2026-08-26",
+          "author": "Claude",
+          "subject": "T1 v1.0.26.8.1.0: T2 recognition, auth undo/redo, and backups",
           "api_changes": [
             {
               "kind": "added",
@@ -1500,10 +1504,17 @@
           "api_changes": []
         },
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "bccc73ec",
+          "date": "2026-08-20",
+          "author": "minerofthesoal",
+          "subject": "fixes",
+          "api_changes": []
+        },
+        {
+          "sha": "604ec86f",
+          "date": "2026-08-20",
+          "author": "minerofthesoal",
+          "subject": "b2",
           "api_changes": [
             {
               "kind": "added",
@@ -1707,10 +1718,26 @@
       ],
       "changes": [
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "4dbd9e24",
+          "date": "2026-09-01",
+          "author": "Claude",
+          "subject": "Docs modernization, billing-binding lifecycle, and 348 untracked .pyc",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def transfer(self, old_key_id: str, new_key_id: str) -> BillingBinding | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def attach_to(self, keymaster: Any) -> None:"
+            }
+          ]
+        },
+        {
+          "sha": "55378e12",
+          "date": "2026-09-01",
+          "author": "Claude",
+          "subject": "T2P billing keys, and a server's right to refuse them",
           "api_changes": [
             {
               "kind": "added",
@@ -1759,14 +1786,6 @@
             {
               "kind": "added",
               "text": "def release(self, key_id: str) -> bool:"
-            },
-            {
-              "kind": "added",
-              "text": "def transfer(self, old_key_id: str, new_key_id: str) -> BillingBinding | None:"
-            },
-            {
-              "kind": "added",
-              "text": "def attach_to(self, keymaster: Any) -> None:"
             },
             {
               "kind": "added",
@@ -1856,10 +1875,10 @@
           "api_changes": []
         },
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "5d516951",
+          "date": "2026-09-01",
+          "author": "Claude",
+          "subject": "A new server issues itself a local, three-day admin key",
           "api_changes": [
             {
               "kind": "added",
@@ -2408,76 +2427,25 @@
           "api_changes": []
         },
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
-          "api_changes": [
-            {
-              "kind": "added",
-              "text": "def _load_dotenv_if_present(path: str | Path = \".env\") -> None:"
-            },
-            {
-              "kind": "added",
-              "text": "def _bool_env(name: str, default: bool) -> bool:"
-            },
-            {
-              "kind": "added",
-              "text": "def _tuple_env(name: str) -> tuple[str, ...]:"
-            },
-            {
-              "kind": "added",
-              "text": "def _int_env(name: str, default: int) -> int:"
-            },
-            {
-              "kind": "added",
-              "text": "def _float_env(name: str, default: float) -> float:"
-            },
-            {
-              "kind": "added",
-              "text": "def _is_local_or_tailscale(host: str) -> bool:"
-            },
-            {
-              "kind": "added",
-              "text": "class T1APIConfig:"
-            },
-            {
-              "kind": "added",
-              "text": "def from_env(cls, *, load_dotenv: bool = True, dotenv_path: str | Path = \".env\") -> T1APIConfig:"
-            },
-            {
-              "kind": "added",
-              "text": "def is_production(self) -> bool:"
-            },
-            {
-              "kind": "added",
-              "text": "def storage_backend(self) -> str:"
-            },
-            {
-              "kind": "added",
-              "text": "def tls_settings(self) -> TLSSettings:"
-            },
-            {
-              "kind": "added",
-              "text": "def rate_limit_rules(self) -> Any:"
-            },
-            {
-              "kind": "added",
-              "text": "def describe_secrets(self) -> dict[str, bool]:"
-            },
-            {
-              "kind": "added",
-              "text": "def public_dict(self) -> dict[str, object]:"
-            },
-            {
-              "kind": "added",
-              "text": "def production_problems(self) -> list[str]:"
-            },
-            {
-              "kind": "added",
-              "text": "def validate_for_production(self, *, strict: bool | None = None) -> None:"
-            }
-          ]
+          "sha": "c81b29d2",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "0.72.6.rc2: tvtop-max, and HyperLink's default system prompt",
+          "api_changes": []
+        },
+        {
+          "sha": "0068bbf2",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "T1: conceal mode with 36-hour retention, and a public /server/info",
+          "api_changes": []
+        },
+        {
+          "sha": "e26841fc",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "HyperLink: model titles, compression, private chats, organised memory, images, shell, tails",
+          "api_changes": []
         }
       ]
     },
@@ -2585,10 +2553,10 @@
       ],
       "changes": [
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "604a8342",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
           "api_changes": [
             {
               "kind": "added",
@@ -2766,10 +2734,17 @@
       ],
       "changes": [
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "47fd89e3",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3: Beta 3 test suite, and four bugs it found",
+          "api_changes": []
+        },
+        {
+          "sha": "604a8342",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
           "api_changes": [
             {
               "kind": "added",
@@ -2832,16 +2807,24 @@
               "text": "def describe(self) -> str:  # pragma: no cover - cosmetic"
             },
             {
+              "kind": "removed",
+              "text": "class SQLiteBackend:"
+            },
+            {
               "kind": "added",
               "text": "class SQLiteBackend(SQLBackend):"
             },
             {
-              "kind": "added",
-              "text": "def __init__(self, db_path: str | Path | None = None) -> None:"
+              "kind": "removed",
+              "text": "def connect(self) -> sqlite3.Connection:"
             },
             {
               "kind": "added",
               "text": "def connect(self) -> _Connection:"
+            },
+            {
+              "kind": "removed",
+              "text": "def executescript(self, sql: str) -> None:"
             },
             {
               "kind": "added",
@@ -2858,14 +2841,30 @@
             {
               "kind": "added",
               "text": "def _get_pool(self) -> Any:"
+            }
+          ]
+        },
+        {
+          "sha": "604ec86f",
+          "date": "2026-08-20",
+          "author": "minerofthesoal",
+          "subject": "b2",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class SQLiteBackend:"
             },
             {
               "kind": "added",
-              "text": "def connect(self) -> _Connection:"
+              "text": "def __init__(self, db_path: str | Path | None = None) -> None:"
             },
             {
               "kind": "added",
-              "text": "def describe(self) -> str:"
+              "text": "def connect(self) -> sqlite3.Connection:"
+            },
+            {
+              "kind": "added",
+              "text": "def executescript(self, sql: str) -> None:"
             }
           ]
         }
@@ -2924,10 +2923,10 @@
       ],
       "changes": [
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "604a8342",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
           "api_changes": [
             {
               "kind": "added",
@@ -3300,187 +3299,101 @@
       ],
       "changes": [
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "faee5534",
+          "date": "2026-09-16",
+          "author": "Claude",
+          "subject": "A HyperNix model runner, settings, memory and tool calling",
           "api_changes": [
             {
               "kind": "added",
-              "text": "def new_request_id() -> str:"
+              "text": "def get_preference_store(request: Request):"
+            }
+          ]
+        },
+        {
+          "sha": "cc94bf5a",
+          "date": "2026-09-16",
+          "author": "Claude",
+          "subject": "t1: run a model without LM Studio, and switch it from the API",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def get_runner(request: Request):"
+            }
+          ]
+        },
+        {
+          "sha": "6c58a994",
+          "date": "2026-09-16",
+          "author": "Claude",
+          "subject": "Fix the CI build break, and ship an IPA that can run a model",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def get_memory_store(request: Request):"
+            }
+          ]
+        },
+        {
+          "sha": "1803aaab",
+          "date": "2026-09-15",
+          "author": "Claude",
+          "subject": "t1: what the server's hardware is doing, and how long it has been up",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def require_hyperlink_operator("
+            }
+          ]
+        },
+        {
+          "sha": "030bf41b",
+          "date": "2026-09-15",
+          "author": "Claude",
+          "subject": "hyperlink: one model list from every source, and a Stop that stops",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def get_generation_registry(request: Request):"
+            }
+          ]
+        },
+        {
+          "sha": "5dce819b",
+          "date": "2026-09-15",
+          "author": "Claude",
+          "subject": "t1: HyperLink could not connect over a trusted network at all",
+          "api_changes": []
+        },
+        {
+          "sha": "46f59011",
+          "date": "2026-09-10",
+          "author": "Claude",
+          "subject": "0.72.4.post9 \u2014 HyperLink catches up, notifies, and searches",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def get_sync_store(request: Request):"
             },
             {
               "kind": "added",
-              "text": "def get_request_id(request: Request) -> str:"
+              "text": "def get_notification_store(request: Request):"
             },
             {
               "kind": "added",
-              "text": "def get_auth_service(request: Request) -> T1AuthService:"
-            },
-            {
-              "kind": "added",
-              "text": "def get_registry(request: Request) -> ModelRegistry:"
-            },
-            {
-              "kind": "added",
-              "text": "def get_usage_meter(request: Request) -> UsageMeter:"
-            },
-            {
-              "kind": "added",
-              "text": "def get_config(request: Request) -> T1APIConfig:"
-            },
-            {
-              "kind": "added",
-              "text": "def get_routing_engine(request: Request):"
-            },
-            {
-              "kind": "added",
-              "text": "def get_server_registry(request: Request):"
-            },
-            {
-              "kind": "added",
-              "text": "def get_module_registry(request: Request):"
-            },
-            {
-              "kind": "added",
-              "text": "def get_job_queue(request: Request):"
-            },
-            {
-              "kind": "added",
-              "text": "def get_event_bus(request: Request):"
-            },
-            {
-              "kind": "added",
-              "text": "def get_billing_ledger(request: Request):"
-            },
-            {
-              "kind": "added",
-              "text": "def get_audit_log(request: Request):"
-            },
-            {
-              "kind": "added",
-              "text": "def get_network_policy(request: Request):"
-            },
-            {
-              "kind": "added",
-              "text": "def get_rate_limiter(request: Request):"
-            },
-            {
-              "kind": "added",
-              "text": "def get_key_directory(request: Request):"
-            },
-            {
-              "kind": "added",
-              "text": "def get_cost_calculator(request: Request):"
-            },
-            {
-              "kind": "added",
-              "text": "def get_deployment_coordinator(request: Request):"
-            },
-            {
-              "kind": "added",
-              "text": "def get_cert_verifier(request: Request):"
-            },
+              "text": "def get_search_index(request: Request):"
+            }
+          ]
+        },
+        {
+          "sha": "3cd859b2",
+          "date": "2026-09-08",
+          "author": "Claude",
+          "subject": "0.72.4.dev7 \u2014 what training is doing, and the controls for it",
+          "api_changes": [
             {
               "kind": "added",
               "text": "def get_training_monitor(request: Request):"
-            },
-            {
-              "kind": "added",
-              "text": "def get_client_ip(request: Request) -> str:"
-            },
-            {
-              "kind": "added",
-              "text": "def resolve_client_ip(request: Request) -> str:"
-            },
-            {
-              "kind": "added",
-              "text": "def require_confirmation(request: Request, *, action: str) -> None:"
-            },
-            {
-              "kind": "added",
-              "text": "def _extract_credential(authorization: str | None) -> str:"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "module": "hypernix.t1api.disconnect",
-      "source": "src/hypernix/t1api/disconnect.py",
-      "line_count": 101,
-      "summary": "Knowing when a streaming caller has gone.",
-      "api": [
-        {
-          "kind": "class",
-          "name": "ClientGoneWatch",
-          "signature": "class ClientGoneWatch",
-          "line": 34,
-          "doc": "Sets ``scope[SCOPE_KEY]`` when the client disconnects.",
-          "methods": []
-        },
-        {
-          "kind": "function",
-          "name": "client_gone",
-          "signature": "def client_gonerequest: Any -> bool",
-          "line": 83,
-          "doc": ""
-        },
-        {
-          "kind": "function",
-          "name": "while_listened_to",
-          "signature": "async def while_listened_torequest: Any, events: Iterator[bytes], *, what: str='' -> AsyncIterator[bytes]",
-          "line": 106,
-          "doc": "Relay *events* (a sync generator, run off the event loop) until it ends or the caller has gone; either way it is closed, and with it the backend stream it was reading."
-        }
-      ],
-      "errors": [],
-      "deprecations": [],
-      "required_modules": [
-        {
-          "module": "fastapi / uvicorn / pydantic",
-          "extra": "t1api",
-          "requirement": "pip install 'hypernix[t1api]'"
-        }
-      ],
-      "changes": [
-        {
-          "sha": "91cd2708",
-          "date": "2026-10-08",
-          "author": "Claude",
-          "subject": "t1api: a caller leaving a stream stops the backend's reply",
-          "api_changes": [
-            {
-              "kind": "added",
-              "text": "class ClientGoneWatch:"
-            },
-            {
-              "kind": "added",
-              "text": "def __init__(self, app: Any) -> None:"
-            },
-            {
-              "kind": "added",
-              "text": "async def __call__(self, scope: dict, receive: Any, send: Any) -> None:"
-            },
-            {
-              "kind": "added",
-              "text": "async def tracked_receive() -> dict:"
-            },
-            {
-              "kind": "added",
-              "text": "async def watch() -> None:"
-            },
-            {
-              "kind": "added",
-              "text": "def client_gone(request: Any) -> bool:"
-            },
-            {
-              "kind": "added",
-              "text": "def _close(events: Iterator[bytes], what: str) -> None:"
-            },
-            {
-              "kind": "added",
-              "text": "async def while_listened_to(request: Any, events: Iterator[bytes], *, what: str = \"\") -> AsyncIterator[bytes]:"
             }
           ]
         }
@@ -3536,18 +3449,47 @@
           "api_changes": []
         },
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "589ebbdc",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "0.72.6 pt3: elements, error codes, and the optimizers that never trained",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def hx_code_for(code: T1ErrorCode) -> str:"
+            }
+          ]
+        },
+        {
+          "sha": "55378e12",
+          "date": "2026-09-01",
+          "author": "Claude",
+          "subject": "T2P billing keys, and a server's right to refuse them",
+          "api_changes": []
+        },
+        {
+          "sha": "604a8342",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
+          "api_changes": []
+        },
+        {
+          "sha": "604ec86f",
+          "date": "2026-08-20",
+          "author": "minerofthesoal",
+          "subject": "b2",
+          "api_changes": []
+        },
+        {
+          "sha": "f836d298",
+          "date": "2026-08-18",
+          "author": "minerofthesoal",
+          "subject": "0.71.5b1-part one of four for the api",
           "api_changes": [
             {
               "kind": "added",
               "text": "class T1ErrorCode(StrEnum):"
-            },
-            {
-              "kind": "added",
-              "text": "def hx_code_for(code: T1ErrorCode) -> str:"
             },
             {
               "kind": "added",
@@ -3654,10 +3596,17 @@
       ],
       "changes": [
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "bccc73ec",
+          "date": "2026-08-20",
+          "author": "minerofthesoal",
+          "subject": "fixes",
+          "api_changes": []
+        },
+        {
+          "sha": "604ec86f",
+          "date": "2026-08-20",
+          "author": "minerofthesoal",
+          "subject": "b2",
           "api_changes": [
             {
               "kind": "added",
@@ -4011,10 +3960,17 @@
       ],
       "changes": [
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "bccc73ec",
+          "date": "2026-08-20",
+          "author": "minerofthesoal",
+          "subject": "fixes",
+          "api_changes": []
+        },
+        {
+          "sha": "604ec86f",
+          "date": "2026-08-20",
+          "author": "minerofthesoal",
+          "subject": "b2",
           "api_changes": [
             {
               "kind": "added",
@@ -4216,10 +4172,10 @@
       ],
       "changes": [
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "604a8342",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
           "api_changes": [
             {
               "kind": "added",
@@ -4365,10 +4321,22 @@
           "api_changes": []
         },
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "589ebbdc",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "0.72.6 pt3: elements, error codes, and the optimizers that never trained",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _report(job, who: str, args) -> int:"
+            }
+          ]
+        },
+        {
+          "sha": "a8aca686",
+          "date": "2026-09-08",
+          "author": "Claude",
+          "subject": "0.72.4.dev5 \u2014 hypernix-t1 launch-script",
           "api_changes": [
             {
               "kind": "added",
@@ -4401,10 +4369,6 @@
             {
               "kind": "added",
               "text": "def _dispatch(args, store: JobStore, who: str, parser) -> int:"
-            },
-            {
-              "kind": "added",
-              "text": "def _report(job, who: str, args) -> int:"
             },
             {
               "kind": "added",
@@ -4562,10 +4526,10 @@
       ],
       "changes": [
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "589ebbdc",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "0.72.6 pt3: elements, error codes, and the optimizers that never trained",
           "api_changes": [
             {
               "kind": "added",
@@ -4893,10 +4857,10 @@
           "api_changes": []
         },
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "3bd1c25d",
+          "date": "2026-09-22",
+          "author": "Claude",
+          "subject": "t1api: MCP server support, with plugins",
           "api_changes": [
             {
               "kind": "added",
@@ -5040,10 +5004,10 @@
           "api_changes": []
         },
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "3bd1c25d",
+          "date": "2026-09-22",
+          "author": "Claude",
+          "subject": "t1api: MCP server support, with plugins",
           "api_changes": [
             {
               "kind": "added",
@@ -5194,10 +5158,22 @@
           "api_changes": []
         },
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "182b1efc",
+          "date": "2026-09-16",
+          "author": "Claude",
+          "subject": "t1: index the models this machine has, and estimate what they cost",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _as_int(value: Any) -> int:"
+            }
+          ]
+        },
+        {
+          "sha": "ac0053d7",
+          "date": "2026-09-03",
+          "author": "Claude",
+          "subject": "0.72.3.post6 \u2014 hypernix-t1 index, and three more from the field",
           "api_changes": [
             {
               "kind": "added",
@@ -5222,10 +5198,6 @@
             {
               "kind": "added",
               "text": "def _read_gguf(path: Path) -> tuple[dict, list, str]:"
-            },
-            {
-              "kind": "added",
-              "text": "def _as_int(value: Any) -> int:"
             },
             {
               "kind": "added",
@@ -5283,10 +5255,31 @@
       ],
       "changes": [
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "8bb54a39",
+          "date": "2026-09-17",
+          "author": "Claude",
+          "subject": "registry: a working directory that is gone is not a crash",
+          "api_changes": []
+        },
+        {
+          "sha": "182b1efc",
+          "date": "2026-09-16",
+          "author": "Claude",
+          "subject": "t1: index the models this machine has, and estimate what they cost",
+          "api_changes": []
+        },
+        {
+          "sha": "fe580bc9",
+          "date": "2026-09-08",
+          "author": "Claude",
+          "subject": "0.72.4.dev2 \u2014 the registry the server actually reads",
+          "api_changes": []
+        },
+        {
+          "sha": "ac0053d7",
+          "date": "2026-09-03",
+          "author": "Claude",
+          "subject": "0.72.3.post6 \u2014 hypernix-t1 index, and three more from the field",
           "api_changes": [
             {
               "kind": "added",
@@ -5678,10 +5671,26 @@
       ],
       "changes": [
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "604a8342",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def stage_fetched("
+            },
+            {
+              "kind": "added",
+              "text": "def receive_transfer("
+            }
+          ]
+        },
+        {
+          "sha": "604ec86f",
+          "date": "2026-08-20",
+          "author": "minerofthesoal",
+          "subject": "b2",
           "api_changes": [
             {
               "kind": "added",
@@ -5742,14 +5751,6 @@
             {
               "kind": "added",
               "text": "def update("
-            },
-            {
-              "kind": "added",
-              "text": "def stage_fetched("
-            },
-            {
-              "kind": "added",
-              "text": "def receive_transfer("
             },
             {
               "kind": "added",
@@ -5868,10 +5869,10 @@
       ],
       "changes": [
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "604a8342",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
           "api_changes": [
             {
               "kind": "added",
@@ -6102,10 +6103,10 @@
       ],
       "changes": [
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "604a8342",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
           "api_changes": [
             {
               "kind": "added",
@@ -6260,10 +6261,10 @@
       ],
       "changes": [
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "182b1efc",
+          "date": "2026-09-16",
+          "author": "Claude",
+          "subject": "t1: index the models this machine has, and estimate what they cost",
           "api_changes": [
             {
               "kind": "added",
@@ -6405,10 +6406,10 @@
       ],
       "changes": [
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "0068bbf2",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "T1: conceal mode with 36-hour retention, and a public /server/info",
           "api_changes": [
             {
               "kind": "added",
@@ -6584,10 +6585,34 @@
       ],
       "changes": [
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "47fd89e3",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3: Beta 3 test suite, and four bugs it found",
+          "api_changes": [
+            {
+              "kind": "removed",
+              "text": "def take(self, cost: float, rule: RateRule, now: float) -> tuple[bool, float]:"
+            },
+            {
+              "kind": "added",
+              "text": "def take(self, cost: float, rule: RateRule, now: float) -> tuple[bool, float | None]:"
+            },
+            {
+              "kind": "removed",
+              "text": "def _take(self, rule: RateRule, subject: Subject, cost: float, now: float) -> tuple[bool, float]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _take("
+            }
+          ]
+        },
+        {
+          "sha": "604a8342",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
           "api_changes": [
             {
               "kind": "added",
@@ -6619,7 +6644,7 @@
             },
             {
               "kind": "added",
-              "text": "def take(self, cost: float, rule: RateRule, now: float) -> tuple[bool, float | None]:"
+              "text": "def take(self, cost: float, rule: RateRule, now: float) -> tuple[bool, float]:"
             },
             {
               "kind": "added",
@@ -6675,7 +6700,7 @@
             },
             {
               "kind": "added",
-              "text": "def _take("
+              "text": "def _take(self, rule: RateRule, subject: Subject, cost: float, now: float) -> tuple[bool, float]:"
             },
             {
               "kind": "added",
@@ -6852,10 +6877,10 @@
       ],
       "changes": [
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "8bb54a39",
+          "date": "2026-09-17",
+          "author": "Claude",
+          "subject": "registry: a working directory that is gone is not a crash",
           "api_changes": [
             {
               "kind": "added",
@@ -6864,7 +6889,15 @@
             {
               "kind": "added",
               "text": "def resolve_best_effort(path: str | Path) -> Path:"
-            },
+            }
+          ]
+        },
+        {
+          "sha": "fe580bc9",
+          "date": "2026-09-08",
+          "author": "Claude",
+          "subject": "0.72.4.dev2 \u2014 the registry the server actually reads",
+          "api_changes": [
             {
               "kind": "added",
               "text": "def registry_locations(config_dir: str | Path | None = None) -> list[Path]:"
@@ -6876,7 +6909,34 @@
             {
               "kind": "added",
               "text": "def read_entries(path: str | Path) -> tuple[list[ModelEntry], list[str]]:"
-            },
+            }
+          ]
+        },
+        {
+          "sha": "47fd89e3",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3: Beta 3 test suite, and four bugs it found",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def __post_init__(self) -> None:"
+            }
+          ]
+        },
+        {
+          "sha": "bccc73ec",
+          "date": "2026-08-20",
+          "author": "minerofthesoal",
+          "subject": "fixes",
+          "api_changes": []
+        },
+        {
+          "sha": "f836d298",
+          "date": "2026-08-18",
+          "author": "minerofthesoal",
+          "subject": "0.71.5b1-part one of four for the api",
+          "api_changes": [
             {
               "kind": "added",
               "text": "class ModelStatus(StrEnum):"
@@ -6900,10 +6960,6 @@
             {
               "kind": "added",
               "text": "class ModelEntry:"
-            },
-            {
-              "kind": "added",
-              "text": "def __post_init__(self) -> None:"
             },
             {
               "kind": "added",
@@ -6952,6 +7008,18 @@
             {
               "kind": "added",
               "text": "def require(self, model_id: str) -> ModelEntry:"
+            },
+            {
+              "kind": "added",
+              "text": "def list("
+            },
+            {
+              "kind": "added",
+              "text": "def __len__(self) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def __repr__(self) -> str:  # pragma: no cover - cosmetic"
             }
           ]
         }
@@ -6981,10 +7049,52 @@
           "api_changes": []
         },
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "0068bbf2",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "T1: conceal mode with 36-hour retention, and a public /server/info",
+          "api_changes": []
+        },
+        {
+          "sha": "462b479d",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "v2.1 (T2C) keys, sealed with Rotorvault",
+          "api_changes": []
+        },
+        {
+          "sha": "53a7eec3",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "0.72.6 pt2: dilute, /web/v1 keyless search, and eth's dead band",
+          "api_changes": []
+        },
+        {
+          "sha": "4d487fc5",
+          "date": "2026-09-22",
+          "author": "Claude",
+          "subject": "t1api: MCP server support, with plugins",
+          "api_changes": []
+        },
+        {
+          "sha": "cc94bf5a",
+          "date": "2026-09-16",
+          "author": "Claude",
+          "subject": "t1: run a model without LM Studio, and switch it from the API",
+          "api_changes": []
+        },
+        {
+          "sha": "88c9024f",
+          "date": "2026-09-16",
+          "author": "Claude",
+          "subject": "t1: noodle over the API \u2014 files, edits, fish and archives",
+          "api_changes": []
+        },
+        {
+          "sha": "087a6cf0",
+          "date": "2026-09-16",
+          "author": "Claude",
+          "subject": "t1: /chat/compact/* \u2014 making a long conversation fit again",
           "api_changes": []
         }
       ]
@@ -7121,10 +7231,10 @@
       ],
       "changes": [
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "2324f0fa",
+          "date": "2026-09-15",
+          "author": "Mason",
+          "subject": "t1 v1.0.26.9.2.3: sign up for a key without already having one",
           "api_changes": [
             {
               "kind": "added",
@@ -7251,10 +7361,10 @@
       ],
       "changes": [
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "604a8342",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
           "api_changes": [
             {
               "kind": "added",
@@ -7314,10 +7424,29 @@
       ],
       "changes": [
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "0068bbf2",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "T1: conceal mode with 36-hour retention, and a public /server/info",
+          "api_changes": []
+        },
+        {
+          "sha": "eab30655",
+          "date": "2026-08-27",
+          "author": "Claude",
+          "subject": "T1 v1.0.2026.8.1.1: server IDs advance, and undo/redo actually works",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _record_rotation("
+            }
+          ]
+        },
+        {
+          "sha": "f836d298",
+          "date": "2026-08-18",
+          "author": "minerofthesoal",
+          "subject": "0.71.5b1-part one of four for the api",
           "api_changes": [
             {
               "kind": "added",
@@ -7334,10 +7463,6 @@
             {
               "kind": "added",
               "text": "def issue_token("
-            },
-            {
-              "kind": "added",
-              "text": "def _record_rotation("
             },
             {
               "kind": "added",
@@ -7407,10 +7532,22 @@
       ],
       "changes": [
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "eab30655",
+          "date": "2026-08-27",
+          "author": "Claude",
+          "subject": "T1 v1.0.2026.8.1.1: server IDs advance, and undo/redo actually works",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _apply_inner(entry: Any, *, direction: str) -> None:"
+            }
+          ]
+        },
+        {
+          "sha": "370119db",
+          "date": "2026-08-26",
+          "author": "Claude",
+          "subject": "T1 v1.0.26.8.1.0: T2 recognition, auth undo/redo, and backups",
           "api_changes": [
             {
               "kind": "added",
@@ -7423,10 +7560,6 @@
             {
               "kind": "added",
               "text": "def apply(entry: Any, *, direction: str) -> None:"
-            },
-            {
-              "kind": "added",
-              "text": "def _apply_inner(entry: Any, *, direction: str) -> None:"
             },
             {
               "kind": "added",
@@ -7525,10 +7658,10 @@
       ],
       "changes": [
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "370119db",
+          "date": "2026-08-26",
+          "author": "Claude",
+          "subject": "T1 v1.0.26.8.1.0: T2 recognition, auth undo/redo, and backups",
           "api_changes": [
             {
               "kind": "added",
@@ -7635,10 +7768,10 @@
       ],
       "changes": [
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "604ec86f",
+          "date": "2026-08-20",
+          "author": "minerofthesoal",
+          "subject": "b2",
           "api_changes": [
             {
               "kind": "added",
@@ -7687,35 +7820,35 @@
     {
       "module": "hypernix.t1api.routers.bridge",
       "source": "src/hypernix/t1api/routers/bridge.py",
-      "line_count": 279,
+      "line_count": 276,
       "summary": "``/bridge/lmstudio`` \u2014 the T1 API's window onto an LM Studio server.",
       "api": [
         {
           "kind": "function",
           "name": "bridge_status",
           "signature": "def bridge_statusrequest: Request, discover_hosts: bool=Query(default=False, alias='discover', description='Also sweep localhost and the tailnet for other LM Studio servers (admin).'), ctx: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> BridgeStatusResponse",
-          "line": 112,
+          "line": 111,
           "doc": "Is LM Studio reachable, and is anything loaded in it?"
         },
         {
           "kind": "function",
           "name": "bridge_models",
           "signature": "def bridge_modelsbase_url: str | None=Query(default=None, description='Admin-only per-request override'), ctx: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> BridgeModelsResponse",
-          "line": 161,
+          "line": 160,
           "doc": "Everything LM Studio has, with the loaded ones marked."
         },
         {
           "kind": "function",
           "name": "bridge_chat",
           "signature": "def bridge_chatpayload: BridgeChatRequest, ctx: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> BridgeChatResponse",
-          "line": 190,
+          "line": 189,
           "doc": "One completion from LM Studio, unwrapped into a flat response."
         },
         {
           "kind": "function",
           "name": "bridge_chat_stream",
-          "signature": "def bridge_chat_streampayload: BridgeChatRequest, request: Request, ctx: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> StreamingResponse",
-          "line": 240,
+          "signature": "def bridge_chat_streampayload: BridgeChatRequest, ctx: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> StreamingResponse",
+          "line": 239,
           "doc": "Server-sent events, relayed from LM Studio essentially verbatim."
         }
       ],
@@ -7732,17 +7865,10 @@
       ],
       "changes": [
         {
-          "sha": "91cd2708",
-          "date": "2026-10-08",
+          "sha": "c7eabfd7",
+          "date": "2026-08-23",
           "author": "Claude",
-          "subject": "t1api: a caller leaving a stream stops the backend's reply",
-          "api_changes": []
-        },
-        {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "subject": "T1 v1.0.26.8.0.1: the LM Studio bridge and HyperLink",
           "api_changes": [
             {
               "kind": "added",
@@ -8080,18 +8206,34 @@
       ],
       "changes": [
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "e26841fc",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "HyperLink: model titles, compression, private chats, organised memory, images, shell, tails",
           "api_changes": [
             {
-              "kind": "added",
-              "text": "def _summarise(config: T1APIConfig, messages: list) -> tuple[str, str]:"
+              "kind": "removed",
+              "text": "def _compact("
             },
             {
               "kind": "added",
               "text": "def compact_session("
+            },
+            {
+              "kind": "added",
+              "text": "def _compact("
+            }
+          ]
+        },
+        {
+          "sha": "087a6cf0",
+          "date": "2026-09-16",
+          "author": "Claude",
+          "subject": "t1: /chat/compact/* \u2014 making a long conversation fit again",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _summarise(config: T1APIConfig, messages: list) -> tuple[str, str]:"
             },
             {
               "kind": "added",
@@ -8166,10 +8308,10 @@
       ],
       "changes": [
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "f836d298",
+          "date": "2026-08-18",
+          "author": "minerofthesoal",
+          "subject": "0.71.5b1-part one of four for the api",
           "api_changes": [
             {
               "kind": "added",
@@ -8215,10 +8357,10 @@
       ],
       "changes": [
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "604ec86f",
+          "date": "2026-08-20",
+          "author": "minerofthesoal",
+          "subject": "b2",
           "api_changes": [
             {
               "kind": "added",
@@ -8294,19 +8436,18 @@
       ],
       "changes": [
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "46047fec",
+          "date": "2026-09-16",
+          "author": "Claude",
+          "subject": "models: reconcile \"Models registered 44\" with an empty picker",
+          "api_changes": []
+        },
+        {
+          "sha": "a75a750b",
+          "date": "2026-09-16",
+          "author": "Claude",
+          "subject": "t1api: add GET /version, and stop a stale process looking like a wrong number",
           "api_changes": [
-            {
-              "kind": "added",
-              "text": "@router.get(\"/health\", response_model=HealthResponse)"
-            },
-            {
-              "kind": "added",
-              "text": "def health(request_id: str = Depends(get_request_id)) -> HealthResponse:"
-            },
             {
               "kind": "added",
               "text": "def installed_version() -> str:"
@@ -8318,6 +8459,50 @@
             {
               "kind": "added",
               "text": "def version(request_id: str = Depends(get_request_id)) -> VersionResponse:"
+            }
+          ]
+        },
+        {
+          "sha": "d91c43ef",
+          "date": "2026-08-26",
+          "author": "Claude",
+          "subject": "waiter -F: find a server, and never run what it tells you to",
+          "api_changes": []
+        },
+        {
+          "sha": "c7eabfd7",
+          "date": "2026-08-23",
+          "author": "Claude",
+          "subject": "T1 v1.0.26.8.0.1: the LM Studio bridge and HyperLink",
+          "api_changes": []
+        },
+        {
+          "sha": "879b000b",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5rc2 \u2014 T1 API Beta 4, hyped-pro, and PATH setup",
+          "api_changes": []
+        },
+        {
+          "sha": "604a8342",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
+          "api_changes": []
+        },
+        {
+          "sha": "f836d298",
+          "date": "2026-08-18",
+          "author": "minerofthesoal",
+          "subject": "0.71.5b1-part one of four for the api",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "@router.get(\"/health\", response_model=HealthResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def health(request_id: str = Depends(get_request_id)) -> HealthResponse:"
             },
             {
               "kind": "added",
@@ -8789,49 +8974,49 @@
     {
       "module": "hypernix.t1api.routers.inference",
       "source": "src/hypernix/t1api/routers/inference.py",
-      "line_count": 616,
+      "line_count": 613,
       "summary": "``/inference`` \u2014 the governed inference surface.",
       "api": [
         {
           "kind": "function",
           "name": "list_backends",
           "signature": "def list_backendsctx: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id), runner=Depends(get_runner) -> InferenceBackendsResponse",
-          "line": 383,
+          "line": 382,
           "doc": "What this server can actually dispatch to, and whether it answers."
         },
         {
           "kind": "function",
           "name": "inference_chat",
           "signature": "def inference_chatpayload: InferenceChatRequest, ctx: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), registry=Depends(get_registry), meter=Depends(get_usage_meter), engine=Depends(get_routing_engine), keys=Depends(get_key_directory), costs=Depends(get_cost_calculator), request_id: str=Depends(get_request_id), runner=Depends(get_runner) -> InferenceResponse",
-          "line": 448,
+          "line": 447,
           "doc": "A chat completion, through the registry, the cascade and the meter."
         },
         {
           "kind": "function",
           "name": "inference_completions",
           "signature": "def inference_completionspayload: InferenceCompletionRequest, ctx: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), registry=Depends(get_registry), meter=Depends(get_usage_meter), engine=Depends(get_routing_engine), keys=Depends(get_key_directory), costs=Depends(get_cost_calculator), request_id: str=Depends(get_request_id), runner=Depends(get_runner) -> InferenceResponse",
-          "line": 473,
+          "line": 472,
           "doc": "A plain prompt, sent as a single user turn."
         },
         {
           "kind": "function",
           "name": "inference_chat_stream",
-          "signature": "def inference_chat_streampayload: InferenceChatRequest, request: Request, ctx: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), registry=Depends(get_registry), meter=Depends(get_usage_meter), engine=Depends(get_routing_engine), keys=Depends(get_key_directory), request_id: str=Depends(get_request_id), runner=Depends(get_runner) -> StreamingResponse",
-          "line": 506,
+          "signature": "def inference_chat_streampayload: InferenceChatRequest, ctx: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), registry=Depends(get_registry), meter=Depends(get_usage_meter), engine=Depends(get_routing_engine), keys=Depends(get_key_directory), request_id: str=Depends(get_request_id), runner=Depends(get_runner) -> StreamingResponse",
+          "line": 505,
           "doc": "The same governed path, streamed."
         },
         {
           "kind": "function",
           "name": "inference_embeddings",
           "signature": "def inference_embeddingspayload: InferenceEmbeddingsRequest, ctx: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), registry=Depends(get_registry), meter=Depends(get_usage_meter), keys=Depends(get_key_directory), request_id: str=Depends(get_request_id), runner=Depends(get_runner) -> InferenceEmbeddingsResponse",
-          "line": 597,
+          "line": 594,
           "doc": "Embeddings, under the same registry and quota rules as generation."
         },
         {
           "kind": "function",
           "name": "inference_token_count",
           "signature": "def inference_token_countpayload: InferenceTokenCountRequest, ctx: AuthContext=Depends(get_auth_context), registry=Depends(get_registry), meter=Depends(get_usage_meter), costs=Depends(get_cost_calculator), request_id: str=Depends(get_request_id) -> InferenceTokenCountResponse",
-          "line": 657,
+          "line": 654,
           "doc": "Size a request before committing to it."
         }
       ],
@@ -8847,13 +9032,6 @@
         }
       ],
       "changes": [
-        {
-          "sha": "91cd2708",
-          "date": "2026-10-08",
-          "author": "Claude",
-          "subject": "t1api: a caller leaving a stream stops the backend's reply",
-          "api_changes": []
-        },
         {
           "sha": "d595eb4a",
           "date": "2026-10-06",
@@ -8907,10 +9085,10 @@
           ]
         },
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "547dfa47",
+          "date": "2026-09-02",
+          "author": "Claude",
+          "subject": "T1 v1.0.2026.9.2.1: the governed inference surface",
           "api_changes": [
             {
               "kind": "added",
@@ -9039,10 +9217,17 @@
       ],
       "changes": [
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "bccc73ec",
+          "date": "2026-08-20",
+          "author": "minerofthesoal",
+          "subject": "fixes",
+          "api_changes": []
+        },
+        {
+          "sha": "604ec86f",
+          "date": "2026-08-20",
+          "author": "minerofthesoal",
+          "subject": "b2",
           "api_changes": [
             {
               "kind": "added",
@@ -9115,10 +9300,10 @@
       ],
       "changes": [
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "604a8342",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
           "api_changes": [
             {
               "kind": "added",
@@ -9186,10 +9371,10 @@
       ],
       "changes": [
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "3bd1c25d",
+          "date": "2026-09-22",
+          "author": "Claude",
+          "subject": "t1api: MCP server support, with plugins",
           "api_changes": [
             {
               "kind": "added",
@@ -9300,10 +9485,58 @@
       ],
       "changes": [
         {
-          "sha": "7608cc89",
+          "sha": "3fc645bf",
           "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "author": "Claude",
+          "subject": "HyperLink: memories sync from the server as they change",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "@router.get(\"/sync\")"
+            },
+            {
+              "kind": "added",
+              "text": "def sync_memories("
+            }
+          ]
+        },
+        {
+          "sha": "e26841fc",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "HyperLink: model titles, compression, private chats, organised memory, images, shell, tails",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "@router.get(\"/categories\")"
+            },
+            {
+              "kind": "added",
+              "text": "def list_categories("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/categories/rename\")"
+            },
+            {
+              "kind": "added",
+              "text": "def rename_memory_category("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/organise\")"
+            },
+            {
+              "kind": "added",
+              "text": "def organise("
+            }
+          ]
+        },
+        {
+          "sha": "6c58a994",
+          "date": "2026-09-16",
+          "author": "Claude",
+          "subject": "Fix the CI build break, and ship an IPA that can run a model",
           "api_changes": [
             {
               "kind": "added",
@@ -9331,14 +9564,6 @@
             },
             {
               "kind": "added",
-              "text": "@router.get(\"/sync\")"
-            },
-            {
-              "kind": "added",
-              "text": "def sync_memories("
-            },
-            {
-              "kind": "added",
               "text": "@router.post(\"/edit\", response_model=MemoryResponse)"
             },
             {
@@ -9352,30 +9577,6 @@
             {
               "kind": "added",
               "text": "def delete_memory("
-            },
-            {
-              "kind": "added",
-              "text": "@router.get(\"/categories\")"
-            },
-            {
-              "kind": "added",
-              "text": "def list_categories("
-            },
-            {
-              "kind": "added",
-              "text": "@router.post(\"/categories/rename\")"
-            },
-            {
-              "kind": "added",
-              "text": "def rename_memory_category("
-            },
-            {
-              "kind": "added",
-              "text": "@router.post(\"/organise\")"
-            },
-            {
-              "kind": "added",
-              "text": "def organise("
             }
           ]
         }
@@ -9434,10 +9635,47 @@
       ],
       "changes": [
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "3e60ff82",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3 (part 2/3): complete SDK, full waiter TUI, smoke tool",
+          "api_changes": []
+        },
+        {
+          "sha": "604a8342",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
+          "api_changes": []
+        },
+        {
+          "sha": "bccc73ec",
+          "date": "2026-08-20",
+          "author": "minerofthesoal",
+          "subject": "fixes",
+          "api_changes": []
+        },
+        {
+          "sha": "604ec86f",
+          "date": "2026-08-20",
+          "author": "minerofthesoal",
+          "subject": "b2",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "@router.post(\"/route\", response_model=RouteResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def route_model("
+            }
+          ]
+        },
+        {
+          "sha": "f836d298",
+          "date": "2026-08-18",
+          "author": "minerofthesoal",
+          "subject": "0.71.5b1-part one of four for the api",
           "api_changes": [
             {
               "kind": "added",
@@ -9478,14 +9716,6 @@
             {
               "kind": "added",
               "text": "def model_usage("
-            },
-            {
-              "kind": "added",
-              "text": "@router.post(\"/route\", response_model=RouteResponse)"
-            },
-            {
-              "kind": "added",
-              "text": "def route_model("
             }
           ]
         }
@@ -9588,10 +9818,42 @@
       ],
       "changes": [
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "604a8342",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "@router.post(\"/{module_id}/deploy\", response_model=ModuleDeployResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def deploy_module("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/{module_id}/fetch\", response_model=ModuleFetchResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def fetch_module_source("
+            },
+            {
+              "kind": "added",
+              "text": "@router.post(\"/receive\", response_model=ModuleReceiveResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "async def receive_module("
+            }
+          ]
+        },
+        {
+          "sha": "604ec86f",
+          "date": "2026-08-20",
+          "author": "minerofthesoal",
+          "subject": "b2",
           "api_changes": [
             {
               "kind": "added",
@@ -9664,30 +9926,6 @@
             {
               "kind": "added",
               "text": "def sync_module("
-            },
-            {
-              "kind": "added",
-              "text": "@router.post(\"/{module_id}/deploy\", response_model=ModuleDeployResponse)"
-            },
-            {
-              "kind": "added",
-              "text": "def deploy_module("
-            },
-            {
-              "kind": "added",
-              "text": "@router.post(\"/{module_id}/fetch\", response_model=ModuleFetchResponse)"
-            },
-            {
-              "kind": "added",
-              "text": "def fetch_module_source("
-            },
-            {
-              "kind": "added",
-              "text": "@router.post(\"/receive\", response_model=ModuleReceiveResponse)"
-            },
-            {
-              "kind": "added",
-              "text": "async def receive_module("
             }
           ]
         }
@@ -9734,10 +9972,10 @@
       ],
       "changes": [
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "88c9024f",
+          "date": "2026-09-16",
+          "author": "Claude",
+          "subject": "t1: noodle over the API \u2014 files, edits, fish and archives",
           "api_changes": [
             {
               "kind": "added",
@@ -9827,10 +10065,10 @@
       ],
       "changes": [
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "0068bbf2",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "T1: conceal mode with 36-hour retention, and a public /server/info",
           "api_changes": [
             {
               "kind": "added",
@@ -10039,10 +10277,26 @@
           "api_changes": []
         },
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "bca36d0f",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "0.72.6 pt2: hyperchat, and three things HyperLink was showing wrong",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "@router.get(\"/hyperchat\")"
+            },
+            {
+              "kind": "added",
+              "text": "def runner_hyperchat("
+            }
+          ]
+        },
+        {
+          "sha": "cc94bf5a",
+          "date": "2026-09-16",
+          "author": "Claude",
+          "subject": "t1: run a model without LM Studio, and switch it from the API",
           "api_changes": [
             {
               "kind": "added",
@@ -10087,14 +10341,6 @@
             {
               "kind": "added",
               "text": "def runner_unload("
-            },
-            {
-              "kind": "added",
-              "text": "@router.get(\"/hyperchat\")"
-            },
-            {
-              "kind": "added",
-              "text": "def runner_hyperchat("
             }
           ]
         }
@@ -10183,10 +10429,10 @@
       ],
       "changes": [
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "604a8342",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
           "api_changes": [
             {
               "kind": "added",
@@ -10318,10 +10564,24 @@
       ],
       "changes": [
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "604a8342",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
+          "api_changes": []
+        },
+        {
+          "sha": "bccc73ec",
+          "date": "2026-08-20",
+          "author": "minerofthesoal",
+          "subject": "fixes",
+          "api_changes": []
+        },
+        {
+          "sha": "604ec86f",
+          "date": "2026-08-20",
+          "author": "minerofthesoal",
+          "subject": "b2",
           "api_changes": [
             {
               "kind": "added",
@@ -10424,10 +10684,10 @@
       ],
       "changes": [
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "462b479d",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "v2.1 (T2C) keys, sealed with Rotorvault",
           "api_changes": [
             {
               "kind": "added",
@@ -10567,10 +10827,10 @@
       ],
       "changes": [
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "3cd859b2",
+          "date": "2026-09-08",
+          "author": "Claude",
+          "subject": "0.72.4.dev7 \u2014 what training is doing, and the controls for it",
           "api_changes": [
             {
               "kind": "added",
@@ -10737,10 +10997,26 @@
       ],
       "changes": [
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "879b000b",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5rc2 \u2014 T1 API Beta 4, hyped-pro, and PATH setup",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "@router.post(\"/report\", response_model=UsageReportResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def usage_report("
+            }
+          ]
+        },
+        {
+          "sha": "604a8342",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
           "api_changes": [
             {
               "kind": "added",
@@ -10749,22 +11025,6 @@
             {
               "kind": "added",
               "text": "def _scope_filters("
-            },
-            {
-              "kind": "added",
-              "text": "@router.get(\"/current\", response_model=UsageCurrentResponse)"
-            },
-            {
-              "kind": "added",
-              "text": "def usage_current("
-            },
-            {
-              "kind": "added",
-              "text": "@router.get(\"/remaining\", response_model=UsageRemainingResponse)"
-            },
-            {
-              "kind": "added",
-              "text": "def usage_remaining("
             },
             {
               "kind": "added",
@@ -10797,14 +11057,30 @@
             {
               "kind": "added",
               "text": "def usage_estimate("
+            }
+          ]
+        },
+        {
+          "sha": "f836d298",
+          "date": "2026-08-18",
+          "author": "minerofthesoal",
+          "subject": "0.71.5b1-part one of four for the api",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "@router.get(\"/current\", response_model=UsageCurrentResponse)"
             },
             {
               "kind": "added",
-              "text": "@router.post(\"/report\", response_model=UsageReportResponse)"
+              "text": "def usage_current("
             },
             {
               "kind": "added",
-              "text": "def usage_report("
+              "text": "@router.get(\"/remaining\", response_model=UsageRemainingResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def usage_remaining("
             }
           ]
         }
@@ -10877,10 +11153,47 @@
           ]
         },
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "bf80987c",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "ci: GCC 11 rejects [[maybe_unused]] on a member; no exception text from summarise",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _fetch_failure(page) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _fetch_for_summary(url: str) -> str:"
+            }
+          ]
+        },
+        {
+          "sha": "6066ce53",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "ci: magnesium without psutil, Windows paths, and CodeQL's findings",
+          "api_changes": []
+        },
+        {
+          "sha": "5bfb35d9",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "0.72.6 pt3: T1 tools for local models, and HyperLink swipe, memories, search, on-device",
+          "api_changes": []
+        },
+        {
+          "sha": "bca36d0f",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "0.72.6 pt2: hyperchat, and three things HyperLink was showing wrong",
+          "api_changes": []
+        },
+        {
+          "sha": "53a7eec3",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "0.72.6 pt2: dilute, /web/v1 keyless search, and eth's dead band",
           "api_changes": [
             {
               "kind": "added",
@@ -10921,14 +11234,6 @@
             {
               "kind": "added",
               "text": "async def web_summarize("
-            },
-            {
-              "kind": "added",
-              "text": "def _fetch_failure(page) -> str:"
-            },
-            {
-              "kind": "added",
-              "text": "def _fetch_for_summary(url: str) -> str:"
             },
             {
               "kind": "added",
@@ -11089,10 +11394,17 @@
       ],
       "changes": [
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "bccc73ec",
+          "date": "2026-08-20",
+          "author": "minerofthesoal",
+          "subject": "fixes",
+          "api_changes": []
+        },
+        {
+          "sha": "604ec86f",
+          "date": "2026-08-20",
+          "author": "minerofthesoal",
+          "subject": "b2",
           "api_changes": [
             {
               "kind": "added",
@@ -11271,10 +11583,46 @@
           ]
         },
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "792c5d27",
+          "date": "2026-09-17",
+          "author": "Claude",
+          "subject": "hyperlink: add and re-port a server; hypernix-t1 built-in-runner start",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _catalogue(url: str, key: str) -> tuple[dict[str, Any], tuple[int, Any] | None]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _loadable(catalogue: dict[str, Any]) -> list[dict[str, Any]]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _why_nothing(catalogue: dict[str, Any]) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _pick(url: str, key: str) -> tuple[str, int]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _load_payload(args: argparse.Namespace, model_id: str) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _load_options(action: argparse.ArgumentParser) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _start(url: str, key: str, args: argparse.Namespace) -> int:"
+            }
+          ]
+        },
+        {
+          "sha": "3f05aaf6",
+          "date": "2026-09-16",
+          "author": "Claude",
+          "subject": "The version it actually is, the runner from the phone, and edit mode",
           "api_changes": [
             {
               "kind": "added",
@@ -11310,39 +11658,11 @@
             },
             {
               "kind": "added",
-              "text": "def _catalogue(url: str, key: str) -> tuple[dict[str, Any], tuple[int, Any] | None]:"
-            },
-            {
-              "kind": "added",
-              "text": "def _loadable(catalogue: dict[str, Any]) -> list[dict[str, Any]]:"
-            },
-            {
-              "kind": "added",
-              "text": "def _why_nothing(catalogue: dict[str, Any]) -> str:"
-            },
-            {
-              "kind": "added",
-              "text": "def _pick(url: str, key: str) -> tuple[str, int]:"
-            },
-            {
-              "kind": "added",
-              "text": "def _load_payload(args: argparse.Namespace, model_id: str) -> dict[str, Any]:"
-            },
-            {
-              "kind": "added",
               "text": "def build_parser() -> argparse.ArgumentParser:"
             },
             {
               "kind": "added",
-              "text": "def _load_options(action: argparse.ArgumentParser) -> None:"
-            },
-            {
-              "kind": "added",
               "text": "def main(argv: list[str] | None = None) -> int:"
-            },
-            {
-              "kind": "added",
-              "text": "def _start(url: str, key: str, args: argparse.Namespace) -> int:"
             },
             {
               "kind": "added",
@@ -12852,108 +13172,32 @@
           ]
         },
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
-          "api_changes": [
-            {
-              "kind": "added",
-              "text": "class ErrorDetail(BaseModel):"
-            },
-            {
-              "kind": "added",
-              "text": "class ErrorResponse(BaseModel):"
-            },
-            {
-              "kind": "added",
-              "text": "class HealthResponse(BaseModel):"
-            },
-            {
-              "kind": "added",
-              "text": "class VersionResponse(BaseModel):"
-            },
-            {
-              "kind": "added",
-              "text": "class StatusResponse(BaseModel):"
-            },
-            {
-              "kind": "added",
-              "text": "class ValidateKeyRequest(BaseModel):"
-            },
-            {
-              "kind": "added",
-              "text": "class ValidateKeyResponse(BaseModel):"
-            },
-            {
-              "kind": "added",
-              "text": "class TokenRequest(BaseModel):"
-            },
-            {
-              "kind": "added",
-              "text": "class TokenResponse(BaseModel):"
-            },
-            {
-              "kind": "added",
-              "text": "class RotateResponse(BaseModel):"
-            },
-            {
-              "kind": "added",
-              "text": "class AdminRotateRequest(BaseModel):"
-            },
-            {
-              "kind": "added",
-              "text": "class ModelSummary(BaseModel):"
-            },
-            {
-              "kind": "added",
-              "text": "class ModelDetail(ModelSummary):"
-            },
-            {
-              "kind": "added",
-              "text": "class ModelListResponse(BaseModel):"
-            },
-            {
-              "kind": "added",
-              "text": "class ModelDetailResponse(BaseModel):"
-            },
-            {
-              "kind": "added",
-              "text": "class ModelAvailabilityResponse(BaseModel):"
-            },
-            {
-              "kind": "added",
-              "text": "class ModelUsageResponse(BaseModel):"
-            },
-            {
-              "kind": "added",
-              "text": "class UsageCurrentResponse(BaseModel):"
-            },
-            {
-              "kind": "added",
-              "text": "class UsageRemainingResponse(BaseModel):"
-            },
-            {
-              "kind": "added",
-              "text": "class ConfigResponse(BaseModel):"
-            },
-            {
-              "kind": "added",
-              "text": "class RouteRequest(BaseModel):"
-            },
-            {
-              "kind": "added",
-              "text": "class RouteResponse(BaseModel):"
-            },
-            {
-              "kind": "added",
-              "text": "class ServerRegisterRequest(BaseModel):"
-            },
-            {
-              "kind": "added",
-              "text": "class ServerUpdateRequest(BaseModel):"
-            }
-          ]
+          "sha": "0068bbf2",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "T1: conceal mode with 36-hour retention, and a public /server/info",
+          "api_changes": []
+        },
+        {
+          "sha": "e26841fc",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "HyperLink: model titles, compression, private chats, organised memory, images, shell, tails",
+          "api_changes": []
+        },
+        {
+          "sha": "5bfb35d9",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "0.72.6 pt3: T1 tools for local models, and HyperLink swipe, memories, search, on-device",
+          "api_changes": []
+        },
+        {
+          "sha": "bca36d0f",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "0.72.6 pt2: hyperchat, and three things HyperLink was showing wrong",
+          "api_changes": []
         }
       ]
     },
@@ -13005,10 +13249,10 @@
           "api_changes": []
         },
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "604ec86f",
+          "date": "2026-08-20",
+          "author": "minerofthesoal",
+          "subject": "b2",
           "api_changes": [
             {
               "kind": "added",
@@ -13128,10 +13372,17 @@
       ],
       "changes": [
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "bccc73ec",
+          "date": "2026-08-20",
+          "author": "minerofthesoal",
+          "subject": "fixes",
+          "api_changes": []
+        },
+        {
+          "sha": "604ec86f",
+          "date": "2026-08-20",
+          "author": "minerofthesoal",
+          "subject": "b2",
           "api_changes": [
             {
               "kind": "added",
@@ -13285,22 +13536,22 @@
           "api_changes": []
         },
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "604a8342",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
           "api_changes": [
             {
-              "kind": "added",
-              "text": "class UsageStore:"
+              "kind": "removed",
+              "text": "def __init__(self, db_path: str | Path | None = None) -> None:"
             },
             {
               "kind": "added",
               "text": "def __init__("
             },
             {
-              "kind": "added",
-              "text": "def _init_schema(self) -> None:"
+              "kind": "removed",
+              "text": "def _connect(self) -> sqlite3.Connection:"
             },
             {
               "kind": "added",
@@ -13312,19 +13563,15 @@
             },
             {
               "kind": "added",
-              "text": "def record("
-            },
-            {
-              "kind": "added",
               "text": "def _where("
             },
             {
               "kind": "added",
-              "text": "def totals_for_key("
+              "text": "def totals("
             },
             {
-              "kind": "added",
-              "text": "def totals("
+              "kind": "removed",
+              "text": "def breakdown_by_model(self, key_id: str, *, since: float | None = None) -> list[dict[str, Any]]:"
             },
             {
               "kind": "added",
@@ -13344,11 +13591,47 @@
             },
             {
               "kind": "added",
-              "text": "def event_count(self) -> int:"
+              "text": "def _totals_row(row: Any) -> dict[str, Any]:"
+            }
+          ]
+        },
+        {
+          "sha": "f836d298",
+          "date": "2026-08-18",
+          "author": "minerofthesoal",
+          "subject": "0.71.5b1-part one of four for the api",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class UsageStore:"
             },
             {
               "kind": "added",
-              "text": "def _totals_row(row: Any) -> dict[str, Any]:"
+              "text": "def __init__(self, db_path: str | Path | None = None) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _connect(self) -> sqlite3.Connection:"
+            },
+            {
+              "kind": "added",
+              "text": "def _init_schema(self) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def record("
+            },
+            {
+              "kind": "added",
+              "text": "def totals_for_key("
+            },
+            {
+              "kind": "added",
+              "text": "def breakdown_by_model(self, key_id: str, *, since: float | None = None) -> list[dict[str, Any]]:"
+            },
+            {
+              "kind": "added",
+              "text": "def event_count(self) -> int:"
             }
           ]
         }
@@ -13386,10 +13669,10 @@
       ],
       "changes": [
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "3cd859b2",
+          "date": "2026-09-08",
+          "author": "Claude",
+          "subject": "0.72.4.dev7 \u2014 what training is doing, and the controls for it",
           "api_changes": [
             {
               "kind": "added",
@@ -13497,10 +13780,10 @@
       ],
       "changes": [
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "604a8342",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
           "api_changes": [
             {
               "kind": "added",
@@ -13635,10 +13918,10 @@
       ],
       "changes": [
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "3f05aaf6",
+          "date": "2026-09-16",
+          "author": "Claude",
+          "subject": "The version it actually is, the runner from the phone, and edit mode",
           "api_changes": [
             {
               "kind": "added",
@@ -13782,10 +14065,10 @@
       ],
       "changes": [
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "f836d298",
+          "date": "2026-08-18",
+          "author": "minerofthesoal",
+          "subject": "0.71.5b1-part one of four for the api",
           "api_changes": [
             {
               "kind": "added",
@@ -13943,10 +14226,45 @@
       ],
       "changes": [
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "6b7f6932",
+          "date": "2026-09-22",
+          "author": "Claude",
+          "subject": "0.72.6 pt2: gather, Vera, neo_oven presets, hub 1.x, T1 v1.1",
+          "api_changes": []
+        },
+        {
+          "sha": "2324f0fa",
+          "date": "2026-09-15",
+          "author": "Mason",
+          "subject": "t1 v1.0.26.9.2.3: sign up for a key without already having one",
+          "api_changes": []
+        },
+        {
+          "sha": "547dfa47",
+          "date": "2026-09-02",
+          "author": "Claude",
+          "subject": "T1 v1.0.2026.9.2.1: the governed inference surface",
+          "api_changes": []
+        },
+        {
+          "sha": "eab30655",
+          "date": "2026-08-27",
+          "author": "Claude",
+          "subject": "T1 v1.0.2026.8.1.1: server IDs advance, and undo/redo actually works",
+          "api_changes": []
+        },
+        {
+          "sha": "370119db",
+          "date": "2026-08-26",
+          "author": "Claude",
+          "subject": "T1 v1.0.26.8.1.0: T2 recognition, auth undo/redo, and backups",
+          "api_changes": []
+        },
+        {
+          "sha": "c7eabfd7",
+          "date": "2026-08-23",
+          "author": "Claude",
+          "subject": "T1 v1.0.26.8.0.1: the LM Studio bridge and HyperLink",
           "api_changes": [
             {
               "kind": "added",
@@ -14146,10 +14464,17 @@
       ],
       "changes": [
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "a97d518a",
+          "date": "2026-09-15",
+          "author": "Claude",
+          "subject": "docs: a README that describes this release, and two claims made true",
+          "api_changes": []
+        },
+        {
+          "sha": "2324f0fa",
+          "date": "2026-09-15",
+          "author": "Mason",
+          "subject": "t1 v1.0.26.9.2.3: sign up for a key without already having one",
           "api_changes": [
             {
               "kind": "added",
@@ -14380,10 +14705,24 @@
           ]
         },
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "6066ce53",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "ci: magnesium without psutil, Windows paths, and CodeQL's findings",
+          "api_changes": []
+        },
+        {
+          "sha": "bca36d0f",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "0.72.6 pt2: hyperchat, and three things HyperLink was showing wrong",
+          "api_changes": []
+        },
+        {
+          "sha": "53a7eec3",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "0.72.6 pt2: dilute, /web/v1 keyless search, and eth's dead band",
           "api_changes": [
             {
               "kind": "added",
@@ -14502,10 +14841,38 @@
       ],
       "changes": [
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "eab30655",
+          "date": "2026-08-27",
+          "author": "Claude",
+          "subject": "T1 v1.0.2026.8.1.1: server IDs advance, and undo/redo actually works",
+          "api_changes": []
+        },
+        {
+          "sha": "370119db",
+          "date": "2026-08-26",
+          "author": "Claude",
+          "subject": "T1 v1.0.26.8.1.0: T2 recognition, auth undo/redo, and backups",
+          "api_changes": []
+        },
+        {
+          "sha": "c7eabfd7",
+          "date": "2026-08-23",
+          "author": "Claude",
+          "subject": "T1 v1.0.26.8.0.1: the LM Studio bridge and HyperLink",
+          "api_changes": []
+        },
+        {
+          "sha": "879b000b",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5rc2 \u2014 T1 API Beta 4, hyped-pro, and PATH setup",
+          "api_changes": []
+        },
+        {
+          "sha": "3e60ff82",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3 (part 2/3): complete SDK, full waiter TUI, smoke tool",
           "api_changes": []
         }
       ]
@@ -15071,10 +15438,118 @@
           "api_changes": []
         },
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "c76677db",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "t1sdk: server info, conceal, and v2.1 kits as a credential",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def server_info(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def conceal_status(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def conceal(self, enabled: bool = True) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def t2c_public_key(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def t2c_devices(self) -> list[dict[str, Any]]:"
+            },
+            {
+              "kind": "added",
+              "text": "def t2c_revoke_device(self, device_id: str) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def seal_key(self, key: str | None = None, *, label: str = \"\", access_level: int = 1):"
+            }
+          ]
+        },
+        {
+          "sha": "797be9d8",
+          "date": "2026-08-23",
+          "author": "Claude",
+          "subject": "HyperLink for iOS, the waiter commands, and the release plumbing",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def lmstudio_status(self, *, discover: bool = False) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def lmstudio_models(self, *, base_url: str | None = None) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def lmstudio_chat("
+            },
+            {
+              "kind": "added",
+              "text": "def hyperlink_endpoints(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def hyperlink_pair("
+            },
+            {
+              "kind": "added",
+              "text": "def hyperlink_redeem("
+            },
+            {
+              "kind": "added",
+              "text": "def hyperlink_devices(self, *, include_revoked: bool = False) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def hyperlink_revoke_device(self, device_id: str) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def hyperlink_sessions(self, *, include_archived: bool = False, limit: int = 50) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def hyperlink_create_session("
+            },
+            {
+              "kind": "added",
+              "text": "def hyperlink_messages(self, session_id: str, *, after_seq: int = 0) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def hyperlink_chat("
+            },
+            {
+              "kind": "added",
+              "text": "def hyperlink_resolve_model("
+            }
+          ]
+        },
+        {
+          "sha": "879b000b",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5rc2 \u2014 T1 API Beta 4, hyped-pro, and PATH setup",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def report_usage("
+            }
+          ]
+        },
+        {
+          "sha": "3e60ff82",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3 (part 2/3): complete SDK, full waiter TUI, smoke tool",
           "api_changes": [
             {
               "kind": "added",
@@ -15138,39 +15613,39 @@
             },
             {
               "kind": "added",
-              "text": "def server_info(self) -> dict[str, Any]:"
-            },
-            {
-              "kind": "added",
-              "text": "def conceal_status(self) -> dict[str, Any]:"
-            },
-            {
-              "kind": "added",
-              "text": "def conceal(self, enabled: bool = True) -> dict[str, Any]:"
-            },
-            {
-              "kind": "added",
-              "text": "def t2c_public_key(self) -> dict[str, Any]:"
-            },
-            {
-              "kind": "added",
-              "text": "def t2c_devices(self) -> list[dict[str, Any]]:"
-            },
-            {
-              "kind": "added",
-              "text": "def t2c_revoke_device(self, device_id: str) -> dict[str, Any]:"
-            },
-            {
-              "kind": "added",
-              "text": "def seal_key(self, key: str | None = None, *, label: str = \"\", access_level: int = 1):"
-            },
-            {
-              "kind": "added",
               "text": "def whoami(self) -> KeyInfo:"
             },
             {
               "kind": "added",
               "text": "def issue_token("
+            },
+            {
+              "kind": "added",
+              "text": "def rotate(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def admin_rotate(self, target_key_id: str, *, promote_to_admin: bool = False) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def list_models(self) -> list[Model]:"
+            },
+            {
+              "kind": "added",
+              "text": "def list_models_raw(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def get_model(self, model_id: str) -> Model:"
+            },
+            {
+              "kind": "added",
+              "text": "def model_availability(self, model_id: str) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def model_usage(self, model_id: str) -> ModelUsage:"
             }
           ]
         }
@@ -15274,10 +15749,10 @@
       ],
       "changes": [
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "3e60ff82",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3 (part 2/3): complete SDK, full waiter TUI, smoke tool",
           "api_changes": [
             {
               "kind": "added",
@@ -15539,10 +16014,10 @@
       ],
       "changes": [
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "3e60ff82",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3 (part 2/3): complete SDK, full waiter TUI, smoke tool",
           "api_changes": [
             {
               "kind": "added",
@@ -15749,10 +16224,22 @@
           "api_changes": []
         },
         {
-          "sha": "7608cc89",
-          "date": "2026-09-24",
-          "author": "Rayla",
-          "subject": "Update changelog to clarify upgrade safety",
+          "sha": "c76677db",
+          "date": "2026-09-23",
+          "author": "Claude",
+          "subject": "t1sdk: server info, conceal, and v2.1 kits as a credential",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def wire_credential(self) -> str | None:"
+            }
+          ]
+        },
+        {
+          "sha": "3e60ff82",
+          "date": "2026-08-22",
+          "author": "Claude",
+          "subject": "0.71.5b3 (part 2/3): complete SDK, full waiter TUI, smoke tool",
           "api_changes": [
             {
               "kind": "added",
@@ -15785,10 +16272,6 @@
             {
               "kind": "added",
               "text": "def __init__("
-            },
-            {
-              "kind": "added",
-              "text": "def wire_credential(self) -> str | None:"
             },
             {
               "kind": "added",
@@ -16183,7 +16666,7 @@
       "handler": "bridge_chat",
       "response_model": "BridgeChatResponse",
       "source": "src/hypernix/t1api/routers/bridge.py",
-      "line": 189,
+      "line": 188,
       "tag": "bridge"
     },
     {
@@ -16193,7 +16676,7 @@
       "handler": "bridge_chat_stream",
       "response_model": null,
       "source": "src/hypernix/t1api/routers/bridge.py",
-      "line": 239,
+      "line": 238,
       "tag": "bridge"
     },
     {
@@ -16203,7 +16686,7 @@
       "handler": "bridge_models",
       "response_model": "BridgeModelsResponse",
       "source": "src/hypernix/t1api/routers/bridge.py",
-      "line": 160,
+      "line": 159,
       "tag": "bridge"
     },
     {
@@ -16213,7 +16696,7 @@
       "handler": "bridge_status",
       "response_model": "BridgeStatusResponse",
       "source": "src/hypernix/t1api/routers/bridge.py",
-      "line": 111,
+      "line": 110,
       "tag": "bridge"
     },
     {
@@ -16953,7 +17436,7 @@
       "handler": "list_backends",
       "response_model": "InferenceBackendsResponse",
       "source": "src/hypernix/t1api/routers/inference.py",
-      "line": 382,
+      "line": 381,
       "tag": "inference"
     },
     {
@@ -16963,7 +17446,7 @@
       "handler": "inference_chat",
       "response_model": "InferenceResponse",
       "source": "src/hypernix/t1api/routers/inference.py",
-      "line": 447,
+      "line": 446,
       "tag": "inference"
     },
     {
@@ -16973,7 +17456,7 @@
       "handler": "inference_chat_stream",
       "response_model": null,
       "source": "src/hypernix/t1api/routers/inference.py",
-      "line": 505,
+      "line": 504,
       "tag": "inference"
     },
     {
@@ -16983,7 +17466,7 @@
       "handler": "inference_completions",
       "response_model": "InferenceResponse",
       "source": "src/hypernix/t1api/routers/inference.py",
-      "line": 472,
+      "line": 471,
       "tag": "inference"
     },
     {
@@ -16993,7 +17476,7 @@
       "handler": "inference_embeddings",
       "response_model": "InferenceEmbeddingsResponse",
       "source": "src/hypernix/t1api/routers/inference.py",
-      "line": 596,
+      "line": 593,
       "tag": "inference"
     },
     {
@@ -17003,7 +17486,7 @@
       "handler": "inference_token_count",
       "response_model": "InferenceTokenCountResponse",
       "source": "src/hypernix/t1api/routers/inference.py",
-      "line": 656,
+      "line": 653,
       "tag": "inference"
     },
     {

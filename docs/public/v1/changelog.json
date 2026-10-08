@@ -1183,7 +1183,381 @@
         "Added model.safetensors loading to brewer_adapter.",
         "Added HyperNix.3-mini as the runner's default model."
       ],
-      "changes": []
+      "changes": [
+        {
+          "symbol": "\u0e4b\u08ed\u2b51",
+          "label": "major",
+          "category": "Added",
+          "text": "Added HyperLink on the web, served by the T1 API on port 37965.",
+          "details": [
+            "It works like the app: chats with streamed replies and the tools the model ran, the model picker, the runner (load, unload, and the move below), memories kept current with /memory/sync, and settings.",
+            "It listens on 127.0.0.1 and this machine's Tailscale addresses only, never the LAN, and picks up a tailnet that comes up after the server does.",
+            "It is dark whatever the system is set to, and fits a phone."
+          ]
+        },
+        {
+          "symbol": "\ud81a\udd54",
+          "label": "minor",
+          "category": "Added",
+          "text": "Added sign-in for the site on the API's own origin.",
+          "details": [
+            "Keyless where trusted-network mode allows it, else a HyperLink pairing code or a key, kept in that browser.",
+            "A strict content security policy with no inline script, and model text is escaped before the few tags the page adds."
+          ]
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "Added a button that moves LM Studio's model onto the HyperNix runner.",
+          "details": [
+            "On HyperLink's Runner screen and on the site, for admins and for devices at the machine or on its tailnet.",
+            "It unloads the model LM Studio is serving and loads the same GGUF on this server's runner, so the server can place its layers, switch it and queue prompts on it.",
+            "The file is found with lms ls --json, or in LM Studio's models folder. Two candidates are refused rather than guessed between.",
+            "The model is unloaded first, so the VRAM is never asked for twice, and put back in LM Studio if the runner cannot load it."
+          ]
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "Added native HyperNix models to the runner.",
+          "details": [
+            "A hyperNix0x-v2 folder with a brewer config and weights is served by hypernix.hyperlink.brewed_server, in PyTorch, over the same OpenAI API llama-server speaks, streamed or not.",
+            "The catalogue lists such folders beside the GGUFs."
+          ]
+        },
+        {
+          "symbol": "\ud81a\udd54",
+          "label": "minor",
+          "category": "Added",
+          "text": "Added model.safetensors loading to brewer_adapter.",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "Added HyperNix.3-mini as the runner's default model.",
+          "details": [
+            "hypernix-t1 runner start with no model named loads [ray0rf1re/HyperNix.3-mini](https://huggingface.co/ray0rf1re/HyperNix.3-mini), downloaded on first use.",
+            "Only the safetensors, config and tokenizer are fetched, never the pickled model.pt."
+          ]
+        },
+        {
+          "symbol": "\ud83d\udd17",
+          "label": "API",
+          "category": "API Changes",
+          "text": "Added GET /runner/adopt and POST /runner/adopt (additive).",
+          "details": [
+            "GET says whether LM Studio has a model this server's runner could take over, and which file it would load. POST makes the move.",
+            "Admins, and callers at the machine or on its tailnet, only."
+          ]
+        },
+        {
+          "symbol": "\ud83d\udd17",
+          "label": "API",
+          "category": "API Changes",
+          "text": "Added the T1_WEB_ENABLED (default on) and T1_WEB_PORT (default 37965) settings (additive).",
+          "details": [
+            "T1_WEB_ENABLED=0 turns the site off."
+          ]
+        },
+        {
+          "symbol": "\ud83d\udd17",
+          "label": "API",
+          "category": "API Changes",
+          "text": "Changed hypernix-t1 runner start with no model named (behavioral).",
+          "details": [
+            "It now loads T1_DEFAULT_MODEL, HyperNix.3-mini unless set.",
+            "Before, it started the only model on the server, and listed them and stopped when there were several.",
+            "Migration: an empty T1_DEFAULT_MODEL= restores the old behavior; any other value names the model to load."
+          ]
+        },
+        {
+          "symbol": "\ud83d\udd17",
+          "label": "API",
+          "category": "API Changes",
+          "text": "Added T1_HYPERLINK_TEACH_TOOLS (behavioral; default on).",
+          "details": [
+            "The tool format is now taught in the system prompt on every backend.",
+            "0 turns it off; runner teaches it on the built-in runner only, as 0.72.6 did."
+          ]
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "CLI and UX",
+          "text": "Added hypernix-t1 chat [-s SYSTEM] [--new] MESSAGE.",
+          "details": [
+            "It streams a reply from the served model through the HyperLink route and remembers the chat.",
+            "It replaces a curl recipe that fish refused."
+          ]
+        },
+        {
+          "symbol": "\ud83d\udd12",
+          "label": "security",
+          "category": "Security",
+          "text": "Fixed robots.txt letting a server-side fetch reach the LAN.",
+          "details": [
+            "The page URL of /web/v1/summarise was checked to be public, but its robots.txt was fetched first, with a plain urlopen that follows redirects, so a public site could redirect it to 169.254.169.254 or a private address.",
+            "It now goes through the same pinned, public-only opener as the page. The local tools keep a separate cache that may read a LAN site."
+          ]
+        },
+        {
+          "symbol": "\ud83d\udd12",
+          "label": "security",
+          "category": "Security",
+          "text": "Fixed script and style blocks ending </script foo>, or in upper case, being left in extracted page text.",
+          "details": [
+            "The patterns now match what browsers do."
+          ]
+        },
+        {
+          "symbol": "\ud83d\udd12",
+          "label": "security",
+          "category": "Security",
+          "text": "Changed usage SQL to interpolate only literal column names looked up from a table, never the request's string.",
+          "details": [
+            "It was allowlisted already, and now cannot be otherwise."
+          ]
+        },
+        {
+          "symbol": "\ud83d\udd12",
+          "label": "security",
+          "category": "Security",
+          "text": "Fixed module storage paths accepting a sibling directory.",
+          "details": [
+            "A realpath and separator-aware prefix check means /srv/modules-evil no longer passes for /srv/modules.",
+            "Key ids are checked before they become file names."
+          ]
+        },
+        {
+          "symbol": "\ud83d\udd12",
+          "label": "security",
+          "category": "Security",
+          "text": "Changed waiter's config, which holds a key, to be created 0600.",
+          "details": [
+            "It was written under the default umask and chmodded afterwards."
+          ]
+        },
+        {
+          "symbol": "\ud83d\udd12",
+          "label": "security",
+          "category": "Security",
+          "text": "Restricted the LM Studio address to http and https.",
+          "details": [
+            "The admin-only override arrives over HTTP, and urlopen also speaks file://."
+          ]
+        },
+        {
+          "symbol": "\ud83d\udd12",
+          "label": "security",
+          "category": "Security",
+          "text": "Removed committed T1 token and deploy secrets from the examples script.",
+          "details": [
+            "It generates them with secrets.token_hex(32).",
+            "The consent-gated shell tools in hyped carry nosec with the reason."
+          ]
+        },
+        {
+          "symbol": "\ud83d\udd12",
+          "label": "security",
+          "category": "Security",
+          "text": "Changed a keyless caller, a phone or the site on a trusted network, to get the read-only T1 tools instead of none.",
+          "details": [
+            "Its model can now answer \"which version is this server\".",
+            "Nothing that writes is offered: the server calls itself from loopback, which may be trusted more than the caller's network, and what differs between them is write access."
+          ]
+        },
+        {
+          "symbol": "\ud81a\udca5",
+          "label": "major fix",
+          "category": "Fixed",
+          "text": "Fixed hypernix-t1 runner not finding a server on another port.",
+          "details": [
+            "A server on 8001 answered everything else and got \"Could not reach the T1 API at http://127.0.0.1:8000\". The command knew --url, T1_URL and 8000, and never read the T1_PORT the shell wrapper had exported from the server's .env for it.",
+            "It now uses --url, T1_URL, T1_HOST/T1_PORT, the .env, then 8000."
+          ]
+        },
+        {
+          "symbol": "\ud83d\udee1\ufe0f",
+          "label": "polish",
+          "category": "Fixed",
+          "text": "Added discovery when nothing answers at that address: the command asks the nearby loopback ports whether they are a T1 API, and says where it found one.",
+          "details": []
+        },
+        {
+          "symbol": "\ud81a\udca5",
+          "label": "major fix",
+          "category": "Fixed",
+          "text": "Fixed HyperLink not calling tools on most local models.",
+          "details": [
+            "The format was taught only on the built-in runner. On LM Studio the tools went in the tools field alone, and a model whose template drops it, as Gemma's does, never learned they existed. It is now taught on every backend.",
+            "Half the conventions went unread and were shown as the answer. The loop now also reads LM Studio's [TOOL_REQUEST], Gemma's call:name{...} and tool_code, Llama's <function=...>, DeepSeek's markers, and a JSON call after a sentence. Python-style calls are read with ast and\u2026",
+            "A backend that refuses tools (llama-server without --jinja) failed the message. That round is now retried without it, and the rest of the turn uses the taught text convention."
+          ]
+        },
+        {
+          "symbol": "\ud81a\udca5",
+          "label": "major fix",
+          "category": "Fixed",
+          "text": "Fixed the model not knowing how to use the tools it was taught.",
+          "details": [
+            "The taught prompt listed the tools and showed one call, and nothing else. A small model read that as optional: it said it could not reach things a tool could, or stopped at the call as if it were the answer.",
+            "The prompt now says the tools are real and to call one instead of guessing, and shows a whole exchange: call, result, answer."
+          ]
+        },
+        {
+          "symbol": "\ud83d\udc1b",
+          "label": "fix",
+          "category": "Fixed",
+          "text": "Fixed a result the model writes itself after its call being shown and kept; it is now removed.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udce6",
+          "label": "packaging",
+          "category": "Dependencies and Packaging",
+          "text": "Added the site's files (hypernix/hyperlink/web/) to the package data and MANIFEST.in, so the wheel and the sdist carry them.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udce6",
+          "label": "packaging",
+          "category": "Dependencies and Packaging",
+          "text": "Changed the release guard to hold a patch release to the guide's <version> \u2014 patch N - <headline> heading.",
+          "details": [
+            "wiki/Changelog-guide.md now gives a patch posted on PyPI that form instead of a date, so a .postN whose newest entry is dated, or whose patch number is not its post number, is refused before the build rather than failing the release's tests after it."
+          ]
+        },
+        {
+          "symbol": "\ud83d\udcda",
+          "label": "docs",
+          "category": "Documentation",
+          "text": "Added T1_WEB_ENABLED and T1_WEB_PORT to examples/t1api/.env.example.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udedc",
+          "label": "site",
+          "category": "Site Changes",
+          "text": "Documented HyperLink on the web and the move from LM Studio on the wiki's T1 API page, with the two settings and the /runner/adopt routes.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udedc",
+          "label": "site",
+          "category": "Site Changes",
+          "text": "Documented the tool-calling changes and T1_HYPERLINK_TEACH_TOOLS on the wiki's T1 API page.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udedc",
+          "label": "site",
+          "category": "Site Changes",
+          "text": "Documented the default model, native models, where the runner finds the server, and hypernix-t1 chat on the wiki's CLI page.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udedc",
+          "label": "site",
+          "category": "Site Changes",
+          "text": "Fixed two labels on the docs site's Home and Credits pages that were 10.5px, under the 11px floor test_website_mobile enforces, which failed the full suite, and with it a release, on main.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udedc",
+          "label": "site",
+          "category": "Site Changes",
+          "text": "Changed the GitHub Pages changelog to read the guide's format.",
+          "details": [
+            "A patch's number and headline come from its patch N - <headline> heading: the headline is its summary, and Home and the release history show \"patch N\" where a dated release shows its date.",
+            "A change's nested details are kept apart from it instead of being run into the summary, and names keep their underscores (brewer_adapter was shown as breweradapter).",
+            "Home's highlights are labelled with the legend's meaning (major, minor, feature, security, ...); \u0e4b\u08ed\u2b51 and \ud81a\udd54 are in scripts few fonts carry, and showed as boxes.",
+            "The release history calls .postN releases patch releases, as the guide does."
+          ]
+        },
+        {
+          "symbol": "\ud83e\uddea",
+          "label": "tests",
+          "category": "Tests",
+          "text": "Added tests/test_local_server_url.py (15): the address order, discovery on a neighbouring port, a named URL never second-guessed, and the chat command against a stand-in server.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83e\uddea",
+          "label": "tests",
+          "category": "Tests",
+          "text": "Added tests/test_hyperlink_tool_formats.py (28): every new convention, what is not a call, the stream holding each marker back, a backend that refuses tools on both routes, and the format taught everywhere.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83e\uddea",
+          "label": "tests",
+          "category": "Tests",
+          "text": "Added tests/test_security_post1.py (28), one or more per fix, including a loopback server that must see no robots.txt request.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83e\uddea",
+          "label": "tests",
+          "category": "Tests",
+          "text": "Added tests/test_hyperlink_brewed.py (27): a two-layer model of the same architecture through the loader, the server, the runner's subprocess, the catalogue and the downloader.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83e\uddea",
+          "label": "tests",
+          "category": "Tests",
+          "text": "Added tests/test_runner_adopt.py (12): finding the file by folder, by lms, and refusing two; unloading through the API or lms; who may; the move, and a failed load put back in LM Studio.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83e\uddea",
+          "label": "tests",
+          "category": "Tests",
+          "text": "Added tests/test_hyperlink_web.py (15): the page and the API on one origin, its headers, no request path becoming a file path, listening on loopback and tailnet addresses only, the server starting and stopping it, dark mode, and Node checking that model text is escaped.",
+          "details": [
+            "The page was also driven in Chromium at desktop and phone sizes."
+          ]
+        },
+        {
+          "symbol": "\ud83e\uddea",
+          "label": "tests",
+          "category": "Tests",
+          "text": "Added tests/test_docs_changelog_data.py (11): the Pages data reads the patch heading, keeps details apart and underscores in names, has a label for every legend symbol, and has the newest entry.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83e\uddea",
+          "label": "tests",
+          "category": "Tests",
+          "text": "Added a changelog test and three release-guard tests for the patch heading: accepted as patch N - <headline>, refused dated, and refused when N is not the post number.",
+          "details": []
+        },
+        {
+          "symbol": "\u2757",
+          "label": "known issue",
+          "category": "Known Issues",
+          "text": "HyperNix.3-mini, the new default, cannot hold a chat or call tools.",
+          "details": [
+            "It is a 48.7M-parameter base model with a 512-token context and a validation perplexity of about 2,540. It completes text, often incoherently.",
+            "HyperLink's default prompt and the tool format fall off the front of its window."
+          ]
+        },
+        {
+          "symbol": "\ud83e\ude79",
+          "label": "workaround",
+          "category": "Temporary Workarounds",
+          "text": "Name a chat model with T1_DEFAULT_MODEL when the runner's model should hold a conversation or call tools.",
+          "details": [
+            "Affects hypernix-t1 runner start with no model named, from 0.72.6.post1.",
+            "The named model is loaded instead of HyperNix.3-mini; nothing else changes.",
+            "Remove the workaround when the default HyperNix model can hold HyperLink's prompt and call tools."
+          ]
+        }
+      ]
     },
     {
       "version": "0.72.6",

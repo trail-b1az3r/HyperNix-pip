@@ -1,7 +1,7 @@
 {
   "definition": "non-blank source lines across repository code roots: src, scripts, tests, examples, bin, native, docs/src",
-  "total_lines": 227387,
-  "code_files": 748,
+  "total_lines": 227165,
+  "code_files": 746,
   "top_files": [
     {
       "path": "src/hypernix/t1api/routers/hyperlink.py",
@@ -126,22 +126,49 @@
   ],
   "contributors": [
     {
-      "author": "Rayla",
-      "additions": 265931,
-      "deletions": 235,
-      "net": 265696,
-      "changes": 266166,
-      "commits": 9,
-      "files": 728
+      "author": "Claude",
+      "additions": 218080,
+      "deletions": 14834,
+      "net": 203246,
+      "changes": 232914,
+      "commits": 251,
+      "files": 1620
     },
     {
-      "author": "Claude",
-      "additions": 36449,
-      "deletions": 4964,
-      "net": 31485,
-      "changes": 41413,
-      "commits": 56,
-      "files": 610
+      "author": "minerofthesoal",
+      "additions": 85767,
+      "deletions": 11881,
+      "net": 73886,
+      "changes": 97648,
+      "commits": 53,
+      "files": 491
+    },
+    {
+      "author": "Ray0ffire",
+      "additions": 38220,
+      "deletions": 30435,
+      "net": 7785,
+      "changes": 68655,
+      "commits": 64,
+      "files": 50
+    },
+    {
+      "author": "Mason",
+      "additions": 11658,
+      "deletions": 216,
+      "net": 11442,
+      "changes": 11874,
+      "commits": 7,
+      "files": 48
+    },
+    {
+      "author": "qwen.ai[bot]",
+      "additions": 947,
+      "deletions": 126,
+      "net": 821,
+      "changes": 1073,
+      "commits": 12,
+      "files": 407
     },
     {
       "author": "t",
@@ -151,9 +178,27 @@
       "changes": 434,
       "commits": 1,
       "files": 3
+    },
+    {
+      "author": "Rayla",
+      "additions": 277,
+      "deletions": 242,
+      "net": 35,
+      "changes": 519,
+      "commits": 21,
+      "files": 5
+    },
+    {
+      "author": "github-actions[bot]",
+      "additions": 46,
+      "deletions": 46,
+      "net": 0,
+      "changes": 92,
+      "commits": 46,
+      "files": 1
     }
   ],
   "history_available": true,
-  "commit": "0d47f715b93401ff177cc088b0311892fad01cbe",
+  "commit": "95788c3b9222b95a52c80722fa01e68980dfc567",
   "generated_at": null
 }
