@@ -1,8 +1,8 @@
 {
   "version": "0.72.7.post1",
-  "total_downloads": 13313,
-  "last_day": 120,
-  "last_week": 445,
+  "total_downloads": 13369,
+  "last_day": 56,
+  "last_week": 487,
   "last_month": 3582,
   "downloads": {
     "recent": {
@@ -123,6 +123,10 @@
         {
           "date": "2026-10-08",
           "downloads": 120
+        },
+        {
+          "date": "2026-10-09",
+          "downloads": 56
         }
       ]
     },
@@ -179,5 +183,5 @@
       "downloads": 18
     }
   ],
-  "updated_at": "2026-10-10T00:19:12.534984Z"
+  "updated_at": "2026-10-10T23:49:34.200994Z"
 }
