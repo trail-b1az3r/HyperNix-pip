@@ -176,7 +176,7 @@ function HomePage({ setPage, downloads, olderDownloads, totalDownloads, ghStats,
                   display:'inline-block' }}>
                 PyPI ↗
               </a>
-              <a href="https://github.com/trail-b1az3r/HyperNix" target="_blank" rel="noreferrer"
+              <a href="https://github.com/trail-b1az3r/HyperNix-pip" target="_blank" rel="noreferrer"
                 className="press-btn" style={{
                   background:'none', border:'1px solid var(--border-strong)', color:'var(--text-muted)', borderRadius:8,
                   padding:'12px 26px', fontSize:14.5, textDecoration:'none',
