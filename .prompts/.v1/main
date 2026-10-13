@@ -1,11 +1,11 @@
-0.72.7
+# 0.72.7
 
 Modernize HyperNix-pip into a reliable, production-ready release by fixing HyperLink model selection, image and file support, and runner behavior; resolving Linux, macOS, and Windows CI failures; and completing a repository-wide migration to Python 3.12–3.15. Audit and update source code, dependencies, packaging, native builds, typing, async behavior, APIs, tests, and documentation; implement Python 3.15 features including PEP 798, PEP 799, PEP 810, and PEP 831 where they provide real value, with safe compatibility paths for Python 3.12–3.14. Add repeatable before-and-after benchmarks for startup, imports, memory, CPU, and representative workloads, and verify installs, wheels, source distributions, tests, and supported-platform compatibility. Preserve existing behavior and public APIs wherever possible, document any unavoidable changes, and never claim a feature, performance gain, or test result without implementation and evidence.
-0.72.8 alpha 0  
+# 0.72.8 alpha 0
 Make a new module,  
 That  will be able to load many instances of a small context model, and use each one in series to be to use larger prompts, make it work in the 1api, factor into to costs on larger costs, update the billing format for some of the newer features, in tvtopmax, and more keybinds, o: sort items like if processs are slected it will change how it’s sorted, or if ram is selected, can sort by highese/lowest use or speed, if a selected window is longer then it’s available space, users can press right arrow, to move the view area right, pressing shift right goes the other way, left arrow, cycle selected section, d: deselect all sections, add 5 more sections( hidden by default show via shift+number) , add to the cpu section per core temps, the ram usage is 100% inaccurate, add volume in decibels and a warning text if it’s playing audio and at a volume that’s unsafe, make it not eatmate the volume, make it real and accurate, and add a Firefox extension, that allows models running on the api, localy, or a other cloud provider like gpt, Claude, to interact with your browser, search the web, type, etc.  
   
-0.72.8 alpha 1:  
+# 0.72.8 alpha 1:
 Make hyperlink chats no longer be gloable, if accounts are on, link it to accounts, if not then it must be linked to the api key, and make requests in hyperlink, only time out, if the client can’t respond to the server first when sending prompt, then 4 second after, and the t1 api doesn’t send a model free response to a ping, and if a user makes a request with no data,it won’t work and the app will show and error since the app can’t sent a validat ping that is time stamped to when send is pressed in app, and resending or editing the message, will resign the message using the account id and Unix time and date, or if no accounts then with t1 or t2 (or 2.1) key id, Unix time and date, and a random string (23 to 26 long), and both ways also use the chat or code session and server session Id all with the others for signing and resigning and validation   
 In hnx-t1 runner start, make it instead of needing the exact t1 name for the model, make it have a lms load like interface, that is not locked, but does refresh, (no open tui), that people use their arrow keys to change selection, and hnx-t1 runner backend to change the back end like that, update wikis, for the alpha release, in hyperlink, make models that are loaded, (if more than one), both in models tab, and chat, show what is loaded, and allow users to pick one of the loaded 2 (or more (no limit)) to use  
 Add a command hnx-t1 launch-script -1 ‘command one’ -2 ‘command 2 that runs after, in the case of yay for example when it asks like packages to exclude it goes there, and -3, -4 up to 9, and make -5 (example), then “” just press enter,   
@@ -2044,8 +2044,8 @@ Run the relevant tests after each major subsystem.
 Finally run the full test suite and fix regressions.  
 The final result should feel like a **major HyperNix Studio upgrade**, with local AI becoming a first-class citizen rather than an afterthought, a genuinely capable agent/tool runtime, and Optimizer Framework V2 providing a clean unified interface over the Pressure Cooker generations.  
   
-0.73.1 through 0.73.5 are 5 versions that do not add any new features, all these updates are for are for stability, bug fixes, code review and revision, as well as safety and performance improvements, the sole new feature working t1 api calling for models running into hyperlink, and improve amd compatibility, improve the readme, remove old and outdated sections or update them, and fix all other platforms build issues and add more tests, (0.73.1) add a workflow that uses GitHubs free calling for a auto model to auto update the what’s new section of the readme when a major release is out  
-0.73.6 pt1   
+# 0.73.1 through 0.73.5 are 5 versions that do not add any new features, all these updates are for are for stability, bug fixes, code review and revision, as well as safety and performance improvements, the sole new feature working t1 api calling for models running into hyperlink, and improve amd compatibility, improve the readme, remove old and outdated sections or update them, and fix all other platforms build issues and add more tests, (0.73.1) add a workflow that uses GitHubs free calling for a auto model to auto update the what’s new section of the readme when a major release is out
+# 0.73.6 pt1
   
 Add new quants: hnx_q7h (q8k, q6s, q4km, int3, and fp16) hnx-q7E it should be 7.326 bits, remake hnx pipeline, and assistant add a command to prot, that if users have TWO or more monitors, it will check what one is currently the primary one, that the cursor is in, and the one or more others will be black with backlight off, until the mouse moves on to where it would be on that other monitor it you could see it, and the all monitors should be on, and make it so if users type hnx prot -O (off) restore fixes it  
 **HyperNix**  
@@ -2430,11 +2430,11 @@ Create a clean V3 architecture with its own modules, configuration system, docum
 The final architecture should prioritize:  
 **efficient long-context processing + persistent learned state + scalable architecture + hardware-aware adaptive execution + training integrity.**  
 The final result should feel like a genuinely new HyperNix architecture rather than a conventional Transformer with renamed components.  
-0.74.1  
+# 0.74.1
 In hyperlink add the following, 1: a  theme named origins that is old theme before customization was added, 2: when I have pcutil installed it see my gpu, but not my ram and cpu, also make it have power usage per hour, 80plus estimated efficiency rating, actual power efficiency. Make an actual fully working hyperNix model runner like lms, lm studio, using modified llama cpp, in hyperlink, add a little circle on the right of the chat text box, that has 3 rings that are different colors, red means nearly full, blue means not less than 60% free but less than 85% free, 100= green, 45 to 31% yellow, that is for the user context, when it hits 96% full, it will auto compact, then next is useage remaining deep crimson = empty, white = fine and above 50, orange = over 10, less than 50, make a action run a new example that trains a 50 peramiter model using brewer, the newest pressure cooker, Neo oven, synchronous, and more   
   
   
-0.74.2
+# 0.74.2
 
 # HyperNix 0.74.2 — Experiment Ledger and Reproducible Model Workbench
 
@@ -2522,7 +2522,7 @@ Reuse existing abstractions and public APIs wherever possible. Update docs/chang
 
 Completion requires a real end-to-end run, validated recovery behavior, useful comparison/export output, tests, and documentation backed by evidence.
 
-0.75.0  
+# 0.75.0
 #   
 # HyperNix 0.75.0 — Create HyperNix0xV4  
 Create a completely new LLM architecture called **hypernix0xV4** from scratch. Do not simply modify 0xV3 or make a conventional Transformer with renamed components. V4 should introduce a fundamentally different **learning and thinking paradigm** inspired by how a developing human learns: perception → curiosity/wondering → parallel internal processing → tentative understanding → repetition → learning → perspective formation. The model must be designed around **continuous parallel cognition rather than conventional sequential chain-of-thought**. It must **not expose or require traditional chain-of-thought** during inference. Instead, implement a new **Multi-Thread Cognitive Reasoning system** where several lightweight internal reasoning threads independently examine an input from different perspectives, periodically synchronize, challenge one another, discard weak hypotheses, and merge useful representations into a compact latent state. Threads should be dynamically created, paused, merged, or terminated depending on uncertainty and task complexity. The architecture should have explicit modules for **Perception, Wonder/Curiosity, Hypothesis Formation, Parallel Thought, Synchronization, Memory, Learning, Perspective Formation, and Response Generation**.  
@@ -2650,16 +2650,16 @@ Provide:
 The final implementation should be **research-grade, modular, reproducible, and extensible**. Every novel component should have a clear mathematical definition, implementation, ablation configuration, and benchmark so it is possible to determine whether the new cognitive mechanisms actually improve learning, reasoning, multimodal understanding, efficiency, and generalization rather than merely making the architecture more complicated.  
   
   
-0.76.0  
+# 0.76.0
   
   
-0.76.1  
+# 0.76.1
 Add support for hyperNix.25  
 Make wall clock, before shutting script down log, shutting down: in 5 4 3 2 1. Now, and with a option to stop shutdown by pressing shift c  
-0.80.0  
+# 0.80.0
   
   
-0.81.0  
+# 0.81.0
 ##   
 ## HyperNix 0.81.0 — Unified In-House Runtime  
 ## Core Objective  
@@ -3567,20 +3567,199 @@ The final result should feel like **one cohesive HyperNix runtime**, with torch,
   
   
   
-0.82.0  
+# 0.81.1 — HyperLink Android, Unified Navigation, API Providers, and HyperNixUP
+
+## Release objective
+
+Deliver a major, cohesive HyperLink and developer-experience release for desktop and Android. Treat the current implementation as the source of truth: inspect the existing app, T1 API, provider integrations, permission model, updater, docs, wiki, and every earlier prompt before changing code. Reuse existing working features, avoid duplicate implementations, and do not claim a requirement is done until it is implemented and tested. This release must include all requirements below while preserving the existing HyperNix workflows.
+
+## 1. HyperNixUP: define, implement, and integrate the format
+
+Improve the existing HyperNixUP proposal into a documented, versioned Markdown extension based on CommonMark/GitHub-Flavored Markdown concepts and compatible with the project's existing Markdown tooling. Define the grammar, precedence, escaping rules, nesting behavior, parser errors, and fallback rendering before implementing it. Do not invent ambiguous syntax where standard Markdown already has a clear equivalent.
+
+Support the following proposed extensions, with documented canonical syntax and examples:
+
+- **Invisible ink / reveal text:** render marked text concealed until hover, keyboard focus, or explicit tap/click. On touch devices it must be usable without hover. Provide accessible labels and a way to reveal/hide it again. This is a presentation feature, not a security boundary.
+- **Redaction:** a dedicated redaction syntax that masks text in rendered views, with an explicit reveal action if appropriate. Clearly document that source Markdown still contains the text and redaction does not protect secrets.
+- **Math and graphs:** support inline/block math and a safe, explicitly defined graph-expression syntax. Validate expressions and impose resource limits; never execute arbitrary code from a document to draw a graph.
+- **Text styling:** lightweight emphasis, italic, quarter-step/half-step sizing where supported, compact/small/grey text, upside-down/inverted text, color annotations, and joke/hidden microtext. Define accessible fallbacks and clamp font sizes and colors for readability.
+- **Nested quotations:** support quoted quotations and indented nested quotes with deterministic parsing.
+- **Escaping and compatibility:** let users show literal extension syntax, preserve ordinary Markdown behavior, and degrade gracefully when a renderer does not support HyperNixUP.
+
+Provide a formal syntax reference, examples gallery, parser/renderer tests, and a preview. Prefer semantic HTML/accessibility and safe DOM rendering over raw HTML injection. Sanitize untrusted Markdown, validate color formats, block scriptable URLs and unsafe HTML, and guard against malformed nesting or oversized graph expressions.
+
+## 2. HyperNixUP integration in HyperLink and system prompts
+
+Use a shared, versioned parser/renderer so HyperNixUP has consistent behavior in HyperLink chat, message previews, relevant prompt/document previews, and supported system-prompt editing/rendering. Keep raw prompt content available for editing and export; do not silently rewrite or discard user text. Define whether model-facing content is sent as raw source, normalized Markdown, or a safe textual equivalent, and test the chosen behavior so formatting syntax does not accidentally become confusing instructions or corrupt the actual system prompt.
+
+Provide a renderer capability fallback for clients that do not support an extension. Ensure copied/exported content has a predictable choice between original source and rendered/plain text. Add fixtures for nesting, malformed syntax, escaping, mobile tap-to-reveal, keyboard access, redaction, graph limits, and malicious Markdown payloads.
+
+## 3. Native Android version of HyperLink
+
+Deliver a real Android application, not merely a responsive webpage or mockup. First inspect the current HyperLink client architecture and choose the most maintainable way to share API contracts, validation, and compatible UI logic while respecting Android platform conventions. If a native client is appropriate, use the project's established Android/Kotlin or cross-platform setup; do not introduce a second architecture without documenting the trade-off.
+
+Android must support the core parity path: server discovery/pairing, secure authentication, server selection, model browsing, chat streaming and cancellation, conversation history/sync, attachments and images, settings, account/device management, API provider configuration, and clear offline/network error handling. Adapt permissions, file picking, background work, notifications, and lifecycle handling to Android. Do not assume a process or streaming connection survives backgrounding; recover state safely when the app resumes.
+
+Add build/signing guidance, supported Android SDK/minimum version, screenshots, install/test instructions, CI build checks, and automated tests for navigation, authentication, API behavior, and interrupted connectivity. Never commit signing keys or release credentials.
+
+## 4. Redesigned navigation and gestures
+
+Redesign HyperLink navigation around predictable horizontal navigation:
+
+- Swiping left from the content area navigates back to the previous window/screen, preserving its scroll and draft state when appropriate.
+- A deliberate, sufficiently long leftward edge gesture opens the main navigation menu. Define thresholds, animation, gesture priority, and a clear visual affordance; do not make users guess how far to swipe.
+- Swiping right may close the menu or return to the next-level screen only when that action is unambiguous. Respect Android system back gestures and desktop conventions.
+- Do not hijack horizontal scrolling, code editing, sliders, image carousels, text selection, or accessible navigation. Every gesture must have an equivalent visible button/menu action.
+- Support reduced-motion settings, keyboard navigation on desktop, screen readers, and responsive layouts.
+
+The main menu must include **Code, Account, Chat, Settings, Servers, and API**. Indicate the current location, retain navigation history, avoid duplicate stacked windows, and provide a reliable route back to Chat from any screen. Write tests for edge gestures, back-stack behavior, draft preservation, deep links, and accessibility.
+
+## 5. New Code tab inspired by coding-agent workflows
+
+Add a first-class **Code** tab with a Claude Code-like workflow without copying proprietary branding or relying on an external CLI being installed. It should be a practical coding workspace integrated with HyperNix model/provider selection and T1 where configured.
+
+Include a project/workspace selector, file tree and safe file preview, agent conversation, plan/tasks view, proposed file edits and diffs, test/build output, run history, and explicit approval controls for changes and commands. Support context selection and visible context usage. Keep the chat and code workspaces connected without mixing their histories unexpectedly.
+
+Security requirements:
+- Treat repository content, issue text, model output, and tool results as untrusted data, not privileged instructions.
+- Require explicit approval before executing shell commands, installing dependencies, changing files outside the workspace, or performing destructive operations.
+- Use workspace-scoped paths, reject path traversal, show the exact command and working directory before approval, and capture output.
+- Never silently run code found in a repository, automatically expose credentials, or upload a workspace to a cloud provider without explicit consent.
+- Make tool permissions configurable and auditable; support cancellation, timeouts, output limits, and safe failure recovery.
+- Keep a complete session/event log with secrets redacted, and allow users to inspect changes before applying them.
+
+Add CPU-only fixture repositories and mocked tool backends for tests. Do not require a live paid model API or unrestricted shell access for the normal test suite.
+
+## 6. New API section and provider support
+
+Create a dedicated **API** section for managing provider connections, credentials, model IDs, endpoints, usage settings, and connection tests. Provide first-class support for:
+
+- Anthropic API keys and supported Claude models.
+- Google Gemini API keys and supported Gemini models.
+- OpenAI API keys and supported GPT models.
+- Qwen API credentials and supported Qwen endpoints/models.
+
+Inspect official, current provider API contracts and existing HyperNix provider dispatch before implementing each adapter. Use documented request/response formats, streaming events, tool calls, usage metadata, and error semantics; do not assume all providers implement the same API shape. Where a provider exposes OpenAI-compatible endpoints, support custom base URLs without pretending every feature is compatible.
+
+Requirements:
+- Store secrets using platform-appropriate secure storage where available; on desktop, follow the existing secure configuration strategy. Never print keys, include them in logs, or commit them.
+- Mask keys by default, provide explicit reveal/copy controls, and make removal/replacement straightforward.
+- Add a “Test connection” action with safe, low-cost behavior, clear authentication/quota/network errors, and no accidental long generation.
+- Support provider-specific model IDs, endpoint/base URL settings where supported, context/output limits where known, and configurable request timeouts.
+- Handle streaming, cancellation, tool/function calling, system prompts, multimodal capabilities, and usage reporting only when actually supported by that provider/model. Clearly show unsupported capabilities.
+- Normalize provider errors into useful UI errors without discarding provider request IDs or safe diagnostics.
+- Add mock-server contract tests, sanitized fixture responses, malformed-stream tests, timeout/retry tests, and key-redaction tests. Live API tests must be opt-in and must never require real keys in CI.
+
+## 7. Redesigned Models page with Hugging Face search
+
+Replace the current Models experience with a unified, discoverable model catalogue that clearly distinguishes installed/local models, registered T1 models, remote provider models, and Hugging Face search results.
+
+Implement Hugging Face search within the app, with debounced queries, pagination, sorting/filtering where the API supports it, model cards, author/repository, task, license, file sizes, quantization/format where known, context metadata where available, and links to the source repository. Show the origin and freshness of metadata; never infer unsupported compatibility from a model name alone.
+
+For downloads, display selected files, size estimates, progress, speed where measurable, cancellation, resume/retry when safely supported, disk-space warnings, and clear failure states. Validate repository/revision inputs, prevent path traversal, avoid executing downloaded content, and use immutable revisions/checksums when available. Warn about large downloads, gated access, unknown licenses, and hardware incompatibility without blocking legitimate user choice unnecessarily.
+
+Preserve local model discovery and T1 registry integration. A failed source must not silently appear as an empty successful catalogue: report source-by-source status and let users retry. Add tests for pagination, throttling, malformed responses, duplicate models, unsafe paths, interrupted downloads, missing metadata, and unavailable network sources.
+
+## 8. Fix effort levels across prompts and providers
+
+Audit the entire repository and all current prompt/feature plans for effort-level handling. Do not add a second effort-level system if one already exists; repair and unify the existing implementation. If no complete system exists, introduce a documented canonical mapping for user-facing levels such as **Low, Medium, High, and Maximum**, mapped to each provider/model's actual supported parameters.
+
+- Verify the correct provider-specific field and accepted values against current API documentation. Do not send one vendor's effort parameter to another vendor unless explicitly supported.
+- Define behavior for unsupported effort levels: use a documented safe fallback, explain the fallback to the user, and never claim the requested level was applied when it was ignored.
+- Keep effort separate from response length, context size, verbosity, temperature, and tool permissions.
+- Persist settings per provider/model and allow request-level overrides with clear precedence.
+- Show the effective level in request diagnostics without exposing secrets or private prompts.
+- Add tests for each provider adapter, unsupported models, missing parameters, invalid values, saved preferences, and fallback behavior.
+- Search all other planned release prompts for duplicate effort-level work; consolidate overlapping requirements into one authoritative task and cross-reference it instead of implementing it twice.
+
+## 9. Role-, approval-, and connection-aware capabilities
+
+Implement a coherent permission system for administrator, partial administrator, approved user/device, and ordinary user roles, while supporting Tailscale-based connections where configured. First audit existing roles, T1 key scopes, device pairing, owner isolation, server discovery, and authentication; reuse the existing authorization source of truth.
+
+Some advanced controls may be visible only to administrators, partially visible to delegated admins, or enabled only for approved devices/connections. Examples include server administration, diagnostics, runtime controls, advanced model management, and developer features. However, **hiding UI is never authorization**: every protected action must be checked server-side with explicit permission scopes and owner boundaries.
+
+- Define a permission matrix documenting each role, capability, and required connection trust.
+- Make partial-admin permissions granular, revocable, and least-privilege by default.
+- Tailscale presence may be an additional trust signal only after validating the actual peer identity and configured policy; an IP address or client-supplied header alone is not proof of identity.
+- Do not grant admin rights merely because a request comes from a Tailscale network. Require normal authentication and role authorization.
+- Avoid revealing privileged feature names, server details, logs, model paths, or admin metadata to unauthorized clients through API responses, errors, autocomplete, or hidden endpoints.
+- Record security-relevant admin actions in an auditable log with secrets redacted.
+- Add tests proving that unauthorized direct API calls fail even if the UI is bypassed, roles cannot escalate themselves, cross-owner access is denied, revoked devices lose access, and Tailscale policy failures fall back safely.
+
+## 10. Fix T1 API version auto-update
+
+Investigate why the T1 API version does not automatically update. Reproduce the failure and trace version sources across package metadata, server runtime, client SDK, CLI, generated docs, and release/update code before changing behavior.
+
+Implement a reliable, documented update check and upgrade path that:
+- Compares installed and available versions using proper version semantics, including pre-releases and post-releases.
+- Does not confuse the server's API protocol version with the Python package version or client SDK version.
+- Handles offline mode, rate limits, malformed release metadata, permissions, package-manager ownership, and unsupported environments without breaking startup.
+- Makes update status and errors visible in the existing diagnostics/doctor output.
+- Never silently modifies a system-managed Python environment or upgrades a running service in a way that can corrupt the install.
+- Supports an explicit check-only mode and user-approved update mode, with a rollback/recovery path where feasible.
+- Tests the exact previously failing scenario using mocked release responses and package states. Do not claim automatic updates work until the failing case is covered by a regression test.
+
+## 11. Full wiki redesign
+
+Redesign the repository wiki as a coherent technical knowledge base with a consistent visual and editorial system. Audit current pages and preserve accurate technical material, useful historical notes, and valid inbound links; do not simply delete pages to make the redesign easier.
+
+Create a clear information architecture covering getting started, installation/platforms, configuration, HyperLink, T1 API, models/providers, training, quantization/runtime, security/permissions, CLI/API reference, troubleshooting, migration, changelog, roadmap, and contributing. Add a landing page, page-level navigation, cross-links, version labels where relevant, and a searchable/scan-friendly structure where the hosting platform supports it.
+
+Correct stale commands, obsolete version claims, duplicated guidance, broken links, and contradictions between README, wiki, package behavior, and prompt plans. Generate or validate repetitive API/CLI reference material from real source where practical. Include a link-check script or CI workflow, but make it robust to external rate limits and temporary network failures. Preserve redirects or compatibility pages when renaming important pages.
+
+## 12. New example scripts and cookbook
+
+Add many practical, runnable examples organized by purpose, not one giant example file. Cover at least:
+
+- Minimal text generation and streaming.
+- Anthropic, Gemini, GPT, and Qwen API configuration with environment-based secrets and mock/test modes.
+- T1 API client setup, key scopes, model selection, health checks, and version diagnostics.
+- HyperLink server pairing and safe connection troubleshooting.
+- Local model discovery, Hugging Face search/download, GGUF selection, and hardware-aware recommendations.
+- Tiny CPU-only training, dataset preparation, checkpoint saving/resuming, evaluation, and experiment comparison.
+- Quantization and benchmarking with reproducible settings and honest metric reporting.
+- Image/file input where supported, with provider capability checks.
+- Cancellation, retry, timeouts, and error handling.
+- The Code workspace/tool approval workflow using a temporary fixture repository.
+- HyperNixUP syntax and rendering examples, including accessible reveal/redaction and safe graphs.
+- Permission/role configuration and a safe Tailscale deployment example.
+- Monitoring, logs, doctor diagnostics, and recovery from a failed update.
+
+Every example must have a purpose, prerequisites, expected output, cleanup instructions, and a safe default. Use tiny local fixtures or mocked APIs so examples can be tested without paid API access, secrets, or a GPU. Mark network- or hardware-dependent examples clearly. Add smoke tests where practical, and never leave placeholder API keys or fake success output that users could mistake for a real result.
+
+## 13. New PyTorch-style documentation menu inside the app
+
+In addition to the redesigned repository wiki, build a separate **Docs** section inside HyperLink/the app. This is not the wiki-pages section and must have its own navigation and information architecture inspired by the usability of PyTorch's documentation.
+
+Provide a searchable documentation landing page, category navigation, a table of contents for long pages, breadcrumbs, related topics, version indicators, copyable code snippets, syntax highlighting where supported, runnable/downloadable examples when safe, and links to the full wiki for deeper reference. Include API/CLI reference, installation, quickstarts, tutorials, concepts, recipes, troubleshooting, provider guides, security, and migration guides.
+
+Keep docs discoverable offline where practical and make online-only pages state that they require a connection. Avoid loading arbitrary remote HTML into a privileged web view. Render Markdown with the same safe parsing policy, respect font scaling and screen readers, and keep the docs menu distinct from the wiki section. Add tests for search, navigation, offline behavior, deep links, broken local links, and accessible reading layouts.
+
+## 14. Release integration and definition of done
+
+Before implementation, produce a concise inventory mapping every requirement to the existing module, the planned code change, and its tests. Identify overlapping prompts and consolidate them instead of duplicating features. Work in reviewable stages and keep each stage buildable.
+
+The release is not complete until:
+1. Android builds and core HyperLink workflows pass automated tests.
+2. Swipe navigation, the main menu, Code tab, API section, and redesigned Models page work with keyboard, touch, and accessibility alternatives.
+3. Anthropic, Gemini, GPT, and Qwen adapters pass mocked contract and streaming tests; secret redaction is proven.
+4. HyperNixUP has a defined syntax, safe shared renderer, reference docs, and parser/security/accessibility tests, and works in supported HyperLink views and system-prompt workflows.
+5. Effort levels are mapped correctly per provider and duplicate effort tasks in other prompts are consolidated.
+6. Role/approval/Tailscale restrictions are enforced on the server, not just hidden in the UI.
+7. T1 version auto-update's reproduced bug has a regression test and a safe, documented fix.
+8. Wiki pages, in-app Docs, and example scripts are coherent, checked for broken links, and match the implementation.
+9. Existing tests still pass; new tests cover failure cases, security boundaries, and offline behavior. No secrets or paid services are required for the normal test suite.
+10. Documentation and release notes describe only behavior that exists and has been verified.
+
+Do not substitute mock screens for working features, claim support based on a model name, weaken authorization for convenience, or mark work complete without test evidence.
+
+
+# 0.82.0
   
 Much later:   
 V1.00.0 or for 2.00.0  (only to be made by Claude Code + Fable 5+) or a custom model/cloud model that’s over 3.2T minimum of 2.7T perams (if I can figure it out)  
   
 ONCE I HAVE A ACTUAL COMPANY, MAKING MONEY, AND A FULL DEVELOPMENT TEAM then we will make:   
-HYPERNIX 3.0, a full new software, that costs money, has a paid software license unless user makes (not profits) less than 1m$ a year from ai work, 3.1 coul have a PyTorch replacement, the T3 api and keys  
-  
-  
-  
-  
-  
+HYPERNIX 3.0, a full new software, that costs money, has a paid software license unless user makes (not profits) less than 1m$ a year from ai work, 3.1 coul have a PyTorch replacement, the T3 api and keys
 
 
-0.73.0  
-  
-Add a custom markdown format, hypernixup (based on github flavored markdown, and markup extra), adds \|text|\ that will be “invisible ink” so air only reveals each letter as the finger or curser hovers over it, adds -$-graph math-$- then it makes a graph, /I/ (slight emphasize) slightly italic, 0.5 slise increase and quarter bold, and >>>> quote a quote, +>>>> with indents. and [?color:hex, rgb,hsv value?], and /j: box and hide a one point font (joke) text in it, and ##### even smaller, -###### way smaller and grey, !!!upside down -!!! Invert, ||||redact||||, make it work in hyperlink and the the system prompt,
