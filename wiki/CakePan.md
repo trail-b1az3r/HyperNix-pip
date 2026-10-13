@@ -25,6 +25,9 @@ except pan.BakeOff as exc:
     print("rolled back:", exc)
 ```
 
+
+> **Canonical source:** `src/hypernix/training/cake_pan.py`. The flat `hypernix.cakepan` import spelling used in examples is a compatibility-facing API; the path above is the implementation to check when verifying behavior. The timeout guard uses `SIGALRM` where available and is skipped on platforms such as Windows. Treat any on-disk PyTorch checkpoint as trusted input.
+
 ---
 
 ## `CakePan` fields

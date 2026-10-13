@@ -2,10 +2,10 @@
 
 A smoker is the opposite of a microwave: give it time and ingredients
 and it rewards patience with depth of flavor. `smoker` wraps
-`hypernix.old_oven.CodeOven.train` with progressively more
+the oven object's `.train()` method with progressively more
 sophisticated training recipes. Every tier exposes
 `smoke(dataset, out_dir) -> Path` with the same signature, so a smoker
-drops in anywhere you were calling `oven.train()` directly.
+drops in anywhere you were calling the supplied oven's `.train()` method directly.
 
 ## Four tiers, ascending quality (and cost)
 
@@ -115,6 +115,9 @@ Dedicated shortcuts: `useable_smoker(oven, **kw)`, `good_smoker(oven,
 - `torch` — only imported inside `CommercialSmoker.smoke()` (lazy, for the EMA blend)
 - `hypernix.train.save_snapshot` (internal) — imported lazily inside `CommercialSmoker.smoke()` / `HighQualitySmoker.smoke()`
 - Standard library: `copy`, `dataclasses`, `pathlib`
+
+
+> **Canonical source:** `src/hypernix/training/smoker.py`. The `hypernix.smoker` import spelling used in examples is the compatibility-facing API; the source path above is the implementation to check when verifying behavior. Treat the described effective-LR and post-hoc EMA behavior as the checked-in implementation: neither is a true per-step LR schedule or per-step EMA. `patience` is documented as inert until the code implements early stopping.
 
 ---
 

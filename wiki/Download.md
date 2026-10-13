@@ -14,17 +14,14 @@ resolve_repo_id("hyper-nix.2")   # -> "ray0rf1re/hyper-Nix.2"
 resolve_repo_id("org/my-model")  # unchanged (already has a "/")
 ```
 
-`KNOWN_MODELS: dict[str, ModelInfo]` is the registry of short names →
-full repo ids, keyed case-insensitively. `ModelInfo(repo_id, arch,
-notes="")` is a frozen dataclass — `arch` is a short tag indicating
-which code path loads the model:
+`KNOWN_MODELS: dict[str, ModelInfo]` is the checked-in registry of short names and aliases → repository IDs, keyed case-insensitively. It is intentionally not reproduced as a static list here because it evolves with the source. `ModelInfo(repo_id, arch, notes="", family="")` is a frozen dataclass. `arch` is a dispatch/metadata tag indicating the intended path; it is not a test result or universal compatibility guarantee:
 
 | `arch` | Loaded via |
 |---|---|
 | `"hypernix"` | `HyperNixModel`, interleaved RoPE, no q/k/v bias (HyperNix-native Llama-shape). |
 | `"llama"` / `"qwen2"` / `"mistral"` | `HyperNixModel`, HF-shaped state dict with `model.` prefix. |
 | `"nano-nano"` | Custom `NanoNanoModel` (toy architecture). |
-| `"auto"` | `transformers.AutoModelForCausalLM` (Gemma, Phi, DeepSeek, GLM4, GPT-OSS, Nemotron, Qwen3, Llama3+ MoE, etc.). |
+| `"auto"` | Intended generic Transformers `AutoModelForCausalLM` path for compatible causal language models; actual loadability depends on installed Transformers version, model code/config, dependencies, and access permissions. |
 
 `resolve_repo_id(name_or_repo_id)` — anything already containing `/` is
 returned unchanged; otherwise looked up in `KNOWN_MODELS` (falls back to
@@ -34,6 +31,10 @@ pass through to `snapshot_download` as-is).
 `resolve_model_info(name_or_repo_id)` — returns the matching `ModelInfo`
 by short name or by matching a full `repo_id` against the registry
 values; `None` if nothing matches.
+
+## Compatibility and truth in the registry
+
+The registry contains names, aliases, and architecture/family labels used by the current code. It is **not** a verified catalog of reachable Hub repositories, licensed downloads, architecture-specific inference support, or quality-tested models. Some tags such as `"asr"` identify a modality/category and should not be read as proof that the ordinary causal-language-model loading path supports that model. Always validate the downloaded snapshot and test the intended loader.
 
 ## Fallback chains
 
@@ -110,6 +111,9 @@ for debugging. On success, returns the sorted list of present filenames.
 - `huggingface_hub` (`hf_hub_download`, `snapshot_download`) — hard dependency
 - `hypernix.utils.warn_hyper_nix_2` (internal, best-effort, exceptions swallowed)
 - Standard library: `sys`, `dataclasses`, `pathlib`
+
+
+> **Canonical source:** `src/hypernix/models/download.py`. The `hypernix.download` import spelling used in examples is the compatibility-facing API; the path above is the implementation to check when verifying behavior. The short-name registry changes with the checked-in source. A registry entry or parser label is metadata, not a guarantee that the upstream repository is available or that every runtime can load it.
 
 ---
 

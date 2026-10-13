@@ -7,6 +7,9 @@ tags, Alpaca instructions, plain `role: content` transcripts), and
 getting one wrong silently makes a chat model behave like a base model —
 `cookbook` is the registry that prevents that.
 
+
+> **Canonical source:** `src/hypernix/chat/cookbook.py`. The `hypernix.cookbook` import spelling used in examples is the compatibility-facing API; the path above is the implementation to check when verifying behavior. `for_model()` uses a fixed, ordered substring-pattern table; it does not enumerate `KNOWN_MODELS`. A registry entry therefore does not automatically imply that the right chat template will be selected.
+
 ---
 
 ## Built-in templates
@@ -19,7 +22,7 @@ getting one wrong silently makes a chat model behave like a base model —
 | `"llama2"` | `[INST] ... [/INST]` with system in `<<SYS>>`. Alias `"llama-2"`. |
 | `"alpaca"` | `### Instruction:` / `### Response:`. |
 | `"vicuna"` | `USER:` / `ASSISTANT:` lines. |
-| `"plain"` | `role: content` transcript fallback — works with any tokenizer. |
+| `"plain"` | `role: content` transcript fallback — string formatting is tokenizer-agnostic, but it may not match the model's training template. |
 
 ## Quick use
 

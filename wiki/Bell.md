@@ -12,6 +12,9 @@ You don't need it to chat — [`Countertop`](Kitchen.md) uses a `Bell`
 internally when you pass `stream=True` — but it works standalone with a
 raw `CodeOven` too.
 
+
+> **Canonical source:** `src/hypernix/timing/bell.py`. The flat `hypernix.bell` import spelling used in examples is a compatibility-facing API; the path above is the implementation to check when verifying behavior. This is the callback/iterator streaming helper, not the model runtime itself. It expects an oven-like object exposing the methods documented below.
+
 ---
 
 ## Push-based streaming (callbacks)

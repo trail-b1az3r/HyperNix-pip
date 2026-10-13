@@ -89,6 +89,9 @@ Standard library only at import time — `copy`, `json`, `dataclasses`,
 `hypernix.espresso_maker` are internal, lazily-imported dependencies
 used only by `.cook()`.
 
+
+> **Canonical source:** `src/hypernix/training/recipe_book.py`. The `hypernix.recipe_book` import spelling used in examples is the compatibility-facing API; the source path above is the implementation to check when verifying behavior. The book stores configuration dictionaries as JSON; runtime callables such as `brew_fn` must be supplied at dispatch time and are not serializable recipe values.
+
 ---
 
 ## See also

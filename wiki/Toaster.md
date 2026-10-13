@@ -67,6 +67,9 @@ valid tiers.
 
 Standard library only — `dataclasses`, `pathlib`, `collections.abc`.
 
+
+> **Canonical source:** `src/hypernix/data/toaster.py`. The `hypernix.toaster` import spelling used in examples is the compatibility-facing API; the source path above is the implementation to check when verifying behavior. The paired-line tiers skip blanks and silently discard an incomplete final pair/group; validate source formatting if every record must be retained.
+
 ---
 
 ## See also

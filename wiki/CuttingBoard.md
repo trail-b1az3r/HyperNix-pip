@@ -73,6 +73,9 @@ returns a configured `CuttingBoard` instance for repeated use.
 
 Standard library only — `random`, `dataclasses`, `pathlib`, `collections.abc`, `typing`.
 
+
+> **Canonical source:** `src/hypernix/data/cutting_board.py`. The `hypernix.cutting_board` import spelling used in examples is the compatibility-facing API; the path above is the implementation to check when verifying behavior. The split is deterministic for the same inputs, ratios, and seed; it is a dataset splitting utility, not a tokenizer-aware sequence packer.
+
 ---
 
 ## See also
