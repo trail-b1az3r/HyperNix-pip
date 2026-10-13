@@ -13,6 +13,9 @@ from hypernix.sink import Sink
 Sink("clean.txt").pour(FryingPan("raw.txt"))
 ```
 
+
+> **Canonical source:** `src/hypernix/data/pans.py and src/hypernix/data/sink.py`. The `hypernix.pans / hypernix.sink` import spelling used in examples is the compatibility-facing API; the source path above is the implementation to check when verifying behavior. The sink writes each item immediately; rotation and deduplication are per-process/in-memory helpers, not a distributed deduplication service.
+
 ---
 
 ## `hypernix.pans` — five progressive tiers
