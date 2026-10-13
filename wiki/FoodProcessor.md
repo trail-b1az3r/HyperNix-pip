@@ -71,6 +71,9 @@ normalized to `-`. Valid tiers (also in `TIERS: dict[str, type]`):
 
 Standard library only — `re`, `dataclasses`, `pathlib`, `collections.abc`.
 
+
+> **Canonical source:** `src/hypernix/data/food_processor.py`. The `hypernix.food_processor` import spelling used in examples is the compatibility-facing API; the path above is the implementation to check when verifying behavior. `ShredBlade` windows are whitespace-split word windows, not model-tokenizer windows; use the target model's tokenizer separately when exact token counts matter.
+
 ---
 
 ## See also
