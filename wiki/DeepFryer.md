@@ -90,6 +90,9 @@ constructor.
 - `torch`, `torch.nn` (hard dependency — all perturbation is tensor ops)
 - Standard library: `random`, `dataclasses`, `collections.abc`, `typing`
 
+
+> **Canonical source:** `src/hypernix/training/deep_fryer.py`. The `hypernix.deep_fryer` import spelling used in examples is the compatibility-facing API; the path above is the implementation to check when verifying behavior. Weight perturbation happens in place; save the pristine snapshot first if you need to restore the original weights.
+
 ---
 
 ## See also
