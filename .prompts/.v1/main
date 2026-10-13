@@ -20,12 +20,62 @@ add a new module, called c4, and uses the users gpu, and a safetenrsors, pt, or 
 HyperNix 0.72.8 pt3  
 Make a custom in house replacement for huggingface-hub and move it into the t1 api, llama, and dev extras, make this replacement no longger need hf, and instead run to login hnx-hf login and it has a super basic cli for login via token, make all things that use hf swap to hnx-hf with a fail back to hf if installed and if iterrored with an error code, update the examples/t1api/readme and other files in there, make t1 servers fully work with mcp’s like huggingface’s, and add all of hnx net’s features into the t1 API, and depracate net, add a code section to the hyperlink app, that allows the model to have more access to file, (using /code sandboxes, and other stuff), git support, and more. In the hyperlink chat function, add a way for users to integrate parts of dataset files in jsonl, parquet, txt, md, etc into the model, make t1 servers that are running and are public, and have not turned off t1_public_counter in the env settings, on this version of t1.1.26.10.1.0 or newer, have a live hourly counter in the GitHub repo showing how or if any are up yet, add a new commmad hnx auto, it will auto download a repo you give it from hf, if it’s not gguf, it will convert it, then quanitzsize it to what you want it to be, move the following hnx help command, to only be shown if user runs, hnx extra, then they can see these moved commands, hnx; neuron, pipeline, assistant, generate, wiki, prot (fix it so it doesn’t lock my screen), oven, path, and map, tvtop, cctvtop, camo, web search, and scavenger. Add to the help command, tvtopmax, and hypedpro, add a shortcut for fetch-llama-quantisize being fllq, and check all of those for being fakes, stubs or being broken and fix them, fix hyperNix download,  make hyperlink support full markdown, markdown extra, and common mark, and GitHub flavored markdown   
   
-HyperNix v0.73.0 pre alpha 1 changes  
+### HyperNix 0.73.0 pre-alpha 1 changes  
   
 deprecate and remove all support for the t1 api endpoint for v1 web, make the public release action, bundle a Mac intel and Mac m CPU (amd 64 and arm64) hyperlink app dmg files, add a module called atc (api traffic control) it will mange, optimize and end to end encrypt all data going through it, and help protect the server from hackers   
   
-HyperNix v0.73.0 pt1 (alpha 1) —  HyperNix custom runner and backend: called strife   
-Make a custom from scratch model gguf runner, it supports all gguf like the modded hnx llama cpp, but like strata, it is much faster to run models with, you must target, running Q4km models that are 27 to 32b (q3k for 32b) perimeters, on a 8gb card, with a minimum of 8 to 14 tokens per second, you must, test the model and validate its performance and efficiency, and make a strife benchmark script, that tests, running, Qwen3.8 27b q4m, on my 1080, and QWQ 32b, and goal for 5 tokens per second, make it support hnx quants, but the 0.25, 0.5, 075, and 0.9 quants should be supported in a way for the models to not fall apart, on modern gpu’s like the 5080, 3090 ti, and 4080, aim for 12+ tokens per second, and support models like ternary bonsai 2 27b, make this support mainly Linux, and windows, with Mac support being more limited to only m5 and newer   
+## HyperNix 0.73.0 pt1 (alpha 1) — Strife Custom GGUF Inference Runtime
+
+### Mission
+
+Build **Strife**, a HyperNix-owned local inference runtime for GGUF models. Strife must be a real inference backend, not a renamed launcher or a thin wrapper that merely starts the existing modified llama.cpp binary. The runtime should own model loading, scheduling, inference execution, token streaming, cache management, cancellation, and hardware-aware placement. Reuse existing HyperNix GGUF metadata readers, tensor/quant definitions, test fixtures, and compatible open-source components when doing so is correct and license-compatible; do not duplicate mature parsing code without a reason, and do not copy proprietary Strata implementation details. Use the patched HyperNix llama.cpp runtime as a reference backend and performance baseline.
+
+Inspect the current GGUF reader, HNX quantization definitions, model architecture support, native build infrastructure, `ggufrun`, runtime bridge, and existing benchmark conventions before implementation. Write an implementation plan that maps each runtime layer to the actual repository files, then build Strife incrementally behind a stable Python API and CLI. Local inference must work without a T1 key, cloud access, or a running T1 server.
+
+### Runtime architecture and model compatibility
+
+Implement and document distinct components for GGUF metadata/architecture inspection, tokenizer loading, tensor storage and mapping, quantized tensor kernels, CPU/GPU placement, KV cache and context management, batching, sampler/stop conditions, streaming, and request/session lifecycle. Define a capability table by architecture, tensor type, backend, and platform rather than claiming universal support based on a successful file open.
+
+- Support standard GGUF files and the model/architecture families genuinely supported by the existing HyperNix runtime. Preserve tensor shape, alignment, metadata, tokenizer, special-token, and chat-template information. Unsupported architectures or tensor types must fail early with actionable diagnostics.
+- Support common GGUF quantizations including Q4_K_M and Q3_K where the corresponding kernels are implemented. Integrate HyperNix custom quant types, including the planned 0.25, 0.5, 0.75, and 0.9-bit-family formats, only with explicit format identifiers, scale/metadata interpretation, correct tensor layout, and verified kernels. Never interpret an unsupported quant as a different type or silently dequantize it incorrectly.
+- Add safe model inspection and validation before allocating large buffers. Check tensor offsets, lengths, alignment, shape arithmetic, file truncation, architecture metadata, and overflow. Malformed or hostile model files must not trigger unbounded allocation or arbitrary code execution.
+- Use memory mapping and streaming reads where beneficial; avoid eagerly duplicating all weight data in RAM. Implement bounded, configurable KV cache and context settings, prompt/token batching where supported, repeated-prefix/context cache reuse only when session boundaries make it safe, token streaming, stop sequences, cancellation, and request timeouts.
+- Implement configurable CPU inference and partial layer/tensor offload to GPU. Detect backend capabilities and available VRAM; let users inspect and override thread count, batch size, context, GPU layers, and cache settings. If a model cannot fit entirely in VRAM, clearly show the selected CPU/GPU placement rather than implying full GPU residency.
+- Keep independent requests and sessions isolated. Concurrent inference must not corrupt KV caches, tokenizer state, sampler state, or cancellation signals. Bound queues and cache growth to prevent runaway RAM/VRAM use.
+- Optimize hot loops and native kernels first: avoid unnecessary Python per-token/per-tensor overhead, redundant copies, repeated allocation, and avoidable host/device synchronization. Use fused, vectorized, or backend-specific kernels where measured and safe, with a maintained portable fallback.
+
+### Hardware and platform scope
+
+Prioritize Linux x86_64 and Windows for the alpha release, with a reliable CPU fallback. Optimize NVIDIA execution from Pascal (including the GTX 1080) through newer GPUs such as the RTX 3090 Ti, 4080, and 5080. Detect device capability at runtime; do not assume that a new CUDA feature exists on Pascal, and do not make an accelerated path mandatory for portable operation. Add AMD acceleration only where the repository's supported backend can be exercised and tested.
+
+macOS support is deliberately limited in this alpha to experimental support for Apple Silicon M5 and newer. Detect unsupported Apple hardware/backend combinations and explain the limitation; do not report them as supported merely because the Python package imports.
+
+An 8 GB GPU target requires smart partial GPU placement and host-memory offload for large models where necessary. Do not claim that a 27B or 32B quantized model fits entirely in 8 GB VRAM. Report host RAM, peak VRAM, mapped memory, cache allocation, and offloaded-layer count separately.
+
+### Performance targets and benchmark contract
+
+Create a reproducible Strife benchmark command/script (for example, `benchmarks/strife_bench.py`) that accepts local model paths and an explicit configuration. It must not download large models automatically. Benchmark at least these target profiles when the actual compatible model files and hardware are available:
+
+- GTX 1080 with 8 GB VRAM: a 27B Q4_K_M model (Qwen-family example) with a target of at least **8 generated tokens/second**, aiming for the **8–14 tokens/second** range when model, context, and offload configuration permit.
+- GTX 1080 with 8 GB VRAM: a 32B Q3_K QwQ-family workload, with a target of **5 generated tokens/second** under a documented context/offload configuration.
+- RTX 3090 Ti, RTX 4080, and RTX 5080: target **12+ generated tokens/second** for supported comparable workloads, with model size, quantization, context, and backend explicitly recorded.
+
+Treat these as performance goals to measure, not results to assert. Report a target as unmet when evidence shows it is unmet. If a referenced model name, architecture, or quant file is not actually available or supported, record a clear skip reason and allow the benchmark to be configured with a compatible local artifact rather than fabricating a result.
+
+Each benchmark run must record model ID/revision or file hash, quant type, architecture, context length, prompt and generated token counts, sampling settings, backend, GPU layers, CPU threads, batch size, warmup count, repeat count, HyperNix version, OS, driver/runtime, CPU/GPU/RAM/VRAM, model load time, time to first token, prompt prefill tokens/second, generation tokens/second, latency distribution, peak host and device memory, and any measured utilization/power readings. Distinguish decode throughput from prompt processing, estimated values from measured values, and cold-start from warm-run results. Use multiple repeats and report median plus useful spread/percentiles. Save machine-readable JSON/CSV and a human-readable report.
+
+Compare Strife against the patched HyperNix llama.cpp runner and any valid available baseline on the same machine with equivalent model files, quantization, context, output length, thread/layer settings, and warmup policy. Include a quality sanity check (such as fixed-prompt output checks plus an appropriate logit/perplexity or task-level comparison where possible), because high tokens/second is not a win if the output is broken. Do not combine incomparable runs or claim the runner is faster without benchmark evidence.
+
+### API, CLI, and integration
+
+Expose a documented Python interface and useful commands, for example `hnx strife inspect MODEL`, `hnx strife run MODEL`, and `hnx strife benchmark --model MODEL`, adapted to existing CLI conventions. Provide structured status, progress, and coded error output. Let HyperNix Studio and the local runtime provider select Strife without requiring T1 authentication; where an OpenAI-compatible local endpoint is provided, implement and test the contract instead of advertising unsupported endpoints. Support graceful shutdown, cancellation, and an explicit diagnostic command that reports backend selection, model capabilities, memory placement, and fallback reasons.
+
+### Tests and release gate
+
+Add tiny local GGUF fixtures and focused tests for metadata parsing, tensor offsets/alignment, tokenization, deterministic seeded generation, streaming, stop sequences, cancellation, timeouts, concurrent session isolation, CPU fallback, GPU selection where available, partial offload, corrupted/truncated files, unsupported tensor/architecture diagnostics, every advertised HNX quant type, and memory-allocation limits. Compare supported output/logit behavior with a trusted baseline using explicit tolerances. Native tests must not require a downloaded 27B/32B model or paid service; expensive real-hardware performance benchmarks are opt-in and must report which targets they actually ran.
+
+Add Linux and Windows CI build/smoke tests, optional hardware-specific benchmark jobs, a Strife user guide, supported architecture/quantization matrix, troubleshooting notes, and documented limitations. Do not mark Strife complete because a CLI launches: the runner must load and generate with real compatible local models, pass correctness/security tests, and produce reproducible benchmark evidence.
+
   
 ## HyperNix 0.73.0 pt2 (alpha 2) — HyperNix Studio + Local Model Runtime + Optimizer Framework V2  
 You are working on the **HyperNix-pip** repository.  
@@ -496,7 +546,7 @@ Integrate the useful functionality from:
 * Pressure Cooker V5+  
 * Pressure Cooker V5S  
 * Pressure Cooker V6  
-* Pressure Cooker V6V  
+* Pressure Cooker V6V  \n* Pressure Cooker V7 Balanced  \n* Pressure Cooker V7Mini  \n* Pressure Cooker V7Q  \n* Pressure Cooker V7S  \n* Pressure Cooker V7M  
 Do not blindly merge implementations.  
 Preserve each optimizer’s unique behavior while exposing them through a common framework.  
 And better support for strife   
@@ -1148,7 +1198,7 @@ Add a comparison table to the Studio and documentation:
 | V5S | Medium/Low | Extremely Low | Very High | Specialized | Stability + memory |
 | V6 | Very High | Medium | Medium | Low | Maximum throughput |
 | V6V | Extremely High* | Medium | Medium | Low | CUDA graph workloads |
-| V7 | High | Low | High | Medium/High | Balanced default |
+| V7 Balanced | High target | Low target | High target | Medium/High target | General default and balanced workloads |\n| V7Mini | Tuned for small-model throughput | Low overhead target | Benchmark required | Architecture-dependent | Models strictly above 39M and below 750M parameters |\n| V7Q | Fastest variant target | Low/medium target | Benchmark required | Lower adaptivity is acceptable if documented | Maximum throughput where measured faster |\n| V7S | Benchmark required | Very low state target | High target | Specialized | Modernized V5S-style stability and memory efficiency |\n| V7M | Benchmark required | Lower than equivalent V5/V5+ target | High target | High target | Modernized V5/V5+ features, QAT/MTP and sensitivity-aware training |
   
 * Hardware/workload dependent.  
 Do not present these qualitative ratings as measured benchmarks.  
@@ -1258,7 +1308,7 @@ Test:
 * checkpoint save/load  
 * CPU  
 * CUDA when available  
-* older CUDA architectures where CI permits  
+* older CUDA architectures where CI permits  \n* V7Mini automatic-selection boundaries (>39M and <750M parameters) and refusal to infer unknown parameter counts  \n* V7Q speed comparisons versus V6, V6V, and V7S under equivalent supported benchmark conditions  \n* V7S regression tests preserving its intended V5S-derived stability/memory mechanisms  \n* V7M tests for optional V5/V5+ features and ensuring disabled QAT/MTP do not add hidden overhead  
 Ensure V7’s fused and non-fused implementations produce numerically equivalent results within an explicitly documented tolerance.  
    
 ⸻  
@@ -1369,77 +1419,110 @@ If V7 fails to meet a target, optimize the implementation rather than falsifying
 ⸻  
    
    
-## 19. Optimizer Auto-Selection  
-Add an intelligent optimizer selector.  
-Example:  
-```
-OptimizerFrameworkV2.auto_select(
-    model=model,
-    device=device,
-    vram=available_vram,
-    training_mode="pretraining"
-)
-```
-It should consider:  
-```
-GPU architecture
-VRAM
-RAM
-CPU
-parameter count
-parameter dtype
-sequence length
-batch size
-gradient accumulation
-training objective
-CUDA availability
-torch version
-compile availability
-```
-Possible decisions:  
-```
-V5S → extreme memory constrained training
-V5+ → quantization-aware training
-V6 → high-throughput training
-V6V → CUDA graph / fixed-shape workloads
-AdamW → compatibility fallback
-```
-Do not automatically select an optimizer merely because it is newer.  
-   
-⸻  
-   
-## 20. Optimizer Benchmarking  
-Add a benchmark subsystem.  
-Allow:  
+## 18B. Pressure Cooker V7 Family — Mini, Q, S, and M
+
+Keep **V7 Balanced** as the general-purpose default, then add four clearly differentiated specializations. Implement these as shared V7-family implementations/configurations where possible; do not copy the entire optimizer into four diverging codebases. A specialization may have a separate kernel/update path only when profiling shows it is worthwhile. Keep class names, serialization identifiers, diagnostics, documentation, and benchmark labels unambiguous.
+
+### V7Mini — efficiency for small models
+
+V7Mini is specifically optimized for models with a total trainable parameter count **strictly greater than 39,000,000 and strictly less than 750,000,000**. This is the priority range where the mini specialization should deliver its best speed and efficiency improvements. Treat the interval as `39M < parameter_count < 750M`; exactly 39M and exactly 750M are outside the automatic-selection band.
+
+Design for the different bottleneck profile of small models: optimizer Python overhead, many small tensor operations, launch/synchronization costs, temporary allocations, and state bookkeeping can dominate useful arithmetic. Favor batched/foreach updates, minimal per-step allocations, efficient state layouts, reduced synchronization, and small-model-friendly kernel dispatch. Keep a portable CPU path and use GPU acceleration only when it actually lowers end-to-end step time.
+
+- Determine parameter count from reliable model/config metadata and verify against instantiated trainable parameters when practical. If count is unknown or inaccurate, do not automatically select V7Mini.
+- The automatic selector should prefer V7Mini only inside the defined range and when device/backend support and measured workload characteristics make it appropriate. Users may manually request it outside the range, but show a clear note that its designed advantage is not established there.
+- Benchmark representative models throughout the band, including boundary tests just above 39M and just below 750M, plus out-of-band controls below/at 39M and at/above 750M.
+- Compare end-to-end training-step speed, optimizer-only latency, peak RAM/VRAM, state bytes per parameter, loss/convergence, and stability against V7 Balanced, V7Q, V6, and AdamW. Never optimize throughput by silently changing batch size, precision, training steps, or convergence criteria.
+
+### V7Q — quickest throughput-first variant
+
+V7Q is the **quickest-optimizer target** in the V7 family. Its design objective is to outrun V6, V6V, and V7S on comparable workloads while maintaining acceptable training behavior. Reduce hot-path operations, Python overhead, tensor allocations, and host/device synchronization; favor fused/foreach multi-tensor updates and simple state. Avoid expensive stability, curvature, or adaptive calculations in the hot path unless measurements justify them. Clearly document any adaptivity or convergence trade-off and make tunable parameters available rather than pretending the trade-offs do not exist.
+
+The release must prove the speed claim: benchmark V7Q against V6, V6V, V7S, V7 Balanced, and AdamW with the same model, initialization, data, training objective, batch/sequence shapes, precision, hardware, warmup, and repetition policy. Compare optimizer-only and full training-step performance, loss trajectories, memory, and numerical stability. V6V is only comparable on supported compiled/CUDA-graph workloads; mark unavailable combinations as N/A rather than counting them as losses. Optimize again if V7Q does not beat V6/V6V/V7S on the supported target matrix, or qualify the published claim by the hardware/workload where it actually wins. Never print “fastest” based only on a design intention.
+
+### V7S — modernized V5S lineage
+
+V7S is a heavily modernized evolution of Pressure Cooker V5S, preserving the mechanisms that define its value while removing avoidable implementation overhead. Audit the current V5S implementation and retain equivalent, testable behavior for the multi-timescale cosine/oscillation signals, pressure diffusion, quantized momentum, factored curvature/low state footprint, and any age/freezing mechanism deliberately retained by the new design.
+
+- Replace avoidable per-parameter Python work and repeated CPU/GPU scalar synchronization with grouped/vectorized operations where numerically sound.
+- Keep stability mechanisms independently configurable and measure the cost of each one through ablations.
+- Preserve the low-memory objective without hiding allocations or silently switching to a full second-moment buffer.
+- Compare convergence, oscillation behavior, failure recovery, optimizer state, throughput, and memory against V5S and V7 Balanced. If a mechanism is redesigned, document the mathematical difference and add a regression test.
+
+V7S must be a genuine modernization, not a class rename or copy with a new version number.
+
+### V7M — modernized V5 and V5+ lineage
+
+V7M is the feature-rich, highly modernized evolution of Pressure Cooker V5 and V5+. Integrate their useful capabilities behind a coherent configuration API: quantized momentum, factored curvature, quantization-aware training (QAT), multi-token prediction (MTP), EMA, automatic model preparation, quantization-sensitivity analysis, per-layer mixed precision, gradient-norm diagnostics, and directional trust-region behavior where each is applicable.
+
+Keep optimizer mechanics separate from optional model/training transformations. QAT and MTP must be explicit optional training features and must not silently modify a user's model, loss, or objective. Do not activate every feature by default. Explain dependency, memory, compilation, checkpoint, and convergence implications for each feature. The default V7M path should not pay for disabled features.
+
+Compare V7M with V5, V5+, V7 Balanced, V7S, and AdamW on both optimizer state and complete training runs. Include ablations so reported gains can be attributed to specific features instead of to an uncontrolled bundle. Maintain state_dict/load_state_dict support and explicit compatibility checks; never silently reinterpret a V5/V5+ state as a V7M checkpoint.
+
+### Family API, aliases, and selection
+
+Expose stable documented names (adapt to existing package conventions rather than forcing a new public namespace):
+- `PressureCookerV7` / `V7Balanced`: balanced default.
+- `PressureCookerV7Mini` / `V7Mini`: small-model efficiency for the strict 39M–750M interval.
+- `PressureCookerV7Q` / `V7Q`: throughput-first.
+- `PressureCookerV7S` / `V7S`: modernized V5S lineage.
+- `PressureCookerV7M` / `V7M`: modernized V5/V5+ lineage.
+
+Preserve existing V7 names and configuration defaults for backward compatibility. If a rename or import path change is necessary, supply deprecation aliases and tests. Record the selected variant and reason in diagnostics and run metadata.
+
+Automatic selection priority:
+1. Honor an explicit user-selected optimizer/variant when it is compatible; explain and reject unsupported choices rather than silently substituting.
+2. For a verified model in the strict 39M–750M band, consider V7Mini when profiling/configuration supports its expected advantage.
+3. For a throughput-first request, consider V7Q after checking its supported backend and workload.
+4. For a request emphasizing V5S-like stability and very low optimizer-state memory, consider V7S.
+5. For a request requiring the V5/V5+ feature set, consider V7M and enable only compatible, requested optional features.
+6. Otherwise choose V7 Balanced; fall back to an established optimizer only when capability checks require it.
+
+Expose this family in Studio and CLI. Show the best-use description, model-size eligibility, supported features, and measured per-hardware benchmark data. Do not represent qualitative target values as measured results.
+
+### V7 family benchmark and test gate
+
+Extend the optimizer benchmark suite to compare AdamW, V5, V5+, V5S, V6, V6V, V7 Balanced, V7Mini, V7Q, V7S, and V7M. Cover CPU and supported CUDA tiers, tiny/small/medium models, and the mini-range boundaries. Use fixed initialization, data, precision, batch shape, steps, warmup, and repeats. Record optimizer-only latency, full step time, tokens/s or samples/s, peak RAM/VRAM, state bytes, loss/convergence, numerical issues, and supported/fallback kernels.
+
+Add fast synthetic-model tests for all variants; checkpoint/state migration tests; mixed precision/gradient accumulation tests; NaN/Inf and empty-gradient handling; CPU fallback; CUDA and CUDA-graph paths when available; and automatic selection boundary tests. Keep long-running benchmark tests opt-in. Update the V7 wiki, Optimizers docs, CLI help, Studio descriptions, and release notes only after results have been measured and checked in reproducible form.
+
+## 19. Optimizer Auto-Selection
+
+Extend `OptimizerFrameworkV2.auto_select(...)` to choose from established optimizers and the V7 family using measured characteristics rather than version numbers alone. Consider device/backend capability, VRAM/RAM, CPU, verified trainable parameter count, parameter dtype, sequence length, batch size, gradient accumulation, training objective, CUDA/torch versions, compile availability, supported optimizer features, and any user-required feature.
+
+Recommended decision order:
+1. Honor a compatible explicit user selection.
+2. Prefer **V7Mini** for a verified model with `39,000,000 < parameter_count < 750,000,000` when its backend is supported and the workload fits its profile.
+3. Choose **V7Q** for throughput-first workloads when its current benchmark profile supports the hardware/model; report the reason and any stability/adaptivity trade-off.
+4. Choose **V7S** when V5S-lineage stability and low optimizer-state memory are prioritized.
+5. Choose **V7M** when V5/V5+ lineage features such as QAT, MTP, automatic preparation, quantization sensitivity, per-layer mixed precision, EMA, and directional trust regions are required; enable only compatible, requested features.
+6. Choose **V7 Balanced** for general balanced training.
+7. Use established fallbacks (V5S for extreme memory constraints, V5+ when required features cannot yet be provided by V7M, V6 for a verified high-throughput case, V6V for supported fixed-shape CUDA-graph workloads, or AdamW for broad compatibility) when capability checks or verified measurements justify it.
+
+Never pick V7Mini from a guessed parameter count. If the count is unavailable, unknown, exactly 39M, or exactly 750M, its automatic-selection band does not apply. The selector must provide a machine-readable reason and a human-readable explanation for every choice and fallback. A failed compile/CUDA-graph path must fall back safely without changing the requested training objective. Tests must cover boundary values, unavailable hardware, explicit overrides, unsupported features, and deterministic selection for identical inputs.
+
+Do not automatically select an optimizer merely because it is newer.
+
+  
+⸻
+
+  
+## 20. Optimizer Benchmarking
+
+Add/extend the benchmark subsystem behind the existing command convention, for example:
 ```
 hypernix optimizer benchmark
 ```
-to compare:  
-```
-AdamW
-V5
-V5+
-V5S
-V6
-V6V
-```
-Measure:  
-```
-steps/sec
-ms/step
-optimizer-state memory
-peak VRAM
-CPU utilization
-GPU utilization
-host/device synchronization
-loss progression
-gradient stability
-```
-Output both machine-readable JSON and a human-readable report.  
-Never fabricate benchmark numbers.  
-   
-⸻  
-   
+It must compare AdamW, V5, V5+, V5S, V6, V6V, V7 Balanced, V7Mini, V7Q, V7S, and V7M. Include optimizer-only microbenchmarks and full training-step runs; do not infer whole-training speed from optimizer-only numbers.
+
+Measure steps/sec, ms/step, model throughput, optimizer-state memory/bytes per parameter, peak VRAM/RAM, CPU/GPU utilization when available, host/device synchronization where measurable, loss progression, gradient stability, and checkpoint overhead. Record the exact model parameter count, configuration, precision, hardware/backend, warmups, repeats, and failures. Include small models inside and outside the V7Mini eligibility band, plus representative medium/large workloads. V6V should be marked N/A if its CUDA graph path is unavailable, not treated as a slower result.
+
+Output machine-readable JSON and CSV plus a human-readable report. Preserve raw observations, report median and spread/percentiles, and flag incomparable or missing measurements. All relative speed/memory labels in Studio and docs are design targets until backed by results. Never fabricate benchmark numbers or claim V7Q is fastest or V7Mini is more efficient without the corresponding reproducible comparison.
+
+  
+⸻
+
+  
 ## 21. Studio Training Dashboard  
 Add an optimizer/training panel displaying:  
 ```
