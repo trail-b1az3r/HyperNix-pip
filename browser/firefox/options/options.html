@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HyperNix Agent settings</title>
+  <link rel="stylesheet" href="../style.css">
+  <script src="../lib/tools.js"></script>
+  <script src="../lib/providers.js"></script>
+</head>
+<body>
+  <div class="options">
+    <h1>HyperNix Browser Agent</h1>
+
+    <label for="provider">Where the model runs</label>
+    <select id="provider"></select>
+    <div class="help" id="provider-note"></div>
+
+    <label for="base">Server address</label>
+    <input id="base" type="url" spellcheck="false">
+    <div class="help">Leave empty for the default shown.</div>
+
+    <label for="key">API key</label>
+    <input id="key" type="password" autocomplete="off" spellcheck="false">
+    <div class="help">Stored only in this browser (extension local storage), sent only to the server above.</div>
+
+    <label for="model">Model</label>
+    <input id="model" list="models" spellcheck="false" placeholder="model id">
+    <datalist id="models"></datalist>
+    <div class="row"><button type="button" id="load" class="quiet">Load models from the server</button><span id="load-status" class="help"></span></div>
+
+    <label class="check"><input type="checkbox" id="textTools"> Text tools</label>
+    <div class="help">For a model without native tool calling: tools are described in the prompt and read back from its text. Always on for the T1 API.</div>
+
+    <label for="policy">Ask me before the model</label>
+    <select id="policy">
+      <option value="every">opens pages, clicks, types or presses keys</option>
+      <option value="typing">types, presses keys or picks options</option>
+      <option value="never">does anything (never ask)</option>
+    </select>
+
+    <label for="maxSteps">Step limit per task</label>
+    <input id="maxSteps" type="number" min="1" max="200">
+
+    <label for="search">Web search through</label>
+    <select id="search">
+      <option value="duckduckgo">DuckDuckGo (no key)</option>
+      <option value="t1">the T1 API's web search</option>
+    </select>
+
+    <label class="check"><input type="checkbox" id="allowPasswords"> Let the model type into password fields</label>
+    <div class="help">Off by default. Password boxes are never read either way.</div>
+
+    <div class="row"><button type="button" id="save">Save</button><span id="status"></span></div>
+  </div>
+  <script src="options.js"></script>
+</body>
+</html>

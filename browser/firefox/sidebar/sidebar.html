@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HyperNix Agent</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+  <header>
+    <strong>HyperNix Agent</strong>
+    <span id="model" class="dim"></span>
+    <a href="#" id="settings" title="Settings">⚙</a>
+  </header>
+  <div id="access" class="banner" hidden>
+    The agent cannot read or use pages until it may.
+    <button id="grant">Allow access to websites</button>
+  </div>
+  <main id="log" aria-live="polite"></main>
+  <form id="ask">
+    <textarea id="task" rows="3" placeholder="What should it do? e.g. find the cheapest train to Leeds tomorrow" required></textarea>
+    <div class="row">
+      <button type="submit" id="run">Run</button>
+      <button type="button" id="stop" disabled>Stop</button>
+      <button type="button" id="reset" class="quiet">New task</button>
+    </div>
+  </form>
+  <script src="sidebar.js"></script>
+</body>
+</html>
