@@ -250,6 +250,16 @@ class T1APIConfig:
     # t1api.ratelimit.DEFAULT_RULES, so "unset" never means "unlimited".
     rate_limit_rules_json: str = field(default_factory=lambda: os.environ.get("T1_RATE_LIMIT_RULES", ""))
 
+    # --- Billing (0.72.8) ----------------------------------------------------
+    # JSON object: unit -> price per unit, for what is billed in something
+    # other than tokens. Units the server records: "code_second" (sandbox
+    # run time) and "web_search" (one search). A model's own
+    # pricing.unit_prices wins over these for that model. Unset = those
+    # units are listed on statements as unpriced, never invented.
+    feature_prices_json: str = field(default_factory=lambda: os.environ.get("T1_FEATURE_PRICES", ""))
+    # The most instances one POST /inference/relay may rotate through.
+    relay_max_instances: int = field(default_factory=lambda: _int_env("T1_RELAY_MAX_INSTANCES", 8))
+
     # --- Audit --------------------------------------------------------------
     audit_enabled: bool = field(default_factory=lambda: _bool_env("T1_AUDIT_ENABLED", True))
 
@@ -566,6 +576,28 @@ class T1APIConfig:
             )
             return None
 
+    def feature_prices(self) -> dict[str, float]:
+        """``T1_FEATURE_PRICES``, parsed. Malformed JSON or a price that is
+        not a number is dropped with a warning: an unpriced unit shows on
+        the statement as unpriced, which is the honest failure."""
+        if not self.feature_prices_json.strip():
+            return {}
+        try:
+            raw = json.loads(self.feature_prices_json)
+        except json.JSONDecodeError:
+            logger.warning("t1api.config: T1_FEATURE_PRICES is not valid JSON; no unit prices.")
+            return {}
+        if not isinstance(raw, dict):
+            logger.warning("t1api.config: T1_FEATURE_PRICES must be a JSON object; no unit prices.")
+            return {}
+        prices: dict[str, float] = {}
+        for unit, price in raw.items():
+            try:
+                prices[str(unit)] = float(price)
+            except (TypeError, ValueError):
+                logger.warning("t1api.config: T1_FEATURE_PRICES[%r] is not a number; ignored.", unit)
+        return prices
+
     def describe_secrets(self) -> dict[str, bool]:
         """Which secrets are set. Values never included — this is what
         ``GET /status`` uses to tell an operator what's missing without
@@ -612,6 +644,8 @@ class T1APIConfig:
             "hyperchat_multi": self.hyperchat_multi,
             "hyperchat_instances": self.hyperchat_instances,
             "hyperchat_max_queued": self.hyperchat_max_queued,
+            "feature_prices": self.feature_prices(),
+            "relay_max_instances": self.relay_max_instances,
             "hyperlink_default_prompt": self.hyperlink_default_prompt,
             "hyperlink_public_url": self.hyperlink_public_url,
             "hyperlink_max_upload_bytes": self.hyperlink_max_upload_bytes,

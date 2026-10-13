@@ -122,12 +122,59 @@ class Forecast:
         }
 
 
+#: The billing format :meth:`CostCalculator.statement` writes.
+STATEMENT_FORMAT = "t1.statement/2"
+
+#: Every feature a statement can itemise, in the order it lists them.
+FEATURES: dict[str, str] = {
+    "inference": "Model inference (chat, completions, streams)",
+    "relay": "Context relay (long prompts read in hops by small-context instances)",
+    "embeddings": "Embeddings",
+    "compact": "Chat compaction",
+    "code": "Code sandboxes",
+    "web_search": "Web search",
+    "reported": "Usage reported by clients",
+    "other": "Other",
+}
+
+#: Units billed in something other than tokens, and what one of each is.
+UNITS: dict[str, str] = {
+    "code_second": "one second of sandbox run time",
+    "web_search": "one web search",
+    "image": "one image",
+}
+
+# Rows recorded before 0.72.8 carry no feature; their endpoint says it.
+_ENDPOINT_FEATURES: tuple[tuple[str, str], ...] = (
+    ("/inference/relay", "relay"),
+    ("/inference/embeddings", "embeddings"),
+    ("/inference/", "inference"),
+    ("/chat/compact", "compact"),
+    ("/code/", "code"),
+    ("/web/", "web_search"),
+    ("/usage/report", "reported"),
+)
+
+
+def feature_of(feature: str, endpoint: str) -> str:
+    """The statement feature for a usage row."""
+    if feature:
+        return feature if feature in FEATURES else "other"
+    for prefix, name in _ENDPOINT_FEATURES:
+        if endpoint.startswith(prefix):
+            return name
+    return "other"
+
+
 class CostCalculator:
     """Prices recorded usage, estimates prospective usage, forecasts spend."""
 
-    def __init__(self, store: UsageStore, registry: ModelRegistry) -> None:
+    def __init__(self, store: UsageStore, registry: ModelRegistry,
+                 feature_prices: dict[str, float] | None = None) -> None:
         self.store = store
         self.registry = registry
+        #: Server-wide prices per unit (``T1_FEATURE_PRICES``).
+        self.feature_prices = dict(feature_prices or {})
 
     # ------------------------------------------------------------------
     # Pricing primitives
@@ -166,6 +213,22 @@ class CostCalculator:
             True,
         )
 
+    def price_units(self, model_id: str, unit: str, units: float) -> tuple[float, str, float | None]:
+        """Price *units* of *unit*: ``(cost, currency, unit_price)``.
+
+        The model's own ``unit_prices`` first, then the server's
+        ``T1_FEATURE_PRICES``; a unit priced by neither has
+        ``unit_price`` None and costs 0, and a statement lists it as
+        unpriced rather than inventing a price.
+        """
+        entry = self.registry.get(model_id) if model_id else None
+        if entry is not None and unit in entry.pricing.unit_prices:
+            price = entry.pricing.unit_prices[unit]
+            return units * price, entry.pricing.currency, price
+        if unit in self.feature_prices:
+            return units * self.feature_prices[unit], "USD", self.feature_prices[unit]
+        return 0.0, "USD", None
+
     # ------------------------------------------------------------------
     # Actual cost
     # ------------------------------------------------------------------
@@ -194,7 +257,11 @@ class CostCalculator:
                 row["model_id"], row["input_tokens"], row["output_tokens"]
             )
             if not priced:
-                unpriced.append(row["model_id"])
+                # A row with no model is a unit-billed feature (a sandbox
+                # run, a search), which /usage/statement prices; it is not
+                # a model missing from the registry.
+                if row["model_id"]:
+                    unpriced.append(row["model_id"])
             else:
                 currency = row_currency
             total += input_cost + output_cost
@@ -258,6 +325,103 @@ class CostCalculator:
             output_cost=output_cost,
             currency=row_currency or currency,
         )
+
+    # ------------------------------------------------------------------
+    # Itemised statement (t1.statement/2)
+    # ------------------------------------------------------------------
+
+    def statement(
+        self,
+        *,
+        since: float | None = None,
+        until: float | None = None,
+        **filters: str | None,
+    ) -> dict[str, Any]:
+        """Everything billed over a range, itemised by feature and model.
+
+        Tokens are priced from the model's registry entry; other units
+        (sandbox seconds, searches, images) from the model's
+        ``unit_prices`` or the server's ``T1_FEATURE_PRICES``. Anything
+        with no price is listed under ``unpriced`` and counted at 0, so
+        the total never holds a number nobody set.
+        """
+        features: dict[str, dict[str, Any]] = {}
+        items: dict[tuple[str, str, str], dict[str, Any]] = {}
+        unpriced: set[tuple[str, str, str]] = set()
+        currencies: set[str] = set()
+
+        for row in self.store.line_items(since=since, until=until, **filters):
+            feature = feature_of(row["feature"], row["endpoint"])
+            key = (feature, row["model_id"], row["unit"])
+            item = items.setdefault(key, {
+                "model_id": row["model_id"], "unit": row["unit"], "requests": 0,
+                "input_tokens": 0, "output_tokens": 0, "units": 0.0,
+            })
+            for field_name in ("requests", "input_tokens", "output_tokens", "units"):
+                item[field_name] += row[field_name]
+
+        for (feature, model_id, unit), item in sorted(items.items()):
+            input_cost = output_cost = unit_cost = 0.0
+            priced = True
+            if item["input_tokens"] or item["output_tokens"]:
+                # Tokens with no registered model (a compaction by whatever
+                # the server had loaded) have no price to apply.
+                input_cost, output_cost, currency, priced = self._price_or_zero(
+                    model_id, item["input_tokens"], item["output_tokens"])
+                if priced:
+                    currencies.add(currency)
+            unit_price = None
+            if unit and item["units"]:
+                unit_cost, currency, unit_price = self.price_units(model_id, unit, item["units"])
+                if unit_price is None:
+                    priced = False
+                else:
+                    currencies.add(currency)
+            if not priced:
+                unpriced.add((feature, model_id, unit))
+            total = input_cost + output_cost + unit_cost
+            line = {
+                **item,
+                "units": round(item["units"], 3),
+                "total_tokens": item["input_tokens"] + item["output_tokens"],
+                "input_cost": round(input_cost, 6),
+                "output_cost": round(output_cost, 6),
+                "unit_price": unit_price,
+                "unit_cost": round(unit_cost, 6),
+                "total": round(total, 6),
+                "priced": priced,
+            }
+            group = features.setdefault(feature, {
+                "feature": feature, "label": FEATURES[feature], "requests": 0,
+                "input_tokens": 0, "output_tokens": 0, "units": {}, "subtotal": 0.0, "items": [],
+            })
+            group["items"].append(line)
+            group["requests"] += item["requests"]
+            group["input_tokens"] += item["input_tokens"]
+            group["output_tokens"] += item["output_tokens"]
+            if unit:
+                group["units"][unit] = round(group["units"].get(unit, 0.0) + item["units"], 3)
+            group["subtotal"] += total
+
+        ordered = [features[name] for name in FEATURES if name in features]
+        for group in ordered:
+            group["items"].sort(key=lambda line: line["total"], reverse=True)
+            group["subtotal"] = round(group["subtotal"], 6)
+        total = round(sum(group["subtotal"] for group in ordered), 6)
+        return {
+            "format": STATEMENT_FORMAT,
+            "currency": currencies.pop() if len(currencies) == 1 else ("mixed" if currencies else "USD"),
+            "since": since,
+            "until": until,
+            "generated_at": time.time(),
+            "features": ordered,
+            "total": total,
+            "requests": sum(group["requests"] for group in ordered),
+            "unpriced": [
+                {"feature": f, "model_id": m, "unit": u} for f, m, u in sorted(unpriced)
+            ],
+            "units": {unit: description for unit, description in UNITS.items()},
+        }
 
     # ------------------------------------------------------------------
     # Estimates
@@ -375,4 +539,5 @@ class CostCalculator:
         )
 
 
-__all__ = ["CostCalculator", "CostLine", "CostReport", "Forecast"]
+__all__ = ["FEATURES", "STATEMENT_FORMAT", "UNITS", "CostCalculator", "CostLine", "CostReport",
+           "Forecast", "feature_of"]

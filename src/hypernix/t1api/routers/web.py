@@ -45,6 +45,7 @@ from ..deps import (
     get_config,
     get_hyperlink_principal,
     get_request_id,
+    get_usage_meter,
 )
 from ..errors import T1APIError, T1ErrorCode
 
@@ -90,6 +91,7 @@ async def web_search(
     request: Request,
     principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
     config: T1APIConfig = Depends(get_config),
+    meter=Depends(get_usage_meter),
     request_id: str = Depends(get_request_id),
 ):
     """``/web/v1/I?=query&q?=maxdepth`` — or ``?q=cats&depth=2``.
@@ -112,6 +114,11 @@ async def web_search(
     outcome = ws.search(query, depth=depth, settings=settings)
     logger.info("web: search %r depth=%d -> %d hit(s) [%s]",
                 query[:80], depth, len(outcome.hits), outcome.status)
+    if outcome.status == "ok":
+        # One search, billed to the caller (0.72.8). A search that found
+        # no engine or failed did no work worth a line on the bill.
+        meter.record_quietly(key_id=principal.owner, feature="web_search",
+                             endpoint="/web/v1/search", unit="web_search", units=1)
     body = outcome.to_dict()
     body["request_id"] = request_id
     return JSONResponse(body)

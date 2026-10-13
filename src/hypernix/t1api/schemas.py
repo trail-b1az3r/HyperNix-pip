@@ -638,6 +638,11 @@ class UsageHistoryItem(BaseModel):
     module_id: str
     user_id: str
     account_id: str
+    #: 0.72.8: what the event was for, and any use that is not tokens.
+    #: Empty/0 on events recorded before.
+    feature: str = ""
+    units: float = 0.0
+    unit: str = ""
     ts: float
 
 
@@ -648,6 +653,25 @@ class UsageHistoryResponse(BaseModel):
     until: float | None = None
     limit: int
     offset: int
+    request_id: str
+
+
+class UsageStatementResponse(BaseModel):
+    """``GET /usage/statement``: the itemised bill, ``t1.statement/2``."""
+
+    format: str
+    currency: str
+    since: float | None = None
+    until: float | None = None
+    generated_at: float
+    #: One entry per feature, each with its line items per model and unit.
+    features: list[dict[str, Any]]
+    total: float
+    requests: int
+    #: Lines counted at 0 because nothing prices them.
+    unpriced: list[dict[str, str]]
+    #: What each non-token unit is.
+    units: dict[str, str]
     request_id: str
 
 
@@ -1833,6 +1857,60 @@ class InferenceResponse(BaseModel):
     substituted: bool = False
     raw: dict[str, Any] = Field(default_factory=dict)
     request_id: str
+
+
+class InferenceRelayRequest(BaseModel):
+    """``POST /inference/relay``: a document longer than the model's
+    context, read in hops by small-context instances (0.72.8)."""
+
+    model: str
+    question: str = Field(min_length=1)
+    document: str = ""
+    #: ``chain`` (hops in series, notes carried) or ``map`` (parts
+    #: digested in parallel, then folded and answered).
+    mode: str = "chain"
+    #: Instances to rotate through. 0: every instance of the runner's
+    #: pool, or 1. Capped by ``T1_RELAY_MAX_INSTANCES``.
+    instances: int = Field(default=0, ge=0)
+    #: The context of one instance. Default: the registry's
+    #: ``context_limit`` for the model.
+    context_tokens: int | None = Field(default=None, ge=256)
+    #: How long the carried notes may grow. Default: a sixth of the context.
+    notes_tokens: int | None = Field(default=None, ge=32)
+    #: The answer's length.
+    max_tokens: int = Field(default=512, ge=1)
+    temperature: float | None = 0.2
+    allow_fallback: bool = False
+    #: Plan and price it, run nothing, record nothing.
+    estimate_only: bool = False
+
+
+class InferenceRelayResponse(BaseModel):
+    model: str
+    requested_model: str
+    #: Empty when ``estimate_only``.
+    content: str = ""
+    mode: str
+    instances: int
+    #: What the relay planned: parts, calls, worst-case tokens, and
+    #: ``overhead_factor`` -- relay tokens over one big read's.
+    plan: dict[str, Any]
+    #: Every call made, in the order it finished.
+    hops: list[dict[str, Any]] = Field(default_factory=list)
+    input_tokens: int = 0
+    output_tokens: int = 0
+    requests: int = 0
+    #: What the hops actually cost (0 when ``estimate_only``).
+    cost: float = 0.0
+    #: The worst case before it ran, and what one big read would cost.
+    estimated_cost: float = 0.0
+    direct_cost: float = 0.0
+    currency: str = "USD"
+    backend: str = ""
+    backend_name: str = ""
+    substituted: bool = False
+    estimate_only: bool = False
+    request_id: str = ""
 
 
 class InferenceEmbeddingsRequest(BaseModel):

@@ -49,6 +49,7 @@ from ..deps import (
     get_config,
     get_hyperlink_principal,
     get_request_id,
+    get_usage_meter,
 )
 from ..errors import T1APIError, T1ErrorCode
 
@@ -194,6 +195,7 @@ def code_run_once(
     principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
     config: T1APIConfig = Depends(get_config),
     audit=Depends(get_audit_log),
+    meter=Depends(get_usage_meter),
     request_id: str = Depends(get_request_id),
 ) -> dict[str, Any]:
     """Run ``code`` once, in a sandbox that is deleted before this returns."""
@@ -215,6 +217,7 @@ def code_run_once(
             store.delete(box)
     except cb.SandboxError as exc:
         raise _refused(exc) from exc
+    _meter_run(meter, principal, result, "/code/create")
     return {**result.to_dict(), "request_id": request_id}
 
 
@@ -418,6 +421,7 @@ def code_sandbox_run(
     principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
     config: T1APIConfig = Depends(get_config),
     audit=Depends(get_audit_log),
+    meter=Depends(get_usage_meter),
     request_id: str = Depends(get_request_id),
 ) -> dict[str, Any]:
     """Run a file in the sandbox (``path``), or new code (``code``)."""
@@ -437,7 +441,14 @@ def code_sandbox_run(
                            args=[str(a) for a in args])
     except cb.SandboxError as exc:
         raise _refused(exc) from exc
+    _meter_run(meter, principal, result, "/code/sandbox/run")
     return {**result.to_dict(), "sandbox": box.id, "request_id": request_id}
+
+
+def _meter_run(meter, principal: HyperLinkPrincipal, result, endpoint: str) -> None:
+    """Bill the run's wall-clock seconds to the caller's key (0.72.8)."""
+    meter.record_quietly(key_id=principal.owner, feature="code", endpoint=endpoint,
+                         unit="code_second", units=float(getattr(result, "elapsed", 0.0) or 0.0))
 
 
 __all__ = ["router"]

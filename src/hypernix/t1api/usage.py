@@ -105,6 +105,9 @@ class UsageMeter:
         endpoint: str = "",
         server_id: str = "",
         module_id: str = "",
+        feature: str = "",
+        units: float = 0.0,
+        unit: str = "",
     ) -> None:
         # Always validate against the registry first — never record usage
         # against a model that isn't explicitly registered.
@@ -118,7 +121,49 @@ class UsageMeter:
             endpoint=endpoint,
             server_id=server_id,
             module_id=module_id,
+            feature=feature,
+            units=units,
+            unit=unit,
         )
+
+    def record_feature(
+        self,
+        *,
+        key_id: str,
+        feature: str,
+        endpoint: str = "",
+        model_id: str = "",
+        input_tokens: int = 0,
+        output_tokens: int = 0,
+        unit: str = "",
+        units: float = 0.0,
+        requests: int = 1,
+    ) -> None:
+        """Record use of a feature that may have no registered model: a
+        sandbox run (``unit="code_second"``), a web search
+        (``unit="web_search"``), a compaction by whatever model the
+        server had loaded.
+
+        A model that is not registered is recorded as no model: the
+        tokens still show on the statement, as unpriced, rather than
+        being priced from a registry entry that does not exist or being
+        dropped.
+        """
+        if model_id and self.registry.get(model_id) is None:
+            model_id = ""
+        self.store.record(
+            key_id=key_id, model_id=model_id, requests=requests, endpoint=endpoint,
+            input_tokens=max(0, int(input_tokens)), output_tokens=max(0, int(output_tokens)),
+            feature=feature, units=max(0.0, float(units)), unit=unit,
+        )
+
+    def record_quietly(self, **kwargs: Any) -> None:
+        """:meth:`record_feature`, logging rather than raising: a feature
+        that already ran must not fail because its accounting did."""
+        try:
+            self.record_feature(**kwargs)
+        except Exception:  # noqa: BLE001
+            logger.exception("t1api.usage: could not record %s usage", kwargs.get("feature"))
 
     def snapshot_for_model(self, key_id: str, model_id: str) -> ModelUsageSnapshot:
         entry: ModelEntry = self.registry.require(model_id)

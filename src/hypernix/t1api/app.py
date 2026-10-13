@@ -318,7 +318,7 @@ def create_app(
         enabled=cfg.rate_limit_enabled,
     )
     directory = key_directory or KeyDirectory(km, reg, db, default_plan=cfg.default_plan)
-    cost_calculator = CostCalculator(store, reg)
+    cost_calculator = CostCalculator(store, reg, feature_prices=cfg.feature_prices())
     module_transport = transport or ModuleTransport(
         deploy_secret=cfg.deploy_secret,
         max_bytes=cfg.max_transfer_bytes,
