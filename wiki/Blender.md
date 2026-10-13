@@ -63,6 +63,9 @@ dataclass `TypeError` (no friendlier remapping, unlike `pans.pick_pan`).
 
 Standard library only — `random`, `dataclasses`, `pathlib`, `collections.abc`.
 
+
+> **Canonical source:** `src/hypernix/data/blender.py`. The flat `hypernix.blender` import spelling used in examples is a compatibility-facing API; the path above is the implementation to check when verifying behavior. `HighPowerBlender` buffers the complete input before shuffling; use a streaming tier for datasets too large to comfortably fit in RAM.
+
 ---
 
 ## See also

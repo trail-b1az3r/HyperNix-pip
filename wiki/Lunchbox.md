@@ -104,6 +104,9 @@ preloads via `.extend()`. `lunchbox(records=None, *, required_columns=None)`
 - `datasets` — lazy, only needed for `.pack()`/`.push_to_hub()` (not `.pack_jsonl()`)
 - Standard library: `json` (lazy, inside `pack_jsonl`), `dataclasses`, `pathlib`, `collections.abc`, `typing`
 
+
+> **Canonical source:** `src/hypernix/data/lunchbox.py`. The `hypernix.lunchbox` import spelling used in examples is the compatibility-facing API; the path above is the implementation to check when verifying behavior. `pack_jsonl()` avoids the optional Hugging Face `datasets` dependency; Parquet packing and Hub pushes need the appropriate optional dependencies and credentials.
+
 ---
 
 ## See also

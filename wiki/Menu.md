@@ -5,6 +5,9 @@ A menu lists the dishes a kitchen serves; `hypernix.menu` lists the
 zero-dependency named-string registry — `dict[str, str]` with lookup,
 fuzzy matching, and JSON persistence.
 
+
+> **Canonical source:** `src/hypernix/chat/menu.py`. The `hypernix.menu` import spelling used in examples is the compatibility-facing API; the path above is the implementation to check when verifying behavior. Persona text is an instruction to the model, not an authorization mechanism. The `code-helper` prompt's wording about destructive commands does not enforce shell or filesystem permissions.
+
 ---
 
 ## Built-in personas
@@ -17,7 +20,10 @@ fuzzy matching, and JSON persistence.
 | `"judge"` | Pair-rating judge — replies with exactly `A`, `B`, or `T`, no other text. |
 | `"creative"` | Story / brainstorm partner; gives five distinct directions on request. |
 | `"chef"` | Flavour-text persona matching the package's kitchen idiom. |
-| `"hyper-nix"` | The default system prompt embedded in `hypernix.cookbook.HYPER_NIX_2`. |
+| `"none"` | Empty prompt string; built in directly. `Menu.add()` rejects empty prompts, so this entry cannot be recreated with `.add()`. |
+| `"hyper-nix"` | The same default HyperNix system-prompt text used by `hypernix.cookbook.HYPER_NIX_2`. |
+
+> **Security note:** A persona is not a security boundary. Validate and authorize shell, file, network, and other tool actions in application code; do not rely on the `code-helper` prompt to prevent destructive behavior.
 
 ## Quick use
 

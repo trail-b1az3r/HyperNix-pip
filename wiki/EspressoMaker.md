@@ -77,6 +77,9 @@ Standard library only — `dataclasses`, `collections.abc`, `typing`. No
 HyperNix internal dependencies beyond whatever `oven` object you pass in
 (structurally typed — no import of `old_oven` required).
 
+
+> **Canonical source:** `src/hypernix/evaluation/espresso_maker.py`. The `hypernix.espresso_maker` import spelling used in examples is the compatibility-facing API; the path above is the implementation to check when verifying behavior. Without a scorer, the first generated candidate wins even when a tier generates several candidates per prompt.
+
 ---
 
 ## See also

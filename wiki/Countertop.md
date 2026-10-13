@@ -6,12 +6,15 @@ bound to an oven, tracking history, chat template, streaming, and
 chat-quality cleanup in one object. Together with [Cookbook](Cookbook.md)
 and [Menu](Menu.md), this is the headline chat surface of the package.
 
+
+> **Canonical source:** `src/hypernix/chat/countertop.py`. The `hypernix.countertop` import spelling used in examples is the compatibility-facing API; the path above is the implementation to check when verifying behavior. The history limit is measured in rendered characters as a token-budget proxy. Saved session JSON does not include T1 credentials or the Gatekeeper/Keymaster objects.
+
 ---
 
 ## Quick start
 
 ```python
-from hypernix.old_oven import preheat
+from hypernix.neo_oven import preheat
 from hypernix.countertop import Countertop
 
 oven = preheat("hyper-nix.2")
@@ -54,7 +57,11 @@ chat.say("explain transformers in 3 sentences")  # tokens stream live
 | `.messages()` | `() -> list[dict[str, str]]` | Full message list including the system prompt (if any) — handy for handing off to a different runner. |
 | `.render(*, add_generation_prompt=True)` | `() -> str` | Renders the current transcript through the resolved chat template **without generating** — useful for debugging the exact prompt about to be sent. |
 | `.save(path)` | `(Path \| str) -> Path` | Writes `{system, history, template (name), max_history_tokens, sampling}` as indented JSON. Creates parent dirs. |
-| `Countertop.load(path, oven)` | `classmethod (Path \| str, Any) -> Countertop` | Rebuilds a session from a saved JSON file, bound to the `oven` you pass (the oven itself is never serialized). |
+| `Countertop.load(path, oven)` | `classmethod (Path \| str, Any) -> Countertop` | Rebuilds a session from saved JSON, bound to the `oven` you pass (the oven itself is never serialized). T1 key/authentication objects are not saved; authenticate again if needed. |
+
+### Optional T1 key accounting
+
+`authenticate_t1(t1_key)` creates or uses a local `Keymaster` and `Gatekeeper`, authenticates the key, and binds the resulting metadata to the session. When a key is bound, `say()` checks the Gatekeeper quota before generation and records approximate usage afterwards; these estimates are character-based token approximations, not exact tokenizer counts. `t1_meta` exposes the bound key metadata and `t1_stats()` returns its Gatekeeper usage statistics. This local accounting layer does not by itself establish that a model request is being sent to a remote T1 service.
 
 ### History trimming (`_trim`)
 

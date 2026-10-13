@@ -21,7 +21,12 @@ in `float32` internally, then cast back to the original dtype.
 
 `strict=False` (default) intersects keys across all inputs, silently
 dropping any key not present in every one. `strict=True` raises
-`ValueError` on any key mismatch instead.
+`ValueError` on any key mismatch instead. Key intersection does not validate
+tensor shapes or checkpoint architecture compatibility; mismatched shapes
+can still fail during arithmetic. Check that all checkpoints share a
+compatible model layout before averaging. For path inputs, `.pt` files are
+loaded on CPU with `weights_only=True`; state dictionaries passed directly
+are used as supplied.
 
 ## One-shot helpers
 
@@ -68,6 +73,9 @@ canonical mode name list.
 - `safetensors.torch` — only imported when reading/writing `.safetensors` files
 - `hypernix.train` (`HyperNixModel`, `HyperNixConfig`, `save_snapshot`) — internal, imported lazily inside `whisk_to_snapshot`/`_try_load_config`
 - Standard library: `warnings`, `json`, `pathlib`, `collections.abc`, `typing`
+
+
+> **Canonical source:** `src/hypernix/models/whisk.py`. The `hypernix.whisk` import spelling used in examples is the compatibility-facing API; the source path above is the implementation to check when verifying behavior. `strict=False` intersects keys but does not make differently shaped tensors compatible. Shape disagreements can still fail during arithmetic; validate checkpoint architecture/config compatibility before averaging.
 
 ---
 

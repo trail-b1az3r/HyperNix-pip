@@ -24,6 +24,9 @@ class Brew:
 Exceptions inside `brew_fn` are always caught and recorded as a failed
 `Brew` (except in `ColdBrewMaker`, which re-raises — see below).
 
+
+> **Canonical source:** `src/hypernix/timing/coffee_maker.py`. The `hypernix.coffee_maker` import spelling used in examples is the compatibility-facing API; the path above is the implementation to check when verifying behavior. `ColdBrewMaker` checkpoints are JSON and therefore the returned state must be JSON-serializable. Its phase function is re-raised on failure after the failed run is recorded; the other tiers have different failure behavior.
+
 ---
 
 ## Tier 1 — `CoffeeMaker` (drip, scheduled/repeated)

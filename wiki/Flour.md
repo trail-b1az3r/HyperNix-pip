@@ -21,6 +21,9 @@ than raw `transformers` generation, for two concrete reasons:
 All the knobs live on one dataclass, so a config can be saved/reloaded as
 JSON without serializing `LogitsProcessorList` instances.
 
+
+> **Canonical source:** `src/hypernix/chat/flour.py`. The `hypernix.flour` import spelling used in examples is the compatibility-facing API; the path above is the implementation to check when verifying behavior. Flour only processes logits if it is wired into a generation/sampling loop (for example through Bell); it is not a server-side policy or a standalone safety boundary.
+
 ---
 
 ## Quick use

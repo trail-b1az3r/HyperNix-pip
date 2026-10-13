@@ -53,6 +53,9 @@ a.restore()
 - `numpy` — optional; gracefully skipped via `ImportError` handling if not installed
 - Standard library: `contextlib`, `random`, `dataclasses`, `collections.abc`, `typing`
 
+
+> **Canonical source:** `src/hypernix/training/apron.py`. The flat `hypernix.apron` import spelling used in examples is a compatibility-facing API; the path above is the implementation to check when verifying behavior. `numpy` support is optional; `torch` is required. The context manager restores captured RNG state even when the body raises.
+
 ---
 
 ## See also
