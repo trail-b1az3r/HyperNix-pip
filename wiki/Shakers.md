@@ -9,6 +9,9 @@ masking, negation training).
 
 Both plug into [`Sink.pour()`](Pans.md) like `pans`.
 
+
+> **Canonical source:** `src/hypernix/data/salt_shaker.py and src/hypernix/data/pepper_shaker.py`. The `hypernix.salt_shaker / hypernix.pepper_shaker` import spelling used in examples is the compatibility-facing API; the source path above is the implementation to check when verifying behavior. These are text-level augmentation helpers, not tokenizer-aware or semantics-preserving transformations; inspect generated samples before adding them to a training corpus.
+
 ---
 
 ## `Shaker` (base class, in `salt_shaker.py`)
