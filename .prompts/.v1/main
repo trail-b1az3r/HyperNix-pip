@@ -546,7 +546,12 @@ Integrate the useful functionality from:
 * Pressure Cooker V5+  
 * Pressure Cooker V5S  
 * Pressure Cooker V6  
-* Pressure Cooker V6V  \n* Pressure Cooker V7 Balanced  \n* Pressure Cooker V7Mini  \n* Pressure Cooker V7Q  \n* Pressure Cooker V7S  \n* Pressure Cooker V7M  
+* Pressure Cooker V6V  
+* Pressure Cooker V7 Balanced  
+* Pressure Cooker V7Mini  
+* Pressure Cooker V7Q  
+* Pressure Cooker V7S  
+* Pressure Cooker V7M  
 Do not blindly merge implementations.  
 Preserve each optimizer’s unique behavior while exposing them through a common framework.  
 And better support for strife   
@@ -1198,7 +1203,11 @@ Add a comparison table to the Studio and documentation:
 | V5S | Medium/Low | Extremely Low | Very High | Specialized | Stability + memory |
 | V6 | Very High | Medium | Medium | Low | Maximum throughput |
 | V6V | Extremely High* | Medium | Medium | Low | CUDA graph workloads |
-| V7 Balanced | High target | Low target | High target | Medium/High target | General default and balanced workloads |\n| V7Mini | Tuned for small-model throughput | Low overhead target | Benchmark required | Architecture-dependent | Models strictly above 39M and below 750M parameters |\n| V7Q | Fastest variant target | Low/medium target | Benchmark required | Lower adaptivity is acceptable if documented | Maximum throughput where measured faster |\n| V7S | Benchmark required | Very low state target | High target | Specialized | Modernized V5S-style stability and memory efficiency |\n| V7M | Benchmark required | Lower than equivalent V5/V5+ target | High target | High target | Modernized V5/V5+ features, QAT/MTP and sensitivity-aware training |
+| V7 Balanced | High target | Low target | High target | Medium/High target | General default and balanced workloads |
+| V7Mini | Tuned for small-model throughput | Low overhead target | Benchmark required | Architecture-dependent | Models strictly above 39M and below 750M parameters |
+| V7Q | Fastest variant target | Low/medium target | Benchmark required | Lower adaptivity is acceptable if documented | Maximum throughput where measured faster |
+| V7S | Benchmark required | Very low state target | High target | Specialized | Modernized V5S-style stability and memory efficiency |
+| V7M | Benchmark required | Lower than equivalent V5/V5+ target | High target | High target | Modernized V5/V5+ features, QAT/MTP and sensitivity-aware training |
   
 * Hardware/workload dependent.  
 Do not present these qualitative ratings as measured benchmarks.  
@@ -1287,6 +1296,10 @@ Add:
 ```
 tests/test_pressure_cooker_v7.py
 tests/test_pressure_cooker_v7v.py
+tests/test_pressure_cooker_v7mini.py
+tests/test_pressure_cooker_v7q.py
+tests/test_pressure_cooker_v7s.py
+tests/test_pressure_cooker_v7m.py
 tests/benchmarks/test_v7_benchmark.py
 ```
 Test:  
@@ -1308,7 +1321,11 @@ Test:
 * checkpoint save/load  
 * CPU  
 * CUDA when available  
-* older CUDA architectures where CI permits  \n* V7Mini automatic-selection boundaries (>39M and <750M parameters) and refusal to infer unknown parameter counts  \n* V7Q speed comparisons versus V6, V6V, and V7S under equivalent supported benchmark conditions  \n* V7S regression tests preserving its intended V5S-derived stability/memory mechanisms  \n* V7M tests for optional V5/V5+ features and ensuring disabled QAT/MTP do not add hidden overhead  
+* older CUDA architectures where CI permits  
+* V7Mini automatic-selection boundaries (>39M and <750M parameters) and refusal to infer unknown parameter counts  
+* V7Q speed comparisons versus V6, V6V, and V7S under equivalent supported benchmark conditions  
+* V7S regression tests preserving its intended V5S-derived stability/memory mechanisms  
+* V7M tests for optional V5/V5+ features and ensuring disabled QAT/MTP do not add hidden overhead  
 Ensure V7’s fused and non-fused implementations produce numerically equivalent results within an explicitly documented tolerance.  
    
 ⸻  
@@ -1318,8 +1335,9 @@ Add a dedicated V7 configuration panel:
 ```
 Pressure Cooker V7
 
-Preset:
+Variant / preset:
 [ Balanced ▼ ]
+Options: Balanced, Mini (39M–750M), Q (quickest target), S (V5S modernization), M (V5/V5+ modernization). Show a short use-case description and benchmark-backed speed/memory data for each option; qualitative goals must be labelled as targets until measured.
 
 State:
 ● Auto
