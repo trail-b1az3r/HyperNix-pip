@@ -1,39 +1,3 @@
-0.72.5 pt2 and pt3 split into 2 updates DONE  
-Add 2 new options to install t1.sh,  
-New option one is for the installer to auto index and create a model redistry, for models in .hypernix/models, (both make models show up and become switchable in hyperlink) and the other is to do the same but estmate prices based on some of the following factors, 1: file size, 2: quant format, 3: peramiters, 4: the gpu available, 5: inactive vs active peramiters (if MOE or hybrid model), and models in .hypernix/models aren’t found in hyperlink. Add a command copy area in hyperlink for servers running older version of Hypernix and also the user on hyperlink is using local admin, that will update the venv hyperlink is using, add a new page in hyperlink, that if you have an admin key, partial admin, you can look at the servers hardware usage. Add noodle into the t1 api, and hyperlink, and allow for file creation, file edits, fish commands, and zipping. Make hyperNix-t1 index show models it indexed in hyperlink since their runnable, make hyperlink allow for users paired with waiter or Tailscale with a —switch-perm able to load, unload, change, a model in hyperlink effecting the server, make hyperlink show server uptime, change the hyperlink version to 1.0.26.9.2.3. Fix hyprslug models from falling apart. Make hyperlink, not need lm studio, and just can use the modified  llama-cpp tui, hyped pro, hyped, ollama, or just hyperNix chat. You can not auth using Tailscale in hyperlink, it says that I needs a authorized t1 key , add markdown support for hyperlink, hyperlink doesn’t show the bridge models from lm studio, nor the .hypernix models, allow for hyperlink to have up to 32 saved server I can switch between, add support for streaming responses in hyperlink, and allow for hyperNix managed model inference that lets users run a model, running a configuable amount of layers on the gpu, the rest in ram and cpu, and not only for content on gpu but also on ram, swap, and cpu. Make users able to pick any model found in .hypernix/models and configue it and load it on server, if user has admin key or Partial admin or access 6+ if servers enable it, and the model with not use lm studio for that, prot doesn’t make the monitors black/sleep, in hyperlink, add betting animations, as well as allow the connect to stay intact for up to 2.5 hours+ after putting the all in the background, as long as low power mode is off, in hyperlink make stop actaly stop the generatation on lmstudio and hyperchat, add the following endpoints, /chat/compact/prompts, /chat/compact/prompts/system, /chat/compact/all, /chat/compact/responses and /chat/compact/dyanmic , /memory/create, /memory/get, /memory/list, /memory/edit add a custom massive system prompt to models running via hyperlink or hyperchat to hyperlink, add full tool calling ability to hyperlink running models, add auto Ai generated memory to hyperlink, add a settings section to hyperlink with, profile, bio, memory, tokens used, (if enabled) billing, servers, perms, default effort/reasoning level. Make hyperlink allow for model to use their provided different effort/and reasoning settings/levels, and allow for changing context minimum and max, along with a backup model incase the main one crashes, and a way to switch from using (if on lm bridge: llamacpp cpu, vulcan or cuda(normal only) (if on hnx: cuda or cpu),  
-  
-  
-0.72.6  pt1  
-Make hyperNix studio use, the following shells, by default: fish, for coding: bash, make hypernix studio also have settings that allow for me to change allowed context   
-Add a module called neuron, that module allows the user to train neural networks, using the following methods, RL, imitation training + supervised trainin, evelustion, for the some of (not limited to) following things, game automation, basic and quick image analysis or recognition, robotics, etc, add a custom auto code scanner that scans the code 2x per week, it checks for bugs In Python, tests the api over 2 jobs, checks security, (if possible) apply basic maintenance automatically and if there is enough fixes found (use Claude api using my account (model: sonnet 5+, effort: high or extra and if necessary it can use the newest opus  on medium or high as a advisor)) it will publish a public release with a new .post# version, only makes release if most resent release is not a prerelease or a .dev commit, of beta commit, make a GitHub action that runs on public release, that updates (not makes a new one) on the release timing as a auto updates real flow chart, showing major deps, features, what links to what module, and feature that are in beta, those are in a smaller different flow chart a bit below, that has solid lines for non beta features, dotted ones for added features in the beta, and red lines for to be added, make a non stub, actual audio processor, and more example scripts, make hyped pro have got support, full local file editing, and more. Remake basic hyped (not hyped pro), make it without custom configuration, and without any custom con it would just be a simple local ai interaction tui, with t1 support, and a hf key to download and search gguf hugging face models, but with massive support for customization,  all configs are built up of custom configuration files: “dots”, made in python (or lua, you pick), in hyperlink, it needs to use the loaded Ai model to make a title for the chat, and make it check the model for image cabilibitrs, and add ability for models to run shell commands, in bash, like zip, xz, nano, micro, cat, cmake, and more, in hyperlink add a way to hide chats behind Face ID/password, add better auto context management and compressed to hyperlink, and memory creation and retrieve and organization in hyperlink, in hyperlink, add little iMessage like curring to the bottom right/left of messages to show better if it was a response of prompt. Add support for the t1 api to have full MCP server support along with mov plugins, update changelog to follow changelog template.md, Fix the test failures and failures on all devices and os’s   
-  
-  
-0.72.6 pt2   
-Make gather put scraped data in .hypernix/data/site/sesson. Add a module called dilute that can use one LLM, make it generate 4-6 responses per prompt with different temperatures, with a configurable amount of traces chosen, the evaluator model, amount of tries, prompt, model, total traces before picking the best till the desired traces count is reached, or you can have it use jit and dillsil a model dynamicly making tracesetc, add to Vera, -Na (no Ai), -m (when run opens model picker that can use gguf models in .hypernix/models, add hour to -T in Vera, use “-T h”, and -tt total run timeout time, make Vera support huggingface-hub version 1.3x.x, add to gather support for SQLite, gather doesn’t auto stop when scraping is done, make hyperlink allow me to upload more than one photo at once, make hyperlink recognize the actual version of the server’s hyperNix. T1 api version v1.1.2026.9.0.0, fix the Neo oven presets having the wrong arches, and add support for GLM5.3, qwen3.8, qwen3.8-flash next, muse spark, fix all incorrect model settings, add support for spark X2.5 1.7b and 4b. Add to hyperlink, and hyperchat for hyperlink, a end point for non api key requiring web searching, via /web/v1/I?=query&q?=maxdepth/  
-/web/v1/summarize  
-/web/v1/config|s#?  
-S1 is for using what installed browsers, chose from Firefox based and chromium based  
-S2 is for changing if you want use a non default serch engine, Google, DuckDuckGo, Wikipedia, or allowlist only  
-S3 is for if you want to use an api key, use config/s1?=k|s2?=k|s3?:={key here}?[type/provider or auto]  
-K= keep current setting  
-?=setting   
-A Collon is used after ? Mark for the setting your changing or for a changeable thing  
-| = means divider   
-Also make hyperlink chats say it was updated only if a new prompt was sent or a background response came trough, and make hyperchat able to allow multiple instances of a model to be used at once for multiple in progress prompts (only if ennabled in hyperNix-t1 settings, if it is, 2 cores per instance with one never being touched to keep from crashing) if not on it allows to have a queue of prompts to be used in hyperlink and all other things using hyperchat, in Neo oven, all of the supported models have inccorect settings, arches, etc and add support for glm 5.3, qwen3.8, deepseek v4  
-  
-0.72.6 pt3   
-Make Ai models better at calling api endpoints, fully create and integrate the custom hyperNix model runtime and model runner for hyperlink, any gguf model. Make hyped pro remake, whitch is made in the same language as opencode tui, with the same type of look in the current site color scheme by default, it is not a rich tui it is a opentui, https://opentui.com/docs/ also only make hyped plus run the current/rich non opentui version of hyped-plus (previously named hyped pro till now), while running hyped pro runs this one, make the hyperNix model runner able to have models load, unload, call t1 api endpoints, and work in hyperlink. make a new module called natural gas, what it does is it allow the element named modules inside of neo, oven to work as addons. Add hydrogen, it is a framework and library for other element modules, all 6 and 7 rows are experimental modules, depreciate pressure cooker v1,2,3, but v4 will be kept for now, add the first element module; magnesium, it can limit the other running apps, excluding console/temermal, python, etc, also make most non depreciated modules, switch to a specific list of error codes in the format of letter number-xxxxx(numbers).a,b,c,d,e,f then 1 to 5 (severity), with a brief explanation, add the second element library modu, carbon, that focuses on quality of life and allows for user made elements, make swiping left on a message in hyperlijk edit the message or resend it, make editing the message resend it, in hyperlink make memory’s properly update in the memory’s sections, and make web search work, as well as making local on iPhone models download install and run properly. add a command, hypernix-t1 override lms move-dir <folder> and it changes lms comfog and model folder to where ever, default id .hypernix/models, add to hypernix-t1 launch script a -$ command that will execute a fish or bash command   
-  
-Final 0.72.6 features  
-1: update ALL documentation, to be current and error free,  
-2: add a command hnx-t1, Ales for hypernix-t1  
-3: add v2.1 keys (t2c) using a custom security encryption (you pick name), it uses rsa, bluefish, two fish, and xoroshro256++ to create the key, then it is encrypted inspired slightly by the German ww2 encryption mechien, the enigma, and also inspired by the rijndael algorithm and after that it gets inverted and finally gets base64’d with a per device changing daily private key then it’s done, add waiter serv -b that allows next to letter commands that need a string auto determine what string is used for what command, make running waiter serv -ArEK “key” -I ip actually auto setup, refresh, encrypt, and auth, make that work with any combo, but if a command needs a string after, it needs to be at the end or you but the command then the string then -letter command, add waiter serv -u update client package to be matching or higher than server (use -ud to only upgrade to servers hypernix version) , add -k kit-install, it allows for users to install user created mods for waiter, their client side t1-api, and more, also update the  t1 SDK with new features, from this api version, add to waiter serv -c conceal, it hides your ip from the public if server is public, and -T control, it allows a verified, level 9 t2 api admin key, to control the server in the watier tui, add -Y get full public server info, name, description, owner, url, etc and add -S security check, checks your client and then the server your about to connect to for vonuaitys. Make a t1 new feature that allows it to only keep data from a -c user (only if key was correctly authorized to use with access level 3+) it will only keep its data, (excluding memory, and profile data) for 36 hours, add -e fully encrypts and locks (user password choice) the waiter config, using the custom encryption method used for v2.1 keys. Siri 2.0 needs app intents 2.0 to work, as it currently doesn’t   
-  
-  
-  
-0.72.6 rc2  
-Create a over 3 paragraph hyperlink default system prompt if using hyperchat, make tvtop-max, it’s tvtop-pro made in opentui, with many more panels, for logs, in use hyperNix modules and/or libraries for training script, a -s for phone screen size, model arch,  pressure cooker, script warnings  
-  
 0.72.7  
 First step one1: hyperlink bug, without a model loaded on a hnx runner you cannot link a model from a different folder. And add command hnx-t1 runner auto, will load the last loaded or most commonly loaded module  on the commonly used backend, and with the last used settings config. Make images sent into hyperlink, get auto compressed into webp, or SVG, files, support uploads in: png, webp, jpeg, jpegxl, SVG, dng, and more. Step 2: make hyperlink and hyperNix t1 runners support images, it give an error when using when and not on lms, and fix ALL, Mac, linux, and windows ci failures. Step3: Perform a complete, production-grade  modernization of **hyperNix-pip**, migrating it from its current **Python 3.10 baseline** to official support for **Python 3.12, 3.13, 3.14, and 3.15**.  
 This must be a real codebase migration, NOT simply changing python_requires. Audit and update the entire repository, including source code, dependencies, packaging, build systems, native extensions, CLI/API behavior, type annotations, async code, tests, CI, documentation, profiling, performance, and security.  
@@ -2621,11 +2585,6 @@ Run the relevant tests after each major subsystem.
 Finally run the full test suite and fix regressions.  
 The final result should feel like a **major HyperNix Studio upgrade**, with local AI becoming a first-class citizen rather than an afterthought, a genuinely capable agent/tool runtime, and Optimizer Framework V2 providing a clean unified interface over the Pressure Cooker generations.  
   
-0.73.0-old   
-Add to hyperNix studio  
-FULL non t1 hosted local model support, with no need for a t1 key, bull bash and fish shell, WAY more tool calling ability, and more, make the optimizer frame work v2, that integrates functions from pressure cooker v5, v5s. V5 plus, v6, along with a few new tools (gpt you find some good and useful ones) [https://github.com/trail-b1az3r/HyperNix-pip/blob/main/wiki/Pressure-Cooker-V6.md](https://github.com/trail-b1az3r/HyperNix-pip/blob/main/wiki/Pressure-Cooker-V6.md) [https://github.com/trail-b1az3r/HyperNix-pip/blob/main/wiki/Pressure-Cooker-V5.md](https://github.com/trail-b1az3r/HyperNix-pip/blob/main/wiki/Pressure-Cooker-V5.md)  
-  
-  
 0.73.1 through 0.73.5 are 5 versions that do not add any new features, all these updates are for are for stability, bug fixes, code review and revision, as well as safety and performance improvements, the sole new feature working t1 api calling for models running into hyperlink, and improve amd compatibility, improve the readme, remove old and outdated sections or update them, and fix all other platforms build issues and add more tests, (0.73.1) add a workflow that uses GitHubs free calling for a auto model to auto update the what’s new section of the readme when a major release is out  
 0.73.6 pt1   
   
@@ -3144,12 +3103,6 @@ Provide:
 The final implementation should be **research-grade, modular, reproducible, and extensible**. Every novel component should have a clear mathematical definition, implementation, ablation configuration, and benchmark so it is possible to determine whether the new cognitive mechanisms actually improve learning, reasoning, multimodal understanding, efficiency, and generalization rather than merely making the architecture more complicated.  
   
   
-0.75.0-old   
-Add a new model architecture hypernix0xV4  
-It use a brand new type of thinking, and learning, how it works is as your train it gets benched on if it knows English, then when it does, the training switches, it starts thinking without chain of thought, instead it uses multi thread thinking, it like human babies, does the following, hears, wondering, think, repeat, learn, gaining a unique perspective, and this arch is also vision capable, and it uses the art is sees, to make its own purpose for the painter to make the artwork, and tries to understand their feelings, it should have multiple sizes ranged from the nano arch size of 89.4863m to the XL arch of 48.32b (with 8 sizes in between)  
-  
-  
-Add a new module called   
 0.76.0  
   
   
@@ -4079,136 +4032,8 @@ HYPERNIX 3.0, a full new software, that costs money, has a paid software license
   
   
   
-Cut from prompts :  
-  
-1: add a new module that is called cardboard box, that will be a addon for abacus able to quickly and efficiently pack tokens into storage and read tokens back and delete no longer needed data in those packed tokens, it should have 2 version, soggy, whitch is less costly on cpu and gpu and ram, but is slower, and less compact, and cardstock, that is super compact, in a custom file type, but uses some or a lot of gpu and cpu to process but in return can be used to stream from it instead of all at a once or a slow back and fourth that’s inefficient  
-  
-  
-2:   
-  
-, also make it have a hnx command (hnx cfg currently only having one option hnx cfg logs (t or f) and if t it will send logs a api key protected page in the GitHub pages (the key can only be changed if you use hyperNix-all superintendent +pass -u=ceo@blazeindustries -p=blazer@t116b64{}unixhourhere1234:3_TT!()   
-—passkey “what I want here but default is the Unix hour.blazer?16c!.Rayla/\” make this encrypted via xorshift512++, and normal encryption methods, and with the full Unix time as the key and then base 64 encoded   
-Make me able to change it only in the locked logs location hidden in the GitHub pages, also make the superintendent command unable to be seen via help at all  
-  
-  
-  
-  
-3:   
-Automaticly on  April Fools Day it will add a hnx command that is hidden it is /j I will have a unique joke that changes every hour and automatically will also change the GitHub gates to look exactly like a real forbidden error  
-  
-4:  
-  
-Add a tinker gpi ran with hyperNix/hnx scriptgen in cl that opens A high quality gui without any purple and no neon colors, it uses hyperNix to be have to use any supported model to make training scripts that use hyperNix, and make it also have to have a ton of text boxes and dropdowns for making scripts in the nano-nano 5.1 trainer script style but better (script will be provided)   
-Add a module called noodle, that is a multi agent executor, sub agant deployer and manager. Make it used in hyped pro, make hyperNix able to deploy multiple different Ai models at once to code agnatically, local or api/cloud (open Ai Claude, Gemini, Qwen, qrok, t1 key) add many more quantization formats. Update pressure cooker v5, v5 plus, v5s to be able to be configured to use 6 bit  
- Advanced multi-agent orchestration & subagent execution protocols Web-based TUI live streaming over WebSockets Enhanced quantization formats & Pascal sm_61 auto-tuning  
-  
-  
-6. Split this beta into 3 updates (beta 1-3)  
-Create a production-ready  build of a custom HyperNix T1 API that is easy to integrate into any server and can be consumed by the HyperNix TUI (make a new tui called waiter that uses t1 api , and t1 api keys and has a single command auto setup and configure using waiter serv -A (auto configure) -I “ip address or Tailscale ip or public/localhost url” -K “convert normal t1 token into admin token and token here” -E (encrypt), (optional) -B (blacklist ip’s) -L (local Tailscale and local host only), -P (port), -W (whitist), -r (force limit on specific t1 key’s server id), -a (appeal ip’s from blacklist) and -h (help), -C (other settings), and -H “home page url) lastly -G (open tui) -g (open cli)) -R (quick refresh) -Rf (force refresh full) -y (sync default configuration or server config) as a first-class backend.  
-Project goal: Build a secure, modular HTTP API wrapper around HyperNix-pip version 0.71.5b1 that lets an admin T1 key control model/module operations, usage reporting, and remote/local server deployment. The API must be easy to mount into an existing Python server, expose clean OpenAPI docs, and be simple to call from a TUI client.  
-Hard requirements:  
-* Use a clean, server-friendly architecture with FastAPI or an equivalent modern framework.  
-* Support admin-authenticated T1 API keys and user-scoped tokens.  
-* Never log raw API keys or tokens.  
-* Provide middleware for auth, rate limiting, request tracing, and audit logs.  
-* Expose clear JSON responses with stable schemas and good error messages.  
-* Include OpenAPI/Swagger docs and a minimal SDK-friendly response format.  
-* Make the system work both for local-only deployments and remote multi-server deployments.  
-* Integrate directly with HyperNix-pip so the server can use its upload, train, chat, quantize, convert, and TUI-adjacent capabilities.  
-* Support module creation, module upload, module sync, module versioning, module listing, and remote deployment from local files.  
-* Support retrieving remaining usage, current usage, historical usage, and estimated cost of spent usage.  
-* Support admin-only key management and server configuration.  
-* Make it easy for hyped tui to discover and call the API.  
-Architecture expectations:  
-* Separate auth, usage metering, module registry, server registry, and job execution into distinct services or routers.  
-* Support environment-variable configuration plus optional .env loading.  
-* Use Pydantic models for request/response validation.  
-* Persist data in a lightweight database such as SQLite for dev and PostgreSQL for production.  
-* Support encrypted secret storage for tokens/keys at rest.  
-* Provide background jobs for uploads, sync, and remote deployment.  
-* Include a plugin-like extension system for future endpoints.  
-Primary endpoint set:  
-1. GET /health — health check, version, uptime.  
-2. GET /status — service status, active modules, queue depth.  
-3. POST /auth/t1/validate — validate a T1 admin key.  
-4. POST /auth/t1/admin/rotate — rotate admin key.  
-5. POST /auth/t1/rotate — rotate normal general key  
-6. POST /auth/token — mint a scoped access token.  
-7. GET /usage/remaining — remaining usage quota.  
-8. GET /usage/current — current usage snapshot.  
-9. GET /usage/history — usage history by date/range.  
-10. GET /usage/cost — cost summary for spent usage.  
-11. GET /usage/estimate — estimate cost before a job runs.  
-12. GET /modules — list modules.  
-13. POST /modules/create — create a module record.  
-14. POST /modules/upload/local — upload a module from a local file.  
-15. POST /modules/upload/remote — pull a module from a non-local server.  
-16. GET /modules/{module_id} — module details.  
-17. PATCH /modules/{module_id} — update module metadata/version.  
-18. DELETE /modules/{module_id} — remove a module.  
-19. POST /modules/{module_id}/sync — sync module to configured targets.  
-20. GET /servers — list configured servers.  
-21. POST /servers/register — register a local or remote server.  
-22. PATCH /servers/{server_id} — update server settings.  
-23. DELETE /servers/{server_id} — remove server.  
-24. GET /keys — list key metadata without revealing secrets.  
-25. POST /keys/import — import a key securely.  
-26. POST /keys/assign — assign a key to a server or module scope.  
-27. POST /jobs — submit an async job.  
-28. GET /jobs/{job_id} — job progress and result.  
-29. POST /jobs/{job_id}/cancel — cancel a running job.  
-30. GET /events — stream events for TUI/live updates.  
-31. GET /config — safe read-only config summary.  
-Behavior rules:  
-* Admin T1 keys can create, upload, deploy, sync, rotate, and delete.  
-* Non-admin tokens can only read allowed module/usage data and call models there is also a payment token for adding balance to accounts or servers  
-* All write actions must be idempotent where possible.  
-* Return a unique request ID in every response.  
-* Every job must have status states like queued, running, succeeded, failed, cancelled.  
-* Usage endpoints must support per-key, per-server, and per-module breakdowns.  
-* Cost endpoints must support totals, forecasts, and date ranges.  
-* Upload endpoints must accept local paths, file uploads, and remote URLs when permitted.  
-* Remote uploads must verify target server trust before execution.  
-* The API must expose clean, stable names that the TUI can call directly.  
-HyperNix integration requirements:  
-* Wrap the HyperNix-pip backend as a service layer for the api package  
-* Use its existing model/module workflow rather than duplicating model logic.  
-* Expose helper functions for conversion, quantization, training, chat, and upload if present in the backend.  
-* Make the endpoint names and payloads consistent with a TUI client that needs fast discovery and minimal friction.  
-* Include adapter code for hyped tui so it can:    
-    * authenticate with a T1 key,  
-    * list modules,  
-    * upload a local module,  
-    * push to remote servers,  
-    * show remaining usage,  
-    * show spent cost  
-    * watch live job progress.  
-Security requirements:  
-* Store secrets encrypted.  
-* Hash API keys or store only a keyed digest for lookup.  
-* Use least-privilege scopes.  
-* Add IP allowlists and optional mTLS support.  
-* Add audit logs for all admin actions.  
-* Sanitize file paths to prevent directory traversal.  
-* Validate remote URLs before fetching anything.  
-* Require explicit confirmation for destructive operations.  
-* Complete encryption of all keys fully end to end  
-Implementation deliverables:  
-* Full API server code.  
-* OpenAPI schema.  
-* Example .env.  
-* Minimal TUI integration adapter.  
-* Example requests/responses for every endpoint.  
-* Documentation with setup, auth flow, and HyperNix integration notes.  
-* A small CLI for smoke testing.  
-* Tests for auth, usage, module upload,  
-  
-  
-Add a new api called the I1 api, it is based on the t1 api, with the following changes, no hyperlink, no lm studio bridge, it will be designed around training Ai models, with the 3 ways of accessing are lan (with t2 key), no key for admin if interacting on tailnet, other: requires key or other with service, (make it add 19 new endpoints for training in hyperNix),   
-- [ ]   
-  
-  
+
+
 0.73.0  
   
-Add a custom markdown format, hypernixup (based on github flavored markdown, and markup extra), adds \|text|\ that will be “invisible ink” so air only reveals each letter as the finger or curser hovers over it, adds -$-graph math-$- then it makes a graph, /I/ (slight emphasize) slightly italic, 0.5 slise increase and quarter bold, and >>>> quote a quote, +>>>> with indents. and [?color:hex, rgb,hsv value?], and /j: box and hide a one point font (joke) text in it, and ##### even smaller, -###### way smaller and grey, !!!upside down -!!! Invert, ||||redact||||, make it work in hyperlink and the the system prompt,   
-
+Add a custom markdown format, hypernixup (based on github flavored markdown, and markup extra), adds \|text|\ that will be “invisible ink” so air only reveals each letter as the finger or curser hovers over it, adds -$-graph math-$- then it makes a graph, /I/ (slight emphasize) slightly italic, 0.5 slise increase and quarter bold, and >>>> quote a quote, +>>>> with indents. and [?color:hex, rgb,hsv value?], and /j: box and hide a one point font (joke) text in it, and ##### even smaller, -###### way smaller and grey, !!!upside down -!!! Invert, ||||redact||||, make it work in hyperlink and the the system prompt,
