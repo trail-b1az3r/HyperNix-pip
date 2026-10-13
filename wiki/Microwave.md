@@ -6,6 +6,9 @@ path, produces a completion, and tears down. Ideal for scripting
 ("make a filename from this heading"), CI smoke tests, and 5-line
 Jupyter-cell snippets.
 
+
+> **Canonical source:** `src/hypernix/models/microwave.py`. The `hypernix.microwave` import spelling used in examples is the compatibility-facing API; the path above is the implementation to check when verifying behavior. A string is treated as a local directory only when it exists, is a directory, and contains `config.json`; a `Path` object is treated as a local path directly. The helper currently wraps the legacy oven API.
+
 ---
 
 ## Five power levels
