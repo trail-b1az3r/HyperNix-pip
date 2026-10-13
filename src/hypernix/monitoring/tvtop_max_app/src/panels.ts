@@ -17,31 +17,57 @@ import {
   truncate,
   truncateStart,
   wrap,
+  sliceLine,
   type Line,
 } from "./format.ts"
 import { theme } from "./theme.ts"
 import type { Finding, Frame, ImportInfo, Info } from "./types.ts"
 
-export type PanelId = "cpu" | "mem" | "gpu" | "train" | "cooker" | "model" | "logs" | "warnings" | "modules" | "procs"
+export type PanelId =
+  | "cpu" | "mem" | "gpu" | "train" | "cooker" | "model" | "logs" | "warnings" | "modules" | "procs"
+  | "temps" | "audio" | "disks" | "net" | "system"
 
 export interface PanelSpec {
   id: PanelId
-  key: string // the number that toggles it, btop-style
+  key: string // the number that toggles it, btop-style ("⇧1" is Shift+1)
   title: string
+  // Hidden until asked for with Shift+its number.
+  hidden?: boolean
+  // What `o` cycles through when the panel is selected; the first is the default.
+  sorts?: string[]
+  // Lines wider than the panel can be scrolled sideways (→ and Shift+→).
+  scrollX?: boolean
 }
 
 export const PANELS: PanelSpec[] = [
-  { id: "cpu", key: "1", title: "cpu" },
-  { id: "mem", key: "2", title: "mem" },
+  { id: "cpu", key: "1", title: "cpu", sorts: ["core", "busiest", "hottest"] },
+  { id: "mem", key: "2", title: "mem", sorts: ["most used", "least used", "fastest growing"], scrollX: true },
   { id: "gpu", key: "3", title: "gpu" },
   { id: "train", key: "4", title: "training" },
   { id: "cooker", key: "5", title: "pressure cooker" },
-  { id: "model", key: "6", title: "model" },
-  { id: "logs", key: "7", title: "logs" },
+  { id: "model", key: "6", title: "model", scrollX: true },
+  { id: "logs", key: "7", title: "logs", scrollX: true },
   { id: "warnings", key: "8", title: "warnings" },
-  { id: "modules", key: "9", title: "modules & libraries" },
-  { id: "procs", key: "0", title: "processes" },
+  { id: "modules", key: "9", title: "modules & libraries", scrollX: true },
+  { id: "procs", key: "0", title: "processes", sorts: ["cpu", "memory", "age", "pid"], scrollX: true },
+  // 0.72.8: five more, hidden until Shift+1 … Shift+5.
+  { id: "temps", key: "⇧1", title: "temperatures", hidden: true, sorts: ["core", "hottest"] },
+  { id: "audio", key: "⇧2", title: "sound", hidden: true },
+  { id: "disks", key: "⇧3", title: "disks", hidden: true, sorts: ["most full", "largest", "busiest"], scrollX: true },
+  { id: "net", key: "⇧4", title: "network", hidden: true, sorts: ["busiest", "name"] },
+  { id: "system", key: "⇧5", title: "system", hidden: true },
 ]
+
+// Shift+1 … Shift+5 as terminals send them: the shifted character on a US
+// keyboard (and the UK/German ones that differ), or the digit with Shift
+// held under the kitty keyboard protocol.
+const SHIFTED: Record<string, string> = { "!": "1", "@": "2", "#": "3", $: "4", "%": "5", '"': "2", "£": "3", "§": "3" }
+
+export function panelForKey(name: string, shift = false): PanelSpec | undefined {
+  const digit = SHIFTED[name] ?? (shift && /^[1-5]$/.test(name) ? name : undefined)
+  if (digit) return PANELS.find((p) => p.key === `⇧${digit}`)
+  return PANELS.find((p) => p.key === name)
+}
 
 export interface PanelContext {
   info: Info | null
@@ -52,9 +78,11 @@ export interface PanelContext {
   compact: boolean
   // Log panel: lines scrolled back from the end (0 = following).
   logOffset?: number
+  // The panel's sort (one of its spec's `sorts`), from `o`.
+  sort?: string
 }
 
-function meterRow(name: string, fraction: number | null | undefined, value: string, width: number, nameWidth = 5): Line {
+function meterRow(name: string, fraction: number | null | undefined, value: string, width: number, nameWidth = 5, valueColor: string = theme.text): Line {
   const valueWidth = Math.max(value.length, 6)
   const barWidth = Math.max(1, width - nameWidth - valueWidth - 2)
   return [
@@ -62,9 +90,16 @@ function meterRow(name: string, fraction: number | null | undefined, value: stri
     seg(" "),
     ...meter(fraction, barWidth),
     seg(" "),
-    seg(value.padStart(valueWidth), theme.text),
+    seg(value.padStart(valueWidth), valueColor),
   ]
 }
+
+const tempColor = (celsius: number | null | undefined) =>
+  celsius == null ? theme.text : celsius >= 90 ? theme.error : celsius >= 80 ? theme.warn : theme.text
+
+const fmtTemp = (celsius: number | null | undefined) => (celsius == null ? "—" : `${celsius.toFixed(0)}°C`)
+
+const fmtRate = (bps: number | null | undefined) => (bps == null ? "—" : `${fmtBytes(Math.abs(bps))}/s`)
 
 const pct = (v: number | null | undefined) => (v === null || v === undefined ? "—" : `${v.toFixed(0)}%`)
 
@@ -79,19 +114,30 @@ function fit(lines: Line[], height: number, width: number): Line[] {
 export function cpuPanel(c: PanelContext): Line[] {
   const f = c.frame
   if (!f) return [[seg("waiting for the first sample…", theme.hint)]]
-  const lines: Line[] = [meterRow("total", (f.cpu_percent ?? NaN) / 100, pct(f.cpu_percent), c.width)]
+  const temps = f.cpu_temps?.per_core ?? []
+  const pkg = f.cpu_temps?.package_c
+  const lines: Line[] = [meterRow("total", (f.cpu_percent ?? NaN) / 100, `${pct(f.cpu_percent)}${pkg != null ? ` ${pkg.toFixed(0)}°` : ""}`, c.width, 5, tempColor(pkg))]
   const cores = f.cpu_per_core ?? []
   if (!c.compact && cores.length) {
-    // Two columns of per-core meters when there is room for them.
+    // Two columns of per-core meters when there is room for them, each
+    // with its own temperature where the driver reports one.
+    const order = cores.map((_, i) => i)
+    if (c.sort === "busiest") order.sort((a, b) => cores[b] - cores[a])
+    else if (c.sort === "hottest") order.sort((a, b) => (temps[b] ?? -1) - (temps[a] ?? -1))
     const columns = c.width >= 60 ? 2 : 1
     const colWidth = Math.floor((c.width - (columns - 1) * 2) / columns)
-    for (let i = 0; i < cores.length; i += columns) {
+    for (let i = 0; i < order.length; i += columns) {
       const row: Line = []
-      for (let j = 0; j < columns && i + j < cores.length; j++) {
+      for (let j = 0; j < columns && i + j < order.length; j++) {
+        const core = order[i + j]
+        const t = temps[core]
         if (j) row.push(seg("  "))
-        row.push(...meterRow(`c${i + j}`, cores[i + j] / 100, pct(cores[i + j]), colWidth, 4))
+        row.push(...meterRow(`c${core}`, cores[core] / 100, `${pct(cores[core])}${t != null ? ` ${t.toFixed(0)}°` : ""}`, colWidth, 4, tempColor(t)))
       }
       lines.push(row)
+    }
+    if (!temps.some((t) => t != null) && f.cpu_temps?.note && pkg == null) {
+      lines.push([seg(truncate(`temps: ${f.cpu_temps.note}`, c.width), theme.hint)])
     }
   } else if (cores.length) {
     lines.push([seg(`${cores.length} cores  `, theme.textDim), seg(sparkline(cores, Math.max(1, c.width - 10)), theme.graph)])
@@ -108,15 +154,43 @@ export function memPanel(c: PanelContext): Line[] {
   if (!f) return [[seg("waiting…", theme.hint)]]
   const m = f.memory ?? {}
   const total = m.total_mib ?? 0
+  // The bar is the numbers beside it: used over total, one measurement.
+  const fraction = total && m.used_mib != null ? m.used_mib / total : (f.ram_percent ?? NaN) / 100
+  const percent = Number.isFinite(fraction) ? ` ${(fraction * 100).toFixed(0)}%` : ""
   const lines: Line[] = [
-    meterRow("ram", (f.ram_percent ?? NaN) / 100, `${fmtMiB(m.used_mib)}/${fmtMiB(total)}`, c.width),
+    meterRow("ram", fraction, `${fmtMiB(m.used_mib)}/${fmtMiB(total)}${percent}`, c.width),
   ]
   if (m.swap_total_mib) {
     lines.push(meterRow("swap", (m.swap_used_mib ?? 0) / m.swap_total_mib, `${fmtMiB(m.swap_used_mib)}/${fmtMiB(m.swap_total_mib)}`, c.width))
   }
   if (!c.compact) {
-    lines.push([seg(pad("cached", 7), theme.textDim), seg(fmtMiB(m.cached_mib), theme.text), seg("   free ", theme.textDim), seg(fmtMiB(m.free_mib), theme.text)])
+    const available = m.available_mib ?? m.free_mib
+    lines.push([
+      seg("avail ", theme.textDim), seg(fmtMiB(available), theme.text),
+      seg("  cache ", theme.textDim), seg(fmtMiB(m.cached_mib), theme.text),
+      ...(m.available_mib != null ? [seg("  free ", theme.textDim), seg(fmtMiB(m.free_mib), theme.text)] : []),
+    ].reduce<Line>((line, s) => (lineText([...line, s]).length <= c.width ? [...line, s] : line), []))
+    if ((m as Record<string, unknown>).source === "cgroup") lines.push([seg(truncate("the container's memory limit, not the host's", c.width), theme.hint)])
     for (const row of brailleGraph(f.ram_history ?? [], c.width, 2)) lines.push([seg(row, theme.graph)])
+  }
+  const users = [...(f.memory_users ?? [])]
+  if (users.length && c.height - lines.length > 2) {
+    const sort = c.sort ?? "most used"
+    if (sort === "least used") users.sort((a, b) => (a.rss_bytes ?? 0) - (b.rss_bytes ?? 0))
+    else if (sort === "fastest growing") users.sort((a, b) => (b.growth_bps ?? -Infinity) - (a.growth_bps ?? -Infinity))
+    else users.sort((a, b) => (b.rss_bytes ?? 0) - (a.rss_bytes ?? 0))
+    lines.push([seg(truncate(`  rss  growth  process · ${sort}`, c.width), theme.textDim)])
+    for (const u of users) {
+      const growth = u.growth_bps == null ? "—" : `${u.growth_bps < 0 ? "-" : "+"}${fmtRate(u.growth_bps)}`
+      const cols = `${fmtBytes(u.rss_bytes).padStart(6)} ${growth.padStart(8)} `
+      const shown = truncate(cols, c.width)
+      const room = c.width - shown.length
+      const fast = (u.growth_bps ?? 0) > 50 * 1024 * 1024
+      lines.push([
+        seg(shown, fast ? theme.warn : theme.text),
+        ...(room > 0 ? [seg(truncate(u.command || u.name || String(u.pid), room), theme.textMuted)] : []),
+      ])
+    }
   }
   return fit(lines, c.height, c.width)
 }
@@ -289,6 +363,10 @@ const ICON: Record<string, [string, string]> = {
 export function allFindings(info: Info | null, frame: Frame | null): Finding[] {
   const order: Record<string, number> = { error: 0, warn: 1, info: 2 }
   const found = [...(info?.report?.findings ?? []), ...(frame?.log_findings ?? [])]
+  const audio = frame?.audio
+  if (audio?.warning && (audio.level === "loud" || audio.level === "unsafe")) {
+    found.push({ level: audio.level === "unsafe" ? "error" : "warn", source: "audio", message: audio.warning })
+  }
   if (info?.report?.error && !found.some((f) => f.level === "error" && f.source === "script")) {
     found.push({ level: "error", source: "script", message: info.report.error })
   }
@@ -355,11 +433,16 @@ export function modulesPanel(c: PanelContext): Line[] {
 // -- 0 processes -----------------------------------------------------------
 
 export function procsPanel(c: PanelContext): Line[] {
-  const rows = c.frame?.processes ?? []
+  const rows = [...(c.frame?.processes ?? [])]
   if (!rows.length) return [[seg("no Python processes (or psutil is not installed)", theme.hint)]]
+  const sort = c.sort ?? "cpu"
+  if (sort === "memory") rows.sort((a, b) => (b.rss_bytes ?? 0) - (a.rss_bytes ?? 0))
+  else if (sort === "age") rows.sort((a, b) => (b.age_seconds ?? 0) - (a.age_seconds ?? 0))
+  else if (sort === "pid") rows.sort((a, b) => a.pid - b.pid)
+  else rows.sort((a, b) => (b.cpu_percent ?? 0) - (a.cpu_percent ?? 0))
   const lines: Line[] = []
   const header = c.compact ? "pid     cpu%  command" : "pid     cpu%   mem   age      command"
-  lines.push([seg(truncate(header, c.width), theme.textDim)])
+  lines.push([seg(truncate(sort === "cpu" ? header : `${header} · by ${sort}`, c.width), theme.textDim)])
   for (const p of rows) {
     const watched = c.info?.pid === p.pid
     const cols = c.compact
@@ -374,6 +457,133 @@ export function procsPanel(c: PanelContext): Line[] {
     ])
   }
   return fit(lines, c.height, c.width)
+}
+
+// -- ⇧1 temperatures ----------------------------------------------------------
+
+export function tempsPanel(c: PanelContext): Line[] {
+  const t = c.frame?.cpu_temps
+  if (!c.frame) return [[seg(truncate("waiting…", c.width), theme.hint)]]
+  if (!t) return [[seg(truncate("no temperature readings from the bridge", c.width), theme.hint)]]
+  const lines: Line[] = []
+  lines.push([seg(pad("package", 9), theme.textDim), seg(fmtTemp(t.package_c), tempColor(t.package_c), true),
+    seg(t.source ? `  ${t.source}` : "", theme.hint)])
+  if (c.frame.gpu_temp_c != null) lines.push([seg(pad("gpu", 9), theme.textDim), seg(fmtTemp(c.frame.gpu_temp_c), tempColor(c.frame.gpu_temp_c))])
+  const per = t.per_core ?? []
+  const order = per.map((_, i) => i).filter((i) => per[i] != null)
+  if (c.sort === "hottest") order.sort((a, b) => (per[b] ?? 0) - (per[a] ?? 0))
+  for (const core of order) {
+    const celsius = per[core] as number
+    // 30-100 °C across the bar: below 30 is idle, 100 is where CPUs throttle.
+    lines.push(meterRow(`c${core}`, (celsius - 30) / 70, `${celsius.toFixed(0)}°C`, c.width, 5, tempColor(celsius)))
+  }
+  for (const [name, celsius] of Object.entries(t.dies ?? {})) {
+    lines.push(meterRow(truncate(name, 6), (celsius - 30) / 70, `${celsius.toFixed(0)}°C`, c.width, 6, tempColor(celsius)))
+  }
+  if (t.note) for (const text of wrap(t.note, c.width)) lines.push([seg(text, theme.hint)])
+  return fit(lines, c.height, c.width)
+}
+
+// -- ⇧2 sound ------------------------------------------------------------------
+
+export function audioPanel(c: PanelContext): Line[] {
+  const a = c.frame?.audio
+  if (!c.frame) return [[seg(truncate("waiting…", c.width), theme.hint)]]
+  if (!a || !a.available) return [[seg(truncate(a?.note ?? "no sound information from the bridge", c.width), theme.hint)]]
+  const lines: Line[] = []
+  const levelColor = a.level === "unsafe" ? theme.error : a.level === "loud" ? theme.warn : theme.text
+  lines.push([seg(truncate(`${a.device ?? "output"}${a.headphones ? " · headphones" : ""}`, c.width), theme.text, true)])
+  const db = a.volume_db != null ? `${a.volume_db >= 0 ? "+" : ""}${a.volume_db.toFixed(1)} dB` : a.volume_db_silent ? "-∞ dB" : `${a.volume_percent ?? "—"}%`
+  lines.push(meterRow("vol", a.volume_percent != null ? a.volume_percent / 100 : null, db, c.width, 5, levelColor))
+  const state = a.muted ? "muted" : a.playing ? "▶ playing" : "nothing playing"
+  lines.push([seg(pad("state", 7), theme.textDim), seg(state, a.playing && !a.muted ? theme.ok : theme.textDim),
+    seg(a.volume_percent != null && a.volume_db != null ? `  ${a.volume_percent}%` : "", theme.textDim)])
+  if (a.signal_peak_dbfs != null || a.signal_rms_dbfs != null) {
+    const fmt = (v: number | null | undefined) => (v == null ? "—" : `${v.toFixed(1)}`)
+    lines.push([seg(pad("signal", 7), theme.textDim), seg(truncate(`peak ${fmt(a.signal_peak_dbfs)} · rms ${fmt(a.signal_rms_dbfs)} dBFS`, c.width - 7), theme.text)])
+  }
+  if (a.warning) for (const text of wrap(a.warning, c.width)) lines.push([seg(text, levelColor, true)])
+  if (!c.compact && a.note) for (const text of wrap(a.note, c.width)) lines.push([seg(text, theme.hint)])
+  return fit(lines, c.height, c.width)
+}
+
+// -- ⇧3 disks ------------------------------------------------------------------
+
+export function disksPanel(c: PanelContext): Line[] {
+  const rows = [...(c.frame?.disks ?? [])]
+  if (!c.frame) return [[seg(truncate("waiting…", c.width), theme.hint)]]
+  if (!rows.length) return [[seg(truncate("no disks (or psutil is not installed)", c.width), theme.hint)]]
+  const busy = (d: (typeof rows)[number]) => (d.read_bps ?? 0) + (d.write_bps ?? 0)
+  if (c.sort === "largest") rows.sort((a, b) => (b.total_bytes ?? 0) - (a.total_bytes ?? 0))
+  else if (c.sort === "busiest") rows.sort((a, b) => busy(b) - busy(a))
+  else rows.sort((a, b) => (b.percent ?? 0) - (a.percent ?? 0))
+  const lines: Line[] = []
+  for (const d of rows) {
+    lines.push(meterRow(truncateStart(d.mount, 8), (d.percent ?? NaN) / 100, `${fmtBytes(d.used_bytes)}/${fmtBytes(d.total_bytes)}`, c.width, 8))
+    if (!c.compact) lines.push([seg(pad("", 9)), seg(truncate(`r ${fmtRate(d.read_bps)}  w ${fmtRate(d.write_bps)}  ${d.device ?? ""} ${d.fstype ?? ""}`, c.width - 9), theme.textDim)])
+  }
+  return fit(lines, c.height, c.width)
+}
+
+// -- ⇧4 network ----------------------------------------------------------------
+
+export function netPanel(c: PanelContext): Line[] {
+  const rows = [...(c.frame?.network ?? [])]
+  if (!c.frame) return [[seg(truncate("waiting…", c.width), theme.hint)]]
+  if (!rows.length) return [[seg(truncate("no network interfaces (or psutil is not installed)", c.width), theme.hint)]]
+  if (c.sort === "name") rows.sort((a, b) => a.name.localeCompare(b.name))
+  else rows.sort((a, b) => ((b.down_bps ?? 0) + (b.up_bps ?? 0)) - ((a.down_bps ?? 0) + (a.up_bps ?? 0)))
+  const lines: Line[] = []
+  for (const n of rows) {
+    lines.push([seg(pad(n.name, 10), theme.text, true), seg(truncate(`↓ ${fmtRate(n.down_bps)}  ↑ ${fmtRate(n.up_bps)}`, c.width - 10), theme.text)])
+    if (!c.compact) lines.push([seg(pad("", 10)), seg(truncate(`total ↓ ${fmtBytes(n.recv_bytes)} ↑ ${fmtBytes(n.sent_bytes)}${n.link_mbps ? `  ${n.link_mbps} Mb/s link` : ""}`, c.width - 10), theme.textDim)])
+  }
+  return fit(lines, c.height, c.width)
+}
+
+// -- ⇧5 system -----------------------------------------------------------------
+
+export function systemPanel(c: PanelContext): Line[] {
+  const s = c.frame?.system
+  if (!c.frame) return [[seg(truncate("waiting…", c.width), theme.hint)]]
+  if (!s) return [[seg(truncate("no system information from the bridge", c.width), theme.hint)]]
+  const row = (name: string, value: string, color: string = theme.text): Line => [seg(pad(name, 8), theme.textDim), seg(truncate(value, c.width - 8), color)]
+  const lines: Line[] = [row("host", s.hostname ?? "—"), row("os", s.os ?? "—"), row("uptime", fmtDuration(s.uptime_seconds))]
+  if (s.load) {
+    const busy = s.cores ? s.load[0] / s.cores : 0
+    lines.push(row("load", `${s.load.map((v) => v.toFixed(2)).join(" ")}${s.cores ? ` / ${s.cores} cores` : ""}`, busy > 1 ? theme.warn : theme.text))
+  }
+  if (s.processes != null) lines.push(row("procs", String(s.processes)))
+  if (s.battery) {
+    const b = s.battery
+    lines.push(row("battery", `${(b.percent ?? 0).toFixed(0)}% ${b.plugged ? "charging" : `on battery${b.seconds_left ? `, ${fmtDuration(b.seconds_left)} left` : ""}`}`,
+      !b.plugged && (b.percent ?? 100) < 20 ? theme.warn : theme.text))
+  }
+  return fit(lines, c.height, c.width)
+}
+
+// -- sideways scrolling ----------------------------------------------------------
+
+// The width a scrollable panel is drawn at to find how wide it really is.
+export const VIRTUAL_WIDTH = 400
+
+export interface HorizontalView {
+  lines: Line[]
+  offset: number // as clamped
+  maxOffset: number // 0: everything fits
+}
+
+// A panel's lines seen from `offset` columns in. Panels whose lines are
+// not cut to their width (meters stretch instead) never scroll.
+export function horizontalView(id: PanelId, c: PanelContext, offset: number): HorizontalView {
+  const spec = PANELS.find((p) => p.id === id)
+  if (!spec?.scrollX) return { lines: BUILDERS[id](c), offset: 0, maxOffset: 0 }
+  const wide = BUILDERS[id]({ ...c, width: VIRTUAL_WIDTH })
+  const natural = Math.max(0, ...wide.map((line) => lineText(line).trimEnd().length))
+  const maxOffset = Math.max(0, natural - c.width)
+  const clamped = Math.max(0, Math.min(offset, maxOffset))
+  if (!clamped) return { lines: BUILDERS[id](c), offset: 0, maxOffset }
+  return { lines: wide.map((line) => sliceLine(line, clamped, c.width)), offset: clamped, maxOffset }
 }
 
 // -- the footer, while tvtop-max is still waiting ---------------------------
@@ -414,6 +624,11 @@ export const BUILDERS: Record<PanelId, (c: PanelContext) => Line[]> = {
   warnings: warningsPanel,
   modules: modulesPanel,
   procs: procsPanel,
+  temps: tempsPanel,
+  audio: audioPanel,
+  disks: disksPanel,
+  net: netPanel,
+  system: systemPanel,
 }
 
 export function panelTitle(spec: PanelSpec, c: Pick<PanelContext, "info" | "frame">): string {
@@ -423,6 +638,7 @@ export function panelTitle(spec: PanelSpec, c: Pick<PanelContext, "info" | "fram
     const warns = all.filter((f) => f.level === "warn").length
     if (errors || warns) return `${spec.title} ${errors}✖ ${warns}▲`
   }
+  if (spec.id === "audio" && c.frame?.audio?.level && c.frame.audio.level !== "ok") return `${spec.title} ${c.frame.audio.level === "unsafe" ? "✖" : "▲"}`
   return spec.title
 }
 

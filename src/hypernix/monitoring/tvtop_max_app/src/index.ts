@@ -18,6 +18,7 @@ export interface Args {
   pid?: number
   refreshMs: number
   hidden: PanelId[]
+  shown: PanelId[]
   error?: string
 }
 
@@ -30,15 +31,20 @@ Usage: tvtop-max [options]
   -S, --script FILE     the training script to read (found from the run)
   -P, --pid PID         the process to watch (the busiest Python by default)
   -r, --refresh SECS    seconds between samples (default 1)
-      --hide a,b        start with panels hidden: ${PANELS.map((p) => p.id).join(", ")}
+      --hide a,b        start with panels hidden: ${PANELS.filter((p) => !p.hidden).map((p) => p.id).join(", ")}
+      --show a,b        start with hidden panels shown: ${PANELS.filter((p) => p.hidden).map((p) => p.id).join(", ")}
   -V, --version
   -h, --help
 
-Keys: 0-9 toggle panels, s switch layout, p pause, r rescan, ↑↓ scroll, q quit.
+Keys: 0-9 toggle panels, Shift+1-5 the five hidden ones, ← select a panel,
+→ / Shift+→ scroll it sideways, o change its sort, d deselect, s switch
+layout, p pause, r rescan, ↑↓ scroll, q quit.
+
+Sound: TVTOP_MAX_LOUD_DB sets the output gain called loud (default -6 dB).
 tvtop-pro, the Rich version, is still available.`
 
 export function parseArgs(argv: string[]): Args {
-  const out: Args = { help: false, version: false, mode: "auto", refreshMs: 1000, hidden: [] }
+  const out: Args = { help: false, version: false, mode: "auto", refreshMs: 1000, hidden: [], shown: [] }
   const value = (i: number, flag: string): string | undefined => {
     const next = argv[i + 1]
     if (next === undefined || next.startsWith("-")) out.error = `${flag} needs a value`
@@ -67,11 +73,12 @@ export function parseArgs(argv: string[]): Args {
         else out.error = "--refresh needs a number of seconds, 0.2 or more"
         break
       }
-      case "--hide": {
+      case "--hide": case "--show": {
         const ids = (take() ?? "").split(",").map((s) => s.trim()).filter(Boolean)
         const unknown = ids.filter((id) => !PANELS.some((p) => p.id === id))
         if (unknown.length) out.error = `no panel called ${unknown.join(", ")}`
-        out.hidden.push(...(ids.filter((id) => PANELS.some((p) => p.id === id)) as PanelId[]))
+        const known = ids.filter((id) => PANELS.some((p) => p.id === id)) as PanelId[]
+        ;(flag === "--hide" ? out.hidden : out.shown).push(...known)
         break
       }
       default:
@@ -97,7 +104,7 @@ async function main(): Promise<void> {
   }
   const bridge = spawnBridge(pythonCommand({ log: args.log, script: args.script, pid: args.pid }))
   const renderer = await createCliRenderer({ exitOnCtrlC: false, targetFps: 15 })
-  const app = new App(renderer, bridge, { mode: args.mode, refreshMs: args.refreshMs, hidden: args.hidden })
+  const app = new App(renderer, bridge, { mode: args.mode, refreshMs: args.refreshMs, hidden: args.hidden, shown: args.shown })
   process.on("SIGTERM", () => app.quit())
   process.on("SIGINT", () => app.quit())
   await app.start()

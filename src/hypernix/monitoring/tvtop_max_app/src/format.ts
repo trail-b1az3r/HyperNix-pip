@@ -19,6 +19,20 @@ export function lineText(line: Line): string {
   return line.map((s) => s.text).join("")
 }
 
+// Columns [start, start + width) of a line, keeping each segment's style.
+export function sliceLine(line: Line, start: number, width: number): Line {
+  const out: Line = []
+  let column = 0
+  for (const s of line) {
+    const from = Math.max(0, start - column)
+    const to = Math.min(s.text.length, start + width - column)
+    if (to > from) out.push({ ...s, text: s.text.slice(from, to) })
+    column += s.text.length
+    if (column >= start + width) break
+  }
+  return out
+}
+
 export function truncate(text: string, width: number): string {
   if (width <= 0) return ""
   if (text.length <= width) return text

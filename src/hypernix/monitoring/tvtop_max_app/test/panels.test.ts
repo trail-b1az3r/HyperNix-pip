@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 
 import { lineText } from "../src/format.ts"
-import { allFindings, BRIDGE_SLOW_SECONDS, bridgeStatus, BUILDERS, logLineColor, PANELS, panelText, panelTitle, type PanelContext, type PanelId } from "../src/panels.ts"
+import { allFindings, BRIDGE_SLOW_SECONDS, bridgeStatus, BUILDERS, horizontalView, logLineColor, panelForKey, PANELS, panelText, panelTitle, type PanelContext, type PanelId } from "../src/panels.ts"
 import { theme } from "../src/theme.ts"
 import type { Frame, Info } from "../src/types.ts"
 
@@ -90,7 +90,20 @@ describe("every panel", () => {
   }
 
   test("the panel keys are the ten number keys, once each", () => {
-    expect(PANELS.map((p) => p.key).sort()).toEqual(["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"])
+    expect(PANELS.filter((p) => !p.hidden).map((p) => p.key).sort()).toEqual(["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"])
+  })
+
+  test("five more are hidden behind Shift+1 … Shift+5", () => {
+    expect(PANELS.filter((p) => p.hidden).map((p) => p.key)).toEqual(["⇧1", "⇧2", "⇧3", "⇧4", "⇧5"])
+    expect(panelForKey("!")?.id).toBe("temps")
+    expect(panelForKey("@")?.id).toBe("audio")
+    expect(panelForKey("#")?.id).toBe("disks")
+    expect(panelForKey("$")?.id).toBe("net")
+    expect(panelForKey("%")?.id).toBe("system")
+    // The kitty keyboard protocol sends the digit with Shift held.
+    expect(panelForKey("2", true)?.id).toBe("audio")
+    expect(panelForKey("2")?.id).toBe("mem")
+    expect(panelForKey("x")).toBeUndefined()
   })
 })
 
