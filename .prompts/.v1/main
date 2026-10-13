@@ -1,4 +1,22 @@
-0.72.7  
+0.72.7
+
+## Summary — read this first
+
+**Goal:** Deliver a real, tested modernization of HyperNix-pip for Python 3.12, 3.13, 3.14, and 3.15, while preserving current behavior and making startup, profiling, debugging, and maintenance measurably better.
+
+Implement and verify these workstreams:
+
+1. **Finish the Python migration.** Audit the full repository, dependencies, CLIs, APIs, async code, native extensions, packaging, documentation, and CI for assumptions that break on Python 3.12–3.15. Python 3.11 and older are out of scope.
+2. **Implement the requested Python 3.15 features where they provide real value.** Integrate PEP 810 explicit lazy imports, PEP 798 unpacking in comprehensions, PEP 799 profiling support, and PEP 831 frame pointers. Use correct version-gated implementations or safe fallbacks on Python 3.12–3.14; do not pretend newer syntax or interpreter features work on older versions.
+3. **Measure performance instead of guessing.** Establish reproducible before/after benchmarks for startup, imports, memory, CPU, profiling overhead, and representative HyperNix workflows. Preserve raw results and explain environment and variance. Do not claim a speedup without measurements.
+4. **Modernize dependencies, typing, and packaging.** Remove obsolete workarounds only when tests prove they are unnecessary; verify wheels, source distributions, metadata, imports, native builds, and installs across the supported Python matrix.
+5. **Make CI and tests prove compatibility.** Run installation, unit, integration, API, CLI, async, security, type-checking, lint/format, PEP-specific, and benchmark checks across supported Python versions and relevant platforms. Add regression coverage for every compatibility change.
+6. **Document the real result.** Update the README, migration/compatibility notes, and final report with implemented features, test evidence, benchmark methodology and results, known gaps, and platform-specific limitations. Mark nothing as passing until it actually passed.
+
+**Definition of done:** a clean install and the appropriate test matrix succeed on every claimed Python version; the requested PEP integrations are real and safely gated; existing APIs and behavior remain compatible or have documented, tested migrations; and performance claims are backed by repeatable evidence. Do not use stubs, fabricated benchmark results, or metadata-only changes to declare completion.
+
+The detailed requirements below are authoritative. Keep them all, follow their constraints, and use them to drive implementation and verification.
+
 First step one1: hyperlink bug, without a model loaded on a hnx runner you cannot link a model from a different folder. And add command hnx-t1 runner auto, will load the last loaded or most commonly loaded module  on the commonly used backend, and with the last used settings config. Make images sent into hyperlink, get auto compressed into webp, or SVG, files, support uploads in: png, webp, jpeg, jpegxl, SVG, dng, and more. Step 2: make hyperlink and hyperNix t1 runners support images, it give an error when using when and not on lms, and fix ALL, Mac, linux, and windows ci failures. Step3: Perform a complete, production-grade  modernization of **hyperNix-pip**, migrating it from its current **Python 3.10 baseline** to official support for **Python 3.12, 3.13, 3.14, and 3.15**.  
 This must be a real codebase migration, NOT simply changing python_requires. Audit and update the entire repository, including source code, dependencies, packaging, build systems, native extensions, CLI/API behavior, type annotations, async code, tests, CI, documentation, profiling, performance, and security.  
 The final compatibility target is:  
@@ -2975,6 +2993,94 @@ The final result should feel like a genuinely new HyperNix architecture rather t
 In hyperlink add the following, 1: a  theme named origins that is old theme before customization was added, 2: when I have pcutil installed it see my gpu, but not my ram and cpu, also make it have power usage per hour, 80plus estimated efficiency rating, actual power efficiency. Make an actual fully working hyperNix model runner like lms, lm studio, using modified llama cpp, in hyperlink, add a little circle on the right of the chat text box, that has 3 rings that are different colors, red means nearly full, blue means not less than 60% free but less than 85% free, 100= green, 45 to 31% yellow, that is for the user context, when it hits 96% full, it will auto compact, then next is useage remaining deep crimson = empty, white = fine and above 50, orange = over 10, less than 50, make a action run a new example that trains a 50 peramiter model using brewer, the newest pressure cooker, Neo oven, synchronous, and more   
   
   
+0.74.2
+
+# HyperNix 0.74.2 — Experiment Ledger and Reproducible Model Workbench
+
+## Objective
+
+Make training, evaluation, inference benchmarks, and quantization runs reproducible, recoverable, and easy to compare using the modules HyperNix already has. This is a workflow and integration release, not a new model architecture. Inspect the existing CLI, trainer, optimizers, benchmark suite, Lunchbox/Tupperware, thermometers, run inspection, model catalogue, and database patterns before adding code. Extend existing sources of truth; do not duplicate them.
+
+## 1. Experiment manifest and records
+
+Create a versioned, documented manifest (prefer JSON or TOML where appropriate) and a persistent record for every run. Capture, when available:
+
+- Stable run ID, name, UTC creation/start/end times, status, parent/resume ID, and stop/failure reason.
+- HyperNix version, Python/dependency versions, OS, Git commit and dirty-tree state.
+- Model identity, architecture, parameter count, tokenizer, quantization/precision, context length, and immutable Hub revision when available.
+- Dataset identity, source, split, sample/token counts, preprocessing settings, and content fingerprint where feasible without copying or repeatedly hashing huge datasets.
+- Resolved training/evaluation configuration: optimizer, scheduler, seed, batch size, gradient accumulation, limits, checkpoint policy, and all defaults actually applied.
+- Detected hardware and backend versions, outputs, log paths, checkpoint/artifact references, and checksums where practical.
+
+Record the requested configuration separately from the resolved configuration. Mark fields as unknown/unavailable rather than guessing. Redact secrets, tokens, credentials, and secret environment variables; never persist them in manifests or logs.
+
+## 2. CLI workflow
+
+Add a command group that follows the repository's existing CLI conventions. Candidate actions include `experiment new`, `run`, `list`, `show`, `compare`, `resume`, and `export`. Inspect the existing command tree first and choose names that fit without breaking current commands.
+
+Provide useful help text, stable exit codes, clear errors, and a validation/dry-run mode. Dry-run must show the resolved configuration and resource estimates without downloading a model, loading large weights, or starting training.
+
+## 3. Lifecycle, checkpoints, and recovery
+
+Persist explicit states such as queued, validating, running, stopping, completed, failed, cancelled, and interrupted. A crash must not leave a run falsely marked successful.
+
+- Keep each run's logs separate and record progress, elapsed time, last completed step, and failure stage when known.
+- Handle Ctrl+C and normal termination gracefully. Flush metrics and save a checkpoint only where the trainer supports a safe checkpoint operation.
+- Resume only after validating checkpoint/model/config/tokenizer compatibility. If compatibility cannot be established, explain why and refuse by default; never silently continue from incompatible state.
+- Preserve the original run, checkpoint, and manifest; link resumed runs to their parent.
+- Support bounded queues only where they integrate with existing resource/GPU scheduling. Never start extra GPU jobs simply because a queue contains them, and never terminate unrelated processes to free resources.
+- If disk space, VRAM, or dependencies are insufficient, fail early with actionable diagnostics.
+
+## 4. Metrics and honest comparisons
+
+Integrate existing measurement and benchmark code. Record supported metrics such as loss, evaluation scores, tokens/s, samples/s, steps/s, latency, time to first token, wall-clock duration, peak RAM/VRAM, artifact sizes, and hardware readings.
+
+Distinguish measured, estimated, and unavailable values. Benchmarks should allow warmups and repeated trials and report sample count, median, and useful spread/percentiles. Preserve raw observations. Compare runs only with explicit warnings for incompatible model revisions, tokenizers, datasets, evaluation protocols, or hardware. Show configuration differences and never name a universal winner when objectives differ.
+
+Generate readable Markdown reports and machine-readable JSON/CSV exports. Do not fabricate metrics if a sensor or backend cannot provide them.
+
+## 5. Artifact and storage safety
+
+Document a configurable experiment root under the user's HyperNix data directory. Keep metadata separate from large checkpoints, datasets, and outputs. Verify referenced artifacts when showing or resuming a run.
+
+Add retention/cleanup only with a dry-run preview and explicit confirmation. Active runs and required checkpoints must be excluded. Normalize paths and prevent cleanup from writing/deleting outside the configured root. Handle incomplete writes, schema migrations, and concurrent readers/writers; if SQLite fits the existing design, use transactions for lifecycle updates.
+
+Exports should say which bulky artifacts were omitted. Avoid expensive full-file scans on every CLI call; cache fingerprints carefully and re-verify when correctness requires it.
+
+## 6. Monitoring integration
+
+Connect experiment records to tvtop-pro/tvtop-max and existing run-inspection tools where practical. Show the run label, status, elapsed time, progress, recent metrics, and log path. Monitoring must be optional: if a sensor, terminal, UI dependency, or hardware backend is missing, training must continue and the missing measurement must be reported honestly.
+
+Keep sampling overhead low and configurable. Identify the source and sampling interval of hardware readings. Do not claim unsupported per-process GPU or power measurements.
+
+## 7. Privacy and operational safeguards
+
+Treat manifests, model names, dataset paths, logs, and artifacts as untrusted input. Never execute scripts found while discovering, validating, resuming, or reporting an experiment. Do not upload experiment data or make remote calls unless a user explicitly enables a feature that requires them. Do not log private prompts or training samples by default; content-level tracing must be opt-in with a clear warning.
+
+Do not silently install dependencies, modify global environments, rewrite user configuration, or delete previous checkpoints.
+
+## 8. Tests and definition of done
+
+Add behavior-focused tests for:
+
+- Manifest round-trips, schema migration, resolved defaults, fingerprint behavior, and secret redaction.
+- State transitions, crashes/interrupted runs, cancellation, concurrent run IDs, SQLite concurrency, and failure recording.
+- Dry-run proving it neither downloads weights nor starts training.
+- Resume from a compatible tiny fixture and refusal of incompatible checkpoints without modifying the originals.
+- Comparisons with known fixture metrics, missing-vs-zero values, and warnings for incomparable runs.
+- JSON/CSV/Markdown export consistency and missing/moved artifact diagnostics.
+- Cleanup previews, path traversal prevention, and protections for active runs/checkpoints.
+- Degraded operation with missing sensors and optional dependencies.
+- A deterministic, tiny CPU-only end-to-end run requiring no network or GPU; heavyweight training and hardware benchmarks stay opt-in.
+
+Run existing relevant tests first, then focused new tests and the broad suite where practical. Do not weaken tests to make the build pass.
+
+## 9. Implementation rules
+
+Reuse existing abstractions and public APIs wherever possible. Update docs/changelog only after the implementation is verified. Do not ship placeholder commands, simulated successful training, fake metrics, or existence-only tests. Keep optional integrations optional, document storage and migration behavior, and preserve workflows for users who do not use the new experiment CLI.
+
+Completion requires a real end-to-end run, validated recovery behavior, useful comparison/export output, tests, and documentation backed by evidence.
+
 0.75.0  
 #   
 # HyperNix 0.75.0 — Create HyperNix0xV4  
