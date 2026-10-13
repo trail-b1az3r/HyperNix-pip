@@ -3960,12 +3960,86 @@ The release is not complete until:
 Do not substitute mock screens for working features, claim support based on a model name, weaken authorization for convenience, or mark work complete without test evidence.
 
 
-# 0.82.0
-  
+# 0.82.0 — Major Performance and GPU-Efficiency Release
+
+## Objective
+
+Make HyperNix measurably faster and more resource-efficient across inference, training, quantization, data processing, hardware discovery, CLI startup, and local model serving. This is an implementation release: profile the real code, fix measured bottlenecks, validate numerical behavior, and publish reproducible before/after evidence. Do not satisfy this release by merely adding benchmark scripts or writing unverified performance claims.
+
+## 1. Baselines and profiling
+
+Establish repeatable benchmarks for representative small, medium, and large workloads: package/CLI cold start, imports, model loading, prompt prefill, token generation, training steps, optimizer-only steps, dataset preprocessing, conversion, and quantization. Cover CPU-only systems and supported NVIDIA, AMD, Intel, and Apple backends where actual test hardware is available. Include Pascal/GTX 1080 as a compatibility target where the installed stack supports it.
+
+For every run, record commit/version, model revision or file hash, quantization, precision, context/input length, output or training-step count, batch shape, device/backend/driver, thread settings, peak RAM/VRAM, model-load time, time to first token, prefill and decode throughput, latency distribution, and quality/correctness checks. Record power or energy only when reliable telemetry can measure it. Separate cold and warm runs; use fixed configurations, warmups, multiple repeats, medians, and spread/percentiles. Preserve raw machine-readable observations and a human-readable report.
+
+Use Python/PyTorch profiling and native/backend profilers to identify real hot paths: CPU-heavy loops, unnecessary synchronization, kernel launch overhead, memory fragmentation, repeated allocation/copying, transfer bottlenecks, inefficient tensor layouts, serial data loading, duplicate model discovery, and avoidable serialization. Tie every optimization to its measured bottleneck.
+
+## 2. CPU and general runtime efficiency
+
+Profile startup and imports; lazy-load optional heavy dependencies where doing so is safe; eliminate duplicate discovery and repeated parsing; and cache only results with explicit invalidation rules. Optimize CPU hot paths with vectorized, batched, or native operations where correctness is preserved. Improve data loading and preprocessing using bounded prefetch, efficient serialization, sensible worker counts, and memory mapping for large datasets where beneficial.
+
+Avoid oversubscribing CPU threads when PyTorch, OpenMP, BLAS, and data workers are already parallel. Respect container/cgroup limits and hardware topology. Add NUMA/affinity-aware behavior only when supported and benchmarked, expose a safe override, and never alter global OS configuration silently. Reduce peak host memory through streaming, bounded queues, reusable buffers, and clear cache lifetimes. Keep CPU fallbacks working for older supported CPUs.
+
+## 3. GPU efficiency and throughput
+
+Audit the entire workload, not only isolated kernels. Target unnecessary host/device synchronization, excess kernel launches, repeated allocations, redundant host↔device copies, synchronous transfers that could safely overlap, avoidable tensor conversions, poor batch sizes, and serialization in inference/training loops.
+
+Implement optimizations where profiling justifies them, including:
+- fused or `foreach` operations for supported tensor shapes and dtypes;
+- non-blocking transfers, pinned memory, and overlapped data preparation when safe;
+- reusable buffers or bounded allocation pools to reduce allocator churn;
+- optional `torch.compile`, CUDA graph capture/replay, or backend-specific graph execution for compatible fixed-shape workloads, with warmup and version/device/config-keyed cache invalidation;
+- faster attention/KV-cache and quantized matrix/vector kernels where the installed runtime actually supports them;
+- batching and scheduling that improve device occupancy without unacceptable latency or memory growth;
+- layer placement/offload that obeys measured free VRAM and transfers only required tensors;
+- reduced-precision execution only when the device/model supports it and validation shows acceptable numerical behavior.
+
+Do not force CUDA graphs, compilation, Tensor Cores, or new kernels on hardware that cannot use them. Preserve Pascal compatibility where the current stack allows it, and test newer GPU paths separately. GPU model recognition is not proof of installed-driver or toolkit compatibility. Implement AMD/Intel/Apple-specific acceleration only for supported backends that can be exercised in tests.
+
+Expose an efficiency report with throughput, latency, peak VRAM/RAM, device utilization, kernel/transfer timing, and memory bandwidth/occupancy where the profiler exposes those values. Distinguish unavailable, estimated, and measured data. Never invent watts, utilization, or energy efficiency.
+
+## 4. Adaptive resource planning
+
+Create or extend one resource planner that uses detected hardware, backend capabilities, available memory, context/batch settings, and workload requirements to recommend safe settings. Document its memory-estimation formula and safety margin; account for weights, KV cache, runtime overhead, activations and optimizer state where applicable. Show estimates before an expensive job, then compare them with measured peak use to improve future recommendations.
+
+Expose safe overrides for GPU layers/offload, context/cache size, batch size, CPU threads, precision, compile/graph mode, and data-loader workers. Explain effects on accuracy, reproducibility, latency, throughput, and memory. Never silently reduce precision, truncate context, alter the training objective, or kill unrelated processes. On OOM, preserve logs/checkpoints where possible and offer an actionable reduced-resource profile.
+
+Persist optional local tuning results with explicit cache bounds and invalidation; do not run expensive autotuning on every startup. Let users disable autotuning for deterministic or restricted environments.
+
+## 5. Training and optimizer acceleration
+
+Integrate with the existing optimizer framework instead of creating a second scheduler. Profile AdamW, V5/V5+, V5S, V6/V6V, V7 Balanced, V7Mini, V7Q, V7S, and V7M using optimizer-only and full-step benchmarks. Reduce per-parameter Python overhead, device synchronization, repeated statistics work, and temporary allocations while preserving each optimizer’s update semantics and checkpoint format.
+
+Add or improve fused execution, gradient accumulation, mixed precision, gradient checkpointing, and compile paths only where the trainer supports them correctly. Validate scaler/overflow behavior, non-finite gradients, gradient clipping, deterministic seeds, save/resume, and equivalence within documented tolerances. Faster optimizer-only timings do not count as a win if end-to-end training slows down or convergence worsens.
+
+## 6. Quantization and inference optimization
+
+Profile conversion and generation pipelines. Reduce redundant intermediate tensors and conversion buffers; improve streaming reads/writes and memory mapping; optimize calibration and importance-matrix passes; and accelerate supported GGUF/HyperNix quantization kernels with device-specific dispatch and portable fallbacks.
+
+For inference, measure model-load time, first-token latency, prompt prefill, decode speed, concurrent throughput, KV-cache memory, and CPU/GPU placement. Tune context, batch, threads, and GPU layers within explicit memory limits. Cache compiled kernels and loaded metadata by compatible model revision, quant format, software ABI, and device; never reuse artifacts across incompatible combinations.
+
+Quality gates are mandatory: compare output/logit behavior where meaningful, task quality or loss/perplexity where appropriate, and quantized-output stability against a trusted baseline. Document the speed/quality/memory trade-off of every fast path; do not trade away model quality invisibly.
+
+## 7. Safe cross-platform dispatch
+
+Use runtime feature detection, not hard-coded assumptions. Detect GPU architecture, driver/runtime, supported kernels, memory, and optional libraries. Make the selected execution path and fallback reason visible in diagnostics. If compile or graph capture fails, fall back safely without corrupting optimizer/model state. Maintain bounded tuning/compilation caches with correct invalidation.
+
+Keep unsupported device backends on the portable path and mark unavailable device-specific tests as skipped rather than claiming them passed.
+
+## 8. Release gates
+
+Establish baselines first. Target at least **10% median improvement in two or more representative end-to-end workloads**, or at least **10% lower peak VRAM/RAM without more than a 3% throughput regression** for a representative workload. Record which workloads qualify. If a safe optimization cannot meet that target, provide profiler evidence and document the limitation rather than fabricating a result.
+
+Require correctness/regression tests for each optimized path; raw benchmark artifacts with environment metadata; comparison reports with spread/uncertainty; and tests for CPU fallback, older supported GPUs, new GPU acceleration, mixed precision, memory pressure, cancellation, compile/cache failures, and checkpoint recovery. Avoid material regressions in unrelated workloads unless the trade-off is explicit and justified.
+
+## 9. Deliverables and documentation
+
+Create an initial profiler report, a prioritized bottleneck list, and a mapping from optimization to repository file, expected effect, and validation test. Implement high-impact safe optimizations in real Python/native code. Keep hardware-heavy benchmarks opt-in and run them only on appropriate runners.
+
+Update version metadata, changelog, README, wiki, optimizer/runtime documentation, examples, hardware/backend support matrices, architecture map where relevant, generated docs data, and GitHub Pages based on verified changes. Publish performance charts from reproducible result data rather than hand-written claims. The final report must list each change, baseline, measured result and variability, affected hardware/backend, limitations, tests run, and regressions. Do not declare 0.82.0 complete from theoretical analysis or synthetic numbers alone.
+
 Much later:   
 V1.00.0 or for 2.00.0  (only to be made by Claude Code + Fable 5+) or a custom model/cloud model that’s over 3.2T minimum of 2.7T perams (if I can figure it out)  
   
 ONCE I HAVE A ACTUAL COMPANY, MAKING MONEY, AND A FULL DEVELOPMENT TEAM then we will make:   
 HYPERNIX 3.0, a full new software, that costs money, has a paid software license unless user makes (not profits) less than 1m$ a year from ai work, 3.1 coul have a PyTorch replacement, the T3 api and keys
-
-
