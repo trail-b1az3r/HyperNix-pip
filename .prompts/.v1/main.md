@@ -20,16 +20,648 @@ add a new module, called c4, and uses the users gpu, and a safetenrsors, pt, or 
 HyperNix 0.72.8 pt3  
 Make a custom in house replacement for huggingface-hub and move it into the t1 api, llama, and dev extras, make this replacement no longger need hf, and instead run to login hnx-hf login and it has a super basic cli for login via token, make all things that use hf swap to hnx-hf with a fail back to hf if installed and if iterrored with an error code, update the examples/t1api/readme and other files in there, make t1 servers fully work with mcp’s like huggingface’s, and add all of hnx net’s features into the t1 API, and depracate net, add a code section to the hyperlink app, that allows the model to have more access to file, (using /code sandboxes, and other stuff), git support, and more. In the hyperlink chat function, add a way for users to integrate parts of dataset files in jsonl, parquet, txt, md, etc into the model, make t1 servers that are running and are public, and have not turned off t1_public_counter in the env settings, on this version of t1.1.26.10.1.0 or newer, have a live hourly counter in the GitHub repo showing how or if any are up yet, add a new commmad hnx auto, it will auto download a repo you give it from hf, if it’s not gguf, it will convert it, then quanitzsize it to what you want it to be, move the following hnx help command, to only be shown if user runs, hnx extra, then they can see these moved commands, hnx; neuron, pipeline, assistant, generate, wiki, prot (fix it so it doesn’t lock my screen), oven, path, and map, tvtop, cctvtop, camo, web search, and scavenger. Add to the help command, tvtopmax, and hypedpro, add a shortcut for fetch-llama-quantisize being fllq, and check all of those for being fakes, stubs or being broken and fix them, fix hyperNix download,  make hyperlink support full markdown, markdown extra, and common mark, and GitHub flavored markdown   
   
-HyperNix v0.73.0 pre alpha 1 changes  
+# 0.72.8 Final Release Candidate (RC)
+
+## Release objective
+
+Complete and validate the 0.72.8 release candidate by expanding hardware and model-architecture support from verified sources, making capability detection reliable, and publishing the resulting support information on GitHub Pages. These are implementation requirements for HyperNix-pip itself. Do not merely add names to a list: each new registry entry must map to tested detection, capability information, and an honest compatibility status.
+
+## 1. Supported CPU catalogue: at least 250 additional CPU models
+
+Audit the existing CPU identification, hardware snapshot, training presets, runtime selector, and documentation. Add **at least 251 net-new identifiable CPU model/SKU entries** beyond the baseline checked at the start of this work, covering current and legacy families from Intel, AMD, Apple silicon, ARM-based vendors, and other vendors with verifiable public specifications.
+
+Create or extend a structured CPU catalogue with canonical vendor/model identifiers, family/generation, architecture, physical/logical core information where discoverable, supported instruction sets, relevant memory/runtime constraints, and links or citations to public vendor specifications. Use CPUID/platform APIs, `platform`, `cpuinfo` or existing repository abstractions where appropriate. Do not infer unsupported features from a product name. Unknown fields must remain unknown rather than becoming fake zeroes.
+
+Keep the catalogue separate from live hardware detection: a CPU being listed must not imply that the current machine has it. Support aliases and noisy OS-reported names, and show which facts were directly detected versus mapped from catalogue metadata. Do not create hundreds of special-case branches; use data-driven registries and reusable capability rules. Cover Windows, Linux, and macOS where platform APIs allow it; where exact SKU data is unavailable, return a useful family-level result and explain uncertainty. Add fixture tests for vendor strings, aliases, unknown IDs, missing tools, virtual machines, containers, and CPUs whose feature flags differ despite similar names.
+
+## 2. Supported GPU catalogue: at least 150 additional GPU models
+
+Audit `hypernix.system.gpus`, runtime selection, VRAM detection, hardware compatibility metadata, and GPU documentation. Add **at least 151 net-new identifiable GPU model/SKU entries** beyond the existing baseline, covering NVIDIA GeForce/RTX/Quadro/datacenter lines, AMD Radeon/Instinct, Intel Arc and integrated graphics, and other GPU families actually supported by repository backends.
+
+For each entry, record vendor, canonical model and aliases, architecture/generation, public device identifiers where available, published memory configuration where stable, compute capability or backend feature level where applicable, and supported backend(s). For NVIDIA, distinguish GPU compute capability from the installed CUDA runtime/driver; for AMD distinguish GPU family/gfx target from ROCm version support; for Intel distinguish the device family from the installed XPU stack. Do not treat one backend's version as a universal compatibility guarantee.
+
+Keep detection failure-safe. Missing vendor tools, unavailable telemetry, `N/A` fields, hybrid/multi-GPU systems, eGPUs, WSL/containers, and virtualized environments must return explicit partial results. Separate “catalogue recognizes this model,” “device detected,” “backend can initialize,” and “workload successfully tested.” A GPU name in a registry alone does not prove that it can run a workload.
+
+Add tests for new canonical families and reusable parsing rules, including NVIDIA, AMD, Intel, Apple/Metal where relevant, CPU-only machines, mixed-vendor systems, and older Pascal GPUs such as the GTX 1080.
+
+## 3. Discover and support at least 36 new model architecture families from Hugging Face
+
+Use the current official Hugging Face Transformers documentation and Hub configuration metadata:
+- https://huggingface.co/docs/transformers/model_doc/auto
+- https://huggingface.co/docs/transformers/models
+- https://huggingface.co/docs/huggingface_hub/guides/api
+
+Export the current HyperNix architecture/model-type registry and compare it to current Transformers AutoConfig/AutoModel mappings and real Hub `config.json` files. Add **at least 36 net-new architecture families/model types** that are not fully supported in the baseline. Count distinct functional architecture-family keys, not checkpoints, aliases, or spelling variations.
+
+Discover candidates across decoder-only language models, MoE models, state-space/recurrent models, encoder-decoder models, embeddings/rerankers, vision-language models, and speech/audio models. Select the actual additions from current upstream support and the repository baseline, not from names alone.
+
+For each family, implement and document the operations genuinely supported: config/checkpoint inspection; tokenizer/processor resolution; loading and inference for the advertised task; training/fine-tuning where compatible; conversion and quantization where tensor layouts/operators are correctly mapped; GGUF export/runtime only where truly supported; and multimodal input only where the model implementation and data path exist.
+
+Do not mark an architecture “fully supported” if only its config can be parsed. Publish a per-operation capability matrix with statuses such as supported-and-tested, supported-with-limitations, experimental, metadata-only, and unsupported. Use `AutoConfig`/the appropriate `AutoModel` class where it gives a real tested path; implement custom adapters where necessary. Pin small fixtures/config revisions and compare tensor names/shapes and outputs against a trusted Transformers implementation where feasible.
+
+Security and reproducibility requirements:
+- Do not enable `trust_remote_code=True` by default or execute downloaded repository scripts during discovery.
+- Use explicit Hub API timeouts, pagination, cache control, and rate-limit handling; do not scrape to bypass API limits.
+- Pin revisions for tests/downloads, validate config inputs, and never download giant weights during normal tests.
+- Handle gated/private repositories, malformed configs, safetensors metadata, timeouts, and upstream schema changes with clear diagnostics.
+- Preserve licenses and attribution.
+
+## 4. Hardware-aware recommendations
+
+Unify CPU/GPU registries with model-architecture metadata to report whether a proposed workload is plausible for a machine. Estimate memory from model/config/quantization data and label estimates clearly; include weights, KV cache, runtime overhead, optimizer/training state where relevant, and a safety margin rather than relying only on file size.
+
+Distinguish hardware recognized, hardware actually detected, backend available, architecture and quantization supported, estimated fit for the selected settings, and a tested workload with measured performance. Show incompatibilities and safe fallbacks. Never infer optimizer, CUDA, kernel, or architecture support from name recognition alone.
+
+## 5. Update GitHub Pages and generated support data
+
+Publish a searchable **Supported Hardware & Model Architectures** page on HyperNix GitHub Pages. Include filters for vendor, CPU/GPU family, architecture, backend, task/modality, and support maturity. Clearly distinguish catalogue entries from combinations that have passed actual tests.
+
+Generate versioned machine-readable files such as `docs/public/v1/supported-cpus.json`, `supported-gpus.json`, and `supported-model-architectures.json` from canonical registries, not duplicated hand-written UI lists. Include generation timestamp, source/revision, and schema version. Make the page responsive and link to detailed compatibility notes.
+
+Update the docs-data generator and GitHub Actions workflows for GitHub Pages deployment and generated docs-data refresh. Include new JSON files in generation, validation, change detection, and commit steps. Add manual regeneration with diff preview and skip commits when data is unchanged.
+
+Update the README support summary, hardware/architecture wiki pages, relevant examples, API/reference pages, and GitHub Pages. Fix broken links and clearly distinguish upstream-sourced data, tested compatibility, and experimental support. Run the actual Pages production build and validate generated data/schema before release; adding a workflow alone is not completion.
+
+## 6. Release-candidate test and sign-off gate
+
+- Snapshot the original registries and calculate exact net-new counts to prove the 251+ CPU, 151+ GPU, and 36+ architecture requirements.
+- Test canonical lookup, aliases, duplicates, schema validation, parsing real fixtures/configs, unknown devices/architectures, and fallback behavior.
+- Test registry loading offline; network discovery must be an explicit refresh operation with cache and failure handling.
+- Run CPU-only tests on supported CI platforms, GPU parser tests using fixtures, and device integration tests only on compatible runners.
+- Smoke-test architectures with tiny public fixtures or generated configurations; keep large weights and paid APIs out of default CI.
+- Verify deterministic data generation, the GitHub Pages production build, functional page filters, and evidence for each published support claim.
+- Run existing tests and packaging/install checks; fix regressions rather than weakening tests.
+
+The RC is not complete until the net-new counts are measured against the baseline, tests pass for the advertised capabilities, generated data matches canonical registries, and GitHub Pages publishes the matrices.
+
+
+### HyperNix 0.73.0 pre-alpha 1 changes  
   
 deprecate and remove all support for the t1 api endpoint for v1 web, make the public release action, bundle a Mac intel and Mac m CPU (amd 64 and arm64) hyperlink app dmg files, add a module called atc (api traffic control) it will mange, optimize and end to end encrypt all data going through it, and help protect the server from hackers   
   
-HyperNix v0.73.0 pt1 (alpha 1) —  HyperNix custom runner and backend: called strife   
-Make a custom from scratch model gguf runner, it supports all gguf like the modded hnx llama cpp, but like strata, it is much faster to run models with, you must target, running Q4km models that are 27 to 32b (q3k for 32b) perimeters, on a 8gb card, with a minimum of 8 to 14 tokens per second, you must, test the model and validate its performance and efficiency, and make a strife benchmark script, that tests, running, Qwen3.8 27b q4m, on my 1080, and QWQ 32b, and goal for 5 tokens per second, make it support hnx quants, but the 0.25, 0.5, 075, and 0.9 quants should be supported in a way for the models to not fall apart, on modern gpu’s like the 5080, 3090 ti, and 4080, aim for 12+ tokens per second, and support models like ternary bonsai 2 27b, make this support mainly Linux, and windows, with Mac support being more limited to only m5 and newer   
+## HyperNix 0.73.0 pt1 (alpha 1) — Strife Custom GGUF Inference Runtime
+
+### Mission
+
+Build **Strife**, a HyperNix-owned local inference runtime for GGUF models. Strife must be a real inference backend, not a renamed launcher or a thin wrapper that merely starts the existing modified llama.cpp binary. The runtime should own model loading, scheduling, inference execution, token streaming, cache management, cancellation, and hardware-aware placement. Reuse existing HyperNix GGUF metadata readers, tensor/quant definitions, test fixtures, and compatible open-source components when doing so is correct and license-compatible; do not duplicate mature parsing code without a reason, and do not copy proprietary Strata implementation details. Use the patched HyperNix llama.cpp runtime as a reference backend and performance baseline.
+
+Inspect the current GGUF reader, HNX quantization definitions, model architecture support, native build infrastructure, `ggufrun`, runtime bridge, and existing benchmark conventions before implementation. Write an implementation plan that maps each runtime layer to the actual repository files, then build Strife incrementally behind a stable Python API and CLI. Local inference must work without a T1 key, cloud access, or a running T1 server.
+
+### Runtime architecture and model compatibility
+
+Implement and document distinct components for GGUF metadata/architecture inspection, tokenizer loading, tensor storage and mapping, quantized tensor kernels, CPU/GPU placement, KV cache and context management, batching, sampler/stop conditions, streaming, and request/session lifecycle. Define a capability table by architecture, tensor type, backend, and platform rather than claiming universal support based on a successful file open.
+
+- Support standard GGUF files and the model/architecture families genuinely supported by the existing HyperNix runtime. Preserve tensor shape, alignment, metadata, tokenizer, special-token, and chat-template information. Unsupported architectures or tensor types must fail early with actionable diagnostics.
+- Support common GGUF quantizations including Q4_K_M and Q3_K where the corresponding kernels are implemented. Integrate HyperNix custom quant types, including the planned 0.25, 0.5, 0.75, and 0.9-bit-family formats, only with explicit format identifiers, scale/metadata interpretation, correct tensor layout, and verified kernels. Never interpret an unsupported quant as a different type or silently dequantize it incorrectly.
+- Add safe model inspection and validation before allocating large buffers. Check tensor offsets, lengths, alignment, shape arithmetic, file truncation, architecture metadata, and overflow. Malformed or hostile model files must not trigger unbounded allocation or arbitrary code execution.
+- Use memory mapping and streaming reads where beneficial; avoid eagerly duplicating all weight data in RAM. Implement bounded, configurable KV cache and context settings, prompt/token batching where supported, repeated-prefix/context cache reuse only when session boundaries make it safe, token streaming, stop sequences, cancellation, and request timeouts.
+- Implement configurable CPU inference and partial layer/tensor offload to GPU. Detect backend capabilities and available VRAM; let users inspect and override thread count, batch size, context, GPU layers, and cache settings. If a model cannot fit entirely in VRAM, clearly show the selected CPU/GPU placement rather than implying full GPU residency.
+- Keep independent requests and sessions isolated. Concurrent inference must not corrupt KV caches, tokenizer state, sampler state, or cancellation signals. Bound queues and cache growth to prevent runaway RAM/VRAM use.
+- Optimize hot loops and native kernels first: avoid unnecessary Python per-token/per-tensor overhead, redundant copies, repeated allocation, and avoidable host/device synchronization. Use fused, vectorized, or backend-specific kernels where measured and safe, with a maintained portable fallback.
+
+### Hardware and platform scope
+
+Prioritize Linux x86_64 and Windows for the alpha release, with a reliable CPU fallback. Optimize NVIDIA execution from Pascal (including the GTX 1080) through newer GPUs such as the RTX 3090 Ti, 4080, and 5080. Detect device capability at runtime; do not assume that a new CUDA feature exists on Pascal, and do not make an accelerated path mandatory for portable operation. Add AMD acceleration only where the repository's supported backend can be exercised and tested.
+
+macOS support is deliberately limited in this alpha to experimental support for Apple Silicon M5 and newer. Detect unsupported Apple hardware/backend combinations and explain the limitation; do not report them as supported merely because the Python package imports.
+
+An 8 GB GPU target requires smart partial GPU placement and host-memory offload for large models where necessary. Do not claim that a 27B or 32B quantized model fits entirely in 8 GB VRAM. Report host RAM, peak VRAM, mapped memory, cache allocation, and offloaded-layer count separately.
+
+### Performance targets and benchmark contract
+
+Create a reproducible Strife benchmark command/script (for example, `benchmarks/strife_bench.py`) that accepts local model paths and an explicit configuration. It must not download large models automatically. Benchmark at least these target profiles when the actual compatible model files and hardware are available:
+
+- GTX 1080 with 8 GB VRAM: a 27B Q4_K_M model (Qwen-family example) with a target of at least **8 generated tokens/second**, aiming for the **8–14 tokens/second** range when model, context, and offload configuration permit.
+- GTX 1080 with 8 GB VRAM: a 32B Q3_K QwQ-family workload, with a target of **5 generated tokens/second** under a documented context/offload configuration.
+- RTX 3090 Ti, RTX 4080, and RTX 5080: target **12+ generated tokens/second** for supported comparable workloads, with model size, quantization, context, and backend explicitly recorded.
+
+Treat these as performance goals to measure, not results to assert. Report a target as unmet when evidence shows it is unmet. If a referenced model name, architecture, or quant file is not actually available or supported, record a clear skip reason and allow the benchmark to be configured with a compatible local artifact rather than fabricating a result.
+
+Each benchmark run must record model ID/revision or file hash, quant type, architecture, context length, prompt and generated token counts, sampling settings, backend, GPU layers, CPU threads, batch size, warmup count, repeat count, HyperNix version, OS, driver/runtime, CPU/GPU/RAM/VRAM, model load time, time to first token, prompt prefill tokens/second, generation tokens/second, latency distribution, peak host and device memory, and any measured utilization/power readings. Distinguish decode throughput from prompt processing, estimated values from measured values, and cold-start from warm-run results. Use multiple repeats and report median plus useful spread/percentiles. Save machine-readable JSON/CSV and a human-readable report.
+
+Compare Strife against the patched HyperNix llama.cpp runner and any valid available baseline on the same machine with equivalent model files, quantization, context, output length, thread/layer settings, and warmup policy. Include a quality sanity check (such as fixed-prompt output checks plus an appropriate logit/perplexity or task-level comparison where possible), because high tokens/second is not a win if the output is broken. Do not combine incomparable runs or claim the runner is faster without benchmark evidence.
+
+### API, CLI, and integration
+
+Expose a documented Python interface and useful commands, for example `hnx strife inspect MODEL`, `hnx strife run MODEL`, and `hnx strife benchmark --model MODEL`, adapted to existing CLI conventions. Provide structured status, progress, and coded error output. Let HyperNix Studio and the local runtime provider select Strife without requiring T1 authentication; where an OpenAI-compatible local endpoint is provided, implement and test the contract instead of advertising unsupported endpoints. Support graceful shutdown, cancellation, and an explicit diagnostic command that reports backend selection, model capabilities, memory placement, and fallback reasons.
+
+### Tests and release gate
+
+Add tiny local GGUF fixtures and focused tests for metadata parsing, tensor offsets/alignment, tokenization, deterministic seeded generation, streaming, stop sequences, cancellation, timeouts, concurrent session isolation, CPU fallback, GPU selection where available, partial offload, corrupted/truncated files, unsupported tensor/architecture diagnostics, every advertised HNX quant type, and memory-allocation limits. Compare supported output/logit behavior with a trusted baseline using explicit tolerances. Native tests must not require a downloaded 27B/32B model or paid service; expensive real-hardware performance benchmarks are opt-in and must report which targets they actually ran.
+
+Add Linux and Windows CI build/smoke tests, optional hardware-specific benchmark jobs, a Strife user guide, supported architecture/quantization matrix, troubleshooting notes, and documented limitations. Do not mark Strife complete because a CLI launches: the runner must load and generate with real compatible local models, pass correctness/security tests, and produce reproducible benchmark evidence.
+
   
-## HyperNix 0.73.0 pt2 (alpha 2) — HyperNix Studio + Local Model Runtime + Optimizer Framework V2  
+
+
+# 0.73.1 through 0.73.5 are 5 versions that do not add any new features, all these updates are for are for stability, bug fixes, code review and revision, as well as safety and performance improvements, the sole new feature working t1 api calling for models running into hyperlink, and improve amd compatibility, improve the readme, remove old and outdated sections or update them, and fix all other platforms build issues and add more tests, (0.73.1) add a workflow that uses GitHubs free calling for a auto model to auto update the what’s new section of the readme when a major release is out
+# 0.73.6 pt1
+  
+Add new quants: hnx_q7h (q8k, q6s, q4km, int3, and fp16) hnx-q7E it should be 7.326 bits, remake hnx pipeline, and assistant add a command to prot, that if users have TWO or more monitors, it will check what one is currently the primary one, that the cursor is in, and the one or more others will be black with backlight off, until the mouse moves on to where it would be on that other monitor it you could see it, and the all monitors should be on, and make it so if users type hnx prot -O (off) restore fixes it  
+**HyperNix**  
+ **0.73.6**  
+  
+Add a dedicated **HyperNix GPU Process Scheduler (HGPS)** designed to maximize training and inference performance on older NVIDIA GPUs, especially the **GTX 1080, GTX 1080 Ti, RTX 2080, as well as Apple M3 and newer and similar Pascal/Turing-class hardware while also greatly improving performance on newer gpu’s like rtx5070 Ti, 5070, 4070, 4070ti, 4080s, 4070ti super, 5080, 5090, 5060**, 3080) The scheduler must automatically detect the GPU architecture, VRAM capacity, CUDA capability, available VRAM, memory bandwidth, thermal state, utilization, and current system load, then dynamically select optimal batch sizes, micro-batch sizes, gradient accumulation, kernel configurations, CPU↔GPU transfer behavior, and memory allocation strategies. It should prioritize sustained throughput rather than short benchmark bursts and avoid VRAM exhaustion, excessive PCIe transfers, CPU starvation, and thermal throttling.  
+  
+Implement an **adaptive legacy-GPU execution mode** that does not depend on newer Tensor Core features. For GTX 10-series GPUs, optimize around CUDA FP16/FP32 workloads, fused CUDA kernels, efficient memory reuse, gradient checkpointing, pinned host memory, asynchronous data transfers, and aggressive kernel fusion where supported. For RTX 20-series GPUs, enable Tensor Core acceleration when it provides a measurable benefit while retaining a CUDA fallback. The scheduler should automatically benchmark available execution paths at startup and select the fastest stable configuration rather than assuming newer hardware capabilities. Include separate profiles such as **Pascal-Legacy**, **Turing-Legacy**, and **Auto**, with Auto being the default.  
+  
+Add **dynamic VRAM management** with configurable safety margins. Continuously monitor VRAM usage and automatically reduce micro-batch size or activate gradient checkpointing before an out-of-memory condition occurs. Keep model weights, optimizer states, activations, and frequently reused tensors prioritized in GPU memory while minimizing unnecessary allocations and fragmentation. Support mixed CPU/GPU memory operation for models that exceed VRAM, using asynchronous prefetching and layer/tensor offloading to reduce stalls. Avoid repeatedly moving the same tensors between CPU and GPU.  
+  
+Add a **real-time GPU performance controller** that monitors utilization, temperature, power behavior, memory usage, kernel execution time, dataloader latency, PCIe transfer latency, and tokens/sec or samples/sec. Dynamically adjust workload parameters to maintain the highest sustainable performance. Include protections against thermal throttling and unstable configurations. The scheduler should expose detailed telemetry so HyperNix can report GPU utilization, VRAM utilization, effective throughput, bottleneck type, estimated optimal batch size, and whether the workload is compute-, memory-, CPU-, or PCIe-bound.  
+  
+The scheduler must remain lightweight and introduce minimal overhead. It should work with older CUDA-capable GPUs without requiring RTX-only functionality, gracefully degrade when a feature is unsupported, and never reduce performance simply because a newer optimization is unavailable. Add automatic profiling, configuration caching, and per-GPU tuning profiles so that once HyperNix discovers an optimal configuration for a specific GPU, it can reuse it on subsequent runs. The final objective is to make HyperNix training and inference **as fast and memory-efficient as realistically possible on GTX 1080, GTX 1080 Ti, RTX 2080, and other older GPUs**, while maintaining numerical stability and avoiding unnecessary hardware stress.  
+  
+## HyperNix 0.74.0 — Build HyperNix0xV3 From Scratch  
+Create a completely new custom LLM architecture called **HyperNix0xV3** for HyperNix 0.74.0. This must be a genuine architectural evolution rather than a renamed Transformer or a collection of standard layers. Use **HyperNix0xV2 as conceptual inspiration**, but redesign the internals around efficiency, long-context reasoning, training stability, and hardware-aware execution.  
+HyperNix0xV3 must support **multiple model sizes/configurations**, from extremely small models suitable for consumer hardware up through very large models. The architecture should scale cleanly by changing dimensions, number of blocks, attention heads, context length, parameter sharing, and other architectural scaling parameters without requiring separate implementations.  
+## 1. Two Brand-New Custom Layers  
+Design and implement **two genuinely new neural-network layers**.  
+**Custom Layer A — Efficient Context Layer**  
+Create a new layer specifically designed to provide **more useful context at significantly lower computational and memory cost** than conventional full-context attention.  
+Requirements:  
+* Efficiently preserve information from distant tokens.  
+* Support very long contexts.  
+* Avoid simply implementing standard full attention with a renamed API.  
+* Reduce KV-cache and/or attention-memory requirements where practical.  
+* Dynamically determine which contextual information deserves higher retention.  
+* Allow important information to persist across large token distances.  
+* Degrade gracefully when context becomes extremely large.  
+* Work with causal language modeling.  
+* Be compatible with batching and variable sequence lengths.  
+* Be differentiable and trainable with standard backpropagation.  
+* Have a mathematically well-defined forward pass.  
+* Include a computational-complexity analysis.  
+* Include memory-complexity analysis.  
+* Include ablations against standard attention and the HyperNix0xV2 mechanism.  
+Give this layer an original name and document exactly how it works.  
+**Custom Layer B — Adaptive Reasoning/State Layer**  
+Invent a second original layer for a complementary purpose. Its primary goal should be **maintaining and transforming a compact internal state representing information that remains useful across multiple layers and distant parts of the sequence**.  
+The layer should ideally:  
+* Maintain a learned latent/state representation.  
+* Selectively update that state instead of recomputing everything from scratch.  
+* Distinguish transient token information from persistent information.  
+* Allow information to flow between local token representations and the persistent state.  
+* Improve reasoning over multi-step dependencies.  
+* Work alongside the efficient-context layer rather than replacing it.  
+* Have bounded computational/memory overhead.  
+* Be stable during large-scale training.  
+* Avoid becoming an unrestricted recurrent bottleneck.  
+* Support parallel training where possible.  
+Again, give it an original name and provide the mathematical formulation, tensor shapes, initialization strategy, normalization strategy, and gradient-flow considerations.  
+The two custom layers should have **different responsibilities** and should complement each other.  
+## 2. HyperNix0xV3 Block Architecture  
+Design a complete V3 block using the new components.  
+Consider a structure along the lines of:  
+Input → normalization → local/token processing → Custom Efficient Context Layer → gated residual → Custom Adaptive State Layer → gated residual → feed-forward/MLP component → output normalization → residual  
+However, do not blindly follow this structure. Determine the best ordering and explain why.  
+The architecture may use additional components such as:  
+* RMSNorm or a new normalization mechanism  
+* gated residual connections  
+* SwiGLU/GEGLU or an improved custom MLP  
+* rotary/relative/learned positional mechanisms  
+* mixture-of-experts for larger configurations  
+* parameter sharing  
+* learned routing  
+* sparse computation  
+* low-rank projections  
+* auxiliary state representations  
+Only introduce components when they provide a measurable architectural benefit.  
+## 3. Scaling System  
+Create a unified HyperNix0xV3 configuration system supporting multiple sizes.  
+Each configuration must define at minimum:  
+* Parameter count  
+* Hidden dimension  
+* Number of layers  
+* Attention/context dimensions  
+* Number of heads  
+* Head dimension  
+* Context length  
+* State dimensions  
+* MLP dimensions  
+* Vocabulary size  
+* Precision  
+* KV/state cache configuration  
+* Number of experts if MoE is enabled  
+* Expected VRAM requirement  
+* Expected RAM requirement  
+* Recommended CPU threads  
+* Recommended GPU utilization target  
+Include presets ranging from tiny/edge models to extremely large models.  
+The architecture must not assume that every model has enough VRAM to fit entirely on the GPU.  
+# 4. New   
+```
+synchronous
+```
+## Module  
+Add a completely new HyperNix module called:  
+```
+hypernix.synchronous
+```
+The Synchronous system is a **hardware-aware training and inference optimization controller**.  
+Its purpose is to continuously monitor the actual system and intelligently adjust runtime parameters to keep performance **as close as possible to the hardware’s optimal tokens/second throughput without damaging model quality, training stability, or convergence**.  
+It must monitor:  
+* GPU utilization  
+* GPU temperature  
+* GPU power usage when available  
+* GPU memory usage  
+* Free VRAM  
+* CPU utilization  
+* CPU temperature when available  
+* CPU thread utilization  
+* Available CPU threads  
+* RAM usage  
+* Free RAM  
+* System load  
+* Current training run  
+* Current training step  
+* Tokens processed  
+* Current tokens/second  
+* Smoothed tokens/second  
+* Recent tokens/second history  
+* Estimated time remaining  
+* Current sequence/context length  
+* Batch size  
+* Microbatch size  
+* Gradient accumulation  
+* Precision  
+* Activation/checkpointing state  
+* Data-loader throughput  
+* GPU/CPU synchronization stalls  
+* OOM/recovery events  
+* Thermal throttling indicators when available  
+The module must work with hardware telemetry that is unavailable on a particular platform. Never assume temperature, power, or VRAM telemetry exists.  
+## 5. Synchronous Optimization Engine  
+Synchronous should continuously calculate a **safe operating envelope** for the current hardware.  
+Its goal is NOT simply:  
+“maximize GPU usage.”  
+Instead, optimize a multi-variable objective such as:  
+**maximize stable tokens/sec**  
+while respecting:  
+* thermal limits  
+* VRAM limits  
+* RAM limits  
+* CPU limits  
+* training stability  
+* gradient behavior  
+* numerical stability  
+* model quality  
+* convergence  
+* dataloader performance  
+* user-defined hardware limits  
+Create a controller that can adjust safe runtime variables such as:  
+* batch size  
+* microbatch size  
+* gradient accumulation  
+* number of CPU data-loader workers  
+* CPU thread count  
+* prefetch depth  
+* context length where explicitly permitted  
+* activation checkpointing  
+* memory-efficient attention mode  
+* inference batch size  
+* GPU/CPU offloading  
+* scheduling parameters  
+* evaluation frequency  
+* checkpoint frequency  
+Do **NOT** silently modify architectural hyperparameters that would invalidate or compromise the training run.  
+The controller must understand the difference between:  
+**performance parameters**  
+and  
+**model-defining parameters**.  
+For example, it may dynamically change microbatching or worker count, but must not silently change hidden size, layer count, vocabulary size, learned weights, optimizer semantics, or other parameters that would fundamentally alter the experiment.  
+## 6. Adaptive Control  
+Implement a feedback controller rather than simple threshold-based if/else logic.  
+The system should:  
+1. Collect telemetry.  
+2. Smooth noisy measurements.  
+3. Determine current performance.  
+4. Identify the current bottleneck.  
+5. Predict whether a parameter change will help.  
+6. Make a small safe adjustment.  
+7. Measure the result.  
+8. Compare performance against the previous state.  
+9. Keep successful changes.  
+10. Roll back harmful changes.  
+11. Continue learning the hardware’s optimal operating region.  
+Use concepts from:  
+* feedback control  
+* adaptive optimization  
+* online profiling  
+* constrained optimization  
+* hysteresis  
+* rate limiting  
+* exponential moving averages  
+* Bayesian/bandit-style parameter exploration where useful  
+Avoid constant oscillation between configurations.  
+Implement configurable stability margins and cooldown periods.  
+## 7. Thermal and Hardware Safety  
+Synchronous must prioritize hardware safety.  
+Create configurable limits such as:  
+* maximum GPU temperature  
+* maximum CPU temperature  
+* maximum VRAM utilization  
+* maximum RAM utilization  
+* maximum power target where supported  
+When thermal conditions worsen, automatically reduce workload intensity.  
+For example:  
+Normal: → optimize throughput  
+Warm: → reduce workload growth  
+Hot: → reduce batch/microbatch or increase accumulation  
+Critical: → aggressively throttle or pause  
+Recovered: → gradually return toward the previous optimal configuration  
+Never rapidly oscillate between maximum and minimum workloads.  
+## 8. Training Integrity  
+The most important requirement:  
+**Synchronous optimization must never compromise the resulting trained model merely to increase tokens/sec.**  
+Do not trade away:  
+* numerical stability  
+* gradient correctness  
+* optimizer correctness  
+* loss behavior  
+* convergence  
+* reproducibility beyond explicitly documented runtime differences  
+* model architecture  
+* learned parameter quality  
+When making a performance optimization, record:  
+* old value  
+* new value  
+* reason for change  
+* measured tokens/sec before  
+* measured tokens/sec after  
+* VRAM before/after  
+* RAM before/after  
+* temperature before/after  
+* current training step  
+* rollback condition  
+Provide an option for strict/reproducible mode where adaptive behavior is restricted.  
+## 9. Performance Prediction  
+Have Synchronous maintain a lightweight performance model of the current hardware.  
+Over time it should learn relationships such as:  
+```
+batch size → tokens/sec
+microbatch → VRAM usage
+CPU workers → data throughput
+context length → memory/compute
+checkpointing → VRAM vs tokens/sec
+```
+Use historical measurements to predict which configuration is likely to improve throughput before applying it.  
+The first few minutes of a training run may therefore be treated as an **automatic calibration phase**.  
+## 10. Context-Aware Optimization  
+Because HyperNix0xV3 introduces a new efficient-context layer, Synchronous must understand context-related resource usage.  
+Track:  
+* context length  
+* effective context length  
+* context-cache/state memory  
+* KV memory if applicable  
+* persistent-state memory  
+* attention compute  
+* context-related tokens/sec degradation  
+Use this information to determine whether the bottleneck is:  
+* compute  
+* memory bandwidth  
+* VRAM capacity  
+* CPU preprocessing  
+* synchronization  
+* context processing  
+* data loading  
+The controller should optimize the actual bottleneck rather than blindly increasing or decreasing batch size.  
+## 11. Observability  
+Create a complete Synchronous dashboard/API exposing:  
+* Current tokens/sec  
+* Optimal estimated tokens/sec  
+* Efficiency percentage  
+* GPU utilization  
+* CPU utilization  
+* GPU temperature  
+* CPU temperature  
+* VRAM used/free  
+* RAM used/free  
+* active threads  
+* batch/microbatch  
+* gradient accumulation  
+* context length  
+* current bottleneck  
+* current optimization state  
+* estimated time remaining  
+* recent adjustments  
+* rollback events  
+* thermal state  
+* training stability state  
+Add structured logging and machine-readable telemetry.  
+Example:  
+```
+[SYNCHRONOUS]
+GPU: 96%
+VRAM: 7.4/8.0 GB
+GPU Temp: 74°C
+CPU: 68%
+RAM: 18.2/32 GB
+Threads: 12/16
+Context: 8192
+Batch: 2
+Microbatch: 1
+Grad Accum: 16
+
+Throughput: 18,420 tok/s
+Estimated Optimal: 19,050 tok/s
+Efficiency: 96.7%
+
+Bottleneck: VRAM
+Action: Reduce activation memory
+Change: checkpointing = selective
+Expected gain: +4.2%
+Confidence: 87%
+```
+## 12. Hardware Compatibility  
+Make Synchronous work across:  
+* NVIDIA GPUs  
+* AMD GPUs where supported  
+* Intel GPUs where supported  
+* CPU-only systems  
+It must gracefully degrade when hardware telemetry APIs are unavailable.  
+Do not hard-code assumptions about modern GPUs.  
+It should be capable of operating on older GPUs with limited VRAM as well as high-end GPUs.  
+## 13. Implementation Requirements  
+Build this as real production-quality code, not pseudocode.  
+Provide:  
+* architecture implementation  
+* configuration system  
+* model initialization  
+* forward pass  
+* training integration  
+* inference integration  
+* Synchronous module  
+* telemetry abstraction layer  
+* hardware backends  
+* adaptive controller  
+* logging  
+* configuration files  
+* checkpoint compatibility  
+* unit tests  
+* numerical tests  
+* stress tests  
+* performance benchmarks  
+* documentation  
+* example training scripts  
+* example inference scripts  
+Use clean modular interfaces so the architecture can later receive additional HyperNix layers without requiring a rewrite.  
+## 14. Research and Validation  
+Before declaring HyperNix0xV3 complete, benchmark it against appropriate baselines.  
+Measure:  
+* training tokens/sec  
+* inference tokens/sec  
+* VRAM usage  
+* RAM usage  
+* peak memory  
+* context scaling  
+* loss curves  
+* convergence speed  
+* perplexity  
+* long-context retrieval  
+* reasoning benchmarks  
+* small-data overfitting behavior  
+* numerical stability  
+* thermal behavior  
+* Synchronous optimization effectiveness  
+Run ablations:  
+1. Standard attention baseline  
+2. Efficient Context Layer removed  
+3. Adaptive State Layer removed  
+4. Both custom layers removed  
+5. Synchronous disabled  
+6. Synchronous enabled  
+7. Different context lengths  
+8. Different hardware configurations  
+The goal is to prove that each new component provides a measurable benefit rather than merely increasing complexity.  
+## 15. Deliverable  
+Implement HyperNix0xV3 as a complete new architecture for **HyperNix 0.74.0**.  
+Do not simply modify HyperNix0xV2 into V3.  
+Create a clean V3 architecture with its own modules, configuration system, documentation, tests, benchmarks, and training integration.  
+The final architecture should prioritize:  
+**efficient long-context processing + persistent learned state + scalable architecture + hardware-aware adaptive execution + training integrity.**  
+The final result should feel like a genuinely new HyperNix architecture rather than a conventional Transformer with renamed components.  
+# 0.74.1
+In hyperlink add the following, 1: a  theme named origins that is old theme before customization was added, 2: when I have pcutil installed it see my gpu, but not my ram and cpu, also make it have power usage per hour, 80plus estimated efficiency rating, actual power efficiency. Make an actual fully working hyperNix model runner like lms, lm studio, using modified llama cpp, in hyperlink, add a little circle on the right of the chat text box, that has 3 rings that are different colors, red means nearly full, blue means not less than 60% free but less than 85% free, 100= green, 45 to 31% yellow, that is for the user context, when it hits 96% full, it will auto compact, then next is useage remaining deep crimson = empty, white = fine and above 50, orange = over 10, less than 50, make a action run a new example that trains a 50 peramiter model using brewer, the newest pressure cooker, Neo oven, synchronous, and more   
+  
+  
+# 0.74.2
+
+# HyperNix 0.74.2 — Experiment Ledger and Reproducible Model Workbench
+
+## Objective
+
+Make training, evaluation, inference benchmarks, and quantization runs reproducible, recoverable, and easy to compare using the modules HyperNix already has. This is a workflow and integration release, not a new model architecture. Inspect the existing CLI, trainer, optimizers, benchmark suite, Lunchbox/Tupperware, thermometers, run inspection, model catalogue, and database patterns before adding code. Extend existing sources of truth; do not duplicate them.
+
+## 1. Experiment manifest and records
+
+Create a versioned, documented manifest (prefer JSON or TOML where appropriate) and a persistent record for every run. Capture, when available:
+
+- Stable run ID, name, UTC creation/start/end times, status, parent/resume ID, and stop/failure reason.
+- HyperNix version, Python/dependency versions, OS, Git commit and dirty-tree state.
+- Model identity, architecture, parameter count, tokenizer, quantization/precision, context length, and immutable Hub revision when available.
+- Dataset identity, source, split, sample/token counts, preprocessing settings, and content fingerprint where feasible without copying or repeatedly hashing huge datasets.
+- Resolved training/evaluation configuration: optimizer, scheduler, seed, batch size, gradient accumulation, limits, checkpoint policy, and all defaults actually applied.
+- Detected hardware and backend versions, outputs, log paths, checkpoint/artifact references, and checksums where practical.
+
+Record the requested configuration separately from the resolved configuration. Mark fields as unknown/unavailable rather than guessing. Redact secrets, tokens, credentials, and secret environment variables; never persist them in manifests or logs.
+
+## 2. CLI workflow
+
+Add a command group that follows the repository's existing CLI conventions. Candidate actions include `experiment new`, `run`, `list`, `show`, `compare`, `resume`, and `export`. Inspect the existing command tree first and choose names that fit without breaking current commands.
+
+Provide useful help text, stable exit codes, clear errors, and a validation/dry-run mode. Dry-run must show the resolved configuration and resource estimates without downloading a model, loading large weights, or starting training.
+
+## 3. Lifecycle, checkpoints, and recovery
+
+Persist explicit states such as queued, validating, running, stopping, completed, failed, cancelled, and interrupted. A crash must not leave a run falsely marked successful.
+
+- Keep each run's logs separate and record progress, elapsed time, last completed step, and failure stage when known.
+- Handle Ctrl+C and normal termination gracefully. Flush metrics and save a checkpoint only where the trainer supports a safe checkpoint operation.
+- Resume only after validating checkpoint/model/config/tokenizer compatibility. If compatibility cannot be established, explain why and refuse by default; never silently continue from incompatible state.
+- Preserve the original run, checkpoint, and manifest; link resumed runs to their parent.
+- Support bounded queues only where they integrate with existing resource/GPU scheduling. Never start extra GPU jobs simply because a queue contains them, and never terminate unrelated processes to free resources.
+- If disk space, VRAM, or dependencies are insufficient, fail early with actionable diagnostics.
+
+## 4. Metrics and honest comparisons
+
+Integrate existing measurement and benchmark code. Record supported metrics such as loss, evaluation scores, tokens/s, samples/s, steps/s, latency, time to first token, wall-clock duration, peak RAM/VRAM, artifact sizes, and hardware readings.
+
+Distinguish measured, estimated, and unavailable values. Benchmarks should allow warmups and repeated trials and report sample count, median, and useful spread/percentiles. Preserve raw observations. Compare runs only with explicit warnings for incompatible model revisions, tokenizers, datasets, evaluation protocols, or hardware. Show configuration differences and never name a universal winner when objectives differ.
+
+Generate readable Markdown reports and machine-readable JSON/CSV exports. Do not fabricate metrics if a sensor or backend cannot provide them.
+
+## 5. Artifact and storage safety
+
+Document a configurable experiment root under the user's HyperNix data directory. Keep metadata separate from large checkpoints, datasets, and outputs. Verify referenced artifacts when showing or resuming a run.
+
+Add retention/cleanup only with a dry-run preview and explicit confirmation. Active runs and required checkpoints must be excluded. Normalize paths and prevent cleanup from writing/deleting outside the configured root. Handle incomplete writes, schema migrations, and concurrent readers/writers; if SQLite fits the existing design, use transactions for lifecycle updates.
+
+Exports should say which bulky artifacts were omitted. Avoid expensive full-file scans on every CLI call; cache fingerprints carefully and re-verify when correctness requires it.
+
+## 6. Monitoring integration
+
+Connect experiment records to tvtop-pro/tvtop-max and existing run-inspection tools where practical. Show the run label, status, elapsed time, progress, recent metrics, and log path. Monitoring must be optional: if a sensor, terminal, UI dependency, or hardware backend is missing, training must continue and the missing measurement must be reported honestly.
+
+Keep sampling overhead low and configurable. Identify the source and sampling interval of hardware readings. Do not claim unsupported per-process GPU or power measurements.
+
+## 7. Privacy and operational safeguards
+
+Treat manifests, model names, dataset paths, logs, and artifacts as untrusted input. Never execute scripts found while discovering, validating, resuming, or reporting an experiment. Do not upload experiment data or make remote calls unless a user explicitly enables a feature that requires them. Do not log private prompts or training samples by default; content-level tracing must be opt-in with a clear warning.
+
+Do not silently install dependencies, modify global environments, rewrite user configuration, or delete previous checkpoints.
+
+## 8. Tests and definition of done
+
+Add behavior-focused tests for:
+
+- Manifest round-trips, schema migration, resolved defaults, fingerprint behavior, and secret redaction.
+- State transitions, crashes/interrupted runs, cancellation, concurrent run IDs, SQLite concurrency, and failure recording.
+- Dry-run proving it neither downloads weights nor starts training.
+- Resume from a compatible tiny fixture and refusal of incompatible checkpoints without modifying the originals.
+- Comparisons with known fixture metrics, missing-vs-zero values, and warnings for incomparable runs.
+- JSON/CSV/Markdown export consistency and missing/moved artifact diagnostics.
+- Cleanup previews, path traversal prevention, and protections for active runs/checkpoints.
+- Degraded operation with missing sensors and optional dependencies.
+- A deterministic, tiny CPU-only end-to-end run requiring no network or GPU; heavyweight training and hardware benchmarks stay opt-in.
+
+Run existing relevant tests first, then focused new tests and the broad suite where practical. Do not weaken tests to make the build pass.
+
+## 9. Implementation rules
+
+Reuse existing abstractions and public APIs wherever possible. Update docs/changelog only after the implementation is verified. Do not ship placeholder commands, simulated successful training, fake metrics, or existence-only tests. Keep optional integrations optional, document storage and migration behavior, and preserve workflows for users who do not use the new experiment CLI.
+
+Completion requires a real end-to-end run, validated recovery behavior, useful comparison/export output, tests, and documentation backed by evidence.
+
+# 0.74.3 — HyperNix Studio, Local Runtime, Agent Tools, and Optimizer Framework V2
+
+## Release goal and implementation rules
+
+Implement the HyperNix Studio, local-model runtime, tool execution, and optimizer integration work below as real repository changes in this release. These are engineering requirements, not a request to rewrite or improve a prompt. Start by inspecting the existing implementation and mapping each requirement to source modules, public APIs, UI surfaces, and tests. Reuse working components, preserve backward compatibility, and do not ship mock screens, no-op commands, fabricated benchmark metrics, or placeholder integrations.
+
+The full Studio/runtime plan previously grouped under the 0.73.0 alpha-two work is moved into this 0.74.3 release. Alpha one (Strife's custom GGUF runner) remains under 0.73.0. Do not re-implement Strife inside Studio; integrate with it through the shared runtime/provider interface where appropriate.
+
+## Required implementation sequence
+
+1. Inventory the existing Studio screens, model/provider abstractions, local inference backends, T1 client, tool execution and permissions, shell streaming, optimizer implementations, and training dashboard. Produce a file-to-feature map before editing code.
+2. Define stable interfaces and compatibility behavior before wiring UI. Keep local providers independent of T1 authentication.
+3. Implement runtime/provider and permission behavior before building the UI around it. Ensure that each operation has an explicit error state and cancellation path.
+4. Integrate the optimizer generations through one framework without flattening their different update rules, memory behavior, or hardware requirements.
+5. Build Studio controls and diagnostics against measured runtime state, not hard-coded labels or guessed values.
+6. Add behavior-focused tests, run existing targeted suites, then the broader test suite. Fix regressions instead of weakening tests.
+7. Update CLI help, README, wiki, API/reference docs, changelog, generated docs data, and GitHub Pages only after the implemented behavior has been verified.
+
+## Acceptance criteria
+
+- Local models can be used without a T1 key; hosted/T1/custom providers remain available.
+- Model capabilities, tool support, context limits, and hardware placement are detected or explicitly marked unknown.
+- Tool calls, shell commands, cancellation, permissions, and concurrent jobs behave correctly and are covered by tests.
+- The V7 optimizer family and older optimizer generations are selectable through one coherent interface, with safe fallbacks and reproducible benchmarks.
+- The Studio UI exposes real state and error information, preserves existing workflows, and does not report unsupported capabilities as available.
+- Documentation and release notes describe only implemented and tested behavior.
+
+## HyperNix Studio, Local Model Runtime, and Optimizer Framework V2
 You are working on the **HyperNix-pip** repository.  
-Implement the complete **HyperNix 0.73.0** release.  
+Implement the complete **HyperNix 0.74.3** release.  
 This is a substantial Studio/runtime release. Do not create superficial stubs, fake integrations, placeholder buttons, or “coming soon” implementations. Inspect the existing add architecture first and integrate these features cleanly into the existing codebase.  
 Repository: https://github.com/trail-b1az3r/HyperNix-pip  
 Relevant optimizer documentation:  
@@ -497,6 +1129,11 @@ Integrate the useful functionality from:
 * Pressure Cooker V5S  
 * Pressure Cooker V6  
 * Pressure Cooker V6V  
+* Pressure Cooker V7 Balanced  
+* Pressure Cooker V7Mini  
+* Pressure Cooker V7Q  
+* Pressure Cooker V7S  
+* Pressure Cooker V7M  
 Do not blindly merge implementations.  
 Preserve each optimizer’s unique behavior while exposing them through a common framework.  
 And better support for strife   
@@ -1148,7 +1785,11 @@ Add a comparison table to the Studio and documentation:
 | V5S | Medium/Low | Extremely Low | Very High | Specialized | Stability + memory |
 | V6 | Very High | Medium | Medium | Low | Maximum throughput |
 | V6V | Extremely High* | Medium | Medium | Low | CUDA graph workloads |
-| V7 | High | Low | High | Medium/High | Balanced default |
+| V7 Balanced | High target | Low target | High target | Medium/High target | General default and balanced workloads |
+| V7Mini | Tuned for small-model throughput | Low overhead target | Benchmark required | Architecture-dependent | Models strictly above 39M and below 750M parameters |
+| V7Q | Fastest variant target | Low/medium target | Benchmark required | Lower adaptivity is acceptable if documented | Maximum throughput where measured faster |
+| V7S | Benchmark required | Very low state target | High target | Specialized | Modernized V5S-style stability and memory efficiency |
+| V7M | Benchmark required | Lower than equivalent V5/V5+ target | High target | High target | Modernized V5/V5+ features, QAT/MTP and sensitivity-aware training |
   
 * Hardware/workload dependent.  
 Do not present these qualitative ratings as measured benchmarks.  
@@ -1237,6 +1878,10 @@ Add:
 ```
 tests/test_pressure_cooker_v7.py
 tests/test_pressure_cooker_v7v.py
+tests/test_pressure_cooker_v7mini.py
+tests/test_pressure_cooker_v7q.py
+tests/test_pressure_cooker_v7s.py
+tests/test_pressure_cooker_v7m.py
 tests/benchmarks/test_v7_benchmark.py
 ```
 Test:  
@@ -1259,6 +1904,10 @@ Test:
 * CPU  
 * CUDA when available  
 * older CUDA architectures where CI permits  
+* V7Mini automatic-selection boundaries (>39M and <750M parameters) and refusal to infer unknown parameter counts  
+* V7Q speed comparisons versus V6, V6V, and V7S under equivalent supported benchmark conditions  
+* V7S regression tests preserving its intended V5S-derived stability/memory mechanisms  
+* V7M tests for optional V5/V5+ features and ensuring disabled QAT/MTP do not add hidden overhead  
 Ensure V7’s fused and non-fused implementations produce numerically equivalent results within an explicitly documented tolerance.  
    
 ⸻  
@@ -1268,8 +1917,9 @@ Add a dedicated V7 configuration panel:
 ```
 Pressure Cooker V7
 
-Preset:
+Variant / preset:
 [ Balanced ▼ ]
+Options: Balanced, Mini (39M–750M), Q (quickest target), S (V5S modernization), M (V5/V5+ modernization). Show a short use-case description and benchmark-backed speed/memory data for each option; qualitative goals must be labelled as targets until measured.
 
 State:
 ● Auto
@@ -1369,77 +2019,110 @@ If V7 fails to meet a target, optimize the implementation rather than falsifying
 ⸻  
    
    
-## 19. Optimizer Auto-Selection  
-Add an intelligent optimizer selector.  
-Example:  
-```
-OptimizerFrameworkV2.auto_select(
-    model=model,
-    device=device,
-    vram=available_vram,
-    training_mode="pretraining"
-)
-```
-It should consider:  
-```
-GPU architecture
-VRAM
-RAM
-CPU
-parameter count
-parameter dtype
-sequence length
-batch size
-gradient accumulation
-training objective
-CUDA availability
-torch version
-compile availability
-```
-Possible decisions:  
-```
-V5S → extreme memory constrained training
-V5+ → quantization-aware training
-V6 → high-throughput training
-V6V → CUDA graph / fixed-shape workloads
-AdamW → compatibility fallback
-```
-Do not automatically select an optimizer merely because it is newer.  
-   
-⸻  
-   
-## 20. Optimizer Benchmarking  
-Add a benchmark subsystem.  
-Allow:  
+## 18B. Pressure Cooker V7 Family — Mini, Q, S, and M
+
+Keep **V7 Balanced** as the general-purpose default, then add four clearly differentiated specializations. Implement these as shared V7-family implementations/configurations where possible; do not copy the entire optimizer into four diverging codebases. A specialization may have a separate kernel/update path only when profiling shows it is worthwhile. Keep class names, serialization identifiers, diagnostics, documentation, and benchmark labels unambiguous.
+
+### V7Mini — efficiency for small models
+
+V7Mini is specifically optimized for models with a total trainable parameter count **strictly greater than 39,000,000 and strictly less than 750,000,000**. This is the priority range where the mini specialization should deliver its best speed and efficiency improvements. Treat the interval as `39M < parameter_count < 750M`; exactly 39M and exactly 750M are outside the automatic-selection band.
+
+Design for the different bottleneck profile of small models: optimizer Python overhead, many small tensor operations, launch/synchronization costs, temporary allocations, and state bookkeeping can dominate useful arithmetic. Favor batched/foreach updates, minimal per-step allocations, efficient state layouts, reduced synchronization, and small-model-friendly kernel dispatch. Keep a portable CPU path and use GPU acceleration only when it actually lowers end-to-end step time.
+
+- Determine parameter count from reliable model/config metadata and verify against instantiated trainable parameters when practical. If count is unknown or inaccurate, do not automatically select V7Mini.
+- The automatic selector should prefer V7Mini only inside the defined range and when device/backend support and measured workload characteristics make it appropriate. Users may manually request it outside the range, but show a clear note that its designed advantage is not established there.
+- Benchmark representative models throughout the band, including boundary tests just above 39M and just below 750M, plus out-of-band controls below/at 39M and at/above 750M.
+- Compare end-to-end training-step speed, optimizer-only latency, peak RAM/VRAM, state bytes per parameter, loss/convergence, and stability against V7 Balanced, V7Q, V6, and AdamW. Never optimize throughput by silently changing batch size, precision, training steps, or convergence criteria.
+
+### V7Q — quickest throughput-first variant
+
+V7Q is the **quickest-optimizer target** in the V7 family. Its design objective is to outrun V6, V6V, and V7S on comparable workloads while maintaining acceptable training behavior. Reduce hot-path operations, Python overhead, tensor allocations, and host/device synchronization; favor fused/foreach multi-tensor updates and simple state. Avoid expensive stability, curvature, or adaptive calculations in the hot path unless measurements justify them. Clearly document any adaptivity or convergence trade-off and make tunable parameters available rather than pretending the trade-offs do not exist.
+
+The release must prove the speed claim: benchmark V7Q against V6, V6V, V7S, V7 Balanced, and AdamW with the same model, initialization, data, training objective, batch/sequence shapes, precision, hardware, warmup, and repetition policy. Compare optimizer-only and full training-step performance, loss trajectories, memory, and numerical stability. V6V is only comparable on supported compiled/CUDA-graph workloads; mark unavailable combinations as N/A rather than counting them as losses. Optimize again if V7Q does not beat V6/V6V/V7S on the supported target matrix, or qualify the published claim by the hardware/workload where it actually wins. Never print “fastest” based only on a design intention.
+
+### V7S — modernized V5S lineage
+
+V7S is a heavily modernized evolution of Pressure Cooker V5S, preserving the mechanisms that define its value while removing avoidable implementation overhead. Audit the current V5S implementation and retain equivalent, testable behavior for the multi-timescale cosine/oscillation signals, pressure diffusion, quantized momentum, factored curvature/low state footprint, and any age/freezing mechanism deliberately retained by the new design.
+
+- Replace avoidable per-parameter Python work and repeated CPU/GPU scalar synchronization with grouped/vectorized operations where numerically sound.
+- Keep stability mechanisms independently configurable and measure the cost of each one through ablations.
+- Preserve the low-memory objective without hiding allocations or silently switching to a full second-moment buffer.
+- Compare convergence, oscillation behavior, failure recovery, optimizer state, throughput, and memory against V5S and V7 Balanced. If a mechanism is redesigned, document the mathematical difference and add a regression test.
+
+V7S must be a genuine modernization, not a class rename or copy with a new version number.
+
+### V7M — modernized V5 and V5+ lineage
+
+V7M is the feature-rich, highly modernized evolution of Pressure Cooker V5 and V5+. Integrate their useful capabilities behind a coherent configuration API: quantized momentum, factored curvature, quantization-aware training (QAT), multi-token prediction (MTP), EMA, automatic model preparation, quantization-sensitivity analysis, per-layer mixed precision, gradient-norm diagnostics, and directional trust-region behavior where each is applicable.
+
+Keep optimizer mechanics separate from optional model/training transformations. QAT and MTP must be explicit optional training features and must not silently modify a user's model, loss, or objective. Do not activate every feature by default. Explain dependency, memory, compilation, checkpoint, and convergence implications for each feature. The default V7M path should not pay for disabled features.
+
+Compare V7M with V5, V5+, V7 Balanced, V7S, and AdamW on both optimizer state and complete training runs. Include ablations so reported gains can be attributed to specific features instead of to an uncontrolled bundle. Maintain state_dict/load_state_dict support and explicit compatibility checks; never silently reinterpret a V5/V5+ state as a V7M checkpoint.
+
+### Family API, aliases, and selection
+
+Expose stable documented names (adapt to existing package conventions rather than forcing a new public namespace):
+- `PressureCookerV7` / `V7Balanced`: balanced default.
+- `PressureCookerV7Mini` / `V7Mini`: small-model efficiency for the strict 39M–750M interval.
+- `PressureCookerV7Q` / `V7Q`: throughput-first.
+- `PressureCookerV7S` / `V7S`: modernized V5S lineage.
+- `PressureCookerV7M` / `V7M`: modernized V5/V5+ lineage.
+
+Preserve existing V7 names and configuration defaults for backward compatibility. If a rename or import path change is necessary, supply deprecation aliases and tests. Record the selected variant and reason in diagnostics and run metadata.
+
+Automatic selection priority:
+1. Honor an explicit user-selected optimizer/variant when it is compatible; explain and reject unsupported choices rather than silently substituting.
+2. For a verified model in the strict 39M–750M band, consider V7Mini when profiling/configuration supports its expected advantage.
+3. For a throughput-first request, consider V7Q after checking its supported backend and workload.
+4. For a request emphasizing V5S-like stability and very low optimizer-state memory, consider V7S.
+5. For a request requiring the V5/V5+ feature set, consider V7M and enable only compatible, requested optional features.
+6. Otherwise choose V7 Balanced; fall back to an established optimizer only when capability checks require it.
+
+Expose this family in Studio and CLI. Show the best-use description, model-size eligibility, supported features, and measured per-hardware benchmark data. Do not represent qualitative target values as measured results.
+
+### V7 family benchmark and test gate
+
+Extend the optimizer benchmark suite to compare AdamW, V5, V5+, V5S, V6, V6V, V7 Balanced, V7Mini, V7Q, V7S, and V7M. Cover CPU and supported CUDA tiers, tiny/small/medium models, and the mini-range boundaries. Use fixed initialization, data, precision, batch shape, steps, warmup, and repeats. Record optimizer-only latency, full step time, tokens/s or samples/s, peak RAM/VRAM, state bytes, loss/convergence, numerical issues, and supported/fallback kernels.
+
+Add fast synthetic-model tests for all variants; checkpoint/state migration tests; mixed precision/gradient accumulation tests; NaN/Inf and empty-gradient handling; CPU fallback; CUDA and CUDA-graph paths when available; and automatic selection boundary tests. Keep long-running benchmark tests opt-in. Update the V7 wiki, Optimizers docs, CLI help, Studio descriptions, and release notes only after results have been measured and checked in reproducible form.
+
+## 19. Optimizer Auto-Selection
+
+Extend `OptimizerFrameworkV2.auto_select(...)` to choose from established optimizers and the V7 family using measured characteristics rather than version numbers alone. Consider device/backend capability, VRAM/RAM, CPU, verified trainable parameter count, parameter dtype, sequence length, batch size, gradient accumulation, training objective, CUDA/torch versions, compile availability, supported optimizer features, and any user-required feature.
+
+Recommended decision order:
+1. Honor a compatible explicit user selection.
+2. Prefer **V7Mini** for a verified model with `39,000,000 < parameter_count < 750,000,000` when its backend is supported and the workload fits its profile.
+3. Choose **V7Q** for throughput-first workloads when its current benchmark profile supports the hardware/model; report the reason and any stability/adaptivity trade-off.
+4. Choose **V7S** when V5S-lineage stability and low optimizer-state memory are prioritized.
+5. Choose **V7M** when V5/V5+ lineage features such as QAT, MTP, automatic preparation, quantization sensitivity, per-layer mixed precision, EMA, and directional trust regions are required; enable only compatible, requested features.
+6. Choose **V7 Balanced** for general balanced training.
+7. Use established fallbacks (V5S for extreme memory constraints, V5+ when required features cannot yet be provided by V7M, V6 for a verified high-throughput case, V6V for supported fixed-shape CUDA-graph workloads, or AdamW for broad compatibility) when capability checks or verified measurements justify it.
+
+Never pick V7Mini from a guessed parameter count. If the count is unavailable, unknown, exactly 39M, or exactly 750M, its automatic-selection band does not apply. The selector must provide a machine-readable reason and a human-readable explanation for every choice and fallback. A failed compile/CUDA-graph path must fall back safely without changing the requested training objective. Tests must cover boundary values, unavailable hardware, explicit overrides, unsupported features, and deterministic selection for identical inputs.
+
+Do not automatically select an optimizer merely because it is newer.
+
+  
+⸻
+
+  
+## 20. Optimizer Benchmarking
+
+Add/extend the benchmark subsystem behind the existing command convention, for example:
 ```
 hypernix optimizer benchmark
 ```
-to compare:  
-```
-AdamW
-V5
-V5+
-V5S
-V6
-V6V
-```
-Measure:  
-```
-steps/sec
-ms/step
-optimizer-state memory
-peak VRAM
-CPU utilization
-GPU utilization
-host/device synchronization
-loss progression
-gradient stability
-```
-Output both machine-readable JSON and a human-readable report.  
-Never fabricate benchmark numbers.  
-   
-⸻  
-   
+It must compare AdamW, V5, V5+, V5S, V6, V6V, V7 Balanced, V7Mini, V7Q, V7S, and V7M. Include optimizer-only microbenchmarks and full training-step runs; do not infer whole-training speed from optimizer-only numbers.
+
+Measure steps/sec, ms/step, model throughput, optimizer-state memory/bytes per parameter, peak VRAM/RAM, CPU/GPU utilization when available, host/device synchronization where measurable, loss progression, gradient stability, and checkpoint overhead. Record the exact model parameter count, configuration, precision, hardware/backend, warmups, repeats, and failures. Include small models inside and outside the V7Mini eligibility band, plus representative medium/large workloads. V6V should be marked N/A if its CUDA graph path is unavailable, not treated as a slower result.
+
+Output machine-readable JSON and CSV plus a human-readable report. Preserve raw observations, report median and spread/percentiles, and flag incomparable or missing measurements. All relative speed/memory labels in Studio and docs are design targets until backed by results. Never fabricate benchmark numbers or claim V7Q is fastest or V7Mini is more efficient without the corresponding reproducible comparison.
+
+  
+⸻
+
+  
 ## 21. Studio Training Dashboard  
 Add an optimizer/training panel displaying:  
 ```
@@ -1976,7 +2659,7 @@ Do not automatically modify code unless explicitly requested/authorized.
 ## 42. Release Requirements  
 Update the version to:  
 ```
-0.73.0
+## Release metadata and completion requirements
 ```
 Update:  
 * package metadata  
@@ -1991,7 +2674,7 @@ Follow the repository’s existing versioning conventions.
 ⸻  
    
 ## 43. Definition of Done  
-Do not consider 0.73.0 complete until:  
+Do not consider 0.74.3 complete until:  
 * HyperNix Studio can use a local model without a T1 key.  
 * Ollama works.  
 * LM Studio works.  
@@ -2042,485 +2725,8 @@ Do not rewrite unrelated working systems.
 Prefer reusable abstractions over special-case integrations.  
 Run the relevant tests after each major subsystem.  
 Finally run the full test suite and fix regressions.  
-The final result should feel like a **major HyperNix Studio upgrade**, with local AI becoming a first-class citizen rather than an afterthought, a genuinely capable agent/tool runtime, and Optimizer Framework V2 providing a clean unified interface over the Pressure Cooker generations.  
-  
-# 0.73.1 through 0.73.5 are 5 versions that do not add any new features, all these updates are for are for stability, bug fixes, code review and revision, as well as safety and performance improvements, the sole new feature working t1 api calling for models running into hyperlink, and improve amd compatibility, improve the readme, remove old and outdated sections or update them, and fix all other platforms build issues and add more tests, (0.73.1) add a workflow that uses GitHubs free calling for a auto model to auto update the what’s new section of the readme when a major release is out
-# 0.73.6 pt1
-  
-Add new quants: hnx_q7h (q8k, q6s, q4km, int3, and fp16) hnx-q7E it should be 7.326 bits, remake hnx pipeline, and assistant add a command to prot, that if users have TWO or more monitors, it will check what one is currently the primary one, that the cursor is in, and the one or more others will be black with backlight off, until the mouse moves on to where it would be on that other monitor it you could see it, and the all monitors should be on, and make it so if users type hnx prot -O (off) restore fixes it  
-**HyperNix**  
- **0.73.6**  
-  
-Add a dedicated **HyperNix GPU Process Scheduler (HGPS)** designed to maximize training and inference performance on older NVIDIA GPUs, especially the **GTX 1080, GTX 1080 Ti, RTX 2080, as well as Apple M3 and newer and similar Pascal/Turing-class hardware while also greatly improving performance on newer gpu’s like rtx5070 Ti, 5070, 4070, 4070ti, 4080s, 4070ti super, 5080, 5090, 5060**, 3080) The scheduler must automatically detect the GPU architecture, VRAM capacity, CUDA capability, available VRAM, memory bandwidth, thermal state, utilization, and current system load, then dynamically select optimal batch sizes, micro-batch sizes, gradient accumulation, kernel configurations, CPU↔GPU transfer behavior, and memory allocation strategies. It should prioritize sustained throughput rather than short benchmark bursts and avoid VRAM exhaustion, excessive PCIe transfers, CPU starvation, and thermal throttling.  
-  
-Implement an **adaptive legacy-GPU execution mode** that does not depend on newer Tensor Core features. For GTX 10-series GPUs, optimize around CUDA FP16/FP32 workloads, fused CUDA kernels, efficient memory reuse, gradient checkpointing, pinned host memory, asynchronous data transfers, and aggressive kernel fusion where supported. For RTX 20-series GPUs, enable Tensor Core acceleration when it provides a measurable benefit while retaining a CUDA fallback. The scheduler should automatically benchmark available execution paths at startup and select the fastest stable configuration rather than assuming newer hardware capabilities. Include separate profiles such as **Pascal-Legacy**, **Turing-Legacy**, and **Auto**, with Auto being the default.  
-  
-Add **dynamic VRAM management** with configurable safety margins. Continuously monitor VRAM usage and automatically reduce micro-batch size or activate gradient checkpointing before an out-of-memory condition occurs. Keep model weights, optimizer states, activations, and frequently reused tensors prioritized in GPU memory while minimizing unnecessary allocations and fragmentation. Support mixed CPU/GPU memory operation for models that exceed VRAM, using asynchronous prefetching and layer/tensor offloading to reduce stalls. Avoid repeatedly moving the same tensors between CPU and GPU.  
-  
-Add a **real-time GPU performance controller** that monitors utilization, temperature, power behavior, memory usage, kernel execution time, dataloader latency, PCIe transfer latency, and tokens/sec or samples/sec. Dynamically adjust workload parameters to maintain the highest sustainable performance. Include protections against thermal throttling and unstable configurations. The scheduler should expose detailed telemetry so HyperNix can report GPU utilization, VRAM utilization, effective throughput, bottleneck type, estimated optimal batch size, and whether the workload is compute-, memory-, CPU-, or PCIe-bound.  
-  
-The scheduler must remain lightweight and introduce minimal overhead. It should work with older CUDA-capable GPUs without requiring RTX-only functionality, gracefully degrade when a feature is unsupported, and never reduce performance simply because a newer optimization is unavailable. Add automatic profiling, configuration caching, and per-GPU tuning profiles so that once HyperNix discovers an optimal configuration for a specific GPU, it can reuse it on subsequent runs. The final objective is to make HyperNix training and inference **as fast and memory-efficient as realistically possible on GTX 1080, GTX 1080 Ti, RTX 2080, and other older GPUs**, while maintaining numerical stability and avoiding unnecessary hardware stress.  
-  
-## HyperNix 0.74.0 — Build HyperNix0xV3 From Scratch  
-Create a completely new custom LLM architecture called **HyperNix0xV3** for HyperNix 0.74.0. This must be a genuine architectural evolution rather than a renamed Transformer or a collection of standard layers. Use **HyperNix0xV2 as conceptual inspiration**, but redesign the internals around efficiency, long-context reasoning, training stability, and hardware-aware execution.  
-HyperNix0xV3 must support **multiple model sizes/configurations**, from extremely small models suitable for consumer hardware up through very large models. The architecture should scale cleanly by changing dimensions, number of blocks, attention heads, context length, parameter sharing, and other architectural scaling parameters without requiring separate implementations.  
-## 1. Two Brand-New Custom Layers  
-Design and implement **two genuinely new neural-network layers**.  
-**Custom Layer A — Efficient Context Layer**  
-Create a new layer specifically designed to provide **more useful context at significantly lower computational and memory cost** than conventional full-context attention.  
-Requirements:  
-* Efficiently preserve information from distant tokens.  
-* Support very long contexts.  
-* Avoid simply implementing standard full attention with a renamed API.  
-* Reduce KV-cache and/or attention-memory requirements where practical.  
-* Dynamically determine which contextual information deserves higher retention.  
-* Allow important information to persist across large token distances.  
-* Degrade gracefully when context becomes extremely large.  
-* Work with causal language modeling.  
-* Be compatible with batching and variable sequence lengths.  
-* Be differentiable and trainable with standard backpropagation.  
-* Have a mathematically well-defined forward pass.  
-* Include a computational-complexity analysis.  
-* Include memory-complexity analysis.  
-* Include ablations against standard attention and the HyperNix0xV2 mechanism.  
-Give this layer an original name and document exactly how it works.  
-**Custom Layer B — Adaptive Reasoning/State Layer**  
-Invent a second original layer for a complementary purpose. Its primary goal should be **maintaining and transforming a compact internal state representing information that remains useful across multiple layers and distant parts of the sequence**.  
-The layer should ideally:  
-* Maintain a learned latent/state representation.  
-* Selectively update that state instead of recomputing everything from scratch.  
-* Distinguish transient token information from persistent information.  
-* Allow information to flow between local token representations and the persistent state.  
-* Improve reasoning over multi-step dependencies.  
-* Work alongside the efficient-context layer rather than replacing it.  
-* Have bounded computational/memory overhead.  
-* Be stable during large-scale training.  
-* Avoid becoming an unrestricted recurrent bottleneck.  
-* Support parallel training where possible.  
-Again, give it an original name and provide the mathematical formulation, tensor shapes, initialization strategy, normalization strategy, and gradient-flow considerations.  
-The two custom layers should have **different responsibilities** and should complement each other.  
-## 2. HyperNix0xV3 Block Architecture  
-Design a complete V3 block using the new components.  
-Consider a structure along the lines of:  
-Input → normalization → local/token processing → Custom Efficient Context Layer → gated residual → Custom Adaptive State Layer → gated residual → feed-forward/MLP component → output normalization → residual  
-However, do not blindly follow this structure. Determine the best ordering and explain why.  
-The architecture may use additional components such as:  
-* RMSNorm or a new normalization mechanism  
-* gated residual connections  
-* SwiGLU/GEGLU or an improved custom MLP  
-* rotary/relative/learned positional mechanisms  
-* mixture-of-experts for larger configurations  
-* parameter sharing  
-* learned routing  
-* sparse computation  
-* low-rank projections  
-* auxiliary state representations  
-Only introduce components when they provide a measurable architectural benefit.  
-## 3. Scaling System  
-Create a unified HyperNix0xV3 configuration system supporting multiple sizes.  
-Each configuration must define at minimum:  
-* Parameter count  
-* Hidden dimension  
-* Number of layers  
-* Attention/context dimensions  
-* Number of heads  
-* Head dimension  
-* Context length  
-* State dimensions  
-* MLP dimensions  
-* Vocabulary size  
-* Precision  
-* KV/state cache configuration  
-* Number of experts if MoE is enabled  
-* Expected VRAM requirement  
-* Expected RAM requirement  
-* Recommended CPU threads  
-* Recommended GPU utilization target  
-Include presets ranging from tiny/edge models to extremely large models.  
-The architecture must not assume that every model has enough VRAM to fit entirely on the GPU.  
-# 4. New   
-```
-synchronous
-```
-## Module  
-Add a completely new HyperNix module called:  
-```
-hypernix.synchronous
-```
-The Synchronous system is a **hardware-aware training and inference optimization controller**.  
-Its purpose is to continuously monitor the actual system and intelligently adjust runtime parameters to keep performance **as close as possible to the hardware’s optimal tokens/second throughput without damaging model quality, training stability, or convergence**.  
-It must monitor:  
-* GPU utilization  
-* GPU temperature  
-* GPU power usage when available  
-* GPU memory usage  
-* Free VRAM  
-* CPU utilization  
-* CPU temperature when available  
-* CPU thread utilization  
-* Available CPU threads  
-* RAM usage  
-* Free RAM  
-* System load  
-* Current training run  
-* Current training step  
-* Tokens processed  
-* Current tokens/second  
-* Smoothed tokens/second  
-* Recent tokens/second history  
-* Estimated time remaining  
-* Current sequence/context length  
-* Batch size  
-* Microbatch size  
-* Gradient accumulation  
-* Precision  
-* Activation/checkpointing state  
-* Data-loader throughput  
-* GPU/CPU synchronization stalls  
-* OOM/recovery events  
-* Thermal throttling indicators when available  
-The module must work with hardware telemetry that is unavailable on a particular platform. Never assume temperature, power, or VRAM telemetry exists.  
-## 5. Synchronous Optimization Engine  
-Synchronous should continuously calculate a **safe operating envelope** for the current hardware.  
-Its goal is NOT simply:  
-“maximize GPU usage.”  
-Instead, optimize a multi-variable objective such as:  
-**maximize stable tokens/sec**  
-while respecting:  
-* thermal limits  
-* VRAM limits  
-* RAM limits  
-* CPU limits  
-* training stability  
-* gradient behavior  
-* numerical stability  
-* model quality  
-* convergence  
-* dataloader performance  
-* user-defined hardware limits  
-Create a controller that can adjust safe runtime variables such as:  
-* batch size  
-* microbatch size  
-* gradient accumulation  
-* number of CPU data-loader workers  
-* CPU thread count  
-* prefetch depth  
-* context length where explicitly permitted  
-* activation checkpointing  
-* memory-efficient attention mode  
-* inference batch size  
-* GPU/CPU offloading  
-* scheduling parameters  
-* evaluation frequency  
-* checkpoint frequency  
-Do **NOT** silently modify architectural hyperparameters that would invalidate or compromise the training run.  
-The controller must understand the difference between:  
-**performance parameters**  
-and  
-**model-defining parameters**.  
-For example, it may dynamically change microbatching or worker count, but must not silently change hidden size, layer count, vocabulary size, learned weights, optimizer semantics, or other parameters that would fundamentally alter the experiment.  
-## 6. Adaptive Control  
-Implement a feedback controller rather than simple threshold-based if/else logic.  
-The system should:  
-1. Collect telemetry.  
-2. Smooth noisy measurements.  
-3. Determine current performance.  
-4. Identify the current bottleneck.  
-5. Predict whether a parameter change will help.  
-6. Make a small safe adjustment.  
-7. Measure the result.  
-8. Compare performance against the previous state.  
-9. Keep successful changes.  
-10. Roll back harmful changes.  
-11. Continue learning the hardware’s optimal operating region.  
-Use concepts from:  
-* feedback control  
-* adaptive optimization  
-* online profiling  
-* constrained optimization  
-* hysteresis  
-* rate limiting  
-* exponential moving averages  
-* Bayesian/bandit-style parameter exploration where useful  
-Avoid constant oscillation between configurations.  
-Implement configurable stability margins and cooldown periods.  
-## 7. Thermal and Hardware Safety  
-Synchronous must prioritize hardware safety.  
-Create configurable limits such as:  
-* maximum GPU temperature  
-* maximum CPU temperature  
-* maximum VRAM utilization  
-* maximum RAM utilization  
-* maximum power target where supported  
-When thermal conditions worsen, automatically reduce workload intensity.  
-For example:  
-Normal: → optimize throughput  
-Warm: → reduce workload growth  
-Hot: → reduce batch/microbatch or increase accumulation  
-Critical: → aggressively throttle or pause  
-Recovered: → gradually return toward the previous optimal configuration  
-Never rapidly oscillate between maximum and minimum workloads.  
-## 8. Training Integrity  
-The most important requirement:  
-**Synchronous optimization must never compromise the resulting trained model merely to increase tokens/sec.**  
-Do not trade away:  
-* numerical stability  
-* gradient correctness  
-* optimizer correctness  
-* loss behavior  
-* convergence  
-* reproducibility beyond explicitly documented runtime differences  
-* model architecture  
-* learned parameter quality  
-When making a performance optimization, record:  
-* old value  
-* new value  
-* reason for change  
-* measured tokens/sec before  
-* measured tokens/sec after  
-* VRAM before/after  
-* RAM before/after  
-* temperature before/after  
-* current training step  
-* rollback condition  
-Provide an option for strict/reproducible mode where adaptive behavior is restricted.  
-## 9. Performance Prediction  
-Have Synchronous maintain a lightweight performance model of the current hardware.  
-Over time it should learn relationships such as:  
-```
-batch size → tokens/sec
-microbatch → VRAM usage
-CPU workers → data throughput
-context length → memory/compute
-checkpointing → VRAM vs tokens/sec
-```
-Use historical measurements to predict which configuration is likely to improve throughput before applying it.  
-The first few minutes of a training run may therefore be treated as an **automatic calibration phase**.  
-## 10. Context-Aware Optimization  
-Because HyperNix0xV3 introduces a new efficient-context layer, Synchronous must understand context-related resource usage.  
-Track:  
-* context length  
-* effective context length  
-* context-cache/state memory  
-* KV memory if applicable  
-* persistent-state memory  
-* attention compute  
-* context-related tokens/sec degradation  
-Use this information to determine whether the bottleneck is:  
-* compute  
-* memory bandwidth  
-* VRAM capacity  
-* CPU preprocessing  
-* synchronization  
-* context processing  
-* data loading  
-The controller should optimize the actual bottleneck rather than blindly increasing or decreasing batch size.  
-## 11. Observability  
-Create a complete Synchronous dashboard/API exposing:  
-* Current tokens/sec  
-* Optimal estimated tokens/sec  
-* Efficiency percentage  
-* GPU utilization  
-* CPU utilization  
-* GPU temperature  
-* CPU temperature  
-* VRAM used/free  
-* RAM used/free  
-* active threads  
-* batch/microbatch  
-* gradient accumulation  
-* context length  
-* current bottleneck  
-* current optimization state  
-* estimated time remaining  
-* recent adjustments  
-* rollback events  
-* thermal state  
-* training stability state  
-Add structured logging and machine-readable telemetry.  
-Example:  
-```
-[SYNCHRONOUS]
-GPU: 96%
-VRAM: 7.4/8.0 GB
-GPU Temp: 74°C
-CPU: 68%
-RAM: 18.2/32 GB
-Threads: 12/16
-Context: 8192
-Batch: 2
-Microbatch: 1
-Grad Accum: 16
+The final result should feel like a **major HyperNix Studio upgrade**, with local AI becoming a first-class citizen rather than an afterthought, a genuinely capable agent/tool runtime, and Optimizer Framework V2 providing a clean unified interface over the Pressure Cooker generations.
 
-Throughput: 18,420 tok/s
-Estimated Optimal: 19,050 tok/s
-Efficiency: 96.7%
-
-Bottleneck: VRAM
-Action: Reduce activation memory
-Change: checkpointing = selective
-Expected gain: +4.2%
-Confidence: 87%
-```
-## 12. Hardware Compatibility  
-Make Synchronous work across:  
-* NVIDIA GPUs  
-* AMD GPUs where supported  
-* Intel GPUs where supported  
-* CPU-only systems  
-It must gracefully degrade when hardware telemetry APIs are unavailable.  
-Do not hard-code assumptions about modern GPUs.  
-It should be capable of operating on older GPUs with limited VRAM as well as high-end GPUs.  
-## 13. Implementation Requirements  
-Build this as real production-quality code, not pseudocode.  
-Provide:  
-* architecture implementation  
-* configuration system  
-* model initialization  
-* forward pass  
-* training integration  
-* inference integration  
-* Synchronous module  
-* telemetry abstraction layer  
-* hardware backends  
-* adaptive controller  
-* logging  
-* configuration files  
-* checkpoint compatibility  
-* unit tests  
-* numerical tests  
-* stress tests  
-* performance benchmarks  
-* documentation  
-* example training scripts  
-* example inference scripts  
-Use clean modular interfaces so the architecture can later receive additional HyperNix layers without requiring a rewrite.  
-## 14. Research and Validation  
-Before declaring HyperNix0xV3 complete, benchmark it against appropriate baselines.  
-Measure:  
-* training tokens/sec  
-* inference tokens/sec  
-* VRAM usage  
-* RAM usage  
-* peak memory  
-* context scaling  
-* loss curves  
-* convergence speed  
-* perplexity  
-* long-context retrieval  
-* reasoning benchmarks  
-* small-data overfitting behavior  
-* numerical stability  
-* thermal behavior  
-* Synchronous optimization effectiveness  
-Run ablations:  
-1. Standard attention baseline  
-2. Efficient Context Layer removed  
-3. Adaptive State Layer removed  
-4. Both custom layers removed  
-5. Synchronous disabled  
-6. Synchronous enabled  
-7. Different context lengths  
-8. Different hardware configurations  
-The goal is to prove that each new component provides a measurable benefit rather than merely increasing complexity.  
-## 15. Deliverable  
-Implement HyperNix0xV3 as a complete new architecture for **HyperNix 0.74.0**.  
-Do not simply modify HyperNix0xV2 into V3.  
-Create a clean V3 architecture with its own modules, configuration system, documentation, tests, benchmarks, and training integration.  
-The final architecture should prioritize:  
-**efficient long-context processing + persistent learned state + scalable architecture + hardware-aware adaptive execution + training integrity.**  
-The final result should feel like a genuinely new HyperNix architecture rather than a conventional Transformer with renamed components.  
-# 0.74.1
-In hyperlink add the following, 1: a  theme named origins that is old theme before customization was added, 2: when I have pcutil installed it see my gpu, but not my ram and cpu, also make it have power usage per hour, 80plus estimated efficiency rating, actual power efficiency. Make an actual fully working hyperNix model runner like lms, lm studio, using modified llama cpp, in hyperlink, add a little circle on the right of the chat text box, that has 3 rings that are different colors, red means nearly full, blue means not less than 60% free but less than 85% free, 100= green, 45 to 31% yellow, that is for the user context, when it hits 96% full, it will auto compact, then next is useage remaining deep crimson = empty, white = fine and above 50, orange = over 10, less than 50, make a action run a new example that trains a 50 peramiter model using brewer, the newest pressure cooker, Neo oven, synchronous, and more   
-  
-  
-# 0.74.2
-
-# HyperNix 0.74.2 — Experiment Ledger and Reproducible Model Workbench
-
-## Objective
-
-Make training, evaluation, inference benchmarks, and quantization runs reproducible, recoverable, and easy to compare using the modules HyperNix already has. This is a workflow and integration release, not a new model architecture. Inspect the existing CLI, trainer, optimizers, benchmark suite, Lunchbox/Tupperware, thermometers, run inspection, model catalogue, and database patterns before adding code. Extend existing sources of truth; do not duplicate them.
-
-## 1. Experiment manifest and records
-
-Create a versioned, documented manifest (prefer JSON or TOML where appropriate) and a persistent record for every run. Capture, when available:
-
-- Stable run ID, name, UTC creation/start/end times, status, parent/resume ID, and stop/failure reason.
-- HyperNix version, Python/dependency versions, OS, Git commit and dirty-tree state.
-- Model identity, architecture, parameter count, tokenizer, quantization/precision, context length, and immutable Hub revision when available.
-- Dataset identity, source, split, sample/token counts, preprocessing settings, and content fingerprint where feasible without copying or repeatedly hashing huge datasets.
-- Resolved training/evaluation configuration: optimizer, scheduler, seed, batch size, gradient accumulation, limits, checkpoint policy, and all defaults actually applied.
-- Detected hardware and backend versions, outputs, log paths, checkpoint/artifact references, and checksums where practical.
-
-Record the requested configuration separately from the resolved configuration. Mark fields as unknown/unavailable rather than guessing. Redact secrets, tokens, credentials, and secret environment variables; never persist them in manifests or logs.
-
-## 2. CLI workflow
-
-Add a command group that follows the repository's existing CLI conventions. Candidate actions include `experiment new`, `run`, `list`, `show`, `compare`, `resume`, and `export`. Inspect the existing command tree first and choose names that fit without breaking current commands.
-
-Provide useful help text, stable exit codes, clear errors, and a validation/dry-run mode. Dry-run must show the resolved configuration and resource estimates without downloading a model, loading large weights, or starting training.
-
-## 3. Lifecycle, checkpoints, and recovery
-
-Persist explicit states such as queued, validating, running, stopping, completed, failed, cancelled, and interrupted. A crash must not leave a run falsely marked successful.
-
-- Keep each run's logs separate and record progress, elapsed time, last completed step, and failure stage when known.
-- Handle Ctrl+C and normal termination gracefully. Flush metrics and save a checkpoint only where the trainer supports a safe checkpoint operation.
-- Resume only after validating checkpoint/model/config/tokenizer compatibility. If compatibility cannot be established, explain why and refuse by default; never silently continue from incompatible state.
-- Preserve the original run, checkpoint, and manifest; link resumed runs to their parent.
-- Support bounded queues only where they integrate with existing resource/GPU scheduling. Never start extra GPU jobs simply because a queue contains them, and never terminate unrelated processes to free resources.
-- If disk space, VRAM, or dependencies are insufficient, fail early with actionable diagnostics.
-
-## 4. Metrics and honest comparisons
-
-Integrate existing measurement and benchmark code. Record supported metrics such as loss, evaluation scores, tokens/s, samples/s, steps/s, latency, time to first token, wall-clock duration, peak RAM/VRAM, artifact sizes, and hardware readings.
-
-Distinguish measured, estimated, and unavailable values. Benchmarks should allow warmups and repeated trials and report sample count, median, and useful spread/percentiles. Preserve raw observations. Compare runs only with explicit warnings for incompatible model revisions, tokenizers, datasets, evaluation protocols, or hardware. Show configuration differences and never name a universal winner when objectives differ.
-
-Generate readable Markdown reports and machine-readable JSON/CSV exports. Do not fabricate metrics if a sensor or backend cannot provide them.
-
-## 5. Artifact and storage safety
-
-Document a configurable experiment root under the user's HyperNix data directory. Keep metadata separate from large checkpoints, datasets, and outputs. Verify referenced artifacts when showing or resuming a run.
-
-Add retention/cleanup only with a dry-run preview and explicit confirmation. Active runs and required checkpoints must be excluded. Normalize paths and prevent cleanup from writing/deleting outside the configured root. Handle incomplete writes, schema migrations, and concurrent readers/writers; if SQLite fits the existing design, use transactions for lifecycle updates.
-
-Exports should say which bulky artifacts were omitted. Avoid expensive full-file scans on every CLI call; cache fingerprints carefully and re-verify when correctness requires it.
-
-## 6. Monitoring integration
-
-Connect experiment records to tvtop-pro/tvtop-max and existing run-inspection tools where practical. Show the run label, status, elapsed time, progress, recent metrics, and log path. Monitoring must be optional: if a sensor, terminal, UI dependency, or hardware backend is missing, training must continue and the missing measurement must be reported honestly.
-
-Keep sampling overhead low and configurable. Identify the source and sampling interval of hardware readings. Do not claim unsupported per-process GPU or power measurements.
-
-## 7. Privacy and operational safeguards
-
-Treat manifests, model names, dataset paths, logs, and artifacts as untrusted input. Never execute scripts found while discovering, validating, resuming, or reporting an experiment. Do not upload experiment data or make remote calls unless a user explicitly enables a feature that requires them. Do not log private prompts or training samples by default; content-level tracing must be opt-in with a clear warning.
-
-Do not silently install dependencies, modify global environments, rewrite user configuration, or delete previous checkpoints.
-
-## 8. Tests and definition of done
-
-Add behavior-focused tests for:
-
-- Manifest round-trips, schema migration, resolved defaults, fingerprint behavior, and secret redaction.
-- State transitions, crashes/interrupted runs, cancellation, concurrent run IDs, SQLite concurrency, and failure recording.
-- Dry-run proving it neither downloads weights nor starts training.
-- Resume from a compatible tiny fixture and refusal of incompatible checkpoints without modifying the originals.
-- Comparisons with known fixture metrics, missing-vs-zero values, and warnings for incomparable runs.
-- JSON/CSV/Markdown export consistency and missing/moved artifact diagnostics.
-- Cleanup previews, path traversal prevention, and protections for active runs/checkpoints.
-- Degraded operation with missing sensors and optional dependencies.
-- A deterministic, tiny CPU-only end-to-end run requiring no network or GPU; heavyweight training and hardware benchmarks stay opt-in.
-
-Run existing relevant tests first, then focused new tests and the broad suite where practical. Do not weaken tests to make the build pass.
-
-## 9. Implementation rules
-
-Reuse existing abstractions and public APIs wherever possible. Update docs/changelog only after the implementation is verified. Do not ship placeholder commands, simulated successful training, fake metrics, or existence-only tests. Keep optional integrations optional, document storage and migration behavior, and preserve workflows for users who do not use the new experiment CLI.
-
-Completion requires a real end-to-end run, validated recovery behavior, useful comparison/export output, tests, and documentation backed by evidence.
 
 # 0.75.0
 #   
@@ -3754,12 +3960,86 @@ The release is not complete until:
 Do not substitute mock screens for working features, claim support based on a model name, weaken authorization for convenience, or mark work complete without test evidence.
 
 
-# 0.82.0
-  
+# 0.82.0 — Major Performance and GPU-Efficiency Release
+
+## Objective
+
+Make HyperNix measurably faster and more resource-efficient across inference, training, quantization, data processing, hardware discovery, CLI startup, and local model serving. This is an implementation release: profile the real code, fix measured bottlenecks, validate numerical behavior, and publish reproducible before/after evidence. Do not satisfy this release by merely adding benchmark scripts or writing unverified performance claims.
+
+## 1. Baselines and profiling
+
+Establish repeatable benchmarks for representative small, medium, and large workloads: package/CLI cold start, imports, model loading, prompt prefill, token generation, training steps, optimizer-only steps, dataset preprocessing, conversion, and quantization. Cover CPU-only systems and supported NVIDIA, AMD, Intel, and Apple backends where actual test hardware is available. Include Pascal/GTX 1080 as a compatibility target where the installed stack supports it.
+
+For every run, record commit/version, model revision or file hash, quantization, precision, context/input length, output or training-step count, batch shape, device/backend/driver, thread settings, peak RAM/VRAM, model-load time, time to first token, prefill and decode throughput, latency distribution, and quality/correctness checks. Record power or energy only when reliable telemetry can measure it. Separate cold and warm runs; use fixed configurations, warmups, multiple repeats, medians, and spread/percentiles. Preserve raw machine-readable observations and a human-readable report.
+
+Use Python/PyTorch profiling and native/backend profilers to identify real hot paths: CPU-heavy loops, unnecessary synchronization, kernel launch overhead, memory fragmentation, repeated allocation/copying, transfer bottlenecks, inefficient tensor layouts, serial data loading, duplicate model discovery, and avoidable serialization. Tie every optimization to its measured bottleneck.
+
+## 2. CPU and general runtime efficiency
+
+Profile startup and imports; lazy-load optional heavy dependencies where doing so is safe; eliminate duplicate discovery and repeated parsing; and cache only results with explicit invalidation rules. Optimize CPU hot paths with vectorized, batched, or native operations where correctness is preserved. Improve data loading and preprocessing using bounded prefetch, efficient serialization, sensible worker counts, and memory mapping for large datasets where beneficial.
+
+Avoid oversubscribing CPU threads when PyTorch, OpenMP, BLAS, and data workers are already parallel. Respect container/cgroup limits and hardware topology. Add NUMA/affinity-aware behavior only when supported and benchmarked, expose a safe override, and never alter global OS configuration silently. Reduce peak host memory through streaming, bounded queues, reusable buffers, and clear cache lifetimes. Keep CPU fallbacks working for older supported CPUs.
+
+## 3. GPU efficiency and throughput
+
+Audit the entire workload, not only isolated kernels. Target unnecessary host/device synchronization, excess kernel launches, repeated allocations, redundant host↔device copies, synchronous transfers that could safely overlap, avoidable tensor conversions, poor batch sizes, and serialization in inference/training loops.
+
+Implement optimizations where profiling justifies them, including:
+- fused or `foreach` operations for supported tensor shapes and dtypes;
+- non-blocking transfers, pinned memory, and overlapped data preparation when safe;
+- reusable buffers or bounded allocation pools to reduce allocator churn;
+- optional `torch.compile`, CUDA graph capture/replay, or backend-specific graph execution for compatible fixed-shape workloads, with warmup and version/device/config-keyed cache invalidation;
+- faster attention/KV-cache and quantized matrix/vector kernels where the installed runtime actually supports them;
+- batching and scheduling that improve device occupancy without unacceptable latency or memory growth;
+- layer placement/offload that obeys measured free VRAM and transfers only required tensors;
+- reduced-precision execution only when the device/model supports it and validation shows acceptable numerical behavior.
+
+Do not force CUDA graphs, compilation, Tensor Cores, or new kernels on hardware that cannot use them. Preserve Pascal compatibility where the current stack allows it, and test newer GPU paths separately. GPU model recognition is not proof of installed-driver or toolkit compatibility. Implement AMD/Intel/Apple-specific acceleration only for supported backends that can be exercised in tests.
+
+Expose an efficiency report with throughput, latency, peak VRAM/RAM, device utilization, kernel/transfer timing, and memory bandwidth/occupancy where the profiler exposes those values. Distinguish unavailable, estimated, and measured data. Never invent watts, utilization, or energy efficiency.
+
+## 4. Adaptive resource planning
+
+Create or extend one resource planner that uses detected hardware, backend capabilities, available memory, context/batch settings, and workload requirements to recommend safe settings. Document its memory-estimation formula and safety margin; account for weights, KV cache, runtime overhead, activations and optimizer state where applicable. Show estimates before an expensive job, then compare them with measured peak use to improve future recommendations.
+
+Expose safe overrides for GPU layers/offload, context/cache size, batch size, CPU threads, precision, compile/graph mode, and data-loader workers. Explain effects on accuracy, reproducibility, latency, throughput, and memory. Never silently reduce precision, truncate context, alter the training objective, or kill unrelated processes. On OOM, preserve logs/checkpoints where possible and offer an actionable reduced-resource profile.
+
+Persist optional local tuning results with explicit cache bounds and invalidation; do not run expensive autotuning on every startup. Let users disable autotuning for deterministic or restricted environments.
+
+## 5. Training and optimizer acceleration
+
+Integrate with the existing optimizer framework instead of creating a second scheduler. Profile AdamW, V5/V5+, V5S, V6/V6V, V7 Balanced, V7Mini, V7Q, V7S, and V7M using optimizer-only and full-step benchmarks. Reduce per-parameter Python overhead, device synchronization, repeated statistics work, and temporary allocations while preserving each optimizer’s update semantics and checkpoint format.
+
+Add or improve fused execution, gradient accumulation, mixed precision, gradient checkpointing, and compile paths only where the trainer supports them correctly. Validate scaler/overflow behavior, non-finite gradients, gradient clipping, deterministic seeds, save/resume, and equivalence within documented tolerances. Faster optimizer-only timings do not count as a win if end-to-end training slows down or convergence worsens.
+
+## 6. Quantization and inference optimization
+
+Profile conversion and generation pipelines. Reduce redundant intermediate tensors and conversion buffers; improve streaming reads/writes and memory mapping; optimize calibration and importance-matrix passes; and accelerate supported GGUF/HyperNix quantization kernels with device-specific dispatch and portable fallbacks.
+
+For inference, measure model-load time, first-token latency, prompt prefill, decode speed, concurrent throughput, KV-cache memory, and CPU/GPU placement. Tune context, batch, threads, and GPU layers within explicit memory limits. Cache compiled kernels and loaded metadata by compatible model revision, quant format, software ABI, and device; never reuse artifacts across incompatible combinations.
+
+Quality gates are mandatory: compare output/logit behavior where meaningful, task quality or loss/perplexity where appropriate, and quantized-output stability against a trusted baseline. Document the speed/quality/memory trade-off of every fast path; do not trade away model quality invisibly.
+
+## 7. Safe cross-platform dispatch
+
+Use runtime feature detection, not hard-coded assumptions. Detect GPU architecture, driver/runtime, supported kernels, memory, and optional libraries. Make the selected execution path and fallback reason visible in diagnostics. If compile or graph capture fails, fall back safely without corrupting optimizer/model state. Maintain bounded tuning/compilation caches with correct invalidation.
+
+Keep unsupported device backends on the portable path and mark unavailable device-specific tests as skipped rather than claiming them passed.
+
+## 8. Release gates
+
+Establish baselines first. Target at least **10% median improvement in two or more representative end-to-end workloads**, or at least **10% lower peak VRAM/RAM without more than a 3% throughput regression** for a representative workload. Record which workloads qualify. If a safe optimization cannot meet that target, provide profiler evidence and document the limitation rather than fabricating a result.
+
+Require correctness/regression tests for each optimized path; raw benchmark artifacts with environment metadata; comparison reports with spread/uncertainty; and tests for CPU fallback, older supported GPUs, new GPU acceleration, mixed precision, memory pressure, cancellation, compile/cache failures, and checkpoint recovery. Avoid material regressions in unrelated workloads unless the trade-off is explicit and justified.
+
+## 9. Deliverables and documentation
+
+Create an initial profiler report, a prioritized bottleneck list, and a mapping from optimization to repository file, expected effect, and validation test. Implement high-impact safe optimizations in real Python/native code. Keep hardware-heavy benchmarks opt-in and run them only on appropriate runners.
+
+Update version metadata, changelog, README, wiki, optimizer/runtime documentation, examples, hardware/backend support matrices, architecture map where relevant, generated docs data, and GitHub Pages based on verified changes. Publish performance charts from reproducible result data rather than hand-written claims. The final report must list each change, baseline, measured result and variability, affected hardware/backend, limitations, tests run, and regressions. Do not declare 0.82.0 complete from theoretical analysis or synthetic numbers alone.
+
 Much later:   
 V1.00.0 or for 2.00.0  (only to be made by Claude Code + Fable 5+) or a custom model/cloud model that’s over 3.2T minimum of 2.7T perams (if I can figure it out)  
   
 ONCE I HAVE A ACTUAL COMPANY, MAKING MONEY, AND A FULL DEVELOPMENT TEAM then we will make:   
 HYPERNIX 3.0, a full new software, that costs money, has a paid software license unless user makes (not profits) less than 1m$ a year from ai work, 3.1 coul have a PyTorch replacement, the T3 api and keys
-
-
