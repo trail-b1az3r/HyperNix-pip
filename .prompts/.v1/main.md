@@ -1186,6 +1186,167 @@ Add a **real-time GPU performance controller** that monitors utilization, temper
   
 The scheduler must remain lightweight and introduce minimal overhead. It should work with older CUDA-capable GPUs without requiring RTX-only functionality, gracefully degrade when a feature is unsupported, and never reduce performance simply because a newer optimization is unavailable. Add automatic profiling, configuration caching, and per-GPU tuning profiles so that once HyperNix discovers an optimal configuration for a specific GPU, it can reuse it on subsequent runs. The final objective is to make HyperNix training and inference **as fast and memory-efficient as realistically possible on GTX 1080, GTX 1080 Ti, RTX 2080, and other older GPUs**, while maintaining numerical stability and avoiding unnecessary hardware stress.  
   
+# 0.73.6 pt3 — Strife Early Beta, Full HGPS Integration, and Runtime Hardening
+
+## Mission and release classification
+
+Advance Strife from an early-alpha prototype to an **early-beta, partially test-ready local inference runtime**. This must be a real implementation upgrade, not a release-label change. Build on Strife's architecture specified in 0.73.0 pt1 and the HyperNix GPU Process Scheduler (HGPS) specified in 0.73.6 pt1. Integrate with the shared HGPS implementation; do not create a second scheduler or duplicate its device-tuning logic.
+
+The goal is a usable runtime on a clearly documented subset of model architectures, GGUF quantizations, platforms, and execution backends. Early beta is not production-hardened or universal compatibility. Publish a precise tested-support matrix, mark experimental combinations honestly, and give unsupported combinations a safe fallback or actionable error. Detection or file inspection alone must never be represented as proof of working inference.
+
+Before editing, inspect the real Strife/HGPS implementations, GGUF readers, quantization kernels, backend/device discovery, native build system, ggufrun, inference bridge, packaging, CLI conventions, and tests. Map requirements to actual source files and public APIs. Reuse sound abstractions, check licenses, and do not ship mocked inference, fake telemetry, simulated benchmarks, no-op controls, placeholder backend classes, or silent fallbacks that change model semantics.
+
+## 1. Required early-beta outcomes
+
+Deliver a documented model-inspection and inference lifecycle covering validation, load, warmup, generation, streaming, cancellation, unload, and clean shutdown. Integrate HGPS end-to-end, strengthen CPU fallback and supported GPU adapters, improve model/quantization capability detection, implement bounded resource use, isolate concurrent sessions, improve error recovery and observability, add reproducible benchmark records, and provide an external tester with install instructions and a reliable first-run path.
+
+Keep always-on tests independent of network access, paid services, and large model downloads. Real-model and hardware benchmarks must be opt-in and must report exactly what ran.
+
+## 2. HGPS integration contract
+
+Create a Strife adapter around the existing shared HGPS API. HGPS remains the single source of policy for device profiling, hardware-aware execution choices, tuning-cache behavior, telemetry, and resource-pressure decisions. Strife supplies inference workload facts and applies validated recommendations; it must not make contradictory local scheduling decisions.
+
+Define a typed workload/decision/result contract suited to the current codebase. It must cover, where available:
+
+- Device/vendor/architecture identity, stable device identifier, runtime/driver versions, compute/API capabilities, memory capacity/free memory, supported precision and kernels, and optional sensor availability.
+- Model architecture, tensor/quant types, weight footprint, context request, active sequences, KV-cache format and estimated size, GPU offload constraints, batch/micro-batch, and prefill-versus-decode workload phase.
+- User-selected limits, latency/throughput preference, deterministic mode, and host/device memory safety margins.
+- HGPS's selected profile, backend, thread/batch choices, layer/tensor placement, cache budget, transfer/pinning strategy where supported, tuning source, and reason codes for rejected settings or fallback.
+- Observed memory, queue depth, prefill/decode rate, time-to-first-token, total latency, throughput, transfers/kernel timing when measurable, available device telemetry, cancellations, allocation errors, and whether each recommendation was applied or constrained.
+
+Represent unavailable sensor readings as unavailable, not fabricated zeroes. Distinguish measured values from estimates. Keep optional platform/backend imports optional so CPU-only installation and diagnostics work.
+
+Required runtime behavior:
+
+1. Before allocating large buffers, ask HGPS to inspect the device and model, estimate resource needs, validate the requested path, and return an initial safe configuration.
+2. Apply recommendations only within the user's safe limits and the verified capabilities of the active model/backend. Report settings that cannot be honored and why.
+3. Feed genuine runtime observations back to HGPS at a bounded cadence. Change a setting mid-request only if the backend supports it safely; defer cache-rebuild or model-reload changes to a safe boundary.
+4. Reuse HGPS's existing profile/tuning-cache interfaces wherever practical. Do not autotune every request or introduce per-token Python scheduling overhead.
+5. Preserve a deterministic mode for correctness tests and comparable benchmarks, while retaining hard resource limits.
+6. If HGPS, a sensor, or autotuning is unavailable, record the reason and continue through a documented safe fallback where possible. Never claim HGPS is active when only device detection succeeded.
+7. Do not manipulate GPU clocks, voltage, fans, power limits, or system-wide settings unless an existing authorized HyperNix feature explicitly supports it and the user opts in.
+
+## 3. HGPS profiles and truthful hardware support
+
+Wire Strife into every HGPS execution profile actually implemented in the repository and expose the selected profile and fallback reason:
+
+- **Auto**: default capability-driven profile, using verified feature detection and bounded tuning.
+- **Pascal-Legacy**: GTX 10-series including GTX 1080/1080 Ti. Do not require Tensor Cores or newer CUDA features; independently validate FP16/FP32 and quantized paths.
+- **Turing-Legacy**: RTX 20-series including RTX 2080. Use Tensor Core paths only when supported and measurably beneficial, retaining a tested fallback.
+- **Modern NVIDIA**: supported RTX 30-, 40-, and 50-series devices selected through actual capability detection, not device name alone.
+- **AMD/other accelerators**: enable only through a backend already supported and exercised in the project. Device detection alone is not inference support.
+- **Apple Silicon**: reuse HGPS's shared device metadata/tuning abstraction where available, but permit GPU inference only for a real, tested Strife backend/device/OS combination. Do not bypass existing Strife platform support gates because HGPS can recognize an Apple chip.
+
+Generate a shared capability table for architecture, backend operations, quant/tensor types, context/batch limits, cache/offload support, concurrency restrictions, and test maturity. Profile names must not imply identical capabilities across an entire GPU family. Where hardware isn't available in CI, mark it unverified and provide an opt-in test path rather than declaring it tested.
+
+## 4. Memory planning, placement, and resource pressure
+
+Use HGPS to calculate a conservative resource budget before loading weights and before expanding KV cache, scratch buffers, graphs, or batch sizes. Account for weights, quantization metadata, workspaces, KV cache, concurrent requests, temporary buffers, and a configurable safety reserve. Report host RAM, VRAM, and unified memory distinctly.
+
+Implement and test:
+
+- GPU layer/tensor offload within validated backend support and a clear actual-placement report.
+- Reuse of loaded weights and safe buffer pooling to reduce repeated allocation and fragmentation.
+- Pinned memory and asynchronous transfers only where supported and measurable; avoid repeated CPU/GPU movement of resident tensors.
+- Bounded KV-cache, context, queue, and concurrent-session allocation.
+- Configurable memory safety margins and pressure handling that can reduce future micro-batches, stop admitting queued work, release eligible scratch, or reject a request before unsafe allocation.
+- A bounded OOM recovery path: release eligible temporary resources, retry once with a documented safe configuration only when correctness permits, then return an actionable error. Never retry forever or silently truncate context/output.
+- Correct cleanup and telemetry accounting after cancellation, partial load, backend failure, or failed initialization.
+- Safe behavior on unified-memory systems; do not treat the whole machine memory pool as free memory available to Strife.
+
+If a model cannot fit, clearly offer only supported alternatives: offload, lower context/batch, CPU fallback, or a clear incompatibility error. Never report full GPU residency when some model layers/tensors reside in host memory.
+
+## 5. Runtime lifecycle and generation correctness
+
+Refine existing code into clear contracts for model validation/loading, tokenizer and chat-template handling, tensor/quant dispatch, backend execution, HGPS bridge, context/KV-cache management, request scheduling, sampling, stream delivery, session management, telemetry, and errors. Fit these boundaries to the current code rather than layering unnecessary abstractions over working code.
+
+Implement and test an explicit lifecycle state machine such as discovered, validating, loading, ready, running, cancelling, unloading, failed, and closed. Illegal transitions must fail predictably. Repeated load/unload, cancellation, and backend resets must not leak buffers, mappings, locks, threads, or device contexts.
+
+Validate supported fixtures for tokenizer IDs and special tokens, BOS/EOS, prompt encoding, chat templates, stop sequences, sampler behavior, seeded generation in deterministic mode where the backend permits it, and context overflow. Streaming must preserve chunk order and distinguish completed, stopped, cancelled, and failed results. Report usage and timing without double-counting prompt or generated tokens. Isolate KV cache, tokenizer/sampler state, cancellation, and errors between concurrent sessions. Bound stream backpressure and pending queues.
+
+Do not advertise sampler options, cache formats, operators, or architectures that are not implemented and tested. Unsupported tensor/quant formats must fail before unsafe execution and identify the unsupported feature. Never silently reinterpret one quantization as another.
+
+## 6. GGUF, quantization, and capability improvements
+
+Improve preflight inspection to report architecture metadata, tokenizer/template availability, tensor-type counts, file size, quantization, context limits when discoverable, approximate resource requirements, backend placement options, and missing/conflicting metadata. Distinguish values read from the model file from estimates and runtime-verified capabilities.
+
+Harden parsing for integer overflow, offset/alignment errors, unreasonable dimensions or array lengths, truncated headers/files, duplicate metadata, invalid strings, non-finite values, and unsupported encodings. Add fixture-driven regressions plus bounded fuzz/property tests. Malformed or untrusted model files must not cause uncontrolled allocations, hangs, memory corruption, or code execution.
+
+Maintain one canonical capability registry keyed by architecture, tensor/quant type, backend, platform, and test maturity. Distinguish **recognized**, **parser-supported**, **load-tested**, **inference-tested**, **quality-checked**, and **performance-measured**. Generate CLI/docs support data from this registry to prevent lists from drifting apart.
+
+Enable an HNX custom quant kernel only when bit packing, scales/zero points, alignment, tensor layout, and decode behavior are defined and tested. A format that can only be parsed is inspect-only, not inference-supported. Add reference numerical comparisons and documented tolerances where possible.
+
+## 7. Performance, autotuning cache, and reproducibility
+
+Profile model inspection/load, tokenization, prompt prefill, decode kernels, KV-cache operations, quant/dequant dispatch, transfer/synchronization, Python orchestration, stream delivery, and telemetry separately. Optimize measured hot paths: reduce avoidable copies, repeated allocation, per-token Python overhead, and unnecessary host/device synchronization. Use native/fused/vectorized kernels only when they improve measured performance without breaking the portable path.
+
+Keep cold-start and warm-run performance separate; exclude warmup from steady-state rates; report prefill tokens/sec separately from generated tokens/sec. Report time-to-first-token, latency spread/percentiles, throughput, host/device peak memory, configuration, and baseline results.
+
+HGPS tuning-cache keys must distinguish relevant device identity/architecture, backend, driver/runtime, Strife/HGPS version, kernel/build fingerprint, model architecture/quant family, context/batch profile, and material user options. Validate entries before reuse, expire or invalidate incompatible/stale entries, write atomically, and survive corrupt or read-only caches by falling back safely. Do not key only by marketing GPU name. Provide a way to inspect, clear, export, or disable tuning results. Bound the time and resources used for a cold tuning run.
+
+Compare with the patched HyperNix llama.cpp runner or another valid available baseline on identical hardware and comparable model file/revision, quantization, prompt, output limit, context, settings, and warmup policy. Report regressions and spread, and never assert a speed improvement without measurements. A missing model, backend, or GPU must produce an explicit skip reason, not a fabricated result.
+
+## 8. Diagnostics, CLI, and integration
+
+Extend existing CLI conventions with equivalent functionality to:
+
+- Strife doctor: check backend/driver visibility, build status, cache/config paths, permissions, HGPS status, and fallback health.
+- Strife inspect MODEL: report model and quant compatibility plus estimated resource requirements without fully loading weights.
+- Strife profile: show detected devices, supported operations, available HGPS profiles, tuning-cache validity, unavailable sensors, and reasons each execution path is enabled or disabled.
+- Strife run MODEL: expose only implemented controls for context, batch, GPU layers/offload, CPU threads, HGPS profile, deterministic mode, and resource ceilings.
+- Strife benchmark --model MODEL: record repeatable results without implicitly downloading models.
+
+Use structured logs, stable error codes, and request/session IDs. Include selected backend/profile, fallback reason, actual model placement, memory budget versus usage, queue depth, prefill/decode rates, first-token latency, cancellation, and recovery attempts. Keep telemetry bounded/configurable. Do not log prompt contents, private generated text, credentials, or excessive local path information by default. Support a redacted diagnostic bundle.
+
+Preserve and document the Python API. Avoid eagerly importing optional GPU backends. Where an OpenAI-compatible endpoint is already specified in pt1 or implemented, test the supported protocol subset including streaming, cancellation, timeouts, errors, usage, and request validation. Bind to loopback by default; external exposure must be explicit and documented. Do not label a partial protocol implementation fully OpenAI-compatible based on one successful request.
+
+Studio/local provider integration must support health/capability queries, inference start, streamed events, cancellation, and structured terminal errors without a T1 key. Never route a request to a cloud provider without an explicit configured choice.
+
+## 9. Safety, reliability, and failure isolation
+
+Treat model files, metadata, prompts, endpoint requests, and cache contents as untrusted. Validate inputs, bound allocations, restrict cache paths and writes, and use a versioned validated cache format rather than unsafe Python object deserialization.
+
+Test corrupted/truncated files, unsupported models/quants, absent tokenizer data, OOM, device reset/removal, backend initialization failure, kernel compilation errors, stale/corrupt HGPS caches, sensor errors, cancellation during prefill/decode, client disconnects, slow consumers, concurrent unload, interrupted load, and graceful shutdown. A device failure must not leave the runtime marked healthy or cause invalid buffers to be reused. Fall back only when request/session semantics can be preserved; otherwise fail clearly. Do not blindly retry non-idempotent work. Ensure one failed session cannot corrupt another.
+
+## 10. Test matrix and early-beta completion gate
+
+Create layered tests:
+
+1. **Always-on CPU tests:** no network or large downloads; generated/tiny fixtures; parser and registry tests; load/lifecycle; deterministic generation where supported; stream/cancel; session isolation; memory/queue bounds; config migration; error mapping; and import without optional GPU dependencies.
+2. **HGPS contract tests:** synthetic telemetry for low VRAM, high utilization, thermal pressure, unavailable CUDA features, missing sensors, autotune failure, stale/corrupt cache, clamped user settings, and recovery. Assert decisions and reason codes, not only mocked method calls.
+3. **Backend/native tests:** build and smoke-test every backend claimed in the support matrix; compare supported kernels with a reference using stated tolerances.
+4. **Optional hardware tests:** use compatible runners and local model fixtures for CPU, GTX 1080/1080 Ti, RTX 2080, modern NVIDIA examples, and AMD/Apple only where the actual backend/runner exists. Missing hardware is a skipped test with reason, never a pass.
+5. **Integration tests:** local API/provider, concurrent requests, restart after failures, cache/config migration, and comparable baseline runs.
+6. **Bounded parser fuzz/property tests:** a short deterministic CI subset plus a longer opt-in corpus.
+
+Call Strife **early beta / partially test-ready** only when evidence shows:
+
+- Clean build/install and repeatable CPU smoke tests pass on declared primary CI platforms.
+- At least one documented end-to-end route loads a compatible small local GGUF model, generates valid output, streams correctly, and cleans up after cancellation.
+- HGPS is connected end-to-end: Strife requests a real policy decision, applies supported recommendations, records runtime observations, exposes the selected profile/fallback reason, and safely degrades if HGPS/sensors are unavailable.
+- Auto works on the tested CPU path and on at least one accelerator if suitable hardware CI is available. If no accelerator runner is available, clearly mark GPU support unverified rather than claiming it.
+- Capability data matches actual passing tests; unsupported paths fail clearly.
+- Memory bounds, cancellation, session isolation, corrupt model/cache handling, and graceful shutdown pass.
+- Benchmark files are reproducible and differentiate measured results, estimates, targets, and skipped runs.
+- Packaging, CLI help, installation/upgrade docs, troubleshooting, and release notes are tested and updated.
+- A concise limitations note lists known defects, skipped tests, hardware gaps, and experimental features.
+
+Do not require every aspirational tokens/second target from pt1 to be met before early beta. Track each target honestly and prioritize correctness, stable HGPS scheduling, predictable resource use, and reproducible measurements.
+
+## 11. Delivery sequence
+
+1. Map the runtime/HGPS/backend architecture and write a file-to-feature implementation checklist.
+2. Define and test the HGPS-Strife workload, capability, decision, telemetry, and fallback contracts.
+3. Integrate HGPS with preflight, device selection, memory budgets, profile selection, and safe fallback.
+4. Harden runtime lifecycle, generation, cancellation, cleanup, and concurrent-session isolation.
+5. Complete capability reporting, tuning-cache reliability, diagnostics, and structured error handling.
+6. Profile real workloads and apply targeted optimizations with equivalent baseline benchmarks.
+7. Run CPU tests and every feasible backend/hardware test; label unavailable hardware tests as skipped.
+8. Update support registries, docs, packaging, changelog, and release notes based only on verified results.
+
+This is not complete merely because commands exist or one prompt returns text. A real supported local model must run end-to-end, HGPS must make and explain real decisions, core reliability/security tests must pass, support data must reflect evidence, and an external tester must be able to reproduce the documented early-beta path.
+
+
 ## HyperNix 0.74.0 — Build HyperNix0xV3 From Scratch  
 Create a completely new custom LLM architecture called **HyperNix0xV3** for HyperNix 0.74.0. This must be a genuine architectural evolution rather than a renamed Transformer or a collection of standard layers. Use **HyperNix0xV2 as conceptual inspiration**, but redesign the internals around efficiency, long-context reasoning, training stability, and hardware-aware execution.  
 HyperNix0xV3 must support **multiple model sizes/configurations**, from extremely small models suitable for consumer hardware up through very large models. The architecture should scale cleanly by changing dimensions, number of blocks, attention heads, context length, parameter sharing, and other architectural scaling parameters without requiring separate implementations.  
