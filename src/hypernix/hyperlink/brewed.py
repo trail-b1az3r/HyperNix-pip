@@ -1,4 +1,4 @@
-"""Native HyperNix models, and HyperNix.3-mini as the runner's default.
+"""Native HyperNix models, and HyperNix.3-mini, fetched when named.
 
 The runner served GGUF files through llama.cpp and nothing else. A model
 HyperNix trained itself, a ``hyperNix0x-v2`` checkpoint written by
@@ -11,11 +11,13 @@ the catalogue. :mod:`hypernix.hyperlink.brewed_server` serves one over
 the same OpenAI-compatible API llama-server speaks, so nothing
 downstream has to know which kind of model is answering.
 
-The default model
------------------
+HyperNix.3-mini
+---------------
 ``ray0rf1re/HyperNix.3-mini``: 48.7M parameters, trained from scratch on
-one GTX 1080, 512 tokens of context. ``hypernix-t1 runner start`` with no
-model named starts it, and downloads it the first time (about 195 MB).
+one GTX 1080, 512 tokens of context. It was the runner's default until
+0.72.8, when LFM2.5-2.6B took over (:mod:`hypernix.hyperlink.defaultmodel`);
+``hypernix-t1 runner start hypernix.3-mini`` still downloads it the first
+time (about 195 MB).
 ``T1_DEFAULT_MODEL`` names a different default, and ``T1_DEFAULT_MODEL=``
 (empty) turns the default off, which brings back "start the only model
 on this machine".
@@ -81,10 +83,16 @@ class BrewedError(RuntimeError):
 
 
 def default_model_id() -> str:
-    """The runner's default model id, or ``""`` when the default is off."""
+    """The runner's default model id, or ``""`` when the default is off.
+
+    LFM2.5-2.6B since 0.72.8 (see :mod:`hypernix.hyperlink.defaultmodel`);
+    HyperNix.3-mini is still fetched when named.
+    """
     if "T1_DEFAULT_MODEL" in os.environ:
         return os.environ["T1_DEFAULT_MODEL"].strip()
-    return DEFAULT_MODEL_ID
+    from .defaultmodel import DEFAULT_MODEL_ID as RUNNER_DEFAULT
+
+    return RUNNER_DEFAULT
 
 
 def matches_default(model_id: str) -> bool:

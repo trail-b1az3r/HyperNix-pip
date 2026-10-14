@@ -183,6 +183,14 @@ KNOWN_MODELS: dict[str, ModelInfo] = {
     # All Qwen3.5 checkpoints use a novel hybrid linear/full attention that's
     # implemented in transformers.Qwen3_5ForConditionalGeneration; they always
     # load via AutoModel.
+    # 0.72.8: the default. Liquid AI publishes no 2.7B; "lfm2.5-2.7b"
+    # is the name people reach for and resolves to the 2.6B.
+    "lfm2.5-2.6b": ModelInfo(
+        "LiquidAI/LFM2.5-2.6B", "auto", "Liquid AI LFM2.5 2.6B — AutoModel. The default.",
+    ),
+    "lfm2.5-2.7b": ModelInfo(
+        "LiquidAI/LFM2.5-2.6B", "auto", "Liquid AI LFM2.5 2.6B (the 2.7B name) — AutoModel.",
+    ),
     "qwen3.5-0.8b": ModelInfo(
         "Qwen/Qwen3.5-0.8B", "auto", "Qwen3.5 0.8B — AutoModel.",
     ),

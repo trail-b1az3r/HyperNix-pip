@@ -533,18 +533,20 @@ class TestStartAgainstARealServer:
 
 
 class TestTheDefaultModel:
-    """`start` with no model named starts HyperNix.3-mini (0.72.6.post1)."""
+    """`start` with no model named starts the default: HyperNix.3-mini from
+    0.72.6.post1, LFM2.5-2.6B from 0.72.8."""
 
     def test_it_is_named_without_asking_the_catalogue(self, calls, monkeypatch, capsys):
         monkeypatch.delenv("T1_DEFAULT_MODEL", raising=False)
         calls.replies.append((200, {"loaded": False}))
-        calls.replies.append((200, {"loaded": True, "model": {"model_id": "hypernix.3-mini"}}))
-        assert runner_cli.main(["start"]) == 0
+        calls.replies.append((200, {"loaded": True, "model": {"model_id": "lfm2.5-2.6b"}}))
+        assert runner_cli.main(["start", "--no-pick"]) == 0
         methods = [(m, u.rsplit("/", 2)[-2] + "/" + u.rsplit("/", 1)[-1]) for m, u, _k, _p in calls.recorded]
         assert ("GET", "hyperlink/models") not in methods
         load = calls.recorded[-1]
-        assert load[1].endswith("/runner/load") and load[3]["model_id"] == "hypernix.3-mini"
-        assert "ray0rf1re/HyperNix.3-mini" in capsys.readouterr().err
+        assert load[1].endswith("/runner/load") and load[3]["model_id"] == "lfm2.5-2.6b"
+        err = capsys.readouterr().err
+        assert "LiquidAI/LFM2.5-2.6B-GGUF" in err and "1.7 GB" in err
 
     def test_another_default_can_be_configured(self, calls, monkeypatch):
         monkeypatch.setenv("T1_DEFAULT_MODEL", "qwen3-8b")

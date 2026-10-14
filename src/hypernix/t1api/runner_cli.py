@@ -262,19 +262,26 @@ def _why_nothing(catalogue: dict[str, Any]) -> str:
 def _pick(url: str, key: str) -> tuple[str, int]:
     """``(model_id, exit_code)`` for a ``start`` that named no model.
 
-    The default model when there is one (HyperNix.3-mini unless
+    The default model when there is one (LFM2.5-2.6B unless
     ``T1_DEFAULT_MODEL`` says otherwise), fetched by the server the first
     time. With the default turned off (``T1_DEFAULT_MODEL=``): one model
     is not a guess, so it starts. More than one is, and guessing wrong
     costs the VRAM and the minutes of a load somebody then has to undo,
     so it lists them and stops.
     """
+    from ..hyperlink import defaultmodel
     from ..hyperlink.brewed import DEFAULT_MODEL_ID, DEFAULT_MODEL_REPO, default_model_id
 
     default = default_model_id()
     if default:
-        fetched = (f", from {DEFAULT_MODEL_REPO} (the server downloads it the first "
-                   f"time, about 195 MB)") if default == DEFAULT_MODEL_ID else ""
+        fetched = ""
+        if defaultmodel.matches(default):
+            fetched = (f", from {defaultmodel.DEFAULT_GGUF_REPO} (the server downloads "
+                       f"{defaultmodel.DEFAULT_GGUF_FILE} the first time, about "
+                       f"{defaultmodel.DEFAULT_GGUF_BYTES / 1e9:.1f} GB)")
+        elif default == DEFAULT_MODEL_ID:
+            fetched = (f", from {DEFAULT_MODEL_REPO} (the server downloads it the first "
+                       f"time, about 195 MB)")
         print(f"Starting the default model, {default}{fetched}. Name a model to "
               f"start a different one; T1_DEFAULT_MODEL= turns the default off.",
               file=sys.stderr)
@@ -343,10 +350,10 @@ def build_parser() -> argparse.ArgumentParser:
     # you type when the machine has one model and nothing serving it,
     # which is the state every fresh install is in.
     start = sub.add_parser(
-        "start", help="start serving — the default model (HyperNix.3-mini) unless you name one"
+        "start", help="start serving — the default model (LFM2.5-2.6B) unless you name one"
     )
     start.add_argument("model_id", nargs="?", default="",
-                       help="the model to serve (default: T1_DEFAULT_MODEL, else HyperNix.3-mini)")
+                       help="the model to serve (default: T1_DEFAULT_MODEL, else lfm2.5-2.6b)")
     start.add_argument("--restart", action="store_true",
                        help="load again even if that model is already serving")
     start.add_argument("--no-pick", action="store_true",

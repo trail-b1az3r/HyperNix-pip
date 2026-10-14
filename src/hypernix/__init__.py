@@ -65,7 +65,7 @@ from typing import TYPE_CHECKING, Any
 
 __version__ = "0.72.8a0"
 DEFAULT_REPO_ID = "ray0rf1re/hyper-Nix.2"
-DEFAULT_MODEL = "qwen3.5-4b"  # New default model
+DEFAULT_MODEL = "lfm2.5-2.6b"  # 0.72.8: Liquid AI LFM2.5 2.6B ("lfm2.5-2.7b" works too)
 
 __all__ = [
     "ARCH_PRESETS",
