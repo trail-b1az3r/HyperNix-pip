@@ -450,6 +450,32 @@ final class AppState {
         }
     }
 
+    /// The account this app is signed in to, if any (0.72.8).
+    var signedInAccount: String = UserDefaults.standard.string(forKey: "hyperlink.account") ?? ""
+
+    /// Sign in to an account on the paired server. However the app got
+    /// here -- a key, the trusted network, a pairing code -- the account's
+    /// own key replaces the credential, so chats follow the account to
+    /// every device and survive a reinstall.
+    func signIn(username: String, password: String) async -> Bool {
+        connectionError = nil
+        do {
+            let result = try await client.login(
+                username: username, password: password, deviceName: connection.deviceName
+            )
+            isKeyless = false
+            persist(token: result.key)
+            await client.configure(endpoints: connection.endpoints, token: result.key)
+            signedInAccount = result.account.username
+            UserDefaults.standard.set(result.account.username, forKey: "hyperlink.account")
+            await refreshAll()
+            return true
+        } catch {
+            connectionError = error.localizedDescription
+            return false
+        }
+    }
+
     /// Sign out. The server-side revoke is attempted but not required:
     /// a phone being wiped on a train has no route to the PC, and
     /// refusing to clear the local token in that case would leave the
@@ -1174,6 +1200,8 @@ final class AppState {
         // Setting it in the task left a window where two quick taps both
         // passed the guard and sent the same message twice.
         isSending = true
+        // When Send was pressed: what the ping and the signature carry.
+        let pressedAt = Date()
         streamingText = ""
         lastError = nil
         messages.append(
@@ -1185,7 +1213,8 @@ final class AppState {
         // screen, and `cancelStreaming()` needs something to cancel.
         streamTask = Task { [weak self] in
             await self?.runTurn(
-                sessionID: sessionID, text: trimmed, attachmentIDs: attachmentIDs, modelID: modelID
+                sessionID: sessionID, text: trimmed, attachmentIDs: attachmentIDs, modelID: modelID,
+                pressedAt: pressedAt
             )
         }
     }
@@ -1221,7 +1250,7 @@ final class AppState {
 
     private func runTurn(
         sessionID: String, text: String, attachmentIDs: [String], modelID: String?,
-        regenerate: Bool = false
+        regenerate: Bool = false, pressedAt: Date = Date()
     ) async {
         // Whatever happens below, the composer must come back. An early
         // return that leaves `isSending` true is a permanently stuck UI.
@@ -1235,7 +1264,8 @@ final class AppState {
                 content: text,
                 attachmentIDs: attachmentIDs,
                 modelID: modelID,
-                regenerate: regenerate
+                regenerate: regenerate,
+                pressedAt: pressedAt
             )
             for try await event in SSEStream.events(for: request) {
                 switch event {

@@ -260,6 +260,14 @@ class T1APIConfig:
     # The most instances one POST /inference/relay may rotate through.
     relay_max_instances: int = field(default_factory=lambda: _int_env("T1_RELAY_MAX_INSTANCES", 8))
 
+    # HyperLink prompts carry a signature (hypernix.hyperlink.signing) from
+    # 0.72.8 apps. Off: a signature that is present is checked, and one
+    # that is absent is let through, for older apps. On: every send,
+    # resend and edit must be signed.
+    hyperlink_require_signed: bool = field(
+        default_factory=lambda: _bool_env("T1_HYPERLINK_REQUIRE_SIGNED", False)
+    )
+
     # --- Audit --------------------------------------------------------------
     audit_enabled: bool = field(default_factory=lambda: _bool_env("T1_AUDIT_ENABLED", True))
 
@@ -646,6 +654,7 @@ class T1APIConfig:
             "hyperchat_max_queued": self.hyperchat_max_queued,
             "feature_prices": self.feature_prices(),
             "relay_max_instances": self.relay_max_instances,
+            "hyperlink_require_signed": self.hyperlink_require_signed,
             "hyperlink_default_prompt": self.hyperlink_default_prompt,
             "hyperlink_public_url": self.hyperlink_public_url,
             "hyperlink_max_upload_bytes": self.hyperlink_max_upload_bytes,

@@ -376,6 +376,22 @@ class AccountStore:
             ).fetchone()
         return self._row_to_account(row) if row else None
 
+    def account_for_key(self, key_id: str) -> Account | None:
+        """The account a minted key belongs to, or None (0.72.8: HyperLink
+        files a key's chats under its account)."""
+        if not key_id:
+            return None
+        with self.backend.connect() as conn:
+            rows = conn.execute(
+                f"SELECT {self._COLUMNS} FROM t1_accounts WHERE key_ids LIKE ?",  # nosec B608 - values are bound parameters; interpolated SQL is fixed or allowlisted
+                (f"%{key_id}%",),
+            ).fetchall()
+        for row in rows:
+            account = self._row_to_account(row)
+            if key_id in account.key_ids:
+                return account
+        return None
+
     def by_username(self, username: str) -> Account | None:
         with self.backend.connect() as conn:
             row = conn.execute(

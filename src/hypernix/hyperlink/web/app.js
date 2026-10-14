@@ -12,6 +12,8 @@ const state = {
   token: "",
   sessions: [],
   loaded: [],
+  signer: "",
+  serverSessionId: "",
   sessionId: "",
   messages: [],
   models: [],
@@ -51,6 +53,82 @@ async function api(path, { method = "GET", body, signal } = {}) {
     throw new ApiError(response.status, message);
   }
   return data;
+}
+
+// ---------------------------------------------------------------------------
+// The ping before a prompt, and signed prompts (0.72.8)
+// ---------------------------------------------------------------------------
+//
+// When Send is pressed: a ping, answered without a model, that must come
+// back within four seconds -- otherwise the server is not answering and
+// we say so, rather than waiting on a prompt that may never return. Then
+// the prompt, signed (hypernix/hyperlink/signing.py) with who sent it,
+// when Send was pressed, a fresh 23-26 character nonce, the chat and the
+// server session. Signing needs the browser's crypto, which only a
+// secure page (https, or localhost) has; elsewhere prompts go unsigned,
+// which a server accepts unless it requires signatures.
+
+const SIGN_VERSION = "hyperlink-sign/v1";
+const PING_TIMEOUT_MS = 4000;
+const NONCE_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+
+function canSign() {
+  return Boolean(state.token && window.crypto && window.crypto.subtle);
+}
+
+function newNonce(length = 24) {
+  const bytes = new Uint8Array(length);
+  window.crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => NONCE_CHARS[b % NONCE_CHARS.length]).join("");
+}
+
+const hex = (buffer) => Array.from(new Uint8Array(buffer), (b) => b.toString(16).padStart(2, "0")).join("");
+
+async function sha256Hex(text) {
+  return hex(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text)));
+}
+
+async function signature({ action, chatSessionId = "", content = "", serverSessionId = "", signedAt, signer }) {
+  const fields = {
+    signer, signed_at: signedAt, nonce: newNonce(24 + Math.floor(Math.random() * 3)),
+    chat_session_id: chatSessionId, server_session_id: serverSessionId, action,
+    content_sha256: content ? await sha256Hex(content) : "",
+  };
+  const canonical = [SIGN_VERSION, fields.signer, String(fields.signed_at), fields.nonce,
+    fields.chat_session_id, fields.server_session_id, fields.action, fields.content_sha256].join("\n");
+  const keyBytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${SIGN_VERSION}:${state.token}`));
+  const key = await crypto.subtle.importKey("raw", keyBytes, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  fields.signature = hex(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(canonical)));
+  return fields;
+}
+
+// The ping, stamped with when Send was pressed. Resolves to the server
+// session and the signer, or throws "not answering" after four seconds.
+async function pingBeforeSend(chatSessionId, sentAt) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), PING_TIMEOUT_MS);
+  try {
+    if (!state.signer) state.signer = await learnSigner(controller.signal);
+    const sig = await signature({ action: "ping", chatSessionId, signedAt: Math.floor(sentAt),
+      signer: state.signer, serverSessionId: "" });
+    const answer = await api("/hyperlink/ping", { method: "POST", signal: controller.signal,
+      body: { sent_at: sentAt, chat_session_id: chatSessionId, signature: sig } });
+    state.signer = answer.signer;
+    state.serverSessionId = answer.server_session_id;
+    return answer;
+  } catch (error) {
+    if (error.name === "AbortError") {
+      throw new Error("The server did not answer within 4 seconds. Check the connection and send again.");
+    }
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// Who this credential signs as: key:<key id> or account:<id>.
+async function learnSigner(signal) {
+  return (await api("/hyperlink/whoami", { signal })).signer || "";
 }
 
 // ---------------------------------------------------------------------------
@@ -305,7 +383,16 @@ async function send(text) {
   if (state.token) headers.Authorization = `Bearer ${state.token}`;
   const payload = { content: text };
   if (state.modelId) payload.model_id = state.modelId;
+  // When Send was pressed: what the ping and the signature both carry.
+  const pressedAt = Date.now() / 1000;
   try {
+    if (canSign()) {
+      await pingBeforeSend(sessionId, pressedAt);
+      payload.signature = await signature({
+        action: "send", chatSessionId: sessionId, content: text, signedAt: Math.floor(pressedAt),
+        signer: state.signer, serverSessionId: state.serverSessionId,
+      });
+    }
     const response = await fetch(
       `/hyperlink/sessions/${encodeURIComponent(sessionId)}/chat/stream`,
       { method: "POST", headers, body: JSON.stringify(payload), signal: controller.signal });

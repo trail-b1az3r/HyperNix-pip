@@ -104,6 +104,8 @@ from ..schemas import (
     HyperLinkEndpointsResponse,
     HyperLinkPeer,
     HyperLinkPeersResponse,
+    HyperLinkPingRequest,
+    HyperLinkPingResponse,
     LoadedModelsResponse,
     MessageEditRequest,
     MessageEditResponse,
@@ -663,6 +665,7 @@ def edit_message(
     store: ChatSessionStore = Depends(get_session_store),
     config: T1APIConfig = Depends(get_config),
     request_id: str = Depends(get_request_id),
+    request: Request = None,
 ) -> MessageEditResponse:
     """Rewrite one of your own messages, and drop what came after it.
 
@@ -678,6 +681,9 @@ def edit_message(
     a different feature and not one anybody asked for.
     """
     _require_enabled(config)
+    store.get(session_id, owner=principal.owner)
+    _check_signature(request, principal, config, payload.signature, action="edit",
+                     chat_session_id=session_id, content=payload.content)
     removed = store.edit_message(
         session_id, message_id,
         content=payload.content, owner=principal.owner, truncate=payload.truncate,
@@ -1262,6 +1268,193 @@ def _bridge_error(exc: LMStudioError) -> T1APIError:
     return T1APIError(code, str(exc), details=exc.to_dict(), http_status=status)
 
 
+# ---------------------------------------------------------------------------
+# Signed prompts and the ping before them (0.72.8)
+# ---------------------------------------------------------------------------
+
+
+def _server_session(request: Request) -> str:
+    """This server process's id: what prompts are signed for."""
+    from ...hyperlink.signing import NonceCache, new_server_session_id
+
+    state = request.app.state
+    if not getattr(state, "t1_server_session", None):
+        state.t1_server_session = new_server_session_id()
+        state.t1_signature_nonces = NonceCache()
+    return state.t1_server_session
+
+
+def _signer(principal: HyperLinkPrincipal) -> str:
+    """account:<id> when the owner is an account, else key:<key id>."""
+    from ...hyperlink.ownership import ACCOUNT_PREFIX
+
+    return principal.owner if principal.owner.startswith(ACCOUNT_PREFIX) else f"key:{principal.owner}"
+
+
+def _credential(request: Request) -> str:
+    header = request.headers.get("authorization", "")
+    scheme, _, value = header.partition(" ")
+    return value.strip() if scheme.lower() == "bearer" else ""
+
+
+def _check_signature(
+    request: Request, principal: HyperLinkPrincipal, config: T1APIConfig,
+    signature: dict | None, *, action: str, chat_session_id: str, content: str | None,
+    allow_no_server_session: bool = False,
+):
+    """Refuse a send, resend or edit whose signature does not check out.
+
+    Unsigned is allowed for apps from before 0.72.8 unless the server
+    requires signatures. A signature from before a restart is a 409 with
+    the new server session id, so the app pings again and re-signs.
+    """
+    from ...hyperlink.signing import SignatureError, verify
+
+    current = _server_session(request)
+    if signature is None:
+        if config.hyperlink_require_signed:
+            raise T1APIError(
+                T1ErrorCode.AUTH_INVALID_TOKEN,
+                "This server requires signed prompts. Update HyperLink, which signs "
+                "every message when Send is pressed.",
+                details={"server_session_id": current}, http_status=401,
+            )
+        return None
+    credential = _credential(request)
+    if not credential:
+        raise T1APIError(
+            T1ErrorCode.AUTH_MISSING_CREDENTIALS,
+            "A signed prompt needs the key or device token it was signed with.",
+            http_status=401,
+        )
+    try:
+        return verify(
+            signature, credential=credential, signer=_signer(principal),
+            server_session_id=current, action=action, chat_session_id=chat_session_id,
+            content=content, nonces=request.app.state.t1_signature_nonces,
+            allow_no_server_session=allow_no_server_session,
+        )
+    except SignatureError as exc:
+        raise T1APIError(
+            T1ErrorCode.AUTH_INVALID_TOKEN, f"The message's signature was refused: {exc}",
+            details={"reason": exc.code, "server_session_id": current},
+            http_status=409 if exc.code == "server_session" else 401,
+        ) from exc
+
+
+@router.get("/whoami")
+def signing_identity(
+    request: Request,
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    config: T1APIConfig = Depends(get_config),
+    request_id: str = Depends(get_request_id),
+) -> dict[str, Any]:
+    """Who this credential is to HyperLink: what its prompts are signed as,
+    and whether its chats are its key's or its account's (0.72.8)."""
+    _require_enabled(config)
+    from ...hyperlink.ownership import ACCOUNT_PREFIX
+
+    signer = _signer(principal)
+    return {
+        "signer": signer,
+        "owner_kind": "account" if principal.owner.startswith(ACCOUNT_PREFIX) else "key",
+        "device_id": principal.device_id,
+        "server_session_id": _server_session(request),
+        "request_id": request_id,
+    }
+
+
+@router.post("/login")
+async def hyperlink_login(request: Request, config: T1APIConfig = Depends(get_config),
+                          request_id: str = Depends(get_request_id)) -> dict[str, Any]:
+    """Sign the app in to an account, once (0.72.8).
+
+    However the app first reached this server -- a key, the local
+    network, a pairing code -- signing in mints a key that belongs to the
+    account and hands it back once; the app keeps it as its credential.
+    From then on its chats, memories and settings are the account's, on
+    every device that signs in, and survive a reinstall.
+
+    No cookie and no CSRF token: the credentials are in the body and the
+    result is a bearer key, which is how the app already talks.
+    """
+    _require_enabled(config)
+    from hypernix.security.keymaster import KeyScope, KeyType
+
+    from ..accounts import AccountError
+
+    settings = getattr(request.app.state, "t1_webauth", None)
+    store = getattr(request.app.state, "t1_accounts", None)
+    keymaster = getattr(request.app.state, "t1_keymaster", None)
+    if settings is None or not settings.enabled or store is None or keymaster is None:
+        raise T1APIError(
+            T1ErrorCode.NOT_FOUND,
+            "This server has no accounts. Ask its owner to turn web accounts on, or "
+            "keep using your key or pairing.",
+            http_status=404,
+        )
+    try:
+        body = await request.json()
+    except Exception:  # noqa: BLE001
+        body = None
+    if not isinstance(body, dict) or not body.get("username") or not body.get("password"):
+        raise T1APIError(T1ErrorCode.VALIDATION_ERROR, "Send a username and a password.")
+    try:
+        account = store.authenticate(str(body["username"]), str(body["password"]))
+    except AccountError as exc:
+        raise T1APIError(T1ErrorCode.AUTH_INVALID_KEY, exc.message, http_status=401) from exc
+    device = str(body.get("device_name") or "HyperLink")[:80]
+    meta = keymaster.create(key_type=KeyType.USER, scopes={KeyScope.READ, KeyScope.WRITE},
+                            note=f"HyperLink sign-in: {device}")
+    store.remember_key(account.account_id, meta.key_id)
+    from ...hyperlink.ownership import ACCOUNT_PREFIX
+
+    return {
+        "account": {"account_id": account.account_id, "username": account.username,
+                    "display_name": getattr(account, "display_name", "")},
+        "key": meta.key,
+        "key_id": meta.key_id,
+        "owner": ACCOUNT_PREFIX + account.account_id,
+        "note": "Keep this key; it is shown once. Your chats now belong to the account.",
+        "request_id": request_id,
+    }
+
+
+@router.post("/ping", response_model=HyperLinkPingResponse)
+def ping(
+    request: Request,
+    payload: HyperLinkPingRequest,
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    config: T1APIConfig = Depends(get_config),
+    request_id: str = Depends(get_request_id),
+) -> HyperLinkPingResponse:
+    """Answered when Send is pressed, before the prompt goes -- and never by
+    a model: a busy GPU must not make a reachable server look unreachable.
+
+    The app waits at most ``ping_timeout_seconds`` (4) for this. If it is
+    answered, the prompt follows with no timeout of its own. The ping is
+    signed (action ``ping``) with the time Send was pressed; the first one
+    may leave the server session id empty, which is how the app learns it.
+    """
+    _require_enabled(config)
+    received = time.time()
+    _check_signature(
+        request, principal, config, payload.signature, action="ping",
+        chat_session_id=payload.chat_session_id, content=None, allow_no_server_session=True,
+    )
+    signed_at = float(payload.signature.get("signed_at") or payload.sent_at)
+    if abs(payload.sent_at - signed_at) > 5:
+        raise T1APIError(
+            T1ErrorCode.VALIDATION_ERROR,
+            "sent_at and the signature's time disagree; both are when Send was pressed",
+        )
+    return HyperLinkPingResponse(
+        server_session_id=_server_session(request), signer=_signer(principal),
+        received_at=received, transit_seconds=round(max(0.0, received - payload.sent_at), 3),
+        request_id=request_id,
+    )
+
+
 @router.post("/sessions/{session_id}/chat", response_model=HyperLinkChatResponse)
 def chat_turn(
     session_id: str,
@@ -1286,6 +1479,11 @@ def chat_turn(
     """
     _require_enabled(config)
     session = store.get(session_id, owner=principal.owner)
+    _check_signature(
+        request, principal, config, payload.signature,
+        action="resend" if payload.regenerate else "send", chat_session_id=session_id,
+        content=None if payload.regenerate else payload.content,
+    )
 
     if payload.regenerate:
         user_message = _last_user_message(store, session_id, principal.owner)
@@ -1462,6 +1660,11 @@ def chat_turn_stream(
     """
     _require_enabled(config)
     session = store.get(session_id, owner=principal.owner)
+    _check_signature(
+        request, principal, config, payload.signature,
+        action="resend" if payload.regenerate else "send", chat_session_id=session_id,
+        content=None if payload.regenerate else payload.content,
+    )
 
     if payload.regenerate:
         user_message = _last_user_message(store, session_id, principal.owner)

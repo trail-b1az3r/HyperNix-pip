@@ -1299,6 +1299,8 @@ class MessageEditRequest(BaseModel):
     #: question nobody asked, and that transcript is what gets sent as
     #: context on the next turn.
     truncate: bool = True
+    #: The edit, signed (see hypernix.hyperlink.signing), action "edit".
+    signature: dict[str, Any] | None = None
 
 
 class MessageEditResponse(BaseModel):
@@ -1324,6 +1326,39 @@ class HyperLinkChatRequest(BaseModel):
     #: last one (everything after it was removed), and sending its text
     #: again would put the same question in the thread twice.
     regenerate: bool = False
+    #: The prompt, signed when Send was pressed (hypernix.hyperlink.signing):
+    #: action "send", or "resend" for a regenerate. Required when the
+    #: server sets T1_HYPERLINK_REQUIRE_SIGNED=1.
+    signature: dict[str, Any] | None = None
+
+
+class HyperLinkPingRequest(BaseModel):
+    """``POST /hyperlink/ping``: sent when Send is pressed, answered
+    without a model. An empty body is not a ping."""
+
+    #: Unix time (seconds, fractions allowed) when Send was pressed.
+    sent_at: float
+    #: The chat (or code) session the prompt is for, if there is one yet.
+    chat_session_id: str = ""
+    #: Signed with action "ping"; the server session id may be empty on
+    #: the first ping, which is how the app learns it.
+    signature: dict[str, Any]
+
+
+class HyperLinkPingResponse(BaseModel):
+    pong: bool = True
+    #: This server process. Prompts are signed with it; it changes when
+    #: the server restarts, and then the app pings again.
+    server_session_id: str
+    #: Who the server takes the sender to be: what prompts are signed as.
+    signer: str
+    received_at: float
+    #: Seconds between Send being pressed and the ping arriving.
+    transit_seconds: float
+    #: How long the app should wait for a ping before saying the server
+    #: is not answering.
+    ping_timeout_seconds: float = 4.0
+    request_id: str = ""
 
 
 class HyperLinkChatResponse(BaseModel):

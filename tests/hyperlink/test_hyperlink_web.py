@@ -46,6 +46,10 @@ def api_app(monkeypatch):
     from hypernix.t1api.app import create_app
 
     monkeypatch.setenv("T1_TRUSTED_NETWORK", "1")
+
+    # Keyless chats are a shared pool only when asked for (0.72.8).
+
+    monkeypatch.setenv("T1_HYPERLINK_SHARED_KEYLESS_CHATS", "1")
     return create_app()
 
 
@@ -75,6 +79,10 @@ class TestThePageAndTheApiShareAnOrigin:
         from hypernix.t1api.app import create_app
 
         monkeypatch.setenv("T1_TRUSTED_NETWORK", "1")
+
+        # Keyless chats are a shared pool only when asked for (0.72.8).
+
+        monkeypatch.setenv("T1_HYPERLINK_SHARED_KEYLESS_CHATS", "1")
         monkeypatch.setenv("T1_WEB_ENABLED", "1")
         monkeypatch.setenv("T1_WEB_PORT", str(_free_port()))
         api_app = create_app()  # no lifespan here, so the site's own port stays shut
@@ -94,6 +102,10 @@ class TestThePageAndTheApiShareAnOrigin:
         from hypernix.t1api.app import create_app
 
         monkeypatch.setenv("T1_TRUSTED_NETWORK", "1")
+
+        # Keyless chats are a shared pool only when asked for (0.72.8).
+
+        monkeypatch.setenv("T1_HYPERLINK_SHARED_KEYLESS_CHATS", "1")
         monkeypatch.setenv("T1_WEB_ENABLED", "0")
         client = TestClient(create_app(), client=("127.0.0.1", 5000))
         assert client.get("/").status_code == 404

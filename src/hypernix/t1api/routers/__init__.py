@@ -119,6 +119,8 @@ ALL_ROUTERS = (
     mcp.router,
     # 0.72.6 pt2 -- keyless web search for HyperLink and hyperchat.
     web.router,
+    # T1 v1.1.26.10.1.0 -- /web/v2: max items, sites read, kept searches.
+    web.router_v2,
     # Code sandboxes. Off unless T1_CODE_SANDBOX; the reads say how to
     # turn it on, the rest refuse.
     code.router,

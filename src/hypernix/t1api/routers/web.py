@@ -114,6 +114,7 @@ async def web_search(
     outcome = ws.search(query, depth=depth, settings=settings)
     logger.info("web: search %r depth=%d -> %d hit(s) [%s]",
                 query[:80], depth, len(outcome.hits), outcome.status)
+    deprecated = request.url.path.rstrip("/").endswith("/search")
     if outcome.status == "ok":
         # One search, billed to the caller (0.72.8). A search that found
         # no engine or failed did no work worth a line on the bill.
@@ -121,6 +122,13 @@ async def web_search(
                              endpoint="/web/v1/search", unit="web_search", units=1)
     body = outcome.to_dict()
     body["request_id"] = request_id
+    if deprecated:
+        # T1 v1.1.26.10.1.0: /web/v2/I replaces it. Answered as before
+        # until HyperNix 0.73.0.
+        body["deprecated"] = ("/web/v1/search is deprecated and goes in HyperNix 0.73.0; "
+                              "use /web/v2/I?=query&q?=depth&mx?=max&sq?=read&&kpd?=false")
+        return JSONResponse(body, headers={"Deprecation": "true", "Sunset": "hypernix 0.73.0",
+                                           "Link": '</web/v2/I>; rel="successor-version"'})
     return JSONResponse(body)
 
 
@@ -344,3 +352,128 @@ async def web_config_write(
 
 
 __all__ = ["router"]
+
+
+# ---------------------------------------------------------------------------
+# v2 (T1 v1.1.26.10.1.0)
+# ---------------------------------------------------------------------------
+
+router_v2 = APIRouter(prefix="/web/v2", tags=["web"])
+
+
+def _admin_settings(request: Request):
+    from .. import websearch_v2 as v2
+
+    return v2.load_settings(getattr(request.app.state, "t1_web_config_dir", None))
+
+
+@router_v2.get("/I")
+@router_v2.get("/i")
+async def web_search_v2(
+    request: Request,
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    config: T1APIConfig = Depends(get_config),
+    meter=Depends(get_usage_meter),
+    request_id: str = Depends(get_request_id),
+):
+    """``/web/v2/I?=query&q?=depth&mx?=maxitems&sq?=#&&kpd?=true``
+
+    Search, return at most ``mx`` results, read and summarise the top
+    ``sq`` sites (``sq?=1``: only the first), and with ``kpd?=true`` keep
+    the search and the sites' text -- when the operator has turned search
+    storage on, in the format they chose (``hypernix-t1 config web``).
+    """
+    from .. import websearch_v2 as v2
+
+    admin = _admin_settings(request)
+    wanted = v2.parse_v2_query(request.url.query, admin)
+    if not wanted.query:
+        raise T1APIError(
+            T1ErrorCode.VALIDATION_ERROR,
+            "no search text. Use `/web/v2/I?=your+query&q?=1&mx?=10&sq?=1&&kpd?=false`.",
+            http_status=400,
+        )
+    outcome = ws.search(wanted.query, depth=wanted.depth, settings=_settings(request))
+    hits = outcome.hits[: wanted.max_items]
+    sites = []
+    for rank, hit in enumerate(hits[: wanted.read_sites], start=1):
+        entry = {"rank": rank, "url": hit.url, "title": hit.title}
+        try:
+            text = _fetch_for_summary(hit.url)
+        except T1APIError as exc:
+            entry["error"] = exc.message
+            sites.append(entry)
+            continue
+        text = text[:MAX_SUMMARIZE_CHARS]
+        entry["summary"] = ws.summarize(text, sentences=5, query=wanted.query, model=_model_for(request))
+        entry["chars"] = len(text)
+        entry["_text"] = text
+        sites.append(entry)
+    if outcome.status == "ok":
+        meter.record_quietly(key_id=principal.owner, feature="web_search",
+                             endpoint="/web/v2/I", unit="web_search", units=1)
+    kept = None
+    if wanted.keep:
+        kept = v2.keep({
+            "query": wanted.query, "depth": wanted.depth, "engine": outcome.engine,
+            "hits": [h.to_dict() for h in hits], "sites": sites, "owner": principal.owner,
+        }, settings=admin, config_dir=getattr(request.app.state, "t1_web_config_dir", None))
+    body = outcome.to_dict()
+    body.update(
+        hits=[h.to_dict() for h in hits], count=len(hits), max_items=wanted.max_items,
+        read_sites=wanted.read_sites,
+        sites=[{k: v for k, v in site.items() if k != "_text"} for site in sites],
+        kept=kept, request_id=request_id,
+    )
+    return JSONResponse(body)
+
+
+@router.get("/ai/config")
+@router.post("/ai/config")
+async def web_ai_config(
+    request: Request,
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    request_id: str = Depends(get_request_id),
+):
+    """The web settings, for a model acting for its user (as a tool).
+
+    Reading needs partial admin (a key with write) or admin; so does
+    changing the less risky settings -- ``store_format``, ``max_items``,
+    ``max_read_sites`` -- when ``ai_config`` allows it. Turning search
+    storage on, and ``ai_config`` itself, need a full admin, because a
+    prompt injected into a web page must not be able to start recording
+    what people search for.
+    """
+    from .. import websearch_v2 as v2
+
+    is_partial = principal.is_admin or "write" in principal.scopes or "admin" in principal.scopes
+    if not is_partial:
+        raise T1APIError(T1ErrorCode.AUTH_INSUFFICIENT_SCOPE,
+                         "Web settings need an admin key or partial admin (a key with write).",
+                         http_status=403)
+    config_dir = getattr(request.app.state, "t1_web_config_dir", None)
+    current = v2.load_settings(config_dir)
+    if request.method == "GET":
+        return JSONResponse({"settings": current.to_dict(), "ai_may_change": list(v2.AI_SAFE),
+                             "request_id": request_id})
+    if current.ai_config == "off" or (current.ai_config == "admin" and not principal.is_admin):
+        raise T1APIError(T1ErrorCode.AUTH_INSUFFICIENT_SCOPE,
+                         f"ai_config is {current.ai_config!r}: a model may not change web settings here.",
+                         http_status=403)
+    try:
+        payload = await request.json()
+    except Exception:  # noqa: BLE001
+        payload = None
+    if not isinstance(payload, dict) or not payload:
+        raise T1APIError(T1ErrorCode.VALIDATION_ERROR, "send {\"setting\": value, ...}", http_status=400)
+    for name, value in payload.items():
+        if name not in v2.AI_SAFE and not principal.is_admin:
+            raise T1APIError(T1ErrorCode.AUTH_INSUFFICIENT_SCOPE,
+                             f"{name} needs a full admin; a model with partial admin may change "
+                             f"{', '.join(v2.AI_SAFE)}.", http_status=403)
+        try:
+            current.set(name, value)
+        except ValueError as exc:
+            raise T1APIError(T1ErrorCode.VALIDATION_ERROR, str(exc), http_status=400) from exc
+    v2.save_settings(current, config_dir)
+    return JSONResponse({"settings": current.to_dict(), "changed": sorted(payload), "request_id": request_id})

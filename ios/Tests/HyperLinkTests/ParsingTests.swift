@@ -216,3 +216,25 @@ final class LoadedModelsParsingTests: XCTestCase {
         XCTAssertEqual(list.defaultModel, "")
     }
 }
+
+final class PromptSigningTests: XCTestCase {
+    /// Fixed inputs, checked against the server's implementation
+    /// (hypernix/hyperlink/signing.py): the same canonical form, key and MAC.
+    func testMatchesTheServer() {
+        let sig = PromptSigning.sign(
+            credential: "T1_secret", signer: "key:k1", chatSessionID: "chat1",
+            serverSessionID: "srv_x", action: "send", content: "héllo",
+            signedAt: Date(timeIntervalSince1970: 1_800_000_000), nonce: String(repeating: "n", count: 24)
+        )
+        XCTAssertEqual(sig.signed_at, 1_800_000_000)
+        XCTAssertEqual(sig.content_sha256, PromptSigning.sha256Hex("héllo"))
+        XCTAssertEqual(sig.signature, "c68a260d7c57d0465d001074bb025753789c9f4d53524b314fd974a8ac276ea7")
+    }
+
+    func testNoncesAreTwentyThreeToTwentySixCharacters() {
+        for _ in 0..<50 {
+            let n = PromptSigning.nonce()
+            XCTAssertTrue((23...26).contains(n.count))
+        }
+    }
+}

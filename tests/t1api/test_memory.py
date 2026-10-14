@@ -265,6 +265,8 @@ def client(tmp_path, monkeypatch) -> TestClient:
     from hypernix.t1api.app import create_app
 
     monkeypatch.setenv("T1_TRUSTED_NETWORK", "1")
+
+    monkeypatch.setenv("T1_HYPERLINK_SHARED_KEYLESS_CHATS", "1")
     monkeypatch.setenv("T1_DB_PATH", str(tmp_path / "t1api.sqlite3"))
     return TestClient(create_app(), client=("192.168.1.50", 5432))
 

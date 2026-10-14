@@ -259,6 +259,10 @@ def client(monkeypatch) -> TestClient:
     from hypernix.t1api.app import create_app
 
     monkeypatch.setenv("T1_TRUSTED_NETWORK", "1")
+
+    # Keyless chats are a shared pool only when asked for (0.72.8).
+
+    monkeypatch.setenv("T1_HYPERLINK_SHARED_KEYLESS_CHATS", "1")
     return TestClient(create_app(), client=("192.168.1.50", 5432))
 
 

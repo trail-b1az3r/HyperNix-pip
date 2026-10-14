@@ -185,6 +185,7 @@ def client(**env) -> TestClient:
         if name.startswith("T1_") and name not in STORAGE_KEYS:
             os.environ.pop(name)
     os.environ["T1_TRUSTED_NETWORK"] = "1"
+    os.environ["T1_HYPERLINK_SHARED_KEYLESS_CHATS"] = "1"
     for key, value in env.items():
         os.environ[key] = value
     return TestClient(create_app(), client=("192.168.1.50", 5432))

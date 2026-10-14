@@ -62,6 +62,7 @@ _ENV = (
     "T1_TRUSTED_NETWORK_TAILNET_VERIFY",
     "T1_TRUSTED_NETWORK_PARTIAL_ADMIN",
     "T1_TRUSTED_PROXIES",
+    "T1_HYPERLINK_SHARED_KEYLESS_CHATS",
 )
 
 
@@ -100,9 +101,18 @@ class TestAKeylessRequestReachesHyperLink:
         both = client(LAN, T1_TRUSTED_NETWORK="1")
         assert both.get(ORDINARY).status_code == both.get(HYPERLINK).status_code
 
-    def test_a_session_list_is_readable_too(self):
-        """Not just the discovery route: the phone is useless if it can
-        see the server and none of its conversations."""
+    def test_chats_need_an_owner(self, monkeypatch):
+        """0.72.8: chats belong to an account or a key. Keyless, the
+        server still answers -- status, models, hardware -- but the
+        sessions were one pool every keyless device shared, so they are
+        refused, with how to get some."""
+        monkeypatch.delenv("T1_HYPERLINK_SHARED_KEYLESS_CHATS", raising=False)
+        response = client(LAN, T1_TRUSTED_NETWORK="1").get("/hyperlink/sessions")
+        assert response.status_code == 401
+        assert "account or a key" in response.json()["error"]["message"]
+
+    def test_the_shared_pool_can_be_turned_back_on(self, monkeypatch):
+        monkeypatch.setenv("T1_HYPERLINK_SHARED_KEYLESS_CHATS", "1")
         assert (
             client(LAN, T1_TRUSTED_NETWORK="1").get("/hyperlink/sessions").status_code
             == 200
