@@ -480,13 +480,33 @@ def _run_all(raw: list[str]) -> int:
 # ---------------------------------------------------------------------------
 
 def _run_download(raw: list[str]) -> int:
-    from hypernix.models.download import download_model
+    """``hnx download [SOURCE] [-o OUT]``.
+
+    SOURCE is a repo id, a short name, a link to a repo, or a link to one
+    file in it (0.72.8); ``--repo-id`` still works and is now optional.
+    """
+    from hypernix.models.hflinks import LinkError, parse_source, pick_gguf
     from hypernix.timing.spinner import Spinner
 
-    p = argparse.ArgumentParser(prog="hypernix download")
-    p.add_argument("--repo-id", default="ray0rf1re/hyper-nix.1")
+    p = argparse.ArgumentParser(
+        prog="hypernix download",
+        description="Download a model: a repo, a link to one, or a link to a single file.",
+        epilog="examples:\n"
+               "  hnx download ray0rf1re/hyper-nix.1\n"
+               "  hnx download https://huggingface.co/owner/repo -o ./repo\n"
+               "  hnx download https://huggingface.co/owner/repo/blob/main/m-Q4_K_M.gguf -o m.gguf\n"
+               "  hnx download owner/repo-GGUF -f m-Q8_0.gguf",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    p.add_argument("source", nargs="?", default=None,
+                   help="Repo id, short name, https://huggingface.co/... link, or a link to a .gguf")
+    p.add_argument("--repo-id", default=None, help="The same as SOURCE (kept for scripts)")
+    p.add_argument("-f", "--file", default=None,
+                   help="One file from the repo instead of the whole model, e.g. a .gguf")
+    p.add_argument("-o", "--output", default=None,
+                   help="Where it goes: a folder, or for one file a file name")
     p.add_argument("--revision", default=None)
-    p.add_argument("--local-dir", default=None)
+    p.add_argument("--local-dir", default=None, help="Same as -o for a whole repo")
     p.add_argument("--cache-dir", default=None)
     p.add_argument("--token", default=None)
     p.add_argument("--quiet", action="store_true")
@@ -495,14 +515,95 @@ def _run_download(raw: list[str]) -> int:
         help="Skip the post-download sanity check.",
     )
     ns = p.parse_args(raw)
-    with Spinner(f"Downloading {ns.repo_id}", style="arc"):
+    text = ns.source or ns.repo_id or "ray0rf1re/hyper-nix.1"
+    try:
+        source = parse_source(text)
+    except LinkError as exc:
+        print(f"hypernix download: {exc}", file=sys.stderr)
+        return 2
+    revision = ns.revision or source.revision
+    filename = ns.file or source.filename
+
+    if not filename and "/" in source.repo_id:
+        # A repo of GGUFs has no config.json: fetching it as a model
+        # finds "nothing to download". Take its one GGUF instead.
+        files = _repo_files(source.repo_id, revision, ns.token)
+        if files and not any(f.endswith((".safetensors", ".bin", ".pt")) for f in files):
+            filename = pick_gguf(files) or ""
+            if not filename and any(f.lower().endswith(".gguf") for f in files):
+                print(f"hypernix download: {source.repo_id} has several GGUF files; pick one with -f:",
+                      file=sys.stderr)
+                for name in sorted(f for f in files if f.lower().endswith(".gguf")):
+                    print(f"  {name}", file=sys.stderr)
+                return 2
+
+    if filename:
+        with Spinner(f"Downloading {filename} from {source.repo_id}", style="arc"):
+            try:
+                path = _download_file(source.repo_id, filename, revision=revision,
+                                      output=ns.output or ns.local_dir, token=ns.token,
+                                      cache_dir=ns.cache_dir)
+            except Exception as exc:  # noqa: BLE001 - shown, not a traceback
+                print(f"hypernix download: {exc}", file=sys.stderr)
+                return 1
+        print(path)
+        return 0
+
+    from hypernix.models.download import download_model
+
+    with Spinner(f"Downloading {source.repo_id}", style="arc"):
         path = download_model(
-            repo_id=ns.repo_id, revision=ns.revision,
-            local_dir=ns.local_dir, cache_dir=ns.cache_dir, token=ns.token,
+            repo_id=source.repo_id, revision=revision,
+            local_dir=ns.output or ns.local_dir, cache_dir=ns.cache_dir, token=ns.token,
             quiet=ns.quiet, verify=ns.verify,
         )
     print(path)
     return 0
+
+
+def _repo_files(repo_id: str, revision: str | None, token: str | None) -> list[str]:
+    """The repo's file names, or [] when the Hub cannot be asked."""
+    try:
+        from huggingface_hub import HfApi
+
+        return list(HfApi().list_repo_files(repo_id, revision=revision, token=token))
+    except Exception:  # noqa: BLE001 - offline: fall back to a model download
+        return []
+
+
+def _download_file(repo_id: str, filename: str, *, revision: str | None, output: str | None,
+                   token: str | None, cache_dir: str | None) -> Path:
+    """One file from a repo, to *output* (a folder, or a file name)."""
+    import shutil
+
+    from huggingface_hub import hf_hub_download
+
+    if output and not output.endswith(("/", "\\")) and Path(output).suffix and not Path(output).is_dir():
+        target = Path(output).expanduser().resolve()
+        folder = target.parent
+    else:
+        if output:
+            folder = Path(output).expanduser().resolve()
+        else:
+            try:
+                from hypernix.system.config import get_models_dir
+
+                folder = get_models_dir() / repo_id.split("/")[-1]
+            except Exception:  # noqa: BLE001
+                folder = Path.home() / ".hypernix" / "models" / repo_id.split("/")[-1]
+        target = folder / Path(filename).name
+    folder.mkdir(parents=True, exist_ok=True)
+    fetched = Path(hf_hub_download(repo_id=repo_id, filename=filename, revision=revision,
+                                   local_dir=str(folder), token=token, cache_dir=cache_dir))
+    if fetched.resolve() != target:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(fetched), str(target))
+        # hf_hub_download mirrors the repo's folders; drop the empty ones.
+        parent = fetched.parent
+        while parent != folder and parent.is_dir() and not any(parent.iterdir()):
+            parent.rmdir()
+            parent = parent.parent
+    return target
 
 
 def _run_convert(raw: list[str]) -> int:
@@ -516,6 +617,7 @@ def _run_convert(raw: list[str]) -> int:
         epilog="examples:\n"
                "  hypernix convert --model-dir ./snap --output snap.f16.gguf\n"
                "  hypernix convert ./snap -P -Q Q4_K_M\n"
+               "  hnx convert ./snap -q -p              (Q4_K_M)\n"
                "  hnx convert ./snap/model.safetensors -P -Q q6h4 -o snap.q6h4.gguf\n"
                "  hnx convert ./brewer_models/mine -P -Q q6h",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -525,14 +627,15 @@ def _run_convert(raw: list[str]) -> int:
                         "(same as --model-dir)")
     p.add_argument("--model-dir", default=None)
     p.add_argument("-o", "--output", default=None)
-    p.add_argument("-P", "--pipeline", action="store_true",
+    p.add_argument("-P", "-p", "--pipeline", action="store_true",
                    help="If the source is safetensors, convert it, then quantise "
                         "the result with hyprslug to the -Q target. A Brewer "
                         "model or a GGUF is quantised as it is.")
-    p.add_argument("-Q", "--quant", default=None, metavar="TARGET",
+    p.add_argument("-Q", "-q", "--quant", nargs="?", const="Q4_K_M", default=None, metavar="TARGET",
                    help="hyprslug target for -P: any llama.cpp type or mix "
                         "(Q4_K_M, Q8_0...), a HyperNix tier (INT3, FP8, "
-                        "IQ0.5...), or a hybrid (q6h, q6h4, q6h2). Implies -P.")
+                        "IQ0.5...), or a hybrid (q6h, q6h4, q6h2, hnx_q6h1, "
+                        "hnx_q6h1m). Implies -P. Alone, Q4_K_M.")
     p.add_argument("--keep-intermediate", action="store_true",
                    help="With -P, keep the F16 GGUF beside the output")
     p.add_argument("--imatrix", default=None, help="With -P, an importance matrix")
@@ -542,6 +645,9 @@ def _run_convert(raw: list[str]) -> int:
     p.add_argument("--n-head", type=int, default=None)
     p.add_argument("--context-length", type=int, default=None)
     ns = p.parse_args(raw)
+    if ns.quant and not (ns.source or ns.model_dir) and Path(ns.quant).expanduser().exists():
+        # `hnx convert -q ./model -p`: -q took the model as its target.
+        ns.source, ns.quant = ns.quant, "Q4_K_M"
     source = ns.source or ns.model_dir
     if not source:
         p.error("give a model: hypernix convert MODEL [-P -Q TARGET], or --model-dir")
@@ -578,6 +684,7 @@ def _note_architecture(path) -> None:
 
 def _run_convert_pipeline(ns: argparse.Namespace, source: str) -> int:
     """``convert -P``: safetensors -> GGUF -> hyprslug."""
+    from hypernix.models.brewer_gguf import GGUFExportError
     from hypernix.quant.convertq import ConvertQuantizeError, convert_and_quantize, source_kind
     from hypernix.quant.hyprslug import HyprslugError
     from hypernix.timing.spinner import Spinner
@@ -587,16 +694,23 @@ def _run_convert_pipeline(ns: argparse.Namespace, source: str) -> int:
               file=sys.stderr)
         return 2
     kind = source_kind(source)
-    step = {"safetensors": "Converting and quantising", "brewer": "Exporting and quantising",
-            "gguf": "Quantising"}.get(kind, "Quantising")
+    steps = 1 if kind == "gguf" else 2
+
+    def on_stage(name: str, what: str) -> None:
+        number = 1 if name == "convert" or steps == 1 else 2
+        verb = "converting" if name == "convert" else "quantising to"
+        print(f"[{number}/{steps}] {verb} {what}", file=sys.stderr, flush=True)
+
     try:
-        with Spinner(f"{step} to {ns.quant}", style="grow"):
+        with Spinner(f"{'Quantising' if steps == 1 else 'Converting, then quantising'} to {ns.quant}",
+                     style="grow"):
             result = convert_and_quantize(
                 source, ns.quant, ns.output, dtype=ns.dtype, arch_name=ns.arch,
                 name=None if ns.name == "HyperNix" else ns.name,
                 keep_intermediate=ns.keep_intermediate, imatrix=ns.imatrix,
+                on_stage=on_stage,
             )
-    except (ConvertQuantizeError, HyprslugError, FileNotFoundError) as exc:
+    except (ConvertQuantizeError, HyprslugError, GGUFExportError, FileNotFoundError) as exc:
         print(f"hypernix convert: {exc}", file=sys.stderr)
         return 1
     print(result.report.describe())
