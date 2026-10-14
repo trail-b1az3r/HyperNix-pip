@@ -79,9 +79,10 @@ extern "C" {
 #define HNX_TYPE_1375    207
 /* 0.72.8: the same structure, finer. HNX_15125: sixteen 7-bit
  * magnitudes (1.5 bits/weight). HNX_IQ1S: thirty-two 4-bit magnitudes,
- * one per 8 weights (1.5625, IQ1_S's rate). */
-#define HNX_TYPE_15125   212
-#define HNX_TYPE_IQ1S    213
+ * one per 8 weights (1.5625, IQ1_S's rate). 224/225 because
+ * ik_llama.cpp's repacked types take 202-223 and 229-233. */
+#define HNX_TYPE_15125   224
+#define HNX_TYPE_IQ1S    225
 
 /* The fixed-codebook pair. Every weight carries its own code into a
  * table of levels, so there is nothing reconstructed and nothing folded.

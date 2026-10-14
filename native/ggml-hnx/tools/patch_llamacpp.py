@@ -90,7 +90,7 @@ MARK_Q8K_CPU = "GGML_HNX_Q8K_VEC_DOT"
 #: upstream's own 36, 37 and 38 are commented out and their table slots
 #: sit empty -- and every read goes through a bounds-checked lookup by
 #: an id some tensor actually carries, never a sweep of the range.
-HNX_TYPE_COUNT = 214
+HNX_TYPE_COUNT = 226
 
 # The enum values. Kept as one string so the marker and the entries
 # cannot be added separately -- a tree with the marker but not the
@@ -114,8 +114,8 @@ ENUM_ADDITION = f"""\
         GGML_TYPE_HNX_INT2   = 209,
         GGML_TYPE_HNX_INT3   = 210,
         GGML_TYPE_HNX_FP8    = 211,
-        GGML_TYPE_HNX_15125  = 212,
-        GGML_TYPE_HNX_IQ1S   = 213,
+        GGML_TYPE_HNX_15125  = 224,
+        GGML_TYPE_HNX_IQ1S   = 225,
 """
 
 TRAITS_ADDITION = f"""\

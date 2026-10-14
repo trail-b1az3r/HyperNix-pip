@@ -343,7 +343,7 @@ def build_parser() -> argparse.ArgumentParser:
         action.add_argument("--context-length", type=int, default=None,
                             help="context window (default: the model's own)")
         action.add_argument("--backend", default="auto",
-                            help="auto, cuda, vulkan, cpu, hnx-cuda, hnx-cpu")
+                            help="auto, cuda, vulkan, cpu, hnx-cuda, hnx-cpu, multilama, multilama-ik, …")
 
     # `start` takes the model as an optional argument and `load` requires
     # it. Same request underneath; the difference is that `start` is what
@@ -363,7 +363,7 @@ def build_parser() -> argparse.ArgumentParser:
     backend = sub.add_parser(
         "backend", help="load what is serving again on another backend — choose from a list, or name one")
     backend.add_argument("name", nargs="?", default="",
-                         help="auto, cuda, vulkan, cpu, hnx-cuda, hnx-cpu, … (the server lists them)")
+                         help="auto, cuda, vulkan, cpu, hnx-cuda, hnx-cpu, multilama, … (the server lists them)")
 
     for name, help_text in (
         ("plan", "where a model's layers would go — changes nothing"),

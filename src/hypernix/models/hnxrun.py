@@ -227,8 +227,8 @@ _SUB_BIT_PACKINGS = {
     203: "quarter_code_uxl",
     204: "int1_binary",
     207: "hnx_1375bit",
-    212: "hnx_15125bit",
-    213: "hnx_iq1s",
+    224: "hnx_15125bit",
+    225: "hnx_iq1s",
 }
 
 #: HNX fixed-codebook GGML type -> the codec name lowbit.py knows it by.

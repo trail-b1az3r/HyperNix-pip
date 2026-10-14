@@ -145,8 +145,10 @@ class GGMLType(IntEnum):
     HNX_INT3 = 210
     HNX_FP8 = 211
     # 0.72.8: two more sign-plus-magnitude tiers. See subbit.PACKINGS.
-    HNX_15125 = 212
-    HNX_IQ1S = 213
+    # 224/225, not 212/213: ik_llama.cpp uses 202-233 for its repacked
+    # types (Q4_K_R4 is 212), and 224-228 are the free slots there.
+    HNX_15125 = 224
+    HNX_IQ1S = 225
 
 
 #: ``type -> (elements per block, bytes per block)``.
