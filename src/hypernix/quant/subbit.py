@@ -167,6 +167,21 @@ PACKINGS: dict[str, Packing] = {
     "hnx_1375bit": Packing(
         "hnx_1375bit", group=1, code_bits=1, sub_blocks=16, sub_bits=5
     ),
+    #: 0.72.8, "hnx15125": hnx_1375bit's sixteen sub-blocks with 7-bit
+    #: indices (127 levels rather than 31). 32 + 14 + 2 = 48 bytes, 1.5
+    #: bits per weight -- the nearest whole-byte block to the 1.5125 it
+    #: is named for, which no 256-weight block can hit exactly.
+    "hnx_15125bit": Packing(
+        "hnx_15125bit", group=1, code_bits=1, sub_blocks=16, sub_bits=7
+    ),
+    #: 0.72.8: IQ1_S's rate, HyperNix's way. Every sign plus a 4-bit
+    #: magnitude per 8 weights: 32 + 16 + 2 = 50 bytes, 1.5625 bits per
+    #: weight, exactly what llama.cpp's IQ1_S spends. Not IQ1_S itself:
+    #: that one indexes a 2048-entry grid this project does not ship and
+    #: needs an importance matrix to be usable at all.
+    "hnx_iq1s": Packing(
+        "hnx_iq1s", group=1, code_bits=1, sub_blocks=32, sub_bits=4
+    ),
 }
 
 

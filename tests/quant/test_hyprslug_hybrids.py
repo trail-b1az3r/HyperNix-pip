@@ -34,7 +34,7 @@ from hypernix.quant.hyprslug import (
 )
 
 LAYERS = 8
-HYBRIDS = ("hnx_Q6_H_k", "hnx_Q6_H_4", "hnx_Q6_H_2")
+HYBRIDS = ("hnx_Q6_H_k", "hnx_Q6_H_4", "hnx_Q6_H_2", "hnx_Q6_H_1", "hnx_Q6_H_1m")
 
 
 def _gaussian(count: int, seed: int) -> np.ndarray:
@@ -156,6 +156,8 @@ class TestTheNames:
         ("q6h4", "hnx_Q6_H_4"), ("hnxq6h4", "hnx_Q6_H_4"),
         ("q6h2", "hnx_Q6_H_2"), ("hnx_q6_h_2", "hnx_Q6_H_2"),
         ("q8k", "Q8_K"), ("Q8_K", "Q8_K"),
+        ("hnx_q6h1", "hnx_Q6_H_1"), ("q6h1", "hnx_Q6_H_1"),
+        ("hnx_q6h1m", "hnx_Q6_H_1m"), ("Q6H1M", "hnx_Q6_H_1m"),
     ])
     def test_recipes(self, spelling, expected):
         assert resolve_target(spelling) == ("recipe", expected)
@@ -163,6 +165,7 @@ class TestTheNames:
     @pytest.mark.parametrize("spelling,expected", [
         ("int3", "INT3"), ("i3", "INT3"), ("fp8", "FP8"), ("e4m3", "FP8"),
         ("iq1_xs", "HNX_1375BIT"), ("IQ1XS", "HNX_1375BIT"),
+        ("hnx15125", "HNX_15125BIT"), ("HNX_15125BIT", "HNX_15125BIT"), ("hnx_iq1s", "HNX_IQ1S"),
     ])
     def test_tiers(self, spelling, expected):
         assert resolve_target(spelling) == ("tier", expected)
@@ -189,7 +192,8 @@ class TestTheHybrids:
 
     @pytest.mark.parametrize("name", HYBRIDS)
     def test_every_format_is_one_the_recipe_declares(self, model, name):
-        declared = {("HNX_1375BIT" if f == "IQ1_XS" else f) for f in RECIPES[name].ingredients}
+        declared = {{"IQ1_XS": "HNX_1375BIT", "IQ1_S": "HNX_IQ1S"}.get(f, f)
+                    for f in RECIPES[name].ingredients}
         used = {fmt for fmt in _formats(model, name).values() if fmt}
         assert used <= declared
         assert len(used) >= 3, "a hybrid that uses one format is not a hybrid"
@@ -222,6 +226,27 @@ class TestTheHybrids:
         assert formats["blk.4.ffn_up.weight"] == "Q3_K"
         assert formats["blk.4.attn_q.weight"] == "Q3_K"            # Q3_K_L's base
         assert formats["blk.4.attn_k.weight"] == "Q5_K"            # ...and its widening
+
+    def test_q6h1_is_int2_q6_k_1375_iq1_s_and_q3_k_m(self, model):
+        """0.72.8: hnx_q6h1 = INT2, Q6_K, HNX_1375BIT, IQ1_S and Q3_K_M."""
+        formats = _formats(model, "hnx_Q6_H_1")
+        assert formats["output.weight"] == "Q6_K"
+        assert formats["blk.4.ffn_gate.weight"] == "HNX_1375BIT"   # the core
+        assert formats["blk.4.ffn_up.weight"] == "HNX_IQ1S"        # IQ1_S
+        assert formats["blk.1.ffn_up.weight"] == "INT2"            # a shoulder
+        assert formats["blk.0.ffn_up.weight"] == "Q3_K"            # an edge
+        assert {formats["blk.0.ffn_down.weight"], formats["blk.4.attn_q.weight"]} <= {"Q4_K", "Q3_K"}
+        assert set(formats.values()) - {""} == {"Q6_K", "Q4_K", "Q3_K", "INT2", "HNX_1375BIT", "HNX_IQ1S"}
+
+    def test_q6h1m_is_int2_q5_k_15125_iq1_s_and_q2_k_m(self, model):
+        """0.72.8: hnx_q6h1m = INT2, Q5_K, HNX_15125BIT, IQ1_S and Q2_K_M."""
+        formats = _formats(model, "hnx_Q6_H_1m")
+        assert formats["output.weight"] == "Q5_K"
+        assert {formats[f"blk.{i}.ffn_gate.weight"] for i in (2, 3, 4, 5)} == {"HNX_15125BIT"}
+        assert formats["blk.1.ffn_gate.weight"] == "HNX_IQ1S"
+        assert formats["blk.1.ffn_up.weight"] == "INT2"
+        assert formats["blk.4.attn_q.weight"] == "Q2_K"
+        assert set(formats.values()) - {""} == {"Q5_K", "Q3_K", "Q2_K", "INT2", "HNX_15125BIT", "HNX_IQ1S"}
 
     def test_the_depth_follows_the_model_not_a_fixed_count(self, tmp_path):
         deep = _formats(_model(tmp_path / "deep.gguf", layers=16), "hnx_Q6_H_4")
@@ -263,7 +288,7 @@ class TestTheHybrids:
 
     def test_the_file_types_do_not_claim_an_upstream_number(self):
         numbers = {file_type_for(target_spec(n)) for n in (*HYBRIDS, "Q8_K")}
-        assert len(numbers) == 4
+        assert len(numbers) == len(HYBRIDS) + 1
         assert all(n >= 1300 for n in numbers)
         assert not RECIPES["Q4_K_M"].needs_patched_llamacpp
         assert all(RECIPES[n].needs_patched_llamacpp for n in (*HYBRIDS, "Q8_K"))

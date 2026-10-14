@@ -101,6 +101,10 @@ TIER_TYPES: dict[str, tuple[int, str]] = {
     # more signs -- there are no more signs to buy once all 256 are
     # stored.
     "HNX_1375BIT": (int(GGMLType.HNX_1375), "hnx_1375bit"),
+    # 0.72.8: the same structure with finer magnitudes (1.5 bpw), and
+    # IQ1_S's rate with a magnitude per 8 weights (1.5625 bpw).
+    "HNX_15125BIT": (int(GGMLType.HNX_15125), "hnx_15125bit"),
+    "HNX_IQ1S": (int(GGMLType.HNX_IQ1S), "hnx_iq1s"),
     # Fixed codebook, from hypernix.quant.lowbit. The packing name is the
     # codec name; :func:`_encoder_for` tells the two families apart by
     # looking the name up rather than by parsing it.
@@ -550,6 +554,8 @@ _HYBRID_INGREDIENTS: dict[str, tuple[str, ...]] = {
     "hnx_Q6_H_k": ("Q8_K", "Q6_K", "Q3_K"),
     "hnx_Q6_H_4": ("Q6_K", "Q5_K", "Q4_K", "INT3", "Q2_K"),
     "hnx_Q6_H_2": ("Q6_K", "Q5_K", "Q3_K", "IQ1_XS"),
+    "hnx_Q6_H_1": ("Q6_K", "Q4_K", "Q3_K", "INT2", "IQ1_XS", "IQ1_S"),
+    "hnx_Q6_H_1m": ("Q5_K", "Q3_K", "Q2_K", "INT2", "HNX_15125BIT", "IQ1_S"),
 }
 
 #: IQ1_XS is not a llama.cpp type: upstream's one-bit types are IQ1_S
@@ -558,6 +564,12 @@ _HYBRID_INGREDIENTS: dict[str, tuple[str, ...]] = {
 #: HNX_1375BIT -- every sign plus a magnitude per 16 weights, 1.375 bpw
 #: -- so that is what the name means here.
 IQ1_XS = "HNX_1375BIT"
+
+#: IQ1_S in a hybrid means its rate, 1.5625 bpw, packed HyperNix's way
+#: (HNX_IQ1S: every sign and a 4-bit magnitude per 8 weights). Upstream's
+#: IQ1_S grid is not shipped here, and a file labelled IQ1_S that was
+#: not would be read as noise by every llama.cpp.
+IQ1_S = "HNX_IQ1S"
 
 _register(Recipe(
     "hnx_Q6_H_k", "Q6_K",
@@ -580,9 +592,85 @@ _register(Recipe(
 ))
 
 
+def _q6h_1(lowered: str, layer: int, n_layers: int) -> str:
+    """hnx_Q6_H_1 (0.72.8): INT2, Q6_K, HNX_1375BIT, IQ1_S and Q3_K_M.
+
+    Q6_K on the head; Q3_K_M (Q3_K, widened to Q4_K, and Q6_K on attn_v
+    where it counts) through attention and ffn_down; and the feed-forward
+    bulk cut hardest where it matters least: INT2 on the shoulders,
+    HNX_1375BIT (gate) and IQ1_S (up) in the core.
+    """
+    role = _role(lowered)
+    depth = _depth(layer, n_layers)
+    more = _more_bits(layer, n_layers)
+    if role == "output":
+        return "Q6_K"
+    if role == "embed":
+        return "Q3_K"
+    if role == "attn_v":
+        return "Q6_K" if more else "Q4_K"
+    if role == "ffn_down":
+        return "Q4_K" if more else "Q3_K"
+    if role in ("attn_q", "attn_k", "attn_output", "attn_qkv"):
+        return "Q3_K"
+    if role in ("ffn_gate", "ffn_up"):
+        if depth == "edge":
+            return "Q3_K"
+        if depth == "shoulder":
+            return "INT2"
+        return "IQ1_XS" if role == "ffn_gate" else "IQ1_S"
+    return "Q3_K"
+
+
+def _q6h_1m(lowered: str, layer: int, n_layers: int) -> str:
+    """hnx_Q6_H_1m (0.72.8): INT2, Q5_K, HNX_15125BIT, IQ1_S and Q2_K_M.
+
+    Q5_K on the head and, where it counts, on attn_v and ffn_down;
+    Q2_K_M (Q2_K widened to Q3_K) elsewhere in attention; and the
+    feed-forward bulk at HNX_15125BIT in the core, IQ1_S (gate) and INT2
+    (up) on the shoulders.
+    """
+    role = _role(lowered)
+    depth = _depth(layer, n_layers)
+    more = _more_bits(layer, n_layers)
+    if role == "output":
+        return "Q5_K"
+    if role == "embed":
+        return "Q3_K"
+    if role in ("attn_v", "ffn_down"):
+        return "Q5_K" if more else "Q3_K"
+    if role in ("attn_q", "attn_k"):
+        return "Q2_K"
+    if role in ("attn_output", "attn_qkv"):
+        return "Q3_K"
+    if role in ("ffn_gate", "ffn_up"):
+        if depth == "edge":
+            return "Q3_K"
+        if depth == "shoulder":
+            return "IQ1_S" if role == "ffn_gate" else "INT2"
+        return "HNX_15125BIT"
+    return "Q3_K"
+
+
+_register(Recipe(
+    "hnx_Q6_H_1", "Q6_K",
+    "HyperNix hybrid: Q6_K head, Q3_K_M through attention and ffn_down, "
+    "INT2 on the shoulder layers' ffn_gate/ffn_up and HNX_1375BIT/IQ1_S "
+    "(HNX_IQ1S) on the middle layers'.",
+    rule=_q6h_1, estimate=3.2, file_type=HNX_RECIPE_FILE_TYPE_BASE + 4,
+))
+_register(Recipe(
+    "hnx_Q6_H_1m", "Q5_K",
+    "HyperNix hybrid: Q5_K head and key layers, Q2_K_M through the rest of "
+    "attention, HNX_15125BIT on the middle layers' ffn_gate/ffn_up and "
+    "IQ1_S (HNX_IQ1S)/INT2 on the shoulders'.",
+    rule=_q6h_1m, estimate=3.1, file_type=HNX_RECIPE_FILE_TYPE_BASE + 5,
+))
+
+
 def _ingredient(fmt: str) -> str:
     """A recipe's format name as the encoder knows it."""
-    return IQ1_XS if fmt == "IQ1_XS" else fmt
+    return {"IQ1_XS": IQ1_XS, "IQ1_S": IQ1_S}.get(fmt, fmt)
 
 
 #: Source types this can read element-wise without help.
@@ -684,6 +772,10 @@ RECIPE_ALIASES: dict[str, str] = {
     "HNXQ6H4": "hnx_Q6_H_4",
     "Q6H2": "hnx_Q6_H_2",
     "HNXQ6H2": "hnx_Q6_H_2",
+    "Q6H1": "hnx_Q6_H_1",
+    "HNXQ6H1": "hnx_Q6_H_1",
+    "Q6H1M": "hnx_Q6_H_1m",
+    "HNXQ6H1M": "hnx_Q6_H_1m",
     "Q8K": "Q8_K",
 }
 
@@ -710,6 +802,10 @@ TARGET_ALIASES: dict[str, str] = {
     "I3": "INT3",
     "I1": "INT1",
     "IQ1XS": "HNX_1375BIT",
+    "HNX15125": "HNX_15125BIT",
+    "15125": "HNX_15125BIT",
+    "1.5125": "HNX_15125BIT",
+    "HNXIQ1S": "HNX_IQ1S",
     "FP8E4M3": "FP8",
     "E4M3": "FP8",
     "F8": "FP8",

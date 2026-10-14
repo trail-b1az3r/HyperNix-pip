@@ -118,7 +118,8 @@ class TestHyprslugListTiers:
         """A caller has to be able to tell which of these produce a file
         any llama.cpp can open."""
         needs_patch = {r["name"] for r in listing["recipes"] if not r["upstream"]}
-        assert needs_patch == {"Q8_K", "hnx_Q6_H_k", "hnx_Q6_H_4", "hnx_Q6_H_2"}
+        assert needs_patch == {"Q8_K", "hnx_Q6_H_k", "hnx_Q6_H_4", "hnx_Q6_H_2",
+                               "hnx_Q6_H_1", "hnx_Q6_H_1m"}
         assert not any(t["upstream"] for t in listing["sub_bit_tiers"])
 
     def test_every_recipe_it_lists_is_one_it_can_write(self, listing):

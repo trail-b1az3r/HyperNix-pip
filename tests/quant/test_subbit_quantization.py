@@ -99,9 +99,13 @@ class TestTheBitRatesAreWhatTheTiersClaim:
         # INT1 is the k == g end of it; hnx_1375bit is what comes after,
         # once every sign is stored and the only thing left to buy is
         # magnitude. Neither is named IQ0-anything, and that is the point.
-        assert not_sub_bit == ["int1_binary", "hnx_1375bit"]
+        # 0.72.8 added two more past hnx_1375bit, the same structure with
+        # finer magnitudes; still not IQ0-anything.
+        assert not_sub_bit == ["int1_binary", "hnx_1375bit", "hnx_15125bit", "hnx_iq1s"]
         assert TIER_TYPES["INT1"][1] == "int1_binary"
         assert TIER_TYPES["HNX_1375BIT"][1] == "hnx_1375bit"
+        assert TIER_TYPES["HNX_15125BIT"][1] == "hnx_15125bit"
+        assert TIER_TYPES["HNX_IQ1S"][1] == "hnx_iq1s"
 
     def test_more_bits_means_less_error(self):
         """Monotonic, or the tiers are not a ladder.
