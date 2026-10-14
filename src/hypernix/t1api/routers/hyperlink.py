@@ -104,6 +104,7 @@ from ..schemas import (
     HyperLinkEndpointsResponse,
     HyperLinkPeer,
     HyperLinkPeersResponse,
+    LoadedModelsResponse,
     MessageEditRequest,
     MessageEditResponse,
     MessageListResponse,
@@ -1198,7 +1199,7 @@ def _vision(wire: list[dict[str, Any]], backend, runner) -> list[dict[str, Any]]
                            who=backend.model_id or "the loaded model")
 
 
-def _chat_backend(config: T1APIConfig, runner=None):
+def _chat_backend(config: T1APIConfig, runner=None, model_id: str | None = None):
     """What answers this turn: this server's own runner, or LM Studio.
 
     The runner comes first, and deliberately. If somebody loaded a model
@@ -1216,7 +1217,7 @@ def _chat_backend(config: T1APIConfig, runner=None):
     from ...hyperlink.inference import BackendUnavailable, resolve_backend
 
     try:
-        return resolve_backend(config, runner)
+        return resolve_backend(config, runner, model_id)
     except BackendUnavailable as exc:
         raise T1APIError(
             T1ErrorCode.NOT_SUPPORTED,
@@ -1302,7 +1303,9 @@ def chat_turn(
             metadata={"device_id": principal.device_id} if principal.device_id else {},
         )
 
-    backend = _chat_backend(config, runner)
+    # The model the person picked from what is loaded, if any: it decides
+    # which backend answers, not only which model name is sent.
+    backend = _chat_backend(config, runner, payload.model_id or session.model_id or None)
     bridge = backend.client
     settings = preferences.get(owner=principal.owner)
     compacted = _maybe_compact(
@@ -1474,7 +1477,9 @@ def chat_turn_stream(
             attachment_ids=payload.attachment_ids,
             metadata={"device_id": principal.device_id} if principal.device_id else {},
         )
-    backend = _chat_backend(config, runner)
+    # The model the person picked from what is loaded, if any: it decides
+    # which backend answers, not only which model name is sent.
+    backend = _chat_backend(config, runner, payload.model_id or session.model_id or None)
     bridge = backend.client
     settings = preferences.get(owner=principal.owner)
     compacted = _maybe_compact(
@@ -1833,6 +1838,28 @@ def _preferences_reply(settings, notes: list[str], request_id: str) -> Preferenc
         notes=notes,
         request_id=request_id,
     )
+
+
+@router.get("/models/loaded", response_model=LoadedModelsResponse)
+def list_loaded_models(
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    runner=Depends(get_runner),
+    config: T1APIConfig = Depends(get_config),
+    request_id: str = Depends(get_request_id),
+) -> LoadedModelsResponse:
+    """Every model loaded right now, on the runner and in LM Studio.
+
+    With more than one, the app shows them in the Models tab and in the
+    chat's model menu, and a message goes to the one picked (its
+    ``model_id`` on the chat request, or the session's). ``default`` is
+    the one that answers when nobody picks.
+    """
+    _require_enabled(config)
+    from ...hyperlink.inference import loaded_models
+
+    rows = loaded_models(config, runner)
+    default = next((r["model_id"] for r in rows if r.get("default")), "")
+    return LoadedModelsResponse(models=rows, default=default, request_id=request_id)
 
 
 @router.get("/backends", response_model=BackendsResponse)

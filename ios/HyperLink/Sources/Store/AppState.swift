@@ -56,6 +56,9 @@ final class AppState {
     /// needs a second application to be running. A machine with forty
     /// models in ~/.hypernix/models showed an empty picker.
     private(set) var catalogue: ModelCatalogue = .empty
+    /// What is loaded now, on the runner and in LM Studio. More than one
+    /// and the Models tab and the chat menu offer a choice between them.
+    private(set) var loadedModels: [LoadedModel] = []
 
     /// How long the server and its machine have been up. Nil until the
     /// first refresh, and on a server too old to answer.
@@ -599,6 +602,11 @@ final class AppState {
         if let merged = try? await client.modelCatalogue() {
             catalogue = merged
             HyperLinkShortcuts.updateAppShortcutParameters()
+        }
+        // A server from before 0.72.8 has no such endpoint; the list just
+        // stays empty and nothing extra is shown.
+        if let loaded = try? await client.loadedModels() {
+            loadedModels = loaded.models
         }
     }
 

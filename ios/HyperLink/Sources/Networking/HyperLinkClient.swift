@@ -670,6 +670,11 @@ actor HyperLinkClient {
         try await get("/hyperlink/models", as: ModelCatalogue.self, timeout: 30)
     }
 
+    /// Every model loaded right now, on any backend.
+    func loadedModels() async throws -> LoadedModelList {
+        try await get("/hyperlink/models/loaded", as: LoadedModelList.self, timeout: 20)
+    }
+
     /// What LM Studio specifically has loaded.
     ///
     /// Nothing in the app shows this any more — `modelCatalogue()` is

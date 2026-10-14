@@ -192,3 +192,27 @@ final class KeyShapeTests: XCTestCase {
         )
     }
 }
+
+final class LoadedModelsParsingTests: XCTestCase {
+    func testEveryLoadedModelAndTheDefault() throws {
+        let json = """
+        {"models": [
+          {"model_id": "qwen3-8b", "backend": "hypernix", "label": "HyperNix runner", "default": true, "instances": 2},
+          {"model_id": "gemma-3-12b", "backend": "lmstudio", "label": "LM Studio", "default": false}
+        ], "default": "qwen3-8b", "request_id": "r"}
+        """.data(using: .utf8)!
+        let list = try JSONDecoder().decode(LoadedModelList.self, from: json)
+        XCTAssertEqual(list.models.map(\.modelID), ["qwen3-8b", "gemma-3-12b"])
+        XCTAssertEqual(list.defaultModel, "qwen3-8b")
+        XCTAssertTrue(list.models[0].isDefault)
+        XCTAssertEqual(list.models[0].instances, 2)
+        XCTAssertEqual(list.models[1].instances, 1)
+        XCTAssertNotEqual(list.models[0].id, list.models[1].id)
+    }
+
+    func testAnEmptyAnswerIsAnEmptyList() throws {
+        let list = try JSONDecoder().decode(LoadedModelList.self, from: Data("{}".utf8))
+        XCTAssertTrue(list.models.isEmpty)
+        XCTAssertEqual(list.defaultModel, "")
+    }
+}

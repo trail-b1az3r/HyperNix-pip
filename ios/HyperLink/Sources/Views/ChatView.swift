@@ -44,6 +44,14 @@ struct ChatView: View {
         state.sessions.first { $0.sessionID == sessionID }
     }
 
+    /// Which loaded model this chat is using: the one it picked, or the
+    /// default when it picked none.
+    private var activeLoadedModel: String {
+        let picked = session?.modelID ?? ""
+        if !picked.isEmpty { return picked }
+        return state.loadedModels.first(where: { $0.isDefault })?.modelID ?? ""
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             messageList
@@ -72,6 +80,25 @@ struct ChatView: View {
                     } label: {
                         Label("Model", systemImage: "cpu")
                     }
+                    if state.loadedModels.count > 1 {
+                        // Several models loaded: switch between them here,
+                        // without opening the full list.
+                        Menu {
+                            ForEach(state.loadedModels) { model in
+                                Button {
+                                    Task { await state.setModel(model.modelID, for: sessionID) }
+                                } label: {
+                                    if model.modelID == activeLoadedModel {
+                                        Label(shortModelName(model.modelID), systemImage: "checkmark")
+                                    } else {
+                                        Text(shortModelName(model.modelID))
+                                    }
+                                }
+                            }
+                        } label: {
+                            Label("Loaded models", systemImage: "square.stack.3d.up")
+                        }
+                    }
                     Button {
                         Task { await compress() }
                     } label: {
@@ -91,6 +118,7 @@ struct ChatView: View {
         } message: {
             Text(compressNote ?? "")
         }
+        .task { await state.refreshModels() }
         .sheet(isPresented: $showingModelPicker) {
             ModelPickerSheet(sessionID: sessionID, currentModel: session?.modelID ?? "")
         }

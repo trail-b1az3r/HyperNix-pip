@@ -941,6 +941,48 @@ struct CatalogueSource: Decodable, Identifiable, Equatable, Sendable {
     }
 }
 
+/// A model loaded right now, on the HyperNix runner or in LM Studio
+/// (`GET /hyperlink/models/loaded`, 0.72.8). With more than one, the app
+/// lists them and a chat can pick which answers.
+struct LoadedModel: Decodable, Equatable, Identifiable, Sendable {
+    let modelID: String
+    let backend: String
+    let label: String
+    /// The one that answers when nobody picks.
+    let isDefault: Bool
+    let instances: Int
+
+    var id: String { "\(backend)/\(modelID)" }
+
+    enum CodingKeys: String, CodingKey {
+        case modelID = "model_id", backend, label, isDefault = "default", instances
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        modelID = try c.decode(String.self, forKey: .modelID)
+        backend = try c.decodeIfPresent(String.self, forKey: .backend) ?? ""
+        label = try c.decodeIfPresent(String.self, forKey: .label) ?? ""
+        isDefault = try c.decodeIfPresent(Bool.self, forKey: .isDefault) ?? false
+        instances = try c.decodeIfPresent(Int.self, forKey: .instances) ?? 1
+    }
+}
+
+struct LoadedModelList: Decodable, Equatable, Sendable {
+    let models: [LoadedModel]
+    let defaultModel: String
+
+    enum CodingKeys: String, CodingKey {
+        case models, defaultModel = "default"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        models = try c.decodeIfPresent([LoadedModel].self, forKey: .models) ?? []
+        defaultModel = try c.decodeIfPresent(String.self, forKey: .defaultModel) ?? ""
+    }
+}
+
 struct ModelCatalogue: Decodable, Equatable, Sendable {
     let models: [CatalogueModel]
     let count: Int

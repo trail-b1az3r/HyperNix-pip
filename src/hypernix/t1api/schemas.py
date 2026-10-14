@@ -1711,6 +1711,15 @@ class GenerationListResponse(BaseModel):
     request_id: str
 
 
+class LoadedModelsResponse(BaseModel):
+    """``GET /hyperlink/models/loaded``: every model loaded now, on any
+    backend, and which one answers when nobody picks (0.72.8)."""
+
+    models: list[dict[str, Any]] = Field(default_factory=list)
+    default: str = ""
+    request_id: str = ""
+
+
 class BackendsResponse(BaseModel):
     """Every thing that could answer a message, and whether it can now.
 

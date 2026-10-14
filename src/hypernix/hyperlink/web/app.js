@@ -11,6 +11,7 @@ const TOKEN_KEY = "hyperlink.web.token";
 const state = {
   token: "",
   sessions: [],
+  loaded: [],
   sessionId: "",
   messages: [],
   models: [],
@@ -389,17 +390,39 @@ async function loadModels() {
     state.allModels = data.models || [];
     state.models = state.allModels.filter((m) => m.runnable !== false);
   } catch { state.models = []; state.allModels = []; }
+  // Every model loaded now, on the runner and in LM Studio (0.72.8). A
+  // server from before has no such endpoint, and the list stays empty.
+  try {
+    state.loaded = (await api("/hyperlink/models/loaded")).models || [];
+  } catch { state.loaded = []; }
   const picker = $("model-picker");
   picker.replaceChildren();
   const auto = document.createElement("option");
   auto.value = "";
-  auto.textContent = "Whatever is loaded";
+  const fallback = state.loaded.find((m) => m.default);
+  auto.textContent = fallback ? `Default (${shortModel(fallback.model_id)})` : "Whatever is loaded";
   picker.append(auto);
+  const option = (model, label) => {
+    const o = document.createElement("option");
+    o.value = model.model_id;
+    o.textContent = label;
+    return o;
+  };
+  let all = picker;
+  if (state.loaded.length > 1) {
+    // Several loaded: those first, to pick which answers.
+    const group = document.createElement("optgroup");
+    group.label = "Loaded now";
+    for (const m of state.loaded) group.append(option(m, `● ${shortModel(m.model_id)} — ${m.label}`));
+    picker.append(group);
+    all = document.createElement("optgroup");
+    all.label = "All models";
+    picker.append(all);
+  }
+  const loadedIds = new Set(state.loaded.length > 1 ? state.loaded.map((m) => m.model_id) : []);
   for (const model of state.models) {
-    const option = document.createElement("option");
-    option.value = model.model_id;
-    option.textContent = `${model.loaded ? "● " : ""}${model.name || model.model_id}`;
-    picker.append(option);
+    if (loadedIds.has(model.model_id)) continue;
+    all.append(option(model, `${model.loaded ? "● " : ""}${model.name || model.model_id}`));
   }
   picker.value = state.modelId;
 }
@@ -438,6 +461,23 @@ async function loadRunner() {
   } catch (error) {
     now.textContent = error.status === 404 ? "This server has no runner." : error.message;
   }
+  try {
+    const loaded = (await api("/hyperlink/models/loaded")).models || [];
+    if (loaded.length > 1) {
+      const heading = document.createElement("h3");
+      heading.textContent = "Loaded now";
+      const list = document.createElement("ul");
+      for (const m of loaded) {
+        const item = document.createElement("li");
+        item.textContent = `${shortModel(m.model_id)} — ${m.label}${m.default ? " (default)" : ""}`;
+        list.append(item);
+      }
+      const hint = document.createElement("p");
+      hint.className = "muted";
+      hint.textContent = "Pick which one answers from the model menu in a chat.";
+      now.append(heading, list, hint);
+    }
+  } catch { /* an older server: nothing more to show */ }
   await loadAdopt();
   const list = $("runner-models");
   list.replaceChildren();
