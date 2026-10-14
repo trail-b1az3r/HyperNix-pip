@@ -1295,6 +1295,67 @@
         "title": "DeviceSummary",
         "type": "object"
       },
+      "DocumentCreateRequest": {
+        "description": "``POST /hyperlink/files/document``: a document a model wrote, kept\nas a file the person can download from the app (0.72.8).",
+        "properties": {
+          "content": {
+            "maxLength": 2000000,
+            "minLength": 1,
+            "title": "Content",
+            "type": "string"
+          },
+          "filename": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Filename",
+            "type": "string"
+          },
+          "format": {
+            "default": "markdown",
+            "pattern": "^(markdown|text)$",
+            "title": "Format",
+            "type": "string"
+          },
+          "session_id": {
+            "default": "",
+            "title": "Session Id",
+            "type": "string"
+          },
+          "title": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "content"
+        ],
+        "title": "DocumentCreateRequest",
+        "type": "object"
+      },
+      "DocumentResponse": {
+        "properties": {
+          "download_path": {
+            "title": "Download Path",
+            "type": "string"
+          },
+          "file": {
+            "$ref": "#/components/schemas/AttachmentSummary"
+          },
+          "request_id": {
+            "title": "Request Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file",
+          "download_path",
+          "request_id"
+        ],
+        "title": "DocumentResponse",
+        "type": "object"
+      },
       "DownloadedModelsResponse": {
         "properties": {
           "count": {
@@ -2419,6 +2480,126 @@
           "transit_seconds"
         ],
         "title": "HyperLinkPingResponse",
+        "type": "object"
+      },
+      "HypercompressRequest": {
+        "description": "Compress a system prompt by hand, to see what a turn would send.",
+        "properties": {
+          "context_length": {
+            "maximum": 4194304.0,
+            "minimum": 256.0,
+            "title": "Context Length",
+            "type": "integer"
+          },
+          "force": {
+            "default": false,
+            "title": "Force",
+            "type": "boolean"
+          },
+          "other_tokens": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Other Tokens",
+            "type": "integer"
+          },
+          "size": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size"
+          },
+          "text": {
+            "maxLength": 200000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "context_length"
+        ],
+        "title": "HypercompressRequest",
+        "type": "object"
+      },
+      "HypercompressResponse": {
+        "properties": {
+          "after_tokens": {
+            "default": 0,
+            "title": "After Tokens",
+            "type": "integer"
+          },
+          "applied": {
+            "default": false,
+            "title": "Applied",
+            "type": "boolean"
+          },
+          "before_tokens": {
+            "default": 0,
+            "title": "Before Tokens",
+            "type": "integer"
+          },
+          "request_id": {
+            "default": "",
+            "title": "Request Id",
+            "type": "string"
+          },
+          "share": {
+            "default": "1/3",
+            "title": "Share",
+            "type": "string"
+          },
+          "size": {
+            "default": 1,
+            "title": "Size",
+            "type": "integer"
+          },
+          "target_tokens": {
+            "default": 0,
+            "title": "Target Tokens",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "HypercompressResponse",
+        "type": "object"
+      },
+      "HypercompressSizeResponse": {
+        "description": "``/chat/hypercompress/size``: how far a too-big system prompt is\nsqueezed for this owner. 1 is a third of the context, 2 a fifth.",
+        "properties": {
+          "changed": {
+            "default": false,
+            "title": "Changed",
+            "type": "boolean"
+          },
+          "request_id": {
+            "default": "",
+            "title": "Request Id",
+            "type": "string"
+          },
+          "share": {
+            "default": "1/3",
+            "title": "Share",
+            "type": "string"
+          },
+          "size": {
+            "default": 1,
+            "title": "Size",
+            "type": "integer"
+          }
+        },
+        "title": "HypercompressSizeResponse",
         "type": "object"
       },
       "InferenceBackend": {
@@ -10383,6 +10564,164 @@
         ]
       }
     },
+    "/chat/hypercompress": {
+      "post": {
+        "description": "Compress *text* as a turn would, or to the share with ``force``.",
+        "operationId": "hypercompress_text_chat_hypercompress_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HypercompressRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HypercompressResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Hypercompress Text",
+        "tags": [
+          "compaction"
+        ]
+      }
+    },
+    "/chat/hypercompress/size": {
+      "get": {
+        "description": "The share of the context a too-big system prompt is cut to; ``s?=1|2`` sets it.",
+        "operationId": "hypercompress_size_chat_hypercompress_size_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HypercompressSizeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Hypercompress Size",
+        "tags": [
+          "compaction"
+        ]
+      },
+      "post": {
+        "description": "The same as GET with ``s``.",
+        "operationId": "set_hypercompress_size_chat_hypercompress_size_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HypercompressSizeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Hypercompress Size",
+        "tags": [
+          "compaction"
+        ]
+      }
+    },
     "/code": {
       "get": {
         "description": "Whether this server runs code, what with, and where to go next.",
@@ -11872,6 +12211,66 @@
           }
         },
         "summary": "Upload File",
+        "tags": [
+          "hyperlink"
+        ]
+      }
+    },
+    "/hyperlink/files/document": {
+      "post": {
+        "description": "Keep a document a model wrote as a file the person can download.\n\nWhat the ``create_document`` tool calls when somebody asks for \"a\nMarkdown file I can download\". It lands in the same per-owner store\nas uploads, so it is listed under Files and downloaded the same way.",
+        "operationId": "create_document_hyperlink_files_document_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Document",
         "tags": [
           "hyperlink"
         ]

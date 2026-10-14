@@ -280,6 +280,7 @@ function drawThread() {
       })
       : errorRow("");
     if (message.role === "assistant" && failure(message)) row.append(errorNote(failure(message)));
+    for (const doc of (message.metadata && message.metadata.documents) || []) row.append(documentChip(doc));
     thread.append(row);
   });
   if (!shown.length) {
@@ -319,6 +320,35 @@ function errorRow(text) {
   row.className = "row them";
   if (text) row.append(errorNote(text));
   return row;
+}
+
+// A document the model wrote with create_document (0.72.8): fetched with
+// the person's own credential, then saved, because a plain link would
+// carry no Authorization header.
+function documentChip(doc) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "chip doc";
+  button.textContent = `⬇ ${doc.filename}`;
+  button.title = `Download ${doc.filename}`;
+  button.addEventListener("click", async () => {
+    try {
+      const headers = state.token ? { Authorization: `Bearer ${state.token}` } : {};
+      const response = await fetch(doc.download_path || `/hyperlink/files/${encodeURIComponent(doc.file_id)}`, { headers });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const url = URL.createObjectURL(await response.blob());
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = doc.filename || "document.md";
+      document.body.append(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    } catch (error) {
+      button.textContent = `✗ ${doc.filename}: ${error.message}`;
+    }
+  });
+  return button;
 }
 
 function toolChip(tool, ok) {

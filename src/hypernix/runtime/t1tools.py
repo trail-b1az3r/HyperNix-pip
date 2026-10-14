@@ -113,6 +113,15 @@ TOOLS: tuple[T1Tool, ...] = (
             "max_items": _i("Most results a search may return.", minimum=1, maximum=100),
             "max_read_sites": _i("Most sites a search may read.", minimum=1, maximum=20)},
            body=True, mutating=True),
+    T1Tool("create_document", "POST", "/hyperlink/files/document",
+           "Write a document the person can download from the app, such as a "
+           "Markdown file. Use it only when they ask for a file or a document "
+           "to keep or download; otherwise just answer in the chat.",
+           {"title": _s("The document's title."),
+            "filename": _s("A file name, for example notes.md."),
+            "content": _s("The whole document."),
+            "format": _s("markdown or text.", enum=["markdown", "text"])},
+           required=("content",), body=True),
     T1Tool("memory_list", "GET", "/memory/list",
            "What the assistant remembers about this person.",
            {"category": _s("Only this category."),
@@ -122,7 +131,7 @@ TOOLS: tuple[T1Tool, ...] = (
            required=("memory_id",)),
     T1Tool("memory_create", "POST", "/memory/create",
            "Remember something about this person for later conversations. "
-           "Only for things they would want remembered.",
+           "Only when they ask you to remember it.",
            {"content": _s("What to remember, as one sentence."),
             "category": _s("A short category, e.g. 'preferences'.")},
            required=("content",), body=True, mutating=True),

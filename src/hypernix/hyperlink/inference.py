@@ -103,6 +103,7 @@ def loaded_models(config: Any, runner: Any = None, *, lmstudio_timeout: float = 
             "model_id": current.model_id, "backend": HYPERNIX, "label": "HyperNix runner",
             "base_url": getattr(runner, "base_url", ""), "default": True,
             "instances": len(getattr(runner, "base_urls", None) or []) or 1,
+            "context_length": int(getattr(current, "context_length", 0) or 0),
         })
     if getattr(config, "lmstudio_enabled", False):
         from ..bridge.lmstudio import LMStudioBridge, LMStudioError
@@ -122,6 +123,7 @@ def loaded_models(config: Any, runner: Any = None, *, lmstudio_timeout: float = 
                 "model_id": m.model_id, "backend": LMSTUDIO, "label": "LM Studio",
                 "base_url": getattr(config, "lmstudio_url", "") or "",
                 "default": not rows, "instances": 1,
+                "context_length": int(getattr(m, "context_length", 0) or 0),
             })
     return rows
 

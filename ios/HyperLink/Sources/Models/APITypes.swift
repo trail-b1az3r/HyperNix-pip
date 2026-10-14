@@ -254,6 +254,9 @@ struct ChatMessage: Decodable, Identifiable, Hashable, Sendable {
     /// summarised to keep the thread inside the model's context. Shown
     /// as a marker, not as a message: the originals are still above it.
     var isCompactionSummary: Bool = false
+    /// Files the model wrote this turn with `create_document` (0.72.8),
+    /// offered as downloads under the reply.
+    var documents: [GeneratedDocument] = []
 
     var id: String { messageID }
     var isUser: Bool { role == "user" }
@@ -297,8 +300,10 @@ extension ChatMessage {
     init(from decoder: Decoder) throws {
         struct Metadata: Decodable {
             let compaction_summary: Bool?
+            let documents: [GeneratedDocument]?
         }
         let c = try decoder.container(keyedBy: CodingKeys.self)
+        let metadata = (try? c.decodeIfPresent(Metadata.self, forKey: .metadata)) ?? nil
         self.init(
             messageID: try c.decode(String.self, forKey: .messageID),
             sessionID: try c.decodeIfPresent(String.self, forKey: .sessionID) ?? "",
@@ -310,10 +315,21 @@ extension ChatMessage {
             createdAt: try c.decodeIfPresent(Double.self, forKey: .createdAt) ?? 0,
             inputTokens: try c.decodeIfPresent(Int.self, forKey: .inputTokens) ?? 0,
             outputTokens: try c.decodeIfPresent(Int.self, forKey: .outputTokens) ?? 0,
-            isCompactionSummary: ((try? c.decodeIfPresent(Metadata.self, forKey: .metadata)) ?? nil)?
-                .compaction_summary ?? false
+            isCompactionSummary: metadata?.compaction_summary ?? false,
+            documents: metadata?.documents ?? []
         )
     }
+}
+
+/// A document a model wrote for the person to download (0.72.8).
+struct GeneratedDocument: Decodable, Hashable, Sendable, Identifiable {
+    let file_id: String
+    let filename: String
+    let size_bytes: Int?
+    let content_type: String?
+    let download_path: String?
+
+    var id: String { file_id }
 }
 
 struct MessageListResponse: Decodable, Sendable {

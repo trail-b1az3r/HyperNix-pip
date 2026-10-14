@@ -54,11 +54,13 @@ logger = logging.getLogger(__name__)
 __all__ = [
     "MAX_ROUNDS",
     "MAX_RESULT_CHARS",
+    "MEMORY_WRITES",
     "T1Access",
     "ToolRound",
     "openai_tools",
     "run_tool_loop",
     "stream_tool_loop",
+    "told_to_remember",
     "CallGuard",
 ]
 
@@ -123,6 +125,43 @@ class ToolRound:
 #: noodle's tools that touch nothing but the person's own memories. They
 #: follow the person's auto-memory setting, not the workspace switch.
 MEMORY_TOOLS = ("update_memory", "read_memory")
+
+#: Tools that write a memory. A model calls them only when the person has
+#: asked it to remember (or forget) something (0.72.8): a memory saved on
+#: the model's own initiative is one the person never agreed to keep.
+MEMORY_WRITES = ("update_memory", "memory_create")
+
+_TOLD_TO_REMEMBER = re.compile(
+    r"\b(remember|memori[sz]e|forget|don'?t forget|keep in mind|make a note|note (this|that|down)|"
+    r"save (this|that|it)|add (this|that|it)? ?to (your |my )?memor|update (your |my )?memor|"
+    r"store (this|that))\b",
+    re.IGNORECASE,
+)
+
+
+def told_to_remember(messages: list[dict[str, Any]]) -> bool:
+    """Whether the person's latest message asks for something to be remembered."""
+    for message in reversed(messages):
+        if message.get("role") != "user":
+            continue
+        content = message.get("content")
+        if isinstance(content, list):
+            content = " ".join(str(p.get("text", "")) for p in content if isinstance(p, dict))
+        text = str(content or "")
+        if text.startswith("<tool_response"):
+            continue
+        return bool(_TOLD_TO_REMEMBER.search(text))
+    return False
+
+
+def _not_told(call: dict[str, Any]) -> ToolRound:
+    name = (call.get("function") or {}).get("name", "")
+    return ToolRound(
+        name, {}, False,
+        "Not saved: the person did not ask you to remember anything. Save a memory "
+        "only when they tell you to; carry on without it.",
+        "memory_not_requested",
+    )
 
 
 def openai_tools(context: ToolContext, *, workspace: bool = True) -> list[dict[str, Any]]:
@@ -266,6 +305,7 @@ def run_tool_loop(
     continue.
     """
     messages, tools, t1_names = _prepare(wire, context, t1, teach_format, workspace)
+    told = told_to_remember(wire)
     rounds: list[ToolRound] = []
     envelope: dict[str, Any] = {}
     retried_format = False
@@ -306,7 +346,8 @@ def run_tool_loop(
         messages.append(assistant)
 
         for call in calls:
-            record = _run_call(call, context, tools, t1, t1_names)
+            record = (_not_told(call) if _writes_memory(call) and not told
+                      else _run_call(call, context, tools, t1, t1_names))
             rounds.append(record)
             if on_round is not None:
                 try:
@@ -369,6 +410,10 @@ def _prepare(
         else:
             messages.insert(0, {"role": "system", "content": taught})
     return messages, tools, t1_names
+
+
+def _writes_memory(call: dict[str, Any]) -> bool:
+    return (call.get("function") or {}).get("name", "") in MEMORY_WRITES
 
 
 def _run_call(call: dict[str, Any], context: ToolContext, tools: list[dict[str, Any]],
@@ -491,6 +536,7 @@ def stream_tool_loop(
     as it comes, like any other text, so the person sees the whole turn.
     """
     messages, tools, t1_names = _prepare(wire, context, t1, teach_format, workspace)
+    told = told_to_remember(wire)
     rounds: list[ToolRound] = []
     model, finish, usage = "", "", {}
     retried_format = False
@@ -587,7 +633,8 @@ def stream_tool_loop(
 
         messages.append(_assistant_message(envelope, calls))
         for call in calls:
-            record = _run_call(call, context, tools, t1, t1_names)
+            record = (_not_told(call) if _writes_memory(call) and not told
+                      else _run_call(call, context, tools, t1, t1_names))
             rounds.append(record)
             yield ("tool", record)
             messages.append({

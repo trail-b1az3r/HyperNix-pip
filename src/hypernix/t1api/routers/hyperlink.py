@@ -88,6 +88,8 @@ from ..schemas import (
     DeviceListResponse,
     DeviceResponse,
     DeviceSummary,
+    DocumentCreateRequest,
+    DocumentResponse,
     DownloadedModelsResponse,
     GenerationListResponse,
     GenerationStopResponse,
@@ -1011,6 +1013,82 @@ def _apply_preferences(
     return [{"role": "system", "content": composed}, *body]
 
 
+def _documents(tool_rounds: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
+    """Files the model wrote this turn with ``create_document``, for the
+    app to offer as downloads under the reply."""
+    found: list[dict[str, Any]] = []
+    for round_ in tool_rounds or []:
+        if round_.get("tool") != "create_document" or not round_.get("ok"):
+            continue
+        try:
+            body = json.loads(round_.get("content") or "")
+            file = body["file"]
+            found.append({"file_id": file["file_id"], "filename": file["filename"],
+                          "size_bytes": file.get("size_bytes", 0),
+                          "content_type": file.get("content_type", ""),
+                          "download_path": body.get("download_path") or f"/hyperlink/files/{file['file_id']}"})
+        except (ValueError, KeyError, TypeError):
+            continue
+    return found
+
+
+_CONTEXT_CACHE: dict[str, tuple[float, int]] = {}
+
+
+def _model_context(config, runner, backend) -> int:
+    """The loaded model's context window, or 0 when nobody says.
+
+    The runner knows what it loaded the model with. LM Studio is asked
+    for its loaded list, at most every 30 seconds, so a chat does not
+    wait on it every turn.
+    """
+    if backend.is_hypernix and runner is not None:
+        try:
+            return int(getattr(runner.current, "context_length", 0) or 0)
+        except Exception:  # noqa: BLE001 - an unknown context is not an error
+            return 0
+    key = f"{backend.base_url}|{backend.model_id}"
+    cached = _CONTEXT_CACHE.get(key)
+    if cached and time.monotonic() - cached[0] < 30:
+        return cached[1]
+    from ...hyperlink.inference import loaded_models
+
+    try:
+        rows = loaded_models(config, None, lmstudio_timeout=2.0)
+    except Exception:  # noqa: BLE001
+        rows = []
+    found = next((r for r in rows if not backend.model_id or r["model_id"] == backend.model_id), None)
+    context = int((found or {}).get("context_length") or 0)
+    _CONTEXT_CACHE[key] = (time.monotonic(), context)
+    return context
+
+
+def _hypercompress(wire: list[dict[str, Any]], settings, context_length: int) -> dict[str, Any] | None:
+    """Shrink the system message in place when the prompt cannot fit.
+
+    See :mod:`hypernix.hyperlink.hypercompress`. Returns what was done,
+    for the reply's metadata, or None when nothing needed doing.
+    """
+    from ...hyperlink.hypercompress import METADATA_KEY, estimate_tokens, maybe_compress
+
+    if not context_length or not wire or wire[0].get("role") != "system":
+        return None
+    system = wire[0].get("content")
+    if not isinstance(system, str):
+        return None
+    others = sum(
+        estimate_tokens(m["content"]) if isinstance(m.get("content"), str) else 256
+        for m in wire[1:]
+    )
+    size = (getattr(settings, "metadata", None) or {}).get(METADATA_KEY, 1)
+    result = maybe_compress(system, context_length=context_length, other_tokens=others,
+                            size=size if size in (1, 2) else 1)
+    if not result.applied:
+        return None
+    wire[0] = {**wire[0], "content": result.text}
+    return {**result.to_dict(), "context_length": context_length}
+
+
 def _effort_settings(preferences, payload) -> dict[str, Any]:
     """Sampling for this turn: the request's numbers, then the person's.
 
@@ -1521,6 +1599,7 @@ def chat_turn(
         memories.prompt_block(owner=principal.owner) if settings.auto_memory else "",
         default_prompt_for(config, backend),
     )
+    hypercompressed = _hypercompress(wire, settings, _model_context(config, runner, backend))
     wire = _vision(wire, backend, runner)
     sampling = _effort_settings(settings, payload)
 
@@ -1603,12 +1682,14 @@ def chat_turn(
             # the thread tomorrow still shows that it ran three commands
             # rather than just knowing something.
             **({"tool_rounds": tool_rounds} if tool_rounds else {}),
+            **({"documents": _documents(tool_rounds)} if _documents(tool_rounds) else {}),
             # Recorded rather than hidden: an answer from a different
             # model than the one asked for is the single most confusing
             # thing that can happen in a thread, and the fix is to say
             # so rather than to stop doing it.
             **({"used_backup_model": True} if used_backup else {}),
             **({"compacted_before": compacted.get("messages_compacted", 0)} if compacted else {}),
+            **({"hypercompressed": hypercompressed} if hypercompressed else {}),
         },
     )
     _title_session(store, session_id, principal.owner, settings, bridge, model_id or None)
@@ -1700,6 +1781,7 @@ def chat_turn_stream(
         memories.prompt_block(owner=principal.owner) if settings.auto_memory else "",
         default_prompt_for(config, backend),
     )
+    hypercompressed = _hypercompress(wire, settings, _model_context(config, runner, backend))
     wire = _vision(wire, backend, runner)
     sampling = _effort_settings(settings, payload)
     setup = _tool_setup(config, principal, settings, request, memories, session_id)
@@ -1842,6 +1924,8 @@ def chat_turn_stream(
         # After `done`, so the reply is never held up by naming the chat.
         # An app that stops reading at `done` still gets the title on its
         # next session list; one that reads on gets it now.
+        if hypercompressed:
+            yield _frame("hypercompressed", **hypercompressed)
         if compacted:
             yield _frame("compacted", messages=compacted.get("messages_compacted", 0),
                          summary_message_id=compacted.get("summary_message_id", ""))
@@ -1873,7 +1957,9 @@ def chat_turn_stream(
                 "truncated": truncated,
                 "streamed": True,
                 **({"tool_rounds": tool_rounds} if tool_rounds else {}),
+                **({"documents": _documents(tool_rounds)} if _documents(tool_rounds) else {}),
                 **({"compacted_before": compacted.get("messages_compacted", 0)} if compacted else {}),
+                **({"hypercompressed": hypercompressed} if hypercompressed else {}),
                 # Why the reply stopped, so a client that redraws from the
                 # server's copy, or opens the chat later, can say so rather
                 # than show an empty reply (0.72.6.post2).
@@ -2312,6 +2398,43 @@ async def upload_file(
         metadata=metadata,
     )
     return AttachmentResponse(file=AttachmentSummary(**record.to_dict()), request_id=request_id)
+
+
+@router.post("/files/document", response_model=DocumentResponse)
+def create_document(
+    payload: DocumentCreateRequest,
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    store: AttachmentStore = Depends(get_attachment_store),
+    config: T1APIConfig = Depends(get_config),
+    request_id: str = Depends(get_request_id),
+) -> DocumentResponse:
+    """Keep a document a model wrote as a file the person can download.
+
+    What the ``create_document`` tool calls when somebody asks for "a
+    Markdown file I can download". It lands in the same per-owner store
+    as uploads, so it is listed under Files and downloaded the same way.
+    """
+    _require_enabled(config)
+    import re as _re
+
+    markdown = payload.format == "markdown"
+    stem = payload.filename or payload.title or "document"
+    stem = _re.sub(r"[^A-Za-z0-9._ -]+", "", stem).strip(" .")[:120] or "document"
+    if "." not in stem.rsplit("/", 1)[-1]:
+        stem += ".md" if markdown else ".txt"
+    content = payload.content
+    if markdown and payload.title and not content.lstrip().startswith("#"):
+        content = f"# {payload.title.strip()}\n\n{content}"
+    record = store.put(
+        content.encode("utf-8"), filename=stem, owner=principal.owner,
+        device_id=principal.device_id, session_id=payload.session_id,
+        declared_type="text/markdown" if markdown else "text/plain",
+        metadata={"document": {"title": payload.title, "format": payload.format, "written_by": "model"}},
+    )
+    return DocumentResponse(
+        file=AttachmentSummary(**record.to_dict()),
+        download_path=f"/hyperlink/files/{record.file_id}", request_id=request_id,
+    )
 
 
 @router.get("/files", response_model=AttachmentListResponse)

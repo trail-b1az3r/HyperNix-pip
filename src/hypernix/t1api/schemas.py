@@ -2212,3 +2212,57 @@ class SearchResponse(BaseModel):
     capped: bool
     terms: list[str]
     request_id: str
+
+
+class HypercompressSizeResponse(BaseModel):
+    """``/chat/hypercompress/size``: how far a too-big system prompt is
+    squeezed for this owner. 1 is a third of the context, 2 a fifth."""
+
+    size: int = 1
+    share: str = "1/3"
+    changed: bool = False
+    request_id: str = ""
+
+
+class HypercompressRequest(BaseModel):
+    """Compress a system prompt by hand, to see what a turn would send."""
+
+    text: str = Field(..., min_length=1, max_length=200_000)
+    context_length: int = Field(..., ge=256, le=4_194_304)
+    #: 1 or 2; the owner's setting when left out.
+    size: int | None = None
+    #: The rest of the prompt (the conversation), in tokens. 0 compresses
+    #: whenever the text is over its share.
+    other_tokens: int = Field(0, ge=0)
+    #: Compress to the share even if the whole prompt would fit.
+    force: bool = False
+
+
+class HypercompressResponse(BaseModel):
+    text: str
+    applied: bool = False
+    size: int = 1
+    share: str = "1/3"
+    before_tokens: int = 0
+    after_tokens: int = 0
+    target_tokens: int = 0
+    request_id: str = ""
+
+
+class DocumentCreateRequest(BaseModel):
+    """``POST /hyperlink/files/document``: a document a model wrote, kept
+    as a file the person can download from the app (0.72.8)."""
+
+    title: str = Field("", max_length=200)
+    #: The file name; ``.md`` is added for Markdown when it has none.
+    filename: str = Field("", max_length=200)
+    content: str = Field(..., min_length=1, max_length=2_000_000)
+    format: str = Field("markdown", pattern="^(markdown|text)$")
+    session_id: str = ""
+
+
+class DocumentResponse(BaseModel):
+    file: AttachmentSummary
+    #: Where the app downloads it, with the person's own credential.
+    download_path: str
+    request_id: str

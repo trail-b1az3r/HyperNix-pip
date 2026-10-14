@@ -195,8 +195,9 @@ class TestModelMemories:
                                              call.format(v="Helix"), "ok"))
         self.enable(client)
         session = new_session(client)
-        client.post(f"/hyperlink/sessions/{session}/chat", json={"content": "a"})
-        client.post(f"/hyperlink/sessions/{session}/chat", json={"content": "b"})
+        # Asked both times: a model saves a memory only when told to (0.72.8).
+        client.post(f"/hyperlink/sessions/{session}/chat", json={"content": "remember I use Vim"})
+        client.post(f"/hyperlink/sessions/{session}/chat", json={"content": "remember I use Helix now"})
         editors = [m for m in client.get("/memory/list").json()["memories"]
                    if m["metadata"].get("key") == "editor"]
         assert [m["content"] for m in editors] == ["editor: Helix"]

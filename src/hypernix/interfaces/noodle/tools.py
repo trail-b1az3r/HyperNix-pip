@@ -826,7 +826,8 @@ TOOLS: dict[str, Tool] = {
              _p(query=_str("What to search for", required=True)),
              _web_search),
         Tool("update_memory",
-             "Store or delete a durable note. Only works if the server enabled memory.",
+             "Store or delete a durable note, only when the person asks you to remember or "
+             "forget something. Only works if the server enabled memory.",
              _p(key=_str("What to file it under", required=True),
                 value=_str("What to remember"),
                 delete={"type": "boolean", "description": "Forget this key instead"}),

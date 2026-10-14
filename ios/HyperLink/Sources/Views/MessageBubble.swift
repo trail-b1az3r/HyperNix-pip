@@ -74,6 +74,10 @@ struct MessageBubble: View {
             )
             .frame(maxWidth: .infinity, alignment: message.isUser ? .trailing : .leading)
 
+            if !message.documents.isEmpty {
+                GeneratedDocumentsRow(documents: message.documents)
+                    .padding(.leading, 5)
+            }
             if message.isAssistant && !message.modelID.isEmpty && !isStreaming {
                 Text(shortModelName(message.modelID))
                     .font(.caption2)
@@ -84,6 +88,57 @@ struct MessageBubble: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: message.isUser ? .trailing : .leading)
+    }
+}
+
+/// Documents the model wrote this turn (0.72.8): each one a button that
+/// fetches it with the person's own credential and then offers the
+/// share sheet, which is where Save to Files lives.
+struct GeneratedDocumentsRow: View {
+    let documents: [GeneratedDocument]
+    @Environment(AppState.self) private var state
+    @State private var ready: [String: URL] = [:]
+    @State private var failed: Set<String> = []
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ForEach(documents) { document in
+                if let url = ready[document.file_id] {
+                    ShareLink(item: url) {
+                        Label("Save \(document.filename)", systemImage: "square.and.arrow.up")
+                    }
+                } else {
+                    Button {
+                        Task { await fetch(document) }
+                    } label: {
+                        Label(
+                            failed.contains(document.file_id)
+                                ? "Could not download \(document.filename) — try again"
+                                : "Download \(document.filename)",
+                            systemImage: "doc.text"
+                        )
+                    }
+                }
+            }
+        }
+        .font(.footnote)
+        .buttonStyle(.bordered)
+    }
+
+    private func fetch(_ document: GeneratedDocument) async {
+        guard let data = await state.attachmentData(document.file_id) else {
+            failed.insert(document.file_id)
+            return
+        }
+        let name = (document.filename as NSString).lastPathComponent
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(name.isEmpty ? "document.md" : name)
+        do {
+            try data.write(to: url, options: .atomic)
+            failed.remove(document.file_id)
+            ready[document.file_id] = url
+        } catch {
+            failed.insert(document.file_id)
+        }
     }
 }
 

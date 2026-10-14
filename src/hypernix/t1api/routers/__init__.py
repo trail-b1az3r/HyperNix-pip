@@ -58,6 +58,7 @@ from . import (
     config,
     events,
     health,
+    hypercompress,
     hyperlink,
     inference,
     jobs,
@@ -110,6 +111,7 @@ ALL_ROUTERS = (
     # 0.72.5 pt2 -- what the assistant remembers between conversations.
     memory.router,
     compact.router,
+    hypercompress.router,
     # Off unless T1_NOODLE_ENABLED; every route 404s when it is off.
     noodle.router,
     # Loading, unloading and switching the served model.
@@ -140,6 +142,7 @@ __all__ = [
     "events",
     "health",
     "hyperlink",
+    "hypercompress",
     "inference",
     "jobs",
     "keys",
