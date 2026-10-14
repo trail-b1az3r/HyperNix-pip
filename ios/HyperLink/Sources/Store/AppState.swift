@@ -1470,6 +1470,11 @@ final class AppState {
         }
     }
 
+    /// The rings beside the composer, or nil from a server without them.
+    func chatRing(_ sessionID: String) async -> ChatRing? {
+        try? await client.chatRing(sessionID)
+    }
+
     func attachmentData(_ fileID: String) async -> Data? {
         try? await client.attachmentData(fileID)
     }

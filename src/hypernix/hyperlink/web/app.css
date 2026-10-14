@@ -158,3 +158,15 @@ h2 { font-size: 15px; margin: 18px 0 8px; }
   .row { max-width: 88%; }
   #view-runner, #view-memory, #view-settings { padding: 12px 16px 40px; }
 }
+
+/* The two-layer ring beside the composer (0.72.8): inner is context,
+   outer is usage, or GPU / CPU load. */
+.ring { flex: none; display: flex; align-items: center; cursor: help; }
+.ring svg { transform: rotate(-90deg); }
+.ring circle { fill: none; stroke-width: 3.5; stroke-linecap: round; }
+.ring .ring-track { stroke: var(--line); }
+.ring .ring-inner { stroke: var(--accent); stroke-dasharray: 0 100; transition: stroke-dasharray .4s; }
+.ring .ring-outer { stroke: #3fb984; stroke-dasharray: 0 100; transition: stroke-dasharray .4s; }
+.ring .ring-outer.gpu, .ring .ring-outer.cpu { stroke: #e0a440; }
+.ring .warn { stroke: #e05050; }
+.chip.doc { cursor: pointer; border: 1px solid var(--line); }

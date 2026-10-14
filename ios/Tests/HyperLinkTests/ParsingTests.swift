@@ -238,3 +238,25 @@ final class PromptSigningTests: XCTestCase {
         }
     }
 }
+
+final class RingAndDocumentParsingTests: XCTestCase {
+    func testTheRing() throws {
+        let json = """
+        {"session_id": "s", "inner": {"kind": "context", "fraction": 0.25, "label": "1k / 4k", "used": 1024, "limit": 4096},
+         "outer": {"kind": "gpu", "fraction": 0.5, "label": "GPU: 50% busy", "used": 50, "limit": 100}, "request_id": "r"}
+        """.data(using: .utf8)!
+        let ring = try JSONDecoder().decode(ChatRing.self, from: json)
+        XCTAssertEqual(ring.inner.fraction, 0.25)
+        XCTAssertEqual(ring.outer.kind, "gpu")
+    }
+
+    func testAReplyListsTheDocumentsItWrote() throws {
+        let json = """
+        {"message_id": "m", "session_id": "s", "seq": 2, "role": "assistant", "content": "Here it is.",
+         "metadata": {"documents": [{"file_id": "f1", "filename": "notes.md", "size_bytes": 12,
+                                     "download_path": "/hyperlink/files/f1"}], "tool_rounds": [{"tool": "x"}]}}
+        """.data(using: .utf8)!
+        let message = try JSONDecoder().decode(ChatMessage.self, from: json)
+        XCTAssertEqual(message.documents.map(\.filename), ["notes.md"])
+    }
+}

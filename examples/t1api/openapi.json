@@ -1021,6 +1021,37 @@
         "title": "BridgeStatusResponse",
         "type": "object"
       },
+      "ChatRingResponse": {
+        "description": "``GET /hyperlink/sessions/{id}/ring``: the two rings beside the\nchat box (0.72.8). ``inner`` is the context; ``outer`` the person's\nusage allowance, or GPU or CPU load when there is no allowance.",
+        "properties": {
+          "inner": {
+            "additionalProperties": true,
+            "title": "Inner",
+            "type": "object"
+          },
+          "outer": {
+            "additionalProperties": true,
+            "title": "Outer",
+            "type": "object"
+          },
+          "request_id": {
+            "default": "",
+            "title": "Request Id",
+            "type": "string"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "inner",
+          "outer"
+        ],
+        "title": "ChatRingResponse",
+        "type": "object"
+      },
       "CompactRequest": {
         "properties": {
           "dry_run": {
@@ -14493,6 +14524,65 @@
           }
         },
         "summary": "Edit Message",
+        "tags": [
+          "hyperlink"
+        ]
+      }
+    },
+    "/hyperlink/sessions/{session_id}/ring": {
+      "get": {
+        "description": "The two rings beside the chat box: context, then usage or load.\n\nThe inner ring is how much of the model's context the next turn\nuses (the system prompt and the history it would send). The outer\none is the person's token allowance when their key and this server\nhave one, otherwise the GPU's load, or the CPU's when the model runs\non the CPU. See :mod:`hypernix.hyperlink.ring`.",
+        "operationId": "chat_ring_hyperlink_sessions__session_id__ring_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatRingResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Chat Ring",
         "tags": [
           "hyperlink"
         ]

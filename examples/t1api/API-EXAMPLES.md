@@ -914,7 +914,7 @@ Response `200`:
     "status": "unknown",
     "capabilities": [],
     "tags": {},
-    "registered_by": "434d8b9a-3d28-4b1e-b615-8b0543925ccd",
+    "registered_by": "0dad5aee-95c4-4766-9da9-855abbe40280",
     "created_at": "<created_at>",
     "updated_at": "<updated_at>",
     "last_seen": null
@@ -938,7 +938,7 @@ Response `200`:
       "status": "unknown",
       "capabilities": [],
       "tags": {},
-      "registered_by": "434d8b9a-3d28-4b1e-b615-8b0543925ccd",
+      "registered_by": "0dad5aee-95c4-4766-9da9-855abbe40280",
       "created_at": "<created_at>",
       "updated_at": "<updated_at>",
       "last_seen": null
@@ -949,7 +949,7 @@ Response `200`:
 }
 ```
 
-### `PATCH /servers/131797e4cbfd4fc2a9a901e5686bd725` *(authenticated)*
+### `PATCH /servers/0896ef7ab3e84f72b8e18a214452863a` *(authenticated)*
 
 Promotion is audited — it is the gate every module push checks.
 
@@ -973,7 +973,7 @@ Response `200`:
     "status": "unknown",
     "capabilities": [],
     "tags": {},
-    "registered_by": "434d8b9a-3d28-4b1e-b615-8b0543925ccd",
+    "registered_by": "0dad5aee-95c4-4766-9da9-855abbe40280",
     "created_at": "<created_at>",
     "updated_at": "<updated_at>",
     "last_seen": null
@@ -1011,7 +1011,7 @@ Response `400`:
 }
 ```
 
-### `DELETE /servers/131797e4cbfd4fc2a9a901e5686bd725` *(authenticated)*
+### `DELETE /servers/0896ef7ab3e84f72b8e18a214452863a` *(authenticated)*
 
 Destructive operations need ?confirm=true.
 
@@ -1052,7 +1052,7 @@ Response `200`:
     "module_id": "<module_id>",
     "name": "demo-module",
     "version": "1.0.0",
-    "owner_key_id": "4c43ff27-729d-4a8c-a4aa-deb3ac281763",
+    "owner_key_id": "98b94746-4f4c-47f5-a6db-f67fb1887da9",
     "status": "draft",
     "source_type": "none",
     "source_url": null,
@@ -1078,7 +1078,7 @@ Response `200`:
       "module_id": "<module_id>",
       "name": "demo-module",
       "version": "1.0.0",
-      "owner_key_id": "4c43ff27-729d-4a8c-a4aa-deb3ac281763",
+      "owner_key_id": "98b94746-4f4c-47f5-a6db-f67fb1887da9",
       "status": "draft",
       "source_type": "none",
       "source_url": null,
@@ -1126,7 +1126,7 @@ Response `429`:
     "details": {
       "rule": "expensive_operations",
       "subject_kind": "key",
-      "retry_after_seconds": 5.79,
+      "retry_after_seconds": 5.81,
       "cost": 10.0
     }
   },
@@ -1134,7 +1134,7 @@ Response `429`:
 }
 ```
 
-### `POST /modules/9c2e06334af0493b80c42f96325a2df9/deploy` *(authenticated)*
+### `POST /modules/c4c4b7d7950b4b66bc17c6398ccb6fad/deploy` *(authenticated)*
 
 Multi-server deployment. Every target is trust-checked before the job is queued.
 
@@ -1263,7 +1263,7 @@ Response `200`:
 ```json
 {
   "account_type": "user",
-  "account_id": "4c43ff27-729d-4a8c-a4aa-deb3ac281763",
+  "account_id": "98b94746-4f4c-47f5-a6db-f67fb1887da9",
   "balance": 0.0,
   "request_id": "<request_id>"
 }
@@ -1358,12 +1358,12 @@ Response `200`:
     {
       "transaction_id": "<transaction_id>",
       "account_type": "user",
-      "account_id": "4c43ff27-729d-4a8c-a4aa-deb3ac281763",
+      "account_id": "98b94746-4f4c-47f5-a6db-f67fb1887da9",
       "amount": 25.0,
       "kind": "redeem",
       "balance_after": 25.0,
       "note": "payment token redemption",
-      "created_by": "4c43ff27-729d-4a8c-a4aa-deb3ac281763",
+      "created_by": "98b94746-4f4c-47f5-a6db-f67fb1887da9",
       "created_at": "<created_at>"
     }
   ],
@@ -1409,7 +1409,7 @@ Response `200`:
       "cidr": "203.0.113.0/24",
       "kind": "block",
       "reason": "abuse",
-      "created_by": "434d8b9a\u2026",
+      "created_by": "0dad5aee\u2026",
       "created_at": "<created_at>",
       "expires_at": null,
       "expired": false
@@ -1443,7 +1443,7 @@ Response `200`:
       "cidr": "100.64.0.0/10",
       "kind": "allow",
       "reason": "tailnet",
-      "created_by": "434d8b9a\u2026",
+      "created_by": "0dad5aee\u2026",
       "created_at": "<created_at>",
       "expires_at": null,
       "expired": false
@@ -1453,7 +1453,7 @@ Response `200`:
       "cidr": "203.0.113.0/24",
       "kind": "block",
       "reason": "abuse",
-      "created_by": "434d8b9a\u2026",
+      "created_by": "0dad5aee\u2026",
       "created_at": "<created_at>",
       "expires_at": null,
       "expired": false

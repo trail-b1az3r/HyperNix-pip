@@ -13,6 +13,8 @@ struct ChatView: View {
 
     @Environment(AppState.self) private var state
     @State private var draft = ""
+    /// The context and usage-or-load rings beside the composer (0.72.8).
+    @State private var ring: ChatRing?
     @State private var pendingAttachments: [Attachment] = []
     @State private var photoItems: [PhotosPickerItem] = []
     /// What compressing did, shown once.
@@ -386,6 +388,9 @@ struct ChatView: View {
                 }
                 .disabled(isUploading || state.isSending)
 
+                UsageRing(ring: ring)
+                    .task(id: "\(sessionID)-\(state.isSending)") { await pollRing() }
+
                 TextField("Message", text: $draft, axis: .vertical)
                     .lineLimit(1...6)
                     .textFieldStyle(.roundedBorder)
@@ -414,6 +419,15 @@ struct ChatView: View {
             }
         }
         .background(.bar)
+    }
+
+    /// Every five seconds while the chat is on screen; SwiftUI cancels
+    /// the task when it goes, and restarts it after each send.
+    private func pollRing() async {
+        while !Task.isCancelled {
+            if !state.isSending { ring = await state.chatRing(sessionID) }
+            try? await Task.sleep(for: .seconds(5))
+        }
     }
 
     private func send() {
@@ -622,5 +636,53 @@ struct AttachmentChip: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
         .background(Color.secondary.opacity(0.15), in: Capsule())
+    }
+}
+
+
+/// Two rings beside the composer (0.72.8). Inner: how much of the
+/// model's context the next turn uses. Outer: the person's usage
+/// allowance when their key and the server have one, otherwise GPU load,
+/// or CPU load when the model runs on the CPU.
+struct UsageRing: View {
+    let ring: ChatRing?
+
+    var body: some View {
+        ZStack {
+            Circle().stroke(.quaternary, lineWidth: 3.5)
+            Circle()
+                .trim(from: 0, to: fraction(ring?.outer))
+                .stroke(color(for: ring?.outer, fallback: .green), style: StrokeStyle(lineWidth: 3.5, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+            Circle().stroke(.quaternary, lineWidth: 3.5).padding(5)
+            Circle()
+                .trim(from: 0, to: fraction(ring?.inner))
+                .stroke(color(for: ring?.inner, fallback: .accentColor), style: StrokeStyle(lineWidth: 3.5, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+                .padding(5)
+        }
+        .frame(width: 30, height: 30)
+        .animation(.easeInOut(duration: 0.4), value: ring)
+        .opacity(ring == nil ? 0.35 : 1)
+        .accessibilityElement()
+        .accessibilityLabel(label)
+        .help(label)
+    }
+
+    private func fraction(_ layer: RingLayer?) -> CGFloat {
+        CGFloat(min(1, max(0, layer?.fraction ?? 0)))
+    }
+
+    private func color(for layer: RingLayer?, fallback: Color) -> Color {
+        guard let layer else { return fallback }
+        if layer.fraction >= 0.9 { return .red }
+        if layer.kind == "gpu" || layer.kind == "cpu" { return .orange }
+        return fallback
+    }
+
+    private var label: String {
+        guard let ring else { return "Context and usage are not available" }
+        let outer = ring.outer.kind == "usage" ? "Usage" : "Load"
+        return "Context: \(ring.inner.label). \(outer): \(ring.outer.label)."
     }
 }

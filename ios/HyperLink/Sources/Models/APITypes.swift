@@ -1939,3 +1939,17 @@ struct AdoptPreview: Decodable, Equatable, Sendable {
         runnerModel = try c.decodeIfPresent(String.self, forKey: .runnerModel) ?? ""
     }
 }
+
+
+/// `GET /hyperlink/sessions/{id}/ring` (0.72.8): the two rings beside
+/// the composer. Fractions are 0...1; the server does the arithmetic.
+struct RingLayer: Decodable, Hashable, Sendable {
+    let kind: String
+    let fraction: Double
+    let label: String
+}
+
+struct ChatRing: Decodable, Hashable, Sendable {
+    let inner: RingLayer
+    let outer: RingLayer
+}

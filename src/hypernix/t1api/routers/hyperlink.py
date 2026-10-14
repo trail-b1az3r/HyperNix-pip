@@ -75,6 +75,7 @@ from ..deps import (
     get_session_store,
     get_sync_store,
     get_trust_policy,
+    get_usage_meter,
     require_hyperlink_admin,
     require_hyperlink_operator,
 )
@@ -85,6 +86,7 @@ from ..schemas import (
     AttachmentResponse,
     AttachmentSummary,
     BackendsResponse,
+    ChatRingResponse,
     DeviceListResponse,
     DeviceResponse,
     DeviceSummary,
@@ -1531,6 +1533,69 @@ def ping(
         received_at=received, transit_seconds=round(max(0.0, received - payload.sent_at), 3),
         request_id=request_id,
     )
+
+
+@router.get("/sessions/{session_id}/ring", response_model=ChatRingResponse)
+def chat_ring(
+    session_id: str,
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    store: ChatSessionStore = Depends(get_session_store),
+    memories: MemoryStore = Depends(get_memory_store),
+    preferences=Depends(get_preference_store),
+    runner=Depends(get_runner),
+    meter=Depends(get_usage_meter),
+    config: T1APIConfig = Depends(get_config),
+    request_id: str = Depends(get_request_id),
+) -> ChatRingResponse:
+    """The two rings beside the chat box: context, then usage or load.
+
+    The inner ring is how much of the model's context the next turn
+    uses (the system prompt and the history it would send). The outer
+    one is the person's token allowance when their key and this server
+    have one, otherwise the GPU's load, or the CPU's when the model runs
+    on the CPU. See :mod:`hypernix.hyperlink.ring`.
+    """
+    _require_enabled(config)
+    from ...hyperlink.inference import BackendUnavailable
+    from ...hyperlink.ring import context_layer, hardware_layer, usage_layer
+    from ...hyperlink.sessions import estimate_tokens
+
+    session = store.get(session_id, owner=principal.owner)
+    settings = preferences.get(owner=principal.owner)
+    try:
+        backend = _chat_backend(config, runner, session.model_id or None)
+    except (BackendUnavailable, T1APIError):
+        backend = None
+    context = _model_context(config, runner, backend) if backend is not None else 0
+    budget = _token_budget(settings, None)
+    history = store.context_for(session_id, owner=principal.owner, token_budget=budget)
+    system = _apply_preferences(
+        [], settings, session.system_prompt,
+        memories.prompt_block(owner=principal.owner) if settings.auto_memory else "",
+        default_prompt_for(config, backend) if backend is not None else "",
+    )
+    used = sum(estimate_tokens(m.content) for m in history) + sum(
+        estimate_tokens(m["content"]) for m in system)
+    inner = context_layer(used, context or budget, from_model=bool(context))
+
+    outer = None
+    ctx = principal.auth_context
+    key_id = getattr(ctx, "key_id", "") if ctx is not None else ""
+    model_id = (backend.model_id if backend is not None else "") or session.model_id
+    if key_id and model_id and meter is not None:
+        try:
+            outer = usage_layer(meter.snapshot_for_model(key_id, model_id))
+        except Exception:  # noqa: BLE001 - an unregistered model has no allowance
+            outer = None
+    if outer is None:
+        on_gpu = None
+        if backend is not None and backend.is_hypernix and runner is not None:
+            placement = getattr(getattr(runner, "current", None), "placement", None)
+            if placement is not None:
+                on_gpu = bool(getattr(placement, "gpu_layers", 0))
+        outer = hardware_layer(on_gpu=on_gpu)
+    return ChatRingResponse(session_id=session_id, inner=inner.to_dict(), outer=outer.to_dict(),
+                            request_id=request_id)
 
 
 @router.post("/sessions/{session_id}/chat", response_model=HyperLinkChatResponse)

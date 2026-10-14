@@ -2266,3 +2266,14 @@ class DocumentResponse(BaseModel):
     #: Where the app downloads it, with the person's own credential.
     download_path: str
     request_id: str
+
+
+class ChatRingResponse(BaseModel):
+    """``GET /hyperlink/sessions/{id}/ring``: the two rings beside the
+    chat box (0.72.8). ``inner`` is the context; ``outer`` the person's
+    usage allowance, or GPU or CPU load when there is no allowance."""
+
+    session_id: str
+    inner: dict[str, Any]
+    outer: dict[str, Any]
+    request_id: str = ""

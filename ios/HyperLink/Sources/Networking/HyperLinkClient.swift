@@ -760,6 +760,11 @@ actor HyperLinkClient {
         try await get("/hyperlink/models", as: ModelCatalogue.self, timeout: 30)
     }
 
+    /// The context and usage-or-load rings for one chat (0.72.8).
+    func chatRing(_ sessionID: String) async throws -> ChatRing {
+        try await get("/hyperlink/sessions/\(sessionID)/ring", as: ChatRing.self, timeout: 10)
+    }
+
     /// Every model loaded right now, on any backend.
     func loadedModels() async throws -> LoadedModelList {
         try await get("/hyperlink/models/loaded", as: LoadedModelList.self, timeout: 20)

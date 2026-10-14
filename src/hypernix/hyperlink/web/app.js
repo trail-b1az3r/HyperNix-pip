@@ -237,6 +237,43 @@ function drawSessions() {
   }
 }
 
+// ---------------------------------------------------------------------------
+// The two-layer ring (0.72.8)
+// ---------------------------------------------------------------------------
+//
+// Inner: how much of the model's context the next turn uses. Outer: the
+// person's usage allowance when their key and the server have one, else
+// GPU load, else CPU load. The server does the arithmetic; this draws.
+
+function drawRing(data) {
+  const ring = $("ring");
+  if (!ring) return;
+  const put = (id, layer) => {
+    const circle = $(id);
+    const percent = Math.round(Math.min(1, Math.max(0, (layer && layer.fraction) || 0)) * 100);
+    circle.style.strokeDasharray = `${percent} 100`;
+    circle.classList.toggle("warn", percent >= 90);
+    if (id === "ring-outer") {
+      circle.classList.toggle("gpu", !!layer && layer.kind === "gpu");
+      circle.classList.toggle("cpu", !!layer && layer.kind === "cpu");
+    }
+  };
+  put("ring-inner", data && data.inner);
+  put("ring-outer", data && data.outer);
+  const label = data ? `Context: ${data.inner.label}\n${data.outer.kind === "usage" ? "Usage" : "Load"}: ${data.outer.label}` : "";
+  ring.title = label;
+  ring.setAttribute("aria-label", label.replace("\n", "; "));
+}
+
+async function refreshRing() {
+  if (!state.sessionId) { drawRing(null); return; }
+  try {
+    drawRing(await api(`/hyperlink/sessions/${encodeURIComponent(state.sessionId)}/ring`));
+  } catch { /* an older server has no ring; leave it empty */ }
+}
+
+setInterval(() => { if (!document.hidden && !state.streaming) refreshRing(); }, 5000);
+
 async function openSession(sessionId) {
   state.sessionId = sessionId;
   const session = state.sessions.find((s) => s.session_id === sessionId);
@@ -249,6 +286,7 @@ async function openSession(sessionId) {
   state.messages = data.messages || [];
   drawThread();
   drawSessions();
+  refreshRing();
   $("sidebar").classList.remove("open");
   switchView("chats");
 }
@@ -256,6 +294,7 @@ async function openSession(sessionId) {
 function newChat() {
   state.sessionId = "";
   state.messages = [];
+  drawRing(null);
   $("chat-title").textContent = "New chat";
   drawThread();
   drawSessions();

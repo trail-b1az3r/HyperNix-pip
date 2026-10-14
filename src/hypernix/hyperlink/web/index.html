@@ -45,6 +45,14 @@
         </header>
         <div class="thread" id="thread" aria-live="polite"></div>
         <form class="composer" id="composer">
+          <div class="ring" id="ring" title="Context, and usage or load" role="img" aria-label="Context and usage">
+            <svg viewBox="0 0 36 36" width="34" height="34" aria-hidden="true">
+              <circle class="ring-track" cx="18" cy="18" r="15" />
+              <circle class="ring-outer" id="ring-outer" cx="18" cy="18" r="15" pathLength="100" />
+              <circle class="ring-track" cx="18" cy="18" r="10" />
+              <circle class="ring-inner" id="ring-inner" cx="18" cy="18" r="10" pathLength="100" />
+            </svg>
+          </div>
           <textarea id="message" rows="1" placeholder="Message" aria-label="Message"></textarea>
           <button type="submit" id="send" class="send" aria-label="Send">↑</button>
           <button type="button" id="stop" class="send stop" aria-label="Stop" hidden>■</button>
