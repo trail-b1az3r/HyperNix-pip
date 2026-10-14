@@ -84,11 +84,15 @@ TOOLS: tuple[T1Tool, ...] = (
            "Every model this server can serve, from every source it knows."),
     T1Tool("list_downloaded_models", "GET", "/hyperlink/models/downloaded",
            "GGUF files already on the server's disk."),
-    T1Tool("web_search", "GET", "/web/v1/search",
+    T1Tool("web_search", "GET", "/web/v2/I",
            "Search the live web. Use it for anything current, or anything "
-           "you do not know; it returns the pages found and text from them.",
+           "you do not know; decide what to search for first, in a few words. "
+           "It returns the results and a summary of the top sites it read.",
            {"q": _s("What to search for."),
-            "depth": _i("Result pages to read, 1 to 5.", minimum=1, maximum=5)},
+            "depth": _i("Result pages to look through, 1 to 5.", minimum=1, maximum=5),
+            "max": _i("At most this many results.", minimum=1, maximum=100),
+            "read": _i("Read and summarise this many of the top-ranked sites; "
+                       "1 reads only the first.", minimum=0, maximum=20)},
            required=("q",)),
     T1Tool("web_summarize", "POST", "/web/v1/summarize",
            "Open a web page and read it: give it any http or https link, such "
@@ -100,6 +104,15 @@ TOOLS: tuple[T1Tool, ...] = (
             "query": _s("What the summary should focus on."),
             "sentences": _i("Roughly how many sentences.", minimum=1, maximum=12)},
            body=True),
+    T1Tool("web_settings", "GET", "/web/v1/ai/config",
+           "The server's web search settings, and which of them you may change."),
+    T1Tool("web_settings_set", "POST", "/web/v1/ai/config",
+           "Change a web search setting. Only the less risky ones are allowed "
+           "with partial admin: store_format, max_items, max_read_sites.",
+           {"store_format": _s("jsonl or parquet.", enum=["jsonl", "parquet"]),
+            "max_items": _i("Most results a search may return.", minimum=1, maximum=100),
+            "max_read_sites": _i("Most sites a search may read.", minimum=1, maximum=20)},
+           body=True, mutating=True),
     T1Tool("memory_list", "GET", "/memory/list",
            "What the assistant remembers about this person.",
            {"category": _s("Only this category."),

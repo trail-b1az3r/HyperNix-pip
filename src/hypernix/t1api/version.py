@@ -71,6 +71,7 @@ __all__ = [
     "MIN_CLIENT_VERSION",
     "T2_AWARE_VERSION",
     "INFERENCE_VERSION",
+    "SIGNED_PROMPTS_VERSION",
     "parse_version",
 ]
 
@@ -289,9 +290,14 @@ def parse_version(text: str) -> T1Version:
 # oldest client we accept is one we are compatible with, and leaving it
 # on the 1.0 line would assert that a client we reject is a client we
 # accept.
-T1_VERSION = T1Version(api=1, major=1, year=2026, month=9, feature=0, fix=0)
-T1_VERSION_SHORT = T1_VERSION.short   # "1.1.26.9.0.0"
-T1_VERSION_LONG = T1_VERSION.long     # "1.1.2026.9.0.0"
+#
+# 1.1.26.10.1.0 (0.72.8a1) takes feature 1 in October: /web/v2, the
+# web admin settings and /web/v1/ai/config, signed HyperLink prompts and
+# /hyperlink/ping, and chats owned by an account or a key. Same
+# generation, so every 1.1 client is still accepted.
+T1_VERSION = T1Version(api=1, major=1, year=2026, month=10, feature=1, fix=0)
+T1_VERSION_SHORT = T1_VERSION.short   # "1.1.26.10.1.0"
+T1_VERSION_LONG = T1_VERSION.long     # "1.1.2026.10.1.0"
 
 #: Oldest client this server still answers without a compatibility
 #: warning. Same generation, first release of it — everything from the
@@ -314,3 +320,8 @@ T2_AWARE_VERSION = T1Version(api=1, major=0, year=2026, month=8, feature=1, fix=
 #: governed path rather than the raw bridge can check for it by
 #: comparison instead of probing and catching the 404.
 INFERENCE_VERSION = T1Version(api=1, major=0, year=2026, month=9, feature=2, fix=0)
+
+#: The release that added ``/web/v2``, ``/web/v1/ai/config``,
+#: ``/hyperlink/ping``, ``/hyperlink/whoami``, ``/hyperlink/login`` and
+#: signed prompts. A client checks for it before signing or pinging.
+SIGNED_PROMPTS_VERSION = T1Version(api=1, major=1, year=2026, month=10, feature=1, fix=0)
