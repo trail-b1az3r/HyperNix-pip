@@ -40,6 +40,7 @@ STAGED = [
     "src/hypernix/interfaces/hyped_pro_app/src/app.ts",
     "src/hypernix/monitoring/tvtop_max_app/package.json",
     "src/hypernix/monitoring/tvtop_max_app/src/app.ts",
+    "browser/firefox/manifest.json",
     "wiki/Release-Timeline.md",
 ]
 

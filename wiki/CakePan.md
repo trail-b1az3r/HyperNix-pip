@@ -26,7 +26,7 @@ except pan.BakeOff as exc:
 ```
 
 
-> **Canonical source:** `src/hypernix/training/cake_pan.py`. The flat `hypernix.cakepan` import spelling used in examples is a compatibility-facing API; the path above is the implementation to check when verifying behavior. The timeout guard uses `SIGALRM` where available and is skipped on platforms such as Windows. Treat any on-disk PyTorch checkpoint as trusted input.
+> **Canonical source:** `src/hypernix/training/cake_pan.py`. The flat `hypernix.cake_pan` import spelling is a compatibility alias for it; the path above is the implementation to check when verifying behavior. The timeout guard uses `SIGALRM` where available and is skipped on platforms such as Windows. Treat any on-disk PyTorch checkpoint as trusted input.
 
 ---
 

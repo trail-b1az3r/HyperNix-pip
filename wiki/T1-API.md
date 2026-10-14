@@ -961,6 +961,39 @@ and the registry entry's `pricing` block. There is no second price list — a
 model's price is a registry fact, so changing it is a registry change, and
 a model that isn't registered has no price and cannot be costed.
 
+### The itemised statement (t1.statement/2)
+
+`GET /usage/statement` (0.72.8) is the whole bill for a range
+(`?range=24h|7d|30d|all`, or `since`/`until`), scoped to the caller's own
+usage unless admin. `/usage/cost` prices tokens along one dimension; the
+statement lists every **feature** that was used, with a line per model
+and unit under each:
+
+| Feature | What is counted |
+|---|---|
+| `inference` | `/inference/chat`, `/completions`, `/chat/stream` tokens |
+| `relay` | each hop of `/inference/relay` |
+| `embeddings` | embedding input tokens |
+| `compact` | tokens a model spent writing a `/chat/compact/*` summary (quoting is free) |
+| `code` | `code_second`: wall-clock seconds of a sandbox run |
+| `web_search` | `web_search`: one search that ran |
+| `reported` | `/usage/report` |
+
+```json
+{"format": "t1.statement/2", "currency": "USD", "total": 1.75, "requests": 42,
+ "features": [{"feature": "code", "label": "Code sandboxes", "units": {"code_second": 12.5},
+   "subtotal": 0.125, "items": [{"model_id": "", "unit": "code_second", "units": 12.5,
+   "unit_price": 0.01, "unit_cost": 0.125, "total": 0.125, "priced": true}]}],
+ "unpriced": [{"feature": "compact", "model_id": "", "unit": ""}]}
+```
+
+Tokens are priced from the model's registry entry. Other units are
+priced from the model's `pricing.unit_prices` (e.g. `{"image": 0.002}`)
+or, for every model, from `T1_FEATURE_PRICES`
+(`{"code_second": 0.0002, "web_search": 0.005}`). Anything nothing
+prices is listed under `unpriced` and counted at 0 — never guessed.
+Usage recorded before 0.72.8 has no feature; its endpoint gives it one.
+
 ### Reporting what was actually spent
 
 `POST /usage/report` (Beta 4) is the counterpart to routing. The T1 API is
@@ -1601,6 +1634,32 @@ stayed busy with it while later requests waited. The non-streaming
 `/inference/chat` cannot do this: a client that gives up on it leaves the
 backend writing the whole reply. Clients with a timeout should stream.
 
+### Prompts longer than the context: `/inference/relay`
+
+`POST /inference/relay` (0.72.8) reads a document longer than the
+model's context in hops, with [the context relay](Context-Relay.md):
+
+```json
+{"model": "small-4k", "question": "What changed in v2?", "document": "…40,000 tokens…",
+ "mode": "chain", "instances": 4, "context_tokens": 4096, "max_tokens": 512}
+```
+
+`chain` (the default) reads part by part, each hop carrying notes to the
+next; `map` digests the parts side by side and folds the digests. The
+hops rotate through `instances` copies of the model — the runner's pool
+when it serves the model as one — capped by `T1_RELAY_MAX_INSTANCES`
+(8). `context_tokens` defaults to the registry's `context_limit`.
+
+Every gate of `/inference/chat` applies, sized by the largest single
+call. Each hop is metered as it finishes, under the `relay` feature, so
+a relay that fails part way has billed what ran. The response has the
+answer, every hop (`instance`, `kind`, `part`, tokens, seconds), the plan
+(parts, calls, worst-case tokens, `overhead_factor`), and three prices:
+`cost` (what the hops spent), `estimated_cost` (the worst case planned
+before they ran) and `direct_cost` (one big read, had the context been
+large enough). `"estimate_only": true` plans and prices without running
+anything.
+
 ### Backends
 
 Two backends can answer, chosen per request for the model that is about to
@@ -1787,6 +1846,7 @@ All responses include `request_id`. Errors use the envelope shown in
 | GET | `/usage/by?group_by=` | bearer | usage by model/key/server/module/user/account/endpoint |
 | GET | `/usage/cost` | bearer | actual cost, breakdowns, optional forecast |
 | POST | `/usage/estimate` | bearer | what an operation *would* cost; records nothing |
+| GET | `/usage/statement` | bearer | the itemised bill, `t1.statement/2`, per feature, model and unit (0.72.8) |
 | GET | `/keys` | bearer | admins see all, everyone else sees only their own |
 | POST | `/keys/import` | bearer, admin | import a Keymaster export; returns masked ids only |
 | POST | `/keys/assign` | bearer, admin | bind a key to a plan/account/user/servers/models |
@@ -1936,6 +1996,7 @@ is a key with `write`, or a trusted origin on a server with
 | POST | `/inference/completions` | bearer | a plain prompt, sent as one user turn |
 | POST | `/inference/embeddings` | bearer | embeddings, under the same registry and quota rules |
 | POST | `/inference/tokens` | bearer | size and price a request without running it |
+| POST | `/inference/relay` | bearer | a document longer than the context, read in hops by small-context instances; `estimate_only` prices it (0.72.8) |
 
 *The built-in runner* — see [Runtime](Runtime.md) and
 `hypernix-t1 built-in-runner`.

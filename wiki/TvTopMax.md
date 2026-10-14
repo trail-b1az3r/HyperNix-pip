@@ -33,6 +33,34 @@ Each panel's number toggles it, the way btop's do.
 | 9 | modules & libraries | The HyperNix modules the script imports, each with its one-line summary and any deprecation; the libraries with their installed versions; anything not installed; local and standard-library imports |
 | 0 | processes | The busiest Python processes. The one being watched is marked. |
 
+Five more are hidden until **Shift+1** … **Shift+5** (or `--show temps,audio,…`):
+
+| Key | Panel | Shows |
+|---|---|---|
+| ⇧1 | temperatures | The CPU package, the GPU, and each core where the driver reports it (Intel `coretemp`, mapped onto logical CPUs through the CPU topology). AMD's `k10temp` reports the package (Tctl) and each CCD (Tccd), not each core, and the panel says so. |
+| ⇧2 | sound | The default output: its volume **in decibels as the sound server reports it** (PipeWire/PulseAudio, or ALSA) — never worked out from a percentage — whether something is playing, the level of what is playing (peak and RMS in dBFS, sampled from the output's monitor), and a warning when it is loud. On macOS, which reports only a percentage, it says so. |
+| ⇧3 | disks | Each filesystem's use, and read/write speeds |
+| ⇧4 | network | Each interface's download and upload speed and totals |
+| ⇧5 | system | Host, OS, uptime, load against the core count, process count, battery |
+
+The cpu panel shows each core's temperature beside its meter. The mem
+panel's bar is **used ÷ total**, the same numbers it prints: used is the
+memory that cannot be reclaimed (total − `MemAvailable` on Linux; app +
+wired + compressed on macOS, as Activity Monitor counts it), and inside a
+container with a memory limit the limit is the total. Before 0.72.8 the
+bar came from psutil's percentage and the numbers from psutil's
+differently-defined *used*, so they disagreed. Below them, the processes
+holding the most memory, with how fast each is growing.
+
+### Loud audio
+
+While audio plays, an output gain at or above **−6 dB** is called loud,
+and above **0 dB** (amplified past 100%) unsafe; the warning appears in
+the header whichever panels are shown, in the sound panel and among the
+warnings. The decibels are the gain the sound server applies — the
+level at your ears also depends on the speakers or headphones, which
+nothing here can measure. `TVTOP_MAX_LOUD_DB` moves the threshold.
+
 ## Warnings
 
 From the script, read with `ast` and never run:
@@ -95,6 +123,11 @@ will show. j/k, the arrows, Page Up/Down and Space scroll it.
 | Key | Does |
 |---|---|
 | `0`-`9` | Toggle a panel |
+| Shift+`1`-`5` | Toggle the five hidden panels |
+| ← | Select the next panel (Shift+← the previous); it is outlined and marked ▸ |
+| `d` | Deselect |
+| `o` | Change the selected panel's sort: cpu by core, busiest or hottest; memory users by most used, least used or fastest growing; processes by cpu, memory, age or pid; temperatures; disks; network |
+| → / Shift+→ | Scroll the selected panel sideways when its lines are wider than it (logs, processes, modules, model, memory, disks); the title shows ⇆ and how far |
 | `s` | Switch between the wide and phone layouts |
 | `p` | Pause sampling |
 | `r` | Look for the run, script and log again |

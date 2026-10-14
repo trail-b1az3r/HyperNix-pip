@@ -34,6 +34,95 @@ Historical wording and technical detail are retained during format normalization
 
 > Format normalized to `wiki/Changelog-guide.md`; release wording and historical detail are preserved.
 
+## 0.72.8a0 — 2026-10-13
+
+### Added
+
+๋࣭⭑ **Context relay: prompts longer than the model's context**
+  ([Context relay](Context-Relay.md)). `hypernix.runtime.relay` reads a
+  document too long for a small-context model by passing it along
+  several copies of the model: each hop reads one part plus the notes so
+  far, the last answers from the notes. `chain` mode runs strictly in
+  series; `map` digests parts in parallel (a thread per instance) and
+  folds the digests. `plan()` cuts the document to the context and says
+  the cost up front, including the overhead over one big read;
+  `load_instances()` starts N copies of a GGUF on consecutive ports.
+✨ **`POST /inference/relay` on the T1 API**, under every rule of
+  `/inference/chat`, rotating through the runner pool's instances when
+  there is one. Each hop is metered as it finishes; the response prices
+  the hops, the planned worst case and one big read. `estimate_only`
+  prices without running.
+๋࣭⭑ **HyperNix Browser Agent for Firefox** ([Browser Agent](Browser-Agent.md)).
+  A sidebar extension (`browser/firefox`) in which a model — on the T1
+  API, a local OpenAI-compatible server, OpenAI or Anthropic — searches
+  the web, reads pages, clicks, types, presses keys, picks options,
+  scrolls and switches tabs. Actions wait for the person's go-ahead by
+  default; page text is fenced as untrusted; password fields are never
+  read. `scripts/build_firefox_extension.py` packs an `.xpi`.
+✨ **tvtop-max: five hidden panels** — temperatures, sound, disks,
+  network and system — shown with **Shift+1** … **Shift+5** or `--show`.
+✨ **tvtop-max: select, sort and scroll panels.** ← selects a panel,
+  `d` deselects, `o` cycles its sort (cores by busiest or hottest,
+  memory users by most, least or fastest growing, processes by cpu,
+  memory, age or pid, …), → and Shift+→ scroll it sideways when its
+  lines are wider than it.
+✨ **tvtop-max: per-core temperatures** beside each core's meter, from
+  the CPU topology where the driver reports them, and a note where it
+  does not (AMD `k10temp`).
+✨ **tvtop-max: the volume in decibels, as the sound server reports it**
+  (PipeWire/PulseAudio, ALSA), with the playing signal's peak and RMS,
+  and a warning in the header while loud (≥ −6 dB, `TVTOP_MAX_LOUD_DB`)
+  or amplified past 100% audio plays.
+
+### Changed
+
+🔁 Code sandbox runs (seconds), web searches and model-written
+  compaction summaries are now metered against the caller's key.
+🔁 tvtop-pro and tvtop-max take memory from one place,
+  `hypernix.monitoring.hostprobe`.
+
+### API Changes
+
+🔗 **`GET /usage/statement` — the itemised bill, format `t1.statement/2`**:
+  every feature used (inference, relay, embeddings, compaction, code
+  sandboxes, web search, client reports), a line per model and unit,
+  subtotals, the total and what nothing prices.
+🔗 Usage events carry `feature`, `units` and `unit` (added in place to
+  existing databases; older rows get their feature from the endpoint),
+  and `/usage/history` returns them. `feature` is a `group_by` dimension.
+🔗 `ModelPricing.unit_prices` and `T1_FEATURE_PRICES` price what is not
+  tokens; `T1_RELAY_MAX_INSTANCES` caps a relay's instances.
+
+### Fixed
+
+𖢥 **tvtop-max's RAM was wrong.** The bar came from psutil's percentage
+  (based on *available*) while the numbers beside it came from psutil's
+  *used*, which counts differently — and "free" was really *available*.
+  Used is now total − `MemAvailable` (app + wired + compressed on macOS,
+  as Activity Monitor counts it), the bar is that over the total, and
+  inside a container with a memory limit the limit is the total rather
+  than the host's RAM.
+
+### Dependencies and Packaging
+
+📦 The release bumps the Firefox extension's manifest version with the
+  package's.
+
+### Documentation
+
+📚 New pages: [Context relay](Context-Relay.md) and
+  [Browser Agent](Browser-Agent.md); [T1 API](T1-API.md) documents the
+  relay and the statement; [tvtop-max](TvTopMax.md) the new panels, keys
+  and the loud-audio warning.
+
+### Tests
+
+🧪 The relay (fake instances that refuse to overflow their context), the
+  relay endpoint and the statement, the probes (from fake `/proc`,
+  cgroups, hwmon trees and `pactl` JSON), tvtop-max's new panels and
+  keys, the extension's modules under bun, and its content script in a
+  real Chromium page.
+
 ## 0.72.7.post1 — patch 1 - T1 streams stop the model when the caller leaves, and llama-easy
 
 ### Added

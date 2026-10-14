@@ -310,6 +310,14 @@ jobs:
           # tvtop-max is the same kind of app, with the same two files.
           print("tvtop-max app version:",
                 launcher.sync_app_version(v, Path("src/hypernix/monitoring/tvtop_max_app")))
+          # The Firefox extension: Firefox wants only numbers, so the
+          # release's base version (0.72.8a0 -> 0.72.8).
+          import json
+          manifest_path = Path("browser/firefox/manifest.json")
+          manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+          manifest["version"] = re.match(r"\d+\.\d+\.\d+", v).group(0)
+          manifest_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+          print("firefox extension version:", manifest["version"])
           PY
           echo "--- pyproject.toml version line"
           grep '^version' pyproject.toml
@@ -541,6 +549,7 @@ jobs:
             src/hypernix/interfaces/hyped_pro_app/src/app.ts \
             src/hypernix/monitoring/tvtop_max_app/package.json \
             src/hypernix/monitoring/tvtop_max_app/src/app.ts \
+            browser/firefox/manifest.json \
             wiki/Release-Timeline.md
 
           if git diff --cached --quiet; then

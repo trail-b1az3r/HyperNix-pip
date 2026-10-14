@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-t1-api",
   "generated_at": "2026-10-07T05:12:17Z",
-  "commit": "791e0e4a567f4fc38729108666c5edfe9e0088f3",
+  "commit": "ea39518fb861181c1d01727644ed8e8fc6f95107",
   "history_available": true,
   "server_extra": "pip install 'hypernix[t1api]'",
   "client_install": "pip install hypernix",
@@ -541,6 +541,13 @@
       ],
       "changes": [
         {
+          "sha": "d69ad9de",
+          "date": "2026-10-13",
+          "author": "t",
+          "subject": "T1 API: POST /inference/relay and the t1.statement/2 billing format",
+          "api_changes": []
+        },
+        {
           "sha": "91cd2708",
           "date": "2026-10-08",
           "author": "Claude",
@@ -592,13 +599,6 @@
           "date": "2026-09-16",
           "author": "Claude",
           "subject": "A HyperNix model runner, settings, memory and tool calling",
-          "api_changes": []
-        },
-        {
-          "sha": "cc94bf5a",
-          "date": "2026-09-16",
-          "author": "Claude",
-          "subject": "t1: run a model without LM Studio, and switch it from the API",
           "api_changes": []
         }
       ]
@@ -2312,7 +2312,7 @@
     {
       "module": "hypernix.t1api.config",
       "source": "src/hypernix/t1api/config.py",
-      "line_count": 665,
+      "line_count": 697,
       "summary": "t1api.config \u2014 environment-variable configuration for the T1 API.",
       "api": [
         {
@@ -2325,55 +2325,61 @@
             {
               "name": "from_env",
               "signature": "def from_envcls, *, load_dotenv: bool=True, dotenv_path: str | Path='.env' -> T1APIConfig",
-              "line": 522,
+              "line": 532,
               "doc": ""
             },
             {
               "name": "is_production",
               "signature": "def is_productionself -> bool",
-              "line": 532,
+              "line": 542,
               "doc": ""
             },
             {
               "name": "storage_backend",
               "signature": "def storage_backendself -> str",
-              "line": 536,
+              "line": 546,
               "doc": ""
             },
             {
               "name": "tls_settings",
               "signature": "def tls_settingsself -> TLSSettings",
-              "line": 539,
+              "line": 549,
               "doc": ""
             },
             {
               "name": "rate_limit_rules",
               "signature": "def rate_limit_rulesself -> Any",
-              "line": 551,
+              "line": 561,
               "doc": "Parsed rate-limit rules, or None to use the defaults."
+            },
+            {
+              "name": "feature_prices",
+              "signature": "def feature_pricesself -> dict[str, float]",
+              "line": 579,
+              "doc": "``T1_FEATURE_PRICES``, parsed. Malformed JSON or a price that is not a number is dropped with a warning: an unpriced unit shows on the statement as unpriced, which is the honest failure."
             },
             {
               "name": "describe_secrets",
               "signature": "def describe_secretsself -> dict[str, bool]",
-              "line": 569,
+              "line": 601,
               "doc": "Which secrets are set. Values never included \u2014 this is what ``GET /status`` uses to tell an operator what's missing without telling anyone what it is."
             },
             {
               "name": "public_dict",
               "signature": "def public_dictself -> dict[str, object]",
-              "line": 583,
+              "line": 615,
               "doc": "Explicit allowlist of config surfaced by GET /config. Never includes ``token_secret``, ``deploy_secret``, ``database_url``, or any future secret field."
             },
             {
               "name": "production_problems",
               "signature": "def production_problemsself -> list[str]",
-              "line": 625,
+              "line": 659,
               "doc": "Every reason this config is unsafe for production, as text."
             },
             {
               "name": "validate_for_production",
               "signature": "def validate_for_productionself, *, strict: bool | None=None -> None",
-              "line": 717,
+              "line": 751,
               "doc": "Raise ``CONFIG_INVALID`` if this config is unsafe for production."
             }
           ]
@@ -2391,6 +2397,18 @@
         }
       ],
       "changes": [
+        {
+          "sha": "d69ad9de",
+          "date": "2026-10-13",
+          "author": "t",
+          "subject": "T1 API: POST /inference/relay and the t1.statement/2 billing format",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def feature_prices(self) -> dict[str, float]:"
+            }
+          ]
+        },
         {
           "sha": "203b7112",
           "date": "2026-10-06",
@@ -2439,20 +2457,13 @@
           "author": "Claude",
           "subject": "T1: conceal mode with 36-hour retention, and a public /server/info",
           "api_changes": []
-        },
-        {
-          "sha": "e26841fc",
-          "date": "2026-09-23",
-          "author": "Claude",
-          "subject": "HyperLink: model titles, compression, private chats, organised memory, images, shell, tails",
-          "api_changes": []
         }
       ]
     },
     {
       "module": "hypernix.t1api.cost",
       "source": "src/hypernix/t1api/cost.py",
-      "line_count": 332,
+      "line_count": 482,
       "summary": "t1api.cost \u2014 usage costing, estimates, and forecasts.",
       "api": [
         {
@@ -2507,34 +2518,53 @@
           ]
         },
         {
+          "kind": "function",
+          "name": "feature_of",
+          "signature": "def feature_offeature: str, endpoint: str -> str",
+          "line": 159,
+          "doc": "The statement feature for a usage row."
+        },
+        {
           "kind": "class",
           "name": "CostCalculator",
           "signature": "class CostCalculator",
-          "line": 125,
+          "line": 169,
           "doc": "Prices recorded usage, estimates prospective usage, forecasts spend.",
           "methods": [
             {
               "name": "price_tokens",
               "signature": "def price_tokensself, model_id: str, input_tokens: int, output_tokens: int -> tuple[float, float, str]",
-              "line": 136,
+              "line": 183,
               "doc": "Price a token pair for one registered model."
+            },
+            {
+              "name": "price_units",
+              "signature": "def price_unitsself, model_id: str, unit: str, units: float -> tuple[float, str, float | None]",
+              "line": 216,
+              "doc": "Price *units* of *unit*: ``(cost, currency, unit_price)``."
             },
             {
               "name": "cost_report",
               "signature": "def cost_reportself, *, group_by: str='model_id', since: float | None=None, until: float | None=None, **filters: str | None -> CostReport",
-              "line": 173,
+              "line": 236,
               "doc": "Actual cost over a date range, broken down by one dimension."
+            },
+            {
+              "name": "statement",
+              "signature": "def statementself, *, since: float | None=None, until: float | None=None, **filters: str | None -> dict[str, Any]",
+              "line": 333,
+              "doc": "Everything billed over a range, itemised by feature and model."
             },
             {
               "name": "estimate",
               "signature": "def estimateself, *, model_id: str, input_tokens: int, output_tokens: int | None=None, requests: int=1 -> dict[str, Any]",
-              "line": 266,
+              "line": 430,
               "doc": "What *would* this cost? Records nothing, reserves nothing."
             },
             {
               "name": "forecast",
               "signature": "def forecastself, *, horizon_seconds: float=30 * _DAY, lookback_seconds: float=7 * _DAY, **filters: str | None -> Forecast",
-              "line": 319,
+              "line": 483,
               "doc": "Project spend over *horizon_seconds* from observed history."
             }
           ]
@@ -2552,6 +2582,34 @@
         }
       ],
       "changes": [
+        {
+          "sha": "d69ad9de",
+          "date": "2026-10-13",
+          "author": "t",
+          "subject": "T1 API: POST /inference/relay and the t1.statement/2 billing format",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def feature_of(feature: str, endpoint: str) -> str:"
+            },
+            {
+              "kind": "removed",
+              "text": "def __init__(self, store: UsageStore, registry: ModelRegistry) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, store: UsageStore, registry: ModelRegistry,"
+            },
+            {
+              "kind": "added",
+              "text": "def price_units(self, model_id: str, unit: str, units: float) -> tuple[float, str, float | None]:"
+            },
+            {
+              "kind": "added",
+              "text": "def statement("
+            }
+          ]
+        },
         {
           "sha": "604a8342",
           "date": "2026-08-22",
@@ -6798,7 +6856,7 @@
     {
       "module": "hypernix.t1api.registry",
       "source": "src/hypernix/t1api/registry.py",
-      "line_count": 426,
+      "line_count": 436,
       "summary": "t1api.registry \u2014 the Model Registry service.",
       "api": [
         {
@@ -6855,13 +6913,13 @@
             {
               "name": "to_dict",
               "signature": "def to_dictself -> dict[str, Any]",
-              "line": 228,
+              "line": 232,
               "doc": ""
             },
             {
               "name": "from_dict",
               "signature": "def from_dictcls, d: dict[str, Any] | None -> ModelPricing",
-              "line": 232,
+              "line": 241,
               "doc": ""
             }
           ]
@@ -6870,25 +6928,25 @@
           "kind": "class",
           "name": "ModelEntry",
           "signature": "class ModelEntry",
-          "line": 242,
+          "line": 252,
           "doc": "One explicit, admin-controlled model registry entry.",
           "methods": [
             {
               "name": "to_dict",
               "signature": "def to_dictself -> dict[str, Any]",
-              "line": 294,
+              "line": 304,
               "doc": ""
             },
             {
               "name": "from_dict",
               "signature": "def from_dictcls, d: dict[str, Any] -> ModelEntry",
-              "line": 302,
+              "line": 312,
               "doc": ""
             },
             {
               "name": "is_routable",
               "signature": "def is_routableself -> bool",
-              "line": 333,
+              "line": 343,
               "doc": "True if this entry may ever be selected (manually or by the router) \u2014 excludes example/disabled/deprecated entries."
             }
           ]
@@ -6897,49 +6955,49 @@
           "kind": "class",
           "name": "ModelRegistry",
           "signature": "class ModelRegistry",
-          "line": 339,
+          "line": 349,
           "doc": "Thread-safe, in-memory model registry backed by a JSON file.",
           "methods": [
             {
               "name": "load",
               "signature": "def loadcls, path: str | Path | None=None, *, include_examples: bool=False -> ModelRegistry",
-              "line": 362,
+              "line": 372,
               "doc": "Load a registry, from *path* or from the conventional places."
             },
             {
               "name": "to_json_file",
               "signature": "def to_json_fileself, path: str | Path -> None",
-              "line": 408,
+              "line": 418,
               "doc": ""
             },
             {
               "name": "register",
               "signature": "def registerself, entry: ModelEntry -> None",
-              "line": 418,
+              "line": 428,
               "doc": "Add or replace a registry entry. Admin-only at the API layer."
             },
             {
               "name": "deregister",
               "signature": "def deregisterself, model_id: str -> None",
-              "line": 424,
+              "line": 434,
               "doc": ""
             },
             {
               "name": "get",
               "signature": "def getself, model_id: str -> ModelEntry | None",
-              "line": 438,
+              "line": 448,
               "doc": "Return the entry for *model_id*, or None. Does NOT raise \u2014 use :meth:`require` when an unregistered model should be a hard error (e.g. in an API handler)."
             },
             {
               "name": "require",
               "signature": "def requireself, model_id: str -> ModelEntry",
-              "line": 448,
+              "line": 458,
               "doc": "Return the entry for *model_id* or raise ``MODEL_NOT_SUPPORTED``."
             },
             {
               "name": "list",
               "signature": "def listself, *, status: ModelStatus | None=None, plan: str | None=None, routable_only: bool=False -> list[ModelEntry]",
-              "line": 465,
+              "line": 475,
               "doc": ""
             }
           ]
@@ -6957,6 +7015,13 @@
         }
       ],
       "changes": [
+        {
+          "sha": "d69ad9de",
+          "date": "2026-10-13",
+          "author": "t",
+          "subject": "T1 API: POST /inference/relay and the t1.statement/2 billing format",
+          "api_changes": []
+        },
         {
           "sha": "8bb54a39",
           "date": "2026-09-17",
@@ -8021,98 +8086,98 @@
     {
       "module": "hypernix.t1api.routers.code",
       "source": "src/hypernix/t1api/routers/code.py",
-      "line_count": 374,
+      "line_count": 383,
       "summary": "``/code`` \u2014 run code in sandboxes on this server.",
       "api": [
         {
           "kind": "function",
           "name": "code_index",
           "signature": "def code_indexrequest: Request, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> dict[str, Any]",
-          "line": 149,
+          "line": 150,
           "doc": "Whether this server runs code, what with, and where to go next."
         },
         {
           "kind": "function",
           "name": "code_create_help",
           "signature": "def code_create_helprequest: Request, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> dict[str, Any]",
-          "line": 172,
+          "line": 173,
           "doc": "What can be created, and the body each takes."
         },
         {
           "kind": "function",
           "name": "code_run_once",
-          "signature": "def code_run_oncerequest: Request, body: dict[str, Any]=Body(...), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), audit=Depends(get_audit_log), request_id: str=Depends(get_request_id) -> dict[str, Any]",
-          "line": 191,
+          "signature": "def code_run_oncerequest: Request, body: dict[str, Any]=Body(...), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), audit=Depends(get_audit_log), meter=Depends(get_usage_meter), request_id: str=Depends(get_request_id) -> dict[str, Any]",
+          "line": 192,
           "doc": "Run ``code`` once, in a sandbox that is deleted before this returns."
         },
         {
           "kind": "function",
           "name": "code_sandboxes",
           "signature": "def code_sandboxesrequest: Request, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> dict[str, Any]",
-          "line": 222,
+          "line": 225,
           "doc": "Your sandboxes (every sandbox, for an admin)."
         },
         {
           "kind": "function",
           "name": "code_create_sandbox",
           "signature": "def code_create_sandboxrequest: Request, body: dict[str, Any] | None=Body(default=None), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), audit=Depends(get_audit_log), request_id: str=Depends(get_request_id) -> JSONResponse",
-          "line": 238,
+          "line": 241,
           "doc": "A sandbox that stays until it is deleted or sits idle past s7."
         },
         {
           "kind": "function",
           "name": "code_perms_read",
           "signature": "def code_perms_readrequest: Request, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> dict[str, Any]",
-          "line": 271,
+          "line": 274,
           "doc": "What every sandbox may do, and what this machine can enforce."
         },
         {
           "kind": "function",
           "name": "code_perms_write",
           "signature": "def code_perms_writedirectives: str, request: Request, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), audit=Depends(get_audit_log), request_id: str=Depends(get_request_id) -> dict[str, Any]",
-          "line": 282,
+          "line": 285,
           "doc": "``perms/s2?:=on|s3?:=120``, or ``perms|s1=?;s2?:=on``."
         },
         {
           "kind": "function",
           "name": "code_sandbox_read",
           "signature": "def code_sandbox_readbox_id: str, request: Request, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> dict[str, Any]",
-          "line": 333,
+          "line": 336,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "code_sandbox_delete",
           "signature": "def code_sandbox_deletebox_id: str, request: Request, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> dict[str, Any]",
-          "line": 345,
+          "line": 348,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "code_file_read",
           "signature": "def code_file_readbox_id: str, path: str, request: Request, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> dict[str, Any]",
-          "line": 358,
+          "line": 361,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "code_file_write",
           "signature": "def code_file_writebox_id: str, path: str, request: Request, body: dict[str, Any]=Body(...), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> dict[str, Any]",
-          "line": 375,
+          "line": 378,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "code_file_delete",
           "signature": "def code_file_deletebox_id: str, path: str, request: Request, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> dict[str, Any]",
-          "line": 397,
+          "line": 400,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "code_sandbox_run",
-          "signature": "def code_sandbox_runbox_id: str, request: Request, body: dict[str, Any]=Body(...), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), audit=Depends(get_audit_log), request_id: str=Depends(get_request_id) -> dict[str, Any]",
-          "line": 414,
+          "signature": "def code_sandbox_runbox_id: str, request: Request, body: dict[str, Any]=Body(...), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), audit=Depends(get_audit_log), meter=Depends(get_usage_meter), request_id: str=Depends(get_request_id) -> dict[str, Any]",
+          "line": 417,
           "doc": "Run a file in the sandbox (``path``), or new code (``code``)."
         }
       ],
@@ -8128,6 +8193,18 @@
         }
       ],
       "changes": [
+        {
+          "sha": "d69ad9de",
+          "date": "2026-10-13",
+          "author": "t",
+          "subject": "T1 API: POST /inference/relay and the t1.statement/2 billing format",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _meter_run(meter, principal: HyperLinkPrincipal, result, endpoint: str) -> None:"
+            }
+          ]
+        },
         {
           "sha": "858eefd0",
           "date": "2026-09-30",
@@ -8237,49 +8314,49 @@
     {
       "module": "hypernix.t1api.routers.compact",
       "source": "src/hypernix/t1api/routers/compact.py",
-      "line_count": 192,
+      "line_count": 218,
       "summary": "``/chat/compact/*`` \u2014 making a long conversation fit again.",
       "api": [
         {
           "kind": "function",
           "name": "compact_session",
-          "signature": "def compact_sessionstore: ChatSessionStore, config: T1APIConfig, *, session_id: str, owner: str, scope: str='dynamic', keep_recent: int | None=None, dry_run: bool=False -> dict[str, Any]",
-          "line": 74,
+          "signature": "def compact_sessionstore: ChatSessionStore, config: T1APIConfig, *, session_id: str, owner: str, scope: str='dynamic', keep_recent: int | None=None, dry_run: bool=False, meter: Any=None -> dict[str, Any]",
+          "line": 86,
           "doc": "Compact one session. What both the endpoints and auto-compaction use."
         },
         {
           "kind": "function",
           "name": "compact_prompts",
-          "signature": "def compact_promptspayload: CompactRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: ChatSessionStore=Depends(get_session_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> CompactResponse",
-          "line": 153,
+          "signature": "def compact_promptspayload: CompactRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: ChatSessionStore=Depends(get_session_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id), meter=Depends(get_usage_meter) -> CompactResponse",
+          "line": 176,
           "doc": "Summarise what the person sent, keeping the answers intact."
         },
         {
           "kind": "function",
           "name": "compact_system_prompt",
-          "signature": "def compact_system_promptpayload: CompactRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: ChatSessionStore=Depends(get_session_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> CompactResponse",
-          "line": 170,
+          "signature": "def compact_system_promptpayload: CompactRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: ChatSessionStore=Depends(get_session_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id), meter=Depends(get_usage_meter) -> CompactResponse",
+          "line": 194,
           "doc": "Summarise the system prompt alone."
         },
         {
           "kind": "function",
           "name": "compact_responses",
-          "signature": "def compact_responsespayload: CompactRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: ChatSessionStore=Depends(get_session_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> CompactResponse",
-          "line": 187,
+          "signature": "def compact_responsespayload: CompactRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: ChatSessionStore=Depends(get_session_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id), meter=Depends(get_usage_meter) -> CompactResponse",
+          "line": 212,
           "doc": "Summarise the model's messages, keeping the questions intact."
         },
         {
           "kind": "function",
           "name": "compact_all",
-          "signature": "def compact_allpayload: CompactRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: ChatSessionStore=Depends(get_session_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> CompactResponse",
-          "line": 199,
+          "signature": "def compact_allpayload: CompactRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: ChatSessionStore=Depends(get_session_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id), meter=Depends(get_usage_meter) -> CompactResponse",
+          "line": 225,
           "doc": "Summarise both sides, oldest first."
         },
         {
           "kind": "function",
           "name": "compact_dynamic",
-          "signature": "def compact_dynamicpayload: CompactRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: ChatSessionStore=Depends(get_session_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> CompactResponse",
-          "line": 211,
+          "signature": "def compact_dynamicpayload: CompactRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: ChatSessionStore=Depends(get_session_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id), meter=Depends(get_usage_meter) -> CompactResponse",
+          "line": 238,
           "doc": "Compact whichever part is actually using the budget."
         }
       ],
@@ -8293,6 +8370,13 @@
         }
       ],
       "changes": [
+        {
+          "sha": "d69ad9de",
+          "date": "2026-10-13",
+          "author": "t",
+          "subject": "T1 API: POST /inference/relay and the t1.statement/2 billing format",
+          "api_changes": []
+        },
         {
           "sha": "e26841fc",
           "date": "2026-09-23",
@@ -9062,49 +9146,56 @@
     {
       "module": "hypernix.t1api.routers.inference",
       "source": "src/hypernix/t1api/routers/inference.py",
-      "line_count": 616,
+      "line_count": 727,
       "summary": "``/inference`` \u2014 the governed inference surface.",
       "api": [
         {
           "kind": "function",
           "name": "list_backends",
           "signature": "def list_backendsctx: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id), runner=Depends(get_runner) -> InferenceBackendsResponse",
-          "line": 383,
+          "line": 385,
           "doc": "What this server can actually dispatch to, and whether it answers."
         },
         {
           "kind": "function",
           "name": "inference_chat",
           "signature": "def inference_chatpayload: InferenceChatRequest, ctx: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), registry=Depends(get_registry), meter=Depends(get_usage_meter), engine=Depends(get_routing_engine), keys=Depends(get_key_directory), costs=Depends(get_cost_calculator), request_id: str=Depends(get_request_id), runner=Depends(get_runner) -> InferenceResponse",
-          "line": 448,
+          "line": 450,
           "doc": "A chat completion, through the registry, the cascade and the meter."
         },
         {
           "kind": "function",
           "name": "inference_completions",
           "signature": "def inference_completionspayload: InferenceCompletionRequest, ctx: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), registry=Depends(get_registry), meter=Depends(get_usage_meter), engine=Depends(get_routing_engine), keys=Depends(get_key_directory), costs=Depends(get_cost_calculator), request_id: str=Depends(get_request_id), runner=Depends(get_runner) -> InferenceResponse",
-          "line": 473,
+          "line": 475,
           "doc": "A plain prompt, sent as a single user turn."
+        },
+        {
+          "kind": "function",
+          "name": "inference_relay",
+          "signature": "def inference_relaypayload: InferenceRelayRequest, ctx: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), registry=Depends(get_registry), meter=Depends(get_usage_meter), engine=Depends(get_routing_engine), keys=Depends(get_key_directory), costs=Depends(get_cost_calculator), request_id: str=Depends(get_request_id), runner=Depends(get_runner) -> InferenceRelayResponse",
+          "line": 508,
+          "doc": "A document longer than the model's context, read in hops (0.72.8)."
         },
         {
           "kind": "function",
           "name": "inference_chat_stream",
           "signature": "def inference_chat_streampayload: InferenceChatRequest, request: Request, ctx: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), registry=Depends(get_registry), meter=Depends(get_usage_meter), engine=Depends(get_routing_engine), keys=Depends(get_key_directory), request_id: str=Depends(get_request_id), runner=Depends(get_runner) -> StreamingResponse",
-          "line": 506,
+          "line": 630,
           "doc": "The same governed path, streamed."
         },
         {
           "kind": "function",
           "name": "inference_embeddings",
           "signature": "def inference_embeddingspayload: InferenceEmbeddingsRequest, ctx: AuthContext=Depends(get_auth_context), config: T1APIConfig=Depends(get_config), registry=Depends(get_registry), meter=Depends(get_usage_meter), keys=Depends(get_key_directory), request_id: str=Depends(get_request_id), runner=Depends(get_runner) -> InferenceEmbeddingsResponse",
-          "line": 597,
+          "line": 721,
           "doc": "Embeddings, under the same registry and quota rules as generation."
         },
         {
           "kind": "function",
           "name": "inference_token_count",
           "signature": "def inference_token_countpayload: InferenceTokenCountRequest, ctx: AuthContext=Depends(get_auth_context), registry=Depends(get_registry), meter=Depends(get_usage_meter), costs=Depends(get_cost_calculator), request_id: str=Depends(get_request_id) -> InferenceTokenCountResponse",
-          "line": 657,
+          "line": 781,
           "doc": "Size a request before committing to it."
         }
       ],
@@ -9120,6 +9211,42 @@
         }
       ],
       "changes": [
+        {
+          "sha": "d69ad9de",
+          "date": "2026-10-13",
+          "author": "t",
+          "subject": "T1 API: POST /inference/relay and the t1.statement/2 billing format",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "@router.post(\"/relay\", response_model=InferenceRelayResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def inference_relay("
+            },
+            {
+              "kind": "added",
+              "text": "def planned_for(model_id: str) -> rl.RelayPlan:"
+            },
+            {
+              "kind": "added",
+              "text": "def instance(client: LMStudioBridge):"
+            },
+            {
+              "kind": "added",
+              "text": "def call(messages: list[dict], max_tokens: int) -> rl.Reply:"
+            },
+            {
+              "kind": "added",
+              "text": "def bill(hop: rl.Hop) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _pool_urls(runner: Any, model_id: str) -> list[str]:"
+            }
+          ]
+        },
         {
           "sha": "91cd2708",
           "date": "2026-10-08",
@@ -11026,56 +11153,63 @@
     {
       "module": "hypernix.t1api.routers.usage",
       "source": "src/hypernix/t1api/routers/usage.py",
-      "line_count": 363,
+      "line_count": 396,
       "summary": "Usage and cost endpoints.",
       "api": [
         {
           "kind": "function",
           "name": "usage_current",
           "signature": "def usage_currentctx: AuthContext=Depends(get_auth_context), meter: UsageMeter=Depends(get_usage_meter), request_id: str=Depends(get_request_id) -> UsageCurrentResponse",
-          "line": 112,
+          "line": 113,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "usage_remaining",
           "signature": "def usage_remainingmodel_id: str=Query(..., description='Registered model_id to check remaining allowance for.'), ctx: AuthContext=Depends(get_auth_context), meter: UsageMeter=Depends(get_usage_meter), request_id: str=Depends(get_request_id) -> UsageRemainingResponse",
-          "line": 122,
+          "line": 123,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "usage_history",
           "signature": "def usage_historyrange_: str | None=Query(default=None, alias='range', description='1h|24h|7d|30d|all'), since: float | None=Query(default=None, description='POSIX timestamp, inclusive.'), until: float | None=Query(default=None, description='POSIX timestamp, exclusive.'), key_id: str | None=Query(default=None, description='Admin only; ignored otherwise.'), model_id: str | None=Query(default=None), server_id: str | None=Query(default=None), module_id: str | None=Query(default=None), user_id: str | None=Query(default=None, description='Admin only; ignored otherwise.'), account_id: str | None=Query(default=None, description='Admin only; ignored otherwise.'), limit: int=Query(default=100, ge=1, le=1000), offset: int=Query(default=0, ge=0), ctx: AuthContext=Depends(get_auth_context), meter: UsageMeter=Depends(get_usage_meter), keys=Depends(get_key_directory), request_id: str=Depends(get_request_id) -> UsageHistoryResponse",
-          "line": 139,
+          "line": 140,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "usage_by",
           "signature": "def usage_bygroup_by: str=Query(..., description=f\"One of: {', '.join(GROUPABLE)}\"), range_: str | None=Query(default=None, alias='range'), since: float | None=Query(default=None), until: float | None=Query(default=None), key_id: str | None=Query(default=None), model_id: str | None=Query(default=None), server_id: str | None=Query(default=None), module_id: str | None=Query(default=None), user_id: str | None=Query(default=None), account_id: str | None=Query(default=None), ctx: AuthContext=Depends(get_auth_context), meter: UsageMeter=Depends(get_usage_meter), keys=Depends(get_key_directory), request_id: str=Depends(get_request_id) -> UsageAggregateResponse",
-          "line": 182,
+          "line": 183,
           "doc": "\"Usage by model / key / server / module / user / account\", as one endpoint rather than six near-identical ones."
         },
         {
           "kind": "function",
           "name": "usage_cost",
           "signature": "def usage_costgroup_by: str=Query(default='model_id', description=f\"One of: {', '.join(GROUPABLE)}\"), range_: str | None=Query(default=None, alias='range'), since: float | None=Query(default=None), until: float | None=Query(default=None), key_id: str | None=Query(default=None), model_id: str | None=Query(default=None), server_id: str | None=Query(default=None), module_id: str | None=Query(default=None), user_id: str | None=Query(default=None), account_id: str | None=Query(default=None), forecast: bool=Query(default=False, description='Include a spend forecast for the horizon.'), forecast_horizon_seconds: float=Query(default=2592000.0, gt=0), ctx: AuthContext=Depends(get_auth_context), calculator: CostCalculator=Depends(get_cost_calculator), keys=Depends(get_key_directory), request_id: str=Depends(get_request_id) -> UsageCostResponse",
-          "line": 245,
+          "line": 246,
           "doc": "Actual cost with optional forecast \u2014 totals, date ranges, and per-model/per-server breakdowns in one shape."
+        },
+        {
+          "kind": "function",
+          "name": "usage_statement",
+          "signature": "def usage_statementrange_: str | None=Query(default=None, alias='range'), since: float | None=Query(default=None), until: float | None=Query(default=None), key_id: str | None=Query(default=None), model_id: str | None=Query(default=None), server_id: str | None=Query(default=None), module_id: str | None=Query(default=None), user_id: str | None=Query(default=None), account_id: str | None=Query(default=None), ctx: AuthContext=Depends(get_auth_context), calculator: CostCalculator=Depends(get_cost_calculator), keys=Depends(get_key_directory), request_id: str=Depends(get_request_id) -> UsageStatementResponse",
+          "line": 296,
+          "doc": "The itemised bill (``t1.statement/2``, 0.72.8)."
         },
         {
           "kind": "function",
           "name": "usage_estimate",
           "signature": "def usage_estimatebody: UsageEstimateRequest, ctx: AuthContext=Depends(get_auth_context), calculator: CostCalculator=Depends(get_cost_calculator), keys=Depends(get_key_directory), request_id: str=Depends(get_request_id) -> UsageEstimateResponse",
-          "line": 295,
+          "line": 330,
           "doc": "What an operation *would* cost. Records nothing and reserves nothing \u2014 see ``t1api.cost``."
         },
         {
           "kind": "function",
           "name": "usage_report",
           "signature": "def usage_reportbody: UsageReportRequest, ctx: AuthContext=Depends(get_auth_context), meter: UsageMeter=Depends(get_usage_meter), keys=Depends(get_key_directory), audit=Depends(get_audit_log), request_id: str=Depends(get_request_id) -> UsageReportResponse",
-          "line": 320,
+          "line": 355,
           "doc": "Record tokens a client consumed running a model this server routed it to."
         }
       ],
@@ -11091,6 +11225,22 @@
         }
       ],
       "changes": [
+        {
+          "sha": "d69ad9de",
+          "date": "2026-10-13",
+          "author": "t",
+          "subject": "T1 API: POST /inference/relay and the t1.statement/2 billing format",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "@router.get(\"/statement\", response_model=UsageStatementResponse)"
+            },
+            {
+              "kind": "added",
+              "text": "def usage_statement("
+            }
+          ]
+        },
         {
           "sha": "879b000b",
           "date": "2026-08-22",
@@ -11184,35 +11334,35 @@
     {
       "module": "hypernix.t1api.routers.web",
       "source": "src/hypernix/t1api/routers/web.py",
-      "line_count": 285,
+      "line_count": 292,
       "summary": "``/web/v1`` \u2014 keyless web search for HyperLink and hyperchat.",
       "api": [
         {
           "kind": "function",
           "name": "web_search",
-          "signature": "async def web_searchrequest: Request, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id)",
-          "line": 89,
+          "signature": "async def web_searchrequest: Request, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), meter=Depends(get_usage_meter), request_id: str=Depends(get_request_id)",
+          "line": 90,
           "doc": "``/web/v1/I?=query&q?=maxdepth`` \u2014 or ``?q=cats&depth=2``."
         },
         {
           "kind": "function",
           "name": "web_summarize",
           "signature": "async def web_summarizerequest: Request, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id)",
-          "line": 122,
+          "line": 129,
           "doc": "Summarise text, a URL, or the results of a search."
         },
         {
           "kind": "function",
           "name": "web_config_read",
           "signature": "async def web_config_readrequest: Request, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), request_id: str=Depends(get_request_id)",
-          "line": 274,
+          "line": 281,
           "doc": "The three settings, and the browsers actually installed."
         },
         {
           "kind": "function",
           "name": "web_config_write",
           "signature": "async def web_config_writedirectives: str, request: Request, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), request_id: str=Depends(get_request_id)",
-          "line": 295,
+          "line": 302,
           "doc": "``/web/v1/config/s1?=k|s2?:=wikipedia|s3?:={key}?[auto]``"
         }
       ],
@@ -11228,6 +11378,13 @@
         }
       ],
       "changes": [
+        {
+          "sha": "d69ad9de",
+          "date": "2026-10-13",
+          "author": "t",
+          "subject": "T1 API: POST /inference/relay and the t1.statement/2 billing format",
+          "api_changes": []
+        },
         {
           "sha": "eb12198c",
           "date": "2026-09-26",
@@ -11770,7 +11927,7 @@
     {
       "module": "hypernix.t1api.schemas",
       "source": "src/hypernix/t1api/schemas.py",
-      "line_count": 1650,
+      "line_count": 1720,
       "summary": "t1api.schemas \u2014 Pydantic v2 request/response models for the T1 API.",
       "api": [
         {
@@ -12169,15 +12326,23 @@
           "kind": "class",
           "name": "UsageHistoryResponse",
           "signature": "class UsageHistoryResponse",
-          "line": 644,
+          "line": 649,
           "doc": "",
+          "methods": []
+        },
+        {
+          "kind": "class",
+          "name": "UsageStatementResponse",
+          "signature": "class UsageStatementResponse",
+          "line": 659,
+          "doc": "``GET /usage/statement``: the itemised bill, ``t1.statement/2``.",
           "methods": []
         },
         {
           "kind": "class",
           "name": "UsageAggregateRow",
           "signature": "class UsageAggregateRow",
-          "line": 654,
+          "line": 678,
           "doc": "",
           "methods": []
         },
@@ -12185,7 +12350,7 @@
           "kind": "class",
           "name": "UsageAggregateResponse",
           "signature": "class UsageAggregateResponse",
-          "line": 663,
+          "line": 687,
           "doc": "",
           "methods": []
         },
@@ -12193,7 +12358,7 @@
           "kind": "class",
           "name": "CostLineItem",
           "signature": "class CostLineItem",
-          "line": 672,
+          "line": 696,
           "doc": "",
           "methods": []
         },
@@ -12201,7 +12366,7 @@
           "kind": "class",
           "name": "ForecastItem",
           "signature": "class ForecastItem",
-          "line": 685,
+          "line": 709,
           "doc": "",
           "methods": []
         },
@@ -12209,7 +12374,7 @@
           "kind": "class",
           "name": "UsageCostResponse",
           "signature": "class UsageCostResponse",
-          "line": 696,
+          "line": 720,
           "doc": "",
           "methods": []
         },
@@ -12217,7 +12382,7 @@
           "kind": "class",
           "name": "UsageEstimateRequest",
           "signature": "class UsageEstimateRequest",
-          "line": 718,
+          "line": 742,
           "doc": "",
           "methods": []
         },
@@ -12225,7 +12390,7 @@
           "kind": "class",
           "name": "UsageReportRequest",
           "signature": "class UsageReportRequest",
-          "line": 728,
+          "line": 752,
           "doc": "Tokens a client actually consumed running a model the server routed it to.",
           "methods": []
         },
@@ -12233,7 +12398,7 @@
           "kind": "class",
           "name": "UsageReportResponse",
           "signature": "class UsageReportResponse",
-          "line": 746,
+          "line": 770,
           "doc": "",
           "methods": []
         },
@@ -12241,7 +12406,7 @@
           "kind": "class",
           "name": "UsageEstimateResponse",
           "signature": "class UsageEstimateResponse",
-          "line": 760,
+          "line": 784,
           "doc": "",
           "methods": []
         },
@@ -12249,7 +12414,7 @@
           "kind": "class",
           "name": "KeyAssignmentItem",
           "signature": "class KeyAssignmentItem",
-          "line": 783,
+          "line": 807,
           "doc": "",
           "methods": []
         },
@@ -12257,7 +12422,7 @@
           "kind": "class",
           "name": "KeyItem",
           "signature": "class KeyItem",
-          "line": 794,
+          "line": 818,
           "doc": "Credential-free view of a key. No endpoint ever returns the raw key string for an existing key \u2014 only key rotation, which mints a new one, hands a secret back.",
           "methods": []
         },
@@ -12265,7 +12430,7 @@
           "kind": "class",
           "name": "KeyListResponse",
           "signature": "class KeyListResponse",
-          "line": 815,
+          "line": 839,
           "doc": "",
           "methods": []
         },
@@ -12273,7 +12438,7 @@
           "kind": "class",
           "name": "KeyImportRequest",
           "signature": "class KeyImportRequest",
-          "line": 825,
+          "line": 849,
           "doc": "",
           "methods": []
         },
@@ -12281,7 +12446,7 @@
           "kind": "class",
           "name": "KeyImportResponse",
           "signature": "class KeyImportResponse",
-          "line": 833,
+          "line": 857,
           "doc": "",
           "methods": []
         },
@@ -12289,7 +12454,7 @@
           "kind": "class",
           "name": "KeyAssignRequest",
           "signature": "class KeyAssignRequest",
-          "line": 841,
+          "line": 865,
           "doc": "",
           "methods": []
         },
@@ -12297,7 +12462,7 @@
           "kind": "class",
           "name": "KeyAssignResponse",
           "signature": "class KeyAssignResponse",
-          "line": 855,
+          "line": 879,
           "doc": "",
           "methods": []
         },
@@ -12305,7 +12470,7 @@
           "kind": "class",
           "name": "AuditItem",
           "signature": "class AuditItem",
-          "line": 865,
+          "line": 889,
           "doc": "",
           "methods": []
         },
@@ -12313,7 +12478,7 @@
           "kind": "class",
           "name": "AuditListResponse",
           "signature": "class AuditListResponse",
-          "line": 880,
+          "line": 904,
           "doc": "",
           "methods": []
         },
@@ -12321,7 +12486,7 @@
           "kind": "class",
           "name": "NetworkPolicyEntryItem",
           "signature": "class NetworkPolicyEntryItem",
-          "line": 894,
+          "line": 918,
           "doc": "",
           "methods": []
         },
@@ -12329,7 +12494,7 @@
           "kind": "class",
           "name": "NetworkPolicyResponse",
           "signature": "class NetworkPolicyResponse",
-          "line": 905,
+          "line": 929,
           "doc": "",
           "methods": []
         },
@@ -12337,7 +12502,7 @@
           "kind": "class",
           "name": "NetworkPolicyEntryRequest",
           "signature": "class NetworkPolicyEntryRequest",
-          "line": 913,
+          "line": 937,
           "doc": "",
           "methods": []
         },
@@ -12345,7 +12510,7 @@
           "kind": "class",
           "name": "ForcedLimitItem",
           "signature": "class ForcedLimitItem",
-          "line": 921,
+          "line": 945,
           "doc": "",
           "methods": []
         },
@@ -12353,7 +12518,7 @@
           "kind": "class",
           "name": "ForcedLimitRequest",
           "signature": "class ForcedLimitRequest",
-          "line": 931,
+          "line": 955,
           "doc": "",
           "methods": []
         },
@@ -12361,7 +12526,7 @@
           "kind": "class",
           "name": "ForcedLimitListResponse",
           "signature": "class ForcedLimitListResponse",
-          "line": 940,
+          "line": 964,
           "doc": "",
           "methods": []
         },
@@ -12369,7 +12534,7 @@
           "kind": "class",
           "name": "ForcedLimitResponse",
           "signature": "class ForcedLimitResponse",
-          "line": 946,
+          "line": 970,
           "doc": "",
           "methods": []
         },
@@ -12377,7 +12542,7 @@
           "kind": "class",
           "name": "RateLimitStatusResponse",
           "signature": "class RateLimitStatusResponse",
-          "line": 951,
+          "line": 975,
           "doc": "",
           "methods": []
         },
@@ -12385,7 +12550,7 @@
           "kind": "class",
           "name": "ModuleDeployRequest",
           "signature": "class ModuleDeployRequest",
-          "line": 962,
+          "line": 986,
           "doc": "",
           "methods": []
         },
@@ -12393,7 +12558,7 @@
           "kind": "class",
           "name": "ModuleDeployResponse",
           "signature": "class ModuleDeployResponse",
-          "line": 968,
+          "line": 992,
           "doc": "",
           "methods": []
         },
@@ -12401,7 +12566,7 @@
           "kind": "class",
           "name": "ModuleFetchResponse",
           "signature": "class ModuleFetchResponse",
-          "line": 975,
+          "line": 999,
           "doc": "",
           "methods": []
         },
@@ -12409,7 +12574,7 @@
           "kind": "class",
           "name": "ModuleReceiveResponse",
           "signature": "class ModuleReceiveResponse",
-          "line": 981,
+          "line": 1005,
           "doc": "Response to an inbound server-to-server push. The pusher compares ``checksum`` against what it sent \u2014 a mismatch means the bytes changed in flight, and it fails the deployment rather than trusting the 200.",
           "methods": []
         },
@@ -12417,7 +12582,7 @@
           "kind": "class",
           "name": "GenericOkResponse",
           "signature": "class GenericOkResponse",
-          "line": 993,
+          "line": 1017,
           "doc": "",
           "methods": []
         },
@@ -12425,7 +12590,7 @@
           "kind": "class",
           "name": "BridgeModel",
           "signature": "class BridgeModel",
-          "line": 1004,
+          "line": 1028,
           "doc": "",
           "methods": []
         },
@@ -12433,7 +12598,7 @@
           "kind": "class",
           "name": "BridgeProbe",
           "signature": "class BridgeProbe",
-          "line": 1017,
+          "line": 1041,
           "doc": "",
           "methods": []
         },
@@ -12441,7 +12606,7 @@
           "kind": "class",
           "name": "BridgeStatusResponse",
           "signature": "class BridgeStatusResponse",
-          "line": 1031,
+          "line": 1055,
           "doc": "",
           "methods": []
         },
@@ -12449,7 +12614,7 @@
           "kind": "class",
           "name": "BridgeModelsResponse",
           "signature": "class BridgeModelsResponse",
-          "line": 1039,
+          "line": 1063,
           "doc": "",
           "methods": []
         },
@@ -12457,7 +12622,7 @@
           "kind": "class",
           "name": "BridgeChatMessage",
           "signature": "class BridgeChatMessage",
-          "line": 1047,
+          "line": 1071,
           "doc": "",
           "methods": []
         },
@@ -12465,7 +12630,7 @@
           "kind": "class",
           "name": "BridgeChatRequest",
           "signature": "class BridgeChatRequest",
-          "line": 1056,
+          "line": 1080,
           "doc": "",
           "methods": []
         },
@@ -12473,7 +12638,7 @@
           "kind": "class",
           "name": "BridgeChatResponse",
           "signature": "class BridgeChatResponse",
-          "line": 1067,
+          "line": 1091,
           "doc": "",
           "methods": []
         },
@@ -12481,7 +12646,7 @@
           "kind": "class",
           "name": "HyperLinkEndpoint",
           "signature": "class HyperLinkEndpoint",
-          "line": 1083,
+          "line": 1107,
           "doc": "",
           "methods": []
         },
@@ -12489,7 +12654,7 @@
           "kind": "class",
           "name": "HyperLinkEndpointsResponse",
           "signature": "class HyperLinkEndpointsResponse",
-          "line": 1090,
+          "line": 1114,
           "doc": "",
           "methods": []
         },
@@ -12497,7 +12662,7 @@
           "kind": "class",
           "name": "HyperLinkPeer",
           "signature": "class HyperLinkPeer",
-          "line": 1112,
+          "line": 1136,
           "doc": "One machine on the tailnet. A candidate, never a trusted server.",
           "methods": []
         },
@@ -12505,7 +12670,7 @@
           "kind": "class",
           "name": "HyperLinkPeersResponse",
           "signature": "class HyperLinkPeersResponse",
-          "line": 1133,
+          "line": 1157,
           "doc": "",
           "methods": []
         },
@@ -12513,7 +12678,7 @@
           "kind": "class",
           "name": "PairingCreateRequest",
           "signature": "class PairingCreateRequest",
-          "line": 1142,
+          "line": 1166,
           "doc": "",
           "methods": []
         },
@@ -12521,7 +12686,7 @@
           "kind": "class",
           "name": "PairingCodeResponse",
           "signature": "class PairingCodeResponse",
-          "line": 1148,
+          "line": 1172,
           "doc": "",
           "methods": []
         },
@@ -12529,7 +12694,7 @@
           "kind": "class",
           "name": "PairingRedeemRequest",
           "signature": "class PairingRedeemRequest",
-          "line": 1159,
+          "line": 1183,
           "doc": "",
           "methods": []
         },
@@ -12537,7 +12702,7 @@
           "kind": "class",
           "name": "PairingRedeemResponse",
           "signature": "class PairingRedeemResponse",
-          "line": 1166,
+          "line": 1190,
           "doc": "The one and only time the device token is transmitted.",
           "methods": []
         },
@@ -12545,7 +12710,7 @@
           "kind": "class",
           "name": "DeviceSummary",
           "signature": "class DeviceSummary",
-          "line": 1178,
+          "line": 1202,
           "doc": "",
           "methods": []
         },
@@ -12553,7 +12718,7 @@
           "kind": "class",
           "name": "DeviceListResponse",
           "signature": "class DeviceListResponse",
-          "line": 1192,
+          "line": 1216,
           "doc": "",
           "methods": []
         },
@@ -12561,7 +12726,7 @@
           "kind": "class",
           "name": "DeviceResponse",
           "signature": "class DeviceResponse",
-          "line": 1198,
+          "line": 1222,
           "doc": "",
           "methods": []
         },
@@ -12569,7 +12734,7 @@
           "kind": "class",
           "name": "SessionCreateRequest",
           "signature": "class SessionCreateRequest",
-          "line": 1203,
+          "line": 1227,
           "doc": "",
           "methods": []
         },
@@ -12577,7 +12742,7 @@
           "kind": "class",
           "name": "SessionUpdateRequest",
           "signature": "class SessionUpdateRequest",
-          "line": 1210,
+          "line": 1234,
           "doc": "",
           "methods": []
         },
@@ -12585,7 +12750,7 @@
           "kind": "class",
           "name": "SessionSummary",
           "signature": "class SessionSummary",
-          "line": 1218,
+          "line": 1242,
           "doc": "",
           "methods": []
         },
@@ -12593,7 +12758,7 @@
           "kind": "class",
           "name": "SessionListResponse",
           "signature": "class SessionListResponse",
-          "line": 1238,
+          "line": 1262,
           "doc": "",
           "methods": []
         },
@@ -12601,7 +12766,7 @@
           "kind": "class",
           "name": "SessionResponse",
           "signature": "class SessionResponse",
-          "line": 1244,
+          "line": 1268,
           "doc": "",
           "methods": []
         },
@@ -12609,7 +12774,7 @@
           "kind": "class",
           "name": "MessageSummary",
           "signature": "class MessageSummary",
-          "line": 1249,
+          "line": 1273,
           "doc": "",
           "methods": []
         },
@@ -12617,7 +12782,7 @@
           "kind": "class",
           "name": "MessageListResponse",
           "signature": "class MessageListResponse",
-          "line": 1263,
+          "line": 1287,
           "doc": "",
           "methods": []
         },
@@ -12625,7 +12790,7 @@
           "kind": "class",
           "name": "MessageEditRequest",
           "signature": "class MessageEditRequest",
-          "line": 1270,
+          "line": 1294,
           "doc": "",
           "methods": []
         },
@@ -12633,7 +12798,7 @@
           "kind": "class",
           "name": "MessageEditResponse",
           "signature": "class MessageEditResponse",
-          "line": 1280,
+          "line": 1304,
           "doc": "",
           "methods": []
         },
@@ -12641,7 +12806,7 @@
           "kind": "class",
           "name": "HyperLinkChatRequest",
           "signature": "class HyperLinkChatRequest",
-          "line": 1289,
+          "line": 1313,
           "doc": "",
           "methods": []
         },
@@ -12649,7 +12814,7 @@
           "kind": "class",
           "name": "HyperLinkChatResponse",
           "signature": "class HyperLinkChatResponse",
-          "line": 1305,
+          "line": 1329,
           "doc": "",
           "methods": []
         },
@@ -12657,7 +12822,7 @@
           "kind": "class",
           "name": "AttachmentSummary",
           "signature": "class AttachmentSummary",
-          "line": 1314,
+          "line": 1338,
           "doc": "",
           "methods": []
         },
@@ -12665,7 +12830,7 @@
           "kind": "class",
           "name": "AttachmentResponse",
           "signature": "class AttachmentResponse",
-          "line": 1329,
+          "line": 1353,
           "doc": "",
           "methods": []
         },
@@ -12673,7 +12838,7 @@
           "kind": "class",
           "name": "AttachmentListResponse",
           "signature": "class AttachmentListResponse",
-          "line": 1334,
+          "line": 1358,
           "doc": "",
           "methods": []
         },
@@ -12681,7 +12846,7 @@
           "kind": "class",
           "name": "HFResolveRequest",
           "signature": "class HFResolveRequest",
-          "line": 1341,
+          "line": 1365,
           "doc": "Either link, or both. That is the whole point of the endpoint.",
           "methods": []
         },
@@ -12689,7 +12854,7 @@
           "kind": "class",
           "name": "HFFile",
           "signature": "class HFFile",
-          "line": 1351,
+          "line": 1375,
           "doc": "",
           "methods": []
         },
@@ -12697,7 +12862,7 @@
           "kind": "class",
           "name": "HFResolveResponse",
           "signature": "class HFResolveResponse",
-          "line": 1361,
+          "line": 1385,
           "doc": "",
           "methods": []
         },
@@ -12705,7 +12870,7 @@
           "kind": "class",
           "name": "AuthUndoResponse",
           "signature": "class AuthUndoResponse",
-          "line": 1387,
+          "line": 1411,
           "doc": "",
           "methods": []
         },
@@ -12713,7 +12878,7 @@
           "kind": "class",
           "name": "AuthHistoryResponse",
           "signature": "class AuthHistoryResponse",
-          "line": 1395,
+          "line": 1419,
           "doc": "",
           "methods": []
         },
@@ -12721,7 +12886,7 @@
           "kind": "class",
           "name": "BackupSummary",
           "signature": "class BackupSummary",
-          "line": 1405,
+          "line": 1429,
           "doc": "",
           "methods": []
         },
@@ -12729,7 +12894,7 @@
           "kind": "class",
           "name": "BackupListResponse",
           "signature": "class BackupListResponse",
-          "line": 1421,
+          "line": 1445,
           "doc": "",
           "methods": []
         },
@@ -12737,7 +12902,7 @@
           "kind": "class",
           "name": "BackupCreateRequest",
           "signature": "class BackupCreateRequest",
-          "line": 1428,
+          "line": 1452,
           "doc": "",
           "methods": []
         },
@@ -12745,7 +12910,7 @@
           "kind": "class",
           "name": "BackupRestoreRequest",
           "signature": "class BackupRestoreRequest",
-          "line": 1432,
+          "line": 1456,
           "doc": "",
           "methods": []
         },
@@ -12753,7 +12918,7 @@
           "kind": "class",
           "name": "BackupRestoreResponse",
           "signature": "class BackupRestoreResponse",
-          "line": 1440,
+          "line": 1464,
           "doc": "",
           "methods": []
         },
@@ -12761,7 +12926,7 @@
           "kind": "class",
           "name": "HFDownloadRequest",
           "signature": "class HFDownloadRequest",
-          "line": 1456,
+          "line": 1480,
           "doc": "Either a ``repo_id``, or links to resolve into one.",
           "methods": []
         },
@@ -12769,7 +12934,7 @@
           "kind": "class",
           "name": "HFDownloadResponse",
           "signature": "class HFDownloadResponse",
-          "line": 1468,
+          "line": 1492,
           "doc": "",
           "methods": []
         },
@@ -12777,7 +12942,7 @@
           "kind": "class",
           "name": "DownloadedModelsResponse",
           "signature": "class DownloadedModelsResponse",
-          "line": 1477,
+          "line": 1501,
           "doc": "",
           "methods": []
         },
@@ -12785,7 +12950,7 @@
           "kind": "class",
           "name": "ModelLinkRequest",
           "signature": "class ModelLinkRequest",
-          "line": 1484,
+          "line": 1508,
           "doc": "A model already on the server, to list in HyperLink by symlink.",
           "methods": []
         },
@@ -12793,7 +12958,7 @@
           "kind": "class",
           "name": "ModelLinkResponse",
           "signature": "class ModelLinkResponse",
-          "line": 1494,
+          "line": 1518,
           "doc": "",
           "methods": []
         },
@@ -12801,7 +12966,7 @@
           "kind": "class",
           "name": "RunnerLoadRequest",
           "signature": "class RunnerLoadRequest",
-          "line": 1505,
+          "line": 1529,
           "doc": "",
           "methods": []
         },
@@ -12809,7 +12974,7 @@
           "kind": "class",
           "name": "RunnerAutoRequest",
           "signature": "class RunnerAutoRequest",
-          "line": 1521,
+          "line": 1545,
           "doc": "",
           "methods": []
         },
@@ -12817,7 +12982,7 @@
           "kind": "class",
           "name": "RunnerStatusResponse",
           "signature": "class RunnerStatusResponse",
-          "line": 1529,
+          "line": 1553,
           "doc": "",
           "methods": []
         },
@@ -12825,7 +12990,7 @@
           "kind": "class",
           "name": "RunnerPlanResponse",
           "signature": "class RunnerPlanResponse",
-          "line": 1540,
+          "line": 1564,
           "doc": "",
           "methods": []
         },
@@ -12833,7 +12998,7 @@
           "kind": "class",
           "name": "NoodleRunRequest",
           "signature": "class NoodleRunRequest",
-          "line": 1548,
+          "line": 1572,
           "doc": "",
           "methods": []
         },
@@ -12841,7 +13006,7 @@
           "kind": "class",
           "name": "NoodleToolsResponse",
           "signature": "class NoodleToolsResponse",
-          "line": 1553,
+          "line": 1577,
           "doc": "",
           "methods": []
         },
@@ -12849,7 +13014,7 @@
           "kind": "class",
           "name": "NoodleWorkspaceResponse",
           "signature": "class NoodleWorkspaceResponse",
-          "line": 1566,
+          "line": 1590,
           "doc": "",
           "methods": []
         },
@@ -12857,7 +13022,7 @@
           "kind": "class",
           "name": "CompactRequest",
           "signature": "class CompactRequest",
-          "line": 1574,
+          "line": 1598,
           "doc": "",
           "methods": []
         },
@@ -12865,7 +13030,7 @@
           "kind": "class",
           "name": "CompactResponse",
           "signature": "class CompactResponse",
-          "line": 1585,
+          "line": 1609,
           "doc": "",
           "methods": []
         },
@@ -12873,7 +13038,7 @@
           "kind": "class",
           "name": "MemoryCreateRequest",
           "signature": "class MemoryCreateRequest",
-          "line": 1602,
+          "line": 1626,
           "doc": "",
           "methods": []
         },
@@ -12881,7 +13046,7 @@
           "kind": "class",
           "name": "MemoryUpdateRequest",
           "signature": "class MemoryUpdateRequest",
-          "line": 1615,
+          "line": 1639,
           "doc": "",
           "methods": []
         },
@@ -12889,7 +13054,7 @@
           "kind": "class",
           "name": "MemoryResponse",
           "signature": "class MemoryResponse",
-          "line": 1623,
+          "line": 1647,
           "doc": "",
           "methods": []
         },
@@ -12897,7 +13062,7 @@
           "kind": "class",
           "name": "MemoryListResponse",
           "signature": "class MemoryListResponse",
-          "line": 1628,
+          "line": 1652,
           "doc": "",
           "methods": []
         },
@@ -12905,7 +13070,7 @@
           "kind": "class",
           "name": "HardwareResponse",
           "signature": "class HardwareResponse",
-          "line": 1638,
+          "line": 1662,
           "doc": "One sample of what the machine is doing.",
           "methods": []
         },
@@ -12913,7 +13078,7 @@
           "kind": "class",
           "name": "UptimeResponse",
           "signature": "class UptimeResponse",
-          "line": 1660,
+          "line": 1684,
           "doc": "How long the server and the machine have been up.",
           "methods": []
         },
@@ -12921,7 +13086,7 @@
           "kind": "class",
           "name": "GenerationStopResponse",
           "signature": "class GenerationStopResponse",
-          "line": 1676,
+          "line": 1700,
           "doc": "What Stop actually stopped. An empty list is a success.",
           "methods": []
         },
@@ -12929,7 +13094,7 @@
           "kind": "class",
           "name": "GenerationListResponse",
           "signature": "class GenerationListResponse",
-          "line": 1684,
+          "line": 1708,
           "doc": "",
           "methods": []
         },
@@ -12937,7 +13102,7 @@
           "kind": "class",
           "name": "BackendsResponse",
           "signature": "class BackendsResponse",
-          "line": 1690,
+          "line": 1714,
           "doc": "Every thing that could answer a message, and whether it can now.",
           "methods": []
         },
@@ -12945,7 +13110,7 @@
           "kind": "class",
           "name": "PreferencesRequest",
           "signature": "class PreferencesRequest",
-          "line": 1704,
+          "line": 1728,
           "doc": "A partial update. Every field optional, and that is the point.",
           "methods": []
         },
@@ -12953,7 +13118,7 @@
           "kind": "class",
           "name": "PreferencesResponse",
           "signature": "class PreferencesResponse",
-          "line": 1727,
+          "line": 1751,
           "doc": "",
           "methods": []
         },
@@ -12961,7 +13126,7 @@
           "kind": "class",
           "name": "UpgradeResponse",
           "signature": "class UpgradeResponse",
-          "line": 1742,
+          "line": 1766,
           "doc": "What this server is running, and the commands to change it.",
           "methods": []
         },
@@ -12969,7 +13134,7 @@
           "kind": "class",
           "name": "ModelCatalogueResponse",
           "signature": "class ModelCatalogueResponse",
-          "line": 1757,
+          "line": 1781,
           "doc": "Every model this server can offer, from every source it has.",
           "methods": []
         },
@@ -12977,7 +13142,7 @@
           "kind": "class",
           "name": "InferenceMessage",
           "signature": "class InferenceMessage",
-          "line": 1785,
+          "line": 1809,
           "doc": "",
           "methods": []
         },
@@ -12985,7 +13150,7 @@
           "kind": "class",
           "name": "InferenceChatRequest",
           "signature": "class InferenceChatRequest",
-          "line": 1792,
+          "line": 1816,
           "doc": "",
           "methods": []
         },
@@ -12993,7 +13158,7 @@
           "kind": "class",
           "name": "InferenceCompletionRequest",
           "signature": "class InferenceCompletionRequest",
-          "line": 1805,
+          "line": 1829,
           "doc": "",
           "methods": []
         },
@@ -13001,7 +13166,23 @@
           "kind": "class",
           "name": "InferenceResponse",
           "signature": "class InferenceResponse",
-          "line": 1815,
+          "line": 1839,
+          "doc": "",
+          "methods": []
+        },
+        {
+          "kind": "class",
+          "name": "InferenceRelayRequest",
+          "signature": "class InferenceRelayRequest",
+          "line": 1862,
+          "doc": "``POST /inference/relay``: a document longer than the model's context, read in hops by small-context instances (0.72.8).",
+          "methods": []
+        },
+        {
+          "kind": "class",
+          "name": "InferenceRelayResponse",
+          "signature": "class InferenceRelayResponse",
+          "line": 1888,
           "doc": "",
           "methods": []
         },
@@ -13009,7 +13190,7 @@
           "kind": "class",
           "name": "InferenceEmbeddingsRequest",
           "signature": "class InferenceEmbeddingsRequest",
-          "line": 1838,
+          "line": 1916,
           "doc": "",
           "methods": []
         },
@@ -13017,7 +13198,7 @@
           "kind": "class",
           "name": "InferenceEmbeddingsResponse",
           "signature": "class InferenceEmbeddingsResponse",
-          "line": 1843,
+          "line": 1921,
           "doc": "",
           "methods": []
         },
@@ -13025,7 +13206,7 @@
           "kind": "class",
           "name": "InferenceTokenCountRequest",
           "signature": "class InferenceTokenCountRequest",
-          "line": 1853,
+          "line": 1931,
           "doc": "",
           "methods": []
         },
@@ -13033,7 +13214,7 @@
           "kind": "class",
           "name": "InferenceTokenCountResponse",
           "signature": "class InferenceTokenCountResponse",
-          "line": 1861,
+          "line": 1939,
           "doc": "",
           "methods": []
         },
@@ -13041,7 +13222,7 @@
           "kind": "class",
           "name": "InferenceBackend",
           "signature": "class InferenceBackend",
-          "line": 1874,
+          "line": 1952,
           "doc": "",
           "methods": []
         },
@@ -13049,7 +13230,7 @@
           "kind": "class",
           "name": "InferenceBackendsResponse",
           "signature": "class InferenceBackendsResponse",
-          "line": 1885,
+          "line": 1963,
           "doc": "",
           "methods": []
         },
@@ -13057,7 +13238,7 @@
           "kind": "class",
           "name": "TrainingRunItem",
           "signature": "class TrainingRunItem",
-          "line": 1896,
+          "line": 1974,
           "doc": "One run, as ``training.monitor`` reconciled it.",
           "methods": []
         },
@@ -13065,7 +13246,7 @@
           "kind": "class",
           "name": "TrainingRunListResponse",
           "signature": "class TrainingRunListResponse",
-          "line": 1927,
+          "line": 2005,
           "doc": "",
           "methods": []
         },
@@ -13073,7 +13254,7 @@
           "kind": "class",
           "name": "TrainingRunResponse",
           "signature": "class TrainingRunResponse",
-          "line": 1935,
+          "line": 2013,
           "doc": "",
           "methods": []
         },
@@ -13081,7 +13262,7 @@
           "kind": "class",
           "name": "TrainingLogResponse",
           "signature": "class TrainingLogResponse",
-          "line": 1940,
+          "line": 2018,
           "doc": "",
           "methods": []
         },
@@ -13089,7 +13270,7 @@
           "kind": "class",
           "name": "TrainingCheckpointItem",
           "signature": "class TrainingCheckpointItem",
-          "line": 1952,
+          "line": 2030,
           "doc": "",
           "methods": []
         },
@@ -13097,7 +13278,7 @@
           "kind": "class",
           "name": "TrainingCheckpointListResponse",
           "signature": "class TrainingCheckpointListResponse",
-          "line": 1959,
+          "line": 2037,
           "doc": "",
           "methods": []
         },
@@ -13105,7 +13286,7 @@
           "kind": "class",
           "name": "TrainingResourcesResponse",
           "signature": "class TrainingResourcesResponse",
-          "line": 1966,
+          "line": 2044,
           "doc": "",
           "methods": []
         },
@@ -13113,7 +13294,7 @@
           "kind": "class",
           "name": "TrainingControlResponse",
           "signature": "class TrainingControlResponse",
-          "line": 1975,
+          "line": 2053,
           "doc": "",
           "methods": []
         },
@@ -13121,7 +13302,7 @@
           "kind": "class",
           "name": "SyncChange",
           "signature": "class SyncChange",
-          "line": 1987,
+          "line": 2065,
           "doc": "",
           "methods": []
         },
@@ -13129,7 +13310,7 @@
           "kind": "class",
           "name": "SyncPageResponse",
           "signature": "class SyncPageResponse",
-          "line": 1998,
+          "line": 2076,
           "doc": "",
           "methods": []
         },
@@ -13137,7 +13318,7 @@
           "kind": "class",
           "name": "SyncClaimRequest",
           "signature": "class SyncClaimRequest",
-          "line": 2010,
+          "line": 2088,
           "doc": "",
           "methods": []
         },
@@ -13145,7 +13326,7 @@
           "kind": "class",
           "name": "SyncClaimResponse",
           "signature": "class SyncClaimResponse",
-          "line": 2014,
+          "line": 2092,
           "doc": "",
           "methods": []
         },
@@ -13153,7 +13334,7 @@
           "kind": "class",
           "name": "PushRegisterRequest",
           "signature": "class PushRegisterRequest",
-          "line": 2024,
+          "line": 2102,
           "doc": "",
           "methods": []
         },
@@ -13161,7 +13342,7 @@
           "kind": "class",
           "name": "PushRegistrationSummary",
           "signature": "class PushRegistrationSummary",
-          "line": 2034,
+          "line": 2112,
           "doc": "",
           "methods": []
         },
@@ -13169,7 +13350,7 @@
           "kind": "class",
           "name": "PushRegistrationResponse",
           "signature": "class PushRegistrationResponse",
-          "line": 2049,
+          "line": 2127,
           "doc": "",
           "methods": []
         },
@@ -13177,7 +13358,7 @@
           "kind": "class",
           "name": "PushRegistrationListResponse",
           "signature": "class PushRegistrationListResponse",
-          "line": 2054,
+          "line": 2132,
           "doc": "",
           "methods": []
         },
@@ -13185,7 +13366,7 @@
           "kind": "class",
           "name": "PushEventsRequest",
           "signature": "class PushEventsRequest",
-          "line": 2061,
+          "line": 2139,
           "doc": "",
           "methods": []
         },
@@ -13193,7 +13374,7 @@
           "kind": "class",
           "name": "SearchSnippet",
           "signature": "class SearchSnippet",
-          "line": 2065,
+          "line": 2143,
           "doc": "",
           "methods": []
         },
@@ -13201,7 +13382,7 @@
           "kind": "class",
           "name": "SearchHit",
           "signature": "class SearchHit",
-          "line": 2073,
+          "line": 2151,
           "doc": "",
           "methods": []
         },
@@ -13209,7 +13390,7 @@
           "kind": "class",
           "name": "SearchResponse",
           "signature": "class SearchResponse",
-          "line": 2085,
+          "line": 2163,
           "doc": "",
           "methods": []
         }
@@ -13224,6 +13405,26 @@
         }
       ],
       "changes": [
+        {
+          "sha": "d69ad9de",
+          "date": "2026-10-13",
+          "author": "t",
+          "subject": "T1 API: POST /inference/relay and the t1.statement/2 billing format",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class UsageStatementResponse(BaseModel):"
+            },
+            {
+              "kind": "added",
+              "text": "class InferenceRelayRequest(BaseModel):"
+            },
+            {
+              "kind": "added",
+              "text": "class InferenceRelayResponse(BaseModel):"
+            }
+          ]
+        },
         {
           "sha": "d595eb4a",
           "date": "2026-10-06",
@@ -13285,13 +13486,6 @@
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "0.72.6 pt3: T1 tools for local models, and HyperLink swipe, memories, search, on-device",
-          "api_changes": []
-        },
-        {
-          "sha": "bca36d0f",
-          "date": "2026-09-23",
-          "author": "Claude",
-          "subject": "0.72.6 pt2: hyperchat, and three things HyperLink was showing wrong",
           "api_changes": []
         }
       ]
@@ -13542,62 +13736,68 @@
     {
       "module": "hypernix.t1api.storage",
       "source": "src/hypernix/t1api/storage.py",
-      "line_count": 296,
+      "line_count": 339,
       "summary": "t1api.storage \u2014 usage-event persistence.",
       "api": [
         {
           "kind": "class",
           "name": "UsageStore",
           "signature": "class UsageStore",
-          "line": 83,
+          "line": 90,
           "doc": "Thread-safe store for per-request usage events.",
           "methods": [
             {
               "name": "record",
-              "signature": "def recordself, *, key_id: str, model_id: str, input_tokens: int=0, output_tokens: int=0, requests: int=1, endpoint: str='', server_id: str='', module_id: str='', user_id: str='', account_id: str='', ts: float | None=None -> None",
-              "line": 139,
+              "signature": "def recordself, *, key_id: str, model_id: str, input_tokens: int=0, output_tokens: int=0, requests: int=1, endpoint: str='', server_id: str='', module_id: str='', user_id: str='', account_id: str='', feature: str='', units: float=0.0, unit: str='', ts: float | None=None -> None",
+              "line": 146,
               "doc": ""
             },
             {
               "name": "totals_for_key",
               "signature": "def totals_for_keyself, key_id: str, *, since: float | None=None, model_id: str | None=None -> dict[str, Any]",
-              "line": 212,
+              "line": 226,
               "doc": "Aggregate (requests, input_tokens, output_tokens) for a key, optionally filtered by a start timestamp and/or model_id."
             },
             {
               "name": "totals",
               "signature": "def totalsself, *, since: float | None=None, until: float | None=None, **filters: str | None -> dict[str, Any]",
-              "line": 219,
+              "line": 233,
               "doc": ""
             },
             {
               "name": "aggregate",
               "signature": "def aggregateself, group_by: str, *, since: float | None=None, until: float | None=None, limit: int=500, **filters: str | None -> list[dict[str, Any]]",
-              "line": 237,
+              "line": 251,
               "doc": "Grouped totals along one dimension \u2014 the single query behind every \"usage by model/key/server/module/user/account\" report."
             },
             {
               "name": "breakdown_by_model",
               "signature": "def breakdown_by_modelself, key_id: str, *, since: float | None=None -> list[dict[str, Any]]",
-              "line": 264,
+              "line": 278,
               "doc": ""
             },
             {
               "name": "history",
               "signature": "def historyself, *, since: float | None=None, until: float | None=None, limit: int=100, offset: int=0, **filters: str | None -> list[dict[str, Any]]",
-              "line": 267,
+              "line": 281,
               "doc": "Raw usage events, newest first \u2014 backs GET /usage/history."
+            },
+            {
+              "name": "line_items",
+              "signature": "def line_itemsself, *, since: float | None=None, until: float | None=None, **filters: str | None -> list[dict[str, Any]]",
+              "line": 320,
+              "doc": "Totals per (feature, endpoint, model, unit) -- the rows an itemised statement is priced from. The endpoint is kept so rows recorded before ``feature`` existed can still be told apart."
             },
             {
               "name": "first_event_ts",
               "signature": "def first_event_tsself, **filters: str | None -> float | None",
-              "line": 303,
+              "line": 347,
               "doc": "Timestamp of the earliest matching event, or None. Used by the cost forecaster to know how long a spend rate has been observed for \u2014 forecasting from a 10-minute-old account is not the same as forecasting from a 30-day-old one."
             },
             {
               "name": "event_count",
               "signature": "def event_countself -> int",
-              "line": 313,
+              "line": 357,
               "doc": ""
             }
           ]
@@ -13616,6 +13816,18 @@
         }
       ],
       "changes": [
+        {
+          "sha": "d69ad9de",
+          "date": "2026-10-13",
+          "author": "t",
+          "subject": "T1 API: POST /inference/relay and the t1.statement/2 billing format",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def line_items("
+            }
+          ]
+        },
         {
           "sha": "99ddc1ae",
           "date": "2026-09-29",
@@ -14065,7 +14277,7 @@
     {
       "module": "hypernix.t1api.usage",
       "source": "src/hypernix/t1api/usage.py",
-      "line_count": 146,
+      "line_count": 188,
       "summary": "t1api.usage \u2014 Beta 1 \"basic usage tracking\".",
       "api": [
         {
@@ -14110,38 +14322,50 @@
           "methods": [
             {
               "name": "record",
-              "signature": "def recordself, *, key_id: str, model_id: str, input_tokens: int=0, output_tokens: int=0, requests: int=1, endpoint: str='', server_id: str='', module_id: str='' -> None",
+              "signature": "def recordself, *, key_id: str, model_id: str, input_tokens: int=0, output_tokens: int=0, requests: int=1, endpoint: str='', server_id: str='', module_id: str='', feature: str='', units: float=0.0, unit: str='' -> None",
               "line": 97,
               "doc": ""
             },
             {
+              "name": "record_feature",
+              "signature": "def record_featureself, *, key_id: str, feature: str, endpoint: str='', model_id: str='', input_tokens: int=0, output_tokens: int=0, unit: str='', units: float=0.0, requests: int=1 -> None",
+              "line": 129,
+              "doc": "Record use of a feature that may have no registered model: a sandbox run (``unit=\"code_second\"``), a web search (``unit=\"web_search\"``), a compaction by whatever model the server had loaded."
+            },
+            {
+              "name": "record_quietly",
+              "signature": "def record_quietlyself, **kwargs: Any -> None",
+              "line": 160,
+              "doc": ":meth:`record_feature`, logging rather than raising: a feature that already ran must not fail because its accounting did."
+            },
+            {
               "name": "snapshot_for_model",
               "signature": "def snapshot_for_modelself, key_id: str, model_id: str -> ModelUsageSnapshot",
-              "line": 123,
+              "line": 168,
               "doc": ""
             },
             {
               "name": "assert_not_exhausted",
               "signature": "def assert_not_exhaustedself, key_id: str, model_id: str -> ModelUsageSnapshot",
-              "line": 135,
+              "line": 180,
               "doc": "Raise ``MODEL_QUOTA_EXHAUSTED`` if this key has hit *model_id*'s absolute cap for the current reset window."
             },
             {
               "name": "current",
               "signature": "def currentself, key_id: str -> dict[str, Any]",
-              "line": 148,
+              "line": 193,
               "doc": "All-time + current-window totals across every model, for GET /usage/current."
             },
             {
               "name": "remaining",
               "signature": "def remainingself, key_id: str, model_id: str -> dict[str, Any]",
-              "line": 162,
+              "line": 207,
               "doc": ""
             },
             {
               "name": "assert_not_exhausted_safe",
               "signature": "def assert_not_exhausted_safeself, key_id: str, model_id: str -> ModelUsageSnapshot",
-              "line": 165,
+              "line": 210,
               "doc": "Like :meth:`snapshot_for_model` but does not raise \u2014 used by read-only endpoints (GET /usage/remaining) that should report exhaustion rather than error on it."
             }
           ]
@@ -14159,6 +14383,22 @@
         }
       ],
       "changes": [
+        {
+          "sha": "d69ad9de",
+          "date": "2026-10-13",
+          "author": "t",
+          "subject": "T1 API: POST /inference/relay and the t1.statement/2 billing format",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def record_feature("
+            },
+            {
+              "kind": "added",
+              "text": "def record_quietly(self, **kwargs: Any) -> None:"
+            }
+          ]
+        },
         {
           "sha": "f836d298",
           "date": "2026-08-18",
@@ -16801,7 +17041,7 @@
       "handler": "compact_all",
       "response_model": "CompactResponse",
       "source": "src/hypernix/t1api/routers/compact.py",
-      "line": 198,
+      "line": 224,
       "tag": "compaction"
     },
     {
@@ -16811,7 +17051,7 @@
       "handler": "compact_dynamic",
       "response_model": "CompactResponse",
       "source": "src/hypernix/t1api/routers/compact.py",
-      "line": 210,
+      "line": 237,
       "tag": "compaction"
     },
     {
@@ -16821,7 +17061,7 @@
       "handler": "compact_prompts",
       "response_model": "CompactResponse",
       "source": "src/hypernix/t1api/routers/compact.py",
-      "line": 152,
+      "line": 175,
       "tag": "compaction"
     },
     {
@@ -16831,7 +17071,7 @@
       "handler": "compact_system_prompt",
       "response_model": "CompactResponse",
       "source": "src/hypernix/t1api/routers/compact.py",
-      "line": 169,
+      "line": 193,
       "tag": "compaction"
     },
     {
@@ -16841,18 +17081,8 @@
       "handler": "compact_responses",
       "response_model": "CompactResponse",
       "source": "src/hypernix/t1api/routers/compact.py",
-      "line": 186,
+      "line": 211,
       "tag": "compaction"
-    },
-    {
-      "method": "GET",
-      "router": "router",
-      "path": "/code/",
-      "handler": "code_index",
-      "response_model": null,
-      "source": "src/hypernix/t1api/routers/code.py",
-      "line": 147,
-      "tag": "code"
     },
     {
       "method": "GET",
@@ -16867,11 +17097,21 @@
     {
       "method": "GET",
       "router": "router",
+      "path": "/code/",
+      "handler": "code_index",
+      "response_model": null,
+      "source": "src/hypernix/t1api/routers/code.py",
+      "line": 149,
+      "tag": "code"
+    },
+    {
+      "method": "GET",
+      "router": "router",
       "path": "/code/create",
       "handler": "code_create_help",
       "response_model": null,
       "source": "src/hypernix/t1api/routers/code.py",
-      "line": 171,
+      "line": 172,
       "tag": "code"
     },
     {
@@ -16881,7 +17121,7 @@
       "handler": "code_run_once",
       "response_model": null,
       "source": "src/hypernix/t1api/routers/code.py",
-      "line": 190,
+      "line": 191,
       "tag": "code"
     },
     {
@@ -16891,7 +17131,7 @@
       "handler": "code_sandboxes",
       "response_model": null,
       "source": "src/hypernix/t1api/routers/code.py",
-      "line": 221,
+      "line": 224,
       "tag": "code"
     },
     {
@@ -16901,7 +17141,7 @@
       "handler": "code_create_sandbox",
       "response_model": null,
       "source": "src/hypernix/t1api/routers/code.py",
-      "line": 237,
+      "line": 240,
       "tag": "code"
     },
     {
@@ -16911,7 +17151,7 @@
       "handler": "code_perms_read",
       "response_model": null,
       "source": "src/hypernix/t1api/routers/code.py",
-      "line": 270,
+      "line": 273,
       "tag": "code"
     },
     {
@@ -16921,7 +17161,7 @@
       "handler": "code_perms_write",
       "response_model": null,
       "source": "src/hypernix/t1api/routers/code.py",
-      "line": 281,
+      "line": 284,
       "tag": "code"
     },
     {
@@ -16931,7 +17171,7 @@
       "handler": "code_sandbox_delete",
       "response_model": null,
       "source": "src/hypernix/t1api/routers/code.py",
-      "line": 344,
+      "line": 347,
       "tag": "code"
     },
     {
@@ -16941,7 +17181,7 @@
       "handler": "code_sandbox_read",
       "response_model": null,
       "source": "src/hypernix/t1api/routers/code.py",
-      "line": 332,
+      "line": 335,
       "tag": "code"
     },
     {
@@ -16951,7 +17191,7 @@
       "handler": "code_file_delete",
       "response_model": null,
       "source": "src/hypernix/t1api/routers/code.py",
-      "line": 396,
+      "line": 399,
       "tag": "code"
     },
     {
@@ -16961,7 +17201,7 @@
       "handler": "code_file_read",
       "response_model": null,
       "source": "src/hypernix/t1api/routers/code.py",
-      "line": 357,
+      "line": 360,
       "tag": "code"
     },
     {
@@ -16971,7 +17211,7 @@
       "handler": "code_file_write",
       "response_model": null,
       "source": "src/hypernix/t1api/routers/code.py",
-      "line": 374,
+      "line": 377,
       "tag": "code"
     },
     {
@@ -16981,7 +17221,7 @@
       "handler": "code_sandbox_run",
       "response_model": null,
       "source": "src/hypernix/t1api/routers/code.py",
-      "line": 413,
+      "line": 416,
       "tag": "code"
     },
     {
@@ -17531,7 +17771,7 @@
       "handler": "list_backends",
       "response_model": "InferenceBackendsResponse",
       "source": "src/hypernix/t1api/routers/inference.py",
-      "line": 382,
+      "line": 384,
       "tag": "inference"
     },
     {
@@ -17541,7 +17781,7 @@
       "handler": "inference_chat",
       "response_model": "InferenceResponse",
       "source": "src/hypernix/t1api/routers/inference.py",
-      "line": 447,
+      "line": 449,
       "tag": "inference"
     },
     {
@@ -17551,7 +17791,7 @@
       "handler": "inference_chat_stream",
       "response_model": null,
       "source": "src/hypernix/t1api/routers/inference.py",
-      "line": 505,
+      "line": 629,
       "tag": "inference"
     },
     {
@@ -17561,7 +17801,7 @@
       "handler": "inference_completions",
       "response_model": "InferenceResponse",
       "source": "src/hypernix/t1api/routers/inference.py",
-      "line": 472,
+      "line": 474,
       "tag": "inference"
     },
     {
@@ -17571,7 +17811,17 @@
       "handler": "inference_embeddings",
       "response_model": "InferenceEmbeddingsResponse",
       "source": "src/hypernix/t1api/routers/inference.py",
-      "line": 596,
+      "line": 720,
+      "tag": "inference"
+    },
+    {
+      "method": "POST",
+      "router": "router",
+      "path": "/inference/relay",
+      "handler": "inference_relay",
+      "response_model": "InferenceRelayResponse",
+      "source": "src/hypernix/t1api/routers/inference.py",
+      "line": 507,
       "tag": "inference"
     },
     {
@@ -17581,7 +17831,7 @@
       "handler": "inference_token_count",
       "response_model": "InferenceTokenCountResponse",
       "source": "src/hypernix/t1api/routers/inference.py",
-      "line": 656,
+      "line": 780,
       "tag": "inference"
     },
     {
@@ -18321,7 +18571,7 @@
       "handler": "usage_by",
       "response_model": "UsageAggregateResponse",
       "source": "src/hypernix/t1api/routers/usage.py",
-      "line": 181,
+      "line": 182,
       "tag": "usage"
     },
     {
@@ -18331,7 +18581,7 @@
       "handler": "usage_cost",
       "response_model": "UsageCostResponse",
       "source": "src/hypernix/t1api/routers/usage.py",
-      "line": 244,
+      "line": 245,
       "tag": "usage"
     },
     {
@@ -18341,7 +18591,7 @@
       "handler": "usage_current",
       "response_model": "UsageCurrentResponse",
       "source": "src/hypernix/t1api/routers/usage.py",
-      "line": 111,
+      "line": 112,
       "tag": "usage"
     },
     {
@@ -18351,7 +18601,7 @@
       "handler": "usage_estimate",
       "response_model": "UsageEstimateResponse",
       "source": "src/hypernix/t1api/routers/usage.py",
-      "line": 294,
+      "line": 329,
       "tag": "usage"
     },
     {
@@ -18361,7 +18611,7 @@
       "handler": "usage_history",
       "response_model": "UsageHistoryResponse",
       "source": "src/hypernix/t1api/routers/usage.py",
-      "line": 138,
+      "line": 139,
       "tag": "usage"
     },
     {
@@ -18371,7 +18621,7 @@
       "handler": "usage_remaining",
       "response_model": "UsageRemainingResponse",
       "source": "src/hypernix/t1api/routers/usage.py",
-      "line": 121,
+      "line": 122,
       "tag": "usage"
     },
     {
@@ -18381,7 +18631,17 @@
       "handler": "usage_report",
       "response_model": "UsageReportResponse",
       "source": "src/hypernix/t1api/routers/usage.py",
-      "line": 319,
+      "line": 354,
+      "tag": "usage"
+    },
+    {
+      "method": "GET",
+      "router": "router",
+      "path": "/usage/statement",
+      "handler": "usage_statement",
+      "response_model": "UsageStatementResponse",
+      "source": "src/hypernix/t1api/routers/usage.py",
+      "line": 295,
       "tag": "usage"
     },
     {
@@ -18431,7 +18691,7 @@
       "handler": "web_search",
       "response_model": null,
       "source": "src/hypernix/t1api/routers/web.py",
-      "line": 86,
+      "line": 87,
       "tag": "web"
     },
     {
@@ -18441,7 +18701,7 @@
       "handler": "web_config_read",
       "response_model": null,
       "source": "src/hypernix/t1api/routers/web.py",
-      "line": 273,
+      "line": 280,
       "tag": "web"
     },
     {
@@ -18451,7 +18711,7 @@
       "handler": "web_config_write",
       "response_model": null,
       "source": "src/hypernix/t1api/routers/web.py",
-      "line": 294,
+      "line": 301,
       "tag": "web"
     },
     {
@@ -18461,7 +18721,7 @@
       "handler": "web_search",
       "response_model": null,
       "source": "src/hypernix/t1api/routers/web.py",
-      "line": 87,
+      "line": 88,
       "tag": "web"
     },
     {
@@ -18471,7 +18731,7 @@
       "handler": "web_search",
       "response_model": null,
       "source": "src/hypernix/t1api/routers/web.py",
-      "line": 88,
+      "line": 89,
       "tag": "web"
     },
     {
@@ -18481,7 +18741,7 @@
       "handler": "web_summarize",
       "response_model": null,
       "source": "src/hypernix/t1api/routers/web.py",
-      "line": 121,
+      "line": 128,
       "tag": "web"
     },
     {
@@ -18491,7 +18751,7 @@
       "handler": "web_summarize",
       "response_model": null,
       "source": "src/hypernix/t1api/routers/web.py",
-      "line": 120,
+      "line": 127,
       "tag": "web"
     }
   ],

@@ -1,7 +1,7 @@
 {
   "definition": "non-blank source lines across repository code roots: src, scripts, tests, examples, bin, native, docs/src",
-  "total_lines": 227387,
-  "code_files": 748,
+  "total_lines": 230306,
+  "code_files": 756,
   "top_files": [
     {
       "path": "src/hypernix/t1api/routers/hyperlink.py",
@@ -25,7 +25,7 @@
     },
     {
       "path": "src/hypernix/t1api/schemas.py",
-      "lines": 1650
+      "lines": 1720
     },
     {
       "path": "src/hypernix/interfaces/cli.py",
@@ -41,7 +41,7 @@
     },
     {
       "path": "src/hypernix/monitoring/tv.py",
-      "lines": 1378
+      "lines": 1389
     },
     {
       "path": "src/hypernix/interfaces/hyped_pro_core.py",
@@ -117,7 +117,7 @@
     },
     {
       "path": "src/hypernix/__init__.py",
-      "lines": 947
+      "lines": 949
     },
     {
       "path": "tests/security/test_v0710_gatekeeper_keymaster.py",
@@ -162,6 +162,15 @@
       "files": 48
     },
     {
+      "author": "t",
+      "additions": 3870,
+      "deletions": 69,
+      "net": 3801,
+      "changes": 3939,
+      "commits": 5,
+      "files": 35
+    },
+    {
       "author": "qwen.ai[bot]",
       "additions": 947,
       "deletions": 126,
@@ -169,15 +178,6 @@
       "changes": 1073,
       "commits": 12,
       "files": 407
-    },
-    {
-      "author": "t",
-      "additions": 434,
-      "deletions": 0,
-      "net": 434,
-      "changes": 434,
-      "commits": 1,
-      "files": 3
     },
     {
       "author": "Rayla",
@@ -199,6 +199,6 @@
     }
   ],
   "history_available": true,
-  "commit": "791e0e4a567f4fc38729108666c5edfe9e0088f3",
+  "commit": "ea39518fb861181c1d01727644ed8e8fc6f95107",
   "generated_at": null
 }

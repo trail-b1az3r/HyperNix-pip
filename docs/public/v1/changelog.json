@@ -3,6 +3,142 @@
   "source": "wiki/Changelog.md",
   "entries": [
     {
+      "version": "0.72.8a0",
+      "key": "0.72.8a0",
+      "aliases": [
+        "0.72.8a0"
+      ],
+      "kind": "alpha",
+      "heading": "0.72.8a0 \u2014 2026-10-13",
+      "date": "2026-10-13",
+      "title": "",
+      "summary": "Context relay: prompts longer than the model's context ([Context relay](Context-Relay.md)). hypernix.runtime.relay reads a document too long for a small-context model by passing it along several copies of the model: each hop reads one part plus the notes so far, the last\u2026",
+      "patch": null,
+      "headline": "",
+      "highlights": [
+        "Context relay: prompts longer than the model's context ([Context relay](Context-Relay.md)). hypernix.runtime.relay reads a document too long for a small-context model by passing it along several copies of the model: each hop reads one part plus the notes so far, the last\u2026",
+        "POST /inference/relay on the T1 API, under every rule of /inference/chat, rotating through the runner pool's instances when there is one. Each hop is metered as it finishes; the response prices the hops, the planned worst case and one big read. estimate_only prices without\u2026",
+        "HyperNix Browser Agent for Firefox ([Browser Agent](Browser-Agent.md)). A sidebar extension (browser/firefox) in which a model \u2014 on the T1 API, a local OpenAI-compatible server, OpenAI or Anthropic \u2014 searches the web, reads pages, clicks, types, presses keys, picks options\u2026",
+        "tvtop-max: five hidden panels \u2014 temperatures, sound, disks, network and system \u2014 shown with Shift+1 \u2026 Shift+5 or --show.",
+        "tvtop-max: select, sort and scroll panels. \u2190 selects a panel, d deselects, o cycles its sort (cores by busiest or hottest, memory users by most, least or fastest growing, processes by cpu, memory, age or pid, \u2026), \u2192 and Shift+\u2192 scroll it sideways when its lines are wider than it.",
+        "tvtop-max: per-core temperatures beside each core's meter, from the CPU topology where the driver reports them, and a note where it does not (AMD k10temp)."
+      ],
+      "changes": [
+        {
+          "symbol": "\u0e4b\u08ed\u2b51",
+          "label": "major",
+          "category": "Added",
+          "text": "Context relay: prompts longer than the model's context ([Context relay](Context-Relay.md)). hypernix.runtime.relay reads a document too long for a small-context model by passing it along several copies of the model: each hop reads one part plus the notes so far, the last\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "POST /inference/relay on the T1 API, under every rule of /inference/chat, rotating through the runner pool's instances when there is one. Each hop is metered as it finishes; the response prices the hops, the planned worst case and one big read. estimate_only prices without\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\u0e4b\u08ed\u2b51",
+          "label": "major",
+          "category": "Added",
+          "text": "HyperNix Browser Agent for Firefox ([Browser Agent](Browser-Agent.md)). A sidebar extension (browser/firefox) in which a model \u2014 on the T1 API, a local OpenAI-compatible server, OpenAI or Anthropic \u2014 searches the web, reads pages, clicks, types, presses keys, picks options\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "tvtop-max: five hidden panels \u2014 temperatures, sound, disks, network and system \u2014 shown with Shift+1 \u2026 Shift+5 or --show.",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "tvtop-max: select, sort and scroll panels. \u2190 selects a panel, d deselects, o cycles its sort (cores by busiest or hottest, memory users by most, least or fastest growing, processes by cpu, memory, age or pid, \u2026), \u2192 and Shift+\u2192 scroll it sideways when its lines are wider than it.",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "tvtop-max: per-core temperatures beside each core's meter, from the CPU topology where the driver reports them, and a note where it does not (AMD k10temp).",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "tvtop-max: the volume in decibels, as the sound server reports it (PipeWire/PulseAudio, ALSA), with the playing signal's peak and RMS, and a warning in the header while loud (\u2265 \u22126 dB, TVTOP_MAX_LOUD_DB) or amplified past 100% audio plays.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udd01",
+          "label": "refactor",
+          "category": "Changed",
+          "text": "Code sandbox runs (seconds), web searches and model-written compaction summaries are now metered against the caller's key.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udd01",
+          "label": "refactor",
+          "category": "Changed",
+          "text": "tvtop-pro and tvtop-max take memory from one place, hypernix.monitoring.hostprobe.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udd17",
+          "label": "API",
+          "category": "API Changes",
+          "text": "GET /usage/statement \u2014 the itemised bill, format t1.statement/2: every feature used (inference, relay, embeddings, compaction, code sandboxes, web search, client reports), a line per model and unit, subtotals, the total and what nothing prices.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udd17",
+          "label": "API",
+          "category": "API Changes",
+          "text": "Usage events carry feature, units and unit (added in place to existing databases; older rows get their feature from the endpoint), and /usage/history returns them. feature is a group_by dimension.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udd17",
+          "label": "API",
+          "category": "API Changes",
+          "text": "ModelPricing.unit_prices and T1_FEATURE_PRICES price what is not tokens; T1_RELAY_MAX_INSTANCES caps a relay's instances.",
+          "details": []
+        },
+        {
+          "symbol": "\ud81a\udca5",
+          "label": "major fix",
+          "category": "Fixed",
+          "text": "tvtop-max's RAM was wrong. The bar came from psutil's percentage (based on available) while the numbers beside it came from psutil's used, which counts differently \u2014 and \"free\" was really available. Used is now total \u2212 MemAvailable (app + wired + compressed on macOS, as\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udce6",
+          "label": "packaging",
+          "category": "Dependencies and Packaging",
+          "text": "The release bumps the Firefox extension's manifest version with the package's.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udcda",
+          "label": "docs",
+          "category": "Documentation",
+          "text": "New pages: [Context relay](Context-Relay.md) and [Browser Agent](Browser-Agent.md); [T1 API](T1-API.md) documents the relay and the statement; [tvtop-max](TvTopMax.md) the new panels, keys and the loud-audio warning.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83e\uddea",
+          "label": "tests",
+          "category": "Tests",
+          "text": "The relay (fake instances that refuse to overflow their context), the relay endpoint and the statement, the probes (from fake /proc, cgroups, hwmon trees and pactl JSON), tvtop-max's new panels and keys, the extension's modules under bun, and its content script in a real\u2026",
+          "details": []
+        }
+      ]
+    },
+    {
       "version": "0.72.7.post1",
       "key": "0.72.7.post1",
       "aliases": [
@@ -1053,113 +1189,7 @@
         "Fixed a failed reply being saved with nothing to say why.",
         "Fixed a HyperLink model saying it cannot browse when given a link."
       ],
-      "changes": [
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "Added the site's addresses to the server's log and to hypernix-t1 status.",
-          "details": [
-            "Starting the server prints \"HyperLink on the web: http://127.0.0.1:37965, http://100.x.y.z:37965\", and says so when there is no Tailscale address, so only this machine can open it.",
-            "hypernix-t1 status lists each address and whether the page answers there, asked from outside the server."
-          ]
-        },
-        {
-          "symbol": "\ud81a\udd54",
-          "label": "minor",
-          "category": "Added",
-          "text": "Added T1_WEB_ENABLED and T1_WEB_PORT to the .env that hypernix-t1 create and install-t1.sh write, with where to look.",
-          "details": []
-        },
-        {
-          "symbol": "\ud81a\udca5",
-          "label": "major fix",
-          "category": "Fixed",
-          "text": "Fixed HyperLink on the web listening on 127.0.0.1 alone on most servers.",
-          "details": [
-            "The site found its Tailscale addresses with tailscale ip from PATH, or else psutil. A systemd unit's PATH is minimal, Tailscale from the Mac App Store keeps the command inside the app, and the t1api extra does not bring psutil, so the tailnet was never found and a phone or\u2026",
-            "The command is now looked for where the keyless check already looks (/usr/bin, /usr/local/bin, /opt/homebrew/bin, the Mac app), and without it the kernel is asked which local address routes to Tailscale's own 100.100.100.100 and fd7a:115c:a1e0::53. That sends nothing, and needs\u2026"
-          ]
-        },
-        {
-          "symbol": "\ud81a\udca5",
-          "label": "major fix",
-          "category": "Fixed",
-          "text": "Fixed a message on the site showing nothing when no reply came.",
-          "details": [
-            "With nothing to answer it, no model on the runner and LM Studio not running, the server sent an error, the page showed it, and then redrew the chat from the server's copy, which wiped it. The message sat there with no reply and no reason.",
-            "The error now stays, in red, and says the model can also be loaded on this server from the Runner tab."
-          ]
-        },
-        {
-          "symbol": "\ud83d\udc1b",
-          "label": "fix",
-          "category": "Fixed",
-          "text": "Fixed a failed reply being saved with nothing to say why.",
-          "details": [
-            "The saved reply's metadata now carries the error's code and message, so a client that redraws or reopens the chat can show it; the site does, instead of an empty bubble."
-          ]
-        },
-        {
-          "symbol": "\ud81a\udca5",
-          "label": "major fix",
-          "category": "Fixed",
-          "text": "Fixed a HyperLink model saying it cannot browse when given a link.",
-          "details": [
-            "Reported from a phone: asked to look at a GitHub repository, the model listed read_memory and update_memory as its only tools and said three times that it could not open a web page.",
-            "The phone had no key. 0.72.6 gave a keyless caller no T1 tools, so no web_search or web_summarize; 0.72.6.post1 gives it the read-only ones.",
-            "Nothing it was told said a link could be opened either. The web_summarize tool now says it opens any http or https link, a GitHub repository included; the taught prompt says, when a web tool is offered, that the model can reach the web and must not say it cannot browse; and the\u2026"
-          ]
-        },
-        {
-          "symbol": "\ud83d\udc1b",
-          "label": "fix",
-          "category": "Fixed",
-          "text": "Fixed a link pasted with a fragment (\u2026/repo#readme) failing web_summarize: the fragment, which is never sent to a site, is dropped before the call.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udc1b",
-          "label": "fix",
-          "category": "Fixed",
-          "text": "Fixed hypernix-t1 create stamping the .env it writes with 0.72.5.",
-          "details": [
-            "It now names the installed package's version."
-          ]
-        },
-        {
-          "symbol": "\ud83e\uddea",
-          "label": "tests",
-          "category": "Tests",
-          "text": "Added five tests to tests/test_hyperlink_web.py (now 20): the Tailscale address found through the route with neither the command nor psutil, the command found on a minimal PATH, the addresses in the log, status saying whether the page answers, and the error kept on screen after\u2026",
-          "details": [
-            "The released 0.72.6.post1 wheel and this branch were each installed in a fresh virtualenv, started with hypernix-t1, and driven in Chromium: sign-in with a key and keyless, chat, Runner, Memory and Settings."
-          ]
-        },
-        {
-          "symbol": "\ud83e\uddea",
-          "label": "tests",
-          "category": "Tests",
-          "text": "Added test_a_failed_reply_is_saved_with_its_error to tests/test_hyperlink_stream_tools.py.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83e\uddea",
-          "label": "tests",
-          "category": "Tests",
-          "text": "Added tests/test_hyperlink_reads_links.py (5): a keyless phone on a trusted network pastes a GitHub link, the model is offered the web tools and told it can open links, calls web_summarize, and gets the page's text back through the real server.",
-          "details": []
-        },
-        {
-          "symbol": "\u2757",
-          "label": "known issue",
-          "category": "Known Issues",
-          "text": "The site is not reachable from the LAN, by design.",
-          "details": [
-            "It listens on 127.0.0.1 and Tailscale addresses only. From another device, use this machine's Tailscale address, which hypernix-t1 status prints."
-          ]
-        }
-      ]
+      "changes": []
     },
     {
       "version": "0.72.6.post1",

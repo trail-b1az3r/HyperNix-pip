@@ -18,7 +18,12 @@ from hypernix.security.keymaster import Keymaster, KeyScope, KeyType  # noqa: E4
 from hypernix.t1api.app import create_app  # noqa: E402
 from hypernix.t1api.config import T1APIConfig  # noqa: E402
 from hypernix.t1api.cost import STATEMENT_FORMAT, feature_of  # noqa: E402
-from hypernix.t1api.registry import ModelEntry, ModelPricing, ModelRegistry, ModelStatus  # noqa: E402
+from hypernix.t1api.registry import (  # noqa: E402
+    ModelEntry,
+    ModelPricing,
+    ModelRegistry,
+    ModelStatus,
+)
 
 BRIDGE = "hypernix.t1api.routers.inference.LMStudioBridge"
 
