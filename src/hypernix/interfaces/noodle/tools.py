@@ -161,6 +161,9 @@ class ToolContext:
         """
         if not relative or not str(relative).strip():
             raise ToolError("A path is required", code="bad_path")
+        raw = str(relative).strip()
+        if Path(raw).is_absolute():
+            raise ToolError("Absolute paths are not allowed", code="outside_workspace")
         # expanduser() *after* the join, deliberately. By then any `~` the
         # model supplied sits in the middle of the path, where it expands
         # to nothing and stays a literal directory name under the root.
@@ -170,7 +173,7 @@ class ToolContext:
         # right is absolute. The containment check below still catches
         # that, but it would be the only thing catching it. Do not
         # "fix" this into expanding first.
-        candidate = (self.root / str(relative)).expanduser()
+        candidate = (self.root / raw).expanduser()
         try:
             resolved = candidate.resolve()
         except OSError as exc:
