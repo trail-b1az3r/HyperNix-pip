@@ -1,5 +1,7 @@
 # Roadmap
 
+> Planned release scopes summarize [`.prompts/.v1/main.md`](../.prompts/.v1/main.md), the detailed implementation specification. A roadmap item is not complete until its implementation, tests, documentation, and supporting evidence satisfy its acceptance criteria.
+
 ## 0.71.4b2 (Shipped)
 
 - `hyped+` (`hyped-pro`) Node.js TUI based on OpenClaw, Qwen Code CLI, and Claude Desktop
@@ -361,63 +363,92 @@ A real migration, not a `python_requires` edit. Final target:
 - **A final migration report**, ending in a per-version test matrix.
   Nothing is marked passing until it has actually been run.
 
-## 0.73.0 — planned
+## 0.72.8 — model tooling, HyperLink, and hardware support (Planned)
 
-HyperNix Studio:
+This release consolidates the 0.72.8 alpha and release-candidate requirements in the current prompt. Treat the subsections below as planned until the corresponding implementation and release gates are verified.
 
-- full local model support with **no T1 key and no hosted server**
-- both `bash` and `fish`
-- substantially more tool-calling
-- and more
+- **HyperLink sessions and model selection:** make chats private to the signed-in account, or to the calling API key when accounts are disabled. Sign and validate requests consistently across account/key identity, message timestamp, chat/session identifiers, and fresh request nonces; editing or resending a message must revalidate it. Improve timeout behavior, reject empty/invalid requests, prevent global chat leakage, and make multiple loaded models visible and selectable in both the Models view and chat.
+- **T1 runner and API behavior:** add an interactive, refreshable model/backend picker without launching a separate full-screen TUI. Improve launch-script staged arguments and live log following. Introduce the versioned web-search API and configurable, permission-aware search storage; retain the documented compatibility window for the older endpoint before removal. Add bounded system-prompt compaction for models whose context cannot fit the full prompt. Harden the API, close outstanding security findings, publish a security policy, and document licensing changes before release.
+- **Downloads, conversion, and quantization:** accept Hugging Face repository URLs and direct GGUF-file URLs, make repository IDs optional where a URL provides the source, and provide explicit output paths. Add `hnx auto` for download → conversion when needed → user-selected quantization. Develop the in-house `hnx-hf` login/client path with safe fallback to `huggingface_hub` when available; do not silently break existing workflows. Add and test the requested `hnx_q6h1` and `hnx_q6h1m` quantization profiles, and validate the non-stock llama.cpp quantization path. Move less-common commands behind `hnx extra`, update help and aliases, and audit the commands for stubs, regressions, or misleading success messages.
+- **Model analysis and training:** develop the C4 model-analysis workflow for inspecting weights/layers, measuring candidate components, and restoring or assembling derived models. Keep destructive pruning or synthesis separate from the source model, track provenance, and validate outputs. Integrate its proposed `reap`/`sow` workflow and its specialized Pressure Cooker V5S/AdamW hybrid only behind real tests and reproducible comparisons.
+- **HyperLink, integrations, and observability:** support full CommonMark/GFM-style Markdown, dataset context imports, richer code/file access, and compatible MCP integrations. Add the requested browser extension for explicitly authorized web search and browser interaction. Expand `tvtopmax` sorting, section navigation, off-screen panning, and hotkeys; correct RAM and per-core temperature reporting and use measured audio levels for any decibel warning rather than estimates. Expose real power/efficiency telemetry when hardware provides it. Add safer monitor backlight control to `prot`, including a reliable restore/off switch. Any memory creation or tool execution must follow the user's configured consent and privacy rules.
+- **Supported hardware and model architecture RC gate:** compare the existing catalogues against verifiable upstream sources and add at least **251 net-new CPU SKU/model entries**, **151 net-new GPU entries**, and **36 net-new model-architecture families** beyond the baseline. Each entry must describe which operations are genuinely supported; recognition alone must not imply successful training or inference. Generate versioned CPU, GPU, and architecture JSON from canonical registries, publish a searchable GitHub Pages matrix, retain sources/revisions, and test generated data and page filters.
 
-## 0.73.1 – 0.73.5 — planned: five releases that add nothing
+**Completion gate:** measure the net-new counts against a saved baseline; test alias and unknown-device handling, CPU-only and mixed-device systems, supported architecture operations, installation/package artifacts, offline catalogue loading, API/session security, and the production Pages build. Do not mark a hardware or architecture combination supported without evidence for the specific operation.
 
-Stability, bug fixes, code review and revision, safety, and performance.
-No new features, with one exception:
+## 0.73.0 — Strife runtime and Optimizer Framework V2 (Planned)
 
-- **a CLI for clearing out old training checkpoints and datasets**, to
-  get storage back
-- improved AMD compatibility
-- a better README — outdated sections updated or removed
+### Alpha 1 — Strife custom GGUF inference runtime
 
-## 0.73.6 — planned: the HyperNix GPU Process Scheduler (HGPS)
+Build Strife as a genuine local inference backend, not merely a launcher around the existing modified llama.cpp binary. Own model lifecycle, scheduling, inference execution, token streaming, cache management, cancellation, and hardware-aware placement through a stable Python API and CLI. Reuse compatible and license-appropriate HyperNix readers and fixtures where sound. Local inference must work without a T1 key, cloud access, or a running T1 server. Publish an honest architecture/quantization/platform/backend support matrix; file recognition or successful loading alone is not proof of working inference.
 
-Aimed squarely at older NVIDIA hardware: GTX 1080, 1080 Ti, RTX 2080 and
-the rest of the Pascal/Turing generation.
+### Alpha 2 — Optimizer Framework V2 and Pressure Cooker V7
 
-- **Detect, then decide.** Architecture, VRAM capacity and free VRAM,
-  CUDA capability, memory bandwidth, thermal state, utilisation and
-  system load — feeding batch size, micro-batch size, gradient
-  accumulation, kernel configuration, CPU↔GPU transfer behaviour and
-  allocation strategy. Optimise for *sustained* throughput, not a
-  benchmark burst.
-- **Legacy execution mode.** Pascal gets FP16/FP32 CUDA, fused kernels,
-  memory reuse, gradient checkpointing, pinned host memory and async
-  transfers. Turing gets Tensor Cores *when they measurably help*, with
-  a CUDA fallback. Benchmark the available paths at startup and pick the
-  fastest stable one rather than assuming. Profiles: `Pascal-Legacy`,
-  `Turing-Legacy`, `Auto` (default).
-- **VRAM management with a margin.** Watch usage and cut micro-batch
-  size or turn on checkpointing *before* an OOM. Keep weights, optimizer
-  state and hot tensors resident; avoid fragmentation. For models that
-  do not fit, mixed CPU/GPU with async prefetch and layer/tensor
-  offload — and never move the same tensor back and forth repeatedly.
-- **A real-time controller** over utilisation, temperature, power,
-  memory, kernel time, dataloader latency, PCIe latency and
-  tokens or samples per second, with thermal-throttle protection and
-  telemetry that names the bottleneck: compute-, memory-, CPU- or
-  PCIe-bound, plus the estimated optimal batch size.
-- **Cheap, and cached.** Minimal overhead, graceful degradation when a
-  feature is missing, never slower merely because a newer optimisation
-  is unavailable, and per-GPU tuning profiles so a configuration
-  discovered once is reused on the next run.
+Unify the Pressure Cooker V4, V5, V5+, V5S, V6, and V6V implementations behind a shared framework without erasing their distinct update rules or breaking existing APIs/checkpoints. Deliver the V7 optimizer family (including Mini, Q, S, and M variants), measured auto-selection, optimizer-specific controls and diagnostics, and repeatable benchmarks for throughput, memory, stability, and quality. Include safe precision/state-mode selection, hardware compatibility and fallback behavior, checkpoint compatibility, failure handling, and a test gate. Studio should consume this shared optimizer API rather than reimplementing the optimizer core.
+
+## 0.73.1–0.73.5 — stability and compatibility series (Planned)
+
+Five release steps focused on bug fixes, code review, security, performance, documentation cleanup, cross-platform build failures, and expanded tests rather than a broad feature expansion. The explicitly scoped additions are working T1 API calls from models running in HyperLink, improved AMD compatibility, and a GitHub Actions workflow that uses an available model to refresh the README “What’s new” section after a major release. Keep generated content reviewable and never publish invented release notes or unverified claims.
+
+## 0.73.6 — HGPS and Strife early beta (Planned)
+
+- **HyperNix GPU Process Scheduler (HGPS):** detect architecture, VRAM capacity/free space, bandwidth, CUDA/backend capabilities, temperature, utilization, power and system load; use measured data to select stable batch/micro-batch sizes, accumulation, kernels, transfers, and allocation/offload policy. Prioritize older Pascal/Turing hardware while improving dispatch on newer supported NVIDIA and Apple silicon devices. Optimize sustained throughput, keep memory headroom, cache per-device tuning, and degrade safely when telemetry or an optimization is unavailable.
+- **Strife early beta:** integrate with the shared HGPS rather than creating another scheduler. Harden model loading, generation/cancellation, memory planning, GGUF/quantization handling, capability reporting, diagnostics, packaging and reproducibility. Release only with a tested-support matrix and actionable failures/fallbacks for unsupported combinations.
+- Add and validate the requested `hnx_q7h` and `hnx_q7E` quantization formats (including the target bit-rate and component format definitions), and rebuild the related pipeline/assistant integrations against tests.
+- Extend `prot` for multi-monitor power/backlight control with a safe restore path; never leave secondary monitors disabled if the command exits or errors.
+
+## 0.74.0 — HyperNix0xV3 architecture (Planned)
+
+Design and implement HyperNix0xV3 as a genuinely new architecture rather than a renamed Transformer or a collection of standard layers. Explore two new custom layers for efficient context and adaptive processing, a scalable block architecture, context-aware synchronous optimization, adaptive and thermal-aware control, and hardware-aware execution. Support multiple model sizes using shared configuration and implementation paths. Treat any claimed gains as research hypotheses until baselines, numerical checks, training stability, hardware compatibility and repeatable experiments support them; record failed experiments as well as successful ones.
+
+## 0.74.1 — HyperLink local runtime and context telemetry (Planned)
+
+Add the legacy **Origins** theme and fix hardware reporting so supported telemetry can identify CPU, RAM, GPU, and power use rather than showing partial or guessed readings. Report hourly power consumption and efficiency only where the system exposes enough information, clearly labeling estimates. Integrate a usable local model runner based on the modified llama.cpp runtime. Add a three-ring chat indicator for context and remaining usage, with clear color thresholds and automatic context compaction at the specified 96% full point. Add an actionable example that trains a small Brewer model using the latest supported Pressure Cooker, Neo Oven, and synchronous-training components.
+
+## 0.74.2 — experiment ledger and reproducible workbench (Planned)
+
+Make training, evaluation, inference benchmarking, and quantization runs reproducible and recoverable. Add versioned experiment manifests and records, a CLI workflow, safe checkpoint lifecycle/recovery, comparable metrics, and artifact/storage safeguards. Integrate monitoring without coupling experiment records to a single UI. Validate privacy, cleanup, interrupted-run recovery, deterministic metadata, and honest before/after comparisons.
+
+## 0.74.3 — HyperNix Studio, local runtime, and agent tools (Planned)
+
+Deliver a coherent Studio experience that can discover, load, inspect, and run local models without a T1 key or hosted server. Integrate Strife and the shared optimizer framework instead of duplicating them. Add observable local tool calling, parallel calls where safe, capability detection, built-in tools, agent profiles/tool packs, environment snapshots, project diagnostics, patch/apply and test-and-fix loops, shell support for Bash/Fish/PowerShell, and safe streaming/cancellation. Preserve permissions and user approval at tool boundaries; isolate execution, constrain file/process/network access, and make failures recoverable. Include model/context/tool-result management, caching, training dashboard integration, configuration and CLI support, accessible high-quality UI, backward compatibility, performance tests and complete documentation.
+
+## 0.75.0 — HyperNix0xV4 cognitive architecture (Planned)
+
+Research and build a new model architecture rather than simply modifying V3 or renaming conventional Transformer blocks. The proposed design explores perception, curiosity, parallel internal processing, hypothesis formation, synchronization, memory, learning and perspective formation. Keep internal computation distinct from user-facing explanations; do not expose or require a traditional chain-of-thought transcript. Provide configurable model sizes and validate the architecture through reproducible training/evaluation, memory and compute measurements, and comparisons with documented baselines before claiming advantages.
+
+## 0.76.0 — scope not yet specified
+
+The current prompt reserves this version number but does not define deliverables.
+
+## 0.76.1 — hyperNix.25 and safer shutdown UX (Planned)
+
+Add support for `hyperNix.25`. For the wall-clock/shutdown script, show a clear five-to-one countdown and a final shutdown notice, with a documented **Shift+C** cancellation path. Make cancellation reliable during the entire countdown and test that cancellation prevents shutdown.
+
+## 0.80.0 — scope not yet specified
+
+The current prompt reserves this version number but does not define deliverables; no additional scope is inferred here.
+
+## 0.81.0 — unified in-house runtime (Planned)
+
+Consolidate the runtime into the single `hypernix` Python package; do not split the design into separately installed `hypernix-torch`, `hypernix-poor`, `hypernix-hardware`, or `hypernix-cuda` packages. Build the proposed HyperNix Torch interface around the specified PyTorch 2.14 codebase where required, with internal hardware, runtime, CUDA, CPU, logging, terminal, Unicode and compatibility modules. Add automatic backend/runtime selection, explicit compatibility handling, native build and packaging support, and a versioned migration path. Validate the supported CPU/GPU combinations and package once-install behavior with real CI, build, install, runtime and performance tests; do not promise universal CUDA or hardware compatibility by catalog entry alone.
+
+## 0.81.1 — HyperLink Android, navigation, providers, and HyperNixUP (Planned)
+
+Deliver a cohesive HyperLink desktop/Android and developer-experience release:
+
+- Define a versioned HyperNixUP Markdown extension with grammar, precedence, escaping, nesting, parser errors, examples and safe fallback rendering compatible with the existing Markdown tooling.
+- Build a native Android client and improve navigation/gestures, the Code tab, provider/API setup, model browsing with Hugging Face search, and effort-level handling across prompts/providers.
+- Make capabilities depend on role, approval and connection context. Correct T1 API version auto-update behavior.
+- Redesign the wiki into a consistent technical knowledge base: coherent navigation, landing page, cross-links, version labels, searchable/scan-friendly structure, and preserved historical notes/important links. Add example scripts/cookbook content and an in-app documentation menu. Fix stale commands, contradictory version claims, broken links and duplicated guidance rather than deleting useful material.
+
+## 0.82.0 — major performance and GPU-efficiency release (Planned)
+
+Measure before optimizing. Establish repeatable before/after baselines for CLI/import startup, model load, prompt prefill and generation, training/optimizer steps, data preprocessing, conversion, quantization and local serving. Cover CPU-only and supported NVIDIA, AMD, Intel and Apple backends, including Pascal where the installed stack supports it. Optimize CPU/runtime overhead, GPU throughput and memory use, adaptive resource planning, training/optimizers, quantization/inference and cross-platform dispatch. Record commit, model revision/hash, quantization, settings, backend/driver, peak RAM/VRAM, latency and throughput. Require numerical/regression tests, reproducible measurements, stable fallbacks and a release report; do not accept benchmark scripts or unverified performance claims as completion.
 
 ## 1.xx.0 — the T2 API
 
-The T2 API itself does not release until 1.xx.0. At that point the T2
-API supports T2 and T2S keys only, plus T2C once its key derivation is
-resolved. Until then T2 keys are recognised and validated by the T1
-API — which is what 0.72.1 shipped — and the T2 API is not exposed.
+The T2 API itself does not release until 1.xx.0. At that point it supports T2 and T2S keys only, plus T2C once its key derivation is resolved. Until then, the existing T1 API recognizes and validates T2 keys; the standalone T2 API is not exposed.
 
 ---
 
