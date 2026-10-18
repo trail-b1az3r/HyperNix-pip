@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-t1-api",
   "generated_at": "2026-10-07T05:12:17Z",
-  "commit": "4ca14cd7c77ed8ad6191eca23054d61836aa25d0",
+  "commit": "99f821447f06bd86c67b6f925782653bdeb7b588",
   "history_available": true,
   "server_extra": "pip install 'hypernix[t1api]'",
   "client_install": "pip install hypernix",
