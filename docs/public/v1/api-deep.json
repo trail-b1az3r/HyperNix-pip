@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-api-deep",
   "generated_at": "2026-09-20T21:20:57Z",
-  "commit": "a34b1c67951873dca93d914912584762a0b95d61",
+  "commit": "367f5e68d503982f26f19687184c4212e82ee4ba",
   "history_available": true,
   "source_root": "src/hypernix",
   "modules": [
@@ -33694,86 +33694,86 @@
     {
       "module": "hypernix.scriptgen.app",
       "source": "src/hypernix/scriptgen/app.py",
-      "line_count": 507,
+      "line_count": 630,
       "summary": "scriptgen.app \u2014 the GUI, and the form model underneath it.",
       "api": [
         {
           "kind": "class",
           "name": "FormModel",
           "signature": "class FormModel",
-          "line": 42,
+          "line": 43,
           "doc": "Values, validation and preview. No GUI toolkit involved.",
           "methods": [
             {
               "name": "set",
               "signature": "def setself, name: str, value: Any -> tuple[bool, str]",
-              "line": 57,
+              "line": 58,
               "doc": "Set one parameter, returning ``(ok, message)``."
             },
             {
               "name": "get",
               "signature": "def getself, name: str -> Any",
-              "line": 72,
+              "line": 73,
               "doc": ""
             },
             {
               "name": "dirty",
               "signature": "def dirtyself -> bool",
-              "line": 76,
+              "line": 77,
               "doc": ""
             },
             {
               "name": "changed_from_defaults",
               "signature": "def changed_from_defaultsself -> dict[str, tuple[Any, Any]]",
-              "line": 79,
+              "line": 80,
               "doc": "What differs from the defaults, for the summary strip."
             },
             {
               "name": "reset",
               "signature": "def resetself -> None",
-              "line": 92,
+              "line": 93,
               "doc": ""
             },
             {
               "name": "mark_saved",
               "signature": "def mark_savedself -> None",
-              "line": 96,
+              "line": 97,
               "doc": ""
             },
             {
               "name": "visible_params",
               "signature": "def visible_paramsself, group_key: str -> list[Any]",
-              "line": 101,
+              "line": 102,
               "doc": "Parameters to draw for a tab, honouring advanced and depends_on."
             },
             {
               "name": "validate",
               "signature": "def validateself -> tuple[list[str], list[str]]",
-              "line": 123,
+              "line": 124,
               "doc": ""
             },
             {
               "name": "preview",
               "signature": "def previewself, existing: str='' -> str",
-              "line": 126,
+              "line": 127,
               "doc": "The script (or config) as it currently stands."
             },
             {
               "name": "save",
               "signature": "def saveself, path: str | Path, *, existing: str='' -> Path",
-              "line": 143,
+              "line": 144,
               "doc": "Write the output. Refuses while there are validation errors."
             },
             {
               "name": "to_json",
               "signature": "def to_jsonself -> str",
-              "line": 163,
+              "line": 164,
               "doc": ""
             },
             {
               "name": "load_json",
               "signature": "def load_jsonself, text: str -> list[str]",
-              "line": 168,
+              "line": 169,
               "doc": "Load a saved preset, returning any values that were rejected."
             }
           ]
@@ -33782,13 +33782,13 @@
           "kind": "class",
           "name": "ScriptGenApp",
           "signature": "class ScriptGenApp",
-          "line": 194,
+          "line": 195,
           "doc": "The Tk application. Constructed only when Tk is actually present.",
           "methods": [
             {
               "name": "run",
               "signature": "def runself -> None",
-              "line": 570,
+              "line": 698,
               "doc": ""
             }
           ]
@@ -33797,7 +33797,7 @@
           "kind": "function",
           "name": "launch",
           "signature": "def launchvalues: dict[str, Any] | None=None -> int",
-          "line": 574,
+          "line": 702,
           "doc": "Open the GUI, or explain why it cannot open."
         }
       ],
@@ -33808,6 +33808,214 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "3c2c6246",
+          "date": "2026-10-19",
+          "author": "Rayla",
+          "subject": "Rename app(1).py to app.py",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class FormModel:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, values: dict[str, Any] | None = None) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def set(self, name: str, value: Any) -> tuple[bool, str]:"
+            },
+            {
+              "kind": "added",
+              "text": "def get(self, name: str) -> Any:"
+            },
+            {
+              "kind": "added",
+              "text": "def dirty(self) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def changed_from_defaults(self) -> dict[str, tuple[Any, Any]]:"
+            },
+            {
+              "kind": "added",
+              "text": "def reset(self) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def mark_saved(self) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def visible_params(self, group_key: str) -> list[Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def validate(self) -> tuple[list[str], list[str]]:"
+            },
+            {
+              "kind": "added",
+              "text": "def preview(self, existing: str = \"\") -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def save(self, path: str | Path, *, existing: str = \"\") -> Path:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_json(self) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def load_json(self, text: str) -> list[str]:"
+            },
+            {
+              "kind": "added",
+              "text": "class ScriptGenApp:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, model: FormModel | None = None) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _style(self) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "class _RoundedPanel:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__("
+            },
+            {
+              "kind": "added",
+              "text": "def pack(self, *args: Any, **kwargs: Any) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _resize(self, event: Any) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _build(self) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _build_header(self) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _button(self, parent: Any, label: str, command: Any, *, primary: bool = False) -> Any:"
+            }
+          ]
+        },
+        {
+          "sha": "3903989a",
+          "date": "2026-10-19",
+          "author": "Rayla",
+          "subject": "Delete src/hypernix/scriptgen/app.py",
+          "api_changes": [
+            {
+              "kind": "removed",
+              "text": "class FormModel:"
+            },
+            {
+              "kind": "removed",
+              "text": "def __init__(self, values: dict[str, Any] | None = None) -> None:"
+            },
+            {
+              "kind": "removed",
+              "text": "def set(self, name: str, value: Any) -> tuple[bool, str]:"
+            },
+            {
+              "kind": "removed",
+              "text": "def get(self, name: str) -> Any:"
+            },
+            {
+              "kind": "removed",
+              "text": "def dirty(self) -> bool:"
+            },
+            {
+              "kind": "removed",
+              "text": "def changed_from_defaults(self) -> dict[str, tuple[Any, Any]]:"
+            },
+            {
+              "kind": "removed",
+              "text": "def reset(self) -> None:"
+            },
+            {
+              "kind": "removed",
+              "text": "def mark_saved(self) -> None:"
+            },
+            {
+              "kind": "removed",
+              "text": "def visible_params(self, group_key: str) -> list[Any]:"
+            },
+            {
+              "kind": "removed",
+              "text": "def validate(self) -> tuple[list[str], list[str]]:"
+            },
+            {
+              "kind": "removed",
+              "text": "def preview(self, existing: str = \"\") -> str:"
+            },
+            {
+              "kind": "removed",
+              "text": "def save(self, path: str | Path, *, existing: str = \"\") -> Path:"
+            },
+            {
+              "kind": "removed",
+              "text": "def to_json(self) -> str:"
+            },
+            {
+              "kind": "removed",
+              "text": "def load_json(self, text: str) -> list[str]:"
+            },
+            {
+              "kind": "removed",
+              "text": "class ScriptGenApp:"
+            },
+            {
+              "kind": "removed",
+              "text": "def __init__(self, model: FormModel | None = None) -> None:"
+            },
+            {
+              "kind": "removed",
+              "text": "def _style(self) -> None:"
+            },
+            {
+              "kind": "removed",
+              "text": "def _build(self) -> None:"
+            },
+            {
+              "kind": "removed",
+              "text": "def _build_header(self) -> None:"
+            },
+            {
+              "kind": "removed",
+              "text": "def _button(self, parent: Any, label: str, command: Any) -> Any:"
+            },
+            {
+              "kind": "removed",
+              "text": "def _build_group(self, group: Any) -> Any:"
+            },
+            {
+              "kind": "removed",
+              "text": "def _build_row(self, parent: Any, param: Any, row: int) -> None:"
+            },
+            {
+              "kind": "removed",
+              "text": "def _build_preview(self, parent: Any) -> None:"
+            },
+            {
+              "kind": "removed",
+              "text": "def _build_status(self) -> None:"
+            }
+          ]
+        },
         {
           "sha": "7f34566b",
           "date": "2026-08-26",
@@ -34188,7 +34396,7 @@
     {
       "module": "hypernix.scriptgen.theme",
       "source": "src/hypernix/scriptgen/theme.py",
-      "line_count": 161,
+      "line_count": 159,
       "summary": "scriptgen.theme \u2014 dark slate, charcoal, obsidian, and HyperNix red.",
       "api": [
         {
@@ -34224,14 +34432,14 @@
           "kind": "function",
           "name": "audit_palette",
           "signature": "def audit_palettepalette: Palette=PALETTE -> dict[str, Any]",
-          "line": 116,
+          "line": 114,
           "doc": "Check the palette against its own rules. Used by the tests."
         },
         {
           "kind": "function",
           "name": "resolve_font",
           "signature": "def resolve_fontroot: Any, preferred: tuple[Any, ...] -> tuple[Any, ...]",
-          "line": 178,
+          "line": 176,
           "doc": "Return *preferred*, or the first fallback the system actually has."
         }
       ],
@@ -34239,6 +34447,86 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "367f5e68",
+          "date": "2026-10-19",
+          "author": "Rayla",
+          "subject": "Rename theme(1).py to theme.py",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _rgb(hex_colour: str) -> tuple[int, int, int]:"
+            },
+            {
+              "kind": "added",
+              "text": "def relative_luminance(hex_colour: str) -> float:"
+            },
+            {
+              "kind": "added",
+              "text": "def channel(raw: int) -> float:"
+            },
+            {
+              "kind": "added",
+              "text": "def contrast_ratio(foreground: str, background: str) -> float:"
+            },
+            {
+              "kind": "added",
+              "text": "class Palette:"
+            },
+            {
+              "kind": "added",
+              "text": "def as_dict(self) -> dict[str, str]:"
+            },
+            {
+              "kind": "added",
+              "text": "def audit_palette(palette: Palette = PALETTE) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def resolve_font(root: Any, preferred: tuple[Any, ...]) -> tuple[Any, ...]:"
+            }
+          ]
+        },
+        {
+          "sha": "90b9120a",
+          "date": "2026-10-19",
+          "author": "Rayla",
+          "subject": "Delete src/hypernix/scriptgen/theme.py",
+          "api_changes": [
+            {
+              "kind": "removed",
+              "text": "def _rgb(hex_colour: str) -> tuple[int, int, int]:"
+            },
+            {
+              "kind": "removed",
+              "text": "def relative_luminance(hex_colour: str) -> float:"
+            },
+            {
+              "kind": "removed",
+              "text": "def channel(raw: int) -> float:"
+            },
+            {
+              "kind": "removed",
+              "text": "def contrast_ratio(foreground: str, background: str) -> float:"
+            },
+            {
+              "kind": "removed",
+              "text": "class Palette:"
+            },
+            {
+              "kind": "removed",
+              "text": "def as_dict(self) -> dict[str, str]:"
+            },
+            {
+              "kind": "removed",
+              "text": "def audit_palette(palette: Palette = PALETTE) -> dict[str, Any]:"
+            },
+            {
+              "kind": "removed",
+              "text": "def resolve_font(root: Any, preferred: tuple[Any, ...]) -> tuple[Any, ...]:"
+            }
+          ]
+        },
         {
           "sha": "7f34566b",
           "date": "2026-08-26",
