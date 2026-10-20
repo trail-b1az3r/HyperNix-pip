@@ -23,8 +23,13 @@ because a second copy is a second thing to not fix. What is here:
 * a method per session type rather than per platform — a Wayland
   session has no X server for ``xset`` to ask, and "Linux" is not the
   question;
-* Hyprland, sway, wlroots and the freedesktop screensaver, because
-  "Wayland" is not one thing either;
+* Hyprland, sway, wlroots, GNOME and KDE, because "Wayland" is not one
+  thing either;
+* never locking the screen (0.72.8): the freedesktop screensaver path
+  blanked GNOME and KDE by *activating the screensaver*, and an active
+  screensaver locks the session, so the wake word woke a lock screen.
+  It is gone, and :class:`LockGuard` turns lock-on-idle off for as long
+  as the screen is dark and puts it back afterwards;
 * macOS, which the ``protect`` path checked for Linux and silently
   skipped;
 * failures that come back as a reason and a remedy instead of a
@@ -36,7 +41,7 @@ import os
 import shutil
 import subprocess
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 #: How long any single blanking command gets. A compositor that has not
 #: answered in this long is wedged, and waiting longer for it only means
@@ -91,12 +96,16 @@ class Blanker:
     before: tuple[tuple[str, ...], ...] = ()
     env: str = ""
     install: str = ""
+    #: A desktop it only works on, matched against XDG_CURRENT_DESKTOP.
+    desktop: str = ""
 
     @property
     def available(self) -> bool:
         if not shutil.which(self.binary):
             return False
         if self.env and not os.environ.get(self.env):
+            return False
+        if self.desktop and self.desktop not in current_desktop():
             return False
         return True
 
@@ -129,26 +138,32 @@ BLANKERS: tuple[Blanker, ...] = (
         on=("output", "*", "power", "on"),
         env="SWAYSOCK",
     ),
+    # GNOME: Mutter's own display power-save mode (3 = off, 0 = on). Not
+    # the freedesktop screensaver this used to activate: an active
+    # screensaver *locks the session*, which is not what blanking means.
+    Blanker(
+        name="gnome", session="wayland", binary="gdbus", desktop="gnome",
+        off=("call", "--session", "--dest", "org.gnome.Mutter.DisplayConfig",
+             "--object-path", "/org/gnome/Mutter/DisplayConfig",
+             "--method", "org.freedesktop.DBus.Properties.Set",
+             "org.gnome.Mutter.DisplayConfig", "PowerSaveMode", "<int32 3>"),
+        on=("call", "--session", "--dest", "org.gnome.Mutter.DisplayConfig",
+            "--object-path", "/org/gnome/Mutter/DisplayConfig",
+            "--method", "org.freedesktop.DBus.Properties.Set",
+            "org.gnome.Mutter.DisplayConfig", "PowerSaveMode", "<int32 0>"),
+        install="GNOME: gdbus comes with glib (libglib2.0-bin).",
+    ),
+    # KDE Plasma 5.27+/6: DPMS through KScreen, which does not lock.
+    Blanker(
+        name="kscreen-doctor", session="wayland", binary="kscreen-doctor", desktop="kde",
+        off=("--dpms", "off"), on=("--dpms", "on"),
+        install="KDE: install kscreen (kscreen-doctor).",
+    ),
     Blanker(
         name="wlopm", session="wayland", binary="wlopm",
         off=("--off", "*"), on=("--on", "*"),
         env="WAYLAND_DISPLAY",
         install="Install wlopm (wlroots compositors: sway, river, Wayfire).",
-    ),
-    # GNOME and anything else implementing the freedesktop screensaver
-    # interface. Activating the screensaver is not a DPMS off, but it
-    # does blank the screen, which is what was asked for, and it is the
-    # only thing that works on a stock GNOME Wayland session.
-    Blanker(
-        name="screensaver", session="wayland", binary="dbus-send",
-        off=("--session", "--dest=org.freedesktop.ScreenSaver",
-             "--type=method_call", "/org/freedesktop/ScreenSaver",
-             "org.freedesktop.ScreenSaver.SetActive", "boolean:true"),
-        on=("--session", "--dest=org.freedesktop.ScreenSaver",
-            "--type=method_call", "/org/freedesktop/ScreenSaver",
-            "org.freedesktop.ScreenSaver.SetActive", "boolean:false"),
-        env="WAYLAND_DISPLAY",
-        install="Install dbus (dbus-send) for the GNOME/KDE screensaver path.",
     ),
     # macOS. `displaysleepnow` is the system's own "sleep the display
     # now", and any keypress wakes it -- including the wake word, which
@@ -159,6 +174,12 @@ BLANKERS: tuple[Blanker, ...] = (
         off=("displaysleepnow",), on=(),
     ),
 )
+
+
+def current_desktop() -> str:
+    """The desktop, lower-cased: ``"gnome"``, ``"kde"``, ``"x-cinnamon"``..."""
+    return ":".join(os.environ.get(name, "") for name in
+                    ("XDG_CURRENT_DESKTOP", "XDG_SESSION_DESKTOP", "DESKTOP_SESSION")).lower()
 
 
 def choose_blanker(session: str | None = None) -> Blanker | None:
@@ -298,3 +319,155 @@ def set_monitor_state(
 
     return BlankResult(True, method=blanker.name)
 
+
+
+# ---------------------------------------------------------------------------
+# Keeping the session unlocked while the screen is dark
+# ---------------------------------------------------------------------------
+
+#: gsettings keys that lock the session when the screensaver comes on.
+_GSETTINGS_LOCKS = (
+    ("org.gnome.desktop.screensaver", "lock-enabled"),
+    ("org.cinnamon.desktop.screensaver", "lock-enabled"),
+    ("org.mate.screensaver", "lock-enabled"),
+)
+
+
+def _out(argv: list[str]) -> str | None:
+    """stdout of a command found on PATH, or None if it is missing or failed."""
+    exe = shutil.which(argv[0])
+    if not exe:
+        return None
+    try:
+        done = subprocess.run([exe, *argv[1:]], capture_output=True, text=True, timeout=COMMAND_TIMEOUT)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    return done.stdout.strip() if done.returncode == 0 else None
+
+
+@dataclass
+class LockGuard:
+    """Turn lock-on-idle off while ``prot`` holds the screen dark, then put it back.
+
+    A dark screen is an idle session, and an idle session locks: after
+    GNOME's idle delay, KDE's Autolock, or the X screensaver's timeout.
+    So the screen-off itself was not the only thing that locked; waiting
+    long enough did too. Each setting changed is recorded with the value
+    it had, in memory and in a state file, so a crash can be undone with
+    ``hnx prot restore``. Settings that were already off are not touched.
+    """
+
+    state_file: str = ""
+    changed: list[tuple[str, list[str]]] = field(default_factory=list)
+
+    def _record(self, what: str, restore: list[str]) -> None:
+        self.changed.append((what, restore))
+        self._save()
+
+    def _save(self) -> None:
+        if not self.state_file:
+            return
+        import json
+        from pathlib import Path
+
+        path = Path(self.state_file)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps([{"what": w, "restore": r} for w, r in self.changed]), encoding="utf-8")
+
+    def disable(self) -> list[str]:
+        """Switch off what would lock the session. Returns what was changed."""
+        for schema, key in _GSETTINGS_LOCKS:
+            if _out(["gsettings", "get", schema, key]) == "true" and \
+                    _out(["gsettings", "set", schema, key, "false"]) is not None:
+                self._record(f"{schema} {key}", ["gsettings", "set", schema, key, "true"])
+        for tool in ("kreadconfig6", "kreadconfig5"):
+            value = _out([tool, "--file", "kscreenlockerrc", "--group", "Daemon", "--key", "Autolock"])
+            if value is None:
+                continue
+            if value.lower() != "false":
+                writer = tool.replace("read", "write")
+                if _out([writer, "--file", "kscreenlockerrc", "--group", "Daemon",
+                         "--key", "Autolock", "false"]) is not None:
+                    self._record("KDE Autolock", [writer, "--file", "kscreenlockerrc", "--group", "Daemon",
+                                                  "--key", "Autolock", "--delete"])
+                    _reload_kde_locker()
+            break
+        xfce = _out(["xfconf-query", "-c", "xfce4-screensaver", "-p", "/lock/enabled"])
+        if xfce == "true" and _out(["xfconf-query", "-c", "xfce4-screensaver", "-p", "/lock/enabled",
+                                    "-s", "false"]) is not None:
+            self._record("xfce4-screensaver lock", ["xfconf-query", "-c", "xfce4-screensaver", "-p",
+                                                    "/lock/enabled", "-s", "true"])
+        if os.environ.get("DISPLAY"):
+            timeout = _xset_screensaver_timeout()
+            if timeout and _out(["xset", "s", "off"]) is not None:
+                self._record("X screensaver", ["xset", "s", str(timeout[0]), str(timeout[1])])
+        return [what for what, _ in self.changed]
+
+    def restore(self) -> list[str]:
+        """Put back everything :meth:`disable` changed, newest first."""
+        restored = []
+        for what, argv in reversed(self.changed):
+            if _out(argv) is not None:
+                restored.append(what)
+            if what == "KDE Autolock":
+                _reload_kde_locker()
+        self.changed = []
+        if self.state_file:
+            from pathlib import Path
+
+            Path(self.state_file).unlink(missing_ok=True)
+        return restored
+
+    @classmethod
+    def from_state(cls, state_file: str) -> LockGuard:
+        """The guard a crashed ``prot`` left behind, to restore."""
+        import json
+        from pathlib import Path
+
+        guard = cls(state_file=state_file)
+        path = Path(state_file)
+        if path.is_file():
+            try:
+                guard.changed = [(row["what"], list(row["restore"]))
+                                 for row in json.loads(path.read_text(encoding="utf-8"))]
+            except (ValueError, KeyError, TypeError):
+                guard.changed = []
+        return guard
+
+
+def _reload_kde_locker() -> None:
+    _out(["dbus-send", "--session", "--dest=org.freedesktop.ScreenSaver", "--type=method_call",
+          "/ScreenSaver", "org.kde.screensaver.configure"])
+
+
+def _xset_screensaver_timeout() -> tuple[int, int] | None:
+    """X's screensaver (timeout, cycle) when it is on, else None."""
+    import re
+
+    text = _out(["xset", "q"]) or ""
+    match = re.search(r"timeout:\s*(\d+)\s+cycle:\s*(\d+)", text)
+    if not match or match.group(1) == "0":
+        return None
+    return int(match.group(1)), int(match.group(2))
+
+
+def macos_locks_on_sleep() -> bool | None:
+    """Whether a display sleep on this Mac locks it straight away (None: unknown).
+
+    ``sysadminctl -screenLock status`` prints to stderr, so it is read
+    from both streams.
+    """
+    exe = shutil.which("sysadminctl")
+    if not exe:
+        return None
+    try:
+        done = subprocess.run([exe, "-screenLock", "status"], capture_output=True, text=True,
+                              timeout=COMMAND_TIMEOUT)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    text = (done.stdout + done.stderr).lower()
+    if "screenlock is off" in text:
+        return False
+    if "immediate" in text or "delay is 0" in text:
+        return True
+    return None

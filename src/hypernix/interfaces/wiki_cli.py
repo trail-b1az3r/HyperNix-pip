@@ -57,6 +57,18 @@ def _module_files() -> dict[str, Path]:
             if name.startswith("_") or ispkg:
                 continue
             found[name] = directory / f"{name}.py"
+    # Packages that are not categories (c4, neuron, hyperlink, t1api...)
+    # were skipped entirely, so `hnx wiki c4` said "not found". Each is
+    # documented under its own name, and its modules as `package.module`.
+    for _finder, name, ispkg in pkgutil.iter_modules([str(root)]):
+        if not ispkg or name.startswith("_") or name in hypernix.MODULE_CATEGORIES:
+            continue
+        package = root / name
+        if (package / "__init__.py").is_file():
+            found.setdefault(name, package / "__init__.py")
+        for _f, sub, sub_is_pkg in pkgutil.iter_modules([str(package)]):
+            if not sub.startswith("_") and not sub_is_pkg:
+                found.setdefault(f"{name}.{sub}", package / f"{sub}.py")
     return found
 
 
@@ -69,7 +81,7 @@ def _module_category(module_name: str) -> str:
     """Category a module belongs to, or ``""`` for uncategorised ones."""
     import hypernix
 
-    return hypernix.CATEGORY_OF.get(module_name, "")
+    return hypernix.CATEGORY_OF.get(module_name, "") or module_name.partition(".")[0] * ("." in module_name)
 
 
 def _get_module_doc(module_name: str) -> dict[str, Any] | None:

@@ -104,7 +104,6 @@ def build_module(model: C4Model) -> Any:
 
     with torch.device("meta"):
         module = transformers.AutoModelForCausalLM.from_config(config)
-    module.to_empty(device=model.device)
     state = {n: t for n, t in model.tensors.items()}
     missing, unexpected = module.load_state_dict(state, strict=False, assign=True)
     tied = getattr(config, "tie_word_embeddings", False)
@@ -114,8 +113,60 @@ def build_module(model: C4Model) -> Any:
                       f"{' and more' if len(missing) > 5 else ''}")
     if tied and hasattr(module, "tie_weights"):
         module.tie_weights()
+    _materialise_buffers(module, config, model.device)
     model.bind(module)
     return module
+
+
+def _materialise_buffers(module: Any, config: Any, device: Any) -> None:
+    """Compute the buffers a checkpoint does not carry (rotary frequencies).
+
+    ``to_empty`` would leave them as whatever memory it was given: the
+    loss came out NaN on some runs and not others. The submodule that
+    owns them is built again on *device*; failing that, the whole model
+    is built once with its weight initialisation skipped and its buffers
+    copied across.
+    """
+    import inspect
+
+    import torch
+
+    owners = {}
+    for name, buf in module.named_buffers():
+        if buf.is_meta:
+            owner, _, _ = name.rpartition(".")
+            owners[owner] = module.get_submodule(owner) if owner else module
+    if not owners:
+        return
+    leftover = []
+    for owner, sub in owners.items():
+        params = inspect.signature(type(sub)).parameters
+        if "config" in params and owner:
+            try:
+                kwargs = {"device": device} if "device" in params else {}
+                with torch.device(device):
+                    fresh = type(sub)(config=getattr(sub, "config", config), **kwargs)
+                parent, _, attr = owner.rpartition(".")
+                setattr(module.get_submodule(parent) if parent else module, attr, fresh)
+                continue
+            except Exception:  # noqa: BLE001 - fall through to the whole-model build
+                pass
+        leftover.append(owner)
+    if not leftover:
+        return
+    import transformers
+
+    try:
+        from transformers.initialization import no_init_weights
+    except ImportError:  # transformers 4
+        from transformers.modeling_utils import no_init_weights
+    with torch.device(device), no_init_weights():
+        full = transformers.AutoModelForCausalLM.from_config(config)
+    for name, buf in full.named_buffers():
+        owner, _, attr = name.rpartition(".")
+        if owner in leftover:
+            module.get_submodule(owner).register_buffer(attr, buf.to(device), persistent=False)
+    del full
 
 
 class Prober:

@@ -54,6 +54,7 @@ could never derive one from `0.71.5rc2`. See
 - [MCP](#mcp)
 - [Backup and restore](#backup-and-restore)
 - [Governed inference](#governed-inference)
+- [The Anthropic Messages API](#the-anthropic-messages-api)
 - [Model sync](#model-sync)
 - [The SDK](#the-sdk)
 - [Endpoint reference](#endpoint-reference)
@@ -1737,6 +1738,56 @@ Responses carry `backend_name` (`hypernix` / `lmstudio`) next to `backend`
 (the address, unchanged). `GET /inference/backends` lists `lmstudio` first
 and `hypernix` second (with the loaded `model_id`), each probed; `default`
 is the runner when it answers, otherwise LM Studio.
+
+## The Anthropic Messages API
+
+`POST /v1/messages` (T1 v1.1.26.10.2.0, 0.72.8a3) answers the Anthropic
+Messages API from this server's models, so Claude Code — or any
+Anthropic SDK — runs on a model HyperNix is serving:
+
+```bash
+hnx claude                                   # sets everything below and starts claude
+ANTHROPIC_BASE_URL=http://127.0.0.1:8000 ANTHROPIC_AUTH_TOKEN=$T1_KEY claude
+```
+
+| Route | |
+|---|---|
+| `POST /v1/messages` | a message; `"stream": true` for server-sent events |
+| `POST /v1/messages/count_tokens` | input tokens (the runner's tokenizer when it has one, else an estimate) |
+| `GET /v1/models` | the models a request may name, in Anthropic's list shape |
+
+**What is translated.** `system`; text, image (base64 or URL) and text
+`document` blocks; `tool_use` and `tool_result` (tool results go first in
+their turn, as OpenAI requires); `tools` and `tool_choice`
+(`auto`/`any`/`tool`/`none`); `max_tokens`, `temperature`, `top_p`,
+`top_k`, `stop_sequences`. Back come `text` and `tool_use` blocks, the
+stop reason (`end_turn`, `max_tokens`, `tool_use`, `stop_sequence`) and
+usage. Streams are Anthropic's events — `message_start`,
+`content_block_start/delta/stop` (`text_delta`, `input_json_delta`),
+`message_delta`, `message_stop` — translated chunk by chunk, each block
+closed before the next starts. `thinking` blocks a client sends back are
+dropped; with `thinking` enabled, a model's `reasoning_content` comes
+back as one. Tool arguments a small model writes as not-quite-JSON are
+recovered from their first `{...}` when that parses.
+
+**Which model answers.** A model in the registry is served exactly as
+`/inference/chat` serves it — the key's plan and assignment, the quota
+checked first, the tokens metered and priced. A request naming a Claude
+model (Claude Code always does) gets `T1_CLAUDE_CODE_MODEL`, or the model
+the built-in runner has loaded; the runner's model can also be named
+directly. That usage is recorded against the key, unpriced, as
+HyperLink's is. Anything else is a `not_found_error` listing what is
+available. The response's `model` (and `x-hypernix-model`) is the model
+that ran.
+
+**Authentication** is this server's: `Authorization: Bearer` (Claude
+Code's `ANTHROPIC_AUTH_TOKEN`) or `x-api-key` (`ANTHROPIC_API_KEY`).
+`t1-keyless` means "no credential": it gets in only where
+[trusted network mode](#trusted-network-mode) lets a keyless request in.
+Errors are Anthropic's envelope (`{"type": "error", "error": {"type":
+"authentication_error", ...}}`) with the matching status, so the client
+reports them as it reports Anthropic's. `T1_ANTHROPIC_ENABLED=0` turns
+the routes off.
 
 ## Model sync
 

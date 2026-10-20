@@ -26,7 +26,7 @@ def _get_reward(
     sys_prompt: str,
     device: str
 ) -> float:
-    """Query the AI evaluator for a reward score, or return a mock heuristic score if not using AI."""
+    """The evaluator's 1-10 score, or without one (no -Ai) a length/refusal heuristic."""
     if evaluator_model is None or eval_tokenizer is None:
         # Fallback to heuristic length/keyword reward if -Ai is off
         score = 5.0
@@ -43,23 +43,83 @@ def _get_reward(
         outputs = evaluator_model.generate(**inputs, max_new_tokens=5, do_sample=False)
     
     out_text = eval_tokenizer.decode(outputs[0][inputs.input_ids.shape[1]:], skip_special_tokens=True).strip()
-    try:
-        # Very simple extraction of the first number in the output
-        import re
-        match = re.search(r"\\d+(\\.\\d+)?", out_text)
-        if match:
-            return float(match.group(0))
-        return 5.0
-    except Exception:
-        return 5.0
+    # The first number in the reply. This pattern used to be written
+    # r"\\d+..." -- a literal backslash then "d" -- so it never matched,
+    # every score was the 5.0 fallback, and RLAF trained on nothing.
+    import re
+
+    match = re.search(r"\d+(?:\.\d+)?", out_text)
+    return min(10.0, max(0.0, float(match.group(0)))) if match else 5.0
+
+
+DEFAULT_PROMPTS = [
+    "Explain quantum computing in simple terms.",
+    "Write a polite refusal to a meeting.",
+    "How do I sort a list in Python?",
+    "What is the capital of France?",
+    "Tell me a creative story about a clockwork bird.",
+]
+
+
+def read_prompts(path: str) -> list[str]:
+    """Prompts from a text file (one a line) or JSONL ({"prompt": ...})."""
+    import json
+    from pathlib import Path
+
+    prompts = []
+    for line in Path(path).read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        if line.startswith("{"):
+            row = json.loads(line)
+            line = str(row.get("prompt") or row.get("instruction") or row.get("text") or "")
+        if line:
+            prompts.append(line)
+    if not prompts:
+        raise ValueError(f"{path} has no prompts")
+    return prompts
+
+
+def _load(source: str, *, dtype, device_map):
+    """A causal LM and its tokenizer from a folder, a repo id, a Hub link or a .gguf."""
+    from pathlib import Path
+
+    from hypernix.models.hflinks import LinkError, parse_source
+
+    path = Path(source).expanduser()
+    if path.suffix.lower() == ".gguf" and path.is_file():
+        kw = {"gguf_file": path.name}
+        model = AutoModelForCausalLM.from_pretrained(str(path.parent), torch_dtype=dtype,
+                                                     device_map=device_map, **kw)
+        return model, AutoTokenizer.from_pretrained(str(path.parent), **kw)
+    if not path.exists():
+        try:
+            parsed = parse_source(source)
+        except LinkError:
+            parsed = None
+        if parsed is not None:
+            if parsed.filename and parsed.filename.lower().endswith(".gguf"):
+                kw = {"gguf_file": parsed.filename}
+                model = AutoModelForCausalLM.from_pretrained(parsed.repo_id, torch_dtype=dtype,
+                                                             device_map=device_map, **kw)
+                return model, AutoTokenizer.from_pretrained(parsed.repo_id, **kw)
+            source = parsed.repo_id
+    model = AutoModelForCausalLM.from_pretrained(source, revision=hub_revision(source),
+                                                 torch_dtype=dtype, device_map=device_map)
+    return model, AutoTokenizer.from_pretrained(source, revision=hub_revision(source))
 
 
 def run_rlhf(
-    local_model: str, 
-    steps: int, 
-    use_ai: bool = False, 
-    evaluator_path: str | None = None, 
-    sys_prompt: str = ""
+    local_model: str,
+    steps: int,
+    use_ai: bool = False,
+    evaluator_path: str | None = None,
+    sys_prompt: str = "",
+    prompts: list[str] | None = None,
+    out_dir: str = "camo_aligned_model",
+    lr: float = 1e-5,
+    max_new_tokens: int = 64,
 ) -> int:
     if torch is None:
         print("[camo] Error: torch and transformers are required to run Camouflage.", file=sys.stderr)
@@ -70,15 +130,14 @@ def run_rlhf(
 
     print(f"[camo] Loading target policy model: {local_model}")
     try:
-        policy = AutoModelForCausalLM.from_pretrained(local_model, revision=hub_revision(local_model), torch_dtype=torch.float16 if device != "cpu" else torch.float32, device_map=device)
-        tokenizer = AutoTokenizer.from_pretrained(local_model, revision=hub_revision(local_model))
+        policy, tokenizer = _load(local_model, dtype=torch.float32, device_map=device)
         if tokenizer.pad_token is None:
             tokenizer.pad_token = tokenizer.eos_token
     except Exception as e:
         print(f"[camo] Failed to load target model: {e}")
         return 1
 
-    optimizer = AdamW(policy.parameters(), lr=1e-5)
+    optimizer = AdamW(policy.parameters(), lr=lr)
 
     eval_model = None
     eval_tokenizer = None
@@ -89,20 +148,17 @@ def run_rlhf(
         print(f"[camo] Loading AI evaluator: {evaluator_path}")
         try:
             # We load the evaluator in 8-bit or half precision to save memory on single-gpu setups
-            eval_model = AutoModelForCausalLM.from_pretrained(evaluator_path, revision=hub_revision(evaluator_path), torch_dtype=torch.float16, device_map="auto")
-            eval_tokenizer = AutoTokenizer.from_pretrained(evaluator_path, revision=hub_revision(evaluator_path))
+            eval_model, eval_tokenizer = _load(
+                evaluator_path, dtype=torch.float16 if device != "cpu" else torch.float32,
+                device_map=device)
             eval_model.eval()
         except Exception as e:
             print(f"[camo] Failed to load evaluator model: {e}")
             return 1
 
-    prompts = [
-        "Explain quantum computing in simple terms.",
-        "Write a polite refusal to a meeting.",
-        "How do I sort a list in Python?",
-        "What is the capital of France?",
-        "Tell me a creative story about a clockwork bird."
-    ]
+    prompts = prompts or DEFAULT_PROMPTS
+    if not use_ai:
+        print("[camo] No -Ai evaluator: rewards come from a length/refusal heuristic.")
 
     print(f"[camo] Starting RLHF/RLAF alignment loop for {steps} steps...")
     policy.train()
@@ -116,7 +172,8 @@ def run_rlhf(
         # Generation phase (inference)
         policy.eval()
         with torch.no_grad():
-            gen_out = policy.generate(**inputs, max_new_tokens=30, do_sample=True, temperature=0.7, pad_token_id=tokenizer.pad_token_id)
+            gen_out = policy.generate(**inputs, max_new_tokens=max_new_tokens, do_sample=True,
+                                      temperature=0.7, pad_token_id=tokenizer.pad_token_id)
         
         response = tokenizer.decode(gen_out[0][inputs.input_ids.shape[1]:], skip_special_tokens=True)
         
@@ -129,16 +186,20 @@ def run_rlhf(
         policy.train()
         optimizer.zero_grad()
         
-        # Re-run forward pass to get gradients on the generated sequence
-        train_inputs = tokenizer(prompt + " " + response, return_tensors="pt").to(device)
-        labels = train_inputs.input_ids.clone()
+        # The tokens that were sampled, not a re-tokenisation of their
+        # text: the log-probability has to be of what was generated.
+        labels = gen_out.clone()
         labels[:, :inputs.input_ids.shape[1]] = -100  # Mask the prompt
-        
-        outputs = policy(**train_inputs, labels=labels)
-        loss = outputs.loss
-        
-        # Weight loss by advantage (negative because PyTorch minimizes, and loss is NLL)
-        rl_loss = loss * -advantage
+        if bool((labels != -100).any()):
+            outputs = policy(input_ids=gen_out, attention_mask=torch.ones_like(gen_out), labels=labels)
+            loss = outputs.loss
+        else:  # nothing was generated: nothing to learn from
+            loss = torch.zeros((), device=gen_out.device, requires_grad=True)
+
+        # REINFORCE minimises -advantage * log p, and loss is -log p (NLL),
+        # so the product is advantage * NLL. It was NLL * -advantage, which
+        # made every well-scored answer *less* likely.
+        rl_loss = loss * advantage
         
         rl_loss.backward()
         torch.nn.utils.clip_grad_norm_(policy.parameters(), 1.0)
@@ -147,7 +208,6 @@ def run_rlhf(
         print(f"[camo] Step {step+1}/{steps} | Reward: {reward:.2f} | Adv: {advantage:.2f} | Loss: {rl_loss.item():.4f}")
         
     print("[camo] Alignment complete.")
-    out_dir = "camo_aligned_model"
     print(f"[camo] Saving aligned model to {out_dir}...")
     policy.save_pretrained(out_dir)
     tokenizer.save_pretrained(out_dir)
@@ -164,6 +224,11 @@ def main(argv: list[str]) -> int:
     p.add_argument("-Sp", dest="sys_prompt", type=str, default="You are an expert alignment evaluator. Score the following response out of 10. Reply only with the number.", help="System prompt for the evaluator AI.")
     p.add_argument("-Lmodel", dest="local_model", type=str, required=True, help="Local model to align (PyTorch dir, HF Link, or HF ID).")
     p.add_argument("-s", dest="steps", type=int, default=100, help="Number of alignment steps.")
+    p.add_argument("-P", "--prompts", default=None,
+                   help="Prompts to align on: a text file (one a line) or JSONL with \"prompt\".")
+    p.add_argument("-o", "--output", default="camo_aligned_model", help="Where the aligned model goes.")
+    p.add_argument("--lr", type=float, default=1e-5)
+    p.add_argument("--max-new-tokens", type=int, default=64)
 
     args = p.parse_args(argv)
 
@@ -172,7 +237,11 @@ def main(argv: list[str]) -> int:
         steps=args.steps,
         use_ai=args.Ai,
         evaluator_path=args.eval_model,
-        sys_prompt=args.sys_prompt
+        sys_prompt=args.sys_prompt,
+        prompts=read_prompts(args.prompts) if args.prompts else None,
+        out_dir=args.output,
+        lr=args.lr,
+        max_new_tokens=args.max_new_tokens,
     )
 
 if __name__ == "__main__":

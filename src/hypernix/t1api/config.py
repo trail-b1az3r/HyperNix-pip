@@ -344,6 +344,13 @@ class T1APIConfig:
     # same capabilities, and a surface nobody asked for is a surface
     # nobody is watching.
     mcp_enabled: bool = field(default_factory=lambda: _bool_env("T1_MCP_ENABLED", False))
+    # /v1/messages: the Anthropic Messages API, so Claude Code can run on
+    # this server's models (0.72.8a3). On: it is authenticated like every
+    # other route and adds no way in that /inference does not have.
+    anthropic_enabled: bool = field(default_factory=lambda: _bool_env("T1_ANTHROPIC_ENABLED", True))
+    # The model that answers when a client asks for a Claude model by
+    # name (Claude Code always does). Empty: whatever the runner serves.
+    claude_code_model: str = field(default_factory=lambda: os.environ.get("T1_CLAUDE_CODE_MODEL", ""))
     # hyperchat: several copies of one model answering several prompts
     # at once. Off by default, and deliberately an operator decision
     # rather than a derived one -- N instances take N times the VRAM,
@@ -649,6 +656,8 @@ class T1APIConfig:
             "lmstudio_discovery": self.lmstudio_discovery,
             "hyperlink_enabled": self.hyperlink_enabled,
             "mcp_enabled": self.mcp_enabled,
+            "anthropic_enabled": self.anthropic_enabled,
+            "claude_code_model": self.claude_code_model,
             "hyperchat_multi": self.hyperchat_multi,
             "hyperchat_instances": self.hyperchat_instances,
             "hyperchat_max_queued": self.hyperchat_max_queued,

@@ -619,6 +619,41 @@ def verify_snapshot(model_dir: Path | str) -> list[str]:
     return present
 
 
+class DownloadError(RuntimeError):
+    """A download that failed, with what to do about it."""
+
+
+def explain_hub_error(exc: BaseException | None, repo_id: str) -> str:
+    """One sentence for a Hub failure: gated, private, missing or offline.
+
+    A gated repo used to end ``hnx download`` in three chained tracebacks,
+    the last saying only that "all candidates in the fallback chain
+    failed" -- including for the default model, which is gated.
+    """
+    seen: list[BaseException] = []
+    while exc is not None and exc not in seen:
+        seen.append(exc)
+        exc = exc.__cause__ or exc.__context__
+    names = {type(e).__name__ for e in seen}
+    text = " ".join(str(e) for e in seen)
+    url = f"https://huggingface.co/{repo_id}"
+    # Types before text: the Hub's not-found message also mentions gated
+    # repos ("if you are trying to access a private or gated repo...").
+    if "GatedRepoError" in names:
+        return (f"{repo_id} is gated. Ask for access at {url}, then log in "
+                "(`hf auth login`, or set HF_TOKEN / `hnx config` hf_token) and run this again.")
+    if "RepositoryNotFoundError" in names or "Repository Not Found" in text:
+        return (f"{repo_id} was not found on the Hub. Check the name; if it is private, "
+                "log in with an account that can see it (`hf auth login` or HF_TOKEN).")
+    if "RevisionNotFoundError" in names:
+        return f"{repo_id} has no such revision. Leave out --revision, or check the branch or tag name."
+    if "401" in text:
+        return f"The Hub refused the credentials for {repo_id} (401). Log in again: `hf auth login`."
+    if "LocalEntryNotFoundError" in names or "ConnectError" in names or "offline" in text.lower():
+        return f"Could not reach the Hub for {repo_id}: check the network (or HF_HUB_OFFLINE)."
+    return ""
+
+
 def download_model(
     repo_id: str = "ray0rf1re/hyper-nix.1",
     revision: str | None = None,
@@ -666,17 +701,25 @@ def download_model(
     # Determine the local directory where the snapshot will be placed.
     # If the caller supplied ``local_dir`` we honour it (used for explicit paths).
     # Otherwise we compute a directory under the unified models directory.
-    if local_dir is not None:
-        target_dir = Path(local_dir).expanduser().resolve()
-    else:
+    base_dir: Path | None = None
+    if local_dir is None:
         try:
             from hypernix.system.config import get_models_dir
             base_dir = get_models_dir()
         except Exception:  # noqa: BLE001
             base_dir = Path.home() / ".hypernix" / "models"
-        model_name = model_dir_name or repo_id.split('/')[-1]
-        target_dir = base_dir / model_name
-    target_dir.mkdir(parents=True, exist_ok=True)
+
+    def target_for(candidate: str) -> Path:
+        # Named after the repo that is actually downloaded: a short name
+        # ("nix") used to become a folder called "nix", whichever of its
+        # fallbacks answered.
+        if local_dir is not None:
+            folder = Path(local_dir).expanduser().resolve()
+        else:
+            folder = base_dir / (model_dir_name or candidate.split('/')[-1])
+        folder.mkdir(parents=True, exist_ok=True)
+        return folder
+
     # Build the candidate list.  When the short name has an entry in
     # FALLBACK_CHAINS (e.g. "nix" → 2.7a → 2.6-mm → 2.5), each repo
     # is tried in order until snapshot_download succeeds.  Otherwise
@@ -696,6 +739,7 @@ def download_model(
     for attempt, candidate in enumerate(chain):
         try:
             log(f"downloading {candidate} ...")
+            target_dir = target_for(candidate)
             path = Path(
                 snapshot_download(
                     repo_id=candidate,
@@ -716,9 +760,10 @@ def download_model(
             else:
                 log(f"ERROR: exhausted fallback chain; last failure: {exc}")
     if path is None:
-        raise RuntimeError(
-            f"download_model: all candidates in the fallback chain "
-            f"failed for {short_key or chain[0]!r}: {chain}",
+        reason = explain_hub_error(last_exc, chain[-1]) if last_exc is not None else ""
+        raise DownloadError(
+            reason or (f"download_model: all candidates in the fallback chain "
+                       f"failed for {short_key or chain[0]!r}: {chain}"),
         ) from last_exc
 
     # Safety net: some repos put ``config.json`` behind a non-default branch

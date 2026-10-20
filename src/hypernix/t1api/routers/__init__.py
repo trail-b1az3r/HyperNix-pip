@@ -47,6 +47,7 @@ from __future__ import annotations
 
 from . import (
     accounts,
+    anthropic,
     audit,
     auth,
     authundo,
@@ -126,6 +127,9 @@ ALL_ROUTERS = (
     # Code sandboxes. Off unless T1_CODE_SANDBOX; the reads say how to
     # turn it on, the rest refuse.
     code.router,
+    # T1 v1.1.26.10.2.0 -- the Anthropic Messages API, so Claude Code
+    # runs on this server's models (`hnx claude`).
+    anthropic.router,
 )
 
 __all__ = [

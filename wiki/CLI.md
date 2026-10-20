@@ -1,8 +1,9 @@
 # CLI reference
 
 `hypernix` ships a console script, `hypernix` (also aliased to `hnx` for brevity), which dispatches
-to **41 subcommands** plus the `all` pipeline as the default (see `_SUBCOMMANDS`
-in `src/hypernix/interfaces/cli.py`; five more names are aliases). Most subcommands wrap one library function, so
+to its subcommands plus the `all` pipeline as the default (see `_SUBCOMMANDS`
+in `src/hypernix/interfaces/cli.py`; `hnx --help` lists the main ones and
+`hnx extra` the rest). Most subcommands wrap one library function, so
 they're easy to script; a few (`brew`, `cli`, `net`, `gkey`) are themselves
 small sub-CLIs with their own sub-subcommands.
 
@@ -10,140 +11,167 @@ small sub-CLIs with their own sub-subcommands.
 usage: hypernix <subcommand> [options]  (or: hnx <subcommand> [options])
 
 Core pipeline:
+  auto                   download a repo, convert it if it is not a GGUF, quantise it
   all                    download -> convert -> [quantize]
-  download               fetch a HuggingFace snapshot
+  download               fetch a HuggingFace snapshot, one file, or owner/repo:QUANT
   convert                produce fp32 / fp16 GGUF; -P -Q TARGET also quantises
   quantize               run llama-quantize on an fp16 / fp32 GGUF
   verify                 read-validate a GGUF and print headers
   info                   package + optional GGUF header summary
   upload                 push files to a HuggingFace repo
   doctor                 environment diagnostic (pass --fix to install deps)
-  path                   put hypernix's console scripts on your PATH
-  fetch-llama-quantize   pre-seed the llama-quantize cache
+  fetch-llama-quantize   pre-seed the llama-quantize cache (shortcut: fllq)
   hyprslug-headers       self-describing GGUF headers + the sub-bit server
 
 Training & inference:
   train                  init / expand / run training utilities
-  generate               sample text from a local snapshot
-  oven                   code-generation wrapper
   chat                   interactive REPL against any supported model
+  claude                 Claude Code on a model this machine's T1 server serves
   brew                   one-shot recipe pipeline, or the brewer architecture-builder sub-CLI
-  camo / camouflage      RLHF/RLAF alignment scaffolding
+  image                  hnx0xv2image: image-to-text fused onto LFM2.5, Qwen3.5 or HyperNix
   fizzle / fiz           architecture fuse/merge module
   stml                   VRAM -> trainable-context-length calculator
-  neuron                 small networks that act: RL, imitation, supervised
   dilute                 best-of-n sampling: many answers, keep the good ones
+  c4                     explode a model; measure, reap and sow its layers and weights (see C4.md)
 
 Assistants & dashboards:
   cli                    interactive TUI/CLI menu over all of the above
-  pipeline               ASR -> LLM -> TTS pipeline (LLM stage a stub; see note)
-  assistant              interactive assistant REPL over a real model, optional voice
+  tvtopmax               tvtop-max: the run's dashboard on OpenTUI (also `tvtop-max`)
+  hypedpro               hyped-pro: the OpenTUI chat client with tools (also `hyped-pro`)
   vera                   check a script: syntax, smoke tests, errors explained
-  tvtop                  the classic training dashboard
-  cctvtop                training dashboard w/ hardware metrics + optional VNC
-  map                    steampunk schematic TUI for model/training state
   wakeup                 train a wake word, then listen for it
 
 Data & infra:
-  scavenger              search + pull HF datasets under storage/quality budgets
   gather                 crawl a site into a corpus (see Gather.md)
-  c4                     explode a model; measure, reap and sow its layers and weights (see C4.md)
   fusebox                GPU thermal governor for a run (see FuseBox.md)
   runtime                use the HyperNix llama.cpp from LM Studio etc.
-  websearch              non-API web search utility
-  net                    Tailscale peers: connect, expose ports, sync storage, run on peers
+  net                    DEPRECATED: Tailscale and peers are now the T1 API's /net
   gkey                   API key issuance, scoping, revocation (Gatekeeper + Keymaster)
   config                 HyperNix configuration management
-  prot / protect         hardware health monitoring and protection
-  wiki                   this documentation, read straight from installed source
   devices                GPUs/accelerators here, and what each supports
   errors                 look up an error code (L#-NNNNN.kS)
   elements               addons: hydrogen, carbon, magnesium, your own
+  extra                  the commands below, kept out of the main menu
+
+`hnx extra` (0.72.8a3; each works exactly as before):
+  neuron                 small networks that act: RL, imitation, supervised
+  pipeline               speech in, a model's answer, speech out (ASR -> LLM -> TTS)
+  assistant              interactive assistant REPL over a real model, optional voice
+  generate               sample text from a local snapshot
+  wiki                   this documentation, read straight from installed source
+  prot / protect         blank the screen until a wake word, without locking it
+  oven                   code-generation wrapper
+  path                   put hypernix's console scripts on your PATH
+  map                    steampunk schematic TUI for model/training state
+  tvtop                  the classic training dashboard
+  cctvtop                training dashboard w/ hardware metrics + optional VNC
+  camo / camouflage      RLHF/RLAF alignment
+  websearch              web search without an API key, real result links
+  scavenger              search + size HF datasets under storage/quality budgets
 
 Shortcuts:
   --auto-oven            download default snapshot + run code completion
                          (equivalent to `hypernix oven --auto ...`)
 
-Also accepted: tvtop (cctvtop) · fiz (fizzle) · camouflage (camo) ·
+Also accepted: fllq (fetch-llama-quantize) · fiz (fizzle) · camouflage (camo) ·
                protect (prot) · fuse-box (fusebox)
 
 Run `hypernix <subcommand> --help` for per-command flags.
 ```
 
-> **Known limitation:** `hypernix pipeline`'s LLM stage is still a
-> stub — `--llm` is accepted and not read, and the reply is canned. Its
-> ASR and TTS stages are real, and so is `hypernix assistant`, which
-> dispatches to a real model. See the `pipeline` and `assistant` section
-> below.
-
-## Additional Companion Scripts
-
-Apart from the main `hypernix` / `hnx` entry points, the package installs these
-companion scripts (see `[project.scripts]` in `pyproject.toml` for the
-authoritative list):
-
-* `hnx` — Short alias for `hypernix`.
-* `hypernix-quantize` — Alias for `hypernix` (historical name, predates the `quantize` subcommand naming).
-* `tvtop` — The same dashboard as `cctvtop` since v0.70.4b12. (Careful: `hypernix tvtop` is still the classic one; the standalone classic is `tvtop-older`.)
-* `tvtop-old` / `tvtop-plus-plus` / `tvtoppp` — Older TUI dashboard generations, kept for compatibility.
-* `tvtop-older` — Original single-panel dashboard.
-* `cctvtop` — Python training dashboard with hardware metrics and optional VNC (same as `hypernix cctvtop`).
-* `hyped` — The simple one: a local model and a prompt, configured by dots. It talks to the model a T1 server on this machine has loaded (through the runner), or runs one itself: any `.gguf` or model folder in `~/.hypernix/models` — GGUFs, Hugging Face snapshots and hyperNix0x-v2 models like HyperNix.3-mini, through symlinks. `/models` lists them; `/model` takes a name from that list, a path, or a Hugging Face repo id. No tools.
-* `hyped-pro` — The terminal client, built on [OpenTUI](https://opentui.com/docs/) (TypeScript on Bun, the stack opencode's TUI uses) in the site's colours. Markdown replies, a model picker (ctrl+p), esc to stop a reply, `/noodle`, `/t1`, `/key`, `/retry`. Git: `/git` (status, add, commit, switch, restore, log, push, pull — `/git help`), `/diff` coloured per file, and the branch in the header. Files: `/files` to browse, `/edit <path>` to edit (ctrl+s save; a file changed on disk since it was opened is not overwritten). The model's commits, branch switches, discards and deletions wait for a `y`. Needs Bun 1.3+; the first run installs `@opentui/core`. `--model <name>` picks the model; `HYPED_PRO_BUN` points at a bun that is not on PATH. The picker lists the catalog and every model in `~/.hypernix/models`; `--model` and `/model` also take a path to a `.gguf`, a model folder or a Brewer `.pt`, or a Hugging Face repo id (`org/name`, or `org/name:file.gguf` for one quant — without a file, Q4_K_M is chosen). A local GGUF needs `pip install 'hypernix[llama-cpp]'`.
-* `hyped-plus` — The previous hyped-pro (called `hyped+` in its first releases; that name is no longer installed): the Node.js readline TUI backed by the same Python dispatch layer (cloud APIs, auto-downloaded local models, Gatekeeper routing), slash autocompletion, price estimator, system prompt compactor, and a `/gui` desktop mode (Qt6 X11/Wayland, GTK4 fallback). Needs only Node.js.
-* `hyped-pro-gui` — Launch the hyped-pro desktop GUI directly, without the TUI.
-* `hyped-agent` — The agentic TUI `hyped` used to be, before `hyped` became the simple one.
-* `tvtop-pro` / `tvtoppro` — tvtop++'s numbers with btop++'s presentation and themes ([TvTopPro](TvTopPro.md)).
-* `tvtop-max` / `tvtopmax` — tvtop-pro on OpenTUI, with the run's script, modules, architecture, Pressure Cooker and logs on screen; `-s` for a phone ([TvTopMax](TvTopMax.md)).
-* `ups` — Uninterruptible-power-supply mode for training: checkpoints when severe weather or a power problem is detected.
-* `hyprslug` / `doomslug` / `doomslugthedestroyer` / `dstd` — The quantiser: llama.cpp types and mixes, the HyperNix tiers, and the hybrids, with no llama.cpp needed ([HyprSlug](HyprSlug.md)).
-* `hnx-imatrix` — Measure an importance matrix, or convert one between `.imatrix` and JSON ([Imatrix](Imatrix.md)).
-* `hyprslug-headers` / `hnx-headers` — Same as `hypernix hyprslug-headers` ([HyprSlug-Headers](HyprSlug-Headers.md)).
-* `dflash1` — Derive a standalone speculative-decoding draft (`--model-draft`).
-* `dflash2` — Put a draft model inside the model it drafts for ([Dflash2](Dflash2.md)).
-* `hnx-bundle` / `multiquant` — Several quantisations of one model in one GGUF: build, list, extract, strip.
-* `steamroller` — The descending quantiser, stepping a model down tier by tier ([Quantization](Quantization.md)).
-* `hnx-scriptgen` / `scriptgen` — The training-script builder: a GUI, with a command-line fallback on a headless box.
-* `noodle` — Run a noodle swarm from the command line; the same executor hyped-pro's `/noodle` uses.
-* `t1-accounts` — Manage T1 web accounts on the server they live on: list, create, reset, disable, sessions ([T1 API](T1-API.md)).
-* `hypernix-sync` / `t1-sync` — Mirror `~/.hypernix/models` into the T1 server's models folder ([T1 API](T1-API.md#model-sync)).
-* `multilama` — Unified interface over multiple llama.cpp variants (vanilla, ik_llama.cpp, PrismML fork, KoboldCpp).
-* `eth` — Ethanol GPU overclock and VRAM helper. Refuses to apply changes without `--confirm`.
-* `gkey` — Same as `hypernix gkey`, as its own executable.
-* `hnx-map` — Same as `hypernix map`, as its own executable.
-* `waiter` — The official [T1 API client](Waiter-TUI.md) CLI/TUI. Client-side only: stdlib `urllib`, no `[t1api]` extra needed.
-* `hypernix-t1` / `hnx-t1` — Start, stop, configure, test and autostart a local T1 API server (see below). A shell program, so it ships via `script-files` rather than `[project.scripts]`.
-
-## `all` — the classic pipeline
+## `auto`
 
 ```bash
-hypernix --repo-id ray0rf1re/hyper-nix.1 --output-dir ./out \
-    --quants fp32 fp16 q8_0 q6_k q4_k_m
-
-hypernix --model-dir ./local-snapshot --output-dir ./out   # skip download
+hnx auto HuggingFaceTB/SmolLM2-135M-Instruct              # Q4_K_M
+hnx auto Qwen/Qwen3-4B -q Q4_K_M -q Q8_0 -o ./qwen3        # several quants
+hnx auto bartowski/SmolLM2-135M-Instruct-GGUF -q Q5_K_M    # a repo of GGUFs
+hnx auto unsloth/Qwen3-4B-GGUF:IQ4_XS                      # llama.cpp's repo:QUANT form
+hnx auto ./my-hf-folder -q q6h4                             # a local folder, a HyperNix hybrid
 ```
 
-Full flag set:
+One command from a Hugging Face repo to the quantised GGUF you want
+(0.72.8a3). What it does depends on the repo:
 
-| Flag | Default | What |
-|---|---|---|
-| `--repo-id REPO` | `ray0rf1re/hyper-nix.1` | HF repo id |
-| `--revision REF` | latest | git ref / tag |
-| `--model-dir PATH` | — | reuse a local snapshot |
-| `--output-dir PATH` | `./hypernix-gguf` | where GGUFs land |
-| `--name NAME` | `HyperNix` | header display name |
-| `--arch NAME` | `hypernix` | GGUF `general.architecture` |
-| `--quants [Q ...]` | `fp32 fp16` | any mix from the [quant aliases](Quantization.md#quantize_gguf) |
-| `--n-head N` | from config | override head count |
-| `--context-length N` | from config | override context length |
-| `--threads N` | `cpu_count//2` | llama-quantize threads |
-| `--llama-quantize PATH` | auto | explicit binary path |
-| `--no-auto-fetch` | false | disable the GitHub-release fallback |
-| `--auto` | false | walk back releases + PyPI fallback |
-| `--keep-intermediate` | false | keep the fp16 GGUF |
-| `--token TOKEN` | `$HF_TOKEN` | for gated repos / uploads |
-| `--upload-to REPO` | — | push produced GGUFs |
-| `--upload-private` | false | mark the target repo private |
+| The repo has | `auto` |
+|---|---|
+| a GGUF of that quant | downloads it (every part of a split one) and stops |
+| GGUFs, not that quant | downloads the highest-precision one (F32, BF16, F16, else Q8_0) and quantises it; says so when that is Q8_0 |
+| safetensors / `pytorch_model.bin` | downloads, converts to F16 GGUF, quantises to each `-q` |
+| a hyperNix0x-v2 (Brewer) model | the same, with HyperNix's exporter (written as `llama`) |
+
+Conversion uses **llama.cpp's own `convert_hf_to_gguf.py`** for every
+architecture llama.cpp knows, so the result runs in llama.cpp and LM
+Studio; it is fetched from the official release tag (or, where GitHub
+cannot be reached, from the `llama-cpp-python` source release on PyPI,
+checked against PyPI's SHA-256) and cached in
+`~/.cache/hypernix/llama-convert/`. A model it cannot convert falls back
+to HyperNix's converter, which writes `general.architecture=hypernix` —
+`auto` says so, because only HnxRun runs that. `--converter llama.cpp`
+or `hypernix` forces one.
+
+`-q` takes hyprslug's targets (the k-quants, Q8_0, the HyperNix tiers
+and hybrids); llama.cpp's other types (IQ*, TQ*, MXFP4) go to
+`llama-quantize`. A bad `-q` is refused before anything is downloaded.
+`-o` is the folder (default `~/.hypernix/models/NAME-GGUF`);
+`--keep-f16`, `--keep-download`, `--revision`, `--token`. Prints the GGUF
+paths.
+
+## `extra`
+
+`hnx extra` lists the commands kept out of `hnx --help` since 0.72.8a3:
+`neuron`, `pipeline`, `assistant`, `generate`, `wiki`, `prot`, `oven`,
+`path`, `map`, `tvtop`, `cctvtop`, `camo`, `websearch` and `scavenger`.
+They dispatch exactly as before. Each was run when it moved; what was
+broken was fixed (see their sections below and the changelog).
+
+## `claude`
+
+```bash
+hnx claude                                   # this machine's T1 server and its loaded model
+hnx claude --model qwen3-4b                  # a registered model
+hnx claude --server http://100.64.0.7:8000 --key T1-...
+hnx claude --print-env                       # export the variables yourself
+hnx claude -- -p "explain this repo"         # after --: claude's own arguments
+```
+
+Runs [Claude Code](https://docs.anthropic.com/en/docs/claude-code) on a
+model HyperNix is serving, through the T1 server's Anthropic-compatible
+`/v1/messages` ([T1 API](T1-API.md#the-anthropic-messages-api)). It sets
+`ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN` (the T1 key; with none,
+`t1-keyless`, which works only where the server's trusted-network mode
+lets keyless requests in), `ANTHROPIC_MODEL` and the Opus/Sonnet/Haiku/
+subagent defaults to the one model, a ten-minute `API_TIMEOUT_MS` and
+`CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1`, and unsets
+`ANTHROPIC_API_KEY`. The server and key also come from
+`HYPERNIX_T1_URL`/`T1_URL` and `HYPERNIX_T1_KEY`/`T1_API_KEY`. Install
+Claude Code with `npm install -g @anthropic-ai/claude-code`.
+
+A local model needs tool calling to be useful here: one served by
+llama-server with `--jinja` (the built-in runner does this) answers
+Claude Code's tool calls.
+
+## `image`
+
+```bash
+hnx image new -o ./eye --preset small
+hnx image fuse ./eye LiquidAI/LFM2.5-1.2B-Instruct -o ./lfm-eye
+hnx image train ./lfm-eye --data captions.jsonl --stage projector --steps 2000
+hnx image caption ./lfm-eye photo.jpg -p "What is in this picture?"
+hnx image split ./lfm-eye -o ./eye-for-lfm
+```
+
+The [hnx0xv2image](HNX0xV2Image.md) image-to-text model, fused onto an
+LFM2.5 (not -VL), a Qwen3.5 or a HyperNix model. `--stage projector |
+image | text | all` trains one part with the rest frozen; `--optimizer
+c4` uses the c4 hybrid. `--link` refers to the text model instead of
+copying it.
+
+## `tvtopmax` / `hypedpro`
+
+`hnx tvtopmax` is `tvtop-max` and `hnx hypedpro` is `hyped-pro` (both
+OpenTUI on Bun), listed in the main menu since 0.72.8a3; the arguments
+are theirs. See [TvTopMax](TvTopMax.md) and the `hyped-pro` section
+below.
 
 ## `download`
 
@@ -160,7 +188,13 @@ link to a repo — `/tree/<rev>` picks a revision — or a link to one file
 in it (`/blob/`, `/resolve/`, `hf://owner/repo/file`, `owner/repo/file`)
 (0.72.8). A repo with no safetensors and one GGUF downloads that GGUF;
 with several it takes the `Q4_K_M` one, or lists them and asks for `-f`.
-Dataset and Space links are refused.
+Dataset and Space links are refused. `owner/repo:Q4_K_M` (llama.cpp's
+`-hf` form) takes that quant, every part of a split file (0.72.8a3).
+
+A gated repo (the default `ray0rf1re/hyper-nix.1` is one) says so, with
+the page to ask for access and how to log in, instead of three chained
+tracebacks; a repo that does not exist says that. A short name's folder
+is named after the repo it resolved to (`nix` used to become `nix/`).
 
 | Flag | Default |
 |---|---|
@@ -318,6 +352,7 @@ hypernix fetch-llama-quantize
 hypernix fetch-llama-quantize --force          # redownload
 hypernix fetch-llama-quantize --auto           # include PyPI fallback
 hypernix fetch-llama-quantize --search-releases 20
+hnx fllq                                       # the same, shorter
 ```
 
 ## `train`
@@ -537,11 +572,16 @@ it: `/model`, `/persona`, `/models`, `/personas`, `/system`, `/voice`,
 `/listen`, `/reset`, `/save`, `/quit`.
 
 **`pipeline`** runs speech in, speech out (`--audio`/`-a` a file, or
-`--active` to record until Ctrl+C; `--asr`, `--tts`, `--prompt`/`-p` for
-the system prompt, `--output`/`-o`). Its ASR and TTS stages are real.
-**Its LLM stage is still a stub**: `--llm` is accepted and not read, and
-the reply is a canned "I heard: …" string. For real generation use
-`assistant`, `chat`, `generate` or `oven`.
+`--active` to record until Ctrl+C; `--prompt`/`-p` for the system prompt,
+`--output`/`-o`). Since 0.72.8a3 all three stages are real: `--llm` is
+the chat model (the same names and dispatch as `hyped` and `assistant`;
+default the one `hypernix config` set), `--asr` a Whisper
+(`nano-whisper`, `whisper-base`, `whisper-small` or a Hub id) and `--tts`
+a text-to-speech model (`mms` or a Hub id). Until then the reply was a
+canned "this is a simulated response" and `--llm`, `--asr` and `--tts`
+were not read; the TTS stage also failed on token ids cast to float and
+on a `generate()` VITS does not have, and the WAV was written at
+22,050 Hz whatever the voice spoke at. A WAV is read without torchaudio.
 
 ## `cli`
 
@@ -590,10 +630,18 @@ The other generations are their own commands: `tvtop-older`,
 hypernix camo -Lmodel ./snapshot -Ai -M gpt-4o-mini -Sp "Be terse." -s 200
 ```
 
-RLHF/RLAF alignment scaffolding. `-Ai` enables AI-assisted evaluation
-(scoring generations with a separate evaluator model via `-M`) instead of
-manual scoring; `-Sp` sets the system prompt used during rollout, `-s` the
-number of steps.
+REINFORCE alignment of a local model. Each step samples an answer to a
+prompt, scores it, and moves the model toward answers that scored above
+the running baseline. `-Ai -M MODEL` scores with an evaluator model (a
+folder, a Hub id or link, or a `.gguf`) told `-Sp`; without `-Ai` a
+length-and-refusal heuristic scores, and says so. `-P FILE` the prompts
+(one a line, or JSONL with `prompt`), `-s` steps, `-o` the output folder
+(default `camo_aligned_model`), `--lr`, `--max-new-tokens`.
+
+Fixed in 0.72.8a3: the evaluator's score was read with a pattern that
+never matched a number, so every score was 5.0 and RLAF trained on
+nothing; and the loss had the wrong sign, making well-scored answers
+*less* likely. It now trains on the tokens actually sampled.
 
 ## `fizzle` / `fiz`
 
@@ -629,7 +677,11 @@ Searches HuggingFace datasets and pulls them under a storage/quality
 budget instead of downloading everything that matches a keyword:
 `--max-storage` (GB), `--max-total` (datasets), `--min-entries`,
 `--min-likes`, `--max-age` (days), `--data-type`, and `--limit` (results
-per search query).
+per search query). Rows and size come from the Hub's dataset viewer
+(0.72.8a3): sizing used to need the `datasets` package, and without it
+every dataset read as 0 rows and the default `--min-entries 1000`
+rejected all of them. A size the Hub does not know is shown as `?` and
+is not a rejection; `--max-age` no longer crashes.
 
 ## `gather`
 
@@ -743,7 +795,11 @@ hypernix websearch "llama.cpp quantization formats" -n 5 --json
 
 A non-API web search utility (`-n`/`--max-results`, `-e`/`--engine
 auto|duckduckgo|bing`, `--json` for machine-readable output) — useful in scripts/agents that need search
-results without a paid search-provider API key.
+results without a paid search-provider API key. Results link to the page itself: Bing's
+`bing.com/ck/a?...` and DuckDuckGo's `/l/?uddg=` redirects are decoded
+(0.72.8a3; they used to come back as tracking links with `&amp;` in
+them). DuckDuckGo refuses some networks with a challenge page; Bing is
+then used.
 
 ## `net`
 
@@ -965,6 +1021,7 @@ hypernix prot                     # blank, wait for the wake word
 hypernix prot bind set <word>     # change the wake word (default: bon)
 hypernix prot bind reset
 hypernix prot --force             # wait even if the screen cannot be blanked
+hypernix prot restore             # put back lock settings a crash left off
 ```
 
 **How it blanks.** The method comes from the session, not the platform,
@@ -976,7 +1033,8 @@ and lives in `hypernix.system.blanking` shared with `outage`:
 | Hyprland | `hyprctl dispatch dpms off` |
 | sway | `swaymsg output * power off` |
 | wlroots | `wlopm --off '*'` |
-| GNOME/KDE | `org.freedesktop.ScreenSaver.SetActive` |
+| GNOME | Mutter's `PowerSaveMode` over D-Bus (`gdbus`) |
+| KDE Plasma | `kscreen-doctor --dpms off` |
 | macOS | `pmset displaysleepnow` |
 
 The `+dpms` is the fix for "prot doesn't make the monitors black":
@@ -985,6 +1043,18 @@ DPMS is disabled — which it is on a lot of desktops, because the desktop
 environment handles power management itself — the X server accepts it,
 does nothing, and exits 0. A session that had DPMS off deliberately gets
 it back on the way out.
+
+**It does not lock the session** (0.72.8a3). The GNOME/KDE path used to
+blank by *activating the screensaver*, and an active screensaver locks:
+the wake word woke a lock screen. That path is gone. And because a dark
+screen is an idle session, which locks after the desktop's idle delay,
+`prot` switches lock-on-idle off for as long as it runs — GNOME,
+Cinnamon and MATE (`lock-enabled`), KDE (`Autolock`), Xfce's screensaver
+and the X screensaver — and puts each back on the way out, including on
+SIGTERM or a closed terminal. Settings already off are not touched.
+What it changed is also written to `~/.hypernix/protect-lock-state.json`,
+so if it is killed outright `hnx prot restore` puts them back. A Mac set
+to lock the moment the display sleeps is refused unless `--allow-lock`.
 
 **It will not lock a screen it did not blank.** If there is no method
 for this session, `prot` says which of the four cases it is — no

@@ -10,6 +10,7 @@ All of these work (0.72.8)::
     hnx download hf://owner/repo/model.gguf
     hnx download owner/repo/model.gguf
     hnx download nano-mini                          (a short name)
+    hnx download owner/repo-GGUF:Q4_K_M              (one quant of a GGUF repo, as llama.cpp's -hf)
 
 Only model repositories: a dataset or a Space is refused by name rather
 than being fetched as if it were a model.
@@ -20,7 +21,7 @@ import re
 from dataclasses import dataclass
 from urllib.parse import unquote, urlsplit
 
-__all__ = ["HFSource", "LinkError", "parse_source", "pick_gguf"]
+__all__ = ["HFSource", "LinkError", "parse_source", "pick_gguf", "pick_gguf_files"]
 
 _HOSTS = {"huggingface.co", "www.huggingface.co", "hf.co"}
 _PART = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
@@ -35,6 +36,8 @@ class HFSource:
     repo_id: str
     filename: str = ""
     revision: str | None = None
+    #: ``owner/repo:Q4_K_M``: the quant to take from a repo of GGUFs.
+    quant: str = ""
 
     @property
     def is_file(self) -> bool:
@@ -88,6 +91,11 @@ def parse_source(text: str) -> HFSource:
     parts = [p for p in text.split("/") if p]
     if len(parts) == 1:
         return HFSource(parts[0])  # a short name, resolved by download_model
+    if len(parts) == 2 and ":" in parts[1]:
+        name, _, quant = parts[1].partition(":")
+        if not quant or not _PART.match(quant):
+            raise LinkError(f"{text}: after ':' comes a quant, e.g. owner/repo:Q4_K_M")
+        return HFSource(_repo(parts[0], name), quant=quant)
     return _from_parts(parts, link=text)
 
 
@@ -102,3 +110,24 @@ def pick_gguf(files: list[str], prefer: str = "Q4_K_M") -> str | None:
         return ggufs[0]
     wanted = [f for f in ggufs if prefer.lower() in f.lower() and "mmproj" not in f.lower()]
     return wanted[0] if len(wanted) == 1 else None
+
+
+_SPLIT = re.compile(r"-(\d{5})-of-(\d{5})\.gguf$", re.IGNORECASE)
+
+
+def pick_gguf_files(files: list[str], quant: str) -> list[str]:
+    """Every file of the *quant* GGUF: one file, or all parts of a split one.
+
+    ``Q4_K`` does not match ``Q4_K_M``: the quant has to end where the
+    name's quant does, so asking for one never brings another.
+    """
+    pattern = re.compile(rf"(?:^|[-_.]){re.escape(quant)}(?:[-.]|$)", re.IGNORECASE)
+    wanted = [f for f in files if f.lower().endswith(".gguf") and "mmproj" not in f.lower()
+              and pattern.search(f.rsplit("/", 1)[-1][:-5] if not _SPLIT.search(f)
+                                 else _SPLIT.sub("", f.rsplit("/", 1)[-1]))]
+    if not wanted:
+        return []
+    stems = {_SPLIT.sub("", f) if _SPLIT.search(f) else f for f in wanted}
+    if len(stems) != 1:
+        return []  # several different files have that quant: the caller lists them
+    return sorted(wanted)

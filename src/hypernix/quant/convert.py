@@ -266,14 +266,18 @@ def convert_to_gguf(
         eos = cfg.get("eos_token_id")
         pad = cfg.get("pad_token_id")
         unk = cfg.get("unk_token_id")
-        if isinstance(bos, int):
-            writer.add_bos_token_id(bos)
-        if isinstance(eos, int):
-            writer.add_eos_token_id(eos)
-        if isinstance(pad, int):
-            writer.add_pad_token_id(pad)
-        if isinstance(unk, int):
-            writer.add_unk_token_id(unk)
+        # A list (several EOS ids) takes its first; a negative id (Llama
+        # configs say pad_token_id: -1 for "none") is no token at all, and
+        # GGUF stores ids unsigned: -1 crashed the writer.
+        def _token(value):
+            if isinstance(value, list) and value:
+                value = value[0]
+            return value if isinstance(value, int) and not isinstance(value, bool) and value >= 0 else None
+
+        for value, add in ((bos, writer.add_bos_token_id), (eos, writer.add_eos_token_id),
+                           (pad, writer.add_pad_token_id), (unk, writer.add_unk_token_id)):
+            if _token(value) is not None:
+                add(_token(value))
 
     for _original, mapped, tensor in tqdm(list(_iter_named_tensors(state)), desc=f"writing {dtype} gguf"):
         # Token/output embeddings and norms stay in F32 even in F16 mode

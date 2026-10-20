@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from rich.console import Console
@@ -89,10 +89,11 @@ class ScavengerCriteria:
         if self.max_storage_per_dataset_gb and size_gb > self.max_storage_per_dataset_gb:
             return False, f"size {size_gb:.1f}GB > max {self.max_storage_per_dataset_gb}GB"
 
-        num_rows = info.get("num_rows", 0)
-        if self.min_entries and num_rows < self.min_entries:
+        num_rows = info.get("num_rows")
+        # None: the size could not be found. Not known to be too small.
+        if num_rows is not None and self.min_entries and num_rows < self.min_entries:
             return False, f"entries {num_rows} < min {self.min_entries}"
-        if self.max_entries and num_rows > self.max_entries:
+        if num_rows is not None and self.max_entries and num_rows > self.max_entries:
             return False, f"entries {num_rows} > max {self.max_entries}"
 
         likes = info.get("likes", 0)
@@ -106,11 +107,11 @@ class ScavengerCriteria:
         if self.max_age_days:
             last_modified = info.get("last_modified")
             if last_modified:
-                age = (datetime.now(datetime.UTC) - last_modified).days
+                age = (datetime.now(UTC) - last_modified).days
                 if age > self.max_age_days:
                     return False, f"age {age}d > max {self.max_age_days}d"
 
-        if self.max_total_tokens and num_rows > 0:
+        if self.max_total_tokens and num_rows:
             estimated_tokens = num_rows * self.tokens_per_entry
             if estimated_tokens > self.max_total_tokens:
                 return False, f"tokens {estimated_tokens} > max {self.max_total_tokens}"
@@ -193,29 +194,47 @@ class Scavenger:
         return datasets
 
     def _probe_size(self, info: dict[str, Any]) -> dict[str, Any]:
-        """Probe actual dataset size and row count."""
+        """Rows and size from the Hub's dataset viewer, then from ``datasets``.
+
+        This used to need the ``datasets`` package, which is not a
+        dependency: without it every probe failed silently, every
+        dataset read as 0 rows, and the default ``--min-entries 1000``
+        rejected all of them. A size that cannot be found is now
+        *unknown* (``num_rows`` None), and unknown is not a rejection.
+        """
+        info["num_rows"] = None
+        try:
+            from huggingface_hub.utils import get_session
+
+            reply = get_session().get(
+                "https://datasets-server.huggingface.co/size",
+                params={"dataset": info["id"]}, timeout=15,
+            )
+            if reply.status_code == 200:
+                size = (reply.json().get("size") or {})
+                whole = size.get("dataset") or {}
+                rows = whole.get("num_rows") or whole.get("estimated_num_rows")
+                if rows:
+                    info["num_rows"] = int(rows)
+                total = whole.get("num_bytes_parquet_files") or whole.get("num_bytes_original_files") or 0
+                if total:
+                    info["size_gb"] = total / (1024**3)
+                info["configs"] = [{"config_name": c.get("config", "default")}
+                                   for c in size.get("configs") or []]
+                return info
+        except Exception:  # noqa: BLE001 - offline, or the viewer has no entry
+            pass
         try:
             from datasets import load_dataset_builder
 
-            builder = load_dataset_builder(info["id"], trust_remote_code=False)
-            ds_info = builder.info
-
-            if ds_info:
-                info["num_rows"] = ds_info.splits.total_num_examples if ds_info.splits else 0
-                info["configs"] = [{"config_name": c} for c in (ds_info.config_name or ["default"])]
-
-                total_bytes = 0
-                if ds_info.splits:
-                    for split_info in ds_info.splits.values():
-                        if hasattr(split_info, "num_bytes"):
-                            total_bytes += split_info.num_bytes
-
-                if total_bytes > 0:
+            ds_info = load_dataset_builder(info["id"]).info
+            if ds_info and ds_info.splits:
+                info["num_rows"] = ds_info.splits.total_num_examples
+                total_bytes = sum(getattr(s, "num_bytes", 0) or 0 for s in ds_info.splits.values())
+                if total_bytes:
                     info["size_gb"] = total_bytes / (1024**3)
-
-        except Exception:
+        except Exception:  # noqa: BLE001 - not installed, or a script dataset
             pass
-
         return info
 
     def hunt(
@@ -298,7 +317,7 @@ class Scavenger:
 
         last_modified = info.get("last_modified")
         if last_modified:
-            age_days = (datetime.now(datetime.UTC) - last_modified).days
+            age_days = (datetime.now(UTC) - last_modified).days
             if age_days < 30:
                 score += 10.0
             elif age_days < 90:
@@ -306,7 +325,7 @@ class Scavenger:
             elif age_days < 180:
                 score += 2.0
 
-        num_rows = info.get("num_rows", 0)
+        num_rows = info.get("num_rows") or 0
         if 1000 <= num_rows <= 1000000:
             score += 10.0
         elif num_rows > 1000000:
@@ -336,7 +355,7 @@ class Scavenger:
 
         for i, ds in enumerate(datasets[:20], 1):
             size_str = f"{ds.get('size_gb', 0):.1f}GB" if ds.get('size_gb', 0) > 0 else "?"
-            rows_str = f"{ds.get('num_rows', 0):,}" if ds.get('num_rows', 0) > 0 else "?"
+            rows_str = f"{ds['num_rows']:,}" if ds.get('num_rows') else "?"
             table.add_row(
                 str(i),
                 ds.get("id", "?"),
@@ -350,7 +369,7 @@ class Scavenger:
         self.console.print(table)
 
         total_gb = sum(d.get("size_gb", 0) for d in datasets)
-        total_rows = sum(d.get("num_rows", 0) for d in datasets)
+        total_rows = sum((d.get("num_rows") or 0) for d in datasets)
         self.console.print(f"\n[dim]Total: {len(datasets)} datasets | {total_rows:,} rows | {total_gb:.1f}GB[/]")
 
     def download_dataset(

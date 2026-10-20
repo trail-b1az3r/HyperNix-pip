@@ -16,6 +16,68 @@ import torch.nn as nn
 from hypernix.security.hfpin import hub_revision
 from hypernix.training.mtp import MTPConfig, MTPHead, MTPTrainer
 
+
+def load_audio(path: str | Path, sample_rate: int) -> torch.Tensor:
+    """A mono waveform at *sample_rate*, from WAV with nothing extra installed.
+
+    torchaudio, then soundfile, then the standard library's ``wave`` for
+    PCM WAV; torchaudio was the only reader before, and it is not a
+    dependency, so every file failed on a stock install.
+    """
+    try:
+        import torchaudio
+
+        audio, rate = torchaudio.load(str(path))
+    except Exception:  # noqa: BLE001 - not installed, or cannot read this file
+        try:
+            import soundfile
+
+            data, rate = soundfile.read(str(path), dtype="float32", always_2d=True)
+            audio = torch.from_numpy(data.T.copy())
+        except ImportError:
+            import wave
+
+            with wave.open(str(path), "rb") as wav:
+                rate, width, channels = wav.getframerate(), wav.getsampwidth(), wav.getnchannels()
+                frames = wav.readframes(wav.getnframes())
+            if width not in (1, 2, 4):
+                raise ValueError(f"{path}: {8 * width}-bit WAV; install soundfile to read it") from None
+            dtype = {1: torch.uint8, 2: torch.int16, 4: torch.int32}[width]
+            raw = torch.frombuffer(bytearray(frames), dtype=dtype).float()
+            if width == 1:
+                raw = raw - 128.0
+            audio = (raw / float(2 ** (8 * width - 1))).view(-1, channels).T
+    audio = audio.float().mean(dim=0, keepdim=True)
+    if rate != sample_rate:
+        try:
+            import torchaudio.functional as AF
+
+            audio = AF.resample(audio, rate, sample_rate)
+        except ImportError:
+            length = max(1, round(audio.shape[-1] * sample_rate / rate))
+            audio = torch.nn.functional.interpolate(audio.unsqueeze(0), size=length, mode="linear",
+                                                    align_corners=False).squeeze(0)
+    return audio
+
+
+def _to_model(inputs: Any, model: nn.Module) -> dict[str, torch.Tensor]:
+    """Processor output on the model's device; only floating tensors take its dtype.
+
+    Casting every input to the model's dtype turned token ids into
+    floats, which no embedding layer accepts.
+    """
+    first = next(model.parameters())
+    dtype, device = first.dtype, first.device
+    out = {}
+    for key, value in dict(inputs).items():
+        if isinstance(value, torch.Tensor):
+            value = value.to(device)
+            if value.is_floating_point():
+                value = value.to(dtype)
+        out[key] = value
+    return out
+
+
 # =============================================================================
 # Workshop Frameworks - Base templates for model creation
 # =============================================================================
@@ -170,6 +232,10 @@ class WorkshopFramework:
 class TTSConfig(FrameworkConfig):
     """Configuration for TTS models."""
     name: str = "tts_framework"
+    #: A Hugging Face text-to-waveform model (VITS/MMS, SpeechT5, Bark...).
+    model_name: str = "facebook/mms-tts-eng"
+    #: Overwritten by the model's own rate once it is loaded: a WAV
+    #: written at the wrong rate plays at the wrong pitch.
     sample_rate: int = 22050
     n_mels: int = 80
     n_fft: int = 1024
@@ -219,6 +285,10 @@ class TTSEngine(WorkshopFramework):
             ).to(device=device, dtype=dtype)
             
             self.processor = AutoProcessor.from_pretrained(model_name, revision=hub_revision(model_name))
+            rate = getattr(self.model.config, "sampling_rate", None) or getattr(
+                getattr(self.processor, "feature_extractor", None), "sampling_rate", None)
+            if rate:
+                self.config.sample_rate = int(rate)
             self._initialized = True
         except ImportError as e:
             raise RuntimeError("TTS requires transformers. Install: pip install transformers[torch]") from e
@@ -234,16 +304,17 @@ class TTSEngine(WorkshopFramework):
         if not self._initialized:
             raise RuntimeError("TTS engine not initialized")
         
-        inputs = self.processor(text=text, return_tensors="pt")
-        inputs = {k: v.to(self.model.device) for k, v in inputs.items()}
-        # Ensure input dtype matches model dtype
-        model_dtype = next(self.model.parameters()).dtype
-        for k, v in inputs.items():
-            if v.dtype != model_dtype:
-                inputs[k] = v.to(dtype=model_dtype)
+        inputs = _to_model(self.processor(text=text, return_tensors="pt"), self.model)
         with torch.no_grad():
-            output = self.model.generate(**inputs)
-        return output.squeeze()
+            # VITS/MMS answer from forward(); only some TTS models generate().
+            if hasattr(self.model, "generate") and not hasattr(self.model.config, "flow_size"):
+                output = self.model.generate(**inputs)
+            else:
+                output = self.model(**inputs)
+        waveform = getattr(output, "waveform", output)
+        if isinstance(waveform, tuple):
+            waveform = waveform[0]
+        return waveform.float().squeeze()
     
     def set_vocoder(self, vocoder: nn.Module) -> None:
         """Set the vocoder for mel-to-audio conversion."""
@@ -268,6 +339,8 @@ class TTSEngine(WorkshopFramework):
 class ASRConfig(FrameworkConfig):
     """Configuration for ASR models."""
     name: str = "asr_framework"
+    #: A Hugging Face speech-to-text model (Whisper and friends).
+    model_name: str = "openai/whisper-tiny"
     sample_rate: int = 16000
     n_mels: int = 80
     n_fft: int = 400
@@ -332,15 +405,15 @@ class ASREngine(WorkshopFramework):
         
         if audio.ndim > 1:
             audio = audio.mean(dim=0)
-        inputs = self.processor(audio, sampling_rate=16000, return_tensors="pt")
-        inputs = {k: v.to(self.transcriber.device) for k, v in inputs.items()}
-        # Ensure input dtype matches model dtype
-        model_dtype = next(self.transcriber.parameters()).dtype
-        for k, v in inputs.items():
-            if v.dtype != model_dtype:
-                inputs[k] = v.to(dtype=model_dtype)
+        inputs = self.processor(audio.float().cpu().numpy(), sampling_rate=self.config.sample_rate,
+                                return_tensors="pt")
+        inputs = _to_model(inputs, self.transcriber)
         with torch.no_grad():
-            generated_ids = self.transcriber.generate(inputs["input_features"])
+            features = inputs["input_features"]
+            try:
+                generated_ids = self.transcriber.generate(features, language=language, task="transcribe")
+            except (TypeError, ValueError):  # not a Whisper: no language to pass
+                generated_ids = self.transcriber.generate(features)
         transcription = self.processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
         return transcription.strip()
     
@@ -444,15 +517,7 @@ class ASRToLLMToTTS:
         if isinstance(audio_path, str):
             if not os.path.exists(audio_path):
                 raise FileNotFoundError(f"Audio file not found: {audio_path}")
-            # Load audio using torchaudio or similar
-            import torchaudio
-            audio, sr = torchaudio.load(audio_path)
-            if sr != self.asr.config.sample_rate:
-                # Resample if needed
-                import torch.nn.functional as F
-                ratio = self.asr.config.sample_rate / sr
-                new_length = int(audio.shape[1] * ratio)
-                audio = F.interpolate(audio.unsqueeze(0), size=new_length, mode='linear', align_corners=False).squeeze(0)
+            audio = load_audio(audio_path, self.asr.config.sample_rate)
         else:
             audio = audio_path
         
@@ -512,9 +577,8 @@ class ASRToLLMToTTS:
                 outputs = self.llm.forward(inputs)
                 return self.llm.tokenizer.decode(outputs[0], skip_special_tokens=True)
         
-        # Fallback: simple echo with marker
-        last_user_msg = self.conversation_history[-1]["content"] if self.conversation_history else "Hello"
-        return f"Assistant response to: {last_user_msg[:100]}..."
+        # An LLM that cannot answer is an error, not an echo dressed up as a reply.
+        raise TypeError(f"{type(self.llm).__name__} has no generate(), chat() or forward()+tokenizer")
     
     def _llm_stream(self, prompt: str, max_length: int, temperature: float):
         """Stream response from LLM, yielding tokens."""

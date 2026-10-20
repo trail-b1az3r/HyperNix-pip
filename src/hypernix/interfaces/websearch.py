@@ -57,6 +57,36 @@ def _get_request(url: str, headers: dict[str, str] | None = None) -> urllib.requ
     return urllib.request.Request(url, headers=default_headers)
 
 
+def _real_url(url: str) -> str:
+    """The page a search engine's redirect link points at.
+
+    Bing links go through ``bing.com/ck/a?...&u=a1<base64url>`` and
+    DuckDuckGo's through ``duckduckgo.com/l/?uddg=<quoted>``; both were
+    returned as they were, HTML entities and all, so every result's URL
+    was a tracking redirect with ``&amp;`` in it.
+    """
+    import base64
+
+    url = html.unescape(url).strip()
+    if url.startswith("//"):
+        url = "https:" + url
+    parsed = urllib.parse.urlparse(url)
+    query = urllib.parse.parse_qs(parsed.query)
+    if parsed.netloc.endswith("bing.com") and parsed.path.startswith("/ck/") and query.get("u"):
+        encoded = query["u"][0]
+        if encoded.startswith("a1"):
+            encoded = encoded[2:]
+        try:
+            decoded = base64.urlsafe_b64decode(encoded + "=" * (-len(encoded) % 4)).decode("utf-8")
+            if decoded.startswith(("http://", "https://")):
+                return decoded
+        except (ValueError, UnicodeDecodeError):
+            pass
+    if parsed.netloc.endswith("duckduckgo.com") and parsed.path.startswith("/l/") and query.get("uddg"):
+        return query["uddg"][0]
+    return url
+
+
 def _search_duckduckgo(query: str, max_results: int = 10) -> list[dict[str, str]]:
     results: list[dict[str, str]] = []
     try:
@@ -76,7 +106,7 @@ def _search_duckduckgo(query: str, max_results: int = 10) -> list[dict[str, str]
             for t, s, link_url in zip(titles, snippets, links, strict=False):
                 clean_t = html.unescape(re.sub(r"<[^>]+>", "", t)).strip()
                 clean_s = html.unescape(re.sub(r"<[^>]+>", "", s)).strip()
-                clean_l = html.unescape(link_url).strip()
+                clean_l = _real_url(link_url)
                 if clean_t and clean_s:
                     results.append({"title": clean_t, "snippet": clean_s, "url": clean_l, "engine": "duckduckgo"})
                     if len(results) >= max_results:
@@ -90,7 +120,7 @@ def _search_duckduckgo(query: str, max_results: int = 10) -> list[dict[str, str]
                 if title_m and snippet_m:
                     clean_t = html.unescape(re.sub(r"<[^>]+>", "", title_m.group(1))).strip()
                     clean_s = html.unescape(re.sub(r"<[^>]+>", "", snippet_m.group(1))).strip()
-                    clean_l = html.unescape(url_m.group(1)).strip() if url_m else ""
+                    clean_l = _real_url(url_m.group(1)) if url_m else ""
                     results.append({"title": clean_t, "snippet": clean_s, "url": clean_l, "engine": "duckduckgo"})
                     if len(results) >= max_results:
                         break
@@ -113,7 +143,7 @@ def _search_bing(query: str, max_results: int = 10) -> list[dict[str, str]]:
             title_m = re.search(r'<h2[^>]*><a[^>]*href="([^"]+)"[^>]*>(.*?)</a></h2>', block, re.DOTALL)
             snippet_m = re.search(r'<p[^>]*>(.*?)</p>', block, re.DOTALL)
             if title_m:
-                clean_url = title_m.group(1)
+                clean_url = _real_url(title_m.group(1))
                 clean_t = html.unescape(re.sub(r"<[^>]+>", "", title_m.group(2))).strip()
                 clean_s = html.unescape(re.sub(r"<[^>]+>", "", snippet_m.group(1))).strip() if snippet_m else ""
                 results.append({"title": clean_t, "snippet": clean_s, "url": clean_url, "engine": "bing"})
