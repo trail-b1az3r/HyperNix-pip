@@ -34,6 +34,76 @@ Historical wording and technical detail are retained during format normalization
 
 > Format normalized to `wiki/Changelog-guide.md`; release wording and historical detail are preserved.
 
+## 0.72.8a2 — 2026-10-20
+
+### Added
+
+๋࣭⭑ **c4: explode a model, measure its pieces, reap the best, sow a new
+  one.** `hypernix.c4` loads a safetensors model, a `.pt` state dict
+  (both with a `config.json`) or a GGUF onto the GPU and takes it apart
+  into **mstems** (a layer and its connections), **stems** (one
+  connection's tensor), **Pdials** (three or more parameters: a row, a
+  column, a head, a block), **mdials** (two) and **dials** (one), with
+  an address for each. ([C4](C4.md))
+✨ **`hypernix.c4.explode`**: the pieces, their counts, iterators over
+  Pdials, mdials and dials, and `save()` — one safetensors file per
+  mstem plus a manifest.
+✨ **`hypernix.c4.stem`**: measured statistics (spread, outliers,
+  sparsity, kurtosis, effective and stable rank, 4-bit round-trip
+  error, layer similarity) and tested ones (the loss without a stem or a
+  layer, block influence), and `layer_report`, which calls each layer
+  `unneeded`, `candidate to drop`, `needed` or `keep`.
+✨ **`hypernix.c4.dial`**: per-parameter `magnitude`, `taylor`, `fisher`
+  and `wanda` scores; `unneeded()` (the lowest share, and rows that can
+  go whole); `train_priority()` (stems, Pdials or layers ranked by how
+  much training them next would lower the loss, flagging those that
+  need retraining); `interaction()` for an mdial's two weights.
+✨ **`hypernix.c4.restore`**: snapshots and `ablated()`, so every test
+  leaves the model exactly as it was, and `write()` to safetensors (with
+  config and tokenizer), `.pt` or GGUF.
+✨ **`hypernix.c4.reap`** chooses the layers, dials to zero and
+  feed-forward channels to keep, saved as a reviewable `Harvest`;
+  `reap_best()` cherry-picks the best layer at each depth across several
+  same-shaped models. **`hypernix.c4.sow`** builds the new model from it
+  — layers renumbered, dials zeroed, channels pruned, `config.json`
+  rewritten, tokenizer copied — loads it back to check it, and reports
+  the loss before and after; `heal()` trains it for a few steps.
+✨ **The c4 optimizer** (`hypernix.c4.optim.C4Optimizer`): back-propagates,
+  then separates the gradients into sections (stems, mstems or rows) and
+  checks each before updating — a non-finite section is skipped, a spike
+  clipped to its own history, a dead section frozen, unneeded dials held,
+  and only the chosen sections moved, scaled by priority. Inside it:
+  `C4HybridAdamW5S` (AdamW moments with Pressure Cooker V5S's
+  oscillation damping, trust ratio and coordinate freeze),
+  `C4CookerV5S` (Pressure Cooker V5S modified for sections: no pressure
+  diffusion, no global clip, held dials kept out of its momentum) or
+  plain AdamW.
+✨ **`hnx c4`** (`explode`, `stem`, `dial`, `reap`, `sow`, `restore`) and
+  the `hnx-c4` entry point.
+
+### Documentation
+
+📚 [C4](C4.md): the pieces, the sections, the optimizer, the command
+  line and the limits; [CLI](CLI.md): `hnx c4`; [Home](Home.md): the C4
+  guide.
+
+### Tests
+
+🧪 c4 on a small Llama: loading each format and refusing a missing
+  `config.json`, the pieces and addresses, exact restoration after
+  ablation, layer verdicts, every dial score, unneeded masks and
+  priorities, reap and sow (layer drop, channel pruning, a GGUF by its
+  weights alone, `reap_best`), the optimizer's checks, and the CLI.
+
+### Known Issues
+
+❗ c4's GPU paths were exercised on the CPU only: there is no GPU in the
+  build environment.
+❗ Running a model (tested numbers, scores other than `magnitude`,
+  healing) needs an architecture transformers can build; a GGUF it
+  cannot build is still exploded, measured, reaped and sown by its
+  weights.
+
 ## 0.72.8a1 — 2026-10-20
 
 ### Added

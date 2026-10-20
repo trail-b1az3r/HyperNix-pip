@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-api-deep",
   "generated_at": "2026-09-20T21:20:57Z",
-  "commit": "4a25a2d5804a40dd5ca316c008544232118e299e",
+  "commit": "452dc767eaf468b469c98665c6a81fb2012809e1",
   "history_available": true,
   "source_root": "src/hypernix",
   "modules": [
@@ -17,6 +17,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "452dc76",
+          "date": "2026-10-20",
+          "author": "Claude",
+          "subject": "release: 0.72.8a1 -- signed prompts, web v2, multi-llama, new hybrids",
+          "api_changes": []
+        },
         {
           "sha": "c530df6",
           "date": "2026-10-14",
@@ -64,13 +71,6 @@
           "date": "2026-10-01",
           "author": "Claude",
           "subject": "release: 0.72.6.post4 -- its own changelog entry and version",
-          "api_changes": []
-        },
-        {
-          "sha": "3c3bd1b",
-          "date": "2026-09-28",
-          "author": "Claude",
-          "subject": "hypernix-t1 upgrade, stale-venv warning, and finish the tests reorg",
           "api_changes": []
         }
       ]
@@ -1759,6 +1759,920 @@
           ]
         }
       ]
+    },
+    {
+      "module": "hypernix.c4",
+      "source": "src/hypernix/c4/__init__.py",
+      "line_count": 36,
+      "summary": "hypernix.c4 \u2014 explode a model into its pieces, measure and test them, reap the best and sow a new model from them.",
+      "api": [],
+      "errors": [
+        "AttributeError"
+      ],
+      "deprecations": [],
+      "required_modules": [],
+      "changes": []
+    },
+    {
+      "module": "hypernix.c4.cli",
+      "source": "src/hypernix/c4/cli.py",
+      "line_count": 192,
+      "summary": "``hnx c4`` \u2014 explode, measure, test, reap and sow from the command line.",
+      "api": [
+        {
+          "kind": "function",
+          "name": "cli_main",
+          "signature": "def cli_mainargv: list[str] | None=None -> int",
+          "line": 171,
+          "doc": ""
+        }
+      ],
+      "errors": [
+        "C4Error"
+      ],
+      "deprecations": [],
+      "required_modules": [],
+      "changes": []
+    },
+    {
+      "module": "hypernix.c4.dial",
+      "source": "src/hypernix/c4/dial.py",
+      "line_count": 267,
+      "summary": "hypernix.c4.dial \u2014 which parameters matter, which do not, and which to train.",
+      "api": [
+        {
+          "kind": "class",
+          "name": "DialScores",
+          "signature": "class DialScores",
+          "line": 48,
+          "doc": "A score per parameter, by stem name, and the gradient statistics behind it.",
+          "methods": [
+            {
+              "name": "stem_total",
+              "signature": "def stem_totalself, name: str -> float",
+              "line": 58,
+              "doc": ""
+            },
+            {
+              "name": "top",
+              "signature": "def topself, k: int=10, *, largest: bool=True -> list[tuple[str, tuple[int, ...], float]]",
+              "line": 61,
+              "doc": "The *k* highest (or lowest) scoring dials across the model."
+            }
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "score",
+          "signature": "def scoreexploded: Exploded, prober: Any=None, *, kind: str='taylor', stems: Iterable[str] | None=None, matrices_only: bool=True -> DialScores",
+          "line": 91,
+          "doc": "Score every dial of *stems* (default: every matrix stem)."
+        },
+        {
+          "kind": "class",
+          "name": "Unneeded",
+          "signature": "class Unneeded",
+          "line": 165,
+          "doc": "Dials (as masks: True = unneeded) and the rows among them that can go whole.",
+          "methods": [
+            {
+              "name": "dials",
+              "signature": "def dialsself -> int",
+              "line": 174,
+              "doc": ""
+            },
+            {
+              "name": "pdials",
+              "signature": "def pdialsself -> list[PDial]",
+              "line": 177,
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "unneeded",
+          "signature": "def unneededscores: DialScores, *, fraction: float=0.1, per_stem: bool=True, row_fraction: float=0.9 -> Unneeded",
+          "line": 181,
+          "doc": "The lowest-scoring *fraction* of dials, per stem (or across the model)."
+        },
+        {
+          "kind": "class",
+          "name": "Priority",
+          "signature": "class Priority",
+          "line": 217,
+          "doc": "",
+          "methods": [
+            {
+              "name": "to_dict",
+              "signature": "def to_dictself -> dict[str, Any]",
+              "line": 226,
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "train_priority",
+          "signature": "def train_priorityexploded: Exploded, scores: DialScores, *, granularity: str='stem', top: int=20 -> list[Priority]",
+          "line": 231,
+          "doc": "What to train first: the pieces where a step would lower the loss most."
+        },
+        {
+          "kind": "function",
+          "name": "interaction",
+          "signature": "def interactionexploded: Exploded, prober: Any, mdial: MDial, *, epsilon: float=0.01 -> dict[str, float]",
+          "line": 287,
+          "doc": "Does an mdial's pair matter more together than apart?"
+        }
+      ],
+      "errors": [
+        "C4Error"
+      ],
+      "deprecations": [],
+      "required_modules": [],
+      "changes": []
+    },
+    {
+      "module": "hypernix.c4.explode",
+      "source": "src/hypernix/c4/explode.py",
+      "line_count": 325,
+      "summary": "hypernix.c4.explode \u2014 a model blown apart into the pieces c4 works on.",
+      "api": [
+        {
+          "kind": "class",
+          "name": "Stem",
+          "signature": "class Stem",
+          "line": 56,
+          "doc": "One connection: a tensor, its role and its place.",
+          "methods": [
+            {
+              "name": "numel",
+              "signature": "def numelself -> int",
+              "line": 65,
+              "doc": ""
+            },
+            {
+              "name": "kind",
+              "signature": "def kindself -> str",
+              "line": 72,
+              "doc": "``matrix`` for a connection between two widths, ``vector`` for a norm or bias."
+            },
+            {
+              "name": "fan_out",
+              "signature": "def fan_outself -> int",
+              "line": 77,
+              "doc": ""
+            },
+            {
+              "name": "fan_in",
+              "signature": "def fan_inself -> int",
+              "line": 81,
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "kind": "class",
+          "name": "MStem",
+          "signature": "class MStem",
+          "line": 86,
+          "doc": "A layer and its connections.",
+          "methods": [
+            {
+              "name": "name",
+              "signature": "def nameself -> str",
+              "line": 93,
+              "doc": ""
+            },
+            {
+              "name": "numel",
+              "signature": "def numelself -> int",
+              "line": 97,
+              "doc": ""
+            },
+            {
+              "name": "stem",
+              "signature": "def stemself, role: str -> Stem | None",
+              "line": 100,
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "kind": "class",
+          "name": "Dial",
+          "signature": "class Dial",
+          "line": 105,
+          "doc": "One parameter.",
+          "methods": []
+        },
+        {
+          "kind": "class",
+          "name": "MDial",
+          "signature": "class MDial",
+          "line": 116,
+          "doc": "Two parameters.",
+          "methods": [
+            {
+              "name": "dials",
+              "signature": "def dialsself -> tuple[Dial, Dial]",
+              "line": 128,
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "kind": "class",
+          "name": "PDial",
+          "signature": "class PDial",
+          "line": 137,
+          "doc": "Three or more parameters: a slice of one stem.",
+          "methods": [
+            {
+              "name": "selector",
+              "signature": "def selectorself, shape: tuple[int, ...] -> Any",
+              "line": 150,
+              "doc": "The index expression that picks this Pdial out of its tensor."
+            },
+            {
+              "name": "size",
+              "signature": "def sizeself, shape: tuple[int, ...] -> int",
+              "line": 160,
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "kind": "class",
+          "name": "Exploded",
+          "signature": "class Exploded",
+          "line": 179,
+          "doc": "A model's pieces, and ways to walk them.",
+          "methods": [
+            {
+              "name": "loose_stems",
+              "signature": "def loose_stemsself -> list[Stem]",
+              "line": 189,
+              "doc": "Stems outside every layer: embeddings, the head, the final norm."
+            },
+            {
+              "name": "counts",
+              "signature": "def countsself -> dict[str, int]",
+              "line": 193,
+              "doc": ""
+            },
+            {
+              "name": "summary",
+              "signature": "def summaryself -> dict[str, Any]",
+              "line": 203,
+              "doc": ""
+            },
+            {
+              "name": "tensor",
+              "signature": "def tensorself, stem: str | Stem -> Any",
+              "line": 210,
+              "doc": ""
+            },
+            {
+              "name": "pdials",
+              "signature": "def pdialsself, stem: str | Stem, *, by: str='row', size: int=1 -> Iterator[PDial]",
+              "line": 218,
+              "doc": "The Pdials of a stem: rows, columns, heads or flat blocks of *size*."
+            },
+            {
+              "name": "mdials",
+              "signature": "def mdialsself, stem: str | Stem, *, along: str='row', limit: int | None=None -> Iterator[MDial]",
+              "line": 247,
+              "doc": "Neighbouring pairs in a stem: along a row (j, j+1) or a column (i, i+1)."
+            },
+            {
+              "name": "dials",
+              "signature": "def dialsself, stem: str | Stem, *, limit: int | None=None -> Iterator[Dial]",
+              "line": 274,
+              "doc": ""
+            },
+            {
+              "name": "value",
+              "signature": "def valueself, piece: Dial | MDial | PDial | Stem | str -> Any",
+              "line": 286,
+              "doc": "The current values of a piece (a view where PyTorch can give one)."
+            },
+            {
+              "name": "save",
+              "signature": "def saveself, folder: str | Path, *, weights: bool=True -> Path",
+              "line": 306,
+              "doc": "Write the exploded model to *folder*: a manifest, and with *weights* one safetensors file per mstem (and one for the loose stems), so a piece can be loaded without the rest."
+            }
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "explode",
+          "signature": "def explodemodel: C4Model | str | Path, **load_kwargs: Any -> Exploded",
+          "line": 334,
+          "doc": "Blow *model* (a :class:`C4Model`, or a path to load) into its pieces."
+        },
+        {
+          "kind": "function",
+          "name": "address",
+          "signature": "def addresstext: str, exploded: Exploded | None=None -> Dial | MDial | PDial | Stem",
+          "line": 360,
+          "doc": "Read an address string back into a piece (see the module docstring)."
+        }
+      ],
+      "errors": [
+        "C4Error"
+      ],
+      "deprecations": [],
+      "required_modules": [],
+      "changes": []
+    },
+    {
+      "module": "hypernix.c4.model",
+      "source": "src/hypernix/c4/model.py",
+      "line_count": 240,
+      "summary": "Loading a model for c4: weights on the GPU, and what each tensor is.",
+      "api": [
+        {
+          "kind": "class",
+          "name": "C4Error",
+          "signature": "class C4Error",
+          "line": 39,
+          "doc": "c4 could not do what was asked; the message says why.",
+          "methods": []
+        },
+        {
+          "kind": "function",
+          "name": "layer_of",
+          "signature": "def layer_ofname: str -> int",
+          "line": 57,
+          "doc": "The layer index a tensor belongs to, or -1 for one outside every layer."
+        },
+        {
+          "kind": "function",
+          "name": "role_of",
+          "signature": "def role_ofname: str -> str",
+          "line": 63,
+          "doc": "What a tensor does, in one vocabulary for HF and GGUF names."
+        },
+        {
+          "kind": "function",
+          "name": "pick_device",
+          "signature": "def pick_devicedevice: str | None='auto' -> str",
+          "line": 82,
+          "doc": "``cuda`` when there is an NVIDIA GPU, ``mps`` on Apple silicon, else ``cpu``."
+        },
+        {
+          "kind": "class",
+          "name": "C4Model",
+          "signature": "class C4Model",
+          "line": 100,
+          "doc": "A loaded model: its tensors by name, and where they came from.",
+          "methods": [
+            {
+              "name": "n_layers",
+              "signature": "def n_layersself -> int",
+              "line": 115,
+              "doc": ""
+            },
+            {
+              "name": "parameters",
+              "signature": "def parametersself -> int",
+              "line": 121,
+              "doc": ""
+            },
+            {
+              "name": "names",
+              "signature": "def namesself, *, layer: int | None=None, role: str | None=None -> list[str]",
+              "line": 124,
+              "doc": ""
+            },
+            {
+              "name": "bind",
+              "signature": "def bindself, module: Any -> None",
+              "line": 128,
+              "doc": "Make *module*'s parameters the model's tensors (no copy)."
+            }
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "load",
+          "signature": "def loadpath: str | Path, *, device: str | None='auto', dtype: Any=None -> C4Model",
+          "line": 244,
+          "doc": "Load *path* for c4. See the module docstring for what it accepts."
+        }
+      ],
+      "errors": [
+        "C4Error"
+      ],
+      "deprecations": [],
+      "required_modules": [],
+      "changes": []
+    },
+    {
+      "module": "hypernix.c4.optim",
+      "source": "src/hypernix/c4/optim.py",
+      "line_count": 328,
+      "summary": "The c4 optimizers: back-propagate, separate, check, and only then update.",
+      "api": [
+        {
+          "kind": "class",
+          "name": "C4HybridAdamW5S",
+          "signature": "class C4HybridAdamW5S",
+          "line": 61,
+          "doc": "AdamW moments, damped by V5S's oscillation score (see the module docstring).",
+          "methods": [
+            {
+              "name": "step",
+              "signature": "def stepself, closure: Any=None -> Any",
+              "line": 84,
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "kind": "class",
+          "name": "C4CookerV5S",
+          "signature": "class C4CookerV5S",
+          "line": 138,
+          "doc": "Pressure Cooker V5S, changed for c4 (see the module docstring).",
+          "methods": []
+        },
+        {
+          "kind": "function",
+          "name": "make_inner",
+          "signature": "def make_innerkind: str, params: Iterable[Any], *, lr: float=0.0001, **kwargs: Any -> torch.optim.Optimizer",
+          "line": 161,
+          "doc": ""
+        },
+        {
+          "kind": "class",
+          "name": "Section",
+          "signature": "class Section",
+          "line": 173,
+          "doc": "A named group of parameters checked together; ``rows`` = each row its own Pdial.",
+          "methods": []
+        },
+        {
+          "kind": "class",
+          "name": "CheckPolicy",
+          "signature": "class CheckPolicy",
+          "line": 182,
+          "doc": "How sections are checked before an update.",
+          "methods": []
+        },
+        {
+          "kind": "class",
+          "name": "C4Optimizer",
+          "signature": "class C4Optimizer",
+          "line": 198,
+          "doc": "Separate, check, then update. See the module docstring.",
+          "methods": [
+            {
+              "name": "for_exploded",
+              "signature": "def for_explodedcls, exploded: Any, module: Any, *, kind: str='hybrid', lr: float=0.0001, granularity: str='stem', only: Iterable[str] | None=None, masks: dict[str, Any] | None=None, priorities: dict[str, float] | None=None, policy: CheckPolicy | None=None, **inner_kwargs: Any -> C4Optimizer",
+              "line": 221,
+              "doc": "Sections from an exploded model: ``stem``, ``mstem`` or ``pdial`` (rows)."
+            },
+            {
+              "name": "zero_grad",
+              "signature": "def zero_gradself, set_to_none: bool=True -> None",
+              "line": 260,
+              "doc": ""
+            },
+            {
+              "name": "step",
+              "signature": "def stepself, closure: Any=None -> Any",
+              "line": 326,
+              "doc": ""
+            },
+            {
+              "name": "report",
+              "signature": "def reportself -> dict[str, Any]",
+              "line": 357,
+              "doc": ""
+            },
+            {
+              "name": "param_groups",
+              "signature": "def param_groupsself -> list[dict[str, Any]]",
+              "line": 363,
+              "doc": ""
+            },
+            {
+              "name": "state_dict",
+              "signature": "def state_dictself -> dict[str, Any]",
+              "line": 366,
+              "doc": ""
+            }
+          ]
+        }
+      ],
+      "errors": [
+        "C4Error"
+      ],
+      "deprecations": [],
+      "required_modules": [
+        {
+          "module": "torch",
+          "extra": "base",
+          "requirement": "torch>=1.13,<3"
+        }
+      ],
+      "changes": []
+    },
+    {
+      "module": "hypernix.c4.probe",
+      "source": "src/hypernix/c4/probe.py",
+      "line_count": 167,
+      "summary": "Running the model, so c4 can *test* a piece and not only look at it.",
+      "api": [
+        {
+          "kind": "class",
+          "name": "Calibration",
+          "signature": "class Calibration",
+          "line": 33,
+          "doc": "Token batches to measure on: a list of ``(batch, seq)`` long tensors.",
+          "methods": [
+            {
+              "name": "from_ids",
+              "signature": "def from_idscls, ids: Any, *, seq_len: int=128, batch_size: int=4 -> Calibration",
+              "line": 41,
+              "doc": ""
+            },
+            {
+              "name": "from_texts",
+              "signature": "def from_textscls, texts: Sequence[str], tokenizer: Any, *, seq_len: int=128, batch_size: int=4 -> Calibration",
+              "line": 53,
+              "doc": ""
+            },
+            {
+              "name": "random_tokens",
+              "signature": "def random_tokenscls, vocab_size: int, *, batches: int=2, batch_size: int=2, seq_len: int=32, seed: int=0 -> Calibration",
+              "line": 63,
+              "doc": ""
+            },
+            {
+              "name": "tokens",
+              "signature": "def tokensself -> int",
+              "line": 73,
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "build_module",
+          "signature": "def build_modulemodel: C4Model -> Any",
+          "line": 77,
+          "doc": "A transformers causal-LM whose parameters are *model*'s tensors."
+        },
+        {
+          "kind": "class",
+          "name": "Prober",
+          "signature": "class Prober",
+          "line": 121,
+          "doc": "Loss and gradients of a model over a calibration set.",
+          "methods": [
+            {
+              "name": "for_model",
+              "signature": "def for_modelcls, model: C4Model, *, texts: Iterable[str] | None=None, ids: Any=None, seq_len: int=128, batch_size: int=4 -> Prober",
+              "line": 131,
+              "doc": "A prober with calibration from *texts* (the model's tokenizer), token *ids*, or, failing both, random tokens (marked synthetic)."
+            },
+            {
+              "name": "loss",
+              "signature": "def lossself -> float",
+              "line": 157,
+              "doc": "Mean next-token loss over the calibration set."
+            },
+            {
+              "name": "backward",
+              "signature": "def backwardself, *, zero: bool=True -> float",
+              "line": 169,
+              "doc": "Gradients of the mean loss into every parameter's ``.grad``."
+            },
+            {
+              "name": "hidden_states",
+              "signature": "def hidden_statesself -> list[Any]",
+              "line": 181,
+              "doc": "Per layer boundary, the hidden states over the first calibration batch: ``states[i]`` enters layer *i*, ``states[-1]`` leaves the last."
+            },
+            {
+              "name": "names",
+              "signature": "def namesself -> list[str]",
+              "line": 192,
+              "doc": ""
+            },
+            {
+              "name": "parameter",
+              "signature": "def parameterself, name: str -> Any",
+              "line": 195,
+              "doc": ""
+            },
+            {
+              "name": "describe",
+              "signature": "def describeself -> dict[str, Any]",
+              "line": 198,
+              "doc": ""
+            }
+          ]
+        }
+      ],
+      "errors": [
+        "C4Error"
+      ],
+      "deprecations": [],
+      "required_modules": [],
+      "changes": []
+    },
+    {
+      "module": "hypernix.c4.reap",
+      "source": "src/hypernix/c4/reap.py",
+      "line_count": 171,
+      "summary": "hypernix.c4.reap \u2014 gathering the best layers and weights for :mod:`~hypernix.c4.sow`.",
+      "api": [
+        {
+          "kind": "class",
+          "name": "Harvest",
+          "signature": "class Harvest",
+          "line": 35,
+          "doc": "What a sown model is made of.",
+          "methods": [
+            {
+              "name": "zeroed",
+              "signature": "def zeroedself -> int",
+              "line": 51,
+              "doc": ""
+            },
+            {
+              "name": "summary",
+              "signature": "def summaryself -> dict[str, Any]",
+              "line": 54,
+              "doc": ""
+            },
+            {
+              "name": "save",
+              "signature": "def saveself, folder: str | Path -> Path",
+              "line": 62,
+              "doc": ""
+            },
+            {
+              "name": "load",
+              "signature": "def loadcls, folder: str | Path -> Harvest",
+              "line": 78,
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "channel_scores",
+          "signature": "def channel_scoresexploded: Exploded, layer: int, dial_scores: Any=None -> Any",
+          "line": 94,
+          "doc": "One score per feed-forward channel of *layer*: the summed dial scores of its ``ffn_gate`` and ``ffn_up`` rows and its ``ffn_down`` column (weight magnitudes when no scores are given)."
+        },
+        {
+          "kind": "function",
+          "name": "reap",
+          "signature": "def reapexploded: Exploded, *, report: list[LayerVerdict] | None=None, prober: Any=None, keep_layers: int | None=None, drop_layers: int | None=None, drop_unneeded: bool=True, unneeded: Any=None, dial_scores: Any=None, ffn_keep: float=1.0, mask_loose: bool=False -> Harvest",
+          "line": 128,
+          "doc": "Reap one model."
+        },
+        {
+          "kind": "function",
+          "name": "reap_best",
+          "signature": "def reap_bestexplodeds: Sequence[Exploded], reports: Sequence[list[LayerVerdict]] | None=None, *, probers: Sequence[Any] | None=None, layers: int | None=None -> Harvest",
+          "line": 169,
+          "doc": "Cherry-pick layers from several same-shaped models."
+        }
+      ],
+      "errors": [
+        "C4Error"
+      ],
+      "deprecations": [],
+      "required_modules": [],
+      "changes": []
+    },
+    {
+      "module": "hypernix.c4.restore",
+      "source": "src/hypernix/c4/restore.py",
+      "line_count": 188,
+      "summary": "hypernix.c4.restore \u2014 putting pieces back, and writing a model out.",
+      "api": [
+        {
+          "kind": "class",
+          "name": "Snapshot",
+          "signature": "class Snapshot",
+          "line": 50,
+          "doc": "Copies of the stems a change will touch, to put back exactly.",
+          "methods": [
+            {
+              "name": "take",
+              "signature": "def takecls, exploded: Exploded, pieces: Iterable[Piece] -> Snapshot",
+              "line": 57,
+              "doc": ""
+            },
+            {
+              "name": "restore",
+              "signature": "def restoreself, names: Iterable[str] | None=None -> list[str]",
+              "line": 66,
+              "doc": "Put the saved stems back. Returns which."
+            },
+            {
+              "name": "bytes",
+              "signature": "def bytesself -> int",
+              "line": 79,
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "apply_ablation",
+          "signature": "def apply_ablationexploded: Exploded, piece: Dial | MDial | PDial | Stem, how: str='zero', *, seed: int=0 -> None",
+          "line": 83,
+          "doc": "Take *piece* out of the model in place (see :data:`ABLATIONS`)."
+        },
+        {
+          "kind": "function",
+          "name": "ablated",
+          "signature": "def ablatedexploded: Exploded, pieces: Piece | Iterable[Piece], how: str='zero', *, seed: int=0 -> Iterator[Snapshot]",
+          "line": 122,
+          "doc": "Take *pieces* out for the length of the block, then put them back."
+        },
+        {
+          "kind": "function",
+          "name": "write",
+          "signature": "def writemodel: C4Model, out: str | Path, *, format: str='safetensors', tensors: dict[str, Any] | None=None, config: dict[str, Any] | None=None, source_folder: str | Path | None=None, dtype: Any=None -> Path",
+          "line": 141,
+          "doc": "Write *model* (or *tensors* with *config*) to *out*."
+        }
+      ],
+      "errors": [
+        "C4Error"
+      ],
+      "deprecations": [],
+      "required_modules": [],
+      "changes": []
+    },
+    {
+      "module": "hypernix.c4.sow",
+      "source": "src/hypernix/c4/sow.py",
+      "line_count": 173,
+      "summary": "hypernix.c4.sow \u2014 a new model, grown from what a reap gathered.",
+      "api": [
+        {
+          "kind": "function",
+          "name": "renumber",
+          "signature": "def renumbername: str, new_index: int -> str",
+          "line": 41,
+          "doc": "*name* with its layer index replaced by *new_index*."
+        },
+        {
+          "kind": "class",
+          "name": "SowReport",
+          "signature": "class SowReport",
+          "line": 47,
+          "doc": "",
+          "methods": [
+            {
+              "name": "to_dict",
+              "signature": "def to_dictself -> dict[str, Any]",
+              "line": 58,
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "sow",
+          "signature": "def sowharvest: Harvest, out: str | Path, *, explodeds: Sequence[Exploded] | None=None, format: str | None=None, device: str | None='cpu', prober: Any=None, check: bool=True -> SowReport",
+          "line": 81,
+          "doc": "Write the model *harvest* describes to *out*."
+        },
+        {
+          "kind": "function",
+          "name": "heal",
+          "signature": "def healpath: str | Path, calibration: Any, *, steps: int=50, optimizer: str='hybrid', lr: float=0.0001, device: str | None='auto', out: str | Path | None=None, sections: str='stem' -> dict[str, Any]",
+          "line": 170,
+          "doc": "Train a sown model for a few steps with the c4 optimizer, then save it."
+        }
+      ],
+      "errors": [
+        "C4Error"
+      ],
+      "deprecations": [],
+      "required_modules": [],
+      "changes": []
+    },
+    {
+      "module": "hypernix.c4.stem",
+      "source": "src/hypernix/c4/stem.py",
+      "line_count": 213,
+      "summary": "hypernix.c4.stem \u2014 measuring and testing stems and mstems.",
+      "api": [
+        {
+          "kind": "class",
+          "name": "StemStats",
+          "signature": "class StemStats",
+          "line": 48,
+          "doc": "",
+          "methods": [
+            {
+              "name": "to_dict",
+              "signature": "def to_dictself -> dict[str, Any]",
+              "line": 65,
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "measure",
+          "signature": "def measureexploded: Exploded, stem: Stem | str, *, spectral: bool=True -> StemStats",
+          "line": 94,
+          "doc": "A stem's weight statistics. Runs where the stem lives (the GPU)."
+        },
+        {
+          "kind": "function",
+          "name": "measure_all",
+          "signature": "def measure_allexploded: Exploded, *, spectral: bool=True -> dict[str, StemStats]",
+          "line": 124,
+          "doc": ""
+        },
+        {
+          "kind": "function",
+          "name": "redundancy",
+          "signature": "def redundancyexploded: Exploded, a: MStem, b: MStem -> float",
+          "line": 128,
+          "doc": "Mean cosine similarity of two layers' same-role stems (1 = identical)."
+        },
+        {
+          "kind": "function",
+          "name": "block_influence",
+          "signature": "def block_influenceprober: Any -> list[float]",
+          "line": 143,
+          "doc": "Per layer, 1 - cos(input hidden state, output hidden state), averaged over tokens."
+        },
+        {
+          "kind": "class",
+          "name": "TestResult",
+          "signature": "class TestResult",
+          "line": 156,
+          "doc": "",
+          "methods": [
+            {
+              "name": "delta",
+              "signature": "def deltaself -> float",
+              "line": 163,
+              "doc": "How much worse the model got without the piece (negative = better without it)."
+            },
+            {
+              "name": "to_dict",
+              "signature": "def to_dictself -> dict[str, Any]",
+              "line": 167,
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "ablation_test",
+          "signature": "def ablation_testexploded: Exploded, prober: Any, pieces: Iterable[Any], *, how: str='zero', base_loss: float | None=None -> list[TestResult]",
+          "line": 172,
+          "doc": "Take each piece out in turn, measure the loss, put it back."
+        },
+        {
+          "kind": "class",
+          "name": "LayerVerdict",
+          "signature": "class LayerVerdict",
+          "line": 190,
+          "doc": "",
+          "methods": [
+            {
+              "name": "to_dict",
+              "signature": "def to_dictself -> dict[str, Any]",
+              "line": 201,
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "layer_report",
+          "signature": "def layer_reportexploded: Exploded, prober: Any=None, *, test: bool=True, how: str='zero', spectral: bool=False -> list[LayerVerdict]",
+          "line": 205,
+          "doc": "Every mstem, measured (and tested when there is a prober), ranked."
+        }
+      ],
+      "errors": [
+        "C4Error"
+      ],
+      "deprecations": [],
+      "required_modules": [],
+      "changes": []
     },
     {
       "module": "hypernix.chat",
@@ -14247,14 +15161,14 @@
     {
       "module": "hypernix.interfaces.cli",
       "source": "src/hypernix/interfaces/cli.py",
-      "line_count": 1617,
+      "line_count": 1623,
       "summary": "Command-line interface for the hypernix package.",
       "api": [
         {
           "kind": "function",
           "name": "main",
           "signature": "def mainargv: list[str] | None=None -> int",
-          "line": 1348,
+          "line": 1351,
           "doc": ""
         }
       ],

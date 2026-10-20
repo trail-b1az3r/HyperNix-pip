@@ -115,6 +115,7 @@ reachable if you already knew the filename. Fixed.)
 
 | Guide | Covers |
 |---|---|
+| [C4](C4.md) | `hypernix.c4` — explode a model (safetensors, `.pt` or GGUF, on the GPU) into mstems, stems, Pdials, mdials and dials; measure and test them; find what is unneeded or most worth training; `reap` the best layers and weights and `sow` them into a new model; the separate-and-check c4 optimizer. |
 | [Whisk](Whisk.md) | Checkpoint averaging — SWA / EMA / geometric-mean over N saved snapshots. |
 | [RecipeBook](RecipeBook.md) | Named-config registry (`cook(name, **overrides)`), the backing store for `hypernix brew`. |
 | [DeepFryer](DeepFryer.md) | Reversible weight-noise perturbation — a regularizer or a severe stress-test. |

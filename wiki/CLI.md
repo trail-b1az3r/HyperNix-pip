@@ -47,6 +47,7 @@ Assistants & dashboards:
 Data & infra:
   scavenger              search + pull HF datasets under storage/quality budgets
   gather                 crawl a site into a corpus (see Gather.md)
+  c4                     explode a model; measure, reap and sow its layers and weights (see C4.md)
   fusebox                GPU thermal governor for a run (see FuseBox.md)
   runtime                use the HyperNix llama.cpp from LM Studio etc.
   websearch              non-API web search utility
@@ -654,6 +655,34 @@ and a host's own `Crawl-delay` overrides `-p` when it asks for longer.
 Script-shaped: `--json` on stdout with progress on stderr, and exit
 codes `0` crawled / `1` nothing fetched / `2` bad arguments / `3`
 interrupted. Full documentation in [Gather](Gather.md).
+
+## `c4`
+
+```bash
+hnx c4 explode MODEL --save ./pieces          # what the model is made of
+hnx c4 stem MODEL --test --calib calib.txt    # which layers are needed
+hnx c4 dial MODEL --calib calib.txt --score taylor --unneeded 0.2 --priority pdial
+hnx c4 reap MODEL --calib calib.txt --drop 2 --unneeded 0.2 --ffn-keep 0.75 -o harvest
+hnx c4 reap --best A B C --calib calib.txt -o harvest
+hnx c4 sow harvest -o ./new-model --heal 100 --calib calib.txt
+hnx c4 restore MODEL -o ./model-pt --format pt
+```
+
+Takes a model apart on the GPU (CUDA, then MPS, then the CPU; `--device`
+to choose) and finds out what each piece is worth. `MODEL` is a
+safetensors folder or file, or a `.pt` state dict — both with a
+`config.json` beside them — or a GGUF. `stem` ranks the layers
+(`unneeded`, `candidate to drop`, `needed`, `keep`); `dial` scores every
+weight (`magnitude`, `taylor`, `fisher`, `wanda`), picks the unneeded
+share and ranks what to train first; `reap` writes a harvest (the layers,
+dials and feed-forward channels to keep, as JSON plus a masks file) and
+`sow` builds a model from it, optionally healing it with the c4
+optimizer (`--optimizer hybrid|v5s|adamw`, `--lr`).
+
+`--calib` is a text file (blank lines separate passages) read with the
+model's tokenizer; without it the tests run on random tokens and say so.
+`--json` prints JSON. Exit code `1` on a model c4 cannot use. `hnx-c4` is
+the same command. Full documentation in [C4](C4.md).
 
 ## `fusebox`
 

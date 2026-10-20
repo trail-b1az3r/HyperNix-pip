@@ -1,7 +1,7 @@
 {
   "definition": "non-blank source lines across repository code roots: src, scripts, tests, examples, bin, native, docs/src",
-  "total_lines": 234910,
-  "code_files": 780,
+  "total_lines": 237570,
+  "code_files": 792,
   "top_files": [
     {
       "path": "src/hypernix/t1api/routers/hyperlink.py",
@@ -29,7 +29,7 @@
     },
     {
       "path": "src/hypernix/interfaces/cli.py",
-      "lines": 1617
+      "lines": 1623
     },
     {
       "path": "src/hypernix/models/neo_oven.py",
@@ -127,11 +127,11 @@
   "contributors": [
     {
       "author": "Claude",
-      "additions": 219748,
-      "deletions": 15031,
+      "additions": 219769,
+      "deletions": 15052,
       "net": 204717,
-      "changes": 234779,
-      "commits": 256,
+      "changes": 234821,
+      "commits": 257,
       "files": 1632
     },
     {
@@ -199,6 +199,6 @@
     }
   ],
   "history_available": true,
-  "commit": "4a25a2d5804a40dd5ca316c008544232118e299e",
+  "commit": "452dc767eaf468b469c98665c6a81fb2012809e1",
   "generated_at": null
 }

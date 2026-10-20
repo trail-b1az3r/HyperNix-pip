@@ -9,6 +9,7 @@ eth = hypernix.system.ethanol:cli_main
 gkey = hypernix.security.gkey_cli:main
 hnx = hypernix.interfaces.version_launcher:main
 hnx-bundle = hypernix.quant.multiquant_cli:cli_main
+hnx-c4 = hypernix.c4.cli:cli_main
 hnx-headers = hypernix.quant.hyprslug_headers_cli:cli_main
 hnx-imatrix = hypernix.quant.imatrix_cli:cli_main
 hnx-map = hypernix.monitoring.map:cli_main

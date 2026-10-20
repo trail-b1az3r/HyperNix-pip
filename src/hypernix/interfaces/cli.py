@@ -104,6 +104,8 @@ _SUBCOMMANDS = {
     "gather",
     "fusebox",
     "fuse-box",
+    # 0.72.8: explode, measure, reap and sow a model
+    "c4",
     "runtime",
     # v0.71.0
     "gkey",
@@ -247,6 +249,7 @@ def _print_usage() -> None:
         table.add_row("[green]scavenger[/]", "Scavenger tools")
         table.add_row("[green]gather[/]", "Crawl a site into a corpus (robots-aware)")
         table.add_row("[green]fusebox[/]", "GPU thermal governor: pace a run, trip on heat, underclock")
+        table.add_row("[green]c4[/]", "Explode a model; measure, reap and sow its layers and weights")
         table.add_row("[green]runtime[/]", "Use the HyperNix llama.cpp from LM Studio and other apps")
         table.add_row("[green]config[/]", "Configuration management")
         table.add_row("[green]gkey[/]", "API key & access management (Gatekeeper + Keymaster)")
@@ -316,6 +319,7 @@ def _print_usage() -> None:
             "  scavenger              Scavenger tools\n"
             "  gather                 crawl a site into a corpus (robots-aware)\n"
             "  fusebox                GPU thermal governor for a training run\n"
+            "  c4                     explode a model; measure, reap and sow its layers and weights\n"
             "  runtime                use the HyperNix llama.cpp from other apps\n"
             "  config                 Configuration management\n"
             "  gkey                   API key & access management (Gatekeeper + Keymaster)\n"
@@ -1422,6 +1426,10 @@ def _dispatch(cmd: str, rest: list[str]) -> int:
         from hypernix.data.gather_cli import main as _gather_main
 
         return _gather_main(rest)
+    if cmd == "c4":
+        from hypernix.c4.cli import cli_main as _c4_main
+
+        return _c4_main(rest)
     if cmd in ("fusebox", "fuse-box"):
         from hypernix.system.fusebox_cli import main as _fusebox_main
 

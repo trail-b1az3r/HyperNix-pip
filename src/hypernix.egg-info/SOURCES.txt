@@ -127,6 +127,17 @@ src/hypernix/audio/wakeup.py
 src/hypernix/audio/wakeup_cli.py
 src/hypernix/bridge/__init__.py
 src/hypernix/bridge/lmstudio.py
+src/hypernix/c4/__init__.py
+src/hypernix/c4/cli.py
+src/hypernix/c4/dial.py
+src/hypernix/c4/explode.py
+src/hypernix/c4/model.py
+src/hypernix/c4/optim.py
+src/hypernix/c4/probe.py
+src/hypernix/c4/reap.py
+src/hypernix/c4/restore.py
+src/hypernix/c4/sow.py
+src/hypernix/c4/stem.py
 src/hypernix/chat/__init__.py
 src/hypernix/chat/cookbook.py
 src/hypernix/chat/countertop.py
@@ -375,6 +386,7 @@ src/hypernix/scriptgen/widgets.py
 src/hypernix/security/__init__.py
 src/hypernix/security/gatekeeper.py
 src/hypernix/security/gkey_cli.py
+src/hypernix/security/hfpin.py
 src/hypernix/security/keyconfig.py
 src/hypernix/security/keymaster.py
 src/hypernix/security/keyversions.py
@@ -551,6 +563,7 @@ tests/shell_support.py
 tests/audio/test_audio_processor.py
 tests/audio/test_wakeup.py
 tests/browser/test_firefox_extension.py
+tests/c4/test_c4.py
 tests/chat/test_v051.py
 tests/data/test_coverage_beef.py
 tests/data/test_gather.py
@@ -571,6 +584,7 @@ tests/docs/test_docs_current.py
 tests/docs/test_website_mobile.py
 tests/elements/test_elements.py
 tests/evaluation/test_ranges.py
+tests/evaluation/test_ranges_0728.py
 tests/evaluation/test_vera.py
 tests/hyperlink/test_chat_compaction.py
 tests/hyperlink/test_chat_ring.py
@@ -721,6 +735,7 @@ tests/runtime/test_runtime_toolcalls.py
 tests/scriptgen/test_v0721_modules.py
 tests/security/test_bootstrap_key.py
 tests/security/test_gkey_key_versions.py
+tests/security/test_hfpin_and_net_quoting.py
 tests/security/test_rotorvault.py
 tests/security/test_safeload.py
 tests/security/test_safeurl.py
@@ -827,6 +842,7 @@ wiki/Architectures.md
 wiki/Bell.md
 wiki/Blender.md
 wiki/Browser-Agent.md
+wiki/C4.md
 wiki/CLI.md
 wiki/CakePan.md
 wiki/Camouflage.md

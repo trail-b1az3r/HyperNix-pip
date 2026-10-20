@@ -3,6 +3,114 @@
   "source": "wiki/Changelog.md",
   "entries": [
     {
+      "version": "0.72.8a2",
+      "key": "0.72.8a2",
+      "aliases": [
+        "0.72.8a2"
+      ],
+      "kind": "alpha",
+      "heading": "0.72.8a2 \u2014 2026-10-20",
+      "date": "2026-10-20",
+      "title": "",
+      "summary": "c4: explode a model, measure its pieces, reap the best, sow a new one. hypernix.c4 loads a safetensors model, a .pt state dict (both with a config.json) or a GGUF onto the GPU and takes it apart into mstems (a layer and its connections), stems (one connection's tensor), Pdials\u2026",
+      "patch": null,
+      "headline": "",
+      "highlights": [
+        "c4: explode a model, measure its pieces, reap the best, sow a new one. hypernix.c4 loads a safetensors model, a .pt state dict (both with a config.json) or a GGUF onto the GPU and takes it apart into mstems (a layer and its connections), stems (one connection's tensor), Pdials\u2026",
+        "hypernix.c4.explode: the pieces, their counts, iterators over Pdials, mdials and dials, and save() \u2014 one safetensors file per mstem plus a manifest.",
+        "hypernix.c4.stem: measured statistics (spread, outliers, sparsity, kurtosis, effective and stable rank, 4-bit round-trip error, layer similarity) and tested ones (the loss without a stem or a layer, block influence), and layer_report, which calls each layer unneeded, candidate\u2026",
+        "hypernix.c4.dial: per-parameter magnitude, taylor, fisher and wanda scores; unneeded() (the lowest share, and rows that can go whole); train_priority() (stems, Pdials or layers ranked by how much training them next would lower the loss, flagging those that need retraining)\u2026",
+        "hypernix.c4.restore: snapshots and ablated(), so every test leaves the model exactly as it was, and write() to safetensors (with config and tokenizer), .pt or GGUF.",
+        "hypernix.c4.reap chooses the layers, dials to zero and feed-forward channels to keep, saved as a reviewable Harvest; reap_best() cherry-picks the best layer at each depth across several same-shaped models. hypernix.c4.sow builds the new model from it \u2014 layers renumbered, dials\u2026"
+      ],
+      "changes": [
+        {
+          "symbol": "\u0e4b\u08ed\u2b51",
+          "label": "major",
+          "category": "Added",
+          "text": "c4: explode a model, measure its pieces, reap the best, sow a new one. hypernix.c4 loads a safetensors model, a .pt state dict (both with a config.json) or a GGUF onto the GPU and takes it apart into mstems (a layer and its connections), stems (one connection's tensor), Pdials\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "hypernix.c4.explode: the pieces, their counts, iterators over Pdials, mdials and dials, and save() \u2014 one safetensors file per mstem plus a manifest.",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "hypernix.c4.stem: measured statistics (spread, outliers, sparsity, kurtosis, effective and stable rank, 4-bit round-trip error, layer similarity) and tested ones (the loss without a stem or a layer, block influence), and layer_report, which calls each layer unneeded, candidate\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "hypernix.c4.dial: per-parameter magnitude, taylor, fisher and wanda scores; unneeded() (the lowest share, and rows that can go whole); train_priority() (stems, Pdials or layers ranked by how much training them next would lower the loss, flagging those that need retraining)\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "hypernix.c4.restore: snapshots and ablated(), so every test leaves the model exactly as it was, and write() to safetensors (with config and tokenizer), .pt or GGUF.",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "hypernix.c4.reap chooses the layers, dials to zero and feed-forward channels to keep, saved as a reviewable Harvest; reap_best() cherry-picks the best layer at each depth across several same-shaped models. hypernix.c4.sow builds the new model from it \u2014 layers renumbered, dials\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "The c4 optimizer (hypernix.c4.optim.C4Optimizer): back-propagates, then separates the gradients into sections (stems, mstems or rows) and checks each before updating \u2014 a non-finite section is skipped, a spike clipped to its own history, a dead section frozen, unneeded dials\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "hnx c4 (explode, stem, dial, reap, sow, restore) and the hnx-c4 entry point.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udcda",
+          "label": "docs",
+          "category": "Documentation",
+          "text": "[C4](C4.md): the pieces, the sections, the optimizer, the command line and the limits; [CLI](CLI.md): hnx c4; [Home](Home.md): the C4 guide.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83e\uddea",
+          "label": "tests",
+          "category": "Tests",
+          "text": "c4 on a small Llama: loading each format and refusing a missing config.json, the pieces and addresses, exact restoration after ablation, layer verdicts, every dial score, unneeded masks and priorities, reap and sow (layer drop, channel pruning, a GGUF by its weights alone\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\u2757",
+          "label": "known issue",
+          "category": "Known Issues",
+          "text": "c4's GPU paths were exercised on the CPU only: there is no GPU in the build environment.",
+          "details": []
+        },
+        {
+          "symbol": "\u2757",
+          "label": "known issue",
+          "category": "Known Issues",
+          "text": "Running a model (tested numbers, scores other than magnitude, healing) needs an architecture transformers can build; a GGUF it cannot build is still exploded, measured, reaped and sown by its weights.",
+          "details": []
+        }
+      ]
+    },
+    {
       "version": "0.72.8a1",
       "key": "0.72.8a1",
       "aliases": [
@@ -814,41 +922,7 @@
         "Fixed Neo Oven loading hyperNix0x-v2 models from anything but a folder with a config.json.",
         "Fixed a hyperNix0x-v2 model saved without a config.json converting to a GGUF no llama.cpp opens."
       ],
-      "changes": [
-        {
-          "symbol": "\ud81a\udca5",
-          "label": "major fix",
-          "category": "Fixed",
-          "text": "Fixed hyped-pro and hyped refusing models nobody wrote a catalog entry for.",
-          "details": [
-            "hyped-pro refused any name outside its catalog (HPC-CFG-001), and its picker listed nothing that was on disk. It now also runs a path to a .gguf, a model folder or a Brewer .pt, a model in /.hypernix/models by name (exactly: a typo is an error, not a different model), and a\u2026",
-            "A T1 server routing to a model it had indexed got \"this client has no local model for it\": a model here of exactly that name is used.",
-            "hyped (basic) could not run a local model at all (\"this build cannot run it directly\"), found only .gguf files, and did not follow a symlinked folder. It runs any of the above itself, with no tools, and /model takes a path, a name or a repo id.",
-            "hyped sent its T1 turns to /v1/chat/completions on the T1 server, which has no such route: every reply was a 404. It now asks /runner/status where the loaded model answers and talks to that."
-          ]
-        },
-        {
-          "symbol": "\ud81a\udca5",
-          "label": "major fix",
-          "category": "Fixed",
-          "text": "Fixed Neo Oven loading hyperNix0x-v2 models from anything but a folder with a config.json.",
-          "details": [
-            "preheat_brewed (and brewer_adapter.load) failed on a folder uploaded from a training run with no config.json, on a model.pt that is a whole training checkpoint, and on weights saved from a torch.compiled model (orig_mod.). A run's checkpoints/latest.pt loaded with the byte\u2026",
-            "Every Brewer model reported a 2048-token context: NeoOven read only max_position_embeddings, and a Brewer config calls it max_seq_len. HyperNix.3-mini, trained at 512, ran RoPE far past anything it had seen once a conversation grew."
-          ]
-        },
-        {
-          "symbol": "\ud81a\udca5",
-          "label": "major fix",
-          "category": "Fixed",
-          "text": "Fixed a hyperNix0x-v2 model saved without a config.json converting to a GGUF no llama.cpp opens.",
-          "details": [
-            "From a report: HyperNix.3-mini ran in a patched llama.cpp and HyperNix.3.1-mini said unknown model architecture: 'hypernix'. A folder uploaded from a training run -- model.safetensors, model.pt, tokenizer/, no config.json -- was not recognised as Brewer, so it went to the\u2026",
-            "A folder is now Brewer by its tensor names when it has no config. The config is read from the safetensors header or a training checkpoint beside the weights, and the tokenizer from tokenizer/. convert_to_gguf hands Brewer models to the llama exporter, so hnx convert, -P, hnx\u2026",
-            "An existing hypernix-labelled GGUF is refused by the T1 runner before llama-server starts, with the command that exports it again, and hnx convert says when it has written one."
-          ]
-        }
-      ]
+      "changes": []
     },
     {
       "version": "0.72.6.post3",
