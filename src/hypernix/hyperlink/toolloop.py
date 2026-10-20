@@ -36,6 +36,7 @@ from __future__ import annotations
 import itertools
 import json
 import logging
+import os
 import re
 from collections.abc import Callable
 from typing import Any
@@ -61,6 +62,7 @@ __all__ = [
     "run_tool_loop",
     "stream_tool_loop",
     "told_to_remember",
+    "memory_only_when_told",
     "CallGuard",
 ]
 
@@ -126,10 +128,16 @@ class ToolRound:
 #: follow the person's auto-memory setting, not the workspace switch.
 MEMORY_TOOLS = ("update_memory", "read_memory")
 
-#: Tools that write a memory. A model calls them only when the person has
-#: asked it to remember (or forget) something (0.72.8): a memory saved on
-#: the model's own initiative is one the person never agreed to keep.
+#: Tools that write a memory (0.72.8). The default prompt says when to:
+#: when the person asks, or when the model judges a note useful later.
+#: ``T1_HYPERLINK_MEMORY_WHEN_TOLD=1`` holds the model to the first only:
+#: a write the person did not ask for is refused as a tool result.
 MEMORY_WRITES = ("update_memory", "memory_create")
+
+
+def memory_only_when_told() -> bool:
+    """Whether a memory write needs the person to have asked for it."""
+    return os.environ.get("T1_HYPERLINK_MEMORY_WHEN_TOLD", "").strip().lower() in ("1", "true", "yes", "on")
 
 _TOLD_TO_REMEMBER = re.compile(
     r"\b(remember|memori[sz]e|forget|don'?t forget|keep in mind|make a note|note (this|that|down)|"
@@ -158,8 +166,8 @@ def _not_told(call: dict[str, Any]) -> ToolRound:
     name = (call.get("function") or {}).get("name", "")
     return ToolRound(
         name, {}, False,
-        "Not saved: the person did not ask you to remember anything. Save a memory "
-        "only when they tell you to; carry on without it.",
+        "Not saved: the person did not ask you to remember anything, and this server "
+        "saves memories only when told to. Carry on without it.",
         "memory_not_requested",
     )
 
@@ -305,7 +313,7 @@ def run_tool_loop(
     continue.
     """
     messages, tools, t1_names = _prepare(wire, context, t1, teach_format, workspace)
-    told = told_to_remember(wire)
+    told = told_to_remember(wire) or not memory_only_when_told()
     rounds: list[ToolRound] = []
     envelope: dict[str, Any] = {}
     retried_format = False
@@ -536,7 +544,7 @@ def stream_tool_loop(
     as it comes, like any other text, so the person sees the whole turn.
     """
     messages, tools, t1_names = _prepare(wire, context, t1, teach_format, workspace)
-    told = told_to_remember(wire)
+    told = told_to_remember(wire) or not memory_only_when_told()
     rounds: list[ToolRound] = []
     model, finish, usage = "", "", {}
     retried_format = False

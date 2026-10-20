@@ -108,7 +108,7 @@ class TestATurn:
 
         class Loaded:
             model_id = "tiny"
-            context_length = 1536
+            context_length = 800
 
         class FakeRunner:
             base_url = "http://127.0.0.1:8081"
@@ -126,6 +126,11 @@ class TestATurn:
                         "model": model, "usage": {}}
 
         from hypernix.hyperlink import inference
+        from hypernix.t1api.routers import hyperlink as hyperlink_router
+
+        # Only the person's own prompt, so the test does not move every
+        # time the default prompt's wording does.
+        monkeypatch.setattr(hyperlink_router, "default_prompt_for", lambda config, backend: "")
 
         monkeypatch.setattr(inference, "_openai_client", lambda base_url, timeout=300.0: StubClient())
         client.patch("/hyperlink/preferences", json={"system_prompt": PROMPT})
@@ -139,5 +144,5 @@ class TestATurn:
         assert system["content"].count("Background detail number") < 40
         assert "Never invent facts" in system["content"]
         meta = response.json()["assistant_message"]["metadata"]["hypercompressed"]
-        assert meta["applied"] and meta["context_length"] == 1536 and meta["share"] == "1/3"
-        assert meta["after_tokens"] <= 1536 // 3 < meta["before_tokens"]
+        assert meta["applied"] and meta["context_length"] == 800 and meta["share"] == "1/3"
+        assert meta["after_tokens"] <= 800 // 3 < meta["before_tokens"]

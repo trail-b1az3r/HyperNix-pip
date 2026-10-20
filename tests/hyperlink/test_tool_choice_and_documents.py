@@ -39,7 +39,7 @@ class TestThePrompt:
         "work out what to search for",
         "document tool",
         "Save a memory only when the",
-        "Never save one on your own initiative",
+        "you may save a memory when you think its useful",
     ])
     def test_it_says(self, point):
         assert point in DEFAULT_PROMPT
@@ -73,7 +73,18 @@ class TestTheGuard:
     def context(self, tmp_path):
         return ToolContext(root=tmp_path, memory_enabled=True, memory_path=tmp_path / "memory.json")
 
-    def test_a_memory_the_person_did_not_ask_for_is_not_saved(self, context, tmp_path):
+    def test_by_default_the_model_may_save_one_it_judges_useful(self, context, tmp_path, monkeypatch):
+        """The default prompt lets the model keep a note it thinks will
+        help later; only the strict setting refuses one."""
+        monkeypatch.delenv("T1_HYPERLINK_MEMORY_WHEN_TOLD", raising=False)
+        ask = scripted(envelope(calls=[call("update_memory", {"key": "city", "value": "Leeds"})]),
+                       envelope("Sure."))
+        _m, _f, rounds = run_tool_loop([{"role": "user", "content": "I live in Leeds, what's near me?"}],
+                                       context, ask=ask, extract=extract, workspace=False)
+        assert rounds[0].ok is True
+
+    def test_a_memory_the_person_did_not_ask_for_is_not_saved(self, context, tmp_path, monkeypatch):
+        monkeypatch.setenv("T1_HYPERLINK_MEMORY_WHEN_TOLD", "1")
         ask = scripted(envelope(calls=[call("update_memory", {"key": "city", "value": "Leeds"})]),
                        envelope("Sure."))
         _m, _f, rounds = run_tool_loop([{"role": "user", "content": "I live in Leeds, what's near me?"}],
@@ -81,7 +92,8 @@ class TestTheGuard:
         assert rounds[0].ok is False and rounds[0].code == "memory_not_requested"
         assert not (tmp_path / "memory.json").exists()
 
-    def test_one_they_asked_for_is(self, context, tmp_path):
+    def test_one_they_asked_for_is(self, context, tmp_path, monkeypatch):
+        monkeypatch.setenv("T1_HYPERLINK_MEMORY_WHEN_TOLD", "1")
         ask = scripted(envelope(calls=[call("update_memory", {"key": "city", "value": "Leeds"})]),
                        envelope("Noted."))
         _m, _f, rounds = run_tool_loop([{"role": "user", "content": "Remember that I live in Leeds"}],
