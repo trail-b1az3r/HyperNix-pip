@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 from pathlib import Path
 from typing import Any
 
@@ -208,9 +209,12 @@ class ScriptGenApp:
 
         self.root = tk.Tk()
         self.root.title("hnx scriptgen — HyperNix training script builder")
-        self.root.geometry("1360x860")
-        self.root.minsize(1100, 700)
+        self.root.geometry("1440x900")
+        self.root.minsize(1140, 720)
         self.root.configure(bg=PALETTE.obsidian)
+        # Let the desktop's own window manager draw its native title bar and
+        # outer corners. The app's content uses rounded canvas-backed cards,
+        # which work consistently even on Tk builds without native rounding.
         self._style()
         self._build()
         self._refresh_preview()
@@ -227,72 +231,172 @@ class ScriptGenApp:
             style.theme_use("clam")
         except Exception:  # noqa: BLE001
             logger.debug("scriptgen: clam theme unavailable")
-        style.configure("TNotebook", background=PALETTE.obsidian, borderwidth=0)
+        style.configure(
+            "TNotebook", background=PALETTE.charcoal, borderwidth=0,
+            tabmargins=(6, 6, 6, 0),
+        )
         style.configure(
             "TNotebook.Tab",
-            background=PALETTE.charcoal, foreground=PALETTE.text_dim,
-            padding=(16, 8), font=FONTS["body"], borderwidth=0,
+            background=PALETTE.slate, foreground=PALETTE.text_dim,
+            padding=(16, 10), font=FONTS["body_bold"], borderwidth=0,
         )
         style.map(
             "TNotebook.Tab",
-            background=[("selected", PALETTE.slate)],
-            foreground=[("selected", PALETTE.text)],
+            background=[("selected", PALETTE.red), ("active", PALETTE.slate_high)],
+            foreground=[("selected", PALETTE.text), ("active", PALETTE.text)],
         )
         style.configure("TFrame", background=PALETTE.charcoal)
         style.configure(
             "TCombobox",
             fieldbackground=PALETTE.slate, background=PALETTE.slate,
             foreground=PALETTE.text, arrowcolor=PALETTE.red_bright,
-            bordercolor=PALETTE.edge, lightcolor=PALETTE.slate, darkcolor=PALETTE.slate,
+            bordercolor=PALETTE.edge, lightcolor=PALETTE.slate,
+            darkcolor=PALETTE.slate, padding=(8, 6), arrowsize=12,
+        )
+        style.map(
+            "TCombobox",
+            fieldbackground=[("readonly", PALETTE.slate)],
+            foreground=[("readonly", PALETTE.text)],
+            bordercolor=[("focus", PALETTE.red_bright)],
+        )
+        style.configure(
+            "Dark.Vertical.TScrollbar",
+            background=PALETTE.slate_high, troughcolor=PALETTE.charcoal,
+            bordercolor=PALETTE.charcoal, arrowcolor=PALETTE.text_dim,
+            relief="flat", gripcount=0,
         )
         self.root.option_add("*TCombobox*Listbox.background", PALETTE.slate)
         self.root.option_add("*TCombobox*Listbox.foreground", PALETTE.text)
         self.root.option_add("*TCombobox*Listbox.selectBackground", PALETTE.red)
+
+    class _RoundedPanel:
+        """Canvas-backed rounded panel with an inset Tk content frame.
+
+        Tk widgets are rectangular by design. Drawing the surface on a canvas
+        and keeping children inset gives cards genuinely rounded visible
+        corners without requiring Pillow, a theme package, or a custom window
+        manager integration.
+        """
+
+        def __init__(
+            self, parent: Any, tk: Any, *, background: str, fill: str,
+            outline: str, radius: int = 18, inset: int = 12,
+        ) -> None:
+            self.tk = tk
+            self.fill = fill
+            self.outline = outline
+            self.radius = radius
+            self.inset = inset
+            self.frame = tk.Frame(parent, bg=background, bd=0, highlightthickness=0)
+            self.canvas = tk.Canvas(
+                self.frame, bg=background, bd=0, highlightthickness=0,
+                relief="flat",
+            )
+            self.canvas.pack(fill="both", expand=True)
+            self.content = tk.Frame(self.canvas, bg=fill, bd=0, highlightthickness=0)
+            self.window = self.canvas.create_window(
+                inset, inset, anchor="nw", window=self.content,
+            )
+            self.surface = self.canvas.create_polygon(
+                0, 0, 1, 0, 1, 1, 0, 1,
+                fill=fill, outline=outline, width=1, smooth=True,
+                splinesteps=16,
+            )
+            # Keep the surface behind the embedded content frame.
+            self.canvas.tag_lower(self.surface)
+            self.canvas.bind("<Configure>", self._resize)
+
+        def pack(self, *args: Any, **kwargs: Any) -> None:
+            self.frame.pack(*args, **kwargs)
+
+        def _resize(self, event: Any) -> None:
+            width = max(2, event.width - 1)
+            height = max(2, event.height - 1)
+            radius = max(4, min(self.radius, width // 2, height // 2))
+            points: list[float] = []
+            corners = (
+                (width - radius, radius, -90, 0),
+                (width - radius, height - radius, 0, 90),
+                (radius, height - radius, 90, 180),
+                (radius, radius, 180, 270),
+            )
+            for cx, cy, start, end in corners:
+                for step in range(7):
+                    angle = math.radians(start + (end - start) * step / 6)
+                    points.extend((cx + radius * math.cos(angle), cy + radius * math.sin(angle)))
+            self.canvas.coords(self.surface, *points)
+            self.canvas.coords(self.window, self.inset, self.inset)
+            self.canvas.itemconfigure(
+                self.window,
+                width=max(1, width - self.inset * 2),
+                height=max(1, height - self.inset * 2),
+            )
 
     def _build(self) -> None:
         tk = self.tk
         self._build_header()
 
         body = tk.Frame(self.root, bg=PALETTE.obsidian)
-        body.pack(fill="both", expand=True, padx=10, pady=(0, 8))
+        body.pack(fill="both", expand=True, padx=18, pady=(4, 12))
 
-        left = tk.Frame(body, bg=PALETTE.charcoal, highlightthickness=1,
-                        highlightbackground=PALETTE.edge)
-        left.pack(side="left", fill="both", expand=True, padx=(0, 6))
+        left_card = self._RoundedPanel(
+            body, tk, background=PALETTE.obsidian, fill=PALETTE.charcoal,
+            outline=PALETTE.edge, radius=20, inset=10,
+        )
+        left_card.pack(side="left", fill="both", expand=True, padx=(0, 9))
+        left = left_card.content
         self.notebook = self.ttk.Notebook(left)
-        self.notebook.pack(fill="both", expand=True, padx=6, pady=6)
+        self.notebook.pack(fill="both", expand=True, padx=5, pady=5)
         for group in GROUPS:
             self.notebook.add(self._build_group(group), text=group.title)
 
-        right = tk.Frame(body, bg=PALETTE.charcoal, width=560,
-                         highlightthickness=1, highlightbackground=PALETTE.edge)
-        right.pack(side="right", fill="both", padx=(6, 0))
-        right.pack_propagate(False)
+        right_card = self._RoundedPanel(
+            body, tk, background=PALETTE.obsidian, fill=PALETTE.charcoal,
+            outline=PALETTE.edge, radius=20, inset=10,
+        )
+        right_card.frame.configure(width=570)
+        right_card.pack(side="right", fill="both", padx=(9, 0))
+        right_card.frame.pack_propagate(False)
+        right = right_card.content
         self._build_preview(right)
         self._build_status()
 
     def _build_header(self) -> None:
         tk = self.tk
         header = tk.Frame(self.root, bg=PALETTE.obsidian)
-        header.pack(fill="x", padx=12, pady=(10, 6))
-        tk.Label(header, text="scriptgen", font=FONTS["title"],
-                 bg=PALETTE.obsidian, fg=PALETTE.text).pack(side="left")
-        tk.Label(header, text="  HyperNix training script builder", font=FONTS["small"],
-                 bg=PALETTE.obsidian, fg=PALETTE.text_faint).pack(side="left", padx=(4, 0))
+        header.pack(fill="x", padx=22, pady=(16, 10))
+        brand = tk.Frame(header, bg=PALETTE.obsidian)
+        brand.pack(side="left", anchor="w")
+        tk.Label(
+            brand, text="HN", font=("DejaVu Sans", 10, "bold"),
+            bg=PALETTE.red, fg=PALETTE.text, padx=8, pady=5,
+        ).pack(side="left", padx=(0, 12), pady=(1, 0))
+        titles = tk.Frame(brand, bg=PALETTE.obsidian)
+        titles.pack(side="left", anchor="w")
+        tk.Label(
+            titles, text="scriptgen", font=FONTS["title"],
+            bg=PALETTE.obsidian, fg=PALETTE.text,
+        ).pack(anchor="w")
+        tk.Label(
+            titles, text="HyperNix training script builder  ·  live preview",
+            font=FONTS["small"], bg=PALETTE.obsidian, fg=PALETTE.text_faint,
+        ).pack(anchor="w", pady=(1, 0))
 
         for label, command in (
-            ("Save", self._on_save),
-            ("Load preset", self._on_load),
-            ("Save preset", self._on_save_preset),
             ("Reset", self._on_reset),
+            ("Save preset", self._on_save_preset),
+            ("Load preset", self._on_load),
+            ("Save script", self._on_save),
         ):
-            self._button(header, label, command).pack(side="right", padx=4)
+            self._button(header, label, command, primary=(label == "Save script")).pack(
+                side="right", padx=(7, 0), pady=3,
+            )
 
         from .widgets import ToggleSwitch
 
         advanced = tk.Frame(header, bg=PALETTE.obsidian)
-        advanced.pack(side="right", padx=(0, 16))
-        tk.Label(advanced, text="advanced", font=FONTS["small"],
+        advanced.pack(side="right", padx=(0, 18))
+        tk.Label(advanced, text="Advanced", font=FONTS["small"],
                  bg=PALETTE.obsidian, fg=PALETTE.text_dim).pack(side="left", padx=(0, 6))
         self.advanced_toggle = ToggleSwitch(
             advanced, value=False, command=self._on_advanced
@@ -301,23 +405,31 @@ class ScriptGenApp:
         self.advanced_toggle.canvas.configure(bg=PALETTE.obsidian)
         self.advanced_toggle.pack(side="left")
 
-    def _button(self, parent: Any, label: str, command: Any) -> Any:
-        return self.tk.Button(
-            parent, text=label, command=command, font=FONTS["small"],
-            bg=PALETTE.slate, fg=PALETTE.text,
-            activebackground=PALETTE.red, activeforeground=PALETTE.text,
-            relief="flat", bd=0, padx=12, pady=5, cursor="hand2",
-            highlightthickness=1, highlightbackground=PALETTE.edge,
+    def _button(self, parent: Any, label: str, command: Any, *, primary: bool = False) -> Any:
+        tk = self.tk
+        normal = PALETTE.red if primary else PALETTE.slate
+        hover = PALETTE.red_bright if primary else PALETTE.slate_high
+        button = tk.Button(
+            parent, text=label, command=command, font=FONTS["body_bold"],
+            bg=normal, fg=PALETTE.text,
+            activebackground=hover, activeforeground=PALETTE.text,
+            relief="flat", bd=0, padx=13, pady=7, cursor="hand2",
+            highlightthickness=0,
         )
+        button.bind("<Enter>", lambda _event: button.configure(bg=hover))
+        button.bind("<Leave>", lambda _event: button.configure(bg=normal))
+        return button
 
     def _build_group(self, group: Any) -> Any:
         tk = self.tk
         frame = tk.Frame(self.notebook, bg=PALETTE.charcoal)
         tk.Label(frame, text=group.description, font=FONTS["small"],
                  bg=PALETTE.charcoal, fg=PALETTE.text_faint,
-                 anchor="w", wraplength=560).pack(fill="x", padx=14, pady=(12, 8))
+                 anchor="w", wraplength=600, justify="left").pack(
+            fill="x", padx=18, pady=(17, 10),
+        )
         rows = tk.Frame(frame, bg=PALETTE.charcoal)
-        rows.pack(fill="both", expand=True, padx=14, pady=(0, 12))
+        rows.pack(fill="both", expand=True, padx=18, pady=(0, 16))
         rows.grid_columnconfigure(1, weight=1)
         for index, param in enumerate(group.params):
             self._build_row(rows, param, index)
@@ -327,13 +439,13 @@ class ScriptGenApp:
         tk = self.tk
         from .widgets import DualSlider, LogSlider, ToggleSwitch
 
-        label = tk.Label(parent, text=param.label, font=FONTS["body"],
+        label = tk.Label(parent, text=param.label, font=FONTS["body_bold"],
                          bg=PALETTE.charcoal, fg=PALETTE.text_dim, anchor="w")
-        label.grid(row=row * 2, column=0, sticky="w", pady=(6, 0), padx=(0, 12))
+        label.grid(row=row * 2, column=0, sticky="w", pady=(8, 0), padx=(0, 16))
 
         value = self.model.get(param.name)
         holder = tk.Frame(parent, bg=PALETTE.charcoal)
-        holder.grid(row=row * 2, column=1, sticky="ew", pady=(6, 0))
+        holder.grid(row=row * 2, column=1, sticky="ew", pady=(8, 0))
 
         if param.kind is ParamKind.TOGGLE:
             widget = ToggleSwitch(
@@ -363,7 +475,7 @@ class ScriptGenApp:
                 holder, textvariable=var, state="readonly",
                 values=[c[0] for c in param.choices], font=FONTS["body"],
             )
-            widget.pack(anchor="w", fill="x")
+            widget.pack(anchor="w", fill="x", ipady=2)
             widget.bind(
                 "<<ComboboxSelected>>",
                 lambda _e, n=param.name, v=var: self._on_change(n, v.get()),
@@ -408,9 +520,13 @@ class ScriptGenApp:
     def _build_preview(self, parent: Any) -> None:
         tk = self.tk
         bar = tk.Frame(parent, bg=PALETTE.charcoal)
-        bar.pack(fill="x", padx=8, pady=(8, 4))
-        tk.Label(bar, text="output", font=FONTS["heading"],
-                 bg=PALETTE.charcoal, fg=PALETTE.text).pack(side="left")
+        bar.pack(fill="x", padx=10, pady=(8, 10))
+        title_group = tk.Frame(bar, bg=PALETTE.charcoal)
+        title_group.pack(side="left")
+        tk.Label(title_group, text="Live output", font=FONTS["heading"],
+                 bg=PALETTE.charcoal, fg=PALETTE.text).pack(anchor="w")
+        tk.Label(title_group, text="Updates as you change parameters", font=FONTS["tiny"],
+                 bg=PALETTE.charcoal, fg=PALETTE.text_faint).pack(anchor="w", pady=(2, 0))
         self.mode_var = tk.StringVar(value="generate")
         for mode, caption in (
             ("generate", "full script"), ("inject", "inject"), ("config", "config only")
@@ -419,21 +535,25 @@ class ScriptGenApp:
                 bar, text=caption, value=mode, variable=self.mode_var,
                 command=self._on_mode, font=FONTS["small"],
                 bg=PALETTE.charcoal, fg=PALETTE.text_dim,
-                selectcolor=PALETTE.slate, activebackground=PALETTE.charcoal,
+                selectcolor=PALETTE.slate_high, activebackground=PALETTE.charcoal,
                 activeforeground=PALETTE.text, indicatoron=True, bd=0,
                 highlightthickness=0,
-            ).pack(side="right", padx=2)
+            ).pack(side="right", padx=4, pady=(2, 0))
 
-        wrapper = tk.Frame(parent, bg=PALETTE.charcoal)
-        wrapper.pack(fill="both", expand=True, padx=8, pady=(0, 8))
-        scroll = tk.Scrollbar(wrapper, bg=PALETTE.slate, troughcolor=PALETTE.charcoal,
-                              activebackground=PALETTE.red, bd=0, relief="flat")
-        scroll.pack(side="right", fill="y")
+        wrapper_card = self._RoundedPanel(
+            parent, tk, background=PALETTE.charcoal, fill=PALETTE.obsidian,
+            outline=PALETTE.edge, radius=14, inset=8,
+        )
+        wrapper_card.pack(fill="both", expand=True, padx=10, pady=(0, 10))
+        wrapper = wrapper_card.content
+        scroll = self.ttk.Scrollbar(wrapper, orient="vertical", style="Dark.Vertical.TScrollbar")
+        scroll.pack(side="right", fill="y", padx=(2, 0))
         self.preview = tk.Text(
             wrapper, font=FONTS["code"], bg=PALETTE.obsidian, fg=PALETTE.text,
             insertbackground=PALETTE.red_bright, relief="flat", bd=0,
-            highlightthickness=1, highlightbackground=PALETTE.edge,
-            wrap="none", yscrollcommand=scroll.set, padx=10, pady=8,
+            highlightthickness=0, wrap="none", yscrollcommand=scroll.set,
+            padx=12, pady=12, selectbackground=PALETTE.red_dim,
+            selectforeground=PALETTE.text, spacing1=1,
         )
         self.preview.pack(side="left", fill="both", expand=True)
         scroll.configure(command=self.preview.yview)
@@ -444,13 +564,21 @@ class ScriptGenApp:
 
     def _build_status(self) -> None:
         tk = self.tk
-        self.status = tk.Frame(self.root, bg=PALETTE.charcoal, height=30)
-        self.status.pack(fill="x", side="bottom")
+        status_card = self._RoundedPanel(
+            self.root, tk, background=PALETTE.obsidian, fill=PALETTE.charcoal,
+            outline=PALETTE.edge, radius=13, inset=5,
+        )
+        status_card.pack(fill="x", side="bottom", padx=18, pady=(0, 12))
+        self.status = status_card.content
+        tk.Label(
+            self.status, text="●", font=FONTS["small"],
+            bg=PALETTE.charcoal, fg=PALETTE.ok,
+        ).pack(side="left", padx=(10, 7), pady=5)
         self.status_label = tk.Label(
             self.status, text="", font=FONTS["small"], anchor="w",
             bg=PALETTE.charcoal, fg=PALETTE.text_dim,
         )
-        self.status_label.pack(side="left", padx=12, pady=6)
+        self.status_label.pack(side="left", padx=(0, 10), pady=7)
 
     # -- events -------------------------------------------------------
 

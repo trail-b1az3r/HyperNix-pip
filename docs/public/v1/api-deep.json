@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-api-deep",
   "generated_at": "2026-09-20T21:20:57Z",
-  "commit": "452dc767eaf468b469c98665c6a81fb2012809e1",
+  "commit": "a3baf7cea8d7babdec3d4710b2b125cc9a4fbe9c",
   "history_available": true,
   "source_root": "src/hypernix",
   "modules": [
@@ -17,6 +17,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "a3baf7c",
+          "date": "2026-10-20",
+          "author": "Claude",
+          "subject": "c4: explode a model, measure its pieces, reap the best, sow a new one (0.72.8a2)",
+          "api_changes": []
+        },
         {
           "sha": "452dc76",
           "date": "2026-10-20",
@@ -65,13 +72,6 @@
           "author": "Claude",
           "subject": "0.72.7: version, changelog heading and the measured benchmark results",
           "api_changes": []
-        },
-        {
-          "sha": "1108686",
-          "date": "2026-10-01",
-          "author": "Claude",
-          "subject": "release: 0.72.6.post4 -- its own changelog entry and version",
-          "api_changes": []
         }
       ]
     },
@@ -100,10 +100,10 @@
           "api_changes": []
         },
         {
-          "sha": "f6897ce",
-          "date": "2026-06-29",
-          "author": "minerofthesoal",
-          "subject": "Replace entire repository with new local version",
+          "sha": "ede2f62",
+          "date": "2026-07-26",
+          "author": "Ray0ffire",
+          "subject": "Add LICENSE-betaversionofit file",
           "api_changes": []
         }
       ]
@@ -1771,7 +1771,20 @@
       ],
       "deprecations": [],
       "required_modules": [],
-      "changes": []
+      "changes": [
+        {
+          "sha": "a3baf7c",
+          "date": "2026-10-20",
+          "author": "Claude",
+          "subject": "c4: explode a model, measure its pieces, reap the best, sow a new one (0.72.8a2)",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def __getattr__(name: str) -> Any:"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.c4.cli",
@@ -1792,7 +1805,56 @@
       ],
       "deprecations": [],
       "required_modules": [],
-      "changes": []
+      "changes": [
+        {
+          "sha": "a3baf7c",
+          "date": "2026-10-20",
+          "author": "Claude",
+          "subject": "c4: explode a model, measure its pieces, reap the best, sow a new one (0.72.8a2)",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _common(p: argparse.ArgumentParser) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _prober(model: Any, args: argparse.Namespace) -> Any:"
+            },
+            {
+              "kind": "added",
+              "text": "def _print(args: argparse.Namespace, data: Any, human: str) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _explode(args: argparse.Namespace) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def _stem(args: argparse.Namespace) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def _dial(args: argparse.Namespace) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def _reap(args: argparse.Namespace) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def _sow(args: argparse.Namespace) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def _restore(args: argparse.Namespace) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def cli_main(argv: list[str] | None = None) -> int:"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.c4.dial",
@@ -1891,7 +1953,92 @@
       ],
       "deprecations": [],
       "required_modules": [],
-      "changes": []
+      "changes": [
+        {
+          "sha": "a3baf7c",
+          "date": "2026-10-20",
+          "author": "Claude",
+          "subject": "c4: explode a model, measure its pieces, reap the best, sow a new one (0.72.8a2)",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class DialScores:"
+            },
+            {
+              "kind": "added",
+              "text": "def stem_total(self, name: str) -> float:"
+            },
+            {
+              "kind": "added",
+              "text": "def top(self, k: int = 10, *, largest: bool = True) -> list[tuple[str, tuple[int, ...], float]]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _unravel(index: int, shape: tuple[int, ...]) -> list[int]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _selected(exploded: Exploded, stems: Iterable[str] | None, matrices_only: bool) -> list[str]:"
+            },
+            {
+              "kind": "added",
+              "text": "def score(exploded: Exploded, prober: Any = None, *, kind: str = \"taylor\","
+            },
+            {
+              "kind": "added",
+              "text": "def _wanda(exploded: Exploded, prober: Any, names: list[str], synthetic: bool) -> DialScores:"
+            },
+            {
+              "kind": "added",
+              "text": "def hook(name: str):"
+            },
+            {
+              "kind": "added",
+              "text": "def record(_module: Any, inputs: tuple[Any, ...], _output: Any) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "class Unneeded:"
+            },
+            {
+              "kind": "added",
+              "text": "def dials(self) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def pdials(self) -> list[PDial]:"
+            },
+            {
+              "kind": "added",
+              "text": "def unneeded(scores: DialScores, *, fraction: float = 0.1, per_stem: bool = True,"
+            },
+            {
+              "kind": "added",
+              "text": "class Priority:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_dict(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def train_priority(exploded: Exploded, scores: DialScores, *, granularity: str = \"stem\","
+            },
+            {
+              "kind": "added",
+              "text": "def add(label: str, g: Any, w: Any, gran: str) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def interaction(exploded: Exploded, prober: Any, mdial: MDial, *, epsilon: float = 1e-2) -> dict[str, float]:"
+            },
+            {
+              "kind": "added",
+              "text": "def nudged(indices: list[tuple[int, ...]]) -> float:"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.c4.explode",
@@ -2086,7 +2233,112 @@
       ],
       "deprecations": [],
       "required_modules": [],
-      "changes": []
+      "changes": [
+        {
+          "sha": "a3baf7c",
+          "date": "2026-10-20",
+          "author": "Claude",
+          "subject": "c4: explode a model, measure its pieces, reap the best, sow a new one (0.72.8a2)",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class Stem:"
+            },
+            {
+              "kind": "added",
+              "text": "def numel(self) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def kind(self) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def fan_out(self) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def fan_in(self) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "class MStem:"
+            },
+            {
+              "kind": "added",
+              "text": "def name(self) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def numel(self) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def stem(self, role: str) -> Stem | None:"
+            },
+            {
+              "kind": "added",
+              "text": "class Dial:"
+            },
+            {
+              "kind": "added",
+              "text": "def __str__(self) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "class MDial:"
+            },
+            {
+              "kind": "added",
+              "text": "def __post_init__(self) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def dials(self) -> tuple[Dial, Dial]:"
+            },
+            {
+              "kind": "added",
+              "text": "def __str__(self) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "class PDial:"
+            },
+            {
+              "kind": "added",
+              "text": "def selector(self, shape: tuple[int, ...]) -> Any:"
+            },
+            {
+              "kind": "added",
+              "text": "def size(self, shape: tuple[int, ...]) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def __str__(self) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "class Exploded:"
+            },
+            {
+              "kind": "added",
+              "text": "def loose_stems(self) -> list[Stem]:"
+            },
+            {
+              "kind": "added",
+              "text": "def counts(self) -> dict[str, int]:"
+            },
+            {
+              "kind": "added",
+              "text": "def summary(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def tensor(self, stem: str | Stem) -> Any:"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.c4.model",
@@ -2169,7 +2421,84 @@
       ],
       "deprecations": [],
       "required_modules": [],
-      "changes": []
+      "changes": [
+        {
+          "sha": "a3baf7c",
+          "date": "2026-10-20",
+          "author": "Claude",
+          "subject": "c4: explode a model, measure its pieces, reap the best, sow a new one (0.72.8a2)",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class C4Error(RuntimeError):"
+            },
+            {
+              "kind": "added",
+              "text": "def layer_of(name: str) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def role_of(name: str) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def pick_device(device: str | None = \"auto\") -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "class C4Model:"
+            },
+            {
+              "kind": "added",
+              "text": "def n_layers(self) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def parameters(self) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def names(self, *, layer: int | None = None, role: str | None = None) -> list[str]:"
+            },
+            {
+              "kind": "added",
+              "text": "def bind(self, module: Any) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _config_for(path: Path) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _safetensor_files(path: Path) -> list[Path]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _torch_files(path: Path) -> list[Path]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _format_of(path: Path) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _gguf_floats(doc: Any, tensor: Any) -> Any:"
+            },
+            {
+              "kind": "added",
+              "text": "def _gguf_config(metadata: dict[str, Any]) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def key(name: str, default: Any = None) -> Any:"
+            },
+            {
+              "kind": "added",
+              "text": "def load(path: str | Path, *, device: str | None = \"auto\", dtype: Any = None) -> C4Model:"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.c4.optim",
@@ -2280,7 +2609,100 @@
           "requirement": "torch>=1.13,<3"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "a3baf7c",
+          "date": "2026-10-20",
+          "author": "Claude",
+          "subject": "c4: explode a model, measure its pieces, reap the best, sow a new one (0.72.8a2)",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class C4HybridAdamW5S(torch.optim.Optimizer):"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, params: Iterable[Any], *, lr: float = 1e-4, betas: tuple[float, float] = (0.9, 0.999),"
+            },
+            {
+              "kind": "added",
+              "text": "def step(self, closure: Any = None) -> Any:"
+            },
+            {
+              "kind": "added",
+              "text": "class C4CookerV5S(PressureCookerV5S):"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, params: Iterable[Any], *, lr: float = 5e-5, **kwargs: Any) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _v5s_step_one(self, p: Any, g: Any, state: dict[str, Any], lr: float, wd: float) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _extra_scale(self, state: dict[str, Any], g_pred: Any, vos: float) -> float:"
+            },
+            {
+              "kind": "added",
+              "text": "def make_inner(kind: str, params: Iterable[Any], *, lr: float = 1e-4, **kwargs: Any) -> torch.optim.Optimizer:"
+            },
+            {
+              "kind": "added",
+              "text": "class Section:"
+            },
+            {
+              "kind": "added",
+              "text": "class CheckPolicy:"
+            },
+            {
+              "kind": "added",
+              "text": "class C4Optimizer:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, sections: Sequence[Section], inner: torch.optim.Optimizer, *,"
+            },
+            {
+              "kind": "added",
+              "text": "def for_exploded(cls, exploded: Any, module: Any, *, kind: str = \"hybrid\", lr: float = 1e-4,"
+            },
+            {
+              "kind": "added",
+              "text": "def zero_grad(self, set_to_none: bool = True) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _allowed(self, section: Section) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def _check(self, section: Section) -> float:"
+            },
+            {
+              "kind": "added",
+              "text": "def _check_rows(self, section: Section, grads: list[Any]) -> float:"
+            },
+            {
+              "kind": "added",
+              "text": "def step(self, closure: Any = None) -> Any:"
+            },
+            {
+              "kind": "added",
+              "text": "def report(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def param_groups(self) -> list[dict[str, Any]]:"
+            },
+            {
+              "kind": "added",
+              "text": "def state_dict(self) -> dict[str, Any]:"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.c4.probe",
@@ -2385,7 +2807,80 @@
       ],
       "deprecations": [],
       "required_modules": [],
-      "changes": []
+      "changes": [
+        {
+          "sha": "a3baf7c",
+          "date": "2026-10-20",
+          "author": "Claude",
+          "subject": "c4: explode a model, measure its pieces, reap the best, sow a new one (0.72.8a2)",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class Calibration:"
+            },
+            {
+              "kind": "added",
+              "text": "def from_ids(cls, ids: Any, *, seq_len: int = 128, batch_size: int = 4) -> Calibration:"
+            },
+            {
+              "kind": "added",
+              "text": "def from_texts(cls, texts: Sequence[str], tokenizer: Any, *, seq_len: int = 128,"
+            },
+            {
+              "kind": "added",
+              "text": "def random_tokens(cls, vocab_size: int, *, batches: int = 2, batch_size: int = 2,"
+            },
+            {
+              "kind": "added",
+              "text": "def tokens(self) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def build_module(model: C4Model) -> Any:"
+            },
+            {
+              "kind": "added",
+              "text": "class Prober:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, model: C4Model, calibration: Calibration, *, module: Any = None) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def for_model(cls, model: C4Model, *, texts: Iterable[str] | None = None, ids: Any = None,"
+            },
+            {
+              "kind": "added",
+              "text": "def _batches(self) -> Iterable[Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def loss(self) -> float:"
+            },
+            {
+              "kind": "added",
+              "text": "def backward(self, *, zero: bool = True) -> float:"
+            },
+            {
+              "kind": "added",
+              "text": "def hidden_states(self) -> list[Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def names(self) -> list[str]:"
+            },
+            {
+              "kind": "added",
+              "text": "def parameter(self, name: str) -> Any:"
+            },
+            {
+              "kind": "added",
+              "text": "def describe(self) -> dict[str, Any]:"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.c4.reap",
@@ -2453,7 +2948,56 @@
       ],
       "deprecations": [],
       "required_modules": [],
-      "changes": []
+      "changes": [
+        {
+          "sha": "a3baf7c",
+          "date": "2026-10-20",
+          "author": "Claude",
+          "subject": "c4: explode a model, measure its pieces, reap the best, sow a new one (0.72.8a2)",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class Harvest:"
+            },
+            {
+              "kind": "added",
+              "text": "def zeroed(self) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def summary(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def save(self, folder: str | Path) -> Path:"
+            },
+            {
+              "kind": "added",
+              "text": "def load(cls, folder: str | Path) -> Harvest:"
+            },
+            {
+              "kind": "added",
+              "text": "def channel_scores(exploded: Exploded, layer: int, dial_scores: Any = None) -> Any:"
+            },
+            {
+              "kind": "added",
+              "text": "def values(stem: Any) -> Any:"
+            },
+            {
+              "kind": "added",
+              "text": "def _pick_layers(report: list[LayerVerdict], keep: int | None, drop: int | None,"
+            },
+            {
+              "kind": "added",
+              "text": "def reap(exploded: Exploded, *, report: list[LayerVerdict] | None = None, prober: Any = None,"
+            },
+            {
+              "kind": "added",
+              "text": "def reap_best(explodeds: Sequence[Exploded], reports: Sequence[list[LayerVerdict]] | None = None,"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.c4.restore",
@@ -2515,7 +3059,64 @@
       ],
       "deprecations": [],
       "required_modules": [],
-      "changes": []
+      "changes": [
+        {
+          "sha": "a3baf7c",
+          "date": "2026-10-20",
+          "author": "Claude",
+          "subject": "c4: explode a model, measure its pieces, reap the best, sow a new one (0.72.8a2)",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _pieces(exploded: Exploded, piece: Piece) -> list[Dial | MDial | PDial | Stem]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _stem_name(piece: Dial | MDial | PDial | Stem) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "class Snapshot:"
+            },
+            {
+              "kind": "added",
+              "text": "def take(cls, exploded: Exploded, pieces: Iterable[Piece]) -> Snapshot:"
+            },
+            {
+              "kind": "added",
+              "text": "def restore(self, names: Iterable[str] | None = None) -> list[str]:"
+            },
+            {
+              "kind": "added",
+              "text": "def bytes(self) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def apply_ablation(exploded: Exploded, piece: Dial | MDial | PDial | Stem, how: str = \"zero\","
+            },
+            {
+              "kind": "added",
+              "text": "def replace(view: Any) -> Any:"
+            },
+            {
+              "kind": "added",
+              "text": "def ablated(exploded: Exploded, pieces: Piece | Iterable[Piece], how: str = \"zero\","
+            },
+            {
+              "kind": "added",
+              "text": "def write(model: C4Model, out: str | Path, *, format: str = \"safetensors\","
+            },
+            {
+              "kind": "added",
+              "text": "def _untie(state: dict[str, Any], config: dict[str, Any]) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _write_gguf(model: C4Model, target: Path, state: dict[str, Any], config: dict[str, Any]) -> Path:"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.c4.sow",
@@ -2565,7 +3166,44 @@
       ],
       "deprecations": [],
       "required_modules": [],
-      "changes": []
+      "changes": [
+        {
+          "sha": "a3baf7c",
+          "date": "2026-10-20",
+          "author": "Claude",
+          "subject": "c4: explode a model, measure its pieces, reap the best, sow a new one (0.72.8a2)",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def renumber(name: str, new_index: int) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "class SowReport:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_dict(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _donors(harvest: Harvest, explodeds: Sequence[Exploded] | None, device: str | None) -> list[Exploded]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _reindex_config(config: dict[str, Any], old_layers: int, picks: list[int]) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def sow(harvest: Harvest, out: str | Path, *, explodeds: Sequence[Exploded] | None = None,"
+            },
+            {
+              "kind": "added",
+              "text": "def heal(path: str | Path, calibration: Any, *, steps: int = 50, optimizer: str = \"hybrid\","
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.c4.stem",
@@ -2672,7 +3310,76 @@
       ],
       "deprecations": [],
       "required_modules": [],
-      "changes": []
+      "changes": [
+        {
+          "sha": "a3baf7c",
+          "date": "2026-10-20",
+          "author": "Claude",
+          "subject": "c4: explode a model, measure its pieces, reap the best, sow a new one (0.72.8a2)",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class StemStats:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_dict(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _svdvals(matrix: Any) -> Any:"
+            },
+            {
+              "kind": "added",
+              "text": "def _q4_error(values: Any) -> float:"
+            },
+            {
+              "kind": "added",
+              "text": "def measure(exploded: Exploded, stem: Stem | str, *, spectral: bool = True) -> StemStats:"
+            },
+            {
+              "kind": "added",
+              "text": "def measure_all(exploded: Exploded, *, spectral: bool = True) -> dict[str, StemStats]:"
+            },
+            {
+              "kind": "added",
+              "text": "def redundancy(exploded: Exploded, a: MStem, b: MStem) -> float:"
+            },
+            {
+              "kind": "added",
+              "text": "def block_influence(prober: Any) -> list[float]:"
+            },
+            {
+              "kind": "added",
+              "text": "class TestResult:"
+            },
+            {
+              "kind": "added",
+              "text": "def delta(self) -> float:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_dict(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def ablation_test(exploded: Exploded, prober: Any, pieces: Iterable[Any], *, how: str = \"zero\","
+            },
+            {
+              "kind": "added",
+              "text": "class LayerVerdict:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_dict(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def layer_report(exploded: Exploded, prober: Any = None, *, test: bool = True,"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.chat",
@@ -15161,14 +15868,14 @@
     {
       "module": "hypernix.interfaces.cli",
       "source": "src/hypernix/interfaces/cli.py",
-      "line_count": 1623,
+      "line_count": 1624,
       "summary": "Command-line interface for the hypernix package.",
       "api": [
         {
           "kind": "function",
           "name": "main",
           "signature": "def mainargv: list[str] | None=None -> int",
-          "line": 1351,
+          "line": 1352,
           "doc": ""
         }
       ],
@@ -15179,6 +15886,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "a3baf7c",
+          "date": "2026-10-20",
+          "author": "Claude",
+          "subject": "c4: explode a model, measure its pieces, reap the best, sow a new one (0.72.8a2)",
+          "api_changes": []
+        },
         {
           "sha": "9d6e235",
           "date": "2026-10-14",
@@ -15262,18 +15976,6 @@
             {
               "kind": "added",
               "text": "def _run_dilute(raw: list[str]) -> int:"
-            }
-          ]
-        },
-        {
-          "sha": "8097c26",
-          "date": "2026-09-22",
-          "author": "Claude",
-          "subject": "neuron: a module for training small networks that act",
-          "api_changes": [
-            {
-              "kind": "added",
-              "text": "def _run_neuron(raw: list[str]) -> int:"
             }
           ]
         }
@@ -35913,86 +36615,86 @@
     {
       "module": "hypernix.scriptgen.app",
       "source": "src/hypernix/scriptgen/app.py",
-      "line_count": 507,
+      "line_count": 630,
       "summary": "scriptgen.app \u2014 the GUI, and the form model underneath it.",
       "api": [
         {
           "kind": "class",
           "name": "FormModel",
           "signature": "class FormModel",
-          "line": 42,
+          "line": 43,
           "doc": "Values, validation and preview. No GUI toolkit involved.",
           "methods": [
             {
               "name": "set",
               "signature": "def setself, name: str, value: Any -> tuple[bool, str]",
-              "line": 57,
+              "line": 58,
               "doc": "Set one parameter, returning ``(ok, message)``."
             },
             {
               "name": "get",
               "signature": "def getself, name: str -> Any",
-              "line": 72,
+              "line": 73,
               "doc": ""
             },
             {
               "name": "dirty",
               "signature": "def dirtyself -> bool",
-              "line": 76,
+              "line": 77,
               "doc": ""
             },
             {
               "name": "changed_from_defaults",
               "signature": "def changed_from_defaultsself -> dict[str, tuple[Any, Any]]",
-              "line": 79,
+              "line": 80,
               "doc": "What differs from the defaults, for the summary strip."
             },
             {
               "name": "reset",
               "signature": "def resetself -> None",
-              "line": 92,
+              "line": 93,
               "doc": ""
             },
             {
               "name": "mark_saved",
               "signature": "def mark_savedself -> None",
-              "line": 96,
+              "line": 97,
               "doc": ""
             },
             {
               "name": "visible_params",
               "signature": "def visible_paramsself, group_key: str -> list[Any]",
-              "line": 101,
+              "line": 102,
               "doc": "Parameters to draw for a tab, honouring advanced and depends_on."
             },
             {
               "name": "validate",
               "signature": "def validateself -> tuple[list[str], list[str]]",
-              "line": 123,
+              "line": 124,
               "doc": ""
             },
             {
               "name": "preview",
               "signature": "def previewself, existing: str='' -> str",
-              "line": 126,
+              "line": 127,
               "doc": "The script (or config) as it currently stands."
             },
             {
               "name": "save",
               "signature": "def saveself, path: str | Path, *, existing: str='' -> Path",
-              "line": 143,
+              "line": 144,
               "doc": "Write the output. Refuses while there are validation errors."
             },
             {
               "name": "to_json",
               "signature": "def to_jsonself -> str",
-              "line": 163,
+              "line": 164,
               "doc": ""
             },
             {
               "name": "load_json",
               "signature": "def load_jsonself, text: str -> list[str]",
-              "line": 168,
+              "line": 169,
               "doc": "Load a saved preset, returning any values that were rejected."
             }
           ]
@@ -36001,13 +36703,13 @@
           "kind": "class",
           "name": "ScriptGenApp",
           "signature": "class ScriptGenApp",
-          "line": 194,
+          "line": 195,
           "doc": "The Tk application. Constructed only when Tk is actually present.",
           "methods": [
             {
               "name": "run",
               "signature": "def runself -> None",
-              "line": 570,
+              "line": 698,
               "doc": ""
             }
           ]
@@ -36016,7 +36718,7 @@
           "kind": "function",
           "name": "launch",
           "signature": "def launchvalues: dict[str, Any] | None=None -> int",
-          "line": 574,
+          "line": 702,
           "doc": "Open the GUI, or explain why it cannot open."
         }
       ],
@@ -36407,7 +37109,7 @@
     {
       "module": "hypernix.scriptgen.theme",
       "source": "src/hypernix/scriptgen/theme.py",
-      "line_count": 161,
+      "line_count": 159,
       "summary": "scriptgen.theme \u2014 dark slate, charcoal, obsidian, and HyperNix red.",
       "api": [
         {
@@ -36443,14 +37145,14 @@
           "kind": "function",
           "name": "audit_palette",
           "signature": "def audit_palettepalette: Palette=PALETTE -> dict[str, Any]",
-          "line": 116,
+          "line": 114,
           "doc": "Check the palette against its own rules. Used by the tests."
         },
         {
           "kind": "function",
           "name": "resolve_font",
           "signature": "def resolve_fontroot: Any, preferred: tuple[Any, ...] -> tuple[Any, ...]",
-          "line": 178,
+          "line": 176,
           "doc": "Return *preferred*, or the first fallback the system actually has."
         }
       ],

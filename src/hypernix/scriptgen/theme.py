@@ -61,27 +61,27 @@ class Palette:
     # (#16161a, #1f1f25) and the audit caught it — which is the entire
     # reason the audit exists, because a blue-grey pushed dark enough
     # reads as purple and nobody notices while they are picking it.
-    obsidian: str = "#0e0e0d"        # the window behind everything
-    charcoal: str = "#181817"        # panels
-    slate: str = "#212120"           # inputs, list rows
-    slate_high: str = "#2c2c2a"      # hover, selected row
-    edge: str = "#3e3e3b"            # borders and dividers
+    obsidian: str = "#10100f"        # the window behind everything
+    charcoal: str = "#1a1a18"        # cards and panels
+    slate: str = "#252523"           # inputs, list rows
+    slate_high: str = "#333330"      # hover, selected row
+    edge: str = "#41403c"            # borders and dividers
 
     # --- text --------------------------------------------------------
     text: str = "#e8e6e3"            # body — warm white, not blue-white
-    text_dim: str = "#a9a6a1"        # labels, secondary
-    text_faint: str = "#7c7975"      # hints, disabled
+    text_dim: str = "#b5b1aa"        # labels, secondary
+    text_faint: str = "#96918a"      # hints, disabled
 
     # --- the accent --------------------------------------------------
-    red: str = "#c62828"             # HyperNix red
-    red_bright: str = "#e53935"      # hover / active
-    red_dim: str = "#8e1f1f"         # pressed / track fill
-    red_text: str = "#ff6b6b"        # red used *as text* on a dark surface
+    red: str = "#b92525"             # HyperNix red
+    red_bright: str = "#c22626"      # hover / active
+    red_dim: str = "#922121"         # pressed / track fill
+    red_text: str = "#ff7777"        # red used *as text* on a dark surface
 
     # --- status ------------------------------------------------------
-    ok: str = "#4a9d5f"              # muted green, not neon
-    warn: str = "#c9922e"            # amber
-    error: str = "#e53935"           # the accent doubles as error
+    ok: str = "#6dbb80"              # muted green, not neon
+    warn: str = "#e2b45c"            # amber
+    error: str = "#c22626"           # the accent doubles as error
     info: str = "#5b8aa6"            # desaturated steel blue
 
     def as_dict(self) -> dict[str, str]:
@@ -90,18 +90,16 @@ class Palette:
 
 PALETTE = Palette()
 
-#: Monospace throughout: this is a tool for building training scripts and
-#: every value in it is a number, a path or an identifier. The families
-#: are ordered by what is actually installed where — DejaVu Sans Mono
-#: ships with most Linux distributions, Menlo with macOS, Consolas with
-#: Windows.
+#: Use a humanist sans-serif for the application chrome and reserve
+#: monospace for generated code. This gives the form a calmer hierarchy
+#: while keeping the preview easy to scan.
 FONTS: dict[str, tuple[Any, ...]] = {
-    "body": ("DejaVu Sans Mono", 10),
-    "body_bold": ("DejaVu Sans Mono", 10, "bold"),
-    "small": ("DejaVu Sans Mono", 9),
-    "tiny": ("DejaVu Sans Mono", 8),
-    "heading": ("DejaVu Sans Mono", 12, "bold"),
-    "title": ("DejaVu Sans Mono", 15, "bold"),
+    "body": ("DejaVu Sans", 10),
+    "body_bold": ("DejaVu Sans", 10, "bold"),
+    "small": ("DejaVu Sans", 9),
+    "tiny": ("DejaVu Sans", 8),
+    "heading": ("DejaVu Sans", 12, "bold"),
+    "title": ("DejaVu Sans", 18, "bold"),
     "code": ("DejaVu Sans Mono", 10),
 }
 
