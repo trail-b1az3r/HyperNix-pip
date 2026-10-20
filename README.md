@@ -4,7 +4,7 @@
 </p>
 
 <p align="center">
-  <img alt="PyPI" src="https://img.shields.io/badge/PyPI-v0.72.8a0-ff2d55?style=for-the-badge&logo=pypi&logoColor=white" />
+  <img alt="PyPI" src="https://img.shields.io/badge/PyPI-v0.72.8a1-ff2d55?style=for-the-badge&logo=pypi&logoColor=white" />
   <img alt="Python" src="https://img.shields.io/badge/Python-3.12--3.15-00c9ff?style=for-the-badge&logo=python&logoColor=white" />
   <img alt="License" src="https://img.shields.io/badge/License-HOS--1.1%20/%20Apache--2.0-00c853?style=for-the-badge" />
 </p>

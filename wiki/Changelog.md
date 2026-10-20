@@ -34,6 +34,183 @@ Historical wording and technical detail are retained during format normalization
 
 > Format normalized to `wiki/Changelog-guide.md`; release wording and historical detail are preserved.
 
+## 0.72.8a1 — 2026-10-20
+
+### Added
+
+๋࣭⭑ **Signed, timestamped HyperLink prompts and the ping before Send.**
+  When Send is pressed the web and iOS apps ping the server
+  (`POST /hyperlink/ping`, answered without a model) and give it four
+  seconds; once it answers the prompt has no timeout. Every send, resend
+  and edit then carries a `hyperlink-sign/v1` HMAC over the signer
+  (`account:<id>` or the T1/T2/T2.1 key), the Unix time Send was pressed,
+  a 23–26 character nonce, the chat and server session ids, the action
+  and the text's hash. The server refuses replays, stale or misdirected
+  signatures; `T1_HYPERLINK_REQUIRE_SIGNED=1` refuses unsigned prompts.
+  ([T1 API](T1-API.md#signed-prompts-and-the-ping))
+✨ **Signing in from the app**: `POST /hyperlink/login` and the iOS
+  Account section sign a device in to its account once, after pairing,
+  a T1 key or the local network, so its data is never lost to a re-pair.
+𖥔 `GET /hyperlink/whoami` names the signer and the server session.
+
+๋࣭⭑ **Web search v2**: `/web/v2/I?=query&q?=depth&mx?=max&sq?=read&&kpd?=true`
+  reads and summarises the top-ranked sites (`sq?=1` only the first) and
+  can keep the search and the sites' text as JSONL or Parquet.
+  ([T1 API](T1-API.md#web-search-v2))
+✨ **Five web admin settings** (`store_enabled`, `store_format`,
+  `max_items`, `max_read_sites`, `ai_config`), set with
+  `hypernix-t1 config web`, and `/web/v1/ai/config`, through which a model
+  with partial admin changes the less risky three.
+
+✨ **Hypercompress**: when a turn's prompt is bigger than the loaded
+  model's context, the system prompt is compressed, without a model, to a
+  third (`/chat/hypercompress/size?s?=1`) or a fifth (`s?=2`) of the
+  context, keeping instructions and every section's opening.
+𖥔 `POST /chat/hypercompress` compresses a text by hand.
+
+✨ **The two-layer ring beside the chat box** (web and iOS): context
+  inside; the key's token allowance outside when it has one, else GPU
+  load, or CPU load when the model runs on the CPU.
+
+✨ **Documents a model writes for download**: the `create_document` tool
+  and `POST /hyperlink/files/document`; the apps offer them under the
+  reply.
+
+✨ **Choosing among loaded models**: `GET /hyperlink/models/loaded`, and
+  the Models tab and the chat in HyperLink list every loaded model and
+  pick which one answers.
+
+✨ **Runner pickers**: `hnx-t1 runner start` with no exact model opens an
+  `lms load`-like list (type to filter, ↑/↓, Enter) that refreshes and
+  never takes over the screen; `hnx-t1 runner backend` picks the backend
+  the same way.
+
+✨ **`hnx-t1 launch-script -1 'CMD' -2 'answer' … -9 'answer'`** feeds a
+  command's prompts in order (`-5 ""` presses Enter, as a gap does), and
+  `--logs JOB -F` follows a job's log until Ctrl-C.
+
+๋࣭⭑ **Multi-llama runner**: `--backend multilama` serves a GGUF through
+  the llama.cpp fork it needs (ik_llama.cpp, PrismML, KoboldCpp,
+  Nanbeige), `multilama-<fork>` names one, and `auto` goes there itself
+  when a file has types only a fork knows. ([CLI](CLI.md#hypernix-t1-built-in-runner))
+✨ **The hnx llama mod knows the forks' types**: `hypernix.quant.forktypes`
+  lists ik_llama.cpp's IQ*_K, IQ*_KS, IQ*_KT and repacked types (read
+  from its `ggml.h`), and `hyprslug --check` names them and says where a
+  file runs.
+
+✨ **Two hybrids**: `hnx_q6h1` (INT2, Q6_K, HNX_1375BIT, IQ1_S, Q3_K_M,
+  ~3.2 bpw) and `hnx_q6h1m` (INT2, Q5_K, HNX_15125BIT, IQ1_S, Q2_K_M,
+  ~3.1 bpw). ([HyprSlug](HyprSlug.md))
+𖥔 **Two tiers**: `HNX_15125BIT` (type 224, 1.5 bpw: a 7-bit magnitude per
+  16 weights) and `HNX_IQ1S` (type 225, IQ1_S's 1.5625 bpw), registered in
+  the patched llama.cpp, whose decoder agrees with Python's bit for bit.
+
+✨ **`hnx download` takes links**: a `huggingface.co` link to a repo or to
+  one file in it, `-f` for one file, `-o` for where it goes, and
+  `--repo-id` is optional. A repo of GGUFs downloads its one GGUF or its
+  Q4_K_M.
+
+✨ **A judge on any OpenAI-compatible server** for the ranges:
+  `industrial_range.OpenAIJudge`. ([Ranges](Ranges.md))
+
+### Changed
+
+⚠️ **HyperLink chats are no longer global.** With accounts on they belong
+  to the account, otherwise to the key; a key's existing chats, files,
+  memories and preferences move to its account. Keyless trusted-network
+  access to them is refused unless `T1_HYPERLINK_SHARED_KEYLESS_CHATS=1`.
+
+✨ **The default model is LFM2.5-2.6B** (Liquid AI): `runner start` with no
+  model downloads `LFM2.5-2.6B-Q4_K_M.gguf` (about 1.7 GB) the first time,
+  and `lfm2.5-2.7b` names it too — Liquid AI publishes no 2.7B.
+  HyperNix.3-mini is still loaded by name.
+
+✨ **The default prompt** has the model decide whether a tool is needed,
+  work out what to search for, write downloadable documents with the
+  document tool, and save memories when asked or when a note will help
+  later; `T1_HYPERLINK_MEMORY_WHEN_TOLD=1` limits saving to when asked.
+𖥔 The model's `web_search` tool uses web search v2, and `web_settings` /
+  `web_settings_set` expose `/web/v1/ai/config`.
+
+📦 **The license is HOS-1.1 or Apache-2.0** from this release (HOS-1.1 by
+  default). HOS-1.1 keeps HOS-1.0's Apache-derived grants and takes
+  LLU-0.1's fuller definitions, trademark terms and model guidance, as
+  non-binding guidance. Earlier releases keep LLU-0.1 / HOS-1.0.
+
+✨ **The ranges, updated**: `new_range` knows how current models decline
+  and reads curly apostrophes.
+
+### API Changes
+
+🔗 T1 API **v1.1.26.10.1.0** (same 1.1 generation; every 1.1 client is
+  accepted). `SIGNED_PROMPTS_VERSION` lets a client check before signing.
+🔗 New routes: `/hyperlink/ping`, `/hyperlink/whoami`, `/hyperlink/login`,
+  `/hyperlink/models/loaded`, `/hyperlink/files/document`,
+  `/hyperlink/sessions/{id}/ring`, `/chat/hypercompress` and `/size`,
+  `/web/v2/I`, `/web/v1/ai/config`.
+🔗 `signature` on chat, stream and edit requests; `hypercompressed` and
+  `documents` in a reply's metadata.
+
+### Security
+
+🔒 **Every Hugging Face download can be pinned**: `hypernix.security.hfpin`
+  takes the caller's revision, `HYPERNIX_HF_REVISION_<REPO>`, or a commit
+  in `~/.hypernix/hf-pins.json`. All 26 medium Bandit findings (B615)
+  are gone; 63 low ones remain in shipped code, the deliberate
+  `try/except/pass` kind.
+🔒 **`hnx net` quoted nothing it sent to a peer's shell**: a file name
+  with a `;` ran a second command there. Remote commands are quoted, and a
+  peer name cannot become an ssh option.
+🔒 **Every GitHub Action is pinned to a commit**, Dependabot keeps the
+  pins (and pip) current with a 7-day cooldown, and the kernel workflow
+  installs Nix through the installer's pinned action instead of `curl | sh`.
+🔒 Commands run by bare name resolve to their full path where nothing
+  depends on the bare name.
+📚 **`SECURITY.md`**: supported versions, private reporting through GitHub
+  advisories, scope, and running a server safely.
+
+### Fixed
+
+𖢥 **`hnx convert -q -p` was refused**: only `-P` and `-Q` existed. Both
+  lowercase spellings work, `-q` alone means Q4_K_M, and the pipeline
+  converts first and quantises second as two reported steps — a Brewer
+  model is exported to a GGUF before the quantiser sees it.
+🐛 `ssh-keyscan` in `hnx net` got `>>` as an argument and never wrote
+  `known_hosts`; the keys are appended now.
+🐛 `industrial_range` read "The better one is A" as a tie, "not good" as
+  GOOD and a `<think>` block as the verdict, and ignored `fallback_label`.
+
+### Deprecated
+
+❌ `/web/v1/search` answers with `Deprecation` and `Sunset` headers and
+  goes away in 0.73.0; use `/web/v2/I`.
+
+### Documentation
+
+📚 [T1 API](T1-API.md): ownership, signed prompts and the ping, web
+  search v2, the ring, documents and hypercompress, and v1.1.26.10.1.0;
+  [CLI](CLI.md): download links, `convert -q -p`, the runner pickers,
+  multi-llama, the default model, launch-script answers and `config web`;
+  [HyprSlug](HyprSlug.md): the two hybrids and tiers;
+  [Ranges](Ranges.md): parsing and `OpenAIJudge`.
+
+### Tests
+
+🧪 Signing and replay, ownership and keyless refusal, web v2's grammar,
+  settings and storage, hypercompress, the ring, documents and the memory
+  rule, the pickers in a real pty, launch-script answers, the multi-llama
+  routing, download links, the convert order, the new tiers against the
+  C decoder, and the ranges' parsers.
+
+### Known Issues
+
+❗ The iOS changes (sign-in, signing, the ring, loaded models, document
+  downloads) are not compiled or run here: there is no Swift toolchain in
+  the build environment. Their parsing tests are written but unrun.
+❗ The multi-llama forks' own binaries are fetched or built on first use;
+  PrismML and Nanbeige publish no prebuilt releases, so those need the
+  build command the error gives.
+
 ## 0.72.8a0 — 2026-10-13
 
 ### Added

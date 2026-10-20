@@ -1,11 +1,11 @@
 {
   "definition": "non-blank source lines across repository code roots: src, scripts, tests, examples, bin, native, docs/src",
-  "total_lines": 230306,
-  "code_files": 756,
+  "total_lines": 234910,
+  "code_files": 780,
   "top_files": [
     {
       "path": "src/hypernix/t1api/routers/hyperlink.py",
-      "lines": 2373
+      "lines": 2739
     },
     {
       "path": "src/hypernix/interfaces/hyped.py",
@@ -20,24 +20,24 @@
       "lines": 1921
     },
     {
+      "path": "src/hypernix/t1api/schemas.py",
+      "lines": 1805
+    },
+    {
       "path": "src/hypernix/hyped_pro.ts",
       "lines": 1800
     },
     {
-      "path": "src/hypernix/t1api/schemas.py",
-      "lines": 1720
-    },
-    {
       "path": "src/hypernix/interfaces/cli.py",
-      "lines": 1518
+      "lines": 1617
     },
     {
       "path": "src/hypernix/models/neo_oven.py",
-      "lines": 1505
+      "lines": 1506
     },
     {
       "path": "src/hypernix/quant/hyprslug.py",
-      "lines": 1412
+      "lines": 1499
     },
     {
       "path": "src/hypernix/monitoring/tv.py",
@@ -45,7 +45,7 @@
     },
     {
       "path": "src/hypernix/interfaces/hyped_pro_core.py",
-      "lines": 1366
+      "lines": 1369
     },
     {
       "path": "src/hypernix/data/gather.py",
@@ -85,7 +85,7 @@
     },
     {
       "path": "src/hypernix/models/hnxrun.py",
-      "lines": 1059
+      "lines": 1061
     },
     {
       "path": "src/hypernix/security/gkey_cli.py",
@@ -109,7 +109,7 @@
     },
     {
       "path": "src/hypernix/training/train.py",
-      "lines": 956
+      "lines": 957
     },
     {
       "path": "src/hypernix/security/t2keys.py",
@@ -127,12 +127,12 @@
   "contributors": [
     {
       "author": "Claude",
-      "additions": 218354,
-      "deletions": 14844,
-      "net": 203510,
-      "changes": 233198,
-      "commits": 253,
-      "files": 1622
+      "additions": 219748,
+      "deletions": 15031,
+      "net": 204717,
+      "changes": 234779,
+      "commits": 256,
+      "files": 1632
     },
     {
       "author": "minerofthesoal",
@@ -153,6 +153,15 @@
       "files": 50
     },
     {
+      "author": "t",
+      "additions": 12090,
+      "deletions": 568,
+      "net": 11522,
+      "changes": 12658,
+      "commits": 16,
+      "files": 123
+    },
+    {
       "author": "Mason",
       "additions": 11658,
       "deletions": 216,
@@ -160,15 +169,6 @@
       "changes": 11874,
       "commits": 7,
       "files": 48
-    },
-    {
-      "author": "t",
-      "additions": 3870,
-      "deletions": 69,
-      "net": 3801,
-      "changes": 3939,
-      "commits": 5,
-      "files": 35
     },
     {
       "author": "qwen.ai[bot]",
@@ -181,12 +181,12 @@
     },
     {
       "author": "Rayla",
-      "additions": 278,
-      "deletions": 243,
-      "net": 35,
-      "changes": 521,
-      "commits": 22,
-      "files": 5
+      "additions": 284,
+      "deletions": 248,
+      "net": 36,
+      "changes": 532,
+      "commits": 24,
+      "files": 6
     },
     {
       "author": "github-actions[bot]",
@@ -199,6 +199,6 @@
     }
   ],
   "history_available": true,
-  "commit": "ea39518fb861181c1d01727644ed8e8fc6f95107",
+  "commit": "4a25a2d5804a40dd5ca316c008544232118e299e",
   "generated_at": null
 }

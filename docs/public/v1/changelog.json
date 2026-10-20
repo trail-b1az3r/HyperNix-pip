@@ -3,6 +3,310 @@
   "source": "wiki/Changelog.md",
   "entries": [
     {
+      "version": "0.72.8a1",
+      "key": "0.72.8a1",
+      "aliases": [
+        "0.72.8a1"
+      ],
+      "kind": "alpha",
+      "heading": "0.72.8a1 \u2014 2026-10-20",
+      "date": "2026-10-20",
+      "title": "",
+      "summary": "Signed, timestamped HyperLink prompts and the ping before Send. When Send is pressed the web and iOS apps ping the server (POST /hyperlink/ping, answered without a model) and give it four seconds; once it answers the prompt has no timeout. Every send, resend and edit then\u2026",
+      "patch": null,
+      "headline": "",
+      "highlights": [
+        "Signed, timestamped HyperLink prompts and the ping before Send. When Send is pressed the web and iOS apps ping the server (POST /hyperlink/ping, answered without a model) and give it four seconds; once it answers the prompt has no timeout. Every send, resend and edit then\u2026",
+        "Signing in from the app: POST /hyperlink/login and the iOS Account section sign a device in to its account once, after pairing, a T1 key or the local network, so its data is never lost to a re-pair.",
+        "GET /hyperlink/whoami names the signer and the server session.",
+        "Web search v2: /web/v2/I?=query&q?=depth&mx?=max&sq?=read&&kpd?=true reads and summarises the top-ranked sites (sq?=1 only the first) and can keep the search and the sites' text as JSONL or Parquet. ([T1 API](T1-API.md#web-search-v2))",
+        "Five web admin settings (store_enabled, store_format, max_items, max_read_sites, ai_config), set with hypernix-t1 config web, and /web/v1/ai/config, through which a model with partial admin changes the less risky three.",
+        "Hypercompress: when a turn's prompt is bigger than the loaded model's context, the system prompt is compressed, without a model, to a third (/chat/hypercompress/size?s?=1) or a fifth (s?=2) of the context, keeping instructions and every section's opening."
+      ],
+      "changes": [
+        {
+          "symbol": "\u0e4b\u08ed\u2b51",
+          "label": "major",
+          "category": "Added",
+          "text": "Signed, timestamped HyperLink prompts and the ping before Send. When Send is pressed the web and iOS apps ping the server (POST /hyperlink/ping, answered without a model) and give it four seconds; once it answers the prompt has no timeout. Every send, resend and edit then\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "Signing in from the app: POST /hyperlink/login and the iOS Account section sign a device in to its account once, after pairing, a T1 key or the local network, so its data is never lost to a re-pair.",
+          "details": []
+        },
+        {
+          "symbol": "\ud81a\udd54",
+          "label": "minor",
+          "category": "Added",
+          "text": "GET /hyperlink/whoami names the signer and the server session.",
+          "details": []
+        },
+        {
+          "symbol": "\u0e4b\u08ed\u2b51",
+          "label": "major",
+          "category": "Added",
+          "text": "Web search v2: /web/v2/I?=query&q?=depth&mx?=max&sq?=read&&kpd?=true reads and summarises the top-ranked sites (sq?=1 only the first) and can keep the search and the sites' text as JSONL or Parquet. ([T1 API](T1-API.md#web-search-v2))",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "Five web admin settings (store_enabled, store_format, max_items, max_read_sites, ai_config), set with hypernix-t1 config web, and /web/v1/ai/config, through which a model with partial admin changes the less risky three.",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "Hypercompress: when a turn's prompt is bigger than the loaded model's context, the system prompt is compressed, without a model, to a third (/chat/hypercompress/size?s?=1) or a fifth (s?=2) of the context, keeping instructions and every section's opening.",
+          "details": []
+        },
+        {
+          "symbol": "\ud81a\udd54",
+          "label": "minor",
+          "category": "Added",
+          "text": "POST /chat/hypercompress compresses a text by hand.",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "The two-layer ring beside the chat box (web and iOS): context inside; the key's token allowance outside when it has one, else GPU load, or CPU load when the model runs on the CPU.",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "Documents a model writes for download: the create_document tool and POST /hyperlink/files/document; the apps offer them under the reply.",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "Choosing among loaded models: GET /hyperlink/models/loaded, and the Models tab and the chat in HyperLink list every loaded model and pick which one answers.",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "Runner pickers: hnx-t1 runner start with no exact model opens an lms load-like list (type to filter, \u2191/\u2193, Enter) that refreshes and never takes over the screen; hnx-t1 runner backend picks the backend the same way.",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "hnx-t1 launch-script -1 'CMD' -2 'answer' \u2026 -9 'answer' feeds a command's prompts in order (-5 \"\" presses Enter, as a gap does), and --logs JOB -F follows a job's log until Ctrl-C.",
+          "details": []
+        },
+        {
+          "symbol": "\u0e4b\u08ed\u2b51",
+          "label": "major",
+          "category": "Added",
+          "text": "Multi-llama runner: --backend multilama serves a GGUF through the llama.cpp fork it needs (ik_llama.cpp, PrismML, KoboldCpp, Nanbeige), multilama-<fork> names one, and auto goes there itself when a file has types only a fork knows. ([CLI](CLI.md#hypernix-t1-built-in-runner))",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "The hnx llama mod knows the forks' types: hypernix.quant.forktypes lists ik_llama.cpp's IQ_K, IQ_KS, IQ_KT and repacked types (read from its ggml.h), and hyprslug --check names them and says where a file runs.",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "Two hybrids: hnx_q6h1 (INT2, Q6_K, HNX_1375BIT, IQ1_S, Q3_K_M, 3.2 bpw) and hnx_q6h1m (INT2, Q5_K, HNX_15125BIT, IQ1_S, Q2_K_M, 3.1 bpw). ([HyprSlug](HyprSlug.md))",
+          "details": []
+        },
+        {
+          "symbol": "\ud81a\udd54",
+          "label": "minor",
+          "category": "Added",
+          "text": "Two tiers: HNX_15125BIT (type 224, 1.5 bpw: a 7-bit magnitude per 16 weights) and HNX_IQ1S (type 225, IQ1_S's 1.5625 bpw), registered in the patched llama.cpp, whose decoder agrees with Python's bit for bit.",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "hnx download takes links: a huggingface.co link to a repo or to one file in it, -f for one file, -o for where it goes, and --repo-id is optional. A repo of GGUFs downloads its one GGUF or its Q4_K_M.",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "A judge on any OpenAI-compatible server for the ranges: industrial_range.OpenAIJudge. ([Ranges](Ranges.md))",
+          "details": []
+        },
+        {
+          "symbol": "\u26a0\ufe0f",
+          "label": "error codes",
+          "category": "Changed",
+          "text": "HyperLink chats are no longer global. With accounts on they belong to the account, otherwise to the key; a key's existing chats, files, memories and preferences move to its account. Keyless trusted-network access to them is refused unless T1_HYPERLINK_SHARED_KEYLESS_CHATS=1.",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Changed",
+          "text": "The default model is LFM2.5-2.6B (Liquid AI): runner start with no model downloads LFM2.5-2.6B-Q4_K_M.gguf (about 1.7 GB) the first time, and lfm2.5-2.7b names it too \u2014 Liquid AI publishes no 2.7B. HyperNix.3-mini is still loaded by name.",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Changed",
+          "text": "The default prompt has the model decide whether a tool is needed, work out what to search for, write downloadable documents with the document tool, and save memories when asked or when a note will help later; T1_HYPERLINK_MEMORY_WHEN_TOLD=1 limits saving to when asked.",
+          "details": []
+        },
+        {
+          "symbol": "\ud81a\udd54",
+          "label": "minor",
+          "category": "Changed",
+          "text": "The model's web_search tool uses web search v2, and web_settings / web_settings_set expose /web/v1/ai/config.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udce6",
+          "label": "packaging",
+          "category": "Changed",
+          "text": "The license is HOS-1.1 or Apache-2.0 from this release (HOS-1.1 by default). HOS-1.1 keeps HOS-1.0's Apache-derived grants and takes LLU-0.1's fuller definitions, trademark terms and model guidance, as non-binding guidance. Earlier releases keep LLU-0.1 / HOS-1.0.",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Changed",
+          "text": "The ranges, updated: new_range knows how current models decline and reads curly apostrophes.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udd17",
+          "label": "API",
+          "category": "API Changes",
+          "text": "T1 API v1.1.26.10.1.0 (same 1.1 generation; every 1.1 client is accepted). SIGNED_PROMPTS_VERSION lets a client check before signing.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udd17",
+          "label": "API",
+          "category": "API Changes",
+          "text": "New routes: /hyperlink/ping, /hyperlink/whoami, /hyperlink/login, /hyperlink/models/loaded, /hyperlink/files/document, /hyperlink/sessions/{id}/ring, /chat/hypercompress and /size, /web/v2/I, /web/v1/ai/config.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udd17",
+          "label": "API",
+          "category": "API Changes",
+          "text": "signature on chat, stream and edit requests; hypercompressed and documents in a reply's metadata.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udd12",
+          "label": "security",
+          "category": "Security",
+          "text": "Every Hugging Face download can be pinned: hypernix.security.hfpin takes the caller's revision, HYPERNIX_HF_REVISION<REPO>, or a commit in /.hypernix/hf-pins.json. All 26 medium Bandit findings (B615) are gone; 63 low ones remain in shipped code, the deliberate try/except/pass\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udd12",
+          "label": "security",
+          "category": "Security",
+          "text": "hnx net quoted nothing it sent to a peer's shell: a file name with a ; ran a second command there. Remote commands are quoted, and a peer name cannot become an ssh option.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udd12",
+          "label": "security",
+          "category": "Security",
+          "text": "Every GitHub Action is pinned to a commit, Dependabot keeps the pins (and pip) current with a 7-day cooldown, and the kernel workflow installs Nix through the installer's pinned action instead of curl | sh.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udd12",
+          "label": "security",
+          "category": "Security",
+          "text": "Commands run by bare name resolve to their full path where nothing depends on the bare name.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udcda",
+          "label": "docs",
+          "category": "Security",
+          "text": "SECURITY.md: supported versions, private reporting through GitHub advisories, scope, and running a server safely.",
+          "details": []
+        },
+        {
+          "symbol": "\ud81a\udca5",
+          "label": "major fix",
+          "category": "Fixed",
+          "text": "hnx convert -q -p was refused: only -P and -Q existed. Both lowercase spellings work, -q alone means Q4_K_M, and the pipeline converts first and quantises second as two reported steps \u2014 a Brewer model is exported to a GGUF before the quantiser sees it.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udc1b",
+          "label": "fix",
+          "category": "Fixed",
+          "text": "ssh-keyscan in hnx net got >> as an argument and never wrote known_hosts; the keys are appended now.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udc1b",
+          "label": "fix",
+          "category": "Fixed",
+          "text": "industrial_range read \"The better one is A\" as a tie, \"not good\" as GOOD and a <think> block as the verdict, and ignored fallback_label.",
+          "details": []
+        },
+        {
+          "symbol": "\u274c",
+          "label": "breaking",
+          "category": "Deprecated",
+          "text": "/web/v1/search answers with Deprecation and Sunset headers and goes away in 0.73.0; use /web/v2/I.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udcda",
+          "label": "docs",
+          "category": "Documentation",
+          "text": "[T1 API](T1-API.md): ownership, signed prompts and the ping, web search v2, the ring, documents and hypercompress, and v1.1.26.10.1.0; [CLI](CLI.md): download links, convert -q -p, the runner pickers, multi-llama, the default model, launch-script answers and config web\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\ud83e\uddea",
+          "label": "tests",
+          "category": "Tests",
+          "text": "Signing and replay, ownership and keyless refusal, web v2's grammar, settings and storage, hypercompress, the ring, documents and the memory rule, the pickers in a real pty, launch-script answers, the multi-llama routing, download links, the convert order, the new tiers against\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\u2757",
+          "label": "known issue",
+          "category": "Known Issues",
+          "text": "The iOS changes (sign-in, signing, the ring, loaded models, document downloads) are not compiled or run here: there is no Swift toolchain in the build environment. Their parsing tests are written but unrun.",
+          "details": []
+        },
+        {
+          "symbol": "\u2757",
+          "label": "known issue",
+          "category": "Known Issues",
+          "text": "The multi-llama forks' own binaries are fetched or built on first use; PrismML and Nanbeige publish no prebuilt releases, so those need the build command the error gives.",
+          "details": []
+        }
+      ]
+    },
+    {
       "version": "0.72.8a0",
       "key": "0.72.8a0",
       "aliases": [
@@ -568,604 +872,7 @@
         "Added linking a model that is already on the server, from HyperLink.",
         "Added -P and -Q to hypernix convert (and hnx convert)."
       ],
-      "changes": [
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "Added /code, sandboxes that run code on the T1 server.",
-          "details": [
-            "POST /code/create runs a snippet once; POST /code/create/sandbox makes one that stays, with files to write, read and run under /code/sandbox/{id}. Each level of the tree describes the next on a GET.",
-            "What sandboxes may do \u2014 execute, network, timeout, languages, disk, memory, idle time \u2014 is s1..s7 at /code/create/sandbox/perms, in the web search settings' grammar: perms/s2?:=on|s3?:=120, or perms|s1=?;s2?:=on. Reading is open; changing needs an admin key.",
-            "Off unless the operator sets T1_CODE_SANDBOX=1, and running needs an admin key or write. No shell, a minimal environment, paths held inside the sandbox, memory/file/CPU limits and a timeout that kills the process group. With the network off a run gets a network namespace of its\u2026"
-          ]
-        },
-        {
-          "symbol": "\u0e4b\u08ed\u2b51",
-          "label": "major",
-          "category": "Added",
-          "text": "Added three hybrid quantisations to hyprslug: hnx_Q6_H_k (q6h), hnx_Q6_H_4 (q6h4) and hnx_Q6_H_2 (q6h2).",
-          "details": [
-            "Each tensor's format is chosen from its role and its depth: the output head, attn_v and ffn_down get the most bits, the first and last eighth of the layers more than the middle, and the aggressive formats land only on the middle layers' ffn_gate/ffn_up.",
-            "q6h mixes Q8_K, Q6_K and Q3_K (about 5.9 bits/weight on a 7B llama). q6h4 mixes Q6_K, Q5_K, Q4_K, INT3 and Q2_K (about 4.8). q6h2 is q6h4 with IQ1_XS for Q2_K, Q3_K_L's formats for Q4_K_S, and no INT3 (about 4.5).",
-            "IQ1_XS is not a llama.cpp type (upstream has IQ1_S and IQ1_M). Here it names HNX_1375BIT, the HyperNix one-bit type below IQ1_S.",
-            "The token embedding is always a stock K-quant, because llama.cpp's get_rows aborts on anything else.",
-            "The file records hypernix.hybrid, hypernix.ingredients and hypernix.needs: ggml-hnx, and a general.file_type from 1301 up rather than claiming Q6_K."
-          ]
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "Added Q8_K, INT3 and FP8 to hyprslug and to native/ggml-hnx.",
-          "details": [
-            "Q8_K is llama.cpp's own block used as a weight. Stock llama.cpp only quantises activations to it; the patch now gives it a to_float and an int8 x int8 vec_dot.",
-            "INT3 (type 210, 3.06 bits/weight) is the codebook between INT2 and INT4. FP8 (type 211, 8.06) stores E4M3 floats as their own bytes against an FP16 block scale.",
-            "Checked in patched llama.cpp on a trained 8-layer hyperNix0x-v2 model. For every new target and every hybrid, the logits from the quantised file matched the logits from the same weights dequantised to F32, to within 0.7% of the range; INT3 and FP8 matched to within 0.01%."
-          ]
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "Added nightly builds to public-release.yml, behind a setting.",
-          "details": [
-            "Set the repository variable PUBLIC_RELEASE_NIGHTLY to true, and the workflow builds the default branch at 03:23 UTC. A night with no new commits is skipped, and so is one whose only commits are the stat bots' (JSON stats, generated docs data, the README header, the architecture\u2026",
-            "A nightly runs the same lint, full test suite and live integration jobs as a release, then replaces the rolling nightly GitHub prerelease. Its version is the tree's plus a local label (0.72.6.post3+nightly.20260930.1a2b3c4).",
-            "It never bumps or commits the version, never makes a v tag, and never goes to PyPI or TestPyPI. No package index accepts a local version anyway, so a nightly cannot be published by mistake.",
-            "The HyperLink IPA is left out unless PUBLIC_RELEASE_NIGHTLY_IPA is also true, since it needs a macOS runner every night.",
-            ".github/scripts/release_plan.py decides whether a run is a release, a nightly or nothing, and tests/repo/test_release_plan.py (36) covers it and the workflow's guards."
-          ]
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "Added linking a model that is already on the server, from HyperLink.",
-          "details": [
-            "The web app's Runner page and the iOS app's Runner screen take a path on the server: a .gguf, a folder with one in it, or a hyperNix0x-v2 model folder. It is symlinked into the models folder, not copied, and can be loaded straight away.",
-            "A linked model shows where it points, with \"Remove link\", which removes only the link. POST /hyperlink/models/link and DELETE /hyperlink/models/link/{name} are admin only, accept only model files and folders, and take one plain name segment."
-          ]
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "Added -P and -Q to hypernix convert (and hnx convert).",
-          "details": [
-            "hnx convert ./snapshot -P -Q q6h4 converts a safetensors model to a GGUF, then quantises it with hyprslug to any target it knows. It accepts a Hugging Face folder or a .safetensors in one, a Brewer folder or .pt, or a .gguf, which is quantised as it is.",
-            "The output defaults to <model>.<target>.gguf beside the model. The F16 copy is staged beside it and deleted, unless --keep-intermediate is given. -Q implies -P, and a bad target is refused before anything is converted."
-          ]
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "Added hyperNix0x-v2 (Brewer) models as hyprslug input.",
-          "details": [
-            "hyprslug brewer_models/mymodel q6h4 takes a model folder or a .pt checkpoint. It exports an F16 GGUF beside the output, quantises that, and deletes it."
-          ]
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "Added a real GGUF export for Brewer (hyperNix0x-v2) models, which run in any llama.cpp: stock, LM Studio's, and the native/ggml-hnx patched one.",
-          "details": [
-            "brew export --format gguf wrote an HNXG file, a JSON header and raw F32 tensors that no llama.cpp could open, patched or not. It now writes the llama architecture, which is what a Brewer block is; the old file is --format hnxg.",
-            "brew gguf SOURCE converts any Brewer folder or .pt, HyperNix.3-mini included: hnx brew gguf /.hypernix/models/HyperNix.3-mini.",
-            "Q and K are permuted from Brewer's half rotation to llama.cpp's pair rotation, the tokenizer goes inside the file (a byte-level BPE tokenizer.json, or a brew train character vocabulary rebuilt as byte-level BPE), and a sliding-window model's context is capped at the window\u2026",
-            "--outtype f32|f16|bf16|q8_0, and the Brewer config kept in the file under hypernix.brewer.."
-          ]
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "Added llama.cpp serving for brewed models in the runner.",
-          "details": [
-            "With a llama.cpp build, a brewed folder is converted to GGUF once, cached in <T1_CONFIG_DIR>/cache/brewed-gguf until its weights change, and served by llama.cpp: a KV cache, quantised weights and a GPU layer split, none of which the PyTorch server has.",
-            "Without one, or without a tokenizer, the PyTorch server serves it as before. HYPERNIX_BREWED_BACKEND=torch always uses it; =llama requires llama.cpp and says why when it cannot."
-          ]
-        },
-        {
-          "symbol": "\ud81a\udd54",
-          "label": "minor",
-          "category": "Added",
-          "text": "Added Brewer.save() and Brewer.from_dir(): the model folder (config.json, model.safetensors, char_vocab.json) that NeoOven, the runner, brew gguf and the catalogue all read.",
-          "details": []
-        },
-        {
-          "symbol": "\ud81a\udd54",
-          "label": "minor",
-          "category": "Added",
-          "text": "Added zero-padding of the FFN to a multiple of 256 in the GGUF, on by default (--pad-ffn). HyperNix.3-mini's d_ff is 2203, so every ffn_down fell back to F16 in llama-quantize; padded, it quantises to Q4_K/Q6_K, and zero rows and columns change no output.",
-          "details": []
-        },
-        {
-          "symbol": "\ud81a\udd54",
-          "label": "minor",
-          "category": "Added",
-          "text": "Added char_vocab.json to NeoOven's tokenizer loading, so a character-level brewed model chats in Python too.",
-          "details": []
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "Added HyperLink on the web at / on the T1 API's own port.",
-          "details": [
-            "The page opens at the server's address, http://127.0.0.1:8000/ or whatever T1_PORT is, as well as on port 37965, for the same callers: this machine and the tailnet, by the connection's address. Anyone else still gets the API's 404.",
-            "T1_WEB_ENABLED=0 turns both off. Under T1_MOUNT_PREFIX only port 37965 serves it, since the page calls the API at its root."
-          ]
-        },
-        {
-          "symbol": "\ud81a\udd54",
-          "label": "minor",
-          "category": "Added",
-          "text": "Added the API-port address to the startup line and to hypernix-t1 status, which says whether the page answers there.",
-          "details": []
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "Added hypernix-t1 upgrade, which upgrades HyperNix in the Python the server runs on, then restarts the server.",
-          "details": [
-            "That is the private venv when install-t1.sh made one. A pip install -U hypernix in your own shell upgrades a different environment, so the server kept running the old version, and hypernix-t1 version still said 0.72.6, with no HyperLink site on any port.",
-            "--main installs the newest code from GitHub; any pip requirement, such as 'hypernix[t1api]==0.72.7', works too."
-          ]
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "Added model sync: /.hypernix/models mirrored into the T1 server's own /.hypernix/t1api/models, one symlink per file.",
-          "details": [
-            "T1_MODEL_SYNC=1 has the server sync at startup, after each download and before a model list, and serve its local models from the mirror (T1_MODELS_DIR). New configs from hypernix-t1 create and install-t1.sh have it on; it is off otherwise.",
-            "hypernix-sync, also t1-sync and hypernix-t1 sync, does it by hand, with --dry-run, --index (write the registry from the result) and --watch.",
-            "Links whose file is gone are removed. A real file, or a link of your own, in the T1 folder is never replaced, and downloads in progress are skipped.",
-            "The folder mirrored is T1_MODELS_SOURCE, default /.hypernix/models, and not the download folder: install-t1.sh points T1_HF_DOWNLOAD_DIR at the T1 folder itself, so a server it made would have mirrored that folder into itself and synced nothing.",
-            "hypernix-t1 status names both folders when it is on, and warns when they are one folder, when one is inside the other, or when the shared one does not exist."
-          ]
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "Added the hand-off from hypernix-t1 to the copy in the server's venv.",
-          "details": [
-            "pip install -U into /.hypernix/t1api/venv upgrades the copy in venv/bin, not the hnx-t1 first on PATH, and both report the same version. Seen on a real server: the venv had the fixed model sync, and status from the other copy still described the old one.",
-            "Whichever copy runs now hands over to the venv's when it is a different script, unless it is the newer of the two, in which case it stays and warns that the server is behind.",
-            "status asks the server's own code which folders it mirrors, and counts the files linked.",
-            "A copy from before this cannot hand over. status says when one is first on PATH, and gives the ln -sf that points it at the server's copy for good."
-          ]
-        },
-        {
-          "symbol": "\ud81a\udd54",
-          "label": "minor",
-          "category": "Added",
-          "text": "Added the server's HyperNix version to hypernix-t1 status, and a warning from status and start when it is older than the one that came with hypernix-t1 itself.",
-          "details": []
-        },
-        {
-          "symbol": "\ud81a\udd54",
-          "label": "minor",
-          "category": "Added",
-          "text": "Added a line to hypernix-t1 status when the installed HyperNix has no HyperLink site at all, where it used to print nothing about the site.",
-          "details": []
-        },
-        {
-          "symbol": "\u26a0\ufe0f",
-          "label": "error codes",
-          "category": "Changed",
-          "text": "Changed hypernix-t1 launch-script -$ 'CMD' to -1 'CMD'.",
-          "details": [
-            "No shell typed -$ reliably: bash reads -$'...' as one quoted word and -$NAME as a variable, and fish refuses a bare $. -1 needs no quoting anywhere. --shell-command is unchanged, and -$ is still accepted, unlisted, so existing scripts keep working."
-          ]
-        },
-        {
-          "symbol": "\ud83d\udd27",
-          "label": "internal",
-          "category": "Changed",
-          "text": "Changed Bandit's assert_used check (B101) to skip tests/, in a new [tool.bandit] section of pyproject.toml that the security scan already reads when present.",
-          "details": [
-            "pytest's asserts are how a test checks its result, and B101 reported every one, over eleven thousand, as a code-scanning alert on each PR that touched a test. The 29 in the package itself are now real checks (see Security)."
-          ]
-        },
-        {
-          "symbol": "\ud83d\udd27",
-          "label": "internal",
-          "category": "Changed",
-          "text": "Changed the security scanners so each one runs and reports.",
-          "details": [
-            "The security scan's CodeQL job, and codeql.yml, are removed. The repository uses GitHub's CodeQL default setup, which runs on every push and pull request, and while it is on GitHub refuses results from an advanced CodeQL workflow, so both only ever failed. Turn default setup\u2026",
-            "A .gitleaksignore lists the five gitleaks findings in history, each reviewed and none a secret (variable names, an allocator setting, a test id); anything new is still reported.",
-            "A .codacy.yml excludes the binary assets and generated site data from Codacy, whose report step crashed on every run reading one of them as text."
-          ]
-        },
-        {
-          "symbol": "\ud83d\udd27",
-          "label": "internal",
-          "category": "Changed",
-          "text": "Changed tests/ into one folder per package, named like the folder under src/hypernix/ it tests, plus ios/, desktop/, docs/ and repo/; tests/README.md lists them.",
-          "details": [
-            "pytest tests/t1api runs one area. Every folder is on the import path, so the shared helpers still import the same way.",
-            "scripts/autofix_scope.py now looks for tests in every folder; it only read tests/test.py, so it would have found none."
-          ]
-        },
-        {
-          "symbol": "\ud81a\udca5",
-          "label": "major fix",
-          "category": "Security",
-          "text": "Fixed the security gate's 16 Semgrep errors.",
-          "details": [
-            "public-release.yml and ios.yml wrote ${{ inputs.version }} and inputs.allow_downgrade into run: scripts, so a dispatched version string was shell text. They now arrive as environment variables, and the version bump's Python heredoc is quoted and reads them from there.",
-            "release.yml and public-release.yml called ios.yml with secrets: inherit. ios.yml now declares the five signing secrets it uses, all optional, and both callers pass exactly those.",
-            "remote_desktop passed $DISPLAY straight to x11vnc -display; it is now used only when it is a display name, else :0.",
-            "The operator's /system shell escape, hyped's consent-gated run_command and run_background_command, the hyped-pro and tvtop-max launchers and hyped-pro's interpreter probe are intended as they are, and carry a nosemgrep marker for their one rule beside Bandit's nosec and the\u2026"
-          ]
-        },
-        {
-          "symbol": "\ud81a\udca5",
-          "label": "major fix",
-          "category": "Security",
-          "text": "Fixed checkpoints being unpickled, which runs any code in the file.",
-          "details": [
-            "Six torch.load(..., weights_only=False) calls (wake-word models, brewed model.pt, oven bundles, quant.convert, brewer resume) now go through hypernix.security.safeload.load_checkpoint, which loads with weights_only=True. Every checkpoint HyperNix writes is tensors and plain\u2026",
-            "A file that needs full unpickling is refused with the reason, unless HYPERNIX_TRUST_PICKLE=1 is set for a file the person trusts."
-          ]
-        },
-        {
-          "symbol": "\ud83d\udd12",
-          "label": "security",
-          "category": "Security",
-          "text": "Changed MCP to keep an unexpected error's text on the server.",
-          "details": [
-            "A tool that raised sent str(exc) to the remote client, which can name files and settings. The client now gets an incident id, and the server's log has the traceback under that id."
-          ]
-        },
-        {
-          "symbol": "\ud83d\udd12",
-          "label": "security",
-          "category": "Security",
-          "text": "Changed the key store to check that a key's file is inside the store.",
-          "details": [
-            "Besides the key id pattern, the normalised path must be under the store before a key file is read, written or deleted."
-          ]
-        },
-        {
-          "symbol": "\ud81a\udca5",
-          "label": "major fix",
-          "category": "Security",
-          "text": "Fixed the Codacy scan, which had crashed on every run since 2026-09-08.",
-          "details": [
-            "Its SARIF writer died with MalformedInputException because the analysis container's JVM defaulted to ASCII, and the action passes only four environment variables into Docker. The workflow now runs codacy/codacy-analysis-cli:4.0.0 itself with UTF-8 set, so a new report can be\u2026",
-            ".github/scripts/codacy_sarif_filter.py keeps the report to findings about correctness and security: style-only tools (duplication, Markdown, CSS lint), pylint's convention, refactor and info messages, and Python findings in tests/ and build/ are dropped, and what is left is\u2026",
-            "Most of the drop in the alert count comes from this filter and the .codacy.yml exclusions, not from code changes; the code changes are the entries below."
-          ]
-        },
-        {
-          "symbol": "\ud83d\udd12",
-          "label": "security",
-          "category": "Security",
-          "text": "Changed every urlopen in the package to refuse anything but http and https.",
-          "details": [
-            "hypernix.security.safeurl.urlopen checks the scheme before opening, so a file:// or ftp:// URL from a setting or a model's link is refused with UnsafeURLError. 26 modules use it."
-          ]
-        },
-        {
-          "symbol": "\ud83d\udd12",
-          "label": "security",
-          "category": "Security",
-          "text": "Changed the SQLite stores to allowlist what is put into SQL text.",
-          "details": [
-            "The account updater takes only its own columns, and the auth history's sort order only ASC or DESC; every value was already a bound parameter. The remaining interpolated queries carry a nosec marker saying why."
-          ]
-        },
-        {
-          "symbol": "\ud83d\udd12",
-          "label": "security",
-          "category": "Security",
-          "text": "Changed 29 assert checks in the package into real errors.",
-          "details": [
-            "python -O strips assert, so those checks (hyprslug, storage, pairing, fusebox and others) would have silently stopped running. They raise AssertionError as before, without depending on it."
-          ]
-        },
-        {
-          "symbol": "\ud83d\udd27",
-          "label": "internal",
-          "category": "Security",
-          "text": "Changed the Bandit configuration.",
-          "details": [
-            "[tool.bandit] in pyproject.toml excludes tests and build, and skips B404 and B603 (importing subprocess, and calling it with a list and no shell). Every other finding kept in the code has a nosec marker with its reason.",
-            "Bandit went from about 1,087 findings to 107: 53 try/except/pass, 25 Hugging Face downloads without a pinned revision, 18 commands found on PATH, and a handful of low-severity others."
-          ]
-        },
-        {
-          "symbol": "\ud81a\udca5",
-          "label": "major fix",
-          "category": "Fixed",
-          "text": "Fixed symlinked models being invisible to HyperLink.",
-          "details": [
-            "ln -s /data/qwen /.hypernix/models/qwen is the obvious way to keep a large model on another disk, and every model scanner walked past it: Path.rglob never descends into a symlinked folder. The model picker, the runner, hypernix-t1 index, the downloaded-models list and the LM\u2026",
-            "A link whose target has gone (moved, or on a disk that is not mounted) is listed as not runnable, with the target it points at, instead of vanishing. Loading one says why, up front."
-          ]
-        },
-        {
-          "symbol": "\ud83d\udc1b",
-          "label": "fix",
-          "category": "Fixed",
-          "text": "Fixed hnx_quantize_rows in native/ggml-hnx writing sign bits for the codebook types.",
-          "details": [
-            "INT4, FP2, INT8 and INT2 went through the sign-and-scale encoder, so a C caller got noise. They now get the nearest level. hyprslug never used this path, so no file it wrote was affected."
-          ]
-        },
-        {
-          "symbol": "\ud83d\udc1b",
-          "label": "fix",
-          "category": "Fixed",
-          "text": "Fixed hyprslug's summary for a recipe printing () and 0.000 where it packed.",
-          "details": [
-            "A recipe has several formats, listed under mix, not one packing."
-          ]
-        },
-        {
-          "symbol": "\ud81a\udca5",
-          "label": "major fix",
-          "category": "Fixed",
-          "text": "Fixed brew train throwing away its character vocabulary.",
-          "details": [
-            "It built the table from the corpus, trained on it, and kept it in memory only, so a model it trained could never turn its output ids back into text, in Python or anywhere else. The vocabulary is now returned, saved as char_vocab.json and put in every checkpoint, and training\u2026",
-            "A corpus with more characters than the model has embeddings was a warning followed by an IndexError (a device-side assert on CUDA) some way into the run. It is refused before training starts."
-          ]
-        },
-        {
-          "symbol": "\ud81a\udca5",
-          "label": "major fix",
-          "category": "Fixed",
-          "text": "Fixed the brew commands working only within one process.",
-          "details": [
-            "brew new then brew train in a second command found nothing, since the registry lived in memory. brew train saved no weights, and ignored --lr, --batch-size and --device.",
-            "brew export built a fresh, randomly initialised model and exported that, whatever had been trained. It now reads the model's folder, and refuses one with no trained weights.",
-            "Each command works on ./brewer_models/<name> or --dir."
-          ]
-        },
-        {
-          "symbol": "\ud81a\udca5",
-          "label": "major fix",
-          "category": "Fixed",
-          "text": "Fixed the server's own address answering 404 instead of HyperLink on the web.",
-          "details": [
-            "From a server log: the server on 0.0.0.0:8001, the browser at http://127.0.0.1:8001/, and GET / 404. The site was only on its own port, 37965, and 0.72.6.post1 said so nowhere, so the address people tried first was the one address that did not serve it."
-          ]
-        },
-        {
-          "symbol": "\ud81a\udca5",
-          "label": "major fix",
-          "category": "Fixed",
-          "text": "Fixed importlib.reload of a module first imported by its flat name (hypernix.pressure_cooker for hypernix.optimizers.pressure_cooker).",
-          "details": [
-            "The alias left its own spec on the real module, so a reload did nothing at all, or re-ran the module as hypernix.<flat> and renamed it for everyone. The real spec is now put back after the import."
-          ]
-        },
-        {
-          "symbol": "\ud83d\udc1b",
-          "label": "fix",
-          "category": "Fixed",
-          "text": "Fixed HnxRun and hnxtorch refusing FP8 and INT3 layers.",
-          "details": [
-            "Both kept their own list of codebook types, which stopped at INT4, FP2, INT8 and INT2, so a file with the new types failed to load. They now read the list from hypernix.quant.lowbit, and a test decodes every codebook type through both."
-          ]
-        },
-        {
-          "symbol": "\ud83d\udc1b",
-          "label": "fix",
-          "category": "Fixed",
-          "text": "Fixed hypernix --help listing tvtop as another name for cctvtop.",
-          "details": [
-            "hypernix tvtop runs the classic dashboard; it is the tvtop console script that runs cctvtop. The help now says so."
-          ]
-        },
-        {
-          "symbol": "\ud83d\udc1b",
-          "label": "fix",
-          "category": "Fixed",
-          "text": "Fixed scripts/update_json_stats.py writing to docs/v1/json when run by hand. Its default is docs/public/v1/json, where the workflow and the site read it.",
-          "details": []
-        },
-        {
-          "symbol": "\ud81a\udca5",
-          "label": "major fix",
-          "category": "Fixed",
-          "text": "Fixed the runner starting a stock llama.cpp on a model with HyperNix types.",
-          "details": [
-            "From a server log: hnx-t1 runner load hypernix-3-mini started a stock llama-server, which rejected the INT3 layer with \"invalid ggml type 210. should be in [0, 43)\". The first build found was used, of any kind, and a T1 server installed with pip could not see the patched build\u2026",
-            "The runner reads the model's tensor types first and picks the first patched build that reads all of them. When none does, it refuses before starting anything, names the missing types, and says whether to build or rebuild. A build patched before INT3 and FP8 existed is caught\u2026",
-            "native/ggml-hnx/build.sh records where it built in /.hypernix/llama-build, which the runner, hnx runtime and hnx doctor read. HNX_LLAMA_BUILD is now used as named, never passed over."
-          ]
-        },
-        {
-          "symbol": "\ud83d\udc1b",
-          "label": "fix",
-          "category": "Fixed",
-          "text": "Fixed a runner load that crashed being reported as \"did not start within 300s\".",
-          "details": [
-            "llama-server had exited 50 ms in. The refusal now says it exited, with its exit code, above its output."
-          ]
-        },
-        {
-          "symbol": "\ud83d\udc1b",
-          "label": "fix",
-          "category": "Fixed",
-          "text": "Brought hnx doctor up to date.",
-          "details": [
-            "Python 3.14 read as unsupported, rich was neither checked nor installed by --fix, and a missing llama-quantize failed the whole check though hypernix quantize fetches one itself. Its Python range and dependency list now match pyproject.toml, and a test keeps them matching\u2026",
-            "It now reports the GPU and the brewer preset and optimizer it suits, the patched llama.cpp and any HyperNix types it lacks, the models folder (through symlinks, with broken links and their targets, and without creating it), and which extras are installed. Only the interpreter\u2026"
-          ]
-        },
-        {
-          "symbol": "\ud83d\udcda",
-          "label": "docs",
-          "category": "Documentation",
-          "text": "Changed the README and examples/t1api/.env.example for the T1 server as it is now.",
-          "details": [
-            "The README says what the 0.72.6 patches changed on the T1 server, and lists every hypernix-t1 command.",
-            "The example .env gains the settings it lacked: web accounts, T1_HYPERLINK_TEACH_TOOLS, and the T1_HOST, T1_PORT and T1_START_TIMEOUT that hypernix-t1 reads."
-          ]
-        },
-        {
-          "symbol": "\ud83d\udcda",
-          "label": "docs",
-          "category": "Documentation",
-          "text": "Changed examples/t1api: the README starts with hypernix-t1, says where models go and how sync works under systemd and in a container, and API-EXAMPLES.md and openapi.json are regenerated from a live server (164 paths; they were a month old).",
-          "details": [
-            "The example generator now replaces the recording machine's name with a placeholder, as it already did ids and timestamps."
-          ]
-        },
-        {
-          "symbol": "\ud83d\udcda",
-          "label": "docs",
-          "category": "Documentation",
-          "text": "Changed scripts/README.md, native/ggml-hnx/README.md and the wiki to match the code.",
-          "details": [
-            "scripts/README.md lists every script in scripts/ and .github/scripts/, what runs it, and which have tests.",
-            "The ggml-hnx README covers all eleven HNX types, Q8_K and what runs where: a patched llama.cpp runs them on the CPU only, and the CUDA kernels are in the standalone library, for the five sign types.",
-            "CLI.md corrects assistant (it runs real models; only pipeline's LLM stage is a stub), tvtop and cctvtop, vera, and the net subcommands, and adds convert -P -Q. LowBit.md, Quantization.md, Convert.md, HnxRun.md, ModelIndex.md, Dashboards.md, Runtime.md, the Pressure Cooker\u2026"
-          ]
-        },
-        {
-          "symbol": "\ud83d\udedc",
-          "label": "site",
-          "category": "Site Changes",
-          "text": "Changed the T1 API page to cover every route the server has and every setting it reads, checked against the code.",
-          "details": [
-            "The endpoint reference gains the 71 routes it did not list (inference, the runner, memory, compaction, noodle, accounts, backups, MCP, HyperLink preferences, sync, push, search and more), each with who may call it.",
-            "New sections: web accounts, MCP, backup and restore, and governed inference. The configuration section lists all 46 settings it lacked, and which are read by the tools rather than the server.",
-            "The quickstart copied .env.t1api.example, which does not exist; it now starts with hypernix-t1 create, and says which Python the server runs from."
-          ]
-        },
-        {
-          "symbol": "\ud81a\udd54",
-          "label": "minor",
-          "category": "Site Changes",
-          "text": "Added \"Opt-in features\" and \"Staying current\" to the T1 security checklist, and the 0.72.6.post3 protections to the T1 API's Security section.",
-          "details": []
-        },
-        {
-          "symbol": "\ud81a\udd54",
-          "label": "minor",
-          "category": "Site Changes",
-          "text": "Added every hypernix-t1 command to the CLI page's table (version, index, built-in-runner, chat, training, launch-script, override, start-foreground), and a fuller status.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udedc",
-          "label": "site",
-          "category": "Site Changes",
-          "text": "Changed the documentation site's T1 route list to include the HyperLink web routes on the API's port, which it could not see.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83e\uddea",
-          "label": "tests",
-          "category": "Tests",
-          "text": "Added tests/hyperlink/test_model_links.py (29): walking through links and not looping, broken links, linking and unlinking, and the routes.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83e\uddea",
-          "label": "tests",
-          "category": "Tests",
-          "text": "Added tests/quant/test_convert_pipeline.py (14) for convert -P.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83e\uddea",
-          "label": "tests",
-          "category": "Tests",
-          "text": "Added tests/quant/test_hyprslug_hybrids.py (54): Q8_K's block and bsums, INT3 and FP8 round trips, FP8 codes being E4M3 bytes, where each hybrid puts each format, and Brewer folders as input.",
-          "details": [
-            "hnx_selftest now cross-checks the six codebook types against Python (99 blocks, exact), and checks the Q8_K dot product."
-          ]
-        },
-        {
-          "symbol": "\ud83e\uddea",
-          "label": "tests",
-          "category": "Tests",
-          "text": "Added tests/security/test_safeurl.py (12) and tests/repo/test_codacy_sarif_filter.py (3).",
-          "details": []
-        },
-        {
-          "symbol": "\ud83e\uddea",
-          "label": "tests",
-          "category": "Tests",
-          "text": "Added tests/models/test_brewer_gguf.py (28), including a check that llama.cpp's pair rotation on the permuted weights gives Brewer's attention scores exactly, and that without the permutation it does not; the FFN padding changing no output; the tokenizers; and brew new, train\u2026",
-          "details": [
-            "Also run against llama.cpp built from source, stock and with ggml-hnx patched in: logits matched PyTorch within 0.0025 at every position in f32 and f16, tokenization matched exactly with multi-byte characters, and greedy generation produced the same text."
-          ]
-        },
-        {
-          "symbol": "\ud83e\uddea",
-          "label": "tests",
-          "category": "Tests",
-          "text": "Added six runner tests: converted once and cached, converted again for new weights, PyTorch without llama.cpp or a tokenizer, and the HYPERNIX_BREWED_BACKEND choices.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83e\uddea",
-          "label": "tests",
-          "category": "Tests",
-          "text": "Added two tests to tests/hyperlink/test_hyperlink_web.py (now 22): the page on the API's port for loopback and tailnet peers (IPv4 and IPv6) and not for LAN or public ones, and neither when the site is off.",
-          "details": [
-            "A server started with hypernix-t1, bound to 0.0.0.0:8001 as in the log, was driven in Chromium at http://127.0.0.1:8001/: the page, keyless sign-in and a chat; the machine's LAN address got a 404."
-          ]
-        },
-        {
-          "symbol": "\ud83e\uddea",
-          "label": "tests",
-          "category": "Tests",
-          "text": "Added tests/security/test_safeload.py (3): a plain checkpoint loads, one with code in it is refused and the code does not run, and trusting it loads it.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83e\uddea",
-          "label": "tests",
-          "category": "Tests",
-          "text": "Added tests/t1api/test_hypernix_t1_upgrade.py (18): upgrade runs pip in the server's own Python, --main and a requirement, the warning when the server's HyperNix is older, and none when it is not.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83e\uddea",
-          "label": "tests",
-          "category": "Tests",
-          "text": "Added tests/t1api/test_modelsync.py (27): linking, relinking and pruning, your own files left alone, in-progress downloads skipped, the catalogue finding synced models and checkpoints, a server with sync on serving from the mirror, the CLI's exit codes and .env settings\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\ud83e\uddea",
-          "label": "tests",
-          "category": "Tests",
-          "text": "Added a test that a reload after a flat-name import keeps the real name, in a fresh interpreter. The pressure-cooker check that importing does not warn now runs in one too, so it no longer swaps out the classes other tests hold.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83e\uddea",
-          "label": "tests",
-          "category": "Tests",
-          "text": "Added an MCP test that an internal error's text stays in the server's log and the client gets only the incident id.",
-          "details": []
-        },
-        {
-          "symbol": "\u2757",
-          "label": "known issue",
-          "category": "Known Issues",
-          "text": "The site is still not on the LAN address, on either port, by design.",
-          "details": [
-            "From another device, use this machine's Tailscale address, which hypernix-t1 status prints."
-          ]
-        }
-      ]
+      "changes": []
     },
     {
       "version": "0.72.6.post2",

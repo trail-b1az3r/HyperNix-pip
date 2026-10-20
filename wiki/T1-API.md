@@ -5,9 +5,11 @@ mountable into any Python server. The client requests an operation; the
 server decides what exists, what's available, and how much is left — see
 [Design principle](#design-principle).
 
-**Status: released — T1 v1.1.26.9.0.0** (long form `1.1.2026.9.0.0`),
-the first of the 1.1 generation, shipped in `0.72.5.post15` and still
-the contract in `0.72.6.post3`, the newest package. The betas ended at
+**Status: T1 v1.1.26.10.1.0** (long form `1.1.2026.10.1.0`) in
+`0.72.8a1`: the 1.1 generation, which began with T1 v1.1.26.9.0.0 in
+`0.72.5.post15`, plus [web search v2](#web-search-v2),
+[signed prompts](#signed-prompts-and-the-ping) and
+[chats owned by an account or a key](#ownership). The betas ended at
 v1.0.26.8.0.1. This page is the living contract for what's actually
 implemented vs. planned; cross-reference against the
 [Roadmap](#roadmap) before assuming an endpoint exists.
@@ -1349,6 +1351,59 @@ one decision is what makes a conversation started on the desktop
 continue on the phone, while another operator's stays invisible.
 Unpairing a phone does not orphan the threads started on it.
 
+Since 0.72.8 chats are never global. With [web accounts](#web-accounts)
+on and the key belonging to an account, the owner is `account:<id>`, so
+every key and device of that account sees the same chats; otherwise it
+is the key. The first time a key is seen as part of an account its chats,
+files, memories and preferences move to the account. Keyless
+trusted-network access is refused on chats, files, sync, memory and
+compaction (401), unless `T1_HYPERLINK_SHARED_KEYLESS_CHATS=1` brings
+back the one pool keyless devices shared before.
+
+`GET /hyperlink/whoami` names the signer a client should sign as and the
+server session id. `POST /hyperlink/login` (username and password) signs
+an app in to its account once and returns a key it keeps, so data is
+never lost to a re-pair.
+
+### Signed prompts and the ping
+
+When Send is pressed the client first sends `POST /hyperlink/ping` with
+the time the button was pressed. The server answers without touching a
+model; a client that gets no answer within **four seconds** says the
+server is not answering rather than waiting. Once the ping is answered
+the prompt itself has no timeout. An empty ping is a 422.
+
+Every send, resend and edit then carries a `signature`: an HMAC-SHA256
+(`hyperlink-sign/v1`) over, one per line, the signer (`account:<id>` or
+`key:<id>` — a T1, T2 or T2.1 key), the Unix time Send was pressed, a
+23–26 character random nonce, the chat (or code) session id, the server
+session id from the ping, the action (`ping`, `send`, `resend`, `edit`)
+and the SHA-256 of the text. The key is SHA-256 of `hyperlink-sign/v1:`
+plus the credential the request already carries. The server refuses a
+signature from another signer, outside five minutes, for a server
+session that has ended (409: ping again), for another chat or other text,
+or one already used. `T1_HYPERLINK_REQUIRE_SIGNED=1` refuses unsigned
+prompts too; off by default so older apps keep working.
+
+### Loaded models, documents, the ring and hypercompress (0.72.8)
+
+* `GET /hyperlink/models/loaded` lists every model loaded now, on the
+  runner and in LM Studio; a chat's `model_id` picks which one answers.
+* `POST /hyperlink/files/document` keeps a document a model wrote
+  (Markdown or text) as a file; the `create_document` tool calls it and
+  the reply lists it under `metadata.documents` for the app to download.
+* `GET /hyperlink/sessions/{id}/ring` is the two-layer ring beside the
+  chat box: `inner` is the context the next turn uses; `outer` is the
+  key's token allowance when the model has one, else GPU load, or CPU
+  load when the model runs on the CPU.
+* When a turn's prompt is bigger than the loaded model's context, the
+  system prompt is compressed (no model needed) to a third of the
+  context, or a fifth: `GET /chat/hypercompress/size?s?=1` or `s?=2`
+  sets it per owner, and `POST /chat/hypercompress` compresses a text by
+  hand. The reply's metadata says when it happened.
+* A model saves a memory when asked, or when it judges a note useful;
+  `T1_HYPERLINK_MEMORY_WHEN_TOLD=1` limits it to when asked.
+
 ### Sessions
 
 Conversations live on the server (`/hyperlink/sessions`), append-only,
@@ -2131,6 +2186,38 @@ by comparison against a stored value, because a *refused* config string
 still carried a key and at that moment there is nothing to compare it
 to. No response ever contains it.
 
+### Web search v2
+
+`/web/v1/search` still works until 0.73.0 and says so (`Deprecation`
+and `Sunset` headers, a `deprecated` field). Its successor:
+
+```
+/web/v2/I?=query&q?=depth&mx?=maxitems&sq?=#&&kpd?=true
+```
+
+* `q` is the depth (result pages), `mx` the most results, `sq` how many
+  of the top-ranked sites to read and summarise (`sq?=1` reads only the
+  first), `kpd` whether to keep the search and the sites' text.
+* `&&` separates the `?=` parameters from the flag after them; it reads
+  as one separator. `?q=cats&depth=2&max=10&read=1&keep=true` works too.
+
+Five settings in `web.json`, set with `hypernix-t1 config web --set
+NAME=VALUE` (`--json`, `--reset`):
+
+| Setting | Meaning | Default |
+|---|---|---|
+| `store_enabled` | keep searches at all (AI search storage) | `false` |
+| `store_format` | `jsonl` or `parquet` (needs pyarrow; else JSONL, said so) | `jsonl` |
+| `max_items` | most results `mx` may ask for (1–100) | 20 |
+| `max_read_sites` | most sites `sq` may read (1–20) | 5 |
+| `ai_config` | who may let a model change settings: `off`, `partial`, `admin` | `partial` |
+
+`GET`/`POST /web/v1/ai/config` lets a model read them and, with partial
+admin, change the less risky three (`store_format`, `max_items`,
+`max_read_sites`); turning storage on needs a full admin. The model's
+`web_search` tool uses v2, and `web_settings` / `web_settings_set`
+expose this endpoint.
+
 ### Code sandboxes
 
 `/code` runs code on this server, in sandboxes. It is **off** unless the
@@ -2696,6 +2783,7 @@ six-part scheme in [Versioning](#versioning) rather than a beta number.
 | **1.0.26.8.0.1** | The [LM Studio bridge](#the-lm-studio-bridge); [HyperLink](#hyperlink) pairing, sessions, attachments and endpoint advertisement; [Hugging Face link merging](#hugging-face-link-merging); the [HyperLink iOS app](../ios/README.md) | **Shipped** |
 | **1.0.26.8.1.1** | The [bootstrap admin key](#the-first-key-a-new-server-has) a fresh server issues itself; [T2P billing keys](#billing-keys-t2p-and-refusing-them) and the server-side policy that can refuse them; the three HyperLink reachability fixes (advertised port, tailnet ATS, Tailscale diagnosis) and [T2S key](#using-a-t2s-key) entry from the app; [undoable](#undoing-an-authentication-change) auth changes and durable server ids | **Shipped** |
 | **1.0.26.9.2.3** | [Web accounts](#web-accounts): sign-up and browser sign-in in four deployment modes (`t1-accounts`), with a keyless caller never an administrator | **Shipped** (0.72.5) |
+| **1.1.26.10.1.0** | [Web search v2](#web-search-v2) and `/web/v1/ai/config`; [signed prompts and the ping](#signed-prompts-and-the-ping); chats [owned by an account or a key](#ownership), `/hyperlink/whoami` and `/hyperlink/login`; loaded models, documents, the ring and hypercompress | **Alpha** (0.72.8a1) |
 | **1.1.26.9.0.0** | The 1.1 generation, first shipped in `0.72.5.post15`; a 1.0 client is told to upgrade. The package releases after it added [HyperLink](#hyperlink) titles, compression, memory, images and the shell, [web search](#web-search), [v2.1 keys](#v21-t2c-keys-and-rotorvault), [conceal mode](#conceal-mode-and-36-hour-retention) and [server info](#server-info); the 0.72.6 patches added [HyperLink on the web](#hyperlink-on-the-web-0726post1), moving a model out of LM Studio, and `hypernix-t1 upgrade` — see the [Changelog](Changelog.md) | **Shipped** |
 
 ## Design principle

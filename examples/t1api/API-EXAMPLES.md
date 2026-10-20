@@ -914,7 +914,7 @@ Response `200`:
     "status": "unknown",
     "capabilities": [],
     "tags": {},
-    "registered_by": "0dad5aee-95c4-4766-9da9-855abbe40280",
+    "registered_by": "96dff3e5-802d-406f-bcc3-22a878a717b2",
     "created_at": "<created_at>",
     "updated_at": "<updated_at>",
     "last_seen": null
@@ -938,7 +938,7 @@ Response `200`:
       "status": "unknown",
       "capabilities": [],
       "tags": {},
-      "registered_by": "0dad5aee-95c4-4766-9da9-855abbe40280",
+      "registered_by": "96dff3e5-802d-406f-bcc3-22a878a717b2",
       "created_at": "<created_at>",
       "updated_at": "<updated_at>",
       "last_seen": null
@@ -949,7 +949,7 @@ Response `200`:
 }
 ```
 
-### `PATCH /servers/0896ef7ab3e84f72b8e18a214452863a` *(authenticated)*
+### `PATCH /servers/62b37bab7b1b4a0a93f7977d59ca1adc` *(authenticated)*
 
 Promotion is audited — it is the gate every module push checks.
 
@@ -973,7 +973,7 @@ Response `200`:
     "status": "unknown",
     "capabilities": [],
     "tags": {},
-    "registered_by": "0dad5aee-95c4-4766-9da9-855abbe40280",
+    "registered_by": "96dff3e5-802d-406f-bcc3-22a878a717b2",
     "created_at": "<created_at>",
     "updated_at": "<updated_at>",
     "last_seen": null
@@ -1011,7 +1011,7 @@ Response `400`:
 }
 ```
 
-### `DELETE /servers/0896ef7ab3e84f72b8e18a214452863a` *(authenticated)*
+### `DELETE /servers/62b37bab7b1b4a0a93f7977d59ca1adc` *(authenticated)*
 
 Destructive operations need ?confirm=true.
 
@@ -1052,7 +1052,7 @@ Response `200`:
     "module_id": "<module_id>",
     "name": "demo-module",
     "version": "1.0.0",
-    "owner_key_id": "98b94746-4f4c-47f5-a6db-f67fb1887da9",
+    "owner_key_id": "f64f1454-d941-4b94-82e5-af9aa64352b3",
     "status": "draft",
     "source_type": "none",
     "source_url": null,
@@ -1078,7 +1078,7 @@ Response `200`:
       "module_id": "<module_id>",
       "name": "demo-module",
       "version": "1.0.0",
-      "owner_key_id": "98b94746-4f4c-47f5-a6db-f67fb1887da9",
+      "owner_key_id": "f64f1454-d941-4b94-82e5-af9aa64352b3",
       "status": "draft",
       "source_type": "none",
       "source_url": null,
@@ -1122,11 +1122,11 @@ Response `429`:
   "error": {
     "code": "RATE_LIMITED",
     "hx_code": "T1-01020.c2",
-    "message": "Rate limit 'expensive_operations' exceeded for key. Retry in 5.8s.",
+    "message": "Rate limit 'expensive_operations' exceeded for key. Retry in 5.7s.",
     "details": {
       "rule": "expensive_operations",
       "subject_kind": "key",
-      "retry_after_seconds": 5.81,
+      "retry_after_seconds": 5.72,
       "cost": 10.0
     }
   },
@@ -1134,7 +1134,7 @@ Response `429`:
 }
 ```
 
-### `POST /modules/c4c4b7d7950b4b66bc17c6398ccb6fad/deploy` *(authenticated)*
+### `POST /modules/5da49c16c5b34f74b4a0f381fa38dbd9/deploy` *(authenticated)*
 
 Multi-server deployment. Every target is trust-checked before the job is queued.
 
@@ -1263,7 +1263,7 @@ Response `200`:
 ```json
 {
   "account_type": "user",
-  "account_id": "98b94746-4f4c-47f5-a6db-f67fb1887da9",
+  "account_id": "f64f1454-d941-4b94-82e5-af9aa64352b3",
   "balance": 0.0,
   "request_id": "<request_id>"
 }
@@ -1358,12 +1358,12 @@ Response `200`:
     {
       "transaction_id": "<transaction_id>",
       "account_type": "user",
-      "account_id": "98b94746-4f4c-47f5-a6db-f67fb1887da9",
+      "account_id": "f64f1454-d941-4b94-82e5-af9aa64352b3",
       "amount": 25.0,
       "kind": "redeem",
       "balance_after": 25.0,
       "note": "payment token redemption",
-      "created_by": "98b94746-4f4c-47f5-a6db-f67fb1887da9",
+      "created_by": "f64f1454-d941-4b94-82e5-af9aa64352b3",
       "created_at": "<created_at>"
     }
   ],
@@ -1409,7 +1409,7 @@ Response `200`:
       "cidr": "203.0.113.0/24",
       "kind": "block",
       "reason": "abuse",
-      "created_by": "0dad5aee\u2026",
+      "created_by": "96dff3e5\u2026",
       "created_at": "<created_at>",
       "expires_at": null,
       "expired": false
@@ -1443,7 +1443,7 @@ Response `200`:
       "cidr": "100.64.0.0/10",
       "kind": "allow",
       "reason": "tailnet",
-      "created_by": "0dad5aee\u2026",
+      "created_by": "96dff3e5\u2026",
       "created_at": "<created_at>",
       "expires_at": null,
       "expired": false
@@ -1453,7 +1453,7 @@ Response `200`:
       "cidr": "203.0.113.0/24",
       "kind": "block",
       "reason": "abuse",
-      "created_by": "0dad5aee\u2026",
+      "created_by": "96dff3e5\u2026",
       "created_at": "<created_at>",
       "expires_at": null,
       "expired": false

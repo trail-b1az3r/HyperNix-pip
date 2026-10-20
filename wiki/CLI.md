@@ -147,15 +147,27 @@ Full flag set:
 ## `download`
 
 ```bash
-hypernix download --repo-id nix2.5                 # short name
-hypernix download --repo-id Qwen/Qwen3.5-4B --token $HF_TOKEN
+hypernix download nix2.5                                     # short name
+hnx download https://huggingface.co/Qwen/Qwen3.5-4B -o ./qwen  # a link to a repo
+hnx download https://huggingface.co/owner/repo/blob/main/m-Q4_K_M.gguf -o m.gguf
+hnx download owner/repo-GGUF -f m-Q8_0.gguf                  # one file from a repo
+hypernix download --repo-id Qwen/Qwen3.5-4B --token $HF_TOKEN  # the old form
 ```
+
+The model is a repo id, a short name, a `huggingface.co` (or `hf.co`)
+link to a repo — `/tree/<rev>` picks a revision — or a link to one file
+in it (`/blob/`, `/resolve/`, `hf://owner/repo/file`, `owner/repo/file`)
+(0.72.8). A repo with no safetensors and one GGUF downloads that GGUF;
+with several it takes the `Q4_K_M` one, or lists them and asks for `-f`.
+Dataset and Space links are refused.
 
 | Flag | Default |
 |---|---|
-| `--repo-id` | `ray0rf1re/hyper-nix.1` |
-| `--revision` | latest |
-| `--local-dir PATH` | HF cache |
+| `MODEL` (or `--repo-id`) | `ray0rf1re/hyper-nix.1`; optional |
+| `-f`, `--file NAME` | the whole model; one file from the repo instead |
+| `-o`, `--output PATH` | the models folder; a folder, or for one file a file name |
+| `--revision` | latest, or a [pin](../SECURITY.md#running-it-safely) |
+| `--local-dir PATH` | the same as `-o` for a whole repo |
 | `--cache-dir PATH` | `~/.cache/huggingface/hub` |
 | `--token` | `$HF_TOKEN` |
 | `--quiet` | false |
@@ -172,14 +184,19 @@ hypernix convert --model-dir ./snapshot --output ./out-fp16.gguf --dtype fp16
 hypernix convert ./snapshot -P -Q Q4_K_M
 hnx convert ./snapshot/model.safetensors -P -Q q6h4 -o model.q6h4.gguf
 hnx convert ./brewer_models/mine -P -Q FP8
+hnx convert ./snapshot -q -p                 # lowercase works; -q alone is Q4_K_M
 ```
+
+`-P` always converts first and quantises second, as two steps it
+reports (`[1/2] converting …`, `[2/2] quantising to …`): only the
+finished F16 GGUF reaches the quantiser (0.72.8).
 
 | Flag | Default |
 |---|---|
 | `MODEL` (or `--model-dir PATH`) | required |
 | `-o`, `--output PATH` | required without `-P`; with it, `<model>.<target>.gguf` beside the model |
-| `-P`, `--pipeline` | off. Converts safetensors to a GGUF, then quantises it with [hyprslug](HyprSlug.md) to the `-Q` target |
-| `-Q`, `--quant TARGET` | none. Any hyprslug target: `Q4_K_M`, `Q8_0`, `INT3`, `FP8`, `IQ0.5`, the hybrids `q6h`/`q6h4`/`q6h2`. Implies `-P` |
+| `-P`, `-p`, `--pipeline` | off. Converts safetensors to a GGUF, then quantises it with [hyprslug](HyprSlug.md) to the `-Q` target |
+| `-Q`, `-q`, `--quant [TARGET]` | none. Any hyprslug target: `Q4_K_M`, `Q8_0`, `INT3`, `FP8`, `IQ0.5`, the hybrids `q6h`/`q6h4`/`q6h2`/`hnx_q6h1`/`hnx_q6h1m`. Implies `-P`; with no target, `Q4_K_M` |
 | `--keep-intermediate` | off. With `-P`, keep the F16 GGUF beside the output |
 | `--imatrix PATH` | none. With `-P`, an importance matrix for hyprslug |
 | `--dtype` | `fp16` (`fp16` / `f16` / `fp32` / `f32`) |
@@ -193,7 +210,7 @@ What `-P` does with each kind of model:
 | Model | What happens |
 |---|---|
 | Hugging Face folder, or a `.safetensors` in one | converted to an F16 GGUF, quantised, and the F16 copy deleted |
-| hyperNix0x-v2 (Brewer) folder or `.pt` | exported to a llama.cpp GGUF by hyprslug, then quantised |
+| hyperNix0x-v2 (Brewer) folder or `.pt` | exported to a llama.cpp GGUF, then quantised |
 | `.gguf` | quantised as it is |
 
 The target is checked before anything is converted, so a typo in `-Q`
@@ -838,7 +855,8 @@ uvicorn invocation or hunting for a pid.
 | `built-in-runner` | also `runner`: serve a model from this server's own llama.cpp instead of LM Studio — see [below](#hypernix-t1-built-in-runner) |
 | `chat` | send a message to the served model and print the reply — see [below](#hypernix-t1-chat) |
 | `training` | what training is doing on this machine, with pause / resume / stop; runs started by `launch-script` show up on their own |
-| `launch-script` | run a script, or a command with `-1 'CMD'`, so it survives an ssh disconnect: supervised, with its logs and exit status kept, and `--status` / `--logs` / `--stop` from any later session |
+| `launch-script` | run a script, or a command with `-1 'CMD'`, so it survives an ssh disconnect: supervised, with its logs and exit status kept, and `--status` / `--logs` / `--stop` from any later session. `-2` … `-9` answer the command's questions in order (`-5 ""` presses Enter; a gap is Enter too), and `--logs JOB -F` follows the log until Ctrl-C (0.72.8) |
+| `config web` | the five [web search](T1-API.md#web-search-v2) settings: `--set NAME=VALUE`, `--json`, `--reset` (0.72.8) |
 | `override lms move-dir` | point LM Studio's models folder at `~/.hypernix/models` (or a folder you name); `override lms revert` undoes it |
 | `start-foreground` | run in this terminal instead of the background; what the systemd unit uses |
 | `remove` | stop, disable, delete the config — but **keeps the key store**, which is not recoverable and may still be in use elsewhere. Confirmed by typing the word, not by `y`. |
@@ -954,15 +972,36 @@ Studio, and without walking over to the machine. Also spelled
 `hypernix-t1 runner`; the two are the same command.
 
 ```bash
-hypernix-t1 built-in-runner start                 # the default model, HyperNix.3-mini
+hypernix-t1 built-in-runner start                 # pick from a list (a terminal), else the default model
 hypernix-t1 built-in-runner start qwen3-8b --gpu-layers 24 --backend cuda
+hypernix-t1 built-in-runner backend               # pick the backend from a list
+hypernix-t1 built-in-runner start m.gguf --backend multilama   # through a llama.cpp fork
 hypernix-t1 built-in-runner status
 hypernix-t1 built-in-runner plan qwen3-8b
 hypernix-t1 built-in-runner stop
 ```
 
-**The default model (0.72.6.post1).** `start` with no model named loads
-[HyperNix.3-mini](https://huggingface.co/ray0rf1re/HyperNix.3-mini), and
+**Choosing from a list (0.72.8).** In a terminal, `start` with no
+model, or with a name that matches nothing exactly, opens a picker like
+`lms load`: type to filter, ↑/↓ to move, Enter to load, Esc to cancel.
+The list refreshes while it is open and never takes over the screen.
+`backend` picks the runner's backend the same way. `--no-pick` keeps the
+old behaviour for scripts.
+
+**Multi-llama (0.72.8).** `--backend multilama` serves a GGUF through
+the llama.cpp fork it needs — ik_llama.cpp for its IQ*_K, IQ*_KS,
+IQ*_KT and repacked types, Nanbeige for its architecture — and
+`multilama-ik`, `-prismml`, `-kobold` or `-nanbeige` names one. `auto`
+does it by itself when a file needs a fork. `hyprslug --check FILE` says where a
+file runs.
+
+**The default model.** Since 0.72.8, `start` with no model named (and
+no terminal to pick in) loads Liquid AI's
+[LFM2.5-2.6B](https://huggingface.co/LiquidAI/LFM2.5-2.6B-GGUF), and the
+server downloads `LFM2.5-2.6B-Q4_K_M.gguf` (about 1.7 GB) the first
+time; `lfm2.5-2.7b` names it too. Before 0.72.8 it was
+[HyperNix.3-mini](https://huggingface.co/ray0rf1re/HyperNix.3-mini),
+which `start hypernix.3-mini` still loads, and
 the server downloads it into `~/.hypernix/models/HyperNix.3-mini` the
 first time (about 195 MB: the safetensors, config and tokenizer, never
 the pickled `model.pt`). It is HyperNix's own model: 48.7M parameters,
