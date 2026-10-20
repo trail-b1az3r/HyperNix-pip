@@ -22,7 +22,7 @@ on:
   pull_request:
     types: [opened, reopened, synchronize, ready_for_review]
   workflow_run:
-    workflows: ["Update Docs Data", "Update JSON Stats"]
+    workflows: ["Update Docs Data", "Update JSON Stats", "Public T1 server counter"]
     types: [completed]
   push:
     branches: [main]

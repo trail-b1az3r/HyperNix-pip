@@ -52,6 +52,8 @@ could never derive one from `0.71.5rc2`. See
 - [Hugging Face link merging](#hugging-face-link-merging)
 - [Web accounts](#web-accounts)
 - [MCP](#mcp)
+- [Net](#net)
+- [The public-server counter](#the-public-server-counter)
 - [Backup and restore](#backup-and-restore)
 - [Governed inference](#governed-inference)
 - [The Anthropic Messages API](#the-anthropic-messages-api)
@@ -1614,9 +1616,11 @@ rights in any mode.
 ## MCP
 
 The server's models, runner, hardware and version, described over the
-[Model Context Protocol](https://modelcontextprotocol.io) (protocol
-`2025-06-18`) so an assistant can discover and use them without being
-taught each endpoint. Off unless `T1_MCP_ENABLED=1`; while off, `/mcp`
+[Model Context Protocol](https://modelcontextprotocol.io) so an
+assistant can discover and use them without being taught each endpoint.
+Protocol revisions `2025-11-25`, `2025-06-18`, `2025-03-26` and
+`2024-11-05`: a client gets the one it asks for (0.72.8a3; it used to get
+`2025-06-18` whatever it asked). Off unless `T1_MCP_ENABLED=1`; while off, `/mcp`
 answers 501 and says how to turn it on.
 
 - `POST /mcp` takes one JSON-RPC message or a batch (up to 1 MB); a body
@@ -1635,6 +1639,107 @@ answers 501 and says how to turn it on.
 - Plugins are Python objects registered at startup
   (`app.state.t1_mcp_plugins`) and namespaced; nothing is ever imported
   by a name a request supplies.
+- Streamable HTTP as clients expect it (0.72.8a3): `initialize` hands
+  out an `Mcp-Session-Id`; a `GET` asking for `text/event-stream` gets
+  405 (there is no server-initiated stream); `DELETE` ends a session.
+  Tested with the official MCP Python SDK.
+
+### Remote MCP servers (Hugging Face's and others)
+
+T1 is also an MCP **client** (0.72.8a3). Add a remote server — the
+Hugging Face Hub's at `https://huggingface.co/mcp`, or any server
+speaking streamable HTTP — and its tools appear on this server's `/mcp`
+as `<server>.<tool>` and in HyperLink's tool loop as `<server>__<tool>`,
+beside noodle's and T1's own.
+
+```bash
+curl -X POST "$T1/mcp/remote" -H "Authorization: Bearer $ADMIN" \
+     -d '{"name": "hf", "url": "https://huggingface.co/mcp", "token_env": "HF_TOKEN"}'
+```
+
+| Route | |
+|---|---|
+| `GET /mcp/remote` | the servers, whether each has a token, the tools last seen, errors |
+| `POST /mcp/remote` | add or replace one (admin); lists its tools to prove it answers |
+| `DELETE /mcp/remote/{name}` | remove one (admin) |
+| `GET /mcp/remote/{name}/tools` | its tools as it describes them (`?refresh=true` to ask again) |
+| `POST /mcp/remote/{name}/call` | call one tool directly (admin), to check a server works |
+
+Servers live in `mcp-servers.json` beside the database (owner-only), or
+are fixed by the environment: `T1_MCP_REMOTE` (a JSON list) and
+`T1_MCP_HF=1` (the Hugging Face server, with `HF_TOKEN`). A token comes
+from the variable `token_env` names, or is stored in the file; neither
+is ever returned. Because the token is the operator's, a server's tools
+are offered to every authenticated caller unless it is added with
+`"admin_only": true`. The client negotiates the protocol revision, keeps
+the session id, starts a new session once if the server forgets it, and
+answers a server's own requests on the stream with "not supported". A
+server that cannot be reached is left out of a chat's tools (listing
+waits at most 15 seconds, and a server that just failed is not asked
+again for a minute) rather than failing the turn. `T1_MCP_REMOTE_ENABLED=0`
+turns it all off.
+
+## Net
+
+`/net` (0.72.8a3) is everything `hnx net` did — which is now deprecated —
+as the API, on the machine the server runs on. Every route needs an
+**admin** key.
+
+| `hnx net` | Route |
+|---|---|
+| `status` | `GET /net/status` — this node, its peers, whether Tailscale is up |
+| `m-ip` | `GET /net/ip` |
+| `connect IP` | `GET /net/peers/{peer}/ping` (`tailscale ping`; an SSH session is not an API call) |
+| — | `GET /net/peers?online=false` |
+| `config` | `GET` / `PUT /net/config` (`storage_dir`, `ports`, `hub`) |
+| `mutli-a-port PORT` | `POST /net/ports`, `DELETE /net/ports/{port}` |
+| `ex-port PORT [--apply]` | `POST /net/expose` — the command, or with `apply` (and `?confirm=true`) runs `tailscale serve --bg`, saying how to allow it if it needs an operator |
+| `a-il` | `POST /net/peers/trust` — the peers' SSH host keys into `known_hosts` |
+| `s-storage` | `POST /net/storage/sync` — rsync to the peers; `dry_run`, `peers` |
+| `onef-all` | `GET` / `POST /net/hub` |
+| `m-setup` / `auto-setup` | `GET /net/setup` (the steps) / `POST /net/setup` (`tailscale up`, returning its login link, and an SSH key) |
+| `tail acheck FILE` | `POST /net/peers/check` |
+| `tail acheck FILE -r` / `tail stop FILE` | `POST /net/peers/run` / `POST /net/peers/stop` — off unless `T1_NET_REMOTE_RUN=1` |
+
+Routes that change something take `?confirm=true` where the server
+requires confirmation. Commands are argv lists, a peer is passed after
+`--`, a file name is quoted for the peer's shell, and SSH runs in batch
+mode, so nothing waits for a password.
+
+## The public-server counter
+
+The README's **public T1 servers** badge counts, hourly, how many public
+T1 servers are up (0.72.8a3).
+
+**What is sent.** A server that is *public* — `T1_SERVER_URL` or
+`T1_HYPERLINK_PUBLIC_URL` names an internet address (not this machine,
+a private network, the tailnet or a `.local` name), or `T1_PUBLIC=1` —
+and runs T1 v1.1.26.10.1.0 or newer sends one heartbeat an hour, unless
+`T1_PUBLIC_COUNTER=0`:
+
+```json
+{"id": "<32 hex>", "t1_version": "1.1.26.10.2.0", "version": "0.72.8a3"}
+```
+
+`id` is a SHA-256 of a random value the server made once and keeps in
+`counter-id` beside its database, so one server counts once without
+saying which it is. No address, hostname, URL, model, key or usage is
+sent, and a server that is not public sends nothing. The server logs at
+start whether it is counted, and why not.
+
+**Where it goes.** `T1_PUBLIC_COUNTER_URL`, else the `heartbeat` address
+the project publishes in `docs/public/v1/t1-counter-endpoint.json` (read
+once a day). While that names no counter, nothing is sent.
+
+**The counter** is any T1 server with `T1_COUNTER_HOST=1`:
+`POST /counter/heartbeat` (no key; bodies under 512 bytes; the sender's
+address is never stored) and `GET /counter` — `{"up": N, "t1_versions":
+{...}}` for servers heard from in the last two hours. The
+`t1-public-counter` workflow reads it hourly (the repository variable
+`T1_COUNTER_SUMMARY_URL`, else the published `summary`) and commits
+`docs/public/v1/t1-counter.json` and the badge's
+`t1-counter-badge.json`. Until a counter is hosted the badge says so
+rather than showing a number nobody measured.
 
 ## Backup and restore
 

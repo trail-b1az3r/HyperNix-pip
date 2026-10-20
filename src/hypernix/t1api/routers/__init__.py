@@ -57,6 +57,7 @@ from . import (
     code,
     compact,
     config,
+    counter,
     events,
     health,
     hypercompress,
@@ -68,6 +69,7 @@ from . import (
     memory,
     models,
     modules,
+    net,
     noodle,
     privacy,
     runner,
@@ -130,6 +132,10 @@ ALL_ROUTERS = (
     # T1 v1.1.26.10.2.0 -- the Anthropic Messages API, so Claude Code
     # runs on this server's models (`hnx claude`).
     anthropic.router,
+    # 0.72.8a3 -- what `hnx net` did, as the API. Admin only.
+    net.router,
+    # 0.72.8a3 -- the public-server counter. Off unless T1_COUNTER_HOST.
+    counter.router,
 )
 
 __all__ = [
@@ -143,6 +149,7 @@ __all__ = [
     "bridge",
     "compact",
     "config",
+    "counter",
     "events",
     "health",
     "hyperlink",
@@ -154,6 +161,7 @@ __all__ = [
     "memory",
     "models",
     "modules",
+    "net",
     "noodle",
     "runner",
     "security",

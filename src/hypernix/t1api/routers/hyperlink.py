@@ -816,6 +816,14 @@ def _last_user_message(store, session_id: str, owner: str):
     return tail[-1]
 
 
+def _mcp_hub(request: Request):
+    """The server's remote MCP servers, or None (a request with no app has none)."""
+    try:
+        return getattr(request.app.state, "t1_mcp_hub", None)
+    except (KeyError, AttributeError):
+        return None
+
+
 def _t1_access(request: Request | None, principal):
     """How the model reaches this server's own API, or None for no T1 tools.
 
@@ -843,7 +851,7 @@ def _t1_access(request: Request | None, principal):
         if ":" in str(host):
             host = f"[{host}]"
         base = f"{request.url.scheme}://{host}:{port}{request.scope.get('root_path', '')}"
-        return T1Access(base, "", allow_mutating=False)
+        return T1Access(base, "", allow_mutating=False, mcp=_mcp_hub(request))
 
     host, port = (request.scope.get("server") or ("127.0.0.1", 8000))[:2]
     if host in ("0.0.0.0", "::", "", None):  # nosec B104 - compares against or binds 0.0.0.0 only where the caller chose LAN access
@@ -858,6 +866,8 @@ def _t1_access(request: Request | None, principal):
         # refuse anyway; hiding them saves the model rounds spent finding
         # that out.
         allow_mutating=bool(getattr(principal, "is_admin", False)) or "write" in scopes,
+        mcp=_mcp_hub(request),
+        mcp_admin=bool(getattr(principal, "is_admin", False)),
     )
 
 

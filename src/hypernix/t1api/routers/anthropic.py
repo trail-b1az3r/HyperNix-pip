@@ -39,6 +39,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from ...bridge.lmstudio import LMStudioError
+from ...security.safeurl import urlopen as safe_urlopen
 from .. import anthropic as wire
 from ..deps import (
     get_auth_context,
@@ -255,7 +256,7 @@ def _runner_count(request: Request, text: str) -> int | None:
         req = urllib.request.Request(runner.base_url.rstrip("/") + "/tokenize",
                                      data=json.dumps({"content": text}).encode(),
                                      headers={"Content-Type": "application/json"})
-        with urllib.request.urlopen(req, timeout=5) as resp:  # nosec B310 - this server's own runner
+        with safe_urlopen(req, timeout=5) as resp:  # nosec B310 - this server's own runner
             return len(json.loads(resp.read()).get("tokens") or [])
     except Exception:  # noqa: BLE001 - an estimate is the answer then
         return None

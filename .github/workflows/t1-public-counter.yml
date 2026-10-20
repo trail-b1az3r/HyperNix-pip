@@ -1,0 +1,52 @@
+name: Public T1 server counter
+
+# Hourly: how many public T1 servers (T1 v1.1.26.10.1.0 and newer, with
+# T1_PUBLIC_COUNTER left on) sent a heartbeat in the last two hours.
+# Reads the counter named by the repository variable T1_COUNTER_SUMMARY_URL
+# (or docs/public/v1/t1-counter-endpoint.json), writes
+# docs/public/v1/t1-counter.json and the README badge's
+# docs/public/v1/t1-counter-badge.json, and commits them when they change.
+
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: t1-public-counter
+  cancel-in-progress: false
+
+jobs:
+  count:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Setup Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+
+      - name: Read the counter
+        env:
+          T1_COUNTER_SUMMARY_URL: ${{ vars.T1_COUNTER_SUMMARY_URL }}
+        run: python scripts/update_t1_counter.py
+
+      - name: Commit the count
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # Only the badge's text matters; the checked time alone is not a change worth a commit.
+          if git diff --quiet -- docs/public/v1/t1-counter-badge.json && [ -f docs/public/v1/t1-counter.json ] \
+             && git ls-files --error-unmatch docs/public/v1/t1-counter.json >/dev/null 2>&1; then
+            echo "The count has not changed."
+            exit 0
+          fi
+          git add docs/public/v1/t1-counter.json docs/public/v1/t1-counter-badge.json
+          git commit -m "chore: update the public T1 server count (scheduled)"
+          git push

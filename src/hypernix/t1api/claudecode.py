@@ -35,6 +35,8 @@ import sys
 import urllib.error
 import urllib.request
 
+from ..security.safeurl import urlopen as safe_urlopen
+
 __all__ = ["KEYLESS", "cli_main", "claude_env"]
 
 #: The token that means "I have no credential" (see the router).
@@ -63,7 +65,7 @@ def available_models(server: str, key: str, *, timeout: float = 5.0) -> list[dic
                                  headers={"Authorization": f"Bearer {key or KEYLESS}",
                                           "anthropic-version": "2023-06-01"})
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:  # nosec B310 - the server the user named
+        with safe_urlopen(req, timeout=timeout) as resp:  # nosec B310 - the server the user named
             return list(json.loads(resp.read()).get("data") or [])
     except urllib.error.HTTPError as exc:
         try:

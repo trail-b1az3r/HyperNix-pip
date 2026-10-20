@@ -56,6 +56,7 @@ import math
 import sys
 import time
 import uuid
+from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, Request
@@ -213,6 +214,36 @@ def _announce_bootstrap_key(key: Any, cfg: T1APIConfig) -> None:
     except Exception:  # noqa: BLE001
         # A server must not fail to start because it could not print.
         logger.info("t1api.bootstrap: minted a bootstrap key (banner not shown)")
+
+
+def _data_folder(cfg: T1APIConfig) -> Path:
+    """Where this server keeps small files of its own: beside the database."""
+    return Path(cfg.db_path).parent if cfg.db_path else Path.home() / ".hypernix" / "t1api"
+
+
+def _mcp_hub(cfg: T1APIConfig):
+    """The remote MCP servers: the file the operator edits, plus the environment's."""
+    import json as _json
+
+    from .. import __version__
+    from .mcpclient import HUGGING_FACE, MCPHub
+
+    if not cfg.mcp_remote_enabled:
+        return MCPHub(None, client_version=__version__)
+    extra = []
+    if cfg.mcp_remote:
+        try:
+            extra = list(_json.loads(cfg.mcp_remote))
+        except ValueError:
+            logger.error("t1api: T1_MCP_REMOTE is not a JSON list; ignored")
+    if cfg.mcp_hugging_face and not any(e.get("name") == "hf" for e in extra):
+        extra.append(dict(HUGGING_FACE))
+    path = cfg.mcp_servers_file or str(_data_folder(cfg) / "mcp-servers.json")
+    try:
+        return MCPHub(path, extra=extra, client_version=__version__)
+    except ValueError as exc:
+        logger.error("t1api: a remote MCP server is misconfigured: %s", exc)
+        return MCPHub(path, client_version=__version__)
 
 
 def create_app(
@@ -480,6 +511,14 @@ def create_app(
     @contextlib.asynccontextmanager
     async def _lifespan(lifespan_app):
         retention.start()
+        pinger = None
+        try:
+            from .counter import CounterPinger
+
+            pinger = CounterPinger(cfg, _data_folder(cfg))
+            pinger.start()
+        except Exception:  # noqa: BLE001 - the counter is never a reason not to start
+            logger.debug("t1api: the counter heartbeat did not start", exc_info=True)
         if web is not None:
             try:
                 web.start()
@@ -491,6 +530,8 @@ def create_app(
         finally:
             if web is not None:
                 web.stop()
+            if pinger is not None:
+                pinger.stop()
             retention.stop()
 
     app.router.lifespan_context = _lifespan
@@ -499,6 +540,13 @@ def create_app(
     # unloaded: starting a model at boot would make a restart
     # take minutes and would pick one nobody asked for.
     app.state.t1_runner = ManagedRunner(port=cfg.runner_port)
+    # Remote MCP servers (0.72.8a3). Built empty when the feature is off,
+    # so every caller can ask it and get nothing.
+    app.state.t1_mcp_hub = _mcp_hub(cfg)
+    if cfg.counter_host:
+        from .counter import Counter
+
+        app.state.t1_counter = Counter(_data_folder(cfg) / "counter.json")
     # T1 v1.0.26.8.1.0
     app.state.t1_auth_history = history
     app.state.t1_backup_store = backups

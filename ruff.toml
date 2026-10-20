@@ -45,3 +45,4 @@ extend-immutable-calls = [
 "src/hypernix/system/old_fridge.py" = ["E402"]
 "src/hypernix/models/old_oven.py" = ["E402"]
 "src/hypernix/monitoring/tvtop.py" = ["E402"]
+"src/hypernix/system/net.py" = ["E402"]

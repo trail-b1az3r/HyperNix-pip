@@ -803,6 +803,11 @@ then used.
 
 ## `net`
 
+> **Deprecated (0.72.8a3).** Every command below is now a route of the T1
+> API's [`/net`](T1-API.md#net), answering JSON on the machine the server
+> runs on; `hnx net` still works, says which route replaces the command
+> each time, and will be removed in 0.73.
+
 ```bash
 hypernix net status                    # tailscale status
 hypernix net m-ip                      # this machine's tailnet IP

@@ -36,6 +36,8 @@ DEPRECATED = {
     "hypernix.data.mediocre_fridge": "hypernix.models.neo_oven",
     "hypernix.evaluation.new_fridge": "hypernix.models.neo_oven",
     "hypernix.monitoring.tvtop": "hypernix.monitoring.tv",
+    # 0.72.8a3: `hnx net` is the T1 API's /net now.
+    "hypernix.system.net": "hypernix.t1api.routers.net",
 }
 
 

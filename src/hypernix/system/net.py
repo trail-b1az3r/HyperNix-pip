@@ -1,5 +1,11 @@
 """net — Advanced distributed network manager and Tailscale integration.
 
+DEPRECATED (0.72.8a3): every command here is now a route of the T1 API,
+``/net`` (:mod:`hypernix.t1api.routers.net`, on
+:mod:`hypernix.system.netops`), answering JSON on the machine the server
+runs on. This CLI still works and says so each time; it will be removed
+in 0.73.
+
 Commands:
   config         - Configure local net settings.
   auto-setup     - Auto-configure Tailscale and SSH keys.
@@ -16,6 +22,16 @@ Commands:
   tail stop      - Stop the script on tailnet peers.
 """
 from __future__ import annotations
+
+from hypernix.system.deprecation import deprecated_module
+
+deprecated_module(
+    "hypernix.system.net",
+    instead="hypernix.t1api.routers.net",
+    since="0.72.8a3",
+    removed_in="0.73",
+    extra="`hnx net` is now the T1 API's /net routes (admin key); see wiki/T1-API.md#net.",
+)
 
 import argparse
 import json
@@ -206,8 +222,26 @@ def cmd_tail_stop(args: argparse.Namespace) -> None:
         subprocess.run(_remote(peer, "pkill", "-f", args.file), capture_output=False)
 
 
+#: Where each command went.
+ROUTES = {
+    "status": "GET /net/status", "m-ip": "GET /net/ip", "connect": "GET /net/peers/{peer}/ping",
+    "config": "GET/PUT /net/config", "mutli-a-port": "POST /net/ports", "ex-port": "POST /net/expose",
+    "a-il": "POST /net/peers/trust", "s-storage": "POST /net/storage/sync", "onef-all": "POST /net/hub",
+    "m-setup": "GET /net/setup", "auto-setup": "POST /net/setup",
+    "tail": "POST /net/peers/check | /net/peers/run | /net/peers/stop",
+}
+
+
+def _deprecated(command: str | None) -> None:
+    route = ROUTES.get(command or "", "/net")
+    print(f"hnx net {command or ''} (deprecated): use the T1 API's {route} instead.".replace("  ", " "),
+          file=sys.stderr)
+
+
 def cli_main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="hnx net", description="Distributed network manager.")
+    parser = argparse.ArgumentParser(prog="hnx net",
+                                     description="DEPRECATED: use the T1 API's /net routes. "
+                                                 "Distributed network manager.")
     subparsers = parser.add_subparsers(dest="cmd", required=True)
 
     subparsers.add_parser("config", help="View/edit local net configuration.")
@@ -238,6 +272,7 @@ def cli_main(argv: list[str] | None = None) -> int:
     p_tail.add_argument("-r", action="store_true", help="Run the file if found (only for acheck)")
 
     args = parser.parse_args(argv if argv is not None else sys.argv[1:])
+    _deprecated(args.cmd)
 
     if args.cmd == "config":
         cmd_config(args)

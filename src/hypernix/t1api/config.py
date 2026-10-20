@@ -344,6 +344,31 @@ class T1APIConfig:
     # same capabilities, and a surface nobody asked for is a surface
     # nobody is watching.
     mcp_enabled: bool = field(default_factory=lambda: _bool_env("T1_MCP_ENABLED", False))
+    # Remote MCP servers this server connects to as a client (Hugging
+    # Face's, or any streamable-HTTP one), whose tools it offers on its
+    # own /mcp and to HyperLink's models (0.72.8a3). Only servers the
+    # operator adds are ever contacted.
+    mcp_remote_enabled: bool = field(default_factory=lambda: _bool_env("T1_MCP_REMOTE_ENABLED", True))
+    # Where added servers are kept (owner-only). Default beside the database.
+    mcp_servers_file: str = field(default_factory=lambda: os.environ.get("T1_MCP_SERVERS_FILE", ""))
+    # Servers fixed by the environment: a JSON list of
+    # {"name", "url", "token_env"|"token", "headers", "admin_only"}.
+    mcp_remote: str = field(default_factory=lambda: os.environ.get("T1_MCP_REMOTE", ""))
+    # Shorthand for the Hugging Face Hub's MCP server, with HF_TOKEN.
+    mcp_hugging_face: bool = field(default_factory=lambda: _bool_env("T1_MCP_HF", False))
+    # The public-server counter (0.72.8a3). A server that is public (a
+    # public T1_SERVER_URL / T1_HYPERLINK_PUBLIC_URL, or T1_PUBLIC=1) sends
+    # an hourly anonymous heartbeat -- a hashed id and its version, no
+    # address -- unless this is 0. See hypernix.t1api.counter.
+    public: bool = field(default_factory=lambda: _bool_env("T1_PUBLIC", False))
+    public_counter: bool = field(default_factory=lambda: _bool_env("T1_PUBLIC_COUNTER", True))
+    # Where heartbeats go. Empty: the address the project publishes.
+    public_counter_url: str = field(default_factory=lambda: os.environ.get("T1_PUBLIC_COUNTER_URL", ""))
+    # Be the counter: accept heartbeats on /counter/heartbeat, answer GET /counter.
+    counter_host: bool = field(default_factory=lambda: _bool_env("T1_COUNTER_HOST", False))
+    # /net/peers/run and /stop start and stop programs on the tailnet's
+    # other machines over SSH. Off unless the operator turns it on.
+    net_remote_run: bool = field(default_factory=lambda: _bool_env("T1_NET_REMOTE_RUN", False))
     # /v1/messages: the Anthropic Messages API, so Claude Code can run on
     # this server's models (0.72.8a3). On: it is authenticated like every
     # other route and adds no way in that /inference does not have.
@@ -657,6 +682,12 @@ class T1APIConfig:
             "hyperlink_enabled": self.hyperlink_enabled,
             "mcp_enabled": self.mcp_enabled,
             "anthropic_enabled": self.anthropic_enabled,
+            "mcp_remote_enabled": self.mcp_remote_enabled,
+            "mcp_hugging_face": self.mcp_hugging_face,
+            "net_remote_run": self.net_remote_run,
+            "public": self.public,
+            "public_counter": self.public_counter,
+            "counter_host": self.counter_host,
             "claude_code_model": self.claude_code_model,
             "hyperchat_multi": self.hyperchat_multi,
             "hyperchat_instances": self.hyperchat_instances,

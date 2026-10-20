@@ -90,14 +90,20 @@ class T1Access:
     what the person it is talking to could do by hand, and no more.
     """
 
-    __slots__ = ("base_url", "token", "allow_mutating", "only")
+    __slots__ = ("base_url", "token", "allow_mutating", "only", "mcp", "mcp_admin", "mcp_names")
 
     def __init__(self, base_url: str, token: str = "", *,  # nosec B107 - an empty default, not a credential
-                 allow_mutating: bool = False, only: list[str] | None = None) -> None:
+                 allow_mutating: bool = False, only: list[str] | None = None,
+                 mcp: Any = None, mcp_admin: bool = False) -> None:
         self.base_url = base_url
         self.token = token
         self.allow_mutating = allow_mutating
         self.only = only
+        #: The server's remote MCP servers (:class:`hypernix.t1api.mcpclient.MCPHub`),
+        #: whose tools are offered beside T1's own.
+        self.mcp = mcp
+        self.mcp_admin = mcp_admin
+        self.mcp_names: dict[str, tuple[str, str]] = {}
 
 
 class ToolRound:
@@ -405,6 +411,21 @@ def _prepare(
             if name not in taken:
                 tools.append(tool)
                 t1_names.add(name)
+        if t1.mcp is not None and t1.only is None:
+            # Remote MCP servers' tools (Hugging Face's and the like),
+            # named <server>__<tool>. One that cannot be reached is left out.
+            try:
+                remote, names = t1.mcp.openai_tools(is_admin=t1.mcp_admin)
+            except Exception:  # noqa: BLE001 - remote tools are a bonus, never the reason a turn fails
+                logger.debug("hyperlink: remote MCP tools unavailable", exc_info=True)
+                remote, names = [], {}
+            taken = {t["function"]["name"] for t in tools}
+            for tool in remote:
+                name = tool["function"]["name"]
+                if name not in taken:
+                    tools.append(tool)
+                    t1_names.add(name)
+                    t1.mcp_names[name] = names[name]
     if teach_format and tools:
         # For a model without native tool support: one format, one worked
         # example, as system text so it survives templates that drop the
@@ -734,6 +755,10 @@ def _run_t1(call: dict[str, Any], tools: list[dict[str, Any]], t1: T1Access) -> 
     name, arguments, failed = _validated(call, tools)
     if failed is not None:
         return failed
+    if name in t1.mcp_names:
+        server, tool = t1.mcp_names[name]
+        ok, content = t1.mcp.call(server, tool, arguments)
+        return ToolRound(name, arguments, ok, content, code="" if ok else "mcp_error")
     content = t1tools.call_tool(
         name, arguments, base_url=t1.base_url, token=t1.token,
         allow_mutating=t1.allow_mutating,
