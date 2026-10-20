@@ -72,6 +72,11 @@ Out of scope:
   so a prompt without a valid signature is refused.
 - Give model tool access (`allow_execute`, mutating T1 tools) only to keys
   that need it.
+- Pin what is fetched from the Hugging Face Hub: put `"owner/repo":
+  "<commit>"` entries in `~/.hypernix/hf-pins.json` (or the file
+  `HYPERNIX_HF_PINS` names), or set `HYPERNIX_HF_REVISION_<REPO>`. Every
+  model, tokenizer and dataset download honours them; unpinned ones fetch
+  the repo's default branch.
 
 ## Scanning
 

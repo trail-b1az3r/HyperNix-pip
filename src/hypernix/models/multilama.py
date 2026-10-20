@@ -75,6 +75,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from hypernix.security.hfpin import hub_revision
 from hypernix.security.safeurl import urlopen as safe_urlopen
 
 _HYPERNIX_VERSION = "0.71.4b6"
@@ -414,14 +415,15 @@ def resolve_gguf(repo_id: str, filename: str, *, quiet: bool = False) -> Path:
             f"Install with: {sys.executable} -m pip install huggingface_hub --break-system-packages.",
         ) from exc
     try:
-        path = hf_hub_download(repo_id=repo_id, filename=filename, local_files_only=True)
+        path = hf_hub_download(repo_id=repo_id, filename=filename, local_files_only=True,
+                               revision=hub_revision(repo_id))
         return Path(path)
     except Exception:  # noqa: BLE001 — not cached, fall through to a real download
         pass
     if not quiet:
         print(f"[hypernix.multilama] fetching {filename} from {repo_id} ...", file=sys.stderr)
     try:
-        return Path(hf_hub_download(repo_id=repo_id, filename=filename))
+        return Path(hf_hub_download(repo_id=repo_id, filename=filename, revision=hub_revision(repo_id)))
     except Exception as exc:  # noqa: BLE001
         raise MultiLlamaError("ML-FETCH-003", f"could not download {filename!r} from {repo_id!r}: {exc}") from exc
 

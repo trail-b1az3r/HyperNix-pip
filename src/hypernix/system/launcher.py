@@ -214,7 +214,7 @@ def _user_bus_available() -> bool:
         return False
     try:
         probe = subprocess.run(
-            ["systemctl", "--user", "show-environment"],
+            [shutil.which("systemctl") or "systemctl", "--user", "show-environment"],
             capture_output=True, timeout=10, check=False,
         )
     except (OSError, subprocess.SubprocessError):
@@ -535,7 +535,7 @@ def _systemd_main_pid(unit: str) -> int:
     for _ in range(20):
         try:
             result = subprocess.run(
-                ["systemctl", "--user", "show", unit, "--property=MainPID"],
+                [shutil.which("systemctl") or "systemctl", "--user", "show", unit, "--property=MainPID"],
                 capture_output=True, text=True, timeout=10, check=False,
             )
         except (OSError, subprocess.SubprocessError):
@@ -653,7 +653,7 @@ def _refresh_systemd(job: Job) -> None:
 
     try:
         result = subprocess.run(
-            ["systemctl", "--user", "show", job.unit,
+            [shutil.which("systemctl") or "systemctl", "--user", "show", job.unit,
              "--property=LoadState,ActiveState,Result,ExecMainStatus"],
             capture_output=True, text=True, timeout=10, check=False,
         )
@@ -714,7 +714,7 @@ def stop(job: Job, store: JobStore | None = None, *, timeout: float = 10.0) -> J
     """Ask the job to stop, then insist."""
     if job.supervisor == Supervisor.SYSTEMD.value and job.unit:
         subprocess.run(
-            ["systemctl", "--user", "stop", job.unit],
+            [shutil.which("systemctl") or "systemctl", "--user", "stop", job.unit],
             capture_output=True, timeout=30, check=False,
         )
     elif job.pid:

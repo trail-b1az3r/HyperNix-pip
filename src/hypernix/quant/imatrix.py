@@ -47,6 +47,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from hypernix.security.hfpin import hub_revision
+
 logger = logging.getLogger(__name__)
 
 __all__ = [
@@ -517,8 +519,8 @@ def collect_from_pretrained(
             "Measuring an imatrix needs transformers: pip install 'hypernix[train]'"
         ) from exc
     try:
-        tokenizer = AutoTokenizer.from_pretrained(path)
-        model = AutoModelForCausalLM.from_pretrained(path)
+        tokenizer = AutoTokenizer.from_pretrained(path, revision=hub_revision(path))
+        model = AutoModelForCausalLM.from_pretrained(path, revision=hub_revision(path))
     except Exception as exc:  # noqa: BLE001 - transformers raises many things
         raise ImatrixError(f"Could not load {path}: {exc}") from exc
     kwargs.setdefault("dataset", "")

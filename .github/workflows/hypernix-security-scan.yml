@@ -69,8 +69,8 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
@@ -552,19 +552,19 @@ jobs:
           python "$RUNNER_TEMP/hnx/t1_audit.py" . sarif/hypernix-t1.sarif
 
       - name: Upload Bandit to code scanning
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4
         continue-on-error: true
         with: { sarif_file: sarif/bandit.sarif, category: bandit }
       - name: Upload Semgrep to code scanning
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4
         continue-on-error: true
         with: { sarif_file: sarif/semgrep.sarif, category: semgrep }
       - name: Upload HyperNix T1 audit to code scanning
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4
         continue-on-error: true
         with: { sarif_file: sarif/hypernix-t1.sarif, category: hypernix-t1 }
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with: { name: sarif-sast, path: sarif/, retention-days: 30 }
 
@@ -576,8 +576,8 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
@@ -611,11 +611,11 @@ jobs:
           } | tee -a "$GITHUB_STEP_SUMMARY" > sarif/pip-audit.md
 
       - name: Upload OSV to code scanning
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4
         continue-on-error: true
         with: { sarif_file: sarif/osv.sarif, category: osv-scanner }
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with: { name: sarif-deps, path: sarif/, retention-days: 30 }
 
@@ -627,7 +627,7 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           fetch-depth: 0
       - name: Gitleaks
@@ -640,10 +640,10 @@ jobs:
           gitleaks git . --redact --no-banner --exit-code 0 \
             --report-format sarif --report-path sarif/gitleaks.sarif
       - name: Upload Gitleaks to code scanning
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4
         continue-on-error: true
         with: { sarif_file: sarif/gitleaks.sarif, category: gitleaks }
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with: { name: sarif-secrets, path: sarif/, retention-days: 30 }
 
@@ -654,7 +654,7 @@ jobs:
     if: always()
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           pattern: sarif-*
           path: sarif

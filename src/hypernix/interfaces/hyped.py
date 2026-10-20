@@ -1276,7 +1276,7 @@ class ToolRegistry:
                 tmp.write(patch)
                 tmp_path = tmp.name
             result = subprocess.run(
-                ["patch", "-u", str(p), tmp_path],
+                [shutil.which("patch") or "patch", "-u", str(p), tmp_path],
                 capture_output=True, text=True, timeout=15,
             )
             Path(tmp_path).unlink(missing_ok=True)

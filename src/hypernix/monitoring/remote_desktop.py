@@ -323,7 +323,7 @@ def _tailscale_ip() -> str:
         return ""
     try:
         result = subprocess.run(
-            ["tailscale", "ip", "-4"],
+            [shutil.which("tailscale") or "tailscale", "ip", "-4"],
             capture_output=True, text=True, timeout=2.0, check=False,
         )
     except (OSError, subprocess.TimeoutExpired):
@@ -407,7 +407,7 @@ def _ensure_password(backend: str) -> tuple[Path | None, str]:
     if backend == "x11vnc":
         try:
             result = subprocess.run(
-                ["x11vnc", "-storepasswd", plain, str(target)],
+                [shutil.which("x11vnc") or "x11vnc", "-storepasswd", plain, str(target)],
                 capture_output=True, text=True, timeout=10.0, check=False,
             )
         except (OSError, subprocess.TimeoutExpired) as exc:

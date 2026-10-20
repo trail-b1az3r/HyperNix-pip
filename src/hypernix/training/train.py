@@ -32,6 +32,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from safetensors.torch import load_file, save_file
 
+from hypernix.security.hfpin import hub_revision
 from hypernix.system.torch_compat import scaled_dot_product_attention as _sdpa
 
 # ---------------------------------------------------------------------------
@@ -488,9 +489,9 @@ def _try_hf_automodel(model_dir: Path, model_type: str) -> tuple[Any, Any] | Non
             return None
 
     try:
-        hf_cfg = AutoConfig.from_pretrained(str(model_dir), trust_remote_code=False)
+        hf_cfg = AutoConfig.from_pretrained(str(model_dir), trust_remote_code=False, revision=hub_revision(model_dir))
         hf_model = AutoModelForCausalLM.from_pretrained(
-            str(model_dir), trust_remote_code=False
+            str(model_dir), trust_remote_code=False, revision=hub_revision(model_dir)
         )
     except Exception as exc:  # noqa: BLE001 — HF can throw any exception
         import sys as _sys
@@ -869,7 +870,7 @@ def train(
             "`hypernix train init --tokenizer-source <snapshot_with_tokenizer>` "
             "or copy tokenizer.json/tokenizer.model into the model dir."
         )
-    tok = AutoTokenizer.from_pretrained(str(model_dir), use_fast=True)
+    tok = AutoTokenizer.from_pretrained(str(model_dir), use_fast=True, revision=hub_revision(model_dir))
 
     chunks = list(_iter_chunks(dataset_path, tok, context_length))
     if not chunks:

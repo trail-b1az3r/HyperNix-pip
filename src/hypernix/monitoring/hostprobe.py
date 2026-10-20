@@ -396,7 +396,7 @@ def _signal_level(monitor: str, seconds: float = 0.25) -> tuple[float | None, fl
     want = int(rate * seconds) * 2
     try:
         proc = subprocess.Popen(  # noqa: S603 - fixed argv
-            ["parec", f"--device={monitor}", "--raw", "--format=s16le", "--channels=1",
+            [shutil.which("parec") or "parec", f"--device={monitor}", "--raw", "--format=s16le", "--channels=1",
              f"--rate={rate}", "--latency-msec=20"],
             stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
         )

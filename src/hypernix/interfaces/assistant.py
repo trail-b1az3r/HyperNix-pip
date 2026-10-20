@@ -820,7 +820,7 @@ class InteractiveCLI:
             return
         try:
             raw = subprocess.run(
-                ["tailscale", "status", "--json"],
+                [shutil.which("tailscale") or "tailscale", "status", "--json"],
                 capture_output=True, text=True, timeout=10, check=False,
             ).stdout
             name = json.loads(raw).get("Self", {}).get("DNSName", "").rstrip(".")

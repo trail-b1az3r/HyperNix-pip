@@ -19,6 +19,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import shlex
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -42,6 +44,7 @@ def save_config(cfg: dict) -> None:
 
 def run_cmd(cmd: list[str], capture: bool = True) -> str:
     """Run a subprocess command and return stdout."""
+    cmd = [shutil.which(cmd[0]) or cmd[0], *cmd[1:]] if cmd else cmd
     try:
         res = subprocess.run(cmd, check=True, capture_output=capture, text=True)
         return res.stdout.strip() if capture else ""
@@ -92,13 +95,27 @@ def cmd_m_setup(args: argparse.Namespace) -> None:
     print("3. Generate SSH keys: ssh-keygen -t rsa")
     print("4. Copy keys to peers: ssh-copy-id <peer-ip>")
 
+def _exe(name: str) -> str:
+    """The full path of *name* on PATH, so the command run is the one found."""
+    return shutil.which(name) or name
+
+
+def _remote(peer: str, *words: str) -> list[str]:
+    """ssh to *peer* running *words*, each quoted for the remote shell.
+
+    ``--`` ends ssh's own options, so a peer name that starts with "-"
+    cannot become one.
+    """
+    return [_exe("ssh"), "--", peer, " ".join(shlex.quote(w) for w in words)]
+
+
 def cmd_connect(args: argparse.Namespace) -> None:
     print(f"[net] Connecting to {args.ip}...")
-    subprocess.run(["ssh", args.ip])
+    subprocess.run([_exe("ssh"), "--", args.ip])
 
 def cmd_status(args: argparse.Namespace) -> None:
     print("[net] Tailscale Status:")
-    subprocess.run(["tailscale", "status"])
+    subprocess.run([_exe("tailscale"), "status"])
 
 def cmd_m_ip(args: argparse.Namespace) -> None:
     ip = run_cmd(["tailscale", "ip", "-4"])
@@ -115,8 +132,15 @@ def cmd_a_il(args: argparse.Namespace) -> None:
         return
     for peer in peers:
         print(f" - Found peer: {peer}")
-        # Automatically accept SSH keys for peers
-        run_cmd(["ssh-keyscan", "-H", peer, ">>", str(Path.home() / ".ssh" / "known_hosts")], capture=True)
+        # Accept the peer's SSH host keys. ">>" used to be passed to
+        # ssh-keyscan as an argument, which no shell ever saw: nothing was
+        # written. The keys are appended here instead.
+        keys = run_cmd(["ssh-keyscan", "-H", "--", peer])
+        if keys:
+            known = Path.home() / ".ssh" / "known_hosts"
+            known.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+            with known.open("a", encoding="utf-8") as fh:
+                fh.write(keys.rstrip("\n") + "\n")
     print("[net] Peer discovery and linkage complete.")
 
 def cmd_multi_a_port(args: argparse.Namespace) -> None:
@@ -162,12 +186,16 @@ def cmd_tail_acheck(args: argparse.Namespace) -> None:
     for peer in peers:
         print(f"[peer {peer}] Checking for {args.file}...")
         # Check if file exists
-        res = subprocess.run(["ssh", peer, f"test -f {args.file}"], capture_output=True)
+        # The file name is quoted for the remote shell: it used to be
+        # pasted in, so a name with a ; in it ran a second command there.
+        res = subprocess.run(_remote(peer, "test", "-f", args.file), capture_output=True)
         if res.returncode == 0:
             print(f"  -> File {args.file} exists.")
             if args.r:
                 print(f"  -> Running {args.file}...")
-                subprocess.Popen(["ssh", peer, f"nohup python3 {args.file} > /dev/null 2>&1 &"])
+                subprocess.Popen(
+                    [_exe("ssh"), "--", peer,
+                     f"nohup python3 {shlex.quote(args.file)} > /dev/null 2>&1 &"])
         else:
             print(f"  -> File {args.file} NOT found.")
 
@@ -175,7 +203,7 @@ def cmd_tail_stop(args: argparse.Namespace) -> None:
     peers = get_tailscale_peers()
     for peer in peers:
         print(f"[peer {peer}] Stopping {args.file}...")
-        subprocess.run(["ssh", peer, f"pkill -f {args.file}"], capture_output=False)
+        subprocess.run(_remote(peer, "pkill", "-f", args.file), capture_output=False)
 
 
 def cli_main(argv: list[str] | None = None) -> int:

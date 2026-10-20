@@ -224,7 +224,7 @@ def dpms_enabled() -> bool | None:
         return None
     try:
         done = subprocess.run(
-            ["xset", "q"], capture_output=True, text=True, timeout=COMMAND_TIMEOUT
+            ["xset", "q"], capture_output=True, text=True, timeout=COMMAND_TIMEOUT  # nosec B607 - found by shutil.which above
         )
     except (OSError, subprocess.TimeoutExpired):
         return None

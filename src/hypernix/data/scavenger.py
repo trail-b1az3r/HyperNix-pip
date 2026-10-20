@@ -34,6 +34,8 @@ from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 
+from hypernix.security.hfpin import hub_revision
+
 
 @dataclass
 class ScavengerCriteria:
@@ -374,7 +376,8 @@ class Scavenger:
         if streaming:
             kwargs["streaming"] = True
 
-        ds = load_dataset(dataset_id, **kwargs)
+        revision = hub_revision(dataset_id, kwargs.pop("revision", None))
+        ds = load_dataset(dataset_id, revision=revision, **kwargs)
         self.console.print(f"[green]✓ Loaded {dataset_id}[/]")
         return ds
 

@@ -7,6 +7,8 @@ from __future__ import annotations
 import argparse
 import sys
 
+from hypernix.security.hfpin import hub_revision
+
 try:
     import torch
     from torch.optim import AdamW
@@ -68,8 +70,8 @@ def run_rlhf(
 
     print(f"[camo] Loading target policy model: {local_model}")
     try:
-        policy = AutoModelForCausalLM.from_pretrained(local_model, torch_dtype=torch.float16 if device != "cpu" else torch.float32, device_map=device)
-        tokenizer = AutoTokenizer.from_pretrained(local_model)
+        policy = AutoModelForCausalLM.from_pretrained(local_model, revision=hub_revision(local_model), torch_dtype=torch.float16 if device != "cpu" else torch.float32, device_map=device)
+        tokenizer = AutoTokenizer.from_pretrained(local_model, revision=hub_revision(local_model))
         if tokenizer.pad_token is None:
             tokenizer.pad_token = tokenizer.eos_token
     except Exception as e:
@@ -87,8 +89,8 @@ def run_rlhf(
         print(f"[camo] Loading AI evaluator: {evaluator_path}")
         try:
             # We load the evaluator in 8-bit or half precision to save memory on single-gpu setups
-            eval_model = AutoModelForCausalLM.from_pretrained(evaluator_path, torch_dtype=torch.float16, device_map="auto")
-            eval_tokenizer = AutoTokenizer.from_pretrained(evaluator_path)
+            eval_model = AutoModelForCausalLM.from_pretrained(evaluator_path, revision=hub_revision(evaluator_path), torch_dtype=torch.float16, device_map="auto")
+            eval_tokenizer = AutoTokenizer.from_pretrained(evaluator_path, revision=hub_revision(evaluator_path))
             eval_model.eval()
         except Exception as e:
             print(f"[camo] Failed to load evaluator model: {e}")

@@ -13,6 +13,7 @@ from typing import Any
 import torch
 import torch.nn as nn
 
+from hypernix.security.hfpin import hub_revision
 from hypernix.training.mtp import MTPConfig, MTPHead, MTPTrainer
 
 # =============================================================================
@@ -211,12 +212,13 @@ class TTSEngine(WorkshopFramework):
             
             self.model = AutoModelForTextToWaveform.from_pretrained(
                 model_name,
+                revision=hub_revision(model_name),
                 torch_dtype=dtype,
                 low_cpu_mem_usage=True,
                 use_safetensors=True
             ).to(device=device, dtype=dtype)
             
-            self.processor = AutoProcessor.from_pretrained(model_name)
+            self.processor = AutoProcessor.from_pretrained(model_name, revision=hub_revision(model_name))
             self._initialized = True
         except ImportError as e:
             raise RuntimeError("TTS requires transformers. Install: pip install transformers[torch]") from e
@@ -305,13 +307,14 @@ class ASREngine(WorkshopFramework):
             model_name = getattr(self.config, 'model_name', 'openai/whisper-tiny')
             
             self.transcriber = AutoModelForSpeechSeq2Seq.from_pretrained(
-                model_name, 
+                model_name,
+                revision=hub_revision(model_name),
                 torch_dtype=dtype,
                 low_cpu_mem_usage=True,
                 use_safetensors=True
             ).to(device=device, dtype=dtype)
             
-            self.processor = AutoProcessor.from_pretrained(model_name)
+            self.processor = AutoProcessor.from_pretrained(model_name, revision=hub_revision(model_name))
             self._initialized = True
         except ImportError as e:
             raise RuntimeError("ASR requires transformers. Install: pip install transformers[torch]") from e
