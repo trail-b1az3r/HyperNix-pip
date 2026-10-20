@@ -41,6 +41,10 @@ def starts_with_no(prompt: str, response: str) -> bool:
 r = new_range.new_range(rules=[starts_with_no])
 ```
 
+`is_refusal` knows the ways current models decline ("I'm unable to", "I
+must decline", "I apologize, but"…) and reads curly apostrophes as
+straight ones, so "I can’t" counts (0.72.8).
+
 Built-in rule set: `is_empty`, `is_too_short`, `is_too_long`,
 `is_refusal`, `math_lacks_digit`, `is_repetition`. The default
 selection is `(is_empty, is_refusal, math_lacks_digit, is_repetition)`.
@@ -185,8 +189,33 @@ The verdict parser handles:
 - a clean one-word reply (`"GOOD"`, `"BAD"`, `"A"`, `"B"`, `"T"`)
 - a justification on the same line (`"GOOD because the response is correct"`)
 - both keywords appearing — first wins
-- nothing parseable — falls back to `BAD` (conservative: don't pollute
-  the positive set with unjudged samples)
+- "not good" (BAD) and "not bad" (GOOD), which the word alone misread
+  before 0.72.8
+- a reasoning model's `<think>…</think>` block, which is skipped: the
+  verdict is what comes after it
+- a pairwise reply that merely starts with "T" ("The better one is A"):
+  only a standalone `T` or a tie word ("tie", "equal") is a tie
+- nothing parseable — falls back to `fallback_label`, `BAD` by default
+  (conservative: don't pollute the positive set with unjudged samples).
+  Setting `fallback_label` had no effect before 0.72.8.
+
+### A judge on a server (0.72.8)
+
+The judge does not have to be loaded in this process. `OpenAIJudge`
+talks to anything that answers OpenAI's `/chat/completions` — the
+HyperNix runner, LM Studio, llama-server, or a hosted provider:
+
+```python
+from hypernix.evaluation.industrial_range import OpenAIJudge, industrial_range
+
+judge = industrial_range(OpenAIJudge("http://127.0.0.1:8081/v1", model="lfm2.5-2.6b"),
+                         max_new_tokens=16)
+judge("Capital of France?", "Paris")     # -> "GOOD"
+```
+
+A reasoning model thinks before it answers: give it room
+(`max_new_tokens` in the hundreds). A `"\n"` stop is not sent to a chat
+server, where it would end the reply at its first line.
 
 ## Putting them in the pipeline
 

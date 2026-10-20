@@ -56,10 +56,21 @@ DEFAULT_PAIRWISE_TEMPLATE = (
 
 # Cheap parse — the judge model is asked for a one-word verdict but
 # may pad with whitespace, punctuation, or a short justification.
-_GOOD_RE = re.compile(r"\bgood\b", re.IGNORECASE)
-_BAD_RE = re.compile(r"\bbad\b", re.IGNORECASE)
+_GOOD_RE = re.compile(r"\b(?<!not )good\b", re.IGNORECASE)
+_BAD_RE = re.compile(r"\b(?<!not )bad\b", re.IGNORECASE)
+#: "not good" is BAD and "not bad" is GOOD (0.72.8): reading the word
+#: alone turned "not good" into a GOOD label.
+_NOT_GOOD_RE = re.compile(r"\bnot good\b", re.IGNORECASE)
+_NOT_BAD_RE = re.compile(r"\bnot bad\b", re.IGNORECASE)
 _VERDICT_A = re.compile(r"\b[Aa]\b")
 _VERDICT_B = re.compile(r"\b[Bb]\b")
+_VERDICT_T = re.compile(r"\b[Tt]\b")
+#: A reasoning model's thinking, which is not its verdict.
+_THINKING = re.compile(r"<think(?:ing)?>.*?(?:</think(?:ing)?>|\Z)", re.IGNORECASE | re.DOTALL)
+
+
+def _answer_part(text: str) -> str:
+    return _THINKING.sub(" ", text or "").strip()
 
 
 @dataclass
@@ -108,7 +119,7 @@ class IndustrialRange:
             temperature=self.temperature,
             stop=self.stop,
         )
-        verdict = self._parse_pointwise(out)
+        verdict = self._parse_pointwise(out, self.fallback_label)
         if self.use_cache:
             self.cache[("point", prompt, response)] = verdict
         return verdict
@@ -117,23 +128,19 @@ class IndustrialRange:
         return self.label(prompt, response)
 
     @staticmethod
-    def _parse_pointwise(text: str) -> str:
+    def _parse_pointwise(text: str, fallback: str = LABEL_BAD) -> str:
         """Return GOOD / BAD from a free-form judge reply.
 
-        Looks for a standalone GOOD or BAD token.  When both appear,
-        whichever shows up first wins.  When neither, returns BAD
-        (conservative — unlabelled examples shouldn't pollute the
-        positive set).
+        Looks for a standalone GOOD or BAD token, after any ``<think>``
+        block, with "not good" read as BAD and "not bad" as GOOD. When
+        several appear, whichever shows up first wins. When none,
+        *fallback* (BAD by default: unlabelled examples shouldn't pollute
+        the positive set).
         """
-        good = _GOOD_RE.search(text)
-        bad = _BAD_RE.search(text)
-        if good and bad:
-            return LABEL_GOOD if good.start() < bad.start() else LABEL_BAD
-        if good:
-            return LABEL_GOOD
-        if bad:
-            return LABEL_BAD
-        return LABEL_BAD  # conservative default
+        text = _answer_part(text)
+        found = [(m.start(), LABEL_GOOD) for m in (_GOOD_RE.search(text), _NOT_BAD_RE.search(text)) if m]
+        found += [(m.start(), LABEL_BAD) for m in (_BAD_RE.search(text), _NOT_GOOD_RE.search(text)) if m]
+        return min(found)[1] if found else fallback
 
     # ------------------------------------------------------------------
     # Pairwise: pick the better of two responses
@@ -168,13 +175,15 @@ class IndustrialRange:
         ``"equal"`` anywhere in the head, not just a leading ``T``.
         Previously ``"I think it's a tie"`` parsed as B.
         """
-        head = text.strip()[:64]
+        head = _answer_part(text)[:64]
         head_lower = head.lower()
         # Explicit tie words anywhere in the head win — they're
         # unambiguous.
-        if any(w in head_lower for w in ("tie", "tied", "equal")):
+        if re.search(r"\b(tie|tied|equal|equally)\b", head_lower):
             return "T"
-        if head[:1].upper() == "T":
+        # A standalone T, not any reply that starts with one: "The better
+        # one is A" used to parse as a tie (0.72.8).
+        if _VERDICT_T.match(head):
             return "T"
         ma = _VERDICT_A.search(head)
         mb = _VERDICT_B.search(head)
@@ -197,6 +206,48 @@ class IndustrialRange:
         self, triples: Sequence[tuple[str, str, str]],
     ) -> list[str]:
         return [self.compare(p, a, b) for p, a, b in triples]
+
+
+class OpenAIJudge:
+    """A judge on any OpenAI-compatible server (0.72.8).
+
+    The HyperNix runner, LM Studio, llama-server, the T1 API's
+    ``/v1`` bridge, or a hosted provider: anything that answers
+    ``POST {base_url}/chat/completions``. It gives :class:`IndustrialRange`
+    the ``complete()`` it needs, so a judge no longer has to be a model
+    loaded in this process.
+    """
+
+    def __init__(self, base_url: str, model: str = "", api_key: str = "", *,
+                 timeout: float = 120.0) -> None:
+        self.base_url = base_url.rstrip("/")
+        self.model = model
+        self.api_key = api_key
+        self.timeout = timeout
+
+    def complete(self, prompt: str, max_new_tokens: int = 8, temperature: float = 0.0,
+                 stop: Sequence[str] = ()) -> str:
+        import json
+        import urllib.request
+
+        from ..security.safeurl import urlopen as safe_urlopen
+
+        body = {"messages": [{"role": "user", "content": prompt}],
+                "max_tokens": int(max_new_tokens), "temperature": float(temperature)}
+        if self.model:
+            body["model"] = self.model
+        stops = [s for s in stop if s and s != "\n"]
+        if stops:
+            body["stop"] = stops[:4]
+        request = urllib.request.Request(  # noqa: S310 - scheme checked by safe_urlopen
+            f"{self.base_url}/chat/completions", data=json.dumps(body).encode(), method="POST")
+        request.add_header("Content-Type", "application/json")
+        if self.api_key:
+            request.add_header("Authorization", f"Bearer {self.api_key}")
+        with safe_urlopen(request, timeout=self.timeout) as response:
+            reply = json.loads(response.read().decode("utf-8", errors="replace"))
+        choice = (reply.get("choices") or [{}])[0]
+        return str((choice.get("message") or {}).get("content") or choice.get("text") or "")
 
 
 def industrial_range(judge: Any, **kwargs: Any) -> IndustrialRange:

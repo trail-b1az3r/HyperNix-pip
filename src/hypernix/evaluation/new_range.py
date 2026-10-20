@@ -28,7 +28,15 @@ REFUSAL_PATTERNS: tuple[str, ...] = (
     "as an ai", "as a language model",
     "i'm not able", "i am not able",
     "i won't", "i will not",
+    # 0.72.8: how current models decline.
+    "i'm unable to", "i am unable to", "i can't help with", "i can't assist",
+    "i'm not going to", "i must decline", "i'd rather not", "i apologize, but",
+    "unfortunately, i can't", "i don't feel comfortable",
 )
+
+#: Curly apostrophes and quotes, as most models write them, read as
+#: straight ones: "I can’t" is a refusal too.
+_STRAIGHTEN = str.maketrans({"\u2019": "'", "\u2018": "'", "\u201c": '"', "\u201d": '"'})
 
 #: Trigger words that suggest a numeric answer is expected.
 MATH_TRIGGER_RE = re.compile(
@@ -64,7 +72,7 @@ def is_too_long(prompt: str, response: str, *, max_chars: int = 4096) -> bool:
 
 
 def is_refusal(prompt: str, response: str) -> bool:
-    low = response.lower()
+    low = response.translate(_STRAIGHTEN).lower()
     return any(p in low for p in REFUSAL_PATTERNS)
 
 
