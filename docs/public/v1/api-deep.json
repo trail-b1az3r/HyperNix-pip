@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-api-deep",
   "generated_at": "2026-09-20T21:20:57Z",
-  "commit": "8020618a711804f23de11a2dd5e695d0fe5092d4",
+  "commit": "5dd2f5ba37b191e7b8d89e76559556f17a44fd48",
   "history_available": true,
   "source_root": "src/hypernix",
   "modules": [
@@ -17,6 +17,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "c21dc6d",
+          "date": "2026-10-21",
+          "author": "Claude",
+          "subject": "0.72.8a3: T1 v1.1.26.10.2.0, changelog, docs and examples/t1api",
+          "api_changes": []
+        },
         {
           "sha": "a3baf7c",
           "date": "2026-10-20",
@@ -64,13 +71,6 @@
           "date": "2026-10-07",
           "author": "Claude",
           "subject": "llama-essir: a Hugging Face Hub kernel for Llama models, auto-published",
-          "api_changes": []
-        },
-        {
-          "sha": "8b25e66",
-          "date": "2026-10-07",
-          "author": "Claude",
-          "subject": "0.72.7: version, changelog heading and the measured benchmark results",
           "api_changes": []
         }
       ]
@@ -63254,6 +63254,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "c21dc6d",
+          "date": "2026-10-21",
+          "author": "Claude",
+          "subject": "0.72.8a3: T1 v1.1.26.10.2.0, changelog, docs and examples/t1api",
+          "api_changes": []
+        },
         {
           "sha": "3c38942",
           "date": "2026-10-14",

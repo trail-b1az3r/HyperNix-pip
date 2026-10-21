@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-t1-api",
   "generated_at": "2026-10-07T05:12:17Z",
-  "commit": "8020618a711804f23de11a2dd5e695d0fe5092d4",
+  "commit": "5dd2f5ba37b191e7b8d89e76559556f17a44fd48",
   "history_available": true,
   "server_extra": "pip install 'hypernix[t1api]'",
   "client_install": "pip install hypernix",
@@ -16545,6 +16545,13 @@
         }
       ],
       "changes": [
+        {
+          "sha": "c21dc6d",
+          "date": "2026-10-21",
+          "author": "Claude",
+          "subject": "0.72.8a3: T1 v1.1.26.10.2.0, changelog, docs and examples/t1api",
+          "api_changes": []
+        },
         {
           "sha": "3c38942",
           "date": "2026-10-14",
