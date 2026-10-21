@@ -1312,9 +1312,37 @@ class MessageEditResponse(BaseModel):
     request_id: str
 
 
+class DatasetPick(BaseModel):
+    """Part of an attached dataset to give the model (0.72.8a3).
+
+    JSONL, JSON, Parquet, CSV/TSV, Arrow, text and Markdown. See
+    :mod:`hypernix.hyperlink.datasets`.
+    """
+
+    file_id: str
+    #: "0-20", "100-", "5", "-10" (the last 10). Empty: the first 20 rows,
+    #: or the whole file when it is small.
+    rows: str = ""
+    columns: list[str] = Field(default_factory=list)
+    #: Only rows (or lines) containing this; "re:<pattern>" for a regex. In a
+    #: Markdown file with no rows given, the section under the heading that matches.
+    query: str = ""
+    #: A random sample of this many rows instead of a range.
+    sample: int = Field(0, ge=0, le=2000)
+    seed: int = 0
+    #: How rows are written: auto, jsonl, table or text.
+    style: str = Field("auto", pattern="^(auto|jsonl|table|text)$")
+    max_chars: int = Field(12_000, ge=500, le=100_000)
+
+
 class HyperLinkChatRequest(BaseModel):
     content: str = ""
     attachment_ids: list[str] = Field(default_factory=list)
+    #: Parts of dataset files to put in front of the model with this message.
+    datasets: list[DatasetPick] = Field(default_factory=list)
+    #: A /code sandbox this conversation works in: the model gets tools to
+    #: read, write, search and run its files and use git there (0.72.8a3).
+    code_sandbox_id: str | None = None
     model_id: str | None = None
     backend: str | None = None          # "lmstudio" (default) | "registry"
     temperature: float | None = None

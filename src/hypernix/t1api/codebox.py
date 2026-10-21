@@ -403,7 +403,9 @@ class Sandbox:
         for path in sorted(self.root.rglob("*")):
             if path.is_file() and not path.is_symlink():
                 rel = path.relative_to(self.root).as_posix()
-                if not rel.startswith(".hnx/"):
+                # The sandbox's own folder, and git's insides: thousands of
+                # objects nobody edits by hand (0.72.8a3).
+                if not rel.startswith(".hnx/") and ".git" not in rel.split("/")[:-1]:
                     out.append({"path": rel, "bytes": path.stat().st_size})
         return out
 
@@ -527,6 +529,52 @@ class SandboxStore:
         path.write_bytes(data)
         box.last_used = time.time()
         return path
+
+    def write_bytes(self, box: Sandbox, relative: str, data: bytes, perms: CodePerms) -> Path:
+        """A binary file (an imported attachment), under the same disk budget."""
+        path = self._resolve(box, relative)
+        existing = path.stat().st_size if path.is_file() else 0
+        if box.bytes_used() - existing + len(data) > perms.disk_mb * 2**20:
+            raise SandboxError(
+                f"that would take the sandbox past its {perms.disk_mb} MB (s5)",
+                code="disk_budget", status=413)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(data)
+        box.last_used = time.time()
+        return path
+
+    def search(self, box: Sandbox, query: str, *, glob: str = "", limit: int = 200,
+               regex: bool = False) -> builtins.list[dict[str, Any]]:
+        """Lines containing *query* in the sandbox's text files."""
+        import fnmatch
+
+        if not query:
+            raise SandboxError("search for something")
+        if regex:
+            try:
+                pattern = re.compile(query)
+            except re.error as exc:
+                raise SandboxError(f"not a valid regular expression: {exc}") from exc
+            hit = pattern.search
+        else:
+            lowered = query.lower()
+            hit = lambda line: lowered in line.lower()  # noqa: E731
+        found: builtins.list[dict[str, Any]] = []
+        for entry in box.files():
+            if glob and not fnmatch.fnmatch(entry["path"], glob):
+                continue
+            if entry["bytes"] > MAX_READ:
+                continue
+            try:
+                text = (box.root / entry["path"]).read_text(encoding="utf-8")
+            except (UnicodeDecodeError, OSError):
+                continue
+            for number, line in enumerate(text.splitlines(), 1):
+                if hit(line):
+                    found.append({"path": entry["path"], "line": number, "text": line[:400]})
+                    if len(found) >= limit:
+                        return found
+        return found
 
     def read(self, box: Sandbox, relative: str) -> tuple[str, bool]:
         path = self._resolve(box, relative)

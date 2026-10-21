@@ -154,6 +154,7 @@ final class MarkdownTests: XCTestCase {
             case let .listItem(_, _, text): return text
             case let .quote(text): return text
             case .rule: return ""
+            default: return ""
             }
         }.joined(separator: " ")
 
@@ -161,6 +162,71 @@ final class MarkdownTests: XCTestCase {
                          "The second one", "Worth checking.", "Done."] {
             XCTAssertTrue(rendered.contains(fragment), "lost: \(fragment)")
         }
+    }
+
+    // MARK: - CommonMark, GFM and Markdown Extra (0.72.8a3)
+
+    func testASetextHeading() {
+        XCTAssertEqual(MarkdownBlock.parse("Title\n====="), [.heading(level: 1, text: "Title")])
+        XCTAssertEqual(MarkdownBlock.parse("Sub\n---"), [.heading(level: 2, text: "Sub")])
+    }
+
+    func testHeadingAttributesAndClosingHashesAreNotText() {
+        XCTAssertEqual(MarkdownBlock.parse("## Setup {#setup .big}"), [.heading(level: 2, text: "Setup")])
+        XCTAssertEqual(MarkdownBlock.parse("### Done ###"), [.heading(level: 3, text: "Done")])
+    }
+
+    func testTaskListItems() {
+        XCTAssertEqual(
+            MarkdownBlock.parse("- [x] done\n- [ ] todo"),
+            [.task(indent: 0, checked: true, text: "done"), .task(indent: 0, checked: false, text: "todo")]
+        )
+    }
+
+    func testATable() {
+        let blocks = MarkdownBlock.parse("| Quant | Bits |\n|:--|--:|\n| Q4_K_M | 4.8 |\n| a \\| b | `x|y` |")
+        XCTAssertEqual(blocks, [.table(header: ["Quant", "Bits"], alignments: [.leading, .trailing],
+                                       rows: [["Q4_K_M", "4.8"], ["a | b", "`x|y`"]])])
+    }
+
+    func testAFencedCodeBlockThatReachesHere() {
+        XCTAssertEqual(MarkdownBlock.parse("```bash\nhnx auto x\n```"), [.code(language: "bash", text: "hnx auto x")])
+    }
+
+    func testIndentedCode() {
+        XCTAssertEqual(MarkdownBlock.parse("    let a = 1\n    let b = 2"),
+                       [.code(language: "", text: "let a = 1\nlet b = 2")])
+    }
+
+    func testADefinitionList() {
+        XCTAssertEqual(MarkdownBlock.parse("Apple\n: A fruit.\n: A company."),
+                       [.definition(term: "Apple", details: ["A fruit.", "A company."])])
+    }
+
+    func testFootnotesAreNumberedAndListedLast() {
+        let blocks = MarkdownBlock.parse("A claim.[^src]\n\n[^src]: The source.")
+        XCTAssertEqual(blocks, [.paragraph("A claim.¹"),
+                                .footnotes([Footnote(number: 1, label: "src", text: "The source.")])])
+    }
+
+    func testLinkReferencesResolve() {
+        XCTAssertEqual(MarkdownBlock.parse("See [the docs][d].\n\n[d]: https://example.org"),
+                       [.paragraph("See [the docs](https://example.org).")])
+    }
+
+    func testBareURLsBecomeLinksButNotInsideCode() {
+        XCTAssertEqual(MarkdownBlock.parse("Go to https://example.org/a."),
+                       [.paragraph("Go to <https://example.org/a>.")])
+        XCTAssertEqual(MarkdownBlock.parse("`https://example.org`"), [.paragraph("`https://example.org`")])
+    }
+
+    func testAMultiLineQuoteIsOneQuote() {
+        XCTAssertEqual(MarkdownBlock.parse("> one\n> two"), [.quote("one\ntwo")])
+    }
+
+    func testAbbreviationDefinitionsAreNotShown() {
+        XCTAssertEqual(MarkdownBlock.parse("*[GGUF]: GPT-Generated Unified Format\nA GGUF file."),
+                       [.paragraph("A GGUF file.")])
     }
 
     func testAnEmptyStringIsNoBlocks() {

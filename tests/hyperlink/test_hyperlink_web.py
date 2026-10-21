@@ -61,7 +61,8 @@ class TestThePageAndTheApiShareAnOrigin:
         policy = page.headers["content-security-policy"]
         assert "script-src 'self'" in policy and "frame-ancestors 'none'" in policy
         assert page.headers["x-frame-options"] == "DENY"
-        for path, kind in (("/web/app.js", "javascript"), ("/web/app.css", "css"),
+        for path, kind in (("/web/app.js", "javascript"), ("/web/markdown.js", "javascript"),
+                           ("/web/app.css", "css"),
                            ("/web/icon.svg", "svg")):
             response = client.get(path)
             assert response.status_code == 200 and kind in response.headers["content-type"]
@@ -303,9 +304,10 @@ class TestThePageItself:
 
     @pytest.mark.skipif(shutil.which("node") is None, reason="needs node")
     def test_render_escapes_what_a_model_writes(self):
-        js = (WEB / "app.js").read_text(encoding="utf-8")
-        functions = js[js.index("function escapeHtml"):js.index("function shortModel")]
-        script = functions + """
+        # The page's render() is web/markdown.js's (0.72.8a3).
+        library = (WEB / "markdown.js").read_text(encoding="utf-8")
+        script = library + """
+const render = (text) => globalThis.HyperMarkdown.render(text);
 const cases = [
   render('<script>alert(1)</script>'),
   render('<img src=x onerror=alert(1)>'),
@@ -323,7 +325,7 @@ console.log(JSON.stringify(cases));
         # The link stops at the quote, and no entity is cut in half.
         assert '<a href="https://example.com/a?b=1&amp;c=" target' in out[2]
         assert "&quot;x&quot; now" in out[2]
-        assert "<pre><code>&lt;b&gt;code&lt;/b&gt;</code></pre>" in out[3]
+        assert "<pre><code>&lt;b&gt;code&lt;/b&gt;\n</code></pre>" in out[3]
         assert 'href="javascript' not in out[4]
 
 

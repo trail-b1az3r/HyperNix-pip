@@ -87,6 +87,7 @@ from ..schemas import (
     AttachmentSummary,
     BackendsResponse,
     ChatRingResponse,
+    DatasetPick,
     DeviceListResponse,
     DeviceResponse,
     DeviceSummary,
@@ -928,7 +929,21 @@ def _memory_head(store: MemoryStore | None, owner: str) -> int:
         return 0
 
 
-def _tool_setup(config, principal, settings, request, memory_store, session_id):
+def _code_tools(config, principal, request, box_id: str | None):
+    """The sandbox tools for a code session, or None (no sandbox, or sandboxes off)."""
+    if not box_id or request is None or not getattr(config, "code_sandbox", False):
+        return None
+    from ...hyperlink.codetools import CodeTools
+    from . import code as code_routes
+
+    try:
+        store, box = code_routes._box(request, config, principal, box_id)
+    except T1APIError:
+        return None
+    return CodeTools(store, box, code_routes._perms(request), may_write=code_routes._may_run(principal))
+
+
+def _tool_setup(config, principal, settings, request, memory_store, session_id, code_sandbox_id=None):
     """The tools this turn gets, or None for none at all.
 
     Three kinds, each with its own switch, because they are three
@@ -948,6 +963,9 @@ def _tool_setup(config, principal, settings, request, memory_store, session_id):
     from .noodle import _context as noodle_context
 
     t1 = _t1_access(request, principal)
+    code_tools = _code_tools(config, principal, request, code_sandbox_id)
+    if t1 is not None and code_tools is not None:
+        t1.code = code_tools
     workspace = bool(getattr(settings, "tools_enabled", False)) and bool(
         getattr(config, "noodle_enabled", False))
     auto_memory = bool(getattr(settings, "auto_memory", False)) and memory_store is not None
@@ -1201,6 +1219,41 @@ def _title_session(store, session_id: str, owner: str, settings, bridge, model: 
     return title
 
 
+def _code_sandbox(payload, user_message) -> str | None:
+    """The sandbox this turn works in: the request's, else the one the message was sent with."""
+    return payload.code_sandbox_id or (getattr(user_message, "metadata", None) or {}).get("code_sandbox_id")
+
+
+def _user_metadata(principal, payload) -> dict[str, Any]:
+    """What is kept with the person's message: their device, and the dataset
+    parts and sandbox they chose, so a regenerate or a later turn builds
+    the same context."""
+    metadata: dict[str, Any] = {"device_id": principal.device_id} if principal.device_id else {}
+    if payload.datasets:
+        metadata["datasets"] = [pick.model_dump() for pick in payload.datasets]
+    if payload.code_sandbox_id:
+        metadata["code_sandbox_id"] = payload.code_sandbox_id
+    return metadata
+
+
+def _dataset_text(store: AttachmentStore, owner: str, file_id: str, pick: dict[str, Any] | None) -> str:
+    """An excerpt of one dataset attachment, or a line saying why there is none."""
+    from ...hyperlink import datasets as ds
+
+    try:
+        record = store.get(file_id, owner=owner)
+        path = store.path_for(file_id, owner=owner)
+        selection = dict(pick or {})
+        selection.pop("file_id", None)
+        if not pick and record.size_bytes <= ds.MAX_CHARS:
+            selection["rows"] = "0-"          # a small file goes whole
+        return ds.excerpt(path, selection, name=record.filename).text
+    except T1APIError:
+        return f"[dataset {file_id} is no longer available]"
+    except (ds.DatasetError, OSError, ValueError) as exc:
+        return f"[could not read the dataset {file_id}: {exc}]"
+
+
 def _wire_messages(
     history: list[ChatMessage],
     store: AttachmentStore,
@@ -1224,9 +1277,13 @@ def _wire_messages(
     turn: the alternative is a conversation that can never be continued
     because one old screenshot was deleted.
     """
+    from ...hyperlink.datasets import is_dataset
+
     wire: list[dict[str, Any]] = []
     for message in history:
-        if not message.attachment_ids:
+        picks = {p.get("file_id"): p for p in (getattr(message, "metadata", None) or {}).get("datasets") or []
+                 if isinstance(p, dict)}
+        if not message.attachment_ids and not picks:
             wire.append({"role": message.role, "content": message.content})
             continue
 
@@ -1235,7 +1292,12 @@ def _wire_messages(
         for file_id in message.attachment_ids:
             try:
                 record = store.get(file_id, owner=owner)
-                if record.is_image:
+                if file_id in picks or is_dataset(record.filename):
+                    # A dataset (0.72.8a3): the part the person chose, or
+                    # its first rows -- never the whole of a large file,
+                    # and never "binary, not included" for a Parquet.
+                    text += "\n\n" + _dataset_text(store, owner, file_id, picks.pop(file_id, None))
+                elif record.is_image:
                     parts.append(
                         {
                             "type": "image_url",
@@ -1254,6 +1316,8 @@ def _wire_messages(
                     )
             except T1APIError:
                 text += f"\n\n[attachment {file_id} is no longer available]"
+        for file_id, pick in picks.items():      # chosen without being attached to this message
+            text += "\n\n" + _dataset_text(store, owner, str(file_id), pick)
 
         if parts:
             wire.append({"role": message.role, "content": [{"type": "text", "text": text}, *parts]})
@@ -1641,7 +1705,7 @@ def chat_turn(
     if payload.regenerate:
         user_message = _last_user_message(store, session_id, principal.owner)
     else:
-        if not payload.content.strip() and not payload.attachment_ids:
+        if not payload.content.strip() and not payload.attachment_ids and not payload.datasets:
             raise T1APIError(
                 T1ErrorCode.VALIDATION_ERROR, "Send some text, an attachment, or both"
             )
@@ -1651,7 +1715,7 @@ def chat_turn(
             content=payload.content,
             owner=principal.owner,
             attachment_ids=payload.attachment_ids,
-            metadata={"device_id": principal.device_id} if principal.device_id else {},
+            metadata=_user_metadata(principal, payload),
         )
 
     # The model the person picked from what is loaded, if any: it decides
@@ -1689,7 +1753,8 @@ def chat_turn(
     )
     used_backup = False
     tool_rounds: list[dict[str, Any]] = []
-    setup = _tool_setup(config, principal, settings, request, memories, session_id)
+    setup = _tool_setup(config, principal, settings, request, memories, session_id,
+                        _code_sandbox(payload, user_message))
     try:
         if setup is not None:
             envelope, tool_rounds = _chat_with_tools(
@@ -1825,7 +1890,7 @@ def chat_turn_stream(
     if payload.regenerate:
         user_message = _last_user_message(store, session_id, principal.owner)
     else:
-        if not payload.content.strip() and not payload.attachment_ids:
+        if not payload.content.strip() and not payload.attachment_ids and not payload.datasets:
             raise T1APIError(T1ErrorCode.VALIDATION_ERROR,
                              "Send some text, an attachment, or both")
         user_message = store.append(
@@ -1834,7 +1899,7 @@ def chat_turn_stream(
             content=payload.content,
             owner=principal.owner,
             attachment_ids=payload.attachment_ids,
-            metadata={"device_id": principal.device_id} if principal.device_id else {},
+            metadata=_user_metadata(principal, payload),
         )
     # The model the person picked from what is loaded, if any: it decides
     # which backend answers, not only which model name is sent.
@@ -1859,7 +1924,8 @@ def chat_turn_stream(
     hypercompressed = _hypercompress(wire, settings, _model_context(config, runner, backend))
     wire = _vision(wire, backend, runner)
     sampling = _effort_settings(settings, payload)
-    setup = _tool_setup(config, principal, settings, request, memories, session_id)
+    setup = _tool_setup(config, principal, settings, request, memories, session_id,
+                        _code_sandbox(payload, user_message))
     requested_model = (
         backend.model_id if backend.is_hypernix and backend.model_id
         else (payload.model_id or session.model_id or None)
@@ -2510,6 +2576,29 @@ def create_document(
         file=AttachmentSummary(**record.to_dict()),
         download_path=f"/hyperlink/files/{record.file_id}", request_id=request_id,
     )
+
+
+@router.post("/datasets/preview")
+def preview_dataset(
+    pick: DatasetPick,
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    store: AttachmentStore = Depends(get_attachment_store),
+    config: T1APIConfig = Depends(get_config),
+    request_id: str = Depends(get_request_id),
+) -> dict[str, Any]:
+    """Exactly what the model would be given for this part of a dataset
+    (0.72.8a3): the text, the rows shown and in the file, the columns.
+    Send the same object in a message's ``datasets`` to give it to the model."""
+    from ...hyperlink import datasets as ds
+
+    _require_enabled(config)
+    record = store.get(pick.file_id, owner=principal.owner)
+    try:
+        selection = pick.model_dump(exclude={"file_id"})
+        part = ds.excerpt(store.path_for(pick.file_id, owner=principal.owner), selection, name=record.filename)
+    except (ds.DatasetError, OSError, ValueError) as exc:
+        raise T1APIError(T1ErrorCode.VALIDATION_ERROR, str(exc), http_status=400) from exc
+    return {**part.to_dict(), "file_id": pick.file_id, "request_id": request_id}
 
 
 @router.get("/files", response_model=AttachmentListResponse)

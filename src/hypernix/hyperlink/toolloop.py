@@ -90,7 +90,7 @@ class T1Access:
     what the person it is talking to could do by hand, and no more.
     """
 
-    __slots__ = ("base_url", "token", "allow_mutating", "only", "mcp", "mcp_admin", "mcp_names")
+    __slots__ = ("base_url", "token", "allow_mutating", "only", "mcp", "mcp_admin", "mcp_names", "code")
 
     def __init__(self, base_url: str, token: str = "", *,  # nosec B107 - an empty default, not a credential
                  allow_mutating: bool = False, only: list[str] | None = None,
@@ -104,6 +104,8 @@ class T1Access:
         self.mcp = mcp
         self.mcp_admin = mcp_admin
         self.mcp_names: dict[str, tuple[str, str]] = {}
+        #: A code session's sandbox tools (:class:`hypernix.hyperlink.codetools.CodeTools`).
+        self.code: Any = None
 
 
 class ToolRound:
@@ -411,6 +413,14 @@ def _prepare(
             if name not in taken:
                 tools.append(tool)
                 t1_names.add(name)
+        if t1.code is not None:
+            # The code section's sandbox (0.72.8a3): read, write, edit,
+            # search, run and git, on the sandbox this conversation is tied to.
+            taken = {t["function"]["name"] for t in tools}
+            for tool in t1.code.openai_tools():
+                if tool["function"]["name"] not in taken:
+                    tools.append(tool)
+                    t1_names.add(tool["function"]["name"])
         if t1.mcp is not None and t1.only is None:
             # Remote MCP servers' tools (Hugging Face's and the like),
             # named <server>__<tool>. One that cannot be reached is left out.
@@ -755,6 +765,9 @@ def _run_t1(call: dict[str, Any], tools: list[dict[str, Any]], t1: T1Access) -> 
     name, arguments, failed = _validated(call, tools)
     if failed is not None:
         return failed
+    if t1.code is not None and name.startswith("code_"):
+        ok, content = t1.code.call(name, arguments)
+        return ToolRound(name, arguments, ok, content, code="" if ok else "code_error")
     if name in t1.mcp_names:
         server, tool = t1.mcp_names[name]
         ok, content = t1.mcp.call(server, tool, arguments)

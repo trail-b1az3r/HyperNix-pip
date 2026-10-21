@@ -141,28 +141,13 @@ function escapeHtml(text) {
   })[c]);
 }
 
-function inline(text) {
-  return text
-    .replace(/`([^`]+)`/g, "<code>$1</code>")
-    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
-    .replace(/(^|[^*])\*([^*\n]+)\*/g, "$1<em>$2</em>")
-    // A URL ends at whitespace or an escaped quote or bracket (the text
-    // is already escaped), and trailing punctuation belongs to the prose.
-    .replace(/\bhttps?:\/\/(?:(?!&quot;|&#39;|&lt;|&gt;)[^\s<])+/g, (match) => {
-      const url = match.replace(/[.,;:!?)]+$/, "");
-      const rest = match.slice(url.length);
-      return `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>${rest}`;
-    });
-}
-
-/** A small, safe Markdown: escaped text, code blocks, inline code, bold, links. */
+/**
+ * Model text as HTML: CommonMark, GFM and Markdown Extra, escaped first
+ * (web/markdown.js, loaded before this file). Every model string reaches
+ * innerHTML through here.
+ */
 function render(text) {
-  const parts = escapeHtml(text || "").split(/```[a-zA-Z0-9_-]*\n?/);
-  return parts.map((part, index) => {
-    if (index % 2 === 1) return `<pre><code>${part.replace(/\n$/, "")}</code></pre>`;
-    return part.split(/\n{2,}/).filter((p) => p.trim()).map(
-      (p) => `<p>${inline(p).replace(/\n/g, "<br>")}</p>`).join("");
-  }).join("");
+  return window.HyperMarkdown.render(text || "");
 }
 
 function shortModel(id) {
