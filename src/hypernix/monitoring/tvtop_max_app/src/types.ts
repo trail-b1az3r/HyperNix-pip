@@ -5,7 +5,7 @@
 
 export interface Finding {
   level: "error" | "warn" | "info"
-  source: "script" | "log"
+  source: "script" | "log" | "audio"
   message: string
   line?: number
   count?: number
@@ -61,6 +61,76 @@ export interface ProcessRow {
   looks_like_training?: boolean
 }
 
+// 0.72.8: the machine, from hypernix.monitoring.hostprobe.
+
+export interface CpuTemps {
+  // One reading per logical CPU, in °C; null where the driver has none.
+  per_core?: (number | null)[]
+  package_c?: number | null
+  dies?: Record<string, number>
+  source?: string
+  note?: string
+}
+
+export interface AudioState {
+  available?: boolean
+  backend?: string
+  device?: string
+  port?: string
+  headphones?: boolean
+  // What the sound server applies: 0 dB is 100%, above it is amplified.
+  volume_db?: number | null
+  volume_db_silent?: boolean
+  volume_percent?: number | null
+  muted?: boolean
+  playing?: boolean
+  // The level of what is playing, read from the output's monitor.
+  signal_peak_dbfs?: number | null
+  signal_rms_dbfs?: number | null
+  level?: "ok" | "loud" | "unsafe"
+  warning?: string
+  note?: string
+}
+
+export interface DiskRow {
+  mount: string
+  device?: string
+  fstype?: string
+  total_bytes?: number
+  used_bytes?: number
+  percent?: number
+  read_bps?: number | null
+  write_bps?: number | null
+}
+
+export interface NetRow {
+  name: string
+  recv_bytes?: number
+  sent_bytes?: number
+  down_bps?: number | null
+  up_bps?: number | null
+  link_mbps?: number | null
+}
+
+export interface SystemInfo {
+  hostname?: string
+  os?: string
+  load?: number[] | null
+  uptime_seconds?: number | null
+  battery?: { percent?: number; plugged?: boolean | null; seconds_left?: number | null } | null
+  processes?: number
+  cores?: number | null
+}
+
+export interface MemUser {
+  pid: number
+  name?: string
+  command?: string
+  rss_bytes?: number
+  // Bytes per second since the previous sample; negative when shrinking.
+  growth_bps?: number | null
+}
+
 export interface Info {
   script?: string
   log?: string
@@ -103,4 +173,10 @@ export interface Frame {
   processes?: ProcessRow[]
   // True while the bridge is still looking for the run's script and log.
   discovering?: boolean
+  cpu_temps?: CpuTemps | null
+  audio?: AudioState | null
+  disks?: DiskRow[] | null
+  network?: NetRow[] | null
+  system?: SystemInfo | null
+  memory_users?: MemUser[] | null
 }

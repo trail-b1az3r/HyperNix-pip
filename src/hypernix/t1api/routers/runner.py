@@ -143,8 +143,18 @@ def _resolve(model_id: str, config: T1APIConfig, registry) -> tuple[str, dict]:
                     details={"model_id": model_id, "path": model.path},
                 )
             return model.path, model.to_dict()
+    from ...hyperlink import defaultmodel
     from ...hyperlink.brewed import BrewedError, describe, download, matches_default
 
+    if defaultmodel.matches(model_id):
+        # The default GGUF, fetched the first time it is asked for.
+        try:
+            path = defaultmodel.download(models_dir=config.hf_download_dir or None)
+        except defaultmodel.DefaultModelError as exc:
+            raise T1APIError(
+                T1ErrorCode.VALIDATION_ERROR, str(exc), details={"model_id": model_id},
+            ) from exc
+        return str(path), defaultmodel.describe(path)
     if matches_default(model_id):
         # The default model is fetched the first time it is asked for,
         # into the same folder the catalogue reads.

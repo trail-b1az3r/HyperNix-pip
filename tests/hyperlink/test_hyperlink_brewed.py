@@ -245,9 +245,11 @@ class TestTheDownload:
 
 
 class TestTheDefault:
-    def test_it_is_hypernix_3_mini(self, monkeypatch):
+    def test_it_is_lfm2_5_since_0_72_8(self, monkeypatch):
+        """HyperNix.3-mini was the default until 0.72.8; it is still
+        fetched by name (below)."""
         monkeypatch.delenv("T1_DEFAULT_MODEL", raising=False)
-        assert brewed.default_model_id() == "hypernix.3-mini"
+        assert brewed.default_model_id() == "lfm2.5-2.6b"
 
     def test_it_can_be_changed_or_turned_off(self, monkeypatch):
         monkeypatch.setenv("T1_DEFAULT_MODEL", "qwen3-8b")

@@ -629,6 +629,7 @@ def get_hyperlink_principal(
     if not authorization:
         keyless = trusted_network_context(request)
         if keyless is not None:
+            _refuse_keyless_chats(request)
             return HyperLinkPrincipal(
                 owner=keyless.key_id,
                 scopes=tuple(scope.value for scope in keyless.scopes),
@@ -648,7 +649,7 @@ def get_hyperlink_principal(
         registry = get_device_registry(request)
         record = registry.authenticate(credential, address=get_client_ip(request))
         return HyperLinkPrincipal(
-            owner=record.paired_by,
+            owner=_owner(request, record.paired_by),
             scopes=tuple(record.scopes),
             is_admin=False,          # a phone is never an admin, whatever paired it
             device_id=record.device_id,
@@ -656,10 +657,43 @@ def get_hyperlink_principal(
         )
     ctx = get_auth_context(request, authorization)
     return HyperLinkPrincipal(
-        owner=ctx.key_id,
+        owner=_owner(request, ctx.key_id),
         scopes=tuple(scope.value for scope in ctx.scopes),
         is_admin=ctx.is_admin,
         auth_context=ctx,
+    )
+
+
+#: Paths whose data belongs to someone: a keyless request may not use them.
+_OWNED_PREFIXES = (
+    "/hyperlink/sessions", "/hyperlink/files", "/hyperlink/sync", "/hyperlink/push",
+    "/hyperlink/preferences", "/hyperlink/search", "/hyperlink/generations",
+    "/memory", "/chat/compact", "/chat/hypercompress",
+)
+
+
+def _owner(request: Request, key_id: str) -> str:
+    """The key's account when accounts are on, else the key (0.72.8)."""
+    from ..hyperlink.ownership import owner_for_key
+
+    return owner_for_key(request.app.state, key_id)
+
+
+def _refuse_keyless_chats(request: Request) -> None:
+    """Chats belong to an account or a key; a request with neither gets
+    none (unless the operator turned the shared pool back on)."""
+    from ..hyperlink.ownership import keyless_chats_shared
+
+    path = request.url.path
+    if keyless_chats_shared() or not path.startswith(_OWNED_PREFIXES):
+        return
+    raise T1APIError(
+        T1ErrorCode.AUTH_MISSING_CREDENTIALS,
+        "Chats belong to an account or a key, and this connection has neither. "
+        "Sign in, pair this device with a code, or use a T1/T2 key — then your "
+        "chats follow you to every device that does the same.",
+        details={"keyless": True},
+        http_status=401,
     )
 
 
@@ -696,7 +730,7 @@ def _principal_from_t2(request: Request, credential: str) -> HyperLinkPrincipal:
         scopes = tuple(s for s in scopes if s in ("read", "write"))
 
     return HyperLinkPrincipal(
-        owner=ctx.key_id,
+        owner=_owner(request, ctx.key_id),
         scopes=scopes,
         # A T2S key is never an admin — see t2keys.T2KeyGenerator.generate.
         is_admin=ctx.is_admin and parsed.family is not T2Type.T2S,

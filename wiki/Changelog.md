@@ -34,6 +34,534 @@ Historical wording and technical detail are retained during format normalization
 
 > Format normalized to `wiki/Changelog-guide.md`; release wording and historical detail are preserved.
 
+## 0.72.8a3 — 2026-10-21
+
+### Added
+
+๋࣭⭑ **Claude Code on models running in HyperNix.** T1 speaks the
+  Anthropic Messages API: `POST /v1/messages` (streamed or not, tools,
+  images, `thinking`, stop sequences), `POST /v1/messages/count_tokens`
+  and `GET /v1/models`, translated to and from the server's own chat. A
+  registered model takes the governed path with its plan and quota;
+  `claude-*` names Claude Code asks for by itself go to
+  `T1_CLAUDE_CODE_MODEL` or the loaded model. Usage is metered, and
+  errors use Anthropic's envelope.
+  ([T1-API § The Anthropic Messages API](T1-API.md#the-anthropic-messages-api))
+✨ **`hnx claude`** (also `claude-code`) sets `ANTHROPIC_BASE_URL`,
+  `ANTHROPIC_AUTH_TOKEN` and the model variables for a T1 server and
+  starts Claude Code; `--print-env` prints them instead, and arguments
+  after `--` go to `claude`.
+
+๋࣭⭑ **hnx0xv2image, a custom image-to-text arch.** A ViT encoder and a
+  2×2 pixel-unshuffle projector whose outputs are spliced into the
+  embeddings at `<image>` placeholders, so the text model is untouched.
+  It fuses with any non-VL LFM2/LFM2.5 (dense or MoE), any Qwen3.5, and
+  any HyperNix (Brewer) model, and refuses `-vl` models. The image half
+  trains on its own (`projector`, `image`, `text` or `all` stages,
+  AdamW or the c4 optimizer), and a fused model splits back into its
+  halves. ([HNX0xV2Image](HNX0xV2Image.md))
+✨ **`hnx image`**: `new` (tiny, small, base presets), `fuse`, `train`,
+  `caption`, `split` and `info`.
+
+๋࣭⭑ **MCP both ways.** T1's `/mcp` negotiates protocol 2025-11-25 down to
+  2024-11-05 and does Streamable HTTP properly (`Mcp-Session-Id`, `405`
+  for an event-stream GET, `DELETE` ends a session), so the official SDK
+  and Claude Code connect to it. T1 is also a client of remote MCP
+  servers — Hugging Face's (`T1_MCP_HF=1`) or any listed in
+  `mcp-servers.json` or `T1_MCP_REMOTE` — and offers their tools on
+  `/mcp` as `<server>.<tool>` and to HyperLink's model.
+  ([T1-API § Remote MCP servers](T1-API.md#remote-mcp-servers-hugging-faces-and-others))
+✨ `/mcp/remote`: list, add and remove servers (admins), list a server's
+  tools, and call one.
+
+✨ **Net in the T1 API.** Everything `hnx net` did — status, peers,
+  ping, expose, setup steps, trusting peers, syncing storage, and
+  checking, running and stopping a file on another machine — is the
+  admin-only `/net` routes. Remote runs stay off unless
+  `T1_NET_REMOTE_RUN=1`. ([T1-API § Net](T1-API.md#net))
+
+✨ **A live count of public T1 servers.** A public server running T1
+  v1.1.26.10.1.0 or newer sends one heartbeat an hour (a hashed random
+  id and its versions, never an address) unless `T1_PUBLIC_COUNTER=0`.
+  `T1_COUNTER_HOST=1` makes a server the counter (`POST
+  /counter/heartbeat`, `GET /counter`), and an hourly workflow turns its
+  summary into the README's badge.
+  ([T1-API § The public-server counter](T1-API.md#the-public-server-counter))
+
+๋࣭⭑ **HyperLink: a Code section.** A chat can work in a `/code`
+  sandbox (`code_sandbox_id`): the model gets tools to list, read (by
+  line range), search, write, edit and run its files and use git, held
+  to the sandbox's permissions, and a read-only caller gets only the
+  reading tools. On the web, the new **Code** tab makes and deletes
+  sandboxes, edits, saves, runs and searches files, copies attachments
+  in, does git (status, diff, log, branches, init, commit, check out,
+  clone), and binds the sandbox to the chat.
+✨ `/code` sandboxes get **git** (`POST /code/sandbox/{id}/git`),
+  **search** (`GET .../search`) and **import** of HyperLink attachments
+  (`POST .../import`).
+  ([T1-API § git, search and import](T1-API.md#git-search-and-import-0728a3))
+
+๋࣭⭑ **HyperLink: parts of datasets in a chat.** JSONL, JSON, Parquet,
+  CSV/TSV, Arrow, text and Markdown files attached to a message reach
+  the model as an excerpt — the first 20 rows, or the whole file when it
+  is small — or the part chosen with `datasets`: rows, columns, a search
+  or regex (a heading's section in Markdown), a random sample, and how
+  rows are written. `POST /hyperlink/datasets/preview` shows exactly
+  what the model will get. On the web, 📎 attaches files (or drop them
+  on the chat) and ▤ chooses and previews a dataset's part.
+  ([T1-API § Datasets, code sessions and Markdown](T1-API.md#datasets-code-sessions-and-markdown-0728a3))
+
+✨ **HyperLink renders full Markdown**: CommonMark, GitHub Flavored
+  Markdown (tables, task lists, strikethrough, autolink literals,
+  footnotes) and Markdown Extra (heading ids and classes, definition
+  lists, abbreviations, fenced-code attributes), on the web
+  (`web/markdown.js`) and in the iOS app.
+
+✨ **`hnx auto <owner/repo>`**: downloads a Hugging Face repo; a GGUF
+  repo gives the file for the asked quant, anything else is converted
+  with llama.cpp's `convert_hf_to_gguf.py` (from its release tag, or the
+  `llama-cpp-python` sdist on PyPI, SHA-256 checked), then quantised to
+  each type asked for — HyperNix's own types by hyprslug, IQ and TQ
+  types by `llama-quantize`.
+✨ **`hnx extra`**: the less-used commands now live there — `neuron`,
+  `pipeline`, `assistant`, `generate`, `wiki`, `prot`, `oven`, `path`,
+  `map`, `tvtop`, `cctvtop`, `camo`, `websearch` and `scavenger` — and
+  `hnx` alone shows the short menu. Every command still runs as before.
+𖥔 `hnx tvtopmax` and `hnx hypedpro` are in the menu; `hnx fllq` is
+  `fetch-llama-quantize`.
+
+### Changed
+
+🔁 `hnx download owner/repo:Q4_K_M` takes a quant, finds split GGUFs,
+  names the folder after the repo, and says plainly when a repo is
+  missing, gated or private.
+🔁 `hnx pipeline` runs real speech models (MMS TTS and Whisper ASR by
+  default) instead of a placeholder.
+🔁 `hnx camo` loads GGUFs and links and takes `-P` (prompts file), `-o`,
+  `--lr` and `--max-new-tokens`.
+
+### API Changes
+
+🔗 T1 API **v1.1.26.10.2.0** (generation 1.1; every 1.1 client is still
+  accepted): `/v1/messages`, `/v1/messages/count_tokens`, `/v1/models`,
+  `/mcp/remote/*`, `DELETE /mcp`, `/net/*`, `/counter/*`,
+  `/hyperlink/datasets/preview`, `datasets` and `code_sandbox_id` on
+  HyperLink chat requests, and `/code/sandbox/{id}/git`, `/search` and
+  `/import`.
+🔗 New settings: `T1_ANTHROPIC_ENABLED`, `T1_CLAUDE_CODE_MODEL`,
+  `T1_MCP_REMOTE_ENABLED`, `T1_MCP_SERVERS_FILE`, `T1_MCP_REMOTE`,
+  `T1_MCP_HF`, `T1_NET_REMOTE_RUN`, `T1_PUBLIC`, `T1_PUBLIC_COUNTER`,
+  `T1_PUBLIC_COUNTER_URL` and `T1_COUNTER_HOST`.
+
+### Security
+
+🔒 git in a sandbox runs no hooks or fsmonitor, reads none of the
+  person's git configuration, never prompts, speaks only `https://`, and
+  clones only with the sandbox's network permission; paths and refs are
+  checked, and every change is audited.
+🔒 Remote MCP servers outside the machine and tailnet must use https;
+  adding one needs an admin, tokens are never listed, and a server can
+  be marked admin-only.
+🔒 Markdown on the web escapes first: raw HTML stays text apart from a
+  few attribute-free inline tags, and links and images are only `http`,
+  `https`, `mailto`, relative, or `data:image`.
+
+### Fixed
+
+𖢥 **`hnx prot` no longer locks the screen.** It blanks the display
+  with power saving (Mutter's `PowerSaveMode` on GNOME, `kscreen-doctor`
+  on KDE) instead of the screensaver, turns the desktop's auto-lock off
+  while it runs, and puts it back on exit, on SIGTERM/SIGHUP, or with
+  `hnx prot restore` after a crash.
+🐛 `hnx camo` trained the wrong way (the loss's sign) on the prompt
+  rather than the reply, and misread scores.
+🐛 `hnx websearch` returned Bing's and DuckDuckGo's redirect links
+  instead of the pages.
+🐛 `hnx scavenger` crashed on datasets with no row count and on
+  `datetime.UTC`.
+🐛 `hnx wiki` left out packages outside a category (`c4`,
+  `t1api.anthropic`, ...).
+🐛 GGUF conversion failed on negative or list-valued token ids.
+🐛 c4's tests could see NaN losses: rotary buffers were left
+  uninitialised when a model was materialised.
+
+### Deprecated
+
+❌ `hnx net` is deprecated in favour of the T1 API's `/net` routes; each
+  subcommand says which route replaced it.
+
+### Documentation
+
+📚 [T1-API](T1-API.md): the Anthropic Messages API, remote MCP, Net, the
+  counter, datasets, code sessions and Markdown, sandbox git;
+  [HNX0xV2Image](HNX0xV2Image.md) (new); [CLI](CLI.md): `auto`, `extra`,
+  `claude`, `image`, `tvtopmax`, `hypedpro`, `fllq` and the fixed
+  commands; [Home](Home.md).
+📚 `examples/t1api`: `claude_code.sh`, `mcp-servers.example.json` and
+  `hyperlink_datasets_and_code.sh`, the README's new sections, every new
+  setting in `.env.example`, and regenerated `API-EXAMPLES.md` and
+  `openapi.json`.
+
+### Tests
+
+🧪 The Messages API and its streaming, hnx0xv2image (fusing LFM2, Qwen3.5
+  and Brewer models, training, splitting), remote MCP against a live
+  server, `/net`, the counter, the moved and fixed commands, `prot` not
+  locking, Markdown under node (CommonMark, GFM, Extra and the escaping
+  cases), dataset excerpts, code tools and sandbox git, and the web
+  page's new wiring.
+
+### Known Issues
+
+❗ The iOS changes (Markdown block types; dataset parts and the sandbox
+  on chat requests) were not compiled: there is no Swift toolchain in
+  the build environment. The iOS app has no Code view yet.
+❗ The counter badge reads "counter not hosted yet" until a server runs
+  with `T1_COUNTER_HOST=1` and its address is published in
+  `docs/public/v1/t1-counter-endpoint.json` (or the
+  `T1_COUNTER_SUMMARY_URL` repository variable).
+❗ `hnx auto`'s download of the converter from GitHub was not exercised
+  (GitHub was unreachable from the build environment); the PyPI path
+  was. GPU paths were exercised on the CPU only.
+❗ DuckDuckGo may answer with a bot check; web search then falls back to
+  Bing.
+
+## 0.72.8a2 — 2026-10-20
+
+### Added
+
+๋࣭⭑ **c4: explode a model, measure its pieces, reap the best, sow a new
+  one.** `hypernix.c4` loads a safetensors model, a `.pt` state dict
+  (both with a `config.json`) or a GGUF onto the GPU and takes it apart
+  into **mstems** (a layer and its connections), **stems** (one
+  connection's tensor), **Pdials** (three or more parameters: a row, a
+  column, a head, a block), **mdials** (two) and **dials** (one), with
+  an address for each. ([C4](C4.md))
+✨ **`hypernix.c4.explode`**: the pieces, their counts, iterators over
+  Pdials, mdials and dials, and `save()` — one safetensors file per
+  mstem plus a manifest.
+✨ **`hypernix.c4.stem`**: measured statistics (spread, outliers,
+  sparsity, kurtosis, effective and stable rank, 4-bit round-trip
+  error, layer similarity) and tested ones (the loss without a stem or a
+  layer, block influence), and `layer_report`, which calls each layer
+  `unneeded`, `candidate to drop`, `needed` or `keep`.
+✨ **`hypernix.c4.dial`**: per-parameter `magnitude`, `taylor`, `fisher`
+  and `wanda` scores; `unneeded()` (the lowest share, and rows that can
+  go whole); `train_priority()` (stems, Pdials or layers ranked by how
+  much training them next would lower the loss, flagging those that
+  need retraining); `interaction()` for an mdial's two weights.
+✨ **`hypernix.c4.restore`**: snapshots and `ablated()`, so every test
+  leaves the model exactly as it was, and `write()` to safetensors (with
+  config and tokenizer), `.pt` or GGUF.
+✨ **`hypernix.c4.reap`** chooses the layers, dials to zero and
+  feed-forward channels to keep, saved as a reviewable `Harvest`;
+  `reap_best()` cherry-picks the best layer at each depth across several
+  same-shaped models. **`hypernix.c4.sow`** builds the new model from it
+  — layers renumbered, dials zeroed, channels pruned, `config.json`
+  rewritten, tokenizer copied — loads it back to check it, and reports
+  the loss before and after; `heal()` trains it for a few steps.
+✨ **The c4 optimizer** (`hypernix.c4.optim.C4Optimizer`): back-propagates,
+  then separates the gradients into sections (stems, mstems or rows) and
+  checks each before updating — a non-finite section is skipped, a spike
+  clipped to its own history, a dead section frozen, unneeded dials held,
+  and only the chosen sections moved, scaled by priority. Inside it:
+  `C4HybridAdamW5S` (AdamW moments with Pressure Cooker V5S's
+  oscillation damping, trust ratio and coordinate freeze),
+  `C4CookerV5S` (Pressure Cooker V5S modified for sections: no pressure
+  diffusion, no global clip, held dials kept out of its momentum) or
+  plain AdamW.
+✨ **`hnx c4`** (`explode`, `stem`, `dial`, `reap`, `sow`, `restore`) and
+  the `hnx-c4` entry point.
+
+### Documentation
+
+📚 [C4](C4.md): the pieces, the sections, the optimizer, the command
+  line and the limits; [CLI](CLI.md): `hnx c4`; [Home](Home.md): the C4
+  guide.
+
+### Tests
+
+🧪 c4 on a small Llama: loading each format and refusing a missing
+  `config.json`, the pieces and addresses, exact restoration after
+  ablation, layer verdicts, every dial score, unneeded masks and
+  priorities, reap and sow (layer drop, channel pruning, a GGUF by its
+  weights alone, `reap_best`), the optimizer's checks, and the CLI.
+
+### Known Issues
+
+❗ c4's GPU paths were exercised on the CPU only: there is no GPU in the
+  build environment.
+❗ Running a model (tested numbers, scores other than `magnitude`,
+  healing) needs an architecture transformers can build; a GGUF it
+  cannot build is still exploded, measured, reaped and sown by its
+  weights.
+
+## 0.72.8a1 — 2026-10-20
+
+### Added
+
+๋࣭⭑ **Signed, timestamped HyperLink prompts and the ping before Send.**
+  When Send is pressed the web and iOS apps ping the server
+  (`POST /hyperlink/ping`, answered without a model) and give it four
+  seconds; once it answers the prompt has no timeout. Every send, resend
+  and edit then carries a `hyperlink-sign/v1` HMAC over the signer
+  (`account:<id>` or the T1/T2/T2.1 key), the Unix time Send was pressed,
+  a 23–26 character nonce, the chat and server session ids, the action
+  and the text's hash. The server refuses replays, stale or misdirected
+  signatures; `T1_HYPERLINK_REQUIRE_SIGNED=1` refuses unsigned prompts.
+  ([T1 API](T1-API.md#signed-prompts-and-the-ping))
+✨ **Signing in from the app**: `POST /hyperlink/login` and the iOS
+  Account section sign a device in to its account once, after pairing,
+  a T1 key or the local network, so its data is never lost to a re-pair.
+𖥔 `GET /hyperlink/whoami` names the signer and the server session.
+
+๋࣭⭑ **Web search v2**: `/web/v2/I?=query&q?=depth&mx?=max&sq?=read&&kpd?=true`
+  reads and summarises the top-ranked sites (`sq?=1` only the first) and
+  can keep the search and the sites' text as JSONL or Parquet.
+  ([T1 API](T1-API.md#web-search-v2))
+✨ **Five web admin settings** (`store_enabled`, `store_format`,
+  `max_items`, `max_read_sites`, `ai_config`), set with
+  `hypernix-t1 config web`, and `/web/v1/ai/config`, through which a model
+  with partial admin changes the less risky three.
+
+✨ **Hypercompress**: when a turn's prompt is bigger than the loaded
+  model's context, the system prompt is compressed, without a model, to a
+  third (`/chat/hypercompress/size?s?=1`) or a fifth (`s?=2`) of the
+  context, keeping instructions and every section's opening.
+𖥔 `POST /chat/hypercompress` compresses a text by hand.
+
+✨ **The two-layer ring beside the chat box** (web and iOS): context
+  inside; the key's token allowance outside when it has one, else GPU
+  load, or CPU load when the model runs on the CPU.
+
+✨ **Documents a model writes for download**: the `create_document` tool
+  and `POST /hyperlink/files/document`; the apps offer them under the
+  reply.
+
+✨ **Choosing among loaded models**: `GET /hyperlink/models/loaded`, and
+  the Models tab and the chat in HyperLink list every loaded model and
+  pick which one answers.
+
+✨ **Runner pickers**: `hnx-t1 runner start` with no exact model opens an
+  `lms load`-like list (type to filter, ↑/↓, Enter) that refreshes and
+  never takes over the screen; `hnx-t1 runner backend` picks the backend
+  the same way.
+
+✨ **`hnx-t1 launch-script -1 'CMD' -2 'answer' … -9 'answer'`** feeds a
+  command's prompts in order (`-5 ""` presses Enter, as a gap does), and
+  `--logs JOB -F` follows a job's log until Ctrl-C.
+
+๋࣭⭑ **Multi-llama runner**: `--backend multilama` serves a GGUF through
+  the llama.cpp fork it needs (ik_llama.cpp, PrismML, KoboldCpp,
+  Nanbeige), `multilama-<fork>` names one, and `auto` goes there itself
+  when a file has types only a fork knows. ([CLI](CLI.md#hypernix-t1-built-in-runner))
+✨ **The hnx llama mod knows the forks' types**: `hypernix.quant.forktypes`
+  lists ik_llama.cpp's IQ*_K, IQ*_KS, IQ*_KT and repacked types (read
+  from its `ggml.h`), and `hyprslug --check` names them and says where a
+  file runs.
+
+✨ **Two hybrids**: `hnx_q6h1` (INT2, Q6_K, HNX_1375BIT, IQ1_S, Q3_K_M,
+  ~3.2 bpw) and `hnx_q6h1m` (INT2, Q5_K, HNX_15125BIT, IQ1_S, Q2_K_M,
+  ~3.1 bpw). ([HyprSlug](HyprSlug.md))
+𖥔 **Two tiers**: `HNX_15125BIT` (type 224, 1.5 bpw: a 7-bit magnitude per
+  16 weights) and `HNX_IQ1S` (type 225, IQ1_S's 1.5625 bpw), registered in
+  the patched llama.cpp, whose decoder agrees with Python's bit for bit.
+
+✨ **`hnx download` takes links**: a `huggingface.co` link to a repo or to
+  one file in it, `-f` for one file, `-o` for where it goes, and
+  `--repo-id` is optional. A repo of GGUFs downloads its one GGUF or its
+  Q4_K_M.
+
+✨ **A judge on any OpenAI-compatible server** for the ranges:
+  `industrial_range.OpenAIJudge`. ([Ranges](Ranges.md))
+
+### Changed
+
+⚠️ **HyperLink chats are no longer global.** With accounts on they belong
+  to the account, otherwise to the key; a key's existing chats, files,
+  memories and preferences move to its account. Keyless trusted-network
+  access to them is refused unless `T1_HYPERLINK_SHARED_KEYLESS_CHATS=1`.
+
+✨ **The default model is LFM2.5-2.6B** (Liquid AI): `runner start` with no
+  model downloads `LFM2.5-2.6B-Q4_K_M.gguf` (about 1.7 GB) the first time,
+  and `lfm2.5-2.7b` names it too — Liquid AI publishes no 2.7B.
+  HyperNix.3-mini is still loaded by name.
+
+✨ **The default prompt** has the model decide whether a tool is needed,
+  work out what to search for, write downloadable documents with the
+  document tool, and save memories when asked or when a note will help
+  later; `T1_HYPERLINK_MEMORY_WHEN_TOLD=1` limits saving to when asked.
+𖥔 The model's `web_search` tool uses web search v2, and `web_settings` /
+  `web_settings_set` expose `/web/v1/ai/config`.
+
+📦 **The license is HOS-1.1 or Apache-2.0** from this release (HOS-1.1 by
+  default). HOS-1.1 keeps HOS-1.0's Apache-derived grants and takes
+  LLU-0.1's fuller definitions, trademark terms and model guidance, as
+  non-binding guidance. Earlier releases keep LLU-0.1 / HOS-1.0.
+
+✨ **The ranges, updated**: `new_range` knows how current models decline
+  and reads curly apostrophes.
+
+### API Changes
+
+🔗 T1 API **v1.1.26.10.1.0** (same 1.1 generation; every 1.1 client is
+  accepted). `SIGNED_PROMPTS_VERSION` lets a client check before signing.
+🔗 New routes: `/hyperlink/ping`, `/hyperlink/whoami`, `/hyperlink/login`,
+  `/hyperlink/models/loaded`, `/hyperlink/files/document`,
+  `/hyperlink/sessions/{id}/ring`, `/chat/hypercompress` and `/size`,
+  `/web/v2/I`, `/web/v1/ai/config`.
+🔗 `signature` on chat, stream and edit requests; `hypercompressed` and
+  `documents` in a reply's metadata.
+
+### Security
+
+🔒 **Every Hugging Face download can be pinned**: `hypernix.security.hfpin`
+  takes the caller's revision, `HYPERNIX_HF_REVISION_<REPO>`, or a commit
+  in `~/.hypernix/hf-pins.json`. All 26 medium Bandit findings (B615)
+  are gone; 63 low ones remain in shipped code, the deliberate
+  `try/except/pass` kind.
+🔒 **`hnx net` quoted nothing it sent to a peer's shell**: a file name
+  with a `;` ran a second command there. Remote commands are quoted, and a
+  peer name cannot become an ssh option.
+🔒 **Every GitHub Action is pinned to a commit**, Dependabot keeps the
+  pins (and pip) current with a 7-day cooldown, and the kernel workflow
+  installs Nix through the installer's pinned action instead of `curl | sh`.
+🔒 Commands run by bare name resolve to their full path where nothing
+  depends on the bare name.
+📚 **`SECURITY.md`**: supported versions, private reporting through GitHub
+  advisories, scope, and running a server safely.
+
+### Fixed
+
+𖢥 **`hnx convert -q -p` was refused**: only `-P` and `-Q` existed. Both
+  lowercase spellings work, `-q` alone means Q4_K_M, and the pipeline
+  converts first and quantises second as two reported steps — a Brewer
+  model is exported to a GGUF before the quantiser sees it.
+🐛 `ssh-keyscan` in `hnx net` got `>>` as an argument and never wrote
+  `known_hosts`; the keys are appended now.
+🐛 `industrial_range` read "The better one is A" as a tie, "not good" as
+  GOOD and a `<think>` block as the verdict, and ignored `fallback_label`.
+
+### Deprecated
+
+❌ `/web/v1/search` answers with `Deprecation` and `Sunset` headers and
+  goes away in 0.73.0; use `/web/v2/I`.
+
+### Documentation
+
+📚 [T1 API](T1-API.md): ownership, signed prompts and the ping, web
+  search v2, the ring, documents and hypercompress, and v1.1.26.10.1.0;
+  [CLI](CLI.md): download links, `convert -q -p`, the runner pickers,
+  multi-llama, the default model, launch-script answers and `config web`;
+  [HyprSlug](HyprSlug.md): the two hybrids and tiers;
+  [Ranges](Ranges.md): parsing and `OpenAIJudge`.
+
+### Tests
+
+🧪 Signing and replay, ownership and keyless refusal, web v2's grammar,
+  settings and storage, hypercompress, the ring, documents and the memory
+  rule, the pickers in a real pty, launch-script answers, the multi-llama
+  routing, download links, the convert order, the new tiers against the
+  C decoder, and the ranges' parsers.
+
+### Known Issues
+
+❗ The iOS changes (sign-in, signing, the ring, loaded models, document
+  downloads) are not compiled or run here: there is no Swift toolchain in
+  the build environment. Their parsing tests are written but unrun.
+❗ The multi-llama forks' own binaries are fetched or built on first use;
+  PrismML and Nanbeige publish no prebuilt releases, so those need the
+  build command the error gives.
+
+## 0.72.8a0 — 2026-10-13
+
+### Added
+
+๋࣭⭑ **Context relay: prompts longer than the model's context**
+  ([Context relay](Context-Relay.md)). `hypernix.runtime.relay` reads a
+  document too long for a small-context model by passing it along
+  several copies of the model: each hop reads one part plus the notes so
+  far, the last answers from the notes. `chain` mode runs strictly in
+  series; `map` digests parts in parallel (a thread per instance) and
+  folds the digests. `plan()` cuts the document to the context and says
+  the cost up front, including the overhead over one big read;
+  `load_instances()` starts N copies of a GGUF on consecutive ports.
+✨ **`POST /inference/relay` on the T1 API**, under every rule of
+  `/inference/chat`, rotating through the runner pool's instances when
+  there is one. Each hop is metered as it finishes; the response prices
+  the hops, the planned worst case and one big read. `estimate_only`
+  prices without running.
+๋࣭⭑ **HyperNix Browser Agent for Firefox** ([Browser Agent](Browser-Agent.md)).
+  A sidebar extension (`browser/firefox`) in which a model — on the T1
+  API, a local OpenAI-compatible server, OpenAI or Anthropic — searches
+  the web, reads pages, clicks, types, presses keys, picks options,
+  scrolls and switches tabs. Actions wait for the person's go-ahead by
+  default; page text is fenced as untrusted; password fields are never
+  read. `scripts/build_firefox_extension.py` packs an `.xpi`.
+✨ **tvtop-max: five hidden panels** — temperatures, sound, disks,
+  network and system — shown with **Shift+1** … **Shift+5** or `--show`.
+✨ **tvtop-max: select, sort and scroll panels.** ← selects a panel,
+  `d` deselects, `o` cycles its sort (cores by busiest or hottest,
+  memory users by most, least or fastest growing, processes by cpu,
+  memory, age or pid, …), → and Shift+→ scroll it sideways when its
+  lines are wider than it.
+✨ **tvtop-max: per-core temperatures** beside each core's meter, from
+  the CPU topology where the driver reports them, and a note where it
+  does not (AMD `k10temp`).
+✨ **tvtop-max: the volume in decibels, as the sound server reports it**
+  (PipeWire/PulseAudio, ALSA), with the playing signal's peak and RMS,
+  and a warning in the header while loud (≥ −6 dB, `TVTOP_MAX_LOUD_DB`)
+  or amplified past 100% audio plays.
+
+### Changed
+
+🔁 Code sandbox runs (seconds), web searches and model-written
+  compaction summaries are now metered against the caller's key.
+🔁 tvtop-pro and tvtop-max take memory from one place,
+  `hypernix.monitoring.hostprobe`.
+
+### API Changes
+
+🔗 **`GET /usage/statement` — the itemised bill, format `t1.statement/2`**:
+  every feature used (inference, relay, embeddings, compaction, code
+  sandboxes, web search, client reports), a line per model and unit,
+  subtotals, the total and what nothing prices.
+🔗 Usage events carry `feature`, `units` and `unit` (added in place to
+  existing databases; older rows get their feature from the endpoint),
+  and `/usage/history` returns them. `feature` is a `group_by` dimension.
+🔗 `ModelPricing.unit_prices` and `T1_FEATURE_PRICES` price what is not
+  tokens; `T1_RELAY_MAX_INSTANCES` caps a relay's instances.
+
+### Fixed
+
+𖢥 **tvtop-max's RAM was wrong.** The bar came from psutil's percentage
+  (based on *available*) while the numbers beside it came from psutil's
+  *used*, which counts differently — and "free" was really *available*.
+  Used is now total − `MemAvailable` (app + wired + compressed on macOS,
+  as Activity Monitor counts it), the bar is that over the total, and
+  inside a container with a memory limit the limit is the total rather
+  than the host's RAM.
+
+### Dependencies and Packaging
+
+📦 The release bumps the Firefox extension's manifest version with the
+  package's.
+
+### Documentation
+
+📚 New pages: [Context relay](Context-Relay.md) and
+  [Browser Agent](Browser-Agent.md); [T1 API](T1-API.md) documents the
+  relay and the statement; [tvtop-max](TvTopMax.md) the new panels, keys
+  and the loud-audio warning.
+
+### Tests
+
+🧪 The relay (fake instances that refuse to overflow their context), the
+  relay endpoint and the statement, the probes (from fake `/proc`,
+  cgroups, hwmon trees and `pactl` JSON), tvtop-max's new panels and
+  keys, the extension's modules under bun, and its content script in a
+  real Chromium page.
+
 ## 0.72.7.post1 — patch 1 - T1 streams stop the model when the caller leaves, and llama-easy
 
 ### Added

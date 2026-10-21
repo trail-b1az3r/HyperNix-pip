@@ -58,6 +58,8 @@ __all__ = [
     "ManagedRunner",
     "ManagedError",
     "BACKENDS",
+    "MULTILAMA_FORKS",
+    "fork_argv",
 ]
 
 #: Backends a caller may ask for. `auto` picks by what the machine has.
@@ -65,7 +67,15 @@ __all__ = [
 #: The llama.cpp ones differ by compute API rather than by code path:
 #: CUDA on NVIDIA, Vulkan on nearly anything with a GPU including AMD and
 #: Intel, CPU when there is nothing to offload to.
-BACKENDS = ("auto", "cuda", "vulkan", "cpu", "hnx-cuda", "hnx-cpu")
+#:
+#: ``multilama`` (0.72.8) serves through a llama.cpp fork from
+#: :mod:`hypernix.models.multilama` instead: ``multilama`` picks the fork
+#: the file needs (ik_llama.cpp when it needs none), ``multilama-<fork>``
+#: names one. ``auto`` also goes there by itself when a GGUF carries
+#: types only a fork knows -- see :mod:`hypernix.quant.forktypes`.
+MULTILAMA_FORKS = ("ik", "prismml", "kobold", "nanbeige")
+BACKENDS = ("auto", "cuda", "vulkan", "cpu", "hnx-cuda", "hnx-cpu", "multilama",
+            *(f"multilama-{fork}" for fork in MULTILAMA_FORKS))
 
 #: Leave this much VRAM alone. The display server wants some, the CUDA
 #: context itself wants some, and fragmentation takes more than the
@@ -83,6 +93,45 @@ RAM_HEADROOM_FRACTION = 0.20
 #: off a spinning disk genuinely takes this long, and a timeout that
 #: fires early looks exactly like a crash.
 DEFAULT_START_TIMEOUT = 300.0
+
+
+def _fork_for(backend: str, verdict) -> str:
+    """The multilama fork to serve with, or ``""`` for the hnx build."""
+    if backend.startswith("multilama-"):
+        return backend.split("-", 1)[1]
+    if backend == "multilama":
+        return verdict.runtime if verdict.needs_fork else "ik"
+    if backend == "auto" and verdict.needs_fork:
+        return verdict.runtime
+    if verdict.needs_fork:
+        raise ManagedError(
+            f"This model needs the {verdict.runtime} llama.cpp fork ({verdict.why}); the "
+            f"{backend} backend cannot load it. Use --backend multilama, or auto."
+        )
+    return ""
+
+
+def fork_argv(fork: str, binary: str | Path, model: Path, *, host: str, port: int,
+              gpu_layers: int, context: int, alias: str) -> list[str]:
+    """The command line that starts a fork's server.
+
+    KoboldCpp spells its flags its own way; the others are llama-server.
+    """
+    if fork == "kobold":
+        argv = [str(binary), "--model", str(model), "--host", host, "--port", str(int(port))]
+        if gpu_layers:
+            argv += ["--gpulayers", str(int(gpu_layers))]
+        if context:
+            argv += ["--contextsize", str(int(context))]
+        return argv
+    argv = [str(binary), "-m", str(model), "--host", host, "--port", str(int(port))]
+    if gpu_layers:
+        argv += ["-ngl", str(int(gpu_layers))]
+    if context:
+        argv += ["-c", str(int(context))]
+    if alias:
+        argv += ["--alias", alias]
+    return argv
 
 
 def _library_env(bin_dir: Path) -> dict[str, str]:
@@ -238,7 +287,8 @@ def plan_placement(
     if vram_free is not None:
         vram_available, vram_total = vram_free, max(vram_total, vram_free)
 
-    resolved = _detect_backend(vram_total) if backend == "auto" else backend
+    resolved = (_detect_backend(vram_total) if backend == "auto" or backend.startswith("multilama")
+                else backend)
     on_cpu = resolved in ("cpu", "hnx-cpu")
 
     if on_cpu or not vram_available:
@@ -469,6 +519,18 @@ class ManagedRunner:
                  if header is not None else frozenset())
         if header is not None and header.metadata.get("general.architecture") == "hypernix":
             raise ManagedError(_hypernix_architecture_message(model_path))
+        from ..quant.forktypes import which_runtime
+
+        verdict = which_runtime(types, header.metadata if header is not None else None)
+        if header is not None and not verdict.runtime:
+            raise ManagedError(f"{model_path.name} cannot be loaded: {verdict.why}.")
+        fork = _fork_for(backend, verdict)
+        if fork:
+            return self._load_fork(
+                fork, model_path, model_id=model_id, gpu_layers=gpu_layers,
+                context_length=context_length, total_layers=total_layers,
+                timeout=timeout, why=verdict.why if verdict.needs_fork else "",
+            )
         try:
             build = find_build(need=types)
         except BridgeError as exc:
@@ -540,6 +602,52 @@ class ManagedRunner:
                 f"{what}.\n"
                 f"Placement was: {placement.reason}\n"
                 f"Last output:\n{output[-2000:]}"
+            )
+        return record
+
+    def _load_fork(self, fork: str, model_path: Path, *, model_id: str, gpu_layers: int | None,
+                   context_length: int, total_layers: int, timeout: float, why: str) -> ManagedModel:
+        """Serve *model_path* through a multilama fork's own server binary."""
+        from ..models import multilama
+
+        placement = plan_placement(
+            file_bytes=model_path.stat().st_size, total_layers=total_layers,
+            gpu_layers=gpu_layers, backend=f"multilama-{fork}", context_length=context_length,
+        )
+        try:
+            binary = multilama.ensure_binary(multilama.get_backend(fork), quiet=True)
+        except multilama.MultiLlamaError as exc:
+            raise ManagedError(
+                f"{model_path.name} needs the {fork} llama.cpp fork"
+                f"{' (' + why + ')' if why else ''}, and it is not available: {exc.message}"
+            ) from exc
+        self.unload()
+        argv = fork_argv(fork, binary, model_path, host=self.host, port=self.port,
+                         gpu_layers=placement.gpu_layers, context=context_length,
+                         alias=model_id or model_path.stem)
+        logger.info("managed: starting %s", " ".join(argv))
+        try:
+            process = subprocess.Popen(  # noqa: S603 - argv list, never a shell
+                argv, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                env=_library_env(Path(binary).parent),
+            )
+        except OSError as exc:
+            raise ManagedError(f"Could not start {argv[0]}: {exc}") from exc
+        record = ManagedModel(
+            model_id=model_id or model_path.stem, path=str(model_path), port=self.port,
+            placement=placement, started_at=time.time(), context_length=context_length,
+            pid=process.pid, base_url=self.base_url,
+        )
+        with self._lock:
+            self._process = process
+            self._current = record
+        if not self._wait_until_ready(process, timeout):
+            code = process.poll()
+            output = self._drain(process)
+            self.unload()
+            raise ManagedError(
+                f"the {fork} server {'exited (code ' + str(code) + ')' if code is not None else 'did not start'} "
+                f"while loading {record.model_id}.\nLast output:\n{output[-2000:]}"
             )
         return record
 

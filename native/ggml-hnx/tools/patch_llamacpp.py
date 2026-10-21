@@ -90,7 +90,7 @@ MARK_Q8K_CPU = "GGML_HNX_Q8K_VEC_DOT"
 #: upstream's own 36, 37 and 38 are commented out and their table slots
 #: sit empty -- and every read goes through a bounds-checked lookup by
 #: an id some tensor actually carries, never a sweep of the range.
-HNX_TYPE_COUNT = 212
+HNX_TYPE_COUNT = 226
 
 # The enum values. Kept as one string so the marker and the entries
 # cannot be added separately -- a tree with the marker but not the
@@ -114,6 +114,8 @@ ENUM_ADDITION = f"""\
         GGML_TYPE_HNX_INT2   = 209,
         GGML_TYPE_HNX_INT3   = 210,
         GGML_TYPE_HNX_FP8    = 211,
+        GGML_TYPE_HNX_15125  = 224,
+        GGML_TYPE_HNX_IQ1S   = 225,
 """
 
 TRAITS_ADDITION = f"""\
@@ -168,6 +170,22 @@ TRAITS_ADDITION = f"""\
         .type_size                = 44,
         .is_quantized             = true,
         .to_float                 = (ggml_to_float_t) hnx_ggml_to_float_hnx1375,
+        .from_float_ref           = NULL,
+    }},
+    [GGML_TYPE_HNX_15125] = {{
+        .type_name                = "HNX_15125BIT",
+        .blck_size                = HNX_BLOCK_SIZE,
+        .type_size                = 48,
+        .is_quantized             = true,
+        .to_float                 = (ggml_to_float_t) hnx_ggml_to_float_hnx15125,
+        .from_float_ref           = NULL,
+    }},
+    [GGML_TYPE_HNX_IQ1S] = {{
+        .type_name                = "HNX_IQ1S",
+        .blck_size                = HNX_BLOCK_SIZE,
+        .type_size                = 50,
+        .is_quantized             = true,
+        .to_float                 = (ggml_to_float_t) hnx_ggml_to_float_hnxiq1s,
         .from_float_ref           = NULL,
     }},
     [GGML_TYPE_HNX_INT4] = {{
@@ -277,6 +295,18 @@ TRAITS_CPU_ADDITION = f"""\
     [GGML_TYPE_HNX_1375] = {{
         .from_float               = NULL,
         .vec_dot                  = (ggml_vec_dot_t) hnx_ggml_vec_dot_hnx1375,
+        .vec_dot_type             = GGML_TYPE_F32,
+        .nrows                    = 1,
+    }},
+    [GGML_TYPE_HNX_15125] = {{
+        .from_float               = NULL,
+        .vec_dot                  = (ggml_vec_dot_t) hnx_ggml_vec_dot_hnx15125,
+        .vec_dot_type             = GGML_TYPE_F32,
+        .nrows                    = 1,
+    }},
+    [GGML_TYPE_HNX_IQ1S] = {{
+        .from_float               = NULL,
+        .vec_dot                  = (ggml_vec_dot_t) hnx_ggml_vec_dot_hnxiq1s,
         .vec_dot_type             = GGML_TYPE_F32,
         .nrows                    = 1,
     }},

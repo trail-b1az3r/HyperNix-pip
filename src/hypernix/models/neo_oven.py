@@ -64,6 +64,7 @@ import torch.nn as nn
 
 from hypernix.models.download import download_model, verify_snapshot
 from hypernix.models.generate import _load_tokenizer, _sample_next
+from hypernix.security.hfpin import hub_revision
 from hypernix.training.train import (
     HyperNixConfig,
     HyperNixModel,
@@ -743,7 +744,7 @@ class JudgeCorpus:
                 "Install it with: pip install datasets"
             ) from e
 
-        ds = hf_datasets.load_dataset(dataset_name, split=split)
+        ds = hf_datasets.load_dataset(dataset_name, split=split, revision=hub_revision(dataset_name))
         if max_examples is not None:
             ds = ds.select(range(min(max_examples, len(ds))))
 

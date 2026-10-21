@@ -8,6 +8,7 @@
   <title>HyperLink</title>
   <link rel="icon" href="/web/icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/web/app.css">
+  <script src="/web/markdown.js" defer></script>
   <script src="/web/app.js" defer></script>
 </head>
 <body>
@@ -23,6 +24,7 @@
       </header>
       <nav class="tabs" role="tablist">
         <button role="tab" data-view="chats" class="tab active">Chats</button>
+        <button role="tab" data-view="code" class="tab">Code</button>
         <button role="tab" data-view="runner" class="tab">Runner</button>
         <button role="tab" data-view="memory" class="tab">Memory</button>
         <button role="tab" data-view="settings" class="tab">Settings</button>
@@ -44,11 +46,116 @@
           <button class="icon-button danger" id="delete-chat" title="Delete" aria-label="Delete chat">🗑</button>
         </header>
         <div class="thread" id="thread" aria-live="polite"></div>
+        <div class="card dataset-panel" id="dataset-panel" hidden>
+          <header class="panel-head">
+            <h2 id="ds-title">Part of a dataset</h2>
+            <button type="button" class="icon-button" id="ds-close" aria-label="Close">✕</button>
+          </header>
+          <p class="muted">Which part of the file the model is given with your message.
+            Leave everything empty for the first 20 rows, or the whole file when it is small.</p>
+          <div class="ds-grid">
+            <label>Rows<input id="ds-rows" placeholder="0-20, 100-, -10" autocomplete="off"></label>
+            <label>Columns<input id="ds-columns" placeholder="question, answer" autocomplete="off"></label>
+            <label>Containing<input id="ds-query" placeholder="text, or re:pattern; a heading in .md" autocomplete="off"></label>
+            <label>Random sample<input id="ds-sample" type="number" min="0" max="2000" placeholder="0"></label>
+            <label>Written as<select id="ds-style">
+              <option value="auto">Automatic</option><option value="jsonl">JSONL</option>
+              <option value="table">Table</option><option value="text">Text</option></select></label>
+            <label>Most characters<input id="ds-max" type="number" min="500" max="100000" placeholder="12000"></label>
+          </div>
+          <div class="button-row">
+            <button type="button" id="ds-preview">Preview</button>
+            <button type="button" id="ds-use">Use this part</button>
+            <button type="button" class="secondary" id="ds-clear">Default</button>
+          </div>
+          <p class="muted" id="ds-info"></p>
+          <pre class="output" id="ds-text" hidden></pre>
+        </div>
+        <div class="tray" id="tray" hidden></div>
         <form class="composer" id="composer">
+          <div class="ring" id="ring" title="Context, and usage or load" role="img" aria-label="Context and usage">
+            <svg viewBox="0 0 36 36" width="34" height="34" aria-hidden="true">
+              <circle class="ring-track" cx="18" cy="18" r="15" />
+              <circle class="ring-outer" id="ring-outer" cx="18" cy="18" r="15" pathLength="100" />
+              <circle class="ring-track" cx="18" cy="18" r="10" />
+              <circle class="ring-inner" id="ring-inner" cx="18" cy="18" r="10" pathLength="100" />
+            </svg>
+          </div>
+          <button type="button" class="icon-button attach" id="attach" title="Attach files or datasets"
+            aria-label="Attach">📎</button>
+          <input type="file" id="attach-input" multiple hidden>
           <textarea id="message" rows="1" placeholder="Message" aria-label="Message"></textarea>
           <button type="submit" id="send" class="send" aria-label="Send">↑</button>
           <button type="button" id="stop" class="send stop" aria-label="Stop" hidden>■</button>
         </form>
+      </section>
+
+      <section class="view" id="view-code" hidden>
+        <header class="page-head"><h1>Code</h1>
+          <button class="icon-button" id="refresh-code" aria-label="Refresh">↻</button></header>
+        <p class="muted" id="code-machine"></p>
+        <div class="code-bar">
+          <select id="code-boxes" aria-label="Sandbox"></select>
+          <input id="code-new-name" placeholder="New sandbox name" autocomplete="off" aria-label="New sandbox name">
+          <button type="button" id="code-new">New sandbox</button>
+          <button type="button" class="secondary" id="code-delete-box">Delete</button>
+        </div>
+        <div class="code-bar">
+          <label class="check"><input type="checkbox" id="code-bind"> The model works in this sandbox in
+            the current chat (read, write, search, run, git)</label>
+          <button type="button" class="secondary" id="code-chat">Chat about it</button>
+        </div>
+        <p class="error" id="code-error" hidden></p>
+        <div class="code-layout">
+          <div class="code-side">
+            <h2>Files <small class="muted" id="code-usage"></small></h2>
+            <ul class="files" id="code-files"></ul>
+            <form class="inline-form" id="code-search-form">
+              <input id="code-search" type="search" placeholder="Search the files" aria-label="Search the files">
+              <button type="submit">Find</button>
+            </form>
+            <ul class="files" id="code-matches"></ul>
+            <h2>From your attachments</h2>
+            <div class="inline-form">
+              <select id="code-attachments" aria-label="Attachment"></select>
+              <button type="button" id="code-import">Copy in</button>
+            </div>
+          </div>
+          <div class="code-main">
+            <div class="code-bar">
+              <input id="code-path" placeholder="main.py" autocomplete="off" aria-label="File path">
+              <button type="button" id="code-save">Save</button>
+              <button type="button" id="code-run">Run</button>
+              <button type="button" class="secondary" id="code-remove">Delete file</button>
+            </div>
+            <textarea id="code-editor" class="editor" spellcheck="false" rows="18"
+              aria-label="File contents"></textarea>
+            <pre class="output" id="code-output" hidden></pre>
+            <h2>git</h2>
+            <div class="code-bar">
+              <button type="button" class="secondary" data-git="status">Status</button>
+              <button type="button" class="secondary" data-git="diff">Diff</button>
+              <button type="button" class="secondary" data-git="log">Log</button>
+              <button type="button" class="secondary" data-git="branch">Branches</button>
+              <button type="button" class="secondary" data-git="init">Init</button>
+            </div>
+            <div class="code-bar">
+              <input id="git-message" placeholder="Commit message" autocomplete="off" aria-label="Commit message">
+              <button type="button" id="git-commit">Commit everything</button>
+            </div>
+            <div class="code-bar">
+              <input id="git-ref" placeholder="branch or commit" autocomplete="off" aria-label="Branch or commit">
+              <button type="button" class="secondary" id="git-checkout">Check out</button>
+              <button type="button" class="secondary" id="git-branch">New branch</button>
+            </div>
+            <div class="code-bar">
+              <input id="git-url" placeholder="https://github.com/owner/repo.git" autocomplete="off"
+                aria-label="Repository to clone">
+              <button type="button" class="secondary" id="git-clone">Clone</button>
+            </div>
+            <pre class="output" id="git-output" hidden></pre>
+          </div>
+        </div>
       </section>
 
       <section class="view" id="view-runner" hidden>

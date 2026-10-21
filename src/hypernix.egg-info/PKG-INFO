@@ -1,15 +1,15 @@
 Metadata-Version: 2.4
 Name: hypernix
-Version: 0.72.3
-Summary: Download and quantize the HyperNix PyTorch model to GGUF (fp32/fp16/Q8_0/Q6_K/Q4_K_M).
+Version: 0.72.8a2
+Summary: Download and quantize the HyperNix PyTorch model to GGUF (fp32/fp16/Q8_0/Q6_K/Q4_K_M). and train models with a massive ai toolkit 
 Home-page: https://github.com/trail-b1az3r/hypernix-pip
 Author: HyperNix contributors
-License: HOL-1.0
+License: LicenseRef-HOS-1.1 OR Apache-2.0
 Project-URL: Homepage, https://trail-b1az3r.github.io/HyperNix-pip/
 Project-URL: Source, https://github.com/trail-b1az3r/hypernix-pip
 Project-URL: Issues, https://github.com/trail-b1az3r/hypernix-pip/issues
 Project-URL: Logo, https://raw.githubusercontent.com/trail-b1az3r/hypernix-pip/main/assets/logo.png
-Keywords: hypernix,gguf,quantization,llama.cpp,pytorch
+Keywords: hypernix,gguf,quantization,llama.cpp,pytorch,Ai,llm
 Classifier: Development Status :: 4 - Beta
 Classifier: Environment :: Console
 Classifier: Intended Audience :: Developers
@@ -18,13 +18,13 @@ Classifier: Operating System :: POSIX :: Linux
 Classifier: Operating System :: MacOS
 Classifier: Operating System :: Microsoft :: Windows
 Classifier: Programming Language :: Python :: 3
-Classifier: Programming Language :: Python :: 3.10
-Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3 :: Only
 Classifier: Programming Language :: Python :: 3.12
 Classifier: Programming Language :: Python :: 3.13
 Classifier: Programming Language :: Python :: 3.14
+Classifier: Programming Language :: Python :: 3.15
 Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
-Requires-Python: <3.15,>=3.10
+Requires-Python: <3.16,>=3.12
 Description-Content-Type: text/markdown
 License-File: LICENSE
 Requires-Dist: torch<3,>=1.13
@@ -33,7 +33,7 @@ Requires-Dist: safetensors>=0.4.3
 Requires-Dist: huggingface-hub>=0.24
 Requires-Dist: gguf>=0.10.0
 Requires-Dist: tqdm>=4.66
-Requires-Dist: rich==14.3.4
+Requires-Dist: rich<=15.0.0,>14
 Requires-Dist: sentencepiece>=0.2.1
 Provides-Extra: llama-cpp
 Requires-Dist: llama-cpp-python>=0.2.90; extra == "llama-cpp"
@@ -43,8 +43,12 @@ Requires-Dist: accelerate>=0.33; extra == "train"
 Provides-Extra: dev
 Requires-Dist: pytest>=8; extra == "dev"
 Requires-Dist: ruff>=0.5; extra == "dev"
+Requires-Dist: mypy>=1.11; extra == "dev"
 Requires-Dist: build>=1.2; extra == "dev"
 Requires-Dist: twine>=5; extra == "dev"
+Requires-Dist: psutil>=5.9; extra == "dev"
+Provides-Extra: elements
+Requires-Dist: psutil>=5.9; extra == "elements"
 Provides-Extra: security
 Requires-Dist: cryptography>=42; extra == "security"
 Provides-Extra: t1api
@@ -53,13 +57,20 @@ Requires-Dist: uvicorn[standard]<1,>=0.29; extra == "t1api"
 Requires-Dist: pydantic<3,>=2; extra == "t1api"
 Requires-Dist: python-dotenv<2,>=1; extra == "t1api"
 Requires-Dist: python-multipart<1,>=0.0.9; extra == "t1api"
+Requires-Dist: cryptography>=42; extra == "t1api"
+Requires-Dist: Pillow>=11; extra == "t1api"
+Provides-Extra: images
+Requires-Dist: Pillow>=11; extra == "images"
+Requires-Dist: pillow-heif>=0.18; extra == "images"
+Requires-Dist: pillow-jxl-plugin>=1.3; extra == "images"
+Requires-Dist: rawpy>=0.21; extra == "images"
 Provides-Extra: t1api-pg
 Requires-Dist: psycopg[binary,pool]<4,>=3.1; extra == "t1api-pg"
 Provides-Extra: t1api-test
 Requires-Dist: hypernix[dev,t1api]; extra == "t1api-test"
 Requires-Dist: httpx<1,>=0.27; extra == "t1api-test"
 Provides-Extra: legacy-torch
-Requires-Dist: numpy<2,>=1.21; extra == "legacy-torch"
+Requires-Dist: numpy<3,>=1.21; extra == "legacy-torch"
 Requires-Dist: safetensors>=0.3.1; extra == "legacy-torch"
 Requires-Dist: huggingface-hub>=0.16; extra == "legacy-torch"
 Requires-Dist: tqdm>=4.64; extra == "legacy-torch"
@@ -72,25 +83,34 @@ Provides-Extra: gui
 Requires-Dist: hypernix[gui-qt]; extra == "gui"
 Dynamic: license-file
 
+<!-- README_HEADER_START -->
 <p align="center">
-  <img src="https://raw.githubusercontent.com/trail-b1az3r/hypernix-pip/2d5eb37/assets/logo1.png" alt="hypernix logo" width="240" />
+  <img src="https://raw.githubusercontent.com/trail-b1az3r/HyperNix-pip/main/assets/logo-new/hypernix-lockup-dark.svg" alt="hypernix logo" width="240" />
 </p>
 
-# hypernix
-
-[![PyPI](https://img.shields.io/pypi/v/hypernix.svg)](https://pypi.org/project/hypernix/)
-[![Python](https://img.shields.io/pypi/pyversions/hypernix.svg)](https://pypi.org/project/hypernix/)
-[![License](https://img.shields.io/pypi/l/hypernix.svg)](https://github.com/trail-b1az3r/hypernix-pip/blob/main/LICENSE)
+<p align="center">
+  <img alt="PyPI" src="https://img.shields.io/badge/PyPI-v0.72.8a2-ff2d55?style=for-the-badge&logo=pypi&logoColor=white" />
+  <img alt="Python" src="https://img.shields.io/badge/Python-3.12--3.15-00c9ff?style=for-the-badge&logo=python&logoColor=white" />
+  <img alt="License" src="https://img.shields.io/badge/License-HOS--1.1%20/%20Apache--2.0-00c853?style=for-the-badge" />
+</p>
+<!-- README_HEADER_END -->
 
 **End-to-end toolkit for training ai models on modern or old devices, originaly for converting hypernix.1 into gguf, now for all around training**
 
 ## What's fixed in this update
-See [Changelog.md](/wiki/Changelog.md)
-for most updates
+
+The first section below covers the 0.72.6 line (published as
+`0.72.5.post14` to `post17`, `0.72.6.rc1` to `rc3`, `0.72.6`, and the
+patches `0.72.6.post1` onward), and the one after it covers 0.72.5. [`wiki/Changelog.md`](wiki/Changelog.md) is the canonical
+per-release history, and [`wiki/Roadmap.md`](wiki/Roadmap.md) says what
+is next.
 
 ## Table of contents
 
 - [What's fixed in this update](#whats-fixed-in-this-update)
+- [What's new: 0.72.6 — daily keys, conceal, and a quicker waiter](#whats-new-0726--daily-keys-conceal-and-a-quicker-waiter)
+- [What's new: 0.72.5 — drafts, bundles, accounts, and a car](#whats-new-0725--drafts-bundles-accounts-and-a-car)
+- [What's new: 0.72.3.post2 — sub-bit models you can actually run](#whats-new-0723post2--sub-bit-models-you-can-actually-run)
 - [What's new: 0.72.3 — T1 v1.0.2026.8.1.1](#whats-new-0723--t1-v102026811)
 - [Package layout](#package-layout)
 - [Module reference](#module-reference)
@@ -111,7 +131,313 @@ for most updates
 - [License](#license)
 
 
-Cross-platform: Linux, macOS, Windows. Python 3.10 - 3.14.
+Cross-platform: Linux, macOS, Windows. hyperNix-pip requires Python 3.12 or newer and officially supports Python 3.12, 3.13, 3.14, and 3.15.
+
+### Python 3.15 modernization
+
+0.72.7 moves the floor to 3.12 and adds 3.15, using four of its features
+where they measurably help and nowhere they would break 3.12–3.14:
+PEP 810 lazy imports (`__lazy_modules__`), PEP 798 unpacking in
+comprehensions (behind `hypernix._compat`), PEP 799's `profiling` package
+(`hypernix._profiling`) and PEP 831 frame pointers in native builds. The
+dependency audit, benchmarks and the tested matrix are on the
+[Python 3.12–3.15](wiki/Python-3.15.md) wiki page. On 3.15, PyTorch has
+no wheel yet; everything that does not need torch runs.
+
+## What's new: 0.72.6 — daily keys, conceal, and a quicker waiter
+
+**v2.1 keys change every day.** `gkey create -v v2.1` mints a `T2C_` key
+and a `T2CK_` *kit*. The client keeps the kit and sends only that day's
+key, sealed for the server's RSA key and again under a per-device daily
+key. The server accepts the day either side and nothing else, and binds
+each device to one key. The sealing is Rotorvault
+(`hypernix.security.rotorvault`): Blowfish, Twofish, an Enigma-style
+rotor stage wired by xoshiro256++, AES-256-GCM, inversion and base64url.
+Its security comes from the AES-GCM stage, and the module says so.
+[T1 API → v2.1 keys](wiki/T1-API.md#v21-t2c-keys-and-rotorvault).
+
+```bash
+gkey create -v v2.1 --level 4          # T2C_…-4, and the T2CK_ kit that makes it
+waiter serv -AEK "T2_…" -I https://myserver.ts.net   # seal an existing key as v2.1
+```
+
+**Conceal mode.** `waiter serv -c` (a key at access level 3 or higher)
+asks the server to keep less about you. Your address is kept only as a
+/24 or /48, except on security records. What you made more than 36 hours
+ago (messages, files, finished jobs, ordinary audit records) is deleted.
+Memories, preferences and usage counts stay. It limits what the T1
+server keeps, not what the network or a proxy in front of it records.
+[T1 API → Conceal mode](wiki/T1-API.md#conceal-mode-and-36-hour-retention).
+
+**`waiter serv` letters group.** `waiter serv -ArEK <key> -I <ip>` sets
+up, refreshes, seals and checks in one go. `-b` works out bare strings
+(`waiter serv -Ab T1_… https://host 8000`) and refuses to guess between
+blocking and allowing a range. There are new letters too:
+
+| Letter | Does |
+|---|---|
+| `-u` / `-ud` | Update hypernix to the server's version (`-ud` to exactly that version) |
+| `-k` | Install a kit, a user-made mod |
+| `-T` | Open the admin control pane (a level-9 T2 or v2.1 administrator key) |
+| `-Y` | Show the server's public card |
+| `-S` | Run a security check of this client and the server |
+| `-e` | Lock waiter's config with a password |
+
+[Waiter TUI → `serv` flags](wiki/Waiter-TUI.md#serv-flags).
+
+**`tvtop-max`: the machine, and the run on it.** tvtop-pro on OpenTUI,
+with ten panels, each toggled by its number key. Besides CPU, memory,
+GPU and training progress, it shows:
+- which HyperNix modules and libraries the training script uses, with
+  versions and deprecations;
+- the model architecture it builds;
+- its Pressure Cooker and arguments;
+- the log;
+- a warnings panel covering the script and the log.
+
+It finds the busiest Python run, its script and its log by itself, and
+it reads the script without running it. `tvtop-max -s` lays it out for
+a phone. [TvTopMax](wiki/TvTopMax.md).
+
+**The T1 server in the 0.72.6 patches.** The T1 contract is still
+v1.1.26.9.0.0; these add to it.
+- **HyperLink on the web.** The server hosts a site that works like the
+  app, at `http://127.0.0.1:37965` and on its Tailscale address, and
+  since post3 also at `/` on the API's own port. Never on the LAN.
+  [T1 API](wiki/T1-API.md#hyperlink-on-the-web-0726post1).
+- **`hypernix-t1 upgrade`** upgrades HyperNix in the Python the server
+  actually runs on, its private venv, and restarts it; `status` and
+  `start` warn when that has fallen behind. If an upgrade seemed to do
+  nothing, `hypernix-t1 version` shows why.
+- **Model sync.** `T1_MODEL_SYNC=1` mirrors `~/.hypernix/models` into
+  the server's own `~/.hypernix/t1api/models`, one symlink per file, and
+  serves from it; `hypernix-sync` does it by hand.
+  [T1 API](wiki/T1-API.md#model-sync).
+- **Brewer models run in llama.cpp.** `brew export --format gguf` wrote a
+  file no llama.cpp could open; it now writes a real GGUF (as `llama`),
+  and `hnx brew gguf <folder>` converts HyperNix.3-mini or anything
+  brewed. The runner serves brewed models through llama.cpp when it has
+  a build. [Training guide](wiki/Model-Training-Guide.md#running-a-brewed-model-in-llamacpp).
+- **Safer by default:** checkpoints never unpickled, MCP errors that keep
+  their details on the server, key files confined to the key store. The
+  [security checklist](wiki/T1-API-Security-Checklist.md) now covers
+  every opt-in feature.
+
+**Also in 0.72.6:**
+- **HyperLink's default system prompt.** When a reply comes from
+  HyperNix's own runner (hyperchat), the model is told where it runs,
+  that it is read on a phone, and not to invent tool results. Anything
+  the person wrote comes after it and wins.
+  [T1 API](wiki/T1-API.md#the-default-system-prompt-0726rc2).
+- **Siri can name chats and models.** "Load Gemma 4 in HyperLink" and
+  "Read Groceries in HyperLink" work, because the app now has App
+  Intents entities.
+- **`hnx-t1`** is the short name for `hypernix-t1`.
+- **hyped-pro finds your T1 server.** It looks through waiter's saved
+  server and hypernix-t1's `.env` before giving up. If nothing answers,
+  it says where the address came from and what to run.
+- **Earlier 0.72.6 batches:** elements (`magnesium`, `carbon`), error
+  codes, tool calling for local models, HyperLink on-device models, and
+  hyped-pro on OpenTUI with git and a file editor. See the
+  [Changelog](wiki/Changelog.md).
+
+## What's new: 0.72.5 — drafts, bundles, accounts, and a car
+
+**Speculative decoding, in both shapes.** `hyprslug` produced a
+quantised model and `dflash2` could attach a draft somebody else had
+made. Now it makes the draft:
+
+```bash
+dflash2 attach model.gguf -o model+draft.gguf --quant q4_m   # embedded, one file
+dflash1        model.gguf -o draft.gguf       --quant int8   # for --model-draft
+```
+
+`dflash2` writes the draft into the base GGUF under a `dflash2.` prefix,
+which is where the speed-up is: one file, one download, and a runtime
+that has never heard of Dflash2 reads the base model straight through.
+`dflash1` writes it as its own file for `llama-cli --model-draft`,
+renumbering the kept blocks from zero and rewriting `<arch>.block_count`
+to match — a draft that claims 32 blocks and ships 6 loads, and then
+reads past the end of its own tensor table. It refuses a base with no
+tokenizer rather than writing a draft nothing can sample from.
+
+Both take nine targets: `q8`, `int8`, `fp16`, `bf16`, `fp32`, `IQ0.5`,
+`Q6_K`, `Q4_M`, `int2` — and anything else `hyprslug` writes, because
+they plan through it rather than keeping their own list. A draft at a
+given tier is the same packing as a model at it.
+
+**Several quantisations in one GGUF.**
+
+```bash
+hnx-bundle build model.gguf q8,q4_m,iq0.5 -o all.gguf
+hnx-bundle list all.gguf
+hnx-bundle extract all.gguf q4_m -o just-q4m.gguf
+```
+
+Variants live under `hnxq.<slug>.`, and the default one keeps the
+ordinary tensor names — a stock llama.cpp opens the file and runs it
+with nothing unusual happening. A bundle is roughly its variants added
+together: what is stored once is the tensors every variant left
+untouched byte for byte, which for most tiers is the 1-D norms rather
+than the bulk. The point is not compression — it is one download
+instead of five, one page cache instead of five, and switching tiers on
+a served model without fetching anything.
+
+**Five new quant targets.** `INT8` and `INT2` join the fixed-codebook
+family; `FP32` / `FP16` / `BF16` are element widths and take their own
+path. BF16 rounds to nearest even. FP16 saturates an overflow to 65504
+only when the input was *finite*, so an infinity stays an infinity
+instead of quietly becoming a large number that looks like data.
+
+INT2 was expected to lose to FP2 and does not — 0.384 relRMS against
+0.397 over twelve seeds, because ~40% of a weight tensor sits near zero
+and INT2 spends a codeword there. Measurement in
+[LowBit](wiki/LowBit.md).
+
+**`tvtoppro` gets an intro, modules, and a watchdog.** `tvtop-older`'s
+animated "decoding" startup text and the spinner, in tvtoppro's
+presentation; a module system, so a new stat is a file that registers
+itself rather than a patch to the renderer; and a stall detector —
+`train.log` untouched for over a week means the run being watched is not
+the run that is happening, so it finds the busiest Python process on the
+machine and reads *its* logs and progress instead.
+
+```bash
+tvtoppro --find-run          # go looking, rather than waiting on a dead log
+```
+
+**`cctvtop`'s Remote Desktop panel works.** It called a session live
+whenever *something* held the port. The probe completes an RFB handshake
+now, so a stale listener, a tunnel with nothing behind it and a real
+desktop are three different answers — and when there is no session it
+says which of four reasons applies rather than "unavailable".
+
+**`noodle` runs inside `hyped-pro`.** `/noodle` in the TUI. It adopts
+vendor keys already stored in the HyperNix config, with the environment
+always winning over the stored copy, so a session that works in `hyped`
+is not configured twice.
+
+**The `hypernix` CLI says what was wrong.** An unknown subcommand used to
+print usage and exit 0. It now goes to stderr, exits 2, and suggests the
+nearest real command:
+
+```
+$ hypernix quantise
+hypernix: unknown command 'quantise'
+
+  You want:  hypernix quantize
+
+  hypernix --help   every subcommand
+```
+
+**T1 v1.0.26.9.2.3 — an account without already having a key.** Sign-up
+and browser sign-in, served four ways: from localhost, over Tailscale,
+from the operator's own site, or from a prebuilt Cloudflare site hosted
+by the API host.
+
+```bash
+t1-accounts create mason --admin     # password prompted, never an argument
+t1-accounts modes                    # what the four are, and what each needs
+
+T1_ACCOUNTS_ENABLED=1 T1_ACCOUNTS_MODE=tailscale hypernix-t1 start
+```
+
+scrypt for passwords, constant-time comparison, CSRF on every form,
+SameSite cookies, lockout after repeated failures, and `Secure` coupled
+to whether the connection is actually TLS. A keyless caller never gets
+administrator rights, in any of the four modes.
+
+**Two security fixes.** The config file holding API keys was
+world-readable; it is now written `0600` into a `0700` directory through
+a temporary file and `os.replace`, and an existing file is tightened on
+load. And key authentication compared key *strings*, in a loop whose
+position depended on the prefix — a timing oracle for the stored keys.
+Keys are indexed by digest and compared with `hmac.compare_digest`; the
+measured 60x spread across probe keys is flat.
+
+**HyperLink in a car, and out loud.** The iOS app gets a CarPlay scene,
+four Siri intents, eight themes, an attachment menu that offers all four
+ways in, and renaming.
+
+- CarPlay shows a conversation list, `CPVoiceControlTemplate` dictation
+  and six canned replies — and a keyboard **only when the car reports it
+  will allow one**, read from `CPSessionConfiguration.limitedUserInterfaces`
+  on every use and rebuilt from its delegate, because the answer changes
+  while the app is running.
+- "Siri, ask HyperLink" (it then asks for your question), "Siri, load
+  Gemma 4 E2B in HyperLink", "Siri, read me the HyperLink chat". None of
+  the four intents opens the app; the point of asking from a car dock is
+  that the phone stays where it is. The question is never part of the
+  first sentence: see [Siri](ios/README.md#siri).
+- Every theme's text clears WCAG AA against its own bubble, the two
+  bubbles are told apart by luminance, and so are "connected" and
+  "failed" — checked in `tests/ios/test_hyperlink_ios_wiring.py`, which found
+  three that were not.
+- A chat can be renamed. The server has taken a title on
+  `PATCH /hyperlink/sessions/{id}` since HyperLink shipped, and nothing
+  on the phone ever sent one.
+
+CarPlay needs `com.apple.developer.carplay-communication`, which Apple
+grants per app on request rather than with a paid account. Everything
+else builds and runs without it.
+
+**Docs.** Issue templates for bugs and for feature requests, and
+[Model-Training-Guide](wiki/Model-Training-Guide.md) — which of these do
+I use, and in what order. Every API in that guide was run against the
+package rather than written from memory; six were wrong.
+
+## What's new: 0.72.3.post2 — sub-bit models you can actually run
+
+**The error this release is about.** LM Studio, opening a model this
+package produced:
+
+```
+llama_model_loader: failed to load model from Qwen3.8-2B-IQ0.9_L.gguf
+```
+
+That error is correct, and no header fixes it: the GGML type id at 200 is
+how the loader noticed, but the missing dequantisation kernel is why it
+stopped. So there are three real ways out, and
+`hypernix hyprslug-headers` leads with which is which.
+
+```bash
+hypernix hyprslug-headers install                        # find what needs it
+hypernix hyprslug-headers serve model.iq09.gguf          # keep the tier, talk HTTP
+hypernix hyprslug-headers wrap  model.iq09.gguf -o ok.gguf   # open anywhere, bigger
+hypernix hyprslug-headers stamp model.iq09.gguf          # make it self-describing
+```
+
+`serve` puts [HnxRun](wiki/HnxRun.md) behind `/v1/chat/completions`, so
+LM Studio and Bionic reach a 0.9-bit model without converting it.
+`wrap` re-encodes to a stock type and says, in the report, that the
+result is a `Q2_K` copy of a `IQ0.9_L` model rather than the original —
+verified against the reference `gguf` reader. See
+[HyprSlug-Headers](wiki/HyprSlug-Headers.md).
+
+**Five new quant types.** `IQ0.25_UXL` at a quarter of a bit exactly,
+`INT1`, `FP2`, `INT4`, and `Q4M` as a spelling of `Q4_K_M` that used to
+be rejected. `FP2`'s scale is searched, not fitted to the block peak —
+the obvious fit scored *worse than one bit*, and a 2-bit format that
+loses to a 1-bit format is not a format. Full table and the measurement
+in [LowBit](wiki/LowBit.md).
+
+**`tvtoppro`** — tvtop++'s stats under a btop++ presentation, with
+themes. Braille graphs, gradient meters, titles in the box border, and
+btop's own `.theme` files loading unchanged.
+
+```bash
+tvtoppro --theme gruvbox-dark
+tvtoppro --theme ~/.config/btop/themes/nord.theme
+```
+
+Seven themes built in and exported to `examples/tvtoppro/`. See
+[TvTopPro](wiki/TvTopPro.md).
+
+**`hypernix-t1` fixes.** `create --host/--port` failed from a checkout
+(the documented flags reached `install-t1.sh`, which had never heard of
+them), and `hypernix-t1 start` started uvicorn on a different port from
+the one the installer configured, because the bind address only ever went
+into `start-t1.sh`. Both paths agree now.
 
 ## What's new: 0.72.3 — T1 v1.0.2026.8.1.1
 
@@ -143,8 +469,8 @@ outright and point at its own payment page, or require payment on a
 *separate* key, so the credential that identifies a caller and the one
 that spends money have different lifetimes.
 
-**`gkey` mints every format.** `-v v1|v2|v2short`, plus `gkey version`
-for what this build can issue.
+**`gkey` mints every format.** `-v v1|v2|v2short` (and, since 0.72.6,
+`v2.1`), plus `gkey version` for what this build can issue.
 
 ```bash
 gkey create -v v2 --level 5            # T2_…-5
@@ -174,9 +500,6 @@ hypernix train run ... --gradient-checkpointing --tune-allocator
 mint a T2 key, start a real API, chat through a fake model, drive an
 iPhone simulator, then delete every key they made. Nothing publishes
 until both pass.
-
-Full detail in the [Changelog](wiki/Changelog.md).
-
 ## Package layout
 
 Modules are grouped by what they do rather than sitting in one flat
@@ -184,21 +507,26 @@ directory:
 
 | Directory | Modules | Contents |
 |---|---|---|
+| `hypernix/audio/` | 4 | Wake words, audio files and speech plumbing. |
 | `hypernix/chat/` | 5 | Chat templating, prompt presets and multi-turn session state. |
-| `hypernix/data/` | 15 | Datasets: collection, cleaning, splitting, packing and augmentation. |
+| `hypernix/data/` | 17 | Datasets: collection, cleaning, splitting, packing and augmentation. |
 | `hypernix/evaluation/` | 6 | Scoring, rubric labelling, judging and module verification. |
-| `hypernix/interfaces/` | 11 | Human-facing front ends: CLIs, TUIs, GUIs and launchers. |
-| `hypernix/models/` | 11 | Architectures, snapshot loading, generation and model utilities. |
-| `hypernix/monitoring/` | 9 | Live dashboards, logging, telemetry and hardware sampling. |
-| `hypernix/optimizers/` | 8 | The Pressure Cooker optimizer family and optimizer plumbing. |
-| `hypernix/quant/` | 4 | The GGUF pipeline: convert, quantize, fetch tooling and upload. |
-| `hypernix/security/` | 3 | API keys, quotas and request gating. |
-| `hypernix/system/` | 15 | Environment, dependencies, hardware and housekeeping. |
+| `hypernix/hyperlink/` | 12 | The [HyperLink](wiki/HyperLink-Sync.md) server side: sessions, attachments, pairing, push. |
+| `hypernix/interfaces/` | 19 | Human-facing front ends: CLIs, TUIs, GUIs, launchers and `noodle`. |
+| `hypernix/models/` | 17 | Architectures, snapshot loading, generation and model utilities. |
+| `hypernix/monitoring/` | 14 | Live dashboards, logging, telemetry and hardware sampling. |
+| `hypernix/optimizers/` | 9 | The Pressure Cooker optimizer family and optimizer plumbing. |
+| `hypernix/quant/` | 28 | The GGUF pipeline: convert, quantise, the sub-bit tiers, the draft builders, bundles, fetch tooling and upload. |
+| `hypernix/scriptgen/` | 6 | The training-script builder behind `hnx-scriptgen`. |
+| `hypernix/security/` | 6 | API keys, quotas and request gating. |
+| `hypernix/system/` | 24 | Environment, dependencies, hardware and housekeeping. |
 | `hypernix/timing/` | 5 | Timers, alarms, cadence control and progress animation. |
-| `hypernix/training/` | 14 | Training entry points, schedules and weight perturbation. |
-| `hypernix/t1api/` | — | The [T1 API](wiki/T1-API.md) server: registry, routing, quota, billing, audit, rate limiting, mTLS, deployment. |
-| `hypernix/t1sdk/` | — | The T1 API client SDK — typed, stdlib-only, no server extra needed. |
-| `hypernix/waiter/` | — | [`waiter`](wiki/Waiter-TUI.md), the official T1 API TUI/CLI. |
+| `hypernix/training/` | 15 | Training entry points, schedules and weight perturbation. |
+| `hypernix/t1api/` | 57 | The [T1 API](wiki/T1-API.md) server: registry, routing, quota, billing, audit, rate limiting, mTLS, accounts, web auth, deployment. |
+| `hypernix/t1sdk/` | 4 | The T1 API client SDK — typed, stdlib-only, no server extra needed. |
+| `hypernix/waiter/` | 7 | [`waiter`](wiki/Waiter-TUI.md), the official T1 API TUI/CLI. |
+
+Counts are `.py` files excluding `__init__.py`, as of 0.72.5.
 
 **Every module keeps its old import path.** `hypernix.timer` and
 `hypernix.timing.timer` return the same module object, so nothing that
@@ -226,7 +554,7 @@ Click a category below to expand it.
 |---|---|
 | `hypernix.download` | Pull snapshots from the Hub (short-name resolution, gated repos, offline cache). |
 | `hypernix.train` | `HyperNixConfig`, `HyperNixModel`, `init_from_scratch`, `expand_checkpoint`, `train`. Non-HyperNix archs route through `AutoModelForCausalLM`. |
-| `hypernix.brewer` | `hyperNix0x-v2` architecture preset family — `Brewer(config).build()` for a from-scratch `BrewerModel`. GPU-oriented presets `33m` / `micro` / `small` / `medium` / `large` (33.6M-3.5B params), plus `cpu-nano` / `cpu-tiny` / `cpu-small` (2.1M/9.2M/26.5M params) sized for CPU-only training and inference. `custom_arch(**kwargs)` for a fully bespoke config. Also available as `hypernix brew new --preset <name>`. |
+| `hypernix.brewer` | `hyperNix0x-v2` architecture preset family — `Brewer(config).build()` for a from-scratch `BrewerModel`; `brew export` / `brew gguf` write a GGUF any llama.cpp runs (as `llama`). GPU-oriented presets `33m` / `micro` / `small` / `medium` / `large` (33.6M-3.5B params), plus `cpu-nano` / `cpu-tiny` / `cpu-small` (2.1M/9.2M/26.5M params) sized for CPU-only training and inference. `custom_arch(**kwargs)` for a fully bespoke config. Also available as `hypernix brew new --preset <name>`. |
 | `hypernix.instant_pot` | `brew(recipe)` — one-shot end-to-end pipeline. Also available as `hypernix brew recipe.json`. |
 | `hypernix.coffee_maker` | 3 tiers (drip / french-press / percolator) + `cold_brew` type for long checkpointed runs. |
 | `hypernix.deep_fryer` | 2-tier model-weight perturbation: `LightFry` (regulariser) / `HeavyFry` (severe, for bad-model negatives). In-place, reversible via snapshot. |
@@ -302,7 +630,7 @@ Click a category below to expand it.
 |---|---|
 | `hypernix.smoke_alarm` | Training-step planner & monitor. `RadsAlarm` (constants, lightest), `GasAlarm` (CPU/GPU presets), `ModernAlarm` (warmup-measured), `AutoAlarm` (selector). Plus `storage_warning()` for disk-space checks before a long run. |
 | `hypernix.table` | Dead-simple tabular viewer: `from_training_log`, `from_judge_corpus`, `filter`, `select`, `show`. |
-| `hypernix.tvtop` | Backwards-compatibility shim — all functionality moved to `hypernix.tv`. Re-exports everything so `import hypernix.tvtop` continues to work. Console script `tvtop` now launches the `tvtop_plus_plus` dashboard by default; use `tvtop-old` for the classic view. |
+| `hypernix.tvtop` | Backwards-compatibility shim — all functionality moved to `hypernix.tv`. Re-exports everything so `import hypernix.tvtop` continues to work. The `tvtop` command runs `cctvtop` (tvtop++ plus hardware metrics and a remote-desktop panel), while `hypernix tvtop` and `tvtop-older` run this original one; see [Dashboards](wiki/Dashboards.md). |
 | `hypernix.wiki_cli` | *(v0.70.5)* `hnx` / `hypenix` command — auto-generating wiki from source docstrings. `hnx`, `hnx -q`, `hnx -b`. |
 | `hypernix.vera` | *(v0.70.5)* Module verification — syntax, docstrings, types, smoke tests. `hnx vera <file>` / `hnx vera --all`. |
 
@@ -360,11 +688,8 @@ Eleven major additions:
 - **tvtop++ fixes** — Eliminated border flicker (layout built once), added `_block_history_bar` re-export, implemented `small_mode`, fixed self-process filtering.
 - **New wiki pages** — [Pressure-Cooker-V5](wiki/Pressure-Cooker-V5.md), [MTP](wiki/MTP.md), [Scavenger](wiki/Scavenger.md)
 - **Kitchen.md updated** — Added scavenger, MTP, and QAT sections
-- **Training benefits chart** — See below
 
 ### Training Benefits vs Complexity
-
-![HyperNix Training Features](docs/public/training-benefits-chart.png)
 
 > **Key insight**: MTP + Speculative Decoding offer the highest benefit-to-cost ratio. Int8-quantized momentum cuts the momentum buffer's own memory by 75% versus fp32, and PressureCookerV5/V5S's factored curvature keeps the rest of the optimizer state small too -- measured optimizer-state memory lands around 12-13% of AdamW's (see the [efficiency paper](pressure_cooker_v5_v5s_paper.md) for the exact numbers and methodology). The trade-offs -- including step-time overhead on some hardware -- are real and are covered in the paper rather than summarized as a single percentage here.
 
@@ -389,7 +714,7 @@ Five new modules + major optimizer rewrites:
 - **`pressure_cooker` V2** — Quantization-aware training with fp16/bf16/fp64 mixed-precision, QAT hooks for Q8/Q6/Q5.5/Q4M, plus 10 upgrades (mixed-precision autodetect, QAT hooks, gradient-checkpointing integration, adaptive per-layer gradient clipping, EMA weight shadowing, DDP/FSDP-aware distributed training, dynamic loss scaling with overflow backoff, parameter freeze/unfreeze callbacks, an LR finder, and metrics streaming to tvtop)
 - **`pressure_cooker_v3`** — ZeRO-1/2 optimizations, FP8 support, `QuantDtype` enum + `QuantConfig` dataclass
 - **`workshop`** — Model frameworks for TTS/ASR/LLM/Vision with pre-built templates, nano-nano collection support, 30+ architectures (LiquidAI LFM2.5, MiniCPM5, Gemma 4, Qwen3.5, Phi-4, DeepSeek-V2.x, and others)
-- **`tvtop`** — Now launches the premium `tvtop_plus_plus` dashboard by default; use `tvtop-old` for the classic view
+- **`tvtop`** — Runs `cctvtop` (tvtop++ plus hardware metrics and a remote-desktop panel); `tvtop-old` is tvtop++ and `tvtop-older` the original. See [Dashboards](wiki/Dashboards.md)
 
 ## Install
 
@@ -400,6 +725,14 @@ pip install "hypernix[llama-cpp]"     # + bundled llama-cpp-python
 pip install "hypernix[train]"         # + transformers, accelerate
 pip install hypernix                  # core only
 ```
+
+Nightly builds, when the maintainers have them switched on, are the
+rolling [`nightly` prerelease](https://github.com/trail-b1az3r/HyperNix-pip/releases/tag/nightly):
+the branch as of last night, after lint, the full test suite and the
+live integration jobs, and nothing more. Install the wheel by its URL:
+`pip install https://github.com/trail-b1az3r/HyperNix-pip/releases/download/nightly/<wheel>`.
+`hypernix --version` then reads something like
+`0.72.6.post3+nightly.20260930.1a2b3c4`.
 
 Setting up the **T1 API** server specifically? `./install-t1.sh` is a
 guided installer — it asks what kind of deployment this is (bind
@@ -546,6 +879,10 @@ new_fridge.plot_loss_curve(new_fridge.parse_training_log(log), "loss.png")
 
 ## CLI reference
 
+`hypernix --help` prints the authoritative list — this is the shape of
+it. An unknown subcommand exits 2 on stderr and suggests the nearest
+real one rather than printing usage and claiming success.
+
 ```
 hypernix <subcommand> [options]
 
@@ -565,10 +902,42 @@ hypernix <subcommand> [options]
   generate              sample text from a local snapshot
   oven                  code-generation wrapper (preheat + complete / fill)
   chat                  interactive chat REPL against any supported model
-  hyped+ / hyped-pro    Node.js TUI agent CLI w/ real cloud+local model dispatch, /gui desktop mode
-                        (/t1api routes through a local or remote HyperNix T1 API server)
+  brew                  custom architecture builder and training suite
+  fizzle                fuse models and LoRAs                        (fiz)
+  fusebox               GPU thermal governor: pace a run, trip on heat
+  devices               what accelerators this machine has, and what they do
+  wakeup                train a trigger phrase, then listen for it
+  websearch             the search backend behind chat and the assistant
+  gather                crawl a site into a corpus (robots-aware)
+  runtime               use HyperNix's llama.cpp from LM Studio and friends
+  hyprslug-headers      self-describing GGUF headers, and the sub-bit server
   stml                  VRAM trained context length calculator
 ```
+
+The rest are their own console scripts, because each is a program rather
+than a step in the pipeline:
+
+| Command | What it is |
+|---|---|
+| `hyped-pro` | The terminal client, an [OpenTUI](https://opentui.com/docs/) app on Bun in the site's colours. ctrl+p picks a model, `/noodle` runs the autonomous executor, `/t1` routes through a T1 server. |
+| `hyped-plus` | The previous hyped-pro, the readline TUI. `/gui` for a desktop window, `/t1api` to route through a T1 server, `/noodle` for the autonomous executor. |
+| `hyprslug` (`doomslug`, `dstd`) | The quantiser, including the sub-bit tiers. |
+| `dflash2` / `dflash1` | Speculative-decoding drafts: embedded in the base GGUF, or standalone for `--model-draft`. |
+| `hnx-bundle` (`multiquant`) | Several quantisations in one GGUF. |
+| `hnx-imatrix` | Importance matrices. |
+| `steamroller` | The descending llama.cpp quantiser. |
+| `tvtop-max` | tvtop-pro on OpenTUI, plus the run itself: script modules and libraries, model architecture, Pressure Cooker, logs and warnings. `-s` for a phone. |
+| `tvtoppro` / `cctvtop` / `tvtop-old` / `tvtop-older` | The dashboards, newest to oldest. |
+| `hnx-map` | The steampunk schematic TUI. |
+| `hnx-scriptgen` | The training-script builder. |
+| `waiter` | The T1 API's client TUI/CLI. Needs no server extra. `waiter serv` letters can be grouped (`-ArEK <key> -I <ip>`). |
+| `hypernix-t1` (`hnx-t1`) | Runs a T1 server: `create`, `start`, `stop`, `restart`, `status`, `version`, `upgrade`, `sync`, `logs`, `test`, `built-in-runner`, `chat`, `index`, `training`, `autostart`, `launch-script`, `override`. |
+| `t1-accounts` | Web accounts for a T1 server: create, reset, unlock, and the four deployment modes. |
+| `hypernix-sync` (`t1-sync`) | Mirrors `~/.hypernix/models` into the T1 server's own `~/.hypernix/t1api/models` by symlink; `T1_MODEL_SYNC=1` has the server do it itself. |
+| `gkey` | Gatekeeper + Keymaster, in one place. |
+| `multilama` | One interface over vanilla llama.cpp, ik_llama.cpp, PrismML and KoboldCpp. |
+| `noodle` | The autonomous multi-agent executor, standalone. |
+| `eth` / `ups` | Ethanol, and the UPS monitor. |
 
 `train run` accepts curriculum / context management flags:
 
@@ -670,6 +1039,16 @@ Topic-focused reference guides live in the `wiki/` directory:
 - [`wiki/Pressure-Cooker-V5.md`](wiki/Pressure-Cooker-V5.md) — Pressure Cooker V5 / V5+ / V5S with QAT and MTP
 - [`wiki/MTP.md`](wiki/MTP.md) — Multi-Token Prediction guide
 - [`wiki/Scavenger.md`](wiki/Scavenger.md) — HuggingFace dataset discovery
+- [`wiki/Model-Training-Guide.md`](wiki/Model-Training-Guide.md) — which of these do I use, and in what order
+- [`wiki/HyprSlug.md`](wiki/HyprSlug.md) — the sub-bit quantiser
+- [`wiki/HyprSlug-Headers.md`](wiki/HyprSlug-Headers.md) — self-describing headers, the compat export, the sub-bit server
+- [`wiki/LowBit.md`](wiki/LowBit.md) — the fixed-codebook tiers and the measurements behind them
+- [`wiki/Dflash2.md`](wiki/Dflash2.md) — speculative-decoding drafts
+- [`wiki/TvTopPro.md`](wiki/TvTopPro.md) — the dashboard, its themes and its modules
+- [`wiki/TvTopMax.md`](wiki/TvTopMax.md) — tvtop-max: the run's script, model, optimizer, logs and warnings
+- [`wiki/T1-API.md`](wiki/T1-API.md) — the T1 API server
+- [`wiki/HyperLink-Sync.md`](wiki/HyperLink-Sync.md) — the phone app and what it talks to
+- [`wiki/Roadmap.md`](wiki/Roadmap.md) — what is planned, and what landed
 
 ## How the GGUF pipeline works
 
@@ -752,20 +1131,22 @@ python scripts/measure_optimizer_memory.py  # exact optimizer-state bytes per pa
 
 ## License
 
-HyperNix is **dual-licensed** — recipients choose one of the two options
-below (see the full text in [`LICENSE`](LICENSE)):
+HyperNix is **dual-licensed** from 0.72.8a1 — recipients choose one of the
+two options below (see the full text in [`LICENSE`](LICENSE)):
 
-- **LLU-0.1** — the HyperNix OpenCode Light Limited Use License, Version
-  0.1. Source-available, with a same-license requirement for forks and a
-  §12 field-of-use restriction (it does not meet the OSI Open Source
-  Definition because of that restriction). This is the **default** if
-  you don't make an active choice.
-- **HOS-1.0** — the HyperNix Open Source License, Version 1.0. An
-  OSI-compliant open-source license with no field-of-use restrictions.
+- **HOS-1.1** — the HyperNix Open Source License, Version 1.1. Derived
+  from Apache-2.0 and intended to meet the OSI Open Source Definition,
+  with the fuller definitions, trademark terms and (non-binding) model
+  guidance of the older LLU-0.1. No field-of-use restrictions, and a fork
+  need not keep it. This is the **default** if you don't make an active
+  choice.
+- **Apache-2.0** — the unmodified Apache License, Version 2.0.
 
 You must pick one license and follow its terms — you can't mix terms
-from both. Large trained models (29.1B+ parameters) that are shared
-publicly carry a transparency requirement (disclosing training-data
-sources or a data composition summary) under either license; see
-`LICENSE` §7–8 (LLU-0.1) / the equivalent HOS-1.0 sections for specifics.
-`hypernix` is **not** Apache-2.0, MIT, or any other stock license.
+from both. Releases before 0.72.8a1 stay available under the licenses
+they shipped with (LLU-0.1 or HOS-1.0). Under HOS-1.1, openness and
+training-data transparency for large models are encouraged, not required
+(`LICENSE`, HOS-1.1 §8).
+
+
+Full detail in the [Changelog](wiki/Changelog.md).

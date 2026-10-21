@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hypernix"
-version = "0.72.7.post1"
+version = "0.72.8a3"
 description = "Download and quantize the HyperNix PyTorch model to GGUF (fp32/fp16/Q8_0/Q6_K/Q4_K_M). and train models with a massive ai toolkit "
 readme = { file = "README.md", content-type = "text/markdown" }
-license = { text = "HOL-1.0" }
+license = { text = "LicenseRef-HOS-1.1 OR Apache-2.0" }
 # hyperNix-pip requires Python 3.12 or newer and officially supports
 # Python 3.12, 3.13, 3.14 and 3.15. 3.12 is the floor because the code
 # uses PEP 695 generics and the stdlib of 3.12; 3.15 adds PEP 798/799/
@@ -200,6 +200,7 @@ multiquant = "hypernix.quant.multiquant_cli:cli_main"
 waiter = "hypernix.waiter.cli:main"
 # v0.71.1: steampunk schematic TUI (dials/pipes/steam for model + training state).
 hnx-map = "hypernix.monitoring.map:cli_main"
+hnx-c4 = "hypernix.c4.cli:cli_main"
 # 0.72.1: the training-script builder (GUI, with a headless CLI fallback).
 hnx-scriptgen = "hypernix.scriptgen.cli:cli_main"
 scriptgen = "hypernix.scriptgen.cli:cli_main"

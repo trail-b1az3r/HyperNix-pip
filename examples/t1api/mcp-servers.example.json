@@ -1,0 +1,18 @@
+[
+  {
+    "name": "hf",
+    "url": "https://huggingface.co/mcp",
+    "token_env": "HF_TOKEN",
+    "description": "Hugging Face Hub: models, datasets, Spaces, papers and docs"
+  },
+  {
+    "name": "docs",
+    "url": "https://mcp.example.org/mcp",
+    "token_env": "DOCS_MCP_TOKEN",
+    "headers": {"X-Team": "research"},
+    "description": "An example: any Streamable HTTP MCP server",
+    "admin_only": true,
+    "timeout": 30,
+    "enabled": false
+  }
+]

@@ -282,9 +282,33 @@ class Monitor:
         data["log_findings"] = self._findings_for(lines)
         data["log_age_seconds"] = self._log_age()
         data["processes"] = self._process_table()
+        data.update(self._machine(len(data.get("cpu_per_core") or [])))
         data["time"] = time.time()
         data["discovering"] = not self._ready.is_set()
         return data
+
+    def _machine(self, cores: int) -> dict[str, Any]:
+        """Temperatures, sound, disks, network and the memory users
+        (hostprobe). Each part on its own, so one failing source leaves
+        the others."""
+        from . import hostprobe
+
+        parts = {
+            "cpu_temps": lambda: hostprobe.cpu_temperatures(cores or (os.cpu_count() or 0)),
+            "audio": hostprobe.audio,
+            "disks": hostprobe.disks,
+            "network": hostprobe.network,
+            "system": hostprobe.system,
+            "memory_users": hostprobe.memory_users,
+        }
+        out: dict[str, Any] = {}
+        for key, probe in parts.items():
+            try:
+                out[key] = probe()
+            except Exception as exc:  # noqa: BLE001 - one probe must not cost the frame
+                out[key] = None
+                self.notes.append(f"{key}: {type(exc).__name__}: {exc}")
+        return out
 
     def _log_age(self) -> float | None:
         try:

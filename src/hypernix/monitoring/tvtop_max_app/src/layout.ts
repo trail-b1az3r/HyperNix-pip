@@ -28,9 +28,14 @@ const WIDE: Row[] = [
   { grow: 3, panels: [{ id: "train", grow: 3 }, { id: "cooker", grow: 2 }, { id: "model", grow: 2 }] },
   { grow: 4, panels: [{ id: "logs", grow: 5 }, { id: "warnings", grow: 3 }] },
   { grow: 3, panels: [{ id: "modules", grow: 3 }, { id: "procs", grow: 3 }] },
+  // Hidden until Shift+1 … Shift+5: the machine in more detail.
+  { grow: 3, panels: [{ id: "temps", grow: 2 }, { id: "audio", grow: 2 }, { id: "disks", grow: 3 }, { id: "net", grow: 2 }, { id: "system", grow: 2 }] },
 ]
 
-export const PHONE_ORDER: PanelId[] = ["train", "warnings", "gpu", "cpu", "mem", "cooker", "model", "logs", "modules", "procs"]
+export const PHONE_ORDER: PanelId[] = [
+  "train", "warnings", "gpu", "cpu", "mem", "cooker", "model", "logs", "modules", "procs",
+  "audio", "temps", "disks", "net", "system",
+]
 
 // Rows of lines each panel gets in the phone column, borders included.
 export const PHONE_HEIGHT: Record<PanelId, number> = {
@@ -38,12 +43,17 @@ export const PHONE_HEIGHT: Record<PanelId, number> = {
   warnings: 12,
   gpu: 7,
   cpu: 6,
-  mem: 4,
+  mem: 6,
   cooker: 9,
   model: 12,
   logs: 16,
   modules: 16,
   procs: 9,
+  temps: 10,
+  audio: 9,
+  disks: 10,
+  net: 8,
+  system: 8,
 }
 
 export function wideRows(visible: Set<PanelId>): Row[] {
@@ -65,4 +75,11 @@ export const AUTO_PHONE_BELOW = 72
 export function chooseMode(requested: Mode | "auto", terminalWidth: number): Mode {
   if (requested !== "auto") return requested
   return terminalWidth < AUTO_PHONE_BELOW ? "phone" : "wide"
+}
+
+// The visible panels in the order they are drawn, which is the order ←
+// moves the selection through.
+export function drawOrder(mode: Mode, visible: Set<PanelId>): PanelId[] {
+  if (mode === "phone") return phoneColumn(visible).map((p) => p.id)
+  return wideRows(visible).flatMap((row) => row.panels.map((p) => p.id))
 }

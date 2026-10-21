@@ -84,7 +84,51 @@ def _openai_client(base_url: str, *, timeout: float = 300.0):
     return LMStudioBridge(base_url, timeout=timeout)
 
 
-def resolve_backend(config: Any, runner: Any = None) -> Backend:
+def loaded_models(config: Any, runner: Any = None, *, lmstudio_timeout: float = 4.0) -> list[dict[str, Any]]:
+    """Every model loaded right now, whichever backend holds it.
+
+    The runner's model first -- it answers by default -- then each model
+    LM Studio has resident. ``default`` marks the one a message goes to
+    when nobody chooses; HyperLink lists the rest so a person can.
+    """
+    rows: list[dict[str, Any]] = []
+    current = None
+    if runner is not None:
+        try:
+            current = runner.current
+        except Exception:  # noqa: BLE001
+            current = None
+    if current is not None and getattr(current, "model_id", ""):
+        rows.append({
+            "model_id": current.model_id, "backend": HYPERNIX, "label": "HyperNix runner",
+            "base_url": getattr(runner, "base_url", ""), "default": True,
+            "instances": len(getattr(runner, "base_urls", None) or []) or 1,
+            "context_length": int(getattr(current, "context_length", 0) or 0),
+        })
+    if getattr(config, "lmstudio_enabled", False):
+        from ..bridge.lmstudio import LMStudioBridge, LMStudioError
+
+        try:
+            bridge = LMStudioBridge(getattr(config, "lmstudio_url", "") or None,
+                                    api_key=getattr(config, "lmstudio_api_key", "") or None,
+                                    timeout=lmstudio_timeout)
+            resident = bridge.loaded_models()
+        except (LMStudioError, OSError) as exc:
+            logger.debug("hyperlink: LM Studio could not list its loaded models: %s", exc)
+            resident = []
+        for m in resident:
+            if any(r["model_id"] == m.model_id for r in rows):
+                continue
+            rows.append({
+                "model_id": m.model_id, "backend": LMSTUDIO, "label": "LM Studio",
+                "base_url": getattr(config, "lmstudio_url", "") or "",
+                "default": not rows, "instances": 1,
+                "context_length": int(getattr(m, "context_length", 0) or 0),
+            })
+    return rows
+
+
+def resolve_backend(config: Any, runner: Any = None, model_id: str | None = None) -> Backend:
     """The backend that should answer, or a refusal that names both.
 
     *runner* is the :class:`~hypernix.hyperlink.managed.ManagedRunner`
@@ -102,6 +146,15 @@ def resolve_backend(config: Any, runner: Any = None) -> Backend:
             logger.debug("hyperlink: the runner could not be asked", exc_info=True)
             current = None
 
+    # A model chosen from the loaded list that the runner is not serving
+    # goes to LM Studio, which has it -- not to the runner, which would
+    # answer as its own model under the other one's name.
+    if (model_id and current is not None and getattr(current, "model_id", "") != model_id
+            and getattr(config, "lmstudio_enabled", False)
+            and any(r["model_id"] == model_id and r["backend"] == LMSTUDIO
+                    for r in loaded_models(config, None))):
+        current = None
+
     if current is not None:
         base_url = f"{runner.base_url}/v1"
         return Backend(
@@ -118,6 +171,7 @@ def resolve_backend(config: Any, runner: Any = None) -> Backend:
             client=_openai_client(base_url or "http://127.0.0.1:1234/v1"),
             name=LMSTUDIO,
             base_url=base_url,
+            model_id=model_id or "",
             label="LM Studio",
         )
 

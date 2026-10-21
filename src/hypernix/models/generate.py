@@ -20,6 +20,7 @@ from typing import Any
 import torch
 import torch.nn.functional as F
 
+from hypernix.security.hfpin import hub_revision
 from hypernix.training.train import load_snapshot
 
 
@@ -55,12 +56,12 @@ class _CharTokenizer:
 
 def _try_fast(model_dir: Path) -> Any:
     from transformers import AutoTokenizer
-    return AutoTokenizer.from_pretrained(str(model_dir), use_fast=True)
+    return AutoTokenizer.from_pretrained(str(model_dir), use_fast=True, revision=hub_revision(model_dir))
 
 
 def _try_slow(model_dir: Path) -> Any:
     from transformers import AutoTokenizer
-    return AutoTokenizer.from_pretrained(str(model_dir), use_fast=False)
+    return AutoTokenizer.from_pretrained(str(model_dir), use_fast=False, revision=hub_revision(model_dir))
 
 
 def _load_tokenizer(model_dir: Path) -> tuple[Any, str]:

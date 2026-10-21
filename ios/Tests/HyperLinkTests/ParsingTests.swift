@@ -192,3 +192,71 @@ final class KeyShapeTests: XCTestCase {
         )
     }
 }
+
+final class LoadedModelsParsingTests: XCTestCase {
+    func testEveryLoadedModelAndTheDefault() throws {
+        let json = """
+        {"models": [
+          {"model_id": "qwen3-8b", "backend": "hypernix", "label": "HyperNix runner", "default": true, "instances": 2},
+          {"model_id": "gemma-3-12b", "backend": "lmstudio", "label": "LM Studio", "default": false}
+        ], "default": "qwen3-8b", "request_id": "r"}
+        """.data(using: .utf8)!
+        let list = try JSONDecoder().decode(LoadedModelList.self, from: json)
+        XCTAssertEqual(list.models.map(\.modelID), ["qwen3-8b", "gemma-3-12b"])
+        XCTAssertEqual(list.defaultModel, "qwen3-8b")
+        XCTAssertTrue(list.models[0].isDefault)
+        XCTAssertEqual(list.models[0].instances, 2)
+        XCTAssertEqual(list.models[1].instances, 1)
+        XCTAssertNotEqual(list.models[0].id, list.models[1].id)
+    }
+
+    func testAnEmptyAnswerIsAnEmptyList() throws {
+        let list = try JSONDecoder().decode(LoadedModelList.self, from: Data("{}".utf8))
+        XCTAssertTrue(list.models.isEmpty)
+        XCTAssertEqual(list.defaultModel, "")
+    }
+}
+
+final class PromptSigningTests: XCTestCase {
+    /// Fixed inputs, checked against the server's implementation
+    /// (hypernix/hyperlink/signing.py): the same canonical form, key and MAC.
+    func testMatchesTheServer() {
+        let sig = PromptSigning.sign(
+            credential: "T1_secret", signer: "key:k1", chatSessionID: "chat1",
+            serverSessionID: "srv_x", action: "send", content: "héllo",
+            signedAt: Date(timeIntervalSince1970: 1_800_000_000), nonce: String(repeating: "n", count: 24)
+        )
+        XCTAssertEqual(sig.signed_at, 1_800_000_000)
+        XCTAssertEqual(sig.content_sha256, PromptSigning.sha256Hex("héllo"))
+        XCTAssertEqual(sig.signature, "c68a260d7c57d0465d001074bb025753789c9f4d53524b314fd974a8ac276ea7")
+    }
+
+    func testNoncesAreTwentyThreeToTwentySixCharacters() {
+        for _ in 0..<50 {
+            let n = PromptSigning.nonce()
+            XCTAssertTrue((23...26).contains(n.count))
+        }
+    }
+}
+
+final class RingAndDocumentParsingTests: XCTestCase {
+    func testTheRing() throws {
+        let json = """
+        {"session_id": "s", "inner": {"kind": "context", "fraction": 0.25, "label": "1k / 4k", "used": 1024, "limit": 4096},
+         "outer": {"kind": "gpu", "fraction": 0.5, "label": "GPU: 50% busy", "used": 50, "limit": 100}, "request_id": "r"}
+        """.data(using: .utf8)!
+        let ring = try JSONDecoder().decode(ChatRing.self, from: json)
+        XCTAssertEqual(ring.inner.fraction, 0.25)
+        XCTAssertEqual(ring.outer.kind, "gpu")
+    }
+
+    func testAReplyListsTheDocumentsItWrote() throws {
+        let json = """
+        {"message_id": "m", "session_id": "s", "seq": 2, "role": "assistant", "content": "Here it is.",
+         "metadata": {"documents": [{"file_id": "f1", "filename": "notes.md", "size_bytes": 12,
+                                     "download_path": "/hyperlink/files/f1"}], "tool_rounds": [{"tool": "x"}]}}
+        """.data(using: .utf8)!
+        let message = try JSONDecoder().decode(ChatMessage.self, from: json)
+        XCTAssertEqual(message.documents.map(\.filename), ["notes.md"])
+    }
+}

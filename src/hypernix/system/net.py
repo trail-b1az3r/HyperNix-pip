@@ -1,5 +1,11 @@
 """net — Advanced distributed network manager and Tailscale integration.
 
+DEPRECATED (0.72.8a3): every command here is now a route of the T1 API,
+``/net`` (:mod:`hypernix.t1api.routers.net`, on
+:mod:`hypernix.system.netops`), answering JSON on the machine the server
+runs on. This CLI still works and says so each time; it will be removed
+in 0.73.
+
 Commands:
   config         - Configure local net settings.
   auto-setup     - Auto-configure Tailscale and SSH keys.
@@ -17,8 +23,20 @@ Commands:
 """
 from __future__ import annotations
 
+from hypernix.system.deprecation import deprecated_module
+
+deprecated_module(
+    "hypernix.system.net",
+    instead="hypernix.t1api.routers.net",
+    since="0.72.8a3",
+    removed_in="0.73",
+    extra="`hnx net` is now the T1 API's /net routes (admin key); see wiki/T1-API.md#net.",
+)
+
 import argparse
 import json
+import shlex
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -42,6 +60,7 @@ def save_config(cfg: dict) -> None:
 
 def run_cmd(cmd: list[str], capture: bool = True) -> str:
     """Run a subprocess command and return stdout."""
+    cmd = [shutil.which(cmd[0]) or cmd[0], *cmd[1:]] if cmd else cmd
     try:
         res = subprocess.run(cmd, check=True, capture_output=capture, text=True)
         return res.stdout.strip() if capture else ""
@@ -92,13 +111,27 @@ def cmd_m_setup(args: argparse.Namespace) -> None:
     print("3. Generate SSH keys: ssh-keygen -t rsa")
     print("4. Copy keys to peers: ssh-copy-id <peer-ip>")
 
+def _exe(name: str) -> str:
+    """The full path of *name* on PATH, so the command run is the one found."""
+    return shutil.which(name) or name
+
+
+def _remote(peer: str, *words: str) -> list[str]:
+    """ssh to *peer* running *words*, each quoted for the remote shell.
+
+    ``--`` ends ssh's own options, so a peer name that starts with "-"
+    cannot become one.
+    """
+    return [_exe("ssh"), "--", peer, " ".join(shlex.quote(w) for w in words)]
+
+
 def cmd_connect(args: argparse.Namespace) -> None:
     print(f"[net] Connecting to {args.ip}...")
-    subprocess.run(["ssh", args.ip])
+    subprocess.run([_exe("ssh"), "--", args.ip])
 
 def cmd_status(args: argparse.Namespace) -> None:
     print("[net] Tailscale Status:")
-    subprocess.run(["tailscale", "status"])
+    subprocess.run([_exe("tailscale"), "status"])
 
 def cmd_m_ip(args: argparse.Namespace) -> None:
     ip = run_cmd(["tailscale", "ip", "-4"])
@@ -115,8 +148,15 @@ def cmd_a_il(args: argparse.Namespace) -> None:
         return
     for peer in peers:
         print(f" - Found peer: {peer}")
-        # Automatically accept SSH keys for peers
-        run_cmd(["ssh-keyscan", "-H", peer, ">>", str(Path.home() / ".ssh" / "known_hosts")], capture=True)
+        # Accept the peer's SSH host keys. ">>" used to be passed to
+        # ssh-keyscan as an argument, which no shell ever saw: nothing was
+        # written. The keys are appended here instead.
+        keys = run_cmd(["ssh-keyscan", "-H", "--", peer])
+        if keys:
+            known = Path.home() / ".ssh" / "known_hosts"
+            known.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+            with known.open("a", encoding="utf-8") as fh:
+                fh.write(keys.rstrip("\n") + "\n")
     print("[net] Peer discovery and linkage complete.")
 
 def cmd_multi_a_port(args: argparse.Namespace) -> None:
@@ -162,12 +202,16 @@ def cmd_tail_acheck(args: argparse.Namespace) -> None:
     for peer in peers:
         print(f"[peer {peer}] Checking for {args.file}...")
         # Check if file exists
-        res = subprocess.run(["ssh", peer, f"test -f {args.file}"], capture_output=True)
+        # The file name is quoted for the remote shell: it used to be
+        # pasted in, so a name with a ; in it ran a second command there.
+        res = subprocess.run(_remote(peer, "test", "-f", args.file), capture_output=True)
         if res.returncode == 0:
             print(f"  -> File {args.file} exists.")
             if args.r:
                 print(f"  -> Running {args.file}...")
-                subprocess.Popen(["ssh", peer, f"nohup python3 {args.file} > /dev/null 2>&1 &"])
+                subprocess.Popen(
+                    [_exe("ssh"), "--", peer,
+                     f"nohup python3 {shlex.quote(args.file)} > /dev/null 2>&1 &"])
         else:
             print(f"  -> File {args.file} NOT found.")
 
@@ -175,11 +219,29 @@ def cmd_tail_stop(args: argparse.Namespace) -> None:
     peers = get_tailscale_peers()
     for peer in peers:
         print(f"[peer {peer}] Stopping {args.file}...")
-        subprocess.run(["ssh", peer, f"pkill -f {args.file}"], capture_output=False)
+        subprocess.run(_remote(peer, "pkill", "-f", args.file), capture_output=False)
+
+
+#: Where each command went.
+ROUTES = {
+    "status": "GET /net/status", "m-ip": "GET /net/ip", "connect": "GET /net/peers/{peer}/ping",
+    "config": "GET/PUT /net/config", "mutli-a-port": "POST /net/ports", "ex-port": "POST /net/expose",
+    "a-il": "POST /net/peers/trust", "s-storage": "POST /net/storage/sync", "onef-all": "POST /net/hub",
+    "m-setup": "GET /net/setup", "auto-setup": "POST /net/setup",
+    "tail": "POST /net/peers/check | /net/peers/run | /net/peers/stop",
+}
+
+
+def _deprecated(command: str | None) -> None:
+    route = ROUTES.get(command or "", "/net")
+    print(f"hnx net {command or ''} (deprecated): use the T1 API's {route} instead.".replace("  ", " "),
+          file=sys.stderr)
 
 
 def cli_main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="hnx net", description="Distributed network manager.")
+    parser = argparse.ArgumentParser(prog="hnx net",
+                                     description="DEPRECATED: use the T1 API's /net routes. "
+                                                 "Distributed network manager.")
     subparsers = parser.add_subparsers(dest="cmd", required=True)
 
     subparsers.add_parser("config", help="View/edit local net configuration.")
@@ -210,6 +272,7 @@ def cli_main(argv: list[str] | None = None) -> int:
     p_tail.add_argument("-r", action="store_true", help="Run the file if found (only for acheck)")
 
     args = parser.parse_args(argv if argv is not None else sys.argv[1:])
+    _deprecated(args.cmd)
 
     if args.cmd == "config":
         cmd_config(args)

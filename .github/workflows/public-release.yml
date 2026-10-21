@@ -104,7 +104,7 @@ jobs:
       tag: ${{ steps.plan.outputs.tag }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
 
@@ -193,13 +193,13 @@ jobs:
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Python 3.12
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: "3.12"
           cache: pip
@@ -310,6 +310,14 @@ jobs:
           # tvtop-max is the same kind of app, with the same two files.
           print("tvtop-max app version:",
                 launcher.sync_app_version(v, Path("src/hypernix/monitoring/tvtop_max_app")))
+          # The Firefox extension: Firefox wants only numbers, so the
+          # release's base version (0.72.8a0 -> 0.72.8).
+          import json
+          manifest_path = Path("browser/firefox/manifest.json")
+          manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+          manifest["version"] = re.match(r"\d+\.\d+\.\d+", v).group(0)
+          manifest_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+          print("firefox extension version:", manifest["version"])
           PY
           echo "--- pyproject.toml version line"
           grep '^version' pyproject.toml
@@ -509,7 +517,7 @@ jobs:
           PY
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: public-release-${{ inputs.dry_run && 'dryrun-' || '' }}${{ needs.plan.outputs.version }}
           path: |
@@ -541,6 +549,7 @@ jobs:
             src/hypernix/interfaces/hyped_pro_app/src/app.ts \
             src/hypernix/monitoring/tvtop_max_app/package.json \
             src/hypernix/monitoring/tvtop_max_app/src/app.ts \
+            browser/firefox/manifest.json \
             wiki/Release-Timeline.md
 
           if git diff --cached --quiet; then
@@ -661,8 +670,8 @@ jobs:
       T1_LMSTUDIO_URL: http://127.0.0.1:1234
       T1_ENVIRONMENT: development
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: "3.12"
           cache: pip
@@ -727,8 +736,8 @@ jobs:
       T1_LMSTUDIO_URL: http://127.0.0.1:1234
       T1_ENVIRONMENT: development
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: "3.12"
 
@@ -864,7 +873,7 @@ jobs:
       contents: write
     steps:
       - name: Download build artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: public-release-${{ needs.plan.outputs.version }}
           path: .
@@ -875,7 +884,7 @@ jobs:
       # the app.
       - name: Download the HyperLink IPA
         if: needs.hyperlink-ipa.result == 'success'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: ${{ needs.hyperlink-ipa.outputs.ipa_artifact }}
           path: dist/ios
@@ -897,7 +906,7 @@ jobs:
         run: gh release delete nightly --repo "$GITHUB_REPOSITORY" --yes || true
 
       - name: Create Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           tag_name: ${{ needs.cut.outputs.tag }}
           name: >-
@@ -941,7 +950,7 @@ jobs:
       url: https://pypi.org/project/hypernix/
     steps:
       - name: Download build artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: public-release-${{ needs.plan.outputs.version }}
           path: .
@@ -953,7 +962,7 @@ jobs:
           ls -lah
 
       - name: Publish
-        uses: pypa/gh-action-pypi-publish@release/v1
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
         with:
           packages-dir: dist
           skip-existing: true
@@ -981,7 +990,7 @@ jobs:
       url: https://test.pypi.org/project/hypernix/
     steps:
       - name: Download build artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: public-release-${{ needs.plan.outputs.version }}
           path: .
@@ -993,7 +1002,7 @@ jobs:
           ls -lah
 
       - name: Publish
-        uses: pypa/gh-action-pypi-publish@release/v1
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
         with:
           packages-dir: dist
           repository-url: https://test.pypi.org/legacy/

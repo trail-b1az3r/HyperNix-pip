@@ -348,7 +348,20 @@ def _read_memory_breakdown() -> dict[str, float | int] | None:
     """Return a dict with ``total_mib`` / ``used_mib`` / ``free_mib`` /
     ``cached_mib`` / ``swap_used_mib`` / ``swap_total_mib`` /
     ``percent`` — populated from psutil on every platform, /proc/meminfo
-    on Linux, or ``None`` when neither works."""
+    on Linux, or ``None`` when neither works.
+
+    Since 0.72.8 this is :func:`hypernix.monitoring.hostprobe.memory`:
+    used is what cannot be reclaimed, the percentage is used over total
+    (so the bar and the numbers agree), and a container's limit is its
+    total. The code below is kept for when that cannot be imported."""
+    try:
+        from .hostprobe import memory
+
+        found = memory()
+        if found is not None:
+            return found
+    except Exception:  # noqa: BLE001
+        pass
     try:
         import psutil  # type: ignore
         vm = psutil.virtual_memory()

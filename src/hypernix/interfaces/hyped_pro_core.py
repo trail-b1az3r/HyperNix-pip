@@ -56,6 +56,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from hypernix.security.hfpin import hub_revision
 from hypernix.security.safeurl import urlopen as safe_urlopen
 
 logger = logging.getLogger(__name__)
@@ -570,7 +571,8 @@ def _is_downloaded_gguf(model: ModelDef) -> tuple[bool, Path | None]:
     from huggingface_hub.errors import LocalEntryNotFoundError
 
     try:
-        path = hf_hub_download(repo_id=model.repo, filename=model.gguf_filename, local_files_only=True)
+        path = hf_hub_download(repo_id=model.repo, filename=model.gguf_filename, local_files_only=True,
+                               revision=hub_revision(model.repo))
         return True, Path(path)
     except LocalEntryNotFoundError:
         return False, None
@@ -625,7 +627,8 @@ def ensure_downloaded(model: ModelDef, quiet: bool = False) -> Path:
         from huggingface_hub import hf_hub_download
         try:
             print(f"[hypernix] fetching {model.gguf_filename} from {model.repo} ...", file=sys.stderr)
-            path = Path(hf_hub_download(repo_id=model.repo, filename=model.gguf_filename))
+            path = Path(hf_hub_download(repo_id=model.repo, filename=model.gguf_filename,
+                                        revision=hub_revision(model.repo)))
             print(f"[hypernix] {model.short} ready at {path}", file=sys.stderr)
             return path
         except Exception as exc:  # noqa: BLE001

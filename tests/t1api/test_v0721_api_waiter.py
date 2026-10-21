@@ -85,6 +85,7 @@ class TestVersion:
         """
         assert not T1_VERSION.compatible_with("1.0.26.8.0.1")
         assert T1_VERSION.compatible_with("1.1.26.9.0.0")
+        assert T1_VERSION.compatible_with("1.1.26.10.1.0")
 
     def test_status_reports_an_identity_for_discovery(self, client):
         # Without a name to match on, `waiter -F <name>` is silently

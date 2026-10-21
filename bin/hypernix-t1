@@ -899,6 +899,14 @@ EOF
 }
 
 cmd_configure() {
+  # `config web`: the web search settings (T1 v1.1.26.10.1.0), kept in
+  # web.json beside .env and read by the server on every request.
+  if [ "${1:-}" = "web" ]; then
+    load_env
+    local py; py="$(python_bin)"
+    T1_CONFIG_DIR="${T1_CONFIG_DIR:-$CONFIG_DIR}" \
+      exec "$py" -m hypernix.t1api.webconfig_cli "$@"
+  fi
   local editor; editor="${EDITOR:-${VISUAL:-}}"
   [ -f "$ENV_FILE" ] || die "No config at $ENV_FILE — run \`hypernix-t1 create\` first."
   if [ -n "$editor" ]; then
@@ -1197,6 +1205,7 @@ hypernix-t1 — manage a T1 API server (also installed as hnx-t1)
                         Send a message to the served model and print the
                         reply. Carries on the same chat until --new.
   configure             Edit the configuration in \$EDITOR
+  config web [--set K=V] Web search settings: storage, format, limits, AI access
   test                  Health, status, and a real end-to-end probe
   key ...               Run gkey against this server's key store
   autostart [on|off|status] [--write-only]
@@ -1248,7 +1257,7 @@ main() {
     status)            cmd_status "$@" ;;
     logs)              cmd_logs "$@" ;;
     create)            cmd_create "$@" ;;
-    configure|config)  cmd_configure "$@" ;;
+    configure|config|settings)  cmd_configure "$@" ;;
     test)              cmd_test "$@" ;;
     key|keys)          cmd_key "$@" ;;
     index)             cmd_index "$@" ;;

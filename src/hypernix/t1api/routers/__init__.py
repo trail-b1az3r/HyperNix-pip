@@ -47,6 +47,7 @@ from __future__ import annotations
 
 from . import (
     accounts,
+    anthropic,
     audit,
     auth,
     authundo,
@@ -56,8 +57,10 @@ from . import (
     code,
     compact,
     config,
+    counter,
     events,
     health,
+    hypercompress,
     hyperlink,
     inference,
     jobs,
@@ -66,6 +69,7 @@ from . import (
     memory,
     models,
     modules,
+    net,
     noodle,
     privacy,
     runner,
@@ -110,6 +114,7 @@ ALL_ROUTERS = (
     # 0.72.5 pt2 -- what the assistant remembers between conversations.
     memory.router,
     compact.router,
+    hypercompress.router,
     # Off unless T1_NOODLE_ENABLED; every route 404s when it is off.
     noodle.router,
     # Loading, unloading and switching the served model.
@@ -119,9 +124,18 @@ ALL_ROUTERS = (
     mcp.router,
     # 0.72.6 pt2 -- keyless web search for HyperLink and hyperchat.
     web.router,
+    # T1 v1.1.26.10.1.0 -- /web/v2: max items, sites read, kept searches.
+    web.router_v2,
     # Code sandboxes. Off unless T1_CODE_SANDBOX; the reads say how to
     # turn it on, the rest refuse.
     code.router,
+    # T1 v1.1.26.10.2.0 -- the Anthropic Messages API, so Claude Code
+    # runs on this server's models (`hnx claude`).
+    anthropic.router,
+    # 0.72.8a3 -- what `hnx net` did, as the API. Admin only.
+    net.router,
+    # 0.72.8a3 -- the public-server counter. Off unless T1_COUNTER_HOST.
+    counter.router,
 )
 
 __all__ = [
@@ -135,9 +149,11 @@ __all__ = [
     "bridge",
     "compact",
     "config",
+    "counter",
     "events",
     "health",
     "hyperlink",
+    "hypercompress",
     "inference",
     "jobs",
     "keys",
@@ -145,6 +161,7 @@ __all__ = [
     "memory",
     "models",
     "modules",
+    "net",
     "noodle",
     "runner",
     "security",

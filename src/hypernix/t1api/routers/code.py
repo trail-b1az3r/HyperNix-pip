@@ -16,6 +16,9 @@ The tree, each level describing the one below it on a GET::
     PUT    /code/sandbox/{id}/files/{path}         write one: {"content": "..."}
     DELETE /code/sandbox/{id}/files/{path}
     POST   /code/sandbox/{id}/run                  {"path": "main.py"} or {"code": "...", "language": "python"}
+    POST   /code/sandbox/{id}/git                  {"op": "status" | "diff" | "commit" | "clone" | ...}
+    GET    /code/sandbox/{id}/search?q=            lines containing q in its text files
+    POST   /code/sandbox/{id}/import               {"file_id": ...}: a HyperLink attachment, copied in
 
 Who may do what:
 
@@ -49,6 +52,7 @@ from ..deps import (
     get_config,
     get_hyperlink_principal,
     get_request_id,
+    get_usage_meter,
 )
 from ..errors import T1APIError, T1ErrorCode
 
@@ -194,6 +198,7 @@ def code_run_once(
     principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
     config: T1APIConfig = Depends(get_config),
     audit=Depends(get_audit_log),
+    meter=Depends(get_usage_meter),
     request_id: str = Depends(get_request_id),
 ) -> dict[str, Any]:
     """Run ``code`` once, in a sandbox that is deleted before this returns."""
@@ -215,6 +220,7 @@ def code_run_once(
             store.delete(box)
     except cb.SandboxError as exc:
         raise _refused(exc) from exc
+    _meter_run(meter, principal, result, "/code/create")
     return {**result.to_dict(), "request_id": request_id}
 
 
@@ -418,6 +424,7 @@ def code_sandbox_run(
     principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
     config: T1APIConfig = Depends(get_config),
     audit=Depends(get_audit_log),
+    meter=Depends(get_usage_meter),
     request_id: str = Depends(get_request_id),
 ) -> dict[str, Any]:
     """Run a file in the sandbox (``path``), or new code (``code``)."""
@@ -437,7 +444,93 @@ def code_sandbox_run(
                            args=[str(a) for a in args])
     except cb.SandboxError as exc:
         raise _refused(exc) from exc
+    _meter_run(meter, principal, result, "/code/sandbox/run")
     return {**result.to_dict(), "sandbox": box.id, "request_id": request_id}
+
+
+#: git operations that only read, open to whoever may read the sandbox.
+_GIT_READS = {"status", "diff", "log", "show"}
+
+
+@router.post("/sandbox/{box_id}/git")
+def code_sandbox_git(
+    box_id: str,
+    request: Request,
+    body: dict[str, Any] = Body(...),
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    config: T1APIConfig = Depends(get_config),
+    audit=Depends(get_audit_log),
+    request_id: str = Depends(get_request_id),
+) -> dict[str, Any]:
+    """git in the sandbox (0.72.8a3): ``{"op": "status"}``, ``{"op": "commit", "message": "..."}``,
+    ``{"op": "clone", "url": "https://..."}`` -- see :mod:`hypernix.t1api.codegit`."""
+    from .. import codegit
+
+    op = str(body.get("op") or "")
+    reads = op in _GIT_READS or (op == "branch" and not body.get("name"))
+    if not reads:
+        _require_runner(principal, config)
+    store, box = _box(request, config, principal, box_id)
+    if not reads:
+        _audit(audit, f"git.{op}", principal, request_id, {"sandbox": box.id, "op": op,
+                                                           "url": str(body.get("url") or "")})
+    args = {k: v for k, v in body.items() if k != "op"}
+    try:
+        result = codegit.git(box, _perms(request), op, **args)
+    except cb.SandboxError as exc:
+        raise _refused(exc) from exc
+    return {**result, "sandbox": box.id, "request_id": request_id}
+
+
+@router.get("/sandbox/{box_id}/search")
+def code_sandbox_search(
+    box_id: str,
+    request: Request,
+    q: str = "",
+    glob: str = "",
+    regex: bool = False,
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    config: T1APIConfig = Depends(get_config),
+    request_id: str = Depends(get_request_id),
+) -> dict[str, Any]:
+    """Lines containing ``q`` in the sandbox's text files (``glob`` narrows them)."""
+    store, box = _box(request, config, principal, box_id)
+    try:
+        matches = store.search(box, q, glob=glob, regex=regex)
+    except cb.SandboxError as exc:
+        raise _refused(exc) from exc
+    return {"query": q, "matches": matches, "count": len(matches), "request_id": request_id}
+
+
+@router.post("/sandbox/{box_id}/import")
+def code_sandbox_import(
+    box_id: str,
+    request: Request,
+    body: dict[str, Any] = Body(...),
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    config: T1APIConfig = Depends(get_config),
+    request_id: str = Depends(get_request_id),
+) -> dict[str, Any]:
+    """Copy one of your HyperLink attachments (a dataset, a document) into the sandbox."""
+    from ..deps import get_attachment_store
+
+    _require_runner(principal, config)
+    store, box = _box(request, config, principal, box_id)
+    files = get_attachment_store(request)
+    file_id = str(body.get("file_id") or "")
+    record = files.get(file_id, owner=principal.owner)
+    target = str(body.get("path") or record.filename)
+    try:
+        written = store.write_bytes(box, target, files.read(file_id, owner=principal.owner), _perms(request))
+    except cb.SandboxError as exc:
+        raise _refused(exc) from exc
+    return {"path": target, "bytes": written.stat().st_size, "file_id": file_id, "request_id": request_id}
+
+
+def _meter_run(meter, principal: HyperLinkPrincipal, result, endpoint: str) -> None:
+    """Bill the run's wall-clock seconds to the caller's key (0.72.8)."""
+    meter.record_quietly(key_id=principal.owner, feature="code", endpoint=endpoint,
+                         unit="code_second", units=float(getattr(result, "elapsed", 0.0) or 0.0))
 
 
 __all__ = ["router"]

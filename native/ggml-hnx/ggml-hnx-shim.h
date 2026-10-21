@@ -35,6 +35,8 @@ void hnx_ggml_to_float_iq0_5 (const void *x, float *y, int64_t k);
 void hnx_ggml_to_float_iq0_25(const void *x, float *y, int64_t k);
 void hnx_ggml_to_float_int1  (const void *x, float *y, int64_t k);
 void hnx_ggml_to_float_hnx1375(const void *x, float *y, int64_t k);
+void hnx_ggml_to_float_hnx15125(const void *x, float *y, int64_t k);
+void hnx_ggml_to_float_hnxiq1s(const void *x, float *y, int64_t k);
 void hnx_ggml_to_float_int4  (const void *x, float *y, int64_t k);
 void hnx_ggml_to_float_fp2   (const void *x, float *y, int64_t k);
 void hnx_ggml_to_float_int8  (const void *x, float *y, int64_t k);
@@ -54,6 +56,10 @@ void hnx_ggml_vec_dot_iq0_25(int n, float *s, size_t bs, const void *x,
 void hnx_ggml_vec_dot_int1  (int n, float *s, size_t bs, const void *x,
                              size_t bx, const void *y, size_t by, int nrc);
 void hnx_ggml_vec_dot_hnx1375(int n, float *s, size_t bs, const void *x,
+                               size_t bx, const void *y, size_t by, int nrc);
+void hnx_ggml_vec_dot_hnx15125(int n, float *s, size_t bs, const void *x,
+                                size_t bx, const void *y, size_t by, int nrc);
+void hnx_ggml_vec_dot_hnxiq1s(int n, float *s, size_t bs, const void *x,
                                size_t bx, const void *y, size_t by, int nrc);
 void hnx_ggml_vec_dot_int4(int n, float *s, size_t bs, const void *x,
                             size_t bx, const void *y, size_t by, int nrc);

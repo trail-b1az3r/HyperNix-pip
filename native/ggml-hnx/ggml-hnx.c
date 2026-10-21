@@ -97,6 +97,8 @@ static const hnx_type_info HNX_TYPES[] = {
     { HNX_TYPE_IQ0_25, "IQ0.25_UXL", 16, 3, sizeof(hnx_block_iq0_25), 0.2500f,  0, 0 , NULL, 0 },
     { HNX_TYPE_INT1,   "INT1",        1, 1, sizeof(hnx_block_int1),   1.0625f,  0, 0 , NULL, 0 },
     { HNX_TYPE_1375,   "HNX_1375BIT", 1, 1, sizeof(hnx_block_1375),   1.3750f, 16, 5, NULL, 0 },
+    { HNX_TYPE_15125,  "HNX_15125BIT", 1, 1, sizeof(hnx_block_15125), 1.5000f, 16, 7, NULL, 0 },
+    { HNX_TYPE_IQ1S,   "HNX_IQ1S",    1, 1, sizeof(hnx_block_iq1s),   1.5625f, 32, 4, NULL, 0 },
     { HNX_TYPE_INT4,   "INT4",        1, 1, sizeof(hnx_block_int4),   4.0625f,  0, 0, HNX_LEVELS_INT4, 4 },
     { HNX_TYPE_FP2,    "FP2",         1, 1, sizeof(hnx_block_fp2),    2.0625f,  0, 0, HNX_LEVELS_FP2,  2 },
     { HNX_TYPE_INT8,   "INT8",        1, 1, sizeof(hnx_block_int8),   8.0625f,  0, 0, HNX_LEVELS_INT8, 8 },
@@ -117,6 +119,8 @@ _Static_assert(sizeof(hnx_block_iq0_5)  == 18, "IQ0.5 block must be 18 bytes");
 _Static_assert(sizeof(hnx_block_iq0_25) ==  8, "IQ0.25 block must be 8 bytes");
 _Static_assert(sizeof(hnx_block_int1)   == 34, "INT1 block must be 34 bytes");
 _Static_assert(sizeof(hnx_block_1375)   == 44, "HNX_1375BIT block must be 44 bytes");
+_Static_assert(sizeof(hnx_block_15125)  == 48, "HNX_15125BIT block must be 48 bytes");
+_Static_assert(sizeof(hnx_block_iq1s)   == 50, "HNX_IQ1S block must be 50 bytes");
 _Static_assert(sizeof(hnx_block_int4)   == 130, "INT4 block must be 130 bytes");
 _Static_assert(sizeof(hnx_block_fp2)    == 66, "FP2 block must be 66 bytes");
 _Static_assert(sizeof(hnx_block_int8)   == 258, "INT8 block must be 258 bytes");

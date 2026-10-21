@@ -34,7 +34,7 @@ import json
 import logging
 import os
 import threading
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from enum import StrEnum
 from pathlib import Path
 from typing import Any
@@ -224,9 +224,18 @@ class ModelPricing:
     input_price_per_1k: float = 0.0
     output_price_per_1k: float = 0.0
     currency: str = "USD"
+    #: Prices for what this model uses that is not tokens, per unit:
+    #: ``{"image": 0.002}``. A unit not named here falls back to the
+    #: server's ``T1_FEATURE_PRICES``, then to unpriced. (0.72.8)
+    unit_prices: dict[str, float] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
+        d = asdict(self)
+        # Left out when empty, so a registry written before 0.72.8 reads
+        # back exactly as it was written.
+        if not d["unit_prices"]:
+            del d["unit_prices"]
+        return d
 
     @classmethod
     def from_dict(cls, d: dict[str, Any] | None) -> ModelPricing:
@@ -235,6 +244,7 @@ class ModelPricing:
             input_price_per_1k=float(d.get("input_price_per_1k", 0.0)),
             output_price_per_1k=float(d.get("output_price_per_1k", 0.0)),
             currency=d.get("currency", "USD"),
+            unit_prices={str(k): float(v) for k, v in (d.get("unit_prices") or {}).items()},
         )
 
 

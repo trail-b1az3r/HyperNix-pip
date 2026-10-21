@@ -87,6 +87,8 @@ from ..schemas import (
     InferenceEmbeddingsRequest,
     InferenceEmbeddingsResponse,
     InferenceMessage,
+    InferenceRelayRequest,
+    InferenceRelayResponse,
     InferenceResponse,
     InferenceTokenCountRequest,
     InferenceTokenCountResponse,
@@ -356,7 +358,7 @@ def _complete(
     meter.record(
         key_id=ctx.key_id, model_id=model,
         input_tokens=input_tokens, output_tokens=output_tokens,
-        endpoint=endpoint,
+        endpoint=endpoint, feature="inference",
     )
     input_cost, output_cost, currency = costs.price_tokens(
         model, input_tokens, output_tokens
@@ -502,6 +504,128 @@ def inference_completions(
     )
 
 
+@router.post("/relay", response_model=InferenceRelayResponse)
+def inference_relay(
+    payload: InferenceRelayRequest,
+    ctx: AuthContext = Depends(get_auth_context),
+    config: T1APIConfig = Depends(get_config),
+    registry=Depends(get_registry),
+    meter=Depends(get_usage_meter),
+    engine=Depends(get_routing_engine),
+    keys=Depends(get_key_directory),
+    costs=Depends(get_cost_calculator),
+    request_id: str = Depends(get_request_id),
+    runner=Depends(get_runner),
+) -> InferenceRelayResponse:
+    """A document longer than the model's context, read in hops (0.72.8).
+
+    :mod:`hypernix.runtime.relay` cuts the document to fit the model's
+    context and reads it with several instances of the model, each hop
+    carrying notes to the next (``chain``), or digesting parts side by
+    side (``map``), then answers from the notes. When the runner serves
+    the model as a pool, the hops rotate through its instances;
+    otherwise each hop is a fresh call to the one backend, which is what
+    an "instance" of a context is.
+
+    Every gate of ``/inference/chat`` applies, sized by the largest
+    single call. Each hop is metered as it finishes, under the
+    ``relay`` feature, so a relay that fails part way has billed what
+    ran. The response prices the hops, the worst case planned before
+    they ran, and what one big read would have cost -- the relay's
+    overhead, in money. ``estimate_only`` returns the plan and prices
+    and runs nothing.
+    """
+    from ...runtime import relay as rl
+
+    if payload.mode not in rl.MODES:
+        raise T1APIError(T1ErrorCode.VALIDATION_ERROR,
+                         f"mode must be one of {', '.join(rl.MODES)}, not {payload.mode!r}")
+    entry = registry.require(payload.model)
+    context = payload.context_tokens or int(entry.context_limit)
+    pool_urls = _pool_urls(runner, payload.model)
+    wanted = payload.instances or max(1, len(pool_urls))
+    instances = max(1, min(wanted, max(1, int(config.relay_max_instances))))
+
+    def planned_for(model_id: str) -> rl.RelayPlan:
+        try:
+            return rl.plan(payload.document, payload.question, context_tokens=context,
+                           instances=instances, mode=payload.mode,
+                           notes_tokens=payload.notes_tokens, answer_tokens=payload.max_tokens)
+        except rl.ContextTooSmall as exc:
+            raise T1APIError(T1ErrorCode.VALIDATION_ERROR, str(exc),
+                             details={"model": model_id, "context_tokens": context}) from exc
+
+    planned = planned_for(payload.model)
+    model, substituted = _resolve(
+        ctx=ctx, keys=keys, engine=engine, registry=registry, meter=meter,
+        model_id=payload.model, input_tokens=planned.largest_call_tokens,
+        allow_fallback=payload.allow_fallback,
+    )
+    ic, oc, currency = costs.price_tokens(model, planned.input_tokens, planned.output_tokens)
+    dic, doc, _ = costs.price_tokens(model, planned.direct_input_tokens, planned.direct_output_tokens)
+    priced = {"estimated_cost": round(ic + oc, 8), "direct_cost": round(dic + doc, 8),
+              "currency": currency}
+    common = {"model": model, "requested_model": payload.model, "mode": payload.mode,
+              "instances": instances, "substituted": substituted, "request_id": request_id}
+    if payload.estimate_only:
+        return InferenceRelayResponse(**common, **priced, plan=planned.to_dict(), estimate_only=True)
+
+    dispatch = _select_backend(config, runner, model)
+    if dispatch.name == HYPERNIX and len(pool_urls) > 1:
+        clients = [LMStudioBridge(base_url=url, timeout=config.lmstudio_timeout_seconds)
+                   for url in pool_urls[:instances]]
+    else:
+        clients = [dispatch.client]
+
+    def instance(client: LMStudioBridge):
+        def call(messages: list[dict], max_tokens: int) -> rl.Reply:
+            envelope = _run_chat(bridge=client, model=model, messages=messages,
+                                 temperature=payload.temperature, max_tokens=max_tokens,
+                                 top_p=None, stop=None)
+            text, _ = _first_choice(envelope)
+            usage = envelope.get("usage") or {}
+            used_in = int(usage.get("prompt_tokens") or 0)
+            used_out = int(usage.get("completion_tokens") or 0)
+            if not used_in and not used_out:
+                used_in = _estimate_tokens("".join(str(m.get("content", "")) for m in messages))
+                used_out = _estimate_tokens(text)
+            return rl.Reply(text, used_in, used_out)
+        return call
+
+    def bill(hop: rl.Hop) -> None:
+        meter.record(key_id=ctx.key_id, model_id=model, input_tokens=hop.input_tokens,
+                     output_tokens=hop.output_tokens, endpoint="/inference/relay", feature="relay")
+
+    callables = [instance(clients[i % len(clients)]) for i in range(instances)]
+    relay = rl.Relay(callables, context_tokens=context, mode=payload.mode,
+                     notes_tokens=payload.notes_tokens, answer_tokens=payload.max_tokens,
+                     on_hop=bill)
+    result = relay.run(payload.document, payload.question)
+    in_cost, out_cost, currency = costs.price_tokens(model, result.input_tokens, result.output_tokens)
+    return InferenceRelayResponse(
+        **common, **priced,
+        content=result.answer,
+        plan=planned.to_dict(),
+        hops=[h.to_dict() for h in result.hops],
+        input_tokens=result.input_tokens,
+        output_tokens=result.output_tokens,
+        requests=result.requests,
+        cost=round(in_cost + out_cost, 8),
+        backend=dispatch.address,
+        backend_name=dispatch.name,
+    )
+
+
+def _pool_urls(runner: Any, model_id: str) -> list[str]:
+    """The runner's instances, when it is a pool serving *model_id*."""
+    if runner is None or _loaded_model(runner) != model_id:
+        return []
+    try:
+        return [str(url) for url in (getattr(runner, "base_urls", None) or [])]
+    except Exception:  # noqa: BLE001 -- a wedged pool is one backend, not none
+        return []
+
+
 @router.post("/chat/stream")
 def inference_chat_stream(
     payload: InferenceChatRequest,
@@ -575,7 +699,7 @@ def inference_chat_stream(
                     key_id=key_id, model_id=model,
                     input_tokens=estimated,
                     output_tokens=_estimate_tokens("".join(produced)),
-                    endpoint="/inference/chat/stream",
+                    endpoint="/inference/chat/stream", feature="inference",
                 )
             except Exception:  # pragma: no cover - metering must not break the stream
                 logger.exception("t1api.inference: could not record stream usage")
@@ -640,7 +764,7 @@ def inference_embeddings(
     meter.record(
         key_id=ctx.key_id, model_id=payload.model,
         input_tokens=input_tokens, output_tokens=0,
-        endpoint="/inference/embeddings",
+        endpoint="/inference/embeddings", feature="embeddings",
     )
     return InferenceEmbeddingsResponse(
         model=str(envelope.get("model") or payload.model),

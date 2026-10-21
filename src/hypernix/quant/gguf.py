@@ -144,6 +144,11 @@ class GGMLType(IntEnum):
     HNX_INT2 = 209
     HNX_INT3 = 210
     HNX_FP8 = 211
+    # 0.72.8: two more sign-plus-magnitude tiers. See subbit.PACKINGS.
+    # 224/225, not 212/213: ik_llama.cpp uses 202-233 for its repacked
+    # types (Q4_K_R4 is 212), and 224-228 are the free slots there.
+    HNX_15125 = 224
+    HNX_IQ1S = 225
 
 
 #: ``type -> (elements per block, bytes per block)``.
@@ -198,6 +203,11 @@ _BLOCK_SHAPE: dict[int, tuple[int, int]] = {
     # Every sign (32 B) + sixteen 5-bit sub-block magnitudes
     # (10 B) + the FP16 scale (2 B). 44 * 8 / 256 = 1.375 exactly.
     GGMLType.HNX_1375: (256, 44),
+    # Every sign + sixteen 7-bit magnitudes (14 B) + scale: 48 B, 1.5 bpw.
+    GGMLType.HNX_15125: (256, 48),
+    # Every sign + thirty-two 4-bit magnitudes (16 B) + scale: 50 B,
+    # 1.5625 bpw -- IQ1_S's rate.
+    GGMLType.HNX_IQ1S: (256, 50),
 }
 
 

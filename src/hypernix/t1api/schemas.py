@@ -638,6 +638,11 @@ class UsageHistoryItem(BaseModel):
     module_id: str
     user_id: str
     account_id: str
+    #: 0.72.8: what the event was for, and any use that is not tokens.
+    #: Empty/0 on events recorded before.
+    feature: str = ""
+    units: float = 0.0
+    unit: str = ""
     ts: float
 
 
@@ -648,6 +653,25 @@ class UsageHistoryResponse(BaseModel):
     until: float | None = None
     limit: int
     offset: int
+    request_id: str
+
+
+class UsageStatementResponse(BaseModel):
+    """``GET /usage/statement``: the itemised bill, ``t1.statement/2``."""
+
+    format: str
+    currency: str
+    since: float | None = None
+    until: float | None = None
+    generated_at: float
+    #: One entry per feature, each with its line items per model and unit.
+    features: list[dict[str, Any]]
+    total: float
+    requests: int
+    #: Lines counted at 0 because nothing prices them.
+    unpriced: list[dict[str, str]]
+    #: What each non-token unit is.
+    units: dict[str, str]
     request_id: str
 
 
@@ -1275,6 +1299,8 @@ class MessageEditRequest(BaseModel):
     #: question nobody asked, and that transcript is what gets sent as
     #: context on the next turn.
     truncate: bool = True
+    #: The edit, signed (see hypernix.hyperlink.signing), action "edit".
+    signature: dict[str, Any] | None = None
 
 
 class MessageEditResponse(BaseModel):
@@ -1286,9 +1312,37 @@ class MessageEditResponse(BaseModel):
     request_id: str
 
 
+class DatasetPick(BaseModel):
+    """Part of an attached dataset to give the model (0.72.8a3).
+
+    JSONL, JSON, Parquet, CSV/TSV, Arrow, text and Markdown. See
+    :mod:`hypernix.hyperlink.datasets`.
+    """
+
+    file_id: str
+    #: "0-20", "100-", "5", "-10" (the last 10). Empty: the first 20 rows,
+    #: or the whole file when it is small.
+    rows: str = ""
+    columns: list[str] = Field(default_factory=list)
+    #: Only rows (or lines) containing this; "re:<pattern>" for a regex. In a
+    #: Markdown file with no rows given, the section under the heading that matches.
+    query: str = ""
+    #: A random sample of this many rows instead of a range.
+    sample: int = Field(0, ge=0, le=2000)
+    seed: int = 0
+    #: How rows are written: auto, jsonl, table or text.
+    style: str = Field("auto", pattern="^(auto|jsonl|table|text)$")
+    max_chars: int = Field(12_000, ge=500, le=100_000)
+
+
 class HyperLinkChatRequest(BaseModel):
     content: str = ""
     attachment_ids: list[str] = Field(default_factory=list)
+    #: Parts of dataset files to put in front of the model with this message.
+    datasets: list[DatasetPick] = Field(default_factory=list)
+    #: A /code sandbox this conversation works in: the model gets tools to
+    #: read, write, search and run its files and use git there (0.72.8a3).
+    code_sandbox_id: str | None = None
     model_id: str | None = None
     backend: str | None = None          # "lmstudio" (default) | "registry"
     temperature: float | None = None
@@ -1300,6 +1354,39 @@ class HyperLinkChatRequest(BaseModel):
     #: last one (everything after it was removed), and sending its text
     #: again would put the same question in the thread twice.
     regenerate: bool = False
+    #: The prompt, signed when Send was pressed (hypernix.hyperlink.signing):
+    #: action "send", or "resend" for a regenerate. Required when the
+    #: server sets T1_HYPERLINK_REQUIRE_SIGNED=1.
+    signature: dict[str, Any] | None = None
+
+
+class HyperLinkPingRequest(BaseModel):
+    """``POST /hyperlink/ping``: sent when Send is pressed, answered
+    without a model. An empty body is not a ping."""
+
+    #: Unix time (seconds, fractions allowed) when Send was pressed.
+    sent_at: float
+    #: The chat (or code) session the prompt is for, if there is one yet.
+    chat_session_id: str = ""
+    #: Signed with action "ping"; the server session id may be empty on
+    #: the first ping, which is how the app learns it.
+    signature: dict[str, Any]
+
+
+class HyperLinkPingResponse(BaseModel):
+    pong: bool = True
+    #: This server process. Prompts are signed with it; it changes when
+    #: the server restarts, and then the app pings again.
+    server_session_id: str
+    #: Who the server takes the sender to be: what prompts are signed as.
+    signer: str
+    received_at: float
+    #: Seconds between Send being pressed and the ping arriving.
+    transit_seconds: float
+    #: How long the app should wait for a ping before saying the server
+    #: is not answering.
+    ping_timeout_seconds: float = 4.0
+    request_id: str = ""
 
 
 class HyperLinkChatResponse(BaseModel):
@@ -1687,6 +1774,15 @@ class GenerationListResponse(BaseModel):
     request_id: str
 
 
+class LoadedModelsResponse(BaseModel):
+    """``GET /hyperlink/models/loaded``: every model loaded now, on any
+    backend, and which one answers when nobody picks (0.72.8)."""
+
+    models: list[dict[str, Any]] = Field(default_factory=list)
+    default: str = ""
+    request_id: str = ""
+
+
 class BackendsResponse(BaseModel):
     """Every thing that could answer a message, and whether it can now.
 
@@ -1833,6 +1929,60 @@ class InferenceResponse(BaseModel):
     substituted: bool = False
     raw: dict[str, Any] = Field(default_factory=dict)
     request_id: str
+
+
+class InferenceRelayRequest(BaseModel):
+    """``POST /inference/relay``: a document longer than the model's
+    context, read in hops by small-context instances (0.72.8)."""
+
+    model: str
+    question: str = Field(min_length=1)
+    document: str = ""
+    #: ``chain`` (hops in series, notes carried) or ``map`` (parts
+    #: digested in parallel, then folded and answered).
+    mode: str = "chain"
+    #: Instances to rotate through. 0: every instance of the runner's
+    #: pool, or 1. Capped by ``T1_RELAY_MAX_INSTANCES``.
+    instances: int = Field(default=0, ge=0)
+    #: The context of one instance. Default: the registry's
+    #: ``context_limit`` for the model.
+    context_tokens: int | None = Field(default=None, ge=256)
+    #: How long the carried notes may grow. Default: a sixth of the context.
+    notes_tokens: int | None = Field(default=None, ge=32)
+    #: The answer's length.
+    max_tokens: int = Field(default=512, ge=1)
+    temperature: float | None = 0.2
+    allow_fallback: bool = False
+    #: Plan and price it, run nothing, record nothing.
+    estimate_only: bool = False
+
+
+class InferenceRelayResponse(BaseModel):
+    model: str
+    requested_model: str
+    #: Empty when ``estimate_only``.
+    content: str = ""
+    mode: str
+    instances: int
+    #: What the relay planned: parts, calls, worst-case tokens, and
+    #: ``overhead_factor`` -- relay tokens over one big read's.
+    plan: dict[str, Any]
+    #: Every call made, in the order it finished.
+    hops: list[dict[str, Any]] = Field(default_factory=list)
+    input_tokens: int = 0
+    output_tokens: int = 0
+    requests: int = 0
+    #: What the hops actually cost (0 when ``estimate_only``).
+    cost: float = 0.0
+    #: The worst case before it ran, and what one big read would cost.
+    estimated_cost: float = 0.0
+    direct_cost: float = 0.0
+    currency: str = "USD"
+    backend: str = ""
+    backend_name: str = ""
+    substituted: bool = False
+    estimate_only: bool = False
+    request_id: str = ""
 
 
 class InferenceEmbeddingsRequest(BaseModel):
@@ -2090,3 +2240,68 @@ class SearchResponse(BaseModel):
     capped: bool
     terms: list[str]
     request_id: str
+
+
+class HypercompressSizeResponse(BaseModel):
+    """``/chat/hypercompress/size``: how far a too-big system prompt is
+    squeezed for this owner. 1 is a third of the context, 2 a fifth."""
+
+    size: int = 1
+    share: str = "1/3"
+    changed: bool = False
+    request_id: str = ""
+
+
+class HypercompressRequest(BaseModel):
+    """Compress a system prompt by hand, to see what a turn would send."""
+
+    text: str = Field(..., min_length=1, max_length=200_000)
+    context_length: int = Field(..., ge=256, le=4_194_304)
+    #: 1 or 2; the owner's setting when left out.
+    size: int | None = None
+    #: The rest of the prompt (the conversation), in tokens. 0 compresses
+    #: whenever the text is over its share.
+    other_tokens: int = Field(0, ge=0)
+    #: Compress to the share even if the whole prompt would fit.
+    force: bool = False
+
+
+class HypercompressResponse(BaseModel):
+    text: str
+    applied: bool = False
+    size: int = 1
+    share: str = "1/3"
+    before_tokens: int = 0
+    after_tokens: int = 0
+    target_tokens: int = 0
+    request_id: str = ""
+
+
+class DocumentCreateRequest(BaseModel):
+    """``POST /hyperlink/files/document``: a document a model wrote, kept
+    as a file the person can download from the app (0.72.8)."""
+
+    title: str = Field("", max_length=200)
+    #: The file name; ``.md`` is added for Markdown when it has none.
+    filename: str = Field("", max_length=200)
+    content: str = Field(..., min_length=1, max_length=2_000_000)
+    format: str = Field("markdown", pattern="^(markdown|text)$")
+    session_id: str = ""
+
+
+class DocumentResponse(BaseModel):
+    file: AttachmentSummary
+    #: Where the app downloads it, with the person's own credential.
+    download_path: str
+    request_id: str
+
+
+class ChatRingResponse(BaseModel):
+    """``GET /hyperlink/sessions/{id}/ring``: the two rings beside the
+    chat box (0.72.8). ``inner`` is the context; ``outer`` the person's
+    usage allowance, or GPU or CPU load when there is no allowance."""
+
+    session_id: str
+    inner: dict[str, Any]
+    outer: dict[str, Any]
+    request_id: str = ""

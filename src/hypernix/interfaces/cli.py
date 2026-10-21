@@ -16,8 +16,10 @@ from the library and returns a non-zero exit code on failure.
     upload              push files to a HuggingFace repo
     doctor              environment diagnostic
     path                put hypernix's console scripts on your PATH
-    fetch-llama-quantize  pre-seed the llama-quantize cache
+    fetch-llama-quantize  pre-seed the llama-quantize cache (fllq)
     train               training utilities (scratch / expand / loop)
+    auto                download, convert if needed, quantise (0.72.8a3)
+    extra               the commands kept out of the main menu
 
 Back-compat: invoking ``hypernix`` with flags and no subcommand runs
 ``hypernix all`` with those flags, so existing scripts keep working.
@@ -104,6 +106,8 @@ _SUBCOMMANDS = {
     "gather",
     "fusebox",
     "fuse-box",
+    # 0.72.8: explode, measure, reap and sow a model
+    "c4",
     "runtime",
     # v0.71.0
     "gkey",
@@ -114,6 +118,14 @@ _SUBCOMMANDS = {
     "fiz",
     # v0.71.5rc2
     "path",
+    # 0.72.8a3
+    "auto",
+    "extra",
+    "fllq",
+    "tvtopmax",
+    "hypedpro",
+    "image",
+    "claude",
 }
 
 
@@ -148,6 +160,11 @@ _COMMAND_ALIASES: dict[str, str] = {
     "check": "doctor",
     "dashboard": "cctvtop",
     "monitor": "cctvtop",
+    "tvtop-max": "tvtopmax",
+    "hyped-pro": "hypedpro",
+    "fetch-llama-quantise": "fetch-llama-quantize",
+    "fetch-llama-quantisize": "fetch-llama-quantize",
+    "claude-code": "claude",
 }
 
 
@@ -198,134 +215,115 @@ def _unknown_command(typed: str) -> int:
     return 2
 
 
-def _print_usage() -> None:
+#: The main menu, in the order `hypernix --help` lists it.
+_MAIN_MENU: tuple[tuple[str, str], ...] = (
+    ("auto", "download a repo, convert it if it is not a GGUF, quantise it: hnx auto REPO -q Q4_K_M"),
+    ("all", "download -> convert -> \\[quantize] (classic pipeline)"),
+    ("download", "fetch a HuggingFace model snapshot, one file, or owner/repo:QUANT"),
+    ("convert", "produce fp32 / fp16 GGUF from a local snapshot; -P -Q TARGET quantises too"),
+    ("quantize", "run llama-quantize on an fp16/fp32 GGUF"),
+    ("verify", "read-check a GGUF and print its headers"),
+    ("info", "show package + GGUF header info"),
+    ("upload", "push files to a HuggingFace repo"),
+    ("doctor", "environment diagnostic (pass --fix to install missing deps)"),
+    ("fetch-llama-quantize", "pre-seed the llama-quantize cache (shortcut: fllq)"),
+    ("train", "init / expand / run training utilities"),
+    ("chat", "interactive chat REPL with any HyperNix-family model"),
+    ("claude", "run Claude Code on a model this machine's T1 server is serving"),
+    ("brew", "custom architecture builder & model training suite (brewer)"),
+    ("image", "hnx0xv2image: an image-to-text model fused onto LFM2.5, Qwen3.5 or HyperNix"),
+    ("cli", "Interactive TUI/CLI menu for all operations"),
+    ("stml", "VRAM trained context length calculator"),
+    ("fizzle", "Fuzed Architecture module: fuse models and LoRAs (CLI: fiz)"),
+    ("tvtopmax", "tvtop-max: the run's dashboard on OpenTUI, with its modules, model and logs"),
+    ("hypedpro", "hyped-pro: the OpenTUI chat client with tools"),
+    ("net", "DEPRECATED: Tailscale and peers are now in the T1 API (/net)"),
+    ("vera", "Vera assistant CLI"),
+    ("dilute", "Best-of-n sampling: many answers per prompt, keep the good ones"),
+    ("errors", "Look up an error code (L#-NNNNN.kS)"),
+    ("elements", "Addons: hydrogen, carbon, magnesium, and your own"),
+    ("gather", "Crawl a site into a corpus (robots-aware)"),
+    ("fusebox", "GPU thermal governor: pace a run, trip on heat, underclock"),
+    ("c4", "Explode a model; measure, reap and sow its layers and weights"),
+    ("runtime", "Use the HyperNix llama.cpp from LM Studio and other apps"),
+    ("config", "Configuration management"),
+    ("gkey", "API key & access management (Gatekeeper + Keymaster)"),
+    ("devices", "list the GPUs/accelerators this machine has, and what they support"),
+    ("wakeup", "wake-word detection: train a trigger phrase, then listen for it"),
+    ("hyprslug-headers", "self-describing GGUF headers + the OpenAI-compatible sub-bit server"),
+    ("extra", "more commands: neuron, pipeline, assistant, generate, wiki, prot, oven, ..."),
+)
+
+#: `hypernix extra`: commands that still work, kept out of the main menu.
+_EXTRA_MENU: tuple[tuple[str, str], ...] = (
+    ("neuron", "Train small networks that act: RL, imitation, supervised"),
+    ("pipeline", "Speech in, a model's answer, speech out (ASR -> LLM -> TTS)"),
+    ("assistant", "Local AI assistant with voice commands"),
+    ("generate", "sample text from a local HyperNix snapshot"),
+    ("wiki", "HyperNix documentation wiki CLI (every module and package)"),
+    ("prot", "Blank the screen until a wake word, without locking it (protect)"),
+    ("oven", "code-generation wrapper (preheat + complete/fill)"),
+    ("path", "put hypernix's console scripts on your PATH"),
+    ("map", "Steampunk schematic TUI: dials/pipes/steam for model + training state"),
+    # `hypernix tvtop` is the classic dashboard, not an alias of cctvtop
+    # (the standalone `tvtop` console script is cctvtop; see wiki/Dashboards.md).
+    ("tvtop", "the classic training dashboard (the `tvtop` command runs cctvtop)"),
+    ("cctvtop", "Live training dashboard TUI with hardware metrics"),
+    ("camo", "RLHF/RLAF Camouflage alignment"),
+    ("websearch", "web search without an API (Bing/DuckDuckGo), real result links"),
+    ("scavenger", "search + size Hugging Face datasets under storage/quality budgets"),
+)
+
+_ALSO_ACCEPTED = "fllq (fetch-llama-quantize) · fiz (fizzle) · camouflage (camo) · protect (prot) · fuse-box (fusebox)"
+
+
+def _print_menu(title_text: str, rows: tuple[tuple[str, str], ...], footer: str) -> None:
     try:
         from rich.console import Console
         from rich.panel import Panel
         from rich.table import Table
         from rich.text import Text
-        
-        console = Console()
-        
-        title = Text("HyperNix", style="bold cyan")
-        title.append(" — download, convert, quantize, train HyperNix models", style="dim")
-        
-        table = Table(show_header=True, header_style="bold magenta", border_style="cyan")
-        table.add_column("Command")
-        table.add_column("Description")
-        
-        table.add_row("[green]all[/]", "download -> convert -> \\[quantize] (classic pipeline)")
-        table.add_row("[green]download[/]", "fetch a HuggingFace model snapshot to disk")
-        table.add_row("[green]convert[/]", "produce fp32 / fp16 GGUF from a local snapshot; -P -Q TARGET quantises too")
-        table.add_row("[green]quantize[/]", "run llama-quantize on an fp16/fp32 GGUF")
-        table.add_row("[green]verify[/]", "read-check a GGUF and print its headers")
-        table.add_row("[green]info[/]", "show package + GGUF header info")
-        table.add_row("[green]upload[/]", "push files to a HuggingFace repo")
-        table.add_row("[green]doctor[/]", "environment diagnostic (pass --fix to install missing deps)")
-        table.add_row("[green]path[/]", "put hypernix's console scripts on your PATH")
-        table.add_row("[green]fetch-llama-quantize[/]", "pre-seed the llama-quantize cache")
-        table.add_row("[green]train[/]", "init / expand / run training utilities")
-        table.add_row("[green]generate[/]", "sample text from a local HyperNix snapshot")
-        table.add_row("[green]oven[/]", "code-generation wrapper (preheat + complete/fill)")
-        table.add_row("[green]chat[/]", "interactive chat REPL with any HyperNix-family model")
-        table.add_row("[green]brew[/]", "custom architecture builder & model training suite (brewer)")
-        table.add_row("[green]pipeline[/]", "ASR -> LLM -> TTS pipeline")
-        table.add_row("[green]assistant[/]", "Linux local AI assistant with voice commands")
-        table.add_row("[green]cli[/]", "Interactive TUI/CLI menu for all operations")
-        table.add_row("[green]stml[/]", "VRAM trained context length calculator")
-        table.add_row("[green]fizzle[/]", "Fuzed Architecture module: fuse models and LoRAs (CLI: fiz)")
-        table.add_row("[green]cctvtop[/]", "Live training dashboard TUI")
-        table.add_row("[green]camo[/]", "RLHF/RLAF Camouflage scaffolding module")
-        table.add_row("[green]net[/]", "Distributed network operations & Tailscale integration")
-        table.add_row("[green]prot[/]", "Hardware health and monitor protection module")
-        table.add_row("[green]wiki[/]", "HyperNix documentation wiki CLI")
-        table.add_row("[green]vera[/]", "Vera assistant CLI")
-        table.add_row("[green]neuron[/]", "Train small networks that act: RL, imitation, supervised")
-        table.add_row("[green]dilute[/]", "Best-of-n sampling: many answers per prompt, keep the good ones")
-        table.add_row("[green]errors[/]", "Look up an error code (L#-NNNNN.kS)")
-        table.add_row("[green]elements[/]", "Addons: hydrogen, carbon, magnesium, and your own")
-        table.add_row("[green]scavenger[/]", "Scavenger tools")
-        table.add_row("[green]gather[/]", "Crawl a site into a corpus (robots-aware)")
-        table.add_row("[green]fusebox[/]", "GPU thermal governor: pace a run, trip on heat, underclock")
-        table.add_row("[green]runtime[/]", "Use the HyperNix llama.cpp from LM Studio and other apps")
-        table.add_row("[green]config[/]", "Configuration management")
-        table.add_row("[green]gkey[/]", "API key & access management (Gatekeeper + Keymaster)")
-        table.add_row("[green]map[/]", "Steampunk schematic TUI: dials/pipes/steam for model + training state")
-        # These four dispatch and always have; they were simply never
-        # added to the menu, so `hypernix --help` was not a list of what
-        # hypernix can do and there was no way to find them at all.
-        # `hypernix tvtop` is the classic dashboard, not an alias of
-        # cctvtop -- the help used to list it as one. (The standalone
-        # `tvtop` console script is cctvtop; see wiki/Dashboards.md.)
-        table.add_row("[green]tvtop[/]", "the classic training dashboard (the `tvtop` command runs cctvtop)")
-        table.add_row("[green]devices[/]", "list the GPUs/accelerators this machine has, and what they support")
-        table.add_row("[green]wakeup[/]", "wake-word detection: train a trigger phrase, then listen for it")
-        table.add_row("[green]websearch[/]", "web search backend used by the chat and assistant surfaces")
-        table.add_row("[green]hyprslug-headers[/]", "self-describing GGUF headers + the OpenAI-compatible sub-bit server")
-        
-        shortcuts = Text("Shortcuts:\n", style="bold yellow")
-        shortcuts.append("  --auto-oven            download the default snapshot and run code completion\n", style="white")
-        shortcuts.append("                         (equivalent to `hypernix oven --auto ...`).\n", style="dim")
-        shortcuts.append("\nAlso accepted: ", style="bold yellow")
-        shortcuts.append(
-            "fiz (fizzle) · camouflage (camo) · protect (prot) · fuse-box (fusebox)\n",
-            style="dim",
-        )
-        
-        help_text = Text("\nRun `hypernix <subcommand> --help` for per-command flags.\nRun `hypernix all --help` for the classic pipeline flags.", style="italic dim")
-        
-        console.print(Panel.fit(title))
-        console.print(table)
-        console.print(shortcuts)
-        console.print(help_text)
     except ImportError:
-        print(
-            "hypernix — download, convert, quantize, train HyperNix models\n\n"
-            "usage: hypernix <subcommand> [options]\n\n"
-            "Subcommands:\n"
-            "  all                    download -> convert -> [quantize] (the classic pipeline)\n"
-            "  download               fetch a HuggingFace model snapshot to disk\n"
-            "  convert                produce fp32 / fp16 GGUF; -P -Q TARGET also quantises\n"
-            "  quantize               run llama-quantize on an fp16/fp32 GGUF\n"
-            "  verify                 read-check a GGUF and print its headers\n"
-            "  info                   show package + GGUF header info\n"
-            "  upload                 push files to a HuggingFace repo\n"
-            "  doctor                 environment diagnostic (pass --fix to install missing deps)\n"
-            "  path                   put hypernix's console scripts on your PATH\n"
-            "  fetch-llama-quantize   pre-seed the llama-quantize cache\n"
-            "  train                  init / expand / run training utilities\n"
-            "  generate               sample text from a local HyperNix snapshot\n"
-            "  oven                   code-generation wrapper (preheat + complete/fill)\n"
-            "  chat                   interactive chat REPL with any HyperNix-family model\n"
-            "  brew                   custom architecture builder & training suite\n"
-            "  pipeline               ASR -> LLM -> TTS pipeline (speech-to-speech or speech-to-text-to-speech)\n"
-            "  assistant              Linux local AI assistant with voice commands (ASR + LLM + TTS)\n"
-            "  cli                    Interactive TUI/CLI menu for all HyperNix operations\n"
-            "  stml                   VRAM trained context length calculator\n"
-            "  fizzle                 Fuzed Architecture module: fuse models and LoRAs\n"
-            "  cctvtop                Live training dashboard TUI\n"
-            "  camo                   RLHF/RLAF Camouflage scaffolding\n"
-            "  net                    Distributed network & Tailscale integration\n"
-            "  prot                   Hardware health & monitor protection\n"
-            "  wiki                   HyperNix documentation wiki CLI\n"
-            "  vera                   Vera assistant CLI\n"
-            "  neuron                 Train small networks that act (RL, imitation)\n"
-            "  dilute                 Best-of-n sampling: keep the best answer of several\n"
-            "  errors                 Look up an error code (L#-NNNNN.kS)\n"
-            "  elements               Addons: hydrogen, carbon, magnesium, and your own\n"
-            "  scavenger              Scavenger tools\n"
-            "  gather                 crawl a site into a corpus (robots-aware)\n"
-            "  fusebox                GPU thermal governor for a training run\n"
-            "  runtime                use the HyperNix llama.cpp from other apps\n"
-            "  config                 Configuration management\n"
-            "  gkey                   API key & access management (Gatekeeper + Keymaster)\n"
-            "  map                    Steampunk schematic TUI: dials/pipes/steam for model + training state\n\n"
-            "Shortcuts:\n"
-            "  --auto-oven            download the default snapshot and run code completion\n"
-            "                         (equivalent to `hypernix oven --auto ...`).\n\n"
-            "Run `hypernix <subcommand> --help` for per-command flags.\n"
-            "Run `hypernix all --help` for the classic pipeline flags.\n"
-        )
+        print(f"{title_text}\n\nusage: hypernix <subcommand> [options]\n\nSubcommands:")
+        for name, what in rows:
+            print(f"  {name:<22} {what.replace(chr(92), '')}")
+        print(f"\n{footer}")
+        return
+    console = Console()
+    title = Text("HyperNix", style="bold cyan")
+    title.append(f" — {title_text}", style="dim")
+    table = Table(show_header=True, header_style="bold magenta", border_style="cyan")
+    table.add_column("Command")
+    table.add_column("Description")
+    for name, what in rows:
+        table.add_row(f"[green]{name}[/]", what)
+    console.print(Panel.fit(title))
+    console.print(table)
+    console.print(Text(footer, style="dim"))
+
+
+def _print_usage() -> None:
+    _print_menu(
+        "download, convert, quantize, train HyperNix models",
+        _MAIN_MENU,
+        "Shortcuts:\n"
+        "  --auto-oven            download the default snapshot and run code completion\n"
+        "                         (equivalent to `hypernix oven --auto ...`).\n"
+        f"\nAlso accepted: {_ALSO_ACCEPTED}\n"
+        "\nRun `hypernix extra` for more commands (neuron, pipeline, assistant, generate, wiki,\n"
+        "prot, oven, path, map, tvtop, cctvtop, camo, websearch, scavenger).\n"
+        "Run `hypernix <subcommand> --help` for per-command flags.\n"
+        "Run `hypernix all --help` for the classic pipeline flags.",
+    )
+
+
+def _print_extra() -> None:
+    _print_menu(
+        "more commands",
+        _EXTRA_MENU,
+        "These work exactly as before; they are listed here to keep `hypernix --help` short.\n"
+        "Run `hypernix <subcommand> --help` for per-command flags.",
+    )
 
 
 def _canonical(quant: str) -> str:
@@ -480,13 +478,33 @@ def _run_all(raw: list[str]) -> int:
 # ---------------------------------------------------------------------------
 
 def _run_download(raw: list[str]) -> int:
-    from hypernix.models.download import download_model
+    """``hnx download [SOURCE] [-o OUT]``.
+
+    SOURCE is a repo id, a short name, a link to a repo, or a link to one
+    file in it (0.72.8); ``--repo-id`` still works and is now optional.
+    """
+    from hypernix.models.hflinks import LinkError, parse_source, pick_gguf
     from hypernix.timing.spinner import Spinner
 
-    p = argparse.ArgumentParser(prog="hypernix download")
-    p.add_argument("--repo-id", default="ray0rf1re/hyper-nix.1")
+    p = argparse.ArgumentParser(
+        prog="hypernix download",
+        description="Download a model: a repo, a link to one, or a link to a single file.",
+        epilog="examples:\n"
+               "  hnx download ray0rf1re/hyper-nix.1\n"
+               "  hnx download https://huggingface.co/owner/repo -o ./repo\n"
+               "  hnx download https://huggingface.co/owner/repo/blob/main/m-Q4_K_M.gguf -o m.gguf\n"
+               "  hnx download owner/repo-GGUF -f m-Q8_0.gguf",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    p.add_argument("source", nargs="?", default=None,
+                   help="Repo id, short name, https://huggingface.co/... link, or a link to a .gguf")
+    p.add_argument("--repo-id", default=None, help="The same as SOURCE (kept for scripts)")
+    p.add_argument("-f", "--file", default=None,
+                   help="One file from the repo instead of the whole model, e.g. a .gguf")
+    p.add_argument("-o", "--output", default=None,
+                   help="Where it goes: a folder, or for one file a file name")
     p.add_argument("--revision", default=None)
-    p.add_argument("--local-dir", default=None)
+    p.add_argument("--local-dir", default=None, help="Same as -o for a whole repo")
     p.add_argument("--cache-dir", default=None)
     p.add_argument("--token", default=None)
     p.add_argument("--quiet", action="store_true")
@@ -495,14 +513,129 @@ def _run_download(raw: list[str]) -> int:
         help="Skip the post-download sanity check.",
     )
     ns = p.parse_args(raw)
-    with Spinner(f"Downloading {ns.repo_id}", style="arc"):
-        path = download_model(
-            repo_id=ns.repo_id, revision=ns.revision,
-            local_dir=ns.local_dir, cache_dir=ns.cache_dir, token=ns.token,
-            quiet=ns.quiet, verify=ns.verify,
-        )
+    text = ns.source or ns.repo_id or "ray0rf1re/hyper-nix.1"
+    try:
+        source = parse_source(text)
+    except LinkError as exc:
+        print(f"hypernix download: {exc}", file=sys.stderr)
+        return 2
+    revision = ns.revision or source.revision
+    filename = ns.file or source.filename
+
+    if source.quant and not filename:
+        from hypernix.models.hflinks import pick_gguf_files
+
+        files = _repo_files(source.repo_id, revision, ns.token)
+        chosen = pick_gguf_files(files, source.quant)
+        if not chosen:
+            ggufs = sorted(f for f in files if f.lower().endswith(".gguf"))
+            print(f"hypernix download: {source.repo_id} has no single {source.quant} GGUF"
+                  + ("; it has:" if ggufs else " (or the Hub could not be asked)."), file=sys.stderr)
+            for name in ggufs:
+                print(f"  {name}", file=sys.stderr)
+            return 2
+        paths = []
+        for name in chosen:
+            with Spinner(f"Downloading {name} from {source.repo_id}", style="arc"):
+                try:
+                    paths.append(_download_file(source.repo_id, name, revision=revision,
+                                                output=ns.output or ns.local_dir, token=ns.token,
+                                                cache_dir=ns.cache_dir))
+                except Exception as exc:  # noqa: BLE001 - shown, not a traceback
+                    from hypernix.models.download import explain_hub_error
+
+                    print(f"hypernix download: {explain_hub_error(exc, source.repo_id) or exc}",
+                          file=sys.stderr)
+                    return 1
+        print(paths[0])
+        return 0
+
+    if not filename and "/" in source.repo_id:
+        # A repo of GGUFs has no config.json: fetching it as a model
+        # finds "nothing to download". Take its one GGUF instead.
+        files = _repo_files(source.repo_id, revision, ns.token)
+        if files and not any(f.endswith((".safetensors", ".bin", ".pt")) for f in files):
+            filename = pick_gguf(files) or ""
+            if not filename and any(f.lower().endswith(".gguf") for f in files):
+                print(f"hypernix download: {source.repo_id} has several GGUF files; pick one with -f:",
+                      file=sys.stderr)
+                for name in sorted(f for f in files if f.lower().endswith(".gguf")):
+                    print(f"  {name}", file=sys.stderr)
+                return 2
+
+    if filename:
+        with Spinner(f"Downloading {filename} from {source.repo_id}", style="arc"):
+            try:
+                path = _download_file(source.repo_id, filename, revision=revision,
+                                      output=ns.output or ns.local_dir, token=ns.token,
+                                      cache_dir=ns.cache_dir)
+            except Exception as exc:  # noqa: BLE001 - shown, not a traceback
+                from hypernix.models.download import explain_hub_error
+
+                print(f"hypernix download: {explain_hub_error(exc, source.repo_id) or exc}", file=sys.stderr)
+                return 1
+        print(path)
+        return 0
+
+    from hypernix.models.download import DownloadError, download_model, explain_hub_error
+
+    try:
+        with Spinner(f"Downloading {source.repo_id}", style="arc"):
+            path = download_model(
+                repo_id=source.repo_id, revision=revision,
+                local_dir=ns.output or ns.local_dir, cache_dir=ns.cache_dir, token=ns.token,
+                quiet=ns.quiet, verify=ns.verify,
+            )
+    except (DownloadError, FileNotFoundError) as exc:
+        print(f"hypernix download: {exc}", file=sys.stderr)
+        return 1
     print(path)
     return 0
+
+
+def _repo_files(repo_id: str, revision: str | None, token: str | None) -> list[str]:
+    """The repo's file names, or [] when the Hub cannot be asked."""
+    try:
+        from huggingface_hub import HfApi
+
+        return list(HfApi().list_repo_files(repo_id, revision=revision, token=token))
+    except Exception:  # noqa: BLE001 - offline: fall back to a model download
+        return []
+
+
+def _download_file(repo_id: str, filename: str, *, revision: str | None, output: str | None,
+                   token: str | None, cache_dir: str | None) -> Path:
+    """One file from a repo, to *output* (a folder, or a file name)."""
+    import shutil
+
+    from huggingface_hub import hf_hub_download
+
+    if output and not output.endswith(("/", "\\")) and Path(output).suffix and not Path(output).is_dir():
+        target = Path(output).expanduser().resolve()
+        folder = target.parent
+    else:
+        if output:
+            folder = Path(output).expanduser().resolve()
+        else:
+            try:
+                from hypernix.system.config import get_models_dir
+
+                folder = get_models_dir() / repo_id.split("/")[-1]
+            except Exception:  # noqa: BLE001
+                folder = Path.home() / ".hypernix" / "models" / repo_id.split("/")[-1]
+        target = folder / Path(filename).name
+    folder.mkdir(parents=True, exist_ok=True)
+    fetched = Path(hf_hub_download(repo_id=repo_id, filename=filename, revision=revision,
+                                   local_dir=str(folder), token=token, cache_dir=cache_dir))
+    if fetched.resolve() != target:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(fetched), str(target))
+        # hf_hub_download mirrors the repo's folders; drop the empty ones.
+        parent = fetched.parent
+        while parent != folder and parent.is_dir() and not any(parent.iterdir()):
+            parent.rmdir()
+            parent = parent.parent
+    return target
 
 
 def _run_convert(raw: list[str]) -> int:
@@ -516,6 +649,7 @@ def _run_convert(raw: list[str]) -> int:
         epilog="examples:\n"
                "  hypernix convert --model-dir ./snap --output snap.f16.gguf\n"
                "  hypernix convert ./snap -P -Q Q4_K_M\n"
+               "  hnx convert ./snap -q -p              (Q4_K_M)\n"
                "  hnx convert ./snap/model.safetensors -P -Q q6h4 -o snap.q6h4.gguf\n"
                "  hnx convert ./brewer_models/mine -P -Q q6h",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -525,14 +659,15 @@ def _run_convert(raw: list[str]) -> int:
                         "(same as --model-dir)")
     p.add_argument("--model-dir", default=None)
     p.add_argument("-o", "--output", default=None)
-    p.add_argument("-P", "--pipeline", action="store_true",
+    p.add_argument("-P", "-p", "--pipeline", action="store_true",
                    help="If the source is safetensors, convert it, then quantise "
                         "the result with hyprslug to the -Q target. A Brewer "
                         "model or a GGUF is quantised as it is.")
-    p.add_argument("-Q", "--quant", default=None, metavar="TARGET",
+    p.add_argument("-Q", "-q", "--quant", nargs="?", const="Q4_K_M", default=None, metavar="TARGET",
                    help="hyprslug target for -P: any llama.cpp type or mix "
                         "(Q4_K_M, Q8_0...), a HyperNix tier (INT3, FP8, "
-                        "IQ0.5...), or a hybrid (q6h, q6h4, q6h2). Implies -P.")
+                        "IQ0.5...), or a hybrid (q6h, q6h4, q6h2, hnx_q6h1, "
+                        "hnx_q6h1m). Implies -P. Alone, Q4_K_M.")
     p.add_argument("--keep-intermediate", action="store_true",
                    help="With -P, keep the F16 GGUF beside the output")
     p.add_argument("--imatrix", default=None, help="With -P, an importance matrix")
@@ -542,6 +677,9 @@ def _run_convert(raw: list[str]) -> int:
     p.add_argument("--n-head", type=int, default=None)
     p.add_argument("--context-length", type=int, default=None)
     ns = p.parse_args(raw)
+    if ns.quant and not (ns.source or ns.model_dir) and Path(ns.quant).expanduser().exists():
+        # `hnx convert -q ./model -p`: -q took the model as its target.
+        ns.source, ns.quant = ns.quant, "Q4_K_M"
     source = ns.source or ns.model_dir
     if not source:
         p.error("give a model: hypernix convert MODEL [-P -Q TARGET], or --model-dir")
@@ -578,6 +716,7 @@ def _note_architecture(path) -> None:
 
 def _run_convert_pipeline(ns: argparse.Namespace, source: str) -> int:
     """``convert -P``: safetensors -> GGUF -> hyprslug."""
+    from hypernix.models.brewer_gguf import GGUFExportError
     from hypernix.quant.convertq import ConvertQuantizeError, convert_and_quantize, source_kind
     from hypernix.quant.hyprslug import HyprslugError
     from hypernix.timing.spinner import Spinner
@@ -587,16 +726,23 @@ def _run_convert_pipeline(ns: argparse.Namespace, source: str) -> int:
               file=sys.stderr)
         return 2
     kind = source_kind(source)
-    step = {"safetensors": "Converting and quantising", "brewer": "Exporting and quantising",
-            "gguf": "Quantising"}.get(kind, "Quantising")
+    steps = 1 if kind == "gguf" else 2
+
+    def on_stage(name: str, what: str) -> None:
+        number = 1 if name == "convert" or steps == 1 else 2
+        verb = "converting" if name == "convert" else "quantising to"
+        print(f"[{number}/{steps}] {verb} {what}", file=sys.stderr, flush=True)
+
     try:
-        with Spinner(f"{step} to {ns.quant}", style="grow"):
+        with Spinner(f"{'Quantising' if steps == 1 else 'Converting, then quantising'} to {ns.quant}",
+                     style="grow"):
             result = convert_and_quantize(
                 source, ns.quant, ns.output, dtype=ns.dtype, arch_name=ns.arch,
                 name=None if ns.name == "HyperNix" else ns.name,
                 keep_intermediate=ns.keep_intermediate, imatrix=ns.imatrix,
+                on_stage=on_stage,
             )
-    except (ConvertQuantizeError, HyprslugError, FileNotFoundError) as exc:
+    except (ConvertQuantizeError, HyprslugError, GGUFExportError, FileNotFoundError) as exc:
         print(f"hypernix convert: {exc}", file=sys.stderr)
         return 1
     print(result.report.describe())
@@ -1308,6 +1454,10 @@ def _dispatch(cmd: str, rest: list[str]) -> int:
         from hypernix.data.gather_cli import main as _gather_main
 
         return _gather_main(rest)
+    if cmd == "c4":
+        from hypernix.c4.cli import cli_main as _c4_main
+
+        return _c4_main(rest)
     if cmd in ("fusebox", "fuse-box"):
         from hypernix.system.fusebox_cli import main as _fusebox_main
 
@@ -1332,8 +1482,31 @@ def _dispatch(cmd: str, rest: list[str]) -> int:
     if cmd == "path":
         from hypernix.system.pathfix import cli_main as path_main
         return path_main(rest)
-    if cmd == "fetch-llama-quantize":
+    if cmd in ("fetch-llama-quantize", "fllq"):
         return _run_fetch_llama_quantize(rest)
+    if cmd == "auto":
+        from hypernix.quant.auto import cli_main as _auto_main
+
+        return _auto_main(rest)
+    if cmd == "extra":
+        _print_extra()
+        return 0
+    if cmd == "tvtopmax":
+        from hypernix.monitoring.tvtop_max import cli_main as _tvtop_max_main
+
+        return _tvtop_max_main(rest)
+    if cmd == "hypedpro":
+        from hypernix.interfaces.hyped_pro_otui import cli_main as _hyped_pro_main
+
+        return _hyped_pro_main(rest)
+    if cmd == "image":
+        from hypernix.models.hnx0xv2image_cli import cli_main as _image_main
+
+        return _image_main(rest)
+    if cmd == "claude":
+        from hypernix.t1api.claudecode import cli_main as _claude_main
+
+        return _claude_main(rest)
     if cmd == "devices":
         return _run_devices(rest)
     if cmd == "hyprslug-headers":
@@ -1548,120 +1721,88 @@ def _run_cli(raw: list[str]) -> int:
     return interactive_cli(use_rich=not ns.simple)
 
 
+#: Short names for the pipeline's speech models; anything else is a Hub id.
+_PIPELINE_ASR = {"nano-whisper": "openai/whisper-tiny", "whisper-tiny": "openai/whisper-tiny",
+                 "whisper-base": "openai/whisper-base", "whisper-small": "openai/whisper-small"}
+_PIPELINE_TTS = {"nano-tacotron": "facebook/mms-tts-eng", "mms": "facebook/mms-tts-eng",
+                 "mms-tts-eng": "facebook/mms-tts-eng"}
+
+
 def _run_pipeline(raw: list[str]) -> int:
-    """`hypernix pipeline` — Run ASR → LLM → TTS pipeline with interactive prompts."""
+    """`hypernix pipeline` — speech in, a real model's answer, speech out.
+
+    It used to answer every recording with "this is a simulated
+    response" and ignore --llm, --asr and --tts. The model is now the
+    one --llm names, run through the same dispatch as `hyped` and
+    `hypernix assistant`.
+    """
+    from hypernix.interfaces import hyped_pro_core as core
+    from hypernix.interfaces.assistant import ChatLLM, _default_model_short
     from hypernix.models.workshop import ASRConfig, ASREngine, ASRToLLMToTTS, TTSConfig, TTSEngine
-    
+
     p = argparse.ArgumentParser(
         prog="hypernix pipeline",
-        description="Run full ASR → LLM → TTS pipeline interactively.",
+        description="Speech in, a model's answer, speech out: ASR -> LLM -> TTS.",
     )
     p.add_argument("--audio", "-a", help="Path to input audio file")
-    p.add_argument("--active", action="store_true", help="Record from microphone in real-time (press Ctrl+C to stop and process)")
-    p.add_argument("--asr", default="nano-whisper", help="ASR engine to use")
-    p.add_argument("--llm", default="qwen3.5-1b", help="LLM model to use (default: Qwen3.5 1B)")
-    p.add_argument("--tts", default="nano-tacotron", help="TTS engine to use")
-    p.add_argument("--prompt", "-p", default="", help="System prompt for LLM")
-    p.add_argument("--output", "-o", help="Output audio file path")
+    p.add_argument("--active", action="store_true",
+                   help="Record from the microphone (Ctrl+C stops and processes)")
+    p.add_argument("--asr", default="nano-whisper",
+                   help="Speech-to-text model: nano-whisper, whisper-base, whisper-small or a Hub id")
+    p.add_argument("--llm", default=None,
+                   help="Chat model short name (see `hyped --list`); default: the one "
+                        "`hypernix config` set, else a cloud model you have a key for")
+    p.add_argument("--tts", default="nano-tacotron", help="Text-to-speech model: mms or a Hub id")
+    p.add_argument("--prompt", "-p", default="", help="System prompt for the LLM")
+    p.add_argument("--output", "-o", help="Output audio file path (default pipeline_output.wav)")
+    p.add_argument("--max-new-tokens", type=int, default=256)
     ns = p.parse_args(raw)
-    
-    # Initialize engines
-    print(f"Initializing ASR engine: {ns.asr}")
-    asr_config = ASRConfig(sample_rate=16000)
-    asr_engine = ASREngine(asr_config)
-    asr_engine.initialize()
-    
-    print(f"Initializing TTS engine: {ns.tts}")
-    tts_config = TTSConfig(sample_rate=22050)
-    tts_engine = TTSEngine(tts_config)
-    tts_engine.initialize()
-    
-    # Create simple LLM wrapper
-    class SimpleLLM:
-        def generate(self, prompt, max_new_tokens=256, temperature=0.7):
-            # Extract last user message
-            if "User:" in prompt:
-                last_msg = prompt.split("User:")[-1].strip().split("\n")[0]
-                return f"I heard: '{last_msg[:50]}...' - this is a simulated response."
-            return "Hello! How can I assist you today?"
-    
-    llm = SimpleLLM()
-    
-    # Create pipeline
-    print("Creating ASR → LLM → TTS pipeline...")
-    pipeline = ASRToLLMToTTS(
-        asr_engine=asr_engine,
-        llm=llm,
-        tts_engine=tts_engine,
-        system_prompt=ns.prompt or "You are a helpful assistant."
-    )
-    
-    # Get audio file
+
+    known = {m.short for m in core.MODELS}
+    llm_name = ns.llm or _default_model_short()
+    if not llm_name:
+        print("hypernix pipeline: no chat model is set up. Pick one with --llm, e.g. "
+              "--llm qwen3-4b-gguf, or set a default with `hypernix config`.", file=sys.stderr)
+        return 2
+    if llm_name not in known:
+        print(f"hypernix pipeline: unknown model {llm_name!r}. Known: {', '.join(sorted(known))}",
+              file=sys.stderr)
+        return 2
+
     audio_path = ns.audio
+    if not audio_path and ns.active:
+        import tempfile
+
+        from hypernix.interfaces.assistant import _record_microphone
+
+        recorded = _record_microphone(Path(tempfile.mkstemp(suffix=".wav")[1]))
+        if recorded is None:
+            return 1
+        audio_path = str(recorded)
     if not audio_path:
-        if ns.active:
-            # Record from microphone
-            print("Recording from microphone... Press Ctrl+C to stop and process")
-            import tempfile
-            temp_file = tempfile.NamedTemporaryFile(suffix='.wav', delete=False)
-            audio_path = temp_file.name
-            try:
-                import sounddevice as sd
-                import soundfile as sf
-                
-                RATE = 16000
-                CHANNELS = 1
-                
-                print("Recording... (Using sounddevice for better compatibility)")
-                # Start a recording stream
-                recording = []
-                def callback(indata, frames, time, status):
-                    if status:
-                        print(status)
-                    recording.append(indata.copy())
-                
-                with sd.InputStream(samplerate=RATE, channels=CHANNELS, callback=callback):
-                    try:
-                        while True:
-                            sd.sleep(100)
-                    except KeyboardInterrupt:
-                        pass
-                
-                import numpy as np
-                audio_data = np.concatenate(recording, axis=0)
-                sf.write(audio_path, audio_data, RATE)
-                print("\nStopped recording. Processing...")
-            except ImportError:
-                print("\nMissing sounddevice or soundfile. Install with: pip install sounddevice soundfile")
-                return 1
-            except KeyboardInterrupt:
-                print("\nStopped recording. Processing...")
-            
-            print(f"Recorded audio saved to: {audio_path}")
-        else:
-            audio_path = input("Enter path to audio file: ").strip()
-    
-    if not Path(audio_path).exists():
-        print(f"Error: Audio file not found: {audio_path}")
+        audio_path = input("Path to an audio file: ").strip()
+    if not Path(audio_path).is_file():
+        print(f"hypernix pipeline: no audio file at {audio_path}", file=sys.stderr)
         return 1
-    
-    # Run pipeline
-    print(f"Processing audio: {audio_path}")
+
+    asr = ASREngine(ASRConfig(model_name=_PIPELINE_ASR.get(ns.asr, ns.asr)))
+    tts = TTSEngine(TTSConfig(model_name=_PIPELINE_TTS.get(ns.tts, ns.tts)))
+    system = ns.prompt or "You are a helpful assistant. Answer in a sentence or two: it will be spoken."
+    pipeline = ASRToLLMToTTS(asr_engine=asr, llm=ChatLLM(llm_name, system=system),
+                             tts_engine=tts, system_prompt=system)
+    print(f"ASR {asr.config.model_name} -> {llm_name} -> TTS {tts.config.model_name}")
     try:
-        response_text, audio_bytes = pipeline.process(audio_path)
-        print("\n✓ Transcription complete!")
-        print(f"Response: {response_text}")
-        
-        # Save output
-        output_path = ns.output or "pipeline_output.wav"
-        with open(output_path, "wb") as f:
-            f.write(audio_bytes)
-        print(f"✓ Audio saved to: {output_path}")
-        
-        return 0
-    except Exception as e:
-        print(f"Error running pipeline: {e}")
+        response_text, audio_bytes = pipeline.process(audio_path, max_response_length=ns.max_new_tokens)
+    except Exception as exc:  # noqa: BLE001 - reported, with its type
+        print(f"hypernix pipeline: {type(exc).__name__}: {exc}", file=sys.stderr)
         return 1
+    heard = pipeline.conversation_history[0]["content"] if pipeline.conversation_history else ""
+    print(f"Heard:    {heard}")
+    print(f"Response: {response_text}")
+    output_path = ns.output or "pipeline_output.wav"
+    Path(output_path).write_bytes(audio_bytes)
+    print(f"Audio:    {output_path} ({tts.config.sample_rate} Hz)")
+    return 0
 
 
 def _run_assistant(raw: list[str]) -> int:

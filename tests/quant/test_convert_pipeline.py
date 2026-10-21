@@ -139,3 +139,46 @@ class TestTheCommand:
         out = tmp_path / "plain.f16.gguf"
         assert cli.main(["convert", "--model-dir", str(snapshot), "--output", str(out)]) == 0
         assert out.is_file()
+
+
+class TestConvertingComesFirst:
+    """0.72.8: `hnx convert -q -p` was refused outright, and the steps ran
+    as one, so nothing showed that the conversion happens before the
+    quantisation."""
+
+    def test_the_stages_run_in_order_and_only_the_gguf_is_quantised(self, snapshot, monkeypatch):
+        from hypernix.quant import hyprslug
+
+        seen: list[tuple[str, str]] = []
+        real = hyprslug.quantize_gguf
+
+        def checked(source, *args, **kwargs):
+            assert str(source).endswith(".gguf") and Path(source).stat().st_size > 0
+            seen.append(("quantised", Path(source).suffix))
+            return real(source, *args, **kwargs)
+
+        monkeypatch.setattr(hyprslug, "quantize_gguf", checked)
+        convert_and_quantize(snapshot, "Q8_0", on_stage=lambda name, what: seen.append((name, what)))
+        assert [s[0] for s in seen] == ["convert", "quantize", "quantised"]
+        assert "F16 GGUF" in seen[0][1] and seen[1][1] == "Q8_0"
+
+    def test_a_gguf_only_quantises(self, snapshot, tmp_path):
+        first = convert_and_quantize(snapshot, "FP16", tmp_path / "m.f16.gguf")
+        stages: list[str] = []
+        convert_and_quantize(first.output, "Q8_0", tmp_path / "m.q8.gguf",
+                             on_stage=lambda name, what: stages.append(name))
+        assert stages == ["quantize"]
+
+    def test_lowercase_minus_q_minus_p(self, snapshot, capsys):
+        assert cli.main(["convert", str(snapshot), "-q", "q8_0", "-p"]) == 0
+        assert (snapshot.parent / "snap.Q8_0.gguf").is_file()
+        err = capsys.readouterr().err
+        assert err.index("[1/2] converting") < err.index("[2/2] quantising to Q8_0")
+
+    def test_minus_q_alone_is_q4_k_m(self, snapshot):
+        assert cli.main(["convert", str(snapshot), "-q", "-p"]) == 0
+        assert (snapshot.parent / "snap.Q4_K_M.gguf").is_file()
+
+    def test_minus_q_before_the_model(self, snapshot):
+        assert cli.main(["convert", "-q", str(snapshot), "-p"]) == 0
+        assert (snapshot.parent / "snap.Q4_K_M.gguf").is_file()

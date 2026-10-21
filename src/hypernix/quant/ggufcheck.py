@@ -78,7 +78,7 @@ block_elements = type_block_size
 #: and asserts this agrees with it, so adding a type on the C side
 #: without updating this is a test failure rather than a surprise.
 LLAMA_CPP_REGISTERED_TYPES: frozenset[int] = frozenset(
-    {200, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211}
+    {200, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211, 224, 225}
 )
 
 
@@ -120,7 +120,12 @@ def _type_name(ggml_type: int) -> str:
     try:
         return GGMLType(kind).name
     except ValueError:
-        return f"type {kind}"
+        pass
+    from .forktypes import fork_type_name
+
+    # A llama.cpp fork's type (0.72.8): its own name, and which fork.
+    fork = fork_type_name(kind)
+    return f"{fork} (ik_llama.cpp)" if fork else f"type {kind}"
 
 
 @dataclass
@@ -172,6 +177,10 @@ class CheckReport:
     #: the row problem is one tensor and repairable, this is the whole
     #: file and is not.
     unregistered: list[str] = field(default_factory=list)
+    #: What can load it (0.72.8): ``hnx``, ``stock``, a multilama fork
+    #: (``ik``, ``nanbeige``), or ``""`` for nothing here; and why.
+    runtime: str = ""
+    runtime_why: str = ""
 
     @property
     def loadable(self) -> bool:
@@ -199,6 +208,8 @@ class CheckReport:
             "unregistered": self.unregistered,
             "structural": self.structural,
             "runs_under_hnxrun": self.runs_under_hnxrun,
+            "runtime": self.runtime,
+            "runtime_why": self.runtime_why,
             "bad": [
                 {
                     "name": entry.name,
@@ -222,6 +233,10 @@ class CheckReport:
                 f"{name} x{count}" for name, count in sorted(self.types.items())
             )
             lines.append(f"  types    {spread}")
+        if self.runtime:
+            where = {"hnx": "the hnx llama mod (patched llama.cpp)", "stock": "any llama.cpp"}.get(
+                self.runtime, f"the {self.runtime} fork (hnx-t1 runner start --backend multilama)")
+            lines.append(f"  runs on  {where}")
         if self.structural:
             lines.append("  The file itself is wrong, before any tensor's type:")
             for problem in self.structural[:6]:
@@ -348,6 +363,10 @@ def check_gguf(path: str | Path) -> CheckReport:
         tier=str(model.metadata.get("hypernix.tier", "")),
     )
     _check_container(model, Path(path), report)
+    from .forktypes import which_runtime
+
+    verdict = which_runtime((t.ggml_type for t in model.tensors), model.metadata)
+    report.runtime, report.runtime_why = verdict.runtime, verdict.why
     for tensor in model.tensors:
         name = _type_name(tensor.ggml_type)
         report.types[name] = report.types.get(name, 0) + 1

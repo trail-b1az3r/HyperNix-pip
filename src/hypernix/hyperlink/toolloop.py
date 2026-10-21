@@ -36,6 +36,7 @@ from __future__ import annotations
 import itertools
 import json
 import logging
+import os
 import re
 from collections.abc import Callable
 from typing import Any
@@ -54,11 +55,14 @@ logger = logging.getLogger(__name__)
 __all__ = [
     "MAX_ROUNDS",
     "MAX_RESULT_CHARS",
+    "MEMORY_WRITES",
     "T1Access",
     "ToolRound",
     "openai_tools",
     "run_tool_loop",
     "stream_tool_loop",
+    "told_to_remember",
+    "memory_only_when_told",
     "CallGuard",
 ]
 
@@ -86,14 +90,22 @@ class T1Access:
     what the person it is talking to could do by hand, and no more.
     """
 
-    __slots__ = ("base_url", "token", "allow_mutating", "only")
+    __slots__ = ("base_url", "token", "allow_mutating", "only", "mcp", "mcp_admin", "mcp_names", "code")
 
     def __init__(self, base_url: str, token: str = "", *,  # nosec B107 - an empty default, not a credential
-                 allow_mutating: bool = False, only: list[str] | None = None) -> None:
+                 allow_mutating: bool = False, only: list[str] | None = None,
+                 mcp: Any = None, mcp_admin: bool = False) -> None:
         self.base_url = base_url
         self.token = token
         self.allow_mutating = allow_mutating
         self.only = only
+        #: The server's remote MCP servers (:class:`hypernix.t1api.mcpclient.MCPHub`),
+        #: whose tools are offered beside T1's own.
+        self.mcp = mcp
+        self.mcp_admin = mcp_admin
+        self.mcp_names: dict[str, tuple[str, str]] = {}
+        #: A code session's sandbox tools (:class:`hypernix.hyperlink.codetools.CodeTools`).
+        self.code: Any = None
 
 
 class ToolRound:
@@ -123,6 +135,49 @@ class ToolRound:
 #: noodle's tools that touch nothing but the person's own memories. They
 #: follow the person's auto-memory setting, not the workspace switch.
 MEMORY_TOOLS = ("update_memory", "read_memory")
+
+#: Tools that write a memory (0.72.8). The default prompt says when to:
+#: when the person asks, or when the model judges a note useful later.
+#: ``T1_HYPERLINK_MEMORY_WHEN_TOLD=1`` holds the model to the first only:
+#: a write the person did not ask for is refused as a tool result.
+MEMORY_WRITES = ("update_memory", "memory_create")
+
+
+def memory_only_when_told() -> bool:
+    """Whether a memory write needs the person to have asked for it."""
+    return os.environ.get("T1_HYPERLINK_MEMORY_WHEN_TOLD", "").strip().lower() in ("1", "true", "yes", "on")
+
+_TOLD_TO_REMEMBER = re.compile(
+    r"\b(remember|memori[sz]e|forget|don'?t forget|keep in mind|make a note|note (this|that|down)|"
+    r"save (this|that|it)|add (this|that|it)? ?to (your |my )?memor|update (your |my )?memor|"
+    r"store (this|that))\b",
+    re.IGNORECASE,
+)
+
+
+def told_to_remember(messages: list[dict[str, Any]]) -> bool:
+    """Whether the person's latest message asks for something to be remembered."""
+    for message in reversed(messages):
+        if message.get("role") != "user":
+            continue
+        content = message.get("content")
+        if isinstance(content, list):
+            content = " ".join(str(p.get("text", "")) for p in content if isinstance(p, dict))
+        text = str(content or "")
+        if text.startswith("<tool_response"):
+            continue
+        return bool(_TOLD_TO_REMEMBER.search(text))
+    return False
+
+
+def _not_told(call: dict[str, Any]) -> ToolRound:
+    name = (call.get("function") or {}).get("name", "")
+    return ToolRound(
+        name, {}, False,
+        "Not saved: the person did not ask you to remember anything, and this server "
+        "saves memories only when told to. Carry on without it.",
+        "memory_not_requested",
+    )
 
 
 def openai_tools(context: ToolContext, *, workspace: bool = True) -> list[dict[str, Any]]:
@@ -266,6 +321,7 @@ def run_tool_loop(
     continue.
     """
     messages, tools, t1_names = _prepare(wire, context, t1, teach_format, workspace)
+    told = told_to_remember(wire) or not memory_only_when_told()
     rounds: list[ToolRound] = []
     envelope: dict[str, Any] = {}
     retried_format = False
@@ -306,7 +362,8 @@ def run_tool_loop(
         messages.append(assistant)
 
         for call in calls:
-            record = _run_call(call, context, tools, t1, t1_names)
+            record = (_not_told(call) if _writes_memory(call) and not told
+                      else _run_call(call, context, tools, t1, t1_names))
             rounds.append(record)
             if on_round is not None:
                 try:
@@ -356,6 +413,29 @@ def _prepare(
             if name not in taken:
                 tools.append(tool)
                 t1_names.add(name)
+        if t1.code is not None:
+            # The code section's sandbox (0.72.8a3): read, write, edit,
+            # search, run and git, on the sandbox this conversation is tied to.
+            taken = {t["function"]["name"] for t in tools}
+            for tool in t1.code.openai_tools():
+                if tool["function"]["name"] not in taken:
+                    tools.append(tool)
+                    t1_names.add(tool["function"]["name"])
+        if t1.mcp is not None and t1.only is None:
+            # Remote MCP servers' tools (Hugging Face's and the like),
+            # named <server>__<tool>. One that cannot be reached is left out.
+            try:
+                remote, names = t1.mcp.openai_tools(is_admin=t1.mcp_admin)
+            except Exception:  # noqa: BLE001 - remote tools are a bonus, never the reason a turn fails
+                logger.debug("hyperlink: remote MCP tools unavailable", exc_info=True)
+                remote, names = [], {}
+            taken = {t["function"]["name"] for t in tools}
+            for tool in remote:
+                name = tool["function"]["name"]
+                if name not in taken:
+                    tools.append(tool)
+                    t1_names.add(name)
+                    t1.mcp_names[name] = names[name]
     if teach_format and tools:
         # For a model without native tool support: one format, one worked
         # example, as system text so it survives templates that drop the
@@ -369,6 +449,10 @@ def _prepare(
         else:
             messages.insert(0, {"role": "system", "content": taught})
     return messages, tools, t1_names
+
+
+def _writes_memory(call: dict[str, Any]) -> bool:
+    return (call.get("function") or {}).get("name", "") in MEMORY_WRITES
 
 
 def _run_call(call: dict[str, Any], context: ToolContext, tools: list[dict[str, Any]],
@@ -491,6 +575,7 @@ def stream_tool_loop(
     as it comes, like any other text, so the person sees the whole turn.
     """
     messages, tools, t1_names = _prepare(wire, context, t1, teach_format, workspace)
+    told = told_to_remember(wire) or not memory_only_when_told()
     rounds: list[ToolRound] = []
     model, finish, usage = "", "", {}
     retried_format = False
@@ -587,7 +672,8 @@ def stream_tool_loop(
 
         messages.append(_assistant_message(envelope, calls))
         for call in calls:
-            record = _run_call(call, context, tools, t1, t1_names)
+            record = (_not_told(call) if _writes_memory(call) and not told
+                      else _run_call(call, context, tools, t1, t1_names))
             rounds.append(record)
             yield ("tool", record)
             messages.append({
@@ -679,6 +765,13 @@ def _run_t1(call: dict[str, Any], tools: list[dict[str, Any]], t1: T1Access) -> 
     name, arguments, failed = _validated(call, tools)
     if failed is not None:
         return failed
+    if t1.code is not None and name.startswith("code_"):
+        ok, content = t1.code.call(name, arguments)
+        return ToolRound(name, arguments, ok, content, code="" if ok else "code_error")
+    if name in t1.mcp_names:
+        server, tool = t1.mcp_names[name]
+        ok, content = t1.mcp.call(server, tool, arguments)
+        return ToolRound(name, arguments, ok, content, code="" if ok else "mcp_error")
     content = t1tools.call_tool(
         name, arguments, base_url=t1.base_url, token=t1.token,
         allow_mutating=t1.allow_mutating,

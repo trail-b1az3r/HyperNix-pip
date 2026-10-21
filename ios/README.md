@@ -18,7 +18,11 @@ happens on the machine with the GPU, which is the whole point.
 | **Chat** | Streaming replies, token by token. Conversations live on the PC, so one thread continues across your phone, iPad and desktop. |
 | **Photos** | Send a picture to a vision model. The server inlines it as a data URL; the projector a VLM needs is handled for you. |
 | **Files and code** | Attach a source file and the server puts it in the model's context as a fenced block, filename and all. Replies render code as code, with a copy button. |
-| **Models** | See what is loaded in LM Studio on the PC and switch between them per conversation. |
+| **Models** | See every model loaded on the PC — the HyperNix runner's and LM Studio's — in the Models tab and the chat's menu, and pick which one answers. |
+| **Your account** | Sign in once (Settings ▸ Account) after pairing, a T1 key or the local network, and your chats belong to your account rather than to one device. |
+| **Signed prompts** | Each send, resend and edit is signed with who sent it and when Send was pressed, after a four-second check that the server is answering. |
+| **The ring** | Beside the message box: how much of the model's context the chat uses, and your usage allowance — or the GPU or CPU load when there is none. |
+| **Documents** | Ask for a file ("a Markdown document I can download") and the reply offers it to save or share. |
 | **Hugging Face** | Paste a model page, a direct download link, or both. Split GGUFs are expanded to the full set of parts; vision projectors are included; a mismatch between the two links is reported rather than guessed at. |
 | **Away from home** | The app tries every address the server advertises, Tailscale first, and keeps the one that answers. Nothing to switch when you leave the house. |
 | **On the iPhone** | Search Hugging Face, check a model fits this phone, download it and chat with it with no PC at all (the *On iPhone* tab). |

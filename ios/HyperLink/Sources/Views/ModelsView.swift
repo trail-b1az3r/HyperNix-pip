@@ -31,6 +31,19 @@ struct ModelsView: View {
 
     var body: some View {
         List {
+            if !state.loadedModels.isEmpty {
+                Section {
+                    ForEach(state.loadedModels) { model in
+                        LoadedModelRow(model: model)
+                    }
+                } header: {
+                    Text("Loaded now")
+                } footer: {
+                    Text(state.loadedModels.count > 1
+                         ? "Pick which one answers in a chat from its ⋯ menu. Unpicked chats use the one marked default."
+                         : "The model answering messages on this server.")
+                }
+            }
             if state.catalogue.models.isEmpty {
                 Section {
                     ContentUnavailableView {
@@ -226,6 +239,26 @@ struct ModelPickerSheet: View {
     var body: some View {
         NavigationStack {
             List {
+                if state.loadedModels.count > 1 {
+                    Section("Loaded now") {
+                        ForEach(state.loadedModels) { model in
+                            Button {
+                                Task {
+                                    await state.setModel(model.modelID, for: sessionID)
+                                    dismiss()
+                                }
+                            } label: {
+                                HStack {
+                                    LoadedModelRow(model: model)
+                                    if model.modelID == currentModel
+                                        || (currentModel.isEmpty && model.isDefault) {
+                                        Image(systemName: "checkmark").foregroundStyle(.tint)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
                 if state.catalogue.models.isEmpty {
                     Text(
                         "No models on this server. Drop a GGUF in ~/.hypernix/models "
@@ -268,6 +301,32 @@ struct ModelPickerSheet: View {
                 }
             }
             .task { await state.refreshModels() }
+        }
+    }
+}
+
+
+/// One loaded model: its name, where it runs, and whether it is the default.
+struct LoadedModelRow: View {
+    let model: LoadedModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 6) {
+                Text(shortModelName(model.modelID))
+                    .lineLimit(1)
+                    .foregroundStyle(.primary)
+                if model.isDefault {
+                    Text("default")
+                        .font(.caption2.weight(.semibold))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 1)
+                        .background(.tint.opacity(0.15), in: Capsule())
+                }
+            }
+            Text(model.instances > 1 ? "\(model.label) · \(model.instances) instances" : model.label)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
         }
     }
 }

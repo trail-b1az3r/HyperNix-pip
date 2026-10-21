@@ -52,6 +52,7 @@ WEB_FILES = {
     "/": ("index.html", "text/html; charset=utf-8"),
     "/index.html": ("index.html", "text/html; charset=utf-8"),
     "/web/app.js": ("app.js", "text/javascript; charset=utf-8"),
+    "/web/markdown.js": ("markdown.js", "text/javascript; charset=utf-8"),
     "/web/app.css": ("app.css", "text/css; charset=utf-8"),
     "/web/icon.svg": ("icon.svg", "image/svg+xml"),
 }

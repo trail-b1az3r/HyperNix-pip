@@ -265,7 +265,7 @@ class TestT1Tools:
 
     def test_get_arguments_go_in_the_query(self, server):
         t1tools.call_tool("web_search", {"q": "cats", "depth": 2}, base_url=server)
-        assert _Recorder.seen[0]["path"] == "/web/v1/search?q=cats&depth=2"
+        assert _Recorder.seen[0]["path"] == "/web/v2/I?q=cats&depth=2"
 
     def test_post_arguments_go_in_the_body(self, server):
         t1tools.call_tool("web_summarize", {"url": "https://a.test"}, base_url=server)

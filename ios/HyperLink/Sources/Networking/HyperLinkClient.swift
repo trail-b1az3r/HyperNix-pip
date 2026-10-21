@@ -562,6 +562,90 @@ actor HyperLinkClient {
         ).messages
     }
 
+    // MARK: - Signing in to an account (0.72.8)
+
+    struct LoginResult: Decodable, Sendable {
+        struct AccountInfo: Decodable, Sendable {
+            let account_id: String
+            let username: String
+        }
+        let account: AccountInfo
+        let key: String
+        let key_id: String
+        let owner: String
+    }
+
+    /// Sign in once: the server mints a key for the account and returns
+    /// it, and that key becomes this app's credential. Chats are then
+    /// the account's, on every device that signs in.
+    func login(username: String, password: String, deviceName: String) async throws -> LoginResult {
+        struct Body: Encodable {
+            let username: String
+            let password: String
+            let device_name: String
+        }
+        let result = try await post(
+            "/hyperlink/login",
+            body: Body(username: username, password: password, device_name: deviceName),
+            as: LoginResult.self, timeout: 30
+        )
+        signer = nil
+        return result
+    }
+
+    // MARK: - The ping before a prompt, and signing it (0.72.8)
+
+    /// Who this credential signs as, learned once per server.
+    private var signer: String?
+
+    /// Ping (answered without a model, four seconds at most), then sign.
+    /// Nil when there is no credential to sign with — a server that does
+    /// not require signatures still takes the prompt.
+    func prepareSignature(
+        action: String, sessionID: String, content: String, pressedAt: Date
+    ) async throws -> PromptSignature? {
+        guard let credential = token, !credential.isEmpty else { return nil }
+        do {
+            if signer == nil {
+                signer = try await get("/hyperlink/whoami", as: SigningIdentity.self,
+                                       timeout: PromptSigning.pingTimeout).signer
+            }
+            let me = signer ?? ""
+            struct PingBody: Encodable {
+                let sent_at: Double
+                let chat_session_id: String
+                let signature: PromptSignature
+            }
+            let ping = PromptSigning.sign(
+                credential: credential, signer: me, chatSessionID: sessionID,
+                action: "ping", signedAt: pressedAt
+            )
+            let answer = try await post(
+                "/hyperlink/ping",
+                body: PingBody(sent_at: pressedAt.timeIntervalSince1970, chat_session_id: sessionID,
+                               signature: ping),
+                as: PingResponse.self, timeout: PromptSigning.pingTimeout
+            )
+            signer = answer.signer
+            return PromptSigning.sign(
+                credential: credential, signer: answer.signer, chatSessionID: sessionID,
+                serverSessionID: answer.server_session_id, action: action, content: content,
+                signedAt: pressedAt
+            )
+        } catch let error as HyperLinkError {
+            if case .serverError(_, _, let status) = error, status == 404 {
+                // A server from before 0.72.8: no ping, no signatures.
+                return nil
+            }
+            if case .transport = error {
+                throw HyperLinkError.transport(
+                    "The server did not answer within 4 seconds. Check the connection and send again."
+                )
+            }
+            throw error
+        }
+    }
+
     // MARK: - Chat
 
     func chat(
@@ -591,9 +675,16 @@ actor HyperLinkClient {
         content: String,
         attachmentIDs: [String],
         modelID: String?,
-        regenerate: Bool = false
-    ) throws -> URLRequest {
+        regenerate: Bool = false,
+        pressedAt: Date = Date(),
+        datasets: [DatasetPick] = [],
+        codeSandboxID: String? = nil
+    ) async throws -> URLRequest {
         guard let base = currentEndpoint else { throw HyperLinkError.notConfigured }
+        let signature = try await prepareSignature(
+            action: regenerate ? "resend" : "send", sessionID: sessionID,
+            content: regenerate ? "" : content, pressedAt: pressedAt
+        )
         struct Body: Encodable {
             let content: String
             let attachment_ids: [String]
@@ -603,10 +694,17 @@ actor HyperLinkClient {
             /// what an edit or a resend needs. Sending the text again
             /// would put the same question in the thread twice.
             let regenerate: Bool
+            let signature: PromptSignature?
+            /// Parts of attached datasets to give the model (0.72.8a3). A
+            /// dataset attached without one gets its first rows.
+            let datasets: [DatasetPick]
+            /// A /code sandbox the model works in for this turn (0.72.8a3).
+            let code_sandbox_id: String?
         }
         let body = try encoder.encode(
             Body(content: content, attachment_ids: attachmentIDs, model_id: modelID,
-                 stream: true, regenerate: regenerate)
+                 stream: true, regenerate: regenerate, signature: signature,
+                 datasets: datasets, code_sandbox_id: codeSandboxID)
         )
         var request = try makeRequest(
             base: base,
@@ -668,6 +766,16 @@ actor HyperLinkClient {
     /// `~/.hypernix/models` and no LM Studio showed an empty list.
     func modelCatalogue() async throws -> ModelCatalogue {
         try await get("/hyperlink/models", as: ModelCatalogue.self, timeout: 30)
+    }
+
+    /// The context and usage-or-load rings for one chat (0.72.8).
+    func chatRing(_ sessionID: String) async throws -> ChatRing {
+        try await get("/hyperlink/sessions/\(sessionID)/ring", as: ChatRing.self, timeout: 10)
+    }
+
+    /// Every model loaded right now, on any backend.
+    func loadedModels() async throws -> LoadedModelList {
+        try await get("/hyperlink/models/loaded", as: LoadedModelList.self, timeout: 20)
     }
 
     /// What LM Studio specifically has loaded.
@@ -844,16 +952,22 @@ actor HyperLinkClient {
     /// what gets sent as context on the next turn — so leaving it means
     /// telling the model it said things it never said.
     func editMessage(
-        sessionID: String, messageID: String, content: String, truncate: Bool = true
+        sessionID: String, messageID: String, content: String, truncate: Bool = true,
+        pressedAt: Date = Date()
     ) async throws -> MessageEdit {
         struct Body: Encodable {
             let content: String
             let truncate: Bool
+            let signature: PromptSignature?
         }
+        // An edit is re-signed: same identity, a new time and nonce.
+        let signature = try await prepareSignature(
+            action: "edit", sessionID: sessionID, content: content, pressedAt: pressedAt
+        )
         let data = try await send(
             path: "/hyperlink/sessions/\(sessionID)/messages/\(messageID)",
             method: "PATCH",
-            body: try encoder.encode(Body(content: content, truncate: truncate)),
+            body: try encoder.encode(Body(content: content, truncate: truncate, signature: signature)),
             timeout: 30
         )
         return try decode(MessageEdit.self, from: data)

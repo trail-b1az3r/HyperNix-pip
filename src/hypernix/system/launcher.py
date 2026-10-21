@@ -130,6 +130,9 @@ class Job:
     #: them are credentials; a job record is read by anything that can
     #: read the config directory.
     env_keys: list[str] = field(default_factory=list)
+    #: A file the job's standard input reads from: the answers to the
+    #: questions it asks, one per line (``launch-script -2 … -9``).
+    answers_file: str = ""
 
     @property
     def exit_file(self) -> Path:
@@ -211,7 +214,7 @@ def _user_bus_available() -> bool:
         return False
     try:
         probe = subprocess.run(
-            ["systemctl", "--user", "show-environment"],
+            [shutil.which("systemctl") or "systemctl", "--user", "show-environment"],
             capture_output=True, timeout=10, check=False,
         )
     except (OSError, subprocess.SubprocessError):
@@ -311,6 +314,24 @@ def resolve_shell(shell: str = "auto") -> str:
     )
 
 
+def write_answers(store: JobStore, job_id: str, answers: list[str]) -> Path:
+    """The answers a job's questions get, one per line, readable only by you.
+
+    ``""`` is an empty line: pressing Enter, which takes the program's
+    default. Saved beside the job's record so ``--restart`` answers the
+    same way.
+    """
+    store.root.mkdir(parents=True, exist_ok=True)
+    path = store.root / f"{job_id}.answers"
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as fh:
+        for answer in answers:
+            if "\n" in answer:
+                raise LaunchError("an answer is one line; give each line its own -N")
+            fh.write(answer + "\n")
+    return path
+
+
 def launch_shell(
     command_text: str,
     *,
@@ -325,8 +346,13 @@ def launch_shell(
     cpu: str = "",
     store: JobStore | None = None,
     supervisor: Supervisor | None = None,
+    answers: list[str] | None = None,
 ) -> Job:
     """Start a shell command detached — ``launch-script -1 '...'``.
+
+    *answers* are fed to the command's standard input, one line each, in
+    order: the replies to the questions it asks (``yay``'s "packages to
+    exclude", a ``[Y/n]``). ``""`` presses Enter.
 
     The same job as a script gets: it survives the SSH connection
     closing, has logs, a status, and can be stopped. The command is
@@ -341,7 +367,7 @@ def launch_shell(
         [binary, "-c", command_text],
         label=_slug(name or Path(binary).name + "-command"), cwd=cwd, env=env,
         timeout=timeout, log_file=log_file, priority=priority, gpu=gpu,
-        cpu=cpu, store=store, supervisor=supervisor,
+        cpu=cpu, store=store, supervisor=supervisor, answers=answers,
     )
 
 
@@ -368,6 +394,7 @@ def _start(
     cpu: str,
     store: JobStore | None,
     supervisor: Supervisor | None,
+    answers: list[str] | None = None,
 ) -> Job:
     """Detach *command* under a supervisor. Shared by script and shell jobs."""
     store = store or JobStore()
@@ -447,6 +474,8 @@ def _start(
         created_at=time.time(), timeout=timeout, priority=priority,
         gpu=gpu, cpu=cpu, env_keys=sorted(env or {}),
     )
+    if answers is not None:
+        job.answers_file = str(write_answers(store, job_id, answers))
 
     if chosen is Supervisor.SYSTEMD:
         _launch_systemd(job, command, working, child_env, log_path, timeout, priority, cpu)
@@ -477,6 +506,10 @@ def _exit_recording_script(
     for "is it still going".
     """
     inner = " ".join(shlex.quote(part) for part in command)
+    if job.answers_file:
+        # The answers, as the job's standard input: each question it
+        # reads from stdin gets the next line.
+        inner = f"{inner} < {shlex.quote(job.answers_file)}"
     if timeout > 0 and shutil.which("timeout"):
         inner = f"timeout {int(timeout)} {inner}"
     if priority and shutil.which("nice"):
@@ -502,7 +535,7 @@ def _systemd_main_pid(unit: str) -> int:
     for _ in range(20):
         try:
             result = subprocess.run(
-                ["systemctl", "--user", "show", unit, "--property=MainPID"],
+                [shutil.which("systemctl") or "systemctl", "--user", "show", unit, "--property=MainPID"],
                 capture_output=True, text=True, timeout=10, check=False,
             )
         except (OSError, subprocess.SubprocessError):
@@ -620,7 +653,7 @@ def _refresh_systemd(job: Job) -> None:
 
     try:
         result = subprocess.run(
-            ["systemctl", "--user", "show", job.unit,
+            [shutil.which("systemctl") or "systemctl", "--user", "show", job.unit,
              "--property=LoadState,ActiveState,Result,ExecMainStatus"],
             capture_output=True, text=True, timeout=10, check=False,
         )
@@ -681,7 +714,7 @@ def stop(job: Job, store: JobStore | None = None, *, timeout: float = 10.0) -> J
     """Ask the job to stop, then insist."""
     if job.supervisor == Supervisor.SYSTEMD.value and job.unit:
         subprocess.run(
-            ["systemctl", "--user", "stop", job.unit],
+            [shutil.which("systemctl") or "systemctl", "--user", "stop", job.unit],
             capture_output=True, timeout=30, check=False,
         )
     elif job.pid:
@@ -703,6 +736,49 @@ def stop(job: Job, store: JobStore | None = None, *, timeout: float = 10.0) -> J
     if store is not None:
         store.save(job)
     return job
+
+
+def follow_logs(job: Job, *, tail: int = 200, out=None, store: JobStore | None = None,
+                poll: float = 0.5, until=None) -> None:
+    """Print the last *tail* lines, then everything written after, as it
+    is written, until Ctrl-C (``--logs JOB -F``).
+
+    Says once when the job finishes, and keeps following: a restarted job
+    writes to the same file. *until* (tests) is a callable that ends it.
+    """
+    import sys
+
+    out = out or sys.stdout
+    path = Path(job.log_path)
+    text = read_logs(job, tail=tail)
+    if text:
+        out.write(text + "\n")
+        out.flush()
+    position = path.stat().st_size if path.exists() else 0
+    said_done = job.is_terminal
+    try:
+        while until is None or not until():
+            if path.exists():
+                size = path.stat().st_size
+                if size < position:  # truncated or replaced: start again
+                    position = 0
+                if size > position:
+                    with path.open("rb") as fh:
+                        fh.seek(position)
+                        chunk = fh.read(size - position)
+                    position = size
+                    out.write(chunk.decode("utf-8", errors="replace"))
+                    out.flush()
+            if not said_done:
+                refresh(job, store)
+                if job.is_terminal:
+                    said_done = True
+                    note = "" if job.exit_status is None else f" (exit {job.exit_status})"
+                    out.write(f"\n-- {job.name} {job.status}{note}; still following, Ctrl-C to stop --\n")
+                    out.flush()
+            time.sleep(poll)
+    except KeyboardInterrupt:
+        out.write("\n")
 
 
 def read_logs(job: Job, *, tail: int = 200) -> str:

@@ -254,6 +254,9 @@ struct ChatMessage: Decodable, Identifiable, Hashable, Sendable {
     /// summarised to keep the thread inside the model's context. Shown
     /// as a marker, not as a message: the originals are still above it.
     var isCompactionSummary: Bool = false
+    /// Files the model wrote this turn with `create_document` (0.72.8),
+    /// offered as downloads under the reply.
+    var documents: [GeneratedDocument] = []
 
     var id: String { messageID }
     var isUser: Bool { role == "user" }
@@ -297,8 +300,10 @@ extension ChatMessage {
     init(from decoder: Decoder) throws {
         struct Metadata: Decodable {
             let compaction_summary: Bool?
+            let documents: [GeneratedDocument]?
         }
         let c = try decoder.container(keyedBy: CodingKeys.self)
+        let metadata = (try? c.decodeIfPresent(Metadata.self, forKey: .metadata)) ?? nil
         self.init(
             messageID: try c.decode(String.self, forKey: .messageID),
             sessionID: try c.decodeIfPresent(String.self, forKey: .sessionID) ?? "",
@@ -310,10 +315,21 @@ extension ChatMessage {
             createdAt: try c.decodeIfPresent(Double.self, forKey: .createdAt) ?? 0,
             inputTokens: try c.decodeIfPresent(Int.self, forKey: .inputTokens) ?? 0,
             outputTokens: try c.decodeIfPresent(Int.self, forKey: .outputTokens) ?? 0,
-            isCompactionSummary: ((try? c.decodeIfPresent(Metadata.self, forKey: .metadata)) ?? nil)?
-                .compaction_summary ?? false
+            isCompactionSummary: metadata?.compaction_summary ?? false,
+            documents: metadata?.documents ?? []
         )
     }
+}
+
+/// A document a model wrote for the person to download (0.72.8).
+struct GeneratedDocument: Decodable, Hashable, Sendable, Identifiable {
+    let file_id: String
+    let filename: String
+    let size_bytes: Int?
+    let content_type: String?
+    let download_path: String?
+
+    var id: String { file_id }
 }
 
 struct MessageListResponse: Decodable, Sendable {
@@ -366,6 +382,20 @@ struct Attachment: Decodable, Identifiable, Hashable, Sendable {
 }
 
 struct AttachmentResponse: Decodable, Sendable { let file: Attachment }
+
+/// Part of an attached dataset to give the model with a message (0.72.8a3):
+/// JSONL, JSON, Parquet, CSV/TSV, Arrow, text or Markdown. Empty fields mean
+/// the first 20 rows, or the whole file when it is small.
+struct DatasetPick: Codable, Sendable, Hashable {
+    var file_id: String
+    /// "0-20", "100-", "5", or "-10" for the last ten.
+    var rows: String = ""
+    var columns: [String] = []
+    /// Only rows containing this; "re:<pattern>" for a regex.
+    var query: String = ""
+    var sample: Int = 0
+    var style: String = "auto"
+}
 
 // MARK: - LM Studio bridge
 
@@ -938,6 +968,48 @@ struct CatalogueSource: Decodable, Identifiable, Equatable, Sendable {
         case "local": return "Models folder"
         default: return name
         }
+    }
+}
+
+/// A model loaded right now, on the HyperNix runner or in LM Studio
+/// (`GET /hyperlink/models/loaded`, 0.72.8). With more than one, the app
+/// lists them and a chat can pick which answers.
+struct LoadedModel: Decodable, Equatable, Identifiable, Sendable {
+    let modelID: String
+    let backend: String
+    let label: String
+    /// The one that answers when nobody picks.
+    let isDefault: Bool
+    let instances: Int
+
+    var id: String { "\(backend)/\(modelID)" }
+
+    enum CodingKeys: String, CodingKey {
+        case modelID = "model_id", backend, label, isDefault = "default", instances
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        modelID = try c.decode(String.self, forKey: .modelID)
+        backend = try c.decodeIfPresent(String.self, forKey: .backend) ?? ""
+        label = try c.decodeIfPresent(String.self, forKey: .label) ?? ""
+        isDefault = try c.decodeIfPresent(Bool.self, forKey: .isDefault) ?? false
+        instances = try c.decodeIfPresent(Int.self, forKey: .instances) ?? 1
+    }
+}
+
+struct LoadedModelList: Decodable, Equatable, Sendable {
+    let models: [LoadedModel]
+    let defaultModel: String
+
+    enum CodingKeys: String, CodingKey {
+        case models, defaultModel = "default"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        models = try c.decodeIfPresent([LoadedModel].self, forKey: .models) ?? []
+        defaultModel = try c.decodeIfPresent(String.self, forKey: .defaultModel) ?? ""
     }
 }
 
@@ -1880,4 +1952,18 @@ struct AdoptPreview: Decodable, Equatable, Sendable {
         lmstudioLoaded = try c.decodeIfPresent([String].self, forKey: .lmstudioLoaded) ?? []
         runnerModel = try c.decodeIfPresent(String.self, forKey: .runnerModel) ?? ""
     }
+}
+
+
+/// `GET /hyperlink/sessions/{id}/ring` (0.72.8): the two rings beside
+/// the composer. Fractions are 0...1; the server does the arithmetic.
+struct RingLayer: Decodable, Hashable, Sendable {
+    let kind: String
+    let fraction: Double
+    let label: String
+}
+
+struct ChatRing: Decodable, Hashable, Sendable {
+    let inner: RingLayer
+    let outer: RingLayer
 }

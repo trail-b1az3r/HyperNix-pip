@@ -50,6 +50,7 @@ logger = logging.getLogger(__name__)
 
 __all__ = [
     "PROTOCOL_VERSION",
+    "SUPPORTED_VERSIONS",
     "MCPTool",
     "MCPResource",
     "MCPPlugin",
@@ -64,11 +65,13 @@ __all__ = [
     "JSONRPC_INTERNAL_ERROR",
 ]
 
-#: The revision of the protocol this speaks. Sent in `initialize` and
-#: checked against what the client asks for — a mismatch is reported
-#: rather than papered over, because a client expecting a later
-#: revision will be looking for fields that are not here.
-PROTOCOL_VERSION = "2025-06-18"
+#: The newest revision of the protocol this speaks.
+PROTOCOL_VERSION = "2025-11-25"
+#: Every revision it answers in, newest first. A client that asks for
+#: one of these gets that one back, as the specification's negotiation
+#: says; it used to get 2025-06-18 whatever it asked, and a client that
+#: speaks only 2025-03-26 (several still do) disconnected.
+SUPPORTED_VERSIONS = ("2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05")
 
 # JSON-RPC 2.0 reserved codes.
 JSONRPC_PARSE_ERROR = -32700
@@ -348,7 +351,7 @@ class MCPServer:
     def _initialize(self, params: dict) -> dict[str, Any]:
         asked = str(params.get("protocolVersion") or "")
         result: dict[str, Any] = {
-            "protocolVersion": PROTOCOL_VERSION,
+            "protocolVersion": asked if asked in SUPPORTED_VERSIONS else PROTOCOL_VERSION,
             "capabilities": {
                 "tools": {"listChanged": False},
                 "resources": {"subscribe": False, "listChanged": False},
@@ -361,11 +364,11 @@ class MCPServer:
         }
         if self.instructions:
             result["instructions"] = self.instructions
-        if asked and asked != PROTOCOL_VERSION:
+        if asked and asked not in SUPPORTED_VERSIONS:
             # Not an error: the client decides whether it can work with
             # what we speak. Saying so is more useful than refusing.
             result["_note"] = (
-                f"this server speaks {PROTOCOL_VERSION}; you asked for "
+                f"this server speaks {', '.join(SUPPORTED_VERSIONS)}; you asked for "
                 f"{asked}"
             )
         return result

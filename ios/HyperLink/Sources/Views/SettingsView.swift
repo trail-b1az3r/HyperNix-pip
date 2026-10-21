@@ -10,6 +10,7 @@ struct SettingsView: View {
     @Environment(AppState.self) private var state
     @Environment(ThemeStore.self) private var themes
     @State private var confirmingUnpair = false
+    @State private var showingSignIn = false
     /// Mirrors `AdminCredentialStore.persistsAcrossLaunches`. Held in
     /// view state only as a switch position — the credential itself
     /// never reaches a view.
@@ -168,6 +169,23 @@ struct SettingsView: View {
                 )
             }
 
+            Section {
+                if state.signedInAccount.isEmpty {
+                    Button {
+                        showingSignIn = true
+                    } label: {
+                        Label("Sign in to an account", systemImage: "person.crop.circle")
+                    }
+                } else {
+                    LabeledContent("Account", value: state.signedInAccount)
+                }
+            } header: {
+                Text("Account")
+            } footer: {
+                Text("Sign in once and your chats, memories and settings belong to the account — "
+                     + "on every device that signs in, and after a reinstall.")
+            }
+
             Section("Appearance") {
                 NavigationLink {
                     ThemePickerView()
@@ -277,6 +295,9 @@ struct SettingsView: View {
             // because it is believed.
             AdminCredentialStore.persistsAcrossLaunches = keep
         }
+        .sheet(isPresented: $showingSignIn) {
+            SignInSheet()
+        }
         .confirmationDialog(
             "Unpair this device?",
             isPresented: $confirmingUnpair,
@@ -286,6 +307,57 @@ struct SettingsView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("Your conversations stay on the PC. You will need a new pairing code to connect again.")
+        }
+    }
+}
+
+
+/// Sign in to an account on the paired server (0.72.8): the account's key
+/// replaces this device's credential, so chats belong to the account.
+struct SignInSheet: View {
+    @Environment(AppState.self) private var state
+    @Environment(\.dismiss) private var dismiss
+    @State private var username = ""
+    @State private var password = ""
+    @State private var working = false
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextField("Username", text: $username)
+                        .textContentType(.username)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                    SecureField("Password", text: $password)
+                        .textContentType(.password)
+                } footer: {
+                    Text("The account on this server, made at its /accounts/register page. "
+                         + "Signing in replaces this device's key or pairing with the account's own key.")
+                }
+                if let error = state.connectionError {
+                    Section { Text(error).foregroundStyle(.red) }
+                }
+            }
+            .navigationTitle("Sign in")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(working ? "Signing in…" : "Sign in") {
+                        working = true
+                        Task {
+                            let ok = await state.signIn(username: username, password: password)
+                            working = false
+                            password = ""
+                            if ok { dismiss() }
+                        }
+                    }
+                    .disabled(working || username.isEmpty || password.isEmpty)
+                }
+            }
         }
     }
 }

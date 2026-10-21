@@ -26,6 +26,8 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from hypernix.security.hfpin import hub_revision
+
 if TYPE_CHECKING:
     from types import ModuleType
 
@@ -199,7 +201,8 @@ def from_pretrained(
     """
     from transformers import AutoModelForCausalLM
 
-    model = AutoModelForCausalLM.from_pretrained(model_id, **kwargs)
+    revision = hub_revision(model_id, kwargs.pop("revision", None))
+    model = AutoModelForCausalLM.from_pretrained(model_id, revision=revision, **kwargs)
     device = _device_type(model)
     if device not in DEVICES:
         logger.info("llama-easy: %s is on %s, so it keeps its own layers.", model_id, device)

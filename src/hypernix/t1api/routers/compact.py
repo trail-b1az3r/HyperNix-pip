@@ -18,6 +18,7 @@ unchanged and only the model sees the shorter version.
 from __future__ import annotations
 
 import logging
+import threading
 from typing import Any
 
 from fastapi import APIRouter, Depends
@@ -36,6 +37,7 @@ from ..deps import (
     get_hyperlink_principal,
     get_request_id,
     get_session_store,
+    get_usage_meter,
 )
 from ..schemas import CompactRequest, CompactResponse
 
@@ -43,9 +45,15 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/chat/compact", tags=["compaction"])
 
+#: What the last model summary on this thread spent.
+_USAGE = threading.local()
+
 
 def _summarise(config: T1APIConfig, messages: list) -> tuple[str, str]:
     """``(summary, how)``. A model when one answers, quotes when not.
+
+    What the model spent is left in ``_USAGE.value`` (per thread) for
+    :func:`compact_session` to bill.
 
     The fallback is extractive on purpose. A server with no reachable
     model could refuse instead — but compaction is most wanted exactly
@@ -64,6 +72,10 @@ def _summarise(config: T1APIConfig, messages: list) -> tuple[str, str]:
             message = choices[0].get("message") or {}
             text = str(message.get("content") or "").strip()
         if text:
+            usage = envelope.get("usage") or {}
+            _USAGE.value = {"model": str(envelope.get("model") or ""),
+                            "input_tokens": int(usage.get("prompt_tokens") or 0),
+                            "output_tokens": int(usage.get("completion_tokens") or 0)}
             return text, "model"
         logger.info("compaction: the model returned nothing; quoting instead")
     except Exception as exc:  # noqa: BLE001 - any backend failure is the same here
@@ -80,6 +92,7 @@ def compact_session(
     scope: str = "dynamic",
     keep_recent: int | None = None,
     dry_run: bool = False,
+    meter: Any = None,
 ) -> dict[str, Any]:
     """Compact one session. What both the endpoints and auto-compaction use.
 
@@ -94,7 +107,15 @@ def compact_session(
     if dry_run or not proposed.viable:
         return result
 
+    _USAGE.value = None
     text, how = _summarise(config, proposed.targets)
+    spent = getattr(_USAGE, "value", None)
+    if meter is not None and spent:
+        # The summary was written by a model, so the caller pays for it
+        # (0.72.8). Quoting costs nothing and records nothing.
+        meter.record_quietly(key_id=owner, feature="compact", endpoint="/chat/compact",
+                             model_id=spent["model"], input_tokens=spent["input_tokens"],
+                             output_tokens=spent["output_tokens"])
     if not text:
         # Nothing to write down. Not an error: an empty summary would
         # replace real messages with nothing, which is deletion wearing
@@ -140,11 +161,13 @@ def _compact(
     store: ChatSessionStore,
     config: T1APIConfig,
     request_id: str,
+    meter: Any = None,
 ) -> CompactResponse:
     result = compact_session(
         store, config,
         session_id=payload.session_id, owner=principal.owner,
         scope=scope, keep_recent=payload.keep_recent, dry_run=payload.dry_run,
+        meter=meter,
     )
     return CompactResponse(session_id=payload.session_id, request_id=request_id, **result)
 
@@ -156,6 +179,7 @@ def compact_prompts(
     store: ChatSessionStore = Depends(get_session_store),
     config: T1APIConfig = Depends(get_config),
     request_id: str = Depends(get_request_id),
+    meter=Depends(get_usage_meter),
 ) -> CompactResponse:
     """Summarise what the person sent, keeping the answers intact.
 
@@ -163,7 +187,7 @@ def compact_prompts(
     traces in: the inputs are most of the weight and the replies are what
     the conversation is worth keeping.
     """
-    return _compact("prompts", payload, principal, store, config, request_id)
+    return _compact("prompts", payload, principal, store, config, request_id, meter)
 
 
 @router.post("/prompts/system", response_model=CompactResponse)
@@ -173,6 +197,7 @@ def compact_system_prompt(
     store: ChatSessionStore = Depends(get_session_store),
     config: T1APIConfig = Depends(get_config),
     request_id: str = Depends(get_request_id),
+    meter=Depends(get_usage_meter),
 ) -> CompactResponse:
     """Summarise the system prompt alone.
 
@@ -180,7 +205,7 @@ def compact_system_prompt(
     for on every single turn — a thousand tokens of accumulated
     instructions is a thousand tokens a hundred times over.
     """
-    return _compact("system", payload, principal, store, config, request_id)
+    return _compact("system", payload, principal, store, config, request_id, meter)
 
 
 @router.post("/responses", response_model=CompactResponse)
@@ -190,9 +215,10 @@ def compact_responses(
     store: ChatSessionStore = Depends(get_session_store),
     config: T1APIConfig = Depends(get_config),
     request_id: str = Depends(get_request_id),
+    meter=Depends(get_usage_meter),
 ) -> CompactResponse:
     """Summarise the model's messages, keeping the questions intact."""
-    return _compact("responses", payload, principal, store, config, request_id)
+    return _compact("responses", payload, principal, store, config, request_id, meter)
 
 
 @router.post("/all", response_model=CompactResponse)
@@ -202,9 +228,10 @@ def compact_all(
     store: ChatSessionStore = Depends(get_session_store),
     config: T1APIConfig = Depends(get_config),
     request_id: str = Depends(get_request_id),
+    meter=Depends(get_usage_meter),
 ) -> CompactResponse:
     """Summarise both sides, oldest first."""
-    return _compact("all", payload, principal, store, config, request_id)
+    return _compact("all", payload, principal, store, config, request_id, meter)
 
 
 @router.post("/dynamic", response_model=CompactResponse)
@@ -214,6 +241,7 @@ def compact_dynamic(
     store: ChatSessionStore = Depends(get_session_store),
     config: T1APIConfig = Depends(get_config),
     request_id: str = Depends(get_request_id),
+    meter=Depends(get_usage_meter),
 ) -> CompactResponse:
     """Compact whichever part is actually using the budget.
 
@@ -221,4 +249,4 @@ def compact_dynamic(
     what it decided and why in `plan.reason`, so the answer is
     inspectable instead of magic.
     """
-    return _compact("dynamic", payload, principal, store, config, request_id)
+    return _compact("dynamic", payload, principal, store, config, request_id, meter)

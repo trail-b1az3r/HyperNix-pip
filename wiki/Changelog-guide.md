@@ -70,12 +70,15 @@ The configuration helper is in the wrong group, and a bug is incorrectly marked 
 
 ### Recommended sentence style
 
-Start with a past-tense action verb: **Added**, **Changed**, **Fixed**, **Removed**, **Deprecated**, **Documented**, or **Restored**. Name the affected API, module, page, or behavior, then explain why it matters when the change is not self-evident.
+Start with a past-tense action verb: **Added**, **Changed**, **Fixed**, **Removed**, **Deprecated**, **Documented**, or **Restored**. or **rewrote** Name the affected API, module, page, or behavior, then explain why it matters when the change is not self-evident.
 
 Prefer:
 
 ```markdown
 𖢥 Fixed Brewer attention leaking future tokens during training.
+ - [sub bug required to fix 1]
+ - [sub bug required to fix 2]
+ - [sub bug required to fix 3]
 ```
 
 over:
@@ -123,7 +126,7 @@ Use the closest symbol consistently. A symbol does not replace an explanation.
 Published releases normally use:
 
 ```markdown
-## 0.72.5 — 2026-09-25
+## 0.72.5 — 2026-09-25 -- api improvemenes
 ```
 
 Pre-releases may use:
@@ -520,6 +523,7 @@ This release includes finalized work from `X.Y.Z-dev` and `X.Y.Z-beta`.
 - [ ] No benchmark or compatibility claim is unverified.
 - [ ] `wiki/Home.md` Recent Highlights was updated for a stable release.
 - [ ] Empty categories and commit-by-commit noise were removed.
+- [ ] No unreleased changes are put in a numbered version
 
 ---
 

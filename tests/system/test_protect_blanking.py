@@ -235,10 +235,11 @@ class TestItDoesNotLockAScreenItDidNotBlank:
     def test_the_cli_passes_force_through(self, monkeypatch):
         seen = {}
         monkeypatch.setattr(
-            protect, "start_protection", lambda *, force=False: seen.update(force=force) or 0
+            protect, "start_protection",
+            lambda *, force=False, allow_lock=False: seen.update(force=force, allow_lock=allow_lock) or 0,
         )
         protect.cli_main(["start", "--force"])
-        assert seen == {"force": True}
+        assert seen == {"force": True, "allow_lock": False}
 
     def test_the_promise_is_not_made_before_the_attempt(self):
         """"Monitor will sleep" was printed before anything was tried,
@@ -328,3 +329,102 @@ class TestOutageAndProtAgree:
 
         normalised = ast.unparse(ast.parse('run(["xset", "dpms", "force", "off"])'))
         assert "'dpms', 'force'" in normalised
+
+
+class TestItDoesNotLockTheSession:
+    """`hnx prot` locked the screen: on GNOME and KDE it blanked by
+    activating the freedesktop screensaver, and an active screensaver
+    locks the session. Waiting dark long enough locked it too."""
+
+    def test_no_method_activates_the_screensaver(self):
+        for blanker in blanking.BLANKERS:
+            assert "org.freedesktop.ScreenSaver.SetActive" not in " ".join(blanker.off), blanker.name
+
+    def test_gnome_wayland_uses_mutter_power_save(self, monkeypatch):
+        monkeypatch.setenv("WAYLAND_DISPLAY", "wayland-0")
+        monkeypatch.setenv("XDG_SESSION_TYPE", "wayland")
+        monkeypatch.setenv("XDG_CURRENT_DESKTOP", "ubuntu:GNOME")
+        monkeypatch.setattr(blanking.shutil, "which",
+                            lambda name: f"/usr/bin/{name}" if name in ("gdbus", "wlopm") else None)
+        chosen = blanking.choose_blanker("wayland")
+        assert chosen.name == "gnome"
+        assert "PowerSaveMode" in chosen.off and "<int32 3>" in chosen.off and "<int32 0>" in chosen.on
+
+    def test_kde_uses_kscreen_doctor(self, monkeypatch):
+        monkeypatch.setenv("WAYLAND_DISPLAY", "wayland-0")
+        monkeypatch.setenv("XDG_CURRENT_DESKTOP", "KDE")
+        monkeypatch.setattr(blanking.shutil, "which",
+                            lambda name: f"/usr/bin/{name}" if name in ("gdbus", "kscreen-doctor") else None)
+        assert blanking.choose_blanker("wayland").name == "kscreen-doctor"
+
+    def test_gdbus_outside_gnome_is_not_chosen(self, monkeypatch):
+        monkeypatch.setenv("WAYLAND_DISPLAY", "wayland-0")
+        monkeypatch.setenv("XDG_CURRENT_DESKTOP", "KDE")
+        monkeypatch.setattr(blanking.shutil, "which",
+                            lambda name: f"/usr/bin/{name}" if name == "gdbus" else None)
+        assert blanking.choose_blanker("wayland") is None
+
+    def _settings(self, monkeypatch, values):
+        """A fake gsettings/xset world: get reads *values*, set writes them."""
+        calls = []
+
+        def run(argv, **kwargs):
+            calls.append(list(argv))
+            name, *rest = argv
+            tool = name.rsplit("/", 1)[-1]
+            out, code = "", 0
+            if tool == "gsettings" and rest[0] == "get":
+                key = f"{rest[1]} {rest[2]}"
+                if key in values:
+                    out = values[key]
+                else:
+                    code = 1
+            elif tool == "gsettings" and rest[0] == "set":
+                values[f"{rest[1]} {rest[2]}"] = rest[3]
+            elif tool == "xset" and rest == ["q"]:
+                out = "Screen Saver:\n  prefer blanking:  yes\n  timeout:  600    cycle:  600\n"
+            elif tool == "xset" and rest[:1] == ["s"]:
+                values["xset s"] = " ".join(rest[1:])
+            else:
+                code = 1
+            return subprocess.CompletedProcess(argv, code, stdout=out, stderr="")
+
+        monkeypatch.setattr(subprocess, "run", run)
+        monkeypatch.setattr(blanking.shutil, "which",
+                            lambda name: f"/usr/bin/{name}" if name in ("gsettings", "xset") else None)
+        return calls
+
+    def test_lock_on_idle_is_off_while_dark_and_back_after(self, monkeypatch, tmp_path):
+        values = {"org.gnome.desktop.screensaver lock-enabled": "true",
+                  "org.mate.screensaver lock-enabled": "false"}
+        self._settings(monkeypatch, values)
+        monkeypatch.setenv("DISPLAY", ":0")
+        state = tmp_path / "lock.json"
+        guard = blanking.LockGuard(state_file=str(state))
+        held = guard.disable()
+        assert values["org.gnome.desktop.screensaver lock-enabled"] == "false"
+        assert values["xset s"] == "off"
+        assert "org.gnome.desktop.screensaver lock-enabled" in held and "X screensaver" in held
+        # One that was already off is not touched, so it is not turned on afterwards.
+        assert not any("mate" in h for h in held)
+        assert state.is_file()
+        guard.restore()
+        assert values["org.gnome.desktop.screensaver lock-enabled"] == "true"
+        assert values["org.mate.screensaver lock-enabled"] == "false"
+        assert values["xset s"] == "600 600"
+        assert not state.exists()
+
+    def test_a_crash_can_be_undone(self, monkeypatch, tmp_path, capsys):
+        values = {"org.gnome.desktop.screensaver lock-enabled": "true"}
+        self._settings(monkeypatch, values)
+        state = tmp_path / "lock.json"
+        blanking.LockGuard(state_file=str(state)).disable()      # ...and then the process dies
+        assert values["org.gnome.desktop.screensaver lock-enabled"] == "false"
+        monkeypatch.setattr(protect, "LOCK_STATE_FILE", state)
+        assert protect.cli_main(["restore"]) == 0
+        assert values["org.gnome.desktop.screensaver lock-enabled"] == "true"
+        assert "Restored" in capsys.readouterr().out
+
+    def test_help_is_help(self, capsys):
+        assert protect.cli_main(["--help"]) == 0
+        assert "does not lock" in capsys.readouterr().out

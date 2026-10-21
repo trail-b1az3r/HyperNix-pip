@@ -77,6 +77,12 @@ extern "C" {
  * structure rather than more signs -- once all 256 signs are
  * stored there are no more to buy. */
 #define HNX_TYPE_1375    207
+/* 0.72.8: the same structure, finer. HNX_15125: sixteen 7-bit
+ * magnitudes (1.5 bits/weight). HNX_IQ1S: thirty-two 4-bit magnitudes,
+ * one per 8 weights (1.5625, IQ1_S's rate). 224/225 because
+ * ik_llama.cpp's repacked types take 202-223 and 229-233. */
+#define HNX_TYPE_15125   224
+#define HNX_TYPE_IQ1S    225
 
 /* The fixed-codebook pair. Every weight carries its own code into a
  * table of levels, so there is nothing reconstructed and nothing folded.
@@ -130,6 +136,10 @@ typedef struct { uint16_t d; uint8_t qs[6];  } hnx_block_iq0_25;  /*  8 */
 typedef struct { uint16_t d; uint8_t qs[32]; } hnx_block_int1;    /* 34 */
 /* 32 bytes of signs then 10 bytes holding 16 five-bit indices. */
 typedef struct { uint16_t d; uint8_t qs[42]; } hnx_block_1375;    /* 44 */
+/* 32 bytes of signs then 14 bytes holding 16 seven-bit indices. */
+typedef struct { uint16_t d; uint8_t qs[46]; } hnx_block_15125;   /* 48 */
+/* 32 bytes of signs then 16 bytes holding 32 four-bit indices. */
+typedef struct { uint16_t d; uint8_t qs[48]; } hnx_block_iq1s;    /* 50 */
 typedef struct { uint16_t d; uint8_t qs[128]; } hnx_block_int4;   /* 130 */
 typedef struct { uint16_t d; uint8_t qs[64]; } hnx_block_fp2;     /*  66 */
 typedef struct { uint16_t d; uint8_t qs[256]; } hnx_block_int8;   /* 258 */

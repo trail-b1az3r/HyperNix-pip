@@ -63,9 +63,9 @@ import importlib.util
 import sys
 from typing import TYPE_CHECKING, Any
 
-__version__ = "0.72.7.post1"
+__version__ = "0.72.8a3"
 DEFAULT_REPO_ID = "ray0rf1re/hyper-Nix.2"
-DEFAULT_MODEL = "qwen3.5-4b"  # New default model
+DEFAULT_MODEL = "lfm2.5-2.6b"  # 0.72.8: Liquid AI LFM2.5 2.6B ("lfm2.5-2.7b" works too)
 
 __all__ = [
     "ARCH_PRESETS",
@@ -404,11 +404,13 @@ MODULE_CATEGORIES: dict[str, tuple[str, ...]] = {
         "magnesium",
         "natural_gas",
     ),
-    # Running models: Hub kernels for Llama-architecture layers, reading
-    # tool calls out of whatever a model wrote, and the T1 API's
-    # endpoints offered to it as tools.
+    # Running models: Hub kernels for Llama-architecture layers, relaying
+    # a long prompt through small-context instances, reading tool calls
+    # out of whatever a model wrote, and the T1 API's endpoints offered
+    # to it as tools.
     "runtime": (
         "hub_kernels",
+        "relay",
         "t1tools",
         "toolcalls",
     ),

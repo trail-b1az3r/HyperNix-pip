@@ -65,15 +65,21 @@ class Unreachable(SystemExit):
 _EPILOG = """\
 Examples:
 
-  hypernix-t1 built-in-runner start            # the default model, HyperNix.3-mini
+  hypernix-t1 built-in-runner start            # choose from a list (↑↓, type to filter, Enter)
   hypernix-t1 built-in-runner start qwen3-8b --gpu-layers 24
+  hypernix-t1 built-in-runner start q38        # part of a name is enough
+  hypernix-t1 built-in-runner backend          # move what is serving to another backend
+  hypernix-t1 built-in-runner backend vulkan
   hypernix-t1 built-in-runner status
   hypernix-t1 built-in-runner plan qwen3-8b
   hypernix-t1 built-in-runner auto             # what this server usually runs
   hypernix-t1 built-in-runner stop
 
-`start` with no model named picks the one model on this machine that
-can be loaded, and refuses to guess when there is more than one.
+`start` with no model named, on a terminal, lists the models this server
+can load -- the list refreshes while it is open -- and loads the one you
+pick. Without a terminal (or with --no-pick) it starts the default model,
+or the one model there is. A name that is not exact is matched against
+the list: one match is loaded, several are offered to choose from.
 
 `auto` loads the model loaded last (--most-used: loaded most often) that
 is still here, on the backend used most, with that model's last settings.
@@ -256,19 +262,26 @@ def _why_nothing(catalogue: dict[str, Any]) -> str:
 def _pick(url: str, key: str) -> tuple[str, int]:
     """``(model_id, exit_code)`` for a ``start`` that named no model.
 
-    The default model when there is one (HyperNix.3-mini unless
+    The default model when there is one (LFM2.5-2.6B unless
     ``T1_DEFAULT_MODEL`` says otherwise), fetched by the server the first
     time. With the default turned off (``T1_DEFAULT_MODEL=``): one model
     is not a guess, so it starts. More than one is, and guessing wrong
     costs the VRAM and the minutes of a load somebody then has to undo,
     so it lists them and stops.
     """
+    from ..hyperlink import defaultmodel
     from ..hyperlink.brewed import DEFAULT_MODEL_ID, DEFAULT_MODEL_REPO, default_model_id
 
     default = default_model_id()
     if default:
-        fetched = (f", from {DEFAULT_MODEL_REPO} (the server downloads it the first "
-                   f"time, about 195 MB)") if default == DEFAULT_MODEL_ID else ""
+        fetched = ""
+        if defaultmodel.matches(default):
+            fetched = (f", from {defaultmodel.DEFAULT_GGUF_REPO} (the server downloads "
+                       f"{defaultmodel.DEFAULT_GGUF_FILE} the first time, about "
+                       f"{defaultmodel.DEFAULT_GGUF_BYTES / 1e9:.1f} GB)")
+        elif default == DEFAULT_MODEL_ID:
+            fetched = (f", from {DEFAULT_MODEL_REPO} (the server downloads it the first "
+                       f"time, about 195 MB)")
         print(f"Starting the default model, {default}{fetched}. Name a model to "
               f"start a different one; T1_DEFAULT_MODEL= turns the default off.",
               file=sys.stderr)
@@ -330,20 +343,27 @@ def build_parser() -> argparse.ArgumentParser:
         action.add_argument("--context-length", type=int, default=None,
                             help="context window (default: the model's own)")
         action.add_argument("--backend", default="auto",
-                            help="auto, cuda, vulkan, cpu, hnx-cuda, hnx-cpu")
+                            help="auto, cuda, vulkan, cpu, hnx-cuda, hnx-cpu, multilama, multilama-ik, …")
 
     # `start` takes the model as an optional argument and `load` requires
     # it. Same request underneath; the difference is that `start` is what
     # you type when the machine has one model and nothing serving it,
     # which is the state every fresh install is in.
     start = sub.add_parser(
-        "start", help="start serving — the default model (HyperNix.3-mini) unless you name one"
+        "start", help="start serving — the default model (LFM2.5-2.6B) unless you name one"
     )
     start.add_argument("model_id", nargs="?", default="",
-                       help="the model to serve (default: T1_DEFAULT_MODEL, else HyperNix.3-mini)")
+                       help="the model to serve (default: T1_DEFAULT_MODEL, else lfm2.5-2.6b)")
     start.add_argument("--restart", action="store_true",
                        help="load again even if that model is already serving")
+    start.add_argument("--no-pick", action="store_true",
+                       help="never show the list; start the default model instead")
     _load_options(start)
+
+    backend = sub.add_parser(
+        "backend", help="load what is serving again on another backend — choose from a list, or name one")
+    backend.add_argument("name", nargs="?", default="",
+                         help="auto, cuda, vulkan, cpu, hnx-cuda, hnx-cpu, multilama, … (the server lists them)")
 
     for name, help_text in (
         ("plan", "where a model's layers would go — changes nothing"),
@@ -403,6 +423,9 @@ def _run(parser: argparse.ArgumentParser, args: argparse.Namespace, url: str, ke
 
     if command == "auto":
         return _auto(url, key, args)
+
+    if command == "backend":
+        return _backend(url, key, args)
 
     if command == "status":
         status, body = _request("GET", f"{url}/runner/status", key)
@@ -485,6 +508,12 @@ def _start(url: str, key: str, args: argparse.Namespace) -> int:
     # `--restart` with nothing named means the one that is running.
     # Going to the catalogue here would restart a *different* model on a
     # machine with several, which is not what the word says.
+    if not wanted and running and args.restart:
+        wanted = running
+    if not wanted and not getattr(args, "no_pick", False) and _can_ask():
+        wanted = _choose_model(url, key, running=running or "")
+        if wanted is None:
+            return 1
     if not wanted and running:
         wanted = running
     if not wanted:
@@ -496,6 +525,130 @@ def _start(url: str, key: str, args: argparse.Namespace) -> int:
         print(f"Replacing {running}.", file=sys.stderr)
 
     status, body = _request("POST", f"{url}/runner/load", key, _load_payload(args, wanted))
+    if status == 404 and wanted:
+        # Not an exact name. Match it against what can be loaded, as
+        # `lms load` does, rather than making people type ids exactly.
+        matched = _match_model(url, key, wanted, body, interactive=not getattr(args, "no_pick", False))
+        if matched is None:
+            return 1
+        if running and running != matched:
+            print(f"Replacing {running}.", file=sys.stderr)
+        status, body = _request("POST", f"{url}/runner/load", key, _load_payload(args, matched))
+    if status >= 400:
+        return _fail(status, body)
+    if args.json:
+        print(json.dumps(body, indent=2))
+        return 0
+    _print_status(body)
+    return 0
+
+
+def _can_ask() -> bool:
+    from .picker import interactive
+
+    return interactive()
+
+
+def _model_choices(url: str, key: str, running: str = "") -> list:
+    from ..hyperlink.brewed import default_model_id
+    from .picker import Choice
+
+    catalogue, refusal = _catalogue(url, key)
+    if refusal is not None:
+        raise RuntimeError(f"the server refused the model list ({refusal[0]})")
+    choices = []
+    seen = set()
+    for m in _loadable(catalogue):
+        model_id = str(m.get("model_id") or "")
+        if not model_id or model_id in seen:
+            continue
+        seen.add(model_id)
+        size = m.get("size_bytes") or 0
+        detail = " · ".join(x for x in (f"{size / 1e9:.1f} GB" if size else "", str(m.get("source") or "")) if x)
+        choices.append(Choice(model_id, detail=detail, current=model_id == running))
+    default = default_model_id()
+    if default and default not in seen:
+        choices.append(Choice(default, detail="the default model · downloaded the first time"))
+    return choices
+
+
+def _choose_model(url: str, key: str, *, running: str = "", query: str = "") -> str | None:
+    from .picker import choose
+
+    try:
+        picked = choose("Load which model", lambda: _model_choices(url, key, running), initial_query=query)
+    except RuntimeError as exc:
+        print(str(exc), file=sys.stderr)
+        return None
+    return picked.value if picked else None
+
+
+def _match_model(url: str, key: str, wanted: str, refusal: Any, *, interactive: bool) -> str | None:
+    """What a name that is not an exact id means: one match, a choice, or a
+    clear "nothing like that"."""
+    from .picker import fuzzy_score
+
+    try:
+        choices = _model_choices(url, key)
+    except RuntimeError:
+        _fail(404, refusal)
+        return None
+    scored = [(fuzzy_score(wanted, c.value), c.value) for c in choices]
+    matches = [value for score, value in sorted((r for r in scored if r[0] is not None), reverse=True)]
+    if len(matches) == 1:
+        print(f"{wanted} → {matches[0]}", file=sys.stderr)
+        return matches[0]
+    if matches and interactive and _can_ask():
+        return _choose_model(url, key, query=wanted)
+    if not matches:
+        print(f"No model on this server matches {wanted!r}.", file=sys.stderr)
+        if choices:
+            print("These can be loaded:\n  " + "\n  ".join(c.value for c in choices[:40]), file=sys.stderr)
+        return None
+    print(f"{len(matches)} models match {wanted!r}; name one:\n  " + "\n  ".join(matches[:40]), file=sys.stderr)
+    return None
+
+
+def _backend(url: str, key: str, args: argparse.Namespace) -> int:
+    """``backend`` — the model that is serving, loaded again on another backend."""
+    from .picker import Choice, choose
+
+    status, body = _request("GET", f"{url}/runner/status", key)
+    if status >= 400:
+        return _fail(status, body)
+    model = (body or {}).get("model") or {}
+    running = model.get("model_id") if body.get("loaded") else None
+    available = list((body or {}).get("backends") or ["auto", "cuda", "vulkan", "cpu", "hnx-cuda", "hnx-cpu"])
+    current = str(model.get("backend") or "")
+    wanted = args.name
+    if not wanted:
+        if not _can_ask():
+            print(f"Name a backend: {', '.join(available)}" + (f" (now {current})" if current else ""), file=sys.stderr)
+            return 1
+
+        def fetch():
+            _s, fresh = _request("GET", f"{url}/runner/status", key)
+            names = list((fresh or {}).get("backends") or available)
+            return [Choice(n, current=n == current) for n in names]
+
+        picked = choose("Backend", fetch)
+        if picked is None:
+            return 1
+        wanted = picked.value
+    if wanted not in available:
+        print(f"{wanted!r} is not a backend this server has: {', '.join(available)}", file=sys.stderr)
+        return 1
+    if not running:
+        print(f"Nothing is serving, so there is nothing to move to {wanted}. "
+              f"`start --backend {wanted}` loads a model on it.", file=sys.stderr)
+        return 1
+    if wanted == current:
+        print(f"{running} is already on {current}.")
+        return 0
+    payload = {"model_id": running, "backend": wanted, "gpu_layers": None,
+               "context_length": model.get("context_length") or None, "total_layers": None}
+    print(f"Loading {running} again on {wanted}.", file=sys.stderr)
+    status, body = _request("POST", f"{url}/runner/load", key, payload)
     if status >= 400:
         return _fail(status, body)
     if args.json:

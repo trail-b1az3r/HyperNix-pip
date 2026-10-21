@@ -110,6 +110,29 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .
   overflow-x: auto; margin: .4em 0; white-space: pre;
 }
 .bubble a { color: inherit; }
+/* Markdown (0.72.8a3): CommonMark, GFM and Markdown Extra. */
+.bubble h1, .bubble h2, .bubble h3, .bubble h4, .bubble h5, .bubble h6 { margin: .6em 0 .3em; line-height: 1.25; }
+.bubble h1 { font-size: 1.3em; } .bubble h2 { font-size: 1.18em; } .bubble h3 { font-size: 1.06em; }
+.bubble h4, .bubble h5, .bubble h6 { font-size: 1em; }
+.bubble ul, .bubble ol { margin: .3em 0 .5em; padding-left: 1.4em; }
+.bubble li > ul, .bubble li > ol { margin: .15em 0; }
+.bubble li.task { list-style: none; margin-left: -1.2em; }
+.bubble li.task input { display: inline-block; width: auto; min-width: 0; height: auto; padding: 0; margin: 0 .35em 0 0; vertical-align: -1px; }
+.bubble blockquote { margin: .4em 0; padding: .1em .8em; border-left: 3px solid var(--line); color: var(--muted); }
+.bubble hr { border: 0; border-top: 1px solid var(--line); margin: .7em 0; }
+.bubble .table-wrap { overflow-x: auto; margin: .4em 0; }
+.bubble table { border-collapse: collapse; font-size: .95em; }
+.bubble th, .bubble td { border: 1px solid var(--line); padding: 4px 8px; vertical-align: top; }
+.bubble th { background: rgba(127,127,127,.12); font-weight: 600; }
+.bubble dl { margin: .3em 0; } .bubble dt { font-weight: 600; } .bubble dd { margin: 0 0 .3em 1.2em; }
+.bubble img { max-width: 100%; border-radius: 8px; }
+.bubble kbd { font: .85em ui-monospace, SFMono-Regular, Menlo, monospace; padding: 1px 5px;
+  border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; }
+.bubble mark { background: rgba(255,214,0,.35); color: inherit; }
+.bubble abbr[title] { text-decoration: underline dotted; cursor: help; }
+.bubble :not(pre) > code { background: rgba(127,127,127,.16); padding: .05em .3em; border-radius: 4px; }
+.bubble .footnotes { font-size: .9em; color: var(--muted); }
+.bubble .footnotes ol { padding-left: 1.2em; } .bubble sup.fnref a { text-decoration: none; }
 .chip {
   display: inline-block; font-size: 12px; padding: 2px 9px; margin: 2px 0;
   border-radius: 999px; background: var(--panel-2); color: var(--muted);
@@ -157,4 +180,66 @@ h2 { font-size: 15px; margin: 18px 0 8px; }
   .only-narrow { display: inline-block; }
   .row { max-width: 88%; }
   #view-runner, #view-memory, #view-settings { padding: 12px 16px 40px; }
+}
+
+/* The two-layer ring beside the composer (0.72.8): inner is context,
+   outer is usage, or GPU / CPU load. */
+.ring { flex: none; display: flex; align-items: center; cursor: help; }
+.ring svg { transform: rotate(-90deg); }
+.ring circle { fill: none; stroke-width: 3.5; stroke-linecap: round; }
+.ring .ring-track { stroke: var(--line); }
+.ring .ring-inner { stroke: var(--accent); stroke-dasharray: 0 100; transition: stroke-dasharray .4s; }
+.ring .ring-outer { stroke: #3fb984; stroke-dasharray: 0 100; transition: stroke-dasharray .4s; }
+.ring .ring-outer.gpu, .ring .ring-outer.cpu { stroke: #e0a440; }
+.ring .warn { stroke: #e05050; }
+.chip.doc { cursor: pointer; border: 1px solid var(--line); }
+
+/* Attachments and parts of datasets (0.72.8a3). */
+.attach { flex: none; align-self: center; }
+.tray { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 16px 0; background: var(--panel); border-top: 1px solid var(--line); }
+.tray + .composer { border-top: 0; }
+.chip.attached { display: inline-flex; align-items: center; gap: 4px; color: var(--text); border: 1px solid var(--line); }
+.chip.attached.picked { border-color: var(--accent); }
+.chip.attached.code { border-color: #3fb984; }
+.chip-button { background: transparent; color: var(--muted); padding: 0 4px; font-size: 12px; border-radius: 6px; }
+.chip-button:hover { background: var(--panel); color: var(--text); }
+.dataset-panel { margin: 0 16px 8px; max-height: 55vh; overflow-y: auto; }
+.panel-head { display: flex; align-items: center; justify-content: space-between; }
+.panel-head h2 { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 8px 0; }
+.ds-grid label, .code-bar label.check { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--muted); }
+.button-row { display: flex; gap: 8px; flex-wrap: wrap; }
+button.secondary { background: var(--panel-2); color: var(--text); }
+.output {
+  background: #0a0a0f; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; margin: 8px 0;
+  max-height: 320px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere;
+  font: 12.5px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* Code (0.72.8a3). */
+#view-code { padding: 16px 24px 40px; width: 100%; }
+.code-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 6px 0; }
+.code-bar input, .code-bar select { flex: 1; min-width: 140px; width: auto; }
+.code-bar button { flex: none; }
+.code-bar label.check { flex-direction: row; align-items: center; gap: 8px; color: var(--text); font-size: 14px; flex: 1; }
+.code-bar label.check input { width: auto; min-width: 0; flex: none; }
+.code-layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 18px; margin-top: 8px; }
+.code-side, .code-main { min-width: 0; }
+.files { list-style: none; margin: 0 0 8px; padding: 0; max-height: 40vh; overflow-y: auto; }
+.files li {
+  padding: 6px 9px; border-radius: 8px; cursor: pointer; font: 13px ui-monospace, SFMono-Regular, Menlo, monospace;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.files li:hover { background: var(--panel-2); }
+.files li.active { background: var(--accent); color: var(--accent-text); }
+.files li small { opacity: .6; }
+.editor {
+  font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; tab-size: 4;
+  min-height: 300px; resize: vertical; white-space: pre; overflow: auto;
+}
+
+@media (max-width: 760px) {
+  .ds-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .code-layout { grid-template-columns: 1fr; }
+  #view-code { padding: 12px 16px 40px; }
 }

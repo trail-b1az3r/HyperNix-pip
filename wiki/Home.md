@@ -13,12 +13,14 @@ reachable if you already knew the filename. Fixed.)
 
 | Guide | Covers |
 |---|---|
-| [CLI](CLI.md) | Every subcommand (all 41), every companion command, every flag, typical invocations. |
+| [CLI](CLI.md) | Every subcommand (the short `hnx` menu and `hnx extra`), every companion command, every flag, typical invocations. |
 | [Architecture](Architecture.md) | Generated chart of the package's subsystems and how they connect, rebuilt by the `arch-map` workflow. |
 | [HyperNix Studio](../desktop/README.md) | The Qt desktop client: models, chat, a workspace the model may edit, and why it cannot run a command. |
 | [ggml-hnx](../native/ggml-hnx/README.md) | Building a llama.cpp that reads every HyperNix type (sub-bit, codebook, FP8) and runs Q8_K weights. |
 | [Runtime](Runtime.md) | `hypernix runtime` — using that llama.cpp from LM Studio and other applications. |
 | [llama-easy](Llama-Easy.md) | Make any Llama model faster in one line: the Hugging Face Hub kernel (Triton RMSNorm, RoPE, SwiGLU), its three ways in, and how it auto-publishes. |
+| [Context relay](Context-Relay.md) | Prompts longer than a model's context, read in hops by several small-context instances — in Python and as `POST /inference/relay`, with its cost. |
+| [Browser Agent](Browser-Agent.md) | The Firefox extension: a model on T1, your machine, OpenAI or Anthropic searches, reads, clicks and types in your browser, asking first. |
 | [Kitchen](Kitchen.md) | pans / microwave / table / sink / instant_pot / coffee_maker / pressure_cooker / pressure_cooker_v3. |
 | [CoffeeMaker](CoffeeMaker.md) | Scheduled training/eval runs — brew on a timer instead of babysitting a run. |
 | [Blender](Blender.md) | Interleaves/mixes multiple input data streams into one. |
@@ -113,6 +115,8 @@ reachable if you already knew the filename. Fixed.)
 
 | Guide | Covers |
 |---|---|
+| [C4](C4.md) | `hypernix.c4` — explode a model (safetensors, `.pt` or GGUF, on the GPU) into mstems, stems, Pdials, mdials and dials; measure and test them; find what is unneeded or most worth training; `reap` the best layers and weights and `sow` them into a new model; the separate-and-check c4 optimizer. |
+| [HNX0xV2Image](HNX0xV2Image.md) | `hnx image` — the hnx0xv2image image-to-text arch: a vision encoder and projector trained on its own, then fused with any non-VL LFM2/LFM2.5, any Qwen3.5, or any HyperNix model, without changing the text model. |
 | [Whisk](Whisk.md) | Checkpoint averaging — SWA / EMA / geometric-mean over N saved snapshots. |
 | [RecipeBook](RecipeBook.md) | Named-config registry (`cook(name, **overrides)`), the backing store for `hypernix brew`. |
 | [DeepFryer](DeepFryer.md) | Reversible weight-noise perturbation — a regularizer or a severe stress-test. |
@@ -133,7 +137,7 @@ reachable if you already knew the filename. Fixed.)
 
 | Guide | Covers |
 |---|---|
-| [T1-API](T1-API.md) | `hypernix.t1api` — controlled HTTP gateway into HyperNix-pip (model registry, auth, routing, modules, servers, jobs, events, billing, the LM Studio bridge, HyperLink and HyperLink on the web, web accounts, MCP, backups, governed inference), every route and every setting. Released: **T1 v1.1.26.9.0.0**, current in 0.72.6.post3. |
+| [T1-API](T1-API.md) | `hypernix.t1api` — controlled HTTP gateway into HyperNix-pip (model registry, auth, routing, modules, servers, jobs, events, billing, the LM Studio bridge, HyperLink and HyperLink on the web, web accounts, MCP both ways, Net, the Anthropic Messages API for Claude Code, backups, governed inference), every route and every setting. Current: **T1 v1.1.26.10.2.0** in 0.72.8a3. |
 | [T1-API Security Checklist](T1-API-Security-Checklist.md) | What to check before exposing a deployment — one page, per-item, with the config field each maps to, including every opt-in feature and keeping the server current. |
 | [HyperLink-OnDevice](HyperLink-OnDevice.md) | HyperLink's on-phone models: search Hugging Face, download a GGUF and run it on the iPhone. |
 | [HyperLink-Sync](HyperLink-Sync.md) | HyperLink's sync, push notifications and search — how a phone that sleeps catches up. |

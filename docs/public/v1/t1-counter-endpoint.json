@@ -1,0 +1,5 @@
+{
+  "about": "Where public T1 servers (T1 v1.1.26.10.1.0 and newer) send their hourly anonymous heartbeat, and where the README's counter reads the total. Empty while no counter is hosted: then nothing is sent. A counter is any T1 server run with T1_COUNTER_HOST=1.",
+  "heartbeat": "",
+  "summary": ""
+}

@@ -40,8 +40,20 @@ message promising the opposite. So the rule here is: find a method that
 works on *this* session, use it, and when there isn't one say which of
 the four it is and what to install.
 
+It does not lock the screen
+---------------------------
+The GNOME/KDE path used to blank by activating the screensaver, and an
+active screensaver locks the session: the wake word then woke a lock
+screen. The screen is now turned off with the compositor's own power
+setting, and lock-on-idle (GNOME, Cinnamon, MATE, KDE, Xfce, the X
+screensaver) is switched off for as long as protection lasts and put
+back afterwards (:class:`hypernix.system.blanking.LockGuard`). If a crash
+left it off, ``hnx prot restore`` puts it back. On a Mac set to lock
+immediately when the display sleeps, it refuses unless ``--allow-lock``.
+
 Usage:
-  hnx prot [start]
+  hnx prot [start] [--force] [--allow-lock]
+  hnx prot restore
   hnx prot bind set <word>
   hnx prot bind reset
 """
@@ -58,10 +70,12 @@ from .blanking import (
     COMMAND_TIMEOUT,
     Blanker,
     BlankResult,
+    LockGuard,
     _no_method,
     choose_blanker,
     detect_session,
     dpms_enabled,
+    macos_locks_on_sleep,
     set_monitor_state,
 )
 
@@ -74,6 +88,8 @@ except ImportError:
 
 CONFIG_DIR = Path.home() / ".hypernix"
 CONFIG_FILE = CONFIG_DIR / "protect.json"
+#: What the lock guard changed, so `hnx prot restore` can undo it after a crash.
+LOCK_STATE_FILE = CONFIG_DIR / "protect-lock-state.json"
 DEFAULT_WAKE_WORD = "bon"
 
 def load_config() -> dict:
@@ -158,7 +174,18 @@ def _health_monitor_thread(stop_event: threading.Event) -> None:
             time.sleep(1)
 
 
-def start_protection(*, force: bool = False) -> int:
+def restore_locking() -> int:
+    """Put back lock settings a crashed ``prot`` left switched off."""
+    guard = LockGuard.from_state(str(LOCK_STATE_FILE))
+    if not guard.changed:
+        print("[protect] Nothing to restore: no lock setting was left changed.")
+        return 0
+    for what in guard.restore():
+        print(f"[protect] Restored {what}.")
+    return 0
+
+
+def start_protection(*, force: bool = False, allow_lock: bool = False) -> int:
     """Blank the screen and wait for the wake word. Returns an exit code.
 
     Refuses rather than pretending when the screen cannot be blanked.
@@ -187,6 +214,17 @@ def start_protection(*, force: bool = False) -> int:
               "the keyboard would look dead. Pass --force to do it anyway.")
         return 1
 
+    if session == "darwin" and macos_locks_on_sleep() and not allow_lock:
+        print("[protect] This Mac locks as soon as the display sleeps (System Settings > "
+              "Lock Screen), so blanking it would lock it. Change that setting, or pass "
+              "--allow-lock to blank it anyway.")
+        return 1
+
+    guard = LockGuard(state_file=str(LOCK_STATE_FILE))
+    held = guard.disable()
+    if held:
+        print(f"[protect] Holding the session unlocked ({', '.join(held)}); put back on exit.")
+
     print("[protect] Entering protection mode.")
     print(f"[protect] Type '{wake_word}' to wake up.")
     time.sleep(1.5)
@@ -210,11 +248,25 @@ def start_protection(*, force: bool = False) -> int:
         if blanked.hint:
             print(f"[protect] {blanked.hint}")
         if not force:
+            guard.restore()
             print("[protect] Not entering raw mode. Pass --force to do it anyway.")
             return 1
 
     fd = sys.stdin.fileno()
     old_settings = termios.tcgetattr(fd)
+
+    # A closed terminal (SIGHUP) or a kill (SIGTERM) must still run the
+    # finally below: it is what turns the screen on and puts the lock
+    # settings back.
+    import signal
+
+    def _stop(signum, _frame):  # noqa: ANN001 - signal handler signature
+        raise SystemExit(128 + signum)
+
+    previous = {}
+    for sig in (signal.SIGTERM, getattr(signal, "SIGHUP", None)):
+        if sig is not None:
+            previous[sig] = signal.signal(sig, _stop)
     
     buffer = ""
     try:
@@ -238,6 +290,9 @@ def start_protection(*, force: bool = False) -> int:
         # needs somewhere to land.
         termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
         woken = set_monitor_state("on", blanker=blanker, restore_dpms=was_enabled)
+        guard.restore()
+        for sig, handler in previous.items():
+            signal.signal(sig, handler)
         stop_event.set()
         if health_thread:
             health_thread.join(timeout=1.0)
@@ -255,11 +310,17 @@ def start_protection(*, force: bool = False) -> int:
 def cli_main(argv: list[str] | None = None) -> int:
     args = argv if argv is not None else sys.argv[1:]
     
+    if any(a in ("-h", "--help") for a in args):
+        print(__doc__)
+        return 0
     force = "--force" in args
-    args = [a for a in args if a != "--force"]
+    allow_lock = "--allow-lock" in args
+    args = [a for a in args if a not in ("--force", "--allow-lock")]
 
     if not args or args[0] == "start":
-        return start_protection(force=force)
+        return start_protection(force=force, allow_lock=allow_lock)
+    if args[0] == "restore":
+        return restore_locking()
         
     if args[0] == "bind":
         if len(args) < 2:
@@ -277,7 +338,8 @@ def cli_main(argv: list[str] | None = None) -> int:
             set_wake_word(args[2])
             return 0
 
-    print("Usage:\n  hnx prot [start] [--force]\n  hnx prot bind [set <word> | reset]")
+    print("Usage:\n  hnx prot [start] [--force] [--allow-lock]\n  hnx prot restore\n"
+          "  hnx prot bind [set <word> | reset]")
     return 1
 
 if __name__ == "__main__":

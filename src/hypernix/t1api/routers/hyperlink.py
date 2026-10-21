@@ -75,6 +75,7 @@ from ..deps import (
     get_session_store,
     get_sync_store,
     get_trust_policy,
+    get_usage_meter,
     require_hyperlink_admin,
     require_hyperlink_operator,
 )
@@ -85,9 +86,13 @@ from ..schemas import (
     AttachmentResponse,
     AttachmentSummary,
     BackendsResponse,
+    ChatRingResponse,
+    DatasetPick,
     DeviceListResponse,
     DeviceResponse,
     DeviceSummary,
+    DocumentCreateRequest,
+    DocumentResponse,
     DownloadedModelsResponse,
     GenerationListResponse,
     GenerationStopResponse,
@@ -104,6 +109,9 @@ from ..schemas import (
     HyperLinkEndpointsResponse,
     HyperLinkPeer,
     HyperLinkPeersResponse,
+    HyperLinkPingRequest,
+    HyperLinkPingResponse,
+    LoadedModelsResponse,
     MessageEditRequest,
     MessageEditResponse,
     MessageListResponse,
@@ -662,6 +670,7 @@ def edit_message(
     store: ChatSessionStore = Depends(get_session_store),
     config: T1APIConfig = Depends(get_config),
     request_id: str = Depends(get_request_id),
+    request: Request = None,
 ) -> MessageEditResponse:
     """Rewrite one of your own messages, and drop what came after it.
 
@@ -677,6 +686,9 @@ def edit_message(
     a different feature and not one anybody asked for.
     """
     _require_enabled(config)
+    store.get(session_id, owner=principal.owner)
+    _check_signature(request, principal, config, payload.signature, action="edit",
+                     chat_session_id=session_id, content=payload.content)
     removed = store.edit_message(
         session_id, message_id,
         content=payload.content, owner=principal.owner, truncate=payload.truncate,
@@ -805,6 +817,14 @@ def _last_user_message(store, session_id: str, owner: str):
     return tail[-1]
 
 
+def _mcp_hub(request: Request):
+    """The server's remote MCP servers, or None (a request with no app has none)."""
+    try:
+        return getattr(request.app.state, "t1_mcp_hub", None)
+    except (KeyError, AttributeError):
+        return None
+
+
 def _t1_access(request: Request | None, principal):
     """How the model reaches this server's own API, or None for no T1 tools.
 
@@ -832,7 +852,7 @@ def _t1_access(request: Request | None, principal):
         if ":" in str(host):
             host = f"[{host}]"
         base = f"{request.url.scheme}://{host}:{port}{request.scope.get('root_path', '')}"
-        return T1Access(base, "", allow_mutating=False)
+        return T1Access(base, "", allow_mutating=False, mcp=_mcp_hub(request))
 
     host, port = (request.scope.get("server") or ("127.0.0.1", 8000))[:2]
     if host in ("0.0.0.0", "::", "", None):  # nosec B104 - compares against or binds 0.0.0.0 only where the caller chose LAN access
@@ -847,6 +867,8 @@ def _t1_access(request: Request | None, principal):
         # refuse anyway; hiding them saves the model rounds spent finding
         # that out.
         allow_mutating=bool(getattr(principal, "is_admin", False)) or "write" in scopes,
+        mcp=_mcp_hub(request),
+        mcp_admin=bool(getattr(principal, "is_admin", False)),
     )
 
 
@@ -907,7 +929,21 @@ def _memory_head(store: MemoryStore | None, owner: str) -> int:
         return 0
 
 
-def _tool_setup(config, principal, settings, request, memory_store, session_id):
+def _code_tools(config, principal, request, box_id: str | None):
+    """The sandbox tools for a code session, or None (no sandbox, or sandboxes off)."""
+    if not box_id or request is None or not getattr(config, "code_sandbox", False):
+        return None
+    from ...hyperlink.codetools import CodeTools
+    from . import code as code_routes
+
+    try:
+        store, box = code_routes._box(request, config, principal, box_id)
+    except T1APIError:
+        return None
+    return CodeTools(store, box, code_routes._perms(request), may_write=code_routes._may_run(principal))
+
+
+def _tool_setup(config, principal, settings, request, memory_store, session_id, code_sandbox_id=None):
     """The tools this turn gets, or None for none at all.
 
     Three kinds, each with its own switch, because they are three
@@ -927,6 +963,9 @@ def _tool_setup(config, principal, settings, request, memory_store, session_id):
     from .noodle import _context as noodle_context
 
     t1 = _t1_access(request, principal)
+    code_tools = _code_tools(config, principal, request, code_sandbox_id)
+    if t1 is not None and code_tools is not None:
+        t1.code = code_tools
     workspace = bool(getattr(settings, "tools_enabled", False)) and bool(
         getattr(config, "noodle_enabled", False))
     auto_memory = bool(getattr(settings, "auto_memory", False)) and memory_store is not None
@@ -1002,6 +1041,82 @@ def _apply_preferences(
         return wire
     body = [m for m in wire if m.get("role") != "system"]
     return [{"role": "system", "content": composed}, *body]
+
+
+def _documents(tool_rounds: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
+    """Files the model wrote this turn with ``create_document``, for the
+    app to offer as downloads under the reply."""
+    found: list[dict[str, Any]] = []
+    for round_ in tool_rounds or []:
+        if round_.get("tool") != "create_document" or not round_.get("ok"):
+            continue
+        try:
+            body = json.loads(round_.get("content") or "")
+            file = body["file"]
+            found.append({"file_id": file["file_id"], "filename": file["filename"],
+                          "size_bytes": file.get("size_bytes", 0),
+                          "content_type": file.get("content_type", ""),
+                          "download_path": body.get("download_path") or f"/hyperlink/files/{file['file_id']}"})
+        except (ValueError, KeyError, TypeError):
+            continue
+    return found
+
+
+_CONTEXT_CACHE: dict[str, tuple[float, int]] = {}
+
+
+def _model_context(config, runner, backend) -> int:
+    """The loaded model's context window, or 0 when nobody says.
+
+    The runner knows what it loaded the model with. LM Studio is asked
+    for its loaded list, at most every 30 seconds, so a chat does not
+    wait on it every turn.
+    """
+    if backend.is_hypernix and runner is not None:
+        try:
+            return int(getattr(runner.current, "context_length", 0) or 0)
+        except Exception:  # noqa: BLE001 - an unknown context is not an error
+            return 0
+    key = f"{backend.base_url}|{backend.model_id}"
+    cached = _CONTEXT_CACHE.get(key)
+    if cached and time.monotonic() - cached[0] < 30:
+        return cached[1]
+    from ...hyperlink.inference import loaded_models
+
+    try:
+        rows = loaded_models(config, None, lmstudio_timeout=2.0)
+    except Exception:  # noqa: BLE001
+        rows = []
+    found = next((r for r in rows if not backend.model_id or r["model_id"] == backend.model_id), None)
+    context = int((found or {}).get("context_length") or 0)
+    _CONTEXT_CACHE[key] = (time.monotonic(), context)
+    return context
+
+
+def _hypercompress(wire: list[dict[str, Any]], settings, context_length: int) -> dict[str, Any] | None:
+    """Shrink the system message in place when the prompt cannot fit.
+
+    See :mod:`hypernix.hyperlink.hypercompress`. Returns what was done,
+    for the reply's metadata, or None when nothing needed doing.
+    """
+    from ...hyperlink.hypercompress import METADATA_KEY, estimate_tokens, maybe_compress
+
+    if not context_length or not wire or wire[0].get("role") != "system":
+        return None
+    system = wire[0].get("content")
+    if not isinstance(system, str):
+        return None
+    others = sum(
+        estimate_tokens(m["content"]) if isinstance(m.get("content"), str) else 256
+        for m in wire[1:]
+    )
+    size = (getattr(settings, "metadata", None) or {}).get(METADATA_KEY, 1)
+    result = maybe_compress(system, context_length=context_length, other_tokens=others,
+                            size=size if size in (1, 2) else 1)
+    if not result.applied:
+        return None
+    wire[0] = {**wire[0], "content": result.text}
+    return {**result.to_dict(), "context_length": context_length}
 
 
 def _effort_settings(preferences, payload) -> dict[str, Any]:
@@ -1104,6 +1219,41 @@ def _title_session(store, session_id: str, owner: str, settings, bridge, model: 
     return title
 
 
+def _code_sandbox(payload, user_message) -> str | None:
+    """The sandbox this turn works in: the request's, else the one the message was sent with."""
+    return payload.code_sandbox_id or (getattr(user_message, "metadata", None) or {}).get("code_sandbox_id")
+
+
+def _user_metadata(principal, payload) -> dict[str, Any]:
+    """What is kept with the person's message: their device, and the dataset
+    parts and sandbox they chose, so a regenerate or a later turn builds
+    the same context."""
+    metadata: dict[str, Any] = {"device_id": principal.device_id} if principal.device_id else {}
+    if payload.datasets:
+        metadata["datasets"] = [pick.model_dump() for pick in payload.datasets]
+    if payload.code_sandbox_id:
+        metadata["code_sandbox_id"] = payload.code_sandbox_id
+    return metadata
+
+
+def _dataset_text(store: AttachmentStore, owner: str, file_id: str, pick: dict[str, Any] | None) -> str:
+    """An excerpt of one dataset attachment, or a line saying why there is none."""
+    from ...hyperlink import datasets as ds
+
+    try:
+        record = store.get(file_id, owner=owner)
+        path = store.path_for(file_id, owner=owner)
+        selection = dict(pick or {})
+        selection.pop("file_id", None)
+        if not pick and record.size_bytes <= ds.MAX_CHARS:
+            selection["rows"] = "0-"          # a small file goes whole
+        return ds.excerpt(path, selection, name=record.filename).text
+    except T1APIError:
+        return f"[dataset {file_id} is no longer available]"
+    except (ds.DatasetError, OSError, ValueError) as exc:
+        return f"[could not read the dataset {file_id}: {exc}]"
+
+
 def _wire_messages(
     history: list[ChatMessage],
     store: AttachmentStore,
@@ -1127,9 +1277,13 @@ def _wire_messages(
     turn: the alternative is a conversation that can never be continued
     because one old screenshot was deleted.
     """
+    from ...hyperlink.datasets import is_dataset
+
     wire: list[dict[str, Any]] = []
     for message in history:
-        if not message.attachment_ids:
+        picks = {p.get("file_id"): p for p in (getattr(message, "metadata", None) or {}).get("datasets") or []
+                 if isinstance(p, dict)}
+        if not message.attachment_ids and not picks:
             wire.append({"role": message.role, "content": message.content})
             continue
 
@@ -1138,7 +1292,12 @@ def _wire_messages(
         for file_id in message.attachment_ids:
             try:
                 record = store.get(file_id, owner=owner)
-                if record.is_image:
+                if file_id in picks or is_dataset(record.filename):
+                    # A dataset (0.72.8a3): the part the person chose, or
+                    # its first rows -- never the whole of a large file,
+                    # and never "binary, not included" for a Parquet.
+                    text += "\n\n" + _dataset_text(store, owner, file_id, picks.pop(file_id, None))
+                elif record.is_image:
                     parts.append(
                         {
                             "type": "image_url",
@@ -1157,6 +1316,8 @@ def _wire_messages(
                     )
             except T1APIError:
                 text += f"\n\n[attachment {file_id} is no longer available]"
+        for file_id, pick in picks.items():      # chosen without being attached to this message
+            text += "\n\n" + _dataset_text(store, owner, str(file_id), pick)
 
         if parts:
             wire.append({"role": message.role, "content": [{"type": "text", "text": text}, *parts]})
@@ -1198,7 +1359,7 @@ def _vision(wire: list[dict[str, Any]], backend, runner) -> list[dict[str, Any]]
                            who=backend.model_id or "the loaded model")
 
 
-def _chat_backend(config: T1APIConfig, runner=None):
+def _chat_backend(config: T1APIConfig, runner=None, model_id: str | None = None):
     """What answers this turn: this server's own runner, or LM Studio.
 
     The runner comes first, and deliberately. If somebody loaded a model
@@ -1216,7 +1377,7 @@ def _chat_backend(config: T1APIConfig, runner=None):
     from ...hyperlink.inference import BackendUnavailable, resolve_backend
 
     try:
-        return resolve_backend(config, runner)
+        return resolve_backend(config, runner, model_id)
     except BackendUnavailable as exc:
         raise T1APIError(
             T1ErrorCode.NOT_SUPPORTED,
@@ -1261,6 +1422,256 @@ def _bridge_error(exc: LMStudioError) -> T1APIError:
     return T1APIError(code, str(exc), details=exc.to_dict(), http_status=status)
 
 
+# ---------------------------------------------------------------------------
+# Signed prompts and the ping before them (0.72.8)
+# ---------------------------------------------------------------------------
+
+
+def _server_session(request: Request) -> str:
+    """This server process's id: what prompts are signed for."""
+    from ...hyperlink.signing import NonceCache, new_server_session_id
+
+    state = request.app.state
+    if not getattr(state, "t1_server_session", None):
+        state.t1_server_session = new_server_session_id()
+        state.t1_signature_nonces = NonceCache()
+    return state.t1_server_session
+
+
+def _signer(principal: HyperLinkPrincipal) -> str:
+    """account:<id> when the owner is an account, else key:<key id>."""
+    from ...hyperlink.ownership import ACCOUNT_PREFIX
+
+    return principal.owner if principal.owner.startswith(ACCOUNT_PREFIX) else f"key:{principal.owner}"
+
+
+def _credential(request: Request) -> str:
+    header = request.headers.get("authorization", "")
+    scheme, _, value = header.partition(" ")
+    return value.strip() if scheme.lower() == "bearer" else ""
+
+
+def _check_signature(
+    request: Request, principal: HyperLinkPrincipal, config: T1APIConfig,
+    signature: dict | None, *, action: str, chat_session_id: str, content: str | None,
+    allow_no_server_session: bool = False,
+):
+    """Refuse a send, resend or edit whose signature does not check out.
+
+    Unsigned is allowed for apps from before 0.72.8 unless the server
+    requires signatures. A signature from before a restart is a 409 with
+    the new server session id, so the app pings again and re-signs.
+    """
+    from ...hyperlink.signing import SignatureError, verify
+
+    current = _server_session(request)
+    if signature is None:
+        if config.hyperlink_require_signed:
+            raise T1APIError(
+                T1ErrorCode.AUTH_INVALID_TOKEN,
+                "This server requires signed prompts. Update HyperLink, which signs "
+                "every message when Send is pressed.",
+                details={"server_session_id": current}, http_status=401,
+            )
+        return None
+    credential = _credential(request)
+    if not credential:
+        raise T1APIError(
+            T1ErrorCode.AUTH_MISSING_CREDENTIALS,
+            "A signed prompt needs the key or device token it was signed with.",
+            http_status=401,
+        )
+    try:
+        return verify(
+            signature, credential=credential, signer=_signer(principal),
+            server_session_id=current, action=action, chat_session_id=chat_session_id,
+            content=content, nonces=request.app.state.t1_signature_nonces,
+            allow_no_server_session=allow_no_server_session,
+        )
+    except SignatureError as exc:
+        raise T1APIError(
+            T1ErrorCode.AUTH_INVALID_TOKEN, f"The message's signature was refused: {exc}",
+            details={"reason": exc.code, "server_session_id": current},
+            http_status=409 if exc.code == "server_session" else 401,
+        ) from exc
+
+
+@router.get("/whoami")
+def signing_identity(
+    request: Request,
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    config: T1APIConfig = Depends(get_config),
+    request_id: str = Depends(get_request_id),
+) -> dict[str, Any]:
+    """Who this credential is to HyperLink: what its prompts are signed as,
+    and whether its chats are its key's or its account's (0.72.8)."""
+    _require_enabled(config)
+    from ...hyperlink.ownership import ACCOUNT_PREFIX
+
+    signer = _signer(principal)
+    return {
+        "signer": signer,
+        "owner_kind": "account" if principal.owner.startswith(ACCOUNT_PREFIX) else "key",
+        "device_id": principal.device_id,
+        "server_session_id": _server_session(request),
+        "request_id": request_id,
+    }
+
+
+@router.post("/login")
+async def hyperlink_login(request: Request, config: T1APIConfig = Depends(get_config),
+                          request_id: str = Depends(get_request_id)) -> dict[str, Any]:
+    """Sign the app in to an account, once (0.72.8).
+
+    However the app first reached this server -- a key, the local
+    network, a pairing code -- signing in mints a key that belongs to the
+    account and hands it back once; the app keeps it as its credential.
+    From then on its chats, memories and settings are the account's, on
+    every device that signs in, and survive a reinstall.
+
+    No cookie and no CSRF token: the credentials are in the body and the
+    result is a bearer key, which is how the app already talks.
+    """
+    _require_enabled(config)
+    from hypernix.security.keymaster import KeyScope, KeyType
+
+    from ..accounts import AccountError
+
+    settings = getattr(request.app.state, "t1_webauth", None)
+    store = getattr(request.app.state, "t1_accounts", None)
+    keymaster = getattr(request.app.state, "t1_keymaster", None)
+    if settings is None or not settings.enabled or store is None or keymaster is None:
+        raise T1APIError(
+            T1ErrorCode.NOT_FOUND,
+            "This server has no accounts. Ask its owner to turn web accounts on, or "
+            "keep using your key or pairing.",
+            http_status=404,
+        )
+    try:
+        body = await request.json()
+    except Exception:  # noqa: BLE001
+        body = None
+    if not isinstance(body, dict) or not body.get("username") or not body.get("password"):
+        raise T1APIError(T1ErrorCode.VALIDATION_ERROR, "Send a username and a password.")
+    try:
+        account = store.authenticate(str(body["username"]), str(body["password"]))
+    except AccountError as exc:
+        raise T1APIError(T1ErrorCode.AUTH_INVALID_KEY, exc.message, http_status=401) from exc
+    device = str(body.get("device_name") or "HyperLink")[:80]
+    meta = keymaster.create(key_type=KeyType.USER, scopes={KeyScope.READ, KeyScope.WRITE},
+                            note=f"HyperLink sign-in: {device}")
+    store.remember_key(account.account_id, meta.key_id)
+    from ...hyperlink.ownership import ACCOUNT_PREFIX
+
+    return {
+        "account": {"account_id": account.account_id, "username": account.username,
+                    "display_name": getattr(account, "display_name", "")},
+        "key": meta.key,
+        "key_id": meta.key_id,
+        "owner": ACCOUNT_PREFIX + account.account_id,
+        "note": "Keep this key; it is shown once. Your chats now belong to the account.",
+        "request_id": request_id,
+    }
+
+
+@router.post("/ping", response_model=HyperLinkPingResponse)
+def ping(
+    request: Request,
+    payload: HyperLinkPingRequest,
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    config: T1APIConfig = Depends(get_config),
+    request_id: str = Depends(get_request_id),
+) -> HyperLinkPingResponse:
+    """Answered when Send is pressed, before the prompt goes -- and never by
+    a model: a busy GPU must not make a reachable server look unreachable.
+
+    The app waits at most ``ping_timeout_seconds`` (4) for this. If it is
+    answered, the prompt follows with no timeout of its own. The ping is
+    signed (action ``ping``) with the time Send was pressed; the first one
+    may leave the server session id empty, which is how the app learns it.
+    """
+    _require_enabled(config)
+    received = time.time()
+    _check_signature(
+        request, principal, config, payload.signature, action="ping",
+        chat_session_id=payload.chat_session_id, content=None, allow_no_server_session=True,
+    )
+    signed_at = float(payload.signature.get("signed_at") or payload.sent_at)
+    if abs(payload.sent_at - signed_at) > 5:
+        raise T1APIError(
+            T1ErrorCode.VALIDATION_ERROR,
+            "sent_at and the signature's time disagree; both are when Send was pressed",
+        )
+    return HyperLinkPingResponse(
+        server_session_id=_server_session(request), signer=_signer(principal),
+        received_at=received, transit_seconds=round(max(0.0, received - payload.sent_at), 3),
+        request_id=request_id,
+    )
+
+
+@router.get("/sessions/{session_id}/ring", response_model=ChatRingResponse)
+def chat_ring(
+    session_id: str,
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    store: ChatSessionStore = Depends(get_session_store),
+    memories: MemoryStore = Depends(get_memory_store),
+    preferences=Depends(get_preference_store),
+    runner=Depends(get_runner),
+    meter=Depends(get_usage_meter),
+    config: T1APIConfig = Depends(get_config),
+    request_id: str = Depends(get_request_id),
+) -> ChatRingResponse:
+    """The two rings beside the chat box: context, then usage or load.
+
+    The inner ring is how much of the model's context the next turn
+    uses (the system prompt and the history it would send). The outer
+    one is the person's token allowance when their key and this server
+    have one, otherwise the GPU's load, or the CPU's when the model runs
+    on the CPU. See :mod:`hypernix.hyperlink.ring`.
+    """
+    _require_enabled(config)
+    from ...hyperlink.inference import BackendUnavailable
+    from ...hyperlink.ring import context_layer, hardware_layer, usage_layer
+    from ...hyperlink.sessions import estimate_tokens
+
+    session = store.get(session_id, owner=principal.owner)
+    settings = preferences.get(owner=principal.owner)
+    try:
+        backend = _chat_backend(config, runner, session.model_id or None)
+    except (BackendUnavailable, T1APIError):
+        backend = None
+    context = _model_context(config, runner, backend) if backend is not None else 0
+    budget = _token_budget(settings, None)
+    history = store.context_for(session_id, owner=principal.owner, token_budget=budget)
+    system = _apply_preferences(
+        [], settings, session.system_prompt,
+        memories.prompt_block(owner=principal.owner) if settings.auto_memory else "",
+        default_prompt_for(config, backend) if backend is not None else "",
+    )
+    used = sum(estimate_tokens(m.content) for m in history) + sum(
+        estimate_tokens(m["content"]) for m in system)
+    inner = context_layer(used, context or budget, from_model=bool(context))
+
+    outer = None
+    ctx = principal.auth_context
+    key_id = getattr(ctx, "key_id", "") if ctx is not None else ""
+    model_id = (backend.model_id if backend is not None else "") or session.model_id
+    if key_id and model_id and meter is not None:
+        try:
+            outer = usage_layer(meter.snapshot_for_model(key_id, model_id))
+        except Exception:  # noqa: BLE001 - an unregistered model has no allowance
+            outer = None
+    if outer is None:
+        on_gpu = None
+        if backend is not None and backend.is_hypernix and runner is not None:
+            placement = getattr(getattr(runner, "current", None), "placement", None)
+            if placement is not None:
+                on_gpu = bool(getattr(placement, "gpu_layers", 0))
+        outer = hardware_layer(on_gpu=on_gpu)
+    return ChatRingResponse(session_id=session_id, inner=inner.to_dict(), outer=outer.to_dict(),
+                            request_id=request_id)
+
+
 @router.post("/sessions/{session_id}/chat", response_model=HyperLinkChatResponse)
 def chat_turn(
     session_id: str,
@@ -1285,11 +1696,16 @@ def chat_turn(
     """
     _require_enabled(config)
     session = store.get(session_id, owner=principal.owner)
+    _check_signature(
+        request, principal, config, payload.signature,
+        action="resend" if payload.regenerate else "send", chat_session_id=session_id,
+        content=None if payload.regenerate else payload.content,
+    )
 
     if payload.regenerate:
         user_message = _last_user_message(store, session_id, principal.owner)
     else:
-        if not payload.content.strip() and not payload.attachment_ids:
+        if not payload.content.strip() and not payload.attachment_ids and not payload.datasets:
             raise T1APIError(
                 T1ErrorCode.VALIDATION_ERROR, "Send some text, an attachment, or both"
             )
@@ -1299,10 +1715,12 @@ def chat_turn(
             content=payload.content,
             owner=principal.owner,
             attachment_ids=payload.attachment_ids,
-            metadata={"device_id": principal.device_id} if principal.device_id else {},
+            metadata=_user_metadata(principal, payload),
         )
 
-    backend = _chat_backend(config, runner)
+    # The model the person picked from what is loaded, if any: it decides
+    # which backend answers, not only which model name is sent.
+    backend = _chat_backend(config, runner, payload.model_id or session.model_id or None)
     bridge = backend.client
     settings = preferences.get(owner=principal.owner)
     compacted = _maybe_compact(
@@ -1320,6 +1738,7 @@ def chat_turn(
         memories.prompt_block(owner=principal.owner) if settings.auto_memory else "",
         default_prompt_for(config, backend),
     )
+    hypercompressed = _hypercompress(wire, settings, _model_context(config, runner, backend))
     wire = _vision(wire, backend, runner)
     sampling = _effort_settings(settings, payload)
 
@@ -1334,7 +1753,8 @@ def chat_turn(
     )
     used_backup = False
     tool_rounds: list[dict[str, Any]] = []
-    setup = _tool_setup(config, principal, settings, request, memories, session_id)
+    setup = _tool_setup(config, principal, settings, request, memories, session_id,
+                        _code_sandbox(payload, user_message))
     try:
         if setup is not None:
             envelope, tool_rounds = _chat_with_tools(
@@ -1402,12 +1822,14 @@ def chat_turn(
             # the thread tomorrow still shows that it ran three commands
             # rather than just knowing something.
             **({"tool_rounds": tool_rounds} if tool_rounds else {}),
+            **({"documents": _documents(tool_rounds)} if _documents(tool_rounds) else {}),
             # Recorded rather than hidden: an answer from a different
             # model than the one asked for is the single most confusing
             # thing that can happen in a thread, and the fix is to say
             # so rather than to stop doing it.
             **({"used_backup_model": True} if used_backup else {}),
             **({"compacted_before": compacted.get("messages_compacted", 0)} if compacted else {}),
+            **({"hypercompressed": hypercompressed} if hypercompressed else {}),
         },
     )
     _title_session(store, session_id, principal.owner, settings, bridge, model_id or None)
@@ -1459,11 +1881,16 @@ def chat_turn_stream(
     """
     _require_enabled(config)
     session = store.get(session_id, owner=principal.owner)
+    _check_signature(
+        request, principal, config, payload.signature,
+        action="resend" if payload.regenerate else "send", chat_session_id=session_id,
+        content=None if payload.regenerate else payload.content,
+    )
 
     if payload.regenerate:
         user_message = _last_user_message(store, session_id, principal.owner)
     else:
-        if not payload.content.strip() and not payload.attachment_ids:
+        if not payload.content.strip() and not payload.attachment_ids and not payload.datasets:
             raise T1APIError(T1ErrorCode.VALIDATION_ERROR,
                              "Send some text, an attachment, or both")
         user_message = store.append(
@@ -1472,9 +1899,11 @@ def chat_turn_stream(
             content=payload.content,
             owner=principal.owner,
             attachment_ids=payload.attachment_ids,
-            metadata={"device_id": principal.device_id} if principal.device_id else {},
+            metadata=_user_metadata(principal, payload),
         )
-    backend = _chat_backend(config, runner)
+    # The model the person picked from what is loaded, if any: it decides
+    # which backend answers, not only which model name is sent.
+    backend = _chat_backend(config, runner, payload.model_id or session.model_id or None)
     bridge = backend.client
     settings = preferences.get(owner=principal.owner)
     compacted = _maybe_compact(
@@ -1492,9 +1921,11 @@ def chat_turn_stream(
         memories.prompt_block(owner=principal.owner) if settings.auto_memory else "",
         default_prompt_for(config, backend),
     )
+    hypercompressed = _hypercompress(wire, settings, _model_context(config, runner, backend))
     wire = _vision(wire, backend, runner)
     sampling = _effort_settings(settings, payload)
-    setup = _tool_setup(config, principal, settings, request, memories, session_id)
+    setup = _tool_setup(config, principal, settings, request, memories, session_id,
+                        _code_sandbox(payload, user_message))
     requested_model = (
         backend.model_id if backend.is_hypernix and backend.model_id
         else (payload.model_id or session.model_id or None)
@@ -1634,6 +2065,8 @@ def chat_turn_stream(
         # After `done`, so the reply is never held up by naming the chat.
         # An app that stops reading at `done` still gets the title on its
         # next session list; one that reads on gets it now.
+        if hypercompressed:
+            yield _frame("hypercompressed", **hypercompressed)
         if compacted:
             yield _frame("compacted", messages=compacted.get("messages_compacted", 0),
                          summary_message_id=compacted.get("summary_message_id", ""))
@@ -1665,7 +2098,9 @@ def chat_turn_stream(
                 "truncated": truncated,
                 "streamed": True,
                 **({"tool_rounds": tool_rounds} if tool_rounds else {}),
+                **({"documents": _documents(tool_rounds)} if _documents(tool_rounds) else {}),
                 **({"compacted_before": compacted.get("messages_compacted", 0)} if compacted else {}),
+                **({"hypercompressed": hypercompressed} if hypercompressed else {}),
                 # Why the reply stopped, so a client that redraws from the
                 # server's copy, or opens the chat later, can say so rather
                 # than show an empty reply (0.72.6.post2).
@@ -1833,6 +2268,28 @@ def _preferences_reply(settings, notes: list[str], request_id: str) -> Preferenc
         notes=notes,
         request_id=request_id,
     )
+
+
+@router.get("/models/loaded", response_model=LoadedModelsResponse)
+def list_loaded_models(
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    runner=Depends(get_runner),
+    config: T1APIConfig = Depends(get_config),
+    request_id: str = Depends(get_request_id),
+) -> LoadedModelsResponse:
+    """Every model loaded right now, on the runner and in LM Studio.
+
+    With more than one, the app shows them in the Models tab and in the
+    chat's model menu, and a message goes to the one picked (its
+    ``model_id`` on the chat request, or the session's). ``default`` is
+    the one that answers when nobody picks.
+    """
+    _require_enabled(config)
+    from ...hyperlink.inference import loaded_models
+
+    rows = loaded_models(config, runner)
+    default = next((r["model_id"] for r in rows if r.get("default")), "")
+    return LoadedModelsResponse(models=rows, default=default, request_id=request_id)
 
 
 @router.get("/backends", response_model=BackendsResponse)
@@ -2082,6 +2539,66 @@ async def upload_file(
         metadata=metadata,
     )
     return AttachmentResponse(file=AttachmentSummary(**record.to_dict()), request_id=request_id)
+
+
+@router.post("/files/document", response_model=DocumentResponse)
+def create_document(
+    payload: DocumentCreateRequest,
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    store: AttachmentStore = Depends(get_attachment_store),
+    config: T1APIConfig = Depends(get_config),
+    request_id: str = Depends(get_request_id),
+) -> DocumentResponse:
+    """Keep a document a model wrote as a file the person can download.
+
+    What the ``create_document`` tool calls when somebody asks for "a
+    Markdown file I can download". It lands in the same per-owner store
+    as uploads, so it is listed under Files and downloaded the same way.
+    """
+    _require_enabled(config)
+    import re as _re
+
+    markdown = payload.format == "markdown"
+    stem = payload.filename or payload.title or "document"
+    stem = _re.sub(r"[^A-Za-z0-9._ -]+", "", stem).strip(" .")[:120] or "document"
+    if "." not in stem.rsplit("/", 1)[-1]:
+        stem += ".md" if markdown else ".txt"
+    content = payload.content
+    if markdown and payload.title and not content.lstrip().startswith("#"):
+        content = f"# {payload.title.strip()}\n\n{content}"
+    record = store.put(
+        content.encode("utf-8"), filename=stem, owner=principal.owner,
+        device_id=principal.device_id, session_id=payload.session_id,
+        declared_type="text/markdown" if markdown else "text/plain",
+        metadata={"document": {"title": payload.title, "format": payload.format, "written_by": "model"}},
+    )
+    return DocumentResponse(
+        file=AttachmentSummary(**record.to_dict()),
+        download_path=f"/hyperlink/files/{record.file_id}", request_id=request_id,
+    )
+
+
+@router.post("/datasets/preview")
+def preview_dataset(
+    pick: DatasetPick,
+    principal: HyperLinkPrincipal = Depends(get_hyperlink_principal),
+    store: AttachmentStore = Depends(get_attachment_store),
+    config: T1APIConfig = Depends(get_config),
+    request_id: str = Depends(get_request_id),
+) -> dict[str, Any]:
+    """Exactly what the model would be given for this part of a dataset
+    (0.72.8a3): the text, the rows shown and in the file, the columns.
+    Send the same object in a message's ``datasets`` to give it to the model."""
+    from ...hyperlink import datasets as ds
+
+    _require_enabled(config)
+    record = store.get(pick.file_id, owner=principal.owner)
+    try:
+        selection = pick.model_dump(exclude={"file_id"})
+        part = ds.excerpt(store.path_for(pick.file_id, owner=principal.owner), selection, name=record.filename)
+    except (ds.DatasetError, OSError, ValueError) as exc:
+        raise T1APIError(T1ErrorCode.VALIDATION_ERROR, str(exc), http_status=400) from exc
+    return {**part.to_dict(), "file_id": pick.file_id, "request_id": request_id}
 
 
 @router.get("/files", response_model=AttachmentListResponse)

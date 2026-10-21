@@ -43,6 +43,7 @@ from ..schemas import (
     UsageRemainingResponse,
     UsageReportRequest,
     UsageReportResponse,
+    UsageStatementResponse,
 )
 from ..storage import GROUPABLE
 from ..usage import UsageMeter
@@ -291,6 +292,40 @@ def usage_cost(
     return UsageCostResponse(**payload, forecast=forecast_payload, request_id=request_id)
 
 
+@router.get("/statement", response_model=UsageStatementResponse)
+def usage_statement(
+    range_: str | None = Query(default=None, alias="range"),
+    since: float | None = Query(default=None),
+    until: float | None = Query(default=None),
+    key_id: str | None = Query(default=None),
+    model_id: str | None = Query(default=None),
+    server_id: str | None = Query(default=None),
+    module_id: str | None = Query(default=None),
+    user_id: str | None = Query(default=None),
+    account_id: str | None = Query(default=None),
+    ctx: AuthContext = Depends(get_auth_context),
+    calculator: CostCalculator = Depends(get_cost_calculator),
+    keys=Depends(get_key_directory),
+    request_id: str = Depends(get_request_id),
+) -> UsageStatementResponse:
+    """The itemised bill (``t1.statement/2``, 0.72.8).
+
+    ``/usage/cost`` prices tokens along one dimension. This lists every
+    feature that was used -- inference, context relays, embeddings,
+    compaction, code sandboxes, web searches, client reports -- with a
+    line per model and unit under each, subtotals, the total, and what
+    nothing prices. Scoped to the caller's own usage unless admin, as
+    every usage read is.
+    """
+    resolved_since, resolved_until = _resolve_window(range_, since, until)
+    filters = _scope_filters(
+        ctx, key_id=key_id, model_id=model_id, server_id=server_id, module_id=module_id,
+        user_id=user_id, account_id=account_id, key_directory=keys,
+    )
+    statement = calculator.statement(since=resolved_since, until=resolved_until, **filters)
+    return UsageStatementResponse(**statement, request_id=request_id)
+
+
 @router.post("/estimate", response_model=UsageEstimateResponse)
 def usage_estimate(
     body: UsageEstimateRequest,
@@ -363,6 +398,7 @@ def usage_report(
         endpoint=body.endpoint,
         server_id=body.server_id,
         module_id=body.module_id,
+        feature="reported",
     )
     snap = meter.snapshot_for_model(ctx.key_id, body.model_id)
     audit.record(

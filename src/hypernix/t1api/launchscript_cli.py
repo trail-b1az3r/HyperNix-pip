@@ -2,8 +2,9 @@
 
     hypernix-t1 launch-script ./train.py --name training-job --detach
     hypernix-t1 launch-script --status training-job
-    hypernix-t1 launch-script --logs training-job
+    hypernix-t1 launch-script --logs training-job [-F]
     hypernix-t1 launch-script --stop training-job
+    hypernix-t1 launch-script -1 'yay -Syu' -2 '' -3 'y'
 
 Closing the terminal is the normal end of a remote working session, and
 it should not be the end of a training run. ``&`` does not achieve that:
@@ -32,6 +33,7 @@ from ..system.launcher import (
     JobStore,
     LaunchError,
     available_supervisor,
+    follow_logs,
     launch,
     launch_shell,
     read_logs,
@@ -205,6 +207,15 @@ def main(argv: list[str] | None = None) -> int:
     # -$'...' as one ANSI-quoted word and -$VAR as an expansion, and fish
     # refuses a bare $. Still accepted so existing scripts keep working.
     run.add_argument("-$", dest="shell_command", default="", help=argparse.SUPPRESS)
+    # -2 … -9: the answers to the questions the -1 command asks, in order
+    # (yay's "packages to exclude", a [Y/n]). '' is pressing Enter.
+    for n in range(2, 10):
+        run.add_argument(
+            f"-{n}", dest=f"answer_{n}", default=None, metavar="ANSWER",
+            help=("Answers for the -1 command's questions, in order, -2 to -9 "
+                  "(fed to its input one line each; '' presses Enter, as does a "
+                  "number skipped): -1 'yay -Syu' -2 '' -3 y" if n == 2 else argparse.SUPPRESS),
+        )
     run.add_argument("--shell", default="auto", choices=["auto", "bash", "fish", "zsh", "sh"],
                      help="Shell for -1. auto is bash, then fish, then sh.")
     run.add_argument("--name", default="", help="A name to refer to the job by.")
@@ -228,6 +239,9 @@ def main(argv: list[str] | None = None) -> int:
     manage.add_argument("--status", metavar="JOB", nargs="?", const="*", default=None,
                         help="Show a job, or all of them.")
     manage.add_argument("--logs", metavar="JOB", default="", help="Show a job's output.")
+    manage.add_argument("-F", "--follow", action="store_true",
+                        help="With --logs: keep printing the log as it is "
+                             "written, until Ctrl-C.")
     manage.add_argument("--tail", type=int, default=200,
                         help="Lines of log to show. 0 for all.")
     manage.add_argument("--stop", metavar="JOB", default="", help="Stop a job.")
@@ -287,7 +301,10 @@ def _dispatch(args, store: JobStore, who: str, parser) -> int:
             _describe(refresh(job, store), as_json=args.as_json)
             return 0
         if flag == "logs":
-            print(read_logs(job, tail=args.tail))
+            if args.follow:
+                follow_logs(job, tail=args.tail, store=store)
+            else:
+                print(read_logs(job, tail=args.tail))
             return 0
         if flag == "stop":
             stop(job, store)
@@ -296,6 +313,7 @@ def _dispatch(args, store: JobStore, who: str, parser) -> int:
         if flag == "restart":
             stop(job, store)
             shell = shell_command_of(job)
+            answers = _saved_answers(job)
             if shell is not None:
                 # A -1 job. Its command[-1] is the command text, and
                 # relaunching that as a script path would fail with
@@ -303,7 +321,7 @@ def _dispatch(args, store: JobStore, who: str, parser) -> int:
                 fresh = launch_shell(
                     shell[1], shell=shell[0], name=job.name, cwd=job.cwd,  # nosec B604 - `shell` here names a shell (bash, zsh, fish), it is not shell=True
                     timeout=job.timeout, priority=job.priority, gpu=job.gpu,
-                    cpu=job.cpu, store=store,
+                    cpu=job.cpu, store=store, answers=answers,
                 )
             else:
                 fresh = launch(
@@ -314,6 +332,11 @@ def _dispatch(args, store: JobStore, who: str, parser) -> int:
             print(f"restarted {fresh.name} ({fresh.job_id})")
             return 0
 
+    answers = _answers(args)
+    if answers is not None and not args.shell_command:
+        raise LaunchError("-2 … -9 answer the questions of a -1 command; give -1 'command' too")
+    if args.follow and not args.logs:
+        raise LaunchError("-F follows a job's log: --logs JOB -F")
     if args.shell_command:
         if args.script:
             raise LaunchError(
@@ -324,6 +347,7 @@ def _dispatch(args, store: JobStore, who: str, parser) -> int:
             cwd=args.cwd or None, env=_parse_env(args.env),
             timeout=args.timeout, log_file=args.log_file or None,
             priority=args.priority, gpu=args.gpu, cpu=args.cpu, store=store,
+            answers=answers,
         )
         return _report(job, who, args)
 
@@ -345,6 +369,24 @@ def _dispatch(args, store: JobStore, who: str, parser) -> int:
         store=store,
     )
     return _report(job, who, args)
+
+
+def _answers(args) -> list[str] | None:
+    """-2 … -9 in order, a skipped number being Enter; None if none given."""
+    given = {n: getattr(args, f"answer_{n}", None) for n in range(2, 10)}
+    last = max((n for n, v in given.items() if v is not None), default=0)
+    if not last:
+        return None
+    return [given[n] if given[n] is not None else "" for n in range(2, last + 1)]
+
+
+def _saved_answers(job) -> list[str] | None:
+    if not getattr(job, "answers_file", ""):
+        return None
+    try:
+        return Path(job.answers_file).read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return None
 
 
 def _report(job, who: str, args) -> int:

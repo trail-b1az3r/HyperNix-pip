@@ -46,6 +46,10 @@ def api_app(monkeypatch):
     from hypernix.t1api.app import create_app
 
     monkeypatch.setenv("T1_TRUSTED_NETWORK", "1")
+
+    # Keyless chats are a shared pool only when asked for (0.72.8).
+
+    monkeypatch.setenv("T1_HYPERLINK_SHARED_KEYLESS_CHATS", "1")
     return create_app()
 
 
@@ -57,7 +61,8 @@ class TestThePageAndTheApiShareAnOrigin:
         policy = page.headers["content-security-policy"]
         assert "script-src 'self'" in policy and "frame-ancestors 'none'" in policy
         assert page.headers["x-frame-options"] == "DENY"
-        for path, kind in (("/web/app.js", "javascript"), ("/web/app.css", "css"),
+        for path, kind in (("/web/app.js", "javascript"), ("/web/markdown.js", "javascript"),
+                           ("/web/app.css", "css"),
                            ("/web/icon.svg", "svg")):
             response = client.get(path)
             assert response.status_code == 200 and kind in response.headers["content-type"]
@@ -75,6 +80,10 @@ class TestThePageAndTheApiShareAnOrigin:
         from hypernix.t1api.app import create_app
 
         monkeypatch.setenv("T1_TRUSTED_NETWORK", "1")
+
+        # Keyless chats are a shared pool only when asked for (0.72.8).
+
+        monkeypatch.setenv("T1_HYPERLINK_SHARED_KEYLESS_CHATS", "1")
         monkeypatch.setenv("T1_WEB_ENABLED", "1")
         monkeypatch.setenv("T1_WEB_PORT", str(_free_port()))
         api_app = create_app()  # no lifespan here, so the site's own port stays shut
@@ -94,6 +103,10 @@ class TestThePageAndTheApiShareAnOrigin:
         from hypernix.t1api.app import create_app
 
         monkeypatch.setenv("T1_TRUSTED_NETWORK", "1")
+
+        # Keyless chats are a shared pool only when asked for (0.72.8).
+
+        monkeypatch.setenv("T1_HYPERLINK_SHARED_KEYLESS_CHATS", "1")
         monkeypatch.setenv("T1_WEB_ENABLED", "0")
         client = TestClient(create_app(), client=("127.0.0.1", 5000))
         assert client.get("/").status_code == 404
@@ -289,11 +302,28 @@ class TestThePageItself:
         for match in re.finditer(r"\.innerHTML\s*=\s*([^;]+);", js):
             assert match.group(1).strip().startswith("render("), match.group(0)
 
+    def test_files_datasets_and_a_code_sandbox_reach_the_chat_request(self):
+        """0.72.8a3: the composer attaches files, a dataset's chosen part goes
+        as ``datasets``, and the sandbox from the Code tab as ``code_sandbox_id``."""
+        html = (WEB / "index.html").read_text(encoding="utf-8")
+        for element in ('id="attach-input"', 'id="dataset-panel"', 'id="tray"', 'data-view="code"',
+                        'id="view-code"', 'id="code-editor"', 'id="code-bind"', 'data-git="status"'):
+            assert element in html, element
+        js = (WEB / "app.js").read_text(encoding="utf-8")
+        send = js[js.index("async function send"):js.index("async function stop")]
+        for field in ("payload.attachment_ids", "payload.datasets", "payload.code_sandbox_id"):
+            assert field in send, field
+        for route in ('"/hyperlink/files"', '"/hyperlink/datasets/preview"', '"/code/create/sandbox"',
+                      'boxPath("/git")', 'boxPath("/run")', 'boxPath("/import")', "/search?q="):
+            assert route in js, route
+        assert '"code"' in js[js.index("function switchView"):]
+
     @pytest.mark.skipif(shutil.which("node") is None, reason="needs node")
     def test_render_escapes_what_a_model_writes(self):
-        js = (WEB / "app.js").read_text(encoding="utf-8")
-        functions = js[js.index("function escapeHtml"):js.index("function shortModel")]
-        script = functions + """
+        # The page's render() is web/markdown.js's (0.72.8a3).
+        library = (WEB / "markdown.js").read_text(encoding="utf-8")
+        script = library + """
+const render = (text) => globalThis.HyperMarkdown.render(text);
 const cases = [
   render('<script>alert(1)</script>'),
   render('<img src=x onerror=alert(1)>'),
@@ -311,7 +341,7 @@ console.log(JSON.stringify(cases));
         # The link stops at the quote, and no entity is cut in half.
         assert '<a href="https://example.com/a?b=1&amp;c=" target' in out[2]
         assert "&quot;x&quot; now" in out[2]
-        assert "<pre><code>&lt;b&gt;code&lt;/b&gt;</code></pre>" in out[3]
+        assert "<pre><code>&lt;b&gt;code&lt;/b&gt;\n</code></pre>" in out[3]
         assert 'href="javascript' not in out[4]
 
 

@@ -131,9 +131,11 @@ class TestAliases:
 class TestTheMenuMatchesTheDispatcher:
     @pytest.fixture
     def menu(self) -> str:
+        """Both menus: `--help`, and `extra` for the commands moved out of it (0.72.8a3)."""
         out = io.StringIO()
         with redirect_stdout(out):
             cli._print_usage()
+            cli._print_extra()
         return out.getvalue()
 
     #: Alternative spellings of a command that is listed under its other
@@ -142,7 +144,7 @@ class TestTheMenuMatchesTheDispatcher:
     #: `tvtop` is not one: `hypernix tvtop` is the classic dashboard and
     #: `cctvtop` another, so it has its own row.
     KNOWN_ALIASES = {
-        "camouflage", "protect", "fuse-box", "fiz",
+        "camouflage", "protect", "fuse-box", "fiz", "fllq",
     }
 
     def test_everything_dispatchable_is_discoverable(self, menu):
@@ -167,10 +169,49 @@ class TestTheMenuMatchesTheDispatcher:
 
 
 def test_tvtop_is_not_listed_as_an_alias_of_cctvtop():
-    """They dispatch to different dashboards; the help said otherwise."""
+    """They dispatch to different dashboards; the help said otherwise.
+    (tvtop is listed under `hypernix extra` since 0.72.8a3.)"""
     out = io.StringIO()
     with redirect_stdout(out):
         cli._print_usage()
+        cli._print_extra()
     menu = out.getvalue()
     assert "tvtop (cctvtop)" not in menu
     assert re.search(r"│ tvtop\s+│", menu)
+
+
+class TestTheShortMenu:
+    """0.72.8a3: these moved from `hypernix --help` to `hypernix extra`,
+    and still dispatch exactly as before."""
+
+    MOVED = ["neuron", "pipeline", "assistant", "generate", "wiki", "prot", "oven", "path",
+             "map", "tvtop", "cctvtop", "camo", "websearch", "scavenger"]
+
+    def _menu(self, printer) -> set[str]:
+        out = io.StringIO()
+        with redirect_stdout(out):
+            printer()
+        return set(re.findall(r"│ ([a-z][a-z0-9\-]+)\s+│", out.getvalue()))
+
+    def test_they_are_not_in_the_main_menu(self):
+        assert not set(self.MOVED) & self._menu(cli._print_usage)
+
+    def test_they_are_all_in_extra(self):
+        assert set(self.MOVED) <= self._menu(cli._print_extra)
+
+    def test_they_still_dispatch(self):
+        assert set(self.MOVED) <= cli._SUBCOMMANDS
+
+    @pytest.mark.parametrize("command", ["tvtopmax", "hypedpro", "auto", "extra", "image", "claude"])
+    def test_the_new_ones_are_in_the_main_menu(self, command):
+        assert command in self._menu(cli._print_usage)
+
+    def test_extra_runs(self):
+        code, out, _err = _run("extra")
+        assert code == 0 and "scavenger" in out
+
+    def test_fllq_is_fetch_llama_quantize(self, monkeypatch):
+        seen = []
+        monkeypatch.setattr(cli, "_run_fetch_llama_quantize", lambda rest: seen.append(rest) or 0)
+        assert cli.main(["fllq", "--force"]) == 0
+        assert seen == [["--force"]]

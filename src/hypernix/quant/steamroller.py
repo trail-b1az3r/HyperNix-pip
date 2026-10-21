@@ -195,6 +195,19 @@ TIERS: dict[str, Tier] = {
              "at a single magnitude.",
              packing="hypernix-1375",
              honest_warning=_SUB_BIT_WARNING + " " + _EXTENSION_WARNING),
+        Tier("HNX_15125BIT", 1.5, False,
+             "HNX_1375BIT with 7-bit sub-block magnitudes, 127 levels rather "
+             "than 31: every sign plus a finer magnitude per 16 weights. "
+             "Named for 1.5125; packs to 1.5 bits per weight, the nearest "
+             "whole-byte block.",
+             packing="hypernix-15125",
+             honest_warning=_SUB_BIT_WARNING + " " + _EXTENSION_WARNING),
+        Tier("HNX_IQ1S", 1.5625, False,
+             "IQ1_S's rate, HyperNix's packing: every sign plus a 4-bit "
+             "magnitude per 8 weights. Not llama.cpp's IQ1_S, which needs a "
+             "2048-entry grid and an importance matrix.",
+             packing="hypernix-iq1s",
+             honest_warning=_SUB_BIT_WARNING + " " + _EXTENSION_WARNING),
         Tier("FP2", 2.0625, False,
              "Two-bit float: sign and exponent, levels ±1 and ±2, no zero. "
              "Block scale searched, because the obvious fit made it lose to INT1.",
@@ -258,6 +271,9 @@ _TIER_ALIASES = {
     "hnx_1375": "HNX_1375BIT", "hnx1375": "HNX_1375BIT",
     "hnx_1.375bit": "HNX_1375BIT", "hnx1.375bit": "HNX_1375BIT",
     "1375bit": "HNX_1375BIT", "1.375": "HNX_1375BIT",
+    "hnx_15125bit": "HNX_15125BIT", "hnx15125bit": "HNX_15125BIT",
+    "hnx_15125": "HNX_15125BIT", "hnx15125": "HNX_15125BIT", "1.5125": "HNX_15125BIT",
+    "hnx_iq1s": "HNX_IQ1S", "hnxiq1s": "HNX_IQ1S",
 }
 
 

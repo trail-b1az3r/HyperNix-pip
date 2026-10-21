@@ -5,9 +5,15 @@ mountable into any Python server. The client requests an operation; the
 server decides what exists, what's available, and how much is left — see
 [Design principle](#design-principle).
 
-**Status: released — T1 v1.1.26.9.0.0** (long form `1.1.2026.9.0.0`),
-the first of the 1.1 generation, shipped in `0.72.5.post15` and still
-the contract in `0.72.6.post3`, the newest package. The betas ended at
+**Status: T1 v1.1.26.10.2.0** (long form `1.1.2026.10.2.0`) in
+`0.72.8a3`: the 1.1 generation, which began with T1 v1.1.26.9.0.0 in
+`0.72.5.post15`, plus [web search v2](#web-search-v2),
+[signed prompts](#signed-prompts-and-the-ping),
+[chats owned by an account or a key](#ownership),
+[the Anthropic Messages API](#the-anthropic-messages-api) for Claude Code,
+[remote MCP servers](#remote-mcp-servers-hugging-faces-and-others),
+[Net](#net), [the public-server counter](#the-public-server-counter), and
+[dataset parts and code sessions in HyperLink](#datasets-code-sessions-and-markdown-0728a3). The betas ended at
 v1.0.26.8.0.1. This page is the living contract for what's actually
 implemented vs. planned; cross-reference against the
 [Roadmap](#roadmap) before assuming an endpoint exists.
@@ -50,8 +56,11 @@ could never derive one from `0.71.5rc2`. See
 - [Hugging Face link merging](#hugging-face-link-merging)
 - [Web accounts](#web-accounts)
 - [MCP](#mcp)
+- [Net](#net)
+- [The public-server counter](#the-public-server-counter)
 - [Backup and restore](#backup-and-restore)
 - [Governed inference](#governed-inference)
+- [The Anthropic Messages API](#the-anthropic-messages-api)
 - [Model sync](#model-sync)
 - [The SDK](#the-sdk)
 - [Endpoint reference](#endpoint-reference)
@@ -961,6 +970,39 @@ and the registry entry's `pricing` block. There is no second price list — a
 model's price is a registry fact, so changing it is a registry change, and
 a model that isn't registered has no price and cannot be costed.
 
+### The itemised statement (t1.statement/2)
+
+`GET /usage/statement` (0.72.8) is the whole bill for a range
+(`?range=24h|7d|30d|all`, or `since`/`until`), scoped to the caller's own
+usage unless admin. `/usage/cost` prices tokens along one dimension; the
+statement lists every **feature** that was used, with a line per model
+and unit under each:
+
+| Feature | What is counted |
+|---|---|
+| `inference` | `/inference/chat`, `/completions`, `/chat/stream` tokens |
+| `relay` | each hop of `/inference/relay` |
+| `embeddings` | embedding input tokens |
+| `compact` | tokens a model spent writing a `/chat/compact/*` summary (quoting is free) |
+| `code` | `code_second`: wall-clock seconds of a sandbox run |
+| `web_search` | `web_search`: one search that ran |
+| `reported` | `/usage/report` |
+
+```json
+{"format": "t1.statement/2", "currency": "USD", "total": 1.75, "requests": 42,
+ "features": [{"feature": "code", "label": "Code sandboxes", "units": {"code_second": 12.5},
+   "subtotal": 0.125, "items": [{"model_id": "", "unit": "code_second", "units": 12.5,
+   "unit_price": 0.01, "unit_cost": 0.125, "total": 0.125, "priced": true}]}],
+ "unpriced": [{"feature": "compact", "model_id": "", "unit": ""}]}
+```
+
+Tokens are priced from the model's registry entry. Other units are
+priced from the model's `pricing.unit_prices` (e.g. `{"image": 0.002}`)
+or, for every model, from `T1_FEATURE_PRICES`
+(`{"code_second": 0.0002, "web_search": 0.005}`). Anything nothing
+prices is listed under `unpriced` and counted at 0 — never guessed.
+Usage recorded before 0.72.8 has no feature; its endpoint gives it one.
+
 ### Reporting what was actually spent
 
 `POST /usage/report` (Beta 4) is the counterpart to routing. The T1 API is
@@ -1316,6 +1358,59 @@ one decision is what makes a conversation started on the desktop
 continue on the phone, while another operator's stays invisible.
 Unpairing a phone does not orphan the threads started on it.
 
+Since 0.72.8 chats are never global. With [web accounts](#web-accounts)
+on and the key belonging to an account, the owner is `account:<id>`, so
+every key and device of that account sees the same chats; otherwise it
+is the key. The first time a key is seen as part of an account its chats,
+files, memories and preferences move to the account. Keyless
+trusted-network access is refused on chats, files, sync, memory and
+compaction (401), unless `T1_HYPERLINK_SHARED_KEYLESS_CHATS=1` brings
+back the one pool keyless devices shared before.
+
+`GET /hyperlink/whoami` names the signer a client should sign as and the
+server session id. `POST /hyperlink/login` (username and password) signs
+an app in to its account once and returns a key it keeps, so data is
+never lost to a re-pair.
+
+### Signed prompts and the ping
+
+When Send is pressed the client first sends `POST /hyperlink/ping` with
+the time the button was pressed. The server answers without touching a
+model; a client that gets no answer within **four seconds** says the
+server is not answering rather than waiting. Once the ping is answered
+the prompt itself has no timeout. An empty ping is a 422.
+
+Every send, resend and edit then carries a `signature`: an HMAC-SHA256
+(`hyperlink-sign/v1`) over, one per line, the signer (`account:<id>` or
+`key:<id>` — a T1, T2 or T2.1 key), the Unix time Send was pressed, a
+23–26 character random nonce, the chat (or code) session id, the server
+session id from the ping, the action (`ping`, `send`, `resend`, `edit`)
+and the SHA-256 of the text. The key is SHA-256 of `hyperlink-sign/v1:`
+plus the credential the request already carries. The server refuses a
+signature from another signer, outside five minutes, for a server
+session that has ended (409: ping again), for another chat or other text,
+or one already used. `T1_HYPERLINK_REQUIRE_SIGNED=1` refuses unsigned
+prompts too; off by default so older apps keep working.
+
+### Loaded models, documents, the ring and hypercompress (0.72.8)
+
+* `GET /hyperlink/models/loaded` lists every model loaded now, on the
+  runner and in LM Studio; a chat's `model_id` picks which one answers.
+* `POST /hyperlink/files/document` keeps a document a model wrote
+  (Markdown or text) as a file; the `create_document` tool calls it and
+  the reply lists it under `metadata.documents` for the app to download.
+* `GET /hyperlink/sessions/{id}/ring` is the two-layer ring beside the
+  chat box: `inner` is the context the next turn uses; `outer` is the
+  key's token allowance when the model has one, else GPU load, or CPU
+  load when the model runs on the CPU.
+* When a turn's prompt is bigger than the loaded model's context, the
+  system prompt is compressed (no model needed) to a third of the
+  context, or a fifth: `GET /chat/hypercompress/size?s?=1` or `s?=2`
+  sets it per owner, and `POST /chat/hypercompress` compresses a text by
+  hand. The reply's metadata says when it happened.
+* A model saves a memory when asked, or when it judges a note useful;
+  `T1_HYPERLINK_MEMORY_WHEN_TOLD=1` limits it to when asked.
+
 ### Sessions
 
 Conversations live on the server (`/hyperlink/sessions`), append-only,
@@ -1525,9 +1620,11 @@ rights in any mode.
 ## MCP
 
 The server's models, runner, hardware and version, described over the
-[Model Context Protocol](https://modelcontextprotocol.io) (protocol
-`2025-06-18`) so an assistant can discover and use them without being
-taught each endpoint. Off unless `T1_MCP_ENABLED=1`; while off, `/mcp`
+[Model Context Protocol](https://modelcontextprotocol.io) so an
+assistant can discover and use them without being taught each endpoint.
+Protocol revisions `2025-11-25`, `2025-06-18`, `2025-03-26` and
+`2024-11-05`: a client gets the one it asks for (0.72.8a3; it used to get
+`2025-06-18` whatever it asked). Off unless `T1_MCP_ENABLED=1`; while off, `/mcp`
 answers 501 and says how to turn it on.
 
 - `POST /mcp` takes one JSON-RPC message or a batch (up to 1 MB); a body
@@ -1546,6 +1643,107 @@ answers 501 and says how to turn it on.
 - Plugins are Python objects registered at startup
   (`app.state.t1_mcp_plugins`) and namespaced; nothing is ever imported
   by a name a request supplies.
+- Streamable HTTP as clients expect it (0.72.8a3): `initialize` hands
+  out an `Mcp-Session-Id`; a `GET` asking for `text/event-stream` gets
+  405 (there is no server-initiated stream); `DELETE` ends a session.
+  Tested with the official MCP Python SDK.
+
+### Remote MCP servers (Hugging Face's and others)
+
+T1 is also an MCP **client** (0.72.8a3). Add a remote server — the
+Hugging Face Hub's at `https://huggingface.co/mcp`, or any server
+speaking streamable HTTP — and its tools appear on this server's `/mcp`
+as `<server>.<tool>` and in HyperLink's tool loop as `<server>__<tool>`,
+beside noodle's and T1's own.
+
+```bash
+curl -X POST "$T1/mcp/remote" -H "Authorization: Bearer $ADMIN" \
+     -d '{"name": "hf", "url": "https://huggingface.co/mcp", "token_env": "HF_TOKEN"}'
+```
+
+| Route | |
+|---|---|
+| `GET /mcp/remote` | the servers, whether each has a token, the tools last seen, errors |
+| `POST /mcp/remote` | add or replace one (admin); lists its tools to prove it answers |
+| `DELETE /mcp/remote/{name}` | remove one (admin) |
+| `GET /mcp/remote/{name}/tools` | its tools as it describes them (`?refresh=true` to ask again) |
+| `POST /mcp/remote/{name}/call` | call one tool directly (admin), to check a server works |
+
+Servers live in `mcp-servers.json` beside the database (owner-only), or
+are fixed by the environment: `T1_MCP_REMOTE` (a JSON list) and
+`T1_MCP_HF=1` (the Hugging Face server, with `HF_TOKEN`). A token comes
+from the variable `token_env` names, or is stored in the file; neither
+is ever returned. Because the token is the operator's, a server's tools
+are offered to every authenticated caller unless it is added with
+`"admin_only": true`. The client negotiates the protocol revision, keeps
+the session id, starts a new session once if the server forgets it, and
+answers a server's own requests on the stream with "not supported". A
+server that cannot be reached is left out of a chat's tools (listing
+waits at most 15 seconds, and a server that just failed is not asked
+again for a minute) rather than failing the turn. `T1_MCP_REMOTE_ENABLED=0`
+turns it all off.
+
+## Net
+
+`/net` (0.72.8a3) is everything `hnx net` did — which is now deprecated —
+as the API, on the machine the server runs on. Every route needs an
+**admin** key.
+
+| `hnx net` | Route |
+|---|---|
+| `status` | `GET /net/status` — this node, its peers, whether Tailscale is up |
+| `m-ip` | `GET /net/ip` |
+| `connect IP` | `GET /net/peers/{peer}/ping` (`tailscale ping`; an SSH session is not an API call) |
+| — | `GET /net/peers?online=false` |
+| `config` | `GET` / `PUT /net/config` (`storage_dir`, `ports`, `hub`) |
+| `mutli-a-port PORT` | `POST /net/ports`, `DELETE /net/ports/{port}` |
+| `ex-port PORT [--apply]` | `POST /net/expose` — the command, or with `apply` (and `?confirm=true`) runs `tailscale serve --bg`, saying how to allow it if it needs an operator |
+| `a-il` | `POST /net/peers/trust` — the peers' SSH host keys into `known_hosts` |
+| `s-storage` | `POST /net/storage/sync` — rsync to the peers; `dry_run`, `peers` |
+| `onef-all` | `GET` / `POST /net/hub` |
+| `m-setup` / `auto-setup` | `GET /net/setup` (the steps) / `POST /net/setup` (`tailscale up`, returning its login link, and an SSH key) |
+| `tail acheck FILE` | `POST /net/peers/check` |
+| `tail acheck FILE -r` / `tail stop FILE` | `POST /net/peers/run` / `POST /net/peers/stop` — off unless `T1_NET_REMOTE_RUN=1` |
+
+Routes that change something take `?confirm=true` where the server
+requires confirmation. Commands are argv lists, a peer is passed after
+`--`, a file name is quoted for the peer's shell, and SSH runs in batch
+mode, so nothing waits for a password.
+
+## The public-server counter
+
+The README's **public T1 servers** badge counts, hourly, how many public
+T1 servers are up (0.72.8a3).
+
+**What is sent.** A server that is *public* — `T1_SERVER_URL` or
+`T1_HYPERLINK_PUBLIC_URL` names an internet address (not this machine,
+a private network, the tailnet or a `.local` name), or `T1_PUBLIC=1` —
+and runs T1 v1.1.26.10.1.0 or newer sends one heartbeat an hour, unless
+`T1_PUBLIC_COUNTER=0`:
+
+```json
+{"id": "<32 hex>", "t1_version": "1.1.26.10.2.0", "version": "0.72.8a3"}
+```
+
+`id` is a SHA-256 of a random value the server made once and keeps in
+`counter-id` beside its database, so one server counts once without
+saying which it is. No address, hostname, URL, model, key or usage is
+sent, and a server that is not public sends nothing. The server logs at
+start whether it is counted, and why not.
+
+**Where it goes.** `T1_PUBLIC_COUNTER_URL`, else the `heartbeat` address
+the project publishes in `docs/public/v1/t1-counter-endpoint.json` (read
+once a day). While that names no counter, nothing is sent.
+
+**The counter** is any T1 server with `T1_COUNTER_HOST=1`:
+`POST /counter/heartbeat` (no key; bodies under 512 bytes; the sender's
+address is never stored) and `GET /counter` — `{"up": N, "t1_versions":
+{...}}` for servers heard from in the last two hours. The
+`t1-public-counter` workflow reads it hourly (the repository variable
+`T1_COUNTER_SUMMARY_URL`, else the published `summary`) and commits
+`docs/public/v1/t1-counter.json` and the badge's
+`t1-counter-badge.json`. Until a counter is hosted the badge says so
+rather than showing a number nobody measured.
 
 ## Backup and restore
 
@@ -1601,6 +1799,32 @@ stayed busy with it while later requests waited. The non-streaming
 `/inference/chat` cannot do this: a client that gives up on it leaves the
 backend writing the whole reply. Clients with a timeout should stream.
 
+### Prompts longer than the context: `/inference/relay`
+
+`POST /inference/relay` (0.72.8) reads a document longer than the
+model's context in hops, with [the context relay](Context-Relay.md):
+
+```json
+{"model": "small-4k", "question": "What changed in v2?", "document": "…40,000 tokens…",
+ "mode": "chain", "instances": 4, "context_tokens": 4096, "max_tokens": 512}
+```
+
+`chain` (the default) reads part by part, each hop carrying notes to the
+next; `map` digests the parts side by side and folds the digests. The
+hops rotate through `instances` copies of the model — the runner's pool
+when it serves the model as one — capped by `T1_RELAY_MAX_INSTANCES`
+(8). `context_tokens` defaults to the registry's `context_limit`.
+
+Every gate of `/inference/chat` applies, sized by the largest single
+call. Each hop is metered as it finishes, under the `relay` feature, so
+a relay that fails part way has billed what ran. The response has the
+answer, every hop (`instance`, `kind`, `part`, tokens, seconds), the plan
+(parts, calls, worst-case tokens, `overhead_factor`), and three prices:
+`cost` (what the hops spent), `estimated_cost` (the worst case planned
+before they ran) and `direct_cost` (one big read, had the context been
+large enough). `"estimate_only": true` plans and prices without running
+anything.
+
 ### Backends
 
 Two backends can answer, chosen per request for the model that is about to
@@ -1623,6 +1847,56 @@ Responses carry `backend_name` (`hypernix` / `lmstudio`) next to `backend`
 (the address, unchanged). `GET /inference/backends` lists `lmstudio` first
 and `hypernix` second (with the loaded `model_id`), each probed; `default`
 is the runner when it answers, otherwise LM Studio.
+
+## The Anthropic Messages API
+
+`POST /v1/messages` (T1 v1.1.26.10.2.0, 0.72.8a3) answers the Anthropic
+Messages API from this server's models, so Claude Code — or any
+Anthropic SDK — runs on a model HyperNix is serving:
+
+```bash
+hnx claude                                   # sets everything below and starts claude
+ANTHROPIC_BASE_URL=http://127.0.0.1:8000 ANTHROPIC_AUTH_TOKEN=$T1_KEY claude
+```
+
+| Route | |
+|---|---|
+| `POST /v1/messages` | a message; `"stream": true` for server-sent events |
+| `POST /v1/messages/count_tokens` | input tokens (the runner's tokenizer when it has one, else an estimate) |
+| `GET /v1/models` | the models a request may name, in Anthropic's list shape |
+
+**What is translated.** `system`; text, image (base64 or URL) and text
+`document` blocks; `tool_use` and `tool_result` (tool results go first in
+their turn, as OpenAI requires); `tools` and `tool_choice`
+(`auto`/`any`/`tool`/`none`); `max_tokens`, `temperature`, `top_p`,
+`top_k`, `stop_sequences`. Back come `text` and `tool_use` blocks, the
+stop reason (`end_turn`, `max_tokens`, `tool_use`, `stop_sequence`) and
+usage. Streams are Anthropic's events — `message_start`,
+`content_block_start/delta/stop` (`text_delta`, `input_json_delta`),
+`message_delta`, `message_stop` — translated chunk by chunk, each block
+closed before the next starts. `thinking` blocks a client sends back are
+dropped; with `thinking` enabled, a model's `reasoning_content` comes
+back as one. Tool arguments a small model writes as not-quite-JSON are
+recovered from their first `{...}` when that parses.
+
+**Which model answers.** A model in the registry is served exactly as
+`/inference/chat` serves it — the key's plan and assignment, the quota
+checked first, the tokens metered and priced. A request naming a Claude
+model (Claude Code always does) gets `T1_CLAUDE_CODE_MODEL`, or the model
+the built-in runner has loaded; the runner's model can also be named
+directly. That usage is recorded against the key, unpriced, as
+HyperLink's is. Anything else is a `not_found_error` listing what is
+available. The response's `model` (and `x-hypernix-model`) is the model
+that ran.
+
+**Authentication** is this server's: `Authorization: Bearer` (Claude
+Code's `ANTHROPIC_AUTH_TOKEN`) or `x-api-key` (`ANTHROPIC_API_KEY`).
+`t1-keyless` means "no credential": it gets in only where
+[trusted network mode](#trusted-network-mode) lets a keyless request in.
+Errors are Anthropic's envelope (`{"type": "error", "error": {"type":
+"authentication_error", ...}}`) with the matching status, so the client
+reports them as it reports Anthropic's. `T1_ANTHROPIC_ENABLED=0` turns
+the routes off.
 
 ## Model sync
 
@@ -1787,6 +2061,7 @@ All responses include `request_id`. Errors use the envelope shown in
 | GET | `/usage/by?group_by=` | bearer | usage by model/key/server/module/user/account/endpoint |
 | GET | `/usage/cost` | bearer | actual cost, breakdowns, optional forecast |
 | POST | `/usage/estimate` | bearer | what an operation *would* cost; records nothing |
+| GET | `/usage/statement` | bearer | the itemised bill, `t1.statement/2`, per feature, model and unit (0.72.8) |
 | GET | `/keys` | bearer | admins see all, everyone else sees only their own |
 | POST | `/keys/import` | bearer, admin | import a Keymaster export; returns masked ids only |
 | POST | `/keys/assign` | bearer, admin | bind a key to a plan/account/user/servers/models |
@@ -1936,6 +2211,7 @@ is a key with `write`, or a trusted origin on a server with
 | POST | `/inference/completions` | bearer | a plain prompt, sent as one user turn |
 | POST | `/inference/embeddings` | bearer | embeddings, under the same registry and quota rules |
 | POST | `/inference/tokens` | bearer | size and price a request without running it |
+| POST | `/inference/relay` | bearer | a document longer than the context, read in hops by small-context instances; `estimate_only` prices it (0.72.8) |
 
 *The built-in runner* — see [Runtime](Runtime.md) and
 `hypernix-t1 built-in-runner`.
@@ -2070,6 +2346,38 @@ by comparison against a stored value, because a *refused* config string
 still carried a key and at that moment there is nothing to compare it
 to. No response ever contains it.
 
+### Web search v2
+
+`/web/v1/search` still works until 0.73.0 and says so (`Deprecation`
+and `Sunset` headers, a `deprecated` field). Its successor:
+
+```
+/web/v2/I?=query&q?=depth&mx?=maxitems&sq?=#&&kpd?=true
+```
+
+* `q` is the depth (result pages), `mx` the most results, `sq` how many
+  of the top-ranked sites to read and summarise (`sq?=1` reads only the
+  first), `kpd` whether to keep the search and the sites' text.
+* `&&` separates the `?=` parameters from the flag after them; it reads
+  as one separator. `?q=cats&depth=2&max=10&read=1&keep=true` works too.
+
+Five settings in `web.json`, set with `hypernix-t1 config web --set
+NAME=VALUE` (`--json`, `--reset`):
+
+| Setting | Meaning | Default |
+|---|---|---|
+| `store_enabled` | keep searches at all (AI search storage) | `false` |
+| `store_format` | `jsonl` or `parquet` (needs pyarrow; else JSONL, said so) | `jsonl` |
+| `max_items` | most results `mx` may ask for (1–100) | 20 |
+| `max_read_sites` | most sites `sq` may read (1–20) | 5 |
+| `ai_config` | who may let a model change settings: `off`, `partial`, `admin` | `partial` |
+
+`GET`/`POST /web/v1/ai/config` lets a model read them and, with partial
+admin, change the less risky three (`store_format`, `max_items`,
+`max_read_sites`); turning storage on needs a full admin. The model's
+`web_search` tool uses v2, and `web_settings` / `web_settings_set`
+expose this endpoint.
+
 ### Code sandboxes
 
 `/code` runs code on this server, in sandboxes. It is **off** unless the
@@ -2134,6 +2442,30 @@ user and can read what that user can read outside it. That is why it is
 off by default. Sandboxes live in `T1_CODE_SANDBOX_DIR` (a temporary
 folder by default); a caller may hold eight, another caller's sandbox is
 a `404`, and every run is audited before it starts.
+
+#### git, search and import (0.72.8a3)
+
+| Route | What it does | Needs |
+|---|---|---|
+| `POST /code/sandbox/{id}/git` | `{"op": "status"}`, and `diff`, `log`, `show`, `branch`, `init`, `add`, `commit`, `checkout`, `restore`, `clone` | reading ops: any caller who may read the sandbox; the rest: admin or `write` |
+| `GET /code/sandbox/{id}/search?q=&glob=&regex=` | lines containing `q` in the sandbox's text files | read |
+| `POST /code/sandbox/{id}/import` | `{"file_id": "...", "path": "data/qa.jsonl"}` copies one of your HyperLink attachments in | admin or `write` |
+
+```bash
+curl -s -X POST "$T1/code/sandbox/$BOX/git" -H "Authorization: Bearer $KEY" \
+  -H 'Content-Type: application/json' -d '{"op": "clone", "url": "https://github.com/owner/repo.git"}'
+curl -s -X POST "$T1/code/sandbox/$BOX/git" -H "Authorization: Bearer $KEY" \
+  -H 'Content-Type: application/json' -d '{"op": "commit", "message": "first", "all": true}'
+```
+
+Each op is a fixed argv run in the sandbox's folder, and git is told not
+to run anything it finds there: hooks and `core.fsmonitor` are off, the
+person's own git configuration is not read (`HOME` is the sandbox,
+`GIT_CONFIG_NOSYSTEM`), nothing waits for a password, and only
+`https://` is spoken: no `file://`, `ssh` or `ext::`. Cloning needs the
+sandbox's network (`s2`). Paths are checked to stay in the sandbox and
+refs to be refs. Every op that changes something is audited, and the
+file list leaves out `.git`'s insides.
 
 ### Several prompts at once
 
@@ -2251,7 +2583,7 @@ with no key where trusted-network mode allows that origin, otherwise
 with a HyperLink pairing code or a key, which that browser keeps.
 
 `T1_WEB_ENABLED=0` or `T1_WEB_PORT=0` turns it off. The page is served
-from a fixed list of four files with a strict content security policy,
+from a fixed list of files with a strict content security policy,
 and every other path is the T1 API itself.
 
 If it does not open (0.72.6.post2):
@@ -2276,6 +2608,56 @@ If it does not open (0.72.6.post2):
 - A message with no reply now shows why, in red. "No LM Studio server
   answering" means nothing is serving a model: load one from the Runner
   tab, or start LM Studio's server.
+
+#### Datasets, code sessions and Markdown (0.72.8a3)
+
+**Parts of datasets.** Attach a JSONL, JSON, Parquet, CSV/TSV, Arrow,
+text or Markdown file and the model is given an excerpt of it with your
+message: the first 20 rows, or the whole file when it is small. To
+choose the part, send a `datasets` entry with the message (the web page's
+▤ button on an attachment builds one and previews it):
+
+```json
+{"content": "Which answers are wrong?",
+ "attachment_ids": ["file_2a93..."],
+ "datasets": [{"file_id": "file_2a93...", "rows": "100-150", "columns": ["question", "answer"],
+               "query": "re:^Why", "sample": 0, "style": "table", "max_chars": 12000}]}
+```
+
+| Field | Means |
+|---|---|
+| `rows` | `0-20`, `100-` (to the end), `5`, or `-10` (the last ten) |
+| `columns` | only these columns |
+| `query` | only rows (or lines) containing this; `re:<pattern>` for a regex. In a Markdown file with no `rows`, the section under the heading that matches |
+| `sample` | a repeatable random sample (`seed`) of this many rows instead of a range |
+| `style` | `auto`, `jsonl`, `table` or `text` |
+| `max_chars` | 500–100 000; the excerpt says when it was cut |
+
+`POST /hyperlink/datasets/preview` takes the same object and answers
+with exactly the text the model would get, `rows_shown`, `rows_total`
+(when known) and `columns`. The choice is kept with the message, so a
+regenerate builds the same context.
+
+**Code sessions.** `code_sandbox_id` on a chat request ties the
+conversation to a [`/code` sandbox](#code-sandboxes). The model gets
+tools for exactly that sandbox: `code_list_files`, `code_read_file` (by
+line range), `code_search` and `code_git` for anyone who may read it,
+and `code_write_file`, `code_edit_file` (replace one exact occurrence)
+and `code_run` (when `s1` allows running) for a caller with `write` or
+admin. They go through the same store as the routes, so the sandbox's
+permissions and budgets bind the model exactly as they bind a person.
+The web page's **Code** tab makes and edits sandboxes, runs files,
+searches, copies attachments in, and does git, and its checkbox (or
+*Chat about it*) binds the sandbox to the chat.
+
+**Markdown.** Replies on the web are rendered as CommonMark, GitHub
+Flavored Markdown (tables, task lists, strikethrough, autolinks,
+footnotes) and Markdown Extra (heading ids and classes, definition
+lists, abbreviations, fenced-code attributes) by `web/markdown.js`, which
+escapes everything first: raw HTML is shown as text apart from a few
+attribute-free inline tags (`kbd`, `sup`, `sub`, `mark`, ...), and links
+are only `http`, `https`, `mailto` or relative. The iOS app renders the
+same block types.
 
 #### Images on the runner (0.72.7)
 
@@ -2635,6 +3017,8 @@ six-part scheme in [Versioning](#versioning) rather than a beta number.
 | **1.0.26.8.0.1** | The [LM Studio bridge](#the-lm-studio-bridge); [HyperLink](#hyperlink) pairing, sessions, attachments and endpoint advertisement; [Hugging Face link merging](#hugging-face-link-merging); the [HyperLink iOS app](../ios/README.md) | **Shipped** |
 | **1.0.26.8.1.1** | The [bootstrap admin key](#the-first-key-a-new-server-has) a fresh server issues itself; [T2P billing keys](#billing-keys-t2p-and-refusing-them) and the server-side policy that can refuse them; the three HyperLink reachability fixes (advertised port, tailnet ATS, Tailscale diagnosis) and [T2S key](#using-a-t2s-key) entry from the app; [undoable](#undoing-an-authentication-change) auth changes and durable server ids | **Shipped** |
 | **1.0.26.9.2.3** | [Web accounts](#web-accounts): sign-up and browser sign-in in four deployment modes (`t1-accounts`), with a keyless caller never an administrator | **Shipped** (0.72.5) |
+| **1.1.26.10.2.0** | [The Anthropic Messages API](#the-anthropic-messages-api) (`/v1/messages`, `/v1/messages/count_tokens`, `/v1/models`) for Claude Code; [remote MCP servers](#remote-mcp-servers-hugging-faces-and-others) (`/mcp/remote`) and MCP 2025-11-25; [Net](#net) (`/net`, replacing `hnx net`); [the public-server counter](#the-public-server-counter); HyperLink [dataset parts, code sessions and Markdown](#datasets-code-sessions-and-markdown-0728a3); [git, search and import](#git-search-and-import-0728a3) in `/code` sandboxes | **Alpha** (0.72.8a3) |
+| **1.1.26.10.1.0** | [Web search v2](#web-search-v2) and `/web/v1/ai/config`; [signed prompts and the ping](#signed-prompts-and-the-ping); chats [owned by an account or a key](#ownership), `/hyperlink/whoami` and `/hyperlink/login`; loaded models, documents, the ring and hypercompress | **Alpha** (0.72.8a1) |
 | **1.1.26.9.0.0** | The 1.1 generation, first shipped in `0.72.5.post15`; a 1.0 client is told to upgrade. The package releases after it added [HyperLink](#hyperlink) titles, compression, memory, images and the shell, [web search](#web-search), [v2.1 keys](#v21-t2c-keys-and-rotorvault), [conceal mode](#conceal-mode-and-36-hour-retention) and [server info](#server-info); the 0.72.6 patches added [HyperLink on the web](#hyperlink-on-the-web-0726post1), moving a model out of LM Studio, and `hypernix-t1 upgrade` — see the [Changelog](Changelog.md) | **Shipped** |
 
 ## Design principle

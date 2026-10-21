@@ -55,12 +55,18 @@ CREATE INDEX IF NOT EXISTS idx_usage_ts ON usage_events(ts);
 _ADDED_COLUMNS: tuple[tuple[str, str], ...] = (
     ("user_id", "TEXT NOT NULL DEFAULT ''"),
     ("account_id", "TEXT NOT NULL DEFAULT ''"),
+    # 0.72.8: what the event was for, and what it used that is not
+    # tokens -- sandbox seconds, web searches. Rows from before have
+    # neither; their feature is read from the endpoint (see t1api.cost).
+    ("feature", "TEXT NOT NULL DEFAULT ''"),
+    ("units", "REAL NOT NULL DEFAULT 0"),
+    ("unit", "TEXT NOT NULL DEFAULT ''"),
 )
 
 # Dimensions callers may group or filter by. An allowlist, not a
 # free-form column name — these values reach SQL as identifiers, so they
 # can never come from a request unchecked.
-GROUPABLE = ("model_id", "key_id", "server_id", "module_id", "user_id", "account_id", "endpoint")
+GROUPABLE = ("model_id", "key_id", "server_id", "module_id", "user_id", "account_id", "endpoint", "feature")
 FILTERABLE = GROUPABLE
 
 #: The column each dimension names, as literals. Queries interpolate the
@@ -75,6 +81,7 @@ _COLUMNS: dict[str, str] = {
     "user_id": "user_id",
     "account_id": "account_id",
     "endpoint": "endpoint",
+    "feature": "feature",
 }
 if not (set(_COLUMNS) == set(GROUPABLE)):
     raise AssertionError('set(_COLUMNS) == set(GROUPABLE)')
@@ -149,14 +156,18 @@ class UsageStore:
         module_id: str = "",
         user_id: str = "",
         account_id: str = "",
+        feature: str = "",
+        units: float = 0.0,
+        unit: str = "",
         ts: float | None = None,
     ) -> None:
         with self._lock, self.backend.connect() as conn:
             conn.execute(
                 """INSERT INTO usage_events
                    (key_id, model_id, input_tokens, output_tokens, requests,
-                    endpoint, server_id, module_id, user_id, account_id, ts)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    endpoint, server_id, module_id, user_id, account_id,
+                    feature, units, unit, ts)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     key_id,
                     model_id,
@@ -168,6 +179,9 @@ class UsageStore:
                     module_id,
                     user_id,
                     account_id,
+                    feature,
+                    float(units),
+                    unit,
                     ts if ts is not None else time.time(),
                 ),
             )
@@ -277,7 +291,7 @@ class UsageStore:
         where, params = self._where(filters, since=since, until=until)
         query = (
             "SELECT key_id, model_id, input_tokens, output_tokens, requests, endpoint, "  # nosec B608 - values are bound parameters; interpolated SQL is fixed or allowlisted
-            "server_id, module_id, user_id, account_id, ts FROM usage_events"
+            "server_id, module_id, user_id, account_id, feature, units, unit, ts FROM usage_events"
             f"{where} ORDER BY ts DESC LIMIT ? OFFSET ?"
         )
         with self._lock, self.backend.connect() as conn:
@@ -295,8 +309,38 @@ class UsageStore:
                 "module_id": r["module_id"],
                 "user_id": r["user_id"],
                 "account_id": r["account_id"],
+                "feature": r["feature"],
+                "units": float(r["units"] or 0),
+                "unit": r["unit"],
                 "ts": r["ts"],
             }
+            for r in rows
+        ]
+
+    def line_items(
+        self,
+        *,
+        since: float | None = None,
+        until: float | None = None,
+        **filters: str | None,
+    ) -> list[dict[str, Any]]:
+        """Totals per (feature, endpoint, model, unit) -- the rows an
+        itemised statement is priced from. The endpoint is kept so rows
+        recorded before ``feature`` existed can still be told apart."""
+        where, params = self._where(filters, since=since, until=until)
+        query = (
+            "SELECT feature, endpoint, model_id, unit, "  # nosec B608 - values are bound parameters; interpolated SQL is fixed or allowlisted
+            "COALESCE(SUM(requests),0) AS requests, "
+            "COALESCE(SUM(input_tokens),0) AS input_tokens, "
+            "COALESCE(SUM(output_tokens),0) AS output_tokens, "
+            "COALESCE(SUM(units),0) AS units "
+            f"FROM usage_events{where} GROUP BY feature, endpoint, model_id, unit"
+        )
+        with self._lock, self.backend.connect() as conn:
+            rows = conn.execute(query, params).fetchall()
+        return [
+            {"feature": r["feature"], "endpoint": r["endpoint"], "model_id": r["model_id"],
+             "unit": r["unit"], "units": float(r["units"] or 0), **_totals_row(r)}
             for r in rows
         ]
 

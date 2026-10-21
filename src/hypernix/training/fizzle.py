@@ -14,6 +14,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from hypernix.security.hfpin import hub_revision
+
 # Optional imports for model processing
 try:
     import torch
@@ -82,16 +84,17 @@ class FuzedModelArch(nn.Module if nn else object):
             # Load tokenizer/processor
             try:
                 if comp_type == "asr":
-                    self.tokenizers[comp.id] = AutoProcessor.from_pretrained(comp.name_or_path)
+                    self.tokenizers[comp.id] = AutoProcessor.from_pretrained(comp.name_or_path, revision=hub_revision(comp.name_or_path))
                 elif comp_type == "vision":
-                    self.tokenizers[comp.id] = AutoImageProcessor.from_pretrained(comp.name_or_path)
+                    self.tokenizers[comp.id] = AutoImageProcessor.from_pretrained(comp.name_or_path, revision=hub_revision(comp.name_or_path))
                 else:
-                    self.tokenizers[comp.id] = AutoTokenizer.from_pretrained(comp.name_or_path)
+                    self.tokenizers[comp.id] = AutoTokenizer.from_pretrained(comp.name_or_path, revision=hub_revision(comp.name_or_path))
             except Exception as e:
                 print(f"[fizzle] Warning: Could not load tokenizer/processor for {comp.id}: {e}", file=sys.stderr)
                 
             # Load model
-            model = AutoModel.from_pretrained(comp.name_or_path, trust_remote_code=True)
+            model = AutoModel.from_pretrained(comp.name_or_path, trust_remote_code=True,
+                                              revision=hub_revision(comp.name_or_path))
             
             # Apply LoRAs
             if comp.loras:

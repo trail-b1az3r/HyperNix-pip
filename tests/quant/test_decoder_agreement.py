@@ -37,6 +37,8 @@ PAIRS = {
     "IQ0.25_UXL": (203, "quarter_code_uxl"),
     "INT1": (204, "int1_binary"),
     "HNX_1375BIT": (207, "hnx_1375bit"),
+    "HNX_15125BIT": (224, "hnx_15125bit"),
+    "HNX_IQ1S": (225, "hnx_iq1s"),
 }
 
 HARNESS = r"""

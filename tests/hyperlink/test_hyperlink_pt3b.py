@@ -59,6 +59,8 @@ def app_client(tmp_path, monkeypatch):
     monkeypatch.setenv("T1_DB_PATH", str(tmp_path / "t.sqlite3"))
     monkeypatch.setenv("T1_CONFIG_DIR", str(tmp_path))
     monkeypatch.setenv("T1_TRUSTED_NETWORK", "1")
+    # Keyless chats are a shared pool only when asked for (0.72.8).
+    monkeypatch.setenv("T1_HYPERLINK_SHARED_KEYLESS_CHATS", "1")
     monkeypatch.setenv("T1_LMSTUDIO_ENABLED", "0")
     monkeypatch.setenv("T1_NOODLE_ENABLED", "1")
     from hypernix.t1api.app import create_app
@@ -193,8 +195,9 @@ class TestModelMemories:
                                              call.format(v="Helix"), "ok"))
         self.enable(client)
         session = new_session(client)
-        client.post(f"/hyperlink/sessions/{session}/chat", json={"content": "a"})
-        client.post(f"/hyperlink/sessions/{session}/chat", json={"content": "b"})
+        # Asked both times: a model saves a memory only when told to (0.72.8).
+        client.post(f"/hyperlink/sessions/{session}/chat", json={"content": "remember I use Vim"})
+        client.post(f"/hyperlink/sessions/{session}/chat", json={"content": "remember I use Helix now"})
         editors = [m for m in client.get("/memory/list").json()["memories"]
                    if m["metadata"].get("key") == "editor"]
         assert [m["content"] for m in editors] == ["editor: Helix"]

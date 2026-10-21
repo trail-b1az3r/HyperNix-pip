@@ -110,6 +110,8 @@ def api(tmp_path, monkeypatch):
     monkeypatch.setenv("T1_DB_PATH", str(tmp_path / "t.sqlite3"))
     monkeypatch.setenv("T1_CONFIG_DIR", str(tmp_path))
     monkeypatch.setenv("T1_TRUSTED_NETWORK", "1")
+    # Keyless chats are a shared pool only when asked for (0.72.8).
+    monkeypatch.setenv("T1_HYPERLINK_SHARED_KEYLESS_CHATS", "1")
     recorder = Recorder()
     monkeypatch.setattr(inference, "_openai_client", lambda base_url, timeout=300.0: recorder)
 

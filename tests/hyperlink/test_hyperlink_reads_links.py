@@ -40,6 +40,8 @@ def keyless(tmp_path, monkeypatch):
     from hypernix.t1api.routers import web
 
     clear_t1_config(monkeypatch)
+    # A keyless phone with chats: the shared pool, asked for (0.72.8).
+    monkeypatch.setenv("T1_HYPERLINK_SHARED_KEYLESS_CHATS", "1")
     fetched: list[str] = []
 
     def fetch(url):

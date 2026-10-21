@@ -183,6 +183,8 @@ class TestThroughTheAPI:
         monkeypatch.setenv("T1_DB_PATH", str(tmp_path / "t.sqlite3"))
         monkeypatch.setenv("T1_CONFIG_DIR", str(tmp_path))
         monkeypatch.setenv("T1_TRUSTED_NETWORK", "1")
+        # Keyless chats are a shared pool only when asked for (0.72.8).
+        monkeypatch.setenv("T1_HYPERLINK_SHARED_KEYLESS_CHATS", "1")
         monkeypatch.setenv("T1_LMSTUDIO_ENABLED", "0")
 
         from hypernix.t1api.app import create_app
@@ -297,3 +299,69 @@ class TestThroughTheAPI:
 
         app.state.t1_runner = FakeRunner()
         assert client.get("/hyperlink/backends").json()["active"] == HYPERNIX
+
+    def test_the_loaded_models_endpoint(self, app_and_client):
+        app, client = app_and_client
+        assert client.get("/hyperlink/models/loaded").json()["models"] == []
+
+        class FakeRunner:
+            base_url = "http://127.0.0.1:8081"
+            current = Loaded("qwen3-8b")
+
+        app.state.t1_runner = FakeRunner()
+        body = client.get("/hyperlink/models/loaded").json()
+        assert body["default"] == "qwen3-8b"
+        assert body["models"][0]["backend"] == HYPERNIX
+
+
+class TestChoosingAmongLoadedModels:
+    """0.72.8: with more than one model loaded, the app lists them and a
+    message goes to the one picked -- on whichever backend holds it."""
+
+    @pytest.fixture
+    def lmstudio_has(self, monkeypatch):
+        from hypernix.bridge import lmstudio
+
+        def set_models(*ids):
+            models = [lmstudio.LMStudioModel(model_id=i, loaded=True) for i in ids]
+            monkeypatch.setattr(lmstudio.LMStudioBridge, "loaded_models", lambda self: models)
+        return set_models
+
+    def test_every_loaded_model_is_listed_the_runners_first(self, lmstudio_has):
+        from hypernix.hyperlink.inference import loaded_models
+
+        lmstudio_has("gemma-3-12b", "qwen3-8b")
+        rows = loaded_models(Config(lmstudio=True, url="http://127.0.0.1:1234/v1"), Runner(Loaded("qwen3-8b")))
+        assert [(r["model_id"], r["backend"], r["default"]) for r in rows] == [
+            ("qwen3-8b", HYPERNIX, True), ("gemma-3-12b", LMSTUDIO, False)]
+
+    def test_no_runner_makes_lm_studios_first_the_default(self, lmstudio_has):
+        from hypernix.hyperlink.inference import loaded_models
+
+        lmstudio_has("a", "b")
+        rows = loaded_models(Config(lmstudio=True), None)
+        assert [r["default"] for r in rows] == [True, False]
+
+    def test_an_lm_studio_that_does_not_answer_lists_nothing_from_it(self, monkeypatch):
+        from hypernix.bridge import lmstudio
+        from hypernix.hyperlink.inference import loaded_models
+
+        def down(self):
+            raise lmstudio.LMStudioError("unreachable", code="unreachable")
+        monkeypatch.setattr(lmstudio.LMStudioBridge, "loaded_models", down)
+        rows = loaded_models(Config(lmstudio=True), Runner(Loaded("m")))
+        assert [r["model_id"] for r in rows] == ["m"]
+
+    def test_picking_lm_studios_model_goes_to_lm_studio(self, lmstudio_has):
+        lmstudio_has("gemma-3-12b")
+        backend = resolve_backend(Config(lmstudio=True), Runner(Loaded("qwen3-8b")), "gemma-3-12b")
+        assert backend.name == LMSTUDIO and backend.model_id == "gemma-3-12b"
+
+    def test_picking_the_runners_model_stays_on_the_runner(self, lmstudio_has):
+        lmstudio_has("gemma-3-12b")
+        assert resolve_backend(Config(lmstudio=True), Runner(Loaded("qwen3-8b")), "qwen3-8b").name == HYPERNIX
+
+    def test_a_name_nothing_has_loaded_stays_on_the_runner(self, lmstudio_has):
+        """Not a silent switch to LM Studio for a model it does not hold."""
+        lmstudio_has("gemma-3-12b")
+        assert resolve_backend(Config(lmstudio=True), Runner(Loaded("qwen3-8b")), "other").name == HYPERNIX

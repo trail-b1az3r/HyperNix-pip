@@ -155,7 +155,10 @@ class TVTopPlusPlus:
         # Memory
         mem = _read_memory_breakdown() or {}
         f.memory = mem
-        if ram is None and mem.get("percent") is not None:
+        # The breakdown's percentage, not psutil's: it is computed from the
+        # same used/total the panel prints, and from the container's limit
+        # inside one (hostprobe.memory).
+        if mem.get("percent") is not None:
             ram = float(mem["percent"])
         f.cpu_percent = cpu
         f.ram_percent = ram

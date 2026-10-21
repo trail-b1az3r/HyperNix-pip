@@ -482,6 +482,11 @@ private struct LoadModelSheet: View {
         case "cpu": return "CPU only"
         case "hnx-cuda": return "HyperNix engine, CUDA"
         case "hnx-cpu": return "HyperNix engine, CPU"
+        case "multilama": return "Multi-llama — the fork the model needs"
+        case "multilama-ik": return "Multi-llama: ik_llama.cpp"
+        case "multilama-prismml": return "Multi-llama: PrismML"
+        case "multilama-kobold": return "Multi-llama: KoboldCpp"
+        case "multilama-nanbeige": return "Multi-llama: Nanbeige"
         default: return backend
         }
     }

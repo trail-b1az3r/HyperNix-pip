@@ -8,11 +8,13 @@ What it accepts, and what happens to each:
 
 * a Hugging Face folder, or one ``.safetensors`` file in one, is
   converted with :func:`hypernix.quant.convert.convert_to_gguf`;
-* a hyperNix0x-v2 (Brewer) folder or ``.pt`` goes to hyprslug as is,
-  which exports it itself;
+* a hyperNix0x-v2 (Brewer) folder or ``.pt`` is exported to a GGUF with
+  :func:`hypernix.models.brewer_gguf.export_gguf`;
 * a ``.gguf`` needs no conversion and goes straight to hyprslug.
 
-The quantisation is hyprslug's, so every target it knows works here:
+Converting always comes first and is a step of its own: only the finished
+F16 GGUF is quantised (0.72.8 -- a Brewer model used to be handed to the
+quantiser whole). The quantisation is hyprslug's, so every target it knows works here:
 llama.cpp's types and mixes, the HyperNix tiers, and the hybrids.
 """
 from __future__ import annotations
@@ -84,8 +86,19 @@ def convert_and_quantize(
     keep_intermediate: bool = False,
     imatrix: str | Path | None = None,
     progress: Callable[[dict], None] | None = None,
+    on_stage: Callable[[str, str], None] | None = None,
 ) -> ConvertQuantizeResult:
-    """Convert *source* if it needs it, then quantise it to *target*."""
+    """Convert *source* if it needs it, then quantise it to *target*.
+
+    Always in that order, and as two steps: the conversion writes an F16
+    (or F32) GGUF first, and only that file is quantised. *on_stage* is
+    told ``("convert", what)`` before the first and ``("quantize",
+    target)`` before the second, so a caller can show which is running.
+    """
+    def stage(name: str, what: str) -> None:
+        if on_stage is not None:
+            on_stage(name, what)
+
     from .hyprslug import quantize_gguf, resolve_target
 
     path = Path(source).expanduser()
@@ -102,23 +115,44 @@ def convert_and_quantize(
     out = Path(output).expanduser() if output else default_output(path, canonical)
     out.parent.mkdir(parents=True, exist_ok=True)
 
-    if kind != "safetensors":
+    if kind == "gguf":
+        # Already converted: nothing to do but quantise.
+        stage("quantize", canonical)
         report = quantize_gguf(path, out, canonical, imatrix=imatrix, progress=progress)
         return ConvertQuantizeResult(out, kind, canonical, report)
 
-    from .convert import convert_to_gguf
+    model_dir = _model_dir(path) if kind == "safetensors" else path
+    label = name or (model_dir.stem if model_dir.is_file() else model_dir.name)
+    outtype = "f32" if dtype in ("fp32", "f32") else "f16"
 
-    model_dir = _model_dir(path)
-    label = name or model_dir.name
+    def convert(staged: Path) -> None:
+        stage("convert", f"{label} to {outtype.upper()} GGUF")
+        if kind == "brewer":
+            # Exported here, as its own step, rather than inside hyprslug:
+            # the quantiser then only ever sees a finished GGUF.
+            from ..models.brewer_gguf import export_gguf
+
+            export_gguf(path, staged, outtype=outtype)
+        else:
+            from .convert import convert_to_gguf
+
+            convert_to_gguf(model_dir, staged, dtype=dtype, arch_name=arch_name, name=label)
+        if not staged.is_file() or staged.stat().st_size == 0:
+            raise ConvertQuantizeError(f"Converting {path} wrote no GGUF; nothing was quantised.")
+
     if keep_intermediate:
-        staged = out.with_name(f"{model_dir.name}.{dtype}.gguf")
-        convert_to_gguf(model_dir, staged, dtype=dtype, arch_name=arch_name, name=label)
+        staged = out.with_name(f"{label}.{outtype}.gguf")
+        convert(staged)
+        stage("quantize", canonical)
         report = quantize_gguf(staged, out, canonical, imatrix=imatrix, progress=progress)
         return ConvertQuantizeResult(out, kind, canonical, report, staged)
     # Beside the output, not in /tmp: the F16 copy is the biggest file in
     # the pipeline and /tmp is often a small tmpfs.
     with tempfile.TemporaryDirectory(prefix=".hnx-convert-", dir=out.parent) as scratch:
-        staged = Path(scratch) / f"{model_dir.name}.{dtype}.gguf"
-        convert_to_gguf(model_dir, staged, dtype=dtype, arch_name=arch_name, name=label)
+        staged = Path(scratch) / f"{label}.{outtype}.gguf"
+        convert(staged)
+        stage("quantize", canonical)
         report = quantize_gguf(staged, out, canonical, imatrix=imatrix, progress=progress)
+    if kind == "brewer":
+        report.converted_from = "hyperNix0x-v2"
     return ConvertQuantizeResult(out, kind, canonical, report)
