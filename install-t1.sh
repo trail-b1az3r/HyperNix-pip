@@ -46,7 +46,7 @@ set -euo pipefail
 # tests/repo/test_install_script.py fails if the fallback drifts from the
 # package again.
 VERSION="0.72.8a3"
-T1_API_VERSION="1.1.26.10.1.0"
+T1_API_VERSION="1.1.26.10.2.0"
 
 # Replace the baked versions with the real ones, when they can be read.
 #
