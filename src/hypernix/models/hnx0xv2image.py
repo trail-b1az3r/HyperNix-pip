@@ -85,7 +85,15 @@ _ALREADY_VISION = {"lfm2_vl", "qwen3_vl", "qwen3_vl_moe", "qwen2_5_vl", "qwen2_v
 
 
 class ImageError(ValueError):
-    """A model, a file or a request hnx0xv2image cannot use, and why."""
+    """A model, a file or a request hnx0xv2image cannot use, and why.
+
+    A fusion refused for the model's family carries its registered code
+    in ``hx_code`` (0.72.8a4); other refusals carry none.
+    """
+
+    def __init__(self, message: str, *, hx=None) -> None:
+        super().__init__(f"{hx.code}: {message}" if hx is not None else message)
+        self.hx_code = hx.code if hx is not None else ""
 
 
 # ---------------------------------------------------------------------------
@@ -349,14 +357,18 @@ def family_of(config: dict[str, Any]) -> str:
     if not model_type and {"d_model", "n_layers", "n_heads"} <= set(config):
         return "hypernix0x-v2"
     if model_type in _ALREADY_VISION:
+        from ..system.errorcatalogue import IMAGE_FUSE_VL_REFUSED
+
         raise ImageError(f"{model_type} is already an image model; fuse with its text-only "
-                         "sibling (an LFM2.5 that is not -VL, or a Qwen3.5)")
+                         "sibling (an LFM2.5 that is not -VL, or a Qwen3.5)", hx=IMAGE_FUSE_VL_REFUSED)
     if model_type in FUSABLE:
         return model_type
     if model_type.startswith("hypernix") or str(config.get("name", "")).lower().startswith("hypernix"):
         return "hypernix"
+    from ..system.errorcatalogue import IMAGE_FUSE_FAMILY
+
     raise ImageError(f"model_type {model_type or '(none)'} is not fusable: hnx0xv2image fuses with "
-                     "LFM2.5 (non-VL), Qwen3.5 and HyperNix models")
+                     "LFM2.5 (non-VL), Qwen3.5 and HyperNix models", hx=IMAGE_FUSE_FAMILY)
 
 
 class _CharTokenizer:

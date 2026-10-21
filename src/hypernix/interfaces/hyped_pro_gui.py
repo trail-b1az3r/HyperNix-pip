@@ -25,21 +25,25 @@ spec. Set HYPED_GUI_DEBUG=1 for verbose per-step logging.
 
 Error/debug codes
 ------------------
-  HPG-PLATFORM-001  could not detect a usable display session at all
-  HPG-QT-001        PySide6 is not installed
-  HPG-QT-002        Qt6 failed to initialize under the chosen platform plugin
-  HPG-GTK-001       PyGObject (gi) / GTK4 is not installed
-  HPG-GTK-002       GTK4 failed to initialize
-  HPG-BACKEND-001   neither Qt6 nor GTK4 is available — nothing to launch
-  HPG-CHAT-001      a chat request failed (wraps the underlying HPC-* code)
-  HPG-DOWNLOAD-001  a model download failed (wraps the underlying HPC-* code)
-  HPG-KEY-001       saving/reading a provider key failed
+Registered HyperNix codes since 0.72.8a4, each with the name it had before:
+
+  I1-02290.b4  HPG-PLATFORM-001 could not detect a usable display session at all
+  I1-02291.b2  HPG-QT-001       PySide6 is not installed
+  I1-00290.d3  HPG-QT-002       Qt6 failed to initialize under the chosen platform plugin
+  I1-02292.b2  HPG-GTK-001      PyGObject (gi) / GTK4 is not installed
+  I1-00291.d3  HPG-GTK-002      GTK4 failed to initialize
+  I1-02293.b4  HPG-BACKEND-001  neither Qt6 nor GTK4 is available — nothing to launch
+  I1-04290.d3  HPG-CHAT-001     a chat request failed (wraps the code underneath)
+  I1-04291.d3  HPG-DOWNLOAD-001 a model download failed (wraps the code underneath)
+  I1-05290.d3  HPG-KEY-001      saving/reading a provider key failed
 """
 from __future__ import annotations
 
 import logging
 import os
 import sys
+
+from hypernix.system import errorcatalogue as codes
 
 log = logging.getLogger("hypernix.hyped_pro_gui")
 
@@ -120,7 +124,7 @@ def try_launch_qt() -> bool:
     try:
         from PySide6.QtWidgets import QApplication
     except ImportError as exc:
-        _err("HPG-QT-001", f"PySide6 not installed ({exc}). Install with: pip install hypernix[gui-qt]")
+        _err(codes.HYPED_GUI_NO_QT, f"PySide6 not installed ({exc}). Install with: pip install hypernix[gui-qt]")
         return False
 
     session = detect_session()
@@ -144,15 +148,15 @@ def try_launch_qt() -> bool:
         return True
     except Exception as exc:  # noqa: BLE001
         if preferred == "wayland":
-            _err("HPG-QT-002", f"Qt6 failed under platform='wayland' ({exc}); retrying with xcb (X11)")
+            _err(codes.HYPED_GUI_QT_INIT, f"Qt6 failed under platform='wayland' ({exc}); retrying with xcb (X11)")
             os.environ["QT_QPA_PLATFORM"] = "xcb"
             try:
                 _build_and_run()
                 return True
             except Exception as exc2:  # noqa: BLE001
-                _err("HPG-QT-002", f"Qt6 also failed under platform='xcb': {exc2}")
+                _err(codes.HYPED_GUI_QT_INIT, f"Qt6 also failed under platform='xcb': {exc2}")
                 return False
-        _err("HPG-QT-002", f"Qt6 failed to initialize (platform={os.environ.get('QT_QPA_PLATFORM')}): {exc}")
+        _err(codes.HYPED_GUI_QT_INIT, f"Qt6 failed to initialize (platform={os.environ.get('QT_QPA_PLATFORM')}): {exc}")
         return False
 
 
@@ -160,7 +164,7 @@ def try_launch_qt() -> bool:
 # above succeeds, so the window class that subclasses them is built lazily
 # by _make_main_window_class() the first time it's actually needed — that's
 # what lets `import hypernix.hyped_pro_gui` succeed even without PySide6
-# installed at all (HPG-QT-001 is a runtime message, not an import crash).
+# installed at all (I1-02291.b2 is a runtime message, not an import crash).
 
 
 def _make_main_window_class():
@@ -202,7 +206,7 @@ def _make_main_window_class():
             except core.HypedProError as exc:
                 self.signals.failed.emit(exc.code, exc.message)
             except Exception as exc:  # noqa: BLE001
-                self.signals.failed.emit("HPG-CHAT-001", str(exc))
+                self.signals.failed.emit(codes.HYPED_GUI_CHAT.code, str(exc))
 
     class DownloadSignals(QObject):
         finished = Signal(str)
@@ -222,7 +226,7 @@ def _make_main_window_class():
             except core.HypedProError as exc:
                 self.signals.failed.emit(exc.code, exc.message)
             except Exception as exc:  # noqa: BLE001
-                self.signals.failed.emit("HPG-DOWNLOAD-001", str(exc))
+                self.signals.failed.emit(codes.HYPED_GUI_DOWNLOAD.code, str(exc))
 
     class HypedProMainWindow(QMainWindow):
         def __init__(self) -> None:
@@ -510,8 +514,8 @@ def _make_main_window_class():
                             f.setPlaceholderText("(key set — leave blank to keep it)")
                             QMessageBox.information(w, "hyped-pro", f"Saved key for {v}.")
                         except Exception as exc:  # noqa: BLE001
-                            _err("HPG-KEY-001", f"could not save key for {v}: {exc}")
-                            QMessageBox.critical(w, "hyped-pro", f"HPG-KEY-001: {exc}")
+                            _err(codes.HYPED_GUI_KEY, f"could not save key for {v}: {exc}")
+                            QMessageBox.critical(w, "hyped-pro", f"I1-05290.d3: {exc}")
                     return _save
 
                 save_btn.clicked.connect(make_saver(vendor, field))
@@ -552,7 +556,7 @@ def try_launch_gtk() -> bool:
         gi.require_version("Gtk", "4.0")
         from gi.repository import GLib, Gtk
     except (ImportError, ValueError) as exc:
-        _err("HPG-GTK-001", f"GTK4 (PyGObject) not installed ({exc}). Install with: pip install hypernix[gui-gtk]")
+        _err(codes.HYPED_GUI_NO_GTK, f"GTK4 (PyGObject) not installed ({exc}). Install with: pip install hypernix[gui-gtk]")
         return False
 
     import threading
@@ -628,8 +632,8 @@ def try_launch_gtk() -> bool:
                     _err(exc.code, exc.message)
                     GLib.idle_add(self._append, f"ERROR {exc.code}: {exc.message}")
                 except Exception as exc:  # noqa: BLE001
-                    _err("HPG-DOWNLOAD-001", str(exc))
-                    GLib.idle_add(self._append, f"ERROR HPG-DOWNLOAD-001: {exc}")
+                    _err(codes.HYPED_GUI_DOWNLOAD, str(exc))
+                    GLib.idle_add(self._append, f"ERROR I1-04291.d3: {exc}")
 
             threading.Thread(target=worker, daemon=True).start()
 
@@ -655,8 +659,8 @@ def try_launch_gtk() -> bool:
                     GLib.idle_add(self._append, f"ERROR {exc.code}: {exc.message}")
                 except Exception as exc:  # noqa: BLE001
                     self.history.pop()
-                    _err("HPG-CHAT-001", str(exc))
-                    GLib.idle_add(self._append, f"ERROR HPG-CHAT-001: {exc}")
+                    _err(codes.HYPED_GUI_CHAT, str(exc))
+                    GLib.idle_add(self._append, f"ERROR I1-04290.d3: {exc}")
 
             threading.Thread(target=worker, daemon=True).start()
 
@@ -671,7 +675,7 @@ def try_launch_gtk() -> bool:
         app.run(None)
         return True
     except Exception as exc:  # noqa: BLE001
-        _err("HPG-GTK-002", f"GTK4 failed to initialize: {exc}")
+        _err(codes.HYPED_GUI_GTK_INIT, f"GTK4 failed to initialize: {exc}")
         return False
 
 
@@ -693,7 +697,7 @@ def cli_main(argv: list[str] | None = None) -> int:
         # headless session (no compositor at all) that abort is guaranteed,
         # so the only correct fix is to not attempt it and fail cleanly
         # with a coded, actionable message instead.
-        _err("HPG-PLATFORM-001",
+        _err(codes.HYPED_GUI_NO_DISPLAY,
              "no Wayland or X11 session detected (no $WAYLAND_DISPLAY, no $DISPLAY, "
              "$XDG_SESSION_TYPE is not 'wayland'/'x11'). The GUI needs a real display/compositor "
              "to attach to — run this on the desktop session itself, not over a plain SSH shell "
@@ -705,7 +709,7 @@ def cli_main(argv: list[str] | None = None) -> int:
     if try_launch_gtk():
         return 0
 
-    _err("HPG-BACKEND-001",
+    _err(codes.HYPED_GUI_NO_BACKEND,
          "neither PySide6 (Qt6, X11+Wayland) nor PyGObject/GTK4 is installed. "
          "Install one with: pip install hypernix[gui-qt]  (or hypernix[gui-gtk])")
     return 1

@@ -529,7 +529,9 @@ def _run_download(raw: list[str]) -> int:
         chosen = pick_gguf_files(files, source.quant)
         if not chosen:
             ggufs = sorted(f for f in files if f.lower().endswith(".gguf"))
-            print(f"hypernix download: {source.repo_id} has no single {source.quant} GGUF"
+            from hypernix.system.errorcatalogue import REPO_NO_SUCH_QUANT
+
+            print(f"hypernix download: {REPO_NO_SUCH_QUANT.code}: {source.repo_id} has no single {source.quant} GGUF"
                   + ("; it has:" if ggufs else " (or the Hub could not be asked)."), file=sys.stderr)
             for name in ggufs:
                 print(f"  {name}", file=sys.stderr)

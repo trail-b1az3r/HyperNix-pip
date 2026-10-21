@@ -483,7 +483,7 @@ class TestTheBridgeVerbs:
     def test_an_unknown_session_is_an_error_code_not_a_traceback(self):
         resp = self._dispatch(cmd="noodle_poll", session="nope")
         assert not resp["ok"]
-        assert resp["code"] == "HPB-NOODLE-002"
+        assert resp["code"] == "I2-04261.d3"
 
     def test_a_refused_start_is_an_error_code(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
@@ -492,7 +492,7 @@ class TestTheBridgeVerbs:
             roster=["ollama:llama3.2"], root="/etc",
         )
         assert not resp["ok"]
-        assert resp["code"] == "HPB-NOODLE-001"
+        assert resp["code"] == "I2-04260.d3"
         assert "outside" in resp["error"]
 
     def test_a_full_round_trip(self, fake_swarm, tmp_path, monkeypatch):

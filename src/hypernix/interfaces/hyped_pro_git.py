@@ -27,6 +27,7 @@ from pathlib import Path
 from typing import Any
 
 from hypernix.interfaces.hyped_pro_tools import ToolError, _resolve_safe_path, workspace_root
+from hypernix.system import errorcatalogue as codes
 
 #: Output a model is shown is cut here; a diff of a vendored directory
 #: would otherwise fill its whole context.
@@ -46,7 +47,7 @@ _REV = re.compile(r"^(?!-)[A-Za-z0-9._/@^~{}:+-]{1,200}$")
 def _git_binary() -> str:
     found = shutil.which("git")
     if not found:
-        raise ToolError("TOOL-GIT-001", "git is not installed or not on PATH.")
+        raise ToolError(codes.HYPED_GIT_MISSING, "git is not installed or not on PATH.")
     return found
 
 
@@ -69,12 +70,12 @@ def run(args: list[str], *, timeout: int = LOCAL_TIMEOUT, cwd: Path | None = Non
             check=False,
         )
     except subprocess.TimeoutExpired as exc:
-        raise ToolError("TOOL-GIT-002", f"git {args[0]} took longer than {timeout}s and was stopped.") from exc
+        raise ToolError(codes.HYPED_GIT_TIMEOUT, f"git {args[0]} took longer than {timeout}s and was stopped.") from exc
     if check and result.returncode != 0:
         message = (result.stderr or result.stdout).strip() or f"exit {result.returncode}"
         if "not a git repository" in message:
-            raise ToolError("TOOL-GIT-003", f"{workspace_root()} is not inside a git repository.")
-        raise ToolError("TOOL-GIT-004", f"git {args[0]} failed: {message}")
+            raise ToolError(codes.HYPED_GIT_NOT_A_REPO, f"{workspace_root()} is not inside a git repository.")
+        raise ToolError(codes.HYPED_GIT_FAILED, f"git {args[0]} failed: {message}")
     return result.stdout
 
 
@@ -87,14 +88,14 @@ def _clip(text: str) -> str:
 def check_ref(name: str, what: str = "branch") -> str:
     name = (name or "").strip()
     if not _REF.match(name):
-        raise ToolError("TOOL-GIT-005", f"{name!r} is not a {what} name hyped-pro will pass to git.")
+        raise ToolError(codes.HYPED_GIT_BAD_NAME, f"{name!r} is not a {what} name hyped-pro will pass to git.")
     return name
 
 
 def check_rev(rev: str) -> str:
     rev = (rev or "").strip()
     if not _REV.match(rev):
-        raise ToolError("TOOL-GIT-005", f"{rev!r} is not a revision hyped-pro will pass to git.")
+        raise ToolError(codes.HYPED_GIT_BAD_NAME, f"{rev!r} is not a revision hyped-pro will pass to git.")
     return rev
 
 
@@ -274,7 +275,7 @@ def branches() -> dict[str, Any]:
 def add(paths: list[str] | str) -> str:
     targets = _paths(paths)
     if not targets:
-        raise ToolError("TOOL-GIT-006", "name at least one path to stage ('.' for everything).")
+        raise ToolError(codes.HYPED_GIT_NO_PATHS, "name at least one path to stage ('.' for everything).")
     run(["add", "--", *targets])
     return f"Staged {', '.join(targets)}."
 
@@ -282,7 +283,7 @@ def add(paths: list[str] | str) -> str:
 def unstage(paths: list[str] | str) -> str:
     targets = _paths(paths)
     if not targets:
-        raise ToolError("TOOL-GIT-006", "name at least one path to unstage.")
+        raise ToolError(codes.HYPED_GIT_NO_PATHS, "name at least one path to unstage.")
     run(["restore", "--staged", "--", *targets])
     return f"Unstaged {', '.join(targets)}."
 
@@ -290,12 +291,12 @@ def unstage(paths: list[str] | str) -> str:
 def commit(message: str, all_tracked: bool = False) -> str:
     message = (message or "").strip()
     if not message:
-        raise ToolError("TOOL-GIT-007", "a commit needs a message.")
+        raise ToolError(codes.HYPED_GIT_NO_MESSAGE, "a commit needs a message.")
     if all_tracked:
         run(["add", "--update"])
     staged = run(["diff", "--cached", "--name-only"]).split()
     if not staged:
-        raise ToolError("TOOL-GIT-008", "nothing is staged — stage files with git_add first.")
+        raise ToolError(codes.HYPED_GIT_NOTHING_STAGED, "nothing is staged — stage files with git_add first.")
     # -F - : the message goes through stdin, so no part of it is ever an
     # option, and --no-verify is never passed: the repository's own hooks
     # still run.
@@ -311,7 +312,7 @@ def commit(message: str, all_tracked: bool = False) -> str:
         check=False,
     )
     if result.returncode != 0:
-        raise ToolError("TOOL-GIT-004", f"git commit failed: {(result.stderr or result.stdout).strip()}")
+        raise ToolError(codes.HYPED_GIT_FAILED, f"git commit failed: {(result.stderr or result.stdout).strip()}")
     head = run(["log", "-1", "--format=%h %s"]).strip()
     return f"Committed {len(staged)} file(s): {head}"
 
@@ -326,7 +327,7 @@ def restore(paths: list[str] | str) -> str:
     """Throw away unstaged changes to ``paths``. Cannot be undone."""
     targets = _paths(paths)
     if not targets:
-        raise ToolError("TOOL-GIT-006", "name the paths whose changes to discard.")
+        raise ToolError(codes.HYPED_GIT_NO_PATHS, "name the paths whose changes to discard.")
     run(["restore", "--worktree", "--", *targets])
     return f"Discarded changes to {', '.join(targets)}."
 
@@ -351,7 +352,7 @@ def push(remote: str | None = None, branch: str | None = None, set_upstream: boo
     # git push reports progress and results on stderr, success or not.
     output = (result.stderr + result.stdout).strip()
     if result.returncode != 0:
-        raise ToolError("TOOL-GIT-004", f"git push failed: {output}")
+        raise ToolError(codes.HYPED_GIT_FAILED, f"git push failed: {output}")
     return output or "Pushed."
 
 

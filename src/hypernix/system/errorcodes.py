@@ -59,6 +59,9 @@ __all__ = [
     "raise_for",
     "explain",
     "codes_for",
+    "ALIASES",
+    "alias",
+    "resolve",
 ]
 
 _PATTERN = re.compile(r"^([A-Z])([0-9])-([0-9]{5})\.([a-f])([1-5])$")
@@ -180,7 +183,7 @@ class HyperNixError(Exception):
     """
 
     def __init__(self, code: ErrorCode | str, detail: str = "", **context: Any):
-        self.code = code if isinstance(code, ErrorCode) else lookup(str(code))
+        self.code = code if isinstance(code, ErrorCode) else resolve(str(code))
         self.detail = detail
         self.context = context
         super().__init__(self.code.message(detail))
@@ -203,6 +206,9 @@ class HyperNixError(Exception):
 # ---------------------------------------------------------------------------
 
 CODES: dict[str, ErrorCode] = {}
+#: An older name -> the registered code that replaced it. Lets a code out
+#: of an old log line (``HPC-CFG-001``) still be looked up.
+ALIASES: dict[str, str] = {}
 #: ``(domain, number)`` already taken, so a collision is caught at import
 #: rather than by two modules quietly sharing a code.
 _TAKEN: dict[tuple[str, int], str] = {}
@@ -242,6 +248,26 @@ def register(
     _TAKEN[key] = entry.code
     CODES[entry.code] = entry
     return entry
+
+
+def alias(old: str, code: ErrorCode) -> ErrorCode:
+    """Record that *old* (a name from before the registry) now means *code*."""
+    name = (old or "").strip()
+    if not name or _PATTERN.match(name):
+        raise ValueError(f"{old!r} is not a legacy name; aliases are for codes outside the L#-NNNNN.kS shape")
+    held = ALIASES.get(name)
+    if held is not None and held != code.code:
+        raise ValueError(f"{name} already stands for {held}, not {code.code}")
+    if code.code not in CODES:
+        raise ValueError(f"{code.code} is not registered")
+    ALIASES[name] = code.code
+    return code
+
+
+def resolve(code: str) -> ErrorCode:
+    """A registered code, given either it or one of its legacy names."""
+    name = (code or "").strip()
+    return lookup(ALIASES.get(name, name))
 
 
 def parse(code: str) -> ErrorCode:
@@ -298,11 +324,16 @@ def raise_for(code: str | ErrorCode, detail: str = "", **context: Any):
 
 
 def explain(code: str) -> str:
-    """One line for a person who has a code and nothing else."""
+    """One line for a person who has a code and nothing else -- a legacy
+    name included, which is said, so the new code is what gets searched."""
+    name = (code or "").strip()
     try:
-        return lookup(code).message()
-    except KeyError as exc:
-        return str(exc)
+        found = resolve(name)
+    except (KeyError, ValueError) as exc:
+        return str(exc).strip("'\"")
+    if name in ALIASES:
+        return f"{name} is now {found.code}. {found.message()}"
+    return found.message()
 
 
 def codes_for(domain: Domain | str) -> Iterator[ErrorCode]:

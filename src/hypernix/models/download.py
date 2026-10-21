@@ -636,14 +636,16 @@ def explain_hub_error(exc: BaseException | None, repo_id: str) -> str:
         exc = exc.__cause__ or exc.__context__
     names = {type(e).__name__ for e in seen}
     text = " ".join(str(e) for e in seen)
+    from ..system.errorcatalogue import REPO_GATED, REPO_NOT_FOUND
+
     url = f"https://huggingface.co/{repo_id}"
     # Types before text: the Hub's not-found message also mentions gated
     # repos ("if you are trying to access a private or gated repo...").
     if "GatedRepoError" in names:
-        return (f"{repo_id} is gated. Ask for access at {url}, then log in "
+        return (f"{REPO_GATED.code}: {repo_id} is gated. Ask for access at {url}, then log in "
                 "(`hf auth login`, or set HF_TOKEN / `hnx config` hf_token) and run this again.")
     if "RepositoryNotFoundError" in names or "Repository Not Found" in text:
-        return (f"{repo_id} was not found on the Hub. Check the name; if it is private, "
+        return (f"{REPO_NOT_FOUND.code}: {repo_id} was not found on the Hub. Check the name; if it is private, "
                 "log in with an account that can see it (`hf auth login` or HF_TOKEN).")
     if "RevisionNotFoundError" in names:
         return f"{repo_id} has no such revision. Leave out --revision, or check the branch or tag name."

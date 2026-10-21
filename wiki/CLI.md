@@ -1248,12 +1248,19 @@ minutes.
 
 ```bash
 hypernix errors explain S1-00060.b3     # what a code means and what to do
+hypernix errors explain HPC-CFG-001     # an older name: says which code it is now
 hypernix errors list                    # every code, or one domain's
+hypernix errors aliases                 # every older name and its code
 ```
 
 HyperNix error codes have the shape `L#-NNNNN.kS`: domain, tier, number,
 kind (a-f) and severity (1-5). The T1 API returns one beside every error
-as `hx_code`.
+as `hx_code`. Every code is listed on [Error codes](Error-Codes.md).
+
+Since 0.72.8a4 hyped-pro raises registered codes too: its own
+`HPC-…`, `HPB-…`, `HPG-…`, `HPO-…`, `HPT-…` and `TOOL-…` names are aliases
+of them, and its bridge sends the old name beside the new one as
+`legacy_code`.
 
 ## `elements`
 

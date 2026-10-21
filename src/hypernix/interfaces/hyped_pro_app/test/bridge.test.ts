@@ -64,10 +64,10 @@ describe("Bridge", () => {
   test("a failure rejects with the bridge's code and message", async () => {
     const { bridge } = fake()
     const r = bridge.request("chat")
-    bridge.feed(JSON.stringify({ id: r.id, ok: false, code: "HPC-CLOUD-001", error: "no key" }) + "\n")
+    bridge.feed(JSON.stringify({ id: r.id, ok: false, code: "I2-02210.b3", error: "no key" }) + "\n")
     const error = await r.done.catch((e) => e)
     expect(error).toBeInstanceOf(BridgeError)
-    expect(error.code).toBe("HPC-CLOUD-001")
+    expect(error.code).toBe("I2-02210.b3")
     expect(error.message).toBe("no key")
   })
 
@@ -106,10 +106,10 @@ describe("Bridge", () => {
     const r = bridge.request("chat")
     bridge.closedBy("the Python bridge exited (code 1)")
     const error = await r.done.catch((e) => e)
-    expect(error.code).toBe("HPO-BRIDGE-001")
+    expect(error.code).toBe("I1-00280.d4")
     expect(error.message).toContain("exited")
     const later = await bridge.call("ping").catch((e) => e)
-    expect(later.code).toBe("HPO-BRIDGE-001")
+    expect(later.code).toBe("I1-00280.d4")
     expect(sent.length).toBe(1)
   })
 

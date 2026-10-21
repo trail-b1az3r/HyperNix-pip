@@ -36,14 +36,19 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from hypernix.system import errorcatalogue as codes
+
 
 class ToolError(RuntimeError):
     """A real, reportable tool failure — fed back to the model as the
     tool result (so it can react/retry), never swallowed."""
 
-    def __init__(self, code: str, message: str):
-        super().__init__(f"[{code}] {message}")
-        self.code = code
+    def __init__(self, code: codes.ErrorCode | str, message: str):
+        found, legacy = codes.coded(code)
+        super().__init__(f"[{found.code}] {message}")
+        self.hx = found
+        self.code = found.code          # registered (0.72.8a4)
+        self.legacy_code = legacy       # TOOL-..., from before
         self.message = message
 
 
@@ -68,7 +73,7 @@ def _resolve_safe_path(rel_path: str) -> Path:
         candidate.relative_to(root)
     except ValueError as exc:
         raise ToolError(
-            "TOOL-PATH-001",
+            codes.HYPED_TOOL_OUTSIDE_WORKSPACE,
             f"{rel_path!r} resolves outside the workspace ({root}) — refusing. "
             f"Set HYPED_PRO_WORKSPACE to widen it if this is intentional.",
         ) from exc
@@ -85,7 +90,7 @@ def _resolve_writable_path(rel_path: str) -> Path:
     dest = _resolve_safe_path(rel_path)
     rel = dest.relative_to(workspace_root())
     if rel.parts and rel.parts[0] == ".git":
-        raise ToolError("TOOL-PATH-002", f"{rel_path!r} is inside .git — tools never write there.")
+        raise ToolError(codes.HYPED_TOOL_IN_GIT_DIR, f"{rel_path!r} is inside .git — tools never write there.")
     return dest
 
 
@@ -101,7 +106,7 @@ _MAX_SEARCH_FILES = 5000
 def create_file(path: str, content: str) -> str:
     dest = _resolve_writable_path(path)
     if dest.exists():
-        raise ToolError("TOOL-CREATE-001", f"{path!r} already exists — use edit_file to modify it, not create_file.")
+        raise ToolError(codes.HYPED_TOOL_EXISTS, f"{path!r} already exists — use edit_file to modify it, not create_file.")
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(content, encoding="utf-8")
     _log(f"create_file: wrote {len(content)} bytes -> {dest}")
@@ -111,15 +116,15 @@ def create_file(path: str, content: str) -> str:
 def edit_file(path: str, old_str: str, new_str: str) -> str:
     dest = _resolve_writable_path(path)
     if not dest.exists():
-        raise ToolError("TOOL-EDIT-001", f"{path!r} does not exist — use create_file for a new file.")
+        raise ToolError(codes.HYPED_TOOL_EDIT_MISSING, f"{path!r} does not exist — use create_file for a new file.")
     if dest.is_dir():
-        raise ToolError("TOOL-EDIT-002", f"{path!r} is a directory, not a file.")
+        raise ToolError(codes.HYPED_TOOL_EDIT_DIR, f"{path!r} is a directory, not a file.")
     text = dest.read_text(encoding="utf-8")
     count = text.count(old_str)
     if count == 0:
-        raise ToolError("TOOL-EDIT-003", f"old_str not found in {path!r} — it must match the file's current content exactly, including whitespace.")
+        raise ToolError(codes.HYPED_TOOL_EDIT_NO_MATCH, f"old_str not found in {path!r} — it must match the file's current content exactly, including whitespace.")
     if count > 1:
-        raise ToolError("TOOL-EDIT-004", f"old_str matches {count} places in {path!r} — it must be unique. Include more surrounding context.")
+        raise ToolError(codes.HYPED_TOOL_EDIT_AMBIGUOUS, f"old_str matches {count} places in {path!r} — it must be unique. Include more surrounding context.")
     new_text = text.replace(old_str, new_str, 1)
     dest.write_text(new_text, encoding="utf-8")
     delta = len(new_str) - len(old_str)
@@ -130,20 +135,20 @@ def edit_file(path: str, old_str: str, new_str: str) -> str:
 def read_file(path: str, start_line: int | None = None, end_line: int | None = None) -> str:
     src = _resolve_safe_path(path)
     if not src.exists():
-        raise ToolError("TOOL-READ-001", f"{path!r} does not exist.")
+        raise ToolError(codes.HYPED_TOOL_READ_MISSING, f"{path!r} does not exist.")
     if src.is_dir():
-        raise ToolError("TOOL-READ-002", f"{path!r} is a directory — use list_directory instead.")
+        raise ToolError(codes.HYPED_TOOL_READ_DIR, f"{path!r} is a directory — use list_directory instead.")
     size = src.stat().st_size
     if size > _MAX_READ_BYTES and start_line is None and end_line is None:
         raise ToolError(
-            "TOOL-READ-003",
+            codes.HYPED_TOOL_READ_TOO_LARGE,
             f"{path!r} is {size} bytes, over the {_MAX_READ_BYTES}-byte read limit — "
             f"pass start_line/end_line to read a slice instead of the whole file.",
         )
     try:
         text = src.read_text(encoding="utf-8")
     except UnicodeDecodeError as exc:
-        raise ToolError("TOOL-READ-004", f"{path!r} isn't valid UTF-8 text: {exc}") from exc
+        raise ToolError(codes.HYPED_TOOL_READ_NOT_TEXT, f"{path!r} isn't valid UTF-8 text: {exc}") from exc
     if start_line is None and end_line is None:
         _log(f"read_file: {dest_repr(src)} ({len(text)} chars)")
         return text
@@ -170,7 +175,7 @@ def write_file(path: str, content: str, expected_hash: str | None = None) -> str
     """
     dest = _resolve_writable_path(path)
     if dest.is_dir():
-        raise ToolError("TOOL-WRITE-001", f"{path!r} is a directory, not a file.")
+        raise ToolError(codes.HYPED_TOOL_WRITE_DIR, f"{path!r} is a directory, not a file.")
     if expected_hash is not None:
         # Bytes, as file_read sent them: a text-mode read turns CRLF into
         # LF on Windows, and the hash of that never matches what the
@@ -178,7 +183,7 @@ def write_file(path: str, content: str, expected_hash: str | None = None) -> str
         current = dest.read_bytes().decode("utf-8", errors="replace") if dest.exists() else ""
         if content_hash(current) != expected_hash:
             raise ToolError(
-                "TOOL-WRITE-002",
+                codes.HYPED_TOOL_WRITE_STALE,
                 f"{path!r} changed on disk since it was read — read it again before writing.",
             )
     existed = dest.exists()
@@ -198,9 +203,9 @@ def write_file(path: str, content: str, expected_hash: str | None = None) -> str
 def delete_file(path: str) -> str:
     dest = _resolve_writable_path(path)
     if not dest.exists():
-        raise ToolError("TOOL-DELETE-001", f"{path!r} does not exist.")
+        raise ToolError(codes.HYPED_TOOL_DELETE_MISSING, f"{path!r} does not exist.")
     if dest.is_dir():
-        raise ToolError("TOOL-DELETE-002", f"{path!r} is a directory — delete_file removes single files only.")
+        raise ToolError(codes.HYPED_TOOL_DELETE_DIR, f"{path!r} is a directory — delete_file removes single files only.")
     dest.unlink()
     _log(f"delete_file: removed {dest_repr(dest)}")
     return f"Deleted {path}."
@@ -210,9 +215,9 @@ def move_file(source: str, destination: str) -> str:
     src = _resolve_writable_path(source)
     dst = _resolve_writable_path(destination)
     if not src.exists():
-        raise ToolError("TOOL-MOVE-001", f"{source!r} does not exist.")
+        raise ToolError(codes.HYPED_TOOL_MOVE_MISSING, f"{source!r} does not exist.")
     if dst.exists():
-        raise ToolError("TOOL-MOVE-002", f"{destination!r} already exists — moving would overwrite it.")
+        raise ToolError(codes.HYPED_TOOL_MOVE_OVERWRITE, f"{destination!r} already exists — moving would overwrite it.")
     dst.parent.mkdir(parents=True, exist_ok=True)
     os.replace(src, dst)
     _log(f"move_file: {dest_repr(src)} -> {dest_repr(dst)}")
@@ -229,9 +234,9 @@ def dest_repr(p: Path) -> str:
 def list_directory(path: str = ".") -> str:
     d = _resolve_safe_path(path)
     if not d.exists():
-        raise ToolError("TOOL-LIST-001", f"{path!r} does not exist.")
+        raise ToolError(codes.HYPED_TOOL_LIST_MISSING, f"{path!r} does not exist.")
     if not d.is_dir():
-        raise ToolError("TOOL-LIST-002", f"{path!r} is a file, not a directory.")
+        raise ToolError(codes.HYPED_TOOL_LIST_FILE, f"{path!r} is a file, not a directory.")
     entries = sorted(d.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower()))
     lines = []
     for e in entries:
@@ -247,7 +252,7 @@ def list_directory(path: str = ".") -> str:
 def search_files(query: str, path: str = ".", mode: str = "content", glob: str | None = None) -> str:
     root = _resolve_safe_path(path)
     if not root.exists():
-        raise ToolError("TOOL-SEARCH-001", f"{path!r} does not exist.")
+        raise ToolError(codes.HYPED_TOOL_SEARCH_MISSING, f"{path!r} does not exist.")
 
     skip_dirs = {".git", "__pycache__", "node_modules", ".pytest_cache", ".ruff_cache", "dist", "build"}
 
@@ -282,12 +287,12 @@ def search_files(query: str, path: str = ".", mode: str = "content", glob: str |
         return "\n".join(dest_repr(f) for f in matches[:_MAX_SEARCH_MATCHES]) or "(no matches)"
 
     if mode != "content":
-        raise ToolError("TOOL-SEARCH-002", f"unknown mode {mode!r} — use 'content' or 'filename'.")
+        raise ToolError(codes.HYPED_TOOL_SEARCH_MODE, f"unknown mode {mode!r} — use 'content' or 'filename'.")
 
     try:
         pattern = re.compile(query)
     except re.error as exc:
-        raise ToolError("TOOL-SEARCH-003", f"invalid regex {query!r}: {exc}") from exc
+        raise ToolError(codes.HYPED_TOOL_SEARCH_REGEX, f"invalid regex {query!r}: {exc}") from exc
 
     results: list[str] = []
     for f in files:
@@ -520,27 +525,27 @@ def execute_tool(name: str, arguments: dict[str, Any]) -> str:
     """
     tool = _TOOLS_BY_NAME.get(name)
     if tool is None:
-        raise ToolError("TOOL-CFG-001", f"unknown tool {name!r}. Available: {', '.join(_TOOLS_BY_NAME)}")
+        raise ToolError(codes.HYPED_TOOL_UNKNOWN, f"unknown tool {name!r}. Available: {', '.join(_TOOLS_BY_NAME)}")
     if not isinstance(arguments, dict):
-        raise ToolError("TOOL-CFG-002", f"arguments for {name} must be an object, not {type(arguments).__name__}.")
+        raise ToolError(codes.HYPED_TOOL_BAD_ARGS, f"arguments for {name} must be an object, not {type(arguments).__name__}.")
     progress = getattr(_hooks, "progress", None)
     try:
         if name in GATED_TOOLS:
             allowed, reason = _ask(name, arguments)
             if not allowed:
-                raise ToolError("TOOL-CONSENT-001", reason or "refused by the person.")
+                raise ToolError(codes.HYPED_TOOL_CONSENT, reason or "refused by the person.")
         result = tool.fn(**arguments)
     except ToolError as exc:
         if progress is not None:
             progress(name, arguments, None, exc.message)
         raise
     except TypeError as exc:
-        error = ToolError("TOOL-CFG-002", f"bad arguments for {name}: {exc}")
+        error = ToolError(codes.HYPED_TOOL_BAD_ARGS, f"bad arguments for {name}: {exc}")
         if progress is not None:
             progress(name, arguments, None, error.message)
         raise error from exc
     except Exception as exc:  # noqa: BLE001
-        error = ToolError("TOOL-EXEC-001", f"{name} failed: {exc}")
+        error = ToolError(codes.HYPED_TOOL_FAILED, f"{name} failed: {exc}")
         if progress is not None:
             progress(name, arguments, None, error.message)
         raise error from exc

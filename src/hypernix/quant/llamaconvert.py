@@ -41,9 +41,15 @@ TAG_ENV = "HYPERNIX_LLAMA_CONVERT_TAG"
 class LlamaConvertError(RuntimeError):
     """The converter could not be fetched, or could not convert this model."""
 
-    def __init__(self, message: str, *, unsupported: bool = False) -> None:
+    def __init__(self, message: str, *, unsupported: bool = False, converting: bool = False) -> None:
         super().__init__(message)
         self.unsupported = unsupported
+        from ..system import errorcatalogue as codes
+
+        # Q3-00040.d3 when the converter ran and failed; Q3-04030.d3 when it
+        # could not be fetched at all (0.72.8a4).
+        self.hx_code = (codes.QUANT_CONVERT_FAILED if converting or unsupported
+                        else codes.QUANT_CONVERTER_UNAVAILABLE).code
 
 
 def converter_dir(tag: str) -> Path:
@@ -180,5 +186,5 @@ def convert_hf(model_dir: str | Path, output: str | Path, *, outtype: str = "f16
     if done.returncode != 0 or not output.is_file():
         tail = "\n".join((done.stderr or done.stdout or "").strip().splitlines()[-6:])
         unsupported = "not supported" in tail.lower() or "unrecognized" in tail.lower()
-        raise LlamaConvertError(f"llama.cpp's converter failed:\n{tail}", unsupported=unsupported)
+        raise LlamaConvertError(f"llama.cpp's converter failed:\n{tail}", unsupported=unsupported, converting=True)
     return output

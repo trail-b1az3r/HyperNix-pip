@@ -58,7 +58,17 @@ __all__ = [
 
 
 class LaunchError(RuntimeError):
-    """A job could not be started, stopped or found."""
+    """A job could not be started, stopped or found.
+
+    ``hx_code`` is its registered HyperNix code (0.72.8a4): S1-02070.a3
+    unless the raise site says otherwise.
+    """
+
+    def __init__(self, message: str, *, hx=None):
+        super().__init__(message)
+        from .errorcatalogue import LAUNCH_REFUSED
+
+        self.hx_code = (hx or LAUNCH_REFUSED).code
 
 
 class JobStatus(StrEnum):
@@ -582,9 +592,12 @@ def _launch_systemd(job, command, working, env, log_path, timeout, priority, cpu
 
     result = subprocess.run(argv, capture_output=True, text=True, check=False)
     if result.returncode != 0:
+        from .errorcatalogue import LAUNCH_SUPERVISOR_FAILED
+
         raise LaunchError(
             f"systemd-run refused to start the job: "
-            f"{(result.stderr or result.stdout).strip()}"
+            f"{(result.stderr or result.stdout).strip()}",
+            hx=LAUNCH_SUPERVISOR_FAILED,
         )
     job.unit = unit
     job.pid = _systemd_main_pid(unit)

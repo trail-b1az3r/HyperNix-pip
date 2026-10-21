@@ -1,6 +1,6 @@
 """hyped-pro and hyped run models nobody wrote a catalog entry for.
 
-hyped-pro refused any name outside its catalog (HPC-CFG-001), its picker
+hyped-pro refused any name outside its catalog (I2-02250.a3), its picker
 listed nothing that was actually on disk, and a T1 server routing to a
 model it had indexed got "this client has no local model for it".
 hyped (basic) could not run a local model at all -- "this build cannot
@@ -94,7 +94,7 @@ class TestResolvingANameOutsideTheCatalog:
         with pytest.raises(core.HypedProError) as caught:
             core.get_model("not a model at all")
         message = caught.value.message
-        assert caught.value.code == "HPC-CFG-001"
+        assert caught.value.code == "I2-02250.a3"
         assert "catalog" in message and "Hugging Face" in message
 
     def test_the_catalog_lists_what_is_on_disk(self, models_dir):
@@ -116,7 +116,7 @@ class TestResolvingANameOutsideTheCatalog:
         got = dispatch({"id": 1, "cmd": "resolve", "model": "bridged"})
         assert got["ok"] and got["data"]["short"] == "bridged"
         refused = dispatch({"id": 2, "cmd": "resolve", "model": "no such thing"})
-        assert not refused["ok"] and refused["code"] == "HPC-CFG-001"
+        assert not refused["ok"] and refused["code"] == "I2-02250.a3"
 
 
 class TestRunningOne:

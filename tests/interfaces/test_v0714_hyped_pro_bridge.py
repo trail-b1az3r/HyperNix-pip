@@ -41,14 +41,14 @@ def test_dispatch_catalog_returns_real_catalog():
 def test_dispatch_unknown_command_returns_coded_error():
     resp = bridge.dispatch({"id": 3, "cmd": "not_a_real_command"})
     assert resp["ok"] is False
-    assert resp["code"] == "HPB-PROTO-001"
+    assert resp["code"] == "I2-03270.a3"
 
 
 def test_dispatch_missing_required_field_returns_coded_error():
     # "chat" requires "model" and "messages" -- omit both.
     resp = bridge.dispatch({"id": 4, "cmd": "chat"})
     assert resp["ok"] is False
-    assert resp["code"] == "HPB-PROTO-001"
+    assert resp["code"] == "I2-03270.a3"
 
 
 def test_dispatch_preserves_request_id():
@@ -59,7 +59,7 @@ def test_dispatch_preserves_request_id():
 def test_dispatch_hyped_pro_error_propagates_code_and_message():
     resp = bridge.dispatch({"id": 5, "cmd": "is_downloaded", "model": "not-a-real-model"})
     assert resp["ok"] is False
-    assert resp["code"] == "HPC-CFG-001"
+    assert resp["code"] == "I2-02250.a3"
 
 
 def test_dispatch_unhandled_exception_is_caught_not_raised(monkeypatch):
@@ -69,7 +69,7 @@ def test_dispatch_unhandled_exception_is_caught_not_raised(monkeypatch):
     monkeypatch.setattr(core, "get_model", boom)
     resp = bridge.dispatch({"id": 6, "cmd": "is_downloaded", "model": "whatever"})
     assert resp["ok"] is False
-    assert resp["code"] == "HPB-INTERNAL-001"
+    assert resp["code"] == "I9-99000.f4"
     assert "RuntimeError" in resp["error"]
 
 
@@ -128,7 +128,7 @@ def test_cli_main_key_value_args_become_request_fields(capsys):
     exit_code = bridge.cli_main(["is_downloaded", "model=not-a-real-model"])
     assert exit_code == 1
     captured = json.loads(capsys.readouterr().out)
-    assert captured["code"] == "HPC-CFG-001"
+    assert captured["code"] == "I2-02250.a3"
 
 
 def test_cli_main_bad_arg_format_returns_usage_error(capsys):

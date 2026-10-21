@@ -7,7 +7,7 @@
 //
 //   -> {"id": 7, "cmd": "frame"}
 //   <- {"id": 7, "ok": true, "data": {...}}
-//   <- {"id": 7, "ok": false, "code": "HPC-...", "error": "..."}
+//   <- {"id": 7, "ok": false, "code": "I2-02250.a3", "legacy_code": "HPC-CFG-001", "error": "..."}
 //
 // Replies arrive in any order (long commands run on their own thread in
 // the bridge), so each request waits on its own id.

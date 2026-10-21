@@ -131,7 +131,7 @@ class TestConfiguration:
     def test_client_without_a_key_names_the_fix(self):
         with pytest.raises(core.HypedProError) as excinfo:
             core.t1_api_client()
-        assert excinfo.value.code == "HPC-T1API-001"
+        assert excinfo.value.code == "I2-05241.b3"
         assert "/key t1api" in excinfo.value.message
 
     def test_client_uses_the_configured_key_and_url(self, monkeypatch):
@@ -271,7 +271,7 @@ class TestDispatch:
         with pytest.raises(core.HypedProError) as excinfo:
             core.send_t1_api_chat([{"role": "user", "content": "hi"}])
 
-        assert excinfo.value.code == "HPC-T1API-003"
+        assert excinfo.value.code == "I2-04241.d3"
         assert "nanonix-mini-lite" in excinfo.value.message
         assert core.T1_API_MODEL_MAP_CONFIG_KEY in excinfo.value.message
         # Nothing ran, so nothing was reported.
@@ -288,7 +288,7 @@ class TestDispatch:
 
         with pytest.raises(core.HypedProError) as excinfo:
             core.send_t1_api_chat([{"role": "user", "content": "hi"}])
-        assert excinfo.value.code == "HPC-T1API-003"
+        assert excinfo.value.code == "I2-04241.d3"
 
     def test_empty_model_id_from_the_server_is_refused(
         self, fake_client, stub_local_inference
@@ -296,7 +296,7 @@ class TestDispatch:
         fake_client(model_id="")
         with pytest.raises(core.HypedProError) as excinfo:
             core.send_t1_api_chat([{"role": "user", "content": "hi"}])
-        assert excinfo.value.code == "HPC-T1API-002"
+        assert excinfo.value.code == "I2-04240.d3"
 
     def test_a_failed_report_does_not_lose_the_reply(
         self, fake_client, stub_local_inference, caplog
@@ -317,7 +317,7 @@ class TestDispatch:
         with pytest.raises(core.HypedProError) as excinfo:
             core.send_t1_api_chat([{"role": "user", "content": "hi"}])
 
-        assert excinfo.value.code == "HPC-T1API-002"
+        assert excinfo.value.code == "I2-04240.d3"
         assert "ROUTING_EXHAUSTED" in excinfo.value.message
         assert stub_local_inference == []
 
@@ -325,7 +325,7 @@ class TestDispatch:
         fake_client(route_error=OSError("Connection refused"))
         with pytest.raises(core.HypedProError) as excinfo:
             core.send_t1_api_chat([{"role": "user", "content": "hi"}])
-        assert excinfo.value.code == "HPC-T1API-002"
+        assert excinfo.value.code == "I2-04240.d3"
         assert core.t1_api_url() in excinfo.value.message
         # Refused means nothing is listening: say where the address came
         # from and what to run, not just the errno.
