@@ -302,6 +302,22 @@ class TestThePageItself:
         for match in re.finditer(r"\.innerHTML\s*=\s*([^;]+);", js):
             assert match.group(1).strip().startswith("render("), match.group(0)
 
+    def test_files_datasets_and_a_code_sandbox_reach_the_chat_request(self):
+        """0.72.8a3: the composer attaches files, a dataset's chosen part goes
+        as ``datasets``, and the sandbox from the Code tab as ``code_sandbox_id``."""
+        html = (WEB / "index.html").read_text(encoding="utf-8")
+        for element in ('id="attach-input"', 'id="dataset-panel"', 'id="tray"', 'data-view="code"',
+                        'id="view-code"', 'id="code-editor"', 'id="code-bind"', 'data-git="status"'):
+            assert element in html, element
+        js = (WEB / "app.js").read_text(encoding="utf-8")
+        send = js[js.index("async function send"):js.index("async function stop")]
+        for field in ("payload.attachment_ids", "payload.datasets", "payload.code_sandbox_id"):
+            assert field in send, field
+        for route in ('"/hyperlink/files"', '"/hyperlink/datasets/preview"', '"/code/create/sandbox"',
+                      'boxPath("/git")', 'boxPath("/run")', 'boxPath("/import")', "/search?q="):
+            assert route in js, route
+        assert '"code"' in js[js.index("function switchView"):]
+
     @pytest.mark.skipif(shutil.which("node") is None, reason="needs node")
     def test_render_escapes_what_a_model_writes(self):
         # The page's render() is web/markdown.js's (0.72.8a3).
