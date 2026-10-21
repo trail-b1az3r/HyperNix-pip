@@ -101,7 +101,9 @@ needs_git = pytest.mark.skipif(shutil.which("git") is None, reason="needs git")
 @pytest.fixture
 def box(tmp_path):
     store = cb.SandboxStore(tmp_path / "code")
-    perms = cb.CodePerms(network=False, timeout=20)
+    # Network on for runs that are not about the network, so they pass on a
+    # machine without user namespaces (as in tests/t1api/test_code_sandbox.py).
+    perms = cb.CodePerms(network=True, timeout=20)
     sandbox = store.create("me", perms, files={"main.py": "print('hi')\n"})
     return store, sandbox, perms
 
@@ -144,7 +146,7 @@ class TestGit:
         with pytest.raises(cb.SandboxError, match="https"):
             codegit.git(sandbox, perms, "clone", url="file:///etc")
         with pytest.raises(cb.SandboxError, match="network"):
-            codegit.git(sandbox, perms, "clone", url="https://github.com/x/y")
+            codegit.git(sandbox, cb.CodePerms(network=False), "clone", url="https://github.com/x/y")
         with pytest.raises(cb.SandboxError, match="operation is one of"):
             codegit.git(sandbox, perms, "push")
 
@@ -220,7 +222,7 @@ def api(tmp_path):
                          default_plan="free", code_sandbox=True, code_sandbox_dir=str(tmp_path / "code"),
                          web_enabled=False)
     app = create_app(config=config, keymaster=km, gatekeeper=gk)
-    app.state.t1_code_perms = cb.CodePerms(network=False, timeout=20)
+    app.state.t1_code_perms = cb.CodePerms(network=True, timeout=20)
     writer = {"Authorization": f"Bearer {km.create(key_type=KeyType.USER, scopes={KeyScope.READ, KeyScope.WRITE}).key}"}
     reader = {"Authorization": f"Bearer {km.create(key_type=KeyType.USER, scopes={KeyScope.READ}).key}"}
     return TestClient(app, client=("127.0.0.1", 5000)), writer, reader

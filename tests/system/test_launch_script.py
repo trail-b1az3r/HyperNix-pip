@@ -691,6 +691,30 @@ class TestTheSystemdPathWithoutSystemd:
 
         assert job.status == JobStatus.UNKNOWN.value
 
+    def test_a_job_that_finishes_while_systemd_is_asked_is_not_lost(self, tmp_path, monkeypatch):
+        """The race behind "unknown" for `exit 7` on a GitHub runner: no
+        exit file at the first look, then the job writes it, exits and is
+        collected before systemctl answers. Unknown is terminal, so the
+        file was never read."""
+        from hypernix.system import launcher
+        from hypernix.system.launcher import JobStatus, refresh
+
+        job = self._job(tmp_path)
+
+        class _Result:
+            stdout, stderr, returncode = self.COLLECTED, "", 0
+
+        def finishes_meanwhile(argv, *args, **kwargs):
+            job.exit_file.write_text("7", encoding="utf-8")
+            return _Result()
+
+        monkeypatch.setattr(launcher.subprocess, "run", finishes_meanwhile)
+
+        refresh(job)
+
+        assert job.status == JobStatus.FAILED.value
+        assert job.exit_status == 7
+
     def test_systemctl_being_absent_leaves_the_status_alone(self, tmp_path, monkeypatch):
         """Better a stale "running" than a fabricated outcome."""
         from hypernix.system import launcher
@@ -705,6 +729,29 @@ class TestTheSystemdPathWithoutSystemd:
         refresh(job)
 
         assert job.status == JobStatus.RUNNING.value
+
+
+class TestTheSetsidPathRace:
+    def test_a_job_that_exits_during_the_liveness_check_is_not_lost(self, tmp_path, monkeypatch):
+        """The same race on the setsid path: the process is gone by the
+        time it is looked for, and its exit file appeared meanwhile."""
+        from hypernix.system import launcher
+        from hypernix.system.launcher import Job, JobStatus, Supervisor, refresh
+
+        job = Job(job_id="def456", name="quick", command=["/bin/true"], cwd=str(tmp_path),
+                  log_path=str(tmp_path / "job.log"), supervisor=Supervisor.SETSID.value,
+                  created_at=time.time(), pid=4243, status=JobStatus.RUNNING.value)
+
+        def gone_but_written(pid):
+            job.exit_file.write_text("0", encoding="utf-8")
+            return False
+
+        monkeypatch.setattr(launcher, "_alive", gone_but_written)
+
+        refresh(job)
+
+        assert job.status == JobStatus.SUCCEEDED.value
+        assert job.exit_status == 0
 
 
 class TestTheSystemdPidLookup:

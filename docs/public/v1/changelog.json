@@ -235,6 +235,20 @@
           "details": []
         },
         {
+          "symbol": "\ud83d\udc1b",
+          "label": "fix",
+          "category": "Fixed",
+          "text": "A job started with hypernix-t1 launch-script that finished within moments could be reported unknown instead of its exit status: it wrote its exit file between the launcher's look for it and the check that it was still running (under systemd or setsid), and unknown is final. The\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udc1b",
+          "label": "fix",
+          "category": "Fixed",
+          "text": "hnx camo treated torch as missing whenever transformers was.",
+          "details": []
+        },
+        {
           "symbol": "\u274c",
           "label": "breaking",
           "category": "Deprecated",

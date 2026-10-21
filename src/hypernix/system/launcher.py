@@ -670,6 +670,13 @@ def _refresh_systemd(job: Job) -> None:
     # the same thing here, and neither is evidence of an outcome: the
     # wrapper writes the exit file as its last act, so reaching this
     # point without one is a job that was killed outright.
+    #
+    # Unless it finished while systemd was being asked. A short job can
+    # write its exit file, exit and be collected between the first look
+    # and systemctl's answer; calling that "unknown" is terminal, so the
+    # file it did write would never be read.
+    if _record_exit_file(job):
+        return
     job.status = JobStatus.UNKNOWN.value
     job.finished_at = job.finished_at or time.time()
 
@@ -699,8 +706,12 @@ def _refresh_setsid(job: Job) -> None:
     if job.pid and _alive(job.pid):
         job.status = JobStatus.RUNNING.value
         return
-    # No exit file and no process. The wrapper writes the status as its
-    # last act, so this is a job that was killed outright.
+    # No process -- and, looked at again, no exit file. The wrapper writes
+    # the status as its last act, so a job can finish between the first
+    # look and the liveness check; only without the file was it killed
+    # outright.
+    if _record_exit_file(job):
+        return
     job.status = JobStatus.UNKNOWN.value
     job.finished_at = job.finished_at or time.time()
 
