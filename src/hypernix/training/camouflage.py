@@ -9,13 +9,18 @@ import sys
 
 from hypernix.security.hfpin import hub_revision
 
+# Separately: torch without transformers can still score a reply, and a
+# missing transformers used to make torch look missing too.
 try:
     import torch
     from torch.optim import AdamW
-    from transformers import AutoModelForCausalLM, AutoTokenizer, PreTrainedModel
 except ImportError:
     torch = None
     AdamW = None
+try:
+    from transformers import AutoModelForCausalLM, AutoTokenizer, PreTrainedModel
+except ImportError:
+    AutoModelForCausalLM = AutoTokenizer = PreTrainedModel = None
 
 
 def _get_reward(
@@ -121,7 +126,7 @@ def run_rlhf(
     lr: float = 1e-5,
     max_new_tokens: int = 64,
 ) -> int:
-    if torch is None:
+    if torch is None or AutoModelForCausalLM is None:
         print("[camo] Error: torch and transformers are required to run Camouflage.", file=sys.stderr)
         return 1
 

@@ -184,6 +184,12 @@ Historical wording and technical detail are retained during format normalization
 🐛 GGUF conversion failed on negative or list-valued token ids.
 🐛 c4's tests could see NaN losses: rotary buffers were left
   uninitialised when a model was materialised.
+🐛 A job started with `hypernix-t1 launch-script` that finished within moments could
+  be reported `unknown` instead of its exit status: it wrote its exit
+  file between the launcher's look for it and the check that it was
+  still running (under systemd or setsid), and `unknown` is final. The
+  file is now read again before a job is called unknown.
+🐛 `hnx camo` treated torch as missing whenever transformers was.
 
 ### Deprecated
 
