@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-t1-api",
   "generated_at": "2026-10-07T05:12:17Z",
-  "commit": "5dd2f5ba37b191e7b8d89e76559556f17a44fd48",
+  "commit": "024a64092923ce5fa214be5ab8d3e7dce37d02d9",
   "history_available": true,
   "server_extra": "pip install 'hypernix[t1api]'",
   "client_install": "pip install hypernix",
@@ -27,35 +27,35 @@
       ],
       "changes": [
         {
-          "sha": "c7eabfd",
+          "sha": "c7eabfd7",
           "date": "2026-08-23",
           "author": "Claude",
           "subject": "T1 v1.0.26.8.0.1: the LM Studio bridge and HyperLink",
           "api_changes": []
         },
         {
-          "sha": "879b000",
+          "sha": "879b000b",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5rc2 \u2014 T1 API Beta 4, hyped-pro, and PATH setup",
           "api_changes": []
         },
         {
-          "sha": "604a834",
+          "sha": "604a8342",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
           "api_changes": []
         },
         {
-          "sha": "604ec86",
+          "sha": "604ec86f",
           "date": "2026-08-20",
           "author": "minerofthesoal",
           "subject": "b2",
           "api_changes": []
         },
         {
-          "sha": "f836d29",
+          "sha": "f836d298",
           "date": "2026-08-18",
           "author": "minerofthesoal",
           "subject": "0.71.5b1-part one of four for the api",
@@ -303,7 +303,7 @@
       ],
       "changes": [
         {
-          "sha": "0364ead",
+          "sha": "0364ead4",
           "date": "2026-10-14",
           "author": "t",
           "subject": "HyperLink chats per account/key, signed prompts, ping; web v2 search",
@@ -315,14 +315,14 @@
           ]
         },
         {
-          "sha": "99ddc1a",
+          "sha": "99ddc1ae",
           "date": "2026-09-29",
           "author": "Claude",
           "subject": "Security: make Codacy scan again, and clear most Bandit findings",
           "api_changes": []
         },
         {
-          "sha": "2324f0f",
+          "sha": "2324f0fa",
           "date": "2026-09-15",
           "author": "Mason",
           "subject": "t1 v1.0.26.9.2.3: sign up for a key without already having one",
@@ -459,14 +459,14 @@
       ],
       "changes": [
         {
-          "sha": "a97d518",
+          "sha": "a97d518a",
           "date": "2026-09-15",
           "author": "Claude",
           "subject": "docs: a README that describes this release, and two claims made true",
           "api_changes": []
         },
         {
-          "sha": "2324f0f",
+          "sha": "2324f0fa",
           "date": "2026-09-15",
           "author": "Mason",
           "subject": "t1 v1.0.26.9.2.3: sign up for a key without already having one",
@@ -631,7 +631,7 @@
       ],
       "changes": [
         {
-          "sha": "e89afd4",
+          "sha": "e89afd46",
           "date": "2026-10-20",
           "author": "Claude",
           "subject": "0.72.8 pt3 (part 1): Claude Code on T1, hnx0xv2image, hnx auto/extra, fixed commands",
@@ -760,7 +760,7 @@
       ],
       "changes": [
         {
-          "sha": "5777375",
+          "sha": "57773753",
           "date": "2026-10-20",
           "author": "Claude",
           "subject": "0.72.8 pt3 (part 2): MCP both ways, /net in the T1 API, public-server counter",
@@ -776,42 +776,42 @@
           ]
         },
         {
-          "sha": "d69ad9d",
+          "sha": "d69ad9de",
           "date": "2026-10-13",
           "author": "t",
           "subject": "T1 API: POST /inference/relay and the t1.statement/2 billing format",
           "api_changes": []
         },
         {
-          "sha": "91cd270",
+          "sha": "91cd2708",
           "date": "2026-10-08",
           "author": "Claude",
           "subject": "t1api: a caller leaving a stream stops the backend's reply",
           "api_changes": []
         },
         {
-          "sha": "999d2e1",
+          "sha": "999d2e1b",
           "date": "2026-09-28",
           "author": "Claude",
           "subject": "Model sync: mirror ~/.hypernix/models into ~/.hypernix/t1api/models",
           "api_changes": []
         },
         {
-          "sha": "a4b757d",
+          "sha": "a4b757dd",
           "date": "2026-09-27",
           "author": "Claude",
           "subject": "0.72.6.post3: HyperLink on the web opens at the server's own address",
           "api_changes": []
         },
         {
-          "sha": "59c7a9f",
+          "sha": "59c7a9f4",
           "date": "2026-09-27",
           "author": "Claude",
           "subject": "HyperLink on the web: the T1 server hosts it on port 37965",
           "api_changes": []
         },
         {
-          "sha": "0068bbf",
+          "sha": "0068bbf2",
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "T1: conceal mode with 36-hour retention, and a public /server/info",
@@ -823,7 +823,7 @@
           ]
         },
         {
-          "sha": "589ebbd",
+          "sha": "589ebbdc",
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "0.72.6 pt3: elements, error codes, and the optimizers that never trained",
@@ -933,28 +933,28 @@
       ],
       "changes": [
         {
-          "sha": "99ddc1a",
+          "sha": "99ddc1ae",
           "date": "2026-09-29",
           "author": "Claude",
           "subject": "Security: make Codacy scan again, and clear most Bandit findings",
           "api_changes": []
         },
         {
-          "sha": "0068bbf",
+          "sha": "0068bbf2",
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "T1: conceal mode with 36-hour retention, and a public /server/info",
           "api_changes": []
         },
         {
-          "sha": "7efe554",
+          "sha": "7efe5548",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "Fix the CI failures on macOS and Windows",
           "api_changes": []
         },
         {
-          "sha": "604a834",
+          "sha": "604a8342",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
@@ -1144,14 +1144,14 @@
       ],
       "changes": [
         {
-          "sha": "99ddc1a",
+          "sha": "99ddc1ae",
           "date": "2026-09-29",
           "author": "Claude",
           "subject": "Security: make Codacy scan again, and clear most Bandit findings",
           "api_changes": []
         },
         {
-          "sha": "462b479",
+          "sha": "462b479d",
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "v2.1 (T2C) keys, sealed with Rotorvault",
@@ -1167,14 +1167,14 @@
           ]
         },
         {
-          "sha": "55378e1",
+          "sha": "55378e12",
           "date": "2026-09-01",
           "author": "Claude",
           "subject": "T2P billing keys, and a server's right to refuse them",
           "api_changes": []
         },
         {
-          "sha": "8af94c4",
+          "sha": "8af94c41",
           "date": "2026-08-27",
           "author": "Claude",
           "subject": "T2S keys: fix the refusal, and let the phone actually enter one",
@@ -1186,7 +1186,7 @@
           ]
         },
         {
-          "sha": "56a9e0b",
+          "sha": "56a9e0b3",
           "date": "2026-08-26",
           "author": "Claude",
           "subject": "install-t1.sh: an interactive installer, and two bugs it exposed",
@@ -1198,7 +1198,7 @@
           ]
         },
         {
-          "sha": "370119d",
+          "sha": "370119db",
           "date": "2026-08-26",
           "author": "Claude",
           "subject": "T1 v1.0.26.8.1.0: T2 recognition, auth undo/redo, and backups",
@@ -1218,7 +1218,7 @@
           ]
         },
         {
-          "sha": "7a624da",
+          "sha": "7a624da3",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3: two bugs found by running against a real server",
@@ -1234,7 +1234,7 @@
           ]
         },
         {
-          "sha": "8c25846",
+          "sha": "8c25846c",
           "date": "2026-08-21",
           "author": "Claude",
           "subject": "Group hypernix modules into category packages",
@@ -1343,14 +1343,14 @@
       ],
       "changes": [
         {
-          "sha": "99ddc1a",
+          "sha": "99ddc1ae",
           "date": "2026-09-29",
           "author": "Claude",
           "subject": "Security: make Codacy scan again, and clear most Bandit findings",
           "api_changes": []
         },
         {
-          "sha": "370119d",
+          "sha": "370119db",
           "date": "2026-08-26",
           "author": "Claude",
           "subject": "T1 v1.0.26.8.1.0: T2 recognition, auth undo/redo, and backups",
@@ -1543,7 +1543,7 @@
       ],
       "changes": [
         {
-          "sha": "370119d",
+          "sha": "370119db",
           "date": "2026-08-26",
           "author": "Claude",
           "subject": "T1 v1.0.26.8.1.0: T2 recognition, auth undo/redo, and backups",
@@ -1725,21 +1725,21 @@
       ],
       "changes": [
         {
-          "sha": "99ddc1a",
+          "sha": "99ddc1ae",
           "date": "2026-09-29",
           "author": "Claude",
           "subject": "Security: make Codacy scan again, and clear most Bandit findings",
           "api_changes": []
         },
         {
-          "sha": "bccc73e",
+          "sha": "bccc73ec",
           "date": "2026-08-20",
           "author": "minerofthesoal",
           "subject": "fixes",
           "api_changes": []
         },
         {
-          "sha": "604ec86",
+          "sha": "604ec86f",
           "date": "2026-08-20",
           "author": "minerofthesoal",
           "subject": "b2",
@@ -1946,7 +1946,7 @@
       ],
       "changes": [
         {
-          "sha": "4dbd9e2",
+          "sha": "4dbd9e24",
           "date": "2026-09-01",
           "author": "Claude",
           "subject": "Docs modernization, billing-binding lifecycle, and 348 untracked .pyc",
@@ -1962,7 +1962,7 @@
           ]
         },
         {
-          "sha": "55378e1",
+          "sha": "55378e12",
           "date": "2026-09-01",
           "author": "Claude",
           "subject": "T2P billing keys, and a server's right to refuse them",
@@ -2096,14 +2096,14 @@
       ],
       "changes": [
         {
-          "sha": "99ddc1a",
+          "sha": "99ddc1ae",
           "date": "2026-09-29",
           "author": "Claude",
           "subject": "Security: make Codacy scan again, and clear most Bandit findings",
           "api_changes": []
         },
         {
-          "sha": "5d51695",
+          "sha": "5d516951",
           "date": "2026-09-01",
           "author": "Claude",
           "subject": "A new server issues itself a local, three-day admin key",
@@ -2179,14 +2179,14 @@
       ],
       "changes": [
         {
-          "sha": "99ddc1a",
+          "sha": "99ddc1ae",
           "date": "2026-09-29",
           "author": "Claude",
           "subject": "Security: make Codacy scan again, and clear most Bandit findings",
           "api_changes": []
         },
         {
-          "sha": "fa59f48",
+          "sha": "fa59f481",
           "date": "2026-09-26",
           "author": "Claude",
           "subject": "hypernix-t1 runner finds the server where `start` put it; add `hypernix-t1 chat`",
@@ -2280,14 +2280,14 @@
       ],
       "changes": [
         {
-          "sha": "5777375",
+          "sha": "57773753",
           "date": "2026-10-20",
           "author": "Claude",
           "subject": "0.72.8 pt3 (part 2): MCP both ways, /net in the T1 API, public-server counter",
           "api_changes": []
         },
         {
-          "sha": "e89afd4",
+          "sha": "e89afd46",
           "date": "2026-10-20",
           "author": "Claude",
           "subject": "0.72.8 pt3 (part 1): Claude Code on T1, hnx0xv2image, hnx auto/extra, fixed commands",
@@ -2502,7 +2502,7 @@
       ],
       "changes": [
         {
-          "sha": "677812e",
+          "sha": "677812ea",
           "date": "2026-10-21",
           "author": "Claude",
           "subject": "0.72.8 pt3 (part 3): HyperLink Markdown, dataset excerpts, code-session tools",
@@ -2518,7 +2518,7 @@
           ]
         },
         {
-          "sha": "1a35b71",
+          "sha": "1a35b713",
           "date": "2026-10-06",
           "author": "Claude",
           "subject": "0.72.7 step 3: Python 3.12-3.15 -- requires-python, PEP 798/799/810/831",
@@ -2534,14 +2534,14 @@
           ]
         },
         {
-          "sha": "d595eb4",
+          "sha": "d595eb4a",
           "date": "2026-10-06",
           "author": "Claude",
           "subject": "0.72.7 step 2: images on the HyperNix runner; macOS/Linux CI and first Windows fixes",
           "api_changes": []
         },
         {
-          "sha": "858eefd",
+          "sha": "858eefd0",
           "date": "2026-09-30",
           "author": "Claude",
           "subject": "t1api: /code \u2014 sandboxes that run code, with perms in the web settings grammar",
@@ -2673,7 +2673,7 @@
       ],
       "changes": [
         {
-          "sha": "677812e",
+          "sha": "677812ea",
           "date": "2026-10-21",
           "author": "Claude",
           "subject": "0.72.8 pt3 (part 3): HyperLink Markdown, dataset excerpts, code-session tools",
@@ -2795,28 +2795,28 @@
       ],
       "changes": [
         {
-          "sha": "5777375",
+          "sha": "57773753",
           "date": "2026-10-20",
           "author": "Claude",
           "subject": "0.72.8 pt3 (part 2): MCP both ways, /net in the T1 API, public-server counter",
           "api_changes": []
         },
         {
-          "sha": "e89afd4",
+          "sha": "e89afd46",
           "date": "2026-10-20",
           "author": "Claude",
           "subject": "0.72.8 pt3 (part 1): Claude Code on T1, hnx0xv2image, hnx auto/extra, fixed commands",
           "api_changes": []
         },
         {
-          "sha": "0364ead",
+          "sha": "0364ead4",
           "date": "2026-10-14",
           "author": "t",
           "subject": "HyperLink chats per account/key, signed prompts, ping; web v2 search",
           "api_changes": []
         },
         {
-          "sha": "d69ad9d",
+          "sha": "d69ad9de",
           "date": "2026-10-13",
           "author": "t",
           "subject": "T1 API: POST /inference/relay and the t1.statement/2 billing format",
@@ -2828,28 +2828,28 @@
           ]
         },
         {
-          "sha": "203b711",
+          "sha": "203b7112",
           "date": "2026-10-06",
           "author": "Claude",
           "subject": "0.72.7 step 1: link config-less models, `runner auto`, images converted on upload",
           "api_changes": []
         },
         {
-          "sha": "858eefd",
+          "sha": "858eefd0",
           "date": "2026-09-30",
           "author": "Claude",
           "subject": "t1api: /code \u2014 sandboxes that run code, with perms in the web settings grammar",
           "api_changes": []
         },
         {
-          "sha": "216b2a3",
+          "sha": "216b2a30",
           "date": "2026-09-28",
           "author": "Claude",
           "subject": "Model sync: mirror T1_MODELS_SOURCE, not the download folder",
           "api_changes": []
         },
         {
-          "sha": "999d2e1",
+          "sha": "999d2e1b",
           "date": "2026-09-28",
           "author": "Claude",
           "subject": "Model sync: mirror ~/.hypernix/models into ~/.hypernix/t1api/models",
@@ -2980,7 +2980,7 @@
       ],
       "changes": [
         {
-          "sha": "d69ad9d",
+          "sha": "d69ad9de",
           "date": "2026-10-13",
           "author": "t",
           "subject": "T1 API: POST /inference/relay and the t1.statement/2 billing format",
@@ -3008,7 +3008,7 @@
           ]
         },
         {
-          "sha": "604a834",
+          "sha": "604a8342",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
@@ -3186,7 +3186,7 @@
       ],
       "changes": [
         {
-          "sha": "5777375",
+          "sha": "57773753",
           "date": "2026-10-20",
           "author": "Claude",
           "subject": "0.72.8 pt3 (part 2): MCP both ways, /net in the T1 API, public-server counter",
@@ -3383,14 +3383,14 @@
       ],
       "changes": [
         {
-          "sha": "47fd89e",
+          "sha": "47fd89e3",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3: Beta 3 test suite, and four bugs it found",
           "api_changes": []
         },
         {
-          "sha": "604a834",
+          "sha": "604a8342",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
@@ -3494,7 +3494,7 @@
           ]
         },
         {
-          "sha": "604ec86",
+          "sha": "604ec86f",
           "date": "2026-08-20",
           "author": "minerofthesoal",
           "subject": "b2",
@@ -3572,7 +3572,7 @@
       ],
       "changes": [
         {
-          "sha": "604a834",
+          "sha": "604a8342",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
@@ -3948,7 +3948,7 @@
       ],
       "changes": [
         {
-          "sha": "0364ead",
+          "sha": "0364ead4",
           "date": "2026-10-14",
           "author": "t",
           "subject": "HyperLink chats per account/key, signed prompts, ping; web v2 search",
@@ -3964,7 +3964,7 @@
           ]
         },
         {
-          "sha": "faee553",
+          "sha": "faee5534",
           "date": "2026-09-16",
           "author": "Claude",
           "subject": "A HyperNix model runner, settings, memory and tool calling",
@@ -3976,7 +3976,7 @@
           ]
         },
         {
-          "sha": "cc94bf5",
+          "sha": "cc94bf5a",
           "date": "2026-09-16",
           "author": "Claude",
           "subject": "t1: run a model without LM Studio, and switch it from the API",
@@ -3988,7 +3988,7 @@
           ]
         },
         {
-          "sha": "6c58a99",
+          "sha": "6c58a994",
           "date": "2026-09-16",
           "author": "Claude",
           "subject": "Fix the CI build break, and ship an IPA that can run a model",
@@ -4000,7 +4000,7 @@
           ]
         },
         {
-          "sha": "1803aaa",
+          "sha": "1803aaab",
           "date": "2026-09-15",
           "author": "Claude",
           "subject": "t1: what the server's hardware is doing, and how long it has been up",
@@ -4012,7 +4012,7 @@
           ]
         },
         {
-          "sha": "030bf41",
+          "sha": "030bf41b",
           "date": "2026-09-15",
           "author": "Claude",
           "subject": "hyperlink: one model list from every source, and a Stop that stops",
@@ -4024,14 +4024,14 @@
           ]
         },
         {
-          "sha": "5dce819",
+          "sha": "5dce819b",
           "date": "2026-09-15",
           "author": "Claude",
           "subject": "t1: HyperLink could not connect over a trusted network at all",
           "api_changes": []
         },
         {
-          "sha": "46f5901",
+          "sha": "46f59011",
           "date": "2026-09-10",
           "author": "Claude",
           "subject": "0.72.4.post9 \u2014 HyperLink catches up, notifies, and searches",
@@ -4092,7 +4092,7 @@
       ],
       "changes": [
         {
-          "sha": "91cd270",
+          "sha": "91cd2708",
           "date": "2026-10-08",
           "author": "Claude",
           "subject": "t1api: a caller leaving a stream stops the backend's reply",
@@ -4176,14 +4176,14 @@
       ],
       "changes": [
         {
-          "sha": "99ddc1a",
+          "sha": "99ddc1ae",
           "date": "2026-09-29",
           "author": "Claude",
           "subject": "Security: make Codacy scan again, and clear most Bandit findings",
           "api_changes": []
         },
         {
-          "sha": "589ebbd",
+          "sha": "589ebbdc",
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "0.72.6 pt3: elements, error codes, and the optimizers that never trained",
@@ -4195,28 +4195,28 @@
           ]
         },
         {
-          "sha": "55378e1",
+          "sha": "55378e12",
           "date": "2026-09-01",
           "author": "Claude",
           "subject": "T2P billing keys, and a server's right to refuse them",
           "api_changes": []
         },
         {
-          "sha": "604a834",
+          "sha": "604a8342",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
           "api_changes": []
         },
         {
-          "sha": "604ec86",
+          "sha": "604ec86f",
           "date": "2026-08-20",
           "author": "minerofthesoal",
           "subject": "b2",
           "api_changes": []
         },
         {
-          "sha": "f836d29",
+          "sha": "f836d298",
           "date": "2026-08-18",
           "author": "minerofthesoal",
           "subject": "0.71.5b1-part one of four for the api",
@@ -4330,14 +4330,14 @@
       ],
       "changes": [
         {
-          "sha": "bccc73e",
+          "sha": "bccc73ec",
           "date": "2026-08-20",
           "author": "minerofthesoal",
           "subject": "fixes",
           "api_changes": []
         },
         {
-          "sha": "604ec86",
+          "sha": "604ec86f",
           "date": "2026-08-20",
           "author": "minerofthesoal",
           "subject": "b2",
@@ -4475,14 +4475,14 @@
       ],
       "changes": [
         {
-          "sha": "677812e",
+          "sha": "677812ea",
           "date": "2026-10-21",
           "author": "Claude",
           "subject": "0.72.8 pt3 (part 3): HyperLink Markdown, dataset excerpts, code-session tools",
           "api_changes": []
         },
         {
-          "sha": "a4b757d",
+          "sha": "a4b757dd",
           "date": "2026-09-27",
           "author": "Claude",
           "subject": "0.72.6.post3: HyperLink on the web opens at the server's own address",
@@ -4510,7 +4510,7 @@
           ]
         },
         {
-          "sha": "20b4cba",
+          "sha": "20b4cbaf",
           "date": "2026-09-27",
           "author": "Claude",
           "subject": "0.72.6.post2: HyperLink on the web works from the tailnet, and says why a reply failed",
@@ -4542,7 +4542,7 @@
           ]
         },
         {
-          "sha": "59c7a9f",
+          "sha": "59c7a9f4",
           "date": "2026-09-27",
           "author": "Claude",
           "subject": "HyperLink on the web: the T1 server hosts it on port 37965",
@@ -4701,14 +4701,14 @@
       ],
       "changes": [
         {
-          "sha": "bccc73e",
+          "sha": "bccc73ec",
           "date": "2026-08-20",
           "author": "minerofthesoal",
           "subject": "fixes",
           "api_changes": []
         },
         {
-          "sha": "604ec86",
+          "sha": "604ec86f",
           "date": "2026-08-20",
           "author": "minerofthesoal",
           "subject": "b2",
@@ -4913,7 +4913,7 @@
       ],
       "changes": [
         {
-          "sha": "604a834",
+          "sha": "604a8342",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
@@ -5048,7 +5048,7 @@
       ],
       "changes": [
         {
-          "sha": "1f0d41b",
+          "sha": "1f0d41be",
           "date": "2026-10-14",
           "author": "t",
           "subject": "launch-script answers and --logs -F; runner start/backend choose from a list",
@@ -5064,21 +5064,21 @@
           ]
         },
         {
-          "sha": "fdb60dd",
+          "sha": "fdb60dd8",
           "date": "2026-09-29",
           "author": "Claude",
           "subject": "hypernix-t1 launch-script: -1 'CMD' replaces -$ 'CMD'",
           "api_changes": []
         },
         {
-          "sha": "99ddc1a",
+          "sha": "99ddc1ae",
           "date": "2026-09-29",
           "author": "Claude",
           "subject": "Security: make Codacy scan again, and clear most Bandit findings",
           "api_changes": []
         },
         {
-          "sha": "589ebbd",
+          "sha": "589ebbdc",
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "0.72.6 pt3: elements, error codes, and the optimizers that never trained",
@@ -5090,7 +5090,7 @@
           ]
         },
         {
-          "sha": "a8aca68",
+          "sha": "a8aca686",
           "date": "2026-09-08",
           "author": "Claude",
           "subject": "0.72.4.dev5 \u2014 hypernix-t1 launch-script",
@@ -5283,7 +5283,7 @@
       ],
       "changes": [
         {
-          "sha": "589ebbd",
+          "sha": "589ebbdc",
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "0.72.6 pt3: elements, error codes, and the optimizers that never trained",
@@ -5422,14 +5422,14 @@
       ],
       "changes": [
         {
-          "sha": "99ddc1a",
+          "sha": "99ddc1ae",
           "date": "2026-09-29",
           "author": "Claude",
           "subject": "Security: make Codacy scan again, and clear most Bandit findings",
           "api_changes": []
         },
         {
-          "sha": "fa59f48",
+          "sha": "fa59f481",
           "date": "2026-09-26",
           "author": "Claude",
           "subject": "hypernix-t1 runner finds the server where `start` put it; add `hypernix-t1 chat`",
@@ -5607,21 +5607,21 @@
       ],
       "changes": [
         {
-          "sha": "5777375",
+          "sha": "57773753",
           "date": "2026-10-20",
           "author": "Claude",
           "subject": "0.72.8 pt3 (part 2): MCP both ways, /net in the T1 API, public-server counter",
           "api_changes": []
         },
         {
-          "sha": "b438182",
+          "sha": "b4381824",
           "date": "2026-09-27",
           "author": "Claude",
           "subject": "Security: safe checkpoint loading, MCP errors, key paths, and working scanners",
           "api_changes": []
         },
         {
-          "sha": "3bd1c25",
+          "sha": "3bd1c25d",
           "date": "2026-09-22",
           "author": "Claude",
           "subject": "t1api: MCP server support, with plugins",
@@ -5868,7 +5868,7 @@
       ],
       "changes": [
         {
-          "sha": "5777375",
+          "sha": "57773753",
           "date": "2026-10-20",
           "author": "Claude",
           "subject": "0.72.8 pt3 (part 2): MCP both ways, /net in the T1 API, public-server counter",
@@ -6008,14 +6008,14 @@
       ],
       "changes": [
         {
-          "sha": "999d2e1",
+          "sha": "999d2e1b",
           "date": "2026-09-28",
           "author": "Claude",
           "subject": "Model sync: mirror ~/.hypernix/models into ~/.hypernix/t1api/models",
           "api_changes": []
         },
         {
-          "sha": "3bd1c25",
+          "sha": "3bd1c25d",
           "date": "2026-09-22",
           "author": "Claude",
           "subject": "t1api: MCP server support, with plugins",
@@ -6162,14 +6162,14 @@
       ],
       "changes": [
         {
-          "sha": "9963644",
+          "sha": "99636442",
           "date": "2026-09-29",
           "author": "Claude",
           "subject": "HyperLink: symlinked models load, and models can be linked from the app",
           "api_changes": []
         },
         {
-          "sha": "182b1ef",
+          "sha": "182b1efc",
           "date": "2026-09-16",
           "author": "Claude",
           "subject": "t1: index the models this machine has, and estimate what they cost",
@@ -6181,7 +6181,7 @@
           ]
         },
         {
-          "sha": "ac0053d",
+          "sha": "ac0053d7",
           "date": "2026-09-03",
           "author": "Claude",
           "subject": "0.72.3.post6 \u2014 hypernix-t1 index, and three more from the field",
@@ -6266,28 +6266,28 @@
       ],
       "changes": [
         {
-          "sha": "8bb54a3",
+          "sha": "8bb54a39",
           "date": "2026-09-17",
           "author": "Claude",
           "subject": "registry: a working directory that is gone is not a crash",
           "api_changes": []
         },
         {
-          "sha": "182b1ef",
+          "sha": "182b1efc",
           "date": "2026-09-16",
           "author": "Claude",
           "subject": "t1: index the models this machine has, and estimate what they cost",
           "api_changes": []
         },
         {
-          "sha": "fe580bc",
+          "sha": "fe580bc9",
           "date": "2026-09-08",
           "author": "Claude",
           "subject": "0.72.4.dev2 \u2014 the registry the server actually reads",
           "api_changes": []
         },
         {
-          "sha": "ac0053d",
+          "sha": "ac0053d7",
           "date": "2026-09-03",
           "author": "Claude",
           "subject": "0.72.3.post6 \u2014 hypernix-t1 index, and three more from the field",
@@ -6402,14 +6402,14 @@
       ],
       "changes": [
         {
-          "sha": "216b2a3",
+          "sha": "216b2a30",
           "date": "2026-09-28",
           "author": "Claude",
           "subject": "Model sync: mirror T1_MODELS_SOURCE, not the download folder",
           "api_changes": []
         },
         {
-          "sha": "999d2e1",
+          "sha": "999d2e1b",
           "date": "2026-09-28",
           "author": "Claude",
           "subject": "Model sync: mirror ~/.hypernix/models into ~/.hypernix/t1api/models",
@@ -6514,14 +6514,14 @@
       ],
       "changes": [
         {
-          "sha": "216b2a3",
+          "sha": "216b2a30",
           "date": "2026-09-28",
           "author": "Claude",
           "subject": "Model sync: mirror T1_MODELS_SOURCE, not the download folder",
           "api_changes": []
         },
         {
-          "sha": "999d2e1",
+          "sha": "999d2e1b",
           "date": "2026-09-28",
           "author": "Claude",
           "subject": "Model sync: mirror ~/.hypernix/models into ~/.hypernix/t1api/models",
@@ -6682,7 +6682,7 @@
       ],
       "changes": [
         {
-          "sha": "604a834",
+          "sha": "604a8342",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
@@ -6698,7 +6698,7 @@
           ]
         },
         {
-          "sha": "604ec86",
+          "sha": "604ec86f",
           "date": "2026-08-20",
           "author": "minerofthesoal",
           "subject": "b2",
@@ -6880,7 +6880,7 @@
       ],
       "changes": [
         {
-          "sha": "604a834",
+          "sha": "604a8342",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
@@ -7114,7 +7114,7 @@
       ],
       "changes": [
         {
-          "sha": "604a834",
+          "sha": "604a8342",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
@@ -7319,7 +7319,7 @@
       ],
       "changes": [
         {
-          "sha": "1f0d41b",
+          "sha": "1f0d41be",
           "date": "2026-10-14",
           "author": "t",
           "subject": "launch-script answers and --logs -F; runner start/backend choose from a list",
@@ -7433,7 +7433,7 @@
       ],
       "changes": [
         {
-          "sha": "182b1ef",
+          "sha": "182b1efc",
           "date": "2026-09-16",
           "author": "Claude",
           "subject": "t1: index the models this machine has, and estimate what they cost",
@@ -7578,7 +7578,7 @@
       ],
       "changes": [
         {
-          "sha": "0068bbf",
+          "sha": "0068bbf2",
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "T1: conceal mode with 36-hour retention, and a public /server/info",
@@ -7757,7 +7757,7 @@
       ],
       "changes": [
         {
-          "sha": "47fd89e",
+          "sha": "47fd89e3",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3: Beta 3 test suite, and four bugs it found",
@@ -7781,7 +7781,7 @@
           ]
         },
         {
-          "sha": "604a834",
+          "sha": "604a8342",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
@@ -8049,14 +8049,14 @@
       ],
       "changes": [
         {
-          "sha": "d69ad9d",
+          "sha": "d69ad9de",
           "date": "2026-10-13",
           "author": "t",
           "subject": "T1 API: POST /inference/relay and the t1.statement/2 billing format",
           "api_changes": []
         },
         {
-          "sha": "8bb54a3",
+          "sha": "8bb54a39",
           "date": "2026-09-17",
           "author": "Claude",
           "subject": "registry: a working directory that is gone is not a crash",
@@ -8072,7 +8072,7 @@
           ]
         },
         {
-          "sha": "fe580bc",
+          "sha": "fe580bc9",
           "date": "2026-09-08",
           "author": "Claude",
           "subject": "0.72.4.dev2 \u2014 the registry the server actually reads",
@@ -8092,7 +8092,7 @@
           ]
         },
         {
-          "sha": "47fd89e",
+          "sha": "47fd89e3",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3: Beta 3 test suite, and four bugs it found",
@@ -8104,14 +8104,14 @@
           ]
         },
         {
-          "sha": "bccc73e",
+          "sha": "bccc73ec",
           "date": "2026-08-20",
           "author": "minerofthesoal",
           "subject": "fixes",
           "api_changes": []
         },
         {
-          "sha": "f836d29",
+          "sha": "f836d298",
           "date": "2026-08-18",
           "author": "minerofthesoal",
           "subject": "0.71.5b1-part one of four for the api",
@@ -8221,56 +8221,56 @@
       ],
       "changes": [
         {
-          "sha": "5777375",
+          "sha": "57773753",
           "date": "2026-10-20",
           "author": "Claude",
           "subject": "0.72.8 pt3 (part 2): MCP both ways, /net in the T1 API, public-server counter",
           "api_changes": []
         },
         {
-          "sha": "e89afd4",
+          "sha": "e89afd46",
           "date": "2026-10-20",
           "author": "Claude",
           "subject": "0.72.8 pt3 (part 1): Claude Code on T1, hnx0xv2image, hnx auto/extra, fixed commands",
           "api_changes": []
         },
         {
-          "sha": "674031b",
+          "sha": "674031bd",
           "date": "2026-10-14",
           "author": "t",
           "subject": "HyperLink: hypercompress, tool choice, memories only when told, documents",
           "api_changes": []
         },
         {
-          "sha": "0364ead",
+          "sha": "0364ead4",
           "date": "2026-10-14",
           "author": "t",
           "subject": "HyperLink chats per account/key, signed prompts, ping; web v2 search",
           "api_changes": []
         },
         {
-          "sha": "858eefd",
+          "sha": "858eefd0",
           "date": "2026-09-30",
           "author": "Claude",
           "subject": "t1api: /code \u2014 sandboxes that run code, with perms in the web settings grammar",
           "api_changes": []
         },
         {
-          "sha": "0068bbf",
+          "sha": "0068bbf2",
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "T1: conceal mode with 36-hour retention, and a public /server/info",
           "api_changes": []
         },
         {
-          "sha": "462b479",
+          "sha": "462b479d",
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "v2.1 (T2C) keys, sealed with Rotorvault",
           "api_changes": []
         },
         {
-          "sha": "53a7eec",
+          "sha": "53a7eec3",
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "0.72.6 pt2: dilute, /web/v1 keyless search, and eth's dead band",
@@ -8410,7 +8410,7 @@
       ],
       "changes": [
         {
-          "sha": "2324f0f",
+          "sha": "2324f0fa",
           "date": "2026-09-15",
           "author": "Mason",
           "subject": "t1 v1.0.26.9.2.3: sign up for a key without already having one",
@@ -8554,14 +8554,14 @@
       ],
       "changes": [
         {
-          "sha": "5777375",
+          "sha": "57773753",
           "date": "2026-10-20",
           "author": "Claude",
           "subject": "0.72.8 pt3 (part 2): MCP both ways, /net in the T1 API, public-server counter",
           "api_changes": []
         },
         {
-          "sha": "e89afd4",
+          "sha": "e89afd46",
           "date": "2026-10-20",
           "author": "Claude",
           "subject": "0.72.8 pt3 (part 1): Claude Code on T1, hnx0xv2image, hnx auto/extra, fixed commands",
@@ -8667,7 +8667,7 @@
       ],
       "changes": [
         {
-          "sha": "604a834",
+          "sha": "604a8342",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
@@ -8730,14 +8730,14 @@
       ],
       "changes": [
         {
-          "sha": "0068bbf",
+          "sha": "0068bbf2",
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "T1: conceal mode with 36-hour retention, and a public /server/info",
           "api_changes": []
         },
         {
-          "sha": "eab3065",
+          "sha": "eab30655",
           "date": "2026-08-27",
           "author": "Claude",
           "subject": "T1 v1.0.2026.8.1.1: server IDs advance, and undo/redo actually works",
@@ -8749,7 +8749,7 @@
           ]
         },
         {
-          "sha": "f836d29",
+          "sha": "f836d298",
           "date": "2026-08-18",
           "author": "minerofthesoal",
           "subject": "0.71.5b1-part one of four for the api",
@@ -8838,7 +8838,7 @@
       ],
       "changes": [
         {
-          "sha": "eab3065",
+          "sha": "eab30655",
           "date": "2026-08-27",
           "author": "Claude",
           "subject": "T1 v1.0.2026.8.1.1: server IDs advance, and undo/redo actually works",
@@ -8850,7 +8850,7 @@
           ]
         },
         {
-          "sha": "370119d",
+          "sha": "370119db",
           "date": "2026-08-26",
           "author": "Claude",
           "subject": "T1 v1.0.26.8.1.0: T2 recognition, auth undo/redo, and backups",
@@ -8964,7 +8964,7 @@
       ],
       "changes": [
         {
-          "sha": "370119d",
+          "sha": "370119db",
           "date": "2026-08-26",
           "author": "Claude",
           "subject": "T1 v1.0.26.8.1.0: T2 recognition, auth undo/redo, and backups",
@@ -9074,7 +9074,7 @@
       ],
       "changes": [
         {
-          "sha": "604ec86",
+          "sha": "604ec86f",
           "date": "2026-08-20",
           "author": "minerofthesoal",
           "subject": "b2",
@@ -9171,14 +9171,14 @@
       ],
       "changes": [
         {
-          "sha": "91cd270",
+          "sha": "91cd2708",
           "date": "2026-10-08",
           "author": "Claude",
           "subject": "t1api: a caller leaving a stream stops the backend's reply",
           "api_changes": []
         },
         {
-          "sha": "c7eabfd",
+          "sha": "c7eabfd7",
           "date": "2026-08-23",
           "author": "Claude",
           "subject": "T1 v1.0.26.8.0.1: the LM Studio bridge and HyperLink",
@@ -9375,7 +9375,7 @@
       ],
       "changes": [
         {
-          "sha": "677812e",
+          "sha": "677812ea",
           "date": "2026-10-21",
           "author": "Claude",
           "subject": "0.72.8 pt3 (part 3): HyperLink Markdown, dataset excerpts, code-session tools",
@@ -9407,7 +9407,7 @@
           ]
         },
         {
-          "sha": "d69ad9d",
+          "sha": "d69ad9de",
           "date": "2026-10-13",
           "author": "t",
           "subject": "T1 API: POST /inference/relay and the t1.statement/2 billing format",
@@ -9419,7 +9419,7 @@
           ]
         },
         {
-          "sha": "858eefd",
+          "sha": "858eefd0",
           "date": "2026-09-30",
           "author": "Claude",
           "subject": "t1api: /code \u2014 sandboxes that run code, with perms in the web settings grammar",
@@ -9584,14 +9584,14 @@
       ],
       "changes": [
         {
-          "sha": "d69ad9d",
+          "sha": "d69ad9de",
           "date": "2026-10-13",
           "author": "t",
           "subject": "T1 API: POST /inference/relay and the t1.statement/2 billing format",
           "api_changes": []
         },
         {
-          "sha": "e26841f",
+          "sha": "e26841fc",
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "HyperLink: model titles, compression, private chats, organised memory, images, shell, tails",
@@ -9611,7 +9611,7 @@
           ]
         },
         {
-          "sha": "087a6cf",
+          "sha": "087a6cf0",
           "date": "2026-09-16",
           "author": "Claude",
           "subject": "t1: /chat/compact/* \u2014 making a long conversation fit again",
@@ -9693,7 +9693,7 @@
       ],
       "changes": [
         {
-          "sha": "f836d29",
+          "sha": "f836d298",
           "date": "2026-08-18",
           "author": "minerofthesoal",
           "subject": "0.71.5b1-part one of four for the api",
@@ -9742,7 +9742,7 @@
       ],
       "changes": [
         {
-          "sha": "5777375",
+          "sha": "57773753",
           "date": "2026-10-20",
           "author": "Claude",
           "subject": "0.72.8 pt3 (part 2): MCP both ways, /net in the T1 API, public-server counter",
@@ -9803,7 +9803,7 @@
       ],
       "changes": [
         {
-          "sha": "604ec86",
+          "sha": "604ec86f",
           "date": "2026-08-20",
           "author": "minerofthesoal",
           "subject": "b2",
@@ -9882,14 +9882,14 @@
       ],
       "changes": [
         {
-          "sha": "46047fe",
+          "sha": "46047fec",
           "date": "2026-09-16",
           "author": "Claude",
           "subject": "models: reconcile \"Models registered 44\" with an empty picker",
           "api_changes": []
         },
         {
-          "sha": "a75a750",
+          "sha": "a75a750b",
           "date": "2026-09-16",
           "author": "Claude",
           "subject": "t1api: add GET /version, and stop a stale process looking like a wrong number",
@@ -9909,35 +9909,35 @@
           ]
         },
         {
-          "sha": "d91c43e",
+          "sha": "d91c43ef",
           "date": "2026-08-26",
           "author": "Claude",
           "subject": "waiter -F: find a server, and never run what it tells you to",
           "api_changes": []
         },
         {
-          "sha": "c7eabfd",
+          "sha": "c7eabfd7",
           "date": "2026-08-23",
           "author": "Claude",
           "subject": "T1 v1.0.26.8.0.1: the LM Studio bridge and HyperLink",
           "api_changes": []
         },
         {
-          "sha": "879b000",
+          "sha": "879b000b",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5rc2 \u2014 T1 API Beta 4, hyped-pro, and PATH setup",
           "api_changes": []
         },
         {
-          "sha": "604a834",
+          "sha": "604a8342",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
           "api_changes": []
         },
         {
-          "sha": "f836d29",
+          "sha": "f836d298",
           "date": "2026-08-18",
           "author": "minerofthesoal",
           "subject": "0.71.5b1-part one of four for the api",
@@ -10003,7 +10003,7 @@
       ],
       "changes": [
         {
-          "sha": "674031b",
+          "sha": "674031bd",
           "date": "2026-10-14",
           "author": "t",
           "subject": "HyperLink: hypercompress, tool choice, memories only when told, documents",
@@ -10456,7 +10456,7 @@
       ],
       "changes": [
         {
-          "sha": "677812e",
+          "sha": "677812ea",
           "date": "2026-10-21",
           "author": "Claude",
           "subject": "0.72.8 pt3 (part 3): HyperLink Markdown, dataset excerpts, code-session tools",
@@ -10496,7 +10496,7 @@
           ]
         },
         {
-          "sha": "5777375",
+          "sha": "57773753",
           "date": "2026-10-20",
           "author": "Claude",
           "subject": "0.72.8 pt3 (part 2): MCP both ways, /net in the T1 API, public-server counter",
@@ -10508,7 +10508,7 @@
           ]
         },
         {
-          "sha": "acb9516",
+          "sha": "acb9516a",
           "date": "2026-10-14",
           "author": "t",
           "subject": "HyperLink: two-layer ring beside the chat box",
@@ -10524,7 +10524,7 @@
           ]
         },
         {
-          "sha": "674031b",
+          "sha": "674031bd",
           "date": "2026-10-14",
           "author": "t",
           "subject": "HyperLink: hypercompress, tool choice, memories only when told, documents",
@@ -10552,7 +10552,7 @@
           ]
         },
         {
-          "sha": "0364ead",
+          "sha": "0364ead4",
           "date": "2026-10-14",
           "author": "t",
           "subject": "HyperLink chats per account/key, signed prompts, ping; web v2 search",
@@ -10600,7 +10600,7 @@
           ]
         },
         {
-          "sha": "cad7e52",
+          "sha": "cad7e52e",
           "date": "2026-10-14",
           "author": "t",
           "subject": "HyperLink: every loaded model listed, and a chat picks which answers",
@@ -10624,7 +10624,7 @@
           ]
         },
         {
-          "sha": "d595eb4",
+          "sha": "d595eb4a",
           "date": "2026-10-06",
           "author": "Claude",
           "subject": "0.72.7 step 2: images on the HyperNix runner; macOS/Linux CI and first Windows fixes",
@@ -10636,7 +10636,7 @@
           ]
         },
         {
-          "sha": "203b711",
+          "sha": "203b7112",
           "date": "2026-10-06",
           "author": "Claude",
           "subject": "0.72.7 step 1: link config-less models, `runner auto`, images converted on upload",
@@ -10713,7 +10713,7 @@
       ],
       "changes": [
         {
-          "sha": "d69ad9d",
+          "sha": "d69ad9de",
           "date": "2026-10-13",
           "author": "t",
           "subject": "T1 API: POST /inference/relay and the t1.statement/2 billing format",
@@ -10749,14 +10749,14 @@
           ]
         },
         {
-          "sha": "91cd270",
+          "sha": "91cd2708",
           "date": "2026-10-08",
           "author": "Claude",
           "subject": "t1api: a caller leaving a stream stops the backend's reply",
           "api_changes": []
         },
         {
-          "sha": "d595eb4",
+          "sha": "d595eb4a",
           "date": "2026-10-06",
           "author": "Claude",
           "subject": "0.72.7 step 2: images on the HyperNix runner; macOS/Linux CI and first Windows fixes",
@@ -10772,7 +10772,7 @@
           ]
         },
         {
-          "sha": "4b7fe9d",
+          "sha": "4b7fe9d5",
           "date": "2026-10-01",
           "author": "Claude",
           "subject": "t1api: serve /inference from the HyperNix runner",
@@ -10808,7 +10808,7 @@
           ]
         },
         {
-          "sha": "547dfa4",
+          "sha": "547dfa47",
           "date": "2026-09-02",
           "author": "Claude",
           "subject": "T1 v1.0.2026.9.2.1: the governed inference surface",
@@ -10940,14 +10940,14 @@
       ],
       "changes": [
         {
-          "sha": "bccc73e",
+          "sha": "bccc73ec",
           "date": "2026-08-20",
           "author": "minerofthesoal",
           "subject": "fixes",
           "api_changes": []
         },
         {
-          "sha": "604ec86",
+          "sha": "604ec86f",
           "date": "2026-08-20",
           "author": "minerofthesoal",
           "subject": "b2",
@@ -11023,7 +11023,7 @@
       ],
       "changes": [
         {
-          "sha": "604a834",
+          "sha": "604a8342",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
@@ -11157,7 +11157,7 @@
       ],
       "changes": [
         {
-          "sha": "5777375",
+          "sha": "57773753",
           "date": "2026-10-20",
           "author": "Claude",
           "subject": "0.72.8 pt3 (part 2): MCP both ways, /net in the T1 API, public-server counter",
@@ -11237,7 +11237,7 @@
           ]
         },
         {
-          "sha": "3bd1c25",
+          "sha": "3bd1c25d",
           "date": "2026-09-22",
           "author": "Claude",
           "subject": "t1api: MCP server support, with plugins",
@@ -11351,7 +11351,7 @@
       ],
       "changes": [
         {
-          "sha": "3fc645b",
+          "sha": "3fc645bf",
           "date": "2026-09-24",
           "author": "Claude",
           "subject": "HyperLink: memories sync from the server as they change",
@@ -11367,7 +11367,7 @@
           ]
         },
         {
-          "sha": "e26841f",
+          "sha": "e26841fc",
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "HyperLink: model titles, compression, private chats, organised memory, images, shell, tails",
@@ -11399,7 +11399,7 @@
           ]
         },
         {
-          "sha": "6c58a99",
+          "sha": "6c58a994",
           "date": "2026-09-16",
           "author": "Claude",
           "subject": "Fix the CI build break, and ship an IPA that can run a model",
@@ -11501,28 +11501,28 @@
       ],
       "changes": [
         {
-          "sha": "3e60ff8",
+          "sha": "3e60ff82",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3 (part 2/3): complete SDK, full waiter TUI, smoke tool",
           "api_changes": []
         },
         {
-          "sha": "604a834",
+          "sha": "604a8342",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
           "api_changes": []
         },
         {
-          "sha": "bccc73e",
+          "sha": "bccc73ec",
           "date": "2026-08-20",
           "author": "minerofthesoal",
           "subject": "fixes",
           "api_changes": []
         },
         {
-          "sha": "604ec86",
+          "sha": "604ec86f",
           "date": "2026-08-20",
           "author": "minerofthesoal",
           "subject": "b2",
@@ -11538,7 +11538,7 @@
           ]
         },
         {
-          "sha": "f836d29",
+          "sha": "f836d298",
           "date": "2026-08-18",
           "author": "minerofthesoal",
           "subject": "0.71.5b1-part one of four for the api",
@@ -11684,7 +11684,7 @@
       ],
       "changes": [
         {
-          "sha": "604a834",
+          "sha": "604a8342",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
@@ -11716,7 +11716,7 @@
           ]
         },
         {
-          "sha": "604ec86",
+          "sha": "604ec86f",
           "date": "2026-08-20",
           "author": "minerofthesoal",
           "subject": "b2",
@@ -11988,7 +11988,7 @@
       ],
       "changes": [
         {
-          "sha": "5777375",
+          "sha": "57773753",
           "date": "2026-10-20",
           "author": "Claude",
           "subject": "0.72.8 pt3 (part 2): MCP both ways, /net in the T1 API, public-server counter",
@@ -12134,7 +12134,7 @@
       ],
       "changes": [
         {
-          "sha": "88c9024",
+          "sha": "88c9024f",
           "date": "2026-09-16",
           "author": "Claude",
           "subject": "t1: noodle over the API \u2014 files, edits, fish and archives",
@@ -12227,7 +12227,7 @@
       ],
       "changes": [
         {
-          "sha": "0068bbf",
+          "sha": "0068bbf2",
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "T1: conceal mode with 36-hour retention, and a public /server/info",
@@ -12355,21 +12355,21 @@
       ],
       "changes": [
         {
-          "sha": "c530df6",
+          "sha": "c530df6a",
           "date": "2026-10-14",
           "author": "t",
           "subject": "Default model: LFM2.5-2.6B (lfm2.5-2.7b resolves to it)",
           "api_changes": []
         },
         {
-          "sha": "d595eb4",
+          "sha": "d595eb4a",
           "date": "2026-10-06",
           "author": "Claude",
           "subject": "0.72.7 step 2: images on the HyperNix runner; macOS/Linux CI and first Windows fixes",
           "api_changes": []
         },
         {
-          "sha": "203b711",
+          "sha": "203b7112",
           "date": "2026-10-06",
           "author": "Claude",
           "subject": "0.72.7 step 1: link config-less models, `runner auto`, images converted on upload",
@@ -12389,21 +12389,21 @@
           ]
         },
         {
-          "sha": "9963644",
+          "sha": "99636442",
           "date": "2026-09-29",
           "author": "Claude",
           "subject": "HyperLink: symlinked models load, and models can be linked from the app",
           "api_changes": []
         },
         {
-          "sha": "999d2e1",
+          "sha": "999d2e1b",
           "date": "2026-09-28",
           "author": "Claude",
           "subject": "Model sync: mirror ~/.hypernix/models into ~/.hypernix/t1api/models",
           "api_changes": []
         },
         {
-          "sha": "bf44cc7",
+          "sha": "bf44cc7e",
           "date": "2026-09-27",
           "author": "Claude",
           "subject": "HyperLink: move LM Studio's model onto the HyperNix runner",
@@ -12439,14 +12439,14 @@
           ]
         },
         {
-          "sha": "1c244db",
+          "sha": "1c244db8",
           "date": "2026-09-26",
           "author": "Claude",
           "subject": "Runner: serve native HyperNix models; HyperNix.3-mini is the default",
           "api_changes": []
         },
         {
-          "sha": "bca36d0",
+          "sha": "bca36d0f",
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "0.72.6 pt2: hyperchat, and three things HyperLink was showing wrong",
@@ -12546,7 +12546,7 @@
       ],
       "changes": [
         {
-          "sha": "604a834",
+          "sha": "604a8342",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
@@ -12681,21 +12681,21 @@
       ],
       "changes": [
         {
-          "sha": "604a834",
+          "sha": "604a8342",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
           "api_changes": []
         },
         {
-          "sha": "bccc73e",
+          "sha": "bccc73ec",
           "date": "2026-08-20",
           "author": "minerofthesoal",
           "subject": "fixes",
           "api_changes": []
         },
         {
-          "sha": "604ec86",
+          "sha": "604ec86f",
           "date": "2026-08-20",
           "author": "minerofthesoal",
           "subject": "b2",
@@ -12801,7 +12801,7 @@
       ],
       "changes": [
         {
-          "sha": "462b479",
+          "sha": "462b479d",
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "v2.1 (T2C) keys, sealed with Rotorvault",
@@ -12944,7 +12944,7 @@
       ],
       "changes": [
         {
-          "sha": "3cd859b",
+          "sha": "3cd859b2",
           "date": "2026-09-08",
           "author": "Claude",
           "subject": "0.72.4.dev7 \u2014 what training is doing, and the controls for it",
@@ -13075,14 +13075,14 @@
         {
           "kind": "function",
           "name": "usage_by",
-          "signature": "def usage_bygroup_by: str=Query(..., description=f'One of: {', '.join(GROUPABLE)}'), range_: str | None=Query(default=None, alias='range'), since: float | None=Query(default=None), until: float | None=Query(default=None), key_id: str | None=Query(default=None), model_id: str | None=Query(default=None), server_id: str | None=Query(default=None), module_id: str | None=Query(default=None), user_id: str | None=Query(default=None), account_id: str | None=Query(default=None), ctx: AuthContext=Depends(get_auth_context), meter: UsageMeter=Depends(get_usage_meter), keys=Depends(get_key_directory), request_id: str=Depends(get_request_id) -> UsageAggregateResponse",
+          "signature": "def usage_bygroup_by: str=Query(..., description=f\"One of: {', '.join(GROUPABLE)}\"), range_: str | None=Query(default=None, alias='range'), since: float | None=Query(default=None), until: float | None=Query(default=None), key_id: str | None=Query(default=None), model_id: str | None=Query(default=None), server_id: str | None=Query(default=None), module_id: str | None=Query(default=None), user_id: str | None=Query(default=None), account_id: str | None=Query(default=None), ctx: AuthContext=Depends(get_auth_context), meter: UsageMeter=Depends(get_usage_meter), keys=Depends(get_key_directory), request_id: str=Depends(get_request_id) -> UsageAggregateResponse",
           "line": 183,
           "doc": "\"Usage by model / key / server / module / user / account\", as one endpoint rather than six near-identical ones."
         },
         {
           "kind": "function",
           "name": "usage_cost",
-          "signature": "def usage_costgroup_by: str=Query(default='model_id', description=f'One of: {', '.join(GROUPABLE)}'), range_: str | None=Query(default=None, alias='range'), since: float | None=Query(default=None), until: float | None=Query(default=None), key_id: str | None=Query(default=None), model_id: str | None=Query(default=None), server_id: str | None=Query(default=None), module_id: str | None=Query(default=None), user_id: str | None=Query(default=None), account_id: str | None=Query(default=None), forecast: bool=Query(default=False, description='Include a spend forecast for the horizon.'), forecast_horizon_seconds: float=Query(default=2592000.0, gt=0), ctx: AuthContext=Depends(get_auth_context), calculator: CostCalculator=Depends(get_cost_calculator), keys=Depends(get_key_directory), request_id: str=Depends(get_request_id) -> UsageCostResponse",
+          "signature": "def usage_costgroup_by: str=Query(default='model_id', description=f\"One of: {', '.join(GROUPABLE)}\"), range_: str | None=Query(default=None, alias='range'), since: float | None=Query(default=None), until: float | None=Query(default=None), key_id: str | None=Query(default=None), model_id: str | None=Query(default=None), server_id: str | None=Query(default=None), module_id: str | None=Query(default=None), user_id: str | None=Query(default=None), account_id: str | None=Query(default=None), forecast: bool=Query(default=False, description='Include a spend forecast for the horizon.'), forecast_horizon_seconds: float=Query(default=2592000.0, gt=0), ctx: AuthContext=Depends(get_auth_context), calculator: CostCalculator=Depends(get_cost_calculator), keys=Depends(get_key_directory), request_id: str=Depends(get_request_id) -> UsageCostResponse",
           "line": 246,
           "doc": "Actual cost with optional forecast \u2014 totals, date ranges, and per-model/per-server breakdowns in one shape."
         },
@@ -13121,7 +13121,7 @@
       ],
       "changes": [
         {
-          "sha": "d69ad9d",
+          "sha": "d69ad9de",
           "date": "2026-10-13",
           "author": "t",
           "subject": "T1 API: POST /inference/relay and the t1.statement/2 billing format",
@@ -13137,7 +13137,7 @@
           ]
         },
         {
-          "sha": "879b000",
+          "sha": "879b000b",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5rc2 \u2014 T1 API Beta 4, hyped-pro, and PATH setup",
@@ -13153,7 +13153,7 @@
           ]
         },
         {
-          "sha": "604a834",
+          "sha": "604a8342",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
@@ -13201,7 +13201,7 @@
           ]
         },
         {
-          "sha": "f836d29",
+          "sha": "f836d298",
           "date": "2026-08-18",
           "author": "minerofthesoal",
           "subject": "0.71.5b1-part one of four for the api",
@@ -13288,7 +13288,7 @@
       ],
       "changes": [
         {
-          "sha": "0364ead",
+          "sha": "0364ead4",
           "date": "2026-10-14",
           "author": "t",
           "subject": "HyperLink chats per account/key, signed prompts, ping; web v2 search",
@@ -13324,21 +13324,21 @@
           ]
         },
         {
-          "sha": "d69ad9d",
+          "sha": "d69ad9de",
           "date": "2026-10-13",
           "author": "t",
           "subject": "T1 API: POST /inference/relay and the t1.statement/2 billing format",
           "api_changes": []
         },
         {
-          "sha": "eb12198",
+          "sha": "eb12198c",
           "date": "2026-09-26",
           "author": "Claude",
           "subject": "Fix the high-rated security findings",
           "api_changes": []
         },
         {
-          "sha": "7f46b1c",
+          "sha": "7f46b1c5",
           "date": "2026-09-24",
           "author": "Rayla",
           "subject": "Potential fix for code scanning alert no. 26263: Full server-side request forgery",
@@ -13350,7 +13350,7 @@
           ]
         },
         {
-          "sha": "bf80987",
+          "sha": "bf80987c",
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "ci: GCC 11 rejects [[maybe_unused]] on a member; no exception text from summarise",
@@ -13366,21 +13366,21 @@
           ]
         },
         {
-          "sha": "6066ce5",
+          "sha": "6066ce53",
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "ci: magnesium without psutil, Windows paths, and CodeQL's findings",
           "api_changes": []
         },
         {
-          "sha": "5bfb35d",
+          "sha": "5bfb35d9",
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "0.72.6 pt3: T1 tools for local models, and HyperLink swipe, memories, search, on-device",
           "api_changes": []
         },
         {
-          "sha": "bca36d0",
+          "sha": "bca36d0f",
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "0.72.6 pt2: hyperchat, and three things HyperLink was showing wrong",
@@ -13519,14 +13519,14 @@
       ],
       "changes": [
         {
-          "sha": "bccc73e",
+          "sha": "bccc73ec",
           "date": "2026-08-20",
           "author": "minerofthesoal",
           "subject": "fixes",
           "api_changes": []
         },
         {
-          "sha": "604ec86",
+          "sha": "604ec86f",
           "date": "2026-08-20",
           "author": "minerofthesoal",
           "subject": "b2",
@@ -13664,21 +13664,21 @@
       ],
       "changes": [
         {
-          "sha": "7d6b3f2",
+          "sha": "7d6b3f21",
           "date": "2026-10-14",
           "author": "t",
           "subject": "Multi-llama runner; the hnx llama mod knows the forks' types",
           "api_changes": []
         },
         {
-          "sha": "c530df6",
+          "sha": "c530df6a",
           "date": "2026-10-14",
           "author": "t",
           "subject": "Default model: LFM2.5-2.6B (lfm2.5-2.7b resolves to it)",
           "api_changes": []
         },
         {
-          "sha": "1f0d41b",
+          "sha": "1f0d41be",
           "date": "2026-10-14",
           "author": "t",
           "subject": "launch-script answers and --logs -F; runner start/backend choose from a list",
@@ -13710,7 +13710,7 @@
           ]
         },
         {
-          "sha": "203b711",
+          "sha": "203b7112",
           "date": "2026-10-06",
           "author": "Claude",
           "subject": "0.72.7 step 1: link config-less models, `runner auto`, images converted on upload",
@@ -13722,21 +13722,21 @@
           ]
         },
         {
-          "sha": "99ddc1a",
+          "sha": "99ddc1ae",
           "date": "2026-09-29",
           "author": "Claude",
           "subject": "Security: make Codacy scan again, and clear most Bandit findings",
           "api_changes": []
         },
         {
-          "sha": "1c244db",
+          "sha": "1c244db8",
           "date": "2026-09-26",
           "author": "Claude",
           "subject": "Runner: serve native HyperNix models; HyperNix.3-mini is the default",
           "api_changes": []
         },
         {
-          "sha": "fa59f48",
+          "sha": "fa59f481",
           "date": "2026-09-26",
           "author": "Claude",
           "subject": "hypernix-t1 runner finds the server where `start` put it; add `hypernix-t1 chat`",
@@ -13756,7 +13756,7 @@
           ]
         },
         {
-          "sha": "792c5d2",
+          "sha": "792c5d27",
           "date": "2026-09-17",
           "author": "Claude",
           "subject": "hyperlink: add and re-port a server; hypernix-t1 built-in-runner start",
@@ -15355,7 +15355,7 @@
       ],
       "changes": [
         {
-          "sha": "677812e",
+          "sha": "677812ea",
           "date": "2026-10-21",
           "author": "Claude",
           "subject": "0.72.8 pt3 (part 3): HyperLink Markdown, dataset excerpts, code-session tools",
@@ -15367,7 +15367,7 @@
           ]
         },
         {
-          "sha": "acb9516",
+          "sha": "acb9516a",
           "date": "2026-10-14",
           "author": "t",
           "subject": "HyperLink: two-layer ring beside the chat box",
@@ -15379,7 +15379,7 @@
           ]
         },
         {
-          "sha": "674031b",
+          "sha": "674031bd",
           "date": "2026-10-14",
           "author": "t",
           "subject": "HyperLink: hypercompress, tool choice, memories only when told, documents",
@@ -15407,7 +15407,7 @@
           ]
         },
         {
-          "sha": "0364ead",
+          "sha": "0364ead4",
           "date": "2026-10-14",
           "author": "t",
           "subject": "HyperLink chats per account/key, signed prompts, ping; web v2 search",
@@ -15423,7 +15423,7 @@
           ]
         },
         {
-          "sha": "cad7e52",
+          "sha": "cad7e52e",
           "date": "2026-10-14",
           "author": "t",
           "subject": "HyperLink: every loaded model listed, and a chat picks which answers",
@@ -15435,7 +15435,7 @@
           ]
         },
         {
-          "sha": "d69ad9d",
+          "sha": "d69ad9de",
           "date": "2026-10-13",
           "author": "t",
           "subject": "T1 API: POST /inference/relay and the t1.statement/2 billing format",
@@ -15455,14 +15455,14 @@
           ]
         },
         {
-          "sha": "d595eb4",
+          "sha": "d595eb4a",
           "date": "2026-10-06",
           "author": "Claude",
           "subject": "0.72.7 step 2: images on the HyperNix runner; macOS/Linux CI and first Windows fixes",
           "api_changes": []
         },
         {
-          "sha": "203b711",
+          "sha": "203b7112",
           "date": "2026-10-06",
           "author": "Claude",
           "subject": "0.72.7 step 1: link config-less models, `runner auto`, images converted on upload",
@@ -15509,21 +15509,21 @@
       ],
       "changes": [
         {
-          "sha": "ddf4092",
+          "sha": "ddf4092f",
           "date": "2026-09-26",
           "author": "Claude",
           "subject": "0.72.6.post1: version, changelog and docs; simpler path guards",
           "api_changes": []
         },
         {
-          "sha": "eb12198",
+          "sha": "eb12198c",
           "date": "2026-09-26",
           "author": "Claude",
           "subject": "Fix the high-rated security findings",
           "api_changes": []
         },
         {
-          "sha": "604ec86",
+          "sha": "604ec86f",
           "date": "2026-08-20",
           "author": "minerofthesoal",
           "subject": "b2",
@@ -15646,14 +15646,14 @@
       ],
       "changes": [
         {
-          "sha": "bccc73e",
+          "sha": "bccc73ec",
           "date": "2026-08-20",
           "author": "minerofthesoal",
           "subject": "fixes",
           "api_changes": []
         },
         {
-          "sha": "604ec86",
+          "sha": "604ec86f",
           "date": "2026-08-20",
           "author": "minerofthesoal",
           "subject": "b2",
@@ -15802,7 +15802,7 @@
       ],
       "changes": [
         {
-          "sha": "d69ad9d",
+          "sha": "d69ad9de",
           "date": "2026-10-13",
           "author": "t",
           "subject": "T1 API: POST /inference/relay and the t1.statement/2 billing format",
@@ -15814,21 +15814,21 @@
           ]
         },
         {
-          "sha": "99ddc1a",
+          "sha": "99ddc1ae",
           "date": "2026-09-29",
           "author": "Claude",
           "subject": "Security: make Codacy scan again, and clear most Bandit findings",
           "api_changes": []
         },
         {
-          "sha": "eb12198",
+          "sha": "eb12198c",
           "date": "2026-09-26",
           "author": "Claude",
           "subject": "Fix the high-rated security findings",
           "api_changes": []
         },
         {
-          "sha": "604a834",
+          "sha": "604a8342",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
@@ -15888,7 +15888,7 @@
           ]
         },
         {
-          "sha": "f836d29",
+          "sha": "f836d298",
           "date": "2026-08-18",
           "author": "minerofthesoal",
           "subject": "0.71.5b1-part one of four for the api",
@@ -15961,7 +15961,7 @@
       ],
       "changes": [
         {
-          "sha": "3cd859b",
+          "sha": "3cd859b2",
           "date": "2026-09-08",
           "author": "Claude",
           "subject": "0.72.4.dev7 \u2014 what training is doing, and the controls for it",
@@ -16072,7 +16072,7 @@
       ],
       "changes": [
         {
-          "sha": "604a834",
+          "sha": "604a8342",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
@@ -16210,7 +16210,7 @@
       ],
       "changes": [
         {
-          "sha": "3f05aaf",
+          "sha": "3f05aaf6",
           "date": "2026-09-16",
           "author": "Claude",
           "subject": "The version it actually is, the runner from the phone, and edit mode",
@@ -16369,7 +16369,7 @@
       ],
       "changes": [
         {
-          "sha": "d69ad9d",
+          "sha": "d69ad9de",
           "date": "2026-10-13",
           "author": "t",
           "subject": "T1 API: POST /inference/relay and the t1.statement/2 billing format",
@@ -16385,7 +16385,7 @@
           ]
         },
         {
-          "sha": "f836d29",
+          "sha": "f836d298",
           "date": "2026-08-18",
           "author": "minerofthesoal",
           "subject": "0.71.5b1-part one of four for the api",
@@ -16546,56 +16546,56 @@
       ],
       "changes": [
         {
-          "sha": "c21dc6d",
+          "sha": "c21dc6db",
           "date": "2026-10-21",
           "author": "Claude",
           "subject": "0.72.8a3: T1 v1.1.26.10.2.0, changelog, docs and examples/t1api",
           "api_changes": []
         },
         {
-          "sha": "3c38942",
+          "sha": "3c389423",
           "date": "2026-10-14",
           "author": "t",
           "subject": "T1 v1.1.26.10.1.0; the model's web_search uses /web/v2",
           "api_changes": []
         },
         {
-          "sha": "6b7f693",
+          "sha": "6b7f6932",
           "date": "2026-09-22",
           "author": "Claude",
           "subject": "0.72.6 pt2: gather, Vera, neo_oven presets, hub 1.x, T1 v1.1",
           "api_changes": []
         },
         {
-          "sha": "2324f0f",
+          "sha": "2324f0fa",
           "date": "2026-09-15",
           "author": "Mason",
           "subject": "t1 v1.0.26.9.2.3: sign up for a key without already having one",
           "api_changes": []
         },
         {
-          "sha": "547dfa4",
+          "sha": "547dfa47",
           "date": "2026-09-02",
           "author": "Claude",
           "subject": "T1 v1.0.2026.9.2.1: the governed inference surface",
           "api_changes": []
         },
         {
-          "sha": "eab3065",
+          "sha": "eab30655",
           "date": "2026-08-27",
           "author": "Claude",
           "subject": "T1 v1.0.2026.8.1.1: server IDs advance, and undo/redo actually works",
           "api_changes": []
         },
         {
-          "sha": "370119d",
+          "sha": "370119db",
           "date": "2026-08-26",
           "author": "Claude",
           "subject": "T1 v1.0.26.8.1.0: T2 recognition, auth undo/redo, and backups",
           "api_changes": []
         },
         {
-          "sha": "c7eabfd",
+          "sha": "c7eabfd7",
           "date": "2026-08-23",
           "author": "Claude",
           "subject": "T1 v1.0.26.8.0.1: the LM Studio bridge and HyperLink",
@@ -16798,14 +16798,14 @@
       ],
       "changes": [
         {
-          "sha": "a97d518",
+          "sha": "a97d518a",
           "date": "2026-09-15",
           "author": "Claude",
           "subject": "docs: a README that describes this release, and two claims made true",
           "api_changes": []
         },
         {
-          "sha": "2324f0f",
+          "sha": "2324f0fa",
           "date": "2026-09-15",
           "author": "Mason",
           "subject": "t1 v1.0.26.9.2.3: sign up for a key without already having one",
@@ -16891,7 +16891,7 @@
       ],
       "changes": [
         {
-          "sha": "0364ead",
+          "sha": "0364ead4",
           "date": "2026-10-14",
           "author": "t",
           "subject": "HyperLink chats per account/key, signed prompts, ping; web v2 search",
@@ -17061,7 +17061,7 @@
       ],
       "changes": [
         {
-          "sha": "d595eb4",
+          "sha": "d595eb4a",
           "date": "2026-10-06",
           "author": "Claude",
           "subject": "0.72.7 step 2: images on the HyperNix runner; macOS/Linux CI and first Windows fixes",
@@ -17077,21 +17077,21 @@
           ]
         },
         {
-          "sha": "6066ce5",
+          "sha": "6066ce53",
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "ci: magnesium without psutil, Windows paths, and CodeQL's findings",
           "api_changes": []
         },
         {
-          "sha": "bca36d0",
+          "sha": "bca36d0f",
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "0.72.6 pt2: hyperchat, and three things HyperLink was showing wrong",
           "api_changes": []
         },
         {
-          "sha": "53a7eec",
+          "sha": "53a7eec3",
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "0.72.6 pt2: dilute, /web/v1 keyless search, and eth's dead band",
@@ -17280,7 +17280,7 @@
       ],
       "changes": [
         {
-          "sha": "0364ead",
+          "sha": "0364ead4",
           "date": "2026-10-14",
           "author": "t",
           "subject": "HyperLink chats per account/key, signed prompts, ping; web v2 search",
@@ -17346,35 +17346,35 @@
       ],
       "changes": [
         {
-          "sha": "eab3065",
+          "sha": "eab30655",
           "date": "2026-08-27",
           "author": "Claude",
           "subject": "T1 v1.0.2026.8.1.1: server IDs advance, and undo/redo actually works",
           "api_changes": []
         },
         {
-          "sha": "370119d",
+          "sha": "370119db",
           "date": "2026-08-26",
           "author": "Claude",
           "subject": "T1 v1.0.26.8.1.0: T2 recognition, auth undo/redo, and backups",
           "api_changes": []
         },
         {
-          "sha": "c7eabfd",
+          "sha": "c7eabfd7",
           "date": "2026-08-23",
           "author": "Claude",
           "subject": "T1 v1.0.26.8.0.1: the LM Studio bridge and HyperLink",
           "api_changes": []
         },
         {
-          "sha": "879b000",
+          "sha": "879b000b",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5rc2 \u2014 T1 API Beta 4, hyped-pro, and PATH setup",
           "api_changes": []
         },
         {
-          "sha": "3e60ff8",
+          "sha": "3e60ff82",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3 (part 2/3): complete SDK, full waiter TUI, smoke tool",
@@ -17936,14 +17936,14 @@
       ],
       "changes": [
         {
-          "sha": "99ddc1a",
+          "sha": "99ddc1ae",
           "date": "2026-09-29",
           "author": "Claude",
           "subject": "Security: make Codacy scan again, and clear most Bandit findings",
           "api_changes": []
         },
         {
-          "sha": "c76677d",
+          "sha": "c76677db",
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "t1sdk: server info, conceal, and v2.1 kits as a credential",
@@ -17979,7 +17979,7 @@
           ]
         },
         {
-          "sha": "797be9d",
+          "sha": "797be9d8",
           "date": "2026-08-23",
           "author": "Claude",
           "subject": "HyperLink for iOS, the waiter commands, and the release plumbing",
@@ -18039,7 +18039,7 @@
           ]
         },
         {
-          "sha": "879b000",
+          "sha": "879b000b",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5rc2 \u2014 T1 API Beta 4, hyped-pro, and PATH setup",
@@ -18051,7 +18051,7 @@
           ]
         },
         {
-          "sha": "3e60ff8",
+          "sha": "3e60ff82",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3 (part 2/3): complete SDK, full waiter TUI, smoke tool",
@@ -18254,7 +18254,7 @@
       ],
       "changes": [
         {
-          "sha": "3e60ff8",
+          "sha": "3e60ff82",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3 (part 2/3): complete SDK, full waiter TUI, smoke tool",
@@ -18519,7 +18519,7 @@
       ],
       "changes": [
         {
-          "sha": "3e60ff8",
+          "sha": "3e60ff82",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3 (part 2/3): complete SDK, full waiter TUI, smoke tool",
@@ -18722,14 +18722,14 @@
       ],
       "changes": [
         {
-          "sha": "99ddc1a",
+          "sha": "99ddc1ae",
           "date": "2026-09-29",
           "author": "Claude",
           "subject": "Security: make Codacy scan again, and clear most Bandit findings",
           "api_changes": []
         },
         {
-          "sha": "c76677d",
+          "sha": "c76677db",
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "t1sdk: server info, conceal, and v2.1 kits as a credential",
@@ -18741,7 +18741,7 @@
           ]
         },
         {
-          "sha": "3e60ff8",
+          "sha": "3e60ff82",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3 (part 2/3): complete SDK, full waiter TUI, smoke tool",
