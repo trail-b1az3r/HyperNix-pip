@@ -676,7 +676,9 @@ actor HyperLinkClient {
         attachmentIDs: [String],
         modelID: String?,
         regenerate: Bool = false,
-        pressedAt: Date = Date()
+        pressedAt: Date = Date(),
+        datasets: [DatasetPick] = [],
+        codeSandboxID: String? = nil
     ) async throws -> URLRequest {
         guard let base = currentEndpoint else { throw HyperLinkError.notConfigured }
         let signature = try await prepareSignature(
@@ -693,10 +695,16 @@ actor HyperLinkClient {
             /// would put the same question in the thread twice.
             let regenerate: Bool
             let signature: PromptSignature?
+            /// Parts of attached datasets to give the model (0.72.8a3). A
+            /// dataset attached without one gets its first rows.
+            let datasets: [DatasetPick]
+            /// A /code sandbox the model works in for this turn (0.72.8a3).
+            let code_sandbox_id: String?
         }
         let body = try encoder.encode(
             Body(content: content, attachment_ids: attachmentIDs, model_id: modelID,
-                 stream: true, regenerate: regenerate, signature: signature)
+                 stream: true, regenerate: regenerate, signature: signature,
+                 datasets: datasets, code_sandbox_id: codeSandboxID)
         )
         var request = try makeRequest(
             base: base,

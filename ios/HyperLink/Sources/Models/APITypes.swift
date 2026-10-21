@@ -383,6 +383,20 @@ struct Attachment: Decodable, Identifiable, Hashable, Sendable {
 
 struct AttachmentResponse: Decodable, Sendable { let file: Attachment }
 
+/// Part of an attached dataset to give the model with a message (0.72.8a3):
+/// JSONL, JSON, Parquet, CSV/TSV, Arrow, text or Markdown. Empty fields mean
+/// the first 20 rows, or the whole file when it is small.
+struct DatasetPick: Codable, Sendable, Hashable {
+    var file_id: String
+    /// "0-20", "100-", "5", or "-10" for the last ten.
+    var rows: String = ""
+    var columns: [String] = []
+    /// Only rows containing this; "re:<pattern>" for a regex.
+    var query: String = ""
+    var sample: Int = 0
+    var style: String = "auto"
+}
+
 // MARK: - LM Studio bridge
 
 struct BridgeModel: Decodable, Identifiable, Hashable, Sendable {
