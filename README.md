@@ -4,7 +4,7 @@
 </p>
 
 <p align="center">
-  <img alt="PyPI" src="https://img.shields.io/badge/PyPI-v0.72.8a2-ff2d55?style=for-the-badge&logo=pypi&logoColor=white" />
+  <img alt="PyPI" src="https://img.shields.io/badge/PyPI-v0.72.8a3-ff2d55?style=for-the-badge&logo=pypi&logoColor=white" />
   <img alt="Python" src="https://img.shields.io/badge/Python-3.12--3.15-00c9ff?style=for-the-badge&logo=python&logoColor=white" />
   <img alt="License" src="https://img.shields.io/badge/License-HOS--1.1%20/%20Apache--2.0-00c853?style=for-the-badge" />
   <a href="https://github.com/trail-b1az3r/HyperNix-pip/blob/main/wiki/T1-API.md#the-public-server-counter"><img alt="Public T1 servers" src="https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Ftrail-b1az3r%2FHyperNix-pip%2Fmain%2Fdocs%2Fpublic%2Fv1%2Ft1-counter-badge.json&style=for-the-badge" /></a>

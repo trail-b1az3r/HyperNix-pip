@@ -58,18 +58,18 @@ Response `200`:
   "host_id": "",
   "server_id": "",
   "t1_api_version": "<t1_api_version>",
-  "t1_api_version_long": "1.1.2026.10.1.0",
+  "t1_api_version_long": "1.1.2026.10.2.0",
   "t1_version": {
-    "short": "1.1.26.10.1.0",
-    "long": "1.1.2026.10.1.0",
-    "display": "t1 v1.1.26.10.1.0",
+    "short": "1.1.26.10.2.0",
+    "long": "1.1.2026.10.2.0",
+    "display": "t1 v1.1.26.10.2.0",
     "generation": "1.1",
     "release": "2026-10",
     "api": 1,
     "major": 1,
     "year": 2026,
     "month": 10,
-    "feature": 1,
+    "feature": 2,
     "fix": 0
   },
   "hypernix_version": "<hypernix_version>",
@@ -135,6 +135,14 @@ Response `200`:
     "lmstudio_discovery": false,
     "hyperlink_enabled": true,
     "mcp_enabled": false,
+    "anthropic_enabled": true,
+    "mcp_remote_enabled": true,
+    "mcp_hugging_face": false,
+    "net_remote_run": false,
+    "public": false,
+    "public_counter": true,
+    "counter_host": false,
+    "claude_code_model": "",
     "hyperchat_multi": false,
     "hyperchat_instances": 0,
     "hyperchat_max_queued": 256,
@@ -914,7 +922,7 @@ Response `200`:
     "status": "unknown",
     "capabilities": [],
     "tags": {},
-    "registered_by": "96dff3e5-802d-406f-bcc3-22a878a717b2",
+    "registered_by": "b3d73464-82b5-43b3-9468-a2ad9963d9fe",
     "created_at": "<created_at>",
     "updated_at": "<updated_at>",
     "last_seen": null
@@ -938,7 +946,7 @@ Response `200`:
       "status": "unknown",
       "capabilities": [],
       "tags": {},
-      "registered_by": "96dff3e5-802d-406f-bcc3-22a878a717b2",
+      "registered_by": "b3d73464-82b5-43b3-9468-a2ad9963d9fe",
       "created_at": "<created_at>",
       "updated_at": "<updated_at>",
       "last_seen": null
@@ -949,7 +957,7 @@ Response `200`:
 }
 ```
 
-### `PATCH /servers/62b37bab7b1b4a0a93f7977d59ca1adc` *(authenticated)*
+### `PATCH /servers/8878ce93720c4ad1b1ea5d87cff792bd` *(authenticated)*
 
 Promotion is audited — it is the gate every module push checks.
 
@@ -973,7 +981,7 @@ Response `200`:
     "status": "unknown",
     "capabilities": [],
     "tags": {},
-    "registered_by": "96dff3e5-802d-406f-bcc3-22a878a717b2",
+    "registered_by": "b3d73464-82b5-43b3-9468-a2ad9963d9fe",
     "created_at": "<created_at>",
     "updated_at": "<updated_at>",
     "last_seen": null
@@ -1011,7 +1019,7 @@ Response `400`:
 }
 ```
 
-### `DELETE /servers/62b37bab7b1b4a0a93f7977d59ca1adc` *(authenticated)*
+### `DELETE /servers/8878ce93720c4ad1b1ea5d87cff792bd` *(authenticated)*
 
 Destructive operations need ?confirm=true.
 
@@ -1052,7 +1060,7 @@ Response `200`:
     "module_id": "<module_id>",
     "name": "demo-module",
     "version": "1.0.0",
-    "owner_key_id": "f64f1454-d941-4b94-82e5-af9aa64352b3",
+    "owner_key_id": "0870d77d-58f8-478d-bf54-f0c97b02aebb",
     "status": "draft",
     "source_type": "none",
     "source_url": null,
@@ -1078,7 +1086,7 @@ Response `200`:
       "module_id": "<module_id>",
       "name": "demo-module",
       "version": "1.0.0",
-      "owner_key_id": "f64f1454-d941-4b94-82e5-af9aa64352b3",
+      "owner_key_id": "0870d77d-58f8-478d-bf54-f0c97b02aebb",
       "status": "draft",
       "source_type": "none",
       "source_url": null,
@@ -1126,7 +1134,7 @@ Response `429`:
     "details": {
       "rule": "expensive_operations",
       "subject_kind": "key",
-      "retry_after_seconds": 5.72,
+      "retry_after_seconds": 5.7,
       "cost": 10.0
     }
   },
@@ -1134,7 +1142,7 @@ Response `429`:
 }
 ```
 
-### `POST /modules/5da49c16c5b34f74b4a0f381fa38dbd9/deploy` *(authenticated)*
+### `POST /modules/f4d452e953a249d1b75e8e93905e400d/deploy` *(authenticated)*
 
 Multi-server deployment. Every target is trust-checked before the job is queued.
 
@@ -1263,7 +1271,7 @@ Response `200`:
 ```json
 {
   "account_type": "user",
-  "account_id": "f64f1454-d941-4b94-82e5-af9aa64352b3",
+  "account_id": "0870d77d-58f8-478d-bf54-f0c97b02aebb",
   "balance": 0.0,
   "request_id": "<request_id>"
 }
@@ -1358,12 +1366,12 @@ Response `200`:
     {
       "transaction_id": "<transaction_id>",
       "account_type": "user",
-      "account_id": "f64f1454-d941-4b94-82e5-af9aa64352b3",
+      "account_id": "0870d77d-58f8-478d-bf54-f0c97b02aebb",
       "amount": 25.0,
       "kind": "redeem",
       "balance_after": 25.0,
       "note": "payment token redemption",
-      "created_by": "f64f1454-d941-4b94-82e5-af9aa64352b3",
+      "created_by": "0870d77d-58f8-478d-bf54-f0c97b02aebb",
       "created_at": "<created_at>"
     }
   ],
@@ -1409,7 +1417,7 @@ Response `200`:
       "cidr": "203.0.113.0/24",
       "kind": "block",
       "reason": "abuse",
-      "created_by": "96dff3e5\u2026",
+      "created_by": "b3d73464\u2026",
       "created_at": "<created_at>",
       "expires_at": null,
       "expired": false
@@ -1443,7 +1451,7 @@ Response `200`:
       "cidr": "100.64.0.0/10",
       "kind": "allow",
       "reason": "tailnet",
-      "created_by": "96dff3e5\u2026",
+      "created_by": "b3d73464\u2026",
       "created_at": "<created_at>",
       "expires_at": null,
       "expired": false
@@ -1453,7 +1461,7 @@ Response `200`:
       "cidr": "203.0.113.0/24",
       "kind": "block",
       "reason": "abuse",
-      "created_by": "96dff3e5\u2026",
+      "created_by": "b3d73464\u2026",
       "created_at": "<created_at>",
       "expires_at": null,
       "expired": false

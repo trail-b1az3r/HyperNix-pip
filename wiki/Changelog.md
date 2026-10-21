@@ -34,6 +34,198 @@ Historical wording and technical detail are retained during format normalization
 
 > Format normalized to `wiki/Changelog-guide.md`; release wording and historical detail are preserved.
 
+## 0.72.8a3 — 2026-10-21
+
+### Added
+
+๋࣭⭑ **Claude Code on models running in HyperNix.** T1 speaks the
+  Anthropic Messages API: `POST /v1/messages` (streamed or not, tools,
+  images, `thinking`, stop sequences), `POST /v1/messages/count_tokens`
+  and `GET /v1/models`, translated to and from the server's own chat. A
+  registered model takes the governed path with its plan and quota;
+  `claude-*` names Claude Code asks for by itself go to
+  `T1_CLAUDE_CODE_MODEL` or the loaded model. Usage is metered, and
+  errors use Anthropic's envelope.
+  ([T1-API § The Anthropic Messages API](T1-API.md#the-anthropic-messages-api))
+✨ **`hnx claude`** (also `claude-code`) sets `ANTHROPIC_BASE_URL`,
+  `ANTHROPIC_AUTH_TOKEN` and the model variables for a T1 server and
+  starts Claude Code; `--print-env` prints them instead, and arguments
+  after `--` go to `claude`.
+
+๋࣭⭑ **hnx0xv2image, a custom image-to-text arch.** A ViT encoder and a
+  2×2 pixel-unshuffle projector whose outputs are spliced into the
+  embeddings at `<image>` placeholders, so the text model is untouched.
+  It fuses with any non-VL LFM2/LFM2.5 (dense or MoE), any Qwen3.5, and
+  any HyperNix (Brewer) model, and refuses `-vl` models. The image half
+  trains on its own (`projector`, `image`, `text` or `all` stages,
+  AdamW or the c4 optimizer), and a fused model splits back into its
+  halves. ([HNX0xV2Image](HNX0xV2Image.md))
+✨ **`hnx image`**: `new` (tiny, small, base presets), `fuse`, `train`,
+  `caption`, `split` and `info`.
+
+๋࣭⭑ **MCP both ways.** T1's `/mcp` negotiates protocol 2025-11-25 down to
+  2024-11-05 and does Streamable HTTP properly (`Mcp-Session-Id`, `405`
+  for an event-stream GET, `DELETE` ends a session), so the official SDK
+  and Claude Code connect to it. T1 is also a client of remote MCP
+  servers — Hugging Face's (`T1_MCP_HF=1`) or any listed in
+  `mcp-servers.json` or `T1_MCP_REMOTE` — and offers their tools on
+  `/mcp` as `<server>.<tool>` and to HyperLink's model.
+  ([T1-API § Remote MCP servers](T1-API.md#remote-mcp-servers-hugging-faces-and-others))
+✨ `/mcp/remote`: list, add and remove servers (admins), list a server's
+  tools, and call one.
+
+✨ **Net in the T1 API.** Everything `hnx net` did — status, peers,
+  ping, expose, setup steps, trusting peers, syncing storage, and
+  checking, running and stopping a file on another machine — is the
+  admin-only `/net` routes. Remote runs stay off unless
+  `T1_NET_REMOTE_RUN=1`. ([T1-API § Net](T1-API.md#net))
+
+✨ **A live count of public T1 servers.** A public server running T1
+  v1.1.26.10.1.0 or newer sends one heartbeat an hour (a hashed random
+  id and its versions, never an address) unless `T1_PUBLIC_COUNTER=0`.
+  `T1_COUNTER_HOST=1` makes a server the counter (`POST
+  /counter/heartbeat`, `GET /counter`), and an hourly workflow turns its
+  summary into the README's badge.
+  ([T1-API § The public-server counter](T1-API.md#the-public-server-counter))
+
+๋࣭⭑ **HyperLink: a Code section.** A chat can work in a `/code`
+  sandbox (`code_sandbox_id`): the model gets tools to list, read (by
+  line range), search, write, edit and run its files and use git, held
+  to the sandbox's permissions, and a read-only caller gets only the
+  reading tools. On the web, the new **Code** tab makes and deletes
+  sandboxes, edits, saves, runs and searches files, copies attachments
+  in, does git (status, diff, log, branches, init, commit, check out,
+  clone), and binds the sandbox to the chat.
+✨ `/code` sandboxes get **git** (`POST /code/sandbox/{id}/git`),
+  **search** (`GET .../search`) and **import** of HyperLink attachments
+  (`POST .../import`).
+  ([T1-API § git, search and import](T1-API.md#git-search-and-import-0728a3))
+
+๋࣭⭑ **HyperLink: parts of datasets in a chat.** JSONL, JSON, Parquet,
+  CSV/TSV, Arrow, text and Markdown files attached to a message reach
+  the model as an excerpt — the first 20 rows, or the whole file when it
+  is small — or the part chosen with `datasets`: rows, columns, a search
+  or regex (a heading's section in Markdown), a random sample, and how
+  rows are written. `POST /hyperlink/datasets/preview` shows exactly
+  what the model will get. On the web, 📎 attaches files (or drop them
+  on the chat) and ▤ chooses and previews a dataset's part.
+  ([T1-API § Datasets, code sessions and Markdown](T1-API.md#datasets-code-sessions-and-markdown-0728a3))
+
+✨ **HyperLink renders full Markdown**: CommonMark, GitHub Flavored
+  Markdown (tables, task lists, strikethrough, autolink literals,
+  footnotes) and Markdown Extra (heading ids and classes, definition
+  lists, abbreviations, fenced-code attributes), on the web
+  (`web/markdown.js`) and in the iOS app.
+
+✨ **`hnx auto <owner/repo>`**: downloads a Hugging Face repo; a GGUF
+  repo gives the file for the asked quant, anything else is converted
+  with llama.cpp's `convert_hf_to_gguf.py` (from its release tag, or the
+  `llama-cpp-python` sdist on PyPI, SHA-256 checked), then quantised to
+  each type asked for — HyperNix's own types by hyprslug, IQ and TQ
+  types by `llama-quantize`.
+✨ **`hnx extra`**: the less-used commands now live there — `neuron`,
+  `pipeline`, `assistant`, `generate`, `wiki`, `prot`, `oven`, `path`,
+  `map`, `tvtop`, `cctvtop`, `camo`, `websearch` and `scavenger` — and
+  `hnx` alone shows the short menu. Every command still runs as before.
+𖥔 `hnx tvtopmax` and `hnx hypedpro` are in the menu; `hnx fllq` is
+  `fetch-llama-quantize`.
+
+### Changed
+
+🔁 `hnx download owner/repo:Q4_K_M` takes a quant, finds split GGUFs,
+  names the folder after the repo, and says plainly when a repo is
+  missing, gated or private.
+🔁 `hnx pipeline` runs real speech models (MMS TTS and Whisper ASR by
+  default) instead of a placeholder.
+🔁 `hnx camo` loads GGUFs and links and takes `-P` (prompts file), `-o`,
+  `--lr` and `--max-new-tokens`.
+
+### API Changes
+
+🔗 T1 API **v1.1.26.10.2.0** (generation 1.1; every 1.1 client is still
+  accepted): `/v1/messages`, `/v1/messages/count_tokens`, `/v1/models`,
+  `/mcp/remote/*`, `DELETE /mcp`, `/net/*`, `/counter/*`,
+  `/hyperlink/datasets/preview`, `datasets` and `code_sandbox_id` on
+  HyperLink chat requests, and `/code/sandbox/{id}/git`, `/search` and
+  `/import`.
+🔗 New settings: `T1_ANTHROPIC_ENABLED`, `T1_CLAUDE_CODE_MODEL`,
+  `T1_MCP_REMOTE_ENABLED`, `T1_MCP_SERVERS_FILE`, `T1_MCP_REMOTE`,
+  `T1_MCP_HF`, `T1_NET_REMOTE_RUN`, `T1_PUBLIC`, `T1_PUBLIC_COUNTER`,
+  `T1_PUBLIC_COUNTER_URL` and `T1_COUNTER_HOST`.
+
+### Security
+
+🔒 git in a sandbox runs no hooks or fsmonitor, reads none of the
+  person's git configuration, never prompts, speaks only `https://`, and
+  clones only with the sandbox's network permission; paths and refs are
+  checked, and every change is audited.
+🔒 Remote MCP servers outside the machine and tailnet must use https;
+  adding one needs an admin, tokens are never listed, and a server can
+  be marked admin-only.
+🔒 Markdown on the web escapes first: raw HTML stays text apart from a
+  few attribute-free inline tags, and links and images are only `http`,
+  `https`, `mailto`, relative, or `data:image`.
+
+### Fixed
+
+𖢥 **`hnx prot` no longer locks the screen.** It blanks the display
+  with power saving (Mutter's `PowerSaveMode` on GNOME, `kscreen-doctor`
+  on KDE) instead of the screensaver, turns the desktop's auto-lock off
+  while it runs, and puts it back on exit, on SIGTERM/SIGHUP, or with
+  `hnx prot restore` after a crash.
+🐛 `hnx camo` trained the wrong way (the loss's sign) on the prompt
+  rather than the reply, and misread scores.
+🐛 `hnx websearch` returned Bing's and DuckDuckGo's redirect links
+  instead of the pages.
+🐛 `hnx scavenger` crashed on datasets with no row count and on
+  `datetime.UTC`.
+🐛 `hnx wiki` left out packages outside a category (`c4`,
+  `t1api.anthropic`, ...).
+🐛 GGUF conversion failed on negative or list-valued token ids.
+🐛 c4's tests could see NaN losses: rotary buffers were left
+  uninitialised when a model was materialised.
+
+### Deprecated
+
+❌ `hnx net` is deprecated in favour of the T1 API's `/net` routes; each
+  subcommand says which route replaced it.
+
+### Documentation
+
+📚 [T1-API](T1-API.md): the Anthropic Messages API, remote MCP, Net, the
+  counter, datasets, code sessions and Markdown, sandbox git;
+  [HNX0xV2Image](HNX0xV2Image.md) (new); [CLI](CLI.md): `auto`, `extra`,
+  `claude`, `image`, `tvtopmax`, `hypedpro`, `fllq` and the fixed
+  commands; [Home](Home.md).
+📚 `examples/t1api`: `claude_code.sh`, `mcp-servers.example.json` and
+  `hyperlink_datasets_and_code.sh`, the README's new sections, every new
+  setting in `.env.example`, and regenerated `API-EXAMPLES.md` and
+  `openapi.json`.
+
+### Tests
+
+🧪 The Messages API and its streaming, hnx0xv2image (fusing LFM2, Qwen3.5
+  and Brewer models, training, splitting), remote MCP against a live
+  server, `/net`, the counter, the moved and fixed commands, `prot` not
+  locking, Markdown under node (CommonMark, GFM, Extra and the escaping
+  cases), dataset excerpts, code tools and sandbox git, and the web
+  page's new wiring.
+
+### Known Issues
+
+❗ The iOS changes (Markdown block types; dataset parts and the sandbox
+  on chat requests) were not compiled: there is no Swift toolchain in
+  the build environment. The iOS app has no Code view yet.
+❗ The counter badge reads "counter not hosted yet" until a server runs
+  with `T1_COUNTER_HOST=1` and its address is published in
+  `docs/public/v1/t1-counter-endpoint.json` (or the
+  `T1_COUNTER_SUMMARY_URL` repository variable).
+❗ `hnx auto`'s download of the converter from GitHub was not exercised
+  (GitHub was unreachable from the build environment); the PyPI path
+  was. GPU paths were exercised on the CPU only.
+❗ DuckDuckGo may answer with a bot check; web search then falls back to
+  Bing.
+
 ## 0.72.8a2 — 2026-10-20
 
 ### Added

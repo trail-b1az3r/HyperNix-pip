@@ -317,7 +317,7 @@ class TestTheVersionTheRequestAskedFor:
             [sys.executable, str(IOS / "scripts" / "app_version.py")],
             capture_output=True, text=True, encoding="utf-8", errors="replace", check=True,
         ).stdout.strip()
-        assert printed == "1.1.26.10.1.0"
+        assert printed == "1.1.26.10.2.0"
 
 
 class TestTheRunnerReachesTheApp:

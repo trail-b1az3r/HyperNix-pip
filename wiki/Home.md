@@ -13,7 +13,7 @@ reachable if you already knew the filename. Fixed.)
 
 | Guide | Covers |
 |---|---|
-| [CLI](CLI.md) | Every subcommand (all 41), every companion command, every flag, typical invocations. |
+| [CLI](CLI.md) | Every subcommand (the short `hnx` menu and `hnx extra`), every companion command, every flag, typical invocations. |
 | [Architecture](Architecture.md) | Generated chart of the package's subsystems and how they connect, rebuilt by the `arch-map` workflow. |
 | [HyperNix Studio](../desktop/README.md) | The Qt desktop client: models, chat, a workspace the model may edit, and why it cannot run a command. |
 | [ggml-hnx](../native/ggml-hnx/README.md) | Building a llama.cpp that reads every HyperNix type (sub-bit, codebook, FP8) and runs Q8_K weights. |
@@ -116,6 +116,7 @@ reachable if you already knew the filename. Fixed.)
 | Guide | Covers |
 |---|---|
 | [C4](C4.md) | `hypernix.c4` — explode a model (safetensors, `.pt` or GGUF, on the GPU) into mstems, stems, Pdials, mdials and dials; measure and test them; find what is unneeded or most worth training; `reap` the best layers and weights and `sow` them into a new model; the separate-and-check c4 optimizer. |
+| [HNX0xV2Image](HNX0xV2Image.md) | `hnx image` — the hnx0xv2image image-to-text arch: a vision encoder and projector trained on its own, then fused with any non-VL LFM2/LFM2.5, any Qwen3.5, or any HyperNix model, without changing the text model. |
 | [Whisk](Whisk.md) | Checkpoint averaging — SWA / EMA / geometric-mean over N saved snapshots. |
 | [RecipeBook](RecipeBook.md) | Named-config registry (`cook(name, **overrides)`), the backing store for `hypernix brew`. |
 | [DeepFryer](DeepFryer.md) | Reversible weight-noise perturbation — a regularizer or a severe stress-test. |
@@ -136,7 +137,7 @@ reachable if you already knew the filename. Fixed.)
 
 | Guide | Covers |
 |---|---|
-| [T1-API](T1-API.md) | `hypernix.t1api` — controlled HTTP gateway into HyperNix-pip (model registry, auth, routing, modules, servers, jobs, events, billing, the LM Studio bridge, HyperLink and HyperLink on the web, web accounts, MCP, backups, governed inference), every route and every setting. Current: **T1 v1.1.26.10.1.0** in 0.72.8a1. |
+| [T1-API](T1-API.md) | `hypernix.t1api` — controlled HTTP gateway into HyperNix-pip (model registry, auth, routing, modules, servers, jobs, events, billing, the LM Studio bridge, HyperLink and HyperLink on the web, web accounts, MCP both ways, Net, the Anthropic Messages API for Claude Code, backups, governed inference), every route and every setting. Current: **T1 v1.1.26.10.2.0** in 0.72.8a3. |
 | [T1-API Security Checklist](T1-API-Security-Checklist.md) | What to check before exposing a deployment — one page, per-item, with the config field each maps to, including every opt-in feature and keeping the server current. |
 | [HyperLink-OnDevice](HyperLink-OnDevice.md) | HyperLink's on-phone models: search Hugging Face, download a GGUF and run it on the iPhone. |
 | [HyperLink-Sync](HyperLink-Sync.md) | HyperLink's sync, push notifications and search — how a phone that sleeps catches up. |

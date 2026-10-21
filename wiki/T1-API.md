@@ -5,11 +5,15 @@ mountable into any Python server. The client requests an operation; the
 server decides what exists, what's available, and how much is left — see
 [Design principle](#design-principle).
 
-**Status: T1 v1.1.26.10.1.0** (long form `1.1.2026.10.1.0`) in
-`0.72.8a1`: the 1.1 generation, which began with T1 v1.1.26.9.0.0 in
+**Status: T1 v1.1.26.10.2.0** (long form `1.1.2026.10.2.0`) in
+`0.72.8a3`: the 1.1 generation, which began with T1 v1.1.26.9.0.0 in
 `0.72.5.post15`, plus [web search v2](#web-search-v2),
-[signed prompts](#signed-prompts-and-the-ping) and
-[chats owned by an account or a key](#ownership). The betas ended at
+[signed prompts](#signed-prompts-and-the-ping),
+[chats owned by an account or a key](#ownership),
+[the Anthropic Messages API](#the-anthropic-messages-api) for Claude Code,
+[remote MCP servers](#remote-mcp-servers-hugging-faces-and-others),
+[Net](#net), [the public-server counter](#the-public-server-counter), and
+[dataset parts and code sessions in HyperLink](#datasets-code-sessions-and-markdown-0728a3). The betas ended at
 v1.0.26.8.0.1. This page is the living contract for what's actually
 implemented vs. planned; cross-reference against the
 [Roadmap](#roadmap) before assuming an endpoint exists.
@@ -2439,6 +2443,30 @@ off by default. Sandboxes live in `T1_CODE_SANDBOX_DIR` (a temporary
 folder by default); a caller may hold eight, another caller's sandbox is
 a `404`, and every run is audited before it starts.
 
+#### git, search and import (0.72.8a3)
+
+| Route | What it does | Needs |
+|---|---|---|
+| `POST /code/sandbox/{id}/git` | `{"op": "status"}`, and `diff`, `log`, `show`, `branch`, `init`, `add`, `commit`, `checkout`, `restore`, `clone` | reading ops: any caller who may read the sandbox; the rest: admin or `write` |
+| `GET /code/sandbox/{id}/search?q=&glob=&regex=` | lines containing `q` in the sandbox's text files | read |
+| `POST /code/sandbox/{id}/import` | `{"file_id": "...", "path": "data/qa.jsonl"}` copies one of your HyperLink attachments in | admin or `write` |
+
+```bash
+curl -s -X POST "$T1/code/sandbox/$BOX/git" -H "Authorization: Bearer $KEY" \
+  -H 'Content-Type: application/json' -d '{"op": "clone", "url": "https://github.com/owner/repo.git"}'
+curl -s -X POST "$T1/code/sandbox/$BOX/git" -H "Authorization: Bearer $KEY" \
+  -H 'Content-Type: application/json' -d '{"op": "commit", "message": "first", "all": true}'
+```
+
+Each op is a fixed argv run in the sandbox's folder, and git is told not
+to run anything it finds there: hooks and `core.fsmonitor` are off, the
+person's own git configuration is not read (`HOME` is the sandbox,
+`GIT_CONFIG_NOSYSTEM`), nothing waits for a password, and only
+`https://` is spoken: no `file://`, `ssh` or `ext::`. Cloning needs the
+sandbox's network (`s2`). Paths are checked to stay in the sandbox and
+refs to be refs. Every op that changes something is audited, and the
+file list leaves out `.git`'s insides.
+
 ### Several prompts at once
 
 `GET /runner/hyperchat` says whether prompts run side by side or wait in
@@ -2555,7 +2583,7 @@ with no key where trusted-network mode allows that origin, otherwise
 with a HyperLink pairing code or a key, which that browser keeps.
 
 `T1_WEB_ENABLED=0` or `T1_WEB_PORT=0` turns it off. The page is served
-from a fixed list of four files with a strict content security policy,
+from a fixed list of files with a strict content security policy,
 and every other path is the T1 API itself.
 
 If it does not open (0.72.6.post2):
@@ -2580,6 +2608,56 @@ If it does not open (0.72.6.post2):
 - A message with no reply now shows why, in red. "No LM Studio server
   answering" means nothing is serving a model: load one from the Runner
   tab, or start LM Studio's server.
+
+#### Datasets, code sessions and Markdown (0.72.8a3)
+
+**Parts of datasets.** Attach a JSONL, JSON, Parquet, CSV/TSV, Arrow,
+text or Markdown file and the model is given an excerpt of it with your
+message: the first 20 rows, or the whole file when it is small. To
+choose the part, send a `datasets` entry with the message (the web page's
+▤ button on an attachment builds one and previews it):
+
+```json
+{"content": "Which answers are wrong?",
+ "attachment_ids": ["file_2a93..."],
+ "datasets": [{"file_id": "file_2a93...", "rows": "100-150", "columns": ["question", "answer"],
+               "query": "re:^Why", "sample": 0, "style": "table", "max_chars": 12000}]}
+```
+
+| Field | Means |
+|---|---|
+| `rows` | `0-20`, `100-` (to the end), `5`, or `-10` (the last ten) |
+| `columns` | only these columns |
+| `query` | only rows (or lines) containing this; `re:<pattern>` for a regex. In a Markdown file with no `rows`, the section under the heading that matches |
+| `sample` | a repeatable random sample (`seed`) of this many rows instead of a range |
+| `style` | `auto`, `jsonl`, `table` or `text` |
+| `max_chars` | 500–100 000; the excerpt says when it was cut |
+
+`POST /hyperlink/datasets/preview` takes the same object and answers
+with exactly the text the model would get, `rows_shown`, `rows_total`
+(when known) and `columns`. The choice is kept with the message, so a
+regenerate builds the same context.
+
+**Code sessions.** `code_sandbox_id` on a chat request ties the
+conversation to a [`/code` sandbox](#code-sandboxes). The model gets
+tools for exactly that sandbox: `code_list_files`, `code_read_file` (by
+line range), `code_search` and `code_git` for anyone who may read it,
+and `code_write_file`, `code_edit_file` (replace one exact occurrence)
+and `code_run` (when `s1` allows running) for a caller with `write` or
+admin. They go through the same store as the routes, so the sandbox's
+permissions and budgets bind the model exactly as they bind a person.
+The web page's **Code** tab makes and edits sandboxes, runs files,
+searches, copies attachments in, and does git, and its checkbox (or
+*Chat about it*) binds the sandbox to the chat.
+
+**Markdown.** Replies on the web are rendered as CommonMark, GitHub
+Flavored Markdown (tables, task lists, strikethrough, autolinks,
+footnotes) and Markdown Extra (heading ids and classes, definition
+lists, abbreviations, fenced-code attributes) by `web/markdown.js`, which
+escapes everything first: raw HTML is shown as text apart from a few
+attribute-free inline tags (`kbd`, `sup`, `sub`, `mark`, ...), and links
+are only `http`, `https`, `mailto` or relative. The iOS app renders the
+same block types.
 
 #### Images on the runner (0.72.7)
 
@@ -2939,6 +3017,7 @@ six-part scheme in [Versioning](#versioning) rather than a beta number.
 | **1.0.26.8.0.1** | The [LM Studio bridge](#the-lm-studio-bridge); [HyperLink](#hyperlink) pairing, sessions, attachments and endpoint advertisement; [Hugging Face link merging](#hugging-face-link-merging); the [HyperLink iOS app](../ios/README.md) | **Shipped** |
 | **1.0.26.8.1.1** | The [bootstrap admin key](#the-first-key-a-new-server-has) a fresh server issues itself; [T2P billing keys](#billing-keys-t2p-and-refusing-them) and the server-side policy that can refuse them; the three HyperLink reachability fixes (advertised port, tailnet ATS, Tailscale diagnosis) and [T2S key](#using-a-t2s-key) entry from the app; [undoable](#undoing-an-authentication-change) auth changes and durable server ids | **Shipped** |
 | **1.0.26.9.2.3** | [Web accounts](#web-accounts): sign-up and browser sign-in in four deployment modes (`t1-accounts`), with a keyless caller never an administrator | **Shipped** (0.72.5) |
+| **1.1.26.10.2.0** | [The Anthropic Messages API](#the-anthropic-messages-api) (`/v1/messages`, `/v1/messages/count_tokens`, `/v1/models`) for Claude Code; [remote MCP servers](#remote-mcp-servers-hugging-faces-and-others) (`/mcp/remote`) and MCP 2025-11-25; [Net](#net) (`/net`, replacing `hnx net`); [the public-server counter](#the-public-server-counter); HyperLink [dataset parts, code sessions and Markdown](#datasets-code-sessions-and-markdown-0728a3); [git, search and import](#git-search-and-import-0728a3) in `/code` sandboxes | **Alpha** (0.72.8a3) |
 | **1.1.26.10.1.0** | [Web search v2](#web-search-v2) and `/web/v1/ai/config`; [signed prompts and the ping](#signed-prompts-and-the-ping); chats [owned by an account or a key](#ownership), `/hyperlink/whoami` and `/hyperlink/login`; loaded models, documents, the ring and hypercompress | **Alpha** (0.72.8a1) |
 | **1.1.26.9.0.0** | The 1.1 generation, first shipped in `0.72.5.post15`; a 1.0 client is told to upgrade. The package releases after it added [HyperLink](#hyperlink) titles, compression, memory, images and the shell, [web search](#web-search), [v2.1 keys](#v21-t2c-keys-and-rotorvault), [conceal mode](#conceal-mode-and-36-hour-retention) and [server info](#server-info); the 0.72.6 patches added [HyperLink on the web](#hyperlink-on-the-web-0726post1), moving a model out of LM Studio, and `hypernix-t1 upgrade` — see the [Changelog](Changelog.md) | **Shipped** |
 

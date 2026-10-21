@@ -1,11 +1,11 @@
 {
   "definition": "non-blank source lines across repository code roots: src, scripts, tests, examples, bin, native, docs/src",
-  "total_lines": 237692,
-  "code_files": 792,
+  "total_lines": 244894,
+  "code_files": 819,
   "top_files": [
     {
       "path": "src/hypernix/t1api/routers/hyperlink.py",
-      "lines": 2739
+      "lines": 2822
     },
     {
       "path": "src/hypernix/interfaces/hyped.py",
@@ -21,7 +21,7 @@
     },
     {
       "path": "src/hypernix/t1api/schemas.py",
-      "lines": 1805
+      "lines": 1829
     },
     {
       "path": "src/hypernix/hyped_pro.ts",
@@ -29,7 +29,7 @@
     },
     {
       "path": "src/hypernix/interfaces/cli.py",
-      "lines": 1624
+      "lines": 1640
     },
     {
       "path": "src/hypernix/models/neo_oven.py",
@@ -46,6 +46,10 @@
     {
       "path": "src/hypernix/interfaces/hyped_pro_core.py",
       "lines": 1369
+    },
+    {
+      "path": "src/hypernix/hyperlink/web/app.js",
+      "lines": 1333
     },
     {
       "path": "src/hypernix/data/gather.py",
@@ -118,21 +122,17 @@
     {
       "path": "src/hypernix/__init__.py",
       "lines": 949
-    },
-    {
-      "path": "tests/security/test_v0710_gatekeeper_keymaster.py",
-      "lines": 910
     }
   ],
   "contributors": [
     {
       "author": "Claude",
-      "additions": 222969,
-      "deletions": 15075,
-      "net": 207894,
-      "changes": 238044,
-      "commits": 258,
-      "files": 1644
+      "additions": 232050,
+      "deletions": 15520,
+      "net": 216530,
+      "changes": 247570,
+      "commits": 263,
+      "files": 1670
     },
     {
       "author": "Ray0ffire",
@@ -172,12 +172,12 @@
     },
     {
       "author": "Rayla",
-      "additions": 284,
-      "deletions": 248,
-      "net": 36,
-      "changes": 532,
-      "commits": 24,
-      "files": 6
+      "additions": 1187,
+      "deletions": 1025,
+      "net": 162,
+      "changes": 2212,
+      "commits": 29,
+      "files": 12
     },
     {
       "author": "qwen.ai[bot]",
@@ -199,6 +199,6 @@
     }
   ],
   "history_available": true,
-  "commit": "a3baf7cea8d7babdec3d4710b2b125cc9a4fbe9c",
+  "commit": "8020618a711804f23de11a2dd5e695d0fe5092d4",
   "generated_at": null
 }

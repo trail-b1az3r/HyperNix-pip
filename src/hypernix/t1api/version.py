@@ -295,9 +295,15 @@ def parse_version(text: str) -> T1Version:
 # web admin settings and /web/v1/ai/config, signed HyperLink prompts and
 # /hyperlink/ping, and chats owned by an account or a key. Same
 # generation, so every 1.1 client is still accepted.
-T1_VERSION = T1Version(api=1, major=1, year=2026, month=10, feature=1, fix=0)
-T1_VERSION_SHORT = T1_VERSION.short   # "1.1.26.10.1.0"
-T1_VERSION_LONG = T1_VERSION.long     # "1.1.2026.10.1.0"
+#
+# 1.1.26.10.2.0 (0.72.8a3) takes feature 2: the Anthropic Messages API
+# (/v1/messages, for Claude Code), remote MCP servers (/mcp/remote) and
+# MCP 2025-11-25, /net in place of `hnx net`, the public-server counter,
+# dataset parts and code sandboxes in HyperLink chats, and git, search and
+# import in /code sandboxes. Still generation 1.1.
+T1_VERSION = T1Version(api=1, major=1, year=2026, month=10, feature=2, fix=0)
+T1_VERSION_SHORT = T1_VERSION.short   # "1.1.26.10.2.0"
+T1_VERSION_LONG = T1_VERSION.long     # "1.1.2026.10.2.0"
 
 #: Oldest client this server still answers without a compatibility
 #: warning. Same generation, first release of it — everything from the
