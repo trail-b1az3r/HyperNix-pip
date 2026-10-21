@@ -1095,3 +1095,26 @@ timeline
         : 86d95a05 - wiki/Python-3.15- what was actually tested
 ```
 
+## Release v0.72.8a3 (2026-10-21)
+
+```mermaid
+timeline
+    title Release v0.72.8a3 Commits
+    0.72.8a3
+        : 4b9b188c - Fix the 0.72.8a3 release's test failures
+        : 65a9c16c - chore- refresh generated docs data and release summaries
+        : 5dd2f5ba - 0.72.8a3- the installer's and the iOS app's T1 version fallbacks follow 1.1.26.10.2.0
+        : c21dc6db - 0.72.8a3- T1 v1.1.26.10.2.0, changelog, docs and examples/t1api
+        : 8020618a - HyperLink iOS- the chat request carries dataset parts and a code sandbox
+        : 8acb4c6c - HyperLink web- attach files, choose parts of datasets, Code tab for /code sandboxes
+        : ed2f79bc - chore- refresh generated docs data and release summaries
+        : 677812ea - 0.72.8 pt3 (part 3)- HyperLink Markdown, dataset excerpts, code-session tools
+        : 6b84ede7 - chore- refresh generated docs data and release summaries
+        : e84eba14 - chore- update JSON stats (scheduled)
+        : b01ec7a3 - chore- refresh generated docs data and release summaries
+        : 57773753 - 0.72.8 pt3 (part 2)- MCP both ways, /net in the T1 API, public-server counter
+        : e89afd46 - 0.72.8 pt3 (part 1)- Claude Code on T1, hnx0xv2image, hnx auto/extra, fixed commands
+        : 02232ccd - chore- refresh generated docs data and release summaries
+        : 8c898a8d - chore- refresh generated docs data and release summaries
+```
+

@@ -9,24 +9,54 @@
     "gecko": {
       "id": "browser-agent@hypernix",
       "strict_min_version": "128.0",
-      "data_collection_permissions": { "required": ["none"] }
+      "data_collection_permissions": {
+        "required": [
+          "none"
+        ]
+      }
     }
   },
-  "icons": { "48": "icons/icon.svg", "96": "icons/icon.svg" },
-  "permissions": ["tabs", "scripting", "storage"],
-  "host_permissions": ["<all_urls>"],
-  "background": {
-    "scripts": ["lib/tools.js", "lib/providers.js", "lib/page.js", "lib/agent.js", "background.js"]
+  "icons": {
+    "48": "icons/icon.svg",
+    "96": "icons/icon.svg"
   },
-  "action": { "default_title": "HyperNix Browser Agent", "default_icon": "icons/icon.svg" },
+  "permissions": [
+    "tabs",
+    "scripting",
+    "storage"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "scripts": [
+      "lib/tools.js",
+      "lib/providers.js",
+      "lib/page.js",
+      "lib/agent.js",
+      "background.js"
+    ]
+  },
+  "action": {
+    "default_title": "HyperNix Browser Agent",
+    "default_icon": "icons/icon.svg"
+  },
   "sidebar_action": {
     "default_title": "HyperNix Agent",
     "default_panel": "sidebar/sidebar.html",
     "default_icon": "icons/icon.svg",
     "open_at_install": false
   },
-  "options_ui": { "page": "options/options.html", "open_in_tab": true },
+  "options_ui": {
+    "page": "options/options.html",
+    "open_in_tab": true
+  },
   "commands": {
-    "_execute_sidebar_action": { "suggested_key": { "default": "Alt+Shift+H" }, "description": "Open the HyperNix agent" }
+    "_execute_sidebar_action": {
+      "suggested_key": {
+        "default": "Alt+Shift+H"
+      },
+      "description": "Open the HyperNix agent"
+    }
   }
 }
