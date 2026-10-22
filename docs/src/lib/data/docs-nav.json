@@ -1,0 +1,21 @@
+{
+  "_comment": "The documentation sidebar: groups in order, pages in order. A wiki page not listed here still appears, under More. Read by vite.config.js at build time.",
+  "groups": [
+    { "id": "start", "title": "Getting started", "blurb": "Install it, find your way around the CLI, and get a model running.",
+      "pages": ["Home", "CLI", "Download", "Convert", "Quantization", "Devices", "VRAM", "HuggingFace-Models", "ModelIndex", "Cookbook", "Error-Codes", "macOS-legacy", "Python-3.15"] },
+    { "id": "t1", "title": "T1 API & HyperLink", "blurb": "The server: keys, routes, HyperLink on the phone and the web, Claude Code and MCP.",
+      "pages": ["T1-API", "T1-API-Security-Checklist", "Waiter-TUI", "HyperLink-Sync", "HyperLink-OnDevice", "Context-Relay", "Browser-Agent", "Runtime", "HnxRun", "Llama-Easy"] },
+    { "id": "models", "title": "Models & architectures", "blurb": "The architectures HyperNix builds, fuses and takes apart.",
+      "pages": ["Architectures", "Architecture", "HNX0xV2Image", "C4", "MTP", "Ovens", "Workshop", "Frameworks", "Pascal", "STML", "Dflash2"] },
+    { "id": "quant", "title": "Low-bit & quantisation", "blurb": "Sub-bit GGUFs, self-describing headers and importance matrices.",
+      "pages": ["HyprSlug", "HyprSlug-Headers", "LowBit", "Imatrix"] },
+    { "id": "training", "title": "Training", "blurb": "Optimizers, the Pressure Cookers, data, alignment and keeping a run alive.",
+      "pages": ["Training", "Model-Training-Guide", "Optimizers", "Pressure-Cooker-V6", "Pressure-Cooker-V5", "Pressure-Cooker-V4", "Pressure-Cooker-V3", "Camouflage", "FuseBox", "Gather", "Scavenger", "PipelineMechanics", "WakeUp"] },
+    { "id": "tools", "title": "Dashboards & tools", "blurb": "Watching a run, and the tools around it.",
+      "pages": ["Dashboards", "TvTopMax", "TvTopPro", "HyperLog", "Vera"] },
+    { "id": "kitchen", "title": "The Kitchen", "blurb": "The utility modules, each named for something in a kitchen.",
+      "pages": ["Kitchen", "Abbicus", "Alarms", "Apron", "Bell", "Blender", "CakePan", "CoffeeMaker", "Countertop", "CuttingBoard", "DeepFryer", "EspressoMaker", "Flour", "FoodProcessor", "Freezer", "Fridges", "Lunchbox", "Menu", "Microwave", "Pans", "Ranges", "RecipeBook", "Shakers", "Smoker", "Toaster", "Tupperware", "Whisk"] },
+    { "id": "project", "title": "Project", "blurb": "What changed, what is next, and how releases are written up.",
+      "pages": ["Changelog", "Release-Timeline", "Roadmap", "Changelog-guide"] }
+  ]
+}

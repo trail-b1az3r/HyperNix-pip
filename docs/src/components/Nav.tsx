@@ -9,10 +9,15 @@ const NAV_LABELS = { home: 'Home', docs: 'Docs', api: 'API', learn: 'Learn', sta
 function goToQuickstart(setPage, page) {
   if (page !== 'home') {
     setPage('home')
-    // Wait one paint for HomePage to mount before the target exists.
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      document.getElementById('quickstart')?.scrollIntoView({ behavior: 'smooth' })
-    }))
+    // Navigation goes through the URL hash now, so HomePage mounts a
+    // little later than the next paint: look for the target for a moment.
+    let tries = 0
+    const find = () => {
+      const target = document.getElementById('quickstart')
+      if (target) target.scrollIntoView({ behavior: 'smooth' })
+      else if (tries++ < 30) setTimeout(find, 30)
+    }
+    setTimeout(find, 30)
   } else {
     document.getElementById('quickstart')?.scrollIntoView({ behavior: 'smooth' })
   }

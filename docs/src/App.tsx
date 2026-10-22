@@ -13,8 +13,37 @@ import { LearnPage } from './pages/Learn'
 
 const PAGES = ['home', 'docs', 'api', 'learn', 'stats', 'about', 'api-deep', 't1-api']
 
+// Every page has an address: #/stats, #/docs/T1-API/the-anthropic-messages-api.
+// Only hashes that start with "#/" are routes, so in-page anchors such as
+// the skip link's #main-content keep working.
+function parseHash(hash = window.location.hash) {
+  if (!hash.startsWith('#/')) return null
+  const [page = 'home', doc, anchor] = hash.slice(2).split('/').map((part) => {
+    try { return decodeURIComponent(part) } catch { return part }
+  })
+  return { page: PAGES.includes(page) ? page : 'home', doc: page === 'docs' ? doc || undefined : undefined,
+           anchor: page === 'docs' ? anchor || undefined : undefined }
+}
+
 export default function App() {
-  const [page, setPage] = useState('home')
+  const [route, setRoute] = useState(() => parseHash() || { page: 'home' })
+  const page = route.page
+  const setPage = (next) => {
+    if (next === page && !route.doc) { window.scrollTo({ top: 0 }); return }
+    window.location.hash = `#/${next}`
+  }
+  useEffect(() => {
+    const onHash = () => {
+      const parsed = parseHash()
+      if (!parsed) return
+      setRoute((prev) => {
+        if (prev.page !== parsed.page) window.scrollTo({ top: 0 })
+        return parsed
+      })
+    }
+    window.addEventListener('hashchange', onHash)
+    return () => window.removeEventListener('hashchange', onHash)
+  }, [])
   const [scrolled, setScrolled] = useState(false)
   const [activeEvent] = useState(() => getActiveSiteEvent())
   const [bannerDismissed, setBannerDismissed] = useState(false)
@@ -233,7 +262,7 @@ export default function App() {
       <Nav page={page} setPage={setPage} scrolled={scrolled} topOffset={bannerVisible ? BANNER_HEIGHT : 0} pages={PAGES.slice(0, 6)} />
       <main id="main-content" style={{ paddingTop: bannerVisible ? BANNER_HEIGHT : 0, transition: 'padding-top 0.2s ease' }}>
         {page === 'home' && <HomePage setPage={setPage} {...common} />}
-        {page === 'docs' && <DocsPage />}
+        {page === 'docs' && <DocsPage route={{ doc: route.doc, anchor: route.anchor }} />}
         {page === 'api' && <ApiPage setPage={setPage} />}
         {page === 'api-deep' && <ApiDeepPage />}
         {page === 't1-api' && <T1ApiPage />}
