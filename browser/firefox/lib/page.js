@@ -27,7 +27,10 @@
     if (e.value !== undefined && e.value !== "") out += ` value="${e.value}"`
     if (e.checked !== undefined) out += e.checked ? " (checked)" : " (unchecked)"
     if (e.disabled) out += " (disabled)"
-    if (e.href && !String(e.href).startsWith("javascript:")) out += ` → ${e.href}`
+    if (e.href) {
+      const href = String(e.href).trim().toLowerCase()
+      if (!href.startsWith("javascript:") && !href.startsWith("data:") && !href.startsWith("vbscript:")) out += ` → ${e.href}`
+    }
     return out
   }
 
