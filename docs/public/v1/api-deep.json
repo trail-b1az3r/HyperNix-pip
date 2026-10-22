@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-api-deep",
   "generated_at": "2026-09-20T21:20:57Z",
-  "commit": "2a8a1c851dbc60fe8f8a94531b2e15f615a6edea",
+  "commit": "2ad57305027da2f7e17989a6fc1150505d30bab2",
   "history_available": true,
   "source_root": "src/hypernix",
   "modules": [
@@ -17,6 +17,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "1a60a8a",
+          "date": "2026-10-22",
+          "author": "Claude",
+          "subject": "0.72.8a4: changelog, version, and the guides start with hnx-t1 setup",
+          "api_changes": []
+        },
         {
           "sha": "c21dc6d",
           "date": "2026-10-21",
@@ -64,13 +71,6 @@
           "date": "2026-10-08",
           "author": "Claude",
           "subject": "release: 0.72.7.post1 -- its own changelog entry and version",
-          "api_changes": []
-        },
-        {
-          "sha": "bfdd3df",
-          "date": "2026-10-07",
-          "author": "Claude",
-          "subject": "llama-essir: a Hugging Face Hub kernel for Llama models, auto-published",
           "api_changes": []
         }
       ]
