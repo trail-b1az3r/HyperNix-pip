@@ -33,7 +33,7 @@ def test_create_file_refuses_to_overwrite_existing(_workspace):
     (_workspace / "exists.txt").write_text("original", encoding="utf-8")
     with pytest.raises(ToolError) as exc_info:
         tools.create_file("exists.txt", "clobber")
-    assert exc_info.value.code == "TOOL-CREATE-001"
+    assert exc_info.value.code == "I2-03300.a2"
     assert (_workspace / "exists.txt").read_text(encoding="utf-8") == "original"
 
 
@@ -51,20 +51,20 @@ def test_edit_file_missing_old_str_raises(_workspace):
     (_workspace / "f.py").write_text("content", encoding="utf-8")
     with pytest.raises(ToolError) as exc_info:
         tools.edit_file("f.py", "not present", "x")
-    assert exc_info.value.code == "TOOL-EDIT-003"
+    assert exc_info.value.code == "I2-03301.a2"
 
 
 def test_edit_file_ambiguous_match_raises(_workspace):
     (_workspace / "f.py").write_text("x = 1\nx = 1\n", encoding="utf-8")
     with pytest.raises(ToolError) as exc_info:
         tools.edit_file("f.py", "x = 1", "x = 2")
-    assert exc_info.value.code == "TOOL-EDIT-004"
+    assert exc_info.value.code == "I2-03302.a2"
 
 
 def test_edit_file_nonexistent_file_raises(_workspace):
     with pytest.raises(ToolError) as exc_info:
         tools.edit_file("nope.py", "a", "b")
-    assert exc_info.value.code == "TOOL-EDIT-001"
+    assert exc_info.value.code == "I2-00300.a2"
 
 
 def test_edit_file_empty_new_str_deletes(_workspace):
@@ -91,14 +91,14 @@ def test_read_file_line_range_is_numbered(_workspace):
 def test_read_file_nonexistent_raises(_workspace):
     with pytest.raises(ToolError) as exc_info:
         tools.read_file("nope.txt")
-    assert exc_info.value.code == "TOOL-READ-001"
+    assert exc_info.value.code == "I2-00301.a2"
 
 
 def test_read_file_on_directory_raises(_workspace):
     (_workspace / "adir").mkdir()
     with pytest.raises(ToolError) as exc_info:
         tools.read_file("adir")
-    assert exc_info.value.code == "TOOL-READ-002"
+    assert exc_info.value.code == "I2-02301.a2"
 
 
 # ---------------------------------------------------------------------------
@@ -155,7 +155,7 @@ def test_search_files_no_matches_says_so(_workspace):
 def test_search_files_invalid_regex_raises(_workspace):
     with pytest.raises(ToolError) as exc_info:
         tools.search_files("(unclosed[", ".")
-    assert exc_info.value.code == "TOOL-SEARCH-003"
+    assert exc_info.value.code == "I2-02306.a2"
 
 
 # ---------------------------------------------------------------------------
@@ -165,14 +165,14 @@ def test_search_files_invalid_regex_raises(_workspace):
 def test_path_traversal_is_blocked(_workspace):
     with pytest.raises(ToolError) as exc_info:
         tools.create_file("../../etc/evil.txt", "x")
-    assert exc_info.value.code == "TOOL-PATH-001"
+    assert exc_info.value.code == "I2-05300.a3"
 
 
 def test_absolute_path_outside_workspace_is_blocked(_workspace, tmp_path_factory):
     other = tmp_path_factory.mktemp("elsewhere") / "evil.txt"
     with pytest.raises(ToolError) as exc_info:
         tools.create_file(str(other), "x")
-    assert exc_info.value.code == "TOOL-PATH-001"
+    assert exc_info.value.code == "I2-05300.a3"
     assert not other.exists()
 
 
@@ -195,13 +195,13 @@ def test_execute_tool_dispatches_by_name(_workspace):
 def test_execute_tool_unknown_name_raises():
     with pytest.raises(ToolError) as exc_info:
         tools.execute_tool("not_a_real_tool", {})
-    assert exc_info.value.code == "TOOL-CFG-001"
+    assert exc_info.value.code == "I2-02307.a2"
 
 
 def test_execute_tool_bad_arguments_raises():
     with pytest.raises(ToolError) as exc_info:
         tools.execute_tool("create_file", {"wrong_kwarg": "x"})
-    assert exc_info.value.code == "TOOL-CFG-002"
+    assert exc_info.value.code == "I2-02308.a2"
 
 
 def test_anthropic_tools_schema_shape():
