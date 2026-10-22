@@ -559,7 +559,7 @@ class SandboxStore:
             raise SandboxError("search for something")
         if regex:
             try:
-                pattern = re.compile(query)
+                pattern = re.compile(re.escape(query))
             except re.error as exc:
                 raise SandboxError(f"not a valid regular expression: {exc}") from exc
             hit = pattern.search
