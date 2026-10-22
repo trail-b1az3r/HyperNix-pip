@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-api-deep",
   "generated_at": "2026-09-20T21:20:57Z",
-  "commit": "78f7a2e1209117616a162a6abebe07e118169a64",
+  "commit": "89f45096342e7b5e48871f860ee10dba000921f6",
   "history_available": true,
   "source_root": "src/hypernix",
   "modules": [
@@ -44177,7 +44177,7 @@
     {
       "module": "hypernix.system.launcher",
       "source": "src/hypernix/system/launcher.py",
-      "line_count": 701,
+      "line_count": 710,
       "summary": "Run a script so it outlives the terminal that started it.",
       "api": [
         {
@@ -44324,21 +44324,21 @@
           "kind": "function",
           "name": "stop",
           "signature": "def stopjob: Job, store: JobStore | None=None, *, timeout: float=10.0 -> Job",
-          "line": 737,
+          "line": 746,
           "doc": "Ask the job to stop, then insist."
         },
         {
           "kind": "function",
           "name": "follow_logs",
           "signature": "def follow_logsjob: Job, *, tail: int=200, out=None, store: JobStore | None=None, poll: float=0.5, until=None -> None",
-          "line": 765,
+          "line": 774,
           "doc": "Print the last *tail* lines, then everything written after, as it is written, until Ctrl-C (``--logs JOB -F``)."
         },
         {
           "kind": "function",
           "name": "read_logs",
           "signature": "def read_logsjob: Job, *, tail: int=200 -> str",
-          "line": 808,
+          "line": 817,
           "doc": ""
         }
       ],
@@ -44348,6 +44348,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "c4d8e605",
+          "date": "2026-10-22",
+          "author": "Claude",
+          "subject": "Launcher: don't call a running systemd job unknown",
+          "api_changes": []
+        },
         {
           "sha": "da36f8dc",
           "date": "2026-10-21",
@@ -44427,13 +44434,6 @@
               "text": "def _start("
             }
           ]
-        },
-        {
-          "sha": "000e0d5c",
-          "date": "2026-09-17",
-          "author": "Claude",
-          "subject": "registry: a working directory that is gone is not a crash",
-          "api_changes": []
         }
       ]
     },
