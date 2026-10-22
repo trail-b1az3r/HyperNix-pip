@@ -252,7 +252,7 @@ function drawRing(data) {
   put("ring-outer", data && data.outer);
   const label = data ? `Context: ${data.inner.label}\n${data.outer.kind === "usage" ? "Usage" : "Load"}: ${data.outer.label}` : "";
   ring.title = label;
-  ring.setAttribute("aria-label", label.replace("\n", "; "));
+  ring.setAttribute("aria-label", label.replace(/\n/g, "; "));
 }
 
 async function refreshRing() {
