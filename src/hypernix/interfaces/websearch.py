@@ -71,8 +71,9 @@ def _real_url(url: str) -> str:
     if url.startswith("//"):
         url = "https:" + url
     parsed = urllib.parse.urlparse(url)
+    host = (parsed.hostname or "").lower()
     query = urllib.parse.parse_qs(parsed.query)
-    if parsed.netloc.endswith("bing.com") and parsed.path.startswith("/ck/") and query.get("u"):
+    if (host == "bing.com" or host.endswith(".bing.com")) and parsed.path.startswith("/ck/") and query.get("u"):
         encoded = query["u"][0]
         if encoded.startswith("a1"):
             encoded = encoded[2:]
@@ -82,7 +83,7 @@ def _real_url(url: str) -> str:
                 return decoded
         except (ValueError, UnicodeDecodeError):
             pass
-    if parsed.netloc.endswith("duckduckgo.com") and parsed.path.startswith("/l/") and query.get("uddg"):
+    if (host == "duckduckgo.com" or host.endswith(".duckduckgo.com")) and parsed.path.startswith("/l/") and query.get("uddg"):
         return query["uddg"][0]
     return url
 
