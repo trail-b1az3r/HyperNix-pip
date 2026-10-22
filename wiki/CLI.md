@@ -52,6 +52,7 @@ Data & infra:
   errors                 look up an error code (L#-NNNNN.kS)
   elements               addons: hydrogen, carbon, magnesium, your own
   extra                  the commands below, kept out of the main menu
+  list-all               every command: hnx, hnx extra, hnx-t1, and every other one
 
 `hnx extra` (0.72.8a3; each works exactly as before):
   neuron                 small networks that act: RL, imitation, supervised
@@ -123,6 +124,23 @@ paths.
 `path`, `map`, `tvtop`, `cctvtop`, `camo`, `websearch` and `scavenger`.
 They dispatch exactly as before. Each was run when it moved; what was
 broken was fixed (see their sections below and the changelog).
+
+## `list-all`
+
+```bash
+hnx list-all                     # every command, grouped
+hnx list-all quant               # only those whose name or description says "quant"
+hnx list-all --section t1        # one group: hnx, extra, aliases, t1, other
+hnx list-all --json              # for a script
+```
+
+Every command in one list (0.72.8a4): `hnx`'s main menu, `hnx extra`, the
+other spellings `hnx` runs (`fllq`, `fiz`, …), every `hnx-t1` /
+`hypernix-t1` command, and every other console script the package
+installs (`waiter`, `gkey`, `hyprslug` and its other names, `tvtop-max`,
+…). The last group is read from the installed package, so a new script
+appears without an edit. The suggestions `hnx` prints after a typo
+(`dl`, `quantise`) do not run, so they are not listed.
 
 ## `claude`
 
@@ -886,12 +904,15 @@ the server could not see, and both halves would appear to work.
 
 ```bash
 hnx-t1 status                            # hnx-t1 is the same program, shorter
+hnx-t1 setup                             # the interactive installer (b1); works without a checkout
 hypernix-t1 create                       # set up a server (hands off to install-t1.sh)
 hypernix-t1 create --non-interactive     # …or unattended, accepting every default
 hypernix-t1 start                        # start / stop / kill / restart / status
 hypernix-t1 version                      # HyperNix + T1 versions, and the Python it runs as
 hypernix-t1 logs -f                      # follow the log (or `logs 200`)
 hypernix-t1 upgrade                      # upgrade HyperNix in the server's own Python, and restart
+hnx-t1 upgrade -S env                    # bring the server's .env up to this version
+hnx-t1 upgrade -S all                    # both: the venv, then the env
 hypernix-t1 sync                         # mirror ~/.hypernix/models into ~/.hypernix/t1api/models
 hypernix-t1 test                         # health, status, and a real end-to-end probe
 hypernix-t1 key create -v v2 --level 5   # gkey, against this server's own store
@@ -931,7 +952,8 @@ uvicorn invocation or hunting for a pid.
 | `stop` | `SIGTERM`, then wait 15s. Still there? It says so and points at `kill` rather than escalating on its own. |
 | `kill` | `SIGKILL`, immediately. In-flight requests are lost, and it says so. |
 | `restart` | `stop`, escalating to `kill` if needed, then `start` |
-| `upgrade` | `pip install -U 'hypernix[t1api]'` in the Python the server runs on (its private venv, when it has one), then restart; `--main` installs from GitHub. `status` and `start` warn when that Python's HyperNix is older than `hypernix-t1`'s own |
+| `upgrade` | `pip install -U 'hypernix[t1api]'` in the Python the server runs on (its private venv, when it has one), then restart; `--main` installs from GitHub. `status` and `start` warn when that Python's HyperNix is older than `hypernix-t1`'s own. `-S` picks what (0.72.8a4): `venv` is that, and the default; `env` upgrades the server's `.env` — every setting this version has that the file lacks is added **commented out at its default**, with a line on what it does, so nothing changes until you set one; a missing token secret is added, a file others can read is closed to 0600, and a `T1_*` name nothing reads is reported with the setting it probably meant; the old file is kept as `.env.bak-<time>`. `all` is both, the venv first so the new code does the env. `--dry-run` with `env` shows the result and writes nothing |
+| `setup` | the interactive installer, b1 (0.72.8a4; also `install`). Unlike `install-t1.sh` it needs no checkout. It asks about the server (name, who can reach it, port, a public URL), access (keyless trusted networks, request limits), models (the runner, LM Studio, the default model) and what the server offers (HyperLink and HyperLink on the web, Claude Code, MCP and Hugging Face's MCP server, code sandboxes, remote runs, the public counter), shows the result, writes `.env` (0600) and starts or restarts the server. Run again, it starts from the server's own answers, keeps its token secret — a new one would invalidate every key — keeps settings it does not ask about, and keeps the old file as `.env.bak-<time>`. `--yes` takes every default, `--answers FILE` takes a JSON object of answers by name, `--dry-run` prints the file, `--no-start` stops after writing it |
 | `status` | pid, address, config/key/log paths, this server's identity fingerprint, the HyperNix version and the Python it runs on, where HyperLink on the web answers (or that this HyperNix has none), and the T1 version from `/status`. When the server is not running, the stale pid, anything else on its port, and the last lines of the log. |
 | `version` | the HyperNix and T1 versions, and the Python the server runs as — the line to read first when an upgrade seems to have done nothing |
 | `logs` | tail; `-f` to follow |

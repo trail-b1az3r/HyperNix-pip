@@ -126,6 +126,8 @@ _SUBCOMMANDS = {
     "hypedpro",
     "image",
     "claude",
+    # 0.72.8a4
+    "list-all",
 }
 
 
@@ -252,6 +254,7 @@ _MAIN_MENU: tuple[tuple[str, str], ...] = (
     ("wakeup", "wake-word detection: train a trigger phrase, then listen for it"),
     ("hyprslug-headers", "self-describing GGUF headers + the OpenAI-compatible sub-bit server"),
     ("extra", "more commands: neuron, pipeline, assistant, generate, wiki, prot, oven, ..."),
+    ("list-all", "every command: hnx, hnx extra, hnx-t1, and every other HyperNix command"),
 )
 
 #: `hypernix extra`: commands that still work, kept out of the main menu.
@@ -1493,6 +1496,10 @@ def _dispatch(cmd: str, rest: list[str]) -> int:
     if cmd == "extra":
         _print_extra()
         return 0
+    if cmd == "list-all":
+        from hypernix.interfaces.list_all import cli_main as _list_all_main
+
+        return _list_all_main(rest)
     if cmd == "tvtopmax":
         from hypernix.monitoring.tvtop_max import cli_main as _tvtop_max_main
 

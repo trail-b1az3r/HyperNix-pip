@@ -616,24 +616,61 @@ cmd_upgrade() {
   # Upgrade HyperNix in the Python the server runs on -- which is the
   # private venv when install-t1.sh made one, not whatever `pip` your
   # shell finds -- then restart the server so it runs the new code.
+  #
+  # -S/--specific picks what (0.72.8a4): `venv` is that, and what plain
+  # `upgrade` does; `env` brings the server's .env up to the installed
+  # version (hypernix.t1api.envupgrade); `all` is both, the venv first so
+  # the new code does the env.
   load_env
-  local spec="hypernix[t1api]" py before after
-  case "${1:-}" in
-    "") ;;
-    --main) spec="hypernix[t1api] @ git+https://github.com/trail-b1az3r/HyperNix-pip@main" ;;
-    -*) die "Unknown option: $1 (try --main, or a pip requirement such as 'hypernix[t1api]==0.72.7')" ;;
-    *) spec="$1" ;;
-  esac
+  local spec="hypernix[t1api]" py before after targets="venv" env_args=()
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      -S|--specific)
+        shift; [ $# -gt 0 ] || die "-S needs a target: env, venv or all (env,venv also works)"
+        targets="$1" ;;
+      -S*) targets="${1#-S}" ;;
+      --specific=*) targets="${1#--specific=}" ;;
+      --dry-run) env_args+=(--dry-run) ;;
+      --main) spec="hypernix[t1api] @ git+https://github.com/trail-b1az3r/HyperNix-pip@main" ;;
+      -*) die "Unknown option: $1 (-S env|venv|all, --main, or a pip requirement such as 'hypernix[t1api]==0.72.7')" ;;
+      *) spec="$1" ;;
+    esac
+    shift
+  done
+  local do_env=0 do_venv=0 part
+  for part in ${targets//,/ }; do
+    case "$part" in
+      env) do_env=1 ;;
+      venv) do_venv=1 ;;
+      all) do_env=1; do_venv=1 ;;
+      *) die "-S takes env, venv or all; got '$part'" ;;
+    esac
+  done
   py="$(python_bin)"; [ -n "$py" ] || die "No python3 found."
-  before="$(hypernix_version "$py")" || before=""
-  say "Upgrading HyperNix in $py (now ${before:-not installed})…"
-  "$py" -m pip install -U "$spec" \
-    || die "pip could not upgrade it. The command was: $py -m pip install -U '$spec'"
-  after="$(hypernix_version "$py")" || after=""
-  if [ "$before" = "$after" ]; then
-    ok "HyperNix $after is already the newest."
-  else
-    ok "HyperNix ${before:-(none)} → $after"
+
+  if [ "$do_venv" = "1" ]; then
+    before="$(hypernix_version "$py")" || before=""
+    say "Upgrading HyperNix in $py (now ${before:-not installed})…"
+    "$py" -m pip install -U "$spec" \
+      || die "pip could not upgrade it. The command was: $py -m pip install -U '$spec'"
+    after="$(hypernix_version "$py")" || after=""
+    if [ "$before" = "$after" ]; then
+      ok "HyperNix $after is already the newest."
+    else
+      ok "HyperNix ${before:-(none)} → $after"
+    fi
+  fi
+  if [ "$do_env" = "1" ]; then
+    [ -f "$ENV_FILE" ] || die "No config at $ENV_FILE — \`hnx-t1 setup\` writes one."
+    say "Upgrading the configuration in $ENV_FILE…"
+    T1_CONFIG_DIR="${T1_CONFIG_DIR:-$CONFIG_DIR}" \
+      "$py" -m hypernix.t1api.envupgrade --env-file "$ENV_FILE" ${env_args[@]+"${env_args[@]}"} \
+      || die "Could not upgrade $ENV_FILE."
+  elif [ "$do_venv" = "1" ]; then
+    dim "     \`hnx-t1 upgrade -S env\` brings the configuration up to this version too."
+  fi
+  if [ ${#env_args[@]} -gt 0 ]; then
+    return 0
   fi
   if [ -n "$(running_pid || true)" ]; then
     say "Restarting so the server runs it…"
@@ -804,6 +841,21 @@ cmd_logs() {
   else
     tail -n "${1:-60}" "$LOG_FILE"
   fi
+}
+
+cmd_setup() {
+  # The interactive installer, b1 (0.72.8a4): hypernix.t1api.setup_cli.
+  # Unlike install-t1.sh it needs no checkout, so it works from a pip
+  # install; it also asks about what the server offers now.
+  local py; py="$(python_bin)"
+  if [ -z "$py" ] || ! "$py" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)' 2>/dev/null; then
+    die "S1-02090.b4: no Python 3.10 to 3.13 was found to run the T1 server with — install one, then run \`hnx-t1 setup\` again."
+  fi
+  "$py" -c 'import hypernix.t1api.setup_cli' 2>/dev/null \
+    || die "HyperNix is not installed for $py. pip install 'hypernix[t1api]', then run \`hnx-t1 setup\` again."
+  local self
+  self="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
+  T1_CONFIG_DIR="${T1_CONFIG_DIR:-$CONFIG_DIR}" exec "$py" -m hypernix.t1api.setup_cli --manager "$self" "$@"
 }
 
 cmd_create() {
@@ -1161,12 +1213,21 @@ hypernix-t1 — manage a T1 API server (also installed as hnx-t1)
   stop                  Ask it to stop, and wait
   kill                  Force it to stop, losing in-flight requests
   restart               Stop (or kill) then start
-  upgrade [--main|SPEC] Upgrade HyperNix in the Python the server runs on
-                        (its private venv, if it has one), then restart it.
-                        --main installs the newest code from GitHub.
+  upgrade [-S env|venv|all] [--main|SPEC] [--dry-run]
+                        Upgrade, then restart it. -S venv (the default):
+                        HyperNix in the Python the server runs on (its
+                        private venv, if it has one). -S env: the server's
+                        .env, so it lists this version's new settings.
+                        -S all: both. --main installs the newest code
+                        from GitHub.
   status                Is it running, where, and what version
   logs [N|-f]           Last N lines, or follow
 
+  setup [--yes] [--answers FILE] [--dry-run]
+                        The interactive installer (b1): the server, access,
+                        models, HyperLink, Claude Code, MCP, code sandboxes;
+                        then it writes the config and starts the server.
+                        Works without a checkout.
   create [--host H] [--port N] [--force]
                         Set up a new server. Runs install-t1.sh when it is
                         available (the guided setup); otherwise writes a
@@ -1256,6 +1317,7 @@ main() {
     upgrade|update)    cmd_upgrade "$@" ;;
     status)            cmd_status "$@" ;;
     logs)              cmd_logs "$@" ;;
+    setup|install)     cmd_setup "$@" ;;
     create)            cmd_create "$@" ;;
     configure|config|settings)  cmd_configure "$@" ;;
     test)              cmd_test "$@" ;;
