@@ -1118,3 +1118,26 @@ timeline
         : 8c898a8d - chore- refresh generated docs data and release summaries
 ```
 
+## Release v0.72.8a4 (2026-10-22)
+
+```mermaid
+timeline
+    title Release v0.72.8a4 Commits
+    0.72.8a4
+        : c4d8e605 - Launcher- don't call a running systemd job unknown
+        : 182fd6fa - chore- refresh generated docs data and release summaries
+        : 2ad57305 - Tests- hyped-pro's tool tests expect the registered codes
+        : 1932bc40 - chore- refresh generated docs data and release summaries
+        : 1a60a8a5 - 0.72.8a4- changelog, version, and the guides start with hnx-t1 setup
+        : 2a8a1c85 - Website- a T1 API reference worth reading
+        : 2c07970a - update_json_stats- say why the series zip is not strict
+        : bf94d5f9 - Website- a multi-line graph of downloads on the Stats page
+        : 192b97d7 - Website- the docs page, remade like PyTorch's and Hyprland's
+        : fd848f59 - hnx list-all, hnx-t1 setup (installer b1), hnx-t1 upgrade -S env|venv|all
+        : 0f0172ab - chore- update JSON stats (scheduled)
+        : 89597167 - chore- refresh generated docs data and release summaries
+        : da36f8dc - Error codes- hyped-pro's moved into the registry (70), and 38 more
+        : bb54e804 - Auto-update README header (hourly)
+        : 6b55a31f - chore- refresh generated docs data and release summaries
+```
+
