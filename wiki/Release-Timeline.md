@@ -1141,3 +1141,11 @@ timeline
         : 6b55a31f - chore- refresh generated docs data and release summaries
 ```
 
+## Release v0.72.8a4 (2026-10-22)
+
+```mermaid
+timeline
+    title Release v0.72.8a4 Commits
+    0.72.8a4 : No commits found
+```
+
