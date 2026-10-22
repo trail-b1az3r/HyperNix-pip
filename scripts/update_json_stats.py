@@ -177,7 +177,8 @@ def build_series(existing_series):
             values = (values or {}).get(name)
         if not isinstance(values, list):
             return {}
-        return {d: v for d, v in zip(dates, values) if isinstance(v, (int, float))}
+        # Not strict: a line first seen after the series began is shorter.
+        return {d: v for d, v in zip(dates, values, strict=False) if isinstance(v, (int, float))}
 
     def merged(fresh, previous):
         return {**previous, **fresh}
