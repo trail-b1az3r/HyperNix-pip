@@ -20,6 +20,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 __all__ = [
     "CONFIG_FILE",
@@ -202,7 +203,14 @@ def setup(run: Runner | None = None, *, key_path: Path | None = None) -> dict[st
     """``tailscale up`` (returning its login link if it prints one) and an SSH key."""
     run = run or RUN
     up = run(["tailscale", "up", "--timeout", "20s"], 30.0)
-    link = next((w for w in (up.out + " " + up.err).split() if w.startswith("https://login.tailscale.com")), "")
+    link = next(
+        (
+            w
+            for w in (up.out + " " + up.err).split()
+            if (lambda p: p.scheme == "https" and p.hostname == "login.tailscale.com")(urlparse(w))
+        ),
+        "",
+    )
     key_path = key_path or Path.home() / ".ssh" / "id_ed25519"
     made = None
     if not key_path.exists() and not key_path.with_name("id_rsa").exists():
