@@ -61,6 +61,7 @@ export default function App() {
   const [downloads, setDownloads] = useState({ last_day: 4, last_week: 460, last_month: 1474 })
   const [olderDownloads, setOlderDownloads] = useState(null)
   const [threeMonthDownloads, setThreeMonthDownloads] = useState(null)
+  const [downloadSeries, setDownloadSeries] = useState(null)
   const [totalDownloads, setTotalDownloads] = useState(0)
   const [statsUpdatedAt, setStatsUpdatedAt] = useState(null)
   const [ghStats, setGhStats] = useState({ stars: 0, forks: 0, issues: 0 })
@@ -108,6 +109,7 @@ export default function App() {
           if (d.total_downloads !== undefined) setTotalDownloads(d.total_downloads)
           if (d.downloads && d.downloads.older) setOlderDownloads(d.downloads.older)
           if (d.downloads && d.downloads.three_month) setThreeMonthDownloads(d.downloads.three_month)
+          if (d.series && Array.isArray(d.series.dates)) setDownloadSeries(d.series)
           if (d.updated_at) setStatsUpdatedAt(d.updated_at)
           if (d.total_lines !== undefined || d.contributors) setCodeStats(d)
           // Accept either a pre-aggregated array (python_versions / operating_systems,
@@ -248,7 +250,7 @@ export default function App() {
     }).catch(() => {})
   }, [])
 
-  const common = { downloads, olderDownloads, threeMonthDownloads, totalDownloads, statsUpdatedAt, ghStats, pypiInfo, pythonVersionStats, systemStats, releaseTimeline, changelogEntries, version, statsError, codeStats }
+  const common = { downloadSeries, downloads, olderDownloads, threeMonthDownloads, totalDownloads, statsUpdatedAt, ghStats, pypiInfo, pythonVersionStats, systemStats, releaseTimeline, changelogEntries, version, statsError, codeStats }
 
   if (aprilFoolsActive) {
     return <AprilFoolsPage />

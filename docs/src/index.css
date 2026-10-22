@@ -677,3 +677,33 @@ kbd { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); ba
   .docs-searchbar .keys { display: none; }
   .docs-pager { grid-template-columns: 1fr; }
 }
+
+/* ── Downloads over time (0.72.8a4) ──────────────────────────────────── */
+.dl-controls { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.seg { display: inline-flex; background: var(--surface-3); border: 1px solid var(--border-strong); border-radius: 8px; padding: 2px; }
+.seg button { background: none; border: none; color: var(--text-muted); font: inherit; font-size: 12px; padding: 5px 10px;
+  border-radius: 6px; cursor: pointer; }
+.seg button.on { background: var(--surface-1); color: var(--text); box-shadow: 0 0 0 1px var(--border-hover); }
+.seg button:hover { color: var(--text); }
+.dl-table-toggle { margin-left: auto; background: var(--surface-3); border: 1px solid var(--border-strong); color: var(--text-muted);
+  border-radius: 8px; font: inherit; font-size: 12px; padding: 5px 12px; cursor: pointer; }
+.dl-table-toggle:hover { color: var(--text); }
+.dl-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-bottom: 6px; }
+.dl-legend button { display: inline-flex; align-items: center; gap: 6px; background: none; border: none; color: var(--text-dim);
+  font: inherit; font-size: 12.5px; cursor: pointer; padding: 3px 0; }
+.dl-legend button.off { color: var(--text-faint); text-decoration: line-through; opacity: .6; }
+.dl-sum { color: var(--text-faint); font-variant-numeric: tabular-nums; }
+.dl-plot { width: 100%; overflow: hidden; }
+.dl-plot svg { display: block; touch-action: pan-y; }
+.dl-plot text { font-family: var(--font-sans); font-variant-numeric: tabular-nums; }
+.dl-tip { position: absolute; pointer-events: none; min-width: 170px; background: rgba(22,22,22,0.97); border: 1px solid var(--border-hover);
+  border-radius: 8px; padding: 8px 10px; font-size: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.5); }
+.dl-tip-date { color: var(--text); font-weight: 650; margin-bottom: 4px; }
+.dl-tip-row { display: grid; grid-template-columns: 14px 1fr auto; align-items: center; gap: 6px; color: var(--text-muted); line-height: 1.6; }
+.dl-tip-row strong { color: var(--text); font-variant-numeric: tabular-nums; }
+.dl-table-wrap { max-height: 320px; overflow: auto; border: 1px solid var(--border-strong); border-radius: 8px; }
+.dl-table { width: 100%; border-collapse: collapse; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.dl-table th, .dl-table td { padding: 6px 10px; border-bottom: 1px solid var(--border); text-align: right; color: var(--text-dim); }
+.dl-table th { position: sticky; top: 0; background: var(--surface-3); color: var(--text); font-weight: 650; }
+.dl-table th:first-child, .dl-table td:first-child { text-align: left; }
+.dl-note { color: var(--text-faint); font-size: 11.5px; margin-top: 10px; }
