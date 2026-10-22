@@ -21,8 +21,8 @@ function parseHash(hash = window.location.hash) {
   const [page = 'home', doc, anchor] = hash.slice(2).split('/').map((part) => {
     try { return decodeURIComponent(part) } catch { return part }
   })
-  return { page: PAGES.includes(page) ? page : 'home', doc: page === 'docs' ? doc || undefined : undefined,
-           anchor: page === 'docs' ? anchor || undefined : undefined }
+  // The second part is a docs page, or a tab of the T1 page (#/t1-api/endpoints).
+  return { page: PAGES.includes(page) ? page : 'home', doc: doc || undefined, anchor: anchor || undefined }
 }
 
 export default function App() {
@@ -267,7 +267,7 @@ export default function App() {
         {page === 'docs' && <DocsPage route={{ doc: route.doc, anchor: route.anchor }} />}
         {page === 'api' && <ApiPage setPage={setPage} />}
         {page === 'api-deep' && <ApiDeepPage />}
-        {page === 't1-api' && <T1ApiPage />}
+        {page === 't1-api' && <T1ApiPage tab={route.doc} />}
         {page === 'learn' && <LearnPage />}
         {page === 'stats' && <StatsPage {...common} />}
         {page === 'about' && <AboutPage />}

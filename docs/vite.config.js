@@ -5,6 +5,8 @@ import path from 'path'
 
 const WIKI = path.resolve(__dirname, '../wiki')
 const NAV = path.resolve(__dirname, 'src/lib/data/docs-nav.json')
+const OPENAPI = path.resolve(__dirname, '../examples/t1api/openapi.json')
+const ENV_EXAMPLE = path.resolve(__dirname, '../examples/t1api/.env.example')
 
 // The wiki, served by the site itself: every wiki/*.md is copied into the
 // build as wiki/<Page>.md, and v1/docs-index.json holds the sidebar's
@@ -80,15 +82,100 @@ function buildIndex() {
   return { generated: new Date().toISOString(), groups, pages }
 }
 
+// The T1 page's endpoint explorer: examples/t1api/openapi.json (generated
+// by driving a real server), cut down to what the page shows, with each
+// body's fields resolved from its schema.
+function buildT1Openapi() {
+  if (!fs.existsSync(OPENAPI)) return { version: '', routes: [], tags: [] }
+  const doc = JSON.parse(fs.readFileSync(OPENAPI, 'utf-8'))
+  const schemas = (doc.components && doc.components.schemas) || {}
+  const typeOf = (sch) => {
+    if (!sch) return ''
+    if (sch.$ref) return sch.$ref.split('/').pop()
+    if (sch.anyOf) return sch.anyOf.map(typeOf).filter((t) => t && t !== 'null').join(' | ')
+    if (sch.type === 'array') return `${typeOf(sch.items) || 'any'}[]`
+    if (sch.enum) return sch.enum.map((e) => JSON.stringify(e)).join(' | ')
+    return sch.type || (sch.const !== undefined ? JSON.stringify(sch.const) : 'any')
+  }
+  const fields = (ref) => {
+    const sch = ref && ref.$ref ? schemas[ref.$ref.split('/').pop()] : ref
+    if (!sch || !sch.properties) return []
+    const required = new Set(sch.required || [])
+    return Object.entries(sch.properties).map(([name, f]) => ({
+      name, type: typeOf(f), required: required.has(name),
+      default: f.default === undefined ? undefined : JSON.stringify(f.default),
+      // A title is FastAPI's capitalised field name, not a description.
+      description: (f.description || '').replace(/\s+/g, ' ').slice(0, 240),
+    }))
+  }
+  const routes = []
+  for (const [p, ops] of Object.entries(doc.paths || {})) {
+    for (const [method, op] of Object.entries(ops)) {
+      if (!op || typeof op !== 'object' || !op.responses) continue
+      const bodyRef = op.requestBody?.content?.['application/json']?.schema
+      routes.push({
+        method: method.toUpperCase(), path: p, tag: (op.tags && op.tags[0]) || 'other',
+        summary: op.summary || '', description: (op.description || '').trim().slice(0, 1600),
+        // The credential headers are on every route; the page explains them once.
+        params: (op.parameters || []).filter((x) => !(x.in === 'header' && /^(authorization|x-api-key)$/i.test(x.name)))
+          .map((x) => ({ name: x.name, in: x.in, required: !!x.required,
+          type: typeOf(x.schema), description: (x.description || '').slice(0, 200) })),
+        body: bodyRef ? { type: typeOf(bodyRef), fields: fields(bodyRef) } : null,
+        multipart: !!op.requestBody?.content?.['multipart/form-data'],
+        responses: Object.keys(op.responses || {}),
+        response: typeOf(op.responses?.['200']?.content?.['application/json']?.schema) || '',
+      })
+    }
+  }
+  const counts = {}
+  for (const r of routes) counts[r.tag] = (counts[r.tag] || 0) + 1
+  return { title: doc.info?.title, version: doc.info?.version, description: doc.info?.description,
+           tags: Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([name, count]) => ({ name, count })),
+           routes }
+}
+
+// Every T1_* setting, with its section, default and what it does, from
+// examples/t1api/.env.example (which a test keeps complete).
+function buildT1Settings() {
+  if (!fs.existsSync(ENV_EXAMPLE)) return { settings: [] }
+  const settings = []
+  const seen = new Set()
+  let section = 'General'
+  let notes = []
+  for (const raw of fs.readFileSync(ENV_EXAMPLE, 'utf-8').split('\n')) {
+    const line = raw.trimEnd()
+    const head = /^#\s*---\s*(.+?)\s*-{3,}\s*$/.exec(line)
+    if (head) { section = head[1]; notes = []; continue }
+    if (!line.trim()) { notes = []; continue }
+    const set = /^(#\s*)?(T1_[A-Z0-9_]+)=(.*)$/.exec(line)
+    if (set) {
+      if (!seen.has(set[2])) {
+        seen.add(set[2])
+        settings.push({ name: set[2], value: set[3].replace(/^['"]|['"]$/g, ''), example: !!set[1], section,
+                        help: notes.join(' ').replace(/\s+/g, ' ').trim() })
+      }
+      continue
+    }
+    if (/^#/.test(line) && !/^#\s*[-=]{5,}/.test(line)) notes.push(line.replace(/^#\s?/, ''))
+  }
+  return { settings }
+}
+
+const GENERATED = {
+  '/v1/docs-index.json': () => buildIndex(),
+  '/v1/t1-openapi.json': () => buildT1Openapi(),
+  '/v1/t1-settings.json': () => buildT1Settings(),
+}
+
 function wikiPlugin() {
   return {
     name: 'hypernix-wiki',
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
         const url = decodeURIComponent((req.url || '').split('?')[0])
-        if (url === '/v1/docs-index.json') {
+        if (GENERATED[url]) {
           res.setHeader('Content-Type', 'application/json')
-          res.end(JSON.stringify(buildIndex()))
+          res.end(JSON.stringify(GENERATED[url]()))
           return
         }
         const m = /^\/wiki\/([A-Za-z0-9._-]+\.md)$/.exec(url)
@@ -105,7 +192,9 @@ function wikiPlugin() {
       for (const file of fs.readdirSync(WIKI).filter((f) => f.endsWith('.md'))) {
         this.emitFile({ type: 'asset', fileName: `wiki/${file}`, source: fs.readFileSync(path.join(WIKI, file)) })
       }
-      this.emitFile({ type: 'asset', fileName: 'v1/docs-index.json', source: JSON.stringify(buildIndex()) })
+      for (const [url, build] of Object.entries(GENERATED)) {
+        this.emitFile({ type: 'asset', fileName: url.slice(1), source: JSON.stringify(build()) })
+      }
     },
   }
 }
