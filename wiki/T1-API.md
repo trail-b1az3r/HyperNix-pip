@@ -75,9 +75,9 @@ could never derive one from `0.71.5rc2`. See
 
 ```bash
 pip install 'hypernix[t1api]'
-hypernix-t1 create            # the guided setup; writes ~/.hypernix/t1api/.env
-hypernix-t1 start
-hypernix-t1 status            # the address, the version, and HyperLink on the web
+hnx-t1 setup                  # the installer (b1): asks, writes ~/.hypernix/t1api/.env, starts it
+hnx-t1 status                 # the address, the version, and HyperLink on the web
+hnx-t1 upgrade -S all         # later: HyperNix in the server's Python, then its .env
 # → http://127.0.0.1:8000/docs (Swagger UI)
 ```
 
@@ -88,8 +88,13 @@ cp examples/t1api/.env.example .env   # fill in T1_TOKEN_SECRET at minimum
 python3 -m uvicorn hypernix.t1api.app:create_app --factory --reload
 ```
 
-`hypernix-t1 create` installs into a private venv when it runs the
-installer, and the server runs from there. Upgrade that one with
+`hnx-t1 setup` (0.72.8a4) is the interactive installer, and needs no
+checkout: it asks about the server, access, models, HyperLink, Claude
+Code, MCP and code sandboxes, writes the configuration and starts the
+server, and run again it keeps the token secret and the answers. See
+[CLI § hypernix-t1](CLI.md#hypernix-t1). `hypernix-t1 create` still hands
+off to `install-t1.sh` from a checkout, which installs into a private
+venv, and the server runs from there. Upgrade that one with
 `hypernix-t1 upgrade`: a `pip install -U` in your own shell upgrades a
 different environment, and `hypernix-t1 version` shows which Python the
 server really runs as.

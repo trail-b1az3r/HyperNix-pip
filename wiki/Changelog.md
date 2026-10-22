@@ -34,6 +34,104 @@ Historical wording and technical detail are retained during format normalization
 
 > Format normalized to `wiki/Changelog-guide.md`; release wording and historical detail are preserved.
 
+## 0.72.8a4 — 2026-10-22
+
+### Added
+
+๋࣭⭑ **`hnx-t1 setup`: the T1 interactive installer, b1.** Written in
+  Python, so it runs from a pip install as well as a checkout. It asks
+  about the server (name, who can reach it, port, a public URL), access
+  (keyless trusted networks, request limits), models (the runner, LM
+  Studio, the default model) and what the server offers now (HyperLink
+  and HyperLink on the web, Claude Code, MCP with Hugging Face's server,
+  code sandboxes, remote runs, the public counter). It shows the result,
+  writes `.env` (0600) and starts the server. Run again, it starts from
+  the server's own answers, keeps the token secret and the settings it
+  does not ask about, and keeps the old file as `.env.bak-<time>`.
+  `--yes`, `--answers FILE`, `--dry-run`, `--no-start`; also `install`.
+  ([CLI § hypernix-t1](CLI.md#hypernix-t1))
+
+✨ **`hnx-t1 upgrade -S env|venv|all`** chooses what to upgrade. `venv`
+  is HyperNix in the server's Python, as before and by default. `env` is
+  the server's `.env`: every setting this version has that the file
+  lacks is added commented out at its default with a line on what it
+  does, a missing token secret is added, a file others could read is
+  set to 0600, and a `T1_*` name nothing reads is reported with the
+  setting it probably meant. `all` is both, the venv first; `--dry-run`
+  shows the env without writing it.
+
+✨ **`hnx list-all`**: every command in one list — `hnx`'s main menu,
+  `hnx extra`, the other spellings `hnx` runs, every `hnx-t1` command,
+  and every other console script, with aliases grouped. Filter by words,
+  `--section`, `--json`.
+
+๋࣭⭑ **The website's docs, remade like PyTorch's and Hyprland's.** Grouped
+  pages down the left, the page in the middle, "On this page" down the
+  right with the section being read highlighted, breadcrumbs,
+  previous/next, and Ctrl+K search across titles, headings and every
+  page's full text, opening a hit at its section. Code is highlighted
+  with a copy button, `[!NOTE]` and **Note** quotes are callouts, every
+  heading links to itself, and every page and heading has an address
+  (`#/docs/T1-API/<heading>`). Pages are bundled into the site, so they
+  no longer come one at a time from GitHub's rate-limited API.
+✨ **A T1 API reference on the website** (`#/t1-api`): an overview and
+  quickstart; every endpoint from the server's OpenAPI document, grouped
+  and searchable, with parameters, body fields and a curl line; every
+  setting from `.env.example`; the T1 error codes; and the
+  source-generated reference.
+✨ **A multi-line graph of downloads on the Stats page**: daily
+  downloads as lines (the total and with mirrors, or by Python version
+  or operating system) over 30, 90, 180 days or everything, daily or as
+  a 7-day average, with a crosshair tooltip, a legend that hides lines
+  and a table view. `update_json_stats.py` keeps the series and lets
+  the history grow past pypistats' 180 days.
+
+✨ **More error codes, and hyped-pro's moved into them.** hyped-pro's
+  own names (`HPC-…`, `HPB-…`, `HPG-…`, `HPO-…`, `HPT-…`, `TOOL-…`,
+  72 in all) are registered codes in domain I now, and the old names
+  are aliases: `hypernix errors explain HPC-CFG-001` says it is
+  `I2-02250.a3`, and the bridge sends both. 38 more codes are new, for
+  `/code` sandbox refusals (as `details.hx_code`), remote MCP, the
+  Messages API, datasets, `/net`, the counter, the llama.cpp converter,
+  Hub repos, hnx0xv2image fusion refusals, `launch-script`, `prot` and
+  setup. 190 codes in all. ([Error codes](Error-Codes.md))
+𖥔 `hypernix errors aliases` lists the old names; `wiki/Error-Codes.md` is
+  generated from the registry.
+
+### Changed
+
+🔁 hyped-pro raises registered codes: `HypedProError` and `ToolError`
+  carry `code` (registered) and `legacy_code` (the name before), and
+  the bridge's failure lines have both.
+
+### Fixed
+
+🐛 `hypernix-t1 launch-script` failures name their code (`S1-02070.a3`,
+  or `S1-04070.d3` when systemd refused).
+
+### Documentation
+
+📚 [CLI](CLI.md): `list-all`, `hypernix-t1 setup`, `upgrade -S`;
+  [T1-API](T1-API.md): the quickstart starts with `hnx-t1 setup`;
+  [Error codes](Error-Codes.md) (new, generated); `examples/t1api` and
+  `docs/README.md`.
+
+### Tests
+
+🧪 hyped-pro's codes and their aliases, every sandbox refusal having a
+  code, the error page being current, `list-all` against the CLI, the
+  T1 dispatcher and pyproject.toml, `setup` (defaults, answers files,
+  refusals, re-runs keeping the secret, the manager running it) and
+  `upgrade -S env` (added settings, typos, the secret, the file mode,
+  backups, dry runs).
+
+### Known Issues
+
+❗ The new website pages were checked in Chromium at desktop and phone
+  widths, not in Safari or Firefox.
+❗ hyped-pro's OpenTUI app's tests need Bun, which the build environment
+  does not have; its code changes are string constants.
+
 ## 0.72.8a3 — 2026-10-21
 
 ### Added
