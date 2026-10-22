@@ -675,7 +675,12 @@ def _refresh_systemd(job: Job) -> None:
     values = dict(
         line.split("=", 1) for line in result.stdout.splitlines() if "=" in line
     )
-    if values.get("ActiveState", "") in ("activating", "active", "reloading"):
+    # systemctl failing to answer (a busy bus on a loaded machine) says
+    # nothing about the job. Reading its empty output as "inactive" called
+    # a running job unknown -- for good, since unknown is final.
+    if result.returncode != 0 or "ActiveState" not in values:
+        return
+    if values["ActiveState"] in ("activating", "active", "reloading", "deactivating"):
         job.status = JobStatus.RUNNING.value
         return
 
@@ -689,6 +694,10 @@ def _refresh_systemd(job: Job) -> None:
     # and systemctl's answer; calling that "unknown" is terminal, so the
     # file it did write would never be read.
     if _record_exit_file(job):
+        return
+    # And never while its process is still there, whatever systemd said.
+    if job.pid and _alive(job.pid):
+        job.status = JobStatus.RUNNING.value
         return
     job.status = JobStatus.UNKNOWN.value
     job.finished_at = job.finished_at or time.time()

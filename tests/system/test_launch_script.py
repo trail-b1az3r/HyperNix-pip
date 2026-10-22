@@ -571,14 +571,15 @@ class TestTheSystemdPathWithoutSystemd:
     was written.
     """
 
-    def _stub(self, monkeypatch, stdout: str, calls: list | None = None):
+    def _stub(self, monkeypatch, stdout: str, calls: list | None = None, *, returncode: int = 0,
+              alive: bool = False):
         from hypernix.system import launcher
 
         class _Result:
             def __init__(self, out):
                 self.stdout = out
                 self.stderr = ""
-                self.returncode = 0
+                self.returncode = returncode
 
         def fake_run(argv, *args, **kwargs):
             if calls is not None:
@@ -586,6 +587,8 @@ class TestTheSystemdPathWithoutSystemd:
             return _Result(stdout)
 
         monkeypatch.setattr(launcher.subprocess, "run", fake_run)
+        # The job's pid is made up; whether it is alive is the test's to say.
+        monkeypatch.setattr(launcher, "_alive", lambda pid: alive)
 
     def _job(self, tmp_path, **overrides):
         from hypernix.system.launcher import Job, JobStatus, Supervisor
@@ -661,7 +664,7 @@ class TestTheSystemdPathWithoutSystemd:
 
         assert calls == []
 
-    @pytest.mark.parametrize("state", ["activating", "active", "reloading"])
+    @pytest.mark.parametrize("state", ["activating", "active", "reloading", "deactivating"])
     def test_a_live_unit_is_running(self, tmp_path, monkeypatch, state):
         from hypernix.system.launcher import JobStatus, refresh
 
@@ -714,6 +717,29 @@ class TestTheSystemdPathWithoutSystemd:
 
         assert job.status == JobStatus.FAILED.value
         assert job.exit_status == 7
+
+    def test_systemctl_failing_to_answer_leaves_the_status_alone(self, tmp_path, monkeypatch):
+        """A busy bus on a loaded runner: systemctl exits non-zero with no
+        properties. That is not news about the job, and reading it as
+        "inactive" made a running job unknown for good."""
+        from hypernix.system.launcher import JobStatus, refresh
+
+        self._stub(monkeypatch, "", returncode=1)
+        job = self._job(tmp_path)
+
+        refresh(job)
+
+        assert job.status == JobStatus.RUNNING.value
+
+    def test_a_job_whose_process_is_still_there_is_running(self, tmp_path, monkeypatch):
+        from hypernix.system.launcher import JobStatus, refresh
+
+        self._stub(monkeypatch, self.COLLECTED, alive=True)
+        job = self._job(tmp_path)
+
+        refresh(job)
+
+        assert job.status == JobStatus.RUNNING.value
 
     def test_systemctl_being_absent_leaves_the_status_alone(self, tmp_path, monkeypatch):
         """Better a stale "running" than a fabricated outcome."""
