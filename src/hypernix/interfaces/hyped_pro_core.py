@@ -22,24 +22,27 @@ Two front-ends share this module instead of re-implementing it:
     this module directly (no subprocess).
 
 Error codes (raised as :class:`HypedProError`, ``.code`` attribute) are
-grepable and printed to stderr by both front-ends:
+grepable and printed to stderr by both front-ends. Since 0.72.8a4 they are
+registered HyperNix codes (:mod:`hypernix.system.errorcatalogue`); the
+second column is the name each had before, which ``hypernix errors
+explain`` still answers for:
 
-  HPC-CLOUD-001  no API key configured for this vendor
-  HPC-CLOUD-002  the vendor HTTP call failed (network / non-2xx)
-  HPC-CLOUD-003  the vendor response could not be parsed
-  HPC-CLOUD-004  agentic tool-call loop exceeded its round limit
-  HPC-LOCAL-001  local snapshot missing and download failed
-  HPC-LOCAL-002  local inference failed (OOM, dtype, arch mismatch, ...)
-  HPC-LOCAL-003  GGUF agentic tool-call loop exceeded its round limit
-  HPC-DEPS-001   a required package (huggingface_hub, torch, transformers,
-                 llama_cpp) isn't installed for the interpreter actually
-                 running this process — common on machines with multiple
-                 Pythons (pyenv/uv/conda); see HYPED_PRO_PYTHON
-  HPC-T1-001     T1 key missing or rejected by the local Gatekeeper
-  HPC-T1API-001  no T1 API key configured (see /key t1api)
-  HPC-T1API-002  the T1 API server could not be reached, or refused the call
-  HPC-T1API-003  the server routed to a model this client can't run locally
-  HPC-CFG-001    unknown vendor / model short name
+  I2-02210.b3  HPC-CLOUD-001    no API key configured for this vendor
+  I2-04210.d3  HPC-CLOUD-002    the vendor HTTP call failed (network / non-2xx)
+  I2-04211.d3  HPC-CLOUD-003    the vendor response could not be parsed
+  I2-01210.c3  HPC-CLOUD-004    agentic tool-call loop exceeded its round limit
+  I2-00220.d3  HPC-LOCAL-001    local snapshot missing and download failed
+  I2-00221.d3  HPC-LOCAL-002    local inference failed (OOM, dtype, arch mismatch, ...)
+  I2-01211.c3  HPC-LOCAL-003    GGUF agentic tool-call loop exceeded its round limit
+  I2-02230.b3  HPC-DEPS-001     a required package (huggingface_hub, torch, transformers,
+                                 llama_cpp) isn't installed for the interpreter actually
+                                 running this process — common on machines with multiple
+                                 Pythons (pyenv/uv/conda); see HYPED_PRO_PYTHON
+  I2-05240.a3  HPC-T1-001       T1 key missing or rejected by the local Gatekeeper
+  I2-05241.b3  HPC-T1API-001    no T1 API key configured (see /key t1api)
+  I2-04240.d3  HPC-T1API-002    the T1 API server could not be reached, or refused the call
+  I2-04241.d3  HPC-T1API-003    the server routed to a model this client can't run locally
+  I2-02250.a3  HPC-CFG-001      unknown vendor / model short name
 """
 from __future__ import annotations
 
@@ -58,6 +61,7 @@ from typing import Any
 
 from hypernix.security.hfpin import hub_revision
 from hypernix.security.safeurl import urlopen as safe_urlopen
+from hypernix.system import errorcatalogue as codes
 
 logger = logging.getLogger(__name__)
 
@@ -69,11 +73,19 @@ log = logging.getLogger("hypernix.hyped_pro_core")
 
 
 class HypedProError(RuntimeError):
-    """A real, coded failure — never silently swallowed into a fake reply."""
+    """A real, coded failure — never silently swallowed into a fake reply.
 
-    def __init__(self, code: str, message: str):
-        super().__init__(f"[{code}] {message}")
-        self.code = code
+    ``code`` is a registered HyperNix code (``I2-02250.a3``) since
+    0.72.8a4; ``legacy_code`` is the name it had before (``HPC-CFG-001``),
+    which ``hypernix errors explain`` still answers for.
+    """
+
+    def __init__(self, code: codes.ErrorCode | str, message: str):
+        found, legacy = codes.coded(code)
+        super().__init__(f"[{found.code}] {message}")
+        self.hx = found
+        self.code = found.code
+        self.legacy_code = legacy
         self.message = message
 
 
@@ -363,7 +375,7 @@ def get_model(short: str) -> ModelDef:
     m = resolve_model(short)
     if m is None:
         raise HypedProError(
-            "HPC-CFG-001",
+            codes.HYPED_UNKNOWN_MODEL,
             f"unknown model {short!r}: not in the catalog, not a .gguf or model "
             f"folder on this machine (by path, or by name in {_models_dir()}), "
             f"and not a Hugging Face repo id (org/name, or org/name:file.gguf).",
@@ -427,13 +439,13 @@ def _pick_gguf(repo: str) -> str:
         files = [f for f in HfApi().list_repo_files(repo) if f.lower().endswith(".gguf")]
     except Exception as exc:  # noqa: BLE001
         raise HypedProError(
-            "HPC-CFG-001",
+            codes.HYPED_UNKNOWN_MODEL,
             f"could not list {repo!r} to choose a GGUF ({exc}). Name the file: "
             f"{repo}:<file>.gguf",
         ) from exc
     whole = [f for f in files if "-of-" not in f] or files
     if not whole:
-        raise HypedProError("HPC-CFG-001", f"{repo!r} has no .gguf files.")
+        raise HypedProError(codes.HYPED_UNKNOWN_MODEL, f"{repo!r} has no .gguf files.")
     for wanted in ("q4_k_m", "q5_k_m", "q8_0"):
         for name in sorted(whole):
             if wanted in name.lower():
@@ -540,7 +552,7 @@ def _require(module_name: str, extra_hint: str) -> None:
         importlib.import_module(module_name)
     except ImportError as exc:
         raise HypedProError(
-            "HPC-DEPS-001",
+            codes.HYPED_DEPS_MISSING,
             f"'{module_name}' is not installed for this interpreter "
             f"({sys.executable}). Install it there with: "
             f"{sys.executable} -m pip install {extra_hint} --break-system-packages. "
@@ -614,7 +626,7 @@ def ensure_downloaded(model: ModelDef, quiet: bool = False) -> Path:
     if is_local_path(model):
         found, path = is_downloaded(model)
         if not found:
-            raise HypedProError("HPC-LOCAL-001", f"{path} is gone (it was there when "
+            raise HypedProError(codes.HYPED_LOCAL_MISSING, f"{path} is gone (it was there when "
                                                  f"{model.short!r} was chosen).")
         return path
 
@@ -633,7 +645,7 @@ def ensure_downloaded(model: ModelDef, quiet: bool = False) -> Path:
             return path
         except Exception as exc:  # noqa: BLE001
             raise HypedProError(
-                "HPC-LOCAL-001",
+                codes.HYPED_LOCAL_MISSING,
                 f"could not download {model.gguf_filename!r} from {model.repo!r} "
                 f"for model {model.short!r}: {exc}",
             ) from exc
@@ -647,7 +659,7 @@ def ensure_downloaded(model: ModelDef, quiet: bool = False) -> Path:
         return download_model(repo_id=model.repo, quiet=quiet, verify=True)
     except Exception as exc:  # noqa: BLE001
         raise HypedProError(
-            "HPC-LOCAL-001",
+            codes.HYPED_LOCAL_MISSING,
             f"could not download {model.repo!r} for model {model.short!r}: {exc}",
         ) from exc
 
@@ -665,7 +677,7 @@ def _resolve_api_key(vendor: str, override: str | None) -> str:
     if not key:
         env_var = PROVIDERS[vendor].auth_env_var or ""
         raise HypedProError(
-            "HPC-CLOUD-001",
+            codes.HYPED_CLOUD_NO_KEY,
             f"no API key configured for {vendor}. Set it with /key {vendor} <key>, "
             f"or export {env_var}.",
         )
@@ -681,15 +693,15 @@ def _http_post_json(url: str, headers: dict[str, str], body: dict[str, Any], tim
     except urllib.error.HTTPError as exc:
         raw_err = exc.read().decode("utf-8", errors="replace")
         raise HypedProError(
-            "HPC-CLOUD-002",
+            codes.HYPED_CLOUD_HTTP,
             f"HTTP {exc.code} from {url}: {raw_err[:500]}",
         ) from exc
     except urllib.error.URLError as exc:
-        raise HypedProError("HPC-CLOUD-002", f"network error calling {url}: {exc.reason}") from exc
+        raise HypedProError(codes.HYPED_CLOUD_HTTP, f"network error calling {url}: {exc.reason}") from exc
     try:
         return json.loads(raw)
     except json.JSONDecodeError as exc:
-        raise HypedProError("HPC-CLOUD-003", f"non-JSON response from {url}: {raw[:200]!r}") from exc
+        raise HypedProError(codes.HYPED_CLOUD_BAD_REPLY, f"non-JSON response from {url}: {raw[:200]!r}") from exc
 
 
 def send_cloud_chat(
@@ -705,7 +717,7 @@ def send_cloud_chat(
 ) -> str:
     provider = PROVIDERS[model.vendor]
     if provider.kind != "cloud":
-        raise HypedProError("HPC-CFG-001", f"{model.vendor} is not a cloud provider")
+        raise HypedProError(codes.HYPED_UNKNOWN_MODEL, f"{model.vendor} is not a cloud provider")
     key = _resolve_api_key(model.vendor, api_key)
     url = f"{provider.api_base}{provider.chat_path}"
 
@@ -746,11 +758,11 @@ def send_cloud_chat(
 
             if not tool_use_blocks or stop_reason != "tool_use":
                 if not text and not tool_use_blocks:
-                    raise HypedProError("HPC-CLOUD-003", f"no text content in Anthropic response: {data!r}"[:400])
+                    raise HypedProError(codes.HYPED_CLOUD_BAD_REPLY, f"no text content in Anthropic response: {data!r}"[:400])
                 return text
 
             if round_num == max_tool_rounds:
-                raise HypedProError("HPC-CLOUD-004", f"tool-call loop exceeded {max_tool_rounds} rounds without a final answer")
+                raise HypedProError(codes.HYPED_CLOUD_TOOL_ROUNDS, f"tool-call loop exceeded {max_tool_rounds} rounds without a final answer")
 
             conversation.append({"role": "assistant", "content": blocks})
             tool_results = []
@@ -764,7 +776,7 @@ def send_cloud_chat(
                     tool_results.append({"type": "tool_result", "tool_use_id": tid, "content": exc.message, "is_error": True})
             conversation.append({"role": "user", "content": tool_results})
 
-        raise HypedProError("HPC-CLOUD-004", f"tool-call loop exceeded {max_tool_rounds} rounds without a final answer")
+        raise HypedProError(codes.HYPED_CLOUD_TOOL_ROUNDS, f"tool-call loop exceeded {max_tool_rounds} rounds without a final answer")
 
     if provider.protocol == "openai-chat":
         from hypernix.interfaces import hyped_pro_tools as tools_mod
@@ -783,14 +795,14 @@ def send_cloud_chat(
             try:
                 msg = data["choices"][0]["message"]
             except (KeyError, IndexError, TypeError) as exc:
-                raise HypedProError("HPC-CLOUD-003", f"unexpected response shape: {data!r}"[:400]) from exc
+                raise HypedProError(codes.HYPED_CLOUD_BAD_REPLY, f"unexpected response shape: {data!r}"[:400]) from exc
 
             tool_calls = msg.get("tool_calls")
             if not tool_calls:
                 return msg.get("content") or ""
 
             if round_num == max_tool_rounds:
-                raise HypedProError("HPC-CLOUD-004", f"tool-call loop exceeded {max_tool_rounds} rounds without a final answer")
+                raise HypedProError(codes.HYPED_CLOUD_TOOL_ROUNDS, f"tool-call loop exceeded {max_tool_rounds} rounds without a final answer")
 
             conversation.append(msg)
             for tc in tool_calls:
@@ -807,9 +819,9 @@ def send_cloud_chat(
                     result = f"ERROR: {exc.message}"
                 conversation.append({"role": "tool", "tool_call_id": tc.get("id", ""), "content": result})
 
-        raise HypedProError("HPC-CLOUD-004", f"tool-call loop exceeded {max_tool_rounds} rounds without a final answer")
+        raise HypedProError(codes.HYPED_CLOUD_TOOL_ROUNDS, f"tool-call loop exceeded {max_tool_rounds} rounds without a final answer")
 
-    raise HypedProError("HPC-CFG-001", f"no protocol handler for vendor {model.vendor}")
+    raise HypedProError(codes.HYPED_UNKNOWN_MODEL, f"no protocol handler for vendor {model.vendor}")
 
 
 # ---------------------------------------------------------------------------
@@ -848,13 +860,13 @@ def _get_oven(model: ModelDef, quiet: bool = True):
         # _require just succeeded (transformers importable) but preheat()
         # still raised ImportError for something else — surface it plainly.
         raise HypedProError(
-            "HPC-DEPS-001",
+            codes.HYPED_DEPS_MISSING,
             f"missing a dependency needed to load {model.short!r} for this "
             f"interpreter ({sys.executable}): {exc}",
         ) from exc
     except Exception as exc:  # noqa: BLE001
         raise HypedProError(
-            "HPC-LOCAL-001",
+            codes.HYPED_LOCAL_MISSING,
             f"failed to load local snapshot for {model.short!r} ({model.repo}): {exc}",
         ) from exc
     _OVEN_CACHE[cache_key] = oven
@@ -885,7 +897,7 @@ def send_local_chat(
         return oven.chat(full_history, max_new_tokens=max_new_tokens,
                          temperature=temperature, should_stop=should_stop)
     except Exception as exc:  # noqa: BLE001
-        raise HypedProError("HPC-LOCAL-002", f"local inference failed for {model.short!r}: {exc}") from exc
+        raise HypedProError(codes.HYPED_LOCAL_INFERENCE, f"local inference failed for {model.short!r}: {exc}") from exc
 
 
 # ---------------------------------------------------------------------------
@@ -930,8 +942,8 @@ def _get_multilama(model: ModelDef):
         detail = exc.message.rstrip(". ")
         note = f" {model.notes}" if model.notes else ""
         raise HypedProError(
-            exc.code,
-            f"failed to load GGUF {model.gguf_filename!r} from {model.repo!r} for "
+            codes.HYPED_LOCAL_INFERENCE,
+            f"[{exc.code}] failed to load GGUF {model.gguf_filename!r} from {model.repo!r} for "
             f"{model.short!r} via multilama backend {backend_name!r}: {detail}.{note}",
         ) from exc
     _MULTILAMA_CACHE[cache_key] = llm
@@ -969,7 +981,7 @@ def send_local_chat_gguf(
             if not tool_calls:
                 return msg.get("content") or ""
             if round_num == max_tool_rounds:
-                raise HypedProError("HPC-LOCAL-003", f"tool-call loop exceeded {max_tool_rounds} rounds without a final answer")
+                raise HypedProError(codes.HYPED_LOCAL_TOOL_ROUNDS, f"tool-call loop exceeded {max_tool_rounds} rounds without a final answer")
             conversation.append(msg)
             for tc in tool_calls:
                 fn = tc.get("function") or {}
@@ -984,13 +996,14 @@ def send_local_chat_gguf(
                 except tools_mod.ToolError as exc:
                     result = f"ERROR: {exc.message}"
                 conversation.append({"role": "tool", "tool_call_id": tc.get("id", ""), "content": result})
-        raise HypedProError("HPC-LOCAL-003", f"tool-call loop exceeded {max_tool_rounds} rounds without a final answer")
+        raise HypedProError(codes.HYPED_LOCAL_TOOL_ROUNDS, f"tool-call loop exceeded {max_tool_rounds} rounds without a final answer")
     except ml.MultiLlamaError as exc:
-        raise HypedProError(exc.code, f"GGUF inference failed for {model.short!r} ({llm.backend.name}): {exc.message}") from exc
+        raise HypedProError(codes.HYPED_LOCAL_INFERENCE,
+                            f"[{exc.code}] GGUF inference failed for {model.short!r} ({llm.backend.name}): {exc.message}") from exc
     except HypedProError:
         raise
     except Exception as exc:  # noqa: BLE001
-        raise HypedProError("HPC-LOCAL-002", f"GGUF inference failed for {model.short!r}: {exc}") from exc
+        raise HypedProError(codes.HYPED_LOCAL_INFERENCE, f"GGUF inference failed for {model.short!r}: {exc}") from exc
 
 
 # ---------------------------------------------------------------------------
@@ -1015,7 +1028,7 @@ def send_t1_chat(
 
     key = t1_key or get_provider_key("t1")
     if not key:
-        raise HypedProError("HPC-T1-001", "no HNX T1 key set. Use /key t1 <key>.")
+        raise HypedProError(codes.HYPED_T1_KEY, "no HNX T1 key set. Use /key t1 <key>.")
 
     km = Keymaster()
     gk = Gatekeeper(keymaster=km)
@@ -1023,7 +1036,7 @@ def send_t1_chat(
         meta = gk.authenticate(key)
         gk.check_quota(meta.key_id, endpoint="/chat", tokens_requested=100)
     except Exception as exc:  # noqa: BLE001
-        raise HypedProError("HPC-T1-001", f"T1 authentication/quota check failed: {exc}") from exc
+        raise HypedProError(codes.HYPED_T1_KEY, f"T1 authentication/quota check failed: {exc}") from exc
 
     openai_key = get_provider_key("openai")
     if openai_key:
@@ -1039,7 +1052,7 @@ def send_t1_chat(
     try:
         gk.record_usage(meta.key_id, endpoint="/chat", model=model.short, tokens_used=len(reply) // 4 + 1)
     except Exception as exc:  # noqa: BLE001
-        log.warning("HPC-T1-001 usage recording failed (reply still returned): %s", exc)
+        log.warning("I2-05240.a3 usage recording failed (reply still returned): %s", exc)
     return reply
 
 
@@ -1198,7 +1211,7 @@ def _hypernix_version() -> str:
 def t1_api_client(*, api_key: str | None = None, url: str | None = None):
     """A configured :class:`hypernix.t1sdk.T1Client`.
 
-    Raises ``HPC-T1API-001`` rather than constructing a client with no
+    Raises ``I2-05241.b3`` rather than constructing a client with no
     credential: every call it could make needs one, so failing here gives
     a message about the missing key instead of a 401 three layers down.
     """
@@ -1208,7 +1221,7 @@ def t1_api_client(*, api_key: str | None = None, url: str | None = None):
     key = api_key or get_provider_key("t1api")
     if not key:
         raise HypedProError(
-            "HPC-T1API-001",
+            codes.HYPED_T1API_NO_KEY,
             "no T1 API key configured. Set one with `/key t1api <key>`, or "
             "export HNX_T1_API_KEY.",
         )
@@ -1238,14 +1251,14 @@ def _t1_api_call(what: str, fn):
         # branch, not the one below, is where "nothing is listening" lands.
         if _is_refused(exc):
             detail += _refused_advice(*t1_api_url_source())
-        raise HypedProError("HPC-T1API-002", f"{what}: {detail}") from exc
+        raise HypedProError(codes.HYPED_T1API_UNREACHABLE, f"{what}: {detail}") from exc
     except Exception as exc:  # noqa: BLE001 - transport/OS errors reach here
         url, source = t1_api_url_source()
         message = (f"{what}: could not reach the T1 API at {url} "
                    f"({type(exc).__name__}: {exc})")
         if _is_refused(exc):
             message += _refused_advice(url, source)
-        raise HypedProError("HPC-T1API-002", message) from exc
+        raise HypedProError(codes.HYPED_T1API_UNREACHABLE, message) from exc
 
 
 def _is_refused(exc: BaseException) -> bool:
@@ -1364,13 +1377,13 @@ def send_t1_api_chat(
     )
     chosen_id = getattr(decision, "model_id", None) or ""
     if not chosen_id:
-        raise HypedProError("HPC-T1API-002", "the T1 API returned no model_id to route to.")
+        raise HypedProError(codes.HYPED_T1API_UNREACHABLE, "the T1 API returned no model_id to route to.")
 
     local = _resolve_local_model(chosen_id)
     if local is None:
         known = ", ".join(sorted(_MODELS_BY_SHORT)[:8])
         raise HypedProError(
-            "HPC-T1API-003",
+            codes.HYPED_T1API_UNRUNNABLE,
             f"the T1 API routed this key to {chosen_id!r}, which this client has no "
             f"local model for. Map it with:\n"
             f"  hypernix config set {T1_API_MODEL_MAP_CONFIG_KEY} "
@@ -1379,7 +1392,7 @@ def send_t1_api_chat(
         )
     if local.vendor == "t1api":
         raise HypedProError(
-            "HPC-T1API-003",
+            codes.HYPED_T1API_UNRUNNABLE,
             f"the T1 API routed to {chosen_id!r}, which maps back to the routed "
             "pseudo-model. Point the mapping at a real local model.",
         )
@@ -1416,7 +1429,7 @@ def send_t1_api_chat(
         )
     except Exception as exc:  # noqa: BLE001
         log.warning(
-            "HPC-T1API-002 usage report failed for %s (reply still returned); "
+            "I2-04240.d3 usage report failed for %s (reply still returned); "
             "the server's quota will under-count this turn: %s", chosen_id, exc,
         )
     return reply

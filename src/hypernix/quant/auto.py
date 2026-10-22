@@ -137,7 +137,7 @@ def _convert(model_dir: Path, staged: Path, label: str, converter: str,
             return
         except LlamaConvertError as exc:
             if converter == "llama.cpp":
-                raise AutoError(str(exc)) from exc
+                raise AutoError(f"{exc.hx_code}: {exc}") from exc
             result.notes.append(f"llama.cpp's converter could not convert it ({str(exc).splitlines()[-1]}); "
                                 "HyperNix's converter was used, and only HnxRun runs the result.")
     from .convert import convert_to_gguf

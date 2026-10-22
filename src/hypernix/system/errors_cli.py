@@ -3,6 +3,7 @@
     hypernix errors explain R3-00020.a3
     hypernix errors list R
     hypernix errors list --min-severity 4
+    hypernix errors aliases
 
 For the person holding a code out of a log line and nothing else.
 """
@@ -12,7 +13,7 @@ import argparse
 import json
 
 from . import errorcatalogue  # noqa: F401 - registers every code
-from .errorcodes import CODES, Domain, Severity, codes_for, explain
+from .errorcodes import ALIASES, CODES, Domain, Severity, codes_for, explain
 
 __all__ = ["main", "cli_main"]
 
@@ -34,7 +35,19 @@ def _list(args) -> int:
 
 def _explain(args) -> int:
     print(explain(args.code))
-    return 0 if args.code.strip() in CODES else 1
+    name = args.code.strip()
+    return 0 if name in CODES or name in ALIASES else 1
+
+
+def _aliases(args) -> int:
+    """Names from before the registry (hyped-pro's), and the codes they are now."""
+    if args.json:
+        print(json.dumps(dict(sorted(ALIASES.items())), indent=2))
+        return 0
+    for old, new in sorted(ALIASES.items()):
+        print(f"{old:18} {new}  {CODES[new].explanation}")
+    print(f"\n{len(ALIASES)} older name(s)")
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -56,6 +69,10 @@ def main(argv: list[str] | None = None) -> int:
                     choices=[int(s) for s in Severity])
     ls.add_argument("--json", action="store_true")
     ls.set_defaults(func=_list)
+
+    al = sub.add_parser("aliases", help="older names (hyped-pro's HPC-..., TOOL-...) and their codes")
+    al.add_argument("--json", action="store_true")
+    al.set_defaults(func=_aliases)
 
     args = parser.parse_args(argv)
     return int(args.func(args) or 0)

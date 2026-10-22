@@ -94,7 +94,7 @@ class TestStatus:
         assert not git.is_repository()
         with pytest.raises(ToolError) as caught:
             git.status()
-        assert caught.value.code == "TOOL-GIT-003"
+        assert caught.value.code == "I2-00311.a3"
 
 
 # -- reading -------------------------------------------------------------------
@@ -174,7 +174,7 @@ class TestChanging:
     def test_nothing_staged(self, repo):
         with pytest.raises(ToolError) as caught:
             git.commit("empty")
-        assert caught.value.code == "TOOL-GIT-008"
+        assert caught.value.code == "I2-02313.a2"
 
     def test_an_empty_message(self, repo):
         with pytest.raises(ToolError):
@@ -210,12 +210,12 @@ class TestChanging:
     def test_names_that_could_be_options_are_refused(self, repo, name):
         with pytest.raises(ToolError) as caught:
             git.switch(name)
-        assert caught.value.code == "TOOL-GIT-005"
+        assert caught.value.code == "I2-02310.a3"
 
     def test_paths_outside_the_workspace_are_refused(self, repo):
         with pytest.raises(ToolError) as caught:
             git.add(["../../etc/passwd"])
-        assert caught.value.code == "TOOL-PATH-001"
+        assert caught.value.code == "I2-05300.a3"
 
     def test_a_path_that_looks_like_an_option_stays_a_path(self, repo):
         (repo / "-rf").write_text("x", encoding="utf-8")
@@ -225,7 +225,7 @@ class TestChanging:
     def test_push_without_a_remote_fails_cleanly(self, repo):
         with pytest.raises(ToolError) as caught:
             git.push()
-        assert caught.value.code == "TOOL-GIT-004"
+        assert caught.value.code == "I2-04310.d3"
 
 
 # -- the file tools ------------------------------------------------------------
@@ -248,7 +248,7 @@ class TestFileTools:
         (repo / "a.py").write_text("someone else\n", encoding="utf-8")
         with pytest.raises(ToolError) as caught:
             tools.write_file("a.py", "mine\n", expected_hash=seen)
-        assert caught.value.code == "TOOL-WRITE-002"
+        assert caught.value.code == "I2-03304.e2"
         assert (repo / "a.py").read_text(encoding="utf-8") == "someone else\n"
 
     def test_a_new_file_expects_nothing_there(self, repo):
@@ -268,12 +268,12 @@ class TestFileTools:
         monkeypatch.setenv("HYPERNIX_TOOL_POLICY", "allow")
         with pytest.raises(ToolError) as caught:
             call()
-        assert caught.value.code == "TOOL-PATH-002"
+        assert caught.value.code == "I2-05301.a3"
 
     def test_move_refuses_to_overwrite(self, repo):
         with pytest.raises(ToolError) as caught:
             tools.move_file("a.py", "b.txt")
-        assert caught.value.code == "TOOL-MOVE-002"
+        assert caught.value.code == "I2-03305.a2"
         tools.move_file("a.py", "moved/a.py")
         assert (repo / "moved" / "a.py").exists() and not (repo / "a.py").exists()
 
@@ -298,7 +298,7 @@ class TestConsent:
         monkeypatch.setattr(tools.sys, "stdin", io.StringIO(""))
         with pytest.raises(ToolError) as caught:
             tools.execute_tool("delete_file", {"path": "b.txt"})
-        assert caught.value.code == "TOOL-CONSENT-001"
+        assert caught.value.code == "I2-05302.a2"
         assert (repo / "b.txt").exists()
 
     def test_policy_allow_and_deny(self, repo, monkeypatch):
@@ -463,8 +463,8 @@ class TestBridge:
         done = bridge.dispatch({"id": 4, "cmd": "git", "op": "commit", "message": "via bridge"})
         assert done["ok"] and "via bridge" in done["data"]["message"]
         bad = bridge.dispatch({"id": 5, "cmd": "git", "op": "switch", "branch": "--evil"})
-        assert bad["ok"] is False and bad["code"] == "TOOL-GIT-005"
-        assert bridge.dispatch({"id": 6, "cmd": "git", "op": "frobnicate"})["code"] == "TOOL-GIT-009"
+        assert bad["ok"] is False and bad["code"] == "I2-02310.a3"
+        assert bridge.dispatch({"id": 6, "cmd": "git", "op": "frobnicate"})["code"] == "I2-02314.a3"
 
     def test_git_outside_a_repository(self, tmp_path, wire, monkeypatch):
         monkeypatch.setenv("HYPED_PRO_WORKSPACE", str(tmp_path))
@@ -483,7 +483,7 @@ class TestBridge:
         assert wrote["ok"] and (repo / "a.py").read_text(encoding="utf-8") == "edited\n"
         stale = bridge.dispatch({"id": 4, "cmd": "file_write", "path": "a.py", "content": "again",
                                  "expected_hash": read["hash"]})
-        assert stale["ok"] is False and stale["code"] == "TOOL-WRITE-002"
+        assert stale["ok"] is False and stale["code"] == "I2-03304.e2"
 
     def test_line_endings_come_back_as_they_are(self, repo, wire):
         """A CRLF file is shown and saved as CRLF: an editor that
@@ -502,9 +502,9 @@ class TestBridge:
 
     def test_binary_and_outside_files_are_refused(self, repo, wire):
         (repo / "blob.bin").write_bytes(b"\x00\x01\x02")
-        assert bridge.dispatch({"id": 1, "cmd": "file_read", "path": "blob.bin"})["code"] == "TOOL-READ-004"
-        assert bridge.dispatch({"id": 2, "cmd": "file_read", "path": "../../etc/passwd"})["code"] == "TOOL-PATH-001"
-        assert bridge.dispatch({"id": 3, "cmd": "file_write", "path": ".git/hooks/x", "content": "x"})["code"] == "TOOL-PATH-002"
+        assert bridge.dispatch({"id": 1, "cmd": "file_read", "path": "blob.bin"})["code"] == "I2-03303.e2"
+        assert bridge.dispatch({"id": 2, "cmd": "file_read", "path": "../../etc/passwd"})["code"] == "I2-05300.a3"
+        assert bridge.dispatch({"id": 3, "cmd": "file_write", "path": ".git/hooks/x", "content": "x"})["code"] == "I2-05301.a3"
 
     def test_git_runs_off_the_main_loop(self):
         # push and pull wait on a network; inline they would block cancel.

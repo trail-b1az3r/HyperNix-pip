@@ -27,8 +27,10 @@ On one machine you own, `hypernix-t1` does all of this for you:
 
 ```bash
 pip install 'hypernix[t1api]'
-hypernix-t1 create && hypernix-t1 start
-hypernix-t1 status        # address, version, HyperLink on the web, models folder
+hnx-t1 setup              # the installer (b1): asks, writes the config, starts the server
+hnx-t1 status             # address, version, HyperLink on the web, models folder
+hnx-t1 upgrade -S all     # later: HyperNix in the server's Python, then its .env
+hnx list-all              # every command there is
 ```
 
 The scripts here are for when you want to see or change each piece:

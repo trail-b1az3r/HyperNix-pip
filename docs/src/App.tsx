@@ -13,8 +13,37 @@ import { LearnPage } from './pages/Learn'
 
 const PAGES = ['home', 'docs', 'api', 'learn', 'stats', 'about', 'api-deep', 't1-api']
 
+// Every page has an address: #/stats, #/docs/T1-API/the-anthropic-messages-api.
+// Only hashes that start with "#/" are routes, so in-page anchors such as
+// the skip link's #main-content keep working.
+function parseHash(hash = window.location.hash) {
+  if (!hash.startsWith('#/')) return null
+  const [page = 'home', doc, anchor] = hash.slice(2).split('/').map((part) => {
+    try { return decodeURIComponent(part) } catch { return part }
+  })
+  // The second part is a docs page, or a tab of the T1 page (#/t1-api/endpoints).
+  return { page: PAGES.includes(page) ? page : 'home', doc: doc || undefined, anchor: anchor || undefined }
+}
+
 export default function App() {
-  const [page, setPage] = useState('home')
+  const [route, setRoute] = useState(() => parseHash() || { page: 'home' })
+  const page = route.page
+  const setPage = (next) => {
+    if (next === page && !route.doc) { window.scrollTo({ top: 0 }); return }
+    window.location.hash = `#/${next}`
+  }
+  useEffect(() => {
+    const onHash = () => {
+      const parsed = parseHash()
+      if (!parsed) return
+      setRoute((prev) => {
+        if (prev.page !== parsed.page) window.scrollTo({ top: 0 })
+        return parsed
+      })
+    }
+    window.addEventListener('hashchange', onHash)
+    return () => window.removeEventListener('hashchange', onHash)
+  }, [])
   const [scrolled, setScrolled] = useState(false)
   const [activeEvent] = useState(() => getActiveSiteEvent())
   const [bannerDismissed, setBannerDismissed] = useState(false)
@@ -32,6 +61,7 @@ export default function App() {
   const [downloads, setDownloads] = useState({ last_day: 4, last_week: 460, last_month: 1474 })
   const [olderDownloads, setOlderDownloads] = useState(null)
   const [threeMonthDownloads, setThreeMonthDownloads] = useState(null)
+  const [downloadSeries, setDownloadSeries] = useState(null)
   const [totalDownloads, setTotalDownloads] = useState(0)
   const [statsUpdatedAt, setStatsUpdatedAt] = useState(null)
   const [ghStats, setGhStats] = useState({ stars: 0, forks: 0, issues: 0 })
@@ -79,6 +109,7 @@ export default function App() {
           if (d.total_downloads !== undefined) setTotalDownloads(d.total_downloads)
           if (d.downloads && d.downloads.older) setOlderDownloads(d.downloads.older)
           if (d.downloads && d.downloads.three_month) setThreeMonthDownloads(d.downloads.three_month)
+          if (d.series && Array.isArray(d.series.dates)) setDownloadSeries(d.series)
           if (d.updated_at) setStatsUpdatedAt(d.updated_at)
           if (d.total_lines !== undefined || d.contributors) setCodeStats(d)
           // Accept either a pre-aggregated array (python_versions / operating_systems,
@@ -219,7 +250,7 @@ export default function App() {
     }).catch(() => {})
   }, [])
 
-  const common = { downloads, olderDownloads, threeMonthDownloads, totalDownloads, statsUpdatedAt, ghStats, pypiInfo, pythonVersionStats, systemStats, releaseTimeline, changelogEntries, version, statsError, codeStats }
+  const common = { downloadSeries, downloads, olderDownloads, threeMonthDownloads, totalDownloads, statsUpdatedAt, ghStats, pypiInfo, pythonVersionStats, systemStats, releaseTimeline, changelogEntries, version, statsError, codeStats }
 
   if (aprilFoolsActive) {
     return <AprilFoolsPage />
@@ -233,10 +264,10 @@ export default function App() {
       <Nav page={page} setPage={setPage} scrolled={scrolled} topOffset={bannerVisible ? BANNER_HEIGHT : 0} pages={PAGES.slice(0, 6)} />
       <main id="main-content" style={{ paddingTop: bannerVisible ? BANNER_HEIGHT : 0, transition: 'padding-top 0.2s ease' }}>
         {page === 'home' && <HomePage setPage={setPage} {...common} />}
-        {page === 'docs' && <DocsPage />}
+        {page === 'docs' && <DocsPage route={{ doc: route.doc, anchor: route.anchor }} />}
         {page === 'api' && <ApiPage setPage={setPage} />}
         {page === 'api-deep' && <ApiDeepPage />}
-        {page === 't1-api' && <T1ApiPage />}
+        {page === 't1-api' && <T1ApiPage tab={route.doc} />}
         {page === 'learn' && <LearnPage />}
         {page === 'stats' && <StatsPage {...common} />}
         {page === 'about' && <AboutPage />}

@@ -79,7 +79,7 @@ def resolve_python_for_subprocess(debug: bool = False) -> str:
     (if it has hypernix — the common case, since this code is itself
     running under it) > python3.12 > python3.14 > any other python3.x on
     $PATH with hypernix importable > bare "python3" as a last resort
-    (will surface a clear HPC-DEPS-001 later if that's wrong, rather than
+    (will surface a clear I2-02230.b3 later if that's wrong, rather than
     silently guessing further).
     """
     env_override = os.environ.get("HYPED_PRO_PYTHON")

@@ -183,7 +183,7 @@ function RouteList({ routes }) {
   )
 }
 
-export function ReferenceDocsPage({ dataUrl, kicker, title, lede, mode = 'deep' }) {
+export function ReferenceDocsPage({ dataUrl, kicker, title, lede, mode = 'deep', embedded = false }) {
   const [data, setData] = useState(null)
   const [query, setQuery] = useState('')
   const [activeModule, setActiveModule] = useState(null)
@@ -209,8 +209,8 @@ export function ReferenceDocsPage({ dataUrl, kicker, title, lede, mode = 'deep' 
   const errorCount = mode === 't1' ? (data?.errors || []).length : modules.reduce((n, m) => n + (m.errors?.length || 0), 0)
 
   return (
-    <div className="anim-fade" style={{ maxWidth:1120, margin:'0 auto', padding:'90px 20px 60px' }}>
-      <PageHeading kicker={kicker} title={title} lede={lede} />
+    <div className="anim-fade" style={embedded ? {} : { maxWidth:1120, margin:'0 auto', padding:'90px 20px 60px' }}>
+      {embedded ? <p className="t1-muted">{lede}</p> : <PageHeading kicker={kicker} title={title} lede={lede} />}
       <div className="anim-stagger" style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(135px,1fr))', gap:10, marginBottom:20 }}>
         <Metric label="Modules" value={modules.length} />
         <Metric label="Public API entries" value={apiEntries} />

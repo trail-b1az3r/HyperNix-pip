@@ -271,7 +271,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         return _dispatch(args, store, who, parser)
     except LaunchError as exc:
-        print(f"hypernix-t1 launch-script: {exc}", file=sys.stderr)
+        print(f"hypernix-t1 launch-script: {exc.hx_code}: {exc}", file=sys.stderr)
         return 1
 
 

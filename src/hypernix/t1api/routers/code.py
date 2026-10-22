@@ -120,7 +120,7 @@ def _refused(exc: cb.SandboxError) -> T1APIError:
         _ERROR_CODES.get(exc.status, T1ErrorCode.VALIDATION_ERROR),
         str(exc),
         http_status=exc.status,
-        details={"reason": exc.code},
+        details={"reason": exc.code, "hx_code": exc.hx_code},
     )
 
 

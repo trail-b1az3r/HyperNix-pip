@@ -128,7 +128,7 @@ class CodeTools:
                 return data.get("exit_code", 1) == 0, json.dumps(
                     {k: data.get(k) for k in ("exit_code", "stdout", "stderr", "timed_out", "elapsed_seconds")})[:MAX_TEXT]
         except SandboxError as exc:
-            return False, str(exc)
+            return False, f"{exc} [{exc.hx_code}]"
         except (OSError, ValueError, TypeError) as exc:
             return False, f"{name} failed: {exc}"
         return False, f"there is no tool called {name}"

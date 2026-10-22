@@ -139,6 +139,13 @@ class SandboxError(ValueError):
         self.code = code
         self.status = status
 
+    @property
+    def hx_code(self) -> str:
+        """The registered HyperNix code for this kind of refusal (0.72.8a4)."""
+        from ..system.errorcatalogue import SANDBOX_CODES, SANDBOX_REFUSED
+
+        return SANDBOX_CODES.get(self.code, SANDBOX_REFUSED).code
+
 
 # ---------------------------------------------------------------------------
 # Permissions

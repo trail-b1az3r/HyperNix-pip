@@ -19,7 +19,9 @@ One JSON object per line on stdin, one JSON object per line on stdout::
     -> {"id": 3, "cmd": "download", "repo": "org/model"}
     <- {"id": 3, "ok": true, "data": {"path": "/home/user/.hypernix/models/model"}}
 
-On failure: ``{"id": N, "ok": false, "code": "HPC-...", "error": "..."}``.
+On failure: ``{"id": N, "ok": false, "code": "I2-02250.a3", "legacy_code": "HPC-CFG-001",
+"error": "..."}`` -- a registered code (``hypernix errors explain``), and the
+name it had before 0.72.8a4.
 
 stderr is left connected to the parent's real terminal (Node spawns this
 process with stdio ``["pipe", "pipe", "inherit"]``) so every
@@ -43,6 +45,7 @@ import traceback
 from typing import Any
 
 from hypernix.interfaces import hyped_pro_core as core
+from hypernix.system import errorcatalogue as codes
 
 BRIDGE_VERSION = "1.1.26.10.1.0"
 
@@ -240,8 +243,11 @@ def _tool_hooks(request_id: Any, cancel: threading.Event | None):
     return tools.hooks(consent=consent, progress=progress)
 
 
-def _err(id_: Any, code: str, message: str) -> dict[str, Any]:
-    return {"id": id_, "ok": False, "code": code, "error": message}
+def _err(id_: Any, code: codes.ErrorCode | str, message: str, legacy: str = "") -> dict[str, Any]:
+    """A failure line. ``code`` is the registered code; ``legacy_code`` the
+    name a client from before 0.72.8a4 knew it by."""
+    found, old = codes.coded(code)
+    return {"id": id_, "ok": False, "code": found.code, "legacy_code": legacy or old, "error": message}
 
 
 def _ok(id_: Any, data: Any) -> dict[str, Any]:
@@ -261,7 +267,7 @@ def dispatch(req: dict[str, Any], cancel: threading.Event | None = None) -> dict
 
         if cmd == "resolve":
             # A model the catalog does not name: a path, a name in the
-            # models folder, or a Hugging Face repo id. HPC-CFG-001 with
+            # models folder, or a Hugging Face repo id. I2-02250.a3 with
             # what was tried when it is none of those.
             return _ok(id_, core.model_json(core.get_model(str(req.get("model") or ""))))
 
@@ -377,7 +383,7 @@ def dispatch(req: dict[str, Any], cancel: threading.Event | None = None) -> dict
                     verify=req.get("verify", ""),
                 ))
             except noodle.NoodleSessionError as exc:
-                return _err(id_, "HPB-NOODLE-001", str(exc))
+                return _err(id_, codes.HYPED_NOODLE_START, str(exc))
 
         if cmd == "noodle_poll":
             from hypernix.interfaces.noodle import hyped as noodle
@@ -387,7 +393,7 @@ def dispatch(req: dict[str, Any], cancel: threading.Event | None = None) -> dict
                     req["session"], timeout=float(req.get("timeout", 0.0))
                 ))
             except noodle.NoodleSessionError as exc:
-                return _err(id_, "HPB-NOODLE-002", str(exc))
+                return _err(id_, codes.HYPED_NOODLE_CALL, str(exc))
 
         if cmd == "noodle_stop":
             from hypernix.interfaces.noodle import hyped as noodle
@@ -395,7 +401,7 @@ def dispatch(req: dict[str, Any], cancel: threading.Event | None = None) -> dict
             try:
                 return _ok(id_, noodle.stop(req["session"]))
             except noodle.NoodleSessionError as exc:
-                return _err(id_, "HPB-NOODLE-002", str(exc))
+                return _err(id_, codes.HYPED_NOODLE_CALL, str(exc))
 
         if cmd == "noodle_sessions":
             from hypernix.interfaces.noodle import hyped as noodle
@@ -404,29 +410,29 @@ def dispatch(req: dict[str, Any], cancel: threading.Event | None = None) -> dict
                 try:
                     return _ok(id_, noodle.summary(req["session"]))
                 except noodle.NoodleSessionError as exc:
-                    return _err(id_, "HPB-NOODLE-002", str(exc))
+                    return _err(id_, codes.HYPED_NOODLE_CALL, str(exc))
             return _ok(id_, {"sessions": noodle.sessions()})
 
         if cmd == "cancel":
             return _ok(id_, {"target": req.get("target"),
                              "result": _cancel(req.get("target"))})
 
-        return _err(id_, "HPB-PROTO-001", f"unknown command {cmd!r}")
+        return _err(id_, codes.HYPED_BRIDGE_PROTOCOL, f"unknown command {cmd!r}")
 
     except core.HypedProError as exc:
         print(f"[hyped-pro-bridge] ERROR {exc.code}: {exc.message}", file=sys.stderr)
-        return _err(id_, exc.code, exc.message)
+        return _err(id_, exc.code, exc.message, exc.legacy_code)
     except _ToolError as exc:
         # A git or file refusal: expected, reportable, not a crash.
-        return _err(id_, exc.code, exc.message)
+        return _err(id_, exc.code, exc.message, exc.legacy_code)
     except KeyError as exc:
         msg = f"missing required field {exc}"
-        print(f"[hyped-pro-bridge] ERROR HPB-PROTO-001: {msg}", file=sys.stderr)
-        return _err(id_, "HPB-PROTO-001", msg)
+        print(f"[hyped-pro-bridge] ERROR I2-03270.a3: {msg}", file=sys.stderr)
+        return _err(id_, codes.HYPED_BRIDGE_PROTOCOL, msg)
     except Exception as exc:  # noqa: BLE001 — must always return JSON, never crash silently
-        print("[hyped-pro-bridge] ERROR HPB-INTERNAL-001: unhandled exception", file=sys.stderr)
+        print("[hyped-pro-bridge] ERROR I9-99000.f4: unhandled exception", file=sys.stderr)
         traceback.print_exc(file=sys.stderr)
-        return _err(id_, "HPB-INTERNAL-001", f"{type(exc).__name__}: {exc}")
+        return _err(id_, codes.INTERNAL_INTERFACES, f"{type(exc).__name__}: {exc}")
 
 
 # ---------------------------------------------------------------------------
@@ -472,7 +478,7 @@ def _git(req: dict[str, Any]) -> Any:
         return {"message": git.push(set_upstream=bool(req.get("set_upstream")))}
     if op == "pull":
         return {"message": git.pull(bool(req.get("rebase")))}
-    raise _ToolError("TOOL-GIT-009", f"unknown git op {op!r}")
+    raise _ToolError(codes.HYPED_GIT_UNKNOWN_OP, f"unknown git op {op!r}")
 
 
 def _files(cmd: str, req: dict[str, Any]) -> Any:
@@ -482,7 +488,7 @@ def _files(cmd: str, req: dict[str, Any]) -> Any:
     if cmd == "files_list":
         directory = tools._resolve_safe_path(str(req.get("path") or "."))
         if not directory.is_dir():
-            raise _ToolError("TOOL-LIST-002", f"{req.get('path')!r} is not a directory.")
+            raise _ToolError(codes.HYPED_TOOL_LIST_FILE, f"{req.get('path')!r} is not a directory.")
         entries = []
         for entry in sorted(directory.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower())):
             if entry.name in (".git", "__pycache__", "node_modules"):
@@ -502,17 +508,17 @@ def _files(cmd: str, req: dict[str, Any]) -> Any:
             # A new file: the editor opens it empty, and saving creates it.
             return {"path": relative, "content": "", "hash": tools.content_hash(""), "exists": False}
         if path.is_dir():
-            raise _ToolError("TOOL-READ-002", f"{relative!r} is a directory.")
+            raise _ToolError(codes.HYPED_TOOL_READ_DIR, f"{relative!r} is a directory.")
         size = path.stat().st_size
         if size > MAX_EDIT_BYTES:
-            raise _ToolError("TOOL-READ-003", f"{relative!r} is {size} bytes; the editor opens files up to {MAX_EDIT_BYTES}.")
+            raise _ToolError(codes.HYPED_TOOL_READ_TOO_LARGE, f"{relative!r} is {size} bytes; the editor opens files up to {MAX_EDIT_BYTES}.")
         raw = path.read_bytes()
         if b"\0" in raw[:8192]:
-            raise _ToolError("TOOL-READ-004", f"{relative!r} looks binary.")
+            raise _ToolError(codes.HYPED_TOOL_READ_NOT_TEXT, f"{relative!r} looks binary.")
         try:
             content = raw.decode("utf-8")
         except UnicodeDecodeError as exc:
-            raise _ToolError("TOOL-READ-004", f"{relative!r} isn't valid UTF-8 text.") from exc
+            raise _ToolError(codes.HYPED_TOOL_READ_NOT_TEXT, f"{relative!r} isn't valid UTF-8 text.") from exc
         return {"path": relative, "content": content, "hash": tools.content_hash(content), "exists": True}
 
     # file_write
@@ -534,7 +540,7 @@ def _run_background(req: dict[str, Any], event: threading.Event) -> None:
             resp = dispatch(req, cancel=event)
     except Exception as exc:  # noqa: BLE001 - a worker thread must never die silently
         traceback.print_exc(file=sys.stderr)
-        resp = _err(id_, "HPB-INTERNAL-001", f"{type(exc).__name__}: {exc}")
+        resp = _err(id_, codes.INTERNAL_INTERFACES, f"{type(exc).__name__}: {exc}")
     finally:
         _unregister(id_)
     _write(resp)
@@ -559,8 +565,8 @@ def serve() -> int:
             try:
                 req = json.loads(line)
             except json.JSONDecodeError as exc:
-                print(f"[hyped-pro-bridge] ERROR HPB-PROTO-001: bad JSON line: {exc}", file=sys.stderr)
-                _write(_err(None, "HPB-PROTO-001", f"invalid JSON: {exc}"))
+                print(f"[hyped-pro-bridge] ERROR I2-03270.a3: bad JSON line: {exc}", file=sys.stderr)
+                _write(_err(None, codes.HYPED_BRIDGE_PROTOCOL, f"invalid JSON: {exc}"))
                 continue
 
             if req.get("cmd") in BACKGROUND_COMMANDS:

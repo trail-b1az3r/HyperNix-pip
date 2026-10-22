@@ -34,7 +34,7 @@ def test_gguf_models_have_a_filename():
 def test_get_model_unknown_raises_coded_error():
     with pytest.raises(HypedProError) as exc_info:
         core.get_model("definitely-not-a-real-model")
-    assert exc_info.value.code == "HPC-CFG-001"
+    assert exc_info.value.code == "I2-02250.a3"
 
 
 def test_get_model_known_short_resolves():
@@ -154,7 +154,7 @@ def test_resolve_api_key_missing_raises_coded_error(monkeypatch):
     monkeypatch.setattr(config_mod, "get_provider_key", lambda vendor: None)
     with pytest.raises(HypedProError) as exc_info:
         core._resolve_api_key("openai", None)
-    assert exc_info.value.code == "HPC-CLOUD-001"
+    assert exc_info.value.code == "I2-02210.b3"
 
 
 # ---------------------------------------------------------------------------
@@ -231,13 +231,13 @@ def test_send_cloud_chat_http_error_raises_coded_error(monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
 
     def fake_post(url, headers, body, timeout=60):
-        raise HypedProError("HPC-CLOUD-002", "HTTP 500 from api.openai.com")
+        raise HypedProError("I2-04210.d3", "HTTP 500 from api.openai.com")
 
     core._http_post_json = fake_post
     model = core.get_model("gpt-4o")
     with pytest.raises(HypedProError) as exc_info:
         core.send_cloud_chat(model, [{"role": "user", "content": "hi"}], enable_tools=False)
-    assert exc_info.value.code == "HPC-CLOUD-002"
+    assert exc_info.value.code == "I2-04210.d3"
 
 
 def test_send_cloud_chat_malformed_response_raises_coded_error(monkeypatch):
@@ -246,7 +246,7 @@ def test_send_cloud_chat_malformed_response_raises_coded_error(monkeypatch):
     model = core.get_model("gpt-4o")
     with pytest.raises(HypedProError) as exc_info:
         core.send_cloud_chat(model, [{"role": "user", "content": "hi"}], enable_tools=False)
-    assert exc_info.value.code == "HPC-CLOUD-003"
+    assert exc_info.value.code == "I2-04211.d3"
 
 
 # ---------------------------------------------------------------------------
@@ -320,7 +320,7 @@ def test_tool_loop_respects_round_limit(monkeypatch, tmp_path):
     model = core.get_model("gpt-4o")
     with pytest.raises(HypedProError) as exc_info:
         core.send_cloud_chat(model, [{"role": "user", "content": "loop"}], max_tool_rounds=2)
-    assert exc_info.value.code == "HPC-CLOUD-004"
+    assert exc_info.value.code == "I2-01210.c3"
 
 
 def test_tool_loop_disabled_omits_tools_from_request(monkeypatch):

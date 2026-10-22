@@ -13,6 +13,12 @@ version and OS breakdowns server-side (pypistats.org doesn't allow direct
 browser/CORS access to these, so the docs site reads them from this file
 instead of calling pypistats.org itself).
 
+Since 0.72.8a4 it also keeps ``series``: daily downloads as lines for the
+Stats page's graph -- the total, with and without mirrors, and one line
+per Python version and per operating system -- on one shared list of
+dates. pypistats keeps 180 days; dates older than that are carried over
+from the file, so the history grows rather than sliding.
+
 Data sources:
   - https://pypistats.org/api/packages/{package}/recent       -> last_day / last_week / last_month
   - https://pypistats.org/api/packages/{package}/overall       -> full daily download history
@@ -40,6 +46,7 @@ MANUAL_RUN_REASON = os.environ.get("MANUAL_RUN_REASON", "").strip()
 PYPI_JSON_URL = f"https://pypi.org/pypi/{PACKAGE}/json"
 PYPISTATS_RECENT_URL = f"https://pypistats.org/api/packages/{PACKAGE}/recent"
 PYPISTATS_OVERALL_URL = f"https://pypistats.org/api/packages/{PACKAGE}/overall?mirrors=false"
+PYPISTATS_OVERALL_BOTH_URL = f"https://pypistats.org/api/packages/{PACKAGE}/overall"
 PYPISTATS_PYTHON_MINOR_URL = f"https://pypistats.org/api/packages/{PACKAGE}/python_minor"
 PYPISTATS_SYSTEM_URL = f"https://pypistats.org/api/packages/{PACKAGE}/system"
 
@@ -136,6 +143,80 @@ def get_system_breakdown():
     return get_category_breakdown(PYPISTATS_SYSTEM_URL, "system", "os")
 
 
+def get_category_series(url):
+    """``{category: {date: downloads}}`` from an endpoint that answers with
+    one row per (category, date). pypistats' "null" bucket is "Unknown"."""
+    try:
+        rows = fetch_json(url).get("data", [])
+    except Exception as exc:  # noqa: BLE001
+        print(f"warning: could not fetch series from {url}: {exc}", file=sys.stderr)
+        return {}
+    out = {}
+    for row in rows:
+        date = row.get("date")
+        if not date:
+            continue
+        category = row.get("category") or "null"
+        category = "Unknown" if category == "null" else category
+        bucket = out.setdefault(category, {})
+        bucket[date] = bucket.get(date, 0) + int(row.get("downloads", 0))
+    return out
+
+
+def build_series(existing_series):
+    """The lines for the graph, merged with the ones already in the file."""
+    overall = get_category_series(PYPISTATS_OVERALL_BOTH_URL)
+    python = get_category_series(PYPISTATS_PYTHON_MINOR_URL)
+    system = get_category_series(PYPISTATS_SYSTEM_URL)
+
+    def old(group, name=None):
+        """A line already in the file, as {date: n}."""
+        dates = (existing_series or {}).get("dates") or []
+        values = (existing_series or {}).get(group)
+        if name is not None:
+            values = (values or {}).get(name)
+        if not isinstance(values, list):
+            return {}
+        # Not strict: a line first seen after the series began is shorter.
+        return {d: v for d, v in zip(dates, values, strict=False) if isinstance(v, (int, float))}
+
+    def merged(fresh, previous):
+        return {**previous, **fresh}
+
+    without = merged(overall.get("without_mirrors", {}), old("total"))
+    with_m = merged(overall.get("with_mirrors", {}), old("with_mirrors"))
+    by_python = {k: merged(v, old("by_python", k)) for k, v in python.items()}
+    for name in ((existing_series or {}).get("by_python") or {}):
+        by_python.setdefault(name, old("by_python", name))
+    by_os = {k: merged(v, old("by_os", k)) for k, v in system.items()}
+    for name in ((existing_series or {}).get("by_os") or {}):
+        by_os.setdefault(name, old("by_os", name))
+
+    every = set(without) | set(with_m)
+    for line in (*by_python.values(), *by_os.values()):
+        every |= set(line)
+    if not every:
+        return existing_series or {}
+    start = datetime.strptime(min(every), "%Y-%m-%d").date()
+    end = datetime.strptime(max(every), "%Y-%m-%d").date()
+    dates = [(start + timedelta(days=i)).isoformat() for i in range((end - start).days + 1)]
+
+    def line(values):
+        return [int(values.get(d, 0)) for d in dates]
+
+    def ordered(lines):
+        return dict(sorted(((k, line(v)) for k, v in lines.items()), key=lambda kv: -sum(kv[1])))
+
+    return {
+        "dates": dates,
+        "total": line(without),
+        "with_mirrors": line(with_m),
+        "by_python": ordered(by_python),
+        "by_os": ordered(by_os),
+        "note": "total is without mirrors; pypistats keeps 180 days, older dates are carried over",
+    }
+
+
 def split_history_buckets(history, recent_days=OLD_THRESHOLD_DAYS, three_month_days=THREE_MONTH_THRESHOLD_DAYS):
     """
     Split a daily history list into three buckets:
@@ -212,6 +293,8 @@ def main():
     if not operating_systems:
         operating_systems = existing.get("operating_systems", [])
 
+    series = build_series(existing.get("series"))
+
     output = {
         "version": version,
         "total_downloads": total_downloads,
@@ -228,6 +311,7 @@ def main():
         },
         "python_versions": python_versions,
         "operating_systems": operating_systems,
+        "series": series,
         "updated_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
     }
 
@@ -240,7 +324,10 @@ def main():
         f.write("\n")
 
     print(f"Wrote {JSON_PATH}:")
-    print(json.dumps(output, indent=2))
+    print(json.dumps({k: v for k, v in output.items() if k != "series"}, indent=2))
+    if series:
+        print(f"series: {len(series['dates'])} days, {len(series['by_python'])} Python versions, "
+              f"{len(series['by_os'])} systems")
 
 
 if __name__ == "__main__":

@@ -17,15 +17,18 @@
  * Compiled with `tsc` (see tsconfig.json) to hyped_pro.js, which is what
  * hyped_pro.py actually spawns — edit this file, not the compiled output.
  *
- * ERROR CODES (printed to the terminal, never swallowed):
- *   HPT-BRIDGE-001  could not spawn the Python bridge process
- *   HPT-BRIDGE-002  the Python bridge process exited unexpectedly
- *   HPT-BRIDGE-003  malformed JSON from the Python bridge
- *   HPT-CATALOG-001 could not load the model/provider catalog at startup
- *   HPT-CATALOG-002 the catalog response was malformed
- *   HPT-GUI-001     could not launch the hyped-pro GUI
- *   (HPC-*, HPB-* codes surfacing from a bridge call originate in Python —
- *    see hypernix/hyped_pro_core.py and hyped_pro_bridge.py.)
+ * ERROR CODES (printed to the terminal, never swallowed). Registered
+ * HyperNix codes since 0.72.8a4 (`hypernix errors explain <code>`); the
+ * name each had before is beside it, and still explains:
+ *   I1-00281.b4  HPT-BRIDGE-001   could not spawn the Python bridge process
+ *   I1-04281.d4  HPT-BRIDGE-002   the Python bridge process exited unexpectedly
+ *   I1-03281.e3  HPT-BRIDGE-003   malformed JSON from the Python bridge
+ *   I1-01281.c3  HPT-BRIDGE-004   the bridge did not answer in time
+ *   I1-00282.d4  HPT-CATALOG-001  could not load the model/provider catalog at startup
+ *   I1-03282.e4  HPT-CATALOG-002  the catalog response was malformed
+ *   I1-00283.d3  HPT-GUI-001      could not launch the hyped-pro GUI
+ *   (codes surfacing from a bridge call originate in Python — see
+ *    hypernix/system/errorcatalogue.py, hyped_pro_core.py and hyped_pro_bridge.py.)
  */
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
@@ -214,19 +217,19 @@ class Bridge {
         child.stdout.setEncoding('utf8');
         child.stdout.on('data', (chunk) => this.onData(chunk));
         child.on('error', (err) => {
-            elog('HPT-BRIDGE-001', `failed to start the Python bridge (${py} -m hypernix.hyped_pro_bridge): ${err.message}. Install with 'pip install hypernix', or set HYPED_PRO_PYTHON to a python that has it.`);
+            elog('I1-00281.b4', `failed to start the Python bridge (${py} -m hypernix.hyped_pro_bridge): ${err.message}. Install with 'pip install hypernix', or set HYPED_PRO_PYTHON to a python that has it.`);
             // Node does not guarantee an 'exit' after a failed spawn, so the exit
             // handler below may never run. Settling here too is what stops a
             // missing Python from hanging every call forever instead of failing.
-            this.failAllPending('HPT-BRIDGE-001', `bridge failed to start: ${err.message}`);
+            this.failAllPending('I1-00281.b4', `bridge failed to start: ${err.message}`);
             this.proc = null;
             this.buf = "";
         });
         child.on('exit', (code, signal) => {
             if (this.pending.size > 0) {
-                elog('HPT-BRIDGE-002', `Python bridge exited (code=${code}, signal=${signal}) with ${this.pending.size} request(s) still in flight.`);
+                elog('I1-04281.d4', `Python bridge exited (code=${code}, signal=${signal}) with ${this.pending.size} request(s) still in flight.`);
             }
-            this.failAllPending('HPT-BRIDGE-002', 'bridge process exited');
+            this.failAllPending('I1-04281.d4', 'bridge process exited');
             this.proc = null;
             // A dead process can leave a partial line behind. Carrying it into the
             // next process's output would make its first response unparseable.
@@ -254,7 +257,7 @@ class Bridge {
                 resp = JSON.parse(line);
             }
             catch {
-                elog('HPT-BRIDGE-003', `malformed JSON from bridge: ${line.slice(0, 200)}`);
+                elog('I1-03281.e3', `malformed JSON from bridge: ${line.slice(0, 200)}`);
                 continue;
             }
             if (typeof resp.id === 'number') {
@@ -289,7 +292,7 @@ class Bridge {
             };
             const timer = setTimeout(() => {
                 settle({
-                    id, ok: false, code: 'HPT-BRIDGE-004',
+                    id, ok: false, code: 'I1-01281.c3',
                     error: `the bridge did not answer '${cmd}' within ${Math.round(timeoutMs / 1000)}s. `
                         + `It may still be working — check the log lines above. Use /quit and restart if it stays stuck.`,
                 });
@@ -300,7 +303,7 @@ class Bridge {
             this.pending.set(id, settle);
             child.stdin.write(JSON.stringify(req) + "\n", (err) => {
                 if (err) {
-                    settle({ id, ok: false, code: 'HPT-BRIDGE-001', error: `write to bridge failed: ${err.message}` });
+                    settle({ id, ok: false, code: 'I1-00281.b4', error: `write to bridge failed: ${err.message}` });
                 }
             });
         });
@@ -356,7 +359,7 @@ function loadCatalogSync() {
         console.error(dim(`  Install the hypernix package (pip install hypernix) so '${py} -m hypernix' works, or set HYPED_PRO_PYTHON.`));
     };
     if (result.error || result.status !== 0 || !result.stdout) {
-        fail('HPT-CATALOG-001', result.error ? result.error.message : (result.stderr || `exit code ${result.status}`));
+        fail('I1-00282.d4', result.error ? result.error.message : (result.stderr || `exit code ${result.status}`));
         return { models: [], providers: {} };
     }
     try {
@@ -372,7 +375,7 @@ function loadCatalogSync() {
         return { models, providers: data.providers };
     }
     catch (exc) {
-        fail('HPT-CATALOG-002', String(exc));
+        fail('I1-03282.e4', String(exc));
         return { models: [], providers: {} };
     }
 }
@@ -380,7 +383,7 @@ const { models: LOADED_MODELS, providers: PROVIDERS } = loadCatalogSync();
 exports.PROVIDERS = PROVIDERS;
 const FALLBACK_MODEL = {
     short: "(catalog unavailable)", repo: "", vendor: "unavailable", kind: "local",
-    badge: "\u26a0\ufe0f", contextWindow: 0, notes: "The Python catalog failed to load — see the HPT-CATALOG error above.",
+    badge: "\u26a0\ufe0f", contextWindow: 0, notes: "The Python catalog failed to load — see the catalog error (I1-00282.d4) above.",
 };
 const MODELS = LOADED_MODELS.length > 0 ? LOADED_MODELS : [FALLBACK_MODEL];
 exports.MODELS = MODELS;
@@ -814,7 +817,7 @@ function printBanner() {
     console.log("");
     console.log(dim("Tips: /  for commands & skills \u00b7 alt+y to switch models \u00b7 /configure to set up \u00b7 /help for everything."));
     if (LOADED_MODELS.length === 0) {
-        console.log(c256(196, "  Model catalog failed to load — /model, /download, and chat are unavailable until the HPT-CATALOG error above is fixed."));
+        console.log(c256(196, "  Model catalog failed to load — /model, /download, and chat are unavailable until the catalog error (I1-00282.d4) above is fixed."));
     }
     console.log("");
 }
@@ -856,7 +859,7 @@ async function ensureLocalModelReady(model) {
         const checkResp = await bridge.call('is_downloaded', { model: model.short });
         checkSpinner.stop();
         if (!checkResp.ok) {
-            elog(checkResp.code || 'HPT-BRIDGE-002', checkResp.error || 'could not check download status');
+            elog(checkResp.code || 'I1-04281.d4', checkResp.error || 'could not check download status');
             return false;
         }
         if (checkResp.data.downloaded) {
@@ -873,7 +876,7 @@ async function ensureLocalModelReady(model) {
         if (!dlResp.ok) {
             process.stdout.write(NL);
             drawFooter();
-            elog(dlResp.code || 'HPC-LOCAL-001', dlResp.error || 'download failed');
+            elog(dlResp.code || 'I2-00220.d3', dlResp.error || 'download failed');
             return false;
         }
         process.stdout.write(c256(82, `  Downloaded -> ${dlResp.data.path}\n`) + NL);
@@ -1065,7 +1068,7 @@ async function handleSlashCommand(cmdStr) {
                 log(c256(82, `  Key saved for ${vendor} (${key.slice(0, 8)}...)`));
             }
             else {
-                elog(setResp.code || 'HPT-BRIDGE-002', setResp.error || 'could not save key');
+                elog(setResp.code || 'I1-04281.d4', setResp.error || 'could not save key');
             }
             break;
         }
@@ -1125,7 +1128,7 @@ async function handleSlashCommand(cmdStr) {
             log(dim("  querying the T1 API ..."));
             const resp = await bridge.call('t1api_status', {});
             if (!resp.ok) {
-                elog(resp.code || 'HPT-T1API-001', resp.error || 'could not reach the T1 API');
+                elog(resp.code || 'I2-04240.d3', resp.error || 'could not reach the T1 API');
                 log(dim("  Set the server with /t1api url <url> and the key with /key t1api <key>."));
                 break;
             }
@@ -1167,7 +1170,7 @@ async function handleSlashCommand(cmdStr) {
             if (sub === "providers" || sub === "models") {
                 const r = await bridge.call('noodle_providers', {});
                 if (!r.ok) {
-                    elog(r.code || 'HPT-NOODLE-001', r.error || 'could not list providers');
+                    elog(r.code || 'I2-04261.d3', r.error || 'could not list providers');
                     break;
                 }
                 const out = [c256(96, "\n  Noodle providers:")];
@@ -1190,7 +1193,7 @@ async function handleSlashCommand(cmdStr) {
             if (sub === "sessions" || sub === "ls") {
                 const r = await bridge.call('noodle_sessions', {});
                 if (!r.ok) {
-                    elog(r.code || 'HPT-NOODLE-001', r.error || 'could not list sessions');
+                    elog(r.code || 'I2-04261.d3', r.error || 'could not list sessions');
                     break;
                 }
                 const list = r.data.sessions || [];
@@ -1214,7 +1217,7 @@ async function handleSlashCommand(cmdStr) {
                 }
                 const r = await bridge.call('noodle_stop', { session: target });
                 if (!r.ok) {
-                    elog(r.code || 'HPT-NOODLE-001', r.error || 'could not stop it');
+                    elog(r.code || 'I2-04261.d3', r.error || 'could not stop it');
                     break;
                 }
                 log(c256(220, `  Asked ${target} to stop.`));
@@ -1250,7 +1253,7 @@ async function handleSlashCommand(cmdStr) {
                 allow_execute: allowExec,
             });
             if (!started.ok) {
-                elog(started.code || 'HPT-NOODLE-001', started.error || 'could not start the swarm');
+                elog(started.code || 'I2-04261.d3', started.error || 'could not start the swarm');
                 log(dim("  /noodle providers shows what is usable here."));
                 break;
             }
@@ -1263,7 +1266,7 @@ async function handleSlashCommand(cmdStr) {
             while (running) {
                 const tick = await bridge.call('noodle_poll', { session: noodleSession, timeout: 2.0 });
                 if (!tick.ok) {
-                    elog(tick.code || 'HPT-NOODLE-001', tick.error || 'poll failed');
+                    elog(tick.code || 'I2-04261.d3', tick.error || 'poll failed');
                     break;
                 }
                 (tick.data.events || []).forEach((ev) => {
@@ -1396,12 +1399,12 @@ async function handleSlashCommand(cmdStr) {
                     env: process.env,
                 });
                 child.on('error', (err) => {
-                    elog('HPT-GUI-001', `failed to launch the GUI (${py} -m hypernix.hyped_pro_gui): ${err.message}`);
+                    elog('I1-00283.d3', `failed to launch the GUI (${py} -m hypernix.hyped_pro_gui): ${err.message}`);
                 });
                 child.unref();
             }
             catch (exc) {
-                elog('HPT-GUI-001', `failed to launch the GUI: ${exc}`);
+                elog('I1-00283.d3', `failed to launch the GUI: ${exc}`);
             }
             break;
         }
@@ -1553,7 +1556,7 @@ async function runConfigureWizard() {
 // Chat turn — a real round-trip through the Python bridge to whichever
 // backend the current model's provider maps to (cloud HTTP API, local
 // HyperNix/transformers inference, or the T1 Gatekeeper). No branch here
-// fabricates a reply: a failed call surfaces its real HPC-*/HPB-* error
+// fabricates a reply: a failed call surfaces its real, registered error code
 // code instead.
 // ---------------------------------------------------------------------------
 let cancelRequested = false;
@@ -1586,7 +1589,7 @@ async function runChatTurn(line, record = true) {
     if (record)
         history.push({ role: 'user', content: line });
     if (currentModel.vendor === "unavailable") {
-        elog('HPT-CATALOG-001', "no model catalog loaded — nothing to chat with. See the startup error above.");
+        elog('I1-00282.d4', "no model catalog loaded — nothing to chat with. See the startup error above.");
         return;
     }
     if (currentModel.kind === "local") {
@@ -1630,7 +1633,7 @@ async function runChatTurn(line, record = true) {
     if (!resp.ok) {
         if (record)
             history.pop(); // don't leave a dangling user turn with no reply
-        elog(resp.code || 'HPB-INTERNAL-001', resp.error || 'chat request failed');
+        elog(resp.code || 'I9-99000.f4', resp.error || 'chat request failed');
         redrawFooter();
         return;
     }

@@ -5,10 +5,11 @@ This directory contains the React/Vite GitHub Pages site for HyperNix. The site 
 ## Site surfaces
 
 - **Home** — product overview, quickstart, supported models, searchable subsystem reference, latest-release snapshot, and home-only credits.
-- **Docs** — package and subsystem documentation.
-- **API** — public API reference plus the generated deep API/T1 API views.
+- **Docs** — the wiki as a documentation site, laid out like PyTorch's and Hyprland's: grouped pages on the left (`src/lib/data/docs-nav.json` sets the groups; an unlisted page lands under More), the page in the middle, "On this page" on the right, breadcrumbs, previous/next, and Ctrl+K search over titles, headings and every page's full text. Pages render with HyperLink's Markdown renderer (`src/hypernix/hyperlink/web/markdown.js`), imported rather than copied. Every page and heading has an address: `#/docs/T1-API/<heading>`.
+- **API** — public API reference plus the generated deep API view.
+- **T1 API** (`#/t1-api`) — an overview and quickstart, every endpoint from `examples/t1api/openapi.json` (by group, searchable, with parameters, body fields and a curl line), every setting from `examples/t1api/.env.example`, the T1 error codes, and the source-generated reference.
 - **Learn** — task-oriented guides and examples.
-- **Stats** — PyPI/download, repository, code, and release-timeline data.
+- **Stats** — PyPI/download, repository, code, and release-timeline data, with a multi-line graph of daily downloads (total, or by Python version or operating system) from the `series` block `scripts/update_json_stats.py` keeps in `public/v1/json`.
 - **About** — project context and external links.
 
 ## Development
@@ -21,6 +22,8 @@ npm run preview
 ```
 
 ## Generated data
+
+At build time `vite.config.js` copies `../wiki/*.md` into the site as `wiki/<Page>.md` and writes `v1/docs-index.json` (groups, titles, headings, summaries), `v1/t1-openapi.json` and `v1/t1-settings.json`; `npm run dev` serves the same files from the checkout. None of them are committed. `public/v1/error-codes.json` is written by `../scripts/generate_error_codes.py`.
 
 `../scripts/generate_docs_data.py` refreshes the API reference JSON, code statistics, and the parsed changelog at `public/v1/changelog.json`. The changelog summary fields are derived from the actual canonical change bullets in `wiki/Changelog.md`; release dates are kept separate from summaries.
 

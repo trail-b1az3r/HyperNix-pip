@@ -3,6 +3,128 @@
   "source": "wiki/Changelog.md",
   "entries": [
     {
+      "version": "0.72.8a4",
+      "key": "0.72.8a4",
+      "aliases": [
+        "0.72.8a4"
+      ],
+      "kind": "alpha",
+      "heading": "0.72.8a4 \u2014 2026-10-22",
+      "date": "2026-10-22",
+      "title": "",
+      "summary": "hnx-t1 setup: the T1 interactive installer, b1. Written in Python, so it runs from a pip install as well as a checkout. It asks about the server (name, who can reach it, port, a public URL), access (keyless trusted networks, request limits), models (the runner, LM Studio, the\u2026",
+      "patch": null,
+      "headline": "",
+      "highlights": [
+        "hnx-t1 setup: the T1 interactive installer, b1. Written in Python, so it runs from a pip install as well as a checkout. It asks about the server (name, who can reach it, port, a public URL), access (keyless trusted networks, request limits), models (the runner, LM Studio, the\u2026",
+        "hnx-t1 upgrade -S env|venv|all chooses what to upgrade. venv is HyperNix in the server's Python, as before and by default. env is the server's .env: every setting this version has that the file lacks is added commented out at its default with a line on what it does, a missing\u2026",
+        "hnx list-all: every command in one list \u2014 hnx's main menu, hnx extra, the other spellings hnx runs, every hnx-t1 command, and every other console script, with aliases grouped. Filter by words, --section, --json.",
+        "The website's docs, remade like PyTorch's and Hyprland's. Grouped pages down the left, the page in the middle, \"On this page\" down the right with the section being read highlighted, breadcrumbs, previous/next, and Ctrl+K search across titles, headings and every page's full\u2026",
+        "A T1 API reference on the website (#/t1-api): an overview and quickstart; every endpoint from the server's OpenAPI document, grouped and searchable, with parameters, body fields and a curl line; every setting from .env.example; the T1 error codes; and the source-generated\u2026",
+        "A multi-line graph of downloads on the Stats page: daily downloads as lines (the total and with mirrors, or by Python version or operating system) over 30, 90, 180 days or everything, daily or as a 7-day average, with a crosshair tooltip, a legend that hides lines and a table\u2026"
+      ],
+      "changes": [
+        {
+          "symbol": "\u0e4b\u08ed\u2b51",
+          "label": "major",
+          "category": "Added",
+          "text": "hnx-t1 setup: the T1 interactive installer, b1. Written in Python, so it runs from a pip install as well as a checkout. It asks about the server (name, who can reach it, port, a public URL), access (keyless trusted networks, request limits), models (the runner, LM Studio, the\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "hnx-t1 upgrade -S env|venv|all chooses what to upgrade. venv is HyperNix in the server's Python, as before and by default. env is the server's .env: every setting this version has that the file lacks is added commented out at its default with a line on what it does, a missing\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "hnx list-all: every command in one list \u2014 hnx's main menu, hnx extra, the other spellings hnx runs, every hnx-t1 command, and every other console script, with aliases grouped. Filter by words, --section, --json.",
+          "details": []
+        },
+        {
+          "symbol": "\u0e4b\u08ed\u2b51",
+          "label": "major",
+          "category": "Added",
+          "text": "The website's docs, remade like PyTorch's and Hyprland's. Grouped pages down the left, the page in the middle, \"On this page\" down the right with the section being read highlighted, breadcrumbs, previous/next, and Ctrl+K search across titles, headings and every page's full\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "A T1 API reference on the website (#/t1-api): an overview and quickstart; every endpoint from the server's OpenAPI document, grouped and searchable, with parameters, body fields and a curl line; every setting from .env.example; the T1 error codes; and the source-generated\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "A multi-line graph of downloads on the Stats page: daily downloads as lines (the total and with mirrors, or by Python version or operating system) over 30, 90, 180 days or everything, daily or as a 7-day average, with a crosshair tooltip, a legend that hides lines and a table\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "More error codes, and hyped-pro's moved into them. hyped-pro's own names (HPC-\u2026, HPB-\u2026, HPG-\u2026, HPO-\u2026, HPT-\u2026, TOOL-\u2026, 72 in all) are registered codes in domain I now, and the old names are aliases: hypernix errors explain HPC-CFG-001 says it is I2-02250.a3, and the bridge sends\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\ud81a\udd54",
+          "label": "minor",
+          "category": "Added",
+          "text": "hypernix errors aliases lists the old names; wiki/Error-Codes.md is generated from the registry.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udd01",
+          "label": "refactor",
+          "category": "Changed",
+          "text": "hyped-pro raises registered codes: HypedProError and ToolError carry code (registered) and legacy_code (the name before), and the bridge's failure lines have both.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udc1b",
+          "label": "fix",
+          "category": "Fixed",
+          "text": "hypernix-t1 launch-script failures name their code (S1-02070.a3, or S1-04070.d3 when systemd refused).",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udcda",
+          "label": "docs",
+          "category": "Documentation",
+          "text": "[CLI](CLI.md): list-all, hypernix-t1 setup, upgrade -S; [T1-API](T1-API.md): the quickstart starts with hnx-t1 setup; [Error codes](Error-Codes.md) (new, generated); examples/t1api and docs/README.md.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83e\uddea",
+          "label": "tests",
+          "category": "Tests",
+          "text": "hyped-pro's codes and their aliases, every sandbox refusal having a code, the error page being current, list-all against the CLI, the T1 dispatcher and pyproject.toml, setup (defaults, answers files, refusals, re-runs keeping the secret, the manager running it) and upgrade -S\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\u2757",
+          "label": "known issue",
+          "category": "Known Issues",
+          "text": "The new website pages were checked in Chromium at desktop and phone widths, not in Safari or Firefox.",
+          "details": []
+        },
+        {
+          "symbol": "\u2757",
+          "label": "known issue",
+          "category": "Known Issues",
+          "text": "hyped-pro's OpenTUI app's tests need Bun, which the build environment does not have; its code changes are string constants.",
+          "details": []
+        }
+      ]
+    },
+    {
       "version": "0.72.8a3",
       "key": "0.72.8a3",
       "aliases": [
@@ -876,72 +998,7 @@
         "The hypernix.timer timers measure with time.perf_counter. They used time.monotonic, which on Windows before Python 3.13 advances in 15.6 ms ticks, so an IntervalTimer shorter than that could not be seen to elapse until the next tick.",
         "hypernix gather reports what it left undone when it stops part-way through a level. URLs already taken off the queue for that level but not yet fetched were dropped, so a crawl stopped by --max-seconds or --max-pages could claim nothing was left, and one cut off by the page\u2026"
       ],
-      "changes": [
-        {
-          "symbol": "\u0e4b\u08ed\u2b51",
-          "label": "major",
-          "category": "Added",
-          "text": "llama-easy: make any Llama model faster in one line ([llama-easy](Llama-Easy.md)). A Hugging Face Hub kernel, ray0rf1re/llama-easy, with Triton RMSNorm, rotary position embeddings and the SwiGLU gate: get_kernel(\"ray0rf1re/llama-easy\", version=1\u2026",
-          "details": [
-            "Also through Transformers' from_pretrained(..., kernel_config=...), and from hyperNix-pip as hypernix.hub_kernels.from_pretrained(id) / kernelize_llama(model), which trust that one repository only and never pull in kernels for other hooks.",
-            "native/llama-easy is the kernel-builder project (torch-noarch: one build per backend for every Torch and GPU generation). The ops are Torch custom ops, so torch.compile traces through them.",
-            ".github/workflows/llama-easy-kernel.yml tests every change and publishes from main with kernel-builder build-and-upload, once the account has kernel-creation access and the repository has an HF_TOKEN secret."
-          ]
-        },
-        {
-          "symbol": "\ud81a\udca5",
-          "label": "major fix",
-          "category": "Fixed",
-          "text": "Fixed T1 streams leaving the backend writing a reply after the caller had gone. /inference/chat/stream and /bridge/lmstudio/chat/stream relay the backend's stream, but the @app.middleware(\"http\") stack hid a client's disconnect from them: Starlette stopped iterating the\u2026",
-          "details": [
-            "t1api.disconnect.ClientGoneWatch, a pure ASGI middleware registered outside that stack, waits for http.disconnect after the request body and closes what the stream registered; while_listened_to() relays a stream and registers that closer.",
-            "A 60 s reply dropped by its caller after 3 s now stops 0.1 s later instead of running to the end.",
-            "HyperLink chat streams are unchanged: they finish a reply for the session when an app disconnects, and keep their own stop."
-          ]
-        },
-        {
-          "symbol": "\ud83e\uddea",
-          "label": "tests",
-          "category": "Fixed",
-          "text": "Added tests/t1api/test_stream_disconnect.py, which runs T1 under uvicorn against a fake LM Studio and fails without the fix.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udcda",
-          "label": "docs",
-          "category": "Fixed",
-          "text": "Documented in [T1 API \u2192 Governed inference](T1-API.md#governed-inference) that leaving a stream stops the reply and the non-streaming endpoint does not, so clients with a timeout should stream.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udc1b",
-          "label": "fix",
-          "category": "Fixed",
-          "text": "The hypernix.timer timers measure with time.perf_counter. They used time.monotonic, which on Windows before Python 3.13 advances in 15.6 ms ticks, so an IntervalTimer shorter than that could not be seen to elapse until the next tick.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udc1b",
-          "label": "fix",
-          "category": "Fixed",
-          "text": "hypernix gather reports what it left undone when it stops part-way through a level. URLs already taken off the queue for that level but not yet fetched were dropped, so a crawl stopped by --max-seconds or --max-pages could claim nothing was left, and one cut off by the page\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udce6",
-          "label": "packaging",
-          "category": "Dependencies and Packaging",
-          "text": "lts/0.72.6 branch: the source of 0.72.6.post4 -- exactly the commit tagged v0.72.6.post4 -- the last release for Python 3.10 and 3.11 and for torch 1.13 on older Macs.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udd27",
-          "label": "internal",
-          "category": "Site Changes",
-          "text": "Pull requests no longer conflict over generated docs data. docs/public/v1 is rewritten on main every hour, so any pull request that also regenerated it conflicted on every file. .github/workflows/resolve-docs-conflicts.yml runs when a pull request is opened or updated and after\u2026",
-          "details": []
-        }
-      ]
+      "changes": []
     },
     {
       "version": "0.72.7",

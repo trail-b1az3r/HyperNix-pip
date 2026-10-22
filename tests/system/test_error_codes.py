@@ -358,3 +358,119 @@ class TestTheCli:
         main(["list", "R"])
         lines = [ln for ln in capsys.readouterr().out.splitlines() if ln[:1] == "R"]
         assert lines and all(ln.startswith("R") for ln in lines)
+
+
+class TestHypedProMovedIn:
+    """0.72.8a4: hyped-pro's own HP{B,C,G,O,T}-AREA-NNN and TOOL-AREA-NNN
+    names are registered codes now, and the old names still resolve."""
+
+    def test_every_old_name_explains_as_its_new_code(self):
+        from hypernix.system.errorcodes import ALIASES
+
+        assert len(cat.HYPED_PRO_LEGACY) == len(ALIASES) >= 70
+        for old, code in cat.HYPED_PRO_LEGACY.items():
+            assert ALIASES[old] == code.code
+            assert explain(old).startswith(f"{old} is now {code.code}.")
+
+    def test_an_old_name_raises_as_its_new_code(self):
+        error = HyperNixError("HPC-CFG-001", "no such model")
+        assert error.code is cat.HYPED_UNKNOWN_MODEL
+
+    def test_an_alias_must_point_at_a_registered_code_and_not_look_like_one(self):
+        from hypernix.system.errorcodes import alias
+
+        with pytest.raises(ValueError):
+            alias("I2-02250.a3", cat.HYPED_UNKNOWN_MODEL)
+        with pytest.raises(ValueError):
+            alias("HPC-CFG-001", cat.HYPED_CLOUD_NO_KEY)   # already means something else
+
+    def test_the_error_classes_carry_both(self):
+        from hypernix.interfaces.hyped_pro_core import HypedProError
+        from hypernix.interfaces.hyped_pro_tools import ToolError
+
+        new = HypedProError(cat.HYPED_CLOUD_NO_KEY, "no key")
+        old = HypedProError("HPC-CLOUD-001", "no key")
+        assert new.code == old.code == "I2-02210.b3"
+        assert new.legacy_code == old.legacy_code == "HPC-CLOUD-001"
+        tool = ToolError(cat.HYPED_GIT_NOTHING_STAGED, "nothing staged")
+        assert (tool.code, tool.legacy_code) == ("I2-02313.a2", "TOOL-GIT-008")
+        assert str(tool).startswith("[I2-02313.a2]")
+
+    def test_the_bridge_sends_the_code_and_the_old_name(self):
+        from hypernix.interfaces import hyped_pro_bridge as bridge
+
+        reply = bridge.dispatch({"id": 1, "cmd": "no-such-command"})
+        assert reply["ok"] is False
+        assert reply["code"] == cat.HYPED_BRIDGE_PROTOCOL.code
+        assert reply["legacy_code"] == "HPB-PROTO-001"
+
+    def test_no_hyped_pro_source_raises_with_an_old_name(self):
+        """The old names live in the catalogue's alias table and in
+        docstrings that say what each was; never at a raise site."""
+        import ast
+        import re
+        from pathlib import Path
+
+        root = Path(__file__).resolve().parents[2] / "src" / "hypernix"
+        old = re.compile(r"(HP[BCGOT]-[A-Z0-9]+-\d{3}|TOOL-[A-Z]+-\d{3})")
+        quoted = re.compile(r"""["']""" + old.pattern + r"""["']""")
+        offenders = {}
+        for f in root.glob("interfaces/hyped_pro*.py"):
+            # A string that *is* an old name, not one that mentions it.
+            found = [n.value for n in ast.walk(ast.parse(f.read_text(encoding="utf-8")))
+                     if isinstance(n, ast.Constant) and isinstance(n.value, str) and old.fullmatch(n.value)]
+            offenders[f.name] = found
+        for f in [root / "hyped_pro.ts", root / "hyped_pro.js", *root.glob("interfaces/hyped_pro_app/src/*.ts")]:
+            offenders[f.name] = quoted.findall(f.read_text(encoding="utf-8"))
+        assert not {k: v for k, v in offenders.items() if v}
+
+
+class TestSandboxRefusalsHaveCodes:
+    def test_every_reason_the_sandbox_gives_has_a_code(self):
+        import re
+        from pathlib import Path
+
+        root = Path(__file__).resolve().parents[2] / "src" / "hypernix" / "t1api"
+        used = set()
+        for name in ("codebox.py", "codegit.py"):
+            used |= set(re.findall(r'code="([a-z_]+)"', (root / name).read_text(encoding="utf-8")))
+        assert used and not used - set(cat.SANDBOX_CODES)
+
+    def test_the_route_refusal_carries_it(self):
+        from hypernix.t1api.codebox import SandboxError
+        from hypernix.t1api.routers.code import _refused
+
+        error = _refused(SandboxError("nope", code="too_many", status=409))
+        assert error.details["hx_code"] == cat.SANDBOX_TOO_MANY.code
+
+
+class TestNewCodesReachTheirRaiseSites:
+    def test_launch_errors(self):
+        from hypernix.system.launcher import LaunchError
+
+        assert LaunchError("no script").hx_code == cat.LAUNCH_REFUSED.code
+        assert LaunchError("x", hx=cat.LAUNCH_SUPERVISOR_FAILED).hx_code == "S1-04070.d3"
+
+    def test_fusing_a_vision_model_is_refused_with_its_code(self):
+        from hypernix.models import hnx0xv2image as hi
+
+        with pytest.raises(hi.ImageError) as caught:
+            hi.family_of({"model_type": "qwen3_vl"})
+        assert caught.value.hx_code == cat.IMAGE_FUSE_VL_REFUSED.code
+        assert str(caught.value).startswith(cat.IMAGE_FUSE_VL_REFUSED.code)
+
+    def test_the_converter_says_which_failure(self):
+        from hypernix.quant.llamaconvert import LlamaConvertError
+
+        assert LlamaConvertError("no network").hx_code == cat.QUANT_CONVERTER_UNAVAILABLE.code
+        assert LlamaConvertError("bad arch", converting=True).hx_code == cat.QUANT_CONVERT_FAILED.code
+
+
+def test_the_error_code_page_and_data_are_current():
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    script = Path(__file__).resolve().parents[2] / "scripts" / "generate_error_codes.py"
+    done = subprocess.run([sys.executable, str(script), "--check"], capture_output=True, text=True, timeout=60)
+    assert done.returncode == 0, done.stderr

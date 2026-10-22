@@ -336,7 +336,7 @@ class TestProtocol:
         stdin.send({"id": 1, "cmd": "nonsense"})
         resp = stdout.wait_for(1)
         assert resp["ok"] is False
-        assert resp["code"] == "HPB-PROTO-001"
+        assert resp["code"] == "I2-03270.a3"
 
     def test_a_worker_exception_still_answers(self, served, monkeypatch):
         def boom(**_kwargs):

@@ -279,7 +279,7 @@ class TestChatLoop:
         def flaky(_model, messages, **_kwargs):
             calls["n"] += 1
             if calls["n"] == 1:
-                raise core.HypedProError("HPC-CLOUD-001", "no API key configured")
+                raise core.HypedProError("I2-02210.b3", "no API key configured")
             return {"content": "second time lucky", "thinking": None}
 
         monkeypatch.setattr(core, "send_chat_message", flaky)

@@ -6,13 +6,17 @@
 //
 //   -> {"id": 7, "cmd": "chat", ...}
 //   <- {"id": 7, "ok": true, "data": {...}}
-//   <- {"id": 7, "ok": false, "code": "HPC-...", "error": "..."}
+//   <- {"id": 7, "ok": false, "code": "I2-02250.a3", "legacy_code": "I2-02250.a3", "error": "..."}
+//
+// Codes are registered HyperNix codes (`hypernix errors explain <code>`)
+// since 0.72.8a4; legacy_code is the name a code had before.
 //
 // Replies arrive in any order (long commands run on their own thread in
 // the bridge), so each request waits on its own id.
 
 export interface BridgeFailure {
   code: string
+  legacy_code?: string
   error: string
 }
 
@@ -56,7 +60,7 @@ export class Bridge {
     const id = this.nextId++
     const done = new Promise<T>((resolve, reject) => {
       if (this.closed) {
-        reject(new BridgeError("HPO-BRIDGE-001", "the Python bridge is not running"))
+        reject(new BridgeError("I1-00280.d4", "the Python bridge is not running"))
         return
       }
       this.pending.set(id, { resolve, reject })
@@ -119,7 +123,7 @@ export class Bridge {
     if (!waiting) return
     this.pending.delete(message.id)
     if (message.ok) waiting.resolve(message.data)
-    else waiting.reject(new BridgeError(String(message.code ?? "HPO-BRIDGE-002"), String(message.error ?? "unknown error")))
+    else waiting.reject(new BridgeError(String(message.code ?? "I1-04280.d3"), String(message.error ?? "unknown error")))
   }
 
   // The process went away. Everything still waiting fails now rather than
@@ -127,7 +131,7 @@ export class Bridge {
   closedBy(reason: string): void {
     if (this.closed) return
     this.closed = true
-    for (const [, waiting] of this.pending) waiting.reject(new BridgeError("HPO-BRIDGE-001", reason))
+    for (const [, waiting] of this.pending) waiting.reject(new BridgeError("I1-00280.d4", reason))
     this.pending.clear()
   }
 
