@@ -42,7 +42,7 @@
   }
 
   function slug(text) {
-    return text.toLowerCase().replace(/<[^>]+>/g, "").replace(/&[a-z0-9#]+;/g, "")
+    return text.toLowerCase().replace(/[<>]/g, "").replace(/&[a-z0-9#]+;/g, "")
       .replace(/[^\p{L}\p{N}\s-]/gu, "").trim().replace(/\s+/g, "-");
   }
 

@@ -432,6 +432,32 @@ def _quote(value: str) -> str:
     return f"'{value}'" if any(ch in value for ch in " #\"'$`\\") and "'" not in value else value
 
 
+def _redact_sensitive_env(text: str) -> str:
+    sensitive_keys = {"T1_TOKEN_SECRET"}
+    sensitive_markers = (
+        "SECRET",
+        "TOKEN",
+        "PASSWORD",
+        "PASS",
+        "API_KEY",
+        "PRIVATE",
+        "CREDENTIAL",
+        "AUTH",
+        "KEY",
+    )
+    redacted_lines: list[str] = []
+    for line in text.splitlines():
+        if "=" in line and not line.startswith("#"):
+            key, value = line.split("=", 1)
+            key_upper = key.upper()
+            is_sensitive = key in sensitive_keys or any(marker in key_upper for marker in sensitive_markers)
+            if is_sensitive and value:
+                redacted_lines.append(f"{key}=<redacted>")
+                continue
+        redacted_lines.append(line)
+    return "\n".join(redacted_lines) + ("\n" if text.endswith("\n") else "")
+
+
 # ---------------------------------------------------------------------------
 # Doing it
 # ---------------------------------------------------------------------------
@@ -545,7 +571,7 @@ def cli_main(argv: list[str] | None = None, *, read: Callable[[str], str] = inpu
         return 130
     text = build_env(answers, config_dir=config_dir, old=old, version=__version__)
     if args.dry_run:
-        print(text, end="")
+        print(_redact_sensitive_env(text), end="")
         return 0
     _summary(answers, env_path)
     if interactive and not Asker(interactive=True, read=read).yes_no("write", "Write it?", True):

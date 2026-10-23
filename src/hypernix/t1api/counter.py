@@ -89,7 +89,8 @@ def instance_id(folder: Path) -> str:
     except OSError:
         secret = ""
     if len(secret) < 32:
-        secret = secrets.token_hex(32)
+        raw_secret = secrets.token_hex(32)
+        secret = hashlib.sha256(f"hypernix-t1-counter-seed:{raw_secret}".encode()).hexdigest()
         try:
             folder.mkdir(parents=True, exist_ok=True)
             path.write_text(secret, encoding="utf-8")
