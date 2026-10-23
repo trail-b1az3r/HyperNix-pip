@@ -41,6 +41,7 @@ The symbols communicate hierarchy. Format related changes as follows:
 4. Use one blank line between separate change groups. Do not insert blank lines between a parent item and its directly related minor item.
 5. Keep each bullet to one logical change. Use indented continuation lines for explanation, migration notes, or evidence.
 6. Use nested bullets only for details of the item immediately above them.
+7. A **patch** fix must follow python's .post formatting. 
 
 Example:
 
@@ -54,6 +55,9 @@ Example:
 ✨ Added streaming tokens to `generate()`.
   - The iterator yields decoded text without changing non-streaming behavior.
 🛡️ Improved the error shown when a stream is consumed twice.
+
+🛈 this was only tested on Linux, so other OS may have issues.
+
 ```
 
 Here, the major architecture item is separated from the next feature by one blank line. The minor configuration addition is kept directly with the architecture it belongs to, and the UX fix is kept directly with streaming.
@@ -81,6 +85,7 @@ Prefer:
  - [sub bug required to fix 1]
  - [sub bug required to fix 2]
  - [sub bug required to fix 3]
+ - [notice if needed]
 ```
 
 over:
@@ -118,7 +123,7 @@ over:
 | `🩹` | Temporary workaround or mitigation; include removal criteria |
 | `♻️` | Data, checkpoint, cache, or migration work |
 | `📦` | Packaging, distribution, or release artifact change |
-
+| `🛈` | Caveat (NOT A KNOWN ISSUE), info, notice, warning | 
 Use the closest symbol consistently. A symbol does not replace an explanation.
 
 ---
@@ -128,7 +133,8 @@ Use the closest symbol consistently. A symbol does not replace an explanation.
 Published releases normally use:
 
 ```markdown
-## 0.72.5 — 2026-09-25 -- api improvemenes
+## 0.72.5 — 2026-09-25 -- API improvements
+### bugs fixed: __, security issues fixed __
 ```
 
 Pre-releases may use:
@@ -154,6 +160,10 @@ If an in-branch development point has no meaningful release date, omit the date 
 
 ---
 
+## quick reminder
+a log of a bug fix, DOES NOT INCLUDE ANY BUGS CREATED DURING UPDATE, THAT IS ONLY SHOWN IN A DROPDOWN IN CHANGELOG 
+
+
 ## Release categories
 
 Use only categories that contain entries. Keep categories in this order unless a release genuinely needs a different structure:
@@ -178,6 +188,8 @@ Use only categories that contain entries. Keep categories in this order unless a
 18. `Tests`
 19. `Known Issues`
 20. `Temporary Workarounds`
+21.  `caveats`
+22.   `notes`
 
 `Site Changes` is the canonical category for wiki, documentation-site, landing-page, examples-site, navigation, and hosted-page changes. Use `Documentation` for repository documentation that is primarily consumed as package or developer documentation.
 
@@ -211,7 +223,7 @@ Beta and development versions are part of the historical record. Document experi
 
 ### Known Issues
 
-❗ V4 checkpoint conversion is not guaranteed to be stable.
+❗ V4 checkpoint conversion can sometimes randomly corrupt   
 
 ### Temporary Workarounds
 
@@ -221,6 +233,8 @@ Beta and development versions are part of the historical record. Document experi
 
 ---
 
+### caveats 
+🛈 v4 checkpoints are not fully stable
 ## Beta / Dev → Release Summary
 
 Every stable release following one or more beta/dev versions must summarize the important work from that cycle. Focus on what actually shipped; do not copy every pre-release entry.
