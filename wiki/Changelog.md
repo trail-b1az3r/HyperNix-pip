@@ -31,6 +31,7 @@ Historical wording and technical detail are retained during format normalization
 | `🩹` | Temporary workaround or mitigation |
 | `♻️` | Data, checkpoint, cache, or migration work |
 | `📦` | Packaging, distribution, or release artifact change |
+| '🛈' | caveat (NOT A KNOWN ISSUE) } 
 
 > Format normalized to `wiki/Changelog-guide.md`; release wording and historical detail are preserved.
 
@@ -127,9 +128,12 @@ Historical wording and technical detail are retained during format normalization
 
 ### Known Issues
 
-❗ The new website pages were checked in Chromium at desktop and phone
+None
+
+### caveats
+ 🛈The new website pages were checked in Chromium at desktop and phone
   widths, not in Safari or Firefox.
-❗ hyped-pro's OpenTUI app's tests need Bun, which the build environment
+ 🛈  hyped-pro's OpenTUI app's tests need Bun, which the build environment
   does not have; its code changes are string constants.
 
 ## 0.72.8a3 — 2026-10-21
