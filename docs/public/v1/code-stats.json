@@ -1,6 +1,6 @@
 {
   "definition": "non-blank source lines across repository code roots: src, scripts, tests, examples, bin, native, docs/src",
-  "total_lines": 247905,
+  "total_lines": 247942,
   "code_files": 827,
   "top_files": [
     {
@@ -172,12 +172,12 @@
     },
     {
       "author": "Rayla",
-      "additions": 1187,
-      "deletions": 1025,
-      "net": 162,
-      "changes": 2212,
-      "commits": 29,
-      "files": 12
+      "additions": 1201,
+      "deletions": 1026,
+      "net": 175,
+      "changes": 2227,
+      "commits": 30,
+      "files": 13
     },
     {
       "author": "qwen.ai[bot]",
@@ -190,15 +190,15 @@
     },
     {
       "author": "github-actions[bot]",
-      "additions": 46,
-      "deletions": 46,
-      "net": 0,
-      "changes": 92,
-      "commits": 46,
-      "files": 1
+      "additions": 82,
+      "deletions": 56,
+      "net": 26,
+      "changes": 138,
+      "commits": 54,
+      "files": 9
     }
   ],
   "history_available": true,
-  "commit": "a58df251c73080666720a2658ae1cc03e61b767b",
+  "commit": "2a34165699ae6c0f1b9eec263a0acd83cca37b31",
   "generated_at": null
 }

@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-api-deep",
   "generated_at": "2026-09-20T21:20:57Z",
-  "commit": "a58df251c73080666720a2658ae1cc03e61b767b",
+  "commit": "2a34165699ae6c0f1b9eec263a0acd83cca37b31",
   "history_available": true,
   "source_root": "src/hypernix",
   "modules": [
@@ -19819,7 +19819,7 @@
     {
       "module": "hypernix.interfaces.noodle.tools",
       "source": "src/hypernix/interfaces/noodle/tools.py",
-      "line_count": 786,
+      "line_count": 789,
       "summary": "noodle.tools \u2014 the tools every model in the swarm can call.",
       "api": [
         {
@@ -19876,13 +19876,13 @@
             {
               "name": "note_write",
               "signature": "def note_writeself, path: Path -> None",
-              "line": 186,
+              "line": 189,
               "doc": ""
             },
             {
               "name": "record",
               "signature": "def recordself, tool: str, detail: dict[str, Any] -> None",
-              "line": 196,
+              "line": 199,
               "doc": ""
             }
           ]
@@ -19891,7 +19891,7 @@
           "kind": "class",
           "name": "Tool",
           "signature": "class Tool",
-          "line": 201,
+          "line": 204,
           "doc": "One tool: a name, a description, a schema, and an implementation.",
           "methods": []
         },
@@ -19899,14 +19899,14 @@
           "kind": "function",
           "name": "tool_schemas",
           "signature": "def tool_schemasnames: list[str] | None=None -> list[dict[str, Any]]",
-          "line": 859,
+          "line": 862,
           "doc": "Render the tools as provider-neutral schemas."
         },
         {
           "kind": "function",
           "name": "run_tool",
           "signature": "def run_toolctx: ToolContext, name: str, arguments: dict[str, Any] -> ToolResult",
-          "line": 875,
+          "line": 878,
           "doc": "Run one tool, turning every failure into a result the model can read."
         }
       ],
@@ -19917,6 +19917,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "62cc9a05",
+          "date": "2026-10-22",
+          "author": "github-actions[bot]",
+          "subject": "fix(security): py/path-injection in src/hypernix/interfaces/noodle/tools.py:173 (alert #31956, Copilot Autofix)",
+          "api_changes": []
+        },
         {
           "sha": "674031bd",
           "date": "2026-10-14",
@@ -20296,35 +20303,35 @@
     {
       "module": "hypernix.interfaces.websearch",
       "source": "src/hypernix/interfaces/websearch.py",
-      "line_count": 295,
+      "line_count": 296,
       "summary": "websearch \u2014 non-API HTML-parsed web searching and page fetching.",
       "api": [
         {
           "kind": "function",
           "name": "search_web_non_api",
           "signature": "def search_web_non_apiquery: str, max_results: int=10, engine: str='auto' -> list[dict[str, str]]",
-          "line": 157,
+          "line": 158,
           "doc": "Perform a non-API web search with automated fallbacks across HTML scrapers."
         },
         {
           "kind": "function",
           "name": "fetch_web_page",
           "signature": "def fetch_web_pageurl: str, max_length: int=4000, *, public_only: bool=False -> dict[str, Any]",
-          "line": 193,
+          "line": 194,
           "doc": "Fetch a page and return clean text plus its links."
         },
         {
           "kind": "function",
           "name": "format_search_results",
           "signature": "def format_search_resultsresults: list[dict[str, str]] -> str",
-          "line": 319,
+          "line": 320,
           "doc": "Format search results list into a clean readable markdown block."
         },
         {
           "kind": "function",
           "name": "cli_main",
           "signature": "def cli_mainargv: list[str] | None=None -> int",
-          "line": 335,
+          "line": 336,
           "doc": ""
         }
       ],
@@ -20332,6 +20339,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "f376c5c8",
+          "date": "2026-10-22",
+          "author": "github-actions[bot]",
+          "subject": "fix(security): py/incomplete-url-substring-sanitization in src/hypernix/interfaces/websearch.py:85 (alert #31996, Copilot Autofix)",
+          "api_changes": []
+        },
         {
           "sha": "e89afd46",
           "date": "2026-10-20",
@@ -44792,14 +44806,14 @@
     {
       "module": "hypernix.system.netops",
       "source": "src/hypernix/system/netops.py",
-      "line_count": 229,
+      "line_count": 237,
       "summary": "netops \u2014 what ``hnx net`` did, as functions that return data.",
       "api": [
         {
           "kind": "class",
           "name": "NetError",
           "signature": "class NetError",
-          "line": 48,
+          "line": 49,
           "doc": "A net operation that could not be done, and why.",
           "methods": []
         },
@@ -44807,19 +44821,19 @@
           "kind": "class",
           "name": "Run",
           "signature": "class Run",
-          "line": 53,
+          "line": 54,
           "doc": "One command's outcome.",
           "methods": [
             {
               "name": "ok",
               "signature": "def okself -> bool",
-              "line": 62,
+              "line": 63,
               "doc": ""
             },
             {
               "name": "to_dict",
               "signature": "def to_dictself -> dict[str, Any]",
-              "line": 65,
+              "line": 66,
               "doc": ""
             }
           ]
@@ -44828,98 +44842,98 @@
           "kind": "function",
           "name": "load_config",
           "signature": "def load_configpath: Path | None=None -> dict[str, Any]",
-          "line": 99,
+          "line": 100,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "save_config",
           "signature": "def save_configconfig: dict[str, Any], path: Path | None=None -> dict[str, Any]",
-          "line": 111,
+          "line": 112,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "status",
           "signature": "def statusrun: Runner | None=None -> dict[str, Any]",
-          "line": 137,
+          "line": 138,
           "doc": "This node and its peers, from ``tailscale status --json``."
         },
         {
           "kind": "function",
           "name": "peers",
           "signature": "def peersrun: Runner | None=None, *, online_only: bool=True -> list[dict[str, Any]]",
-          "line": 155,
+          "line": 156,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "tailnet_ip",
           "signature": "def tailnet_iprun: Runner | None=None -> dict[str, str]",
-          "line": 165,
+          "line": 166,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "ping",
           "signature": "def pingpeer: str, run: Runner | None=None -> Run",
-          "line": 172,
+          "line": 173,
           "doc": "``tailscale ping`` once: is the peer reachable, and over what path."
         },
         {
           "kind": "function",
           "name": "expose",
           "signature": "def exposeport: int, *, apply: bool=False, run: Runner | None=None -> dict[str, Any]",
-          "line": 178,
+          "line": 179,
           "doc": "Serve a local port across the tailnet with ``tailscale serve --bg``."
         },
         {
           "kind": "function",
           "name": "setup_steps",
           "signature": "def setup_steps -> list[str]",
-          "line": 193,
+          "line": 194,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "setup",
           "signature": "def setuprun: Runner | None=None, *, key_path: Path | None=None -> dict[str, Any]",
-          "line": 201,
+          "line": 202,
           "doc": "``tailscale up`` (returning its login link if it prints one) and an SSH key."
         },
         {
           "kind": "function",
           "name": "trust_peers",
           "signature": "def trust_peersrun: Runner | None=None, *, known_hosts: Path | None=None -> list[dict[str, Any]]",
-          "line": 225,
+          "line": 233,
           "doc": "Add each online peer's SSH host keys to known_hosts (``a-il``)."
         },
         {
           "kind": "function",
           "name": "sync_storage",
           "signature": "def sync_storagerun: Runner | None=None, *, config: dict[str, Any] | None=None, only: Sequence[str] | None=None, dry_run: bool=False -> list[dict[str, Any]]",
-          "line": 243,
+          "line": 251,
           "doc": "rsync the storage folder to each online peer (``s-storage``)."
         },
         {
           "kind": "function",
           "name": "check_file",
           "signature": "def check_filepath: str, run: Runner | None=None -> list[dict[str, Any]]",
-          "line": 262,
+          "line": 270,
           "doc": "Whether *path* exists on each online peer (``tail acheck``)."
         },
         {
           "kind": "function",
           "name": "run_file",
           "signature": "def run_filepath: str, run: Runner | None=None -> list[dict[str, Any]]",
-          "line": 268,
+          "line": 276,
           "doc": "Start ``python3 PATH`` in the background on each peer that has it (``tail acheck -r``)."
         },
         {
           "kind": "function",
           "name": "stop_file",
           "signature": "def stop_filepath: str, run: Runner | None=None -> list[dict[str, Any]]",
-          "line": 282,
+          "line": 290,
           "doc": "Stop a script started with :func:`run_file` on each peer (``tail stop``)."
         }
       ],
@@ -44929,6 +44943,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "1ff7756d",
+          "date": "2026-10-22",
+          "author": "github-actions[bot]",
+          "subject": "fix(security): py/incomplete-url-substring-sanitization in src/hypernix/system/netops.py:205 (alert #31994, Copilot Autofix)",
+          "api_changes": []
+        },
         {
           "sha": "57773753",
           "date": "2026-10-20",
@@ -49604,6 +49625,13 @@
       "required_modules": [],
       "changes": [
         {
+          "sha": "586da35f",
+          "date": "2026-10-22",
+          "author": "github-actions[bot]",
+          "subject": "fix(security): py/regex-injection in src/hypernix/t1api/codebox.py:562 (alert #32029, Copilot Autofix)",
+          "api_changes": []
+        },
+        {
           "sha": "da36f8dc",
           "date": "2026-10-21",
           "author": "Claude",
@@ -50176,7 +50204,7 @@
     {
       "module": "hypernix.t1api.counter",
       "source": "src/hypernix/t1api/counter.py",
-      "line_count": 206,
+      "line_count": 207,
       "summary": "t1api.counter \u2014 how many public T1 servers are up, counted hourly.",
       "api": [
         {
@@ -50197,52 +50225,52 @@
           "kind": "function",
           "name": "heartbeat",
           "signature": "def heartbeatfolder: Path -> dict[str, str]",
-          "line": 102,
+          "line": 103,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "should_count",
           "signature": "def should_countconfig: Any -> tuple[bool, str]",
-          "line": 109,
+          "line": 110,
           "doc": "``(yes, why not)`` for this server."
         },
         {
           "kind": "function",
           "name": "published_endpoint",
           "signature": "def published_endpoint -> str",
-          "line": 134,
+          "line": 135,
           "doc": "The counter the project publishes, or ``\"\"`` while it publishes none."
         },
         {
           "kind": "class",
           "name": "CounterPinger",
           "signature": "class CounterPinger",
-          "line": 145,
+          "line": 146,
           "doc": "Sends the hourly heartbeat from a daemon thread.",
           "methods": [
             {
               "name": "url",
               "signature": "def urlself -> str",
-              "line": 158,
+              "line": 159,
               "doc": ""
             },
             {
               "name": "beat",
               "signature": "def beatself -> bool",
-              "line": 166,
+              "line": 167,
               "doc": ""
             },
             {
               "name": "start",
               "signature": "def startself -> bool",
-              "line": 175,
+              "line": 176,
               "doc": ""
             },
             {
               "name": "stop",
               "signature": "def stopself -> None",
-              "line": 193,
+              "line": 194,
               "doc": ""
             }
           ]
@@ -50251,19 +50279,19 @@
           "kind": "class",
           "name": "Counter",
           "signature": "class Counter",
-          "line": 197,
+          "line": 198,
           "doc": "The counting side: who was heard from, and when. No addresses are kept.",
           "methods": [
             {
               "name": "record",
               "signature": "def recordself, body: Any -> None",
-              "line": 212,
+              "line": 213,
               "doc": ""
             },
             {
               "name": "summary",
               "signature": "def summaryself -> dict[str, Any]",
-              "line": 239,
+              "line": 240,
               "doc": ""
             }
           ]
@@ -50275,6 +50303,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "e26ec4aa",
+          "date": "2026-10-22",
+          "author": "github-actions[bot]",
+          "subject": "fix(security): py/clear-text-storage-sensitive-data in src/hypernix/t1api/counter.py:95 (alert #32035, Copilot Autofix)",
+          "api_changes": []
+        },
         {
           "sha": "57773753",
           "date": "2026-10-20",
@@ -62764,7 +62799,7 @@
     {
       "module": "hypernix.t1api.setup_cli",
       "source": "src/hypernix/t1api/setup_cli.py",
-      "line_count": 491,
+      "line_count": 515,
       "summary": "``hnx-t1 setup`` \u2014 the T1 interactive installer, b1 (0.72.8a4).",
       "api": [
         {
@@ -62870,7 +62905,7 @@
           "kind": "function",
           "name": "cli_main",
           "signature": "def cli_mainargv: list[str] | None=None, *, read: Callable[[str], str]=input -> int",
-          "line": 503,
+          "line": 529,
           "doc": ""
         }
       ],
@@ -62888,6 +62923,25 @@
       ],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "7431fe6b",
+          "date": "2026-10-23",
+          "author": "Rayla",
+          "subject": "Potential fix for pull request finding 'CodeQL / Clear-text logging of sensitive information'",
+          "api_changes": []
+        },
+        {
+          "sha": "0aebc37c",
+          "date": "2026-10-22",
+          "author": "github-actions[bot]",
+          "subject": "fix(security): py/clear-text-logging-sensitive-data in src/hypernix/t1api/setup_cli.py:548 (alert #32039, Copilot Autofix)",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _redact_sensitive_env(text: str) -> str:"
+            }
+          ]
+        },
         {
           "sha": "fd848f59",
           "date": "2026-10-22",
