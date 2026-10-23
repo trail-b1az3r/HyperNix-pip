@@ -574,7 +574,8 @@ def cli_main(argv: list[str] | None = None, *, read: Callable[[str], str] = inpu
         return 130
     text = build_env(answers, config_dir=config_dir, old=old, version=__version__)
     if args.dry_run:
-        print(_redact_sensitive_env(text), end="")
+        _summary(answers, env_path)
+        print("hnx-t1 setup: dry-run; configuration was not written.")
         return 0
     _summary(answers, env_path)
     if interactive and not Asker(interactive=True, read=read).yes_no("write", "Write it?", True):
