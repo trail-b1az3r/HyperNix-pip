@@ -40,8 +40,9 @@
     do {
       prev = out
       out = out
-        .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+        .replace(/&lt;/g, "<").replace(/&gt;/g, ">")
         .replace(/&quot;/g, '"').replace(/&#x27;|&#39;/g, "'").replace(/&nbsp;/g, " ")
+        .replace(/&amp;/g, "&")
         .replace(/<[^>]+>/g, "")
     } while (out !== prev)
     return out.replace(/\s+/g, " ").trim()
