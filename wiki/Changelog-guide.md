@@ -19,6 +19,8 @@ The changelog is a release history, not a Git log. It should help a future maint
 - Correct an inaccurate old entry explicitly; do not silently rewrite history.
 - Do not claim benchmarks, security fixes, compatibility, or user impact unless they were verified.
 - A known issue is not something like, bun is needed for __. a real known issue, is a real bug, nor is it a incomplete feature 
+- NEVER mark something like only chromium was tested for the web pages THAT IS A CAVEAT
+- always make a dropdown with a expanded list of changes for major features 
 ---
 
 ## Entry formatting and item order
