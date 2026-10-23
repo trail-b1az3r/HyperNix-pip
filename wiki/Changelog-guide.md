@@ -18,7 +18,7 @@ The changelog is a release history, not a Git log. It should help a future maint
 - Keep unresolved problems documented until they are fixed, and preserve important historical context after they are fixed.
 - Correct an inaccurate old entry explicitly; do not silently rewrite history.
 - Do not claim benchmarks, security fixes, compatibility, or user impact unless they were verified.
-
+- A known issue is not something like, bun is needed for __. a known issue, is a real bug
 ---
 
 ## Entry formatting and item order
