@@ -31,7 +31,7 @@ Historical wording and technical detail are retained during format normalization
 | `🩹` | Temporary workaround or mitigation |
 | `♻️` | Data, checkpoint, cache, or migration work |
 | `📦` | Packaging, distribution, or release artifact change |
-| '🛈' | caveat (NOT A KNOWN ISSUE) } 
+| '🛈' | caveat (NOT A KNOWN ISSUE), info, warning, notice |
 
 > Format normalized to `wiki/Changelog-guide.md`; release wording and historical detail are preserved.
 
