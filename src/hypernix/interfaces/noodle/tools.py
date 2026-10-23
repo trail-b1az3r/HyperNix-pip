@@ -164,6 +164,14 @@ class ToolContext:
             raise ToolError("A path is required", code="bad_path")
         if Path(rel).is_absolute():
             raise ToolError("Absolute paths are not allowed", code="bad_path")
+        rel_norm = rel.replace("\\", "/")
+        if "\x00" in rel_norm:
+            raise ToolError("NUL bytes are not allowed in paths", code="bad_path")
+        if rel_norm.startswith("/"):
+            raise ToolError("Absolute paths are not allowed", code="bad_path")
+        parts = rel_norm.split("/")
+        if any(part in {"", ".", ".."} for part in parts):
+            raise ToolError("Path traversal segments are not allowed", code="bad_path")
         # expanduser() *after* the join, deliberately. By then any `~` the
         # model supplied sits in the middle of the path, where it expands
         # to nothing and stays a literal directory name under the root.

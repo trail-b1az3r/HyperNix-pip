@@ -433,7 +433,9 @@ def _quote(value: str) -> str:
 
 
 def _redact_sensitive_env(text: str) -> str:
-    sensitive_keys = {"T1_TOKEN_SECRET"}
+    sensitive_keys = {
+        "T1_TOKEN_SECRET",
+    }
     sensitive_markers = (
         "SECRET",
         "TOKEN",
@@ -447,10 +449,11 @@ def _redact_sensitive_env(text: str) -> str:
     )
     redacted_lines: list[str] = []
     for line in text.splitlines():
-        if "=" in line and not line.startswith("#"):
+        if "=" in line and not line.lstrip().startswith("#"):
             key, value = line.split("=", 1)
+            key = key.strip()
             key_upper = key.upper()
-            is_sensitive = key in sensitive_keys or any(marker in key_upper for marker in sensitive_markers)
+            is_sensitive = key_upper in sensitive_keys or any(marker in key_upper for marker in sensitive_markers)
             if is_sensitive and value:
                 redacted_lines.append(f"{key}=<redacted>")
                 continue
