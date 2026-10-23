@@ -107,20 +107,6 @@
           "category": "Tests",
           "text": "hyped-pro's codes and their aliases, every sandbox refusal having a code, the error page being current, list-all against the CLI, the T1 dispatcher and pyproject.toml, setup (defaults, answers files, refusals, re-runs keeping the secret, the manager running it) and upgrade -S\u2026",
           "details": []
-        },
-        {
-          "symbol": "\u2757",
-          "label": "known issue",
-          "category": "Known Issues",
-          "text": "The new website pages were checked in Chromium at desktop and phone widths, not in Safari or Firefox.",
-          "details": []
-        },
-        {
-          "symbol": "\u2757",
-          "label": "known issue",
-          "category": "Known Issues",
-          "text": "hyped-pro's OpenTUI app's tests need Bun, which the build environment does not have; its code changes are string constants.",
-          "details": []
         }
       ]
     },

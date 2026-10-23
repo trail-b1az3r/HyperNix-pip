@@ -1,6 +1,6 @@
 {
   "definition": "non-blank source lines across repository code roots: src, scripts, tests, examples, bin, native, docs/src",
-  "total_lines": 247942,
+  "total_lines": 247953,
   "code_files": 827,
   "top_files": [
     {
@@ -190,15 +190,15 @@
     },
     {
       "author": "github-actions[bot]",
-      "additions": 82,
-      "deletions": 56,
-      "net": 26,
-      "changes": 138,
-      "commits": 54,
+      "additions": 96,
+      "deletions": 59,
+      "net": 37,
+      "changes": 155,
+      "commits": 56,
       "files": 9
     }
   ],
   "history_available": true,
-  "commit": "2a34165699ae6c0f1b9eec263a0acd83cca37b31",
+  "commit": "f05783cd774183f66bf5d400205c538a681dccf2",
   "generated_at": null
 }

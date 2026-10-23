@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-api-deep",
   "generated_at": "2026-09-20T21:20:57Z",
-  "commit": "2a34165699ae6c0f1b9eec263a0acd83cca37b31",
+  "commit": "f05783cd774183f66bf5d400205c538a681dccf2",
   "history_available": true,
   "source_root": "src/hypernix",
   "modules": [
@@ -19819,7 +19819,7 @@
     {
       "module": "hypernix.interfaces.noodle.tools",
       "source": "src/hypernix/interfaces/noodle/tools.py",
-      "line_count": 789,
+      "line_count": 797,
       "summary": "noodle.tools \u2014 the tools every model in the swarm can call.",
       "api": [
         {
@@ -19876,13 +19876,13 @@
             {
               "name": "note_write",
               "signature": "def note_writeself, path: Path -> None",
-              "line": 189,
+              "line": 197,
               "doc": ""
             },
             {
               "name": "record",
               "signature": "def recordself, tool: str, detail: dict[str, Any] -> None",
-              "line": 199,
+              "line": 207,
               "doc": ""
             }
           ]
@@ -19891,7 +19891,7 @@
           "kind": "class",
           "name": "Tool",
           "signature": "class Tool",
-          "line": 204,
+          "line": 212,
           "doc": "One tool: a name, a description, a schema, and an implementation.",
           "methods": []
         },
@@ -19899,14 +19899,14 @@
           "kind": "function",
           "name": "tool_schemas",
           "signature": "def tool_schemasnames: list[str] | None=None -> list[dict[str, Any]]",
-          "line": 862,
+          "line": 870,
           "doc": "Render the tools as provider-neutral schemas."
         },
         {
           "kind": "function",
           "name": "run_tool",
           "signature": "def run_toolctx: ToolContext, name: str, arguments: dict[str, Any] -> ToolResult",
-          "line": 878,
+          "line": 886,
           "doc": "Run one tool, turning every failure into a result the model can read."
         }
       ],
@@ -19917,6 +19917,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "5ec315fe",
+          "date": "2026-10-23",
+          "author": "github-actions[bot]",
+          "subject": "fix(security): py/path-injection in src/hypernix/interfaces/noodle/tools.py:176 (alert #32046, Copilot Autofix)",
+          "api_changes": []
+        },
         {
           "sha": "62cc9a05",
           "date": "2026-10-22",
@@ -62799,7 +62806,7 @@
     {
       "module": "hypernix.t1api.setup_cli",
       "source": "src/hypernix/t1api/setup_cli.py",
-      "line_count": 515,
+      "line_count": 518,
       "summary": "``hnx-t1 setup`` \u2014 the T1 interactive installer, b1 (0.72.8a4).",
       "api": [
         {
@@ -62905,7 +62912,7 @@
           "kind": "function",
           "name": "cli_main",
           "signature": "def cli_mainargv: list[str] | None=None, *, read: Callable[[str], str]=input -> int",
-          "line": 529,
+          "line": 532,
           "doc": ""
         }
       ],
@@ -62923,6 +62930,13 @@
       ],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "7926b34b",
+          "date": "2026-10-23",
+          "author": "github-actions[bot]",
+          "subject": "fix(security): py/clear-text-logging-sensitive-data in src/hypernix/t1api/setup_cli.py:574 (alert #32045, Copilot Autofix)",
+          "api_changes": []
+        },
         {
           "sha": "7431fe6b",
           "date": "2026-10-23",
