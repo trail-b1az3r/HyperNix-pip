@@ -35,11 +35,16 @@
   }
 
   function decodeEntities(s) {
-    return String(s)
-      .replace(/<[^>]+>/g, "")
-      .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
-      .replace(/&quot;/g, '"').replace(/&#x27;|&#39;/g, "'").replace(/&nbsp;/g, " ")
-      .replace(/\s+/g, " ").trim()
+    let out = String(s)
+    let prev
+    do {
+      prev = out
+      out = out
+        .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+        .replace(/&quot;/g, '"').replace(/&#x27;|&#39;/g, "'").replace(/&nbsp;/g, " ")
+        .replace(/<[^>]+>/g, "")
+    } while (out !== prev)
+    return out.replace(/\s+/g, " ").trim()
   }
 
   // DuckDuckGo's HTML results page -> [{ title, url, snippet }].
