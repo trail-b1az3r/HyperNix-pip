@@ -43,38 +43,47 @@ graph TD
     dep_torch([PyTorch])
     dep_uvicorn([uvicorn])
     t1api["t1api"]
+    hyperlink["hyperlink"]
     system["system"]
     quant["quant"]
-    hyperlink["hyperlink"]
     interfaces["interfaces"]
-    data["data"]
     models["models"]
-    training["training"]
     monitoring["monitoring"]
+    data["data"]
+    training["training"]
+    security["security"]
+    c4["c4"]
     optimizers["optimizers"]
-    neuron["neuron"]
     waiter["waiter"]
+    neuron["neuron"]
     elements["elements"]
     evaluation["evaluation"]
     scriptgen["scriptgen"]
-    security["security"]
     audio["audio"]
     chat["chat"]
     timing["timing"]
     dilute["dilute"]
-    t1sdk["t1sdk"]
     runtime["runtime"]
+    t1sdk["t1sdk"]
+    _compat["_compat"]
     bridge["bridge"]
     hypernix["hypernix"]
+    _native_flags["_native_flags"]
+    _profiling["_profiling"]
+    bridge --> security
     chat --> security
     chat --> timing
+    data --> security
     data --> system
     dilute --> models
+    dilute --> security
     evaluation --> models
     evaluation --> system
+    hyperlink --> security
     hypernix --> interfaces
     hypernix --> system
     interfaces --> audio
+    interfaces --> c4
     interfaces --> chat
     interfaces --> data
     interfaces --> dilute
@@ -90,33 +99,45 @@ graph TD
     interfaces --> t1sdk
     interfaces --> timing
     interfaces --> training
+    interfaces --> waiter
     models --> chat
+    models --> security
     models --> system
     models --> training
     monitoring --> data
     monitoring --> evaluation
+    monitoring --> interfaces
+    monitoring --> models
+    monitoring --> optimizers
     monitoring --> system
     monitoring --> timing
     quant --> models
+    quant --> security
+    runtime --> security
     security --> t1api
     system --> models
     system --> quant
+    system --> security
     t1api --> data
     t1api --> hyperlink
     t1api --> interfaces
     t1api --> security
+    t1sdk --> security
     timing --> system
     training --> evaluation
     training --> models
     training --> monitoring
     training --> optimizers
     training --> quant
+    training --> security
     training --> system
     training --> timing
     waiter --> security
     waiter --> t1api
     audio --> dep_numpy
     audio --> dep_torch
+    c4 --> dep_numpy
+    c4 --> dep_torch
     chat --> dep_rich
     chat --> dep_torch
     data --> dep_numpy
@@ -135,10 +156,13 @@ graph TD
     optimizers --> dep_torch
     quant --> dep_numpy
     quant --> dep_torch
+    runtime --> dep_torch
     security --> dep_rich
+    security --> dep_torch
     system --> dep_anthropic
     system --> dep_torch
     t1api --> dep_fastapi
+    t1api --> dep_uvicorn
     timing --> dep_torch
     training --> dep_numpy
     training --> dep_torch
