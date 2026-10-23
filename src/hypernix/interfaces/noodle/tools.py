@@ -48,7 +48,7 @@ import urllib.request
 import zipfile
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 from hypernix.security.safeurl import urlopen as safe_urlopen
@@ -162,14 +162,13 @@ class ToolContext:
         rel = str(relative)
         if not rel or not rel.strip():
             raise ToolError("A path is required", code="bad_path")
-        if Path(rel).is_absolute():
-            raise ToolError("Absolute paths are not allowed", code="bad_path")
         rel_norm = rel.replace("\\", "/")
         if "\x00" in rel_norm:
             raise ToolError("NUL bytes are not allowed in paths", code="bad_path")
-        if rel_norm.startswith("/"):
+        rel_path = PurePosixPath(rel_norm)
+        if rel_path.is_absolute():
             raise ToolError("Absolute paths are not allowed", code="bad_path")
-        parts = rel_norm.split("/")
+        parts = rel_path.parts
         if any(part in {"", ".", ".."} for part in parts):
             raise ToolError("Path traversal segments are not allowed", code="bad_path")
         # expanduser() *after* the join, deliberately. By then any `~` the
@@ -181,7 +180,7 @@ class ToolContext:
         # right is absolute. The containment check below still catches
         # that, but it would be the only thing catching it. Do not
         # "fix" this into expanding first.
-        candidate = self.root.joinpath(rel).expanduser()
+        candidate = self.root.joinpath(*parts).expanduser()
         try:
             resolved = candidate.resolve()
         except OSError as exc:
