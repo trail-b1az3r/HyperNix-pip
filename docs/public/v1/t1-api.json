@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-t1-api",
   "generated_at": "2026-10-07T05:12:17Z",
-  "commit": "f05783cd774183f66bf5d400205c538a681dccf2",
+  "commit": "87ae92ff32679f8396d0fa8922bcadc0062e3e27",
   "history_available": true,
   "server_extra": "pip install 'hypernix[t1api]'",
   "client_install": "pip install hypernix",
@@ -15899,7 +15899,7 @@
     {
       "module": "hypernix.t1api.setup_cli",
       "source": "src/hypernix/t1api/setup_cli.py",
-      "line_count": 518,
+      "line_count": 519,
       "summary": "``hnx-t1 setup`` \u2014 the T1 interactive installer, b1 (0.72.8a4).",
       "api": [
         {
@@ -16029,6 +16029,13 @@
         }
       ],
       "changes": [
+        {
+          "sha": "264c0d3e",
+          "date": "2026-10-23",
+          "author": "github-actions[bot]",
+          "subject": "fix(security): py/clear-text-logging-sensitive-data in src/hypernix/t1api/setup_cli.py:577 (alert #32045, Copilot Autofix)",
+          "api_changes": []
+        },
         {
           "sha": "7926b34b",
           "date": "2026-10-23",

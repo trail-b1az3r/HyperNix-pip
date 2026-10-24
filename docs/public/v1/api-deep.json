@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-api-deep",
   "generated_at": "2026-09-20T21:20:57Z",
-  "commit": "f05783cd774183f66bf5d400205c538a681dccf2",
+  "commit": "87ae92ff32679f8396d0fa8922bcadc0062e3e27",
   "history_available": true,
   "source_root": "src/hypernix",
   "modules": [
@@ -19819,7 +19819,7 @@
     {
       "module": "hypernix.interfaces.noodle.tools",
       "source": "src/hypernix/interfaces/noodle/tools.py",
-      "line_count": 797,
+      "line_count": 796,
       "summary": "noodle.tools \u2014 the tools every model in the swarm can call.",
       "api": [
         {
@@ -19876,13 +19876,13 @@
             {
               "name": "note_write",
               "signature": "def note_writeself, path: Path -> None",
-              "line": 197,
+              "line": 196,
               "doc": ""
             },
             {
               "name": "record",
               "signature": "def recordself, tool: str, detail: dict[str, Any] -> None",
-              "line": 207,
+              "line": 206,
               "doc": ""
             }
           ]
@@ -19891,7 +19891,7 @@
           "kind": "class",
           "name": "Tool",
           "signature": "class Tool",
-          "line": 212,
+          "line": 211,
           "doc": "One tool: a name, a description, a schema, and an implementation.",
           "methods": []
         },
@@ -19899,14 +19899,14 @@
           "kind": "function",
           "name": "tool_schemas",
           "signature": "def tool_schemasnames: list[str] | None=None -> list[dict[str, Any]]",
-          "line": 870,
+          "line": 869,
           "doc": "Render the tools as provider-neutral schemas."
         },
         {
           "kind": "function",
           "name": "run_tool",
           "signature": "def run_toolctx: ToolContext, name: str, arguments: dict[str, Any] -> ToolResult",
-          "line": 886,
+          "line": 885,
           "doc": "Run one tool, turning every failure into a result the model can read."
         }
       ],
@@ -19917,6 +19917,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "3da67bbf",
+          "date": "2026-10-23",
+          "author": "github-actions[bot]",
+          "subject": "fix(security): py/path-injection in src/hypernix/interfaces/noodle/tools.py:184 (alert #32046, Copilot Autofix)",
+          "api_changes": []
+        },
         {
           "sha": "5ec315fe",
           "date": "2026-10-23",
@@ -19987,110 +19994,6 @@
           "author": "Mason",
           "subject": "security: API keys were world-readable; key auth leaked which key you sent",
           "api_changes": []
-        },
-        {
-          "sha": "4a74abc6",
-          "date": "2026-08-26",
-          "author": "Claude",
-          "subject": "noodle: multi-agent execution across nine providers",
-          "api_changes": [
-            {
-              "kind": "added",
-              "text": "class ToolError(RuntimeError):"
-            },
-            {
-              "kind": "added",
-              "text": "def __init__(self, message: str, *, code: str = \"error\"):"
-            },
-            {
-              "kind": "added",
-              "text": "class ToolResult:"
-            },
-            {
-              "kind": "added",
-              "text": "def to_dict(self) -> dict[str, Any]:"
-            },
-            {
-              "kind": "added",
-              "text": "class TodoItem:"
-            },
-            {
-              "kind": "added",
-              "text": "def to_dict(self) -> dict[str, Any]:"
-            },
-            {
-              "kind": "added",
-              "text": "class ToolContext:"
-            },
-            {
-              "kind": "added",
-              "text": "def __post_init__(self) -> None:"
-            },
-            {
-              "kind": "added",
-              "text": "def resolve(self, relative: str) -> Path:"
-            },
-            {
-              "kind": "added",
-              "text": "def note_write(self, path: Path) -> None:"
-            },
-            {
-              "kind": "added",
-              "text": "def record(self, tool: str, detail: dict[str, Any]) -> None:"
-            },
-            {
-              "kind": "added",
-              "text": "class Tool:"
-            },
-            {
-              "kind": "added",
-              "text": "def _p(**properties: Any) -> dict[str, Any]:"
-            },
-            {
-              "kind": "added",
-              "text": "def _str(desc: str, *, required: bool = False) -> dict[str, Any]:"
-            },
-            {
-              "kind": "added",
-              "text": "def _int(desc: str, *, required: bool = False) -> dict[str, Any]:"
-            },
-            {
-              "kind": "added",
-              "text": "def _create_file(ctx: ToolContext, args: dict[str, Any]) -> ToolResult:"
-            },
-            {
-              "kind": "added",
-              "text": "def _edit_file(ctx: ToolContext, args: dict[str, Any]) -> ToolResult:"
-            },
-            {
-              "kind": "added",
-              "text": "def _read_file(ctx: ToolContext, args: dict[str, Any]) -> ToolResult:"
-            },
-            {
-              "kind": "added",
-              "text": "def _execute_file(ctx: ToolContext, args: dict[str, Any]) -> ToolResult:"
-            },
-            {
-              "kind": "added",
-              "text": "def _web_search(ctx: ToolContext, args: dict[str, Any]) -> ToolResult:"
-            },
-            {
-              "kind": "added",
-              "text": "def _load_memory(ctx: ToolContext) -> dict[str, Any]:"
-            },
-            {
-              "kind": "added",
-              "text": "def _update_memory(ctx: ToolContext, args: dict[str, Any]) -> ToolResult:"
-            },
-            {
-              "kind": "added",
-              "text": "def _read_memory(ctx: ToolContext, args: dict[str, Any]) -> ToolResult:"
-            },
-            {
-              "kind": "added",
-              "text": "def _compact_context(ctx: ToolContext, args: dict[str, Any]) -> ToolResult:"
-            }
-          ]
         }
       ]
     },
@@ -62806,7 +62709,7 @@
     {
       "module": "hypernix.t1api.setup_cli",
       "source": "src/hypernix/t1api/setup_cli.py",
-      "line_count": 518,
+      "line_count": 519,
       "summary": "``hnx-t1 setup`` \u2014 the T1 interactive installer, b1 (0.72.8a4).",
       "api": [
         {
@@ -62930,6 +62833,13 @@
       ],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "264c0d3e",
+          "date": "2026-10-23",
+          "author": "github-actions[bot]",
+          "subject": "fix(security): py/clear-text-logging-sensitive-data in src/hypernix/t1api/setup_cli.py:577 (alert #32045, Copilot Autofix)",
+          "api_changes": []
+        },
         {
           "sha": "7926b34b",
           "date": "2026-10-23",
