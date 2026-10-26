@@ -2,7 +2,7 @@
 
 
 
-### Guide version: v2.1
+### Guide version: v2.2.0
 > whenever this guide is changed, update the guide version
 
 This document defines the format and editorial rules for the canonical hyperNix release history. It records published releases, meaningful beta/dev work, features, fixes, API changes, site changes, removals, known issues, and temporary workarounds.
@@ -161,12 +161,25 @@ Patch releases that are posted on pypi must use the format
 ## 0.72.7.post14 — patch # - headline change or fix
 ```
 
+or for LTS releases use this format
+
+```
+## 0.72.6.post7 — LTS-# - date - number of security issues fixed
+```
+and lastly for the alternate patch release format (also for pypi releases but only for security patches on non LTS releases)
+```
+## 0.72.4.post18 -- patch # - dependencies  updated - (if needed put): CRITICAL FIX 
+```
+
+
 If an in-branch development point has no meaningful release date, omit the date rather than inventing one.
 
 ---
 
+
+
 ## quick reminder
-a log of a bug fix, **DOES NOT INCLUDE ANY BUGS CREATED DURING UPDATE**, THAT IS ONLY SHOWN IN A DROPDOWN IN CHANGELOG 
+a log of a bug fix, **DOES NOT INCLUDE ANY BUGS CREATED DURING UPDATE**, THAT IS ONLY SHOWN IN A DROPDOWN IN CHANGELOG, Always make one per release, and for intire repo deps not just python, then put it in a file in the repo root named changeLog.root.md 
 
 
 ## Release categories
