@@ -1,5 +1,9 @@
 # hyperNix Changelog Guide
 
+
+
+### Guide version: v2.1
+
 This document defines the format and editorial rules for the canonical hyperNix release history. It records published releases, meaningful beta/dev work, features, fixes, API changes, site changes, removals, known issues, and temporary workarounds.
 
 The changelog is a release history, not a Git log. It should help a future maintainer answer: **what changed, when, why, whether it shipped, what it affects, how to migrate, and what remains unresolved**.
@@ -92,10 +96,6 @@ over:
 
 ```markdown
 🐛 Fixed attention bug.
-```
-and 
-```
-🐛 fixed
 ```
 
 ---
@@ -444,7 +444,9 @@ input-perturbation test.
 
 ### Known Issues
 
-❗ Fused SDPA availability still depends on the installed PyTorch and hardware backend.
+❗ Fused SDPA Does not work currently
+🛈 this is due to not having the torch backend 
+
 ```
 
 ---
