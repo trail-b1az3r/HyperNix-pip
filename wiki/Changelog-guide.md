@@ -93,6 +93,10 @@ over:
 ```markdown
 🐛 Fixed attention bug.
 ```
+and 
+```
+🐛 fixed
+```
 
 ---
 
@@ -161,7 +165,7 @@ If an in-branch development point has no meaningful release date, omit the date 
 ---
 
 ## quick reminder
-a log of a bug fix, DOES NOT INCLUDE ANY BUGS CREATED DURING UPDATE, THAT IS ONLY SHOWN IN A DROPDOWN IN CHANGELOG 
+a log of a bug fix, **DOES NOT INCLUDE ANY BUGS CREATED DURING UPDATE**, THAT IS ONLY SHOWN IN A DROPDOWN IN CHANGELOG 
 
 
 ## Release categories
