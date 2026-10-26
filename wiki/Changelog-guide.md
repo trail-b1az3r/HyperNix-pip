@@ -3,7 +3,7 @@
 
 
 ### Guide version: v2.1
-> whenever this is changed, update the guide version
+> whenever this guide is changed, update the guide version
 
 This document defines the format and editorial rules for the canonical hyperNix release history. It records published releases, meaningful beta/dev work, features, fixes, API changes, site changes, removals, known issues, and temporary workarounds.
 
