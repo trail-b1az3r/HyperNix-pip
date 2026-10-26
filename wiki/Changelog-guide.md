@@ -1,9 +1,7 @@
 # hyperNix Changelog Guide
 
-
-
-### Guide version: v2.2.0
-> whenever this guide is changed, update the guide version
+### Guide version: v2.2.1
+> Whenever this guide changes, update the guide version.
 
 This document defines the format and editorial rules for the canonical hyperNix release history. It records published releases, meaningful beta/dev work, features, fixes, API changes, site changes, removals, known issues, and temporary workarounds.
 
@@ -23,14 +21,29 @@ The changelog is a release history, not a Git log. It should help a future maint
 - Keep unresolved problems documented until they are fixed, and preserve important historical context after they are fixed.
 - Correct an inaccurate old entry explicitly; do not silently rewrite history.
 - Do not claim benchmarks, security fixes, compatibility, or user impact unless they were verified.
-- A known issue is not something like, bun is needed for __. a real known issue, is a real bug, nor is it a incomplete feature 
-- NEVER mark something like only chromium was tested for the web pages THAT IS A CAVEAT
-- always make a dropdown with a expanded list of changes for major features 
+- A known issue must be an actual unresolved bug or limitation in behavior. A prerequisite (for example, needing Bun) is not a known issue, and an incomplete feature should be documented as experimental or unfinished instead.
+- Do not label a statement such as “only Chromium was tested” as a known issue. That is a caveat.
+- For every major feature, include an expandable dropdown with a detailed list of its changes. This does not replace the per-release in-development bug-fix dropdown described below.
+
+Example of a major-feature dropdown:
+
+```markdown
+<details>
+<summary>HyperNix0xV4 architecture — expanded change list</summary>
+
+- Added the 1B and 3B presets.
+- Added rotary state mixing and architecture-specific checkpoint metadata.
+- Added initialization, tensor-shape, and checkpoint-loading tests.
+- Documented checkpoint compatibility and migration requirements.
+
+</details>
+```
+
 ---
 
 ## Entry formatting and item order
 
-Use one bullet per change. Put the severity symbol at the start of the bullet, followed by **exactly one space** and the sentence:
+Use one change entry per logical change. Put the severity symbol first, followed by **exactly one space** and a clear sentence:
 
 ```markdown
 ✨ Added streaming generation to the inference API.
@@ -46,7 +59,7 @@ The symbols communicate hierarchy. Format related changes as follows:
 4. Use one blank line between separate change groups. Do not insert blank lines between a parent item and its directly related minor item.
 5. Keep each bullet to one logical change. Use indented continuation lines for explanation, migration notes, or evidence.
 6. Use nested bullets only for details of the item immediately above them.
-7. A **patch** fix must follow python's .post formatting. 
+7. A **patch** release must follow Python's `.postN` version format.
 
 Example:
 
@@ -61,7 +74,7 @@ Example:
   - The iterator yields decoded text without changing non-streaming behavior.
 🛡️ Improved the error shown when a stream is consumed twice.
 
-🛈 this was only tested on Linux, so other OS may have issues.
+🛈 Tested on Linux only; Windows and macOS have not yet been tested.
 
 ```
 
@@ -81,16 +94,15 @@ The configuration helper is in the wrong group, and a bug is incorrectly marked 
 
 ### Recommended sentence style
 
-Start with a past-tense action verb: **Added**, **Changed**, **Fixed**, **Removed**, **Deprecated**, **Documented**, or **Restored**. or **rewrote** Name the affected API, module, page, or behavior, then explain why it matters when the change is not self-evident.
+Start with a past-tense action verb such as **Added**, **Changed**, **Fixed**, **Removed**, **Deprecated**, **Documented**, **Restored**, or **Rewrote**. Name the affected API, module, page, or behavior, then explain why the change matters when it is not self-evident.
 
 Prefer:
 
 ```markdown
 𖢥 Fixed Brewer attention leaking future tokens during training.
- - [sub bug required to fix 1]
- - [sub bug required to fix 2]
- - [sub bug required to fix 3]
- - [notice if needed]
+  - [Related bug or condition that had to be corrected]
+  - [Another directly related correction, if applicable]
+  - [Add a notice only when a caveat or scope clarification is useful]
 ```
 
 over:
@@ -128,8 +140,41 @@ over:
 | `🩹` | Temporary workaround or mitigation; include removal criteria |
 | `♻️` | Data, checkpoint, cache, or migration work |
 | `📦` | Packaging, distribution, or release artifact change |
-| `🛈` | Caveat (NOT A KNOWN ISSUE), info, notice, warning | 
+| `🛈` | Caveat, informational notice, or scope clarification; not a substitute for a known-issue entry |
+
 Use the closest symbol consistently. A symbol does not replace an explanation.
+
+### How to use `🛈` notices
+
+Use `🛈` for useful context that helps a reader interpret a change but does **not** claim that the software has a bug. Notices should be specific, neutral, and short. State the scope or limitation directly; avoid vague phrases such as “may have issues.” Put the notice next to the change it qualifies, or under `### Caveats` / `### Notes` when it applies to the release as a whole.
+
+Good examples:
+
+```markdown
+🛈 Tested on Linux only; Windows and macOS have not yet been tested.
+🛈 This example requires Bun to be installed before it can run.
+🛈 The benchmark covers the CPU backend only; CUDA performance was not measured.
+🛈 The V4 checkpoint format is experimental and may change before the stable release.
+🛈 The optional provider was not configured in this environment, so its integration path was not exercised.
+```
+
+Choose a different label when the entry describes a real problem or a corrective action:
+
+```markdown
+# Caveat: the feature has not been tested on these platforms.
+🛈 Tested on Linux only; Windows and macOS have not yet been tested.
+
+# Known issue: a reproducible bug is still present.
+❗ Loading a V4 checkpoint fails when optimizer state is present.
+
+# Temporary workaround: users can mitigate a known problem now.
+🩹 Use the V3 loader for existing V3 checkpoints until conversion is fixed.
+
+# Fixed bug: the release contains a verified correction.
+𖢥 Fixed V4 checkpoint loading when optimizer state is present.
+```
+
+Do **not** use `🛈` to disguise a confirmed bug, imply a fix that has not been verified, or label an unmet prerequisite as a known issue. “Only Chromium was tested” is a caveat, not a known issue. “Bun must be installed” is a prerequisite, not a bug. A notice can explain the context of another entry, but it does not replace the required entry or its symbol.
 
 ---
 
@@ -138,8 +183,8 @@ Use the closest symbol consistently. A symbol does not replace an explanation.
 Published releases normally use:
 
 ```markdown
-## 0.72.5 — 2026-09-25 -- API improvements
-### bugs fixed: __, security issues fixed __
+## 0.72.5 — 2026-09-25 — API improvements
+### Bugs fixed: __; security issues fixed: __
 ```
 
 Pre-releases may use:
@@ -155,32 +200,77 @@ Post releases and development revisions preserve their exact package version:
 ## 0.72.4.post18
 ```
 
-Patch releases that are posted on pypi must use the format 
+Patch releases published to PyPI must use this format:
 
 ```markdown
-## 0.72.7.post14 — patch # - headline change or fix
+## 0.72.7.post14 — patch # — headline change or fix
 ```
 
-or for LTS releases use this format
+For LTS releases, use this format:
 
-```
-## 0.72.6.post7 — LTS-# - date - number of security issues fixed
-```
-and lastly for the alternate patch release format (also for pypi releases but only for security patches on non LTS releases)
-```
-## 0.72.4.post18 -- patch # - dependencies  updated - (if needed put): CRITICAL FIX 
+```markdown
+## 0.72.6.post7 — LTS-# — YYYY-MM-DD — number of security issues fixed
 ```
 
+For the alternate patch-release format, use this form only for security patches in non-LTS releases:
+
+```markdown
+## 0.72.4.post18 — patch # — dependencies updated — [CRITICAL FIX, if applicable]
+```
 
 If an in-branch development point has no meaningful release date, omit the date rather than inventing one.
 
 ---
 
+## Quick reminder
 
+A release's ordinary bug-fix log must **not treat bugs introduced by work during the current update as pre-existing bugs fixed by that update**. Track update-created regressions and in-development bug-fix work in a separate dropdown for that release in the changelog. Create this dropdown for **every release**, including when there is nothing to report. Review dependencies across the **entire repository**, not only Python dependencies. Keep the canonical release log and its per-release dropdowns in the repository-root file `changeLog.root.md`.
 
-## quick reminder
-a log of a bug fix, **DOES NOT INCLUDE ANY BUGS CREATED DURING UPDATE**, THAT IS ONLY SHOWN IN A DROPDOWN IN CHANGELOG, Always make one per release, and for intire repo deps not just python, then put it in a file in the repo root named changeLog.root.md 
+## Per-release dropdown for in-development bug fixes
 
+Use one expandable dropdown in each release entry to record bugs discovered, introduced, or being investigated while that release is under development. This is a development-tracking record, not proof that an issue is fixed or that a fix shipped. Do not count these entries as verified release fixes or include them in a “bugs fixed” total.
+
+- Use the dropdown for a regression introduced by the current branch/update, an in-progress fix, a bug still being investigated, or a fix awaiting tests or verification.
+- Use `### Fixed` for verified release fixes to pre-existing bugs and defects. Bugs introduced by work during the current update belong **only in that release's dropdown**, even if they are corrected before release. Mark them `FIXED DURING DEVELOPMENT` there and do not count them as pre-existing bugs fixed by the release.
+- Review dependencies across the whole repository, including Python, JavaScript/Node, Rust, system/runtime packages, build tooling, CI workflows, and any other dependency manifests the repository actually uses. Do not assume a Python-only review is sufficient; record actual dependency changes in `### Dependencies and Packaging` as well.
+- Use one dropdown per release. If there are no in-development bugs or update-created regressions to report, keep the dropdown and state that explicitly.
+
+Example with in-development work still open:
+
+```markdown
+<details>
+<summary>0.73.1 — In-development bug-fix log (not release-verified)</summary>
+
+- **OPEN — introduced during update:** The current development branch can fail when the optional cache is empty; investigation is ongoing.
+- **IN PROGRESS:** A fix for the cache regression is drafted but has not passed the regression test yet.
+- **NEEDS VERIFICATION:** A dependency update may change Windows path handling; test results are still pending.
+
+</details>
+```
+
+Example when the release has no in-development bug-fix items:
+
+```markdown
+<details>
+<summary>0.73.1 — In-development bug-fix log</summary>
+
+- No in-development bug fixes or update-created regressions are currently tracked for this release.
+
+</details>
+```
+
+Example when a regression introduced during development is fixed before shipping (keep this entry in the dropdown only; do not count it as a pre-existing bug fixed by the release):
+
+```markdown
+<details>
+<summary>0.73.1 — In-development bug-fix log</summary>
+
+- **FIXED DURING DEVELOPMENT — introduced by this update:** The update temporarily broke empty-cache handling. The corrective change passed the targeted regression test before release.
+
+</details>
+```
+
+The dropdown is the record for bugs introduced or worked on during the current update. Do not duplicate those regressions in the ordinary `### Fixed` list or include them in its bug-fix count. Use `### Fixed` for verified fixes to pre-existing bugs. Do not mark any item verified until the relevant test or reproduction check has passed.
 
 ## Release categories
 
@@ -206,8 +296,8 @@ Use only categories that contain entries. Keep categories in this order unless a
 18. `Tests`
 19. `Known Issues`
 20. `Temporary Workarounds`
-21.  `caveats`
-22.   `notes`
+21. `Caveats`
+22. `Notes`
 
 `Site Changes` is the canonical category for wiki, documentation-site, landing-page, examples-site, navigation, and hosted-page changes. Use `Documentation` for repository documentation that is primarily consumed as package or developer documentation.
 
@@ -241,18 +331,20 @@ Beta and development versions are part of the historical record. Document experi
 
 ### Known Issues
 
-❗ V4 checkpoint conversion can sometimes randomly corrupt   
+❗ V4 checkpoint conversion can sometimes corrupt checkpoints. Add the affected checkpoint type and reproduction steps when known.
 
 ### Temporary Workarounds
 
 🩹 Use the V3 loader for existing V3 checkpoints until the converter is finalized.
   - Remove this workaround when V4 conversion passes the compatibility suite.
+
+### Caveats
+
+🛈 The V4 checkpoint format is experimental and may change before the stable release.
 ```
 
 ---
 
-### caveats 
-🛈 v4 checkpoints are not fully stable
 ## Beta / Dev → Release Summary
 
 Every stable release following one or more beta/dev versions must summarize the important work from that cycle. Focus on what actually shipped; do not copy every pre-release entry.
@@ -456,10 +548,16 @@ For major correctness bugs, describe the property tested, not only the number of
 🧪 Added causality and sliding-window regression coverage, including a property-based
 input-perturbation test.
 
-### Known Issues
+### Caveats
 
-❗ Fused SDPA Does not work currently
-🛈 this is due to not having the torch backend 
+🛈 Fused SDPA was not verified in this environment because the required PyTorch backend was unavailable. Treat this as an environment caveat unless testing confirms an actual SDPA bug.
+
+<details>
+<summary>0.72.4.post18 — In-development bug-fix log</summary>
+
+- No in-development bug fixes or update-created regressions are documented in this example.
+
+</details>
 
 ```
 
@@ -495,7 +593,7 @@ This release includes finalized work from `X.Y.Z-dev` and `X.Y.Z-beta`.
 ⚠️ <error-code or error-semantics change>
 
 ### Architecture
-๋࣭��� <architecture, shape, checkpoint, and migration details>
+๋࣭⭑ <architecture, shape, checkpoint, and migration details>
 
 ### CLI and UX
 🛡️ <CLI, message, warning, or setup improvement>
@@ -512,6 +610,13 @@ This release includes finalized work from `X.Y.Z-dev` and `X.Y.Z-beta`.
 ### Fixed
 𖢥 <major correctness or stability fix>
 🐛 <minor fix immediately related to the relevant feature when possible>
+
+<details>
+<summary>X.Y.Z — In-development bug-fix log</summary>
+
+- <Update-created regression, in-progress fix, verification status, or explicit statement that there are no such items.>
+
+</details>
 
 ### Dependencies and Packaging
 📦 <dependency, wheel, build, or distribution change>
@@ -540,6 +645,12 @@ This release includes finalized work from `X.Y.Z-dev` and `X.Y.Z-beta`.
 
 ### Temporary Workarounds
 🩹 <temporary mitigation, risk, and removal condition>
+
+### Caveats
+🛈 <platform test coverage, environment prerequisite, benchmark scope, or other relevant caveat>
+
+### Notes
+<additional release context that does not fit another category>
 ```
 
 ---
@@ -556,6 +667,10 @@ This release includes finalized work from `X.Y.Z-dev` and `X.Y.Z-beta`.
 - [ ] Known bugs and temporary workarounds state scope and expected resolution.
 - [ ] Site changes are included when applicable.
 - [ ] Major fixes explain impact and regression tests explain the protected property.
+- [ ] Every release has its in-development bug-fix dropdown, including an explicit “none tracked” statement when empty.
+- [ ] Bugs created or investigated during the update are not incorrectly counted as pre-existing bugs fixed by the release.
+- [ ] Dependency review covers the entire repository, not only Python packages, and is recorded in `changeLog.root.md`.
+- [ ] Notices (`🛈`) describe caveats or context rather than confirmed bugs.
 - [ ] No benchmark or compatibility claim is unverified.
 - [ ] `wiki/Home.md` Recent Highlights was updated for a stable release.
 - [ ] Empty categories and commit-by-commit noise were removed.
