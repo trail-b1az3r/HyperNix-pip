@@ -194,11 +194,14 @@ class ClientCertVerifier:
     _trusted_networks: list[Any] = field(default_factory=list, init=False)
 
     def __post_init__(self) -> None:
-        for entry in self.settings.trusted_proxies:
+        for number, entry in enumerate(self.settings.trusted_proxies, start=1):
             try:
                 self._trusted_networks.append(ipaddress.ip_network(entry.strip(), strict=False))
             except ValueError:
-                logger.warning("t1api.mtls: ignoring unparseable trusted proxy %r", entry)
+                # Its position, not its text: the settings object also holds
+                # credentials, and none of its values belong in a log.
+                logger.warning("t1api.mtls: ignoring trusted proxy %d, which is not an address "
+                               "or network", number)
 
     def is_trusted_proxy(self, peer_ip: str | None) -> bool:
         if not peer_ip or not self._trusted_networks:

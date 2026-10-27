@@ -100,6 +100,8 @@ def server(tmp_path, monkeypatch):
         token_secret="test-secret-value-that-is-long-enough", db_path=str(tmp_path / "t1.db"),
         module_storage_dir=str(tmp_path / "m"), hyperlink_files_dir=str(tmp_path / "f"),
         default_plan="free", hf_download_dir=str(models), web_enabled=False,
+        # Models are linked only from T1_MODEL_LINK_ROOTS; here, the test's folder.
+        model_link_roots=str(tmp_path),
     )
     app = create_app(config=config, keymaster=km, gatekeeper=gk)
     client = TestClient(app, client=("127.0.0.1", 5000))

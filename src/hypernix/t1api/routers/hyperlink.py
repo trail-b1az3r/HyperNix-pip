@@ -2886,24 +2886,18 @@ def link_model_route(
     """
     _require_enabled(config)
     require_hyperlink_admin(principal)
-    from ...hyperlink.modellinks import ModelLinkError, link_model
+    from ...hyperlink.modellinks import ModelLinkError, link_model, link_roots
     from ..modelsync import source_for
 
-    if getattr(config, "model_sync", False):
-        # With T1_MODEL_SYNC on, everything in the sync source is linked
-        # in already -- and a second link into it would be pruned by the
-        # next sync as one the mirror did not make.
-        source = source_for(config)
-        wanted = Path(payload.path).expanduser()
-        if wanted.is_absolute() and wanted.resolve().is_relative_to(source.resolve()):
-            raise T1APIError(
-                T1ErrorCode.VALIDATION_ERROR,
-                f"{wanted} is inside {source}, which T1_MODEL_SYNC mirrors already; "
-                f"it is in the list without a link.",
-                http_status=400,
-            )
+    # With T1_MODEL_SYNC on, everything in the sync source is linked in
+    # already -- and a second link into it would be pruned by the next
+    # sync as one the mirror did not make. link_model checks that, on the
+    # path it has resolved and bounded; nothing here touches the raw path.
+    mirrored = source_for(config) if getattr(config, "model_sync", False) else None
     try:
-        made = link_model(payload.path, _links_dir(config), payload.name)
+        made = link_model(payload.path, _links_dir(config), payload.name,
+                          roots=link_roots(getattr(config, "model_link_roots", "") or ""),
+                          mirrored=mirrored)
     except ModelLinkError as exc:
         raise _link_error(exc) from exc
     return ModelLinkResponse(**made, request_id=request_id)

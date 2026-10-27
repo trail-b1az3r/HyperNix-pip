@@ -21,6 +21,13 @@ from hypernix.system.linkwalk import broken_links, walk_files
 pytestmark = pytest.mark.skipif(os.name == "nt", reason="symlinks need privileges on Windows")
 
 
+@pytest.fixture(autouse=True)
+def _link_roots(tmp_path, monkeypatch):
+    """Models may only be linked from T1_MODEL_LINK_ROOTS (by default the
+    home folder, /mnt, /data, ...); here, from this test's folder."""
+    monkeypatch.setenv("T1_MODEL_LINK_ROOTS", str(tmp_path))
+
+
 def _gguf(path: Path) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(b"GGUF" + b"\0" * 60)
@@ -120,12 +127,33 @@ class TestLinking:
     @pytest.mark.parametrize("bad,match", [
         ("", "Give the path"),
         ("relative/model.gguf", "relative"),
-        ("/definitely/not/here.gguf", "Nothing at"),
+        # Outside every root: refused before the disk is asked about it.
+        ("/definitely/not/here.gguf", "not in a folder models may be linked from"),
     ])
     def test_it_refuses_what_it_cannot_link(self, disks, bad, match):
         models, _ = disks
         with pytest.raises(ModelLinkError, match=match):
             link_model(bad, models)
+
+    def test_a_missing_file_inside_a_root_is_not_found(self, disks, tmp_path):
+        models, _ = disks
+        with pytest.raises(ModelLinkError, match="Nothing at") as caught:
+            link_model(tmp_path / "nowhere.gguf", models)
+        assert caught.value.missing
+
+    def test_nothing_outside_the_roots_is_linked(self, disks, tmp_path, monkeypatch):
+        """CodeQL: uncontrolled data in a path expression. An admin names a
+        path on the server's disk, but only inside the allowed folders --
+        and `..` or a symlink cannot walk it out of them."""
+        models, elsewhere = disks
+        monkeypatch.setenv("T1_MODEL_LINK_ROOTS", str(elsewhere))
+        outside = _gguf(tmp_path / "outside" / "x.gguf")
+        for sneaky in (str(outside), f"{elsewhere}/../outside/x.gguf"):
+            with pytest.raises(ModelLinkError, match="not in a folder"):
+                link_model(sneaky, models)
+        (elsewhere / "door").symlink_to(outside.parent, target_is_directory=True)
+        with pytest.raises(ModelLinkError, match="not in a folder"):
+            link_model(elsewhere / "door" / "x.gguf", models)
 
     def test_it_refuses_a_file_that_is_not_a_model(self, disks, tmp_path):
         models, _ = disks
@@ -251,10 +279,13 @@ class TestOverHttp:
         assert not (models / "loose.gguf").exists()
 
     def test_the_errors_have_the_right_status(self, server):
-        client, admin, _user, models, _elsewhere = server
+        client, admin, _user, models, elsewhere = server
         missing = client.post("/hyperlink/models/link", headers=admin,
-                              json={"path": "/definitely/not/here.gguf"})
+                              json={"path": str(elsewhere / "not-here.gguf")})
         assert missing.status_code == 404
+        outside = client.post("/hyperlink/models/link", headers=admin,
+                              json={"path": "/definitely/not/here.gguf"})
+        assert outside.status_code == 400 and "T1_MODEL_LINK_ROOTS" in outside.json()["error"]["message"]
         _gguf(models / "real.gguf")
         conflict = client.delete("/hyperlink/models/link/real.gguf", headers=admin)
         assert conflict.status_code == 409

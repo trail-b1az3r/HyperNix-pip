@@ -362,10 +362,14 @@ def _private_url(url: str) -> bool:
         return False
 
 
-def build_env(a: Answers, *, config_dir: Path, old: dict[str, str], version: str) -> str:
-    """The .env text for these answers. Pure: the tests read it."""
+def build_env(a: Answers, *, config_dir: Path, old: dict[str, str], version: str, secret: str) -> str:
+    """The .env text for these answers. Pure: the tests read it.
+
+    *secret* is the token secret to write (:func:`token_secret`), passed
+    in rather than looked up here so that a dry run can build the same
+    file around ``<redacted>`` without a real secret ever reaching it.
+    """
     host = {"local": "127.0.0.1", "network": "0.0.0.0"}.get(a.reach) or _tailnet_ip() or "127.0.0.1"
-    secret = old.get("T1_TOKEN_SECRET") or secrets.token_hex(32)
     b = lambda v: "1" if v else "0"  # noqa: E731
     lines = [
         f"# Written by hnx-t1 setup (installer {INSTALLER}, hypernix {version})",
@@ -432,45 +436,34 @@ def _quote(value: str) -> str:
     return f"'{value}'" if any(ch in value for ch in " #\"'$`\\") and "'" not in value else value
 
 
+REDACTED = "<redacted>"
+
+#: Parts of a setting's name that mean its value is a credential.
+_SECRET_MARKERS = ("SECRET", "TOKEN", "PASSWORD", "PASS", "API_KEY", "PRIVATE", "CREDENTIAL", "AUTH", "KEY")
+
+
 def _plain_setting(value: str) -> bool:
     bare = value.strip().strip("'\"").lower()
     return bare in {"", "0", "1", "true", "false", "yes", "no", "on", "off", "none"} or bare.isdigit()
 
 
-def _redact_sensitive_env(text: str) -> str:
-    """*text* with every secret's value replaced by ``<redacted>``: what
-    ``--dry-run`` prints. A dry run writes nothing, so a token secret it
-    generated is never used -- and a secret has no business on a terminal
-    or in a log either way."""
-    sensitive_keys = {
-        "T1_TOKEN_SECRET",
-    }
-    sensitive_markers = (
-        "SECRET",
-        "TOKEN",
-        "PASSWORD",
-        "PASS",
-        "API_KEY",
-        "PRIVATE",
-        "CREDENTIAL",
-        "AUTH",
-        "KEY",
-    )
-    redacted_lines: list[str] = []
-    for line in text.splitlines():
-        if "=" in line and not line.lstrip().startswith("#"):
-            key, value = line.split("=", 1)
-            key = key.strip()
-            key_upper = key.upper()
-            is_sensitive = key_upper in sensitive_keys or any(marker in key_upper for marker in sensitive_markers)
-            # A switch or a number is not a secret, whatever its name says:
-            # T1_BOOTSTRAP_KEY=1 and T1_ACCEPT_T1_KEYS=1 are settings, and
-            # hiding them would make the dry run show a different file.
-            if is_sensitive and value and not _plain_setting(value):
-                redacted_lines.append(f"{key}=<redacted>")
-                continue
-        redacted_lines.append(line)
-    return "\n".join(redacted_lines) + ("\n" if text.endswith("\n") else "")
+def _is_secret(name: str, value: str) -> bool:
+    """Whether *value* is a credential: by its setting's name -- except that
+    a switch or a number is not one, whatever the name says
+    (T1_BOOTSTRAP_KEY=1 and T1_ACCEPT_T1_KEYS=1 are settings)."""
+    upper = name.strip().upper()
+    return any(marker in upper for marker in _SECRET_MARKERS) and not _plain_setting(value)
+
+
+def token_secret(old: dict[str, str]) -> str:
+    """The token secret to write: the server's own, so every key it signed
+    keeps working, or a new one."""
+    return old.get("T1_TOKEN_SECRET") or secrets.token_hex(32)
+
+
+def _masked(old: dict[str, str]) -> dict[str, str]:
+    """*old* with each credential's value replaced by ``<redacted>``."""
+    return {name: REDACTED if _is_secret(name, value) else value for name, value in old.items()}
 
 
 # ---------------------------------------------------------------------------
@@ -584,15 +577,19 @@ def cli_main(argv: list[str] | None = None, *, read: Callable[[str], str] = inpu
     except (EOFError, KeyboardInterrupt):
         print("\nhnx-t1 setup: stopped; nothing was written.", file=sys.stderr)
         return 130
-    text = build_env(answers, config_dir=config_dir, old=old, version=__version__)
     if args.dry_run:
-        # stdout is the file, as `--dry-run > .env.new` expects, with its
-        # secrets redacted; the summary and this note go to stderr.
+        # stdout is the file, as `--dry-run > .env.new` expects, built around
+        # <redacted> in place of every credential: the real ones never reach
+        # it (CodeQL: clear-text logging). The summary and this note go to
+        # stderr.
+        preview = build_env(answers, config_dir=config_dir, old=_masked(old), version=__version__,
+                            secret=REDACTED)
         _summary(answers, env_path)
-        print(_redact_sensitive_env(text), end="")
+        print(preview, end="")
         print("hnx-t1 setup: dry run; nothing was written (secrets shown as <redacted>).",
               file=sys.stderr)
         return 0
+    text = build_env(answers, config_dir=config_dir, old=old, version=__version__, secret=token_secret(old))
     _summary(answers, env_path)
     if interactive and not Asker(interactive=True, read=read).yes_no("write", "Write it?", True):
         print("hnx-t1 setup: nothing was written.")

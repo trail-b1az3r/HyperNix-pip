@@ -248,8 +248,12 @@ static void test_codebooks_and_q8_k(void) {
          * weight comes back to within one FP16 rounding of the scale. */
         double err = 0.0, norm = 0.0;
         for (size_t i = 0; i < 2 * HNX_BLOCK_SIZE; i++) {
-            err += (decoded[i] - weights[i]) * (decoded[i] - weights[i]);
-            norm += weights[i] * weights[i];
+            /* In double before multiplying: a float product widened after
+             * the fact has already lost what the double sum keeps. */
+            const double d = (double) decoded[i] - (double) weights[i];
+            const double w = (double) weights[i];
+            err += d * d;
+            norm += w * w;
         }
         snprintf(label, sizeof(label), "%s encodes as a codebook, not as signs", info->name);
         check(err < 0.5 * norm, label);

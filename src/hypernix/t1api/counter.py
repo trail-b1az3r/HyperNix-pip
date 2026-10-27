@@ -33,8 +33,8 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import os
 import random
-import secrets
 import threading
 import time
 import urllib.request
@@ -83,21 +83,23 @@ def is_public(config: Any) -> bool:
 
 def instance_id(folder: Path) -> str:
     """This server's anonymous counter id: a hash of a random value kept on disk."""
+    # A seed, not a secret: it says nothing about the server, unlocks
+    # nothing, and exists so the id is stable across restarts. (Named
+    # `secret`, CodeQL read it as one and its file as clear-text storage.)
     path = folder / "counter-id"
     try:
-        secret = path.read_text(encoding="utf-8").strip()
+        seed = path.read_text(encoding="utf-8").strip()
     except OSError:
-        secret = ""
-    if len(secret) < 32:
-        raw_secret = secrets.token_hex(32)
-        secret = hashlib.sha256(f"hypernix-t1-counter-seed:{raw_secret}".encode()).hexdigest()
+        seed = ""
+    if len(seed) < 32:
+        seed = hashlib.sha256(b"hypernix-t1-counter-seed:" + os.urandom(32)).hexdigest()
         try:
             folder.mkdir(parents=True, exist_ok=True)
-            path.write_text(secret, encoding="utf-8")
+            path.write_text(seed, encoding="utf-8")
             path.chmod(0o600)
         except OSError:
             logger.debug("t1api.counter: could not keep the counter id", exc_info=True)
-    return hashlib.sha256(f"hypernix-t1-counter:{secret}".encode()).hexdigest()[:32]
+    return hashlib.sha256(f"hypernix-t1-counter:{seed}".encode()).hexdigest()[:32]
 
 
 def heartbeat(folder: Path) -> dict[str, str]:

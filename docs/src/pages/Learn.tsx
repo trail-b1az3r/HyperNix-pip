@@ -3,8 +3,19 @@ import { LEARN_LESSONS } from '../lib/data/learn-lessons'
 import { CopyButton } from '../components/ui'
 
 function LearnPage() {
+  // The provider settings survive a reload; its API key does not. A key in
+  // sessionStorage is readable by any script on this origin (CodeQL:
+  // clear-text storage of sensitive information), so it lives only in
+  // memory, and a provider that needs one asks for it again.
   const stored = () => {
-    try { return JSON.parse(sessionStorage.getItem('hnx_llm_cfg') || 'null') } catch { return null }
+    try {
+      const saved = JSON.parse(sessionStorage.getItem('hnx_llm_cfg') || 'null')
+      return saved && saved.needsKey ? null : saved
+    } catch { return null }
+  }
+  const remember = (saved) => {
+    const { key, ...rest } = saved
+    try { sessionStorage.setItem('hnx_llm_cfg', JSON.stringify({ ...rest, needsKey: !!key })) } catch { /* private mode */ }
   }
   const [cfg, setCfg] = useState(stored)        // { url, model, backend, apiKey? }
   const [setupStep, setSetupStep] = useState(0) // 0=pick backend, 1=configure, 2=testing
@@ -112,7 +123,7 @@ function LearnPage() {
   const testConnection = async () => {
     if (isNoModel) {
       const savedCfg = { url: '', model: '', backend: 'none', kind: '', key: '' }
-      sessionStorage.setItem('hnx_llm_cfg', JSON.stringify(savedCfg))
+      remember(savedCfg)
       setCfg(savedCfg)
       setTestStatus('ok')
       return
@@ -127,7 +138,7 @@ function LearnPage() {
       await callProvider(provider, [{ role: 'user', content: 'Reply with the word OK and nothing else.' }],
         'You are a connection test. Reply with exactly one word.')
       const savedCfg = { url: resolvedUrl, model: resolvedModel, backend, kind: meta.kind, key: needsKey ? apiKey.trim() : '' }
-      sessionStorage.setItem('hnx_llm_cfg', JSON.stringify(savedCfg))
+      remember(savedCfg)
       setCfg(savedCfg)
       setTestStatus('ok')
     } catch (e) {

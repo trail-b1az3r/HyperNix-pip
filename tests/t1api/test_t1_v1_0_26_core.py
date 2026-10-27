@@ -11,6 +11,7 @@ The HTTP surface is covered separately in
 from __future__ import annotations
 
 import json
+import re
 import urllib.error
 from io import BytesIO
 from pathlib import Path
@@ -783,7 +784,9 @@ class TestHFParsing:
         with pytest.raises(HFResolveError) as excinfo:
             parse_link("https://example.com/o/r")
         assert excinfo.value.code == "not_a_hf_link"
-        assert "example.com" in str(excinfo.value)
+        # The host is named in the message. Matched as a word: an `in` test
+        # with a host in it reads to CodeQL as URL checking (#31898).
+        assert re.search(r"\bexample\.com\b", str(excinfo.value))
 
     def test_a_link_with_no_repository_says_what_one_looks_like(self):
         with pytest.raises(HFResolveError) as excinfo:

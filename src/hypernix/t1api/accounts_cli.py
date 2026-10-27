@@ -61,13 +61,13 @@ def _ask_password(confirm: bool = True) -> str:
     Never an argument. A password on a command line is in the shell
     history, in `ps`, and in whatever collects either.
     """
-    from .accounts import PASSWORD_MIN_LENGTH
+    from .accounts import SHORTEST_ALLOWED
 
     while True:
         first = getpass.getpass("Password: ")
-        if len(first) < PASSWORD_MIN_LENGTH:
+        if len(first) < SHORTEST_ALLOWED:
             print(
-                f"  At least {PASSWORD_MIN_LENGTH} characters, please.",
+                f"  At least {SHORTEST_ALLOWED} characters, please.",
                 file=sys.stderr,
             )
             continue

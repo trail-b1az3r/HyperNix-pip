@@ -127,6 +127,7 @@ MAX_CODE = 500_000
 MAX_PER_OWNER = 8
 
 _ID = re.compile(r"^sbx_[0-9a-f]{16}$")
+_NAME = re.compile(r"[A-Za-z0-9_]+")
 _ON = {"on", "true", "yes", "1", "allow", "allowed"}
 _OFF = {"off", "false", "no", "0", "deny", "denied"}
 
@@ -248,9 +249,13 @@ def _normalise(raw: str) -> str:
         # `s1=?` reads. So does `s1=`: a `?` that ends a URL is dropped
         # by HTTP with the empty query after it, and `perms|s2=?` arrives
         # as `perms|s2=` -- the two cannot be told apart on the server.
-        asked = re.fullmatch(r"([A-Za-z0-9_]+)\s*=\s*\??", clause)
-        if asked:
-            clause = f"{asked.group(1)}?=k"
+        # `name=?` or `name=`, read with partition rather than
+        # `([A-Za-z0-9_]+)\s*=\s*\??`, which backtracks polynomially on a
+        # long name followed by spaces and no `=` (CodeQL).
+        name, eq, rest = clause.partition("=")
+        name = name.strip()
+        if eq and rest.strip() in ("", "?") and _NAME.fullmatch(name):
+            clause = f"{name}?=k"
         elif "?" not in clause and "=" in clause:
             name, _, value = clause.partition("=")
             raise GrammarError(
