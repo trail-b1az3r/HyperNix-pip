@@ -1,6 +1,6 @@
 {
   "definition": "non-blank source lines across repository code roots: src, scripts, tests, examples, bin, native, docs/src",
-  "total_lines": 249157,
+  "total_lines": 249174,
   "code_files": 834,
   "top_files": [
     {
@@ -127,11 +127,11 @@
   "contributors": [
     {
       "author": "Claude",
-      "additions": 241661,
-      "deletions": 17803,
-      "net": 223858,
-      "changes": 259464,
-      "commits": 281,
+      "additions": 241686,
+      "deletions": 17806,
+      "net": 223880,
+      "changes": 259492,
+      "commits": 283,
       "files": 1701
     },
     {
@@ -199,6 +199,6 @@
     }
   ],
   "history_available": true,
-  "commit": "b27d021da3a98730027692ffba65d307c1cdaa66",
+  "commit": "32b0f96c1bec77ed6d93cf0e55021b2c2673bb28",
   "generated_at": null
 }

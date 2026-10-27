@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-api-deep",
   "generated_at": "2026-09-20T21:20:57Z",
-  "commit": "b27d021da3a98730027692ffba65d307c1cdaa66",
+  "commit": "32b0f96c1bec77ed6d93cf0e55021b2c2673bb28",
   "history_available": true,
   "source_root": "src/hypernix",
   "modules": [
@@ -62809,7 +62809,7 @@
     {
       "module": "hypernix.t1api.setup_cli",
       "source": "src/hypernix/t1api/setup_cli.py",
-      "line_count": 522,
+      "line_count": 533,
       "summary": "``hnx-t1 setup`` \u2014 the T1 interactive installer, b1 (0.72.8a4).",
       "api": [
         {
@@ -62915,7 +62915,7 @@
           "kind": "function",
           "name": "cli_main",
           "signature": "def cli_mainargv: list[str] | None=None, *, read: Callable[[str], str]=input -> int",
-          "line": 532,
+          "line": 544,
           "doc": ""
         }
       ],
@@ -62934,11 +62934,16 @@
       "required_modules": [],
       "changes": [
         {
-          "sha": "ca9f3235",
+          "sha": "05eae954",
           "date": "2026-10-27",
-          "author": "Rayla",
-          "subject": "fix(t1api): keep setup dry-run stdout as env file",
-          "api_changes": []
+          "author": "Claude",
+          "subject": "hnx-t1 setup --dry-run: the file on stdout again, with its secrets redacted",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _plain_setting(value: str) -> bool:"
+            }
+          ]
         },
         {
           "sha": "264c0d3e",
