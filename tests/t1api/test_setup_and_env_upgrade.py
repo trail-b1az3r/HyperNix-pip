@@ -54,6 +54,12 @@ class TestSetup:
         out = capsys.readouterr().out
         assert code == 0 and not config.exists()
         assert out.startswith("# Written by hnx-t1 setup (installer b1")
+        # The file, but not its secret (CodeQL: clear-text logging).
+        values = _keys(out)
+        assert values["T1_TOKEN_SECRET"] == "<redacted>"
+        # Switches are not secrets because their names say KEY.
+        assert all(v != "<redacted>" for k, v in values.items() if k != "T1_TOKEN_SECRET" and
+                   v.lower() in ("0", "1", "true", "false"))
 
     def test_a_second_setup_keeps_the_secret_and_what_it_does_not_ask(self, tmp_path):
         _, config = _setup(tmp_path)

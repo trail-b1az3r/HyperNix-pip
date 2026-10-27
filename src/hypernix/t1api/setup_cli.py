@@ -432,7 +432,16 @@ def _quote(value: str) -> str:
     return f"'{value}'" if any(ch in value for ch in " #\"'$`\\") and "'" not in value else value
 
 
+def _plain_setting(value: str) -> bool:
+    bare = value.strip().strip("'\"").lower()
+    return bare in {"", "0", "1", "true", "false", "yes", "no", "on", "off", "none"} or bare.isdigit()
+
+
 def _redact_sensitive_env(text: str) -> str:
+    """*text* with every secret's value replaced by ``<redacted>``: what
+    ``--dry-run`` prints. A dry run writes nothing, so a token secret it
+    generated is never used -- and a secret has no business on a terminal
+    or in a log either way."""
     sensitive_keys = {
         "T1_TOKEN_SECRET",
     }
@@ -454,7 +463,10 @@ def _redact_sensitive_env(text: str) -> str:
             key = key.strip()
             key_upper = key.upper()
             is_sensitive = key_upper in sensitive_keys or any(marker in key_upper for marker in sensitive_markers)
-            if is_sensitive and value:
+            # A switch or a number is not a secret, whatever its name says:
+            # T1_BOOTSTRAP_KEY=1 and T1_ACCEPT_T1_KEYS=1 are settings, and
+            # hiding them would make the dry run show a different file.
+            if is_sensitive and value and not _plain_setting(value):
                 redacted_lines.append(f"{key}=<redacted>")
                 continue
         redacted_lines.append(line)
@@ -574,11 +586,12 @@ def cli_main(argv: list[str] | None = None, *, read: Callable[[str], str] = inpu
         return 130
     text = build_env(answers, config_dir=config_dir, old=old, version=__version__)
     if args.dry_run:
-        # Keep stdout machine-readable: it is the complete .env file.
-        # All human-facing progress and the dry-run notice belong on stderr.
+        # stdout is the file, as `--dry-run > .env.new` expects, with its
+        # secrets redacted; the summary and this note go to stderr.
         _summary(answers, env_path)
-        print(text, end="")
-        print("hnx-t1 setup: dry-run; configuration was not written.", file=sys.stderr)
+        print(_redact_sensitive_env(text), end="")
+        print("hnx-t1 setup: dry run; nothing was written (secrets shown as <redacted>).",
+              file=sys.stderr)
         return 0
     _summary(answers, env_path)
     if interactive and not Asker(interactive=True, read=read).yes_no("write", "Write it?", True):
