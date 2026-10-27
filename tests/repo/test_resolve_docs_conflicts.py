@@ -236,6 +236,22 @@ class TestTheWorkflow:
         for line in pushes:
             assert "--force" not in line and " -f" not in line and "+HEAD" not in line, line
 
+    def test_nothing_from_the_pull_request_is_run(self, workflow):
+        """CodeQL #32049 (critical): this job holds a write token and starts
+        from workflow_run, and it ran the pull request's own copy of the
+        resolver when the base had none. Only the base's copy runs now,
+        isolated, and the checkout keeps no credentials."""
+        steps = workflow["jobs"]["resolve"]["steps"]
+        checkout = next(s for s in steps if str(s.get("uses", "")).startswith("actions/checkout"))
+        assert checkout["with"]["persist-credentials"] is False
+        assert "token" not in checkout["with"]
+        resolve = next(s for s in steps if s.get("id") == "resolve")["run"]
+        assert "cp scripts/ci/resolve_docs_conflicts.py" not in resolve
+        assert 'git show "origin/$BASE:scripts/ci/resolve_docs_conflicts.py"' in resolve
+        assert 'python -I "$RUNNER_TEMP/resolve.py"' in resolve
+        push = next(s for s in steps if s.get("name") == "Push the merge")
+        assert "PUSH_TOKEN" in push["env"] and "insteadOf" not in push["run"]
+
     def test_forks_are_skipped(self, workflow):
         lookup = workflow["jobs"]["resolve"]["steps"][0]["run"]
         assert "head.repo.full_name" in lookup and "fork" in lookup

@@ -10,8 +10,10 @@ import { T1ApiPage } from './pages/T1Api'
 import { StatsPage } from './pages/Stats'
 import { AboutPage } from './pages/About'
 import { LearnPage } from './pages/Learn'
+import { SecurityPage } from './pages/Security'
 
-const PAGES = ['home', 'docs', 'api', 'learn', 'stats', 'about', 'api-deep', 't1-api']
+// The menu shows the first six; 'security' is reached from the footer's hidden button.
+const PAGES = ['home', 'docs', 'api', 'learn', 'stats', 'about', 'api-deep', 't1-api', 'security']
 
 // Every page has an address: #/stats, #/docs/T1-API/the-anthropic-messages-api.
 // Only hashes that start with "#/" are routes, so in-page anchors such as
@@ -271,6 +273,7 @@ export default function App() {
         {page === 'learn' && <LearnPage />}
         {page === 'stats' && <StatsPage {...common} />}
         {page === 'about' && <AboutPage />}
+        {page === 'security' && <SecurityPage />}
       </main>
       <Footer page={page} setPage={setPage} version={version} pages={PAGES} />
     </div>

@@ -49,7 +49,10 @@ METADATA_KEY = "hypercompress_size"
 #: Below this a prompt is not worth compressing, whatever the context.
 FLOOR_TOKENS = 32
 
-_SENTENCE = re.compile(r"(?<=[.!?])\s+(?=[A-Z0-9\"'(\[*`-])")
+# One space, not \s+: _sections collapses each line's whitespace first, and
+# `\s+` before a lookahead backtracks over a long run of spaces
+# (CodeQL: polynomial regular expression on uncontrolled data).
+_SENTENCE = re.compile(r"(?<=[.!?]) (?=[A-Z0-9\"'(\[*`-])")
 _INSTRUCTION = re.compile(
     r"\b(you are|you're|never|always|must|do not|don't|should|only|avoid|"
     r"important|required|refuse|use the|when the|if the|answer|reply)\b",

@@ -166,16 +166,16 @@ def trusted_proxies_from_env(
     """
     raw = value if value is not None else os.environ.get("T1_TRUSTED_PROXIES", "")
     networks = []
-    for chunk in raw.replace(";", ",").split(","):
-        text = chunk.strip()
-        if not text:
-            continue
+    entries = [chunk.strip() for chunk in raw.replace(";", ",").split(",") if chunk.strip()]
+    for number, text in enumerate(entries, start=1):
         try:
             networks.append(ipaddress.ip_network(text, strict=False))
         except ValueError:
+            # Which entry, not what it says: the value came from the
+            # environment, and a log is the wrong place to echo that back.
             logger.warning(
-                "system.nettrust: T1_TRUSTED_PROXIES entry %r is not an address "
-                "or network; ignoring it", text
+                "system.nettrust: T1_TRUSTED_PROXIES entry %d (%d characters) is not an "
+                "address or network; ignoring it", number, len(text)
             )
     return networks
 

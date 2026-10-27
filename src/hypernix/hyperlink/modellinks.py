@@ -57,20 +57,56 @@ def _kind(source: Path) -> str:
     raise ModelLinkError(f"{source} is neither a file nor a folder.")
 
 
-def link_model(path: str | Path, models_dir: str | Path, name: str = "") -> dict[str, Any]:
-    """Symlink *path* into *models_dir* as *name* (default: its own name)."""
+#: Where a model may be linked in from when T1_MODEL_LINK_ROOTS is unset.
+DEFAULT_ROOTS = ("~", "/mnt", "/media", "/run/media", "/data", "/srv", "/opt", "/models", "/var/lib")
+
+
+def link_roots(configured: str = "") -> list[str]:
+    """The folders, fully resolved, that a linked model must be inside."""
+    configured = configured or os.environ.get("T1_MODEL_LINK_ROOTS", "")
+    entries = [e for e in configured.split(os.pathsep) if e.strip()] or list(DEFAULT_ROOTS)
+    return [os.path.realpath(os.path.expanduser(e.strip())) for e in entries]
+
+
+def _inside(real: str, roots: list[str]) -> bool:
+    return any(real == root or real.startswith(root.rstrip(os.sep) + os.sep) for root in roots)
+
+
+def link_model(path: str | Path, models_dir: str | Path, name: str = "", *,
+               roots: list[str] | None = None, mirrored: str | Path | None = None) -> dict[str, Any]:
+    """Symlink *path* into *models_dir* as *name* (default: its own name).
+
+    The path is resolved -- symlinks, ``..`` and ``~`` -- before anything
+    is done with it, and must then be inside one of *roots*
+    (:func:`link_roots`): naming a path on the server's disk is an admin's
+    call, but not any path at all (CodeQL: uncontrolled data in a path
+    expression). One inside *mirrored* (T1_MODEL_SYNC's source) is refused
+    as already listed.
+    """
     raw = str(path or "").strip()
     if not raw:
         raise ModelLinkError("Give the path of a model on this server.")
-    source = Path(raw).expanduser()
-    if not source.is_absolute():
+    if not os.path.isabs(os.path.expanduser(raw)):
         raise ModelLinkError(
             f"{raw} is relative. Give the full path on the server, e.g. "
             f"/data/models/qwen3-8b-q4_k_m.gguf"
         )
-    if not source.exists():
-        raise ModelLinkError(f"Nothing at {source} on this server.", missing=True)
-    real = source.resolve()
+    allowed = roots if roots is not None else link_roots()
+    resolved = os.path.realpath(os.path.expanduser(raw))
+    if not _inside(resolved, allowed):
+        raise ModelLinkError(
+            f"{raw} is not in a folder models may be linked from ({', '.join(allowed)}). "
+            f"Set T1_MODEL_LINK_ROOTS to add one."
+        )
+    if mirrored is not None and _inside(resolved, [os.path.realpath(os.path.expanduser(str(mirrored)))]):
+        raise ModelLinkError(
+            f"{raw} is inside {mirrored}, which T1_MODEL_SYNC mirrors already; "
+            f"it is in the list without a link."
+        )
+    real = Path(resolved)
+    if not real.exists():
+        raise ModelLinkError(f"Nothing at {raw} on this server.", missing=True)
+    source = Path(raw).expanduser()
     kind = _kind(real)
 
     folder = Path(models_dir).expanduser()

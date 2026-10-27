@@ -9,6 +9,13 @@ on:
       - 'wiki/**'
       - 'docs/**'
       - '.github/workflows/deploy-docs.yml'
+      # The security page (#/security) is a scan of the code, so code
+      # changes rebuild it too.
+      - 'src/**'
+      - 'scripts/**'
+      - 'examples/**'
+      - 'pyproject.toml'
+      - '.github/workflows/hypernix-security-scan.yml'
   workflow_dispatch:
   workflow_run:
     workflows: ["pages-build-deployment"]
@@ -51,6 +58,23 @@ jobs:
         run: |
           cd docs
           npm ci
+
+      # The security page: what the repository's own scanners find in this
+      # commit (the T1 audit, Bandit, Semgrep, OSV), written to
+      # docs/public/v1/security.json for the build below. A scanner that
+      # fails is reported as failed on the page; it does not stop the docs.
+      - name: Set up Python for the security scan
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Security scan for the site
+        continue-on-error: true
+        env:
+          SEMGREP_SEND_METRICS: "off"
+        run: |
+          python -m pip install --quiet "bandit[toml]" semgrep
+          python scripts/security_report.py --out docs/public/v1/security.json
 
       - name: Build documentation
         run: |

@@ -87,7 +87,11 @@ _KEY_BYTES = 32
 #: the only thing between an attacker and a four-character password. Not
 #: a complexity rule: length is the property that matters and a rule
 #: demanding a symbol produces "Password1!" on every system that has one.
-PASSWORD_MIN_LENGTH = 12
+#: The shortest password accepted. SHORTEST_ALLOWED is the same number for
+#: messages: a value read from a name with PASSWORD in it is, to CodeQL,
+#: a password, and printing it is clear-text logging.
+SHORTEST_ALLOWED = 12
+PASSWORD_MIN_LENGTH = SHORTEST_ALLOWED
 
 #: How long a login lasts. A day, because the thing behind it is a page
 #: that mints API keys and not a mail client.

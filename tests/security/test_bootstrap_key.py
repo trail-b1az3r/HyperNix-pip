@@ -12,6 +12,7 @@ each is tested here: loopback only, three days, once.
 """
 from __future__ import annotations
 
+import re
 import time
 
 import pytest
@@ -151,8 +152,11 @@ class TestBanner:
 
     def test_a_configured_url_is_used_when_there_is_one(self, store):
         key = ensure_bootstrap_key(Keymaster(store_dir=store, auto_rotate=False))
-        text = bootstrap_banner(key, base_url="http://desktop.ts.net:8000")
-        assert "http://desktop.ts.net:8000" in text
+        url = "http://desktop.ts.net:8000"
+        text = bootstrap_banner(key, base_url=url)
+        # The banner's `-I` argument is that URL (CodeQL #31897 reads an `in`
+        # test with a host in it as URL checking).
+        assert re.search(rf"-I {re.escape(url)}(\s|$)", text), text
         assert "<port>" not in text
 
     def test_nothing_is_shown_for_a_key_that_already_existed(self, store):

@@ -66,7 +66,7 @@ elements = ["psutil>=5.9"]
 # v0.71.0: optional encryption backend for Keymaster key storage.
 # When not installed, Keymaster falls back to plain JSON storage with
 # a warning. Install with: pip install hypernix[security]
-security = ["cryptography>=49"]
+security = ["cryptography>=50"]
 # v0.71.5b1: HyperNix T1 API — hypernix.t1api.create_app() and the
 # `waiter` console script's server-side dependencies. hypernix.t1api's
 # core (registry/storage/usage/auth/config/errors) has NO dependency on
@@ -85,7 +85,7 @@ t1api = [
     "python-multipart>=0.0.31,<1",
     # 0.72.6: v2.1 (T2C) keys — the server's RSA key and Rotorvault's
     # AES-GCM stage. Also what Keymaster's encrypted storage uses.
-    "cryptography>=49",
+    "cryptography>=50",
     # 0.72.7: images sent into HyperLink are converted to WebP on arrival
     # (hypernix.hyperlink.imagecodec). Without it they are stored as sent.
     "Pillow>=13",

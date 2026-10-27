@@ -1,6 +1,6 @@
 import { LogoMark } from './Logo'
 
-const PAGE_LABELS = { home:'Home', docs:'Docs', api:'API', 'api-deep':'API Deep', 't1-api':'T1 API', learn:'Learn', stats:'Stats', about:'About' }
+const PAGE_LABELS = { home:'Home', docs:'Docs', api:'API', 'api-deep':'API Deep', 't1-api':'T1 API', learn:'Learn', stats:'Stats', about:'About', security:'Security' }
 
 export function Footer({ page, setPage, version, pages }) {
   return (
@@ -16,6 +16,17 @@ export function Footer({ page, setPage, version, pages }) {
           <div style={{ color: 'var(--text-faint)', fontSize: 11.5, lineHeight: 1.7 }}>
             v{version} — LLU-0.1 / HOS-1.0 (dual)<br/>
             Built for Pascal-class and newer consumer GPUs.
+            {/* The hidden way to the security scan: invisible until hovered
+                or reached with Tab, and named for screen readers. */}
+            <button onClick={() => setPage('security')} className="hidden-door"
+              aria-label="Security scan" title="Security scan"
+              style={{ background: 'none', border: 'none', padding: '0 0 0 6px', cursor: 'pointer',
+                color: 'var(--text-faint)', verticalAlign: 'middle', lineHeight: 0 }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6l8-3z" />
+              </svg>
+            </button>
           </div>
         </div>
 

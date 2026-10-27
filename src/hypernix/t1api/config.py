@@ -491,6 +491,11 @@ class T1APIConfig:
     #: very folder the mirror is built in, which made the source and the
     #: target one folder and the sync a refusal.
     models_source: str | None = field(default_factory=lambda: os.environ.get("T1_MODELS_SOURCE"))
+    #: Where POST /hyperlink/models/link may link a model from: folders
+    #: separated by ':' (default: the home folder, /mnt, /media, /run/media,
+    #: /data, /srv, /opt, /models and /var/lib). A path anywhere else is
+    #: refused, whoever asks.
+    model_link_roots: str = field(default_factory=lambda: os.environ.get("T1_MODEL_LINK_ROOTS", ""))
 
     # --- Backups (T1 v1.0.26.8.1.0) -------------------------------------------
     # Where /backup/list and /backup/restore keep snapshots. Never

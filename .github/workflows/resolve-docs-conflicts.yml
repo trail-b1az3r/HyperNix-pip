@@ -97,12 +97,18 @@ jobs:
             echo "base=$(jq -r .base.ref <<<"$info")"
           } >> "$GITHUB_OUTPUT"
 
+      # The pull request's files are checked out as *data*: git merges
+      # them, and nothing from them is run (CodeQL "checkout of untrusted
+      # code in a privileged context"). This job holds a write token and
+      # starts from workflow_run, so a script, a requirements file or a
+      # Python module in the branch must never get to execute here. The
+      # token is not left in the checkout either; only the push gets it.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: steps.pr.outputs.skip == 'false'
         with:
           ref: ${{ steps.pr.outputs.head }}
           fetch-depth: 0
-          token: ${{ secrets.AUTOFIX_TOKEN || github.token }}
+          persist-credentials: false
 
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         if: steps.pr.outputs.skip == 'false'
@@ -118,16 +124,16 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git fetch --no-tags origin "$BASE"
-          # The resolver as reviewed on the base branch, not as the pull
-          # request has it -- unless the base branch does not have it yet.
-          if git show "origin/$BASE:scripts/ci/resolve_docs_conflicts.py" > "$RUNNER_TEMP/resolve.py" 2>/dev/null; then
-            echo "Using the resolver from $BASE."
-          else
-            cp scripts/ci/resolve_docs_conflicts.py "$RUNNER_TEMP/resolve.py"
-            echo "Using this pull request's resolver ($BASE does not have one yet)."
+          # The resolver as reviewed on the base branch, never the pull
+          # request's copy (which this job would otherwise run with a write
+          # token), and run isolated (-I): no imports from the checkout, no
+          # PYTHON* variables.
+          if ! git show "origin/$BASE:scripts/ci/resolve_docs_conflicts.py" > "$RUNNER_TEMP/resolve.py"; then
+            echo "::error::$BASE has no scripts/ci/resolve_docs_conflicts.py; nothing to run."
+            exit 1
           fi
           set +e
-          python "$RUNNER_TEMP/resolve.py" --base "origin/$BASE" --paths docs/public/v1 \
+          python -I "$RUNNER_TEMP/resolve.py" --base "origin/$BASE" --paths docs/public/v1 \
             --summary "$RUNNER_TEMP/summary.md" | tee "$RUNNER_TEMP/out.txt"
           status=${PIPESTATUS[0]}
           set -e
@@ -141,7 +147,15 @@ jobs:
         if: steps.resolve.outputs.outcome == 'resolved'
         env:
           HEAD: ${{ steps.pr.outputs.head }}
-        run: git push origin "HEAD:refs/heads/$HEAD"
+          PUSH_TOKEN: ${{ secrets.AUTOFIX_TOKEN || github.token }}
+        run: |
+          # The token for this one command, as a header in git's environment
+          # config, not stored in .git/config.
+          auth=$(printf 'x-access-token:%s' "$PUSH_TOKEN" | base64 -w0)
+          echo "::add-mask::$auth"
+          export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0="http.https://github.com/.extraheader"
+          export GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $auth"
+          git push "https://github.com/$GITHUB_REPOSITORY.git" "HEAD:refs/heads/$HEAD"
 
       - name: Say what happened on the pull request
         if: steps.resolve.outputs.outcome == 'resolved' || steps.resolve.outputs.outcome == 'blocked'

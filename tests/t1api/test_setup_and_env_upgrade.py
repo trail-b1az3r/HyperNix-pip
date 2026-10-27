@@ -34,7 +34,8 @@ class TestSetup:
     def test_every_setting_it_writes_is_one_hypernix_reads(self, tmp_path):
         answers = setup_cli.Answers(public_url="https://t1.example.org", public=True, models="lmstudio",
                                     default_model="none", claude_model="qwen3.5", trusted=True)
-        text = setup_cli.build_env(answers, config_dir=tmp_path, old={}, version="x")
+        text = setup_cli.build_env(answers, config_dir=tmp_path, old={}, version="x",
+                                   secret=setup_cli.token_secret({}))
         written = set(_keys(text))
         assert written <= envupgrade.read_by_hypernix(), written - envupgrade.read_by_hypernix()
         assert {"T1_TOKEN_SECRET", "T1_ANTHROPIC_ENABLED", "T1_MCP_HF", "T1_CODE_SANDBOX"} <= written
@@ -54,12 +55,27 @@ class TestSetup:
         out = capsys.readouterr().out
         assert code == 0 and not config.exists()
         assert out.startswith("# Written by hnx-t1 setup (installer b1")
-        # The file, but not its secret (CodeQL: clear-text logging).
+        # The file, but not its secret (CodeQL: clear-text logging), nor a
+        # credential carried over from an existing file.
         values = _keys(out)
         assert values["T1_TOKEN_SECRET"] == "<redacted>"
         # Switches are not secrets because their names say KEY.
         assert all(v != "<redacted>" for k, v in values.items() if k != "T1_TOKEN_SECRET" and
                    v.lower() in ("0", "1", "true", "false"))
+
+    def test_a_dry_run_over_a_real_file_shows_none_of_its_secrets(self, tmp_path, capsys):
+        _, config = _setup(tmp_path)
+        env = config / ".env"
+        secret = _keys(env.read_text())["T1_TOKEN_SECRET"]
+        env.write_text(env.read_text() + "T1_HF_TOKEN=hf_kept_and_private\nT1_SOMETHING_ELSE=kept\n")
+        capsys.readouterr()
+        code, _ = _setup(tmp_path, "--dry-run")
+        out = capsys.readouterr().out
+        assert code == 0
+        assert secret not in out and "hf_kept_and_private" not in out
+        values = _keys(out)
+        assert values["T1_HF_TOKEN"] == "<redacted>" and values["T1_SOMETHING_ELSE"] == "kept"
+        assert _keys(env.read_text())["T1_TOKEN_SECRET"] == secret  # untouched
 
     def test_a_second_setup_keeps_the_secret_and_what_it_does_not_ask(self, tmp_path):
         _, config = _setup(tmp_path)
