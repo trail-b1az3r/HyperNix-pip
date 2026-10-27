@@ -16,7 +16,6 @@ from __future__ import annotations
 import os
 import select
 import sys
-import time
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from typing import Any
@@ -183,16 +182,39 @@ def choose(
     out: Any = None,
     fd: int | None = None,
 ) -> Choice | None:
-    """Ask on the terminal. None if cancelled."""
+    """Ask on the terminal. None if cancelled.
+
+    *fetch* runs on a thread of its own. It used to run in the key loop,
+    so a model list that took seconds to answer (a server opening every
+    GGUF on disk) froze the picker on the way in and again on every
+    refresh: keys went unread until the fetch came back, and then it was
+    time for the next one. A first fetch that raises is raised from here,
+    as before; a later one only puts a note under the list.
+    """
+    import queue
     import shutil
     import termios
+    import threading
     import tty
 
     out = out or sys.stdout
-    picker = Picker(title, list(fetch()), query=initial_query)
+    picker = Picker(title, [], query=initial_query, note="loading the list…")
     fd = sys.stdin.fileno() if fd is None else fd
+    results: queue.Queue = queue.Queue()
+    stop = threading.Event()
+
+    def fetcher() -> None:
+        while not stop.is_set():
+            try:
+                results.put(("items", list(fetch())))
+            except Exception as exc:  # noqa: BLE001 - reported on the main thread
+                results.put(("error", exc))
+            if not refresh_seconds or stop.wait(refresh_seconds):
+                return
+
     saved = termios.tcgetattr(fd)
     drawn = 0
+    loaded = False
 
     def draw() -> None:
         nonlocal drawn
@@ -205,34 +227,58 @@ def choose(
         out.flush()
         drawn = len(lines)
 
+    worker = threading.Thread(target=fetcher, name="picker-fetch", daemon=True)
+    failed: BaseException | None = None
     try:
         tty.setcbreak(fd)
         out.write("\x1b[?25l")  # hide the cursor while the list is up
         draw()
-        last = time.monotonic()
+        worker.start()
         while not picker.done:
-            ready, _, _ = select.select([fd], [], [], 0.25)
+            changed = False
+            while True:
+                try:
+                    kind, value = results.get_nowait()
+                except queue.Empty:
+                    break
+                changed = True
+                if kind == "items":
+                    picker.set_items(value)
+                    picker.note = ""
+                    loaded = True
+                elif not loaded:
+                    failed = value
+                    picker.done = picker.cancelled = True
+                    break
+                else:
+                    picker.note = f"refresh failed: {value}"[:120]
+            if picker.done:
+                break
+            ready, _, _ = select.select([fd], [], [], 0.1)
             if ready:
                 data = os.read(fd, 64).decode("utf-8", errors="ignore")
+                if not data:  # the terminal went away
+                    picker.done = picker.cancelled = True
+                    break
                 for key in decode_keys(data):
+                    if key == "enter" and not loaded:
+                        picker.note = "still loading the list…"
+                        continue
                     picker.key(key)
                     if picker.done:
                         break
-                draw()
-            if refresh_seconds and time.monotonic() - last >= refresh_seconds and not picker.done:
-                last = time.monotonic()
-                try:
-                    picker.set_items(fetch())
-                    picker.note = ""
-                except Exception as exc:  # noqa: BLE001 - a failed refresh keeps the old list
-                    picker.note = f"refresh failed: {exc}"[:120]
+                changed = True
+            if changed:
                 draw()
     finally:
+        stop.set()
         termios.tcsetattr(fd, termios.TCSADRAIN, saved)
         if drawn:
             out.write(f"\x1b[{drawn}F\x1b[J")
         out.write("\x1b[?25h")
         out.flush()
+    if failed is not None:
+        raise failed
     if picker.cancelled:
         out.write(f"{title}: cancelled\n")
         return None

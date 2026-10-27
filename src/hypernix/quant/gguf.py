@@ -326,8 +326,43 @@ def _read_typed_value(stream: BinaryIO, raw_type: int) -> Any:
     if value_type is GGUFValueType.ARRAY:
         item_type = struct.unpack("<I", _read_exact(stream, 4))[0]
         count = struct.unpack("<Q", _read_exact(stream, 8))[0]
-        return [_read_typed_value(stream, item_type) for _ in range(count)]
+        return _read_array(stream, item_type, count)
     return _read_scalar(stream, value_type)
+
+
+def _read_array(stream: BinaryIO, item_type: int, count: int) -> list[Any]:
+    """*count* items of *item_type*, read in bulk where the size is fixed.
+
+    A tokenizer is three arrays of ~150k entries. Read an item at a time,
+    that was a quarter of a second per file, and the model list opens
+    every file on disk each time it is asked.
+    """
+    try:
+        value_type = GGUFValueType(item_type)
+    except ValueError as exc:
+        raise GGUFError(f"Unknown GGUF value type {item_type}.") from exc
+    fmt = _SCALAR_FORMAT.get(value_type)
+    if fmt is not None:
+        size = struct.calcsize(fmt)
+        if count * size > (1 << 34):
+            raise GGUFError(f"Implausible array length {count}; file is probably not GGUF.")
+        return list(struct.unpack(f"<{count}{fmt[1:]}", _read_exact(stream, count * size)))
+    if value_type is GGUFValueType.STRING:
+        read, unpack, out = stream.read, struct.unpack, []
+        append = out.append
+        for _ in range(count):
+            head = read(8)
+            if len(head) != 8:
+                raise GGUFError("Truncated GGUF: a string array ends early.")
+            length = unpack("<Q", head)[0]
+            if length > (1 << 30):
+                raise GGUFError(f"Implausible string length {length}; file is probably not GGUF.")
+            data = read(length)
+            if len(data) != length:
+                raise GGUFError("Truncated GGUF: a string array ends early.")
+            append(data.decode("utf-8", errors="replace"))
+        return out
+    return [_read_typed_value(stream, item_type) for _ in range(count)]
 
 
 @dataclass
@@ -394,9 +429,7 @@ class GGUFFile:
                 if raw_type == int(GGUFValueType.ARRAY):
                     item_type = struct.unpack("<I", _read_exact(stream, 4))[0]
                     count = struct.unpack("<Q", _read_exact(stream, 8))[0]
-                    metadata[key] = [
-                        _read_typed_value(stream, item_type) for _ in range(count)
-                    ]
+                    metadata[key] = _read_array(stream, item_type, count)
                     metadata_types[key] = (raw_type, item_type)
                 else:
                     metadata[key] = _read_typed_value(stream, raw_type)

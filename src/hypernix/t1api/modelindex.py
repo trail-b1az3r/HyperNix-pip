@@ -34,9 +34,11 @@ billion is reported as 6.74.
 """
 from __future__ import annotations
 
+import copy
 import json
 import logging
 import re
+import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -140,14 +142,14 @@ def model_id_for(path: str | Path) -> str:
     return re.sub(r"-{2,}", "-", slug) or "model"
 
 
-def _read_gguf(path: Path) -> tuple[dict, list, str]:
+def _read_gguf(path: Path) -> tuple[dict, list, str, Any]:
     from ..quant.gguf import GGUFError, GGUFFile
 
     try:
         model = GGUFFile.read(path)
     except (GGUFError, OSError, ValueError) as exc:
-        return {}, [], str(exc)
-    return model.metadata, list(model.tensors), ""
+        return {}, [], str(exc), None
+    return model.metadata, list(model.tensors), "", model
 
 
 def _as_int(value: Any) -> int:
@@ -164,11 +166,43 @@ def _elements(tensor) -> int:
     return total
 
 
+# What inspect() found, by path, for as long as the file is unchanged. The
+# model list opens every GGUF on disk each time it is asked, and
+# `hypernix-t1 runner start`'s picker asks every couple of seconds.
+_INSPECTED: dict[str, tuple[tuple[int, int, int], IndexedModel]] = {}
+_INSPECTED_LOCK = threading.Lock()
+_INSPECTED_MAX = 1024
+
+
 def inspect(path: str | Path) -> IndexedModel:
-    """Read one GGUF and report what it says about itself."""
+    """Read one GGUF and report what it says about itself.
+
+    Remembered while the file's size, mtime and inode are the same, so a
+    second look at an unchanged file costs a stat.
+    """
     model_path = Path(path)
+    try:
+        st = model_path.stat()
+        stamp = (st.st_size, st.st_mtime_ns, st.st_ino)
+    except OSError:
+        stamp = None
+    if stamp is not None:
+        with _INSPECTED_LOCK:
+            hit = _INSPECTED.get(str(model_path))
+        if hit is not None and hit[0] == stamp:
+            return copy.deepcopy(hit[1])
+    found = _inspect(model_path)
+    if stamp is not None and not found.error:
+        with _INSPECTED_LOCK:
+            if len(_INSPECTED) >= _INSPECTED_MAX:
+                _INSPECTED.clear()
+            _INSPECTED[str(model_path)] = (stamp, copy.deepcopy(found))
+    return found
+
+
+def _inspect(model_path: Path) -> IndexedModel:
     size = model_path.stat().st_size if model_path.exists() else 0
-    metadata, tensors, error = _read_gguf(model_path)
+    metadata, tensors, error, parsed = _read_gguf(model_path)
     if error:
         return IndexedModel(
             path=model_path, model_id=model_id_for(model_path),
@@ -205,9 +239,9 @@ def inspect(path: str | Path) -> IndexedModel:
 
     tier, bpw, extension = "", 0.0, False
     try:
-        from ..quant.hyprslug_headers import read_header
+        from ..quant.hyprslug_headers import header_of
 
-        header = read_header(model_path)
+        header = header_of(parsed)
         tier = header.tier or ""
         bpw = float(header.bits_per_weight or 0.0)
         extension = bool(header.is_extension)

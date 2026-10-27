@@ -127,6 +127,90 @@ def test_choose_in_a_real_terminal():
     assert b"Pick: HyperNix.3-mini" in output
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="needs a pty")
+def test_a_slow_list_does_not_freeze_the_keys():
+    """The server took seconds to answer the model list, and the picker
+    asked in its key loop -- so every refresh froze it, and opening it
+    froze it before anything was drawn. Here the first answer takes a
+    second and every refresh five: the list must be drawn at once, and
+    the keys must be read while a refresh is still out."""
+    import pty
+    import select
+    import time
+
+    pid, fd = pty.fork()
+    if pid == 0:
+        from hypernix.t1api.picker import choose
+
+        asked = []
+
+        def slow():
+            time.sleep(1.0 if not asked else 5.0)
+            asked.append(1)
+            return ITEMS
+
+        picked = choose("Pick", slow, refresh_seconds=0.1, fd=0, out=os.fdopen(1, "w"))
+        os._exit(10 + [c.value for c in ITEMS].index(picked.value) if picked else 99)
+    output = b""
+
+    def pump(seconds):
+        nonlocal output
+        end = time.time() + seconds
+        while time.time() < end:
+            ready, _, _ = select.select([fd], [], [], 0.05)
+            if ready:
+                try:
+                    output += os.read(fd, 4096)
+                except OSError:
+                    return
+
+    pump(0.5)
+    assert b"loading the list" in output  # drawn before the list arrived
+    pump(1.2)  # the list is in, and the first refresh is out for five seconds
+    os.write(fd, b"\x1b[B")
+    pump(0.2)
+    os.write(fd, b"\x1b[B")
+    pump(0.2)
+    os.write(fd, b"\r")
+    sent = time.time()
+    _, status = os.waitpid(pid, 0)
+    assert time.time() - sent < 2.5, "the keys waited for the refresh"
+    assert os.WEXITSTATUS(status) == 12, output[-400:]
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="needs a pty")
+def test_a_list_that_cannot_be_fetched_is_raised():
+    import pty
+    import time
+
+    pid, fd = pty.fork()
+    if pid == 0:
+        from hypernix.t1api.picker import choose
+
+        def refused():
+            raise RuntimeError("the server refused the model list (403)")
+
+        try:
+            choose("Pick", refused, fd=0, out=os.fdopen(1, "w"))
+        except RuntimeError as exc:
+            os._exit(42 if "403" in str(exc) else 1)
+        os._exit(2)
+    end = time.time() + 5
+    while time.time() < end:
+        done, status = os.waitpid(pid, os.WNOHANG)
+        if done:
+            break
+        try:
+            os.read(fd, 4096)
+        except OSError:
+            pass
+        time.sleep(0.05)
+    else:
+        os.kill(pid, 9)
+        pytest.fail("the picker kept waiting after its list was refused")
+    assert os.WEXITSTATUS(status) == 42
+
+
 @pytest.fixture
 def calls(monkeypatch):
     recorded, replies = [], []
