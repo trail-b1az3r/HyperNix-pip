@@ -1107,3 +1107,26 @@ timeline
         : bb54e804 - Auto-update README header (hourly)
         : 6b55a31f - chore- refresh generated docs data and release summaries
 ```
+## Release v0.72.8a5 (2026-10-27)
+
+```mermaid
+timeline
+    title Release v0.72.8a5 Commits
+    0.72.8a5
+        : 5c5503f8 - chore- refresh generated docs data and release summaries
+        : 05eae954 - hnx-t1 setup --dry-run- the file on stdout again, with its secrets redacted
+        : b27d021d - fix(system)- drain final job logs before completion marker
+        : ca9f3235 - fix(t1api)- keep setup dry-run stdout as env file
+        : a5754beb - Noodle- an escaping path is outside_workspace again
+        : 1f71cc6f - Security- the scan's high alerts, vulnerable dependency floors; 0.72.8a5
+        : 1864fdc4 - chore- refresh generated docs data and release summaries
+        : 4d4b91c7 - prot- hold a Hyprland session unlocked (hypridle, hyprlock, Quickshell)
+        : ce93aa3a - hnx0xv2image- Brewer from a training run, and hyprslug quantising
+        : a17c8f79 - Wiki- current versions kept current; one timeline section per release
+        : 9476ebc8 - HyperLink- stop dropping a Tailscale connection the moment it is made
+        : 2c7ddb57 - T1 runner start- a quick model list and a picker that never freezes
+        : e1374474 - chore- refresh generated docs data and release summaries
+        : 301d4d2f - chore- refresh generated docs data and release summaries
+        : edd27b74 - Update main.md
+```
+
