@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-api-deep",
   "generated_at": "2026-09-20T21:20:57Z",
-  "commit": "d8250140e09594d00f17c01b9be76aa5183f0db4",
+  "commit": "edd27b743bd3c447afe596ce29f2215bca4a48bc",
   "history_available": true,
   "source_root": "src/hypernix",
   "modules": [
