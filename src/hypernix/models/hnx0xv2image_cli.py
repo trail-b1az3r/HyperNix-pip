@@ -8,6 +8,7 @@
     hnx image train ./lfm-eye --data chats.jsonl --stage all --steps 500 --lr 2e-5
     hnx image caption ./lfm-eye photo.jpg -p "What is in this picture?"
     hnx image split ./lfm-eye -o ./eye-for-lfm      the image model alone, to fuse again
+    hnx image quant ./lfm-eye Q4_K_M -o ./lfm-eye.q4km  hyprslug, into one GGUF
     hnx image info ./lfm-eye
 
 The text model can be an LFM2.5 (not -VL), a Qwen3.5, or a HyperNix
@@ -88,6 +89,11 @@ def cli_main(argv: list[str] | None = None) -> int:
     p.add_argument("model")
     p.add_argument("-o", "--output", required=True)
 
+    p = sub.add_parser("quant", help="quantise with hyprslug: the whole model in one GGUF")
+    p.add_argument("model")
+    p.add_argument("tier", help="Q8_0, Q4_K_M, IQ0.5_XXXL, ... (`hyprslug --list-tiers`)")
+    p.add_argument("-o", "--output", required=True, help="a folder: config.json, model.gguf, tokenizer/")
+
     p = sub.add_parser("info")
     p.add_argument("model")
 
@@ -127,11 +133,29 @@ def cli_main(argv: list[str] | None = None) -> int:
             images = args.images if len(args.images) > 1 else args.images[0]
             print(fused.generate(images, args.prompt, max_new_tokens=args.max_new_tokens,
                                  temperature=args.temperature))
+        elif args.cmd == "quant":
+            from ..quant.hyprslug import HyprslugError
+            from .hnx0xv2image_gguf import GGUF_FILE, quantize
+
+            try:
+                report = quantize(args.model, args.output, args.tier)
+            except HyprslugError as exc:
+                raise hi.ImageError(str(exc)) from exc
+            from dataclasses import asdict, is_dataclass
+
+            out = asdict(report) if is_dataclass(report) else {}
+            print(json.dumps(out) if args.json else
+                  f"{args.output}/{GGUF_FILE}: {args.tier}, {getattr(report, 'tensors_quantized', '?')} "
+                  f"tensors packed, {getattr(report, 'tensors_copied', '?')} kept at source precision; "
+                  f"hnx image caption {args.output} IMAGE")
         elif args.cmd == "split":
             config = json.loads((Path(args.model) / "config.json").read_text(encoding="utf-8"))
             if config.get("model_type") != hi.FUSED_ARCH:
                 raise hi.ImageError(f"{args.model} is not a fused model")
-            hi.load_image_model(Path(args.model) / config.get("image", "image")).save(args.output)
+            if config.get("format") == "gguf":
+                hi.load(args.model).image.save(args.output)
+            else:
+                hi.load_image_model(Path(args.model) / config.get("image", "image")).save(args.output)
             print(f"{args.output}: the image model, projecting to the {config.get('family_name')} width")
         elif args.cmd == "info":
             data = _info(Path(args.model))

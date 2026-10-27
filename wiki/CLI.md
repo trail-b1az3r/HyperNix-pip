@@ -176,13 +176,16 @@ hnx image fuse ./eye LiquidAI/LFM2.5-1.2B-Instruct -o ./lfm-eye
 hnx image train ./lfm-eye --data captions.jsonl --stage projector --steps 2000
 hnx image caption ./lfm-eye photo.jpg -p "What is in this picture?"
 hnx image split ./lfm-eye -o ./eye-for-lfm
+hnx image quant ./lfm-eye Q4_K_M -o ./lfm-eye.q4km
 ```
 
 The [hnx0xv2image](HNX0xV2Image.md) image-to-text model, fused onto an
 LFM2.5 (not -VL), a Qwen3.5 or a HyperNix model. `--stage projector |
 image | text | all` trains one part with the rest frozen; `--optimizer
 c4` uses the c4 hybrid. `--link` refers to the text model instead of
-copying it.
+copying it. `quant` (0.72.8a5) packs the whole fused model into one GGUF
+with hyprslug, at any tier, and every other `hnx image` command reads
+the result; `hyprslug FUSED TIER -o OUT` does the same.
 
 ## `tvtopmax` / `hypedpro`
 

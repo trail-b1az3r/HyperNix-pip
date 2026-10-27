@@ -6,7 +6,7 @@ two halves that are trained, saved and swapped on their own:
 | Part | What it is |
 |---|---|
 | **The image model** (`model_type: hnx0xv2image`) | A vision transformer in the hyperNix0x-v2 style — patches, RMSNorm, bidirectional attention, SwiGLU, no biases — and a projector that pools the patch grid 2x2 and maps it into a text model's embedding space. |
-| **A text model** | Any **LFM2.5** that is not already a vision model (`lfm2`, `lfm2_moe`), any **Qwen3.5** (`qwen3_5`, `qwen3_5_text`, the MoE ones — their text part), or any **HyperNix** model: a hyperNix0x-v2 Brewer folder, or a HyperNix snapshot transformers can load. |
+| **A text model** | Any **LFM2.5** that is not already a vision model (`lfm2`, `lfm2_moe`), any **Qwen3.5** (`qwen3_5`, `qwen3_5_text`, the MoE ones — their text part), or any **HyperNix** model: a hyperNix0x-v2 Brewer folder (with or without `config.json` — a folder uploaded straight from a training run, like HyperNix.3.1-mini's beta, reads its config from the safetensors header or the checkpoint beside it, and its tokenizer from `tokenizer/`), a Brewer `.pt` checkpoint, or a HyperNix snapshot transformers can load. |
 
 Fusing does not touch the text model. The prompt is split at each
 `<image>` and the image's tokens are spliced in at the embedding level,
@@ -86,14 +86,42 @@ hnx image fuse new Qwen/Qwen3.5-2B -o ./qwen-eye --preset base
 hnx image train ./lfm-eye --data captions.jsonl --stage projector --steps 2000
 hnx image caption ./lfm-eye photo.jpg -p "Describe the image."
 hnx image split ./lfm-eye -o ./eye-for-lfm
+hnx image quant ./lfm-eye Q4_K_M -o ./lfm-eye.q4km
 hnx image info ./lfm-eye
 ```
 
+## Quantising with hyprslug
+
+`hnx image quant` (or `hyprslug ./lfm-eye Q4_K_M -o ./lfm-eye.q4km`, which
+sends a fused folder here) puts the whole model — image tower, projector
+and text model, Brewer or transformers — into one GGUF
+(`general.architecture = hnx0xv2image-fused`, both configs in its
+metadata) and packs it at any hyprslug tier, sub-bit ones included:
+
+```
+lfm-eye.q4km/
+  config.json   model_type hnx0xv2image-fused, "format": "gguf", the tier
+  model.gguf    every weight, at the tier
+  tokenizer/    the text model's tokenizer (none for a character vocabulary)
+```
+
+`hnx image caption`, `split`, `train` and `hi.load()` read that folder
+(or the `.gguf` itself): each tensor is dequantised as it is loaded. As
+everywhere in hyprslug, a tensor whose rows do not divide into the
+tier's block (256 for the k-quants and sub-bit tiers, 32 for Q8_0) is
+kept at source precision, and the report counts them.
+
+🛈 This is the model at the tier's size on disk, for storing and moving.
+llama.cpp does not run it — its multimodal path wants an `mmproj` for a
+vision tower it already knows — and in PyTorch it is float again once
+loaded.
+
 ## Limits
 
-* It runs in PyTorch (`hnx image caption`, the Python API). There is no
-  GGUF export yet: llama.cpp's multimodal path expects its own `mmproj`
-  layout for known vision towers.
+* It runs in PyTorch (`hnx image caption`, the Python API). The GGUF that
+  `hnx image quant` writes is for HyperNix to load, not llama.cpp:
+  llama.cpp's multimodal path expects its own `mmproj` layout for known
+  vision towers.
 * Generation is a plain loop without a KV cache — correct for every
   family, slow for long answers.
 * A text model from another family is refused unless `allow_other=True`

@@ -1568,6 +1568,25 @@ def quantize_gguf(
             imatrix=imatrix, quantize_embeddings=quantize_embeddings,
             quantize_output=quantize_output, progress=progress,
         )
+    if source_path.is_dir():
+        # A fused hnx0xv2image model is a folder of safetensors: it goes
+        # into a GGUF of its own first. Any other folder used to reach
+        # GGUFFile.read and die on IsADirectoryError.
+        from ..models.hnx0xv2image_gguf import is_fused_folder
+
+        if is_fused_folder(source_path):
+            from ..models.hnx0xv2image_gguf import quantize as quantize_image
+
+            return quantize_image(
+                source_path, destination_path, tier,
+                imatrix=imatrix, quantize_embeddings=quantize_embeddings,
+                quantize_output=quantize_output, progress=progress,
+            )
+        raise HyprslugError(
+            f"{source_path} is a folder. hyprslug quantises a GGUF, a Brewer "
+            f"(hyperNix0x-v2) model folder or a fused hnx0xv2image folder; "
+            f"convert a Hugging Face folder to GGUF first (`hnx convert`)."
+        )
 
     weights_by_tensor: dict[str, list[float]] = {}
     if isinstance(imatrix, dict):

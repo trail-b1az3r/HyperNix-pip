@@ -441,6 +441,10 @@ class _TextModel:
             if isinstance(self.tokenizer, _CharTokenizer):
                 brewer.char_vocab = self.tokenizer.vocab
             brewer.save(folder)
+            # A Brewer with a real tokenizer was saved without it, and the
+            # folder could not be loaded again.
+            if not isinstance(self.tokenizer, _CharTokenizer) and hasattr(self.tokenizer, "save_pretrained"):
+                self.tokenizer.save_pretrained(folder)
             return
         self.model.save_pretrained(folder)
         if self.tokenizer is not None and hasattr(self.tokenizer, "save_pretrained"):
@@ -459,6 +463,16 @@ def _load_text(source: Any, *, device: str, dtype: torch.dtype | None, allow_oth
         return _TextModel(family, model.to(device), tokenizer, getattr(model, "name_or_path", "memory"))
     text = str(source)
     folder = Path(text).expanduser()
+    # A Brewer checkpoint (`brew train` writes them), or a folder uploaded
+    # straight from a training run with no config.json -- HyperNix.3.1-mini's
+    # beta is one. Both used to be refused for having no config.json.
+    if folder.is_file() and folder.suffix.lower() == ".pt":
+        return _load_brewer(folder, device)
+    if folder.is_dir() and not (folder / "config.json").is_file():
+        from .brewer_gguf import has_brewer_weights
+
+        if has_brewer_weights(folder):
+            return _load_brewer(folder, device)
     if not folder.exists():
         from huggingface_hub import snapshot_download
 
@@ -473,21 +487,51 @@ def _load_text(source: Any, *, device: str, dtype: torch.dtype | None, allow_oth
     config = json.loads(config_file.read_text(encoding="utf-8"))
     family = _family_or_other(config, allow_other)
     if family == "hypernix0x-v2":
-        from ..training.brewer import Brewer
-
-        brewer = Brewer.from_dir(folder)
-        if brewer.char_vocab:
-            tokenizer: Any = _CharTokenizer(list(brewer.char_vocab))
-        else:
-            from transformers import AutoTokenizer
-
-            tokenizer = AutoTokenizer.from_pretrained(folder)
-        return _TextModel(family, brewer.model.to(device), tokenizer, str(folder))
+        return _load_brewer(folder, device)
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
     model = AutoModelForCausalLM.from_pretrained(folder, dtype=dtype or torch.float32).to(device)
     tokenizer = AutoTokenizer.from_pretrained(folder)
     return _TextModel(family, model, tokenizer, str(folder))
+
+
+def _load_brewer(source: Path, device: str) -> _TextModel:
+    """A Brewer model from a folder or a ``.pt``, as the GGUF exporter reads
+    one: config.json, else a config in the safetensors header, else the
+    training checkpoint beside the weights. Its tokenizer is the character
+    vocabulary, or a tokenizer.json beside it or in a ``tokenizer/`` folder
+    (where a training run puts it)."""
+    from ..training.brewer import Brewer
+    from .brewer_gguf import _WEIGHT_FILES, GGUFExportError, _tokenizer_folder, load_source
+
+    if source.is_dir() and not any((source / name).is_file() for name in _WEIGHT_FILES):
+        # A config and nothing else (`brew new`): built, untrained, as before.
+        brewer = Brewer.from_dir(source)
+        chars, folder = brewer.char_vocab, source
+    else:
+        try:
+            state, cfg, extras = load_source(source)
+        except GGUFExportError as exc:
+            raise ImageError(str(exc)) from exc
+        brewer = Brewer(cfg, name=cfg.name, save_dir=extras.get("folder", source))
+        brewer.build()
+        missing, unexpected = brewer.model.load_state_dict(state, strict=False)
+        bad = [k for k in missing if not (k == "lm_head.weight" and cfg.tie_embeddings)]
+        if unexpected or bad:
+            raise ImageError(f"{source}: the weights do not match the config "
+                             f"(missing {bad[:5]}, unexpected {unexpected[:5]})")
+        chars, folder = extras.get("char_vocab"), Path(extras.get("folder", source))
+    if chars:
+        tokenizer: Any = _CharTokenizer(list(chars))
+    else:
+        found = _tokenizer_folder(folder)
+        if found is None:
+            raise ImageError(f"{source} is a Brewer model with no character vocabulary and no "
+                             f"tokenizer.json beside it or in tokenizer/")
+        from transformers import AutoTokenizer
+
+        tokenizer = AutoTokenizer.from_pretrained(found)
+    return _TextModel("hypernix0x-v2", brewer.model.to(device), tokenizer, str(source))
 
 
 def _family_or_other(config: dict[str, Any], allow_other: bool) -> str:
@@ -690,8 +734,14 @@ def fuse(image: ImageModel | str | Path, text: Any, *, device: str = "cpu",
 
 def load(folder: str | Path, *, device: str = "cpu", dtype: torch.dtype | None = None,
          allow_other: bool = True) -> FusedModel:
-    """A fused model saved by :meth:`FusedModel.save`."""
+    """A fused model saved by :meth:`FusedModel.save`, or quantised by
+    hyprslug (:mod:`hypernix.models.hnx0xv2image_gguf`): its folder, or the
+    ``.gguf`` itself."""
     folder = Path(folder)
+    if folder.is_file() and folder.suffix.lower() == ".gguf":
+        from .hnx0xv2image_gguf import load_gguf
+
+        return load_gguf(folder, device=device, dtype=dtype)
     config_file = folder / "config.json"
     if not config_file.is_file():
         raise ImageError(f"{folder} has no config.json")
@@ -700,6 +750,10 @@ def load(folder: str | Path, *, device: str = "cpu", dtype: torch.dtype | None =
         raise ImageError(f"{folder} is an image model on its own; fuse it with a text model first")
     if config.get("model_type") != FUSED_ARCH:
         raise ImageError(f"{folder} is not a fused {ARCH} model")
+    if config.get("format") == "gguf":
+        from .hnx0xv2image_gguf import load_gguf
+
+        return load_gguf(folder, device=device, dtype=dtype)
     image = load_image_model(folder / config.get("image", "image"), device=device)
     text_ref = config.get("text", "text")
     text_path = folder / text_ref if (folder / text_ref).exists() else text_ref
