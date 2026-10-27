@@ -789,8 +789,17 @@ def follow_logs(job: Job, *, tail: int = 200, out=None, store: JobStore | None =
         out.flush()
     position = path.stat().st_size if path.exists() else 0
     said_done = job.is_terminal
+    completion_printed = False
     try:
         while until is None or not until():
+            # Check the supervisor before reading. When it reports that the
+            # process has exited, its final log writes are complete; drain them
+            # before printing the completion marker so followers cannot stop
+            # on the marker while missing the final line.
+            if not said_done:
+                refresh(job, store)
+                if job.is_terminal:
+                    said_done = True
             if path.exists():
                 size = path.stat().st_size
                 if size < position:  # truncated or replaced: start again
@@ -802,13 +811,11 @@ def follow_logs(job: Job, *, tail: int = 200, out=None, store: JobStore | None =
                     position = size
                     out.write(chunk.decode("utf-8", errors="replace"))
                     out.flush()
-            if not said_done:
-                refresh(job, store)
-                if job.is_terminal:
-                    said_done = True
-                    note = "" if job.exit_status is None else f" (exit {job.exit_status})"
-                    out.write(f"\n-- {job.name} {job.status}{note}; still following, Ctrl-C to stop --\n")
-                    out.flush()
+            if said_done and not completion_printed:
+                note = "" if job.exit_status is None else f" (exit {job.exit_status})"
+                out.write(f"\n-- {job.name} {job.status}{note}; still following, Ctrl-C to stop --\n")
+                out.flush()
+                completion_printed = True
             time.sleep(poll)
     except KeyboardInterrupt:
         out.write("\n")
