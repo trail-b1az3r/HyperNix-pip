@@ -11,6 +11,7 @@ This directory contains the React/Vite GitHub Pages site for HyperNix. The site 
 - **Learn** — task-oriented guides and examples.
 - **Stats** — PyPI/download, repository, code, and release-timeline data, with a multi-line graph of daily downloads (total, or by Python version or operating system) from the `series` block `scripts/update_json_stats.py` keeps in `public/v1/json`.
 - **About** — project context and external links.
+- **Security** (`#/security`, not in the menu: the footer's hidden button, a shield after the version line that shows on hover or Tab) — what the repository's own scanners found at the last build: the HyperNix T1 audit, Bandit, Semgrep, and OSV over every dependency floor and lockfile, by severity, filterable, each finding linked to its line at the scanned commit.
 
 ## Development
 
@@ -25,13 +26,15 @@ npm run preview
 
 At build time `vite.config.js` copies `../wiki/*.md` into the site as `wiki/<Page>.md` and writes `v1/docs-index.json` (groups, titles, headings, summaries), `v1/t1-openapi.json` and `v1/t1-settings.json`; `npm run dev` serves the same files from the checkout. None of them are committed. `public/v1/error-codes.json` is written by `../scripts/generate_error_codes.py`.
 
+`public/v1/security.json` is written in the Pages build by `../scripts/security_report.py` (run it locally to see the page in `npm run dev`); it is not committed.
+
 `../scripts/generate_docs_data.py` refreshes the API reference JSON, code statistics, and the parsed changelog at `public/v1/changelog.json`. The changelog summary fields are derived from the actual canonical change bullets in `wiki/Changelog.md`; release dates are kept separate from summaries.
 
 The scheduled `.github/workflows/update-docs-data.yml` workflow regenerates these files and commits only when their contents change.
 
 ## Deployment
 
-`.github/workflows/deploy-docs.yml` deploys the site to GitHub Pages after changes to `docs/`, `README.md`, or `wiki/`, and can also be run manually.
+`.github/workflows/deploy-docs.yml` deploys the site to GitHub Pages after changes to `docs/`, `README.md`, `wiki/`, the code (`src/`, `scripts/`, `examples/`, `pyproject.toml`, so the security page follows it) or the security workflow, daily, and by hand. Each build runs the security scan first; a scanner that fails is shown as failed on the page and does not stop the deploy.
 
 ## Tech stack
 

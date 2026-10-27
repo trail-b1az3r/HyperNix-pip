@@ -776,3 +776,8 @@ kbd { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); ba
   .t1-tags button { border-left: none; border: 1px solid var(--border-strong); border-radius: 999px; padding: 3px 10px; gap: 6px; }
   .t1-summary { display: none; }
 }
+
+/* The footer's hidden button to the security scan (#/security). */
+.hidden-door { opacity: 0; transition: opacity 0.2s ease; }
+.hidden-door:hover, .hidden-door:focus-visible { opacity: 1; color: var(--accent-text) !important; }
+.hidden-door:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }

@@ -42,3 +42,6 @@ ios/.build/
 ios/project.generated.yml
 ios/vendor/llama.xcframework/
 ios/vendor/llama.xcframework.json
+
+# Written by scripts/security_report.py in the Pages build, never committed.
+docs/public/v1/security.json
