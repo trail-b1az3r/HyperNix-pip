@@ -521,6 +521,9 @@ final class AppState {
 
     /// Called when any request comes back with a revoked/invalid token.
     private func handle(_ error: Error) {
+        // A request overtaken by a reconnect: nothing went wrong with the
+        // server now in use, so there is nothing to tell anybody.
+        if error is CancellationError { return }
         if let hyperlinkError = error as? HyperLinkError {
             lastError = hyperlinkError.errorDescription
             if hyperlinkError.requiresRepairing {
