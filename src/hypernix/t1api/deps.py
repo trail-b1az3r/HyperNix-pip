@@ -687,13 +687,19 @@ def _refuse_keyless_chats(request: Request) -> None:
     path = request.url.path
     if keyless_chats_shared() or not path.startswith(_OWNED_PREFIXES):
         return
+    # 403, not 401. The connection is allowed (the trusted network let it
+    # in); what it lacks is an owner for chats. HyperLink for iOS read a
+    # 401 AUTH_* as "this device was revoked" and unpaired, so a keyless
+    # phone signed itself out on its first refresh -- the "crash" on
+    # connecting over Tailscale. A 403 keeps the builds already out there
+    # connected, and they show this message.
     raise T1APIError(
-        T1ErrorCode.AUTH_MISSING_CREDENTIALS,
+        T1ErrorCode.AUTH_INSUFFICIENT_SCOPE,
         "Chats belong to an account or a key, and this connection has neither. "
         "Sign in, pair this device with a code, or use a T1/T2 key — then your "
         "chats follow you to every device that does the same.",
         details={"keyless": True},
-        http_status=401,
+        http_status=403,
     )
 
 

@@ -108,8 +108,12 @@ class TestAKeylessRequestReachesHyperLink:
         refused, with how to get some."""
         monkeypatch.delenv("T1_HYPERLINK_SHARED_KEYLESS_CHATS", raising=False)
         response = client(LAN, T1_TRUSTED_NETWORK="1").get("/hyperlink/sessions")
-        assert response.status_code == 401
-        assert "account or a key" in response.json()["error"]["message"]
+        # 403: a 401 AUTH_* made the iOS app unpair itself on connecting.
+        assert response.status_code == 403
+        error = response.json()["error"]
+        assert error["code"] == "AUTH_INSUFFICIENT_SCOPE"
+        assert error["details"]["keyless"] is True
+        assert "account or a key" in error["message"]
 
     def test_the_shared_pool_can_be_turned_back_on(self, monkeypatch):
         monkeypatch.setenv("T1_HYPERLINK_SHARED_KEYLESS_CHATS", "1")

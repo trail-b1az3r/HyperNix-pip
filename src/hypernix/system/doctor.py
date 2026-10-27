@@ -37,7 +37,7 @@ _RUNTIME_DEPS: tuple[str, ...] = (
     "safetensors>=0.4.3",
     "huggingface-hub>=0.24",
     "gguf>=0.10.0",
-    "tqdm>=4.66",
+    "tqdm>=4.66.3",
     "rich>14,<=15.0.0",
     "sentencepiece>=0.2.1",
 )
@@ -45,7 +45,7 @@ _RUNTIME_DEPS: tuple[str, ...] = (
 #: tokenizers and training, and installed by ``--fix`` as well.
 _OPTIONAL_DEPS: tuple[str, ...] = (
     "tokenizers>=0.20",
-    "transformers>=4.44",
+    "transformers>=5.10",
     "accelerate>=0.33",
 )
 

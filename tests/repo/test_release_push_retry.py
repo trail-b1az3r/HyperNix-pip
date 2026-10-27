@@ -41,6 +41,8 @@ STAGED = [
     "src/hypernix/monitoring/tvtop_max_app/package.json",
     "src/hypernix/monitoring/tvtop_max_app/src/app.ts",
     "browser/firefox/manifest.json",
+    "wiki/Home.md",
+    "wiki/T1-API.md",
     "wiki/Release-Timeline.md",
 ]
 

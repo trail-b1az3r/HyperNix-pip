@@ -2953,6 +2953,9 @@ def model_catalogue(
         from .bridge import _bridge_for
 
         bridge = _bridge_for(config)
+        # T1_LMSTUDIO_TIMEOUT is for generating (300 s by default). A list
+        # is answered at once or not at all, and the picker waits on it.
+        bridge.timeout = min(bridge.timeout, 5.0)
 
     from ..modelsync import serving_dir
 

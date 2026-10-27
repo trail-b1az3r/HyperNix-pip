@@ -149,7 +149,9 @@ def bench_init(repeat: int) -> dict:
 
     def config() -> T1APIConfig:
         work = Path(tempfile.mkdtemp(prefix="hnx-bench-"))
-        return T1APIConfig(token_secret="benchmark-secret-value-long-enough",
+        import secrets
+
+        return T1APIConfig(token_secret=secrets.token_hex(32),
                            db_path=str(work / "t1.db"), module_storage_dir=str(work / "m"),
                            hyperlink_files_dir=str(work / "f"), default_plan="free",
                            web_enabled=False)

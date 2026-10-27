@@ -55,18 +55,18 @@ DEPENDENCY_MAP = {
     "safetensors": ("base", "safetensors>=0.4.3"),
     "huggingface_hub": ("base", "huggingface-hub>=0.24"),
     "gguf": ("base", "gguf>=0.10.0"),
-    "tqdm": ("base", "tqdm>=4.66"),
+    "tqdm": ("base", "tqdm>=4.66.3"),
     "rich": ("base", "rich>14,<=15.0.0"),
     "sentencepiece": ("base", "sentencepiece>=0.2.1"),
     "llama_cpp": ("llama-cpp", "llama-cpp-python>=0.2.90"),
-    "transformers": ("train", "transformers>=4.44"),
+    "transformers": ("train", "transformers>=5.10"),
     "accelerate": ("train", "accelerate>=0.33"),
-    "cryptography": ("security", "cryptography>=42"),
+    "cryptography": ("security", "cryptography>=49"),
     "fastapi": ("t1api", "fastapi>=0.110,<1"),
     "uvicorn": ("t1api", "uvicorn[standard]>=0.29,<1"),
-    "pydantic": ("t1api", "pydantic>=2,<3"),
-    "dotenv": ("t1api", "python-dotenv>=1,<2"),
-    "multipart": ("t1api", "python-multipart>=0.0.9,<1"),
+    "pydantic": ("t1api", "pydantic>=2.4,<3"),
+    "dotenv": ("t1api", "python-dotenv>=1.2.2,<2"),
+    "multipart": ("t1api", "python-multipart>=0.0.31,<1"),
     "psycopg": ("t1api-pg", "psycopg[binary,pool]>=3.1,<4"),
     "httpx": ("t1api-test", "httpx>=0.27,<1"),
     "PySide6": ("gui-qt", "PySide6>=6.6"),
@@ -174,7 +174,7 @@ def _clamp_changelog_text(value: str, limit: int) -> str:
 #: wiki/Changelog-guide.md's legend, in its order.
 CHANGELOG_SYMBOLS = (
     "๋࣭⭑", "✨", "𖥔", "𖢥", "🐛", "🛡️", "🔁", "🔧", "⚡", "🔒", "⚠️",
-    "🧪", "📚", "🛜", "🔌", "🔗", "❌", "✂️", "꩜", "❗", "🩹", "♻️", "📦",
+    "🧪", "📚", "🛜", "🔌", "🔗", "❌", "✂️", "꩜", "❗", "🩹", "♻️", "📦", "🛈",
 )
 
 
@@ -186,6 +186,7 @@ CHANGELOG_SYMBOL_LABELS = {
     "🔒": "security", "⚠️": "error codes", "🧪": "tests", "📚": "docs", "🛜": "site",
     "🔌": "integration", "🔗": "API", "❌": "breaking", "✂️": "removed", "꩜": "restored",
     "❗": "known issue", "🩹": "workaround", "♻️": "migration", "📦": "packaging",
+    "🛈": "caveat",
 }
 
 

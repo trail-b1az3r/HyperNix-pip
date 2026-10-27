@@ -142,7 +142,9 @@ jobs:
           TRUE = {"1", "true", "yes", "on"}
           FALSE = {"0", "false", "no", "off"}
           SECRET_KEYS = {"T1_TOKEN_SECRET", "T1_ADMIN_KEY", "T1_API_KEY", "T1_KEY", "T1_ADMIN_PASSWORD",
-                         "T1_T2_ADMIN_PASSWORD", "T1_HF_TOKEN", "T1_DEPLOY_SECRET", "T1_BOOTSTRAP_KEY",
+                         "T1_T2_ADMIN_PASSWORD", "T1_HF_TOKEN", "T1_DEPLOY_SECRET",
+                         # Not T1_BOOTSTRAP_KEY: that is an on/off switch
+                         # ("mint a first admin key"), and =1 is not a secret.
                          "T1_BOOTSTRAP_ADMIN_KEY", "T1_LMSTUDIO_API_KEY", "T1_ACCOUNTS_INVITE_CODES"}
           LEN32_KEYS = {"T1_TOKEN_SECRET", "T1_DEPLOY_SECRET"}
           PLACEHOLDER = re.compile(r"^(\$|<|%|\{\{|your[-_]|xxx|\.\.\.|replace|todo|changeme_?$|none$|null$|~$)", re.I)
@@ -224,6 +226,7 @@ jobs:
                              "Revoke the key (gkey revoke / waiter) and load it from a secret store.", "CWE-798"),
           }
           LEVEL_SCORE = {"error": "8.5", "warning": "5.5", "note": "2.0"}
+          EXAMPLE_SUFFIX = ".example"
 
           KEY_PATTERNS = [
               re.compile(r"(?<![A-Za-z0-9_])T1_[A-Za-z0-9]{16,}[a-z]{2}[^\s\"'`]{5}[/\\][1-9](?![A-Za-z0-9])"),
@@ -231,7 +234,9 @@ jobs:
               re.compile(r"(?<![A-Za-z0-9_])T1S\.[A-Za-z0-9_-]{16,}\.[A-Za-z0-9_-]{20,}"),
               re.compile(r"(?<![A-Za-z0-9_])T1PAY\.[A-Za-z0-9_-]{16,}\.[A-Za-z0-9_-]{16,}"),
           ]
-          ENV_ASSIGN = re.compile(r"(?<![A-Za-z0-9_$.{])[\"']?(T1_[A-Z0-9_]+)[\"']?\s*[:=]\s*(\S*)")
+          # Not after "^": `sed -n "s/^T1_TOKEN_SECRET=//p"` reads a setting, and
+          # its "//p" was a 3-character secret.
+          ENV_ASSIGN = re.compile(r"(?<![A-Za-z0-9_$.{^])[\"']?(T1_[A-Z0-9_]+)[\"']?\s*[:=]\s*(\S*)")
           DOCKER_ENV = re.compile(r"^\s*ENV\s+(T1_[A-Z0-9_]+)\s+(\S+)")
 
           results: list[dict] = []
@@ -248,8 +253,12 @@ jobs:
                   return
               seen.add(key)
               level = "note" if example else RULES[rule][1]
+              # A finding in a test or an example is its own rule. GitHub
+              # files an alert at the *rule's* security-severity, not the
+              # result's level, so the "note" here still came out as
+              # "high" -- 59 high alerts for fake secrets in tests.
               results.append({
-                  "ruleId": rule, "level": level,
+                  "ruleId": rule + EXAMPLE_SUFFIX if example else rule, "level": level,
                   "message": {"text": msg + (" (example/test context)" if example else "")},
                   "locations": [{"physicalLocation": {"artifactLocation": {"uri": path, "uriBaseId": "%SRCROOT%"},
                                                       "region": {"startLine": max(1, line), "startColumn": max(1, col)}}}],
@@ -514,6 +523,26 @@ jobs:
 
               used = sorted({r["ruleId"] for r in results})
               idx = {rid: i for i, rid in enumerate(used)}
+
+              def describe(rid: str) -> dict:
+                  base = rid.removesuffix(EXAMPLE_SUFFIX)
+                  name, level, short, full, cwe = RULES[base]
+                  example = rid != base
+                  if example:
+                      name, level = name + "-in-example", "note"
+                      short = f"{short} (in a test or an example)"
+                      full = (f"{full} Found in a test, an example or a benchmark, where a fixed "
+                              f"value is usually deliberate; reported so a real one is noticed.")
+                  return {
+                      "id": rid, "name": name,
+                      "shortDescription": {"text": short},
+                      "fullDescription": {"text": full},
+                      "help": {"text": full, "markdown": f"**{short}** ({cwe})\n\n{full}"},
+                      "defaultConfiguration": {"level": level},
+                      "properties": {"tags": ["security", "hypernix", "t1api", "external/cwe/" + cwe.lower()],
+                                     "security-severity": LEVEL_SCORE[level], "precision": "high"},
+                  }
+
               for r in results:
                   r["ruleIndex"] = idx[r["ruleId"]]
               sarif = {
@@ -522,15 +551,7 @@ jobs:
                       "tool": {"driver": {
                           "name": "hypernix-t1-audit", "version": "1.0.0",
                           "informationUri": "https://pypi.org/project/hypernix/",
-                          "rules": [{
-                              "id": rid, "name": RULES[rid][0],
-                              "shortDescription": {"text": RULES[rid][2]},
-                              "fullDescription": {"text": RULES[rid][3]},
-                              "help": {"text": RULES[rid][3], "markdown": f"**{RULES[rid][2]}** ({RULES[rid][4]})\n\n{RULES[rid][3]}"},
-                              "defaultConfiguration": {"level": RULES[rid][1]},
-                              "properties": {"tags": ["security", "hypernix", "t1api", "external/cwe/" + RULES[rid][4].lower()],
-                                             "security-severity": LEVEL_SCORE[RULES[rid][1]], "precision": "high"},
-                          } for rid in used],
+                          "rules": [describe(rid) for rid in used],
                       }},
                       "results": results,
                   }],

@@ -325,7 +325,12 @@ def read_header(path: str | Path) -> Header:
         model = GGUFFile.read(model_path)
     except (GGUFError, OSError) as exc:
         raise HeaderError(f"{model_path}: {exc}") from exc
+    return header_of(model)
 
+
+def header_of(model: Any) -> Header:
+    """:func:`read_header` for a file already parsed, so a caller that has
+    the :class:`~hypernix.quant.gguf.GGUFFile` does not read it twice."""
     stamped = {
         key[len(PREFIX) + 1:]: value
         for key, value in model.metadata.items()

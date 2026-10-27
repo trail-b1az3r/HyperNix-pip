@@ -32,12 +32,15 @@ CATEGORIES = (
     "Tests",
     "Known Issues",
     "Temporary Workarounds",
+    # Guide v2.2.1.
+    "Caveats",
+    "Notes",
 )
 CATEGORY_SET = set(CATEGORIES)
 SUMMARY = "Beta / Dev → Release Summary"
 SYMBOLS = (
     "๋࣭⭑", "✨", "𖥔", "𖢥", "🐛", "🛡️", "🔁", "🔧", "⚡", "🔒", "⚠️",
-    "🧪", "📚", "🛜", "🔌", "🔗", "❌", "✂️", "꩜", "❗", "🩹", "♻️", "📦",
+    "🧪", "📚", "🛜", "🔌", "🔗", "❌", "✂️", "꩜", "❗", "🩹", "♻️", "📦", "🛈",
 )
 
 
@@ -135,7 +138,15 @@ class TestEveryReleaseEntry:
         bad: list[str] = []
         for header, body in _entries(text):
             current_category = None
+            in_details = False
             for line in body.splitlines():
+                # Guide v2.2.1: a major feature carries a <details> dropdown
+                # with its expanded change list, which is not a change line.
+                if line.strip().startswith("<details"):
+                    in_details = True
+                if in_details:
+                    in_details = not line.strip().startswith("</details>")
+                    continue
                 if line.startswith("### "):
                     current_category = line[4:].strip()
                     continue

@@ -1,7 +1,7 @@
 # gitleaks: findings reviewed and not secrets. One fingerprint per line
 # (commit:file:rule:line); anything new is still reported.
 
-# src/hypernix/t1api/routers/auth.py: key_family=ctx.t2_family or "T1" -- a key *format* name, not a key
+# src/hypernix/t1api/routers/auth.py: the key family is set to a key *format* name (T1), not a key
 0068bbf2daa279a146730571d5b7ce0d60f60188:src/hypernix/t1api/routers/auth.py:generic-api-key:40
 # tests/test_launch_script.py: the names of the environment variables a key is read from
 a8aca68689d0f1855991315e717d8dad44165b14:tests/test_launch_script.py:generic-api-key:362
@@ -11,3 +11,7 @@ a8aca68689d0f1855991315e717d8dad44165b14:src/hypernix/t1api/launchscript_cli.py:
 a7aeafff047f1650ef9599cd1605097d986e5425:wiki/VRAM.md:generic-api-key:63
 # tests/test_t1api_beta3_security.py: a made-up key id for a rate-limit test
 7efe554887fb3810f3f40e86324180f78f78f170:tests/test_t1api_beta3_security.py:generic-api-key:181
+# .gitleaksignore: the comment above once quoted that auth.py line, so it matched the same rule
+b43818240e75a198e64e053ece7c24a76443694a:.gitleaksignore:generic-api-key:4
+# tests/t1api/test_setup_and_env_upgrade.py: the *names* of the settings setup writes (T1_TOKEN_SECRET, ...)
+fd848f599bbc4d9d8747141fd5881827144697aa:tests/t1api/test_setup_and_env_upgrade.py:generic-api-key:40

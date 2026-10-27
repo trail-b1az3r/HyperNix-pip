@@ -160,3 +160,103 @@ def test_the_cli(tmp_path, data, capsys):
     assert cli.cli_main(["--json", "info", str(tmp_path / "eye2")]) == 0
     assert '"tokens_per_image": 16' in capsys.readouterr().out
     assert cli.cli_main(["caption", str(tmp_path / "eye2"), str(data / "red.png"), "--device", "cpu"]) == 1
+
+
+# ---------------------------------------------------------------------------
+# Brewer from a training run, and hyprslug (0.72.8a5)
+# ---------------------------------------------------------------------------
+
+def _brewer(folder, *, chars=True):
+    from hypernix.training.brewer import Brewer, BrewerConfig
+
+    torch.manual_seed(0)
+    brewer = Brewer(BrewerConfig(vocab_size=len(CHARS) + 1, n_layers=2, n_heads=4, n_kv_heads=2, d_model=64,
+                                 max_seq_len=128, use_sliding_window=False), name="tiny-brew", save_dir=folder)
+    brewer.build()
+    if chars:
+        brewer.char_vocab = ["\x00", *CHARS]
+    brewer.save(folder)
+    return folder
+
+
+def test_a_brewer_folder_from_a_training_run(tmp_path):
+    """No config.json -- HyperNix.3.1-mini's beta is uploaded like this --
+    and the tokenizer in tokenizer/. Both were refused: "has no config.json"."""
+    from hypernix.models.brewer_gguf import _tokenizer_folder  # noqa: F401 - the helper used
+
+    folder = _brewer(tmp_path / "run", chars=False)
+    (folder / "config.json").unlink()
+    (folder / "char_vocab.json").unlink(missing_ok=True)
+    import safetensors.torch as st
+
+    state = st.load_file(str(folder / "model.safetensors"))
+    from hypernix.training.brewer import BrewerConfig
+
+    cfg = BrewerConfig(vocab_size=len(CHARS) + 1, n_layers=2, n_heads=4, n_kv_heads=2, d_model=64,
+                       max_seq_len=128, use_sliding_window=False, name="tiny-brew")
+    st.save_file(state, str(folder / "model.safetensors"), metadata={"config": json.dumps(cfg.to_dict())})
+    _tokenizer().save_pretrained(folder / "tokenizer")
+
+    fused = hi.fuse(hi.ImageModel(hi.preset("tiny")), folder)
+    assert fused.family == "hypernix0x-v2"
+    assert fused.text.encode("ab") == [VOCAB["a"], VOCAB["b"]]
+
+
+def test_a_brewer_with_a_real_tokenizer_survives_a_save(tmp_path):
+    folder = _brewer(tmp_path / "brew", chars=False)
+    _tokenizer().save_pretrained(folder)
+    fused = hi.fuse(hi.ImageModel(hi.preset("tiny")), folder)
+    fused.save(tmp_path / "fused")
+    assert hi.load(tmp_path / "fused").text.encode("ab") == [VOCAB["a"], VOCAB["b"]]
+
+
+@pytest.mark.parametrize("text", ["brewer", "lfm2"])
+def test_hyprslug_quantises_a_fused_model(tmp_path, data, text):
+    """`hyprslug ./lfm-eye Q8_0` died on IsADirectoryError: hyprslug reads
+    GGUFs and a fused model was two safetensors folders. Now the whole
+    model goes into one GGUF, is packed, and answers again when loaded."""
+    from hypernix.models import hnx0xv2image_gguf as hg
+    from hypernix.quant.gguf import GGMLType, GGUFFile
+    from hypernix.quant.hyprslug import quantize_gguf
+
+    source = _brewer(tmp_path / "brew") if text == "brewer" else _text_model(tmp_path / "lfm2", "lfm2")
+    fused = hi.fuse(hi.ImageModel(hi.preset("tiny")), source)
+    hi.train(fused, data / "captions.jsonl", stage="all", steps=60, lr=3e-3)
+    # A character vocabulary has no end-of-text, so a Brewer answer runs on
+    # ("redddd"); what matters is that quantising does not change it.
+    before = {c: fused.generate(data / f"{c}.png", "", max_new_tokens=6) for c in ("red", "blue")}
+    assert before["red"].startswith("red") and before["blue"].startswith("blue")
+    fused.save(tmp_path / "fused")
+
+    report = quantize_gguf(tmp_path / "fused", tmp_path / "fused.q8", "Q8_0")
+    assert report.tensors_quantized > 0
+    packed = GGUFFile.read(tmp_path / "fused.q8" / "model.gguf")
+    assert packed.metadata["general.architecture"] == "hnx0xv2image-fused"
+    assert any(t.ggml_type == int(GGMLType.Q8_0) for t in packed.tensors)
+    assert (tmp_path / "fused.q8" / "model.gguf").stat().st_size < hg.to_gguf(
+        fused, tmp_path / "f32.gguf").stat().st_size
+
+    again = hi.load(tmp_path / "fused.q8")
+    assert again.family == fused.family
+    assert {c: again.generate(data / f"{c}.png", "", max_new_tokens=6) for c in before} == before
+
+
+def test_hyprslug_explains_a_folder_it_cannot_read(tmp_path):
+    from hypernix.quant.hyprslug import HyprslugError, quantize_gguf
+
+    (tmp_path / "hf").mkdir()
+    (tmp_path / "hf" / "config.json").write_text('{"model_type": "llama"}', encoding="utf-8")
+    with pytest.raises(HyprslugError, match="is a folder"):
+        quantize_gguf(tmp_path / "hf", tmp_path / "out.gguf", "Q8_0")
+
+
+def test_the_quant_command(tmp_path, data, capsys):
+    text = _text_model(tmp_path / "lfm2", "lfm2")
+    assert cli.cli_main(["fuse", "new", str(text), "-o", str(tmp_path / "f"), "--preset", "tiny",
+                         "--device", "cpu"]) == 0
+    assert cli.cli_main(["quant", str(tmp_path / "f"), "Q8_0", "-o", str(tmp_path / "q")]) == 0
+    assert "tensors packed" in capsys.readouterr().out
+    assert cli.cli_main(["caption", str(tmp_path / "q"), str(data / "red.png"), "--max-new-tokens", "2",
+                         "--device", "cpu"]) == 0
+    assert cli.cli_main(["split", str(tmp_path / "q"), "-o", str(tmp_path / "eye")]) == 0
+    assert cli.cli_main(["--json", "info", str(tmp_path / "eye")]) == 0

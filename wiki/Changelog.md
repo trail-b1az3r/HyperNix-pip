@@ -35,6 +35,129 @@ Historical wording and technical detail are retained during format normalization
 
 > Format normalized to `wiki/Changelog-guide.md`; release wording and historical detail are preserved.
 
+## 0.72.8a5 — 2026-10-27
+
+### Added
+
+✨ **`hnx image quant MODEL TIER -o OUT`: hyprslug for hnx0xv2image.** The
+  whole fused model -- image tower, projector and text model (LFM2.5,
+  Qwen3.5 or Brewer) -- goes into one GGUF
+  (`general.architecture = hnx0xv2image-fused`) and is packed at any
+  hyprslug tier, sub-bit ones included. `hi.load()` and every `hnx image`
+  command read the result back. `hyprslug FUSED TIER -o OUT` does the same.
+  ([HNX0xV2Image § Quantising with hyprslug](HNX0xV2Image.md#quantising-with-hyprslug))
+
+<details>
+<summary>hnx0xv2image and hyprslug — expanded change list</summary>
+
+- Added `hypernix.models.hnx0xv2image_gguf`: `to_gguf`, `quantize`, `load_gguf`.
+- Both configs, the tied-weight aliases and a character vocabulary ride in the GGUF's metadata; a Hugging Face tokenizer is saved beside it in `tokenizer/`.
+- Each tensor is dequantised as it loads (F32, F16, BF16, the llama.cpp block types and the HyperNix extension types).
+- Checked at Q8_0, Q4_K_M and IQ0.5_XXXL: the first two answer as the float model does.
+
+</details>
+
+𖥔 `hnx prot` holds a Hyprland session unlocked while the screen is dark.
+  Hyprland never locks by itself; hypridle does (running hyprlock,
+  `loginctl lock-session` or a Quickshell lock), and so can Quickshell's
+  own `IdleMonitor`. A logind idle inhibitor is held for hypridle, which
+  is stopped and restarted instead when its config ignores logind. A
+  Wayland inhibitor (`wlinhibit`) is held for a Quickshell config that
+  watches idle, or `prot` says to install it. Hyprland's
+  `key_press_enables_dpms` (which lit the screen at the wake word's first
+  letter) is off while dark. ([CLI § prot](CLI.md#vera--prot-protect))
+
+### Performance
+
+⚡ `hypernix-t1 runner start` was slow because the model list behind it
+  (`GET /hyperlink/models`) opened every GGUF on disk, twice each, on
+  every call, reading 150k-entry tokenizer arrays one item at a time.
+  Arrays are now read in bulk (about 0.24 s to 0.07 s for a Qwen3-sized
+  tokenizer), each file is parsed once, and the result is remembered
+  while the file is unchanged, so a repeat list costs a stat per file.
+  The list's LM Studio lookup waits at most 5 s, not the 300 s
+  generation timeout.
+
+### Security
+
+🔒 Raised dependency floors that allowed versions with known advisories:
+  Pillow>=13 (from 11, including a critical one), cryptography>=49 (from
+  42), python-multipart>=0.0.31 (from 0.0.9), transformers>=5.10 (from
+  4.44), pillow-heif>=1.3, pydantic>=2.4, python-dotenv>=1.2.2,
+  tqdm>=4.66.3, pytest>=9.0.3.
+
+🔒 Fixed the T1 audit in the security scan, whose findings in tests and
+  examples were filed by GitHub as high alerts (59 of the 60). It reported
+  them at level "note", but GitHub takes an alert's severity from the
+  rule, so they now have rules of their own at low severity. It also took
+  `sed -n "s/^T1_TOKEN_SECRET=//p"` for a 3-character secret, and
+  `T1_BOOTSTRAP_KEY=1`, an on/off switch, for a key.
+
+🔒 The benchmark's T1 server uses a generated token secret, not a fixed
+  one.
+
+### Fixed
+
+𖢥 HyperLink for iOS signed itself out on connecting keyless, the usual
+  way in over Tailscale: the server refused keyless chats with
+  `401 AUTH_MISSING_CREDENTIALS`, and the app read every 401 `AUTH_*` as
+  a revoked device. The server now answers `403 AUTH_INSUFFICIENT_SCOPE`
+  (so the builds already installed stay connected), and the app no longer
+  re-pairs on a missing credential.
+
+𖢥 HyperLink for iOS crashed (index out of range) when it connected
+  somewhere else while a request was still waiting on another address --
+  away from home, the LAN address at the front of the list takes its full
+  timeout to fail. A request now uses a copy of the list, and one
+  overtaken by a reconnect is cancelled and not reported.
+
+🐛 The model picker of `hypernix-t1 runner start` froze: it fetched the
+  list in its key loop, so nothing was drawn until the first answer and
+  keys went unread during each refresh. It fetches on a thread of its own.
+
+🐛 hnx0xv2image refused a Brewer folder straight from a training run (no
+  `config.json`, as HyperNix.3.1-mini's beta is uploaded) and a Brewer
+  `.pt`; it reads them the way the GGUF exporter does. A Brewer with a
+  real tokenizer was saved without it and could not be loaded again.
+
+🐛 `hyprslug` given a folder it cannot read says what it reads, instead of
+  `IsADirectoryError`.
+
+🐛 The wiki's "current version" lines named the previous release, and a
+  re-run release added a second, empty section to the release timeline.
+  `scripts/sync_wiki_versions.py` keeps those lines and the release runs
+  it; the timeline step replaces a version's section.
+
+### Dependencies and Packaging
+
+📦 See Security for the raised floors. torch stays at `>=1.13` and the
+  `legacy-torch` extra keeps its floors, both for old Intel Macs (and
+  guarded by tests/repo/test_install_pin.py). npm and Bun lockfiles audit
+  clean.
+
+### Documentation
+
+📚 Changelog guide v2.2.1 is followed: the format tests and the site's
+  legend know `Caveats`, `Notes` and `🛈`.
+
+### Tests
+
+🧪 A slow model list (pty), the inspect cache, Brewer from a training run,
+  hyprslug on fused models (Brewer and LFM2) and `hnx image quant`, the
+  Hyprland lock guard against a faked session, the iOS client's endpoint
+  copy and re-pair rule, the wiki version lines, and the T1 audit's
+  severities.
+
+### Caveats
+
+🛈 The iOS changes were checked against the Swift source, not built: there
+  is no Xcode here.
+🛈 The Hyprland lock guard was tested against a faked Hyprland session,
+  not a running one.
+🛈 GitHub's code-scanning and Dependabot alerts could not be read from
+  here (403); the fixes follow the security scan's own SARIF output and an
+  OSV check of every dependency floor. CodeQL's alerts were not seen.
+
 ## 0.72.8a4 — 2026-10-22
 
 ### Added
@@ -126,14 +249,11 @@ Historical wording and technical detail are retained during format normalization
   `upgrade -S env` (added settings, typos, the secret, the file mode,
   backups, dry runs).
 
-### Known Issues
+### Caveats
 
-None
-
-### caveats
- 🛈The new website pages were checked in Chromium at desktop and phone
+🛈 The new website pages were checked in Chromium at desktop and phone
   widths, not in Safari or Firefox.
- 🛈  hyped-pro's OpenTUI app's tests need Bun, which the build environment
+🛈 hyped-pro's OpenTUI app's tests need Bun, which the build environment
   does not have; its code changes are string constants.
 
 ## 0.72.8a3 — 2026-10-21

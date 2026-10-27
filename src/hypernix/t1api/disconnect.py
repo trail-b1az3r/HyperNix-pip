@@ -81,8 +81,11 @@ class ClientGoneWatch:
 
 
 def client_gone(request: Any) -> bool:
+    # The scope entry is the middleware's own anyio.Event, never anything
+    # the client sent; and both operands are already bools, so there is
+    # nothing to convert (Semgrep read bool() of a request value as one).
     event = request.scope.get(SCOPE_KEY)
-    return bool(event is not None and event.is_set())
+    return event is not None and event.is_set()
 
 
 def _close(events: Iterator[bytes], what: str) -> None:

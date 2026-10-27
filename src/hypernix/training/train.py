@@ -481,7 +481,7 @@ def _try_hf_automodel(model_dir: Path, model_type: str) -> tuple[Any, Any] | Non
         from transformers import AutoConfig, AutoModelForCausalLM
     except ModuleNotFoundError:
         from hypernix.system import deps
-        if not deps.ensure(["transformers>=4.44", "tokenizers>=0.20"]):
+        if not deps.ensure(["transformers>=5.10", "tokenizers>=0.20"]):
             return None
         try:
             from transformers import AutoConfig, AutoModelForCausalLM

@@ -137,7 +137,7 @@ def ensure(
 
     Example::
 
-        ensure(["tokenizers>=0.20", "transformers>=4.44"],
+        ensure(["tokenizers>=0.20", "transformers>=5.10"],
                reimport=["tokenizers", "transformers"])
     """
     ok = pip_install(specs, upgrade=upgrade, quiet=quiet)

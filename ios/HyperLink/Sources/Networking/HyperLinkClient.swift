@@ -50,9 +50,17 @@ enum HyperLinkError: LocalizedError, Sendable {
 
     /// True when re-pairing is the only way forward — the app clears its
     /// stored token and returns to the pairing screen on this.
+    ///
+    /// Not for AUTH_MISSING_CREDENTIALS. That says no credential came
+    /// with the request -- which, for a keyless connection, is every
+    /// request -- and the server sends it for "chats need an account or a
+    /// key" too. Counting it signed a keyless phone out a moment after it
+    /// connected (the usual way to connect over Tailscale): the first
+    /// refresh asked for the chat list, got that answer, and unpaired.
+    /// Its message says what to do; forgetting the server does not.
     var requiresRepairing: Bool {
         if case let .serverError(code, _, status) = self {
-            return status == 401 && (code.hasPrefix("AUTH_") || code == "AUTH_REVOKED_KEY")
+            return status == 401 && code.hasPrefix("AUTH_") && code != "AUTH_MISSING_CREDENTIALS"
         }
         if case .unauthorized = self { return true }
         return false
@@ -169,6 +177,9 @@ struct ServerConnection: Codable, Equatable, Sendable {
 actor HyperLinkClient {
     private var endpoints: [String]
     private var preferredIndex: Int = 0
+    /// Bumped by every `configure`, so a request that was suspended
+    /// across one can tell it now belongs to a different setup.
+    private var generation: Int = 0
     private var token: String?
     /// Connected to a server in trusted-network mode with no credential.
     ///
@@ -213,6 +224,7 @@ actor HyperLinkClient {
         self.token = token
         self.keyless = keyless
         self.preferredIndex = 0
+        self.generation &+= 1
     }
 
     func setToken(_ token: String?) { self.token = token }
@@ -266,15 +278,30 @@ actor HyperLinkClient {
         authenticated: Bool = true,
         timeout: TimeInterval = 20
     ) async throws -> Data {
-        guard !endpoints.isEmpty else { throw HyperLinkError.notConfigured }
+        // A copy, taken once. This is an actor, and an actor is
+        // re-entrant at every `await`: while one request waited on a dead
+        // address, `configure` could swap in a shorter list -- connecting
+        // to another server, a new pairing, signing in -- and the loop
+        // went on indexing the new list with the old one's indices.
+        // Index out of range is a crash, not an error. Away from home on
+        // Tailscale it was the usual case: the LAN address in the list
+        // takes its full timeout to fail, and that is time enough to
+        // connect somewhere else.
+        let bases = endpoints
+        let setup = generation
+        guard !bases.isEmpty else { throw HyperLinkError.notConfigured }
 
         var tried: [String] = []
         var lastTransportError: Error?
 
         // Start at the endpoint that worked last time, then wrap around.
-        let order = (0..<endpoints.count).map { (preferredIndex + $0) % endpoints.count }
+        let start = preferredIndex % bases.count
+        let order = (0..<bases.count).map { (start + $0) % bases.count }
         for index in order {
-            let base = endpoints[index]
+            // Reconfigured while this was waiting: these addresses (and
+            // the credential going with them) are no longer the ones to use.
+            guard generation == setup else { throw CancellationError() }
+            let base = bases[index]
             tried.append(base)
             do {
                 let request = try makeRequest(
@@ -287,6 +314,9 @@ actor HyperLinkClient {
                     timeout: timeout
                 )
                 let (data, response) = try await session.data(for: request)
+                // An answer from the old setup is not one to keep, and its
+                // index means nothing in the new list.
+                guard generation == setup else { throw CancellationError() }
                 preferredIndex = index
                 try Self.check(response: response, data: data)
                 return data
@@ -301,12 +331,14 @@ actor HyperLinkClient {
                     continue
                 }
                 throw error
+            } catch is CancellationError {
+                throw CancellationError()
             } catch {
                 lastTransportError = error        // dead address; try the next
                 continue
             }
         }
-        if let lastTransportError, endpoints.count == 1 {
+        if let lastTransportError, bases.count == 1 {
             throw HyperLinkError.transport(lastTransportError.localizedDescription)
         }
         throw HyperLinkError.noReachableEndpoint(tried)

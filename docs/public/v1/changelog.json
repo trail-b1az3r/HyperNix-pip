@@ -3,6 +3,156 @@
   "source": "wiki/Changelog.md",
   "entries": [
     {
+      "version": "0.72.8a5",
+      "key": "0.72.8a5",
+      "aliases": [
+        "0.72.8a5"
+      ],
+      "kind": "alpha",
+      "heading": "0.72.8a5 \u2014 2026-10-27",
+      "date": "2026-10-27",
+      "title": "",
+      "summary": "hnx image quant MODEL TIER -o OUT: hyprslug for hnx0xv2image. The whole fused model -- image tower, projector and text model (LFM2.5, Qwen3.5 or Brewer) -- goes into one GGUF (general.architecture = hnx0xv2image-fused) and is packed at any hyprslug tier, sub-bit ones included\u2026",
+      "patch": null,
+      "headline": "",
+      "highlights": [
+        "hnx image quant MODEL TIER -o OUT: hyprslug for hnx0xv2image. The whole fused model -- image tower, projector and text model (LFM2.5, Qwen3.5 or Brewer) -- goes into one GGUF (general.architecture = hnx0xv2image-fused) and is packed at any hyprslug tier, sub-bit ones included\u2026",
+        "hnx prot holds a Hyprland session unlocked while the screen is dark. Hyprland never locks by itself; hypridle does (running hyprlock, loginctl lock-session or a Quickshell lock), and so can Quickshell's own IdleMonitor. A logind idle inhibitor is held for hypridle, which is\u2026",
+        "hypernix-t1 runner start was slow because the model list behind it (GET /hyperlink/models) opened every GGUF on disk, twice each, on every call, reading 150k-entry tokenizer arrays one item at a time. Arrays are now read in bulk (about 0.24 s to 0.07 s for a Qwen3-sized\u2026",
+        "Raised dependency floors that allowed versions with known advisories: Pillow>=13 (from 11, including a critical one), cryptography>=49 (from 42), python-multipart>=0.0.31 (from 0.0.9), transformers>=5.10 (from 4.44), pillow-heif>=1.3, pydantic>=2.4, python-dotenv>=1.2.2\u2026",
+        "Fixed the T1 audit in the security scan, whose findings in tests and examples were filed by GitHub as high alerts (59 of the 60). It reported them at level \"note\", but GitHub takes an alert's severity from the rule, so they now have rules of their own at low severity. It also\u2026",
+        "The benchmark's T1 server uses a generated token secret, not a fixed one."
+      ],
+      "changes": [
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "hnx image quant MODEL TIER -o OUT: hyprslug for hnx0xv2image. The whole fused model -- image tower, projector and text model (LFM2.5, Qwen3.5 or Brewer) -- goes into one GGUF (general.architecture = hnx0xv2image-fused) and is packed at any hyprslug tier, sub-bit ones included\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\ud81a\udd54",
+          "label": "minor",
+          "category": "Added",
+          "text": "hnx prot holds a Hyprland session unlocked while the screen is dark. Hyprland never locks by itself; hypridle does (running hyprlock, loginctl lock-session or a Quickshell lock), and so can Quickshell's own IdleMonitor. A logind idle inhibitor is held for hypridle, which is\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\u26a1",
+          "label": "performance",
+          "category": "Performance",
+          "text": "hypernix-t1 runner start was slow because the model list behind it (GET /hyperlink/models) opened every GGUF on disk, twice each, on every call, reading 150k-entry tokenizer arrays one item at a time. Arrays are now read in bulk (about 0.24 s to 0.07 s for a Qwen3-sized\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udd12",
+          "label": "security",
+          "category": "Security",
+          "text": "Raised dependency floors that allowed versions with known advisories: Pillow>=13 (from 11, including a critical one), cryptography>=49 (from 42), python-multipart>=0.0.31 (from 0.0.9), transformers>=5.10 (from 4.44), pillow-heif>=1.3, pydantic>=2.4, python-dotenv>=1.2.2\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udd12",
+          "label": "security",
+          "category": "Security",
+          "text": "Fixed the T1 audit in the security scan, whose findings in tests and examples were filed by GitHub as high alerts (59 of the 60). It reported them at level \"note\", but GitHub takes an alert's severity from the rule, so they now have rules of their own at low severity. It also\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udd12",
+          "label": "security",
+          "category": "Security",
+          "text": "The benchmark's T1 server uses a generated token secret, not a fixed one.",
+          "details": []
+        },
+        {
+          "symbol": "\ud81a\udca5",
+          "label": "major fix",
+          "category": "Fixed",
+          "text": "HyperLink for iOS signed itself out on connecting keyless, the usual way in over Tailscale: the server refused keyless chats with 401 AUTH_MISSING_CREDENTIALS, and the app read every 401 AUTH as a revoked device. The server now answers 403 AUTH_INSUFFICIENT_SCOPE (so the builds\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\ud81a\udca5",
+          "label": "major fix",
+          "category": "Fixed",
+          "text": "HyperLink for iOS crashed (index out of range) when it connected somewhere else while a request was still waiting on another address -- away from home, the LAN address at the front of the list takes its full timeout to fail. A request now uses a copy of the list, and one\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udc1b",
+          "label": "fix",
+          "category": "Fixed",
+          "text": "The model picker of hypernix-t1 runner start froze: it fetched the list in its key loop, so nothing was drawn until the first answer and keys went unread during each refresh. It fetches on a thread of its own.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udc1b",
+          "label": "fix",
+          "category": "Fixed",
+          "text": "hnx0xv2image refused a Brewer folder straight from a training run (no config.json, as HyperNix.3.1-mini's beta is uploaded) and a Brewer .pt; it reads them the way the GGUF exporter does. A Brewer with a real tokenizer was saved without it and could not be loaded again.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udc1b",
+          "label": "fix",
+          "category": "Fixed",
+          "text": "hyprslug given a folder it cannot read says what it reads, instead of IsADirectoryError.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udc1b",
+          "label": "fix",
+          "category": "Fixed",
+          "text": "The wiki's \"current version\" lines named the previous release, and a re-run release added a second, empty section to the release timeline. scripts/sync_wiki_versions.py keeps those lines and the release runs it; the timeline step replaces a version's section.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udce6",
+          "label": "packaging",
+          "category": "Dependencies and Packaging",
+          "text": "See Security for the raised floors. torch stays at >=1.13 and the legacy-torch extra keeps its floors, both for old Intel Macs (and guarded by tests/repo/test_install_pin.py). npm and Bun lockfiles audit clean.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udcda",
+          "label": "docs",
+          "category": "Documentation",
+          "text": "Changelog guide v2.2.1 is followed: the format tests and the site's legend know Caveats, Notes and \ud83d\udec8.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83e\uddea",
+          "label": "tests",
+          "category": "Tests",
+          "text": "A slow model list (pty), the inspect cache, Brewer from a training run, hyprslug on fused models (Brewer and LFM2) and hnx image quant, the Hyprland lock guard against a faked session, the iOS client's endpoint copy and re-pair rule, the wiki version lines, and the T1 audit's\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udec8",
+          "label": "caveat",
+          "category": "Caveats",
+          "text": "The iOS changes were checked against the Swift source, not built: there is no Xcode here.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udec8",
+          "label": "caveat",
+          "category": "Caveats",
+          "text": "The Hyprland lock guard was tested against a faked Hyprland session, not a running one.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udec8",
+          "label": "caveat",
+          "category": "Caveats",
+          "text": "GitHub's code-scanning and Dependabot alerts could not be read from here (403); the fixes follow the security scan's own SARIF output and an OSV check of every dependency floor. CodeQL's alerts were not seen.",
+          "details": []
+        }
+      ]
+    },
+    {
       "version": "0.72.8a4",
       "key": "0.72.8a4",
       "aliases": [
@@ -106,6 +256,20 @@
           "label": "tests",
           "category": "Tests",
           "text": "hyped-pro's codes and their aliases, every sandbox refusal having a code, the error page being current, list-all against the CLI, the T1 dispatcher and pyproject.toml, setup (defaults, answers files, refusals, re-runs keeping the secret, the manager running it) and upgrade -S\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udec8",
+          "label": "caveat",
+          "category": "Caveats",
+          "text": "The new website pages were checked in Chromium at desktop and phone widths, not in Safari or Firefox.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udec8",
+          "label": "caveat",
+          "category": "Caveats",
+          "text": "hyped-pro's OpenTUI app's tests need Bun, which the build environment does not have; its code changes are string constants.",
           "details": []
         }
       ]
@@ -847,120 +1011,7 @@
         "tvtop-max: select, sort and scroll panels. \u2190 selects a panel, d deselects, o cycles its sort (cores by busiest or hottest, memory users by most, least or fastest growing, processes by cpu, memory, age or pid, \u2026), \u2192 and Shift+\u2192 scroll it sideways when its lines are wider than it.",
         "tvtop-max: per-core temperatures beside each core's meter, from the CPU topology where the driver reports them, and a note where it does not (AMD k10temp)."
       ],
-      "changes": [
-        {
-          "symbol": "\u0e4b\u08ed\u2b51",
-          "label": "major",
-          "category": "Added",
-          "text": "Context relay: prompts longer than the model's context ([Context relay](Context-Relay.md)). hypernix.runtime.relay reads a document too long for a small-context model by passing it along several copies of the model: each hop reads one part plus the notes so far, the last\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "POST /inference/relay on the T1 API, under every rule of /inference/chat, rotating through the runner pool's instances when there is one. Each hop is metered as it finishes; the response prices the hops, the planned worst case and one big read. estimate_only prices without\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\u0e4b\u08ed\u2b51",
-          "label": "major",
-          "category": "Added",
-          "text": "HyperNix Browser Agent for Firefox ([Browser Agent](Browser-Agent.md)). A sidebar extension (browser/firefox) in which a model \u2014 on the T1 API, a local OpenAI-compatible server, OpenAI or Anthropic \u2014 searches the web, reads pages, clicks, types, presses keys, picks options\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "tvtop-max: five hidden panels \u2014 temperatures, sound, disks, network and system \u2014 shown with Shift+1 \u2026 Shift+5 or --show.",
-          "details": []
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "tvtop-max: select, sort and scroll panels. \u2190 selects a panel, d deselects, o cycles its sort (cores by busiest or hottest, memory users by most, least or fastest growing, processes by cpu, memory, age or pid, \u2026), \u2192 and Shift+\u2192 scroll it sideways when its lines are wider than it.",
-          "details": []
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "tvtop-max: per-core temperatures beside each core's meter, from the CPU topology where the driver reports them, and a note where it does not (AMD k10temp).",
-          "details": []
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "tvtop-max: the volume in decibels, as the sound server reports it (PipeWire/PulseAudio, ALSA), with the playing signal's peak and RMS, and a warning in the header while loud (\u2265 \u22126 dB, TVTOP_MAX_LOUD_DB) or amplified past 100% audio plays.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udd01",
-          "label": "refactor",
-          "category": "Changed",
-          "text": "Code sandbox runs (seconds), web searches and model-written compaction summaries are now metered against the caller's key.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udd01",
-          "label": "refactor",
-          "category": "Changed",
-          "text": "tvtop-pro and tvtop-max take memory from one place, hypernix.monitoring.hostprobe.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udd17",
-          "label": "API",
-          "category": "API Changes",
-          "text": "GET /usage/statement \u2014 the itemised bill, format t1.statement/2: every feature used (inference, relay, embeddings, compaction, code sandboxes, web search, client reports), a line per model and unit, subtotals, the total and what nothing prices.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udd17",
-          "label": "API",
-          "category": "API Changes",
-          "text": "Usage events carry feature, units and unit (added in place to existing databases; older rows get their feature from the endpoint), and /usage/history returns them. feature is a group_by dimension.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udd17",
-          "label": "API",
-          "category": "API Changes",
-          "text": "ModelPricing.unit_prices and T1_FEATURE_PRICES price what is not tokens; T1_RELAY_MAX_INSTANCES caps a relay's instances.",
-          "details": []
-        },
-        {
-          "symbol": "\ud81a\udca5",
-          "label": "major fix",
-          "category": "Fixed",
-          "text": "tvtop-max's RAM was wrong. The bar came from psutil's percentage (based on available) while the numbers beside it came from psutil's used, which counts differently \u2014 and \"free\" was really available. Used is now total \u2212 MemAvailable (app + wired + compressed on macOS, as\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udce6",
-          "label": "packaging",
-          "category": "Dependencies and Packaging",
-          "text": "The release bumps the Firefox extension's manifest version with the package's.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udcda",
-          "label": "docs",
-          "category": "Documentation",
-          "text": "New pages: [Context relay](Context-Relay.md) and [Browser Agent](Browser-Agent.md); [T1 API](T1-API.md) documents the relay and the statement; [tvtop-max](TvTopMax.md) the new panels, keys and the loud-audio warning.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83e\uddea",
-          "label": "tests",
-          "category": "Tests",
-          "text": "The relay (fake instances that refuse to overflow their context), the relay endpoint and the statement, the probes (from fake /proc, cgroups, hwmon trees and pactl JSON), tvtop-max's new panels and keys, the extension's modules under bun, and its content script in a real\u2026",
-          "details": []
-        }
-      ]
+      "changes": []
     },
     {
       "version": "0.72.7.post1",
