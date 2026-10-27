@@ -1,11 +1,11 @@
 {
   "definition": "non-blank source lines across repository code roots: src, scripts, tests, examples, bin, native, docs/src",
-  "total_lines": 247953,
-  "code_files": 827,
+  "total_lines": 249157,
+  "code_files": 834,
   "top_files": [
     {
       "path": "src/hypernix/t1api/routers/hyperlink.py",
-      "lines": 2822
+      "lines": 2825
     },
     {
       "path": "src/hypernix/interfaces/hyped.py",
@@ -32,12 +32,12 @@
       "lines": 1647
     },
     {
-      "path": "src/hypernix/models/neo_oven.py",
-      "lines": 1506
+      "path": "src/hypernix/quant/hyprslug.py",
+      "lines": 1516
     },
     {
-      "path": "src/hypernix/quant/hyprslug.py",
-      "lines": 1499
+      "path": "src/hypernix/models/neo_oven.py",
+      "lines": 1506
     },
     {
       "path": "src/hypernix/monitoring/tv.py",
@@ -127,12 +127,12 @@
   "contributors": [
     {
       "author": "Claude",
-      "additions": 240172,
-      "deletions": 17739,
-      "net": 222433,
-      "changes": 257911,
-      "commits": 274,
-      "files": 1689
+      "additions": 241661,
+      "deletions": 17803,
+      "net": 223858,
+      "changes": 259464,
+      "commits": 281,
+      "files": 1701
     },
     {
       "author": "minerofthesoal",
@@ -172,12 +172,12 @@
     },
     {
       "author": "Rayla",
-      "additions": 1201,
-      "deletions": 1026,
-      "net": 175,
-      "changes": 2227,
-      "commits": 30,
-      "files": 13
+      "additions": 1220,
+      "deletions": 1035,
+      "net": 185,
+      "changes": 2255,
+      "commits": 32,
+      "files": 14
     },
     {
       "author": "qwen.ai[bot]",
@@ -199,6 +199,6 @@
     }
   ],
   "history_available": true,
-  "commit": "e1374474739a99eb788e1e151c02f222cc41946d",
+  "commit": "b27d021da3a98730027692ffba65d307c1cdaa66",
   "generated_at": null
 }

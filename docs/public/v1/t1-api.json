@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-t1-api",
   "generated_at": "2026-10-07T05:12:17Z",
-  "commit": "e1374474739a99eb788e1e151c02f222cc41946d",
+  "commit": "b27d021da3a98730027692ffba65d307c1cdaa66",
   "history_available": true,
   "server_extra": "pip install 'hypernix[t1api]'",
   "client_install": "pip install hypernix",
@@ -3649,7 +3649,7 @@
     {
       "module": "hypernix.t1api.deps",
       "source": "src/hypernix/t1api/deps.py",
-      "line_count": 669,
+      "line_count": 675,
       "summary": "t1api.deps \u2014 FastAPI ``Depends()`` wiring.",
       "api": [
         {
@@ -3957,14 +3957,14 @@
           "kind": "function",
           "name": "require_hyperlink_operator",
           "signature": "def require_hyperlink_operatorprincipal: HyperLinkPrincipal=Depends(get_hyperlink_principal) -> HyperLinkPrincipal",
-          "line": 741,
+          "line": 747,
           "doc": "Admin, or partial admin. For reading the server rather than steering it."
         },
         {
           "kind": "function",
           "name": "require_hyperlink_admin",
           "signature": "def require_hyperlink_adminprincipal: HyperLinkPrincipal -> HyperLinkPrincipal",
-          "line": 776,
+          "line": 782,
           "doc": "Pairing and device management are operator actions, not device ones."
         }
       ],
@@ -3980,6 +3980,13 @@
         }
       ],
       "changes": [
+        {
+          "sha": "9476ebc8",
+          "date": "2026-10-27",
+          "author": "Claude",
+          "subject": "HyperLink: stop dropping a Tailscale connection the moment it is made",
+          "api_changes": []
+        },
         {
           "sha": "0364ead4",
           "date": "2026-10-14",
@@ -4062,33 +4069,13 @@
           "author": "Claude",
           "subject": "t1: HyperLink could not connect over a trusted network at all",
           "api_changes": []
-        },
-        {
-          "sha": "46f59011",
-          "date": "2026-09-10",
-          "author": "Claude",
-          "subject": "0.72.4.post9 \u2014 HyperLink catches up, notifies, and searches",
-          "api_changes": [
-            {
-              "kind": "added",
-              "text": "def get_sync_store(request: Request):"
-            },
-            {
-              "kind": "added",
-              "text": "def get_notification_store(request: Request):"
-            },
-            {
-              "kind": "added",
-              "text": "def get_search_index(request: Request):"
-            }
-          ]
         }
       ]
     },
     {
       "module": "hypernix.t1api.disconnect",
       "source": "src/hypernix/t1api/disconnect.py",
-      "line_count": 101,
+      "line_count": 104,
       "summary": "Knowing when a streaming caller has gone.",
       "api": [
         {
@@ -4110,7 +4097,7 @@
           "kind": "function",
           "name": "while_listened_to",
           "signature": "async def while_listened_torequest: Any, events: Iterator[bytes], *, what: str='' -> AsyncIterator[bytes]",
-          "line": 106,
+          "line": 109,
           "doc": "Relay *events* (a sync generator, run off the event loop) until it ends or the caller has gone; either way it is closed, and with it the backend stream it was reading."
         }
       ],
@@ -4124,6 +4111,13 @@
         }
       ],
       "changes": [
+        {
+          "sha": "1f71cc6f",
+          "date": "2026-10-27",
+          "author": "Claude",
+          "subject": "Security: the scan's high alerts, vulnerable dependency floors; 0.72.8a5",
+          "api_changes": []
+        },
         {
           "sha": "91cd2708",
           "date": "2026-10-08",
@@ -6254,14 +6248,14 @@
     {
       "module": "hypernix.t1api.modelindex",
       "source": "src/hypernix/t1api/modelindex.py",
-      "line_count": 366,
+      "line_count": 395,
       "summary": "``hypernix-t1 index`` \u2014 turn a folder of GGUFs into a model registry.",
       "api": [
         {
           "kind": "class",
           "name": "IndexError_",
           "signature": "class IndexError_",
-          "line": 72,
+          "line": 74,
           "doc": "Indexing could not proceed. Named to avoid shadowing the builtin.",
           "methods": []
         },
@@ -6269,19 +6263,19 @@
           "kind": "class",
           "name": "IndexedModel",
           "signature": "class IndexedModel",
-          "line": 77,
+          "line": 79,
           "doc": "One GGUF, as the file describes itself.",
           "methods": [
             {
               "name": "readable",
               "signature": "def readableself -> bool",
-              "line": 105,
+              "line": 107,
               "doc": ""
             },
             {
               "name": "to_dict",
               "signature": "def to_dictself -> dict[str, Any]",
-              "line": 108,
+              "line": 110,
               "doc": ""
             }
           ]
@@ -6290,35 +6284,35 @@
           "kind": "function",
           "name": "model_id_for",
           "signature": "def model_id_forpath: str | Path -> str",
-          "line": 128,
+          "line": 130,
           "doc": "A stable slug for *path*."
         },
         {
           "kind": "function",
           "name": "inspect",
           "signature": "def inspectpath: str | Path -> IndexedModel",
-          "line": 167,
+          "line": 177,
           "doc": "Read one GGUF and report what it says about itself."
         },
         {
           "kind": "function",
           "name": "build_entry",
           "signature": "def build_entryfound: IndexedModel, *, plan: str='free', input_price: float=0.0, output_price: float=0.0, currency: str='USD', availability: str='public', routing_priority: int=10 -> ModelEntry",
-          "line": 255,
+          "line": 289,
           "doc": "A registry entry for *found*, with policy from the arguments."
         },
         {
           "kind": "function",
           "name": "index_directory",
           "signature": "def index_directorydirectory: str | Path=DEFAULT_MODELS_DIR -> list[IndexedModel]",
-          "line": 317,
+          "line": 351,
           "doc": "Every ``.gguf`` under *directory*, inspected."
         },
         {
           "kind": "function",
           "name": "write_registry",
           "signature": "def write_registryentries: list[ModelEntry], path: str | Path, *, refresh: bool=False -> dict[str, Any]",
-          "line": 343,
+          "line": 377,
           "doc": "Merge *entries* into the registry at *path*."
         }
       ],
@@ -6332,6 +6326,26 @@
         }
       ],
       "changes": [
+        {
+          "sha": "2c7ddb57",
+          "date": "2026-10-27",
+          "author": "Claude",
+          "subject": "T1 runner start: a quick model list and a picker that never freezes",
+          "api_changes": [
+            {
+              "kind": "removed",
+              "text": "def _read_gguf(path: Path) -> tuple[dict, list, str]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _read_gguf(path: Path) -> tuple[dict, list, str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _inspect(model_path: Path) -> IndexedModel:"
+            }
+          ]
+        },
         {
           "sha": "99636442",
           "date": "2026-09-29",
@@ -7393,20 +7407,20 @@
     {
       "module": "hypernix.t1api.picker",
       "source": "src/hypernix/t1api/picker.py",
-      "line_count": 212,
+      "line_count": 255,
       "summary": "An inline arrow-key chooser, like ``lms load``'s.",
       "api": [
         {
           "kind": "class",
           "name": "Choice",
           "signature": "class Choice",
-          "line": 28,
+          "line": 27,
           "doc": "",
           "methods": [
             {
               "name": "text",
               "signature": "def textself -> str",
-              "line": 36,
+              "line": 35,
               "doc": ""
             }
           ]
@@ -7415,44 +7429,44 @@
           "kind": "function",
           "name": "fuzzy_score",
           "signature": "def fuzzy_scorequery: str, text: str -> int | None",
-          "line": 40,
+          "line": 39,
           "doc": "How well *query* matches *text*: None for no match, higher is better."
         },
         {
           "kind": "class",
           "name": "Picker",
           "signature": "class Picker",
-          "line": 66,
+          "line": 65,
           "doc": "",
           "methods": [
             {
               "name": "visible",
               "signature": "def visibleself -> list[Choice]",
-              "line": 75,
+              "line": 74,
               "doc": ""
             },
             {
               "name": "selected",
               "signature": "def selectedself -> Choice | None",
-              "line": 82,
+              "line": 81,
               "doc": ""
             },
             {
               "name": "set_items",
               "signature": "def set_itemsself, items: Sequence[Choice] -> None",
-              "line": 86,
+              "line": 85,
               "doc": "New items from a refresh, keeping the selection on the same value."
             },
             {
               "name": "key",
               "signature": "def keyself, key: str -> None",
-              "line": 98,
+              "line": 97,
               "doc": ""
             },
             {
               "name": "render",
               "signature": "def renderself, width: int=80, height: int=12 -> list[str]",
-              "line": 122,
+              "line": 121,
               "doc": ""
             }
           ]
@@ -7461,21 +7475,21 @@
           "kind": "function",
           "name": "decode_keys",
           "signature": "def decode_keysdata: str -> list[str]",
-          "line": 149,
+          "line": 148,
           "doc": "Raw terminal input as key names, several per read when typed fast."
         },
         {
           "kind": "function",
           "name": "interactive",
           "signature": "def interactive -> bool",
-          "line": 173,
+          "line": 172,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "choose",
           "signature": "def choosetitle: str, fetch: Callable[[], Sequence[Choice]], *, refresh_seconds: float=2.0, initial_query: str='', out: Any=None, fd: int | None=None -> Choice | None",
-          "line": 177,
+          "line": 176,
           "doc": "Ask on the terminal. None if cancelled."
         }
       ],
@@ -7489,6 +7503,18 @@
         }
       ],
       "changes": [
+        {
+          "sha": "2c7ddb57",
+          "date": "2026-10-27",
+          "author": "Claude",
+          "subject": "T1 runner start: a quick model list and a picker that never freezes",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def fetcher() -> None:"
+            }
+          ]
+        },
         {
           "sha": "1f0d41be",
           "date": "2026-10-14",
@@ -10225,7 +10251,7 @@
     {
       "module": "hypernix.t1api.routers.hyperlink",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line_count": 2822,
+      "line_count": 2825,
       "summary": "``/hyperlink`` \u2014 the surface the iOS app talks to.",
       "api": [
         {
@@ -10568,56 +10594,56 @@
           "kind": "function",
           "name": "sync_changes",
           "signature": "def sync_changescursor: int=Query(default=0, ge=0), limit: int=Query(default=100, ge=1, le=500), session_id: str | None=Query(default=None), entities: str | None=Query(default=None, description='Comma-separated: session,message,device,attachment'), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: SyncStore=Depends(get_sync_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> SyncPageResponse",
-          "line": 2986,
+          "line": 2989,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "claim_client_message",
           "signature": "def claim_client_messagepayload: SyncClaimRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: SyncStore=Depends(get_sync_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> SyncClaimResponse",
-          "line": 3017,
+          "line": 3020,
           "doc": "Claim an idempotency key before sending a turn."
         },
         {
           "kind": "function",
           "name": "register_push",
           "signature": "def register_pushpayload: PushRegisterRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: NotificationStore=Depends(get_notification_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> PushRegistrationResponse",
-          "line": 3049,
+          "line": 3052,
           "doc": "Register this device's APNs token."
         },
         {
           "kind": "function",
           "name": "list_push",
           "signature": "def list_pushinclude_disabled: bool=Query(default=False), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: NotificationStore=Depends(get_notification_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> PushRegistrationListResponse",
-          "line": 3081,
+          "line": 3084,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "set_push_events",
           "signature": "def set_push_eventsregistration_id: str, payload: PushEventsRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: NotificationStore=Depends(get_notification_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> PushRegistrationResponse",
-          "line": 3101,
+          "line": 3104,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "unregister_push",
           "signature": "def unregister_pushregistration_id: str, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: NotificationStore=Depends(get_notification_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> GenericOkResponse",
-          "line": 3119,
+          "line": 3122,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "list_push_events",
           "signature": "def list_push_eventsconfig: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> dict",
-          "line": 3133,
+          "line": 3136,
           "doc": "What a device may subscribe to."
         },
         {
           "kind": "function",
           "name": "search_history",
           "signature": "def search_historyq: str=Query(min_length=1, max_length=500), limit: int=Query(default=25, ge=1, le=200), session_id: str | None=Query(default=None), include_archived: bool=Query(default=False), roles: str | None=Query(default=None, description='Comma-separated'), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), index: SearchIndex=Depends(get_search_index), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> SearchResponse",
-          "line": 3171,
+          "line": 3174,
           "doc": "Search this owner's sessions and messages."
         }
       ],
@@ -10633,6 +10659,13 @@
         }
       ],
       "changes": [
+        {
+          "sha": "2c7ddb57",
+          "date": "2026-10-27",
+          "author": "Claude",
+          "subject": "T1 runner start: a quick model list and a picker that never freezes",
+          "api_changes": []
+        },
         {
           "sha": "677812ea",
           "date": "2026-10-21",
@@ -10812,13 +10845,6 @@
               "text": "def _vision(wire: list[dict[str, Any]], backend, runner) -> list[dict[str, Any]]:"
             }
           ]
-        },
-        {
-          "sha": "203b7112",
-          "date": "2026-10-06",
-          "author": "Claude",
-          "subject": "0.72.7 step 1: link config-less models, `runner auto`, images converted on upload",
-          "api_changes": []
         }
       ]
     },
@@ -11330,7 +11356,7 @@
         {
           "module": "pydantic",
           "extra": "t1api",
-          "requirement": "pydantic>=2,<3"
+          "requirement": "pydantic>=2.4,<3"
         }
       ],
       "changes": [
@@ -12161,7 +12187,7 @@
         {
           "module": "pydantic",
           "extra": "t1api",
-          "requirement": "pydantic>=2,<3"
+          "requirement": "pydantic>=2.4,<3"
         }
       ],
       "changes": [
@@ -12974,7 +13000,7 @@
         {
           "module": "pydantic",
           "extra": "t1api",
-          "requirement": "pydantic>=2,<3"
+          "requirement": "pydantic>=2.4,<3"
         }
       ],
       "changes": [
@@ -15528,7 +15554,7 @@
         {
           "module": "pydantic",
           "extra": "t1api",
-          "requirement": "pydantic>=2,<3"
+          "requirement": "pydantic>=2.4,<3"
         }
       ],
       "changes": [
@@ -15899,7 +15925,7 @@
     {
       "module": "hypernix.t1api.setup_cli",
       "source": "src/hypernix/t1api/setup_cli.py",
-      "line_count": 519,
+      "line_count": 522,
       "summary": "``hnx-t1 setup`` \u2014 the T1 interactive installer, b1 (0.72.8a4).",
       "api": [
         {
@@ -16029,6 +16055,13 @@
         }
       ],
       "changes": [
+        {
+          "sha": "ca9f3235",
+          "date": "2026-10-27",
+          "author": "Rayla",
+          "subject": "fix(t1api): keep setup dry-run stdout as env file",
+          "api_changes": []
+        },
         {
           "sha": "264c0d3e",
           "date": "2026-10-23",
@@ -20271,7 +20304,7 @@
       "handler": "list_push",
       "response_model": "PushRegistrationListResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 3080,
+      "line": 3083,
       "tag": "hyperlink"
     },
     {
@@ -20281,7 +20314,7 @@
       "handler": "register_push",
       "response_model": "PushRegistrationResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 3048,
+      "line": 3051,
       "tag": "hyperlink"
     },
     {
@@ -20291,7 +20324,7 @@
       "handler": "list_push_events",
       "response_model": "dict",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 3132,
+      "line": 3135,
       "tag": "hyperlink"
     },
     {
@@ -20301,7 +20334,7 @@
       "handler": "unregister_push",
       "response_model": "GenericOkResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 3118,
+      "line": 3121,
       "tag": "hyperlink"
     },
     {
@@ -20311,7 +20344,7 @@
       "handler": "set_push_events",
       "response_model": "PushRegistrationResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 3100,
+      "line": 3103,
       "tag": "hyperlink"
     },
     {
@@ -20321,7 +20354,7 @@
       "handler": "search_history",
       "response_model": "SearchResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 3170,
+      "line": 3173,
       "tag": "hyperlink"
     },
     {
@@ -20481,7 +20514,7 @@
       "handler": "sync_changes",
       "response_model": "SyncPageResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 2985,
+      "line": 2988,
       "tag": "hyperlink"
     },
     {
@@ -20491,7 +20524,7 @@
       "handler": "claim_client_message",
       "response_model": "SyncClaimResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 3016,
+      "line": 3019,
       "tag": "hyperlink"
     },
     {
