@@ -97,7 +97,8 @@ The RC is not complete until the net-new counts are measured against the baselin
 
 ### HyperNix 0.73.0 pre-alpha 1 changes  
   
-deprecate and remove all support for the t1 api endpoint for v1 web, make the public release action, bundle a Mac intel and Mac m CPU (amd 64 and arm64) hyperlink app dmg files, add a module called atc (api traffic control) it will mange, optimize and end to end encrypt all data going through it, and help protect the server from hackers   
+deprecate and remove all support for the t1 api endpoint for v1 web, make the public release action, bundle a Mac intel and Mac m CPU (amd 64 and arm64) hyperlink app dmg files, add a module called atc (api traffic control) it will mange, optimize and end to end encrypt all data going through it, and help protect the server from hackers
+also, add a command hnx sandbox (or sb) then directory -s (settings with thinks like, no web access, no file editing or creation, and more)
   
 ## HyperNix 0.73.0 pt1 (alpha 1) — Strife Custom GGUF Inference Runtime
 
