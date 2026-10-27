@@ -93,7 +93,7 @@ def _load_tokenizer(model_dir: Path) -> tuple[Any, str]:
         import transformers  # noqa: F401
     except ModuleNotFoundError:
         from hypernix.system import deps
-        if not deps.ensure(["transformers>=4.44", "tokenizers>=0.20"]):
+        if not deps.ensure(["transformers>=5.10", "tokenizers>=0.20"]):
             return _ByteTokenizer(), "byte"
 
     fast_err: Exception | None = None
@@ -114,7 +114,7 @@ def _load_tokenizer(model_dir: Path) -> tuple[Any, str]:
                 file=sys.stderr,
             )
             if deps.ensure(
-                ["tokenizers>=0.20", "transformers>=4.44"],
+                ["tokenizers>=0.20", "transformers>=5.10"],
                 reimport=["tokenizers", "transformers"],
             ):
                 try:
@@ -128,7 +128,7 @@ def _load_tokenizer(model_dir: Path) -> tuple[Any, str]:
         msg = (
             f"[hypernix] could not load HF tokenizer from {model_dir}: {slow_err}\n"
             f"          falling back to UTF-8 byte tokenizer (output quality will suffer).\n"
-            f"          try: pip install --upgrade 'tokenizers>=0.20' 'transformers>=4.44'"
+            f"          try: pip install --upgrade 'tokenizers>=0.20' 'transformers>=5.10'"
         )
         if fast_err is not None:
             msg += f"\n          (fast-tokenizer error was: {fast_err})"
