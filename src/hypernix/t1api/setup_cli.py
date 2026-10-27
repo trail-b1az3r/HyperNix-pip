@@ -491,7 +491,7 @@ def _summary(a: Answers, path: Path) -> None:
         ("Config", str(path)),
     ]
     for label, value in rows:
-        print(f"     {_c('2', f'{label:<15}')} {value}")
+        print(f"     {_c('2', f'{label:<15}')} {value}", file=_OUT)
 
 
 def _write(path: Path, text: str) -> Path | None:
@@ -574,8 +574,11 @@ def cli_main(argv: list[str] | None = None, *, read: Callable[[str], str] = inpu
         return 130
     text = build_env(answers, config_dir=config_dir, old=old, version=__version__)
     if args.dry_run:
+        # Keep stdout machine-readable: it is the complete .env file.
+        # All human-facing progress and the dry-run notice belong on stderr.
         _summary(answers, env_path)
-        print("hnx-t1 setup: dry-run; configuration was not written.")
+        print(text, end="")
+        print("hnx-t1 setup: dry-run; configuration was not written.", file=sys.stderr)
         return 0
     _summary(answers, env_path)
     if interactive and not Asker(interactive=True, read=read).yes_no("write", "Write it?", True):
