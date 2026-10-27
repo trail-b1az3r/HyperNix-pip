@@ -167,9 +167,17 @@ class ToolContext:
             raise ToolError("NUL bytes are not allowed in paths", code="bad_path")
         rel_path = PurePosixPath(rel_norm)
         if rel_path.is_absolute():
-            raise ToolError("Absolute paths are not allowed", code="bad_path")
+            raise ToolError(f"{relative!r} is outside the workspace ({self.root}): "
+                            "absolute paths are not allowed", code="outside_workspace")
         parts = rel_path.parts
-        if any(part in {"", ".", ".."} for part in parts):
+        # `..` is an attempt to leave the workspace, and says so: callers
+        # (the /noodle route, the model's retry) read outside_workspace as
+        # "pick a path under the root". Empty and `.` segments are only
+        # malformed.
+        if ".." in parts:
+            raise ToolError(f"{relative!r} is outside the workspace ({self.root}): "
+                            "`..` segments are not allowed", code="outside_workspace")
+        if any(part in {"", "."} for part in parts):
             raise ToolError("Path traversal segments are not allowed", code="bad_path")
         # expanduser() *after* the join, deliberately. By then any `~` the
         # model supplied sits in the middle of the path, where it expands
