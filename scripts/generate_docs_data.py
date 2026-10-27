@@ -174,7 +174,7 @@ def _clamp_changelog_text(value: str, limit: int) -> str:
 #: wiki/Changelog-guide.md's legend, in its order.
 CHANGELOG_SYMBOLS = (
     "๋࣭⭑", "✨", "𖥔", "𖢥", "🐛", "🛡️", "🔁", "🔧", "⚡", "🔒", "⚠️",
-    "🧪", "📚", "🛜", "🔌", "🔗", "❌", "✂️", "꩜", "❗", "🩹", "♻️", "📦",
+    "🧪", "📚", "🛜", "🔌", "🔗", "❌", "✂️", "꩜", "❗", "🩹", "♻️", "📦", "🛈",
 )
 
 
@@ -186,6 +186,7 @@ CHANGELOG_SYMBOL_LABELS = {
     "🔒": "security", "⚠️": "error codes", "🧪": "tests", "📚": "docs", "🛜": "site",
     "🔌": "integration", "🔗": "API", "❌": "breaking", "✂️": "removed", "꩜": "restored",
     "❗": "known issue", "🩹": "workaround", "♻️": "migration", "📦": "packaging",
+    "🛈": "caveat",
 }
 
 

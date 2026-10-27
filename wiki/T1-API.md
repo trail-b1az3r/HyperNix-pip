@@ -6,7 +6,7 @@ server decides what exists, what's available, and how much is left — see
 [Design principle](#design-principle).
 
 **Status: T1 v1.1.26.10.2.0** (long form `1.1.2026.10.2.0`) in
-`0.72.8a3`: the 1.1 generation, which began with T1 v1.1.26.9.0.0 in
+`0.72.8a4`: the 1.1 generation, which began with T1 v1.1.26.9.0.0 in
 `0.72.5.post15`, plus [web search v2](#web-search-v2),
 [signed prompts](#signed-prompts-and-the-ping),
 [chats owned by an account or a key](#ownership),
@@ -1727,7 +1727,7 @@ and runs T1 v1.1.26.10.1.0 or newer sends one heartbeat an hour, unless
 `T1_PUBLIC_COUNTER=0`:
 
 ```json
-{"id": "<32 hex>", "t1_version": "1.1.26.10.2.0", "version": "0.72.8a3"}
+{"id": "<32 hex>", "t1_version": "1.1.26.10.2.0", "version": "0.72.8a4"}
 ```
 
 `id` is a SHA-256 of a random value the server made once and keeps in

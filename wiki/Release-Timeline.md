@@ -118,29 +118,12 @@ timeline
 timeline
     title Release v0.71.4b2 Commits
     0.71.4b2
-        : a7b9104 - 0.71.4b2 release, hyped+ (hyped-pro) OpenClaw Node.js TUI, updated models catalog, unified model folder, brewer 33.6429M preset, vision support, slash command autocomplete, price estimate, prompt compaction, auto compaction, and bug fixes
-```
-
-
-## Release v0.71.4b2 (2026-07-26)
-
-```mermaid
-timeline
-    title Release v0.71.4b2 Commits
-    0.71.4b2
+        : bcfb3e2 - Rename 'hyped+' to 'hyped-plus' in pyproject.toml
         : c2d87c9 - upload fixed hyped version
         : 3564b64 - Delete src/hypernix/hyped.py
         : 5591c64 - 0.71.4b2, hyped pro, base hyped fixes, model updates, wiki updates and more
         : 98dc5f4 - chore- update JSON stats (scheduled)
-```
-
-## Release v0.71.4b2 (2026-07-26)
-
-```mermaid
-timeline
-    title Release v0.71.4b2 Commits
-    0.71.4b2
-        : bcfb3e2 - Rename 'hyped+' to 'hyped-plus' in pyproject.toml
+        : a7b9104 - 0.71.4b2 release, hyped+ (hyped-pro) OpenClaw Node.js TUI, updated models catalog, unified model folder, brewer 33.6429M preset, vision support, slash command autocomplete, price estimate, prompt compaction, auto compaction, and bug fixes
 ```
 
 ## Release v0.71.4b3 (2026-07-27)
@@ -455,29 +438,6 @@ timeline
 timeline
     title Release v0.72.3 Commits
     0.72.3
-        : 78582ae - Fix both CI failures- a version-dependent lint bar and a half-shadowed PATH
-        : 56a179a - Fix two real test failures the missing-torch diagnosis was hiding
-        : 3f872ce - chore- update JSON stats (scheduled)
-        : 3245138 - 0.72.3- ship hypernix-t1, and make create work without a checkout
-        : bcb0fa9 - Fix the CI failures- interpreter choice, a bash that is not one, backslashes in POSIX profiles
-        : a7aeaff - VRAM optimizations- hypernix.system.vram
-        : 1eb8121 - Import Callable from collections.abc, not typing
-        : 4dbd9e2 - Docs modernization, billing-binding lifecycle, and 348 untracked .pyc
-        : 4538dad - hypernix-t1- manage a T1 API server as a service, not an incantation
-        : dc3de5b - Add Codacy security scan workflow
-        : 4c25a42 - CI- gate the release on a live server, a real key and a fake model
-        : 55378e1 - T2P billing keys, and a server's right to refuse them
-        : e392ac0 - HyperLink- fix the three separate reasons it could not reach a server
-        : 5d51695 - A new server issues itself a local, three-day admin key
-        : a82c166 - Security- require consent before the AI agent runs code or touches credentials
-```
-
-## Release v0.72.3 (2026-09-02)
-
-```mermaid
-timeline
-    title Release v0.72.3 Commits
-    0.72.3
         : 2c584d3 - docs- 0.72.3 pt 3 changelog
         : 3c9b555 - gkey printed about one key in three thousand wrong
         : 67c4d08 - Dflash2- a draft model, inside the model it drafts for
@@ -493,6 +453,21 @@ timeline
         : b3b97dd - CI- wait for every server, and let a release skip the integration gate
         : e1efc70 - Fix formatting of rich dependency in pyproject.toml
         : 0c67edd - Fix rich dependency version constraint
+        : 78582ae - Fix both CI failures- a version-dependent lint bar and a half-shadowed PATH
+        : 56a179a - Fix two real test failures the missing-torch diagnosis was hiding
+        : 3f872ce - chore- update JSON stats (scheduled)
+        : 3245138 - 0.72.3- ship hypernix-t1, and make create work without a checkout
+        : bcb0fa9 - Fix the CI failures- interpreter choice, a bash that is not one, backslashes in POSIX profiles
+        : a7aeaff - VRAM optimizations- hypernix.system.vram
+        : 1eb8121 - Import Callable from collections.abc, not typing
+        : 4dbd9e2 - Docs modernization, billing-binding lifecycle, and 348 untracked .pyc
+        : 4538dad - hypernix-t1- manage a T1 API server as a service, not an incantation
+        : dc3de5b - Add Codacy security scan workflow
+        : 4c25a42 - CI- gate the release on a live server, a real key and a fake model
+        : 55378e1 - T2P billing keys, and a server's right to refuse them
+        : e392ac0 - HyperLink- fix the three separate reasons it could not reach a server
+        : 5d51695 - A new server issues itself a local, three-day admin key
+        : a82c166 - Security- require consent before the AI agent runs code or touches credentials
 ```
 
 ## Release v0.72.3.post1 (2026-09-03)
@@ -1000,14 +975,6 @@ timeline
         : 91e6ce60 - chore- refresh generated docs data and release summaries
 ```
 
-## Release v0.72.6.post2 (2026-09-27)
-
-```mermaid
-timeline
-    title Release v0.72.6.post2 Commits
-    0.72.6.post2 : No commits found
-```
-
 ## Release v0.72.6.post3 (2026-09-30)
 
 ```mermaid
@@ -1140,12 +1107,3 @@ timeline
         : bb54e804 - Auto-update README header (hourly)
         : 6b55a31f - chore- refresh generated docs data and release summaries
 ```
-
-## Release v0.72.8a4 (2026-10-22)
-
-```mermaid
-timeline
-    title Release v0.72.8a4 Commits
-    0.72.8a4 : No commits found
-```
-

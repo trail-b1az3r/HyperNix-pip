@@ -318,6 +318,14 @@ jobs:
           manifest["version"] = re.match(r"\d+\.\d+\.\d+", v).group(0)
           manifest_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
           print("firefox extension version:", manifest["version"])
+          # The wiki's "current version" lines, which nothing kept and so
+          # went on naming the previous release.
+          spec = importlib.util.spec_from_file_location(
+              "sync_wiki_versions", "scripts/sync_wiki_versions.py")
+          wiki = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(wiki)
+          print("wiki pages updated:",
+                wiki.sync([Path("wiki/Home.md"), Path("wiki/T1-API.md")], v) or "none")
           PY
           echo "--- pyproject.toml version line"
           grep '^version' pyproject.toml
@@ -342,6 +350,7 @@ jobs:
             tests/interfaces/test_hyped_pro_otui.py \
             tests/repo/test_version_guard.py \
             tests/repo/test_release_push_retry.py \
+            tests/repo/test_wiki_versions.py \
             "tests/monitoring/test_tvtop_max.py::TestPackage"
 
       - name: Lint
@@ -513,7 +522,21 @@ jobs:
           content += "```\n\n"
           
           existing = timeline_path.read_text() if timeline_path.exists() else ""
-          timeline_path.write_text(existing + content)
+          # A re-run of the same release (a retried publish, a second
+          # dispatch) used to append a second section for the version --
+          # "No commits found", since the first run had taken them all.
+          # Replace this version's section instead, and never with an
+          # empty one.
+          header = f"## Release v{version} ("
+          if header in existing:
+              start = existing.index(header)
+              end = existing.find("\n## Release v", start + len(header))
+              end = len(existing) if end < 0 else end + 1
+              if commits:
+                  existing = existing[:start] + content + existing[end:]
+              timeline_path.write_text(existing)
+          else:
+              timeline_path.write_text(existing + content)
           PY
 
       - name: Upload build artifacts
@@ -550,6 +573,8 @@ jobs:
             src/hypernix/monitoring/tvtop_max_app/package.json \
             src/hypernix/monitoring/tvtop_max_app/src/app.ts \
             browser/firefox/manifest.json \
+            wiki/Home.md \
+            wiki/T1-API.md \
             wiki/Release-Timeline.md
 
           if git diff --cached --quiet; then

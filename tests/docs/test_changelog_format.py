@@ -32,12 +32,15 @@ CATEGORIES = (
     "Tests",
     "Known Issues",
     "Temporary Workarounds",
+    # Guide v2.2.1.
+    "Caveats",
+    "Notes",
 )
 CATEGORY_SET = set(CATEGORIES)
 SUMMARY = "Beta / Dev → Release Summary"
 SYMBOLS = (
     "๋࣭⭑", "✨", "𖥔", "𖢥", "🐛", "🛡️", "🔁", "🔧", "⚡", "🔒", "⚠️",
-    "🧪", "📚", "🛜", "🔌", "🔗", "❌", "✂️", "꩜", "❗", "🩹", "♻️", "📦",
+    "🧪", "📚", "🛜", "🔌", "🔗", "❌", "✂️", "꩜", "❗", "🩹", "♻️", "📦", "🛈",
 )
 
 

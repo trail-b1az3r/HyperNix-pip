@@ -126,14 +126,11 @@ Historical wording and technical detail are retained during format normalization
   `upgrade -S env` (added settings, typos, the secret, the file mode,
   backups, dry runs).
 
-### Known Issues
+### Caveats
 
-None
-
-### caveats
- 🛈The new website pages were checked in Chromium at desktop and phone
+🛈 The new website pages were checked in Chromium at desktop and phone
   widths, not in Safari or Firefox.
- 🛈  hyped-pro's OpenTUI app's tests need Bun, which the build environment
+🛈 hyped-pro's OpenTUI app's tests need Bun, which the build environment
   does not have; its code changes are string constants.
 
 ## 0.72.8a3 — 2026-10-21

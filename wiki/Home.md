@@ -138,7 +138,7 @@ reachable if you already knew the filename. Fixed.)
 
 | Guide | Covers |
 |---|---|
-| [T1-API](T1-API.md) | `hypernix.t1api` — controlled HTTP gateway into HyperNix-pip (model registry, auth, routing, modules, servers, jobs, events, billing, the LM Studio bridge, HyperLink and HyperLink on the web, web accounts, MCP both ways, Net, the Anthropic Messages API for Claude Code, backups, governed inference), every route and every setting. Current: **T1 v1.1.26.10.2.0** in 0.72.8a3. |
+| [T1-API](T1-API.md) | `hypernix.t1api` — controlled HTTP gateway into HyperNix-pip (model registry, auth, routing, modules, servers, jobs, events, billing, the LM Studio bridge, HyperLink and HyperLink on the web, web accounts, MCP both ways, Net, the Anthropic Messages API for Claude Code, backups, governed inference), every route and every setting. Current: **T1 v1.1.26.10.2.0** in 0.72.8a4. |
 | [T1-API Security Checklist](T1-API-Security-Checklist.md) | What to check before exposing a deployment — one page, per-item, with the config field each maps to, including every opt-in feature and keeping the server current. |
 | [HyperLink-OnDevice](HyperLink-OnDevice.md) | HyperLink's on-phone models: search Hugging Face, download a GGUF and run it on the iPhone. |
 | [HyperLink-Sync](HyperLink-Sync.md) | HyperLink's sync, push notifications and search — how a phone that sleeps catches up. |
