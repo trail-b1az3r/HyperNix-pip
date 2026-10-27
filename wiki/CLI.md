@@ -1086,6 +1086,27 @@ What it changed is also written to `~/.hypernix/protect-lock-state.json`,
 so if it is killed outright `hnx prot restore` puts them back. A Mac set
 to lock the moment the display sleeps is refused unless `--allow-lock`.
 
+**Hyprland, with hyprlock or Quickshell** (0.72.8a5). Hyprland never
+locks by itself; hypridle does, after its timeouts (running hyprlock,
+`loginctl lock-session`, or a Quickshell lock), and Quickshell can watch
+for idle itself with an `IdleMonitor`. While the screen is dark `prot`:
+
+- holds a logind idle inhibitor (`systemd-inhibit --what=idle`), which
+  hypridle honours unless `hypridle.conf` says
+  `ignore_systemd_inhibit = true` — then hypridle is stopped and started
+  again on the way out (`systemctl --user` when it runs as a unit,
+  `hyprctl dispatch exec hypridle` when it does not);
+- holds a Wayland idle inhibitor with `wlinhibit` when the Quickshell
+  config (`~/.config/quickshell`) uses an `IdleMonitor`, which ignores
+  logind's — and says to install `wlinhibit` when it is missing;
+- turns `misc:key_press_enables_dpms` (and `mouse_move_enables_dpms`)
+  off if they are on, since the first letter of the wake word would light
+  the screen, and back on afterwards.
+
+The inhibitors are processes, so they end with `prot` however it ends;
+the option and hypridle changes are in the state file for
+`hnx prot restore`.
+
 **It will not lock a screen it did not blank.** If there is no method
 for this session, `prot` says which of the four cases it is — no
 graphical session, a Wayland compositor with nothing installed, a

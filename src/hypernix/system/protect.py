@@ -51,6 +51,14 @@ back afterwards (:class:`hypernix.system.blanking.LockGuard`). If a crash
 left it off, ``hnx prot restore`` puts it back. On a Mac set to lock
 immediately when the display sleeps, it refuses unless ``--allow-lock``.
 
+On Hyprland the locker is hypridle running hyprlock (or a Quickshell
+lock), or Quickshell's own ``IdleMonitor``: an idle inhibitor is held
+for as long as the screen is dark -- logind's for hypridle, a Wayland
+one through ``wlinhibit`` for Quickshell -- and hypridle is stopped and
+restarted if its config ignores logind. Hyprland's
+``key_press_enables_dpms`` would light the screen at the wake word's
+first letter, so it is off while dark too.
+
 Usage:
   hnx prot [start] [--force] [--allow-lock]
   hnx prot restore
@@ -224,6 +232,8 @@ def start_protection(*, force: bool = False, allow_lock: bool = False) -> int:
     held = guard.disable()
     if held:
         print(f"[protect] Holding the session unlocked ({', '.join(held)}); put back on exit.")
+    for note in guard.notes:
+        print(f"[protect] {note}")
 
     print("[protect] Entering protection mode.")
     print(f"[protect] Type '{wake_word}' to wake up.")

@@ -359,6 +359,11 @@ class LockGuard:
 
     state_file: str = ""
     changed: list[tuple[str, list[str]]] = field(default_factory=list)
+    #: Inhibitors held for as long as this guard is: processes, so a crash
+    #: releases them by itself and there is nothing for `restore` to undo.
+    held: list[tuple[str, subprocess.Popen]] = field(default_factory=list, repr=False)
+    #: What could not be held, and what to do about it.
+    notes: list[str] = field(default_factory=list)
 
     def _record(self, what: str, restore: list[str]) -> None:
         self.changed.append((what, restore))
@@ -401,11 +406,67 @@ class LockGuard:
             timeout = _xset_screensaver_timeout()
             if timeout and _out(["xset", "s", "off"]) is not None:
                 self._record("X screensaver", ["xset", "s", str(timeout[0]), str(timeout[1])])
-        return [what for what, _ in self.changed]
+        if os.environ.get("HYPRLAND_INSTANCE_SIGNATURE") or _running("hypridle") or _running(*_QUICKSHELL):
+            self._hyprland()
+        return [what for what, _ in self.changed] + [what for what, _ in self.held]
+
+    # -- Hyprland, hypridle, hyprlock, Quickshell (0.72.8a5) -----------------
+
+    def _hyprland(self) -> None:
+        """Keep a Hyprland session from locking while the screen is dark.
+
+        Hyprland itself never locks. hypridle does, after its timeouts --
+        running hyprlock, ``loginctl lock-session``, or a Quickshell lock
+        (``qs ipc call lock lock``) -- and a dark screen is an idle one.
+        Quickshell can also watch for idle itself (``IdleMonitor``).
+
+        * hypridle honours logind idle inhibitors unless
+          ``ignore_systemd_inhibit = true``, so one is held for as long as
+          protection lasts. With that setting, hypridle is stopped and
+          started again afterwards.
+        * Quickshell's ``IdleMonitor`` honours Wayland idle inhibitors and
+          not logind's, so when its config uses one, ``wlinhibit`` holds a
+          Wayland inhibitor -- or a note says to install it.
+        * ``misc:key_press_enables_dpms`` turns the screen on at the first
+          key, which is the first letter of the wake word: off while dark.
+        """
+        if os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
+            for option in ("misc:key_press_enables_dpms", "misc:mouse_move_enables_dpms"):
+                if _hypr_option(option) == 1 and _out(["hyprctl", "keyword", option, "false"]) is not None:
+                    self._record(f"Hyprland {option}", ["hyprctl", "keyword", option, "true"])
+
+        idle = _running("hypridle")
+        if idle and _hypridle_ignores_logind():
+            if _out(["systemctl", "--user", "is-active", "hypridle.service"]) == "active":
+                if _out(["systemctl", "--user", "stop", "hypridle.service"]) is not None:
+                    self._record("hypridle (stopped)", ["systemctl", "--user", "start", "hypridle.service"])
+            elif _out(["pkill", "-x", "hypridle"]) is not None:
+                self._record("hypridle (stopped)", ["hyprctl", "dispatch", "exec", "hypridle"])
+        elif idle or os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
+            inhibitor = _hold(["systemd-inhibit", "--what=idle", "--who=hnx prot",
+                               "--why=the screen is off for protection, not idle", "--mode=block", "cat"])
+            if inhibitor is not None:
+                self.held.append(("idle inhibited (logind)", inhibitor))
+            elif idle:
+                self.notes.append("hypridle is running and systemd-inhibit is not, so its timeouts "
+                                  "still apply: the session may lock while the screen is dark.")
+
+        if _running(*_QUICKSHELL) and _quickshell_watches_idle():
+            inhibitor = _hold(["wlinhibit"])
+            if inhibitor is not None:
+                self.held.append(("idle inhibited (Wayland, for Quickshell)", inhibitor))
+            else:
+                self.notes.append("Quickshell's IdleMonitor ignores logind inhibitors and can lock "
+                                  "the session while the screen is dark. Install wlinhibit so prot "
+                                  "can hold a Wayland idle inhibitor instead.")
 
     def restore(self) -> list[str]:
         """Put back everything :meth:`disable` changed, newest first."""
         restored = []
+        for what, process in reversed(self.held):
+            _release(process)
+            restored.append(what)
+        self.held = []
         for what, argv in reversed(self.changed):
             if _out(argv) is not None:
                 restored.append(what)
@@ -433,6 +494,102 @@ class LockGuard:
             except (ValueError, KeyError, TypeError):
                 guard.changed = []
         return guard
+
+
+_QUICKSHELL = ("quickshell", "qs")
+
+
+def _running(*names: str) -> bool:
+    """Whether a process by one of these exact names is running for this user."""
+    for name in names:
+        if _out(["pgrep", "-x", "-u", str(os.getuid()) if hasattr(os, "getuid") else "0", name]):
+            return True
+    return False
+
+
+def _hypr_option(option: str) -> int | None:
+    """A Hyprland option's integer value (``hyprctl getoption -j``), or None."""
+    import json
+    import re
+
+    text = _out(["hyprctl", "getoption", option, "-j"])
+    if not text:
+        return None
+    try:
+        value = json.loads(text).get("int")
+        return int(value) if value is not None else None
+    except (ValueError, AttributeError, TypeError):
+        found = re.search(r"\bint:\s*(-?\d+)", text)
+        return int(found.group(1)) if found else None
+
+
+def _config_home() -> str:
+    return os.environ.get("XDG_CONFIG_HOME") or os.path.join(os.path.expanduser("~"), ".config")
+
+
+def _hypridle_ignores_logind() -> bool:
+    """``ignore_systemd_inhibit = true`` in hypridle.conf."""
+    import re
+
+    path = os.path.join(_config_home(), "hypr", "hypridle.conf")
+    try:
+        with open(path, encoding="utf-8") as handle:
+            text = handle.read()
+    except OSError:
+        return False
+    for line in text.splitlines():
+        line = line.split("#", 1)[0]
+        found = re.match(r"\s*ignore_systemd_inhibit\s*=\s*(\S+)", line)
+        if found:
+            return found.group(1).lower() in ("true", "yes", "on", "1")
+    return False
+
+
+def _quickshell_watches_idle() -> bool:
+    """Whether the Quickshell config uses an ``IdleMonitor``."""
+    root = os.path.join(_config_home(), "quickshell")
+    for folder, _dirs, files in os.walk(root):
+        for name in files:
+            if not name.endswith(".qml"):
+                continue
+            try:
+                with open(os.path.join(folder, name), encoding="utf-8", errors="replace") as handle:
+                    if "IdleMonitor" in handle.read():
+                        return True
+            except OSError:
+                continue
+    return False
+
+
+def _hold(argv: list[str]) -> subprocess.Popen | None:
+    """Start a process that holds an inhibitor until its stdin closes -- which
+    is when this process exits, however it exits."""
+    exe = shutil.which(argv[0])
+    if not exe:
+        return None
+    try:
+        process = subprocess.Popen([exe, *argv[1:]], stdin=subprocess.PIPE,
+                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except OSError:
+        return None
+    try:
+        process.wait(timeout=0.2)
+    except subprocess.TimeoutExpired:
+        return process  # still holding it
+    return None         # it exited at once: nothing is held
+
+
+def _release(process: subprocess.Popen) -> None:
+    try:
+        if process.stdin:
+            process.stdin.close()
+        process.terminate()
+        process.wait(timeout=COMMAND_TIMEOUT)
+    except (OSError, subprocess.TimeoutExpired):
+        try:
+            process.kill()
+        except OSError:
+            pass
 
 
 def _reload_kde_locker() -> None:
