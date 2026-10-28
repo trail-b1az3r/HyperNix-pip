@@ -732,8 +732,9 @@ Python 3.15+; hypernix installs torch itself:
   picks a CUDA index) until it does.
 
 It runs from `install-t1.sh`, from `hnx doctor --fix`, and on the first
-`hnx` command that finds torch missing (`HYPERNIX_NO_TORCH_SHIM=1` turns
-that off). A torch you installed yourself is never replaced. By hand:
+`hnx` command that finds torch missing, though never for `--help`
+(`HYPERNIX_NO_TORCH_SHIM=1` turns that off; `HYPERNIX_AUTO_INSTALL=0`, no pip
+from hypernix at all, stops every run). A torch you installed yourself is never replaced. By hand:
 
 ```bash
 python -m hypernix.system.torch_shim --check   # say what it would do

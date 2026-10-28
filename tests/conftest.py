@@ -50,6 +50,11 @@ for _folder in sorted(p for p in _TESTS.iterdir()
 os.environ.setdefault("PYTHONUTF8", "1")
 os.environ.setdefault("PYTHONIOENCODING", "utf-8")
 
+# On Python 3.15+ the first ``hnx`` command that finds torch missing
+# installs it (hypernix.system.torch_shim). The suite's ``hnx``
+# subprocesses must not download PyTorch mid-run.
+os.environ.setdefault("HYPERNIX_NO_TORCH_SHIM", "1")
+
 #: Where the stores land unless told otherwise.
 REAL_HOME = Path.home() / ".hypernix"
 

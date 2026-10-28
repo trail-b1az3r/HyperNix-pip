@@ -102,8 +102,8 @@ T1 v1.1.26.10.2.0. Bugs fixed: 30; security issues fixed: 12.
   release has a wheel for this Python and platform, and the nightly build
   (CPU; `HYPERNIX_TORCH_NIGHTLY_INDEX` picks a CUDA index) until it does.
   It runs from `install-t1.sh`, `hnx doctor --fix`, and the first `hnx`
-  command that finds torch missing (`HYPERNIX_NO_TORCH_SHIM=1` turns that
-  off); `python -m hypernix.system.torch_shim [--check]` by hand. A torch
+  command that finds torch missing (not `--help`; `HYPERNIX_NO_TORCH_SHIM=1`
+  turns that off, and `HYPERNIX_AUTO_INSTALL=0` every run); `python -m hypernix.system.torch_shim [--check]` by hand. A torch
   someone installed is never replaced. ([README § Python 3.15](../README.md#python-315))
 
 ### Compatibility

@@ -18,7 +18,8 @@ command on such a Python that finds torch missing, and by hand::
     python -m hypernix.system.torch_shim            # install what fits
     python -m hypernix.system.torch_shim --check    # say what it would do
 
-``HYPERNIX_NO_TORCH_SHIM=1`` turns the automatic run off. A torch that
+``HYPERNIX_NO_TORCH_SHIM=1`` turns the automatic run off, and
+``HYPERNIX_AUTO_INSTALL=0`` (no pip from hypernix at all) every run. A torch that
 is already installed is never replaced: whichever build someone chose
 (a CUDA index, a ROCm wheel, their own) stays theirs, as
 :mod:`hypernix.system.deps` already promises.
@@ -32,6 +33,8 @@ import subprocess
 import sys
 from dataclasses import dataclass
 from importlib.util import find_spec
+
+from . import deps
 
 __all__ = ["FIRST_SHIMMED", "Plan", "needed", "wheel_tag", "stable_supports", "plan", "ensure", "main"]
 
@@ -139,6 +142,9 @@ def ensure(*, dry_run: bool = False, out=None) -> int:
     print("hypernix: running " + " ".join(chosen.argv), file=out)
     if dry_run:
         return 0
+    if deps.disabled():
+        print("hypernix: HYPERNIX_AUTO_INSTALL=0, so torch is not installed.", file=out)
+        return 0
     result = subprocess.run(list(chosen.argv), check=False)  # noqa: S603 - argv built above
     if result.returncode != 0:
         print("hypernix: installing torch failed. Install it yourself from "
@@ -149,8 +155,8 @@ def ensure(*, dry_run: bool = False, out=None) -> int:
 
 def auto() -> None:
     """The ``hnx`` hook: install torch once, quietly skipped when not needed
-    or turned off with ``HYPERNIX_NO_TORCH_SHIM=1``."""
-    if os.environ.get("HYPERNIX_NO_TORCH_SHIM") or not needed():
+    or turned off with ``HYPERNIX_NO_TORCH_SHIM=1`` / ``HYPERNIX_AUTO_INSTALL=0``."""
+    if os.environ.get("HYPERNIX_NO_TORCH_SHIM") or deps.disabled() or not needed():
         return
     ensure()
 

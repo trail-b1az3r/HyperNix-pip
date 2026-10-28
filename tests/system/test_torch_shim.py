@@ -79,6 +79,7 @@ class TestThePlan:
 
 class TestRunningIt:
     def test_ensure_runs_the_plan(self, monkeypatch, capsys):
+        monkeypatch.delenv("HYPERNIX_AUTO_INSTALL", raising=False)
         ran = []
         monkeypatch.setattr(ts, "plan", lambda: ts.Plan("nightly", "why", ("py", "-m", "pip", "install", "torch")))
         monkeypatch.setattr(ts.subprocess, "run", lambda argv, check: ran.append(argv) or type("R", (), {"returncode": 0})())
@@ -86,6 +87,7 @@ class TestRunningIt:
         assert "has no torch" in capsys.readouterr().err
 
     def test_a_failed_install_says_where_to_get_torch(self, monkeypatch, capsys):
+        monkeypatch.delenv("HYPERNIX_AUTO_INSTALL", raising=False)
         monkeypatch.setattr(ts, "plan", lambda: ts.Plan("stable", "why", ("py",)))
         monkeypatch.setattr(ts.subprocess, "run", lambda argv, check: type("R", (), {"returncode": 1})())
         assert ts.ensure() == 1
@@ -93,6 +95,20 @@ class TestRunningIt:
 
     def test_auto_can_be_turned_off(self, monkeypatch):
         monkeypatch.setenv("HYPERNIX_NO_TORCH_SHIM", "1")
+        monkeypatch.setattr(ts, "ensure", lambda **k: pytest.fail("ran"))
+        ts.auto()
+
+    def test_no_pip_at_all_means_no_torch_install(self, monkeypatch, capsys):
+        monkeypatch.setenv("HYPERNIX_AUTO_INSTALL", "0")
+        monkeypatch.setattr(ts, "plan", lambda: ts.Plan("nightly", "why", ("py",)))
+        monkeypatch.setattr(ts.subprocess, "run", lambda *a, **k: pytest.fail("installed"))
+        assert ts.ensure() == 0
+        assert "HYPERNIX_AUTO_INSTALL=0" in capsys.readouterr().err
+
+    def test_auto_honours_auto_install_off(self, monkeypatch):
+        monkeypatch.delenv("HYPERNIX_NO_TORCH_SHIM", raising=False)
+        monkeypatch.setenv("HYPERNIX_AUTO_INSTALL", "0")
+        monkeypatch.setattr(ts, "needed", lambda: True)
         monkeypatch.setattr(ts, "ensure", lambda **k: pytest.fail("ran"))
         ts.auto()
 
@@ -125,3 +141,12 @@ class TestThePackage:
 
     def test_the_installer_runs_the_shim(self):
         assert "-m hypernix.system.torch_shim" in (ROOT / "install-t1.sh").read_text()
+
+
+def test_help_never_runs_the_shim(monkeypatch):
+    from hypernix.interfaces import cli
+
+    monkeypatch.setattr(ts, "auto", lambda: pytest.fail("the shim ran for --help"))
+    with pytest.raises(SystemExit) as exc:
+        cli.main(["info", "--help"])
+    assert exc.value.code == 0
