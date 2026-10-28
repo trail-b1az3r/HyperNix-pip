@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-api-deep",
   "generated_at": "2026-09-20T21:20:57Z",
-  "commit": "f10ee30ce1b3911a667391509499ec40c185b34e",
+  "commit": "685653c7fb0f66442d366d4128db4857507e03b6",
   "history_available": true,
   "source_root": "src/hypernix",
   "modules": [
@@ -17,6 +17,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "685653c",
+          "date": "2026-10-28",
+          "author": "Claude",
+          "subject": "0.72.8rc1",
+          "api_changes": []
+        },
         {
           "sha": "1f71cc6",
           "date": "2026-10-27",
@@ -64,13 +71,6 @@
           "date": "2026-10-14",
           "author": "t",
           "subject": "release: 0.72.8a0 -- context relay, statement billing, tvtop-max, Firefox agent",
-          "api_changes": []
-        },
-        {
-          "sha": "975f886",
-          "date": "2026-10-13",
-          "author": "t",
-          "subject": "runtime.relay: read prompts longer than the context with small-context instances in series",
           "api_changes": []
         }
       ]
