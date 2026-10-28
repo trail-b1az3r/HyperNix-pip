@@ -215,14 +215,18 @@ class TestTheWorkflow:
 
     def test_it_follows_the_jobs_that_rewrite_the_data(self, workflow):
         """workflow_run matches on the workflows' names; a rename that left
-        this behind would make it silently stop running."""
+        this behind would make it silently stop running.
+
+        A writer is a workflow that commits to docs/public/v1 -- one that
+        pushes. The Pages deploy writes security.json into the build it
+        publishes and commits nothing, so it can make no conflict."""
         import yaml
 
-        writers = {
-            yaml.safe_load(path.read_text(encoding="utf-8"))["name"]
-            for path in self.WORKFLOWS.glob("*.yml")
-            if DOCS in path.read_text(encoding="utf-8") and path.name != "resolve-docs-conflicts.yml"
-        }
+        writers = set()
+        for path in self.WORKFLOWS.glob("*.yml"):
+            text = path.read_text(encoding="utf-8")
+            if DOCS in text and "git push" in text and path.name != "resolve-docs-conflicts.yml":
+                writers.add(yaml.safe_load(text)["name"])
         assert set(self._on(workflow)["workflow_run"]["workflows"]) == writers
 
     def test_it_settles_only_docs_public_v1(self, workflow):

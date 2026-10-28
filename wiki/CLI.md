@@ -461,6 +461,66 @@ hypernix train run --model-dir ./m --dataset ./d.txt --out-dir ./out \
 Full detail, plus the parts with no CLI surface (optimizer-state offload,
 peak measurement): [VRAM](VRAM.md).
 
+## `scriptgen`
+
+```bash
+hnx scriptgen                                   # the window; on a headless box, the wizard
+hnx scriptgen --wizard                          # five questions, then a script
+hnx scriptgen train.py --recipe quick-test --set dataset=data.jsonl
+hnx scriptgen train.py --set learning_rate=3e-5 --set epochs=2
+hnx scriptgen --inject existing.py              # rewrite only its CONFIG block
+hnx scriptgen --config-only --format yaml       # python, json, yaml, toml, env, args
+hnx scriptgen --list-params lora                # settings that mention LoRA
+hnx scriptgen --explain warmup_ratio
+```
+
+Builds a training script (0.72.8rc1: also `hnx scriptgen`, not only
+`hnx-scriptgen`). The script **runs as generated**: it loads the model
+(a HyperNix model through hypernix, anything else through
+transformers), reads the data (a Hugging Face dataset or a local
+`.jsonl`, `.json` or `.txt`, packed into full blocks), and trains,
+evaluates on a held-out slice, saves checkpoints, stops early, reports
+to `metrics.jsonl`, TensorBoard or W&B, and saves a final model that
+loads like the one it started from. Any CONFIG key can be overridden
+when running it:
+
+```bash
+python train.py --learning_rate 1e-4 --epochs 1 --dataset notes.jsonl
+python train.py --resume true                   # from the newest checkpoint
+```
+
+Sixty-two settings in seven sections, defaulting to HyperNix.3.1-mini.
+0.72.8rc1 added: LoRA adapters (plain PyTorch, nothing to install;
+merged into the weights at the end), the device, packing, the held-out
+fraction, a cap on examples, where metrics go, early stopping, upload to
+the Hub, and a learning-rate sweep (short runs across a range, then a
+full run at the best). `training_loop=skeleton` gives the helpers
+without the loop, as before.
+
+| Recipe | For |
+|---|---|
+| `hypernix-finetune` | HyperNix.3.1-mini on your text; any GPU, or the CPU |
+| `quick-test` | 20 steps on the CPU, to see the whole script work first |
+| `lora-low-vram` | a larger transformers model on an 8 GB card: NF4, LoRA, checkpointing |
+| `pascal-1080` | GTX 10-series: FP32 compute, the Pascal optimiser, the auto-tuner |
+| `continued-pretraining` | raw text, warmup-stable-decay, frequent resumable saves |
+| `lr-sweep` | four short runs from 1e-5 to 1e-3, then train at the best |
+
+The window has the sections down the left (each marked with what was
+changed in it, and with a red count when something there is wrong), a
+search over every setting, the settings as cards (a slider beside an
+entry for numbers, the options side by side when there are four or
+fewer, a Reset on anything changed), and the output with line numbers,
+syntax colour and the checks under it; a check jumps to its setting when
+clicked. **Start from** applies a recipe. Ctrl+S saves, Ctrl+F searches,
+Ctrl+1…7 opens a section.
+
+Scripts generated before 0.72.8rc1 could not build their default
+optimiser: they asked `hypernix.optimizers` for `PressureCookerV5`,
+which lives in `hypernix.optimizers.pressure_cooker_v5`, and passed
+`betas`, which the Pressure Cookers do not take. Regenerate them, or
+`--inject` the new CONFIG block and copy `build_optimizer` across.
+
 ## `generate`
 
 ```bash

@@ -123,6 +123,8 @@ _SUBCOMMANDS = {
     "extra",
     "fllq",
     "tvtopmax",
+    # 0.72.8rc1: the hnx-scriptgen entry point, as a subcommand too
+    "scriptgen",
     "hypedpro",
     "image",
     "claude",
@@ -230,6 +232,7 @@ _MAIN_MENU: tuple[tuple[str, str], ...] = (
     ("doctor", "environment diagnostic (pass --fix to install missing deps)"),
     ("fetch-llama-quantize", "pre-seed the llama-quantize cache (shortcut: fllq)"),
     ("train", "init / expand / run training utilities"),
+    ("scriptgen", "build a training script that runs: a window, a terminal wizard, or flags"),
     ("chat", "interactive chat REPL with any HyperNix-family model"),
     ("claude", "run Claude Code on a model this machine's T1 server is serving"),
     ("brew", "custom architecture builder & model training suite (brewer)"),
@@ -1494,6 +1497,10 @@ def _dispatch(cmd: str, rest: list[str]) -> int:
         from hypernix.audio.wakeup_cli import main as _wakeup_main
 
         return _wakeup_main(rest)
+    if cmd == "scriptgen":
+        from hypernix.scriptgen.cli import main as _scriptgen_main
+
+        return _scriptgen_main(rest)
     if cmd == "gather":
         from hypernix.data.gather_cli import main as _gather_main
 
