@@ -1,11 +1,11 @@
 {
   "definition": "non-blank source lines across repository code roots: src, scripts, tests, examples, bin, native, docs/src",
-  "total_lines": 249174,
-  "code_files": 834,
+  "total_lines": 249790,
+  "code_files": 837,
   "top_files": [
     {
       "path": "src/hypernix/t1api/routers/hyperlink.py",
-      "lines": 2825
+      "lines": 2819
     },
     {
       "path": "src/hypernix/interfaces/hyped.py",
@@ -127,12 +127,12 @@
   "contributors": [
     {
       "author": "Claude",
-      "additions": 241686,
-      "deletions": 17806,
-      "net": 223880,
-      "changes": 259492,
-      "commits": 283,
-      "files": 1701
+      "additions": 242508,
+      "deletions": 17909,
+      "net": 224599,
+      "changes": 260417,
+      "commits": 285,
+      "files": 1707
     },
     {
       "author": "minerofthesoal",
@@ -199,6 +199,6 @@
     }
   ],
   "history_available": true,
-  "commit": "32b0f96c1bec77ed6d93cf0e55021b2c2673bb28",
+  "commit": "49c52c750f3c195a9616b51d262135f3df4ed676",
   "generated_at": null
 }
