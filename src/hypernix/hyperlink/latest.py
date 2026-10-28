@@ -84,7 +84,8 @@ def discover(timeout: float = 10.0) -> list[Release]:
             with safe_urlopen(f"{endpoint}/api/models?{query}", timeout=timeout) as response:
                 listing = json.load(response)
         except (OSError, ValueError) as exc:
-            logger.info("latest: could not list %s's models: %s", owner, exc)
+            # The kind of failure only: the request may carry a Hub token.
+            logger.info("latest: the Hub's model list did not answer (%s)", type(exc).__name__)
             continue
         for entry in listing if isinstance(listing, list) else []:
             release = _from_repo(str(entry.get("id") or entry.get("modelId") or ""))
