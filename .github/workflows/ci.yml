@@ -195,7 +195,11 @@ jobs:
           cmake -S native/ggml-hnx -B build-fp -DCMAKE_BUILD_TYPE=Release
           cmake --build build-fp -j
           ctest --test-dir build-fp --output-on-failure
-          objdump -d build-fp/libggml-hnx.a | grep -A3 "<hnx_dequantize_rows>:" | grep -Eq "mov[q]?[[:space:]]+%rsp,[[:space:]]*%rbp"
+          # The prologue is printed, so a failure says what the compiler
+          # emitted; a CET endbr64 or saved registers can come before
+          # the frame-pointer move, so look a few instructions in.
+          objdump -d build-fp/libggml-hnx.a | grep -A10 "<hnx_dequantize_rows>:" | tee prologue.txt
+          grep -Eq "mov[q]?[[:space:]]+%rsp,[[:space:]]*%rbp" prologue.txt
 
   # Startup, import, API, serialisation, native and profiling timings on
   # every supported Python, saved as an artifact. Informational: shared
