@@ -1151,3 +1151,26 @@ timeline
         : 945aa8c4 - chore- refresh generated docs data and release summaries
 ```
 
+## Release v0.72.8 (2026-10-28)
+
+```mermaid
+timeline
+    title Release v0.72.8 Commits
+    0.72.8
+        : 43f2bda4 - torch_shim- never install torch for --help, under HYPERNIX_AUTO_INSTALL=0, or in tests
+        : 00df2d64 - torch_shim- ask PyPI through hypernix.security.safeurl
+        : 5123e971 - ci- the PEP 831 frame-pointer check prints the prologue it reads
+        : e6d894cb - torch_shim test- assert the whole URL, not a host substring
+        : 0404ebd2 - 0.72.8
+        : 10317ac6 - Python 3.15- torch from a shim, stable if PyTorch has the wheel, else nightly
+        : af397a46 - hypernix v0.72.8rc1 [skip ci]
+        : baa7d954 - CI fixes for PR #185- a log-follow race, mypy, a bare except
+        : 05a8b49e - chore- refresh generated docs data and release summaries
+        : 9ba5c10c - latest- log the kind of Hub failure, not the request
+        : 685653c7 - 0.72.8rc1
+        : f10ee30c - scriptgen- a script that runs, a redesigned window, more options
+        : 602589dd - chore- refresh generated docs data and release summaries
+        : 50fbf14a - Stats page- downloads by HyperNix version
+        : d2a47609 - hnx download --latest; the runner fetches and registers HyperNix releases
+```
+
