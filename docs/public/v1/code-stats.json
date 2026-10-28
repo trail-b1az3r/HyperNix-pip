@@ -1,7 +1,7 @@
 {
   "definition": "non-blank source lines across repository code roots: src, scripts, tests, examples, bin, native, docs/src",
-  "total_lines": 249790,
-  "code_files": 837,
+  "total_lines": 253103,
+  "code_files": 848,
   "top_files": [
     {
       "path": "src/hypernix/t1api/routers/hyperlink.py",
@@ -21,7 +21,7 @@
     },
     {
       "path": "src/hypernix/t1api/schemas.py",
-      "lines": 1829
+      "lines": 1836
     },
     {
       "path": "src/hypernix/hyped_pro.ts",
@@ -29,15 +29,15 @@
     },
     {
       "path": "src/hypernix/interfaces/cli.py",
-      "lines": 1647
+      "lines": 1697
+    },
+    {
+      "path": "src/hypernix/models/neo_oven.py",
+      "lines": 1531
     },
     {
       "path": "src/hypernix/quant/hyprslug.py",
       "lines": 1516
-    },
-    {
-      "path": "src/hypernix/models/neo_oven.py",
-      "lines": 1506
     },
     {
       "path": "src/hypernix/monitoring/tv.py",
@@ -96,6 +96,10 @@
       "lines": 1058
     },
     {
+      "path": "src/hypernix/scriptgen/app.py",
+      "lines": 1056
+    },
+    {
       "path": "tests/repo/test_install_script.py",
       "lines": 1030
     },
@@ -118,21 +122,17 @@
     {
       "path": "src/hypernix/security/t2keys.py",
       "lines": 954
-    },
-    {
-      "path": "src/hypernix/__init__.py",
-      "lines": 949
     }
   ],
   "contributors": [
     {
       "author": "Claude",
-      "additions": 242508,
-      "deletions": 17909,
-      "net": 224599,
-      "changes": 260417,
-      "commits": 285,
-      "files": 1707
+      "additions": 247025,
+      "deletions": 18519,
+      "net": 228506,
+      "changes": 265544,
+      "commits": 297,
+      "files": 1720
     },
     {
       "author": "minerofthesoal",
@@ -199,6 +199,6 @@
     }
   ],
   "history_available": true,
-  "commit": "602589dd754799c789b2a40bad7729e05a1e7825",
+  "commit": "798265484da53ef7c7396b1519cc822acf39f666",
   "generated_at": null
 }
