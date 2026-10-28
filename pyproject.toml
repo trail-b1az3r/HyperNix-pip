@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hypernix"
-version = "0.72.8rc1"
+version = "0.72.8"
 description = "Download and quantize the HyperNix PyTorch model to GGUF (fp32/fp16/Q8_0/Q6_K/Q4_K_M). and train models with a massive ai toolkit "
 readme = { file = "README.md", content-type = "text/markdown" }
 license = { text = "LicenseRef-HOS-1.1 OR Apache-2.0" }
@@ -43,7 +43,10 @@ dependencies = [
     #   pip install --index-url https://download.pytorch.org/whl/cu118 torch
     # then `pip install hypernix` will reuse that torch rather than pulling
     # a CUDA-12 wheel.
-    "torch>=1.13,<3",
+    # From Python 3.15 torch comes from hypernix.system.torch_shim instead
+    # (stable when PyTorch has a wheel for that Python, nightly until it
+    # does), so a brand-new Python is not an install pip refuses outright.
+    "torch>=1.13,<3; python_version < '3.15'",
     "numpy>=1.26,<3",
     "safetensors>=0.4.3",
     "huggingface-hub>=0.24",
@@ -52,7 +55,9 @@ dependencies = [
     "rich>14,<=15.0.0",
     # 0.2.1 is the first release with cp313 wheels; stick with it so a
     # fresh Python 3.13 env doesn't need a C++ toolchain to build from src.
-    "sentencepiece>=0.2.1",
+    # It has no 3.15 wheel yet and its source build fails there; only
+    # `hnx convert` of a SentencePiece model needs it.
+    "sentencepiece>=0.2.1; python_version < '3.15'",
 ]
 
 [project.optional-dependencies]

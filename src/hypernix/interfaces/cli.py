@@ -1445,6 +1445,16 @@ def main(argv: list[str] | None = None) -> int:
             print(f"hypernix {__version__}")
         return 0
 
+    # Python 3.15+ gets torch from the shim, not from pip's dependency
+    # resolution (see hypernix.system.torch_shim): the first real command
+    # that finds it missing installs it. --help never downloads PyTorch.
+    if raw[0] not in ("doctor", "list-all", "errors", "wiki", "path") and not (
+        {"-h", "--help"} & set(raw)
+    ):
+        from hypernix.system.torch_shim import auto as _torch_shim
+
+        _torch_shim()
+
     # Top-level --auto-oven shortcut: translate to `oven --auto ...` so users
     # can run a one-liner `hypernix --auto-oven --prompt "def fib(n):"` and
     # get a working PyTorch model + a completion with zero extra ceremony.

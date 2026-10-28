@@ -19,6 +19,7 @@ import os
 import platform
 import shutil
 import sys
+from importlib.util import find_spec
 from pathlib import Path
 
 from hypernix.quant.fetcher import cache_dir, cached_binary
@@ -39,7 +40,7 @@ _RUNTIME_DEPS: tuple[str, ...] = (
     "gguf>=0.10.0",
     "tqdm>=4.66.3",
     "rich>14,<=15.0.0",
-    "sentencepiece>=0.2.1",
+    "sentencepiece>=0.2.1; python_version < '3.15'",
 )
 #: The ``train`` extra, plus the tokenizers it pulls in: needed for HF
 #: tokenizers and training, and installed by ``--fix`` as well.
@@ -109,6 +110,10 @@ def _check_torch_version() -> tuple[bool, str]:
     try:
         import torch
     except Exception as exc:
+        if sys.version_info[:2] >= (3, 15) and find_spec("torch") is None:
+            return False, ("torch is not installed; on Python 3.15+ it is not a pip dependency. "
+                           "`hnx doctor --fix` installs it (stable if PyTorch has a wheel for this "
+                           "Python, nightly otherwise)")
         return False, f"torch import failed: {exc}"
     # Floor is 1.13 (the last 1.x release, for old-Intel-Mac support
     # via hypernix.torch_compat shims).  2.7+ is recommended because it
@@ -292,6 +297,16 @@ def _check_extras() -> tuple[bool, str]:
                   f"not installed: {', '.join(missing) or 'none'}")
 
 
+def _check_required(mod: str) -> tuple[bool, str]:
+    """:func:`_check_import`, except for what Python 3.15+ does not install
+    (see the markers in pyproject.toml)."""
+    if mod == "sentencepiece" and sys.version_info[:2] >= (3, 15):
+        if find_spec("sentencepiece") is None:
+            return True, ("not installed on Python 3.15+ (no wheel yet); only `hnx convert` "
+                          "of a SentencePiece model needs it")
+    return _check_import(mod)
+
+
 def run(*, fix: bool = False) -> int:
     """Run the environment check. If ``fix`` is True, pip-install missing deps.
 
@@ -302,6 +317,12 @@ def run(*, fix: bool = False) -> int:
         print("[hypernix] doctor --fix: installing / upgrading runtime deps")
         deps.ensure(list(_RUNTIME_DEPS), upgrade=True)
         deps.ensure(list(_OPTIONAL_DEPS), upgrade=True)
+        # The one exception to "never touch torch": on a Python pip cannot
+        # give it to (3.15+, see torch_shim), and only when it is missing.
+        from . import torch_shim
+
+        if torch_shim.needed():
+            torch_shim.ensure()
 
     # Optional tool checks vary by OS — nice/ionice are POSIX-only.
     optional_tools: list[tuple[str, tuple[bool, str]]] = []
@@ -315,7 +336,7 @@ def run(*, fix: bool = False) -> int:
         ("OS", _check_os()),
         ("Python", _check_python()),
         ("torch", _check_torch_version()),
-        *((mod, _check_import(mod)) for mod in _REQUIRED_IMPORTS),
+        *((mod, _check_required(mod)) for mod in _REQUIRED_IMPORTS),
         ("GPU", _check_gpu()),
         ("llama-quantize", _check_llama_quantize()),
         ("auto-fetch cache", _check_fetch_cache()),

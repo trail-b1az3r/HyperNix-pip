@@ -4,7 +4,7 @@
 </p>
 
 <p align="center">
-  <img alt="PyPI" src="https://img.shields.io/badge/PyPI-v0.72.7.post1-ff2d55?style=for-the-badge&logo=pypi&logoColor=white" />
+  <img alt="PyPI" src="https://img.shields.io/badge/PyPI-v0.72.8-ff2d55?style=for-the-badge&logo=pypi&logoColor=white" />
   <img alt="Python" src="https://img.shields.io/badge/Python-3.12--3.15-00c9ff?style=for-the-badge&logo=python&logoColor=white" />
   <img alt="License" src="https://img.shields.io/badge/License-HOS--1.1%20/%20Apache--2.0-00c853?style=for-the-badge" />
   <a href="https://github.com/trail-b1az3r/HyperNix-pip/blob/main/wiki/T1-API.md#the-public-server-counter"><img alt="Public T1 servers" src="https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Ftrail-b1az3r%2FHyperNix-pip%2Fmain%2Fdocs%2Fpublic%2Fv1%2Ft1-counter-badge.json&style=for-the-badge" /></a>
@@ -15,15 +15,56 @@
 
 ## What's fixed in this update
 
-The first section below covers the 0.72.6 line (published as
-`0.72.5.post14` to `post17`, `0.72.6.rc1` to `rc3`, `0.72.6`, and the
-patches `0.72.6.post1` onward), and the one after it covers 0.72.5. [`wiki/Changelog.md`](wiki/Changelog.md) is the canonical
+The first section below covers 0.72.8 (published as `0.72.8a0` to
+`a5`, `0.72.8rc1`, then `0.72.8`); the ones after it cover 0.72.6 and
+0.72.5. [`wiki/Changelog.md`](wiki/Changelog.md) is the canonical
 per-release history, and [`wiki/Roadmap.md`](wiki/Roadmap.md) says what
 is next.
+
+## What's new: 0.72.8 — Claude Code, relays, image models, and Python 3.15
+
+T1 is now **T1 v1.1.26.10.2.0**: the [T1 API](wiki/T1-API.md) page has
+every route.
+
+- **Claude Code on your own models.** T1 speaks the Anthropic Messages
+  API (`/v1/messages`); `hnx claude` points Claude Code at whatever the
+  server runs. ([T1-API](wiki/T1-API.md#the-anthropic-messages-api))
+- **Prompts longer than the context.** `POST /inference/relay` reads a
+  document in hops through small-context instances, prices it first
+  with `estimate_only`, and bills each hop; even a 512-token model such
+  as HyperNix.3.1-mini can do it. ([Context relay](wiki/Context-Relay.md))
+- **The newest HyperNix in one command.** `hnx download --latest`
+  fetches HyperNix.3.1-mini today, and `hnx-t1 runner start
+  hypernix.3.1-mini` (or `latest`) downloads it, loads it and registers
+  it so chat and the relay can ask it.
+- **CPU offloading.** A HyperNix model bigger than the card is split by
+  layer between GPU and RAM, and the llama.cpp runners can keep a
+  mixture-of-experts model's experts (`--cpu-moe [N]`) or the KV cache
+  (`--kv-on-cpu`) in RAM. ([CLI](wiki/CLI.md#hypernix-t1-built-in-runner))
+- **hnx0xv2image**, an image-to-text architecture fused onto LFM2.5,
+  Qwen3.5 or HyperNix, quantisable with hyprslug.
+  ([HNX0xV2Image](wiki/HNX0xV2Image.md))
+- **scriptgen writes scripts that run**: a redesigned window, recipes, a
+  terminal wizard for headless machines, LoRA, sweeps and early
+  stopping. ([CLI](wiki/CLI.md#scriptgen))
+- **HyperLink**: signed prompts, a Code section, dataset parts in a
+  chat, full Markdown, web search v2, and documents a model writes for
+  download.
+- **MCP both ways**, Net inside T1, a live count of public T1 servers,
+  `hnx-t1 setup` (the interactive installer), c4 (explode a model and
+  reap its best layers), and the Firefox Browser Agent.
+- **Python 3.15 installs.** torch and sentencepiece are no longer pip
+  dependencies on 3.15. torch comes from a shim, stable PyTorch when it
+  has a wheel for that Python and the nightly build until it does
+  ([Install](#python-315)).
+- **Security**: the critical and high CodeQL alerts fixed, dependency
+  floors with advisories raised, and a [security page](https://trail-b1az3r.github.io/HyperNix-pip/#/security)
+  rescanned on every website build.
 
 ## Table of contents
 
 - [What's fixed in this update](#whats-fixed-in-this-update)
+- [What's new: 0.72.8 — Claude Code, relays, image models, and Python 3.15](#whats-new-0728--claude-code-relays-image-models-and-python-315)
 - [What's new: 0.72.6 — daily keys, conceal, and a quicker waiter](#whats-new-0726--daily-keys-conceal-and-a-quicker-waiter)
 - [What's new: 0.72.5 — drafts, bundles, accounts, and a car](#whats-new-0725--drafts-bundles-accounts-and-a-car)
 - [What's new: 0.72.3.post2 — sub-bit models you can actually run](#whats-new-0723post2--sub-bit-models-you-can-actually-run)
@@ -57,8 +98,8 @@ PEP 810 lazy imports (`__lazy_modules__`), PEP 798 unpacking in
 comprehensions (behind `hypernix._compat`), PEP 799's `profiling` package
 (`hypernix._profiling`) and PEP 831 frame pointers in native builds. The
 dependency audit, benchmarks and the tested matrix are on the
-[Python 3.12–3.15](wiki/Python-3.15.md) wiki page. On 3.15, PyTorch has
-no wheel yet; everything that does not need torch runs.
+[Python 3.12–3.15](wiki/Python-3.15.md) wiki page. On 3.15 torch is
+installed by a shim rather than by pip (see [Install](#python-315)).
 
 ## What's new: 0.72.6 — daily keys, conceal, and a quicker waiter
 
@@ -679,6 +720,27 @@ pip install --index-url https://download.pytorch.org/whl/cpu 'torch==1.13.1'
 pip install 'hypernix[legacy-torch]'
 ```
 
+### Python 3.15
+
+A new Python gets PyTorch wheels months after it ships, and pip used to
+refuse `pip install hypernix` there. Since 0.72.8, torch (and
+sentencepiece, which has no 3.15 wheel) are not pip dependencies on
+Python 3.15+; hypernix installs torch itself:
+
+- stable PyTorch when its newest release has a wheel for this Python;
+- the nightly build (CPU by default; `HYPERNIX_TORCH_NIGHTLY_INDEX`
+  picks a CUDA index) until it does.
+
+It runs from `install-t1.sh`, from `hnx doctor --fix`, and on the first
+`hnx` command that finds torch missing, though never for `--help`
+(`HYPERNIX_NO_TORCH_SHIM=1` turns that off; `HYPERNIX_AUTO_INSTALL=0`, no pip
+from hypernix at all, stops every run). A torch you installed yourself is never replaced. By hand:
+
+```bash
+python -m hypernix.system.torch_shim --check   # say what it would do
+python -m hypernix.system.torch_shim           # do it
+```
+
 ### `hypernix: command not found`
 
 The console scripts land in your interpreter's scripts directory, which on
@@ -699,7 +761,7 @@ env — that directory belongs to the environment and is only meant to be on
 `PATH` while it's activated. Set `HYPERNIX_NO_PATH_SETUP=1` to turn the
 automatic version off entirely.
 
-The main `install_requires` is `torch>=1.13,<3` — 2.7+ is the
+The main `install_requires` is `torch>=1.13,<3` (below Python 3.15) — 2.7+ is the
 recommended version (native `nn.RMSNorm`, fused SDPA), but 1.13+
 works via `hypernix.torch_compat`. See
 [`wiki/macOS-legacy.md`](wiki/macOS-legacy.md) for the full story.

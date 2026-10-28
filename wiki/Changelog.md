@@ -35,6 +35,113 @@ Historical wording and technical detail are retained during format normalization
 
 > Format normalized to `wiki/Changelog-guide.md`; release wording and historical detail are preserved.
 
+## 0.72.8 — 2026-10-28
+
+### Beta / Dev → Release Summary
+
+This release is the finished work of `0.72.8a0` to `0.72.8a5` and
+`0.72.8rc1`, plus the Python 3.15 torch shim. The T1 contract is
+T1 v1.1.26.10.2.0. Bugs fixed: 30; security issues fixed: 12.
+
+#### Major Changes
+
+๋࣭⭑ Claude Code on models running in HyperNix: T1 speaks the Anthropic
+  Messages API, and `hnx claude` points Claude Code at it.
+๋࣭⭑ The context relay: `POST /inference/relay` reads a document longer
+  than the model's context in hops, priced first and billed per hop.
+๋࣭⭑ hnx0xv2image, an image-to-text architecture fused onto LFM2.5,
+  Qwen3.5 or HyperNix, quantisable with hyprslug.
+๋࣭⭑ MCP both ways, Net inside T1, and a live count of public T1 servers.
+๋࣭⭑ HyperLink: signed prompts and the ping, a Code section, dataset parts,
+  full Markdown, web search v2, and documents a model writes.
+๋࣭⭑ `hnx-t1 setup`, the interactive T1 installer.
+๋࣭⭑ CPU offloading for the runners, `hnx download --latest`
+  (HyperNix.3.1-mini), and HyperNix releases loaded by name.
+๋࣭⭑ scriptgen writes scripts that run, with a redesigned window, recipes
+  and a terminal wizard.
+๋࣭⭑ c4 (explode a model, measure, reap and sow its layers), the Firefox
+  Browser Agent, and the multi-llama runner.
+
+#### API and Compatibility
+
+🔗 T1 v1.1.26.10.2.0: `/v1/messages`, `/mcp/remote`, `/net`,
+  `/inference/relay`, `/usage/statement` (`t1.statement/2`), and
+  `cpu_moe` / `kv_on_cpu` on `/runner/load`.
+🔗 Python 3.15: torch and sentencepiece are no longer pip dependencies
+  there; see Compatibility.
+
+#### Fixes Carried Into Release
+
+𖢥 HyperLink for iOS no longer signs itself out or crashes when connecting
+  over Tailscale.
+𖢥 A model the runner loads is registered, so chat and the relay can ask
+  it; the relay sizes its answer to the context.
+𖢥 scriptgen's generated script can build its default optimiser.
+🐛 `hypernix-t1 runner start` is fast again and its model picker no
+  longer freezes.
+🐛 Following a job's log no longer skips a line written as it starts.
+
+#### Testing
+
+🧪 About 10,300 tests; generated training scripts run for real on a tiny
+  HyperNix model; a runner-loaded model is relayed through T1 end to end.
+
+#### Documentation and Site
+
+📚 The T1 API page covers the 0.72.8 runner, the relay and the statement,
+  and marks T1 v1.1.26.10.1.0 and v1.1.26.10.2.0 shipped. The README has
+  a 0.72.8 section and the Python 3.15 install notes.
+🛜 The website's docs were remade, with a T1 API reference, a security
+  page, and downloads by HyperNix version on the Stats page.
+
+### Added
+
+✨ **Python 3.15: torch from a shim.** A new Python gets PyTorch wheels
+  months after it ships, and pip refused `pip install hypernix` there.
+  `hypernix.system.torch_shim` installs stable PyTorch when its newest
+  release has a wheel for this Python and platform, and the nightly build
+  (CPU; `HYPERNIX_TORCH_NIGHTLY_INDEX` picks a CUDA index) until it does.
+  It runs from `install-t1.sh`, `hnx doctor --fix`, and the first `hnx`
+  command that finds torch missing (not `--help`; `HYPERNIX_NO_TORCH_SHIM=1`
+  turns that off, and `HYPERNIX_AUTO_INSTALL=0` every run); `python -m hypernix.system.torch_shim [--check]` by hand. A torch
+  someone installed is never replaced. ([README § Python 3.15](../README.md#python-315))
+
+### Compatibility
+
+❌ On Python 3.15+, `torch` and `sentencepiece` are not pip dependencies
+  (`python_version < '3.15'` markers): torch comes from the shim, and
+  sentencepiece, which has no 3.15 wheel, is needed only by
+  `hnx convert` of a SentencePiece model. `hnx doctor` reports it as not
+  required there. Python 3.12-3.14 installs are unchanged.
+
+### Dependencies and Packaging
+
+📦 The markers above, in pyproject.toml and setup.cfg alike.
+  Dependencies were otherwise unchanged since 0.72.8rc1.
+
+### Documentation
+
+📚 T1-API: the 0.72.8 runner (offloading, releases by name, registration
+  on load), Python 3.15 in the installer, the roadmap rows for
+  T1 v1.1.26.10.1.0 and v1.1.26.10.2.0 marked shipped.
+📚 README: a 0.72.8 section, the Python 3.15 install notes, and the PyPI
+  badge.
+
+### Tests
+
+🧪 The shim's choices (stable, nightly, nothing), its PyPI wheel lookup
+  per platform, the hooks, and the markers.
+
+### Caveats
+
+🛈 Checked on CPython 3.15.0b4 (Linux x86_64): `pip install .` succeeds,
+  the nightly path installs torch 2.16.0.dev, and `hnx` with torch
+  missing installs stable torch 2.15.0, which has cp315 wheels today.
+  macOS and Windows were not run.
+🛈 The stable path installs PyPI's default torch, the CUDA build on
+  Linux, as `pip install hypernix` does on 3.12-3.14. For CPU only, install
+  torch from the CPU index first.
+
 ## 0.72.8rc1 — 2026-10-28
 
 ### Added
