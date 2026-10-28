@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-t1-api",
   "generated_at": "2026-10-07T05:12:17Z",
-  "commit": "32b0f96c1bec77ed6d93cf0e55021b2c2673bb28",
+  "commit": "f10ee30ce1b3911a667391509499ec40c185b34e",
   "history_available": true,
   "server_extra": "pip install 'hypernix[t1api]'",
   "client_install": "pip install hypernix",
@@ -27,35 +27,35 @@
       ],
       "changes": [
         {
-          "sha": "c7eabfd7",
+          "sha": "c7eabfd",
           "date": "2026-08-23",
           "author": "Claude",
           "subject": "T1 v1.0.26.8.0.1: the LM Studio bridge and HyperLink",
           "api_changes": []
         },
         {
-          "sha": "879b000b",
+          "sha": "879b000",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5rc2 \u2014 T1 API Beta 4, hyped-pro, and PATH setup",
           "api_changes": []
         },
         {
-          "sha": "604a8342",
+          "sha": "604a834",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
           "api_changes": []
         },
         {
-          "sha": "604ec86f",
+          "sha": "604ec86",
           "date": "2026-08-20",
           "author": "minerofthesoal",
           "subject": "b2",
           "api_changes": []
         },
         {
-          "sha": "f836d298",
+          "sha": "f836d29",
           "date": "2026-08-18",
           "author": "minerofthesoal",
           "subject": "0.71.5b1-part one of four for the api",
@@ -71,14 +71,14 @@
     {
       "module": "hypernix.t1api.accounts",
       "source": "src/hypernix/t1api/accounts.py",
-      "line_count": 725,
+      "line_count": 729,
       "summary": "t1api.accounts \u2014 sign up for a T1 key without already having one.",
       "api": [
         {
           "kind": "class",
           "name": "AccountError",
           "signature": "class AccountError",
-          "line": 106,
+          "line": 110,
           "doc": "An account could not be created, found, or authenticated.",
           "methods": []
         },
@@ -86,40 +86,40 @@
           "kind": "function",
           "name": "hash_password",
           "signature": "def hash_passwordpassword: str, *, n: int=_SCRYPT_N -> str",
-          "line": 124,
+          "line": 128,
           "doc": "Hash *password* into a self-describing string."
         },
         {
           "kind": "function",
           "name": "verify_password",
           "signature": "def verify_passwordpassword: str, stored: str -> bool",
-          "line": 149,
+          "line": 153,
           "doc": "Whether *password* produces *stored*. Constant-time."
         },
         {
           "kind": "function",
           "name": "needs_rehash",
           "signature": "def needs_rehashstored: str, *, n: int=_SCRYPT_N -> bool",
-          "line": 179,
+          "line": 183,
           "doc": "Whether *stored* was hashed at a lower cost than the current one."
         },
         {
           "kind": "class",
           "name": "Account",
           "signature": "class Account",
-          "line": 194,
+          "line": 198,
           "doc": "One person who can sign in and mint keys for themselves.",
           "methods": [
             {
               "name": "locked",
               "signature": "def lockedself -> bool",
-              "line": 214,
+              "line": 218,
               "doc": ""
             },
             {
               "name": "to_dict",
               "signature": "def to_dictself, *, include_private: bool=False -> dict[str, Any]",
-              "line": 217,
+              "line": 221,
               "doc": "Serialise. ``password_hash`` is never included, at any level."
             }
           ]
@@ -128,13 +128,13 @@
           "kind": "class",
           "name": "Session",
           "signature": "class Session",
-          "line": 237,
+          "line": 241,
           "doc": "A signed-in browser.",
           "methods": [
             {
               "name": "expired",
               "signature": "def expiredself -> bool",
-              "line": 262,
+              "line": 266,
               "doc": ""
             }
           ]
@@ -143,133 +143,133 @@
           "kind": "class",
           "name": "AccountStore",
           "signature": "class AccountStore",
-          "line": 275,
+          "line": 279,
           "doc": "Accounts and sessions, over the T1 API's SQL backend.",
           "methods": [
             {
               "name": "get",
               "signature": "def getself, account_id: str -> Account | None",
-              "line": 371,
+              "line": 375,
               "doc": ""
             },
             {
               "name": "account_for_key",
               "signature": "def account_for_keyself, key_id: str -> Account | None",
-              "line": 379,
+              "line": 383,
               "doc": "The account a minted key belongs to, or None (0.72.8: HyperLink files a key's chats under its account)."
             },
             {
               "name": "by_username",
               "signature": "def by_usernameself, username: str -> Account | None",
-              "line": 395,
+              "line": 399,
               "doc": ""
             },
             {
               "name": "count",
               "signature": "def countself -> int",
-              "line": 403,
+              "line": 407,
               "doc": ""
             },
             {
               "name": "list_accounts",
               "signature": "def list_accountsself, limit: int=100 -> list[Account]",
-              "line": 408,
+              "line": 412,
               "doc": ""
             },
             {
               "name": "normalise_username",
               "signature": "def normalise_usernameusername: str -> str",
-              "line": 420,
+              "line": 424,
               "doc": ""
             },
             {
               "name": "can_register",
               "signature": "def can_registerself, invite_code: str='' -> tuple[bool, str]",
-              "line": 452,
+              "line": 456,
               "doc": "Whether registration is open right now, and why not if not."
             },
             {
               "name": "create",
               "signature": "def createself, username: str, password: str, *, display_name: str='', email: str='', is_admin: bool | None=None, invite_code: str='', bypass_registration_check: bool=False -> Account",
-              "line": 480,
+              "line": 484,
               "doc": "Create an account. Raises :class:`AccountError` on refusal."
             },
             {
               "name": "authenticate",
               "signature": "def authenticateself, username: str, password: str -> Account",
-              "line": 544,
+              "line": 548,
               "doc": "Check a username and password. Raises on any failure."
             },
             {
               "name": "set_password",
               "signature": "def set_passwordself, account_id: str, password: str -> None",
-              "line": 630,
+              "line": 634,
               "doc": "Set a password without checking the old one. Admin path only."
             },
             {
               "name": "change_password",
               "signature": "def change_passwordself, account_id: str, current: str, new: str -> None",
-              "line": 642,
+              "line": 646,
               "doc": "Set a password, having checked the old one. The self-service path."
             },
             {
               "name": "set_active",
               "signature": "def set_activeself, account_id: str, active: bool -> None",
-              "line": 653,
+              "line": 657,
               "doc": ""
             },
             {
               "name": "remember_key",
               "signature": "def remember_keyself, account_id: str, key_id: str -> None",
-              "line": 658,
+              "line": 662,
               "doc": "Record that a key belongs to this account."
             },
             {
               "name": "forget_key",
               "signature": "def forget_keyself, account_id: str, key_id: str -> None",
-              "line": 669,
+              "line": 673,
               "doc": ""
             },
             {
               "name": "start_session",
               "signature": "def start_sessionself, account: Account, *, client_ip: str='', user_agent: str='' -> tuple[Session, str]",
-              "line": 678,
+              "line": 682,
               "doc": "Open a session. Returns ``(session, token)``."
             },
             {
               "name": "resolve_session",
               "signature": "def resolve_sessionself, token: str, *, client_ip: str='' -> tuple[Session, Account] | None",
-              "line": 709,
+              "line": 713,
               "doc": "The session and account a cookie names, or ``None``."
             },
             {
               "name": "check_csrf",
               "signature": "def check_csrfself, session: Session, supplied: str -> bool",
-              "line": 763,
+              "line": 767,
               "doc": "Whether *supplied* matches this session's CSRF token."
             },
             {
               "name": "end_session",
               "signature": "def end_sessionself, session_id: str -> bool",
-              "line": 776,
+              "line": 780,
               "doc": ""
             },
             {
               "name": "revoke_all_sessions",
               "signature": "def revoke_all_sessionsself, account_id: str -> int",
-              "line": 783,
+              "line": 787,
               "doc": ""
             },
             {
               "name": "purge_expired_sessions",
               "signature": "def purge_expired_sessionsself -> int",
-              "line": 790,
+              "line": 794,
               "doc": ""
             },
             {
               "name": "sessions_for",
               "signature": "def sessions_forself, account_id: str -> list[Session]",
-              "line": 798,
+              "line": 802,
               "doc": ""
             }
           ]
@@ -278,14 +278,14 @@
           "kind": "function",
           "name": "registration_mode_from_env",
           "signature": "def registration_mode_from_env -> str",
-          "line": 818,
+          "line": 822,
           "doc": "``T1_ACCOUNTS_REGISTRATION``, defaulting to the safe one."
         },
         {
           "kind": "function",
           "name": "invite_codes_from_env",
           "signature": "def invite_codes_from_env -> tuple[str, ...]",
-          "line": 823,
+          "line": 827,
           "doc": ""
         }
       ],
@@ -303,7 +303,14 @@
       ],
       "changes": [
         {
-          "sha": "0364ead4",
+          "sha": "9531f68",
+          "date": "2026-10-27",
+          "author": "Claude",
+          "subject": "Security: the critical and high CodeQL alerts from the alert export",
+          "api_changes": []
+        },
+        {
+          "sha": "0364ead",
           "date": "2026-10-14",
           "author": "t",
           "subject": "HyperLink chats per account/key, signed prompts, ping; web v2 search",
@@ -315,14 +322,14 @@
           ]
         },
         {
-          "sha": "99ddc1ae",
+          "sha": "99ddc1a",
           "date": "2026-09-29",
           "author": "Claude",
           "subject": "Security: make Codacy scan again, and clear most Bandit findings",
           "api_changes": []
         },
         {
-          "sha": "2324f0fa",
+          "sha": "2324f0f",
           "date": "2026-09-15",
           "author": "Mason",
           "subject": "t1 v1.0.26.9.2.3: sign up for a key without already having one",
@@ -459,14 +466,21 @@
       ],
       "changes": [
         {
-          "sha": "a97d518a",
+          "sha": "9531f68",
+          "date": "2026-10-27",
+          "author": "Claude",
+          "subject": "Security: the critical and high CodeQL alerts from the alert export",
+          "api_changes": []
+        },
+        {
+          "sha": "a97d518",
           "date": "2026-09-15",
           "author": "Claude",
           "subject": "docs: a README that describes this release, and two claims made true",
           "api_changes": []
         },
         {
-          "sha": "2324f0fa",
+          "sha": "2324f0f",
           "date": "2026-09-15",
           "author": "Mason",
           "subject": "t1 v1.0.26.9.2.3: sign up for a key without already having one",
@@ -631,7 +645,7 @@
       ],
       "changes": [
         {
-          "sha": "e89afd46",
+          "sha": "e89afd4",
           "date": "2026-10-20",
           "author": "Claude",
           "subject": "0.72.8 pt3 (part 1): Claude Code on T1, hnx0xv2image, hnx auto/extra, fixed commands",
@@ -760,7 +774,7 @@
       ],
       "changes": [
         {
-          "sha": "57773753",
+          "sha": "5777375",
           "date": "2026-10-20",
           "author": "Claude",
           "subject": "0.72.8 pt3 (part 2): MCP both ways, /net in the T1 API, public-server counter",
@@ -776,42 +790,42 @@
           ]
         },
         {
-          "sha": "d69ad9de",
+          "sha": "d69ad9d",
           "date": "2026-10-13",
           "author": "t",
           "subject": "T1 API: POST /inference/relay and the t1.statement/2 billing format",
           "api_changes": []
         },
         {
-          "sha": "91cd2708",
+          "sha": "91cd270",
           "date": "2026-10-08",
           "author": "Claude",
           "subject": "t1api: a caller leaving a stream stops the backend's reply",
           "api_changes": []
         },
         {
-          "sha": "999d2e1b",
+          "sha": "999d2e1",
           "date": "2026-09-28",
           "author": "Claude",
           "subject": "Model sync: mirror ~/.hypernix/models into ~/.hypernix/t1api/models",
           "api_changes": []
         },
         {
-          "sha": "a4b757dd",
+          "sha": "a4b757d",
           "date": "2026-09-27",
           "author": "Claude",
           "subject": "0.72.6.post3: HyperLink on the web opens at the server's own address",
           "api_changes": []
         },
         {
-          "sha": "59c7a9f4",
+          "sha": "59c7a9f",
           "date": "2026-09-27",
           "author": "Claude",
           "subject": "HyperLink on the web: the T1 server hosts it on port 37965",
           "api_changes": []
         },
         {
-          "sha": "0068bbf2",
+          "sha": "0068bbf",
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "T1: conceal mode with 36-hour retention, and a public /server/info",
@@ -823,7 +837,7 @@
           ]
         },
         {
-          "sha": "589ebbdc",
+          "sha": "589ebbd",
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "0.72.6 pt3: elements, error codes, and the optimizers that never trained",
@@ -933,28 +947,28 @@
       ],
       "changes": [
         {
-          "sha": "99ddc1ae",
+          "sha": "99ddc1a",
           "date": "2026-09-29",
           "author": "Claude",
           "subject": "Security: make Codacy scan again, and clear most Bandit findings",
           "api_changes": []
         },
         {
-          "sha": "0068bbf2",
+          "sha": "0068bbf",
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "T1: conceal mode with 36-hour retention, and a public /server/info",
           "api_changes": []
         },
         {
-          "sha": "7efe5548",
+          "sha": "7efe554",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "Fix the CI failures on macOS and Windows",
           "api_changes": []
         },
         {
-          "sha": "604a8342",
+          "sha": "604a834",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
@@ -1144,14 +1158,14 @@
       ],
       "changes": [
         {
-          "sha": "99ddc1ae",
+          "sha": "99ddc1a",
           "date": "2026-09-29",
           "author": "Claude",
           "subject": "Security: make Codacy scan again, and clear most Bandit findings",
           "api_changes": []
         },
         {
-          "sha": "462b479d",
+          "sha": "462b479",
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "v2.1 (T2C) keys, sealed with Rotorvault",
@@ -1167,14 +1181,14 @@
           ]
         },
         {
-          "sha": "55378e12",
+          "sha": "55378e1",
           "date": "2026-09-01",
           "author": "Claude",
           "subject": "T2P billing keys, and a server's right to refuse them",
           "api_changes": []
         },
         {
-          "sha": "8af94c41",
+          "sha": "8af94c4",
           "date": "2026-08-27",
           "author": "Claude",
           "subject": "T2S keys: fix the refusal, and let the phone actually enter one",
@@ -1186,7 +1200,7 @@
           ]
         },
         {
-          "sha": "56a9e0b3",
+          "sha": "56a9e0b",
           "date": "2026-08-26",
           "author": "Claude",
           "subject": "install-t1.sh: an interactive installer, and two bugs it exposed",
@@ -1198,7 +1212,7 @@
           ]
         },
         {
-          "sha": "370119db",
+          "sha": "370119d",
           "date": "2026-08-26",
           "author": "Claude",
           "subject": "T1 v1.0.26.8.1.0: T2 recognition, auth undo/redo, and backups",
@@ -1218,7 +1232,7 @@
           ]
         },
         {
-          "sha": "7a624da3",
+          "sha": "7a624da",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3: two bugs found by running against a real server",
@@ -1234,7 +1248,7 @@
           ]
         },
         {
-          "sha": "8c25846c",
+          "sha": "8c25846",
           "date": "2026-08-21",
           "author": "Claude",
           "subject": "Group hypernix modules into category packages",
@@ -1343,14 +1357,14 @@
       ],
       "changes": [
         {
-          "sha": "99ddc1ae",
+          "sha": "99ddc1a",
           "date": "2026-09-29",
           "author": "Claude",
           "subject": "Security: make Codacy scan again, and clear most Bandit findings",
           "api_changes": []
         },
         {
-          "sha": "370119db",
+          "sha": "370119d",
           "date": "2026-08-26",
           "author": "Claude",
           "subject": "T1 v1.0.26.8.1.0: T2 recognition, auth undo/redo, and backups",
@@ -1543,7 +1557,7 @@
       ],
       "changes": [
         {
-          "sha": "370119db",
+          "sha": "370119d",
           "date": "2026-08-26",
           "author": "Claude",
           "subject": "T1 v1.0.26.8.1.0: T2 recognition, auth undo/redo, and backups",
@@ -1725,21 +1739,21 @@
       ],
       "changes": [
         {
-          "sha": "99ddc1ae",
+          "sha": "99ddc1a",
           "date": "2026-09-29",
           "author": "Claude",
           "subject": "Security: make Codacy scan again, and clear most Bandit findings",
           "api_changes": []
         },
         {
-          "sha": "bccc73ec",
+          "sha": "bccc73e",
           "date": "2026-08-20",
           "author": "minerofthesoal",
           "subject": "fixes",
           "api_changes": []
         },
         {
-          "sha": "604ec86f",
+          "sha": "604ec86",
           "date": "2026-08-20",
           "author": "minerofthesoal",
           "subject": "b2",
@@ -1946,7 +1960,7 @@
       ],
       "changes": [
         {
-          "sha": "4dbd9e24",
+          "sha": "4dbd9e2",
           "date": "2026-09-01",
           "author": "Claude",
           "subject": "Docs modernization, billing-binding lifecycle, and 348 untracked .pyc",
@@ -1962,7 +1976,7 @@
           ]
         },
         {
-          "sha": "55378e12",
+          "sha": "55378e1",
           "date": "2026-09-01",
           "author": "Claude",
           "subject": "T2P billing keys, and a server's right to refuse them",
@@ -2096,14 +2110,14 @@
       ],
       "changes": [
         {
-          "sha": "99ddc1ae",
+          "sha": "99ddc1a",
           "date": "2026-09-29",
           "author": "Claude",
           "subject": "Security: make Codacy scan again, and clear most Bandit findings",
           "api_changes": []
         },
         {
-          "sha": "5d516951",
+          "sha": "5d51695",
           "date": "2026-09-01",
           "author": "Claude",
           "subject": "A new server issues itself a local, three-day admin key",
@@ -2179,14 +2193,14 @@
       ],
       "changes": [
         {
-          "sha": "99ddc1ae",
+          "sha": "99ddc1a",
           "date": "2026-09-29",
           "author": "Claude",
           "subject": "Security: make Codacy scan again, and clear most Bandit findings",
           "api_changes": []
         },
         {
-          "sha": "fa59f481",
+          "sha": "fa59f48",
           "date": "2026-09-26",
           "author": "Claude",
           "subject": "hypernix-t1 runner finds the server where `start` put it; add `hypernix-t1 chat`",
@@ -2280,14 +2294,14 @@
       ],
       "changes": [
         {
-          "sha": "57773753",
+          "sha": "5777375",
           "date": "2026-10-20",
           "author": "Claude",
           "subject": "0.72.8 pt3 (part 2): MCP both ways, /net in the T1 API, public-server counter",
           "api_changes": []
         },
         {
-          "sha": "e89afd46",
+          "sha": "e89afd4",
           "date": "2026-10-20",
           "author": "Claude",
           "subject": "0.72.8 pt3 (part 1): Claude Code on T1, hnx0xv2image, hnx auto/extra, fixed commands",
@@ -2323,20 +2337,20 @@
     {
       "module": "hypernix.t1api.codebox",
       "source": "src/hypernix/t1api/codebox.py",
-      "line_count": 621,
+      "line_count": 626,
       "summary": "``/code`` \u2014 sandboxes that run code, and the permissions they run under.",
       "api": [
         {
           "kind": "class",
           "name": "SandboxError",
           "signature": "class SandboxError",
-          "line": 134,
+          "line": 135,
           "doc": "A request the sandbox refused. ``code`` says which kind.",
           "methods": [
             {
               "name": "hx_code",
               "signature": "def hx_codeself -> str",
-              "line": 143,
+              "line": 144,
               "doc": "The registered HyperNix code for this kind of refusal (0.72.8a4)."
             }
           ]
@@ -2345,13 +2359,13 @@
           "kind": "class",
           "name": "CodePerms",
           "signature": "class CodePerms",
-          "line": 156,
+          "line": 157,
           "doc": "What every sandbox may do. The defaults are the cautious ones.",
           "methods": [
             {
               "name": "to_dict",
               "signature": "def to_dictself -> dict[str, Any]",
-              "line": 167,
+              "line": 168,
               "doc": ""
             }
           ]
@@ -2360,34 +2374,34 @@
           "kind": "function",
           "name": "apply_perms",
           "signature": "def apply_permsperms: CodePerms, raw: str -> tuple[CodePerms, list[str], list[str]]",
-          "line": 265,
+          "line": 270,
           "doc": "Apply a directive string. Returns ``(new perms, changed, asked)``."
         },
         {
           "kind": "function",
           "name": "network_isolation",
           "signature": "def network_isolation -> list[str] | None",
-          "line": 305,
+          "line": 310,
           "doc": "The argv prefix that runs a command with no network, or ``None``."
         },
         {
           "kind": "function",
           "name": "available_languages",
           "signature": "def available_languages -> dict[str, str]",
-          "line": 329,
+          "line": 334,
           "doc": "``name -> interpreter path`` for the languages installed here."
         },
         {
           "kind": "class",
           "name": "RunResult",
           "signature": "class RunResult",
-          "line": 374,
+          "line": 379,
           "doc": "",
           "methods": [
             {
               "name": "to_dict",
               "signature": "def to_dictself -> dict[str, Any]",
-              "line": 385,
+              "line": 390,
               "doc": ""
             }
           ]
@@ -2396,25 +2410,25 @@
           "kind": "class",
           "name": "Sandbox",
           "signature": "class Sandbox",
-          "line": 400,
+          "line": 405,
           "doc": "",
           "methods": [
             {
               "name": "files",
               "signature": "def filesself -> list[dict[str, Any]]",
-              "line": 408,
+              "line": 413,
               "doc": ""
             },
             {
               "name": "bytes_used",
               "signature": "def bytes_usedself -> int",
-              "line": 419,
+              "line": 424,
               "doc": ""
             },
             {
               "name": "to_dict",
               "signature": "def to_dictself, perms: CodePerms -> dict[str, Any]",
-              "line": 429,
+              "line": 434,
               "doc": ""
             }
           ]
@@ -2423,73 +2437,73 @@
           "kind": "class",
           "name": "SandboxStore",
           "signature": "class SandboxStore",
-          "line": 441,
+          "line": 446,
           "doc": "Every sandbox on this server, each a directory under one base.",
           "methods": [
             {
               "name": "create",
               "signature": "def createself, owner: str, perms: CodePerms, *, name: str='', files: dict[str, str] | None=None -> Sandbox",
-              "line": 461,
+              "line": 466,
               "doc": ""
             },
             {
               "name": "get",
               "signature": "def getself, box_id: str, owner: str, *, is_admin: bool=False -> Sandbox",
-              "line": 483,
+              "line": 488,
               "doc": ""
             },
             {
               "name": "list",
               "signature": "def listself, owner: str, *, is_admin: bool=False -> list[Sandbox]",
-              "line": 493,
+              "line": 498,
               "doc": ""
             },
             {
               "name": "delete",
               "signature": "def deleteself, box: Sandbox -> None",
-              "line": 497,
+              "line": 502,
               "doc": ""
             },
             {
               "name": "expire",
               "signature": "def expireself, perms: CodePerms -> builtins.list[str]",
-              "line": 503,
+              "line": 508,
               "doc": ""
             },
             {
               "name": "write",
               "signature": "def writeself, box: Sandbox, relative: str, content: str, perms: CodePerms -> Path",
-              "line": 526,
+              "line": 531,
               "doc": ""
             },
             {
               "name": "write_bytes",
               "signature": "def write_bytesself, box: Sandbox, relative: str, data: bytes, perms: CodePerms -> Path",
-              "line": 540,
+              "line": 545,
               "doc": "A binary file (an imported attachment), under the same disk budget."
             },
             {
               "name": "search",
               "signature": "def searchself, box: Sandbox, query: str, *, glob: str='', limit: int=200, regex: bool=False -> builtins.list[dict[str, Any]]",
-              "line": 553,
+              "line": 558,
               "doc": "Lines containing *query* in the sandbox's text files."
             },
             {
               "name": "read",
               "signature": "def readself, box: Sandbox, relative: str -> tuple[str, bool]",
-              "line": 586,
+              "line": 591,
               "doc": ""
             },
             {
               "name": "remove",
               "signature": "def removeself, box: Sandbox, relative: str -> None",
-              "line": 594,
+              "line": 599,
               "doc": ""
             },
             {
               "name": "run",
               "signature": "def runself, box: Sandbox, perms: CodePerms, *, language: str='', code: str | None=None, path: str='', stdin: str='', args: builtins.list[str] | None=None -> RunResult",
-              "line": 605,
+              "line": 610,
               "doc": ""
             }
           ]
@@ -2509,14 +2523,21 @@
       ],
       "changes": [
         {
-          "sha": "586da35f",
+          "sha": "9531f68",
+          "date": "2026-10-27",
+          "author": "Claude",
+          "subject": "Security: the critical and high CodeQL alerts from the alert export",
+          "api_changes": []
+        },
+        {
+          "sha": "586da35",
           "date": "2026-10-22",
           "author": "github-actions[bot]",
           "subject": "fix(security): py/regex-injection in src/hypernix/t1api/codebox.py:562 (alert #32029, Copilot Autofix)",
           "api_changes": []
         },
         {
-          "sha": "da36f8dc",
+          "sha": "da36f8d",
           "date": "2026-10-21",
           "author": "Claude",
           "subject": "Error codes: hyped-pro's moved into the registry (70), and 38 more",
@@ -2528,7 +2549,7 @@
           ]
         },
         {
-          "sha": "677812ea",
+          "sha": "677812e",
           "date": "2026-10-21",
           "author": "Claude",
           "subject": "0.72.8 pt3 (part 3): HyperLink Markdown, dataset excerpts, code-session tools",
@@ -2544,7 +2565,7 @@
           ]
         },
         {
-          "sha": "1a35b713",
+          "sha": "1a35b71",
           "date": "2026-10-06",
           "author": "Claude",
           "subject": "0.72.7 step 3: Python 3.12-3.15 -- requires-python, PEP 798/799/810/831",
@@ -2560,14 +2581,14 @@
           ]
         },
         {
-          "sha": "d595eb4a",
+          "sha": "d595eb4",
           "date": "2026-10-06",
           "author": "Claude",
           "subject": "0.72.7 step 2: images on the HyperNix runner; macOS/Linux CI and first Windows fixes",
           "api_changes": []
         },
         {
-          "sha": "858eefd0",
+          "sha": "858eefd",
           "date": "2026-09-30",
           "author": "Claude",
           "subject": "t1api: /code \u2014 sandboxes that run code, with perms in the web settings grammar",
@@ -2699,7 +2720,7 @@
       ],
       "changes": [
         {
-          "sha": "677812ea",
+          "sha": "677812e",
           "date": "2026-10-21",
           "author": "Claude",
           "subject": "0.72.8 pt3 (part 3): HyperLink Markdown, dataset excerpts, code-session tools",
@@ -2735,7 +2756,7 @@
     {
       "module": "hypernix.t1api.config",
       "source": "src/hypernix/t1api/config.py",
-      "line_count": 745,
+      "line_count": 750,
       "summary": "t1api.config \u2014 environment-variable configuration for the T1 API.",
       "api": [
         {
@@ -2748,61 +2769,61 @@
             {
               "name": "from_env",
               "signature": "def from_envcls, *, load_dotenv: bool=True, dotenv_path: str | Path='.env' -> T1APIConfig",
-              "line": 572,
+              "line": 577,
               "doc": ""
             },
             {
               "name": "is_production",
               "signature": "def is_productionself -> bool",
-              "line": 582,
+              "line": 587,
               "doc": ""
             },
             {
               "name": "storage_backend",
               "signature": "def storage_backendself -> str",
-              "line": 586,
+              "line": 591,
               "doc": ""
             },
             {
               "name": "tls_settings",
               "signature": "def tls_settingsself -> TLSSettings",
-              "line": 589,
+              "line": 594,
               "doc": ""
             },
             {
               "name": "rate_limit_rules",
               "signature": "def rate_limit_rulesself -> Any",
-              "line": 601,
+              "line": 606,
               "doc": "Parsed rate-limit rules, or None to use the defaults."
             },
             {
               "name": "feature_prices",
               "signature": "def feature_pricesself -> dict[str, float]",
-              "line": 619,
+              "line": 624,
               "doc": "``T1_FEATURE_PRICES``, parsed. Malformed JSON or a price that is not a number is dropped with a warning: an unpriced unit shows on the statement as unpriced, which is the honest failure."
             },
             {
               "name": "describe_secrets",
               "signature": "def describe_secretsself -> dict[str, bool]",
-              "line": 641,
+              "line": 646,
               "doc": "Which secrets are set. Values never included \u2014 this is what ``GET /status`` uses to tell an operator what's missing without telling anyone what it is."
             },
             {
               "name": "public_dict",
               "signature": "def public_dictself -> dict[str, object]",
-              "line": 655,
+              "line": 660,
               "doc": "Explicit allowlist of config surfaced by GET /config. Never includes ``token_secret``, ``deploy_secret``, ``database_url``, or any future secret field."
             },
             {
               "name": "production_problems",
               "signature": "def production_problemsself -> list[str]",
-              "line": 708,
+              "line": 713,
               "doc": "Every reason this config is unsafe for production, as text."
             },
             {
               "name": "validate_for_production",
               "signature": "def validate_for_productionself, *, strict: bool | None=None -> None",
-              "line": 800,
+              "line": 805,
               "doc": "Raise ``CONFIG_INVALID`` if this config is unsafe for production."
             }
           ]
@@ -2821,28 +2842,35 @@
       ],
       "changes": [
         {
-          "sha": "57773753",
+          "sha": "9531f68",
+          "date": "2026-10-27",
+          "author": "Claude",
+          "subject": "Security: the critical and high CodeQL alerts from the alert export",
+          "api_changes": []
+        },
+        {
+          "sha": "5777375",
           "date": "2026-10-20",
           "author": "Claude",
           "subject": "0.72.8 pt3 (part 2): MCP both ways, /net in the T1 API, public-server counter",
           "api_changes": []
         },
         {
-          "sha": "e89afd46",
+          "sha": "e89afd4",
           "date": "2026-10-20",
           "author": "Claude",
           "subject": "0.72.8 pt3 (part 1): Claude Code on T1, hnx0xv2image, hnx auto/extra, fixed commands",
           "api_changes": []
         },
         {
-          "sha": "0364ead4",
+          "sha": "0364ead",
           "date": "2026-10-14",
           "author": "t",
           "subject": "HyperLink chats per account/key, signed prompts, ping; web v2 search",
           "api_changes": []
         },
         {
-          "sha": "d69ad9de",
+          "sha": "d69ad9d",
           "date": "2026-10-13",
           "author": "t",
           "subject": "T1 API: POST /inference/relay and the t1.statement/2 billing format",
@@ -2854,31 +2882,24 @@
           ]
         },
         {
-          "sha": "203b7112",
+          "sha": "203b711",
           "date": "2026-10-06",
           "author": "Claude",
           "subject": "0.72.7 step 1: link config-less models, `runner auto`, images converted on upload",
           "api_changes": []
         },
         {
-          "sha": "858eefd0",
+          "sha": "858eefd",
           "date": "2026-09-30",
           "author": "Claude",
           "subject": "t1api: /code \u2014 sandboxes that run code, with perms in the web settings grammar",
           "api_changes": []
         },
         {
-          "sha": "216b2a30",
+          "sha": "216b2a3",
           "date": "2026-09-28",
           "author": "Claude",
           "subject": "Model sync: mirror T1_MODELS_SOURCE, not the download folder",
-          "api_changes": []
-        },
-        {
-          "sha": "999d2e1b",
-          "date": "2026-09-28",
-          "author": "Claude",
-          "subject": "Model sync: mirror ~/.hypernix/models into ~/.hypernix/t1api/models",
           "api_changes": []
         }
       ]
@@ -3006,7 +3027,7 @@
       ],
       "changes": [
         {
-          "sha": "d69ad9de",
+          "sha": "d69ad9d",
           "date": "2026-10-13",
           "author": "t",
           "subject": "T1 API: POST /inference/relay and the t1.statement/2 billing format",
@@ -3034,7 +3055,7 @@
           ]
         },
         {
-          "sha": "604a8342",
+          "sha": "604a834",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
@@ -3106,7 +3127,7 @@
     {
       "module": "hypernix.t1api.counter",
       "source": "src/hypernix/t1api/counter.py",
-      "line_count": 207,
+      "line_count": 209,
       "summary": "t1api.counter \u2014 how many public T1 servers are up, counted hourly.",
       "api": [
         {
@@ -3127,52 +3148,52 @@
           "kind": "function",
           "name": "heartbeat",
           "signature": "def heartbeatfolder: Path -> dict[str, str]",
-          "line": 103,
+          "line": 105,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "should_count",
           "signature": "def should_countconfig: Any -> tuple[bool, str]",
-          "line": 110,
+          "line": 112,
           "doc": "``(yes, why not)`` for this server."
         },
         {
           "kind": "function",
           "name": "published_endpoint",
           "signature": "def published_endpoint -> str",
-          "line": 135,
+          "line": 137,
           "doc": "The counter the project publishes, or ``\"\"`` while it publishes none."
         },
         {
           "kind": "class",
           "name": "CounterPinger",
           "signature": "class CounterPinger",
-          "line": 146,
+          "line": 148,
           "doc": "Sends the hourly heartbeat from a daemon thread.",
           "methods": [
             {
               "name": "url",
               "signature": "def urlself -> str",
-              "line": 159,
+              "line": 161,
               "doc": ""
             },
             {
               "name": "beat",
               "signature": "def beatself -> bool",
-              "line": 167,
+              "line": 169,
               "doc": ""
             },
             {
               "name": "start",
               "signature": "def startself -> bool",
-              "line": 176,
+              "line": 178,
               "doc": ""
             },
             {
               "name": "stop",
               "signature": "def stopself -> None",
-              "line": 194,
+              "line": 196,
               "doc": ""
             }
           ]
@@ -3181,19 +3202,19 @@
           "kind": "class",
           "name": "Counter",
           "signature": "class Counter",
-          "line": 198,
+          "line": 200,
           "doc": "The counting side: who was heard from, and when. No addresses are kept.",
           "methods": [
             {
               "name": "record",
               "signature": "def recordself, body: Any -> None",
-              "line": 213,
+              "line": 215,
               "doc": ""
             },
             {
               "name": "summary",
               "signature": "def summaryself -> dict[str, Any]",
-              "line": 240,
+              "line": 242,
               "doc": ""
             }
           ]
@@ -3212,14 +3233,21 @@
       ],
       "changes": [
         {
-          "sha": "e26ec4aa",
+          "sha": "9531f68",
+          "date": "2026-10-27",
+          "author": "Claude",
+          "subject": "Security: the critical and high CodeQL alerts from the alert export",
+          "api_changes": []
+        },
+        {
+          "sha": "e26ec4a",
           "date": "2026-10-22",
           "author": "github-actions[bot]",
           "subject": "fix(security): py/clear-text-storage-sensitive-data in src/hypernix/t1api/counter.py:95 (alert #32035, Copilot Autofix)",
           "api_changes": []
         },
         {
-          "sha": "57773753",
+          "sha": "5777375",
           "date": "2026-10-20",
           "author": "Claude",
           "subject": "0.72.8 pt3 (part 2): MCP both ways, /net in the T1 API, public-server counter",
@@ -3416,14 +3444,14 @@
       ],
       "changes": [
         {
-          "sha": "47fd89e3",
+          "sha": "47fd89e",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3: Beta 3 test suite, and four bugs it found",
           "api_changes": []
         },
         {
-          "sha": "604a8342",
+          "sha": "604a834",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
@@ -3527,7 +3555,7 @@
           ]
         },
         {
-          "sha": "604ec86f",
+          "sha": "604ec86",
           "date": "2026-08-20",
           "author": "minerofthesoal",
           "subject": "b2",
@@ -3605,7 +3633,7 @@
       ],
       "changes": [
         {
-          "sha": "604a8342",
+          "sha": "604a834",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
@@ -3981,14 +4009,14 @@
       ],
       "changes": [
         {
-          "sha": "9476ebc8",
+          "sha": "9476ebc",
           "date": "2026-10-27",
           "author": "Claude",
           "subject": "HyperLink: stop dropping a Tailscale connection the moment it is made",
           "api_changes": []
         },
         {
-          "sha": "0364ead4",
+          "sha": "0364ead",
           "date": "2026-10-14",
           "author": "t",
           "subject": "HyperLink chats per account/key, signed prompts, ping; web v2 search",
@@ -4004,7 +4032,7 @@
           ]
         },
         {
-          "sha": "faee5534",
+          "sha": "faee553",
           "date": "2026-09-16",
           "author": "Claude",
           "subject": "A HyperNix model runner, settings, memory and tool calling",
@@ -4016,7 +4044,7 @@
           ]
         },
         {
-          "sha": "cc94bf5a",
+          "sha": "cc94bf5",
           "date": "2026-09-16",
           "author": "Claude",
           "subject": "t1: run a model without LM Studio, and switch it from the API",
@@ -4028,7 +4056,7 @@
           ]
         },
         {
-          "sha": "6c58a994",
+          "sha": "6c58a99",
           "date": "2026-09-16",
           "author": "Claude",
           "subject": "Fix the CI build break, and ship an IPA that can run a model",
@@ -4040,7 +4068,7 @@
           ]
         },
         {
-          "sha": "1803aaab",
+          "sha": "1803aaa",
           "date": "2026-09-15",
           "author": "Claude",
           "subject": "t1: what the server's hardware is doing, and how long it has been up",
@@ -4052,7 +4080,7 @@
           ]
         },
         {
-          "sha": "030bf41b",
+          "sha": "030bf41",
           "date": "2026-09-15",
           "author": "Claude",
           "subject": "hyperlink: one model list from every source, and a Stop that stops",
@@ -4064,7 +4092,7 @@
           ]
         },
         {
-          "sha": "5dce819b",
+          "sha": "5dce819",
           "date": "2026-09-15",
           "author": "Claude",
           "subject": "t1: HyperLink could not connect over a trusted network at all",
@@ -4112,14 +4140,14 @@
       ],
       "changes": [
         {
-          "sha": "1f71cc6f",
+          "sha": "1f71cc6",
           "date": "2026-10-27",
           "author": "Claude",
           "subject": "Security: the scan's high alerts, vulnerable dependency floors; 0.72.8a5",
           "api_changes": []
         },
         {
-          "sha": "91cd2708",
+          "sha": "91cd270",
           "date": "2026-10-08",
           "author": "Claude",
           "subject": "t1api: a caller leaving a stream stops the backend's reply",
@@ -4238,7 +4266,7 @@
       ],
       "changes": [
         {
-          "sha": "fd848f59",
+          "sha": "fd848f5",
           "date": "2026-10-22",
           "author": "Claude",
           "subject": "hnx list-all, hnx-t1 setup (installer b1), hnx-t1 upgrade -S env|venv|all",
@@ -4334,14 +4362,14 @@
       ],
       "changes": [
         {
-          "sha": "99ddc1ae",
+          "sha": "99ddc1a",
           "date": "2026-09-29",
           "author": "Claude",
           "subject": "Security: make Codacy scan again, and clear most Bandit findings",
           "api_changes": []
         },
         {
-          "sha": "589ebbdc",
+          "sha": "589ebbd",
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "0.72.6 pt3: elements, error codes, and the optimizers that never trained",
@@ -4353,28 +4381,28 @@
           ]
         },
         {
-          "sha": "55378e12",
+          "sha": "55378e1",
           "date": "2026-09-01",
           "author": "Claude",
           "subject": "T2P billing keys, and a server's right to refuse them",
           "api_changes": []
         },
         {
-          "sha": "604a8342",
+          "sha": "604a834",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
           "api_changes": []
         },
         {
-          "sha": "604ec86f",
+          "sha": "604ec86",
           "date": "2026-08-20",
           "author": "minerofthesoal",
           "subject": "b2",
           "api_changes": []
         },
         {
-          "sha": "f836d298",
+          "sha": "f836d29",
           "date": "2026-08-18",
           "author": "minerofthesoal",
           "subject": "0.71.5b1-part one of four for the api",
@@ -4488,14 +4516,14 @@
       ],
       "changes": [
         {
-          "sha": "bccc73ec",
+          "sha": "bccc73e",
           "date": "2026-08-20",
           "author": "minerofthesoal",
           "subject": "fixes",
           "api_changes": []
         },
         {
-          "sha": "604ec86f",
+          "sha": "604ec86",
           "date": "2026-08-20",
           "author": "minerofthesoal",
           "subject": "b2",
@@ -4633,14 +4661,14 @@
       ],
       "changes": [
         {
-          "sha": "677812ea",
+          "sha": "677812e",
           "date": "2026-10-21",
           "author": "Claude",
           "subject": "0.72.8 pt3 (part 3): HyperLink Markdown, dataset excerpts, code-session tools",
           "api_changes": []
         },
         {
-          "sha": "a4b757dd",
+          "sha": "a4b757d",
           "date": "2026-09-27",
           "author": "Claude",
           "subject": "0.72.6.post3: HyperLink on the web opens at the server's own address",
@@ -4668,7 +4696,7 @@
           ]
         },
         {
-          "sha": "20b4cbaf",
+          "sha": "20b4cba",
           "date": "2026-09-27",
           "author": "Claude",
           "subject": "0.72.6.post2: HyperLink on the web works from the tailnet, and says why a reply failed",
@@ -4700,7 +4728,7 @@
           ]
         },
         {
-          "sha": "59c7a9f4",
+          "sha": "59c7a9f",
           "date": "2026-09-27",
           "author": "Claude",
           "subject": "HyperLink on the web: the T1 server hosts it on port 37965",
@@ -4859,14 +4887,14 @@
       ],
       "changes": [
         {
-          "sha": "bccc73ec",
+          "sha": "bccc73e",
           "date": "2026-08-20",
           "author": "minerofthesoal",
           "subject": "fixes",
           "api_changes": []
         },
         {
-          "sha": "604ec86f",
+          "sha": "604ec86",
           "date": "2026-08-20",
           "author": "minerofthesoal",
           "subject": "b2",
@@ -5071,7 +5099,7 @@
       ],
       "changes": [
         {
-          "sha": "604a8342",
+          "sha": "604a834",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
@@ -5206,14 +5234,14 @@
       ],
       "changes": [
         {
-          "sha": "da36f8dc",
+          "sha": "da36f8d",
           "date": "2026-10-21",
           "author": "Claude",
           "subject": "Error codes: hyped-pro's moved into the registry (70), and 38 more",
           "api_changes": []
         },
         {
-          "sha": "1f0d41be",
+          "sha": "1f0d41b",
           "date": "2026-10-14",
           "author": "t",
           "subject": "launch-script answers and --logs -F; runner start/backend choose from a list",
@@ -5229,21 +5257,21 @@
           ]
         },
         {
-          "sha": "fdb60dd8",
+          "sha": "fdb60dd",
           "date": "2026-09-29",
           "author": "Claude",
           "subject": "hypernix-t1 launch-script: -1 'CMD' replaces -$ 'CMD'",
           "api_changes": []
         },
         {
-          "sha": "99ddc1ae",
+          "sha": "99ddc1a",
           "date": "2026-09-29",
           "author": "Claude",
           "subject": "Security: make Codacy scan again, and clear most Bandit findings",
           "api_changes": []
         },
         {
-          "sha": "589ebbdc",
+          "sha": "589ebbd",
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "0.72.6 pt3: elements, error codes, and the optimizers that never trained",
@@ -5255,7 +5283,7 @@
           ]
         },
         {
-          "sha": "a8aca686",
+          "sha": "a8aca68",
           "date": "2026-09-08",
           "author": "Claude",
           "subject": "0.72.4.dev5 \u2014 hypernix-t1 launch-script",
@@ -5448,7 +5476,7 @@
       ],
       "changes": [
         {
-          "sha": "589ebbdc",
+          "sha": "589ebbd",
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "0.72.6 pt3: elements, error codes, and the optimizers that never trained",
@@ -5587,14 +5615,14 @@
       ],
       "changes": [
         {
-          "sha": "99ddc1ae",
+          "sha": "99ddc1a",
           "date": "2026-09-29",
           "author": "Claude",
           "subject": "Security: make Codacy scan again, and clear most Bandit findings",
           "api_changes": []
         },
         {
-          "sha": "fa59f481",
+          "sha": "fa59f48",
           "date": "2026-09-26",
           "author": "Claude",
           "subject": "hypernix-t1 runner finds the server where `start` put it; add `hypernix-t1 chat`",
@@ -5772,21 +5800,21 @@
       ],
       "changes": [
         {
-          "sha": "57773753",
+          "sha": "5777375",
           "date": "2026-10-20",
           "author": "Claude",
           "subject": "0.72.8 pt3 (part 2): MCP both ways, /net in the T1 API, public-server counter",
           "api_changes": []
         },
         {
-          "sha": "b4381824",
+          "sha": "b438182",
           "date": "2026-09-27",
           "author": "Claude",
           "subject": "Security: safe checkpoint loading, MCP errors, key paths, and working scanners",
           "api_changes": []
         },
         {
-          "sha": "3bd1c25d",
+          "sha": "3bd1c25",
           "date": "2026-09-22",
           "author": "Claude",
           "subject": "t1api: MCP server support, with plugins",
@@ -6033,7 +6061,7 @@
       ],
       "changes": [
         {
-          "sha": "57773753",
+          "sha": "5777375",
           "date": "2026-10-20",
           "author": "Claude",
           "subject": "0.72.8 pt3 (part 2): MCP both ways, /net in the T1 API, public-server counter",
@@ -6173,14 +6201,14 @@
       ],
       "changes": [
         {
-          "sha": "999d2e1b",
+          "sha": "999d2e1",
           "date": "2026-09-28",
           "author": "Claude",
           "subject": "Model sync: mirror ~/.hypernix/models into ~/.hypernix/t1api/models",
           "api_changes": []
         },
         {
-          "sha": "3bd1c25d",
+          "sha": "3bd1c25",
           "date": "2026-09-22",
           "author": "Claude",
           "subject": "t1api: MCP server support, with plugins",
@@ -6327,7 +6355,7 @@
       ],
       "changes": [
         {
-          "sha": "2c7ddb57",
+          "sha": "2c7ddb5",
           "date": "2026-10-27",
           "author": "Claude",
           "subject": "T1 runner start: a quick model list and a picker that never freezes",
@@ -6347,14 +6375,14 @@
           ]
         },
         {
-          "sha": "99636442",
+          "sha": "9963644",
           "date": "2026-09-29",
           "author": "Claude",
           "subject": "HyperLink: symlinked models load, and models can be linked from the app",
           "api_changes": []
         },
         {
-          "sha": "182b1efc",
+          "sha": "182b1ef",
           "date": "2026-09-16",
           "author": "Claude",
           "subject": "t1: index the models this machine has, and estimate what they cost",
@@ -6366,7 +6394,7 @@
           ]
         },
         {
-          "sha": "ac0053d7",
+          "sha": "ac0053d",
           "date": "2026-09-03",
           "author": "Claude",
           "subject": "0.72.3.post6 \u2014 hypernix-t1 index, and three more from the field",
@@ -6451,28 +6479,28 @@
       ],
       "changes": [
         {
-          "sha": "8bb54a39",
+          "sha": "8bb54a3",
           "date": "2026-09-17",
           "author": "Claude",
           "subject": "registry: a working directory that is gone is not a crash",
           "api_changes": []
         },
         {
-          "sha": "182b1efc",
+          "sha": "182b1ef",
           "date": "2026-09-16",
           "author": "Claude",
           "subject": "t1: index the models this machine has, and estimate what they cost",
           "api_changes": []
         },
         {
-          "sha": "fe580bc9",
+          "sha": "fe580bc",
           "date": "2026-09-08",
           "author": "Claude",
           "subject": "0.72.4.dev2 \u2014 the registry the server actually reads",
           "api_changes": []
         },
         {
-          "sha": "ac0053d7",
+          "sha": "ac0053d",
           "date": "2026-09-03",
           "author": "Claude",
           "subject": "0.72.3.post6 \u2014 hypernix-t1 index, and three more from the field",
@@ -6587,14 +6615,14 @@
       ],
       "changes": [
         {
-          "sha": "216b2a30",
+          "sha": "216b2a3",
           "date": "2026-09-28",
           "author": "Claude",
           "subject": "Model sync: mirror T1_MODELS_SOURCE, not the download folder",
           "api_changes": []
         },
         {
-          "sha": "999d2e1b",
+          "sha": "999d2e1",
           "date": "2026-09-28",
           "author": "Claude",
           "subject": "Model sync: mirror ~/.hypernix/models into ~/.hypernix/t1api/models",
@@ -6699,14 +6727,14 @@
       ],
       "changes": [
         {
-          "sha": "216b2a30",
+          "sha": "216b2a3",
           "date": "2026-09-28",
           "author": "Claude",
           "subject": "Model sync: mirror T1_MODELS_SOURCE, not the download folder",
           "api_changes": []
         },
         {
-          "sha": "999d2e1b",
+          "sha": "999d2e1",
           "date": "2026-09-28",
           "author": "Claude",
           "subject": "Model sync: mirror ~/.hypernix/models into ~/.hypernix/t1api/models",
@@ -6867,7 +6895,7 @@
       ],
       "changes": [
         {
-          "sha": "604a8342",
+          "sha": "604a834",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
@@ -6883,7 +6911,7 @@
           ]
         },
         {
-          "sha": "604ec86f",
+          "sha": "604ec86",
           "date": "2026-08-20",
           "author": "minerofthesoal",
           "subject": "b2",
@@ -6967,7 +6995,7 @@
     {
       "module": "hypernix.t1api.mtls",
       "source": "src/hypernix/t1api/mtls.py",
-      "line_count": 271,
+      "line_count": 274,
       "summary": "t1api.mtls \u2014 TLS and mutual-TLS support.",
       "api": [
         {
@@ -7034,19 +7062,19 @@
             {
               "name": "is_trusted_proxy",
               "signature": "def is_trusted_proxyself, peer_ip: str | None -> bool",
-              "line": 203,
+              "line": 206,
               "doc": ""
             },
             {
               "name": "extract",
               "signature": "def extractself, *, headers: dict[str, str], peer_ip: str | None, transport_cert: dict[str, Any] | None=None -> ClientCertificate",
-              "line": 212,
+              "line": 215,
               "doc": "Determine the client certificate for this request."
             },
             {
               "name": "require",
               "signature": "def requireself, cert: ClientCertificate, *, path: str='/' -> None",
-              "line": 250,
+              "line": 253,
               "doc": "Raise unless *cert* satisfies the configured mTLS policy."
             }
           ]
@@ -7065,7 +7093,14 @@
       ],
       "changes": [
         {
-          "sha": "604a8342",
+          "sha": "9531f68",
+          "date": "2026-10-27",
+          "author": "Claude",
+          "subject": "Security: the critical and high CodeQL alerts from the alert export",
+          "api_changes": []
+        },
+        {
+          "sha": "604a834",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
@@ -7299,7 +7334,7 @@
       ],
       "changes": [
         {
-          "sha": "604a8342",
+          "sha": "604a834",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
@@ -7504,7 +7539,7 @@
       ],
       "changes": [
         {
-          "sha": "2c7ddb57",
+          "sha": "2c7ddb5",
           "date": "2026-10-27",
           "author": "Claude",
           "subject": "T1 runner start: a quick model list and a picker that never freezes",
@@ -7516,7 +7551,7 @@
           ]
         },
         {
-          "sha": "1f0d41be",
+          "sha": "1f0d41b",
           "date": "2026-10-14",
           "author": "t",
           "subject": "launch-script answers and --logs -F; runner start/backend choose from a list",
@@ -7630,7 +7665,7 @@
       ],
       "changes": [
         {
-          "sha": "182b1efc",
+          "sha": "182b1ef",
           "date": "2026-09-16",
           "author": "Claude",
           "subject": "t1: index the models this machine has, and estimate what they cost",
@@ -7775,7 +7810,7 @@
       ],
       "changes": [
         {
-          "sha": "0068bbf2",
+          "sha": "0068bbf",
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "T1: conceal mode with 36-hour retention, and a public /server/info",
@@ -7954,7 +7989,7 @@
       ],
       "changes": [
         {
-          "sha": "47fd89e3",
+          "sha": "47fd89e",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3: Beta 3 test suite, and four bugs it found",
@@ -7978,7 +8013,7 @@
           ]
         },
         {
-          "sha": "604a8342",
+          "sha": "604a834",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
@@ -8246,14 +8281,14 @@
       ],
       "changes": [
         {
-          "sha": "d69ad9de",
+          "sha": "d69ad9d",
           "date": "2026-10-13",
           "author": "t",
           "subject": "T1 API: POST /inference/relay and the t1.statement/2 billing format",
           "api_changes": []
         },
         {
-          "sha": "8bb54a39",
+          "sha": "8bb54a3",
           "date": "2026-09-17",
           "author": "Claude",
           "subject": "registry: a working directory that is gone is not a crash",
@@ -8269,7 +8304,7 @@
           ]
         },
         {
-          "sha": "fe580bc9",
+          "sha": "fe580bc",
           "date": "2026-09-08",
           "author": "Claude",
           "subject": "0.72.4.dev2 \u2014 the registry the server actually reads",
@@ -8289,7 +8324,7 @@
           ]
         },
         {
-          "sha": "47fd89e3",
+          "sha": "47fd89e",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3: Beta 3 test suite, and four bugs it found",
@@ -8301,14 +8336,14 @@
           ]
         },
         {
-          "sha": "bccc73ec",
+          "sha": "bccc73e",
           "date": "2026-08-20",
           "author": "minerofthesoal",
           "subject": "fixes",
           "api_changes": []
         },
         {
-          "sha": "f836d298",
+          "sha": "f836d29",
           "date": "2026-08-18",
           "author": "minerofthesoal",
           "subject": "0.71.5b1-part one of four for the api",
@@ -8418,56 +8453,56 @@
       ],
       "changes": [
         {
-          "sha": "57773753",
+          "sha": "5777375",
           "date": "2026-10-20",
           "author": "Claude",
           "subject": "0.72.8 pt3 (part 2): MCP both ways, /net in the T1 API, public-server counter",
           "api_changes": []
         },
         {
-          "sha": "e89afd46",
+          "sha": "e89afd4",
           "date": "2026-10-20",
           "author": "Claude",
           "subject": "0.72.8 pt3 (part 1): Claude Code on T1, hnx0xv2image, hnx auto/extra, fixed commands",
           "api_changes": []
         },
         {
-          "sha": "674031bd",
+          "sha": "674031b",
           "date": "2026-10-14",
           "author": "t",
           "subject": "HyperLink: hypercompress, tool choice, memories only when told, documents",
           "api_changes": []
         },
         {
-          "sha": "0364ead4",
+          "sha": "0364ead",
           "date": "2026-10-14",
           "author": "t",
           "subject": "HyperLink chats per account/key, signed prompts, ping; web v2 search",
           "api_changes": []
         },
         {
-          "sha": "858eefd0",
+          "sha": "858eefd",
           "date": "2026-09-30",
           "author": "Claude",
           "subject": "t1api: /code \u2014 sandboxes that run code, with perms in the web settings grammar",
           "api_changes": []
         },
         {
-          "sha": "0068bbf2",
+          "sha": "0068bbf",
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "T1: conceal mode with 36-hour retention, and a public /server/info",
           "api_changes": []
         },
         {
-          "sha": "462b479d",
+          "sha": "462b479",
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "v2.1 (T2C) keys, sealed with Rotorvault",
           "api_changes": []
         },
         {
-          "sha": "53a7eec3",
+          "sha": "53a7eec",
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "0.72.6 pt2: dilute, /web/v1 keyless search, and eth's dead band",
@@ -8607,7 +8642,7 @@
       ],
       "changes": [
         {
-          "sha": "2324f0fa",
+          "sha": "2324f0f",
           "date": "2026-09-15",
           "author": "Mason",
           "subject": "t1 v1.0.26.9.2.3: sign up for a key without already having one",
@@ -8751,14 +8786,14 @@
       ],
       "changes": [
         {
-          "sha": "57773753",
+          "sha": "5777375",
           "date": "2026-10-20",
           "author": "Claude",
           "subject": "0.72.8 pt3 (part 2): MCP both ways, /net in the T1 API, public-server counter",
           "api_changes": []
         },
         {
-          "sha": "e89afd46",
+          "sha": "e89afd4",
           "date": "2026-10-20",
           "author": "Claude",
           "subject": "0.72.8 pt3 (part 1): Claude Code on T1, hnx0xv2image, hnx auto/extra, fixed commands",
@@ -8864,7 +8899,7 @@
       ],
       "changes": [
         {
-          "sha": "604a8342",
+          "sha": "604a834",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
@@ -8927,14 +8962,14 @@
       ],
       "changes": [
         {
-          "sha": "0068bbf2",
+          "sha": "0068bbf",
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "T1: conceal mode with 36-hour retention, and a public /server/info",
           "api_changes": []
         },
         {
-          "sha": "eab30655",
+          "sha": "eab3065",
           "date": "2026-08-27",
           "author": "Claude",
           "subject": "T1 v1.0.2026.8.1.1: server IDs advance, and undo/redo actually works",
@@ -8946,7 +8981,7 @@
           ]
         },
         {
-          "sha": "f836d298",
+          "sha": "f836d29",
           "date": "2026-08-18",
           "author": "minerofthesoal",
           "subject": "0.71.5b1-part one of four for the api",
@@ -9035,7 +9070,7 @@
       ],
       "changes": [
         {
-          "sha": "eab30655",
+          "sha": "eab3065",
           "date": "2026-08-27",
           "author": "Claude",
           "subject": "T1 v1.0.2026.8.1.1: server IDs advance, and undo/redo actually works",
@@ -9047,7 +9082,7 @@
           ]
         },
         {
-          "sha": "370119db",
+          "sha": "370119d",
           "date": "2026-08-26",
           "author": "Claude",
           "subject": "T1 v1.0.26.8.1.0: T2 recognition, auth undo/redo, and backups",
@@ -9161,7 +9196,7 @@
       ],
       "changes": [
         {
-          "sha": "370119db",
+          "sha": "370119d",
           "date": "2026-08-26",
           "author": "Claude",
           "subject": "T1 v1.0.26.8.1.0: T2 recognition, auth undo/redo, and backups",
@@ -9271,7 +9306,7 @@
       ],
       "changes": [
         {
-          "sha": "604ec86f",
+          "sha": "604ec86",
           "date": "2026-08-20",
           "author": "minerofthesoal",
           "subject": "b2",
@@ -9368,14 +9403,14 @@
       ],
       "changes": [
         {
-          "sha": "91cd2708",
+          "sha": "91cd270",
           "date": "2026-10-08",
           "author": "Claude",
           "subject": "t1api: a caller leaving a stream stops the backend's reply",
           "api_changes": []
         },
         {
-          "sha": "c7eabfd7",
+          "sha": "c7eabfd",
           "date": "2026-08-23",
           "author": "Claude",
           "subject": "T1 v1.0.26.8.0.1: the LM Studio bridge and HyperLink",
@@ -9572,14 +9607,14 @@
       ],
       "changes": [
         {
-          "sha": "da36f8dc",
+          "sha": "da36f8d",
           "date": "2026-10-21",
           "author": "Claude",
           "subject": "Error codes: hyped-pro's moved into the registry (70), and 38 more",
           "api_changes": []
         },
         {
-          "sha": "677812ea",
+          "sha": "677812e",
           "date": "2026-10-21",
           "author": "Claude",
           "subject": "0.72.8 pt3 (part 3): HyperLink Markdown, dataset excerpts, code-session tools",
@@ -9611,7 +9646,7 @@
           ]
         },
         {
-          "sha": "d69ad9de",
+          "sha": "d69ad9d",
           "date": "2026-10-13",
           "author": "t",
           "subject": "T1 API: POST /inference/relay and the t1.statement/2 billing format",
@@ -9623,7 +9658,7 @@
           ]
         },
         {
-          "sha": "858eefd0",
+          "sha": "858eefd",
           "date": "2026-09-30",
           "author": "Claude",
           "subject": "t1api: /code \u2014 sandboxes that run code, with perms in the web settings grammar",
@@ -9788,14 +9823,14 @@
       ],
       "changes": [
         {
-          "sha": "d69ad9de",
+          "sha": "d69ad9d",
           "date": "2026-10-13",
           "author": "t",
           "subject": "T1 API: POST /inference/relay and the t1.statement/2 billing format",
           "api_changes": []
         },
         {
-          "sha": "e26841fc",
+          "sha": "e26841f",
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "HyperLink: model titles, compression, private chats, organised memory, images, shell, tails",
@@ -9815,7 +9850,7 @@
           ]
         },
         {
-          "sha": "087a6cf0",
+          "sha": "087a6cf",
           "date": "2026-09-16",
           "author": "Claude",
           "subject": "t1: /chat/compact/* \u2014 making a long conversation fit again",
@@ -9897,7 +9932,7 @@
       ],
       "changes": [
         {
-          "sha": "f836d298",
+          "sha": "f836d29",
           "date": "2026-08-18",
           "author": "minerofthesoal",
           "subject": "0.71.5b1-part one of four for the api",
@@ -9946,7 +9981,7 @@
       ],
       "changes": [
         {
-          "sha": "57773753",
+          "sha": "5777375",
           "date": "2026-10-20",
           "author": "Claude",
           "subject": "0.72.8 pt3 (part 2): MCP both ways, /net in the T1 API, public-server counter",
@@ -10007,7 +10042,7 @@
       ],
       "changes": [
         {
-          "sha": "604ec86f",
+          "sha": "604ec86",
           "date": "2026-08-20",
           "author": "minerofthesoal",
           "subject": "b2",
@@ -10086,14 +10121,14 @@
       ],
       "changes": [
         {
-          "sha": "46047fec",
+          "sha": "46047fe",
           "date": "2026-09-16",
           "author": "Claude",
           "subject": "models: reconcile \"Models registered 44\" with an empty picker",
           "api_changes": []
         },
         {
-          "sha": "a75a750b",
+          "sha": "a75a750",
           "date": "2026-09-16",
           "author": "Claude",
           "subject": "t1api: add GET /version, and stop a stale process looking like a wrong number",
@@ -10113,35 +10148,35 @@
           ]
         },
         {
-          "sha": "d91c43ef",
+          "sha": "d91c43e",
           "date": "2026-08-26",
           "author": "Claude",
           "subject": "waiter -F: find a server, and never run what it tells you to",
           "api_changes": []
         },
         {
-          "sha": "c7eabfd7",
+          "sha": "c7eabfd",
           "date": "2026-08-23",
           "author": "Claude",
           "subject": "T1 v1.0.26.8.0.1: the LM Studio bridge and HyperLink",
           "api_changes": []
         },
         {
-          "sha": "879b000b",
+          "sha": "879b000",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5rc2 \u2014 T1 API Beta 4, hyped-pro, and PATH setup",
           "api_changes": []
         },
         {
-          "sha": "604a8342",
+          "sha": "604a834",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
           "api_changes": []
         },
         {
-          "sha": "f836d298",
+          "sha": "f836d29",
           "date": "2026-08-18",
           "author": "minerofthesoal",
           "subject": "0.71.5b1-part one of four for the api",
@@ -10207,7 +10242,7 @@
       ],
       "changes": [
         {
-          "sha": "674031bd",
+          "sha": "674031b",
           "date": "2026-10-14",
           "author": "t",
           "subject": "HyperLink: hypercompress, tool choice, memories only when told, documents",
@@ -10251,7 +10286,7 @@
     {
       "module": "hypernix.t1api.routers.hyperlink",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line_count": 2825,
+      "line_count": 2819,
       "summary": "``/hyperlink`` \u2014 the surface the iOS app talks to.",
       "api": [
         {
@@ -10580,70 +10615,70 @@
           "kind": "function",
           "name": "unlink_model_route",
           "signature": "def unlink_model_routename: str, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> ModelLinkResponse",
-          "line": 2913,
+          "line": 2907,
           "doc": "Remove a model link. Only ever a link: never the model it points at."
         },
         {
           "kind": "function",
           "name": "model_catalogue",
           "signature": "def model_catalogueprincipal: HyperLinkPrincipal=Depends(get_hyperlink_principal), registry: ModelRegistry=Depends(get_registry), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> ModelCatalogueResponse",
-          "line": 2932,
+          "line": 2926,
           "doc": "Everything runnable here: the registry, LM Studio, and the disk."
         },
         {
           "kind": "function",
           "name": "sync_changes",
           "signature": "def sync_changescursor: int=Query(default=0, ge=0), limit: int=Query(default=100, ge=1, le=500), session_id: str | None=Query(default=None), entities: str | None=Query(default=None, description='Comma-separated: session,message,device,attachment'), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: SyncStore=Depends(get_sync_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> SyncPageResponse",
-          "line": 2989,
+          "line": 2983,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "claim_client_message",
           "signature": "def claim_client_messagepayload: SyncClaimRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: SyncStore=Depends(get_sync_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> SyncClaimResponse",
-          "line": 3020,
+          "line": 3014,
           "doc": "Claim an idempotency key before sending a turn."
         },
         {
           "kind": "function",
           "name": "register_push",
           "signature": "def register_pushpayload: PushRegisterRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: NotificationStore=Depends(get_notification_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> PushRegistrationResponse",
-          "line": 3052,
+          "line": 3046,
           "doc": "Register this device's APNs token."
         },
         {
           "kind": "function",
           "name": "list_push",
           "signature": "def list_pushinclude_disabled: bool=Query(default=False), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: NotificationStore=Depends(get_notification_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> PushRegistrationListResponse",
-          "line": 3084,
+          "line": 3078,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "set_push_events",
           "signature": "def set_push_eventsregistration_id: str, payload: PushEventsRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: NotificationStore=Depends(get_notification_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> PushRegistrationResponse",
-          "line": 3104,
+          "line": 3098,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "unregister_push",
           "signature": "def unregister_pushregistration_id: str, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), store: NotificationStore=Depends(get_notification_store), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> GenericOkResponse",
-          "line": 3122,
+          "line": 3116,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "list_push_events",
           "signature": "def list_push_eventsconfig: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> dict",
-          "line": 3136,
+          "line": 3130,
           "doc": "What a device may subscribe to."
         },
         {
           "kind": "function",
           "name": "search_history",
           "signature": "def search_historyq: str=Query(min_length=1, max_length=500), limit: int=Query(default=25, ge=1, le=200), session_id: str | None=Query(default=None), include_archived: bool=Query(default=False), roles: str | None=Query(default=None, description='Comma-separated'), principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), index: SearchIndex=Depends(get_search_index), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> SearchResponse",
-          "line": 3174,
+          "line": 3168,
           "doc": "Search this owner's sessions and messages."
         }
       ],
@@ -10660,14 +10695,21 @@
       ],
       "changes": [
         {
-          "sha": "2c7ddb57",
+          "sha": "9531f68",
+          "date": "2026-10-27",
+          "author": "Claude",
+          "subject": "Security: the critical and high CodeQL alerts from the alert export",
+          "api_changes": []
+        },
+        {
+          "sha": "2c7ddb5",
           "date": "2026-10-27",
           "author": "Claude",
           "subject": "T1 runner start: a quick model list and a picker that never freezes",
           "api_changes": []
         },
         {
-          "sha": "677812ea",
+          "sha": "677812e",
           "date": "2026-10-21",
           "author": "Claude",
           "subject": "0.72.8 pt3 (part 3): HyperLink Markdown, dataset excerpts, code-session tools",
@@ -10707,7 +10749,7 @@
           ]
         },
         {
-          "sha": "57773753",
+          "sha": "5777375",
           "date": "2026-10-20",
           "author": "Claude",
           "subject": "0.72.8 pt3 (part 2): MCP both ways, /net in the T1 API, public-server counter",
@@ -10719,7 +10761,7 @@
           ]
         },
         {
-          "sha": "acb9516a",
+          "sha": "acb9516",
           "date": "2026-10-14",
           "author": "t",
           "subject": "HyperLink: two-layer ring beside the chat box",
@@ -10735,7 +10777,7 @@
           ]
         },
         {
-          "sha": "674031bd",
+          "sha": "674031b",
           "date": "2026-10-14",
           "author": "t",
           "subject": "HyperLink: hypercompress, tool choice, memories only when told, documents",
@@ -10763,7 +10805,7 @@
           ]
         },
         {
-          "sha": "0364ead4",
+          "sha": "0364ead",
           "date": "2026-10-14",
           "author": "t",
           "subject": "HyperLink chats per account/key, signed prompts, ping; web v2 search",
@@ -10811,7 +10853,7 @@
           ]
         },
         {
-          "sha": "cad7e52e",
+          "sha": "cad7e52",
           "date": "2026-10-14",
           "author": "t",
           "subject": "HyperLink: every loaded model listed, and a chat picks which answers",
@@ -10831,18 +10873,6 @@
             {
               "kind": "added",
               "text": "def list_loaded_models("
-            }
-          ]
-        },
-        {
-          "sha": "d595eb4a",
-          "date": "2026-10-06",
-          "author": "Claude",
-          "subject": "0.72.7 step 2: images on the HyperNix runner; macOS/Linux CI and first Windows fixes",
-          "api_changes": [
-            {
-              "kind": "added",
-              "text": "def _vision(wire: list[dict[str, Any]], backend, runner) -> list[dict[str, Any]]:"
             }
           ]
         }
@@ -10917,7 +10947,7 @@
       ],
       "changes": [
         {
-          "sha": "d69ad9de",
+          "sha": "d69ad9d",
           "date": "2026-10-13",
           "author": "t",
           "subject": "T1 API: POST /inference/relay and the t1.statement/2 billing format",
@@ -10953,14 +10983,14 @@
           ]
         },
         {
-          "sha": "91cd2708",
+          "sha": "91cd270",
           "date": "2026-10-08",
           "author": "Claude",
           "subject": "t1api: a caller leaving a stream stops the backend's reply",
           "api_changes": []
         },
         {
-          "sha": "d595eb4a",
+          "sha": "d595eb4",
           "date": "2026-10-06",
           "author": "Claude",
           "subject": "0.72.7 step 2: images on the HyperNix runner; macOS/Linux CI and first Windows fixes",
@@ -10976,7 +11006,7 @@
           ]
         },
         {
-          "sha": "4b7fe9d5",
+          "sha": "4b7fe9d",
           "date": "2026-10-01",
           "author": "Claude",
           "subject": "t1api: serve /inference from the HyperNix runner",
@@ -11012,7 +11042,7 @@
           ]
         },
         {
-          "sha": "547dfa47",
+          "sha": "547dfa4",
           "date": "2026-09-02",
           "author": "Claude",
           "subject": "T1 v1.0.2026.9.2.1: the governed inference surface",
@@ -11144,14 +11174,14 @@
       ],
       "changes": [
         {
-          "sha": "bccc73ec",
+          "sha": "bccc73e",
           "date": "2026-08-20",
           "author": "minerofthesoal",
           "subject": "fixes",
           "api_changes": []
         },
         {
-          "sha": "604ec86f",
+          "sha": "604ec86",
           "date": "2026-08-20",
           "author": "minerofthesoal",
           "subject": "b2",
@@ -11227,7 +11257,7 @@
       ],
       "changes": [
         {
-          "sha": "604a8342",
+          "sha": "604a834",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
@@ -11361,7 +11391,7 @@
       ],
       "changes": [
         {
-          "sha": "57773753",
+          "sha": "5777375",
           "date": "2026-10-20",
           "author": "Claude",
           "subject": "0.72.8 pt3 (part 2): MCP both ways, /net in the T1 API, public-server counter",
@@ -11441,7 +11471,7 @@
           ]
         },
         {
-          "sha": "3bd1c25d",
+          "sha": "3bd1c25",
           "date": "2026-09-22",
           "author": "Claude",
           "subject": "t1api: MCP server support, with plugins",
@@ -11555,7 +11585,7 @@
       ],
       "changes": [
         {
-          "sha": "3fc645bf",
+          "sha": "3fc645b",
           "date": "2026-09-24",
           "author": "Claude",
           "subject": "HyperLink: memories sync from the server as they change",
@@ -11571,7 +11601,7 @@
           ]
         },
         {
-          "sha": "e26841fc",
+          "sha": "e26841f",
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "HyperLink: model titles, compression, private chats, organised memory, images, shell, tails",
@@ -11603,7 +11633,7 @@
           ]
         },
         {
-          "sha": "6c58a994",
+          "sha": "6c58a99",
           "date": "2026-09-16",
           "author": "Claude",
           "subject": "Fix the CI build break, and ship an IPA that can run a model",
@@ -11705,28 +11735,28 @@
       ],
       "changes": [
         {
-          "sha": "3e60ff82",
+          "sha": "3e60ff8",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3 (part 2/3): complete SDK, full waiter TUI, smoke tool",
           "api_changes": []
         },
         {
-          "sha": "604a8342",
+          "sha": "604a834",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
           "api_changes": []
         },
         {
-          "sha": "bccc73ec",
+          "sha": "bccc73e",
           "date": "2026-08-20",
           "author": "minerofthesoal",
           "subject": "fixes",
           "api_changes": []
         },
         {
-          "sha": "604ec86f",
+          "sha": "604ec86",
           "date": "2026-08-20",
           "author": "minerofthesoal",
           "subject": "b2",
@@ -11742,7 +11772,7 @@
           ]
         },
         {
-          "sha": "f836d298",
+          "sha": "f836d29",
           "date": "2026-08-18",
           "author": "minerofthesoal",
           "subject": "0.71.5b1-part one of four for the api",
@@ -11888,7 +11918,7 @@
       ],
       "changes": [
         {
-          "sha": "604a8342",
+          "sha": "604a834",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
@@ -11920,7 +11950,7 @@
           ]
         },
         {
-          "sha": "604ec86f",
+          "sha": "604ec86",
           "date": "2026-08-20",
           "author": "minerofthesoal",
           "subject": "b2",
@@ -12192,7 +12222,7 @@
       ],
       "changes": [
         {
-          "sha": "57773753",
+          "sha": "5777375",
           "date": "2026-10-20",
           "author": "Claude",
           "subject": "0.72.8 pt3 (part 2): MCP both ways, /net in the T1 API, public-server counter",
@@ -12338,7 +12368,7 @@
       ],
       "changes": [
         {
-          "sha": "88c9024f",
+          "sha": "88c9024",
           "date": "2026-09-16",
           "author": "Claude",
           "subject": "t1: noodle over the API \u2014 files, edits, fish and archives",
@@ -12431,7 +12461,7 @@
       ],
       "changes": [
         {
-          "sha": "0068bbf2",
+          "sha": "0068bbf",
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "T1: conceal mode with 36-hour retention, and a public /server/info",
@@ -12479,70 +12509,70 @@
     {
       "module": "hypernix.t1api.routers.runner",
       "source": "src/hypernix/t1api/routers/runner.py",
-      "line_count": 488,
+      "line_count": 541,
       "summary": "``/runner/*`` \u2014 loading, unloading and switching the served model.",
       "api": [
         {
           "kind": "function",
           "name": "require_switch",
           "signature": "def require_switchprincipal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config) -> HyperLinkPrincipal",
-          "line": 78,
+          "line": 79,
           "doc": "Admin, partial admin, or an explicit switch grant."
         },
         {
           "kind": "function",
           "name": "runner_status",
           "signature": "def runner_statusprincipal: HyperLinkPrincipal=Depends(get_hyperlink_principal), runner=Depends(get_runner), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> RunnerStatusResponse",
-          "line": 178,
+          "line": 189,
           "doc": "What is loaded, where its layers are, and how long it has been up."
         },
         {
           "kind": "function",
           "name": "runner_plan",
           "signature": "def runner_planpayload: RunnerLoadRequest, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), registry=Depends(get_registry), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> RunnerPlanResponse",
-          "line": 201,
+          "line": 212,
           "doc": "Where this model's layers would go. Changes nothing."
         },
         {
           "kind": "function",
           "name": "runner_load",
           "signature": "def runner_loadpayload: RunnerLoadRequest, principal: HyperLinkPrincipal=Depends(require_switch), runner=Depends(get_runner), registry=Depends(get_registry), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> RunnerStatusResponse",
-          "line": 237,
+          "line": 248,
           "doc": "Load a model, replacing whatever was running."
         },
         {
           "kind": "function",
           "name": "runner_auto",
           "signature": "def runner_autopayload: RunnerAutoRequest | None=None, principal: HyperLinkPrincipal=Depends(require_switch), runner=Depends(get_runner), registry=Depends(get_registry), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> RunnerStatusResponse",
-          "line": 298,
+          "line": 357,
           "doc": "Load what this server usually runs, the way it was last run."
         },
         {
           "kind": "function",
           "name": "runner_unload",
           "signature": "def runner_unloadprincipal: HyperLinkPrincipal=Depends(require_switch), runner=Depends(get_runner), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> RunnerStatusResponse",
-          "line": 353,
+          "line": 412,
           "doc": "Stop serving. Unloading nothing is a success, not an error."
         },
         {
           "kind": "function",
           "name": "runner_hyperchat",
           "signature": "def runner_hyperchatrequest: Request, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> dict",
-          "line": 369,
+          "line": 428,
           "doc": "Whether prompts run side by side or wait in line, and how deep."
         },
         {
           "kind": "function",
           "name": "runner_adopt_preview",
           "signature": "def runner_adopt_previewrequest: Request, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), runner=Depends(get_runner), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> dict",
-          "line": 454,
+          "line": 513,
           "doc": "Whether \"Move to the HyperNix runner\" applies here, and to what."
         },
         {
           "kind": "function",
           "name": "runner_adopt",
           "signature": "def runner_adoptrequest: Request, payload: dict | None=None, principal: HyperLinkPrincipal=Depends(get_hyperlink_principal), runner=Depends(get_runner), config: T1APIConfig=Depends(get_config), request_id: str=Depends(get_request_id) -> RunnerStatusResponse",
-          "line": 480,
+          "line": 539,
           "doc": "Unload LM Studio's model and load the same file on the runner."
         }
       ],
@@ -12559,21 +12589,40 @@
       ],
       "changes": [
         {
-          "sha": "c530df6a",
+          "sha": "d2a4760",
+          "date": "2026-10-28",
+          "author": "Claude",
+          "subject": "hnx download --latest; the runner fetches and registers HyperNix releases",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _ensure_registered(registry, model_id: str, current, facts: dict) -> None:"
+            }
+          ]
+        },
+        {
+          "sha": "802be03",
+          "date": "2026-10-28",
+          "author": "Claude",
+          "subject": "Runners: CPU offloading",
+          "api_changes": []
+        },
+        {
+          "sha": "c530df6",
           "date": "2026-10-14",
           "author": "t",
           "subject": "Default model: LFM2.5-2.6B (lfm2.5-2.7b resolves to it)",
           "api_changes": []
         },
         {
-          "sha": "d595eb4a",
+          "sha": "d595eb4",
           "date": "2026-10-06",
           "author": "Claude",
           "subject": "0.72.7 step 2: images on the HyperNix runner; macOS/Linux CI and first Windows fixes",
           "api_changes": []
         },
         {
-          "sha": "203b7112",
+          "sha": "203b711",
           "date": "2026-10-06",
           "author": "Claude",
           "subject": "0.72.7 step 1: link config-less models, `runner auto`, images converted on upload",
@@ -12593,21 +12642,21 @@
           ]
         },
         {
-          "sha": "99636442",
+          "sha": "9963644",
           "date": "2026-09-29",
           "author": "Claude",
           "subject": "HyperLink: symlinked models load, and models can be linked from the app",
           "api_changes": []
         },
         {
-          "sha": "999d2e1b",
+          "sha": "999d2e1",
           "date": "2026-09-28",
           "author": "Claude",
           "subject": "Model sync: mirror ~/.hypernix/models into ~/.hypernix/t1api/models",
           "api_changes": []
         },
         {
-          "sha": "bf44cc7e",
+          "sha": "bf44cc7",
           "date": "2026-09-27",
           "author": "Claude",
           "subject": "HyperLink: move LM Studio's model onto the HyperNix runner",
@@ -12639,29 +12688,6 @@
             {
               "kind": "added",
               "text": "def runner_adopt("
-            }
-          ]
-        },
-        {
-          "sha": "1c244db8",
-          "date": "2026-09-26",
-          "author": "Claude",
-          "subject": "Runner: serve native HyperNix models; HyperNix.3-mini is the default",
-          "api_changes": []
-        },
-        {
-          "sha": "bca36d0f",
-          "date": "2026-09-23",
-          "author": "Claude",
-          "subject": "0.72.6 pt2: hyperchat, and three things HyperLink was showing wrong",
-          "api_changes": [
-            {
-              "kind": "added",
-              "text": "@router.get(\"/hyperchat\")"
-            },
-            {
-              "kind": "added",
-              "text": "def runner_hyperchat("
             }
           ]
         }
@@ -12750,7 +12776,7 @@
       ],
       "changes": [
         {
-          "sha": "604a8342",
+          "sha": "604a834",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
@@ -12885,21 +12911,21 @@
       ],
       "changes": [
         {
-          "sha": "604a8342",
+          "sha": "604a834",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
           "api_changes": []
         },
         {
-          "sha": "bccc73ec",
+          "sha": "bccc73e",
           "date": "2026-08-20",
           "author": "minerofthesoal",
           "subject": "fixes",
           "api_changes": []
         },
         {
-          "sha": "604ec86f",
+          "sha": "604ec86",
           "date": "2026-08-20",
           "author": "minerofthesoal",
           "subject": "b2",
@@ -13005,7 +13031,7 @@
       ],
       "changes": [
         {
-          "sha": "462b479d",
+          "sha": "462b479",
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "v2.1 (T2C) keys, sealed with Rotorvault",
@@ -13148,7 +13174,7 @@
       ],
       "changes": [
         {
-          "sha": "3cd859b2",
+          "sha": "3cd859b",
           "date": "2026-09-08",
           "author": "Claude",
           "subject": "0.72.4.dev7 \u2014 what training is doing, and the controls for it",
@@ -13279,14 +13305,14 @@
         {
           "kind": "function",
           "name": "usage_by",
-          "signature": "def usage_bygroup_by: str=Query(..., description=f\"One of: {', '.join(GROUPABLE)}\"), range_: str | None=Query(default=None, alias='range'), since: float | None=Query(default=None), until: float | None=Query(default=None), key_id: str | None=Query(default=None), model_id: str | None=Query(default=None), server_id: str | None=Query(default=None), module_id: str | None=Query(default=None), user_id: str | None=Query(default=None), account_id: str | None=Query(default=None), ctx: AuthContext=Depends(get_auth_context), meter: UsageMeter=Depends(get_usage_meter), keys=Depends(get_key_directory), request_id: str=Depends(get_request_id) -> UsageAggregateResponse",
+          "signature": "def usage_bygroup_by: str=Query(..., description=f'One of: {', '.join(GROUPABLE)}'), range_: str | None=Query(default=None, alias='range'), since: float | None=Query(default=None), until: float | None=Query(default=None), key_id: str | None=Query(default=None), model_id: str | None=Query(default=None), server_id: str | None=Query(default=None), module_id: str | None=Query(default=None), user_id: str | None=Query(default=None), account_id: str | None=Query(default=None), ctx: AuthContext=Depends(get_auth_context), meter: UsageMeter=Depends(get_usage_meter), keys=Depends(get_key_directory), request_id: str=Depends(get_request_id) -> UsageAggregateResponse",
           "line": 183,
           "doc": "\"Usage by model / key / server / module / user / account\", as one endpoint rather than six near-identical ones."
         },
         {
           "kind": "function",
           "name": "usage_cost",
-          "signature": "def usage_costgroup_by: str=Query(default='model_id', description=f\"One of: {', '.join(GROUPABLE)}\"), range_: str | None=Query(default=None, alias='range'), since: float | None=Query(default=None), until: float | None=Query(default=None), key_id: str | None=Query(default=None), model_id: str | None=Query(default=None), server_id: str | None=Query(default=None), module_id: str | None=Query(default=None), user_id: str | None=Query(default=None), account_id: str | None=Query(default=None), forecast: bool=Query(default=False, description='Include a spend forecast for the horizon.'), forecast_horizon_seconds: float=Query(default=2592000.0, gt=0), ctx: AuthContext=Depends(get_auth_context), calculator: CostCalculator=Depends(get_cost_calculator), keys=Depends(get_key_directory), request_id: str=Depends(get_request_id) -> UsageCostResponse",
+          "signature": "def usage_costgroup_by: str=Query(default='model_id', description=f'One of: {', '.join(GROUPABLE)}'), range_: str | None=Query(default=None, alias='range'), since: float | None=Query(default=None), until: float | None=Query(default=None), key_id: str | None=Query(default=None), model_id: str | None=Query(default=None), server_id: str | None=Query(default=None), module_id: str | None=Query(default=None), user_id: str | None=Query(default=None), account_id: str | None=Query(default=None), forecast: bool=Query(default=False, description='Include a spend forecast for the horizon.'), forecast_horizon_seconds: float=Query(default=2592000.0, gt=0), ctx: AuthContext=Depends(get_auth_context), calculator: CostCalculator=Depends(get_cost_calculator), keys=Depends(get_key_directory), request_id: str=Depends(get_request_id) -> UsageCostResponse",
           "line": 246,
           "doc": "Actual cost with optional forecast \u2014 totals, date ranges, and per-model/per-server breakdowns in one shape."
         },
@@ -13325,7 +13351,7 @@
       ],
       "changes": [
         {
-          "sha": "d69ad9de",
+          "sha": "d69ad9d",
           "date": "2026-10-13",
           "author": "t",
           "subject": "T1 API: POST /inference/relay and the t1.statement/2 billing format",
@@ -13341,7 +13367,7 @@
           ]
         },
         {
-          "sha": "879b000b",
+          "sha": "879b000",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5rc2 \u2014 T1 API Beta 4, hyped-pro, and PATH setup",
@@ -13357,7 +13383,7 @@
           ]
         },
         {
-          "sha": "604a8342",
+          "sha": "604a834",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
@@ -13405,7 +13431,7 @@
           ]
         },
         {
-          "sha": "f836d298",
+          "sha": "f836d29",
           "date": "2026-08-18",
           "author": "minerofthesoal",
           "subject": "0.71.5b1-part one of four for the api",
@@ -13492,7 +13518,7 @@
       ],
       "changes": [
         {
-          "sha": "0364ead4",
+          "sha": "0364ead",
           "date": "2026-10-14",
           "author": "t",
           "subject": "HyperLink chats per account/key, signed prompts, ping; web v2 search",
@@ -13528,21 +13554,21 @@
           ]
         },
         {
-          "sha": "d69ad9de",
+          "sha": "d69ad9d",
           "date": "2026-10-13",
           "author": "t",
           "subject": "T1 API: POST /inference/relay and the t1.statement/2 billing format",
           "api_changes": []
         },
         {
-          "sha": "eb12198c",
+          "sha": "eb12198",
           "date": "2026-09-26",
           "author": "Claude",
           "subject": "Fix the high-rated security findings",
           "api_changes": []
         },
         {
-          "sha": "7f46b1c5",
+          "sha": "7f46b1c",
           "date": "2026-09-24",
           "author": "Rayla",
           "subject": "Potential fix for code scanning alert no. 26263: Full server-side request forgery",
@@ -13554,7 +13580,7 @@
           ]
         },
         {
-          "sha": "bf80987c",
+          "sha": "bf80987",
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "ci: GCC 11 rejects [[maybe_unused]] on a member; no exception text from summarise",
@@ -13570,21 +13596,21 @@
           ]
         },
         {
-          "sha": "6066ce53",
+          "sha": "6066ce5",
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "ci: magnesium without psutil, Windows paths, and CodeQL's findings",
           "api_changes": []
         },
         {
-          "sha": "5bfb35d9",
+          "sha": "5bfb35d",
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "0.72.6 pt3: T1 tools for local models, and HyperLink swipe, memories, search, on-device",
           "api_changes": []
         },
         {
-          "sha": "bca36d0f",
+          "sha": "bca36d0",
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "0.72.6 pt2: hyperchat, and three things HyperLink was showing wrong",
@@ -13723,14 +13749,14 @@
       ],
       "changes": [
         {
-          "sha": "bccc73ec",
+          "sha": "bccc73e",
           "date": "2026-08-20",
           "author": "minerofthesoal",
           "subject": "fixes",
           "api_changes": []
         },
         {
-          "sha": "604ec86f",
+          "sha": "604ec86",
           "date": "2026-08-20",
           "author": "minerofthesoal",
           "subject": "b2",
@@ -13822,7 +13848,7 @@
     {
       "module": "hypernix.t1api.runner_cli",
       "source": "src/hypernix/t1api/runner_cli.py",
-      "line_count": 563,
+      "line_count": 577,
       "summary": "``hypernix-t1 built-in-runner`` \u2014 load, unload and inspect the served model.",
       "api": [
         {
@@ -13837,21 +13863,21 @@
           "kind": "function",
           "name": "build_parser",
           "signature": "def build_parser -> argparse.ArgumentParser",
-          "line": 319,
+          "line": 326,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "main",
           "signature": "def mainargv: list[str] | None=None -> int",
-          "line": 389,
+          "line": 403,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "cli_main",
           "signature": "def cli_mainargv: list[str] | None=None -> int",
-          "line": 661,
+          "line": 675,
           "doc": ""
         }
       ],
@@ -13868,21 +13894,28 @@
       ],
       "changes": [
         {
-          "sha": "7d6b3f21",
+          "sha": "802be03",
+          "date": "2026-10-28",
+          "author": "Claude",
+          "subject": "Runners: CPU offloading",
+          "api_changes": []
+        },
+        {
+          "sha": "7d6b3f2",
           "date": "2026-10-14",
           "author": "t",
           "subject": "Multi-llama runner; the hnx llama mod knows the forks' types",
           "api_changes": []
         },
         {
-          "sha": "c530df6a",
+          "sha": "c530df6",
           "date": "2026-10-14",
           "author": "t",
           "subject": "Default model: LFM2.5-2.6B (lfm2.5-2.7b resolves to it)",
           "api_changes": []
         },
         {
-          "sha": "1f0d41be",
+          "sha": "1f0d41b",
           "date": "2026-10-14",
           "author": "t",
           "subject": "launch-script answers and --logs -F; runner start/backend choose from a list",
@@ -13914,7 +13947,7 @@
           ]
         },
         {
-          "sha": "203b7112",
+          "sha": "203b711",
           "date": "2026-10-06",
           "author": "Claude",
           "subject": "0.72.7 step 1: link config-less models, `runner auto`, images converted on upload",
@@ -13926,21 +13959,21 @@
           ]
         },
         {
-          "sha": "99ddc1ae",
+          "sha": "99ddc1a",
           "date": "2026-09-29",
           "author": "Claude",
           "subject": "Security: make Codacy scan again, and clear most Bandit findings",
           "api_changes": []
         },
         {
-          "sha": "1c244db8",
+          "sha": "1c244db",
           "date": "2026-09-26",
           "author": "Claude",
           "subject": "Runner: serve native HyperNix models; HyperNix.3-mini is the default",
           "api_changes": []
         },
         {
-          "sha": "fa59f481",
+          "sha": "fa59f48",
           "date": "2026-09-26",
           "author": "Claude",
           "subject": "hypernix-t1 runner finds the server where `start` put it; add `hypernix-t1 chat`",
@@ -13958,49 +13991,13 @@
               "text": "def _run(parser: argparse.ArgumentParser, args: argparse.Namespace, url: str, key: str) -> int:"
             }
           ]
-        },
-        {
-          "sha": "792c5d27",
-          "date": "2026-09-17",
-          "author": "Claude",
-          "subject": "hyperlink: add and re-port a server; hypernix-t1 built-in-runner start",
-          "api_changes": [
-            {
-              "kind": "added",
-              "text": "def _catalogue(url: str, key: str) -> tuple[dict[str, Any], tuple[int, Any] | None]:"
-            },
-            {
-              "kind": "added",
-              "text": "def _loadable(catalogue: dict[str, Any]) -> list[dict[str, Any]]:"
-            },
-            {
-              "kind": "added",
-              "text": "def _why_nothing(catalogue: dict[str, Any]) -> str:"
-            },
-            {
-              "kind": "added",
-              "text": "def _pick(url: str, key: str) -> tuple[str, int]:"
-            },
-            {
-              "kind": "added",
-              "text": "def _load_payload(args: argparse.Namespace, model_id: str) -> dict[str, Any]:"
-            },
-            {
-              "kind": "added",
-              "text": "def _load_options(action: argparse.ArgumentParser) -> None:"
-            },
-            {
-              "kind": "added",
-              "text": "def _start(url: str, key: str, args: argparse.Namespace) -> int:"
-            }
-          ]
         }
       ]
     },
     {
       "module": "hypernix.t1api.schemas",
       "source": "src/hypernix/t1api/schemas.py",
-      "line_count": 1829,
+      "line_count": 1836,
       "summary": "t1api.schemas \u2014 Pydantic v2 request/response models for the T1 API.",
       "api": [
         {
@@ -15071,7 +15068,7 @@
           "kind": "class",
           "name": "RunnerAutoRequest",
           "signature": "class RunnerAutoRequest",
-          "line": 1608,
+          "line": 1614,
           "doc": "",
           "methods": []
         },
@@ -15079,7 +15076,7 @@
           "kind": "class",
           "name": "RunnerStatusResponse",
           "signature": "class RunnerStatusResponse",
-          "line": 1616,
+          "line": 1622,
           "doc": "",
           "methods": []
         },
@@ -15087,7 +15084,7 @@
           "kind": "class",
           "name": "RunnerPlanResponse",
           "signature": "class RunnerPlanResponse",
-          "line": 1627,
+          "line": 1633,
           "doc": "",
           "methods": []
         },
@@ -15095,7 +15092,7 @@
           "kind": "class",
           "name": "NoodleRunRequest",
           "signature": "class NoodleRunRequest",
-          "line": 1635,
+          "line": 1641,
           "doc": "",
           "methods": []
         },
@@ -15103,7 +15100,7 @@
           "kind": "class",
           "name": "NoodleToolsResponse",
           "signature": "class NoodleToolsResponse",
-          "line": 1640,
+          "line": 1646,
           "doc": "",
           "methods": []
         },
@@ -15111,7 +15108,7 @@
           "kind": "class",
           "name": "NoodleWorkspaceResponse",
           "signature": "class NoodleWorkspaceResponse",
-          "line": 1653,
+          "line": 1659,
           "doc": "",
           "methods": []
         },
@@ -15119,7 +15116,7 @@
           "kind": "class",
           "name": "CompactRequest",
           "signature": "class CompactRequest",
-          "line": 1661,
+          "line": 1667,
           "doc": "",
           "methods": []
         },
@@ -15127,7 +15124,7 @@
           "kind": "class",
           "name": "CompactResponse",
           "signature": "class CompactResponse",
-          "line": 1672,
+          "line": 1678,
           "doc": "",
           "methods": []
         },
@@ -15135,7 +15132,7 @@
           "kind": "class",
           "name": "MemoryCreateRequest",
           "signature": "class MemoryCreateRequest",
-          "line": 1689,
+          "line": 1695,
           "doc": "",
           "methods": []
         },
@@ -15143,7 +15140,7 @@
           "kind": "class",
           "name": "MemoryUpdateRequest",
           "signature": "class MemoryUpdateRequest",
-          "line": 1702,
+          "line": 1708,
           "doc": "",
           "methods": []
         },
@@ -15151,7 +15148,7 @@
           "kind": "class",
           "name": "MemoryResponse",
           "signature": "class MemoryResponse",
-          "line": 1710,
+          "line": 1716,
           "doc": "",
           "methods": []
         },
@@ -15159,7 +15156,7 @@
           "kind": "class",
           "name": "MemoryListResponse",
           "signature": "class MemoryListResponse",
-          "line": 1715,
+          "line": 1721,
           "doc": "",
           "methods": []
         },
@@ -15167,7 +15164,7 @@
           "kind": "class",
           "name": "HardwareResponse",
           "signature": "class HardwareResponse",
-          "line": 1725,
+          "line": 1731,
           "doc": "One sample of what the machine is doing.",
           "methods": []
         },
@@ -15175,7 +15172,7 @@
           "kind": "class",
           "name": "UptimeResponse",
           "signature": "class UptimeResponse",
-          "line": 1747,
+          "line": 1753,
           "doc": "How long the server and the machine have been up.",
           "methods": []
         },
@@ -15183,7 +15180,7 @@
           "kind": "class",
           "name": "GenerationStopResponse",
           "signature": "class GenerationStopResponse",
-          "line": 1763,
+          "line": 1769,
           "doc": "What Stop actually stopped. An empty list is a success.",
           "methods": []
         },
@@ -15191,7 +15188,7 @@
           "kind": "class",
           "name": "GenerationListResponse",
           "signature": "class GenerationListResponse",
-          "line": 1771,
+          "line": 1777,
           "doc": "",
           "methods": []
         },
@@ -15199,7 +15196,7 @@
           "kind": "class",
           "name": "LoadedModelsResponse",
           "signature": "class LoadedModelsResponse",
-          "line": 1777,
+          "line": 1783,
           "doc": "``GET /hyperlink/models/loaded``: every model loaded now, on any backend, and which one answers when nobody picks (0.72.8).",
           "methods": []
         },
@@ -15207,7 +15204,7 @@
           "kind": "class",
           "name": "BackendsResponse",
           "signature": "class BackendsResponse",
-          "line": 1786,
+          "line": 1792,
           "doc": "Every thing that could answer a message, and whether it can now.",
           "methods": []
         },
@@ -15215,7 +15212,7 @@
           "kind": "class",
           "name": "PreferencesRequest",
           "signature": "class PreferencesRequest",
-          "line": 1800,
+          "line": 1806,
           "doc": "A partial update. Every field optional, and that is the point.",
           "methods": []
         },
@@ -15223,7 +15220,7 @@
           "kind": "class",
           "name": "PreferencesResponse",
           "signature": "class PreferencesResponse",
-          "line": 1823,
+          "line": 1829,
           "doc": "",
           "methods": []
         },
@@ -15231,7 +15228,7 @@
           "kind": "class",
           "name": "UpgradeResponse",
           "signature": "class UpgradeResponse",
-          "line": 1838,
+          "line": 1844,
           "doc": "What this server is running, and the commands to change it.",
           "methods": []
         },
@@ -15239,7 +15236,7 @@
           "kind": "class",
           "name": "ModelCatalogueResponse",
           "signature": "class ModelCatalogueResponse",
-          "line": 1853,
+          "line": 1859,
           "doc": "Every model this server can offer, from every source it has.",
           "methods": []
         },
@@ -15247,7 +15244,7 @@
           "kind": "class",
           "name": "InferenceMessage",
           "signature": "class InferenceMessage",
-          "line": 1881,
+          "line": 1887,
           "doc": "",
           "methods": []
         },
@@ -15255,7 +15252,7 @@
           "kind": "class",
           "name": "InferenceChatRequest",
           "signature": "class InferenceChatRequest",
-          "line": 1888,
+          "line": 1894,
           "doc": "",
           "methods": []
         },
@@ -15263,7 +15260,7 @@
           "kind": "class",
           "name": "InferenceCompletionRequest",
           "signature": "class InferenceCompletionRequest",
-          "line": 1901,
+          "line": 1907,
           "doc": "",
           "methods": []
         },
@@ -15271,7 +15268,7 @@
           "kind": "class",
           "name": "InferenceResponse",
           "signature": "class InferenceResponse",
-          "line": 1911,
+          "line": 1917,
           "doc": "",
           "methods": []
         },
@@ -15279,7 +15276,7 @@
           "kind": "class",
           "name": "InferenceRelayRequest",
           "signature": "class InferenceRelayRequest",
-          "line": 1934,
+          "line": 1940,
           "doc": "``POST /inference/relay``: a document longer than the model's context, read in hops by small-context instances (0.72.8).",
           "methods": []
         },
@@ -15287,7 +15284,7 @@
           "kind": "class",
           "name": "InferenceRelayResponse",
           "signature": "class InferenceRelayResponse",
-          "line": 1960,
+          "line": 1967,
           "doc": "",
           "methods": []
         },
@@ -15295,7 +15292,7 @@
           "kind": "class",
           "name": "InferenceEmbeddingsRequest",
           "signature": "class InferenceEmbeddingsRequest",
-          "line": 1988,
+          "line": 1995,
           "doc": "",
           "methods": []
         },
@@ -15303,7 +15300,7 @@
           "kind": "class",
           "name": "InferenceEmbeddingsResponse",
           "signature": "class InferenceEmbeddingsResponse",
-          "line": 1993,
+          "line": 2000,
           "doc": "",
           "methods": []
         },
@@ -15311,7 +15308,7 @@
           "kind": "class",
           "name": "InferenceTokenCountRequest",
           "signature": "class InferenceTokenCountRequest",
-          "line": 2003,
+          "line": 2010,
           "doc": "",
           "methods": []
         },
@@ -15319,7 +15316,7 @@
           "kind": "class",
           "name": "InferenceTokenCountResponse",
           "signature": "class InferenceTokenCountResponse",
-          "line": 2011,
+          "line": 2018,
           "doc": "",
           "methods": []
         },
@@ -15327,7 +15324,7 @@
           "kind": "class",
           "name": "InferenceBackend",
           "signature": "class InferenceBackend",
-          "line": 2024,
+          "line": 2031,
           "doc": "",
           "methods": []
         },
@@ -15335,7 +15332,7 @@
           "kind": "class",
           "name": "InferenceBackendsResponse",
           "signature": "class InferenceBackendsResponse",
-          "line": 2035,
+          "line": 2042,
           "doc": "",
           "methods": []
         },
@@ -15343,7 +15340,7 @@
           "kind": "class",
           "name": "TrainingRunItem",
           "signature": "class TrainingRunItem",
-          "line": 2046,
+          "line": 2053,
           "doc": "One run, as ``training.monitor`` reconciled it.",
           "methods": []
         },
@@ -15351,7 +15348,7 @@
           "kind": "class",
           "name": "TrainingRunListResponse",
           "signature": "class TrainingRunListResponse",
-          "line": 2077,
+          "line": 2084,
           "doc": "",
           "methods": []
         },
@@ -15359,7 +15356,7 @@
           "kind": "class",
           "name": "TrainingRunResponse",
           "signature": "class TrainingRunResponse",
-          "line": 2085,
+          "line": 2092,
           "doc": "",
           "methods": []
         },
@@ -15367,7 +15364,7 @@
           "kind": "class",
           "name": "TrainingLogResponse",
           "signature": "class TrainingLogResponse",
-          "line": 2090,
+          "line": 2097,
           "doc": "",
           "methods": []
         },
@@ -15375,7 +15372,7 @@
           "kind": "class",
           "name": "TrainingCheckpointItem",
           "signature": "class TrainingCheckpointItem",
-          "line": 2102,
+          "line": 2109,
           "doc": "",
           "methods": []
         },
@@ -15383,7 +15380,7 @@
           "kind": "class",
           "name": "TrainingCheckpointListResponse",
           "signature": "class TrainingCheckpointListResponse",
-          "line": 2109,
+          "line": 2116,
           "doc": "",
           "methods": []
         },
@@ -15391,7 +15388,7 @@
           "kind": "class",
           "name": "TrainingResourcesResponse",
           "signature": "class TrainingResourcesResponse",
-          "line": 2116,
+          "line": 2123,
           "doc": "",
           "methods": []
         },
@@ -15399,7 +15396,7 @@
           "kind": "class",
           "name": "TrainingControlResponse",
           "signature": "class TrainingControlResponse",
-          "line": 2125,
+          "line": 2132,
           "doc": "",
           "methods": []
         },
@@ -15407,7 +15404,7 @@
           "kind": "class",
           "name": "SyncChange",
           "signature": "class SyncChange",
-          "line": 2137,
+          "line": 2144,
           "doc": "",
           "methods": []
         },
@@ -15415,7 +15412,7 @@
           "kind": "class",
           "name": "SyncPageResponse",
           "signature": "class SyncPageResponse",
-          "line": 2148,
+          "line": 2155,
           "doc": "",
           "methods": []
         },
@@ -15423,7 +15420,7 @@
           "kind": "class",
           "name": "SyncClaimRequest",
           "signature": "class SyncClaimRequest",
-          "line": 2160,
+          "line": 2167,
           "doc": "",
           "methods": []
         },
@@ -15431,7 +15428,7 @@
           "kind": "class",
           "name": "SyncClaimResponse",
           "signature": "class SyncClaimResponse",
-          "line": 2164,
+          "line": 2171,
           "doc": "",
           "methods": []
         },
@@ -15439,7 +15436,7 @@
           "kind": "class",
           "name": "PushRegisterRequest",
           "signature": "class PushRegisterRequest",
-          "line": 2174,
+          "line": 2181,
           "doc": "",
           "methods": []
         },
@@ -15447,7 +15444,7 @@
           "kind": "class",
           "name": "PushRegistrationSummary",
           "signature": "class PushRegistrationSummary",
-          "line": 2184,
+          "line": 2191,
           "doc": "",
           "methods": []
         },
@@ -15455,7 +15452,7 @@
           "kind": "class",
           "name": "PushRegistrationResponse",
           "signature": "class PushRegistrationResponse",
-          "line": 2199,
+          "line": 2206,
           "doc": "",
           "methods": []
         },
@@ -15463,7 +15460,7 @@
           "kind": "class",
           "name": "PushRegistrationListResponse",
           "signature": "class PushRegistrationListResponse",
-          "line": 2204,
+          "line": 2211,
           "doc": "",
           "methods": []
         },
@@ -15471,7 +15468,7 @@
           "kind": "class",
           "name": "PushEventsRequest",
           "signature": "class PushEventsRequest",
-          "line": 2211,
+          "line": 2218,
           "doc": "",
           "methods": []
         },
@@ -15479,7 +15476,7 @@
           "kind": "class",
           "name": "SearchSnippet",
           "signature": "class SearchSnippet",
-          "line": 2215,
+          "line": 2222,
           "doc": "",
           "methods": []
         },
@@ -15487,7 +15484,7 @@
           "kind": "class",
           "name": "SearchHit",
           "signature": "class SearchHit",
-          "line": 2223,
+          "line": 2230,
           "doc": "",
           "methods": []
         },
@@ -15495,7 +15492,7 @@
           "kind": "class",
           "name": "SearchResponse",
           "signature": "class SearchResponse",
-          "line": 2235,
+          "line": 2242,
           "doc": "",
           "methods": []
         },
@@ -15503,7 +15500,7 @@
           "kind": "class",
           "name": "HypercompressSizeResponse",
           "signature": "class HypercompressSizeResponse",
-          "line": 2245,
+          "line": 2252,
           "doc": "``/chat/hypercompress/size``: how far a too-big system prompt is squeezed for this owner. 1 is a third of the context, 2 a fifth.",
           "methods": []
         },
@@ -15511,7 +15508,7 @@
           "kind": "class",
           "name": "HypercompressRequest",
           "signature": "class HypercompressRequest",
-          "line": 2255,
+          "line": 2262,
           "doc": "Compress a system prompt by hand, to see what a turn would send.",
           "methods": []
         },
@@ -15519,7 +15516,7 @@
           "kind": "class",
           "name": "HypercompressResponse",
           "signature": "class HypercompressResponse",
-          "line": 2269,
+          "line": 2276,
           "doc": "",
           "methods": []
         },
@@ -15527,7 +15524,7 @@
           "kind": "class",
           "name": "DocumentCreateRequest",
           "signature": "class DocumentCreateRequest",
-          "line": 2280,
+          "line": 2287,
           "doc": "``POST /hyperlink/files/document``: a document a model wrote, kept as a file the person can download from the app (0.72.8).",
           "methods": []
         },
@@ -15535,7 +15532,7 @@
           "kind": "class",
           "name": "DocumentResponse",
           "signature": "class DocumentResponse",
-          "line": 2292,
+          "line": 2299,
           "doc": "",
           "methods": []
         },
@@ -15543,7 +15540,7 @@
           "kind": "class",
           "name": "ChatRingResponse",
           "signature": "class ChatRingResponse",
-          "line": 2299,
+          "line": 2306,
           "doc": "``GET /hyperlink/sessions/{id}/ring``: the two rings beside the chat box (0.72.8). ``inner`` is the context; ``outer`` the person's usage allowance, or GPU or CPU load when there is no allowance.",
           "methods": []
         }
@@ -15559,7 +15556,21 @@
       ],
       "changes": [
         {
-          "sha": "677812ea",
+          "sha": "d2a4760",
+          "date": "2026-10-28",
+          "author": "Claude",
+          "subject": "hnx download --latest; the runner fetches and registers HyperNix releases",
+          "api_changes": []
+        },
+        {
+          "sha": "802be03",
+          "date": "2026-10-28",
+          "author": "Claude",
+          "subject": "Runners: CPU offloading",
+          "api_changes": []
+        },
+        {
+          "sha": "677812e",
           "date": "2026-10-21",
           "author": "Claude",
           "subject": "0.72.8 pt3 (part 3): HyperLink Markdown, dataset excerpts, code-session tools",
@@ -15571,7 +15582,7 @@
           ]
         },
         {
-          "sha": "acb9516a",
+          "sha": "acb9516",
           "date": "2026-10-14",
           "author": "t",
           "subject": "HyperLink: two-layer ring beside the chat box",
@@ -15583,7 +15594,7 @@
           ]
         },
         {
-          "sha": "674031bd",
+          "sha": "674031b",
           "date": "2026-10-14",
           "author": "t",
           "subject": "HyperLink: hypercompress, tool choice, memories only when told, documents",
@@ -15611,7 +15622,7 @@
           ]
         },
         {
-          "sha": "0364ead4",
+          "sha": "0364ead",
           "date": "2026-10-14",
           "author": "t",
           "subject": "HyperLink chats per account/key, signed prompts, ping; web v2 search",
@@ -15627,7 +15638,7 @@
           ]
         },
         {
-          "sha": "cad7e52e",
+          "sha": "cad7e52",
           "date": "2026-10-14",
           "author": "t",
           "subject": "HyperLink: every loaded model listed, and a chat picks which answers",
@@ -15639,7 +15650,7 @@
           ]
         },
         {
-          "sha": "d69ad9de",
+          "sha": "d69ad9d",
           "date": "2026-10-13",
           "author": "t",
           "subject": "T1 API: POST /inference/relay and the t1.statement/2 billing format",
@@ -15655,25 +15666,6 @@
             {
               "kind": "added",
               "text": "class InferenceRelayResponse(BaseModel):"
-            }
-          ]
-        },
-        {
-          "sha": "d595eb4a",
-          "date": "2026-10-06",
-          "author": "Claude",
-          "subject": "0.72.7 step 2: images on the HyperNix runner; macOS/Linux CI and first Windows fixes",
-          "api_changes": []
-        },
-        {
-          "sha": "203b7112",
-          "date": "2026-10-06",
-          "author": "Claude",
-          "subject": "0.72.7 step 1: link config-less models, `runner auto`, images converted on upload",
-          "api_changes": [
-            {
-              "kind": "added",
-              "text": "class RunnerAutoRequest(BaseModel):"
             }
           ]
         }
@@ -15713,21 +15705,21 @@
       ],
       "changes": [
         {
-          "sha": "ddf4092f",
+          "sha": "ddf4092",
           "date": "2026-09-26",
           "author": "Claude",
           "subject": "0.72.6.post1: version, changelog and docs; simpler path guards",
           "api_changes": []
         },
         {
-          "sha": "eb12198c",
+          "sha": "eb12198",
           "date": "2026-09-26",
           "author": "Claude",
           "subject": "Fix the high-rated security findings",
           "api_changes": []
         },
         {
-          "sha": "604ec86f",
+          "sha": "604ec86",
           "date": "2026-08-20",
           "author": "minerofthesoal",
           "subject": "b2",
@@ -15850,14 +15842,14 @@
       ],
       "changes": [
         {
-          "sha": "bccc73ec",
+          "sha": "bccc73e",
           "date": "2026-08-20",
           "author": "minerofthesoal",
           "subject": "fixes",
           "api_changes": []
         },
         {
-          "sha": "604ec86f",
+          "sha": "604ec86",
           "date": "2026-08-20",
           "author": "minerofthesoal",
           "subject": "b2",
@@ -15925,7 +15917,7 @@
     {
       "module": "hypernix.t1api.setup_cli",
       "source": "src/hypernix/t1api/setup_cli.py",
-      "line_count": 533,
+      "line_count": 522,
       "summary": "``hnx-t1 setup`` \u2014 the T1 interactive installer, b1 (0.72.8a4).",
       "api": [
         {
@@ -16023,15 +16015,22 @@
         {
           "kind": "function",
           "name": "build_env",
-          "signature": "def build_enva: Answers, *, config_dir: Path, old: dict[str, str], version: str -> str",
+          "signature": "def build_enva: Answers, *, config_dir: Path, old: dict[str, str], version: str, secret: str -> str",
           "line": 365,
           "doc": "The .env text for these answers. Pure: the tests read it."
         },
         {
           "kind": "function",
+          "name": "token_secret",
+          "signature": "def token_secretold: dict[str, str] -> str",
+          "line": 458,
+          "doc": "The token secret to write: the server's own, so every key it signed keeps working, or a new one."
+        },
+        {
+          "kind": "function",
           "name": "cli_main",
           "signature": "def cli_mainargv: list[str] | None=None, *, read: Callable[[str], str]=input -> int",
-          "line": 544,
+          "line": 537,
           "doc": ""
         }
       ],
@@ -16056,7 +16055,39 @@
       ],
       "changes": [
         {
-          "sha": "05eae954",
+          "sha": "9531f68",
+          "date": "2026-10-27",
+          "author": "Claude",
+          "subject": "Security: the critical and high CodeQL alerts from the alert export",
+          "api_changes": [
+            {
+              "kind": "removed",
+              "text": "def build_env(a: Answers, *, config_dir: Path, old: dict[str, str], version: str) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def build_env(a: Answers, *, config_dir: Path, old: dict[str, str], version: str, secret: str) -> str:"
+            },
+            {
+              "kind": "removed",
+              "text": "def _redact_sensitive_env(text: str) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _is_secret(name: str, value: str) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def token_secret(old: dict[str, str]) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _masked(old: dict[str, str]) -> dict[str, str]:"
+            }
+          ]
+        },
+        {
+          "sha": "05eae95",
           "date": "2026-10-27",
           "author": "Claude",
           "subject": "hnx-t1 setup --dry-run: the file on stdout again, with its secrets redacted",
@@ -16068,28 +16099,28 @@
           ]
         },
         {
-          "sha": "264c0d3e",
+          "sha": "264c0d3",
           "date": "2026-10-23",
           "author": "github-actions[bot]",
           "subject": "fix(security): py/clear-text-logging-sensitive-data in src/hypernix/t1api/setup_cli.py:577 (alert #32045, Copilot Autofix)",
           "api_changes": []
         },
         {
-          "sha": "7926b34b",
+          "sha": "7926b34",
           "date": "2026-10-23",
           "author": "github-actions[bot]",
           "subject": "fix(security): py/clear-text-logging-sensitive-data in src/hypernix/t1api/setup_cli.py:574 (alert #32045, Copilot Autofix)",
           "api_changes": []
         },
         {
-          "sha": "7431fe6b",
+          "sha": "7431fe6",
           "date": "2026-10-23",
           "author": "Rayla",
           "subject": "Potential fix for pull request finding 'CodeQL / Clear-text logging of sensitive information'",
           "api_changes": []
         },
         {
-          "sha": "0aebc37c",
+          "sha": "0aebc37",
           "date": "2026-10-22",
           "author": "github-actions[bot]",
           "subject": "fix(security): py/clear-text-logging-sensitive-data in src/hypernix/t1api/setup_cli.py:548 (alert #32039, Copilot Autofix)",
@@ -16101,7 +16132,7 @@
           ]
         },
         {
-          "sha": "fd848f59",
+          "sha": "fd848f5",
           "date": "2026-10-22",
           "author": "Claude",
           "subject": "hnx list-all, hnx-t1 setup (installer b1), hnx-t1 upgrade -S env|venv|all",
@@ -16290,7 +16321,7 @@
       ],
       "changes": [
         {
-          "sha": "d69ad9de",
+          "sha": "d69ad9d",
           "date": "2026-10-13",
           "author": "t",
           "subject": "T1 API: POST /inference/relay and the t1.statement/2 billing format",
@@ -16302,21 +16333,21 @@
           ]
         },
         {
-          "sha": "99ddc1ae",
+          "sha": "99ddc1a",
           "date": "2026-09-29",
           "author": "Claude",
           "subject": "Security: make Codacy scan again, and clear most Bandit findings",
           "api_changes": []
         },
         {
-          "sha": "eb12198c",
+          "sha": "eb12198",
           "date": "2026-09-26",
           "author": "Claude",
           "subject": "Fix the high-rated security findings",
           "api_changes": []
         },
         {
-          "sha": "604a8342",
+          "sha": "604a834",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
@@ -16376,7 +16407,7 @@
           ]
         },
         {
-          "sha": "f836d298",
+          "sha": "f836d29",
           "date": "2026-08-18",
           "author": "minerofthesoal",
           "subject": "0.71.5b1-part one of four for the api",
@@ -16449,7 +16480,7 @@
       ],
       "changes": [
         {
-          "sha": "3cd859b2",
+          "sha": "3cd859b",
           "date": "2026-09-08",
           "author": "Claude",
           "subject": "0.72.4.dev7 \u2014 what training is doing, and the controls for it",
@@ -16560,7 +16591,7 @@
       ],
       "changes": [
         {
-          "sha": "604a8342",
+          "sha": "604a834",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3 (part 1/3): T1 API production hardening core",
@@ -16698,7 +16729,7 @@
       ],
       "changes": [
         {
-          "sha": "3f05aaf6",
+          "sha": "3f05aaf",
           "date": "2026-09-16",
           "author": "Claude",
           "subject": "The version it actually is, the runner from the phone, and edit mode",
@@ -16857,7 +16888,7 @@
       ],
       "changes": [
         {
-          "sha": "d69ad9de",
+          "sha": "d69ad9d",
           "date": "2026-10-13",
           "author": "t",
           "subject": "T1 API: POST /inference/relay and the t1.statement/2 billing format",
@@ -16873,7 +16904,7 @@
           ]
         },
         {
-          "sha": "f836d298",
+          "sha": "f836d29",
           "date": "2026-08-18",
           "author": "minerofthesoal",
           "subject": "0.71.5b1-part one of four for the api",
@@ -17034,56 +17065,56 @@
       ],
       "changes": [
         {
-          "sha": "c21dc6db",
+          "sha": "c21dc6d",
           "date": "2026-10-21",
           "author": "Claude",
           "subject": "0.72.8a3: T1 v1.1.26.10.2.0, changelog, docs and examples/t1api",
           "api_changes": []
         },
         {
-          "sha": "3c389423",
+          "sha": "3c38942",
           "date": "2026-10-14",
           "author": "t",
           "subject": "T1 v1.1.26.10.1.0; the model's web_search uses /web/v2",
           "api_changes": []
         },
         {
-          "sha": "6b7f6932",
+          "sha": "6b7f693",
           "date": "2026-09-22",
           "author": "Claude",
           "subject": "0.72.6 pt2: gather, Vera, neo_oven presets, hub 1.x, T1 v1.1",
           "api_changes": []
         },
         {
-          "sha": "2324f0fa",
+          "sha": "2324f0f",
           "date": "2026-09-15",
           "author": "Mason",
           "subject": "t1 v1.0.26.9.2.3: sign up for a key without already having one",
           "api_changes": []
         },
         {
-          "sha": "547dfa47",
+          "sha": "547dfa4",
           "date": "2026-09-02",
           "author": "Claude",
           "subject": "T1 v1.0.2026.9.2.1: the governed inference surface",
           "api_changes": []
         },
         {
-          "sha": "eab30655",
+          "sha": "eab3065",
           "date": "2026-08-27",
           "author": "Claude",
           "subject": "T1 v1.0.2026.8.1.1: server IDs advance, and undo/redo actually works",
           "api_changes": []
         },
         {
-          "sha": "370119db",
+          "sha": "370119d",
           "date": "2026-08-26",
           "author": "Claude",
           "subject": "T1 v1.0.26.8.1.0: T2 recognition, auth undo/redo, and backups",
           "api_changes": []
         },
         {
-          "sha": "c7eabfd7",
+          "sha": "c7eabfd",
           "date": "2026-08-23",
           "author": "Claude",
           "subject": "T1 v1.0.26.8.0.1: the LM Studio bridge and HyperLink",
@@ -17286,14 +17317,14 @@
       ],
       "changes": [
         {
-          "sha": "a97d518a",
+          "sha": "a97d518",
           "date": "2026-09-15",
           "author": "Claude",
           "subject": "docs: a README that describes this release, and two claims made true",
           "api_changes": []
         },
         {
-          "sha": "2324f0fa",
+          "sha": "2324f0f",
           "date": "2026-09-15",
           "author": "Mason",
           "subject": "t1 v1.0.26.9.2.3: sign up for a key without already having one",
@@ -17379,7 +17410,7 @@
       ],
       "changes": [
         {
-          "sha": "0364ead4",
+          "sha": "0364ead",
           "date": "2026-10-14",
           "author": "t",
           "subject": "HyperLink chats per account/key, signed prompts, ping; web v2 search",
@@ -17549,7 +17580,7 @@
       ],
       "changes": [
         {
-          "sha": "d595eb4a",
+          "sha": "d595eb4",
           "date": "2026-10-06",
           "author": "Claude",
           "subject": "0.72.7 step 2: images on the HyperNix runner; macOS/Linux CI and first Windows fixes",
@@ -17565,21 +17596,21 @@
           ]
         },
         {
-          "sha": "6066ce53",
+          "sha": "6066ce5",
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "ci: magnesium without psutil, Windows paths, and CodeQL's findings",
           "api_changes": []
         },
         {
-          "sha": "bca36d0f",
+          "sha": "bca36d0",
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "0.72.6 pt2: hyperchat, and three things HyperLink was showing wrong",
           "api_changes": []
         },
         {
-          "sha": "53a7eec3",
+          "sha": "53a7eec",
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "0.72.6 pt2: dilute, /web/v1 keyless search, and eth's dead band",
@@ -17768,7 +17799,7 @@
       ],
       "changes": [
         {
-          "sha": "0364ead4",
+          "sha": "0364ead",
           "date": "2026-10-14",
           "author": "t",
           "subject": "HyperLink chats per account/key, signed prompts, ping; web v2 search",
@@ -17834,35 +17865,35 @@
       ],
       "changes": [
         {
-          "sha": "eab30655",
+          "sha": "eab3065",
           "date": "2026-08-27",
           "author": "Claude",
           "subject": "T1 v1.0.2026.8.1.1: server IDs advance, and undo/redo actually works",
           "api_changes": []
         },
         {
-          "sha": "370119db",
+          "sha": "370119d",
           "date": "2026-08-26",
           "author": "Claude",
           "subject": "T1 v1.0.26.8.1.0: T2 recognition, auth undo/redo, and backups",
           "api_changes": []
         },
         {
-          "sha": "c7eabfd7",
+          "sha": "c7eabfd",
           "date": "2026-08-23",
           "author": "Claude",
           "subject": "T1 v1.0.26.8.0.1: the LM Studio bridge and HyperLink",
           "api_changes": []
         },
         {
-          "sha": "879b000b",
+          "sha": "879b000",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5rc2 \u2014 T1 API Beta 4, hyped-pro, and PATH setup",
           "api_changes": []
         },
         {
-          "sha": "3e60ff82",
+          "sha": "3e60ff8",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3 (part 2/3): complete SDK, full waiter TUI, smoke tool",
@@ -18424,14 +18455,14 @@
       ],
       "changes": [
         {
-          "sha": "99ddc1ae",
+          "sha": "99ddc1a",
           "date": "2026-09-29",
           "author": "Claude",
           "subject": "Security: make Codacy scan again, and clear most Bandit findings",
           "api_changes": []
         },
         {
-          "sha": "c76677db",
+          "sha": "c76677d",
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "t1sdk: server info, conceal, and v2.1 kits as a credential",
@@ -18467,7 +18498,7 @@
           ]
         },
         {
-          "sha": "797be9d8",
+          "sha": "797be9d",
           "date": "2026-08-23",
           "author": "Claude",
           "subject": "HyperLink for iOS, the waiter commands, and the release plumbing",
@@ -18527,7 +18558,7 @@
           ]
         },
         {
-          "sha": "879b000b",
+          "sha": "879b000",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5rc2 \u2014 T1 API Beta 4, hyped-pro, and PATH setup",
@@ -18539,7 +18570,7 @@
           ]
         },
         {
-          "sha": "3e60ff82",
+          "sha": "3e60ff8",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3 (part 2/3): complete SDK, full waiter TUI, smoke tool",
@@ -18742,7 +18773,7 @@
       ],
       "changes": [
         {
-          "sha": "3e60ff82",
+          "sha": "3e60ff8",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3 (part 2/3): complete SDK, full waiter TUI, smoke tool",
@@ -19007,7 +19038,7 @@
       ],
       "changes": [
         {
-          "sha": "3e60ff82",
+          "sha": "3e60ff8",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3 (part 2/3): complete SDK, full waiter TUI, smoke tool",
@@ -19210,14 +19241,14 @@
       ],
       "changes": [
         {
-          "sha": "99ddc1ae",
+          "sha": "99ddc1a",
           "date": "2026-09-29",
           "author": "Claude",
           "subject": "Security: make Codacy scan again, and clear most Bandit findings",
           "api_changes": []
         },
         {
-          "sha": "c76677db",
+          "sha": "c76677d",
           "date": "2026-09-23",
           "author": "Claude",
           "subject": "t1sdk: server info, conceal, and v2.1 kits as a credential",
@@ -19229,7 +19260,7 @@
           ]
         },
         {
-          "sha": "3e60ff82",
+          "sha": "3e60ff8",
           "date": "2026-08-22",
           "author": "Claude",
           "subject": "0.71.5b3 (part 2/3): complete SDK, full waiter TUI, smoke tool",
@@ -20159,7 +20190,7 @@
       "handler": "model_catalogue",
       "response_model": "ModelCatalogueResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 2931,
+      "line": 2925,
       "tag": "hyperlink"
     },
     {
@@ -20199,7 +20230,7 @@
       "handler": "unlink_model_route",
       "response_model": "ModelLinkResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 2912,
+      "line": 2906,
       "tag": "hyperlink"
     },
     {
@@ -20309,7 +20340,7 @@
       "handler": "list_push",
       "response_model": "PushRegistrationListResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 3083,
+      "line": 3077,
       "tag": "hyperlink"
     },
     {
@@ -20319,7 +20350,7 @@
       "handler": "register_push",
       "response_model": "PushRegistrationResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 3051,
+      "line": 3045,
       "tag": "hyperlink"
     },
     {
@@ -20329,7 +20360,7 @@
       "handler": "list_push_events",
       "response_model": "dict",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 3135,
+      "line": 3129,
       "tag": "hyperlink"
     },
     {
@@ -20339,7 +20370,7 @@
       "handler": "unregister_push",
       "response_model": "GenericOkResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 3121,
+      "line": 3115,
       "tag": "hyperlink"
     },
     {
@@ -20349,7 +20380,7 @@
       "handler": "set_push_events",
       "response_model": "PushRegistrationResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 3103,
+      "line": 3097,
       "tag": "hyperlink"
     },
     {
@@ -20359,7 +20390,7 @@
       "handler": "search_history",
       "response_model": "SearchResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 3173,
+      "line": 3167,
       "tag": "hyperlink"
     },
     {
@@ -20519,7 +20550,7 @@
       "handler": "sync_changes",
       "response_model": "SyncPageResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 2988,
+      "line": 2982,
       "tag": "hyperlink"
     },
     {
@@ -20529,7 +20560,7 @@
       "handler": "claim_client_message",
       "response_model": "SyncClaimResponse",
       "source": "src/hypernix/t1api/routers/hyperlink.py",
-      "line": 3019,
+      "line": 3013,
       "tag": "hyperlink"
     },
     {
@@ -21279,7 +21310,7 @@
       "handler": "runner_adopt_preview",
       "response_model": null,
       "source": "src/hypernix/t1api/routers/runner.py",
-      "line": 453,
+      "line": 512,
       "tag": "runner"
     },
     {
@@ -21289,7 +21320,7 @@
       "handler": "runner_adopt",
       "response_model": "RunnerStatusResponse",
       "source": "src/hypernix/t1api/routers/runner.py",
-      "line": 479,
+      "line": 538,
       "tag": "runner"
     },
     {
@@ -21299,7 +21330,7 @@
       "handler": "runner_auto",
       "response_model": "RunnerStatusResponse",
       "source": "src/hypernix/t1api/routers/runner.py",
-      "line": 297,
+      "line": 356,
       "tag": "runner"
     },
     {
@@ -21309,7 +21340,7 @@
       "handler": "runner_hyperchat",
       "response_model": null,
       "source": "src/hypernix/t1api/routers/runner.py",
-      "line": 368,
+      "line": 427,
       "tag": "runner"
     },
     {
@@ -21319,7 +21350,7 @@
       "handler": "runner_load",
       "response_model": "RunnerStatusResponse",
       "source": "src/hypernix/t1api/routers/runner.py",
-      "line": 236,
+      "line": 247,
       "tag": "runner"
     },
     {
@@ -21329,7 +21360,7 @@
       "handler": "runner_plan",
       "response_model": "RunnerPlanResponse",
       "source": "src/hypernix/t1api/routers/runner.py",
-      "line": 200,
+      "line": 211,
       "tag": "runner"
     },
     {
@@ -21339,7 +21370,7 @@
       "handler": "runner_status",
       "response_model": "RunnerStatusResponse",
       "source": "src/hypernix/t1api/routers/runner.py",
-      "line": 177,
+      "line": 188,
       "tag": "runner"
     },
     {
@@ -21349,7 +21380,7 @@
       "handler": "runner_unload",
       "response_model": "RunnerStatusResponse",
       "source": "src/hypernix/t1api/routers/runner.py",
-      "line": 352,
+      "line": 411,
       "tag": "runner"
     },
     {

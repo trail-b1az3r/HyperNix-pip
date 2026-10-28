@@ -35,6 +35,155 @@ Historical wording and technical detail are retained during format normalization
 
 > Format normalized to `wiki/Changelog-guide.md`; release wording and historical detail are preserved.
 
+## 0.72.8rc1 — 2026-10-28
+
+### Added
+
+๋࣭⭑ **scriptgen: a script that runs, a new window, more options.**
+  `hnx scriptgen` (now a subcommand as well as `hnx-scriptgen`) writes a
+  training script that loads the model (a HyperNix model through
+  hypernix, anything else through transformers), reads the data (a Hub
+  dataset or a local `.jsonl`, `.json` or `.txt`), and trains,
+  evaluates, checkpoints, resumes and saves a model that loads like the
+  one it started from. `python train.py --learning_rate 1e-4` overrides
+  any CONFIG key. The window is redesigned, recipes give a starting
+  point, and a five-question terminal wizard runs on headless machines.
+  ([CLI § scriptgen](CLI.md#scriptgen))
+
+<details>
+<summary>scriptgen — expanded change list</summary>
+
+- Window: the seven sections down the left (changed count, red mark on a problem), search over every setting, settings as cards (slider beside an exact entry; options side by side when four or fewer; Reset on anything changed), the output with line numbers and syntax colour, and the checks under it (each jumps to its setting). Ctrl+S, Ctrl+F, Ctrl+1…7.
+- **Start from** recipes: `hypernix-finetune`, `quick-test`, `lora-low-vram`, `pascal-1080`, `continued-pretraining`, `lr-sweep`; also `--recipe NAME`.
+- New settings (62 in seven sections): LoRA adapters in plain PyTorch, merged into the weights at the end; device; packing; held-out fraction; max examples; metrics to `metrics.jsonl`, TensorBoard or W&B; early stopping; upload to the Hub; a learning-rate sweep (short runs, then a full run at the best); `training_loop=skeleton` for the helpers alone.
+- Config output adds YAML, TOML and `args` (the generated script's own flags).
+- CLI: `hnx scriptgen train.py` (no window), `--wizard`, `--explain NAME`, `--list-params QUERY`, `--list-recipes`, `--changes`, `--check`, and "did you mean" on a misspelt `--set`.
+- The default model is HyperNix.3.1-mini, at 512 tokens.
+
+</details>
+
+๋࣭⭑ **CPU offloading for the HyperNix runners.** A native HyperNix
+  model larger than the card is split by layer: the first blocks, the
+  embeddings and the head on the GPU, the rest in RAM, as `-ngl` splits a
+  GGUF (it was wholly on the CPU). The llama.cpp runners can keep a
+  mixture-of-experts model's experts in RAM (`--cpu-moe [N]`) and the KV
+  cache too (`--kv-on-cpu`). `runner auto` remembers both.
+  ([CLI § hypernix-t1 built-in-runner](CLI.md#hypernix-t1-built-in-runner))
+
+<details>
+<summary>CPU offloading — expanded change list</summary>
+
+- `hypernix.hyperlink.offload`: `Offload` (llama-server's `--cpu-moe`, `--n-cpu-moe N`, `--no-kv-offload`), `fit_layers` (blocks that fit the free VRAM, 15% kept free) and `split_layers` (inputs follow each part through forward pre-hooks, so the model is called as before).
+- `POST /runner/load` takes `cpu_moe` and `kv_on_cpu`; `hnx-t1 runner load|start --cpu-moe [N] --kv-on-cpu`. The plan says what is in RAM.
+- KoboldCpp has no equivalent and refuses them, rather than ignoring them.
+
+</details>
+
+✨ `hnx download --latest` downloads the newest HyperNix model --
+  HyperNix.3.1-mini (`Compactbot/hypernix-3.1-mini`) today -- into the
+  folder the runner reads, and says how to serve and relay it. Later
+  releases are found on the Hub from the two accounts HyperNix models
+  come from (`ray0rf1re`, `Compactbot`) and only under release-shaped
+  names; `--offline` uses the releases this version knows. The runner
+  also fetches a release asked for by name (`runner start
+  hypernix.3.1-mini`, or `latest`). ([CLI § download --latest](CLI.md#--latest-0728rc1))
+
+### Security
+
+🔒 Fixed the critical and 26 high CodeQL alerts from the exported first
+  page of code scanning: the docs-conflict resolver workflow ran the pull
+  request's own resolver with a write token (now only the base's, with
+  no stored credentials); `hnx-t1 setup --dry-run` built its output
+  around the real secret (now around `<redacted>`); model links resolve
+  and must sit under `T1_MODEL_LINK_ROOTS` before the disk is touched;
+  two polynomial regexes; a counter seed named like a secret; proxy
+  warnings that logged the entry; the docs site kept a provider key in
+  sessionStorage; and float differences squared before widening in the
+  C self-test.
+
+🔒 cryptography's floor is 50: 49 still allowed GHSA-g6cj-pr64-35w5
+  (high). The new security page found it.
+
+### Fixed
+
+𖢥 `/inference/relay` and `/inference/chat` refused a model the runner had
+  loaded but the registry did not list (`MODEL_NOT_SUPPORTED`), so a
+  downloaded HyperNix.3.1-mini could be served and never asked. The
+  runner registers what it loads (local, free, sized from the loaded
+  context); an operator's own entry is left alone.
+
+𖢥 The relay refused every document for a 512-token model: it reserved a
+  fixed 512 tokens for the answer. The answer now defaults to a quarter
+  of the usable context, between 32 and 512 tokens; HyperNix.3.1-mini
+  relays a long document in hops.
+
+𖢥 scriptgen's generated script could not build its default optimiser:
+  it asked `hypernix.optimizers` for `PressureCookerV5`, which lives in
+  `pressure_cooker_v5`, and passed `betas`, which the Pressure Cookers do
+  not take. Its `main()` also stopped at "bring your own loader".
+
+🐛 scriptgen's window cut its tab titles ("Model an", "Precision anc"),
+  gave a third of its height to the status line, and its Advanced switch
+  changed nothing until another tab was opened.
+
+🐛 `hnx scriptgen`, as the help and wiki wrote it, was an unknown command.
+
+🐛 The Stats page's downloads graph was cut off on phones: it measured
+  its width before the stats arrived and kept the 760px default.
+
+🐛 `hnx-t1 setup --dry-run > .env.new` produced a summary instead of the
+  file after an automated security fix; stdout is the file again, its
+  secrets shown as `<redacted>`, and switches such as
+  `T1_BOOTSTRAP_KEY=1` are no longer mistaken for secrets.
+
+🐛 Noodle answered `bad_path` for a path leaving the workspace after an
+  automated security fix; it is `outside_workspace` again.
+
+🐛 Following a job's log could stop on the completion line before the
+  job's last lines were printed; they are drained first.
+
+### Dependencies and Packaging
+
+📦 cryptography>=50 (see Security). Reviewed across the repository:
+  Python (pyproject.toml, setup.cfg), npm (docs/), Bun (hyped-pro,
+  tvtop-max); nothing else changed.
+
+### Site Changes
+
+🛜 A security page (`#/security`) shows what the repository's own
+  scanners -- the T1 audit, Bandit, Semgrep, and OSV over every
+  dependency floor and lockfile -- find in the commit being deployed. It
+  is rescanned on every Pages build, reached by a hidden button in the
+  footer, and never copies matched secret text.
+
+🛜 The Stats page shows which hypernix version people download: a
+  "HyperNix version" view in the downloads graph (the seven most
+  downloaded releases in the range, the rest as one line) and a
+  breakdown by exact version or by release, over 30 days or all time.
+  The data is ClickPy's public copy of the PyPI download log, which needs
+  no key.
+
+### Tests
+
+🧪 A generated script trained for real on a tiny HyperNix model on the
+  CPU (evaluation, checkpoints, resume, LoRA, the default optimiser, a
+  sweep, the saved model reloading), the wizard, recipes and CLI, the
+  window under a virtual display; `--latest` and release discovery; a
+  runner-loaded model relayed through T1 end to end; CPU offloading; the
+  stats script's per-version data.
+
+### Caveats
+
+🛈 The CPU offloading split was tested on the CPU (the split model gives
+  the same output as the whole one); there is no GPU here. The llama.cpp
+  flags were checked in the command line, not against a running server.
+🛈 Relayed through T1, HyperNix.3.1-mini runs every hop, but it is a
+  48.7M-parameter base model: its answers are not coherent.
+🛈 The scriptgen window was checked on Linux under Xvfb only.
+🛈 The version breakdown appears once the daily stats job runs with the
+  new script; ClickPy's counts include mirrors, so they run a little
+  above pypistats' "Downloads".
+
 ## 0.72.8a5 — 2026-10-27
 
 ### Added

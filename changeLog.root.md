@@ -1,6 +1,19 @@
 ### non web and non python package and non hyperlink changelog here (mainly for security issues and breaking changes)
 ### empty as of public release of 0.72.7.post1
 
+## 0.72.8rc1
+
+<details>
+<summary>0.72.8rc1 — In-development bug-fix log</summary>
+
+- **FIXED DURING DEVELOPMENT — introduced by this update:** the runner sent the default model (HyperNix.3-mini, now also a known release) down the new release download path, which changed how it is fetched; the existing test caught it.
+- **FIXED DURING DEVELOPMENT — introduced by this update:** every learning-rate sweep trial saved a full model; trials keep none.
+- **FIXED DURING DEVELOPMENT — introduced by this update:** scriptgen's sidebar badge was squeezed by long section titles, and the log slider drew its value over the entry beside it.
+- **FIXED DURING DEVELOPMENT — introduced by this update:** the security page's Pages build wrote docs/public/v1, so the docs-conflict test counted it as a data writer; writers are now the workflows that push.
+- Dependencies reviewed across the repository: Python (pyproject.toml, setup.cfg), npm (docs/), Bun (hyped-pro, tvtop-max). Raised: cryptography (to 50).
+
+</details>
+
 ## 0.72.8a5
 
 <details>
