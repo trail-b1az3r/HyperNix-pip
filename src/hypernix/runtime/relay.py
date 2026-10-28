@@ -278,6 +278,12 @@ def _usable(context_tokens: int) -> int:
     return int(context_tokens * (1 - MARGIN))
 
 
+def default_answer_tokens(context_tokens: int) -> int:
+    """How long an answer is when nobody says: a quarter of what the
+    context can use, between 32 and 512 tokens."""
+    return max(32, min(512, _usable(context_tokens) // 4))
+
+
 def plan(
     document: str,
     question: str,
@@ -286,15 +292,19 @@ def plan(
     instances: int = 1,
     mode: str = CHAIN,
     notes_tokens: int | None = None,
-    answer_tokens: int = 512,
+    answer_tokens: int | None = None,
 ) -> RelayPlan:
     """Cut *document* into parts that fit *context_tokens* alongside the
     question, the instructions and the notes, and count the cost.
 
     *notes_tokens* is how long the carried notes may grow (default: a
-    sixth of the context). Raises :class:`ContextTooSmall` when nothing
-    of the document would fit.
+    sixth of the context). *answer_tokens* is the answer's length
+    (default: a quarter of the usable context, at most 512 -- a fixed 512
+    made a 512-token model, HyperNix.3.1-mini's size, refuse every
+    document). Raises :class:`ContextTooSmall` when nothing of the
+    document would fit.
     """
+    answer_tokens = default_answer_tokens(context_tokens) if answer_tokens is None else answer_tokens
     if mode not in MODES:
         raise ValueError(f"mode must be one of {', '.join(MODES)}, not {mode!r}")
     if instances < 1:
@@ -425,7 +435,7 @@ class Relay:
         context_tokens: int,
         mode: str = CHAIN,
         notes_tokens: int | None = None,
-        answer_tokens: int = 512,
+        answer_tokens: int | None = None,
         on_hop: Callable[[Hop], None] | None = None,
     ) -> None:
         if not instances:

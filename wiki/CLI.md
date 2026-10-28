@@ -228,8 +228,39 @@ is named after the repo it resolved to (`nix` used to become `nix/`).
 | `--token` | `$HF_TOKEN` |
 | `--quiet` | false |
 | `--no-verify` | false |
+| `--latest` | false; the newest HyperNix model (below) |
+| `--offline` | false; with `--latest`, do not ask the Hub |
 
 Prints the local snapshot path to stdout.
+
+### `--latest` (0.72.8rc1)
+
+```bash
+hnx download --latest              # the newest HyperNix model, into the models folder
+hnx download --latest -o ./nix     # somewhere else
+hnx download --latest --offline    # the newest this HyperNix knows, without asking the Hub
+```
+
+Downloads the newest HyperNix release: `HyperNix.3.1-mini`
+(`Compactbot/hypernix-3.1-mini`, 48.7M parameters, 512 tokens of
+context) as this is written. The Hub is asked for later releases from
+the two accounts HyperNix models are published from, `ray0rf1re` and
+`Compactbot`, and only for names shaped like a release
+(`HyperNix.4-mini`, `hypernix-4.2-small`): anybody can name a repo
+`hypernix-9-mini`, and `--latest` does not download a stranger's weights
+because of a name. Offline, or with `--offline`, it is the newest
+release this version knows.
+
+It saves to `<models folder>/HyperNix.3.1-mini`, which the runner and
+the catalogue read, and prints how to serve it
+(`hypernix-t1 runner start hypernix.3.1-mini`) and relay through it.
+`--latest` with a `MODEL` or `-f` is refused. The runner also fetches a
+release asked for by name, so `runner start hypernix.3.1-mini` (or
+`runner start latest`) on a server without it downloads it first.
+
+HyperNix.3.1-mini is a base model, a pretraining continuation: it
+continues text rather than following instructions, so a relay through
+it runs, hop by hop, but its answers read like a 48M-parameter model's.
 
 ## `convert`
 
@@ -429,6 +460,66 @@ hypernix train run --model-dir ./m --dataset ./d.txt --out-dir ./out \
 
 Full detail, plus the parts with no CLI surface (optimizer-state offload,
 peak measurement): [VRAM](VRAM.md).
+
+## `scriptgen`
+
+```bash
+hnx scriptgen                                   # the window; on a headless box, the wizard
+hnx scriptgen --wizard                          # five questions, then a script
+hnx scriptgen train.py --recipe quick-test --set dataset=data.jsonl
+hnx scriptgen train.py --set learning_rate=3e-5 --set epochs=2
+hnx scriptgen --inject existing.py              # rewrite only its CONFIG block
+hnx scriptgen --config-only --format yaml       # python, json, yaml, toml, env, args
+hnx scriptgen --list-params lora                # settings that mention LoRA
+hnx scriptgen --explain warmup_ratio
+```
+
+Builds a training script (0.72.8rc1: also `hnx scriptgen`, not only
+`hnx-scriptgen`). The script **runs as generated**: it loads the model
+(a HyperNix model through hypernix, anything else through
+transformers), reads the data (a Hugging Face dataset or a local
+`.jsonl`, `.json` or `.txt`, packed into full blocks), and trains,
+evaluates on a held-out slice, saves checkpoints, stops early, reports
+to `metrics.jsonl`, TensorBoard or W&B, and saves a final model that
+loads like the one it started from. Any CONFIG key can be overridden
+when running it:
+
+```bash
+python train.py --learning_rate 1e-4 --epochs 1 --dataset notes.jsonl
+python train.py --resume true                   # from the newest checkpoint
+```
+
+Sixty-two settings in seven sections, defaulting to HyperNix.3.1-mini.
+0.72.8rc1 added: LoRA adapters (plain PyTorch, nothing to install;
+merged into the weights at the end), the device, packing, the held-out
+fraction, a cap on examples, where metrics go, early stopping, upload to
+the Hub, and a learning-rate sweep (short runs across a range, then a
+full run at the best). `training_loop=skeleton` gives the helpers
+without the loop, as before.
+
+| Recipe | For |
+|---|---|
+| `hypernix-finetune` | HyperNix.3.1-mini on your text; any GPU, or the CPU |
+| `quick-test` | 20 steps on the CPU, to see the whole script work first |
+| `lora-low-vram` | a larger transformers model on an 8 GB card: NF4, LoRA, checkpointing |
+| `pascal-1080` | GTX 10-series: FP32 compute, the Pascal optimiser, the auto-tuner |
+| `continued-pretraining` | raw text, warmup-stable-decay, frequent resumable saves |
+| `lr-sweep` | four short runs from 1e-5 to 1e-3, then train at the best |
+
+The window has the sections down the left (each marked with what was
+changed in it, and with a red count when something there is wrong), a
+search over every setting, the settings as cards (a slider beside an
+entry for numbers, the options side by side when there are four or
+fewer, a Reset on anything changed), and the output with line numbers,
+syntax colour and the checks under it; a check jumps to its setting when
+clicked. **Start from** applies a recipe. Ctrl+S saves, Ctrl+F searches,
+Ctrl+1…7 opens a section.
+
+Scripts generated before 0.72.8rc1 could not build their default
+optimiser: they asked `hypernix.optimizers` for `PressureCookerV5`,
+which lives in `hypernix.optimizers.pressure_cooker_v5`, and passed
+`betas`, which the Pressure Cookers do not take. Regenerate them, or
+`--inject` the new CONFIG block and copy `build_optimizer` across.
 
 ## `generate`
 
@@ -1144,6 +1235,29 @@ IQ*_KT and repacked types, Nanbeige for its architecture — and
 `multilama-ik`, `-prismml`, `-kobold` or `-nanbeige` names one. `auto`
 does it by itself when a file needs a fork. `hyprslug --check FILE` says where a
 file runs.
+
+**CPU offloading (0.72.8rc1).** A model bigger than the card can keep
+part of itself in system RAM:
+
+```bash
+hypernix-t1 runner start qwen3-30b-a3b --cpu-moe          # every expert in RAM, the rest on the GPU
+hypernix-t1 runner start qwen3-30b-a3b --cpu-moe 20       # the first 20 layers' experts in RAM
+hypernix-t1 runner start big-model --kv-on-cpu            # the KV cache in RAM, for a long context
+hypernix-t1 runner start hypernix.3.1-mini --gpu-layers 8 # a native HyperNix model: 8 blocks on the GPU
+```
+
+`--cpu-moe` is llama.cpp's `--cpu-moe` / `--n-cpu-moe N`: a
+mixture-of-experts model's experts are most of its weight and only a few
+run per token, so with them in RAM every other layer goes on the GPU
+(`--gpu-layers` defaults to all of them). `--kv-on-cpu` is
+`--no-kv-offload`. Neither works with KoboldCpp (`multilama-kobold`),
+which says so. A native HyperNix model served by PyTorch is split by
+layer: the first `--gpu-layers` blocks on the GPU with the embeddings and
+the head, the rest in RAM, and without `--gpu-layers` as many as fit in
+the free VRAM. It used to be the whole model on one device, so one bigger
+than the card ran on the CPU. `runner auto` loads a model with the
+offloading it was last loaded with; `POST /runner/load` takes `cpu_moe`
+and `kv_on_cpu`.
 
 **The default model.** Since 0.72.8, `start` with no model named (and
 no terminal to pick in) loads Liquid AI's

@@ -783,11 +783,20 @@ def follow_logs(job: Job, *, tail: int = 200, out=None, store: JobStore | None =
 
     out = out or sys.stdout
     path = Path(job.log_path)
-    text = read_logs(job, tail=tail)
+    # The tail and the starting position come from one read. Reading the
+    # text and then stat()ing the file skipped whatever the job wrote in
+    # between, which is how a fast job's first line went missing.
+    try:
+        data = path.read_bytes() if path.exists() else b""
+    except OSError as exc:
+        data = b""
+        out.write(f"(could not read {path}: {exc})\n")
+    position = len(data)
+    lines = data.decode("utf-8", errors="replace").splitlines()
+    text = "\n".join(lines[-tail:]) if tail > 0 else "\n".join(lines)
     if text:
         out.write(text + "\n")
         out.flush()
-    position = path.stat().st_size if path.exists() else 0
     said_done = job.is_terminal
     completion_printed = False
     try:

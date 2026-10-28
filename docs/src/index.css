@@ -707,6 +707,23 @@ kbd { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); ba
 .dl-table th { position: sticky; top: 0; background: var(--surface-3); color: var(--text); font-weight: 650; }
 .dl-table th:first-child, .dl-table td:first-child { text-align: left; }
 .dl-note { color: var(--text-faint); font-size: 11.5px; margin-top: 10px; }
+.vb-lede { color: var(--text-dim); font-size: 13px; margin: 0 0 12px; }
+.vb-lede strong { color: var(--text); font-family: var(--font-mono); }
+.vb-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.vb-row { display: grid; grid-template-columns: minmax(118px, 160px) 1fr 64px 52px; align-items: center; gap: 10px; font-size: 12.5px; }
+.vb-name { display: inline-flex; align-items: center; gap: 6px; color: var(--text); font-family: var(--font-mono); white-space: nowrap; }
+.vb-tag { font-family: var(--font-sans); font-size: 11px; color: var(--accent-text); border: 1px solid var(--accent); border-radius: 999px; padding: 0 7px; line-height: 17px; }
+.vb-track { height: 10px; background: var(--surface-3); border-radius: 4px; overflow: hidden; }
+.vb-bar { display: block; height: 100%; background: var(--accent); border-radius: 0 4px 4px 0; transition: width .5s cubic-bezier(0.22,1,0.36,1); }
+.vb-count, .vb-share { text-align: right; font-variant-numeric: tabular-nums; color: var(--text-dim); }
+.vb-share { color: var(--text-faint); }
+.vb-more { margin: 12px 0 0; }
+@media (max-width: 520px) {
+  .vb-row { grid-template-columns: minmax(100px, 1fr) 1.2fr 52px; }
+  .vb-share, .vb-tag { display: none; }
+  .vb-row.is-current .vb-name { color: var(--accent-text); }
+  .vb-name { overflow: hidden; text-overflow: ellipsis; }
+}
 
 /* ── T1 API reference (0.72.8a4) ─────────────────────────────────────── */
 .t1-page { max-width: 1180px; margin: 0 auto; padding: 90px var(--space-gutter) 70px; }

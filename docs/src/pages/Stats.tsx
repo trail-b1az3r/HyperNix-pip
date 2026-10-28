@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { PageHeading, CountUp } from '../components/ui'
 import { DownloadsChart } from '../components/DownloadsChart'
+import { VersionBreakdown } from '../components/VersionBreakdown'
 
-function StatsPage({ downloadSeries, downloads, olderDownloads, threeMonthDownloads, totalDownloads, statsUpdatedAt, ghStats, pypiInfo, pythonVersionStats, systemStats, releaseTimeline, changelogEntries, version, statsError, codeStats }) {
+function StatsPage({ downloadSeries, versionDownloads, downloads, olderDownloads, threeMonthDownloads, totalDownloads, statsUpdatedAt, ghStats, pypiInfo, pythonVersionStats, systemStats, releaseTimeline, changelogEntries, version, statsError, codeStats }) {
   const windowBars = [
     { label: '24h', val: downloads.last_day },
     { label: '7d', val: downloads.last_week },
@@ -45,8 +46,13 @@ function StatsPage({ downloadSeries, downloads, olderDownloads, threeMonthDownlo
       </div>
       <section aria-labelledby="dl-history" style={{ background:'var(--surface-1)', border:'1px solid var(--border-strong)', borderRadius:10, padding:'22px', marginBottom:18 }}>
         <h3 id="dl-history" style={{ color:'var(--text)', margin:'0 0 4px', fontSize:15 }}>Downloads over time</h3>
-        <p style={{ color:'var(--text-faint)', fontSize:12, margin:'0 0 14px' }}>Daily, as lines: the total, or split by Python version or operating system. Hover for the day's numbers; click a legend entry to hide its line.</p>
+        <p style={{ color:'var(--text-faint)', fontSize:12, margin:'0 0 14px' }}>Daily, as lines: the total, or split by HyperNix version, Python version or operating system. Hover for the day's numbers; click a legend entry to hide its line.</p>
         <DownloadsChart series={downloadSeries} />
+      </section>
+      <section aria-labelledby="dl-versions" style={{ background:'var(--surface-1)', border:'1px solid var(--border-strong)', borderRadius:10, padding:'22px', marginBottom:18 }}>
+        <h3 id="dl-versions" style={{ color:'var(--text)', margin:'0 0 4px', fontSize:15 }}>Which version people download</h3>
+        <p style={{ color:'var(--text-faint)', fontSize:12, margin:'0 0 14px' }}>Downloads of each hypernix version, exact or grouped by release (0.72.7.post1 counts toward 0.72.7).</p>
+        <VersionBreakdown versions={versionDownloads} />
       </section>
       <div style={{ background:'var(--surface-3)', border:'1px solid var(--border-strong)', borderRadius:10, padding:'22px', marginBottom:18 }}>
         <h3 style={{ color:'var(--text)', margin:'0 0 18px', fontSize:14 }}>Download window</h3>

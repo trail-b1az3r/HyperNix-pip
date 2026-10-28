@@ -25,6 +25,15 @@ Data sources:
   - https://pypistats.org/api/packages/{package}/python_minor  -> downloads by Python version
   - https://pypistats.org/api/packages/{package}/system        -> downloads by OS
   - PyPI JSON API                                               -> current version string
+  - ClickHouse's public PyPI dataset (ClickPy)                  -> downloads by hypernix version
+
+Since 0.72.8rc1 the file also says which hypernix version was downloaded:
+``series.by_version`` is a daily line per release (``0.72.7.post1`` counts
+as 0.72.7), and ``versions`` lists every exact version with its downloads
+in the last 30 days and all time. pypistats has no version breakdown;
+ClickPy is the same BigQuery PyPI download log, published read-only with
+a public account, so no key or secret is needed. Its counts include
+mirrors, as pypistats' "with_mirrors" does.
 
 Environment variables (set by the workflow):
   PYPI_PACKAGE        package name on PyPI (default: hypernix)
@@ -34,6 +43,7 @@ Environment variables (set by the workflow):
 
 import json
 import os
+import re
 import sys
 from datetime import UTC, datetime, timedelta
 
@@ -49,6 +59,13 @@ PYPISTATS_OVERALL_URL = f"https://pypistats.org/api/packages/{PACKAGE}/overall?m
 PYPISTATS_OVERALL_BOTH_URL = f"https://pypistats.org/api/packages/{PACKAGE}/overall"
 PYPISTATS_PYTHON_MINOR_URL = f"https://pypistats.org/api/packages/{PACKAGE}/python_minor"
 PYPISTATS_SYSTEM_URL = f"https://pypistats.org/api/packages/{PACKAGE}/system"
+# ClickPy's read-only public account; the project is passed as a query
+# parameter, never formatted into the SQL.
+CLICKPY_URL = os.environ.get("CLICKPY_URL", "https://sql-clickhouse.clickhouse.com/?user=demo")
+CLICKPY_QUERY = (
+    "SELECT toString(date), version, sum(count) FROM pypi.pypi_downloads_per_day_by_version "
+    "WHERE project = {project:String} GROUP BY date, version ORDER BY date FORMAT JSONCompact"
+)
 
 REQUEST_TIMEOUT = 20
 OLD_THRESHOLD_DAYS = 30
@@ -163,7 +180,72 @@ def get_category_series(url):
     return out
 
 
-def build_series(existing_series):
+def get_version_rows():
+    """``[(date, version, downloads)]`` from ClickPy; empty when it cannot be asked."""
+    try:
+        resp = requests.post(CLICKPY_URL, data=CLICKPY_QUERY.encode(), params={"param_project": PACKAGE},
+                             timeout=REQUEST_TIMEOUT * 3, headers={"User-Agent": "hypernix-stats-bot/1.0"})
+        resp.raise_for_status()
+        rows = resp.json().get("data", [])
+    except Exception as exc:  # noqa: BLE001
+        print(f"warning: could not fetch downloads by version: {exc}", file=sys.stderr)
+        return []
+    out = []
+    for row in rows:
+        try:
+            date, version, count = str(row[0]), str(row[1]), int(row[2])
+        except (IndexError, TypeError, ValueError):
+            continue
+        if date and version:
+            out.append((date, version, count))
+    return out
+
+
+def release_of(version):
+    """The release a version belongs to: 0.72.7.post1 and 0.72.8rc1 are
+    0.72.7 and 0.72.8. Anything unparseable is its own release."""
+    match = re.match(r"^(\d+(?:\.\d+)*?)(?:\.?(?:post|dev|a|b|rc)\d*.*)?$", version)
+    return match.group(1) if match else version
+
+
+def version_key(version):
+    """A sort key that orders 0.9 before 0.10."""
+    return [int(p) if p.isdigit() else -1 for p in re.split(r"[.]", release_of(version))] + [version]
+
+
+def by_version(rows, existing_series, existing_versions, current=None, days=OLD_THRESHOLD_DAYS):
+    """``({release: {date: n}}, versions)`` from ClickPy's rows, merged with
+    what the file already has so a failed fetch loses nothing."""
+    lines = {}
+    dates = (existing_series or {}).get("dates") or []
+    for name, values in ((existing_series or {}).get("by_version") or {}).items():
+        if isinstance(values, list):
+            lines[name] = {d: v for d, v in zip(dates, values, strict=False) if isinstance(v, (int, float))}
+    if not rows:
+        return lines, existing_versions or []
+    fresh = {}
+    for date, version, count in rows:
+        bucket = fresh.setdefault(release_of(version), {})
+        bucket[date] = bucket.get(date, 0) + count
+    for name, values in fresh.items():
+        lines[name] = {**lines.get(name, {}), **values}
+
+    cutoff = (datetime.now(UTC).date() - timedelta(days=days)).isoformat()
+    totals = {}
+    for date, version, count in rows:
+        entry = totals.setdefault(version, {"version": version, "release": release_of(version),
+                                            "downloads": 0, "last_30_days": 0, "first_seen": date})
+        entry["downloads"] += count
+        if date >= cutoff:
+            entry["last_30_days"] += count
+        entry["first_seen"] = min(entry["first_seen"], date)
+    versions = sorted(totals.values(), key=lambda e: version_key(e["version"]), reverse=True)
+    for entry in versions:
+        entry["current"] = entry["version"] == current
+    return lines, versions
+
+
+def build_series(existing_series, version_lines=None):
     """The lines for the graph, merged with the ones already in the file."""
     overall = get_category_series(PYPISTATS_OVERALL_BOTH_URL)
     python = get_category_series(PYPISTATS_PYTHON_MINOR_URL)
@@ -192,8 +274,9 @@ def build_series(existing_series):
     for name in ((existing_series or {}).get("by_os") or {}):
         by_os.setdefault(name, old("by_os", name))
 
+    version_lines = version_lines or {}
     every = set(without) | set(with_m)
-    for line in (*by_python.values(), *by_os.values()):
+    for line in (*by_python.values(), *by_os.values(), *version_lines.values()):
         every |= set(line)
     if not every:
         return existing_series or {}
@@ -213,7 +296,10 @@ def build_series(existing_series):
         "with_mirrors": line(with_m),
         "by_python": ordered(by_python),
         "by_os": ordered(by_os),
-        "note": "total is without mirrors; pypistats keeps 180 days, older dates are carried over",
+        # Newest release first, so the graph's colours follow the release.
+        "by_version": {k: line(version_lines[k]) for k in sorted(version_lines, key=version_key, reverse=True)},
+        "note": "total is without mirrors; pypistats keeps 180 days, older dates are carried over; "
+                "by_version is ClickPy's and includes mirrors",
     }
 
 
@@ -293,7 +379,9 @@ def main():
     if not operating_systems:
         operating_systems = existing.get("operating_systems", [])
 
-    series = build_series(existing.get("series"))
+    version_lines, versions = by_version(get_version_rows(), existing.get("series"),
+                                         existing.get("versions"), current=version)
+    series = build_series(existing.get("series"), version_lines)
 
     output = {
         "version": version,
@@ -312,6 +400,7 @@ def main():
         "python_versions": python_versions,
         "operating_systems": operating_systems,
         "series": series,
+        "versions": versions,
         "updated_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
     }
 
@@ -324,10 +413,10 @@ def main():
         f.write("\n")
 
     print(f"Wrote {JSON_PATH}:")
-    print(json.dumps({k: v for k, v in output.items() if k != "series"}, indent=2))
+    print(json.dumps({k: v for k, v in output.items() if k not in ("series", "versions")}, indent=2))
     if series:
         print(f"series: {len(series['dates'])} days, {len(series['by_python'])} Python versions, "
-              f"{len(series['by_os'])} systems")
+              f"{len(series['by_os'])} systems, {len(series.get('by_version') or {})} releases")
 
 
 if __name__ == "__main__":

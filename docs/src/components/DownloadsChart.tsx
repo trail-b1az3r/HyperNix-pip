@@ -10,6 +10,12 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 // categorical palette, validated against this surface (#111111): every
 // adjacent pair clears CVD ΔE 8 and normal-vision ΔE 15, all >= 3:1.
 // "Unknown" (pypistats' null bucket) is a dashed neutral, not a hue.
+//
+// "Version" (0.72.8rc1) is which hypernix release was downloaded, from
+// `series.by_version` (ClickPy's PyPI log; 0.72.7.post1 counts as 0.72.7).
+// Fifty-odd releases are too many lines, so it shows the seven most
+// downloaded in the range, newest first and coloured in that order, and
+// the rest as one dashed "Older releases" line.
 
 export type Series = {
   dates: string[]
@@ -17,6 +23,7 @@ export type Series = {
   with_mirrors: number[]
   by_python: Record<string, number[]>
   by_os: Record<string, number[]>
+  by_version?: Record<string, number[]>
 }
 
 const SLOTS = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#008300', '#9085e9', '#e66767']
@@ -24,7 +31,8 @@ const NEUTRAL = '#8f8f8f'
 const OS_ORDER = ['Linux', 'Darwin', 'Windows']
 const OS_LABEL: Record<string, string> = { Darwin: 'macOS' }
 const RANGES = [['30d', 30], ['90d', 90], ['180d', 180], ['All', 0]] as const
-const VIEWS = [['total', 'Total'], ['python', 'Python version'], ['os', 'Operating system']] as const
+const VIEWS = [['total', 'Total'], ['version', 'HyperNix version'], ['python', 'Python version'], ['os', 'Operating system']] as const
+const VERSION_LINES = 7
 
 type Line = { key: string, label: string, color: string, dashed: boolean, values: number[] }
 
@@ -32,7 +40,25 @@ function versionKey(v: string) {
   return v.split('.').map((n) => n.padStart(3, '0')).join('.')
 }
 
-function linesFor(series: Series, view: string): Line[] {
+// The releases worth a line: the most downloaded over the days from
+// `from`, newest first; everything else summed into one neutral line.
+function versionLines(group: Record<string, number[]>, from: number): Line[] {
+  const sum = (v: number[]) => v.slice(from).reduce((a, b) => a + b, 0)
+  const names = Object.keys(group).filter((n) => sum(group[n]) > 0)
+  const top = names.slice().sort((a, b) => sum(group[b]) - sum(group[a])).slice(0, VERSION_LINES)
+  top.sort((a, b) => versionKey(b).localeCompare(versionKey(a)))
+  const lines: Line[] = top.map((name, i) => ({ key: name, label: `v${name}`, color: SLOTS[i], dashed: false, values: group[name] }))
+  const rest = names.filter((n) => !top.includes(n))
+  if (rest.length) {
+    const length = Math.max(...rest.map((n) => group[n].length))
+    const values = Array.from({ length }, (_, i) => rest.reduce((a, n) => a + (group[n][i] || 0), 0))
+    lines.push({ key: 'older', label: `Older releases (${rest.length})`, color: NEUTRAL, dashed: true, values })
+  }
+  return lines
+}
+
+function linesFor(series: Series, view: string, from = 0): Line[] {
+  if (view === 'version') return versionLines(series.by_version || {}, from)
   if (view === 'total') {
     return [
       { key: 'total', label: 'Downloads', color: SLOTS[0], dashed: false, values: series.total },
@@ -99,6 +125,7 @@ export function DownloadsChart({ series }: { series: Series | null }) {
   const [table, setTable] = useState(false)
   const box = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(760)
+  const ready = !!series?.dates?.length
 
   useEffect(() => {
     const el = box.current
@@ -106,20 +133,28 @@ export function DownloadsChart({ series }: { series: Series | null }) {
     const ro = new ResizeObserver(([e]) => setWidth(Math.max(300, Math.round(e.contentRect.width))))
     ro.observe(el)
     return () => ro.disconnect()
-  }, [table])
+    // The plot is not rendered until the stats arrive, so the observer is
+    // attached again then; with [table] alone it never was, and a phone
+    // drew the 760px default, cut off at the edge.
+  }, [table, ready])
   // pypistats' "Unknown" bucket is most of the downloads; shown, it flattens
   // every real line to zero, so it starts hidden (one click brings it back).
-  useEffect(() => { setHidden(view === 'total' ? {} : { Unknown: true }) }, [view])
+  useEffect(() => { setHidden(view === 'python' || view === 'os' ? { Unknown: true } : {}) }, [view])
 
+  const hasVersions = !!series?.by_version && Object.keys(series.by_version).length > 0
+  const views = VIEWS.filter(([v]) => v !== 'version' || hasVersions)
+  const from = useMemo(() => {
+    if (!series || !series.dates?.length) return 0
+    const days = RANGES.find(([r]) => r === range)?.[1] || series.dates.length
+    return Math.max(0, series.dates.length - days)
+  }, [series, range])
   const data = useMemo(() => {
     if (!series || !series.dates?.length) return null
-    const days = RANGES.find(([r]) => r === range)?.[1] || series.dates.length
     // Smooth over the whole history, then cut, so the first days of a
     // range are averages of real days rather than of a partial window.
-    const from = Math.max(0, series.dates.length - days)
-    const all = linesFor(series, view).map((l) => ({ ...l, values: smooth(l.values, Number(avg)).slice(from) }))
+    const all = linesFor(series, view, from).map((l) => ({ ...l, values: smooth(l.values, Number(avg)).slice(from) }))
     return { dates: series.dates.slice(from), lines: all }
-  }, [series, view, range, avg])
+  }, [series, view, from, avg])
 
   if (!series || !data) {
     return <p style={{ color: 'var(--text-faint)', fontSize: 13 }}>The download history is not in this build's stats file yet.</p>
@@ -159,7 +194,7 @@ export function DownloadsChart({ series }: { series: Series | null }) {
   // Weekly rows for the table view: a year of days is too long to read.
   const weeks: Array<{ from: string, to: string, values: number[] }> = []
   if (table) {
-    const raw = linesFor(series, view).filter((l) => !hidden[l.key])
+    const raw = linesFor(series, view, from).filter((l) => !hidden[l.key])
     const off = series.dates.length - n
     for (let i = 0; i < n; i += 7) {
       const end = Math.min(n, i + 7)
@@ -171,7 +206,7 @@ export function DownloadsChart({ series }: { series: Series | null }) {
   return (
     <div className="dl-chart">
       <div className="dl-controls">
-        <Segmented label="Lines" options={VIEWS} value={view} onChange={setView} />
+        <Segmented label="Lines" options={views} value={view} onChange={setView} />
         <Segmented label="Range" options={RANGES.map(([r]) => [r, r])} value={range} onChange={setRange} />
         <Segmented label="Smoothing" options={[['1', 'Daily'], ['7', '7-day avg']]} value={avg} onChange={setAvg} />
         <button type="button" className="dl-table-toggle" aria-pressed={table} onClick={() => setTable(!table)}>
@@ -249,7 +284,9 @@ export function DownloadsChart({ series }: { series: Series | null }) {
       {hidden.Unknown && data.lines.some((l) => l.key === 'Unknown') && (
         <p className="dl-note">“Unknown” (downloads pypistats could not attribute) is hidden; click it in the legend to show it.</p>
       )}
-      <p className="dl-note">PyPI downloads from pypistats.org. “Downloads” leaves out mirrors; pypistats keeps 180 days, and older days are kept from earlier runs.</p>
+      <p className="dl-note">{view === 'version'
+        ? 'Downloads of each hypernix release from ClickPy’s copy of the PyPI download log, mirrors included; a .post or pre-release counts toward its release.'
+        : 'PyPI downloads from pypistats.org. “Downloads” leaves out mirrors; pypistats keeps 180 days, and older days are kept from earlier runs.'}</p>
     </div>
   )
 }

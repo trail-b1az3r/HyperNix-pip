@@ -1478,8 +1478,15 @@ def preheat_brewed(
     tokenizer_source: Path | str | None = None,
     device: str | None = None,
     dtype: str = "float32",
+    gpu_layers: int | None = None,
 ) -> NeoOven:
     """Load a ``hyperNix0x-v2`` model into a :class:`NeoOven`.
+
+    On a GPU, *gpu_layers* is how many blocks go on it, the rest staying
+    in system RAM (:func:`hypernix.hyperlink.offload.split_layers`):
+    ``None`` as many as fit in the free VRAM, 0 none, at least the model's
+    layer count all of them. A model bigger than the card used to run
+    entirely on the CPU.
 
     Accepts either layout :mod:`hypernix.training.brewer` writes: a
     ``.pt`` checkpoint holding ``{"config", "model_state_dict"}``, or a
@@ -1504,7 +1511,25 @@ def preheat_brewed(
     tdtype = _dtype_from_str(dtype)
 
     model, cfg = brewer_adapter.load(path)
-    model.to(dev, dtype=tdtype)
+    placement = None
+    if dev.type == "cuda":
+        from ..hyperlink.offload import fit_layers, split_layers
+
+        total = len(model.inner.blocks) if hasattr(model, "inner") else len(model.blocks)
+        wanted = gpu_layers
+        if wanted is None:
+            free, _ = torch.cuda.mem_get_info(dev)
+            wanted = fit_layers(model, free)
+        if wanted < total:
+            placement = split_layers(model, wanted, device=str(dev), dtype=tdtype)
+            if not placement["gpu_layers"]:
+                dev = torch.device("cpu")
+            logger.info("neo_oven: %d of %d layers on %s, the rest in RAM",
+                        placement["gpu_layers"], total, dev)
+        else:
+            model.to(dev, dtype=tdtype)
+    else:
+        model.to(dev, dtype=tdtype)
     model.eval()
 
     # Beside the weights, in tokenizer/ there (as a training run writes
@@ -1526,9 +1551,11 @@ def preheat_brewed(
         )
         tok, kind = None, "none"
 
-    return NeoOven(model=model, tokenizer=tok, tokenizer_kind=kind,
+    oven = NeoOven(model=model, tokenizer=tok, tokenizer_kind=kind,
                    device=dev, dtype=tdtype, model_dir=Path(path),
                    repo_id=getattr(cfg, "name", brewer_adapter.ARCH_NAME))
+    oven.placement = placement
+    return oven
 
 
 def new_brewed(

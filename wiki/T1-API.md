@@ -6,7 +6,7 @@ server decides what exists, what's available, and how much is left — see
 [Design principle](#design-principle).
 
 **Status: T1 v1.1.26.10.2.0** (long form `1.1.2026.10.2.0`) in
-`0.72.8a5`: the 1.1 generation, which began with T1 v1.1.26.9.0.0 in
+`0.72.8rc1`: the 1.1 generation, which began with T1 v1.1.26.9.0.0 in
 `0.72.5.post15`, plus [web search v2](#web-search-v2),
 [signed prompts](#signed-prompts-and-the-ping),
 [chats owned by an account or a key](#ownership),
@@ -1727,7 +1727,7 @@ and runs T1 v1.1.26.10.1.0 or newer sends one heartbeat an hour, unless
 `T1_PUBLIC_COUNTER=0`:
 
 ```json
-{"id": "<32 hex>", "t1_version": "1.1.26.10.2.0", "version": "0.72.8a5"}
+{"id": "<32 hex>", "t1_version": "1.1.26.10.2.0", "version": "0.72.8rc1"}
 ```
 
 `id` is a SHA-256 of a random value the server made once and keeps in
@@ -1819,6 +1819,12 @@ next; `map` digests the parts side by side and folds the digests. The
 hops rotate through `instances` copies of the model — the runner's pool
 when it serves the model as one — capped by `T1_RELAY_MAX_INSTANCES`
 (8). `context_tokens` defaults to the registry's `context_limit`.
+`max_tokens`, the answer's length, defaults to a quarter of the usable
+context, between 32 and 512 tokens (0.72.8rc1); a fixed 512 made a
+512-token model such as HyperNix.3.1-mini refuse every document. A
+model the runner loads is registered if the registry has no entry for
+it (local, free, sized from the loaded context), so `/inference/chat`
+and the relay can ask it; an operator's entry is left as it is.
 
 Every gate of `/inference/chat` applies, sized by the largest single
 call. Each hop is metered as it finishes, under the `relay` feature, so
@@ -2225,7 +2231,7 @@ is a key with `write`, or a trusted origin on a server with
 |---|---|---|---|
 | GET | `/runner/status` | bearer | what is loaded, where its layers are, how long it has been up |
 | POST | `/runner/plan` | bearer | where a model's layers would go; changes nothing |
-| POST | `/runner/load` | bearer, **admin, partial admin, or a switch grant** (`T1_RUNNER_SWITCH_PERM`) | load a model, replacing what was running; the default model is downloaded the first time |
+| POST | `/runner/load` | bearer, **admin, partial admin, or a switch grant** (`T1_RUNNER_SWITCH_PERM`) | load a model, replacing what was running; the default model is downloaded the first time; `cpu_moe` (0, -1 or N) and `kv_on_cpu` keep experts or the KV cache in RAM (0.72.8rc1) |
 | POST | `/runner/unload` | as `load` | stop serving; unloading nothing is a success |
 | POST | `/runner/auto` | as `load` | load what this server usually runs: the last model loaded that is still here (`{"prefer": "most"}`: loaded most often), on the backend used most, with that model's last settings; `{"dry_run": true}` names it and loads nothing. With no history, the default model. `hypernix-t1 runner auto` |
 

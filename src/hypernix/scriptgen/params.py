@@ -18,9 +18,15 @@ what happens outside it, because a slider from 0 to 1 with no context is
 a slider people set to 0.5. :meth:`Param.validate` returns advice, not
 just a verdict — a learning rate of 1e-2 is *allowed* and almost
 certainly wrong, and saying so is more useful than refusing it.
+
+0.72.8rc1 adds a seventh group (LoRA adapters), the data, device and
+reporting options a runnable loop needs, and :func:`search` /
+:func:`suggest`, which the GUI's filter box and the CLI's "did you mean"
+share.
 """
 from __future__ import annotations
 
+import difflib
 import math
 from dataclasses import dataclass, field
 from enum import StrEnum
@@ -39,6 +45,10 @@ __all__ = [
     "LOSS_FUNCTIONS",
     "SCHEDULERS",
     "PRECISIONS",
+    "DEVICES",
+    "REPORTERS",
+    "search",
+    "suggest",
 ]
 
 
@@ -88,6 +98,20 @@ SCHEDULERS: tuple[tuple[str, str], ...] = (
     ("wsd", "Warmup-stable-decay: hold, then decay late. Good for resumable runs"),
 )
 
+DEVICES: tuple[tuple[str, str], ...] = (
+    ("auto", "CUDA if there is a GPU, then Apple's MPS, then the CPU"),
+    ("cuda", "An NVIDIA GPU"),
+    ("mps", "Apple silicon"),
+    ("cpu", "The CPU: slow, but always there, and right for a smoke test"),
+)
+
+REPORTERS: tuple[tuple[str, str], ...] = (
+    ("jsonl", "metrics.jsonl in the output directory; nothing to install"),
+    ("tensorboard", "TensorBoard event files (needs tensorboard)"),
+    ("wandb", "Weights & Biases (needs wandb and a login)"),
+    ("none", "Only the log lines"),
+)
+
 PRECISIONS: tuple[tuple[str, str], ...] = (
     ("auto", "Let the Pascal tuner decide (see hypernix.system.pascal)"),
     ("fp32", "Full precision. Slowest, never overflows"),
@@ -114,14 +138,25 @@ class Param:
     #: The variable name used in the generated script. Defaults to
     #: ``name``; set when the script's spelling differs from the UI's.
     emit_as: str = ""
-    #: Shown only when this other parameter is truthy. Keeps the form
-    #: dense without hiding things that matter.
+    #: Shown only when this other parameter is on (a toggle), or, as
+    #: ``"name=a|b"``, set to one of those values. Keeps the form dense
+    #: without hiding things that matter.
     depends_on: str = ""
     advanced: bool = False
 
     @property
     def script_name(self) -> str:
         return self.emit_as or self.name
+
+    def shown_with(self, values: dict[str, Any]) -> bool:
+        """Whether this parameter applies, given the others' *values*."""
+        if not self.depends_on:
+            return True
+        name, _, wanted = self.depends_on.partition("=")
+        gate = values.get(name)
+        if wanted:
+            return str(gate) in wanted.split("|")
+        return bool(gate)
 
     def coerce(self, value: Any) -> Any:
         """Turn a widget's string into the parameter's real type."""
@@ -210,19 +245,36 @@ GROUPS: tuple[ParamGroup, ...] = (
         "model", "Model and data",
         "What is being trained, and on what.",
         [
-            Param("model_id", "Base model", ParamKind.TEXT, "ray0rf1re/hyper-nix.1",
-                  hint="A Hugging Face repo id or a local path."),
-            Param("dataset", "Dataset", ParamKind.TEXT, "",
-                  hint="A Hugging Face dataset id, or a path to .jsonl."),
+            Param("model_id", "Base model", ParamKind.TEXT, "Compactbot/hypernix-3.1-mini",
+                  hint="A Hugging Face repo id or a local folder. A HyperNix model is loaded "
+                       "through hypernix, anything else through transformers."),
+            Param("dataset", "Dataset", ParamKind.PATH, "",
+                  hint="A Hugging Face dataset id, or a local .jsonl, .json or .txt file."),
             Param("output_dir", "Output directory", ParamKind.PATH, "./runs/hypernix",
-                  hint="Checkpoints and logs land here."),
-            Param("sequence_length", "Sequence length", ParamKind.INT, 2048,
-                  minimum=128, maximum=131072, step=128,
-                  hint="Attention memory grows with the square of this. The first thing to "
-                       "lower when you run out of VRAM."),
+                  hint="Checkpoints, logs and metrics land here."),
+            Param("sequence_length", "Sequence length", ParamKind.INT, 512,
+                  minimum=32, maximum=131072, step=32,
+                  hint="Tokens per training example; capped at the model's own context. "
+                       "Attention memory grows with its square: the first thing to lower "
+                       "when you run out of VRAM."),
+            Param("packing", "Pack examples", ParamKind.TOGGLE, True,
+                  hint="Join short examples into full-length blocks, so no compute is spent "
+                       "on padding."),
+            Param("val_split", "Held-out fraction", ParamKind.FLOAT, 0.02,
+                  minimum=0.0, maximum=0.5, step=0.01,
+                  hint="Kept back for evaluation. 0 evaluates on nothing, and early "
+                       "stopping has nothing to watch."),
+            Param("max_samples", "Max examples", ParamKind.INT, 0,
+                  minimum=0, maximum=100_000_000,
+                  hint="0 uses the whole dataset. A few hundred makes a quick test run."),
             Param("dataset_split", "Split", ParamKind.TEXT, "train", advanced=True),
             Param("text_field", "Text field", ParamKind.TEXT, "text", advanced=True,
-                  hint="Which column of the dataset holds the text."),
+                  hint="Which column of the dataset holds the text. Chat data with a "
+                       "'messages' column is flattened to text."),
+            Param("trust_remote_code", "Trust remote code", ParamKind.TOGGLE, False,
+                  advanced=True,
+                  hint="Let transformers run code shipped in the model repo. Only for repos "
+                       "you trust."),
         ],
     ),
     ParamGroup(
@@ -281,7 +333,7 @@ GROUPS: tuple[ParamGroup, ...] = (
             Param("loss_function", "Loss", ParamKind.CHOICE, "cross_entropy",
                   choices=LOSS_FUNCTIONS),
             Param("label_smoothing", "Label smoothing", ParamKind.FLOAT, 0.0,
-                  minimum=0.0, maximum=0.5, step=0.01, depends_on="loss_function"),
+                  minimum=0.0, maximum=0.5, step=0.01, depends_on="loss_function=label_smoothed_ce"),
             Param("weight_decay", "Weight decay", ParamKind.LOG_FLOAT, 0.01,
                   minimum=1e-6, maximum=1.0),
             Param("max_grad_norm", "Gradient clipping", ParamKind.FLOAT, 1.0,
@@ -305,15 +357,42 @@ GROUPS: tuple[ParamGroup, ...] = (
         ],
     ),
     ParamGroup(
+        "adapters", "LoRA adapters",
+        "Train small low-rank adapters instead of every weight.",
+        [
+            Param("use_lora", "Use LoRA", ParamKind.TOGGLE, False,
+                  hint="Freeze the model and train small adapters beside it: a fraction of "
+                       "the memory and the optimiser state. Works on HyperNix and "
+                       "transformers models alike, with nothing extra to install."),
+            Param("lora_rank", "Rank", ParamKind.INT, 16, minimum=1, maximum=512,
+                  depends_on="use_lora",
+                  hint="Width of each adapter. 8-32 is the usual band; higher learns more "
+                       "and costs more."),
+            Param("lora_alpha", "Alpha", ParamKind.INT, 32, minimum=1, maximum=1024,
+                  depends_on="use_lora",
+                  hint="Adapter scale is alpha / rank; twice the rank is the common choice."),
+            Param("lora_dropout", "Dropout", ParamKind.FLOAT, 0.05, minimum=0.0, maximum=0.5,
+                  step=0.01, depends_on="use_lora"),
+            Param("lora_targets", "Target layers", ParamKind.TEXT, "q_proj,k_proj,v_proj,o_proj",
+                  depends_on="use_lora",
+                  hint="Comma-separated layer names. Add gate_proj,up_proj,down_proj to adapt "
+                       "the feed-forward layers too."),
+            Param("merge_lora", "Merge when done", ParamKind.TOGGLE, True, depends_on="use_lora",
+                  hint="Fold the adapters into the weights before the final save, so the "
+                       "result loads like any model."),
+        ],
+    ),
+    ParamGroup(
         "precision", "Precision and hardware",
         "How numbers are stored and computed, and on what.",
         [
+            Param("device", "Device", ParamKind.CHOICE, "auto", choices=DEVICES),
             Param("precision", "Precision", ParamKind.CHOICE, "auto", choices=PRECISIONS),
             Param("pascal_autotune", "Pascal auto-tune", ParamKind.TOGGLE, True,
                   hint="Detect an sm_61 card and set dtype, batch and attention for it. "
                        "See hypernix.system.pascal."),
             Param("loss_scale", "Initial loss scale", ParamKind.LOG_FLOAT, 65536.0,
-                  minimum=1.0, maximum=2 ** 24, depends_on="precision", advanced=True,
+                  minimum=1.0, maximum=2 ** 24, depends_on="precision=fp16|auto", advanced=True,
                   hint="FP16 only. Halved on overflow, doubled after a quiet period."),
             Param("gradient_checkpointing", "Gradient checkpointing", ParamKind.TOGGLE, False,
                   hint="Recompute activations instead of storing them: ~30% slower, far less "
@@ -346,10 +425,33 @@ GROUPS: tuple[ParamGroup, ...] = (
                   hint="0 keeps all of them, which fills disks."),
             Param("seed", "Seed", ParamKind.INT, 42, minimum=0, maximum=2 ** 31 - 1),
             Param("resume", "Resume from checkpoint", ParamKind.TOGGLE, False),
-            Param("stream_metrics", "Stream to the live TUI", ParamKind.TOGGLE, True,
-                  hint="Publish loss, VRAM and throughput over the WebSocket TUI."),
-            Param("enable_sweep", "Hyperparameter sweep", ParamKind.TOGGLE, False,
-                  hint="Run a search instead of a single training run."),
+            Param("report_to", "Metrics", ParamKind.CHOICE, "jsonl", choices=REPORTERS),
+            Param("early_stopping_patience", "Early stopping patience", ParamKind.INT, 0,
+                  minimum=0, maximum=1000,
+                  hint="Stop after this many evaluations without a better held-out loss. "
+                       "0 never stops early."),
+            Param("stream_metrics", "Stream to the live view", ParamKind.TOGGLE, False,
+                  hint="Publish loss, progress and hardware over hypernix's WebSocket live "
+                       "view (hypernix.monitoring.livestream), on loopback."),
+            Param("stream_port", "Live view port", ParamKind.INT, 8765, minimum=1024,
+                  maximum=65535, depends_on="stream_metrics", advanced=True),
+            Param("push_to_hub", "Upload when done", ParamKind.TOGGLE, False,
+                  hint="Upload the final model to the Hugging Face Hub (needs a login)."),
+            Param("hub_repo", "Hub repo", ParamKind.TEXT, "", depends_on="push_to_hub",
+                  hint="owner/name to upload to; created private if it does not exist."),
+            Param("enable_sweep", "Learning-rate sweep", ParamKind.TOGGLE, False,
+                  hint="Try several learning rates across the sweep range with short runs, "
+                       "then train fully with the best."),
+            Param("sweep_trials", "Sweep trials", ParamKind.INT, 4, minimum=2, maximum=32,
+                  depends_on="enable_sweep",
+                  hint="Learning rates tried, spaced evenly on a log scale."),
+            Param("sweep_steps", "Steps per trial", ParamKind.INT, 100, minimum=10,
+                  maximum=100_000, depends_on="enable_sweep"),
+            Param("training_loop", "Script body", ParamKind.CHOICE, "full",
+                  choices=(
+                      ("full", "A complete loop: loads the model and data, trains, evaluates, saves"),
+                      ("skeleton", "The helpers only; bring your own model and data loading"),
+                  )),
             Param("notes", "Notes", ParamKind.MULTILINE, "",
                   hint="Written into the script's header. What you were trying."),
         ],
@@ -403,7 +505,7 @@ def validate_all(values: dict[str, Any]) -> tuple[list[str], list[str]]:
             "learning rate than the default."
         )
 
-    if _as_int(values.get("max_steps"), 0) and float(values.get("epochs") or 0) > 0:
+    if _as_int(values.get("max_steps"), 0) and float(values.get("epochs") or 0) > 1:
         warnings.append(
             "Both epochs and max_steps are set; max_steps wins and the run will stop early."
         )
@@ -418,6 +520,27 @@ def validate_all(values: dict[str, Any]) -> tuple[list[str], list[str]]:
         warnings.append(
             "BF16 does not exist on Pascal. With auto-tune on, the tuner will override this."
         )
+    if str(values.get("training_loop", "full")) == "full" and not str(values.get("dataset") or "").strip():
+        warnings.append(
+            "No dataset yet. The script will ask for one when it runs; name it here, or "
+            "pass --dataset PATH then."
+        )
+    if values.get("push_to_hub") and not str(values.get("hub_repo") or "").strip():
+        errors.append("Upload when done is on but there is no Hub repo to upload to.")
+    if _as_int(values.get("early_stopping_patience"), 0) and not float(values.get("val_split") or 0):
+        warnings.append(
+            "Early stopping watches the held-out loss, and the held-out fraction is 0; "
+            "it will never stop early."
+        )
+    if str(values.get("device")) == "cpu" and str(values.get("precision")) in ("fp16", "bf16"):
+        warnings.append(
+            f"{values.get('precision')} on the CPU is slower than fp32 on most CPUs; "
+            "the script trains in fp32 there."
+        )
+    if values.get("use_lora") and not str(values.get("lora_targets") or "").strip():
+        errors.append("LoRA is on but no target layers are named.")
+    if values.get("use_lora") and str(values.get("training_loop")) == "skeleton":
+        warnings.append("LoRA is applied by the full loop; the skeleton only carries the helper.")
     if _as_int(values.get("save_total_limit"), 0) == 0 and _as_int(values.get("save_steps"), 0):
         warnings.append(
             "Keeping every checkpoint with saves every "
@@ -431,3 +554,31 @@ def _as_int(value: Any, fallback: int) -> int:
         return int(float(value))
     except (TypeError, ValueError):
         return fallback
+
+
+def search(query: str) -> list[Param]:
+    """Parameters whose name, label or hint mentions every word of *query*.
+    The GUI's filter box and ``hnx scriptgen --list-params QUERY``."""
+    words = [w for w in query.lower().split() if w]
+    if not words:
+        return list(ALL_PARAMS.values())
+    found = []
+    for group in GROUPS:
+        for param in group.params:
+            haystack = f"{param.name} {param.label} {param.hint} {group.title}".lower()
+            if all(word in haystack for word in words):
+                found.append(param)
+    return found
+
+
+def suggest(name: str, limit: int = 3) -> list[str]:
+    """The parameter names closest to a misspelt *name*: ``lr`` finds
+    learning_rate, ``batch`` finds micro_batch."""
+    wanted = name.strip().lower().replace("-", "_")
+    close = difflib.get_close_matches(wanted, list(ALL_PARAMS), n=limit, cutoff=0.5)
+    for param in ALL_PARAMS.values():
+        initials = "".join(part[0] for part in param.name.split("_"))
+        if param.name not in close and (wanted == initials or wanted in param.name):
+            close.append(param.name)
+    return close[:limit]
+

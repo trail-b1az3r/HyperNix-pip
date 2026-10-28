@@ -1603,6 +1603,12 @@ class RunnerLoadRequest(BaseModel):
     #: The vision projector: None finds the mmproj-*.gguf beside the
     #: model, "" loads none, a path loads that one.
     mmproj: str | None = None
+    #: CPU offloading (0.72.8rc1): a mixture-of-experts model's experts in
+    #: system RAM -- 0 none, -1 every layer's, N the first N layers' --
+    #: so the rest fits on the GPU.
+    cpu_moe: int = 0
+    #: The KV cache in system RAM rather than VRAM.
+    kv_on_cpu: bool = False
 
 
 class RunnerAutoRequest(BaseModel):
@@ -1949,8 +1955,9 @@ class InferenceRelayRequest(BaseModel):
     context_tokens: int | None = Field(default=None, ge=256)
     #: How long the carried notes may grow. Default: a sixth of the context.
     notes_tokens: int | None = Field(default=None, ge=32)
-    #: The answer's length.
-    max_tokens: int = Field(default=512, ge=1)
+    #: The answer's length. Default: a quarter of the usable context, at most
+    #: 512 -- so a 512-token model (HyperNix.3.1-mini) can relay at all.
+    max_tokens: int | None = Field(default=None, ge=1)
     temperature: float | None = 0.2
     allow_fallback: bool = False
     #: Plan and price it, run nothing, record nothing.

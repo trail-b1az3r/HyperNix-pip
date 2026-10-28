@@ -1,16 +1,19 @@
 """hypernix.scriptgen — build training scripts, in a GUI or from the CLI.
 
-    hnx scriptgen                     open the GUI
-    hnx scriptgen --cli -o train.py   generate headless
+    hnx scriptgen                     open the GUI (the wizard, headless)
+    hnx scriptgen --wizard            five questions in the terminal
+    hnx scriptgen train.py            generate headless
 
-Forty-three parameters across six groups, modelled on the nano-nano 5.1
+Sixty-two parameters across seven groups, modelled on the nano-nano 5.1
 trainer's surface: learning rates and warmup ratios, epoch and step
 controls, batch and micro-batch sizing, gradient accumulation, loss
 functions and optimisers — plus the HyperNix-specific parts (the
 Pressure Cooker family, 6-bit momentum modes, and the Pascal
-auto-tuner).
+auto-tuner), and since 0.72.8rc1 LoRA adapters, data, device and
+reporting options, and :mod:`~hypernix.scriptgen.recipes` to start from.
+The generated script runs as written.
 
-Four modules, and the split matters:
+The modules, and the split matters:
 
 * :mod:`~hypernix.scriptgen.params` — one definition per parameter, used
   to build the widget, validate the value, and emit the script. Defining
@@ -32,17 +35,29 @@ on.
 from __future__ import annotations
 
 from .app import FormModel, launch
-from .params import ALL_PARAMS, GROUPS, Param, ParamGroup, ParamKind, defaults, validate_all
-from .templates import as_config, generate, inject
+from .params import (
+    ALL_PARAMS,
+    GROUPS,
+    Param,
+    ParamGroup,
+    ParamKind,
+    defaults,
+    search,
+    suggest,
+    validate_all,
+)
+from .recipes import RECIPES, Recipe, apply_recipe
+from .templates import CONFIG_FORMATS, as_config, generate, inject
 from .theme import FONTS, PALETTE, Palette, audit_palette, contrast_ratio
 
-__scriptgen_version__ = "0.72.1"
+__scriptgen_version__ = "0.72.8rc1"
 
 __all__ = [
     "__scriptgen_version__",
     "FormModel", "launch",
     "Param", "ParamGroup", "ParamKind", "GROUPS", "ALL_PARAMS",
-    "defaults", "validate_all",
-    "generate", "inject", "as_config",
+    "defaults", "validate_all", "search", "suggest",
+    "RECIPES", "Recipe", "apply_recipe",
+    "generate", "inject", "as_config", "CONFIG_FORMATS",
     "PALETTE", "Palette", "FONTS", "audit_palette", "contrast_ratio",
 ]

@@ -27,7 +27,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-__all__ = ["Palette", "PALETTE", "FONTS", "audit_palette", "relative_luminance", "contrast_ratio"]
+__all__ = ["Palette", "PALETTE", "FONTS", "audit_palette", "relative_luminance", "contrast_ratio",
+           "pick_fonts"]
 
 
 def _rgb(hex_colour: str) -> tuple[int, int, int]:
@@ -84,6 +85,14 @@ class Palette:
     error: str = "#c22626"           # the accent doubles as error
     info: str = "#5b8aa6"            # desaturated steel blue
 
+    # --- the preview's syntax colours (0.72.8rc1) ----------------------
+    # Warm, like the rest: coral keywords, sage strings, amber numbers.
+    syn_keyword: str = "#f08a6c"
+    syn_string: str = "#b8cc8a"
+    syn_number: str = "#e2b45c"
+    syn_name: str = "#ecd9b0"        # the name after def / class, and keys
+    syn_builtin: str = "#8fb6c9"
+
     def as_dict(self) -> dict[str, str]:
         return {k: v for k, v in self.__dict__.items() if isinstance(v, str)}
 
@@ -109,6 +118,40 @@ FONTS: dict[str, tuple[Any, ...]] = {
 FONT_FALLBACKS: tuple[str, ...] = (
     "DejaVu Sans Mono", "Menlo", "Consolas", "Liberation Mono", "Courier New", "TkFixedFont",
 )
+
+
+#: Families tried for the interface and the code, best first. Inter and
+#: JetBrains Mono when installed; DejaVu, which every Linux has, otherwise.
+SANS_FAMILIES: tuple[str, ...] = ("Inter", "Segoe UI", "SF Pro Text", "Helvetica Neue",
+                                  "Cantarell", "Noto Sans", "DejaVu Sans")
+MONO_FAMILIES: tuple[str, ...] = ("JetBrains Mono", "Cascadia Code", "SF Mono", "Menlo",
+                                  "Consolas", "DejaVu Sans Mono", "Liberation Mono")
+
+
+def pick_fonts(root: Any = None) -> dict[str, tuple[Any, ...]]:
+    """:data:`FONTS` with the best installed families, for *root*'s display.
+    Without a display (or Tk) the defaults stand."""
+    try:
+        from tkinter import font as tkfont
+
+        available = {name.lower() for name in tkfont.families(root)}
+    except Exception:  # noqa: BLE001 - no display, or no Tk
+        return dict(FONTS)
+    sans = next((f for f in SANS_FAMILIES if f.lower() in available), FONTS["body"][0])
+    mono = next((f for f in MONO_FAMILIES if f.lower() in available), FONTS["code"][0])
+    return {
+        "body": (sans, 10),
+        "body_bold": (sans, 10, "bold"),
+        "small": (sans, 9),
+        "tiny": (sans, 8),
+        "label": (sans, 10, "bold"),
+        "heading": (sans, 15, "bold"),
+        "title": (sans, 16, "bold"),
+        "nav": (sans, 10),
+        "nav_bold": (sans, 10, "bold"),
+        "code": (mono, 10),
+        "code_small": (mono, 9),
+    }
 
 
 def audit_palette(palette: Palette = PALETTE) -> dict[str, Any]:
@@ -156,6 +199,11 @@ def audit_palette(palette: Palette = PALETTE) -> dict[str, Any]:
     red_on_dark = contrast_ratio(palette.red_text, palette.charcoal)
     if red_on_dark < 4.5:
         accent.append(f"red_text on charcoal is {red_on_dark:.2f}:1, below AA 4.5:1")
+
+    for name in ("syn_keyword", "syn_string", "syn_number", "syn_name", "syn_builtin"):
+        ratio = contrast_ratio(getattr(palette, name), palette.obsidian)
+        if ratio < 4.5:
+            accent.append(f"{name} on obsidian is {ratio:.2f}:1, below AA 4.5:1")
 
     return {
         "ok": not (purple or contrast or accent),

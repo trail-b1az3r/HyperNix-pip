@@ -14,7 +14,10 @@ almost everything you tell it) and two of these do not exist at all:
 
 All three are plain ``Frame`` subclasses with a ``command`` callback and
 a ``get``/``set`` pair, so they drop into the same layout code as a
-built-in widget.
+built-in widget. 0.72.8rc1 adds :class:`LinearSlider` (the bounded
+numbers, beside an entry for the exact value) and :class:`Segmented`
+(a choice of two to four, all visible at once rather than in a
+drop-down).
 
 Importing this module does not require a display. The Tk import happens
 at class definition time, which means a headless machine can still
@@ -30,7 +33,7 @@ from typing import Any
 
 from .theme import FONTS, PALETTE
 
-__all__ = ["DualSlider", "ToggleSwitch", "LogSlider", "tk_available"]
+__all__ = ["DualSlider", "ToggleSwitch", "LogSlider", "LinearSlider", "Segmented", "tk_available"]
 
 
 def tk_available() -> tuple[bool, str]:
@@ -126,6 +129,11 @@ class DualSlider(_CanvasControl):
         self.canvas.bind("<Button-1>", self._on_press)
         self.canvas.bind("<B1-Motion>", self._on_drag)
         self.canvas.bind("<ButtonRelease-1>", lambda _e: setattr(self, "_dragging", None))
+        self.canvas.bind("<Configure>", self._on_resize)
+        self._redraw()
+
+    def _on_resize(self, event: Any) -> None:
+        self._width = max(40, int(event.width))
         self._redraw()
 
     # -- value <-> pixel ----------------------------------------------
@@ -226,8 +234,10 @@ class LogSlider(_CanvasControl):
         height: int = 34,
         command: Callable[[float], None] | None = None,
         fmt: str = "{:.3g}",
+        show_value: bool = True,
     ) -> None:
         super().__init__(master, width=width, height=height)
+        self.show_value = show_value
         if minimum <= 0:
             raise ValueError("a logarithmic slider needs a positive minimum")
         if minimum >= maximum:
@@ -241,6 +251,11 @@ class LogSlider(_CanvasControl):
 
         self.canvas.bind("<Button-1>", self._on_drag)
         self.canvas.bind("<B1-Motion>", self._on_drag)
+        self.canvas.bind("<Configure>", self._on_resize)
+        self._redraw()
+
+    def _on_resize(self, event: Any) -> None:
+        self._width = max(40, int(event.width))
         self._redraw()
 
     def _x(self, value: float) -> float:
@@ -262,7 +277,7 @@ class LogSlider(_CanvasControl):
         c.delete("all")
         mid = self._height // 2
         c.create_line(self._pad, mid, self._width - self._pad, mid,
-                      fill=PALETTE.edge, width=3, capstyle="round")
+                      fill=PALETTE.edge, width=4, capstyle="round")
         # A tick per decade: the scale is meaningless without them.
         decade = math.ceil(math.log10(self.minimum))
         while 10 ** decade <= self.maximum:
@@ -270,13 +285,14 @@ class LogSlider(_CanvasControl):
             c.create_line(x, mid - 5, x, mid + 5, fill=PALETTE.edge, width=1)
             decade += 1
         c.create_line(self._pad, mid, self._x(self._value), mid,
-                      fill=PALETTE.red, width=3, capstyle="round")
+                      fill=PALETTE.red, width=4, capstyle="round")
         x = self._x(self._value)
-        c.create_oval(x - 6, mid - 6, x + 6, mid + 6,
-                      fill=PALETTE.red_bright, outline=PALETTE.obsidian, width=2)
-        c.create_text(self._width - self._pad, mid - 13, anchor="e",
-                      text=self.fmt.format(self._value),
-                      fill=PALETTE.text, font=FONTS["tiny"])
+        c.create_oval(x - 7, mid - 7, x + 7, mid + 7,
+                      fill=PALETTE.text, outline=PALETTE.red, width=2)
+        if self.show_value:  # off when an entry beside it already shows the value
+            c.create_text(self._width - self._pad, mid - 13, anchor="e",
+                          text=self.fmt.format(self._value),
+                          fill=PALETTE.text, font=FONTS["tiny"])
 
     def get(self) -> float:
         return self._value
@@ -335,3 +351,138 @@ class ToggleSwitch(_CanvasControl):
     def set(self, value: bool) -> None:
         self._value = bool(value)
         self._redraw()
+
+
+class LinearSlider(_CanvasControl):
+    """A single linear slider, snapping to *step*: for bounded numbers
+    such as the warmup ratio, beside an entry that takes the exact value."""
+
+    def __init__(
+        self,
+        master: Any,
+        *,
+        minimum: float = 0.0,
+        maximum: float = 1.0,
+        value: float | None = None,
+        step: float | None = None,
+        width: int = 260,
+        height: int = 28,
+        command: Callable[[float], None] | None = None,
+        bg: str | None = None,
+    ) -> None:
+        super().__init__(master, width=width, height=height)
+        if minimum >= maximum:
+            raise ValueError("minimum must be below maximum")
+        if bg:
+            self.configure(bg=bg)
+            self.canvas.configure(bg=bg)
+        self.minimum, self.maximum = float(minimum), float(maximum)
+        self.step = float(step) if step else 0.0
+        self.command = command
+        self._width, self._height = width, height
+        self._pad = 9
+        self._value = float(value if value is not None else minimum)
+        self.canvas.bind("<Button-1>", self._on_drag)
+        self.canvas.bind("<B1-Motion>", self._on_drag)
+        self.canvas.bind("<Configure>", self._on_resize)
+        self.canvas.configure(cursor="hand2")
+        self._redraw()
+
+    def _on_resize(self, event: Any) -> None:
+        self._width = max(40, int(event.width))
+        self._redraw()
+
+    def _x(self, value: float) -> float:
+        fraction = (min(max(value, self.minimum), self.maximum) - self.minimum) / (self.maximum - self.minimum)
+        return self._pad + fraction * (self._width - 2 * self._pad)
+
+    def _on_drag(self, event: Any) -> None:
+        span = self._width - 2 * self._pad
+        fraction = min(1.0, max(0.0, (event.x - self._pad) / span))
+        value = self.minimum + fraction * (self.maximum - self.minimum)
+        if self.step:
+            value = self.minimum + round((value - self.minimum) / self.step) * self.step
+            value = round(value, 10)
+        self._value = min(self.maximum, max(self.minimum, value))
+        self._redraw()
+        if self.command is not None:
+            self.command(self._value)
+
+    def _redraw(self) -> None:
+        c = self.canvas
+        c.delete("all")
+        mid = self._height // 2
+        c.create_line(self._pad, mid, self._width - self._pad, mid,
+                      fill=PALETTE.edge, width=4, capstyle="round")
+        x = self._x(self._value)
+        c.create_line(self._pad, mid, x, mid, fill=PALETTE.red, width=4, capstyle="round")
+        c.create_oval(x - 7, mid - 7, x + 7, mid + 7,
+                      fill=PALETTE.text, outline=PALETTE.red, width=2)
+
+    def get(self) -> float:
+        return self._value
+
+    def set(self, value: float) -> None:
+        self._value = max(self.minimum, min(float(value), self.maximum))
+        self._redraw()
+
+
+class Segmented(_BASE):  # type: ignore[misc,valid-type]
+    """Two to four choices side by side, the chosen one filled red.
+
+    A drop-down hides the alternatives behind a click; with four or
+    fewer there is room to show them all, and seeing "fp16 / bf16 / fp32"
+    at once is half of choosing between them.
+    """
+
+    def __init__(
+        self,
+        master: Any,
+        *,
+        options: list[tuple[str, str]],
+        value: str = "",
+        command: Callable[[str], None] | None = None,
+        font: Any = None,
+        bg: str | None = None,
+    ) -> None:
+        if tk is None:  # pragma: no cover
+            raise RuntimeError("Tkinter is not available")
+        super().__init__(master, bg=PALETTE.edge, bd=0, highlightthickness=0)
+        self.command = command
+        self._value = value
+        self._labels: dict[str, Any] = {}
+        for index, (key, text) in enumerate(options):
+            label = tk.Label(self, text=text, font=font or FONTS["small"], padx=12, pady=5,
+                             cursor="hand2", bd=0)
+            label.grid(row=0, column=index, padx=(1 if index == 0 else 0, 1), pady=1, sticky="nsew")
+            label.bind("<Button-1>", lambda _e, k=key: self._choose(k))
+            label.bind("<Enter>", lambda _e, k=key: self._hover(k, True))
+            label.bind("<Leave>", lambda _e, k=key: self._hover(k, False))
+            self._labels[key] = label
+        self._paint()
+
+    def _hover(self, key: str, inside: bool) -> None:
+        if key != self._value:
+            self._labels[key].configure(bg=PALETTE.slate_high if inside else PALETTE.slate)
+
+    def _choose(self, key: str) -> None:
+        if key == self._value:
+            return
+        self._value = key
+        self._paint()
+        if self.command is not None:
+            self.command(key)
+
+    def _paint(self) -> None:
+        for key, label in self._labels.items():
+            chosen = key == self._value
+            label.configure(bg=PALETTE.red if chosen else PALETTE.slate,
+                            fg=PALETTE.text if chosen else PALETTE.text_dim)
+
+    def get(self) -> str:
+        return self._value
+
+    def set(self, value: str) -> None:
+        self._value = str(value)
+        self._paint()
+

@@ -333,8 +333,9 @@ class TestScriptgenTheme:
 
 class TestScriptgenParams:
     def test_the_form_is_dense(self):
-        assert len(GROUPS) == 6
-        assert len(ALL_PARAMS) >= 40
+        # Seven sections since 0.72.8rc1 added LoRA adapters.
+        assert len(GROUPS) == 7
+        assert len(ALL_PARAMS) >= 60
 
     def test_the_requested_parameters_are_all_present(self):
         for name in (
@@ -409,8 +410,9 @@ class TestScriptgenGeneration:
         values = defaults()
         assert as_config(values, fmt="json").startswith("{")
         assert "HYPERNIX_" in as_config(values, fmt="env")
+        # YAML and TOML joined in 0.72.8rc1; an unknown format is still refused.
         with pytest.raises(ValueError):
-            as_config(values, fmt="yaml")
+            as_config(values, fmt="xml")
 
 
 class TestFormModel:

@@ -3,6 +3,191 @@
   "source": "wiki/Changelog.md",
   "entries": [
     {
+      "version": "0.72.8rc1",
+      "key": "0.72.8rc1",
+      "aliases": [
+        "0.72.8rc1"
+      ],
+      "kind": "rc",
+      "heading": "0.72.8rc1 \u2014 2026-10-28",
+      "date": "2026-10-28",
+      "title": "",
+      "summary": "scriptgen: a script that runs, a new window, more options. hnx scriptgen (now a subcommand as well as hnx-scriptgen) writes a training script that loads the model (a HyperNix model through hypernix, anything else through transformers), reads the data (a Hub dataset or a local\u2026",
+      "patch": null,
+      "headline": "",
+      "highlights": [
+        "scriptgen: a script that runs, a new window, more options. hnx scriptgen (now a subcommand as well as hnx-scriptgen) writes a training script that loads the model (a HyperNix model through hypernix, anything else through transformers), reads the data (a Hub dataset or a local\u2026",
+        "CPU offloading for the HyperNix runners. A native HyperNix model larger than the card is split by layer: the first blocks, the embeddings and the head on the GPU, the rest in RAM, as -ngl splits a GGUF (it was wholly on the CPU). The llama.cpp runners can keep a\u2026",
+        "hnx download --latest downloads the newest HyperNix model -- HyperNix.3.1-mini (Compactbot/hypernix-3.1-mini) today -- into the folder the runner reads, and says how to serve and relay it. Later releases are found on the Hub from the two accounts HyperNix models come from\u2026",
+        "Fixed the critical and 26 high CodeQL alerts from the exported first page of code scanning: the docs-conflict resolver workflow ran the pull request's own resolver with a write token (now only the base's, with no stored credentials); hnx-t1 setup --dry-run built its output\u2026",
+        "cryptography's floor is 50: 49 still allowed GHSA-g6cj-pr64-35w5 (high). The new security page found it.",
+        "/inference/relay and /inference/chat refused a model the runner had loaded but the registry did not list (MODEL_NOT_SUPPORTED), so a downloaded HyperNix.3.1-mini could be served and never asked. The runner registers what it loads (local, free, sized from the loaded context); an\u2026"
+      ],
+      "changes": [
+        {
+          "symbol": "\u0e4b\u08ed\u2b51",
+          "label": "major",
+          "category": "Added",
+          "text": "scriptgen: a script that runs, a new window, more options. hnx scriptgen (now a subcommand as well as hnx-scriptgen) writes a training script that loads the model (a HyperNix model through hypernix, anything else through transformers), reads the data (a Hub dataset or a local\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\u0e4b\u08ed\u2b51",
+          "label": "major",
+          "category": "Added",
+          "text": "CPU offloading for the HyperNix runners. A native HyperNix model larger than the card is split by layer: the first blocks, the embeddings and the head on the GPU, the rest in RAM, as -ngl splits a GGUF (it was wholly on the CPU). The llama.cpp runners can keep a\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "hnx download --latest downloads the newest HyperNix model -- HyperNix.3.1-mini (Compactbot/hypernix-3.1-mini) today -- into the folder the runner reads, and says how to serve and relay it. Later releases are found on the Hub from the two accounts HyperNix models come from\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udd12",
+          "label": "security",
+          "category": "Security",
+          "text": "Fixed the critical and 26 high CodeQL alerts from the exported first page of code scanning: the docs-conflict resolver workflow ran the pull request's own resolver with a write token (now only the base's, with no stored credentials); hnx-t1 setup --dry-run built its output\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udd12",
+          "label": "security",
+          "category": "Security",
+          "text": "cryptography's floor is 50: 49 still allowed GHSA-g6cj-pr64-35w5 (high). The new security page found it.",
+          "details": []
+        },
+        {
+          "symbol": "\ud81a\udca5",
+          "label": "major fix",
+          "category": "Fixed",
+          "text": "/inference/relay and /inference/chat refused a model the runner had loaded but the registry did not list (MODEL_NOT_SUPPORTED), so a downloaded HyperNix.3.1-mini could be served and never asked. The runner registers what it loads (local, free, sized from the loaded context); an\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\ud81a\udca5",
+          "label": "major fix",
+          "category": "Fixed",
+          "text": "The relay refused every document for a 512-token model: it reserved a fixed 512 tokens for the answer. The answer now defaults to a quarter of the usable context, between 32 and 512 tokens; HyperNix.3.1-mini relays a long document in hops.",
+          "details": []
+        },
+        {
+          "symbol": "\ud81a\udca5",
+          "label": "major fix",
+          "category": "Fixed",
+          "text": "scriptgen's generated script could not build its default optimiser: it asked hypernix.optimizers for PressureCookerV5, which lives in pressure_cooker_v5, and passed betas, which the Pressure Cookers do not take. Its main() also stopped at \"bring your own loader\".",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udc1b",
+          "label": "fix",
+          "category": "Fixed",
+          "text": "scriptgen's window cut its tab titles (\"Model an\", \"Precision anc\"), gave a third of its height to the status line, and its Advanced switch changed nothing until another tab was opened.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udc1b",
+          "label": "fix",
+          "category": "Fixed",
+          "text": "hnx scriptgen, as the help and wiki wrote it, was an unknown command.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udc1b",
+          "label": "fix",
+          "category": "Fixed",
+          "text": "The Stats page's downloads graph was cut off on phones: it measured its width before the stats arrived and kept the 760px default.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udc1b",
+          "label": "fix",
+          "category": "Fixed",
+          "text": "hnx-t1 setup --dry-run > .env.new produced a summary instead of the file after an automated security fix; stdout is the file again, its secrets shown as <redacted>, and switches such as T1_BOOTSTRAP_KEY=1 are no longer mistaken for secrets.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udc1b",
+          "label": "fix",
+          "category": "Fixed",
+          "text": "Noodle answered bad_path for a path leaving the workspace after an automated security fix; it is outside_workspace again.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udc1b",
+          "label": "fix",
+          "category": "Fixed",
+          "text": "Following a job's log could stop on the completion line before the job's last lines were printed; they are drained first.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udc1b",
+          "label": "fix",
+          "category": "Fixed",
+          "text": "Following a job's log (--logs JOB -F) could skip a line the job wrote while following began: the tail was read, then the file's size taken as the place to continue from. Both come from one read now.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udce6",
+          "label": "packaging",
+          "category": "Dependencies and Packaging",
+          "text": "cryptography>=50 (see Security). Reviewed across the repository: Python (pyproject.toml, setup.cfg), npm (docs/), Bun (hyped-pro, tvtop-max); nothing else changed.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udedc",
+          "label": "site",
+          "category": "Site Changes",
+          "text": "A security page (#/security) shows what the repository's own scanners -- the T1 audit, Bandit, Semgrep, and OSV over every dependency floor and lockfile -- find in the commit being deployed. It is rescanned on every Pages build, reached by a hidden button in the footer, and\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udedc",
+          "label": "site",
+          "category": "Site Changes",
+          "text": "The Stats page shows which hypernix version people download: a \"HyperNix version\" view in the downloads graph (the seven most downloaded releases in the range, the rest as one line) and a breakdown by exact version or by release, over 30 days or all time. The data is ClickPy's\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\ud83e\uddea",
+          "label": "tests",
+          "category": "Tests",
+          "text": "A generated script trained for real on a tiny HyperNix model on the CPU (evaluation, checkpoints, resume, LoRA, the default optimiser, a sweep, the saved model reloading), the wizard, recipes and CLI, the window under a virtual display; --latest and release discovery; a\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udec8",
+          "label": "caveat",
+          "category": "Caveats",
+          "text": "The CPU offloading split was tested on the CPU (the split model gives the same output as the whole one); there is no GPU here. The llama.cpp flags were checked in the command line, not against a running server.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udec8",
+          "label": "caveat",
+          "category": "Caveats",
+          "text": "Relayed through T1, HyperNix.3.1-mini runs every hop, but it is a 48.7M-parameter base model: its answers are not coherent.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udec8",
+          "label": "caveat",
+          "category": "Caveats",
+          "text": "The scriptgen window was checked on Linux under Xvfb only.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udec8",
+          "label": "caveat",
+          "category": "Caveats",
+          "text": "The version breakdown appears once the daily stats job runs with the new script; ClickPy's counts include mirrors, so they run a little above pypistats' \"Downloads\".",
+          "details": []
+        }
+      ]
+    },
+    {
       "version": "0.72.8a5",
       "key": "0.72.8a5",
       "aliases": [
@@ -707,288 +892,7 @@
         "Five web admin settings (store_enabled, store_format, max_items, max_read_sites, ai_config), set with hypernix-t1 config web, and /web/v1/ai/config, through which a model with partial admin changes the less risky three.",
         "Hypercompress: when a turn's prompt is bigger than the loaded model's context, the system prompt is compressed, without a model, to a third (/chat/hypercompress/size?s?=1) or a fifth (s?=2) of the context, keeping instructions and every section's opening."
       ],
-      "changes": [
-        {
-          "symbol": "\u0e4b\u08ed\u2b51",
-          "label": "major",
-          "category": "Added",
-          "text": "Signed, timestamped HyperLink prompts and the ping before Send. When Send is pressed the web and iOS apps ping the server (POST /hyperlink/ping, answered without a model) and give it four seconds; once it answers the prompt has no timeout. Every send, resend and edit then\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "Signing in from the app: POST /hyperlink/login and the iOS Account section sign a device in to its account once, after pairing, a T1 key or the local network, so its data is never lost to a re-pair.",
-          "details": []
-        },
-        {
-          "symbol": "\ud81a\udd54",
-          "label": "minor",
-          "category": "Added",
-          "text": "GET /hyperlink/whoami names the signer and the server session.",
-          "details": []
-        },
-        {
-          "symbol": "\u0e4b\u08ed\u2b51",
-          "label": "major",
-          "category": "Added",
-          "text": "Web search v2: /web/v2/I?=query&q?=depth&mx?=max&sq?=read&&kpd?=true reads and summarises the top-ranked sites (sq?=1 only the first) and can keep the search and the sites' text as JSONL or Parquet. ([T1 API](T1-API.md#web-search-v2))",
-          "details": []
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "Five web admin settings (store_enabled, store_format, max_items, max_read_sites, ai_config), set with hypernix-t1 config web, and /web/v1/ai/config, through which a model with partial admin changes the less risky three.",
-          "details": []
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "Hypercompress: when a turn's prompt is bigger than the loaded model's context, the system prompt is compressed, without a model, to a third (/chat/hypercompress/size?s?=1) or a fifth (s?=2) of the context, keeping instructions and every section's opening.",
-          "details": []
-        },
-        {
-          "symbol": "\ud81a\udd54",
-          "label": "minor",
-          "category": "Added",
-          "text": "POST /chat/hypercompress compresses a text by hand.",
-          "details": []
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "The two-layer ring beside the chat box (web and iOS): context inside; the key's token allowance outside when it has one, else GPU load, or CPU load when the model runs on the CPU.",
-          "details": []
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "Documents a model writes for download: the create_document tool and POST /hyperlink/files/document; the apps offer them under the reply.",
-          "details": []
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "Choosing among loaded models: GET /hyperlink/models/loaded, and the Models tab and the chat in HyperLink list every loaded model and pick which one answers.",
-          "details": []
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "Runner pickers: hnx-t1 runner start with no exact model opens an lms load-like list (type to filter, \u2191/\u2193, Enter) that refreshes and never takes over the screen; hnx-t1 runner backend picks the backend the same way.",
-          "details": []
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "hnx-t1 launch-script -1 'CMD' -2 'answer' \u2026 -9 'answer' feeds a command's prompts in order (-5 \"\" presses Enter, as a gap does), and --logs JOB -F follows a job's log until Ctrl-C.",
-          "details": []
-        },
-        {
-          "symbol": "\u0e4b\u08ed\u2b51",
-          "label": "major",
-          "category": "Added",
-          "text": "Multi-llama runner: --backend multilama serves a GGUF through the llama.cpp fork it needs (ik_llama.cpp, PrismML, KoboldCpp, Nanbeige), multilama-<fork> names one, and auto goes there itself when a file has types only a fork knows. ([CLI](CLI.md#hypernix-t1-built-in-runner))",
-          "details": []
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "The hnx llama mod knows the forks' types: hypernix.quant.forktypes lists ik_llama.cpp's IQ_K, IQ_KS, IQ_KT and repacked types (read from its ggml.h), and hyprslug --check names them and says where a file runs.",
-          "details": []
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "Two hybrids: hnx_q6h1 (INT2, Q6_K, HNX_1375BIT, IQ1_S, Q3_K_M, 3.2 bpw) and hnx_q6h1m (INT2, Q5_K, HNX_15125BIT, IQ1_S, Q2_K_M, 3.1 bpw). ([HyprSlug](HyprSlug.md))",
-          "details": []
-        },
-        {
-          "symbol": "\ud81a\udd54",
-          "label": "minor",
-          "category": "Added",
-          "text": "Two tiers: HNX_15125BIT (type 224, 1.5 bpw: a 7-bit magnitude per 16 weights) and HNX_IQ1S (type 225, IQ1_S's 1.5625 bpw), registered in the patched llama.cpp, whose decoder agrees with Python's bit for bit.",
-          "details": []
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "hnx download takes links: a huggingface.co link to a repo or to one file in it, -f for one file, -o for where it goes, and --repo-id is optional. A repo of GGUFs downloads its one GGUF or its Q4_K_M.",
-          "details": []
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "A judge on any OpenAI-compatible server for the ranges: industrial_range.OpenAIJudge. ([Ranges](Ranges.md))",
-          "details": []
-        },
-        {
-          "symbol": "\u26a0\ufe0f",
-          "label": "error codes",
-          "category": "Changed",
-          "text": "HyperLink chats are no longer global. With accounts on they belong to the account, otherwise to the key; a key's existing chats, files, memories and preferences move to its account. Keyless trusted-network access to them is refused unless T1_HYPERLINK_SHARED_KEYLESS_CHATS=1.",
-          "details": []
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Changed",
-          "text": "The default model is LFM2.5-2.6B (Liquid AI): runner start with no model downloads LFM2.5-2.6B-Q4_K_M.gguf (about 1.7 GB) the first time, and lfm2.5-2.7b names it too \u2014 Liquid AI publishes no 2.7B. HyperNix.3-mini is still loaded by name.",
-          "details": []
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Changed",
-          "text": "The default prompt has the model decide whether a tool is needed, work out what to search for, write downloadable documents with the document tool, and save memories when asked or when a note will help later; T1_HYPERLINK_MEMORY_WHEN_TOLD=1 limits saving to when asked.",
-          "details": []
-        },
-        {
-          "symbol": "\ud81a\udd54",
-          "label": "minor",
-          "category": "Changed",
-          "text": "The model's web_search tool uses web search v2, and web_settings / web_settings_set expose /web/v1/ai/config.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udce6",
-          "label": "packaging",
-          "category": "Changed",
-          "text": "The license is HOS-1.1 or Apache-2.0 from this release (HOS-1.1 by default). HOS-1.1 keeps HOS-1.0's Apache-derived grants and takes LLU-0.1's fuller definitions, trademark terms and model guidance, as non-binding guidance. Earlier releases keep LLU-0.1 / HOS-1.0.",
-          "details": []
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Changed",
-          "text": "The ranges, updated: new_range knows how current models decline and reads curly apostrophes.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udd17",
-          "label": "API",
-          "category": "API Changes",
-          "text": "T1 API v1.1.26.10.1.0 (same 1.1 generation; every 1.1 client is accepted). SIGNED_PROMPTS_VERSION lets a client check before signing.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udd17",
-          "label": "API",
-          "category": "API Changes",
-          "text": "New routes: /hyperlink/ping, /hyperlink/whoami, /hyperlink/login, /hyperlink/models/loaded, /hyperlink/files/document, /hyperlink/sessions/{id}/ring, /chat/hypercompress and /size, /web/v2/I, /web/v1/ai/config.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udd17",
-          "label": "API",
-          "category": "API Changes",
-          "text": "signature on chat, stream and edit requests; hypercompressed and documents in a reply's metadata.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udd12",
-          "label": "security",
-          "category": "Security",
-          "text": "Every Hugging Face download can be pinned: hypernix.security.hfpin takes the caller's revision, HYPERNIX_HF_REVISION<REPO>, or a commit in /.hypernix/hf-pins.json. All 26 medium Bandit findings (B615) are gone; 63 low ones remain in shipped code, the deliberate try/except/pass\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udd12",
-          "label": "security",
-          "category": "Security",
-          "text": "hnx net quoted nothing it sent to a peer's shell: a file name with a ; ran a second command there. Remote commands are quoted, and a peer name cannot become an ssh option.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udd12",
-          "label": "security",
-          "category": "Security",
-          "text": "Every GitHub Action is pinned to a commit, Dependabot keeps the pins (and pip) current with a 7-day cooldown, and the kernel workflow installs Nix through the installer's pinned action instead of curl | sh.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udd12",
-          "label": "security",
-          "category": "Security",
-          "text": "Commands run by bare name resolve to their full path where nothing depends on the bare name.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udcda",
-          "label": "docs",
-          "category": "Security",
-          "text": "SECURITY.md: supported versions, private reporting through GitHub advisories, scope, and running a server safely.",
-          "details": []
-        },
-        {
-          "symbol": "\ud81a\udca5",
-          "label": "major fix",
-          "category": "Fixed",
-          "text": "hnx convert -q -p was refused: only -P and -Q existed. Both lowercase spellings work, -q alone means Q4_K_M, and the pipeline converts first and quantises second as two reported steps \u2014 a Brewer model is exported to a GGUF before the quantiser sees it.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udc1b",
-          "label": "fix",
-          "category": "Fixed",
-          "text": "ssh-keyscan in hnx net got >> as an argument and never wrote known_hosts; the keys are appended now.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udc1b",
-          "label": "fix",
-          "category": "Fixed",
-          "text": "industrial_range read \"The better one is A\" as a tie, \"not good\" as GOOD and a <think> block as the verdict, and ignored fallback_label.",
-          "details": []
-        },
-        {
-          "symbol": "\u274c",
-          "label": "breaking",
-          "category": "Deprecated",
-          "text": "/web/v1/search answers with Deprecation and Sunset headers and goes away in 0.73.0; use /web/v2/I.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udcda",
-          "label": "docs",
-          "category": "Documentation",
-          "text": "[T1 API](T1-API.md): ownership, signed prompts and the ping, web search v2, the ring, documents and hypercompress, and v1.1.26.10.1.0; [CLI](CLI.md): download links, convert -q -p, the runner pickers, multi-llama, the default model, launch-script answers and config web\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\ud83e\uddea",
-          "label": "tests",
-          "category": "Tests",
-          "text": "Signing and replay, ownership and keyless refusal, web v2's grammar, settings and storage, hypercompress, the ring, documents and the memory rule, the pickers in a real pty, launch-script answers, the multi-llama routing, download links, the convert order, the new tiers against\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\u2757",
-          "label": "known issue",
-          "category": "Known Issues",
-          "text": "The iOS changes (sign-in, signing, the ring, loaded models, document downloads) are not compiled or run here: there is no Swift toolchain in the build environment. Their parsing tests are written but unrun.",
-          "details": []
-        },
-        {
-          "symbol": "\u2757",
-          "label": "known issue",
-          "category": "Known Issues",
-          "text": "The multi-llama forks' own binaries are fetched or built on first use; PrismML and Nanbeige publish no prebuilt releases, so those need the build command the error gives.",
-          "details": []
-        }
-      ]
+      "changes": []
     },
     {
       "version": "0.72.8a0",

@@ -433,4 +433,4 @@ for batch in loader:
 | Multi-token prediction          | [MTP](MTP.md)                             |
 | Model evaluation                | [Ranges](Ranges.md), [EspressoMaker](EspressoMaker.md) |
 | Every CLI command               | [CLI](CLI.md)                             |
-| A script written for you        | `hnx-scriptgen`                           |
+| A script written for you        | `hnx scriptgen` ([CLI](CLI.md#scriptgen)) |

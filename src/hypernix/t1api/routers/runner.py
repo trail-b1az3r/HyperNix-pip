@@ -38,6 +38,7 @@ from fastapi import APIRouter, Depends, Request
 
 from ...hyperlink.catalogue import collect
 from ...hyperlink.managed import BACKENDS, ManagedError, plan_placement
+from ...hyperlink.offload import Offload
 from ..config import T1APIConfig
 from ..deps import (
     HyperLinkPrincipal,
@@ -155,11 +156,21 @@ def _resolve(model_id: str, config: T1APIConfig, registry) -> tuple[str, dict]:
                 T1ErrorCode.VALIDATION_ERROR, str(exc), details={"model_id": model_id},
             ) from exc
         return str(path), defaultmodel.describe(path)
-    if matches_default(model_id):
-        # The default model is fetched the first time it is asked for,
-        # into the same folder the catalogue reads.
+    from ...hyperlink.latest import find as find_release
+
+    release = find_release(model_id)
+    if matches_default(model_id) or release is not None:
+        # A HyperNix release (HyperNix.3-mini, HyperNix.3.1-mini, or
+        # "latest") is fetched the first time it is asked for, into the
+        # same folder the catalogue reads.
         try:
-            folder = download(models_dir=config.hf_download_dir or None)
+            if matches_default(model_id):
+                folder = download(models_dir=config.hf_download_dir or None)
+            else:
+                from ...hyperlink.catalogue import DEFAULT_LOCAL_DIR
+
+                base = Path(config.hf_download_dir) if config.hf_download_dir else DEFAULT_LOCAL_DIR
+                folder = download(release.repo, base / release.folder)
         except BrewedError as exc:
             raise T1APIError(
                 T1ErrorCode.VALIDATION_ERROR, str(exc), details={"model_id": model_id},
@@ -248,7 +259,7 @@ def runner_load(
     llama.cpp servers on one machine each try to take the VRAM the other
     has and the failure lands on the one that was working.
     """
-    path, _facts = _resolve(payload.model_id, config, registry)
+    path, facts = _resolve(payload.model_id, config, registry)
     try:
         current = runner.load(
             path,
@@ -258,6 +269,7 @@ def runner_load(
             context_length=payload.context_length or 0,
             total_layers=payload.total_layers or 0,
             mmproj=payload.mmproj,
+            offload=Offload(cpu_moe=payload.cpu_moe, kv_on_cpu=payload.kv_on_cpu),
         )
     except ManagedError as exc:
         # 400 rather than 500: "there is no built llama.cpp" and "this
@@ -272,12 +284,59 @@ def runner_load(
         "runner: %s loaded %s (%s)",
         principal.label, payload.model_id, current.placement.reason,
     )
+    _ensure_registered(registry, payload.model_id, current, facts)
     _remember(payload.model_id, payload.backend, current, gpu_layers=payload.gpu_layers,
-              context_length=payload.context_length, total_layers=payload.total_layers)
+              context_length=payload.context_length, total_layers=payload.total_layers,
+              cpu_moe=payload.cpu_moe, kv_on_cpu=payload.kv_on_cpu)
     return RunnerStatusResponse(
         loaded=True, model=current.to_dict(), base_url=runner.base_url,
         backends=list(BACKENDS), request_id=request_id,
     )
+
+
+def _ensure_registered(registry, model_id: str, current, facts: dict) -> None:
+    """Register what the runner now serves, when the registry has no entry.
+
+    /inference/chat and /inference/relay only answer for registered
+    models, and loading one -- a downloaded HyperNix.3.1-mini, say -- did
+    not register it, so the runner served a model nothing could ask
+    (MODEL_NOT_SUPPORTED). The entry is local, free and sized from the
+    loaded model's own context. An existing entry is left alone: a price,
+    a plan or a fallback in it is an operator's decision.
+    """
+    if registry is None or registry.get(model_id) is not None:
+        return
+    from ..registry import ModelAvailabilityFlag, ModelEntry, ModelPricing, ModelStatus
+
+    context = int(getattr(current, "context_length", 0) or facts.get("context_limit") or 4096)
+    try:
+        registry.register(ModelEntry(
+            model_id=model_id,
+            display_name=str(facts.get("name") or model_id),
+            version="1.0",
+            total_parameters=float(facts.get("parameters_b") or 0.0),
+            active_parameters=None,
+            architecture=str(facts.get("architecture") or "unknown"),
+            supported_tasks=["chat", "completion"],
+            availability=ModelAvailabilityFlag("public"),
+            minimum_plan="free",
+            free_tier_available=True,
+            api_available=True,
+            local_available=True,
+            remote_available=False,
+            context_limit=context,
+            input_token_limit=context,
+            output_token_limit=max(256, context // 2),
+            tool_call_limit=8,
+            pricing=ModelPricing(),
+            routing_priority=10,
+            fallback_model=None,
+            license="unspecified",
+            status=ModelStatus.AVAILABLE,
+            notes="registered by the runner when it loaded this model",
+        ))
+    except (ValueError, TypeError) as exc:
+        logger.warning("runner: could not register %s: %s", model_id, exc)
 
 
 def _remember(model_id: str, backend: str, current, **settings) -> None:
