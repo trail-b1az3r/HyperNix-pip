@@ -30,7 +30,6 @@ import os
 import platform
 import subprocess
 import sys
-import urllib.request
 from dataclasses import dataclass
 from importlib.util import find_spec
 
@@ -74,7 +73,9 @@ def stable_supports(tag: str | None = None, *, words: tuple[str, ...] | None = N
         if fetch is not None:
             data = fetch(PYPI_TORCH)
         else:
-            with urllib.request.urlopen(PYPI_TORCH, timeout=timeout) as response:  # noqa: S310 - fixed https URL
+            from hypernix.security.safeurl import urlopen as safe_urlopen
+
+            with safe_urlopen(PYPI_TORCH, timeout=timeout) as response:
                 data = json.load(response)
     except (OSError, ValueError):
         return None
