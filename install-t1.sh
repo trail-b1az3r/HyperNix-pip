@@ -486,6 +486,19 @@ install_package() {
     *) die "Unknown install mode: $INSTALL_MODE" ;;
   esac
 
+  # Python 3.15+: torch is not a pip dependency there (a new Python gets
+  # wheels from stable PyTorch months late), so the package's shim installs
+  # it -- stable when PyTorch has a wheel for this Python, nightly until then.
+  if [ "$DRY_RUN" = "0" ] && [ "$INSTALL_MODE" != "skip" ] \
+    && "$PYTHON" -c 'import sys; raise SystemExit(sys.version_info[:2] < (3, 15))' 2>/dev/null; then
+    case "$INSTALL_MODE" in
+      system) sudo "$PYTHON" -m hypernix.system.torch_shim || warn "torch was not installed; run: hnx doctor --fix" ;;
+      user)   PIP_USER=1 PIP_BREAK_SYSTEM_PACKAGES=1 "$PYTHON" -m hypernix.system.torch_shim \
+                || warn "torch was not installed; run: hnx doctor --fix" ;;
+      *)      "$PYTHON" -m hypernix.system.torch_shim || warn "torch was not installed; run: hnx doctor --fix" ;;
+    esac
+  fi
+
   if [ "$DRY_RUN" = "0" ]; then
     if ! "$PYTHON" -c 'import hypernix' 2>/dev/null; then
       # "skip" means the operator says it is already installed. If it is

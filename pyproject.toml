@@ -43,7 +43,10 @@ dependencies = [
     #   pip install --index-url https://download.pytorch.org/whl/cu118 torch
     # then `pip install hypernix` will reuse that torch rather than pulling
     # a CUDA-12 wheel.
-    "torch>=1.13,<3",
+    # From Python 3.15 torch comes from hypernix.system.torch_shim instead
+    # (stable when PyTorch has a wheel for that Python, nightly until it
+    # does), so a brand-new Python is not an install pip refuses outright.
+    "torch>=1.13,<3; python_version < '3.15'",
     "numpy>=1.26,<3",
     "safetensors>=0.4.3",
     "huggingface-hub>=0.24",
@@ -52,7 +55,9 @@ dependencies = [
     "rich>14,<=15.0.0",
     # 0.2.1 is the first release with cp313 wheels; stick with it so a
     # fresh Python 3.13 env doesn't need a C++ toolchain to build from src.
-    "sentencepiece>=0.2.1",
+    # It has no 3.15 wheel yet and its source build fails there; only
+    # `hnx convert` of a SentencePiece model needs it.
+    "sentencepiece>=0.2.1; python_version < '3.15'",
 ]
 
 [project.optional-dependencies]

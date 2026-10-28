@@ -20,8 +20,9 @@ def _read(name: str) -> str:
 
 def test_pyproject_torch_pin_admits_1_13() -> None:
     text = _read("pyproject.toml")
-    # Match the quoted torch spec in the dependencies array.
-    m = re.search(r'"torch>=([0-9.]+),<([0-9.]+)"', text)
+    # Match the quoted torch spec in the dependencies array (since 0.72.8
+    # it carries a `python_version < '3.15'` marker; see torch_shim).
+    m = re.search(r'"torch>=([0-9.]+),<([0-9.]+)[";]', text)
     assert m is not None, "torch pin missing from pyproject.toml"
     floor = tuple(int(p) for p in m.group(1).split("."))
     ceiling = tuple(int(p) for p in m.group(2).split("."))
