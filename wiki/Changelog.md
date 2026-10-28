@@ -142,6 +142,10 @@ Historical wording and technical detail are retained during format normalization
 🐛 Following a job's log could stop on the completion line before the
   job's last lines were printed; they are drained first.
 
+🐛 Following a job's log (`--logs JOB -F`) could skip a line the job wrote
+  while following began: the tail was read, then the file's size taken
+  as the place to continue from. Both come from one read now.
+
 ### Dependencies and Packaging
 
 📦 cryptography>=50 (see Security). Reviewed across the repository:

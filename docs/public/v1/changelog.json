@@ -123,6 +123,13 @@
           "details": []
         },
         {
+          "symbol": "\ud83d\udc1b",
+          "label": "fix",
+          "category": "Fixed",
+          "text": "Following a job's log (--logs JOB -F) could skip a line the job wrote while following began: the tail was read, then the file's size taken as the place to continue from. Both come from one read now.",
+          "details": []
+        },
+        {
           "symbol": "\ud83d\udce6",
           "label": "packaging",
           "category": "Dependencies and Packaging",

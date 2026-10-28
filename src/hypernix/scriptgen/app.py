@@ -1145,10 +1145,7 @@ class ScriptGenApp:
         self._show_section(group.key)
         widget = self.widgets.get(name)
         if widget is not None:
-            try:
-                widget.focus_set()
-            except Exception:  # noqa: BLE001
-                pass
+            widget.focus_set()  # every control here is a Tk widget
 
     def _refresh_title(self) -> None:
         mark = "● " if self.model.dirty else ""

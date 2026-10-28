@@ -567,7 +567,7 @@ class SandboxStore:
                 pattern = re.compile(re.escape(query))
             except re.error as exc:
                 raise SandboxError(f"not a valid regular expression: {exc}") from exc
-            hit = pattern.search
+            hit = lambda line: pattern.search(line) is not None  # noqa: E731
         else:
             lowered = query.lower()
             hit = lambda line: lowered in line.lower()  # noqa: E731
