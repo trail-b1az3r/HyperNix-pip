@@ -76,12 +76,14 @@ def render_chat(messages: list[dict[str, Any]]) -> str:
 class BrewedModel:
     """One loaded checkpoint, and the one thing a request asks of it."""
 
-    def __init__(self, path: str | Path, *, alias: str = "", device: str = "auto") -> None:
+    def __init__(self, path: str | Path, *, alias: str = "", device: str = "auto",
+                 gpu_layers: int | None = None) -> None:
         from ..models.neo_oven import preheat_brewed
 
         self.path = Path(path)
         chosen = None if device in ("", "auto") else device
-        self.oven = preheat_brewed(self.path, tokenizer_source=self.path, device=chosen)
+        self.oven = preheat_brewed(self.path, tokenizer_source=self.path, device=chosen,
+                                   gpu_layers=gpu_layers)
         config = json.loads((self.path / "config.json").read_text(encoding="utf-8"))
         self.alias = alias or str(config.get("name") or self.path.name).lower()
         self.context_length = int(config.get("max_seq_len") or 512)
@@ -234,9 +236,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--port", type=int, default=8781)
     parser.add_argument("--alias", default="", help="the model id to answer as")
     parser.add_argument("--device", default="auto", help="auto, cpu or cuda")
+    parser.add_argument("--gpu-layers", type=int, default=None,
+                        help="blocks on the GPU, the rest in RAM (default: as many as fit)")
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(message)s")
-    model = BrewedModel(args.model, alias=args.alias, device=args.device)
+    model = BrewedModel(args.model, alias=args.alias, device=args.device, gpu_layers=args.gpu_layers)
     server = build_server(model, host=args.host, port=args.port)
     print(f"serving {model.alias} on http://{args.host}:{args.port}", flush=True)
     try:

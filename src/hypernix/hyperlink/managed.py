@@ -49,6 +49,8 @@ from typing import Any
 
 from hypernix.security.safeurl import urlopen as safe_urlopen
 
+from .offload import Offload
+
 logger = logging.getLogger(__name__)
 
 __all__ = [
@@ -111,8 +113,19 @@ def _fork_for(backend: str, verdict) -> str:
     return ""
 
 
+def _with_offload(placement: Placement, offload: Offload) -> Placement:
+    """*placement*, saying what CPU offloading keeps in RAM."""
+    if not offload.any:
+        return placement
+    from dataclasses import replace
+
+    said = offload.describe()
+    return replace(placement, offload=said,
+                   reason=f"{placement.reason}; {said}" if placement.reason else said)
+
+
 def fork_argv(fork: str, binary: str | Path, model: Path, *, host: str, port: int,
-              gpu_layers: int, context: int, alias: str) -> list[str]:
+              gpu_layers: int, context: int, alias: str, extra: tuple[str, ...] | list[str] = ()) -> list[str]:
     """The command line that starts a fork's server.
 
     KoboldCpp spells its flags its own way; the others are llama-server.
@@ -131,7 +144,7 @@ def fork_argv(fork: str, binary: str | Path, model: Path, *, host: str, port: in
         argv += ["-c", str(int(context))]
     if alias:
         argv += ["--alias", alias]
-    return argv
+    return argv + [str(a) for a in extra]
 
 
 def _library_env(bin_dir: Path) -> dict[str, str]:
@@ -184,6 +197,8 @@ class Placement:
     reason: str = ""
     #: True when the caller said so rather than this working it out.
     explicit: bool = False
+    #: What else is kept in system RAM (0.72.8rc1): experts, the KV cache.
+    offload: str = ""
 
     @property
     def fully_offloaded(self) -> bool:
@@ -198,6 +213,7 @@ class Placement:
             "ram_bytes": self.ram_bytes,
             "swap_used_bytes": self.swap_used_bytes,
             "fully_offloaded": self.fully_offloaded,
+            "offload": self.offload,
             "explicit": self.explicit,
             "reason": self.reason,
         }
@@ -477,8 +493,14 @@ class ManagedRunner:
         total_layers: int = 0,
         timeout: float = DEFAULT_START_TIMEOUT,
         mmproj: str | None = None,
+        offload: Offload | None = None,
     ) -> ManagedModel:
         """Start serving *path*, replacing whatever was running.
+
+        *offload* keeps parts of the model in system RAM
+        (:class:`hypernix.hyperlink.offload.Offload`): a mixture-of-experts
+        model's experts, the KV cache. A native HyperNix model is split by
+        *gpu_layers* instead -- the rest of its blocks stay in RAM.
 
         *mmproj* is the vision projector: ``None`` finds the one beside
         the model (``mmproj-*.gguf``), ``""`` loads none.
@@ -495,7 +517,7 @@ class ManagedRunner:
             converted = brewed_gguf_for(model_path)
             if converted is None:
                 return self._load_brewed(model_path, model_id=model_id, backend=backend,
-                                         timeout=timeout)
+                                         timeout=timeout, gpu_layers=gpu_layers)
             # The same model through llama.cpp: a KV cache, quantised
             # weights, and the GPU layer split, none of which the PyTorch
             # server has.
@@ -524,12 +546,14 @@ class ManagedRunner:
         verdict = which_runtime(types, header.metadata if header is not None else None)
         if header is not None and not verdict.runtime:
             raise ManagedError(f"{model_path.name} cannot be loaded: {verdict.why}.")
+        offload = offload or Offload()
         fork = _fork_for(backend, verdict)
         if fork:
             return self._load_fork(
                 fork, model_path, model_id=model_id, gpu_layers=gpu_layers,
                 context_length=context_length, total_layers=total_layers,
                 timeout=timeout, why=verdict.why if verdict.needs_fork else "",
+                offload=offload,
             )
         try:
             build = find_build(need=types)
@@ -547,10 +571,13 @@ class ManagedRunner:
         placement = plan_placement(
             file_bytes=model_path.stat().st_size,
             total_layers=total_layers,
-            gpu_layers=gpu_layers,
+            # Experts in RAM: what is left is small, so every layer goes on
+            # the GPU unless told otherwise -- the usual `-ngl 99 --cpu-moe`.
+            gpu_layers=gpu_layers if gpu_layers is not None or not offload.cpu_moe else 999,
             backend=backend,
             context_length=context_length,
         )
+        placement = _with_offload(placement, offload)
 
         self.unload()
 
@@ -562,6 +589,7 @@ class ManagedRunner:
             build, model_path, host=self.host, port=self.port,
             gpu_layers=placement.gpu_layers, context=context_length,
             alias=model_id or model_path.stem, mmproj=projector,
+            extra=offload.llama_argv(),
         )
         logger.info("managed: starting %s", " ".join(argv))
         try:
@@ -606,14 +634,21 @@ class ManagedRunner:
         return record
 
     def _load_fork(self, fork: str, model_path: Path, *, model_id: str, gpu_layers: int | None,
+                   offload: Offload | None = None,
                    context_length: int, total_layers: int, timeout: float, why: str) -> ManagedModel:
         """Serve *model_path* through a multilama fork's own server binary."""
         from ..models import multilama
 
-        placement = plan_placement(
+        offload = offload or Offload()
+        placement = _with_offload(plan_placement(
             file_bytes=model_path.stat().st_size, total_layers=total_layers,
-            gpu_layers=gpu_layers, backend=f"multilama-{fork}", context_length=context_length,
-        )
+            gpu_layers=gpu_layers if gpu_layers is not None or not offload.cpu_moe else 999,
+            backend=f"multilama-{fork}", context_length=context_length,
+        ), offload)
+        try:
+            extra = offload.llama_argv(fork)
+        except ValueError as exc:
+            raise ManagedError(str(exc)) from exc
         try:
             binary = multilama.ensure_binary(multilama.get_backend(fork), quiet=True)
         except multilama.MultiLlamaError as exc:
@@ -624,7 +659,7 @@ class ManagedRunner:
         self.unload()
         argv = fork_argv(fork, binary, model_path, host=self.host, port=self.port,
                          gpu_layers=placement.gpu_layers, context=context_length,
-                         alias=model_id or model_path.stem)
+                         alias=model_id or model_path.stem, extra=extra)
         logger.info("managed: starting %s", " ".join(argv))
         try:
             process = subprocess.Popen(  # noqa: S603 - argv list, never a shell
@@ -652,13 +687,16 @@ class ManagedRunner:
         return record
 
     def _load_brewed(self, folder: Path, *, model_id: str, backend: str,
-                     timeout: float) -> ManagedModel:
+                     timeout: float, gpu_layers: int | None = None) -> ManagedModel:
         """Serve a native HyperNix checkpoint (see :mod:`.brewed_server`).
 
         Same contract as a GGUF load: whatever was running is unloaded,
         the process is watched until it answers ``/health``, and its last
-        output is in the error if it never does. PyTorch holds the whole
-        model on one device, so there is no layer split to plan.
+        output is in the error if it never does. On a GPU the first
+        *gpu_layers* blocks go on it and the rest stay in RAM (0.72.8rc1;
+        it used to be the whole model on one device, so a model bigger
+        than the card ran on the CPU). ``None`` fits as many as the free
+        VRAM holds.
         """
         import json as _json
 
@@ -672,18 +710,27 @@ class ManagedRunner:
             raise ManagedError(f"{folder}/config.json is unreadable: {exc}") from exc
         layers = int(config.get("n_layers") or 0)
         context = int(config.get("max_seq_len") or 0)
+        if device == "cpu":
+            on_gpu, where = 0, f"all {layers} layers on the CPU"
+        elif gpu_layers is None:
+            on_gpu, where = layers, "as many layers as fit on the GPU, the rest in RAM"
+        else:
+            on_gpu = max(0, min(int(gpu_layers), layers or int(gpu_layers)))
+            where = (f"all {layers} layers on the GPU" if layers and on_gpu >= layers
+                     else f"{on_gpu} of {layers} layers on the GPU, the rest in RAM")
         placement = Placement(
-            gpu_layers=0 if device == "cpu" else layers, total_layers=layers,
-            backend=device, explicit=device != "auto",
-            reason=(f"native HyperNix model: all {layers} layers in PyTorch on "
-                    f"{'the CPU' if device == 'cpu' else 'the GPU when there is one'}, "
-                    f"no llama.cpp"),
+            gpu_layers=on_gpu, total_layers=layers,
+            backend=device, explicit=device != "auto" or gpu_layers is not None,
+            reason=f"native HyperNix model in PyTorch (no llama.cpp): {where}",
+            offload="" if on_gpu >= layers or device == "cpu" else "later layers in RAM",
         )
         self.unload()
         alias = model_id or str(config.get("name") or folder.name).lower()
         argv = [sys.executable, "-m", "hypernix.hyperlink.brewed_server",
                 "--model", str(folder), "--host", self.host, "--port", str(self.port),
                 "--alias", alias, "--device", device]
+        if gpu_layers is not None and device != "cpu":
+            argv += ["--gpu-layers", str(int(gpu_layers))]
         logger.info("managed: starting %s", " ".join(argv))
         try:
             process = subprocess.Popen(  # noqa: S603 - argv list, never a shell

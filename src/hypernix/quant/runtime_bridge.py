@@ -375,7 +375,8 @@ def find_mmproj(model: str | Path) -> Path | None:
 
 def serve_argv(build: Build, model: str | Path, *, host: str = "127.0.0.1",
                port: int = 8080, gpu_layers: int = 0,
-               context: int = 0, alias: str = "", mmproj: str | Path | None = None) -> list[str]:
+               context: int = 0, alias: str = "", mmproj: str | Path | None = None,
+               extra: tuple[str, ...] | list[str] = ()) -> list[str]:
     """The command line that starts the patched server.
 
     Returned rather than run, so the caller can print it, and so the one
@@ -405,6 +406,9 @@ def serve_argv(build: Build, model: str | Path, *, host: str = "127.0.0.1",
         argv += ["--alias", alias]
     if mmproj:
         argv += ["--mmproj", str(Path(mmproj).expanduser())]
+    # Anything else the caller has decided on: CPU offloading's
+    # --cpu-moe / --no-kv-offload (hypernix.hyperlink.offload).
+    argv += [str(a) for a in extra]
     return argv
 
 

@@ -2225,7 +2225,7 @@ is a key with `write`, or a trusted origin on a server with
 |---|---|---|---|
 | GET | `/runner/status` | bearer | what is loaded, where its layers are, how long it has been up |
 | POST | `/runner/plan` | bearer | where a model's layers would go; changes nothing |
-| POST | `/runner/load` | bearer, **admin, partial admin, or a switch grant** (`T1_RUNNER_SWITCH_PERM`) | load a model, replacing what was running; the default model is downloaded the first time |
+| POST | `/runner/load` | bearer, **admin, partial admin, or a switch grant** (`T1_RUNNER_SWITCH_PERM`) | load a model, replacing what was running; the default model is downloaded the first time; `cpu_moe` (0, -1 or N) and `kv_on_cpu` keep experts or the KV cache in RAM (0.72.8rc1) |
 | POST | `/runner/unload` | as `load` | stop serving; unloading nothing is a success |
 | POST | `/runner/auto` | as `load` | load what this server usually runs: the last model loaded that is still here (`{"prefer": "most"}`: loaded most often), on the backend used most, with that model's last settings; `{"dry_run": true}` names it and loads nothing. With no history, the default model. `hypernix-t1 runner auto` |
 

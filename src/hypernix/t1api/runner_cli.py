@@ -307,13 +307,20 @@ def _pick(url: str, key: str) -> tuple[str, int]:
 
 
 def _load_payload(args: argparse.Namespace, model_id: str) -> dict[str, Any]:
-    return {
+    payload = {
         "model_id": model_id,
         "gpu_layers": args.gpu_layers,
         "backend": args.backend,
         "context_length": args.context_length,
         "total_layers": args.total_layers,
     }
+    # CPU offloading, only when asked for: a request without it is the
+    # request every server version understands.
+    if getattr(args, "cpu_moe", 0):
+        payload["cpu_moe"] = args.cpu_moe
+    if getattr(args, "kv_on_cpu", False):
+        payload["kv_on_cpu"] = True
+    return payload
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -344,6 +351,13 @@ def build_parser() -> argparse.ArgumentParser:
                             help="context window (default: the model's own)")
         action.add_argument("--backend", default="auto",
                             help="auto, cuda, vulkan, cpu, hnx-cuda, hnx-cpu, multilama, multilama-ik, …")
+        # CPU offloading (0.72.8rc1). For a native HyperNix model, --gpu-layers
+        # is the split: those blocks on the GPU, the rest in RAM.
+        action.add_argument("--cpu-moe", type=int, nargs="?", const=-1, default=0, metavar="N",
+                            help="keep a mixture-of-experts model's experts in RAM: all of "
+                                 "them, or the first N layers' (llama.cpp --cpu-moe/--n-cpu-moe)")
+        action.add_argument("--kv-on-cpu", action="store_true",
+                            help="keep the KV cache in RAM (llama.cpp --no-kv-offload)")
 
     # `start` takes the model as an optional argument and `load` requires
     # it. Same request underneath; the difference is that `start` is what

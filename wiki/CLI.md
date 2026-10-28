@@ -1145,6 +1145,29 @@ IQ*_KT and repacked types, Nanbeige for its architecture — and
 does it by itself when a file needs a fork. `hyprslug --check FILE` says where a
 file runs.
 
+**CPU offloading (0.72.8rc1).** A model bigger than the card can keep
+part of itself in system RAM:
+
+```bash
+hypernix-t1 runner start qwen3-30b-a3b --cpu-moe          # every expert in RAM, the rest on the GPU
+hypernix-t1 runner start qwen3-30b-a3b --cpu-moe 20       # the first 20 layers' experts in RAM
+hypernix-t1 runner start big-model --kv-on-cpu            # the KV cache in RAM, for a long context
+hypernix-t1 runner start hypernix.3.1-mini --gpu-layers 8 # a native HyperNix model: 8 blocks on the GPU
+```
+
+`--cpu-moe` is llama.cpp's `--cpu-moe` / `--n-cpu-moe N`: a
+mixture-of-experts model's experts are most of its weight and only a few
+run per token, so with them in RAM every other layer goes on the GPU
+(`--gpu-layers` defaults to all of them). `--kv-on-cpu` is
+`--no-kv-offload`. Neither works with KoboldCpp (`multilama-kobold`),
+which says so. A native HyperNix model served by PyTorch is split by
+layer: the first `--gpu-layers` blocks on the GPU with the embeddings and
+the head, the rest in RAM, and without `--gpu-layers` as many as fit in
+the free VRAM. It used to be the whole model on one device, so one bigger
+than the card ran on the CPU. `runner auto` loads a model with the
+offloading it was last loaded with; `POST /runner/load` takes `cpu_moe`
+and `kv_on_cpu`.
+
 **The default model.** Since 0.72.8, `start` with no model named (and
 no terminal to pick in) loads Liquid AI's
 [LFM2.5-2.6B](https://huggingface.co/LiquidAI/LFM2.5-2.6B-GGUF), and the

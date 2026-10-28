@@ -48,6 +48,9 @@ class LoadRecord:
     gpu_layers: int | None = None
     context_length: int | None = None
     total_layers: int | None = None
+    #: CPU offloading (0.72.8rc1), so `runner auto` loads it the same way.
+    cpu_moe: int = 0
+    kv_on_cpu: bool = False
     at: float = field(default_factory=time.time)
 
     @classmethod
@@ -64,12 +67,15 @@ class AutoChoice:
     context_length: int | None
     total_layers: int | None
     why: str
+    cpu_moe: int = 0
+    kv_on_cpu: bool = False
 
     def payload(self) -> dict[str, Any]:
         """The ``/runner/load`` body this choice amounts to."""
         return {"model_id": self.model_id, "backend": self.backend,
                 "gpu_layers": self.gpu_layers, "context_length": self.context_length,
-                "total_layers": self.total_layers}
+                "total_layers": self.total_layers, "cpu_moe": self.cpu_moe,
+                "kv_on_cpu": self.kv_on_cpu}
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -157,4 +163,5 @@ def choose(records: list[LoadRecord], *, loadable: set[str] | None = None,
             f"settings from its last load")
     return AutoChoice(model_id=model_id, backend=backend, gpu_layers=settings.gpu_layers,
                       context_length=settings.context_length,
-                      total_layers=settings.total_layers, why=why)
+                      total_layers=settings.total_layers, why=why,
+                      cpu_moe=settings.cpu_moe, kv_on_cpu=settings.kv_on_cpu)

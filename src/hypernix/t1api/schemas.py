@@ -1603,6 +1603,12 @@ class RunnerLoadRequest(BaseModel):
     #: The vision projector: None finds the mmproj-*.gguf beside the
     #: model, "" loads none, a path loads that one.
     mmproj: str | None = None
+    #: CPU offloading (0.72.8rc1): a mixture-of-experts model's experts in
+    #: system RAM -- 0 none, -1 every layer's, N the first N layers' --
+    #: so the rest fits on the GPU.
+    cpu_moe: int = 0
+    #: The KV cache in system RAM rather than VRAM.
+    kv_on_cpu: bool = False
 
 
 class RunnerAutoRequest(BaseModel):

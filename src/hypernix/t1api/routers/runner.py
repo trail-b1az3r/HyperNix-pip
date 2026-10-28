@@ -38,6 +38,7 @@ from fastapi import APIRouter, Depends, Request
 
 from ...hyperlink.catalogue import collect
 from ...hyperlink.managed import BACKENDS, ManagedError, plan_placement
+from ...hyperlink.offload import Offload
 from ..config import T1APIConfig
 from ..deps import (
     HyperLinkPrincipal,
@@ -258,6 +259,7 @@ def runner_load(
             context_length=payload.context_length or 0,
             total_layers=payload.total_layers or 0,
             mmproj=payload.mmproj,
+            offload=Offload(cpu_moe=payload.cpu_moe, kv_on_cpu=payload.kv_on_cpu),
         )
     except ManagedError as exc:
         # 400 rather than 500: "there is no built llama.cpp" and "this
@@ -273,7 +275,8 @@ def runner_load(
         principal.label, payload.model_id, current.placement.reason,
     )
     _remember(payload.model_id, payload.backend, current, gpu_layers=payload.gpu_layers,
-              context_length=payload.context_length, total_layers=payload.total_layers)
+              context_length=payload.context_length, total_layers=payload.total_layers,
+              cpu_moe=payload.cpu_moe, kv_on_cpu=payload.kv_on_cpu)
     return RunnerStatusResponse(
         loaded=True, model=current.to_dict(), base_url=runner.base_url,
         backends=list(BACKENDS), request_id=request_id,
