@@ -1819,6 +1819,12 @@ next; `map` digests the parts side by side and folds the digests. The
 hops rotate through `instances` copies of the model — the runner's pool
 when it serves the model as one — capped by `T1_RELAY_MAX_INSTANCES`
 (8). `context_tokens` defaults to the registry's `context_limit`.
+`max_tokens`, the answer's length, defaults to a quarter of the usable
+context, between 32 and 512 tokens (0.72.8rc1); a fixed 512 made a
+512-token model such as HyperNix.3.1-mini refuse every document. A
+model the runner loads is registered if the registry has no entry for
+it (local, free, sized from the loaded context), so `/inference/chat`
+and the relay can ask it; an operator's entry is left as it is.
 
 Every gate of `/inference/chat` applies, sized by the largest single
 call. Each hop is metered as it finishes, under the `relay` feature, so

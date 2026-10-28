@@ -228,8 +228,39 @@ is named after the repo it resolved to (`nix` used to become `nix/`).
 | `--token` | `$HF_TOKEN` |
 | `--quiet` | false |
 | `--no-verify` | false |
+| `--latest` | false; the newest HyperNix model (below) |
+| `--offline` | false; with `--latest`, do not ask the Hub |
 
 Prints the local snapshot path to stdout.
+
+### `--latest` (0.72.8rc1)
+
+```bash
+hnx download --latest              # the newest HyperNix model, into the models folder
+hnx download --latest -o ./nix     # somewhere else
+hnx download --latest --offline    # the newest this HyperNix knows, without asking the Hub
+```
+
+Downloads the newest HyperNix release: `HyperNix.3.1-mini`
+(`Compactbot/hypernix-3.1-mini`, 48.7M parameters, 512 tokens of
+context) as this is written. The Hub is asked for later releases from
+the two accounts HyperNix models are published from, `ray0rf1re` and
+`Compactbot`, and only for names shaped like a release
+(`HyperNix.4-mini`, `hypernix-4.2-small`): anybody can name a repo
+`hypernix-9-mini`, and `--latest` does not download a stranger's weights
+because of a name. Offline, or with `--offline`, it is the newest
+release this version knows.
+
+It saves to `<models folder>/HyperNix.3.1-mini`, which the runner and
+the catalogue read, and prints how to serve it
+(`hypernix-t1 runner start hypernix.3.1-mini`) and relay through it.
+`--latest` with a `MODEL` or `-f` is refused. The runner also fetches a
+release asked for by name, so `runner start hypernix.3.1-mini` (or
+`runner start latest`) on a server without it downloads it first.
+
+HyperNix.3.1-mini is a base model, a pretraining continuation: it
+continues text rather than following instructions, so a relay through
+it runs, hop by hop, but its answers read like a 48M-parameter model's.
 
 ## `convert`
 
