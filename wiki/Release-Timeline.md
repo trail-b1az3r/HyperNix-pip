@@ -1130,3 +1130,24 @@ timeline
         : edd27b74 - Update main.md
 ```
 
+## Release v0.72.8rc1 (2026-10-28)
+
+```mermaid
+timeline
+    title Release v0.72.8rc1 Commits
+    0.72.8rc1
+        : baa7d954 - CI fixes for PR #185- a log-follow race, mypy, a bare except
+        : 05a8b49e - chore- refresh generated docs data and release summaries
+        : 9ba5c10c - latest- log the kind of Hub failure, not the request
+        : 685653c7 - 0.72.8rc1
+        : f10ee30c - scriptgen- a script that runs, a redesigned window, more options
+        : 602589dd - chore- refresh generated docs data and release summaries
+        : 50fbf14a - Stats page- downloads by HyperNix version
+        : d2a47609 - hnx download --latest; the runner fetches and registers HyperNix releases
+        : 49c52c75 - chore- update JSON stats (scheduled)
+        : 802be03d - Runners- CPU offloading
+        : 70069443 - Website- a security page, rescanned on every Pages build
+        : 9531f68f - Security- the critical and high CodeQL alerts from the alert export
+        : 945aa8c4 - chore- refresh generated docs data and release summaries
+```
+
