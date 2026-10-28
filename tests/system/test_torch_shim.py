@@ -88,7 +88,8 @@ class TestRunningIt:
     def test_a_failed_install_says_where_to_get_torch(self, monkeypatch, capsys):
         monkeypatch.setattr(ts, "plan", lambda: ts.Plan("stable", "why", ("py",)))
         monkeypatch.setattr(ts.subprocess, "run", lambda argv, check: type("R", (), {"returncode": 1})())
-        assert ts.ensure() == 1 and "pytorch.org" in capsys.readouterr().err
+        assert ts.ensure() == 1
+        assert "https://pytorch.org/get-started/locally/" in capsys.readouterr().err
 
     def test_auto_can_be_turned_off(self, monkeypatch):
         monkeypatch.setenv("HYPERNIX_NO_TORCH_SHIM", "1")
