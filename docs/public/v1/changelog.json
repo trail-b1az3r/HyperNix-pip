@@ -3,6 +3,219 @@
   "source": "wiki/Changelog.md",
   "entries": [
     {
+      "version": "0.72.8",
+      "key": "0.72.8",
+      "aliases": [
+        "0.72.8"
+      ],
+      "kind": "stable",
+      "heading": "0.72.8 \u2014 2026-10-28",
+      "date": "2026-10-28",
+      "title": "",
+      "summary": "Claude Code on models running in HyperNix: T1 speaks the Anthropic",
+      "patch": null,
+      "headline": "",
+      "highlights": [
+        "Claude Code on models running in HyperNix: T1 speaks the Anthropic Messages API, and hnx claude points Claude Code at it.",
+        "The context relay: POST /inference/relay reads a document longer than the model's context in hops, priced first and billed per hop.",
+        "hnx0xv2image, an image-to-text architecture fused onto LFM2.5, Qwen3.5 or HyperNix, quantisable with hyprslug.",
+        "MCP both ways, Net inside T1, and a live count of public T1 servers.",
+        "HyperLink: signed prompts and the ping, a Code section, dataset parts, full Markdown, web search v2, and documents a model writes.",
+        "hnx-t1 setup, the interactive T1 installer."
+      ],
+      "changes": [
+        {
+          "symbol": "\u0e4b\u08ed\u2b51",
+          "label": "major",
+          "category": "Beta / Dev \u2192 Release Summary",
+          "text": "Claude Code on models running in HyperNix: T1 speaks the Anthropic Messages API, and hnx claude points Claude Code at it.",
+          "details": []
+        },
+        {
+          "symbol": "\u0e4b\u08ed\u2b51",
+          "label": "major",
+          "category": "Beta / Dev \u2192 Release Summary",
+          "text": "The context relay: POST /inference/relay reads a document longer than the model's context in hops, priced first and billed per hop.",
+          "details": []
+        },
+        {
+          "symbol": "\u0e4b\u08ed\u2b51",
+          "label": "major",
+          "category": "Beta / Dev \u2192 Release Summary",
+          "text": "hnx0xv2image, an image-to-text architecture fused onto LFM2.5, Qwen3.5 or HyperNix, quantisable with hyprslug.",
+          "details": []
+        },
+        {
+          "symbol": "\u0e4b\u08ed\u2b51",
+          "label": "major",
+          "category": "Beta / Dev \u2192 Release Summary",
+          "text": "MCP both ways, Net inside T1, and a live count of public T1 servers.",
+          "details": []
+        },
+        {
+          "symbol": "\u0e4b\u08ed\u2b51",
+          "label": "major",
+          "category": "Beta / Dev \u2192 Release Summary",
+          "text": "HyperLink: signed prompts and the ping, a Code section, dataset parts, full Markdown, web search v2, and documents a model writes.",
+          "details": []
+        },
+        {
+          "symbol": "\u0e4b\u08ed\u2b51",
+          "label": "major",
+          "category": "Beta / Dev \u2192 Release Summary",
+          "text": "hnx-t1 setup, the interactive T1 installer.",
+          "details": []
+        },
+        {
+          "symbol": "\u0e4b\u08ed\u2b51",
+          "label": "major",
+          "category": "Beta / Dev \u2192 Release Summary",
+          "text": "CPU offloading for the runners, hnx download --latest (HyperNix.3.1-mini), and HyperNix releases loaded by name.",
+          "details": []
+        },
+        {
+          "symbol": "\u0e4b\u08ed\u2b51",
+          "label": "major",
+          "category": "Beta / Dev \u2192 Release Summary",
+          "text": "scriptgen writes scripts that run, with a redesigned window, recipes and a terminal wizard.",
+          "details": []
+        },
+        {
+          "symbol": "\u0e4b\u08ed\u2b51",
+          "label": "major",
+          "category": "Beta / Dev \u2192 Release Summary",
+          "text": "c4 (explode a model, measure, reap and sow its layers), the Firefox Browser Agent, and the multi-llama runner.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udd17",
+          "label": "API",
+          "category": "Beta / Dev \u2192 Release Summary",
+          "text": "T1 v1.1.26.10.2.0: /v1/messages, /mcp/remote, /net, /inference/relay, /usage/statement (t1.statement/2), and cpu_moe / kv_on_cpu on /runner/load.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udd17",
+          "label": "API",
+          "category": "Beta / Dev \u2192 Release Summary",
+          "text": "Python 3.15: torch and sentencepiece are no longer pip dependencies there; see Compatibility.",
+          "details": []
+        },
+        {
+          "symbol": "\ud81a\udca5",
+          "label": "major fix",
+          "category": "Beta / Dev \u2192 Release Summary",
+          "text": "HyperLink for iOS no longer signs itself out or crashes when connecting over Tailscale.",
+          "details": []
+        },
+        {
+          "symbol": "\ud81a\udca5",
+          "label": "major fix",
+          "category": "Beta / Dev \u2192 Release Summary",
+          "text": "A model the runner loads is registered, so chat and the relay can ask it; the relay sizes its answer to the context.",
+          "details": []
+        },
+        {
+          "symbol": "\ud81a\udca5",
+          "label": "major fix",
+          "category": "Beta / Dev \u2192 Release Summary",
+          "text": "scriptgen's generated script can build its default optimiser.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udc1b",
+          "label": "fix",
+          "category": "Beta / Dev \u2192 Release Summary",
+          "text": "hypernix-t1 runner start is fast again and its model picker no longer freezes.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udc1b",
+          "label": "fix",
+          "category": "Beta / Dev \u2192 Release Summary",
+          "text": "Following a job's log no longer skips a line written as it starts.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83e\uddea",
+          "label": "tests",
+          "category": "Beta / Dev \u2192 Release Summary",
+          "text": "About 10,300 tests; generated training scripts run for real on a tiny HyperNix model; a runner-loaded model is relayed through T1 end to end.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udcda",
+          "label": "docs",
+          "category": "Beta / Dev \u2192 Release Summary",
+          "text": "The T1 API page covers the 0.72.8 runner, the relay and the statement, and marks T1 v1.1.26.10.1.0 and v1.1.26.10.2.0 shipped. The README has a 0.72.8 section and the Python 3.15 install notes.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udedc",
+          "label": "site",
+          "category": "Beta / Dev \u2192 Release Summary",
+          "text": "The website's docs were remade, with a T1 API reference, a security page, and downloads by HyperNix version on the Stats page.",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "Python 3.15: torch from a shim. A new Python gets PyTorch wheels months after it ships, and pip refused pip install hypernix there. hypernix.system.torch_shim installs stable PyTorch when its newest release has a wheel for this Python and platform, and the nightly build (CPU\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\u274c",
+          "label": "breaking",
+          "category": "Compatibility",
+          "text": "On Python 3.15+, torch and sentencepiece are not pip dependencies (python_version < '3.15' markers): torch comes from the shim, and sentencepiece, which has no 3.15 wheel, is needed only by hnx convert of a SentencePiece model. hnx doctor reports it as not required there\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udce6",
+          "label": "packaging",
+          "category": "Dependencies and Packaging",
+          "text": "The markers above, in pyproject.toml and setup.cfg alike. Dependencies were otherwise unchanged since 0.72.8rc1.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udcda",
+          "label": "docs",
+          "category": "Documentation",
+          "text": "T1-API: the 0.72.8 runner (offloading, releases by name, registration on load), Python 3.15 in the installer, the roadmap rows for T1 v1.1.26.10.1.0 and v1.1.26.10.2.0 marked shipped.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udcda",
+          "label": "docs",
+          "category": "Documentation",
+          "text": "README: a 0.72.8 section, the Python 3.15 install notes, and the PyPI badge.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83e\uddea",
+          "label": "tests",
+          "category": "Tests",
+          "text": "The shim's choices (stable, nightly, nothing), its PyPI wheel lookup per platform, the hooks, and the markers.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udec8",
+          "label": "caveat",
+          "category": "Caveats",
+          "text": "Checked on CPython 3.15.0b4 (Linux x86_64): pip install . succeeds, the nightly path installs torch 2.16.0.dev, and hnx with torch missing installs stable torch 2.15.0, which has cp315 wheels today. macOS and Windows were not run.",
+          "details": []
+        },
+        {
+          "symbol": "\ud83d\udec8",
+          "label": "caveat",
+          "category": "Caveats",
+          "text": "The stable path installs PyPI's default torch, the CUDA build on Linux, as pip install hypernix does on 3.12-3.14. For CPU only, install torch from the CPU index first.",
+          "details": []
+        }
+      ]
+    },
+    {
       "version": "0.72.8rc1",
       "key": "0.72.8rc1",
       "aliases": [
@@ -784,92 +997,7 @@
         "hypernix.c4.restore: snapshots and ablated(), so every test leaves the model exactly as it was, and write() to safetensors (with config and tokenizer), .pt or GGUF.",
         "hypernix.c4.reap chooses the layers, dials to zero and feed-forward channels to keep, saved as a reviewable Harvest; reap_best() cherry-picks the best layer at each depth across several same-shaped models. hypernix.c4.sow builds the new model from it \u2014 layers renumbered, dials\u2026"
       ],
-      "changes": [
-        {
-          "symbol": "\u0e4b\u08ed\u2b51",
-          "label": "major",
-          "category": "Added",
-          "text": "c4: explode a model, measure its pieces, reap the best, sow a new one. hypernix.c4 loads a safetensors model, a .pt state dict (both with a config.json) or a GGUF onto the GPU and takes it apart into mstems (a layer and its connections), stems (one connection's tensor), Pdials\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "hypernix.c4.explode: the pieces, their counts, iterators over Pdials, mdials and dials, and save() \u2014 one safetensors file per mstem plus a manifest.",
-          "details": []
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "hypernix.c4.stem: measured statistics (spread, outliers, sparsity, kurtosis, effective and stable rank, 4-bit round-trip error, layer similarity) and tested ones (the loss without a stem or a layer, block influence), and layer_report, which calls each layer unneeded, candidate\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "hypernix.c4.dial: per-parameter magnitude, taylor, fisher and wanda scores; unneeded() (the lowest share, and rows that can go whole); train_priority() (stems, Pdials or layers ranked by how much training them next would lower the loss, flagging those that need retraining)\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "hypernix.c4.restore: snapshots and ablated(), so every test leaves the model exactly as it was, and write() to safetensors (with config and tokenizer), .pt or GGUF.",
-          "details": []
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "hypernix.c4.reap chooses the layers, dials to zero and feed-forward channels to keep, saved as a reviewable Harvest; reap_best() cherry-picks the best layer at each depth across several same-shaped models. hypernix.c4.sow builds the new model from it \u2014 layers renumbered, dials\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "The c4 optimizer (hypernix.c4.optim.C4Optimizer): back-propagates, then separates the gradients into sections (stems, mstems or rows) and checks each before updating \u2014 a non-finite section is skipped, a spike clipped to its own history, a dead section frozen, unneeded dials\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "hnx c4 (explode, stem, dial, reap, sow, restore) and the hnx-c4 entry point.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udcda",
-          "label": "docs",
-          "category": "Documentation",
-          "text": "[C4](C4.md): the pieces, the sections, the optimizer, the command line and the limits; [CLI](CLI.md): hnx c4; [Home](Home.md): the C4 guide.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83e\uddea",
-          "label": "tests",
-          "category": "Tests",
-          "text": "c4 on a small Llama: loading each format and refusing a missing config.json, the pieces and addresses, exact restoration after ablation, layer verdicts, every dial score, unneeded masks and priorities, reap and sow (layer drop, channel pruning, a GGUF by its weights alone\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\u2757",
-          "label": "known issue",
-          "category": "Known Issues",
-          "text": "c4's GPU paths were exercised on the CPU only: there is no GPU in the build environment.",
-          "details": []
-        },
-        {
-          "symbol": "\u2757",
-          "label": "known issue",
-          "category": "Known Issues",
-          "text": "Running a model (tested numbers, scores other than magnitude, healing) needs an architecture transformers can build; a GGUF it cannot build is still exploded, measured, reaped and sown by its weights.",
-          "details": []
-        }
-      ]
+      "changes": []
     },
     {
       "version": "0.72.8a1",

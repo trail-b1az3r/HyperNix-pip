@@ -1,6 +1,17 @@
 ### non web and non python package and non hyperlink changelog here (mainly for security issues and breaking changes)
 ### empty as of public release of 0.72.7.post1
 
+## 0.72.8
+
+<details>
+<summary>0.72.8 — In-development bug-fix log</summary>
+
+- **FIXED DURING DEVELOPMENT — introduced by this update:** `pip install .` in the 3.15 test rewrote the tracked `src/hypernix.egg-info` files; they were restored, not committed.
+- **FIXED DURING DEVELOPMENT — introduced by this update:** the torch-pin test matched only an unmarked `"torch>=…,<…"`; it accepts the 3.15 marker now and still checks the floor and ceiling.
+- Dependencies reviewed across the repository: Python (pyproject.toml, setup.cfg), npm (docs/), Bun (hyped-pro, tvtop-max). Changed: torch and sentencepiece carry `python_version < '3.15'`.
+
+</details>
+
 ## 0.72.8rc1
 
 <details>

@@ -6,14 +6,16 @@ server decides what exists, what's available, and how much is left — see
 [Design principle](#design-principle).
 
 **Status: T1 v1.1.26.10.2.0** (long form `1.1.2026.10.2.0`) in
-`0.72.8rc1`: the 1.1 generation, which began with T1 v1.1.26.9.0.0 in
+`0.72.8`: the 1.1 generation, which began with T1 v1.1.26.9.0.0 in
 `0.72.5.post15`, plus [web search v2](#web-search-v2),
 [signed prompts](#signed-prompts-and-the-ping),
 [chats owned by an account or a key](#ownership),
 [the Anthropic Messages API](#the-anthropic-messages-api) for Claude Code,
 [remote MCP servers](#remote-mcp-servers-hugging-faces-and-others),
 [Net](#net), [the public-server counter](#the-public-server-counter), and
-[dataset parts and code sessions in HyperLink](#datasets-code-sessions-and-markdown-0728a3). The betas ended at
+[dataset parts and code sessions in HyperLink](#datasets-code-sessions-and-markdown-0728a3), and in
+0.72.8 itself [the runner's CPU offloading, HyperNix releases by name, and
+models registered as they load](#the-runner-in-0728). The betas ended at
 v1.0.26.8.0.1. This page is the living contract for what's actually
 implemented vs. planned; cross-reference against the
 [Roadmap](#roadmap) before assuming an endpoint exists.
@@ -216,6 +218,13 @@ Three properties worth knowing:
 directory, so two T1 servers on one machine do not share credentials.
 
 Requires bash 3.2+ (the stock macOS shell), Python 3.12–3.15, and pip.
+On Python 3.15 torch is not a pip dependency of the package (0.72.8): a
+new Python gets PyTorch wheels months after it ships, and pip used to
+refuse the whole install. The installer runs
+`python -m hypernix.system.torch_shim` after the package, which installs
+stable PyTorch when it has a wheel for that Python and the nightly build
+until it does; `hnx doctor --fix` and the first `hnx` command that finds
+torch missing do the same.
 On native Windows shells (Git Bash, MSYS2, Cygwin) `start`,
 `start-foreground` and `restart` refuse and say what to do instead: run
 `hypernix-t1` inside WSL, or start the server directly with
@@ -1727,7 +1736,7 @@ and runs T1 v1.1.26.10.1.0 or newer sends one heartbeat an hour, unless
 `T1_PUBLIC_COUNTER=0`:
 
 ```json
-{"id": "<32 hex>", "t1_version": "1.1.26.10.2.0", "version": "0.72.8rc1"}
+{"id": "<32 hex>", "t1_version": "1.1.26.10.2.0", "version": "0.72.8"}
 ```
 
 `id` is a SHA-256 of a random value the server made once and keeps in
@@ -1858,6 +1867,28 @@ Responses carry `backend_name` (`hypernix` / `lmstudio`) next to `backend`
 (the address, unchanged). `GET /inference/backends` lists `lmstudio` first
 and `hypernix` second (with the loaded `model_id`), each probed; `default`
 is the runner when it answers, otherwise LM Studio.
+
+### The runner in 0.72.8
+
+- **CPU offloading.** `POST /runner/load` takes `cpu_moe` (0 none, -1
+  every layer's experts, N the first N layers') and `kv_on_cpu`, which
+  keep a mixture-of-experts model's experts or the KV cache in system
+  RAM on the llama.cpp runners (`--cpu-moe`, `--n-cpu-moe`,
+  `--no-kv-offload`); KoboldCpp refuses them rather than ignoring them.
+  A native HyperNix model bigger than the card is split by layer, the
+  first blocks on the GPU and the rest in RAM, where it used to run
+  wholly on the CPU. `POST /runner/plan` and `/runner/status` say what is
+  in RAM; `runner auto` remembers both settings.
+- **HyperNix releases by name.** `{"model_id": "hypernix.3.1-mini"}` (or
+  `"latest"`) downloads that release into the models folder the first
+  time, as the default model always was; `hnx download --latest` does it
+  ahead of time.
+- **Loaded models are registered.** The registry gets an entry (local,
+  free, sized from the loaded context) for a model the runner loads that
+  it did not list, so `/inference/chat` and the
+  [relay](#prompts-longer-than-the-context-inferencerelay) can ask it; an
+  operator's own entry is left as it is. Before, a downloaded model could
+  be served and never asked (`MODEL_NOT_SUPPORTED`).
 
 ## The Anthropic Messages API
 
@@ -2231,7 +2262,7 @@ is a key with `write`, or a trusted origin on a server with
 |---|---|---|---|
 | GET | `/runner/status` | bearer | what is loaded, where its layers are, how long it has been up |
 | POST | `/runner/plan` | bearer | where a model's layers would go; changes nothing |
-| POST | `/runner/load` | bearer, **admin, partial admin, or a switch grant** (`T1_RUNNER_SWITCH_PERM`) | load a model, replacing what was running; the default model is downloaded the first time; `cpu_moe` (0, -1 or N) and `kv_on_cpu` keep experts or the KV cache in RAM (0.72.8rc1) |
+| POST | `/runner/load` | bearer, **admin, partial admin, or a switch grant** (`T1_RUNNER_SWITCH_PERM`) | load a model, replacing what was running; the default model is downloaded the first time; `cpu_moe` (0, -1 or N) and `kv_on_cpu` keep experts or the KV cache in RAM (0.72.8); a HyperNix release named by id (or `latest`) is downloaded too, and a model the registry does not list is registered (see [the runner in 0.72.8](#the-runner-in-0728)) |
 | POST | `/runner/unload` | as `load` | stop serving; unloading nothing is a success |
 | POST | `/runner/auto` | as `load` | load what this server usually runs: the last model loaded that is still here (`{"prefer": "most"}`: loaded most often), on the backend used most, with that model's last settings; `{"dry_run": true}` names it and loads nothing. With no history, the default model. `hypernix-t1 runner auto` |
 
@@ -3028,8 +3059,8 @@ six-part scheme in [Versioning](#versioning) rather than a beta number.
 | **1.0.26.8.0.1** | The [LM Studio bridge](#the-lm-studio-bridge); [HyperLink](#hyperlink) pairing, sessions, attachments and endpoint advertisement; [Hugging Face link merging](#hugging-face-link-merging); the [HyperLink iOS app](../ios/README.md) | **Shipped** |
 | **1.0.26.8.1.1** | The [bootstrap admin key](#the-first-key-a-new-server-has) a fresh server issues itself; [T2P billing keys](#billing-keys-t2p-and-refusing-them) and the server-side policy that can refuse them; the three HyperLink reachability fixes (advertised port, tailnet ATS, Tailscale diagnosis) and [T2S key](#using-a-t2s-key) entry from the app; [undoable](#undoing-an-authentication-change) auth changes and durable server ids | **Shipped** |
 | **1.0.26.9.2.3** | [Web accounts](#web-accounts): sign-up and browser sign-in in four deployment modes (`t1-accounts`), with a keyless caller never an administrator | **Shipped** (0.72.5) |
-| **1.1.26.10.2.0** | [The Anthropic Messages API](#the-anthropic-messages-api) (`/v1/messages`, `/v1/messages/count_tokens`, `/v1/models`) for Claude Code; [remote MCP servers](#remote-mcp-servers-hugging-faces-and-others) (`/mcp/remote`) and MCP 2025-11-25; [Net](#net) (`/net`, replacing `hnx net`); [the public-server counter](#the-public-server-counter); HyperLink [dataset parts, code sessions and Markdown](#datasets-code-sessions-and-markdown-0728a3); [git, search and import](#git-search-and-import-0728a3) in `/code` sandboxes | **Alpha** (0.72.8a3) |
-| **1.1.26.10.1.0** | [Web search v2](#web-search-v2) and `/web/v1/ai/config`; [signed prompts and the ping](#signed-prompts-and-the-ping); chats [owned by an account or a key](#ownership), `/hyperlink/whoami` and `/hyperlink/login`; loaded models, documents, the ring and hypercompress | **Alpha** (0.72.8a1) |
+| **1.1.26.10.2.0** | [The Anthropic Messages API](#the-anthropic-messages-api) (`/v1/messages`, `/v1/messages/count_tokens`, `/v1/models`) for Claude Code; [remote MCP servers](#remote-mcp-servers-hugging-faces-and-others) (`/mcp/remote`) and MCP 2025-11-25; [Net](#net) (`/net`, replacing `hnx net`); [the public-server counter](#the-public-server-counter); HyperLink [dataset parts, code sessions and Markdown](#datasets-code-sessions-and-markdown-0728a3); [git, search and import](#git-search-and-import-0728a3) in `/code` sandboxes; [the relay](#prompts-longer-than-the-context-inferencerelay) and the [itemised statement](#the-itemised-statement-t1statement2); [the runner's offloading, releases by name and registration](#the-runner-in-0728) | **Shipped** (0.72.8; alpha from 0.72.8a3) |
+| **1.1.26.10.1.0** | [Web search v2](#web-search-v2) and `/web/v1/ai/config`; [signed prompts and the ping](#signed-prompts-and-the-ping); chats [owned by an account or a key](#ownership), `/hyperlink/whoami` and `/hyperlink/login`; loaded models, documents, the ring and hypercompress | **Shipped** (0.72.8; alpha from 0.72.8a1) |
 | **1.1.26.9.0.0** | The 1.1 generation, first shipped in `0.72.5.post15`; a 1.0 client is told to upgrade. The package releases after it added [HyperLink](#hyperlink) titles, compression, memory, images and the shell, [web search](#web-search), [v2.1 keys](#v21-t2c-keys-and-rotorvault), [conceal mode](#conceal-mode-and-36-hour-retention) and [server info](#server-info); the 0.72.6 patches added [HyperLink on the web](#hyperlink-on-the-web-0726post1), moving a model out of LM Studio, and `hypernix-t1 upgrade` — see the [Changelog](Changelog.md) | **Shipped** |
 
 ## Design principle
