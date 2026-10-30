@@ -585,7 +585,7 @@ jobs:
         continue-on-error: true
         with: { sarif_file: sarif/hypernix-t1.sarif, category: hypernix-t1 }
 
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with: { name: sarif-sast, path: sarif/, retention-days: 30 }
 
@@ -636,7 +636,7 @@ jobs:
         continue-on-error: true
         with: { sarif_file: sarif/osv.sarif, category: osv-scanner }
 
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with: { name: sarif-deps, path: sarif/, retention-days: 30 }
 
@@ -664,7 +664,7 @@ jobs:
         uses: github/codeql-action/upload-sarif@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4
         continue-on-error: true
         with: { sarif_file: sarif/gitleaks.sarif, category: gitleaks }
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with: { name: sarif-secrets, path: sarif/, retention-days: 30 }
 
