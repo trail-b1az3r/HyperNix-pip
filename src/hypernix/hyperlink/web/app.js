@@ -448,7 +448,18 @@ function setStreaming(on) {
 async function send(text) {
   const attached = state.pending.splice(0);
   drawTray();
-  const sessionId = await ensureSession(text || attached.map((a) => a.file.filename).join(", "));
+  // A chat the server would not create used to end here as an unhandled
+  // rejection: the message vanished and nothing said why (0.72.8.post1).
+  let sessionId;
+  try {
+    sessionId = await ensureSession(text || attached.map((a) => a.file.filename).join(", "));
+  } catch (error) {
+    state.pending.unshift(...attached);
+    drawTray();
+    $("message").value = text;
+    $("thread").append(errorRow(`Could not start a chat: ${error.message}`));
+    return;
+  }
   state.messages.push({
     role: "user", content: text, attachment_ids: attached.map((a) => a.file.file_id),
     metadata: { datasets: attached.filter((a) => a.pick), code_sandbox_id: state.codeSandboxId },

@@ -32,7 +32,11 @@ struct ChatListView: View {
 
     private var listBody: some View {
         List {
-            if visible.isEmpty && hiddenSessions.isEmpty && !state.isLoadingSessions {
+            if let problem = state.chatListError {
+                problemSection(problem)
+            }
+            if visible.isEmpty && hiddenSessions.isEmpty && !state.isLoadingSessions
+                && !state.keylessChatsRefused {
                 ContentUnavailableView {
                     Label("No conversations", systemImage: "bubble.left.and.bubble.right")
                 } description: {
@@ -80,6 +84,24 @@ struct ChatListView: View {
         .onChange(of: state.sessions) { _, sessions in
             guard !state.isLoadingSessions, !sessions.isEmpty else { return }
             state.privateChats.prune(existing: Set(sessions.map(\.sessionID)), server: server)
+        }
+    }
+
+    /// Why the list could not load or "New chat" did nothing (0.72.8.post1).
+    /// A keyless connection gets the way out too: since 0.72.8 the server
+    /// keeps chats for an account or a key, and keyless has neither.
+    private func problemSection(_ problem: String) -> some View {
+        Section {
+            Label(problem, systemImage: "exclamationmark.triangle")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+            if state.keylessChatsRefused {
+                Button {
+                    Task { await state.unpair() }
+                } label: {
+                    Label("Pair with a code or sign in", systemImage: "key")
+                }
+            }
         }
     }
 
