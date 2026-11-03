@@ -148,6 +148,15 @@ final class AppState {
     /// stop the other phone's answer.
     private var streamingGenerationID: String?
     var lastError: String?
+    /// Why the chat list could not be loaded or a new chat could not be
+    /// started, for the Chats screen itself (0.72.8.post1). `lastError`
+    /// is shown inside a conversation, so a "New chat" that failed did
+    /// nothing visible at all -- the tap seemed to be ignored.
+    private(set) var chatListError: String?
+    /// The server refused chats because this connection is keyless:
+    /// since 0.72.8 a chat belongs to an account or a key, and a keyless
+    /// connection has neither. Pairing with a code or signing in fixes it.
+    private(set) var keylessChatsRefused = false
 
     private let client = HyperLinkClient()
     private var streamTask: Task<Void, Never>?
@@ -504,6 +513,8 @@ final class AppState {
         identityWarning = nil
         keylessAvailableHere = false
         isKeyless = false
+        chatListError = nil
+        keylessChatsRefused = false
         sessions = []
         messages = []
         openSessionID = nil
@@ -612,11 +623,24 @@ final class AppState {
         defer { isLoadingSessions = false }
         do {
             sessions = try await client.sessions()
+            chatListError = nil
+            keylessChatsRefused = false
             // Siri learns chat names from ChatEntityQuery; this is what
             // tells it the list changed (see HyperLinkIntents.swift).
             HyperLinkShortcuts.updateAppShortcutParameters()
         } catch {
             handle(error)
+            noteChatListFailure(error)
+        }
+    }
+
+    /// Keep *error* for the Chats screen, and note a keyless refusal.
+    private func noteChatListFailure(_ error: Error) {
+        if error is CancellationError { return }
+        chatListError = (error as? HyperLinkError)?.errorDescription ?? error.localizedDescription
+        keylessChatsRefused = false
+        if isKeyless, case let .serverError(code, _, status)? = error as? HyperLinkError {
+            keylessChatsRefused = status == 403 && code == "AUTH_INSUFFICIENT_SCOPE"
         }
     }
 
@@ -1128,11 +1152,14 @@ final class AppState {
     func newSession(modelID: String = "") async -> ChatSession? {
         do {
             let session = try await client.createSession(modelID: modelID)
+            chatListError = nil
+            keylessChatsRefused = false
             sessions.insert(session, at: 0)
             await open(session.sessionID)
             return session
         } catch {
             handle(error)
+            noteChatListFailure(error)
             return nil
         }
     }

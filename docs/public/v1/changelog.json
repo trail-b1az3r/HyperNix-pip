@@ -3,6 +3,53 @@
   "source": "wiki/Changelog.md",
   "entries": [
     {
+      "version": "0.72.8.post1",
+      "key": "0.72.8.post1",
+      "aliases": [
+        "0.72.8-post1",
+        "0.72.8.post1"
+      ],
+      "kind": "post",
+      "heading": "0.72.8.post1 \u2014 patch 1 - HyperLink: a chat that cannot be started says why",
+      "date": "",
+      "title": "patch 1 - HyperLink: a chat that cannot be started says why",
+      "summary": "HyperLink: a chat that cannot be started says why",
+      "patch": 1,
+      "headline": "HyperLink: a chat that cannot be started says why",
+      "highlights": [
+        "Fixed \"New chat\" in HyperLink for iOS doing nothing. Since 0.72.8 a chat belongs to an account or a key, and the server refuses one to a keyless connection -- the usual way a phone connects over Tailscale -- with 403 AUTH_INSUFFICIENT_SCOPE and a message saying how to get an\u2026",
+        "Fixed the web HyperLink dropping a message whose chat the server would not create. send() created the chat outside its try, so a refusal was an unhandled rejection: the message vanished and nothing said why. It now shows \"Could not start a chat: \u2026\" in the thread and puts the\u2026",
+        "tests/hyperlink/test_new_chat_failure_shown.py: the app keeps and shows the failure and recognises a keyless refusal, the web app guards chat creation, and the server still answers a keyless chat with the 403 the app reads. The Swift is compiled and unit-tested by the iOS CI job."
+      ],
+      "changes": [
+        {
+          "symbol": "\ud81a\udca5",
+          "label": "major fix",
+          "category": "Fixed",
+          "text": "Fixed \"New chat\" in HyperLink for iOS doing nothing. Since 0.72.8 a chat belongs to an account or a key, and the server refuses one to a keyless connection -- the usual way a phone connects over Tailscale -- with 403 AUTH_INSUFFICIENT_SCOPE and a message saying how to get an\u2026",
+          "details": [
+            "The Chats screen now shows why a new chat (or the list) failed.",
+            "On a keyless connection it offers Pair with a code or sign in, which goes back to the pairing screen; the empty state no longer offers a \"New chat\" that can only fail again.",
+            "Any other failure to start a chat is shown the same way, instead of nothing happening."
+          ]
+        },
+        {
+          "symbol": "\ud81a\udca5",
+          "label": "major fix",
+          "category": "Fixed",
+          "text": "Fixed the web HyperLink dropping a message whose chat the server would not create. send() created the chat outside its try, so a refusal was an unhandled rejection: the message vanished and nothing said why. It now shows \"Could not start a chat: \u2026\" in the thread and puts the\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\ud83e\uddea",
+          "label": "tests",
+          "category": "Tests",
+          "text": "tests/hyperlink/test_new_chat_failure_shown.py: the app keeps and shows the failure and recognises a keyless refusal, the web app guards chat creation, and the server still answers a keyless chat with the 403 the app reads. The Swift is compiled and unit-tested by the iOS CI job.",
+          "details": []
+        }
+      ]
+    },
+    {
       "version": "0.72.8",
       "key": "0.72.8",
       "aliases": [
@@ -693,288 +740,7 @@
         "MCP both ways. T1's /mcp negotiates protocol 2025-11-25 down to 2024-11-05 and does Streamable HTTP properly (Mcp-Session-Id, 405 for an event-stream GET, DELETE ends a session), so the official SDK and Claude Code connect to it. T1 is also a client of remote MCP servers \u2014\u2026",
         "/mcp/remote: list, add and remove servers (admins), list a server's tools, and call one."
       ],
-      "changes": [
-        {
-          "symbol": "\u0e4b\u08ed\u2b51",
-          "label": "major",
-          "category": "Added",
-          "text": "Claude Code on models running in HyperNix. T1 speaks the Anthropic Messages API: POST /v1/messages (streamed or not, tools, images, thinking, stop sequences), POST /v1/messages/count_tokens and GET /v1/models, translated to and from the server's own chat. A registered model\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "hnx claude (also claude-code) sets ANTHROPIC_BASE_URL, ANTHROPIC_AUTH_TOKEN and the model variables for a T1 server and starts Claude Code; --print-env prints them instead, and arguments after -- go to claude.",
-          "details": []
-        },
-        {
-          "symbol": "\u0e4b\u08ed\u2b51",
-          "label": "major",
-          "category": "Added",
-          "text": "hnx0xv2image, a custom image-to-text arch. A ViT encoder and a 2\u00d72 pixel-unshuffle projector whose outputs are spliced into the embeddings at <image> placeholders, so the text model is untouched. It fuses with any non-VL LFM2/LFM2.5 (dense or MoE), any Qwen3.5, and any HyperNix\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "hnx image: new (tiny, small, base presets), fuse, train, caption, split and info.",
-          "details": []
-        },
-        {
-          "symbol": "\u0e4b\u08ed\u2b51",
-          "label": "major",
-          "category": "Added",
-          "text": "MCP both ways. T1's /mcp negotiates protocol 2025-11-25 down to 2024-11-05 and does Streamable HTTP properly (Mcp-Session-Id, 405 for an event-stream GET, DELETE ends a session), so the official SDK and Claude Code connect to it. T1 is also a client of remote MCP servers \u2014\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "/mcp/remote: list, add and remove servers (admins), list a server's tools, and call one.",
-          "details": []
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "Net in the T1 API. Everything hnx net did \u2014 status, peers, ping, expose, setup steps, trusting peers, syncing storage, and checking, running and stopping a file on another machine \u2014 is the admin-only /net routes. Remote runs stay off unless T1_NET_REMOTE_RUN=1. ([T1-API \u00a7\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "A live count of public T1 servers. A public server running T1 v1.1.26.10.1.0 or newer sends one heartbeat an hour (a hashed random id and its versions, never an address) unless T1_PUBLIC_COUNTER=0. T1_COUNTER_HOST=1 makes a server the counter (POST /counter/heartbeat, GET\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\u0e4b\u08ed\u2b51",
-          "label": "major",
-          "category": "Added",
-          "text": "HyperLink: a Code section. A chat can work in a /code sandbox (code_sandbox_id): the model gets tools to list, read (by line range), search, write, edit and run its files and use git, held to the sandbox's permissions, and a read-only caller gets only the reading tools. On the\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "/code sandboxes get git (POST /code/sandbox/{id}/git), search (GET .../search) and import of HyperLink attachments (POST .../import). ([T1-API \u00a7 git, search and import](T1-API.md#git-search-and-import-0728a3))",
-          "details": []
-        },
-        {
-          "symbol": "\u0e4b\u08ed\u2b51",
-          "label": "major",
-          "category": "Added",
-          "text": "HyperLink: parts of datasets in a chat. JSONL, JSON, Parquet, CSV/TSV, Arrow, text and Markdown files attached to a message reach the model as an excerpt \u2014 the first 20 rows, or the whole file when it is small \u2014 or the part chosen with datasets: rows, columns, a search or regex\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "HyperLink renders full Markdown: CommonMark, GitHub Flavored Markdown (tables, task lists, strikethrough, autolink literals, footnotes) and Markdown Extra (heading ids and classes, definition lists, abbreviations, fenced-code attributes), on the web (web/markdown.js) and in the\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "hnx auto <owner/repo>: downloads a Hugging Face repo; a GGUF repo gives the file for the asked quant, anything else is converted with llama.cpp's convert_hf_to_gguf.py (from its release tag, or the llama-cpp-python sdist on PyPI, SHA-256 checked), then quantised to each type\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "hnx extra: the less-used commands now live there \u2014 neuron, pipeline, assistant, generate, wiki, prot, oven, path, map, tvtop, cctvtop, camo, websearch and scavenger \u2014 and hnx alone shows the short menu. Every command still runs as before.",
-          "details": []
-        },
-        {
-          "symbol": "\ud81a\udd54",
-          "label": "minor",
-          "category": "Added",
-          "text": "hnx tvtopmax and hnx hypedpro are in the menu; hnx fllq is fetch-llama-quantize.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udd01",
-          "label": "refactor",
-          "category": "Changed",
-          "text": "hnx download owner/repo:Q4_K_M takes a quant, finds split GGUFs, names the folder after the repo, and says plainly when a repo is missing, gated or private.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udd01",
-          "label": "refactor",
-          "category": "Changed",
-          "text": "hnx pipeline runs real speech models (MMS TTS and Whisper ASR by default) instead of a placeholder.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udd01",
-          "label": "refactor",
-          "category": "Changed",
-          "text": "hnx camo loads GGUFs and links and takes -P (prompts file), -o, --lr and --max-new-tokens.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udd17",
-          "label": "API",
-          "category": "API Changes",
-          "text": "T1 API v1.1.26.10.2.0 (generation 1.1; every 1.1 client is still accepted): /v1/messages, /v1/messages/count_tokens, /v1/models, /mcp/remote/, DELETE /mcp, /net/, /counter/, /hyperlink/datasets/preview, datasets and code_sandbox_id on HyperLink chat requests, and\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udd17",
-          "label": "API",
-          "category": "API Changes",
-          "text": "New settings: T1_ANTHROPIC_ENABLED, T1_CLAUDE_CODE_MODEL, T1_MCP_REMOTE_ENABLED, T1_MCP_SERVERS_FILE, T1_MCP_REMOTE, T1_MCP_HF, T1_NET_REMOTE_RUN, T1_PUBLIC, T1_PUBLIC_COUNTER, T1_PUBLIC_COUNTER_URL and T1_COUNTER_HOST.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udd12",
-          "label": "security",
-          "category": "Security",
-          "text": "git in a sandbox runs no hooks or fsmonitor, reads none of the person's git configuration, never prompts, speaks only https://, and clones only with the sandbox's network permission; paths and refs are checked, and every change is audited.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udd12",
-          "label": "security",
-          "category": "Security",
-          "text": "Remote MCP servers outside the machine and tailnet must use https; adding one needs an admin, tokens are never listed, and a server can be marked admin-only.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udd12",
-          "label": "security",
-          "category": "Security",
-          "text": "Markdown on the web escapes first: raw HTML stays text apart from a few attribute-free inline tags, and links and images are only http, https, mailto, relative, or data:image.",
-          "details": []
-        },
-        {
-          "symbol": "\ud81a\udca5",
-          "label": "major fix",
-          "category": "Fixed",
-          "text": "hnx prot no longer locks the screen. It blanks the display with power saving (Mutter's PowerSaveMode on GNOME, kscreen-doctor on KDE) instead of the screensaver, turns the desktop's auto-lock off while it runs, and puts it back on exit, on SIGTERM/SIGHUP, or with hnx prot\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udc1b",
-          "label": "fix",
-          "category": "Fixed",
-          "text": "hnx camo trained the wrong way (the loss's sign) on the prompt rather than the reply, and misread scores.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udc1b",
-          "label": "fix",
-          "category": "Fixed",
-          "text": "hnx websearch returned Bing's and DuckDuckGo's redirect links instead of the pages.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udc1b",
-          "label": "fix",
-          "category": "Fixed",
-          "text": "hnx scavenger crashed on datasets with no row count and on datetime.UTC.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udc1b",
-          "label": "fix",
-          "category": "Fixed",
-          "text": "hnx wiki left out packages outside a category (c4, t1api.anthropic, ...).",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udc1b",
-          "label": "fix",
-          "category": "Fixed",
-          "text": "GGUF conversion failed on negative or list-valued token ids.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udc1b",
-          "label": "fix",
-          "category": "Fixed",
-          "text": "c4's tests could see NaN losses: rotary buffers were left uninitialised when a model was materialised.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udc1b",
-          "label": "fix",
-          "category": "Fixed",
-          "text": "A job started with hypernix-t1 launch-script that finished within moments could be reported unknown instead of its exit status: it wrote its exit file between the launcher's look for it and the check that it was still running (under systemd or setsid), and unknown is final. The\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udc1b",
-          "label": "fix",
-          "category": "Fixed",
-          "text": "hnx camo treated torch as missing whenever transformers was.",
-          "details": []
-        },
-        {
-          "symbol": "\u274c",
-          "label": "breaking",
-          "category": "Deprecated",
-          "text": "hnx net is deprecated in favour of the T1 API's /net routes; each subcommand says which route replaced it.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udcda",
-          "label": "docs",
-          "category": "Documentation",
-          "text": "[T1-API](T1-API.md): the Anthropic Messages API, remote MCP, Net, the counter, datasets, code sessions and Markdown, sandbox git; [HNX0xV2Image](HNX0xV2Image.md) (new); [CLI](CLI.md): auto, extra, claude, image, tvtopmax, hypedpro, fllq and the fixed commands; [Home](Home.md).",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udcda",
-          "label": "docs",
-          "category": "Documentation",
-          "text": "examples/t1api: claude_code.sh, mcp-servers.example.json and hyperlink_datasets_and_code.sh, the README's new sections, every new setting in .env.example, and regenerated API-EXAMPLES.md and openapi.json.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83e\uddea",
-          "label": "tests",
-          "category": "Tests",
-          "text": "The Messages API and its streaming, hnx0xv2image (fusing LFM2, Qwen3.5 and Brewer models, training, splitting), remote MCP against a live server, /net, the counter, the moved and fixed commands, prot not locking, Markdown under node (CommonMark, GFM, Extra and the escaping\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\u2757",
-          "label": "known issue",
-          "category": "Known Issues",
-          "text": "The iOS changes (Markdown block types; dataset parts and the sandbox on chat requests) were not compiled: there is no Swift toolchain in the build environment. The iOS app has no Code view yet.",
-          "details": []
-        },
-        {
-          "symbol": "\u2757",
-          "label": "known issue",
-          "category": "Known Issues",
-          "text": "The counter badge reads \"counter not hosted yet\" until a server runs with T1_COUNTER_HOST=1 and its address is published in docs/public/v1/t1-counter-endpoint.json (or the T1_COUNTER_SUMMARY_URL repository variable).",
-          "details": []
-        },
-        {
-          "symbol": "\u2757",
-          "label": "known issue",
-          "category": "Known Issues",
-          "text": "hnx auto's download of the converter from GitHub was not exercised (GitHub was unreachable from the build environment); the PyPI path was. GPU paths were exercised on the CPU only.",
-          "details": []
-        },
-        {
-          "symbol": "\u2757",
-          "label": "known issue",
-          "category": "Known Issues",
-          "text": "DuckDuckGo may answer with a bot check; web search then falls back to Bing.",
-          "details": []
-        }
-      ]
+      "changes": []
     },
     {
       "version": "0.72.8a2",

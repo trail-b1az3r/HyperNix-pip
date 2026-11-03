@@ -35,6 +35,37 @@ Historical wording and technical detail are retained during format normalization
 
 > Format normalized to `wiki/Changelog-guide.md`; release wording and historical detail are preserved.
 
+## 0.72.8.post1 — patch 1 - HyperLink: a chat that cannot be started says why
+
+### Fixed
+
+𖢥 Fixed "New chat" in HyperLink for iOS doing nothing.
+  Since 0.72.8 a chat belongs to an account or a key, and the server
+  refuses one to a keyless connection -- the usual way a phone connects
+  over Tailscale -- with 403 `AUTH_INSUFFICIENT_SCOPE` and a message
+  saying how to get an owner. The app kept that message where only an
+  open conversation shows it, so on the Chats screen the tap seemed to be
+  ignored, and the list stayed empty with no reason given.
+  - The Chats screen now shows why a new chat (or the list) failed.
+  - On a keyless connection it offers **Pair with a code or sign in**,
+    which goes back to the pairing screen; the empty state no longer
+    offers a "New chat" that can only fail again.
+  - Any other failure to start a chat is shown the same way, instead of
+    nothing happening.
+
+𖢥 Fixed the web HyperLink dropping a message whose chat the server would
+  not create. `send()` created the chat outside its `try`, so a refusal
+  was an unhandled rejection: the message vanished and nothing said why.
+  It now shows "Could not start a chat: …" in the thread and puts the
+  message and its attachments back.
+
+### Tests
+
+🧪 `tests/hyperlink/test_new_chat_failure_shown.py`: the app keeps and shows
+  the failure and recognises a keyless refusal, the web app guards chat
+  creation, and the server still answers a keyless chat with the 403 the
+  app reads. The Swift is compiled and unit-tested by the iOS CI job.
+
 ## 0.72.8 — 2026-10-28
 
 ### Beta / Dev → Release Summary
