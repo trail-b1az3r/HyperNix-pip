@@ -1174,3 +1174,26 @@ timeline
         : d2a47609 - hnx download --latest; the runner fetches and registers HyperNix releases
 ```
 
+## Release v0.72.8.post1 (2026-11-03)
+
+```mermaid
+timeline
+    title Release v0.72.8.post1 Commits
+    0.72.8.post1
+        : 4911c36e - 0.72.8.post1- HyperLink -- a chat that cannot be started says why
+        : ffc4e109 - chore- refresh generated docs data and release summaries
+        : 2f0a0567 - chore- refresh generated docs data and release summaries
+        : 8f7e3c2e - chore- refresh generated docs data and release summaries
+        : 28d122ef - chore- update JSON stats (scheduled)
+        : 85112772 - chore- refresh generated docs data and release summaries
+        : d7ec759f - chore- refresh generated docs data and release summaries
+        : 12d2ebd6 - chore- refresh generated docs data and release summaries
+        : b3fed4a4 - chore- update JSON stats (scheduled)
+        : 3b7b5771 - chore- refresh generated docs data and release summaries
+        : 55add889 - chore- refresh generated docs data and release summaries
+        : e6152cad - chore- refresh generated docs data and release summaries
+        : 3ee6f8bc - chore- refresh generated docs data and release summaries
+        : 2b2e3216 - chore- update JSON stats (scheduled)
+        : 8536b10e - chore- refresh generated docs data and release summaries
+```
+
