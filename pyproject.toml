@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hypernix"
-version = "0.72.8.post2"
+version = "0.73.0.dev1"
 description = "Download and quantize the HyperNix PyTorch model to GGUF (fp32/fp16/Q8_0/Q6_K/Q4_K_M). and train models with a massive ai toolkit "
 readme = { file = "README.md", content-type = "text/markdown" }
 # A PEP 639 SPDX expression: the TOML-table form is deprecated and stops

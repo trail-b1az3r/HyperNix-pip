@@ -469,13 +469,8 @@ jobs:
             echo "No IPA attached means the app build did not run this time; the"
             echo "Python package is unaffected."
             echo ""
-            echo "**On a Mac:** \`HyperLink-*-macos-apple-silicon.dmg\` (M-series) or"
-            echo "\`HyperLink-*-macos-intel.dmg\` — the same app, built with Mac"
-            echo "Catalyst, for macOS 15 or newer. It is ad hoc signed, not notarised:"
-            echo "the first time, Control-click the app and choose **Open** (or System"
-            echo "Settings > Privacy & Security > Open Anyway). Verify it against"
-            echo "\`SHA256SUMS.macos\`. On-device models are iPhone-only; on a Mac, run"
-            echo "the HyperNix server."
+            # The Mac DMGs are paused until 0.73.2 (see hyperlink-dmg);
+            # their paragraph comes back with them.
           } > CHANGELOG_FRAGMENT.md
           echo "--- fragment ---"
           cat CHANGELOG_FRAGMENT.md
@@ -895,10 +890,15 @@ jobs:
   # HyperLink for the Mac (0.73.0): an Apple-silicon and an Intel .dmg,
   # built with Mac Catalyst. Like the IPA, a bonus attachment: a missing
   # DMG never holds the release.
+  #
+  # PAUSED until 0.73.2: the leading `false` keeps the job (and the
+  # attach steps below, which only run when it succeeded) wired but off.
+  # Delete `false &&` to turn it back on.
   hyperlink-dmg:
     name: HyperLink DMG
     needs: [cut]
     if: >-
+      false &&
       always() &&
       needs.cut.result == 'success' &&
       !inputs.dry_run &&

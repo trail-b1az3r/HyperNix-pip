@@ -1,4 +1,4 @@
-"""0.73.0 pre-alpha 1: the public release bundles HyperLink for the Mac.
+"""0.73.0 pre-alpha 1: HyperLink for the Mac (paused until 0.73.2).
 
 An Apple-silicon and an Intel .dmg, built with Mac Catalyst by
 ios/scripts/make_macos_dmg.sh in .github/workflows/macos.yml and attached
@@ -39,7 +39,18 @@ def test_both_architectures_are_built():
     assert "workflow_call" in _load(WORKFLOW)[True]  # yaml reads `on:` as True
 
 
-def test_the_release_builds_and_attaches_them():
+def test_paused_until_0_73_2():
+    """The Mac app is paused until 0.73.2: wired, but neither the release
+    nor pull requests build it. Turning it back on means deleting the
+    `false &&` and restoring the pull_request trigger -- and this test."""
+    condition = _load(RELEASE)["jobs"]["hyperlink-dmg"]["if"]
+    assert condition.strip().startswith("false &&")
+    assert "pull_request" not in _load(WORKFLOW)[True]
+    assert "workflow_dispatch" in _load(WORKFLOW)[True]
+    assert "macos-apple-silicon.dmg" not in RELEASE.read_text(encoding="utf-8")
+
+
+def test_the_release_is_still_wired_to_attach_them():
     release = _load(RELEASE)
     jobs = release["jobs"]
     assert jobs["hyperlink-dmg"]["uses"] == "./.github/workflows/macos.yml"

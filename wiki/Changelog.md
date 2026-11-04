@@ -35,9 +35,32 @@ Historical wording and technical detail are retained during format normalization
 
 > Format normalized to `wiki/Changelog-guide.md`; release wording and historical detail are preserved.
 
-## Unreleased
+## 0.73.0.dev1 — 2026-11-04
+
+Pre-alpha 1: the first pre-alpha of 0.73.0, and T1 **v1.2.26.11.0.0**: a new T1
+generation, because `/web/v1` is gone. A pre-alpha is for trying things
+out, not for a server other people depend on.
+
+### Breaking Changes
+
+❌ **T1 `/web/v1`.** Every route under it answers `410 Gone` with
+  `details.successor`, the `/web/v2` route that replaced it (`/web/v1/search`
+  → `/web/v2/I`, `/web/v1/summarize` → `/web/v2/summarize`, `/web/v1/ai/config`
+  → `/web/v2/ai/config`). The waiter's tools and the Firefox extension now
+  call `/web/v2`. Removing routes is what a new generation is for, so the T1
+  API is now generation 1.2 and `MIN_CLIENT_VERSION` moves with it. A 1.1
+  client is told to upgrade instead of failing on a missing route.
 
 ### Added
+
+✨ **HyperLink for the Mac**, as DMGs: `HyperLink-<version>-macos-apple-silicon.dmg`
+  (arm64) and `HyperLink-<version>-macos-intel.dmg` (x86_64), built by Mac
+  Catalyst (`ios/scripts/make_macos_dmg.sh`). They are attached to every
+  public release with `SHA256SUMS.macos`. They are signed ad hoc, so macOS
+  asks before opening one the first time (right-click → Open).
+  **Paused until 0.73.2:** the release does not build or attach them yet, and
+  pull requests no longer build them. The build itself is in place and runs
+  on demand (the `macos` workflow, `workflow_dispatch`).
 
 ✨ `waiter serv -Pro KEY -K ADMIN_KEY -L LEVEL`: an administrator grants a key an
   access level, 1-9, and gets back the key spelled at that level. With
@@ -83,6 +106,14 @@ Historical wording and technical detail are retained during format normalization
   neither exists, those settings are refused, never skipped.
   See `wiki/CLI.md#sandbox--sb`.
 
+### Security
+
+🔒 A T2 key's stated access level is now held to the level the server granted it.
+  The level is the key's last character and the server took it at its word, so
+  a holder could rewrite `-1` as `-9`. The grant is the key's recorded
+  `access_level` (gkey already wrote it); a key with none recorded keeps the
+  level it states, as before.
+
 ### Dependencies and Packaging
 
 📦 Building hypernix no longer warns, and keeps building after 2027-02-18.
@@ -93,14 +124,6 @@ Historical wording and technical detail are retained during format normalization
   `pyproject.toml` on every build ("install_requires overwritten"), and the
   ignored copy had drifted (`rich==15.0.0` against `>14,<=15`, three extras
   missing). The wheel's dependencies are unchanged.
-
-### Security
-
-🔒 A T2 key's stated access level is now held to the level the server granted it.
-  The level is the key's last character and the server took it at its word, so
-  a holder could rewrite `-1` as `-9`. The grant is the key's recorded
-  `access_level` (gkey already wrote it); a key with none recorded keeps the
-  level it states, as before.
 
 ### Tests
 

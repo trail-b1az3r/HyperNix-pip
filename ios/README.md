@@ -161,10 +161,14 @@ secrets. Three ways to install it:
 * **An Apple Developer account** — set the repository secrets listed
   below and CI produces a properly signed, distributable build.
 
-## On a Mac (0.73.0)
+## On a Mac (paused until 0.73.2)
 
-Each release also carries HyperLink for the Mac: the same app built with
-Mac Catalyst, for macOS 15 or newer.
+> **Paused until 0.73.2.** Releases do not include the DMGs yet. The build
+> below is in place and can be run by hand (the `macos` workflow, or
+> `ios/scripts/make_macos_dmg.sh` on a Mac).
+
+From 0.73.2, each release also carries HyperLink for the Mac: the same app
+built with Mac Catalyst, for macOS 15 or newer.
 
 * `HyperLink-<version>-macos-apple-silicon.dmg` — M-series Macs
 * `HyperLink-<version>-macos-intel.dmg` — Intel Macs

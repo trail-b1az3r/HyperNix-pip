@@ -5,8 +5,11 @@ mountable into any Python server. The client requests an operation; the
 server decides what exists, what's available, and how much is left — see
 [Design principle](#design-principle).
 
-**Status: T1 v1.1.26.10.2.0** (long form `1.1.2026.10.2.0`) in
-`0.72.8.post2`: the 1.1 generation, which began with T1 v1.1.26.9.0.0 in
+**Status: T1 v1.2.26.11.0.0** (long form `1.2.2026.11.0.0`) in
+`0.73.0.dev1` (pre-alpha 1): the 1.2 generation. It is new because
+`/web/v1` was removed (it answers `410` with its `/web/v2` successor),
+and it adds [ATC](#atc-api-traffic-control), with end-to-end encryption.
+Before it came the 1.1 generation, which began with T1 v1.1.26.9.0.0 in
 `0.72.5.post15`, plus [web search v2](#web-search-v2),
 [signed prompts](#signed-prompts-and-the-ping),
 [chats owned by an account or a key](#ownership),
@@ -1842,7 +1845,7 @@ and runs T1 v1.1.26.10.1.0 or newer sends one heartbeat an hour, unless
 `T1_PUBLIC_COUNTER=0`:
 
 ```json
-{"id": "<32 hex>", "t1_version": "1.1.26.10.2.0", "version": "0.72.8.post2"}
+{"id": "<32 hex>", "t1_version": "1.2.26.11.0.0", "version": "0.73.0.dev1"}
 ```
 
 `id` is a SHA-256 of a random value the server made once and keeps in

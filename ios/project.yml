@@ -204,7 +204,7 @@ targets:
         # by a test, because a stale default here is exactly what shipped
         # the wrong version before -- and a default nobody checks goes
         # stale the first time the T1 version moves.
-        MARKETING_VERSION: "1.1.26.10.2.0"
+        MARKETING_VERSION: "1.2.26.11.0.0"
         TARGETED_DEVICE_FAMILY: "1,2"
         # HyperLink for the Mac (0.73.0): the same app built with Mac
         # Catalyst -- ios/scripts/make_macos_dmg.sh, .github/workflows/

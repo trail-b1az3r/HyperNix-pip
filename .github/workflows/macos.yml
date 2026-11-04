@@ -12,11 +12,9 @@
 # say.
 name: macos
 
+# PAUSED until 0.73.2: no longer runs on pull requests, and the public
+# release does not call it. workflow_dispatch still builds on demand.
 on:
-  pull_request:
-    paths:
-      - "ios/**"
-      - ".github/workflows/macos.yml"
   workflow_dispatch:
     inputs:
       version:
