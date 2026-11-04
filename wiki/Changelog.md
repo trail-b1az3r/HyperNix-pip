@@ -35,6 +35,31 @@ Historical wording and technical detail are retained during format normalization
 
 > Format normalized to `wiki/Changelog-guide.md`; release wording and historical detail are preserved.
 
+## Unreleased
+
+### Added
+
+✨ `waiter serv -Pro KEY -K ADMIN_KEY -L LEVEL`: an administrator grants a key an
+  access level, 1-9, and gets back the key spelled at that level. With
+  `-Pro`, `-L` takes the level; on its own it is still `--local-only`.
+  Server side: `POST /auth/t1/admin/access-level` (admin only), recorded as a
+  reversible `level_change` (`POST /t1/auth/undo`), and
+  `T1Client.admin_set_access_level()` in the SDK.
+
+### Security
+
+🔒 A T2 key's stated access level is now held to the level the server granted it.
+  The level is the key's last character and the server took it at its word, so
+  a holder could rewrite `-1` as `-9`. The grant is the key's recorded
+  `access_level` (gkey already wrote it); a key with none recorded keeps the
+  level it states, as before.
+
+### Tests
+
+🧪 `tests/t1api/test_key_promotion.py`: the command line, a rewritten suffix
+  buying nothing, promotion and its new spelling, admin-only, undo, and
+  `waiter serv -Pro` end to end.
+
 ## 0.72.8.post2 — patch 2 - `hnx-t1 runner start` loads the model again
 
 ### Fixed

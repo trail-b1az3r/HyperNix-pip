@@ -797,6 +797,30 @@ class Keymaster:
         logger.info("keymaster: set scopes of %s", key_id[:8])
         return meta
 
+    def set_access_level(self, key_id: str, level: int | None) -> KeyMeta:
+        """Grant a key an access level (1-9), or clear it with ``None``.
+
+        The level a T2 key states in its own suffix is only a claim: this
+        is the server's record of what the key was granted, and the
+        authenticator holds a presented level to it. Reverses a level
+        change.
+        """
+        if level is not None and not 1 <= int(level) <= 9:
+            raise ValueError(f"Access level must be 1-9, got {level!r}")
+        with self._lock:
+            meta = self._keys.get(key_id)
+            if meta is None:
+                raise KeyError(f"Key not found: {key_id!r}")
+            tags = dict(meta.tags or {})
+            if level is None:
+                tags.pop("access_level", None)
+            else:
+                tags["access_level"] = str(int(level))
+            meta.tags = tags
+        self._save(meta)
+        logger.info("keymaster: set access level of %s to %s", key_id[:8], level)
+        return meta
+
     def set_server_id(self, key_id: str, server_id: str) -> KeyMeta:
         """Move a key to a different V1 Server ID.
 

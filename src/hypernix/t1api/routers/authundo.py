@@ -164,6 +164,17 @@ def _applier(request: Request):
             directory.assign_plan(entry.target_key_id, target)
             return
 
+        if entry.op is AuthOp.LEVEL_CHANGE:
+            target = payload["previous_level"] if want_previous else payload["new_level"]
+            if keymaster is None or not hasattr(keymaster, "set_access_level"):
+                raise T1APIError(
+                    T1ErrorCode.NOT_SUPPORTED,
+                    "This server's Keymaster cannot change a key's access level in place.",
+                    http_status=501,
+                )
+            keymaster.set_access_level(entry.target_key_id, target)
+            return
+
         raise T1APIError(
             T1ErrorCode.NOT_SUPPORTED, f"No reverser for {entry.op.value}", http_status=501
         )

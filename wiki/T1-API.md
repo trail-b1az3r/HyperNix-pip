@@ -622,6 +622,31 @@ consistent with how `Keymaster.rotate()` already treats rotation as
 "replace, don't mutate") and, if `promote_to_admin: true`, reissues it as
 `KeyType.ADMIN`.
 
+### Access levels and promotion (0.72.9)
+
+A T2 key states its access level (1-9) in its last character, `…-5`.
+That is the holder's claim. The grant is the key's record on the server
+(its `access_level` tag, written by `gkey create --level N`), and a
+presented level is held to it: rewriting `-1` as `-9` authenticates at
+level 1. A key with no recorded level keeps the level it states, as
+before.
+
+`POST /auth/t1/admin/access-level` (admin only) changes the grant:
+
+```json
+{"key": "T2_…-2", "access_level": 7}
+```
+
+It answers with `previous_level` and the key spelled at its new level
+(`"key": "T2_…-7"`), which is the spelling its holder uses from then on.
+A T1 key is given its T2 spelling; a T2C key is refused (its level is
+sealed on its device record). It is recorded as a `level_change` and can
+be undone. From the command line:
+
+```bash
+waiter serv -Pro "T2_…-2" -K "<admin key>" -L 7
+```
+
 ### Undoing an authentication change
 
 ```
@@ -2060,6 +2085,7 @@ All responses include `request_id`. Errors use the envelope shown in
 | POST | `/auth/token` | none (key in body) | exchange a key for a scoped token |
 | POST | `/auth/t1/rotate` | bearer | rotate the caller's own key |
 | POST | `/auth/t1/admin/rotate` | bearer, admin | rotate/promote another key |
+| POST | `/auth/t1/admin/access-level` | bearer, admin | grant a key an access level, 1-9 (`waiter serv -Pro`) |
 | GET | `/models` | none | list registry entries |
 | GET | `/models/{model_id}` | none | full entry detail |
 | GET | `/models/{model_id}/availability` | none | registry-level availability |
