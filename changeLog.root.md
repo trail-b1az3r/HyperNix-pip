@@ -1,6 +1,15 @@
 ### non web and non python package and non hyperlink changelog here (mainly for security issues and breaking changes)
 ### empty as of public release of 0.72.7.post1
 
+## 0.72.8.post2
+
+<details>
+<summary>0.72.8.post2 — In-development bug-fix log</summary>
+
+- Dependencies reviewed across the repository: Python (pyproject.toml, setup.cfg), npm (docs/), Bun (hyped-pro, tvtop-max). Unchanged.
+
+</details>
+
 ## 0.72.8.post1
 
 <details>

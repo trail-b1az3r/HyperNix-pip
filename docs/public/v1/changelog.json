@@ -3,6 +3,44 @@
   "source": "wiki/Changelog.md",
   "entries": [
     {
+      "version": "0.72.8.post2",
+      "key": "0.72.8.post2",
+      "aliases": [
+        "0.72.8-post2",
+        "0.72.8.post2"
+      ],
+      "kind": "post",
+      "heading": "0.72.8.post2 \u2014 patch 2 - `hnx-t1 runner start` loads the model again",
+      "date": "",
+      "title": "patch 2 - hnx-t1 runner start loads the model again",
+      "summary": "hnx-t1 runner start loads the model again",
+      "patch": 2,
+      "headline": "hnx-t1 runner start loads the model again",
+      "highlights": [
+        "Fixed hnx-t1 runner start (a named model or the interactive pick) not loading a model on llama.cpp. The runner started llama-server with its output on a pipe that nothing read until a load had already failed. llama-server logs every tensor it loads -- hundreds of kilobytes for\u2026",
+        "tests/hyperlink/test_runner_output_drained.py: a stand-in server that logs 400 KB while loading comes up (it timed out before), and a failed load still reports the server's last words."
+      ],
+      "changes": [
+        {
+          "symbol": "\ud81a\udca5",
+          "label": "major fix",
+          "category": "Fixed",
+          "text": "Fixed hnx-t1 runner start (a named model or the interactive pick) not loading a model on llama.cpp. The runner started llama-server with its output on a pipe that nothing read until a load had already failed. llama-server logs every tensor it loads -- hundreds of kilobytes for\u2026",
+          "details": [
+            "The output of every server the runner starts (llama.cpp, a multilama fork, a native HyperNix model) is now read as it is written, keeping the last 400 lines for the error a failed load reports.",
+            "Native HyperNix models were not affected: their server says little."
+          ]
+        },
+        {
+          "symbol": "\ud83e\uddea",
+          "label": "tests",
+          "category": "Tests",
+          "text": "tests/hyperlink/test_runner_output_drained.py: a stand-in server that logs 400 KB while loading comes up (it timed out before), and a failed load still reports the server's last words.",
+          "details": []
+        }
+      ]
+    },
+    {
       "version": "0.72.8.post1",
       "key": "0.72.8.post1",
       "aliases": [
@@ -618,106 +656,7 @@
         "A T1 API reference on the website (#/t1-api): an overview and quickstart; every endpoint from the server's OpenAPI document, grouped and searchable, with parameters, body fields and a curl line; every setting from .env.example; the T1 error codes; and the source-generated\u2026",
         "A multi-line graph of downloads on the Stats page: daily downloads as lines (the total and with mirrors, or by Python version or operating system) over 30, 90, 180 days or everything, daily or as a 7-day average, with a crosshair tooltip, a legend that hides lines and a table\u2026"
       ],
-      "changes": [
-        {
-          "symbol": "\u0e4b\u08ed\u2b51",
-          "label": "major",
-          "category": "Added",
-          "text": "hnx-t1 setup: the T1 interactive installer, b1. Written in Python, so it runs from a pip install as well as a checkout. It asks about the server (name, who can reach it, port, a public URL), access (keyless trusted networks, request limits), models (the runner, LM Studio, the\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "hnx-t1 upgrade -S env|venv|all chooses what to upgrade. venv is HyperNix in the server's Python, as before and by default. env is the server's .env: every setting this version has that the file lacks is added commented out at its default with a line on what it does, a missing\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "hnx list-all: every command in one list \u2014 hnx's main menu, hnx extra, the other spellings hnx runs, every hnx-t1 command, and every other console script, with aliases grouped. Filter by words, --section, --json.",
-          "details": []
-        },
-        {
-          "symbol": "\u0e4b\u08ed\u2b51",
-          "label": "major",
-          "category": "Added",
-          "text": "The website's docs, remade like PyTorch's and Hyprland's. Grouped pages down the left, the page in the middle, \"On this page\" down the right with the section being read highlighted, breadcrumbs, previous/next, and Ctrl+K search across titles, headings and every page's full\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "A T1 API reference on the website (#/t1-api): an overview and quickstart; every endpoint from the server's OpenAPI document, grouped and searchable, with parameters, body fields and a curl line; every setting from .env.example; the T1 error codes; and the source-generated\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "A multi-line graph of downloads on the Stats page: daily downloads as lines (the total and with mirrors, or by Python version or operating system) over 30, 90, 180 days or everything, daily or as a 7-day average, with a crosshair tooltip, a legend that hides lines and a table\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\u2728",
-          "label": "feature",
-          "category": "Added",
-          "text": "More error codes, and hyped-pro's moved into them. hyped-pro's own names (HPC-\u2026, HPB-\u2026, HPG-\u2026, HPO-\u2026, HPT-\u2026, TOOL-\u2026, 72 in all) are registered codes in domain I now, and the old names are aliases: hypernix errors explain HPC-CFG-001 says it is I2-02250.a3, and the bridge sends\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\ud81a\udd54",
-          "label": "minor",
-          "category": "Added",
-          "text": "hypernix errors aliases lists the old names; wiki/Error-Codes.md is generated from the registry.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udd01",
-          "label": "refactor",
-          "category": "Changed",
-          "text": "hyped-pro raises registered codes: HypedProError and ToolError carry code (registered) and legacy_code (the name before), and the bridge's failure lines have both.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udc1b",
-          "label": "fix",
-          "category": "Fixed",
-          "text": "hypernix-t1 launch-script failures name their code (S1-02070.a3, or S1-04070.d3 when systemd refused).",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udcda",
-          "label": "docs",
-          "category": "Documentation",
-          "text": "[CLI](CLI.md): list-all, hypernix-t1 setup, upgrade -S; [T1-API](T1-API.md): the quickstart starts with hnx-t1 setup; [Error codes](Error-Codes.md) (new, generated); examples/t1api and docs/README.md.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83e\uddea",
-          "label": "tests",
-          "category": "Tests",
-          "text": "hyped-pro's codes and their aliases, every sandbox refusal having a code, the error page being current, list-all against the CLI, the T1 dispatcher and pyproject.toml, setup (defaults, answers files, refusals, re-runs keeping the secret, the manager running it) and upgrade -S\u2026",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udec8",
-          "label": "caveat",
-          "category": "Caveats",
-          "text": "The new website pages were checked in Chromium at desktop and phone widths, not in Safari or Firefox.",
-          "details": []
-        },
-        {
-          "symbol": "\ud83d\udec8",
-          "label": "caveat",
-          "category": "Caveats",
-          "text": "hyped-pro's OpenTUI app's tests need Bun, which the build environment does not have; its code changes are string constants.",
-          "details": []
-        }
-      ]
+      "changes": []
     },
     {
       "version": "0.72.8a3",
