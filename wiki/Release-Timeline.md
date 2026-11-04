@@ -1197,3 +1197,18 @@ timeline
         : 8536b10e - chore- refresh generated docs data and release summaries
 ```
 
+## Release v0.72.8.post2 (2026-11-04)
+
+```mermaid
+timeline
+    title Release v0.72.8.post2 Commits
+    0.72.8.post2
+        : 451f2d28 - chore- refresh generated docs data and release summaries
+        : 208c600f - Auto-update README header (hourly)
+        : 978e3cfa - 0.72.8.post2- hnx-t1 runner start loads the model again
+        : 42ed2e1b - chore- refresh generated docs data and release summaries
+        : c9d08f3d - Auto-update README header (hourly)
+        : 6c05708a - chore- update JSON stats (scheduled)
+        : bcdad140 - chore- refresh generated docs data and release summaries
+```
+
