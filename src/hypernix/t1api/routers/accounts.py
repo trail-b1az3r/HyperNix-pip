@@ -41,7 +41,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, Request, Response
 from fastapi.responses import HTMLResponse, JSONResponse
 
-from ..accounts import Account, AccountError, AccountStore, Session
+from ..accounts import Account, AccountError, AccountStore, Session, default_permissions_from_env
 from ..errors import T1APIError, T1ErrorCode
 from ..webauth import (
     CSRF_HEADER,
@@ -338,11 +338,9 @@ async def mint_key(
         )
     body = await request.json() if await request.body() else {}
 
-    # A self-service key gets read and write, never admin. An account can
-    # be created by anyone the registration policy lets in, and "anyone
-    # who can sign up can mint an admin key" would make the policy the
-    # only thing between a stranger and the whole API.
-    scopes = {KeyScope.READ, KeyScope.WRITE}
+    # T1_ACCOUNTS_DEFAULT_PERMISSIONS (read,write unless it says
+    # otherwise), and never admin: see accounts.default_permissions_from_env.
+    scopes = {KeyScope(name) for name in default_permissions_from_env()}
     meta = keymaster.create(
         key_type=KeyType.USER,
         scopes=scopes,

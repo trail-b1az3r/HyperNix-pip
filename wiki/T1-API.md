@@ -1656,6 +1656,14 @@ one purpose is minting and revoking its own T1 keys (`/accounts/keys`),
 whose material is shown once; a keyless caller never gets administrator
 rights in any mode.
 
+What those keys may do is `T1_ACCOUNTS_DEFAULT_PERMISSIONS`:
+comma-separated scopes, `read,write` when unset. `read` makes every
+account read-only; `read,write,plugin` adds plugins. `admin` is never
+given to an account's key whatever the variable says (mint admin keys with
+`gkey`), an unknown name is left out with a warning in the log, and a
+value that leaves nothing usable falls back to `read,write`. It applies to
+keys minted from then on; existing keys keep their scopes.
+
 ## MCP
 
 The server's models, runner, hardware and version, described over the
@@ -2971,6 +2979,7 @@ their row says otherwise.
 | `T1_ACCOUNTS_ORIGINS` | — | more origins the forms accept, comma-separated |
 | `T1_ACCOUNTS_REGISTRATION` | `closed` | `open`, `invite`, `first-user` or `closed` |
 | `T1_ACCOUNTS_INVITE_CODES` | — | comma-separated, for `invite` |
+| `T1_ACCOUNTS_DEFAULT_PERMISSIONS` | `read,write` | the scopes of keys an account mints: `read`, `write`, `plugin`, `service`; never `admin` |
 
 Read by the tools around the server rather than the server itself:
 

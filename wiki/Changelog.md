@@ -46,6 +46,12 @@ Historical wording and technical detail are retained during format normalization
   reversible `level_change` (`POST /t1/auth/undo`), and
   `T1Client.admin_set_access_level()` in the SDK.
 
+✨ `T1_ACCOUNTS_DEFAULT_PERMISSIONS`: what keys minted from a T1 account page may
+  do, as comma-separated scopes (`read`, `write`, `plugin`, `service`).
+  Unset is `read,write`, as before; `read` makes every account read-only.
+  `admin` is never given whatever it says, unknown names are left out with a
+  warning, and a value that leaves nothing usable falls back to the default.
+
 ### Security
 
 🔒 A T2 key's stated access level is now held to the level the server granted it.
@@ -59,6 +65,10 @@ Historical wording and technical detail are retained during format normalization
 🧪 `tests/t1api/test_key_promotion.py`: the command line, a rewritten suffix
   buying nothing, promotion and its new spelling, admin-only, undo, and
   `waiter serv -Pro` end to end.
+
+🧪 `tests/t1api/test_t1_accounts.py`: account keys get the variable's scopes (the
+  server's record, not only the reply), `admin` is refused, and bad values
+  are left out or fall back.
 
 ## 0.72.8.post2 — patch 2 - `hnx-t1 runner start` loads the model again
 
