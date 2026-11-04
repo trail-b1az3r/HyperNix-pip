@@ -468,6 +468,14 @@ jobs:
             echo ""
             echo "No IPA attached means the app build did not run this time; the"
             echo "Python package is unaffected."
+            echo ""
+            echo "**On a Mac:** \`HyperLink-*-macos-apple-silicon.dmg\` (M-series) or"
+            echo "\`HyperLink-*-macos-intel.dmg\` — the same app, built with Mac"
+            echo "Catalyst, for macOS 15 or newer. It is ad hoc signed, not notarised:"
+            echo "the first time, Control-click the app and choose **Open** (or System"
+            echo "Settings > Privacy & Security > Open Anyway). Verify it against"
+            echo "\`SHA256SUMS.macos\`. On-device models are iPhone-only; on a Mac, run"
+            echo "the HyperNix server."
           } > CHANGELOG_FRAGMENT.md
           echo "--- fragment ---"
           cat CHANGELOG_FRAGMENT.md
@@ -884,9 +892,25 @@ jobs:
       IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
       IOS_EXPORT_METHOD: ${{ secrets.IOS_EXPORT_METHOD }}
 
+  # HyperLink for the Mac (0.73.0): an Apple-silicon and an Intel .dmg,
+  # built with Mac Catalyst. Like the IPA, a bonus attachment: a missing
+  # DMG never holds the release.
+  hyperlink-dmg:
+    name: HyperLink DMG
+    needs: [cut]
+    if: >-
+      always() &&
+      needs.cut.result == 'success' &&
+      !inputs.dry_run &&
+      !inputs.skip_hyperlink &&
+      needs.cut.outputs.tag != 'nightly'
+    uses: ./.github/workflows/macos.yml
+    with:
+      version: ""
+
   github-release:
     name: GitHub Release
-    needs: [plan, cut, integration-api, integration-ios, hyperlink-ipa]
+    needs: [plan, cut, integration-api, integration-ios, hyperlink-ipa, hyperlink-dmg]
     if: >-
       always() &&
       needs.cut.result == 'success' &&
@@ -915,10 +939,29 @@ jobs:
           path: dist/ios
         continue-on-error: true
 
+      - name: Download the HyperLink DMGs
+        if: needs.hyperlink-dmg.result == 'success'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: hyperlink-macos-*
+          path: dist/macos
+          merge-multiple: true
+        continue-on-error: true
+
+      # Each architecture's job wrote its own SHA256SUMS.macos; merging the
+      # artifacts keeps only one, so the sums are worked out again here.
+      - name: Checksum the DMGs
+        run: |
+          set -euo pipefail
+          if ls dist/macos/*.dmg >/dev/null 2>&1; then
+            (cd dist/macos && rm -f SHA256SUMS.macos && sha256sum ./*.dmg | sed 's# \./# #' > SHA256SUMS.macos)
+          fi
+
       - name: Show artifacts
         run: |
           ls -lah dist/
           ls -lah dist/ios/ 2>/dev/null || echo "(no iOS artifact this run)"
+          ls -lah dist/macos/ 2>/dev/null || echo "(no macOS artifact this run)"
 
       # The nightly release is replaced rather than added to: its files
       # have a new version in their names every night, and updating it
@@ -946,6 +989,8 @@ jobs:
             dist/SHA256SUMS
             dist/ios/*.ipa
             dist/ios/SHA256SUMS.ios
+            dist/macos/*.dmg
+            dist/macos/SHA256SUMS.macos
 
   # ---------------------------------------------------------------------------
   # Publish stable tags to real PyPI via Trusted Publishing (OIDC).
