@@ -133,6 +133,7 @@ _SUBCOMMANDS = {
     # 0.73.0
     "sandbox",
     "sb",
+    "strife",
 }
 
 
@@ -260,6 +261,7 @@ _MAIN_MENU: tuple[tuple[str, str], ...] = (
     ("wakeup", "wake-word detection: train a trigger phrase, then listen for it"),
     ("hyprslug-headers", "self-describing GGUF headers + the OpenAI-compatible sub-bit server"),
     ("extra", "more commands: neuron, pipeline, assistant, generate, wiki, prot, oven, ..."),
+    ("strife", "Strife: HyperNix's own GGUF runtime (inspect, run, chat, diag)"),
     ("sandbox", "run a command shut in one directory: no web, no writes outside it (also: sb)"),
     ("list-all", "every command: hnx, hnx extra, hnx-t1, and every other HyperNix command"),
 )
@@ -1556,6 +1558,10 @@ def _dispatch(cmd: str, rest: list[str]) -> int:
     if cmd == "extra":
         _print_extra()
         return 0
+    if cmd == "strife":
+        from hypernix.strife.cli import cli_main as _strife_main
+
+        return _strife_main(rest)
     if cmd in ("sandbox", "sb"):
         from hypernix.interfaces.sandbox import cli_main as _sandbox_main
 

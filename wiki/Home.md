@@ -19,6 +19,7 @@ reachable if you already knew the filename. Fixed.)
 | [HyperNix Studio](../desktop/README.md) | The Qt desktop client: models, chat, a workspace the model may edit, and why it cannot run a command. |
 | [ggml-hnx](../native/ggml-hnx/README.md) | Building a llama.cpp that reads every HyperNix type (sub-bit, codebook, FP8) and runs Q8_K weights. |
 | [Runtime](Runtime.md) | `hypernix runtime` — using that llama.cpp from LM Studio and other applications. |
+| [Strife](Strife.md) | HyperNix's own GGUF inference runtime (`hnx strife`): inspection, tokenizer, CPU forward pass, sessions and streaming, the capability matrix and what is not there yet. 0.73.0 alpha 1, in progress. |
 | [llama-easy](Llama-Easy.md) | Make any Llama model faster in one line: the Hugging Face Hub kernel (Triton RMSNorm, RoPE, SwiGLU), its three ways in, and how it auto-publishes. |
 | [Context relay](Context-Relay.md) | Prompts longer than a model's context, read in hops by several small-context instances — in Python and as `POST /inference/relay`, with its cost. |
 | [Browser Agent](Browser-Agent.md) | The Firefox extension: a model on T1, your machine, OpenAI or Anthropic searches, reads, clicks and types in your browser, asking first. |

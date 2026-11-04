@@ -35,6 +35,42 @@ Historical wording and technical detail are retained during format normalization
 
 > Format normalized to `wiki/Changelog-guide.md`; release wording and historical detail are preserved.
 
+## Unreleased
+
+### Added
+
+✨ **Strife** (in progress for 0.73.0 alpha 1): HyperNix's own GGUF inference
+  runtime, `hnx strife` and `hypernix.strife`. It reads the GGUF and runs
+  the model itself: no llama.cpp process, no T1 key, no network.
+  - llama, mistral, qwen2 and qwen3;
+  - every llama.cpp K-quant and legacy type, and every HyperNix sub-bit and
+    low-bit type;
+  - the GGUF's own tokenizer (BPE or SentencePiece) and chat template,
+    sandboxed;
+  - sessions that reuse their prefix, streaming, stop strings, cancellation,
+    timeouts, and bounded queues and caches.
+
+  `inspect` checks a file before loading anything. `diag` reports hardware
+  and placement. Alpha 1 computes on the CPU with numpy; GPU offload, native
+  kernels and the benchmark are next. See `wiki/Strife.md`.
+
+### Security
+
+🔒 The GGUF reader checks every length against the bytes actually left in the
+  file before reading. A 40-byte file claiming a 16 GB array used to make
+  `read()` try to allocate 16 GB; it is now refused as truncated. Every user
+  of `hypernix.quant.gguf` benefits.
+
+### Tests
+
+🧪 `tests/strife/test_strife.py` (66 tests):
+  - logits against `transformers` for every architecture and every
+    supported quant type;
+  - the BPE tokenizer against the `tokenizers` library;
+  - hostile and damaged files;
+  - streaming, stops, cancellation, timeouts, session isolation and bounds;
+  - placement and the CLI.
+
 ## 0.73.0.dev1 — 2026-11-04
 
 Pre-alpha 1: the first pre-alpha of 0.73.0, and T1 **v1.2.26.11.0.0**: a new T1

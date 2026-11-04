@@ -142,6 +142,23 @@ installs (`waiter`, `gkey`, `hyprslug` and its other names, `tvtop-max`,
 appears without an edit. The suggestions `hnx` prints after a typo
 (`dl`, `quantise`) do not run, so they are not listed.
 
+## `strife`
+
+```bash
+hnx strife inspect model.gguf         # what it is, and whether Strife runs it
+hnx strife run model.gguf -p "Hi" -n 64
+hnx strife chat model.gguf
+hnx strife diag model.gguf            # hardware, backend, placement
+hnx strife types | selftest
+```
+
+New in 0.73.0 alpha 1 (in progress). Strife is HyperNix's own GGUF
+runtime: it reads the file and runs the model itself, with no llama.cpp
+process, no T1 key and no network. It runs llama, mistral, qwen2 and
+qwen3 on the CPU today, with every llama.cpp K-quant and the HyperNix
+sub-bit types. GPU offload and native kernels are next. See
+[Strife](Strife.md) for the capability matrix and what is not there yet.
+
 ## `sandbox` / `sb`
 
 ```bash
