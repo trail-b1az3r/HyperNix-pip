@@ -117,7 +117,7 @@ def _cli_tables():
 
 #: Subcommands that are another spelling of one in a menu.
 _SPELLINGS = {"fllq": "fetch-llama-quantize", "fiz": "fizzle", "camouflage": "camo",
-              "protect": "prot", "fuse-box": "fusebox"}
+              "protect": "prot", "fuse-box": "fusebox", "sb": "sandbox"}
 
 
 def _hnx_commands() -> list[Command]:

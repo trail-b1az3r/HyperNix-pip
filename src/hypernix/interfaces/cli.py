@@ -130,6 +130,9 @@ _SUBCOMMANDS = {
     "claude",
     # 0.72.8a4
     "list-all",
+    # 0.73.0
+    "sandbox",
+    "sb",
 }
 
 
@@ -257,6 +260,7 @@ _MAIN_MENU: tuple[tuple[str, str], ...] = (
     ("wakeup", "wake-word detection: train a trigger phrase, then listen for it"),
     ("hyprslug-headers", "self-describing GGUF headers + the OpenAI-compatible sub-bit server"),
     ("extra", "more commands: neuron, pipeline, assistant, generate, wiki, prot, oven, ..."),
+    ("sandbox", "run a command shut in one directory: no web, no writes outside it (also: sb)"),
     ("list-all", "every command: hnx, hnx extra, hnx-t1, and every other HyperNix command"),
 )
 
@@ -280,7 +284,7 @@ _EXTRA_MENU: tuple[tuple[str, str], ...] = (
     ("scavenger", "search + size Hugging Face datasets under storage/quality budgets"),
 )
 
-_ALSO_ACCEPTED = "fllq (fetch-llama-quantize) · fiz (fizzle) · camouflage (camo) · protect (prot) · fuse-box (fusebox)"
+_ALSO_ACCEPTED = "fllq (fetch-llama-quantize) · fiz (fizzle) · camouflage (camo) · protect (prot) · fuse-box (fusebox) · sb (sandbox)"
 
 
 def _print_menu(title_text: str, rows: tuple[tuple[str, str], ...], footer: str) -> None:
@@ -1448,7 +1452,7 @@ def main(argv: list[str] | None = None) -> int:
     # Python 3.15+ gets torch from the shim, not from pip's dependency
     # resolution (see hypernix.system.torch_shim): the first real command
     # that finds it missing installs it. --help never downloads PyTorch.
-    if raw[0] not in ("doctor", "list-all", "errors", "wiki", "path") and not (
+    if raw[0] not in ("doctor", "list-all", "errors", "wiki", "path", "sandbox", "sb") and not (
         {"-h", "--help"} & set(raw)
     ):
         from hypernix.system.torch_shim import auto as _torch_shim
@@ -1552,6 +1556,10 @@ def _dispatch(cmd: str, rest: list[str]) -> int:
     if cmd == "extra":
         _print_extra()
         return 0
+    if cmd in ("sandbox", "sb"):
+        from hypernix.interfaces.sandbox import cli_main as _sandbox_main
+
+        return _sandbox_main(rest)
     if cmd == "list-all":
         from hypernix.interfaces.list_all import cli_main as _list_all_main
 

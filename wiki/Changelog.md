@@ -68,6 +68,21 @@ Historical wording and technical detail are retained during format normalization
   still stream. Replays are refused. `T1_ATC_E2E_REQUIRED=1` makes other
   machines use the tunnel. The client is `hypernix.atc.client.ATCTunnel`.
 
+✨ `hnx sandbox DIR` (or `hnx sb`): runs a command, or your shell, shut inside one
+  directory. `-s` changes the settings and keeps them for that directory
+  (`-s` alone asks for each one):
+  - web access (`no-web`);
+  - file editing and creation: only in the directory, or nowhere with
+    `no-write`;
+  - a private `/tmp`;
+  - a hidden home folder;
+  - secret-looking environment variables left out;
+  - a timeout, memory, CPU and file-size limits.
+
+  Enforced by Linux namespaces (`unshare`) or macOS `sandbox-exec`. Where
+  neither exists, those settings are refused, never skipped.
+  See `wiki/CLI.md#sandbox--sb`.
+
 ### Dependencies and Packaging
 
 📦 Building hypernix no longer warns, and keeps building after 2027-02-18.
@@ -96,6 +111,12 @@ Historical wording and technical detail are retained during format normalization
 🧪 `tests/t1api/test_t1_accounts.py`: account keys get the variable's scopes (the
   server's record, not only the reply), `admin` is refused, and bad values
   are left out or fall back.
+
+🧪 `tests/interfaces/test_sandbox.py`: settings and saving, the macOS profile,
+  refusing without a sandbox, the timeout, `hnx sb` dispatch. Where the
+  machine allows user namespaces, real runs check four things: writes go
+  only into the directory, `no-write` changes nothing, `no-web` has no
+  network, and the home folder is hidden while the command keeps its own uid.
 
 🧪 `tests/atc/`: the shield, traffic limits, settings, the handshake and its
   signature, sealing, replays, tampered and truncated replies, and ATC in front
