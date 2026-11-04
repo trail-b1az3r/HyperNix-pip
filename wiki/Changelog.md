@@ -35,6 +35,29 @@ Historical wording and technical detail are retained during format normalization
 
 > Format normalized to `wiki/Changelog-guide.md`; release wording and historical detail are preserved.
 
+## 0.72.8.post2 — patch 2 - `hnx-t1 runner start` loads the model again
+
+### Fixed
+
+𖢥 Fixed `hnx-t1 runner start` (a named model or the interactive pick) not
+  loading a model on llama.cpp. The runner started llama-server with its
+  output on a pipe that nothing read until a load had already failed.
+  llama-server logs every tensor it loads -- hundreds of kilobytes for an
+  ordinary model -- and once the pipe's 64 KB filled it blocked on its
+  next write, mid-load, so `start` waited out its timeout on a model that
+  would never finish. A model that did load could freeze later the same
+  way on its request logs.
+  - The output of every server the runner starts (llama.cpp, a multilama
+    fork, a native HyperNix model) is now read as it is written, keeping
+    the last 400 lines for the error a failed load reports.
+  - Native HyperNix models were not affected: their server says little.
+
+### Tests
+
+🧪 `tests/hyperlink/test_runner_output_drained.py`: a stand-in server that logs
+  ~400 KB while loading comes up (it timed out before), and a failed load
+  still reports the server's last words.
+
 ## 0.72.8.post1 — patch 1 - HyperLink: a chat that cannot be started says why
 
 ### Fixed

@@ -42,6 +42,7 @@ import threading
 import time
 import urllib.error
 import urllib.request
+from collections import deque
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
@@ -111,6 +112,49 @@ def _fork_for(backend: str, verdict) -> str:
             f"{backend} backend cannot load it. Use --backend multilama, or auto."
         )
     return ""
+
+
+class _OutputTail:
+    """Reads a server's output as it is written, keeping the last lines.
+
+    llama-server logs every tensor it loads -- hundreds of kilobytes for
+    an ordinary model -- and its output went to a pipe nothing read until
+    a load had already failed. Past the pipe's 64 KB the server blocks on
+    its next write, mid-load: `runner start` waited out its timeout on a
+    model that never finished loading (0.72.8.post2), and one that did
+    load could freeze later on its request logs. Reading as it arrives
+    keeps the server writing; the tail is still what a failure reports.
+    """
+
+    def __init__(self, process: subprocess.Popen, keep: int = 400) -> None:
+        self._lines: deque[str] = deque(maxlen=keep)
+        self._thread = threading.Thread(
+            target=self._read, args=(getattr(process, "stdout", None),),
+            name="hnx-runner-output", daemon=True)
+        self._thread.start()
+
+    def _read(self, stream: Any) -> None:
+        if stream is None:
+            return
+        try:
+            for line in stream:
+                self._lines.append(line)
+        except (OSError, ValueError):  # the pipe closed under us: the process is gone
+            pass
+
+    def text(self, wait: float = 2.0) -> str:
+        """What was said so far, after up to *wait* seconds for the rest."""
+        self._thread.join(wait)
+        return "".join(self._lines)
+
+
+def _start_server(argv: list[str], **kwargs: Any) -> subprocess.Popen:
+    """Start a model server with its output drained (see :class:`_OutputTail`)."""
+    process = subprocess.Popen(  # noqa: S603 - argv list, never a shell
+        argv, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, **kwargs,
+    )
+    process.output_tail = _OutputTail(process)  # type: ignore[attr-defined]
+    return process
 
 
 def _with_offload(placement: Placement, offload: Offload) -> Placement:
@@ -593,13 +637,7 @@ class ManagedRunner:
         )
         logger.info("managed: starting %s", " ".join(argv))
         try:
-            process = subprocess.Popen(  # noqa: S603 - argv list, never a shell
-                argv,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-                env=_library_env(build.bin_dir),
-            )
+            process = _start_server(argv, env=_library_env(build.bin_dir))
         except OSError as exc:
             raise ManagedError(f"Could not start {argv[0]}: {exc}") from exc
 
@@ -662,10 +700,7 @@ class ManagedRunner:
                          alias=model_id or model_path.stem, extra=extra)
         logger.info("managed: starting %s", " ".join(argv))
         try:
-            process = subprocess.Popen(  # noqa: S603 - argv list, never a shell
-                argv, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
-                env=_library_env(Path(binary).parent),
-            )
+            process = _start_server(argv, env=_library_env(Path(binary).parent))
         except OSError as exc:
             raise ManagedError(f"Could not start {argv[0]}: {exc}") from exc
         record = ManagedModel(
@@ -733,9 +768,7 @@ class ManagedRunner:
             argv += ["--gpu-layers", str(int(gpu_layers))]
         logger.info("managed: starting %s", " ".join(argv))
         try:
-            process = subprocess.Popen(  # noqa: S603 - argv list, never a shell
-                argv, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
-            )
+            process = _start_server(argv)
         except OSError as exc:
             raise ManagedError(f"Could not start the HyperNix model server: {exc}") from exc
         record = ManagedModel(
@@ -813,7 +846,8 @@ class ManagedRunner:
             return ""
         try:
             process.terminate()
-            return process.stdout.read() or ""
+            tail = getattr(process, "output_tail", None)
+            return tail.text() if tail is not None else (process.stdout.read() or "")
         except Exception:  # noqa: BLE001
             return ""
 
