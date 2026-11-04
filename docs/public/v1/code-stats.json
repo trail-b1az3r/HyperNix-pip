@@ -1,7 +1,7 @@
 {
   "definition": "non-blank source lines across repository code roots: src, scripts, tests, examples, bin, native, docs/src",
-  "total_lines": 253185,
-  "code_files": 849,
+  "total_lines": 253281,
+  "code_files": 850,
   "top_files": [
     {
       "path": "src/hypernix/t1api/routers/hyperlink.py",
@@ -116,23 +116,23 @@
       "lines": 963
     },
     {
-      "path": "src/hypernix/training/train.py",
-      "lines": 957
+      "path": "src/hypernix/hyperlink/managed.py",
+      "lines": 959
     },
     {
-      "path": "src/hypernix/security/t2keys.py",
-      "lines": 954
+      "path": "src/hypernix/training/train.py",
+      "lines": 957
     }
   ],
   "contributors": [
     {
       "author": "Claude",
-      "additions": 247133,
-      "deletions": 18525,
-      "net": 228608,
-      "changes": 265658,
-      "commits": 298,
-      "files": 1721
+      "additions": 247276,
+      "deletions": 18545,
+      "net": 228731,
+      "changes": 265821,
+      "commits": 299,
+      "files": 1722
     },
     {
       "author": "minerofthesoal",
@@ -199,6 +199,6 @@
     }
   ],
   "history_available": true,
-  "commit": "208c600f423980c44cf948ca919c4b775ce8b575",
+  "commit": "789eb25eb5d8414c25b9f29a6ff1657eade7a0df",
   "generated_at": null
 }

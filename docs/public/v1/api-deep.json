@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-api-deep",
   "generated_at": "2026-09-20T21:20:57Z",
-  "commit": "208c600f423980c44cf948ca919c4b775ce8b575",
+  "commit": "789eb25eb5d8414c25b9f29a6ff1657eade7a0df",
   "history_available": true,
   "source_root": "src/hypernix",
   "modules": [
@@ -17,6 +17,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "978e3cfa",
+          "date": "2026-11-04",
+          "author": "Claude",
+          "subject": "0.72.8.post2: hnx-t1 runner start loads the model again",
+          "api_changes": []
+        },
         {
           "sha": "4911c36e",
           "date": "2026-11-03",
@@ -64,13 +71,6 @@
           "date": "2026-10-20",
           "author": "Claude",
           "subject": "c4: explode a model, measure its pieces, reap the best, sow a new one (0.72.8a2)",
-          "api_changes": []
-        },
-        {
-          "sha": "452dc767",
-          "date": "2026-10-20",
-          "author": "Claude",
-          "subject": "release: 0.72.8a1 -- signed prompts, web v2, multi-llama, new hybrids",
           "api_changes": []
         }
       ]
@@ -12406,21 +12406,21 @@
     {
       "module": "hypernix.hyperlink.managed",
       "source": "src/hypernix/hyperlink/managed.py",
-      "line_count": 933,
+      "line_count": 959,
       "summary": "hyperlink.managed \u2014 running a model without LM Studio.",
       "api": [
         {
           "kind": "function",
           "name": "fork_argv",
           "signature": "def fork_argvfork: str, binary: str | Path, model: Path, *, host: str, port: int, gpu_layers: int, context: int, alias: str, extra: tuple[str, ...] | list[str]=() -> list[str]",
-          "line": 127,
+          "line": 171,
           "doc": "The command line that starts a fork's server."
         },
         {
           "kind": "class",
           "name": "ManagedError",
           "signature": "class ManagedError",
-          "line": 173,
+          "line": 217,
           "doc": "A model could not be started, stopped, or asked about.",
           "methods": []
         },
@@ -12428,19 +12428,19 @@
           "kind": "class",
           "name": "Placement",
           "signature": "class Placement",
-          "line": 178,
+          "line": 222,
           "doc": "Where a model's weights are going to sit.",
           "methods": [
             {
               "name": "fully_offloaded",
               "signature": "def fully_offloadedself -> bool",
-              "line": 204,
+              "line": 248,
               "doc": ""
             },
             {
               "name": "to_dict",
               "signature": "def to_dictself -> dict[str, Any]",
-              "line": 207,
+              "line": 251,
               "doc": ""
             }
           ]
@@ -12449,26 +12449,26 @@
           "kind": "function",
           "name": "plan_placement",
           "signature": "def plan_placement*, file_bytes: int, total_layers: int=0, gpu_layers: int | None=None, backend: str='auto', context_length: int=0, vram_free: int | None=None, ram_free: int | None=None -> Placement",
-          "line": 278,
+          "line": 322,
           "doc": "Decide where the weights go."
         },
         {
           "kind": "class",
           "name": "ManagedModel",
           "signature": "class ManagedModel",
-          "line": 401,
+          "line": 445,
           "doc": "What is loaded right now.",
           "methods": [
             {
               "name": "supports_images",
               "signature": "def supports_imagesself -> bool",
-              "line": 420,
+              "line": 464,
               "doc": ""
             },
             {
               "name": "to_dict",
               "signature": "def to_dictself -> dict[str, Any]",
-              "line": 423,
+              "line": 467,
               "doc": ""
             }
           ]
@@ -12477,31 +12477,31 @@
           "kind": "class",
           "name": "ManagedRunner",
           "signature": "class ManagedRunner",
-          "line": 439,
+          "line": 483,
           "doc": "The llama.cpp server process this server owns.",
           "methods": [
             {
               "name": "current",
               "signature": "def currentself -> ManagedModel | None",
-              "line": 459,
+              "line": 503,
               "doc": "What is loaded, or None."
             },
             {
               "name": "base_url",
               "signature": "def base_urlself -> str",
-              "line": 480,
+              "line": 524,
               "doc": ""
             },
             {
               "name": "load",
               "signature": "def loadself, path: str | Path, *, model_id: str='', gpu_layers: int | None=None, backend: str='auto', context_length: int=0, total_layers: int=0, timeout: float=DEFAULT_START_TIMEOUT, mmproj: str | None=None, offload: Offload | None=None -> ManagedModel",
-              "line": 485,
+              "line": 529,
               "doc": "Start serving *path*, replacing whatever was running."
             },
             {
               "name": "unload",
               "signature": "def unloadself -> bool",
-              "line": 761,
+              "line": 794,
               "doc": "Stop whatever is running. True if something was."
             }
           ]
@@ -12510,55 +12510,55 @@
           "kind": "class",
           "name": "ManagedPool",
           "signature": "class ManagedPool",
-          "line": 826,
+          "line": 860,
           "doc": "N copies of one model, on N consecutive ports.",
           "methods": [
             {
               "name": "instances",
               "signature": "def instancesself -> int",
-              "line": 873,
+              "line": 907,
               "doc": ""
             },
             {
               "name": "ports",
               "signature": "def portsself -> list[int]",
-              "line": 877,
+              "line": 911,
               "doc": ""
             },
             {
               "name": "current",
               "signature": "def currentself -> ManagedModel | None",
-              "line": 881,
+              "line": 915,
               "doc": "What the pool is serving, from the first live instance."
             },
             {
               "name": "live",
               "signature": "def liveself -> list[ManagedRunner]",
-              "line": 890,
+              "line": 924,
               "doc": ""
             },
             {
               "name": "base_urls",
               "signature": "def base_urlsself -> list[str]",
-              "line": 894,
+              "line": 928,
               "doc": ""
             },
             {
               "name": "load",
               "signature": "def loadself, path: str | Path, **kwargs: Any -> list[ManagedModel]",
-              "line": 897,
+              "line": 931,
               "doc": "Start every instance on *path*, or leave none of them running."
             },
             {
               "name": "unload",
               "signature": "def unloadself -> bool",
-              "line": 922,
+              "line": 956,
               "doc": ""
             },
             {
               "name": "to_dict",
               "signature": "def to_dictself -> dict[str, Any]",
-              "line": 932,
+              "line": 966,
               "doc": ""
             }
           ]
@@ -12567,21 +12567,21 @@
           "kind": "function",
           "name": "allocate_ports",
           "signature": "def allocate_portsstart: int, count: int, *, avoid: Iterable[int]=(), ceiling: int=65535 -> list[int]",
-          "line": 979,
+          "line": 1013,
           "doc": "*count* ports from *start* upwards, skipping *avoid*."
         },
         {
           "kind": "function",
           "name": "brewed_cache_dir",
           "signature": "def brewed_cache_dir -> Path",
-          "line": 1011,
+          "line": 1045,
           "doc": "``<T1_CONFIG_DIR>/cache/brewed-gguf``: beside the server, not in the model."
         },
         {
           "kind": "function",
           "name": "brewed_gguf_for",
           "signature": "def brewed_gguf_forfolder: Path -> Path | None",
-          "line": 1019,
+          "line": 1053,
           "doc": "A GGUF of the brewed model in *folder* for llama.cpp, or ``None``."
         }
       ],
@@ -12592,6 +12592,34 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "978e3cfa",
+          "date": "2026-11-04",
+          "author": "Claude",
+          "subject": "0.72.8.post2: hnx-t1 runner start loads the model again",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class _OutputTail:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, process: subprocess.Popen, keep: int = 400) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _read(self, stream: Any) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def text(self, wait: float = 2.0) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _start_server(argv: list[str], **kwargs: Any) -> subprocess.Popen:"
+            }
+          ]
+        },
         {
           "sha": "802be03d",
           "date": "2026-10-28",
@@ -12680,18 +12708,6 @@
             {
               "kind": "added",
               "text": "def brewed_gguf_for(folder: Path) -> Path | None:"
-            }
-          ]
-        },
-        {
-          "sha": "1c244db8",
-          "date": "2026-09-26",
-          "author": "Claude",
-          "subject": "Runner: serve native HyperNix models; HyperNix.3-mini is the default",
-          "api_changes": [
-            {
-              "kind": "added",
-              "text": "def _load_brewed(self, folder: Path, *, model_id: str, backend: str,"
             }
           ]
         }
