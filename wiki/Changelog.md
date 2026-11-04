@@ -52,6 +52,22 @@ Historical wording and technical detail are retained during format normalization
   `admin` is never given whatever it says, unknown names are left out with a
   warning, and a value that leaves nothing usable falls back to the default.
 
+✨ ATC (API traffic control), `hypernix.atc`: the outermost layer of the T1 API,
+  on by default (`T1_ATC_ENABLED`). It jails addresses that probe for
+  `/.env`, `/wp-admin` and similar, guess keys or map the API, with times that
+  double on each repeat. It also enforces a body limit (`413`) and in-flight
+  limits per server and per client (`503`), gzips complete JSON and text
+  replies, and keeps per-route statistics. Admin routes: `GET /atc/status`,
+  `POST /atc/jail`, `POST /atc/release`. See `wiki/T1-API.md#atc-api-traffic-control`.
+
+✨ End-to-end encryption, `hypernix-atc/1`: `POST /atc/handshake`, an X25519
+  exchange signed by the server's T2C identity key, then `POST /atc/tunnel`.
+  The request (route, key, body) and the reply are sealed with
+  ChaCha20-Poly1305, so they stay private past wherever TLS ends: a proxy, a
+  tunnel, an inspection box. Replies are sealed frame by frame, so streams
+  still stream. Replays are refused. `T1_ATC_E2E_REQUIRED=1` makes other
+  machines use the tunnel. The client is `hypernix.atc.client.ATCTunnel`.
+
 ### Dependencies and Packaging
 
 📦 Building hypernix no longer warns, and keeps building after 2027-02-18.
@@ -80,6 +96,11 @@ Historical wording and technical detail are retained during format normalization
 🧪 `tests/t1api/test_t1_accounts.py`: account keys get the variable's scopes (the
   server's record, not only the reply), `admin` is refused, and bad values
   are left out or fall back.
+
+🧪 `tests/atc/`: the shield, traffic limits, settings, the handshake and its
+  signature, sealing, replays, tampered and truncated replies, and ATC in front
+  of a real app: the jail, probes, `413`, gzip, the admin routes, and requests
+  through `ATCTunnel` that leave no key on the wire.
 
 ## 0.72.8.post2 — patch 2 - `hnx-t1 runner start` loads the model again
 

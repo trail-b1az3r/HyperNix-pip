@@ -48,6 +48,7 @@ could never derive one from `0.71.5rc2`. See
 - [Billing](#billing)
 - [Cost, estimates, and forecasts](#cost-estimates-and-forecasts)
 - [Audit log](#audit-log)
+- [ATC: API traffic control](#atc-api-traffic-control)
 - [Rate limiting](#rate-limiting)
 - [Network policy](#network-policy)
 - [TLS and mTLS](#tls-and-mtls)
@@ -1119,6 +1120,78 @@ request.
 waiter audit --category admin --limit 20
 waiter audit --outcome denied
 ```
+
+## ATC: API traffic control
+
+*New in 0.73.0 pre-alpha 1.* `hypernix.atc` is the outermost layer of
+the T1 API. Everything below runs before the request ID, the network
+policy, mTLS and the rate limiter, and it is on by default
+(`T1_ATC_ENABLED=0` takes it out).
+
+| Stage | What happens |
+|---|---|
+| Jail | A jailed address is answered `429` with `Retry-After` (`details.reason: atc_jailed`). |
+| Probes | `/.env`, `/.git/`, `/wp-admin`, `../`, `${jndi:` and similar are answered `404` without reaching the app. Three (`T1_ATC_PROBE_STRIKES`) mean jail. |
+| Guessing | More than `T1_ATC_AUTH_FAIL_LIMIT` (30) 401/403s or `T1_ATC_NOTFOUND_LIMIT` (120) 404s in `T1_ATC_WINDOW_SECONDS` (60) mean jail. |
+| Body size | A body over `T1_ATC_MAX_BODY_MB` (128) is answered `413`. |
+| In flight | Over `T1_ATC_MAX_INFLIGHT` (256) requests at once, or `T1_ATC_CLIENT_INFLIGHT` (32) from one address, gets `503` with `Retry-After: 1`. `/health` and `/status` always get through. |
+| Compression | A JSON or text reply of 1 KiB or more with a declared length is gzipped for a client that sends `Accept-Encoding: gzip`. Streams are never held back. |
+
+A jail starts at `T1_ATC_JAIL_SECONDS` (60) and doubles on each repeat,
+up to `T1_ATC_JAIL_MAX_SECONDS` (3600). This machine's own addresses are
+never jailed unless `T1_ATC_JAIL_LOOPBACK=1`, so a broken local script
+cannot lock its operator out. Loopback is also held only to the
+server-wide in-flight limit, because a local reverse proxy (cloudflared,
+`tailscale serve`) speaks for everyone. Behind one, set
+`T1_TRUSTED_PROXIES` so ATC sees the real addresses, or the jail and
+`T1_ATC_E2E_REQUIRED` cannot tell clients apart.
+
+### End-to-end encryption (`hypernix-atc/1`)
+
+TLS ends wherever it ends: at a reverse proxy, a tunnel, an inspection
+box. ATC seals the request and the reply themselves, so the key, the
+route, the prompt and the answer are readable only by the client and
+this server.
+
+1. `POST /atc/handshake` with `{"public_key": "<X25519, base64url>"}`. No
+   credential is needed. The answer holds the server's X25519 key, a
+   `session_id`, `expires_at`, and an RSA-PSS `signature` made with the
+   server's T2C identity key (`server_fingerprint`, the same one
+   `GET /auth/t2c/public-key` gives). Check it against the fingerprint
+   you pinned.
+2. Both sides derive one ChaCha20-Poly1305 key per direction with
+   HKDF-SHA256 (salt: the session ID).
+3. `POST /atc/tunnel` with `X-ATC-Session`, `X-ATC-Seq` (never reused, with
+   a replay window of 1024) and the sealed real request as the body. The
+   real request runs through every layer like any other.
+4. The reply is `200 application/vnd.hypernix.atc` holding sealed frames.
+   Frame 0 carries the real status and headers; the others carry the body
+   as it was produced, so streams still stream.
+
+From Python:
+
+```python
+from hypernix.atc.client import ATCTunnel
+
+tunnel = ATCTunnel("https://t1.example.com", pin="<server fingerprint>")
+status, headers, body = tunnel.request(
+    "GET", "/hyperlink/sessions", headers={"Authorization": "Bearer T2_..."})
+```
+
+`T1_ATC_E2E_REQUIRED=1` refuses every request from another machine
+that did not come through the tunnel (`403`, `details.reason:
+e2e_required`). The exceptions are `/atc/handshake`, `/health`,
+`/status`, `/server/info` and `/auth/t2c/public-key`. Encryption needs
+`cryptography` (`hypernix[security]`). Without it, the handshake
+answers `501`.
+
+### Admin routes
+
+| Route | |
+|---|---|
+| `GET /atc/status` | Settings, sessions, the jail, in-flight counts, per-route requests, status classes, bytes and p50/p95 latency |
+| `POST /atc/jail` `{"client": "203.0.113.9", "reason": "..."}` | Jail an address by hand |
+| `POST /atc/release` `{"client": "203.0.113.9"}` | Let it go (`404` if it was not jailed) |
 
 ## Rate limiting
 

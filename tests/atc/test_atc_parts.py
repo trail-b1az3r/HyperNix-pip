@@ -192,3 +192,31 @@ class TestEndToEnd:
         _, answer, _ = _client_keys(store)
         clock.now += 11
         assert store.get(answer["session_id"]) is None
+
+
+def test_a_local_proxy_is_held_only_to_the_server_wide_limit():
+    import asyncio
+
+    from hypernix.atc import ATC
+    from hypernix.atc.middleware import ATCMiddleware
+
+    async def app(scope, receive, send):
+        await send({"type": "http.response.start", "status": 200, "headers": []})
+        await send({"type": "http.response.body", "body": b""})
+
+    atc = ATC(ATCSettings(client_inflight=1, e2e=False))
+    entered = []
+    real_enter = atc.traffic.enter
+    atc.traffic.enter = lambda client, path: entered.append(client) or real_enter(client, path)
+    sent = []
+
+    async def send(message):
+        sent.append(message)
+
+    async def receive():
+        return {"type": "http.request", "body": b""}
+
+    scope = {"type": "http", "method": "GET", "path": "/models", "headers": [],
+             "client": ("127.0.0.1", 1)}
+    asyncio.run(ATCMiddleware(app, atc=atc)(scope, receive, send))
+    assert entered == [""] and sent[0]["status"] == 200

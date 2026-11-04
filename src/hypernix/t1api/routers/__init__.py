@@ -28,6 +28,9 @@ registration behind v2.1 (T2C) keys — and privacy: ``/privacy/conceal``
 0.72.6.post3 adds: code -- ``/code``, sandboxes that run code, with
 permissions in the ``/web/v2/config`` grammar. Off unless the operator
 sets ``T1_CODE_SANDBOX=1``.
+0.73.0 adds: atc -- ``/atc/handshake`` (end-to-end encryption),
+``/atc/status``, ``/atc/jail`` and ``/atc/release``; the ATC layer
+itself is middleware (``hypernix.atc``).
 0.72.4 adds: training — progress, logs, checkpoints, machine
 resources and the stop/pause/resume controls, admin-gated unless the
 server is explicitly in trusted-network mode.
@@ -48,6 +51,7 @@ from __future__ import annotations
 from . import (
     accounts,
     anthropic,
+    atc,
     audit,
     auth,
     authundo,
@@ -137,6 +141,8 @@ ALL_ROUTERS = (
     net.router,
     # 0.72.8a3 -- the public-server counter. Off unless T1_COUNTER_HOST.
     counter.router,
+    # 0.73.0 -- ATC: the e2e handshake, the jail and traffic statistics.
+    atc.router,
 )
 
 __all__ = [

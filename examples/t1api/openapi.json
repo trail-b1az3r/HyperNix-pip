@@ -1114,6 +1114,28 @@
         "title": "ChatRingResponse",
         "type": "object"
       },
+      "ClientRequest": {
+        "properties": {
+          "client": {
+            "description": "The IP address.",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Client",
+            "type": "string"
+          },
+          "reason": {
+            "default": "jailed by an administrator",
+            "maxLength": 200,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "client"
+        ],
+        "title": "ClientRequest",
+        "type": "object"
+      },
       "CompactRequest": {
         "properties": {
           "dry_run": {
@@ -2224,6 +2246,22 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HandshakeRequest": {
+        "properties": {
+          "public_key": {
+            "description": "The client's X25519 public key, 32 bytes, base64url.",
+            "maxLength": 64,
+            "minLength": 40,
+            "title": "Public Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "public_key"
+        ],
+        "title": "HandshakeRequest",
         "type": "object"
       },
       "HardwareResponse": {
@@ -9144,6 +9182,223 @@
         "summary": "Register",
         "tags": [
           "accounts"
+        ]
+      }
+    },
+    "/atc/handshake": {
+      "post": {
+        "description": "Start an encrypted session. The answer is signed by the server's\nidentity key (the T2C key); check ``server_fingerprint`` against the\none you pinned before trusting it.",
+        "operationId": "handshake_atc_handshake_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HandshakeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Handshake Atc Handshake Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Handshake",
+        "tags": [
+          "atc"
+        ]
+      }
+    },
+    "/atc/jail": {
+      "post": {
+        "operationId": "jail_atc_jail_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClientRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Jail Atc Jail Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Jail",
+        "tags": [
+          "atc"
+        ]
+      }
+    },
+    "/atc/release": {
+      "post": {
+        "operationId": "release_atc_release_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClientRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Release Atc Release Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Release",
+        "tags": [
+          "atc"
+        ]
+      }
+    },
+    "/atc/status": {
+      "get": {
+        "operationId": "status_atc_status_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Status Atc Status Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Status",
+        "tags": [
+          "atc"
         ]
       }
     },
