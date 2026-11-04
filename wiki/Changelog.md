@@ -52,6 +52,17 @@ Historical wording and technical detail are retained during format normalization
   `admin` is never given whatever it says, unknown names are left out with a
   warning, and a value that leaves nothing usable falls back to the default.
 
+### Dependencies and Packaging
+
+📦 Building hypernix no longer warns, and keeps building after 2027-02-18.
+  `project.license` is a PEP 639 SPDX string (`LicenseRef-HOS-1.1 OR
+  Apache-2.0`) with `license-files`, instead of the TOML table setuptools has
+  deprecated. `setup.cfg` no longer repeats the dependencies, extras, licence
+  or a `License ::` classifier: setuptools overwrote those copies from
+  `pyproject.toml` on every build ("install_requires overwritten"), and the
+  ignored copy had drifted (`rich==15.0.0` against `>14,<=15`, three extras
+  missing). The wheel's dependencies are unchanged.
+
 ### Security
 
 🔒 A T2 key's stated access level is now held to the level the server granted it.
