@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-api-deep",
   "generated_at": "2026-09-20T21:20:57Z",
-  "commit": "42ed2e1b817beabec090ed477f9a6de1d40ab98c",
+  "commit": "208c600f423980c44cf948ca919c4b775ce8b575",
   "history_available": true,
   "source_root": "src/hypernix",
   "modules": [
@@ -100,10 +100,10 @@
           "api_changes": []
         },
         {
-          "sha": "ede2f627",
-          "date": "2026-07-26",
-          "author": "Ray0ffire",
-          "subject": "Add LICENSE-betaversionofit file",
+          "sha": "f6897ceb",
+          "date": "2026-06-29",
+          "author": "minerofthesoal",
+          "subject": "Replace entire repository with new local version",
           "api_changes": []
         }
       ]
@@ -12406,21 +12406,21 @@
     {
       "module": "hypernix.hyperlink.managed",
       "source": "src/hypernix/hyperlink/managed.py",
-      "line_count": 958,
+      "line_count": 933,
       "summary": "hyperlink.managed \u2014 running a model without LM Studio.",
       "api": [
         {
           "kind": "function",
           "name": "fork_argv",
           "signature": "def fork_argvfork: str, binary: str | Path, model: Path, *, host: str, port: int, gpu_layers: int, context: int, alias: str, extra: tuple[str, ...] | list[str]=() -> list[str]",
-          "line": 170,
+          "line": 127,
           "doc": "The command line that starts a fork's server."
         },
         {
           "kind": "class",
           "name": "ManagedError",
           "signature": "class ManagedError",
-          "line": 216,
+          "line": 173,
           "doc": "A model could not be started, stopped, or asked about.",
           "methods": []
         },
@@ -12428,19 +12428,19 @@
           "kind": "class",
           "name": "Placement",
           "signature": "class Placement",
-          "line": 221,
+          "line": 178,
           "doc": "Where a model's weights are going to sit.",
           "methods": [
             {
               "name": "fully_offloaded",
               "signature": "def fully_offloadedself -> bool",
-              "line": 247,
+              "line": 204,
               "doc": ""
             },
             {
               "name": "to_dict",
               "signature": "def to_dictself -> dict[str, Any]",
-              "line": 250,
+              "line": 207,
               "doc": ""
             }
           ]
@@ -12449,26 +12449,26 @@
           "kind": "function",
           "name": "plan_placement",
           "signature": "def plan_placement*, file_bytes: int, total_layers: int=0, gpu_layers: int | None=None, backend: str='auto', context_length: int=0, vram_free: int | None=None, ram_free: int | None=None -> Placement",
-          "line": 321,
+          "line": 278,
           "doc": "Decide where the weights go."
         },
         {
           "kind": "class",
           "name": "ManagedModel",
           "signature": "class ManagedModel",
-          "line": 444,
+          "line": 401,
           "doc": "What is loaded right now.",
           "methods": [
             {
               "name": "supports_images",
               "signature": "def supports_imagesself -> bool",
-              "line": 463,
+              "line": 420,
               "doc": ""
             },
             {
               "name": "to_dict",
               "signature": "def to_dictself -> dict[str, Any]",
-              "line": 466,
+              "line": 423,
               "doc": ""
             }
           ]
@@ -12477,31 +12477,31 @@
           "kind": "class",
           "name": "ManagedRunner",
           "signature": "class ManagedRunner",
-          "line": 482,
+          "line": 439,
           "doc": "The llama.cpp server process this server owns.",
           "methods": [
             {
               "name": "current",
               "signature": "def currentself -> ManagedModel | None",
-              "line": 502,
+              "line": 459,
               "doc": "What is loaded, or None."
             },
             {
               "name": "base_url",
               "signature": "def base_urlself -> str",
-              "line": 523,
+              "line": 480,
               "doc": ""
             },
             {
               "name": "load",
               "signature": "def loadself, path: str | Path, *, model_id: str='', gpu_layers: int | None=None, backend: str='auto', context_length: int=0, total_layers: int=0, timeout: float=DEFAULT_START_TIMEOUT, mmproj: str | None=None, offload: Offload | None=None -> ManagedModel",
-              "line": 528,
+              "line": 485,
               "doc": "Start serving *path*, replacing whatever was running."
             },
             {
               "name": "unload",
               "signature": "def unloadself -> bool",
-              "line": 793,
+              "line": 761,
               "doc": "Stop whatever is running. True if something was."
             }
           ]
@@ -12510,55 +12510,55 @@
           "kind": "class",
           "name": "ManagedPool",
           "signature": "class ManagedPool",
-          "line": 859,
+          "line": 826,
           "doc": "N copies of one model, on N consecutive ports.",
           "methods": [
             {
               "name": "instances",
               "signature": "def instancesself -> int",
-              "line": 906,
+              "line": 873,
               "doc": ""
             },
             {
               "name": "ports",
               "signature": "def portsself -> list[int]",
-              "line": 910,
+              "line": 877,
               "doc": ""
             },
             {
               "name": "current",
               "signature": "def currentself -> ManagedModel | None",
-              "line": 914,
+              "line": 881,
               "doc": "What the pool is serving, from the first live instance."
             },
             {
               "name": "live",
               "signature": "def liveself -> list[ManagedRunner]",
-              "line": 923,
+              "line": 890,
               "doc": ""
             },
             {
               "name": "base_urls",
               "signature": "def base_urlsself -> list[str]",
-              "line": 927,
+              "line": 894,
               "doc": ""
             },
             {
               "name": "load",
               "signature": "def loadself, path: str | Path, **kwargs: Any -> list[ManagedModel]",
-              "line": 930,
+              "line": 897,
               "doc": "Start every instance on *path*, or leave none of them running."
             },
             {
               "name": "unload",
               "signature": "def unloadself -> bool",
-              "line": 955,
+              "line": 922,
               "doc": ""
             },
             {
               "name": "to_dict",
               "signature": "def to_dictself -> dict[str, Any]",
-              "line": 965,
+              "line": 932,
               "doc": ""
             }
           ]
@@ -12567,21 +12567,21 @@
           "kind": "function",
           "name": "allocate_ports",
           "signature": "def allocate_portsstart: int, count: int, *, avoid: Iterable[int]=(), ceiling: int=65535 -> list[int]",
-          "line": 1012,
+          "line": 979,
           "doc": "*count* ports from *start* upwards, skipping *avoid*."
         },
         {
           "kind": "function",
           "name": "brewed_cache_dir",
           "signature": "def brewed_cache_dir -> Path",
-          "line": 1044,
+          "line": 1011,
           "doc": "``<T1_CONFIG_DIR>/cache/brewed-gguf``: beside the server, not in the model."
         },
         {
           "kind": "function",
           "name": "brewed_gguf_for",
           "signature": "def brewed_gguf_forfolder: Path -> Path | None",
-          "line": 1052,
+          "line": 1019,
           "doc": "A GGUF of the brewed model in *folder* for llama.cpp, or ``None``."
         }
       ],
@@ -61184,14 +61184,14 @@
         {
           "kind": "function",
           "name": "usage_by",
-          "signature": "def usage_bygroup_by: str=Query(..., description=f'One of: {', '.join(GROUPABLE)}'), range_: str | None=Query(default=None, alias='range'), since: float | None=Query(default=None), until: float | None=Query(default=None), key_id: str | None=Query(default=None), model_id: str | None=Query(default=None), server_id: str | None=Query(default=None), module_id: str | None=Query(default=None), user_id: str | None=Query(default=None), account_id: str | None=Query(default=None), ctx: AuthContext=Depends(get_auth_context), meter: UsageMeter=Depends(get_usage_meter), keys=Depends(get_key_directory), request_id: str=Depends(get_request_id) -> UsageAggregateResponse",
+          "signature": "def usage_bygroup_by: str=Query(..., description=f\"One of: {', '.join(GROUPABLE)}\"), range_: str | None=Query(default=None, alias='range'), since: float | None=Query(default=None), until: float | None=Query(default=None), key_id: str | None=Query(default=None), model_id: str | None=Query(default=None), server_id: str | None=Query(default=None), module_id: str | None=Query(default=None), user_id: str | None=Query(default=None), account_id: str | None=Query(default=None), ctx: AuthContext=Depends(get_auth_context), meter: UsageMeter=Depends(get_usage_meter), keys=Depends(get_key_directory), request_id: str=Depends(get_request_id) -> UsageAggregateResponse",
           "line": 183,
           "doc": "\"Usage by model / key / server / module / user / account\", as one endpoint rather than six near-identical ones."
         },
         {
           "kind": "function",
           "name": "usage_cost",
-          "signature": "def usage_costgroup_by: str=Query(default='model_id', description=f'One of: {', '.join(GROUPABLE)}'), range_: str | None=Query(default=None, alias='range'), since: float | None=Query(default=None), until: float | None=Query(default=None), key_id: str | None=Query(default=None), model_id: str | None=Query(default=None), server_id: str | None=Query(default=None), module_id: str | None=Query(default=None), user_id: str | None=Query(default=None), account_id: str | None=Query(default=None), forecast: bool=Query(default=False, description='Include a spend forecast for the horizon.'), forecast_horizon_seconds: float=Query(default=2592000.0, gt=0), ctx: AuthContext=Depends(get_auth_context), calculator: CostCalculator=Depends(get_cost_calculator), keys=Depends(get_key_directory), request_id: str=Depends(get_request_id) -> UsageCostResponse",
+          "signature": "def usage_costgroup_by: str=Query(default='model_id', description=f\"One of: {', '.join(GROUPABLE)}\"), range_: str | None=Query(default=None, alias='range'), since: float | None=Query(default=None), until: float | None=Query(default=None), key_id: str | None=Query(default=None), model_id: str | None=Query(default=None), server_id: str | None=Query(default=None), module_id: str | None=Query(default=None), user_id: str | None=Query(default=None), account_id: str | None=Query(default=None), forecast: bool=Query(default=False, description='Include a spend forecast for the horizon.'), forecast_horizon_seconds: float=Query(default=2592000.0, gt=0), ctx: AuthContext=Depends(get_auth_context), calculator: CostCalculator=Depends(get_cost_calculator), keys=Depends(get_key_directory), request_id: str=Depends(get_request_id) -> UsageCostResponse",
           "line": 246,
           "doc": "Actual cost with optional forecast \u2014 totals, date ranges, and per-model/per-server breakdowns in one shape."
         },
