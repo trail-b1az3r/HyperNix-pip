@@ -9,10 +9,10 @@ The endpoints, from the top of the tree down:
   run them, read what they wrote
 * ``GET /code/create/sandbox/perms`` and
   ``/code/create/sandbox/perms/<directives>`` — read and change what
-  every sandbox may do, in the same grammar as ``/web/v1/config``
+  every sandbox may do, in the same grammar as ``/web/v2/config``
 
 This module is the part with no FastAPI in it, as
-:mod:`hypernix.t1api.websearch` is for ``/web/v1``.
+:mod:`hypernix.t1api.websearch` is for ``/web/v2``.
 
 The permissions grammar
 -----------------------

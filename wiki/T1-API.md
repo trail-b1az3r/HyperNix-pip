@@ -2242,10 +2242,11 @@ it — `s3` exists for people who have one and would rather use it. See
 
 | Method | Path | Auth | Notes |
 |---|---|---|---|
-| GET | `/web/v1/I?=query&q?=depth` | bearer | search; `/web/v1/i` and `/web/v1/search?q=` are the same route |
-| POST | `/web/v1/summarize` | bearer | `text` or `url`; extractive with no model loaded |
-| GET | `/web/v1/config` | bearer | the three settings — **never** the API key |
-| GET | `/web/v1/config/s1?=k\|s2?:=…` | bearer, **admin** | change them; see the grammar below |
+| GET | `/web/v2/I?=query&q?=depth&mx?=max&sq?=read&&kpd?=keep` | bearer | search; `/web/v2/i` is the same route ([v2](#web-search-v2)) |
+| POST | `/web/v2/summarize` | bearer | `text` or `url`; extractive with no model loaded |
+| GET | `/web/v2/config` | bearer | the three settings — **never** the API key |
+| GET | `/web/v2/config/s1?=k\|s2?:=…` | bearer, **admin** | change them; see the grammar below |
+| any | `/web/v1/…` | none | **removed in 0.73.0**: `410 Gone`, naming the `/web/v2` route that replaced it |
 | GET | `/code` | bearer | whether this server runs code, the installed languages, the permissions |
 | GET | `/code/create` | bearer | what can be created, and the body each takes |
 | POST | `/code/create` | bearer, **write** | run `code` once in a throwaway sandbox; needs `T1_CODE_SANDBOX` |
@@ -2372,7 +2373,7 @@ needs the CSRF token `/accounts/me` returns.
 
 | Method | Path | Auth | Notes |
 |---|---|---|---|
-| POST | `/web/v1/summarise` | bearer | the same as `/web/v1/summarize` |
+| POST | `/web/v2/summarise` | bearer | the same as `/web/v2/summarize` |
 | GET | `/`, `/index.html`, `/web/app.js`, `/web/app.css`, `/web/icon.svg` | none, **this machine and the tailnet only** | [HyperLink on the web](#hyperlink-on-the-web-0726post1), on the API port since 0.72.6.post3; any other caller gets a 404 |
 
 ### Web search
@@ -2380,7 +2381,7 @@ needs the CSRF token `/accounts/me` returns.
 The config grammar, in one line:
 
 ```
-/web/v1/config/s1?=k|s2?:=duckduckgo|s3?:={key}?[brave]
+/web/v2/config/s1?=k|s2?:=duckduckgo|s3?:={key}?[brave]
 ```
 
 * `|` divides the directives.
@@ -2424,8 +2425,10 @@ to. No response ever contains it.
 
 ### Web search v2
 
-`/web/v1/search` still works until 0.73.0 and says so (`Deprecation`
-and `Sunset` headers, a `deprecated` field). Its successor:
+`/web/v1` was removed in HyperNix 0.73.0 (deprecated since T1
+v1.1.26.10.1.0). Every route it had is under `/web/v2` now — search,
+`summarize`, `config` and `ai/config` — and a request to the old path is
+answered `410 Gone` with `details.successor` naming the new one. Search:
 
 ```
 /web/v2/I?=query&q?=depth&mx?=maxitems&sq?=#&&kpd?=true
@@ -2448,7 +2451,7 @@ NAME=VALUE` (`--json`, `--reset`):
 | `max_read_sites` | most sites `sq` may read (1–20) | 5 |
 | `ai_config` | who may let a model change settings: `off`, `partial`, `admin` | `partial` |
 
-`GET`/`POST /web/v1/ai/config` lets a model read them and, with partial
+`GET`/`POST /web/v2/ai/config` lets a model read them and, with partial
 admin, change the less risky three (`store_format`, `max_items`,
 `max_read_sites`); turning storage on needs a full admin. The model's
 `web_search` tool uses v2, and `web_settings` / `web_settings_set`

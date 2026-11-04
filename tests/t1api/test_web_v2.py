@@ -1,5 +1,5 @@
 """/web/v2 (T1 v1.1.26.10.1.0): the grammar, reading sites, keeping
-searches, the five settings, /web/v1/ai/config and the v1 deprecation."""
+searches, the five settings, /web/v2/ai/config and /web/v1's removal (0.73.0)."""
 from __future__ import annotations
 
 import json
@@ -154,39 +154,53 @@ class TestV2Search:
         client, writer, *_ = server
         assert client.get("/web/v2/I?=&q?=2", headers=_h(writer)).status_code == 400
 
-    def test_v1_search_still_answers_and_says_it_is_going(self, server):
+    @pytest.mark.parametrize("method,old,successor", [
+        ("get", "/web/v1/search?q=widgets", "/web/v2/I"),
+        ("get", "/web/v1/I?=widgets", "/web/v2/I"),
+        ("post", "/web/v1/summarize", "/web/v2/summarize"),
+        ("get", "/web/v1/config", "/web/v2/config"),
+        ("get", "/web/v1/config/s2?:=google", "/web/v2/config/s2"),
+        ("get", "/web/v1/ai/config", "/web/v2/ai/config"),
+    ])
+    def test_v1_is_gone_and_says_where_to_go(self, server, method, old, successor):
+        """Removed in 0.73.0: 410, not a bare 404, and the route that replaced it."""
         client, writer, *_ = server
-        response = client.get("/web/v1/search?q=widgets", headers=_h(writer))
-        assert response.status_code == 200
-        assert response.headers["Deprecation"] == "true" and "0.73.0" in response.json()["deprecated"]
-        assert "Deprecation" not in client.get("/web/v1/I?=widgets", headers=_h(writer)).headers
+        response = getattr(client, method)(old, headers=_h(writer))
+        assert response.status_code == 410, response.text
+        details = response.json()["error"]["details"]
+        assert details["successor"] == successor
+        assert "0.73.0" in response.json()["error"]["message"]
+
+    def test_v1_answers_gone_without_a_key_too(self, server):
+        client, *_ = server
+        assert client.get("/web/v1/search?q=widgets").status_code == 410
 
 
 class TestAiConfig:
     def test_reading_needs_partial_admin(self, server):
         client, writer, reader, *_ = server
-        assert client.get("/web/v1/ai/config", headers=_h(reader)).status_code == 403
-        body = client.get("/web/v1/ai/config", headers=_h(writer)).json()
+        assert client.get("/web/v2/ai/config", headers=_h(reader)).status_code == 403
+        body = client.get("/web/v2/ai/config", headers=_h(writer)).json()
         assert body["ai_may_change"] == list(v2.AI_SAFE)
 
     def test_partial_admin_changes_only_the_less_risky_ones(self, server):
         client, writer, _r, _a, _f, tmp = server
-        ok = client.post("/web/v1/ai/config", headers=_h(writer), json={"max_items": 12})
+        ok = client.post("/web/v2/ai/config", headers=_h(writer), json={"max_items": 12})
         assert ok.status_code == 200 and v2.load_settings(tmp).max_items == 12
-        refused = client.post("/web/v1/ai/config", headers=_h(writer), json={"store_enabled": True})
+        refused = client.post("/web/v2/ai/config", headers=_h(writer), json={"store_enabled": True})
         assert refused.status_code == 403 and v2.load_settings(tmp).store_enabled is False
 
     def test_an_admin_may_turn_storage_on(self, server):
         client, _w, _r, admin, _f, tmp = server
-        assert client.post("/web/v1/ai/config", headers=_h(admin), json={"store_enabled": True}).status_code == 200
+        assert client.post("/web/v2/ai/config", headers=_h(admin), json={"store_enabled": True}).status_code == 200
         assert v2.load_settings(tmp).store_enabled is True
 
     def test_off_means_off(self, server):
         client, writer, _r, _a, _f, tmp = server
         v2.save_settings(v2.WebAdminSettings(ai_config="off"), tmp)
-        assert client.post("/web/v1/ai/config", headers=_h(writer), json={"max_items": 5}).status_code == 403
+        assert client.post("/web/v2/ai/config", headers=_h(writer), json={"max_items": 5}).status_code == 403
 
     def test_bad_values_and_empty_bodies(self, server):
         client, writer, *_ = server
-        assert client.post("/web/v1/ai/config", headers=_h(writer), json={"max_items": 0}).status_code == 400
-        assert client.post("/web/v1/ai/config", headers=_h(writer), json={}).status_code == 400
+        assert client.post("/web/v2/ai/config", headers=_h(writer), json={"max_items": 0}).status_code == 400
+        assert client.post("/web/v2/ai/config", headers=_h(writer), json={}).status_code == 400

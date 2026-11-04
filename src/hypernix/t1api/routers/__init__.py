@@ -26,7 +26,7 @@ capability with every one of those applied.
 registration behind v2.1 (T2C) keys — and privacy: ``/privacy/conceal``
 (conceal mode, 36-hour retention) and the public ``/server/info``.
 0.72.6.post3 adds: code -- ``/code``, sandboxes that run code, with
-permissions in the ``/web/v1/config`` grammar. Off unless the operator
+permissions in the ``/web/v2/config`` grammar. Off unless the operator
 sets ``T1_CODE_SANDBOX=1``.
 0.72.4 adds: training — progress, logs, checkpoints, machine
 resources and the stop/pause/resume controls, admin-gated unless the
@@ -122,10 +122,11 @@ ALL_ROUTERS = (
     # This server described so an assistant can read it for
     # itself. Off unless T1_MCP_ENABLED.
     mcp.router,
-    # 0.72.6 pt2 -- keyless web search for HyperLink and hyperchat.
+    # Keyless web search for HyperLink and hyperchat: /web/v2 (T1
+    # v1.1.26.10.1.0). /web/v1 was removed in 0.73.0 and answers 410
+    # with the route that replaced it.
     web.router,
-    # T1 v1.1.26.10.1.0 -- /web/v2: max items, sites read, kept searches.
-    web.router_v2,
+    web.router_v1_gone,
     # Code sandboxes. Off unless T1_CODE_SANDBOX; the reads say how to
     # turn it on, the rest refuse.
     code.router,
