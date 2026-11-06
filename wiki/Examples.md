@@ -350,7 +350,7 @@ Dilute generates multiple candidate completions, scores them, retains stronger s
 
 ### HyperLink
 
-HyperLink is the phone/web client integration layer: pairing, sessions, attachments, model links, and communication with the T1 server. The HTTP routes themselves live under [`hypernix.t1api.routers`](../src/hypernix/t1api/routers.py).
+HyperLink is the phone/web client integration layer: pairing, sessions, attachments, model links, and communication with the T1 server. The HTTP routes themselves live under [`hypernix.t1api.routers`](../src/hypernix/t1api/routers/__init__.py).
 
 | Module | What it does |
 |---|---|
