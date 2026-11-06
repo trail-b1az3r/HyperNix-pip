@@ -1,6 +1,6 @@
 # Examples — HyperNix Module Encyclopedia
 
-> A source-oriented guide to what the modules in `src/hypernix/` do. This page is an index and explanation of the package, not a replacement for API reference pages or runnable scripts in `examples/`. Public module names are identified separately from internal implementation modules.
+> A source-oriented guide to what the Python modules in `src/hypernix/` do. The current source tree contains **429 Python files: 399 implementation modules and 30 package initializers**. This page is an index and explanation of the package, not a replacement for API reference pages or runnable scripts in `examples/`. Public module names are identified separately from internal implementation modules.
 
 **Accuracy rule:** implementation and exported symbols are authoritative. A file's presence does not mean its feature is stable, enabled by default, supported on every platform, or part of the public API. Hardware/provider capabilities are conditional on the actual backend and dependencies. Follow the linked topic guide for detailed usage; check the source for exact signatures.
 
@@ -34,6 +34,15 @@
   - [T1 API server](#t1-api-server)
   - [T1 SDK](#t1-sdk)
   - [Waiter client](#waiter-client)
+- [Additional implementation modules](#additional-implementation-modules)
+  - [Interfaces and compatibility](#interfaces-and-compatibility)
+  - [Model and runtime implementation](#model-and-runtime-implementation)
+  - [Monitoring implementation](#monitoring-implementation)
+  - [Optimizer and quantization implementation](#optimizer-and-quantization-implementation)
+  - [Security implementation](#security-implementation)
+  - [System implementation](#system-implementation)
+  - [T1 API router modules](#t1-api-router-modules)
+- [Package initializers](#package-initializers)
 - [How modules fit together](#how-modules-fit-together)
 - [Runnable examples and deeper references](#runnable-examples-and-deeper-references)
 - [Keeping this page accurate](#keeping-this-page-accurate)
@@ -717,6 +726,44 @@ Waiter is the official T1 API TUI/CLI client and delegates its API contract to t
 | `hypernix.waiter.servops` | Performs server lifecycle/administration operations. |
 | `hypernix.waiter.smoke` | Runs API smoke checks against a server. |
 | `hypernix.waiter.tui` | Implements the curses terminal interface. |
+
+
+## Package initializers
+
+The package initializers are also Python modules. They define package boundaries, lazy imports, public exports, and package-level documentation. Listed here separately from the 399 non-initializer implementation modules above.
+
+| Initializer | Package responsibility |
+|---|---|
+| `hypernix.__init__` | Defines the top-level lazy public API, module/category registry, compatibility aliases, and exported names. |
+| `hypernix._compat.__init__` | Holds private compatibility helpers for Python-version-specific behavior. |
+| `hypernix._native_flags.__init__` | Defines native build/runtime feature flags used by compiled components. |
+| `hypernix._profiling.__init__` | Provides the internal profiling abstraction and version/backend selection. |
+| `hypernix.audio.__init__` | Lazy package boundary for audio file, feature, processing, and wake-word modules. |
+| `hypernix.bridge.__init__` | Exports client bridges to inference servers owned by external processes. |
+| `hypernix.c4.__init__` | Exposes the C4 model decomposition, probing, scoring, selection, and rebuild workflow. |
+| `hypernix.chat.__init__` | Groups chat templates, session state, prompt injection, personas, and output processing. |
+| `hypernix.data.__init__` | Groups dataset discovery, preparation, augmentation, splitting, and packaging. |
+| `hypernix.dilute.__init__` | Exposes best-of-n sampling, evaluation, selection, and streaming self-distillation. |
+| `hypernix.elements.__init__` | Exposes the add-on/element framework and built-in elements. |
+| `hypernix.evaluation.__init__` | Groups evaluation batteries, rubrics, judge helpers, plots, and verification. |
+| `hypernix.hyperlink.__init__` | Exposes HyperLink pairing, endpoint discovery, sessions, attachments, and Hugging Face link resolution. |
+| `hypernix.interfaces.__init__` | Defines the package boundary for command-line, terminal, desktop, and assistant interfaces. |
+| `hypernix.interfaces.noodle.__init__` | Exports Noodle agents, swarms, provider adapters, tools, and validators. |
+| `hypernix.models.__init__` | Groups model architectures, loading, generation, and runtime helpers. |
+| `hypernix.monitoring.__init__` | Groups host probes, training logs, dashboards, and run inspection. |
+| `hypernix.neuron.__init__` | Exposes compact-network training for supervised, imitation, and reinforcement-learning tasks. |
+| `hypernix.optimizers.__init__` | Groups optimizer generations and shared optimizer framework support. |
+| `hypernix.quant.__init__` | Groups conversion, GGUF formats, quantization, validation, and artifact upload. |
+| `hypernix.runtime.__init__` | Groups inference kernels, context relay, T1 tools, and tool-call parsing. |
+| `hypernix.scriptgen.__init__` | Exposes the training-script builder's form, parameter, recipe, template, and theme APIs. |
+| `hypernix.security.__init__` | Groups credentials, key lifecycle, secret storage, and safe network/data loading. |
+| `hypernix.system.__init__` | Groups environment, hardware, diagnostics, resource management, and housekeeping helpers. |
+| `hypernix.t1api.__init__` | Exposes the T1 API's protocol version and lazy core/server interfaces. |
+| `hypernix.t1api.routers.__init__` | Defines the package boundary for the HTTP endpoint router modules. |
+| `hypernix.t1sdk.__init__` | Exports the standard-library-only T1 API client, transport, errors, and typed models. |
+| `hypernix.timing.__init__` | Groups timers, alarms, scheduled runs, streaming callbacks, and progress animation. |
+| `hypernix.training.__init__` | Groups training entry points, architecture presets, optimizers' integrations, and training-time controls. |
+| `hypernix.waiter.__init__` | Defines Waiter's shared T1 API version and package boundary for the official TUI/CLI client. |
 
 ## How modules fit together
 
