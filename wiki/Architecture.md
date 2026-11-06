@@ -56,9 +56,9 @@ graph TD
     optimizers["optimizers"]
     waiter["waiter"]
     neuron["neuron"]
+    scriptgen["scriptgen"]
     elements["elements"]
     evaluation["evaluation"]
-    scriptgen["scriptgen"]
     audio["audio"]
     chat["chat"]
     timing["timing"]
@@ -89,10 +89,12 @@ graph TD
     interfaces --> dilute
     interfaces --> elements
     interfaces --> evaluation
+    interfaces --> hyperlink
     interfaces --> models
     interfaces --> monitoring
     interfaces --> neuron
     interfaces --> quant
+    interfaces --> scriptgen
     interfaces --> security
     interfaces --> system
     interfaces --> t1api
@@ -143,6 +145,7 @@ graph TD
     data --> dep_numpy
     data --> dep_rich
     evaluation --> dep_rich
+    hyperlink --> dep_torch
     interfaces --> dep_numpy
     interfaces --> dep_rich
     interfaces --> dep_torch
