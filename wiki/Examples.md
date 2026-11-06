@@ -551,6 +551,156 @@ The SDK is a standard-library-only client; it does not require installing the op
 | `hypernix.t1sdk.models` | Defines typed response/request data models. |
 | `hypernix.t1sdk.transport` | Implements HTTP transport, retries, and TLS configuration. |
 
+
+
+### Additional implementation modules
+
+The following source files are also part of the package. They are listed separately because they are not all exposed through `MODULE_CATEGORIES`. Internal implementation modules can change without constituting a public API change.
+
+#### Interfaces and compatibility
+
+| Module | What it does |
+|---|---|
+| `hypernix.__main__` | Makes `python -m hypernix` dispatch to the package CLI. |
+| `hypernix._compat._iter_legacy` | Supplies the legacy-Python iterator compatibility implementation. |
+| `hypernix._compat._iter_py315` | Supplies the Python 3.15-specific iterator implementation behind the compatibility boundary. |
+| `hypernix.interfaces.dots` | Implements the HyperNix dot/agent entry-point abstraction used by the basic assistant experience. |
+| `hypernix.interfaces.hyped_basic` | Implements the basic Hyped terminal application. |
+| `hypernix.interfaces.list_all` | Lists discoverable modules/commands for the CLI and documentation surfaces. |
+
+#### Model and runtime implementation
+
+| Module | What it does |
+|---|---|
+| `hypernix.models.brewer_gguf` | Exports supported Brewer architecture checkpoints into GGUF form. |
+| `hypernix.models.ggufrun` | Provides the GGUF model-runner integration used by HyperNix runtime commands. |
+| `hypernix.models.hflinks` | Parses/resolves Hugging Face model and file links. |
+| `hypernix.models.hnx0xv2image` | Implements the HyperNix0xV2 image/vision model integration. |
+| `hypernix.models.hnx0xv2image_cli` | Command-line entry point for the HNX0xV2 image workflow. |
+| `hypernix.models.hnx0xv2image_gguf` | Handles GGUF-side packaging/export support for the HNX0xV2 image model. |
+| `hypernix.models.hnxdevice` | Describes/selects supported device execution paths for HyperNix models. |
+| `hypernix.models.hnxrun` | Implements the HNX model execution path for supported model artifacts. |
+| `hypernix.models.hnxtokenizer` | Handles tokenizer metadata and tokenization for HyperNix-native model formats. |
+| `hypernix.models.hnxtorch` | Provides the PyTorch model/runtime integration for HyperNix-native models. |
+
+#### Monitoring implementation
+
+| Module | What it does |
+|---|---|
+| `hypernix.monitoring.hostprobe` | Collects host CPU, memory, GPU, and system telemetry for dashboards. |
+| `hypernix.monitoring.livestream` | Streams live monitoring/training events to interactive clients. |
+| `hypernix.monitoring.remote_desktop` | Implements the remote-desktop/RFB monitoring connection. |
+| `hypernix.monitoring.run_inspect` | Inspects a running training/inference process and its associated run metadata. |
+| `hypernix.monitoring.stale_log` | Detects stale or inactive training logs and helps identify the process behind them. |
+| `hypernix.monitoring.tvtop_max` | Implements the tvtop-max monitoring application and its run controls. |
+| `hypernix.monitoring.tvtop_max_bridge` | Connects the tvtop-max UI to HyperNix Python/runtime services. |
+| `hypernix.monitoring.tvtoppro` | Implements the tvtoppro terminal dashboard. |
+| `hypernix.monitoring.tvtoppro_modules` | Provides the modular stats/panel implementations consumed by tvtoppro. |
+
+#### Optimizer and quantization implementation
+
+| Module | What it does |
+|---|---|
+| `hypernix.optimizers.sixbit` | Implements six-bit optimizer-state/quantization support used by compatible optimizer paths. |
+| `hypernix.quant.auto` | Coordinates automatic model conversion/quantization workflow selection. |
+| `hypernix.quant.convertq` | Connects conversion output to quantization stages. |
+| `hypernix.quant.dflash1` | Builds DFlash1 draft-model artifacts. |
+| `hypernix.quant.dflash1_cli` | CLI for DFlash1 draft construction. |
+| `hypernix.quant.dflash2` | Builds DFlash2 drafts embedded in a compatible base GGUF. |
+| `hypernix.quant.dflash2_cli` | CLI for DFlash2 draft construction. |
+| `hypernix.quant.forktypes` | Defines/records quantization types supplied by supported llama.cpp forks. |
+| `hypernix.quant.formats` | Defines the quantization-format metadata and format registry. |
+| `hypernix.quant.gguf` | Reads/writes or manipulates GGUF structures used by quantization tools. |
+| `hypernix.quant.ggufcheck` | Validates GGUF metadata/tensor structure and reports malformed or unsupported artifacts. |
+| `hypernix.quant.hyprslug` | Implements the native HyprSlug quantization pipeline, including HyperNix-specific quant formats. |
+| `hypernix.quant.hyprslug_cli` | CLI for HyprSlug conversion and quantization. |
+| `hypernix.quant.hyprslug_headers` | Reads/writes self-describing HyperNix quantization headers and compatibility metadata. |
+| `hypernix.quant.hyprslug_headers_cli` | CLI for inspecting or producing HyprSlug headers. |
+| `hypernix.quant.hyprslug_server` | Serves the supported HyprSlug/runtime bridge over its configured server interface. |
+| `hypernix.quant.imatrix` | Measures or reads importance matrices used by importance-aware quantization. |
+| `hypernix.quant.imatrix_cli` | CLI for importance-matrix generation and inspection. |
+| `hypernix.quant.llamaconvert` | Implements llama-family checkpoint conversion helpers. |
+| `hypernix.quant.llamaquants` | Defines/normalizes llama.cpp quantization names and aliases. |
+| `hypernix.quant.lowbit` | Defines low-bit and codebook quantization representations. |
+| `hypernix.quant.multiquant` | Bundles multiple quantized variants into a shared model artifact where supported. |
+| `hypernix.quant.multiquant_cli` | CLI for multi-quant bundle creation and inspection. |
+| `hypernix.quant.qat` | Implements quantization-aware training helpers. |
+| `hypernix.quant.runtime_bridge` | Connects HyperNix quantized artifacts to the compatible inference runtime. |
+| `hypernix.quant.runtime_bridge_cli` | CLI for the quantized-runtime bridge. |
+| `hypernix.quant.steamroller` | Implements the Steamroller llama.cpp quantizer integration. |
+| `hypernix.quant.steamroller_cli` | CLI for Steamroller quantization operations. |
+| `hypernix.quant.subbit` | Implements sub-bit quantization data structures and operations. |
+
+#### Security implementation
+
+| Module | What it does |
+|---|---|
+| `hypernix.security.hfpin` | Handles Hugging Face credential/token input and safe local use. |
+| `hypernix.security.keyconfig` | Loads and validates key-management configuration. |
+| `hypernix.security.keyversions` | Defines key-version formats and compatibility/conversion rules. |
+| `hypernix.security.rotorvault` | Provides encrypted secret/key storage through Rotorvault. |
+| `hypernix.security.safeload` | Provides guarded loading/validation for security-sensitive persisted data. |
+| `hypernix.security.safeurl` | Validates URLs before network access to reduce unsafe URL/SSRF behavior. |
+| `hypernix.security.t2c` | Implements T2C credential/key handling. |
+| `hypernix.security.t2keys` | Implements T2 key formats, validation, and conversion support. |
+
+#### System implementation
+
+| Module | What it does |
+|---|---|
+| `hypernix.system.archmap` | Generates the package architecture map from source/module relationships. |
+| `hypernix.system.autoscan` | Implements scheduled repository/source scanning and its release checks. |
+| `hypernix.system.blanking` | Provides platform-specific display blanking primitives. |
+| `hypernix.system.deprecation` | Centralizes compatibility/deprecation helpers and warnings. |
+| `hypernix.system.fusebox_cli` | CLI for the GPU thermal/resource controller. |
+| `hypernix.system.hardware` | Detects and describes host CPU/GPU and hardware capabilities. |
+| `hypernix.system.launcher` | Resolves and launches the selected HyperNix executable/runtime. |
+| `hypernix.system.linkwalk` | Walks Markdown/documentation links for repository link validation. |
+| `hypernix.system.netops` | Provides network operations used by server/client connection workflows. |
+| `hypernix.system.pascal` | Contains Pascal/sm_61 compatibility detection and helper behavior. |
+| `hypernix.system.pids` | Finds and inspects process IDs associated with HyperNix runs. |
+| `hypernix.system.torch_shim` | Provides PyTorch compatibility shims for supported runtime combinations. |
+
+#### T1 API router modules
+
+These files are listed with their full import paths for completeness. Each owns the corresponding HTTP route group; it delegates policy/business logic to the T1 API core modules described above.
+
+| Module | What it does |
+|---|---|
+| `hypernix.t1api.routers.accounts` | Account endpoints. |
+| `hypernix.t1api.routers.anthropic` | Anthropic-compatible messages endpoint. |
+| `hypernix.t1api.routers.audit` | Audit-log endpoints. |
+| `hypernix.t1api.routers.auth` | Authentication and sign-in endpoints. |
+| `hypernix.t1api.routers.authundo` | Authentication history/undo operations. |
+| `hypernix.t1api.routers.backup` | Backup/restore endpoints. |
+| `hypernix.t1api.routers.billing` | Billing and payment-binding endpoints. |
+| `hypernix.t1api.routers.bridge` | LM Studio/bridge endpoints. |
+| `hypernix.t1api.routers.code` | Code workspace and tool endpoints. |
+| `hypernix.t1api.routers.compact` | Context compaction endpoint. |
+| `hypernix.t1api.routers.config` | Server configuration endpoints. |
+| `hypernix.t1api.routers.counter` | Usage-counter endpoints. |
+| `hypernix.t1api.routers.events` | Event polling/stream endpoints. |
+| `hypernix.t1api.routers.health` | Health and status endpoints. |
+| `hypernix.t1api.routers.hypercompress` | HyperCompress endpoint. |
+| `hypernix.t1api.routers.hyperlink` | HyperLink pairing, session, file, and client endpoints. |
+| `hypernix.t1api.routers.inference` | Inference/chat endpoints. |
+| `hypernix.t1api.routers.jobs` | Async job endpoints. |
+| `hypernix.t1api.routers.keys` | API-key endpoints. |
+| `hypernix.t1api.routers.mcp` | MCP endpoints. |
+| `hypernix.t1api.routers.memory` | Memory endpoints. |
+| `hypernix.t1api.routers.models` | Model discovery and selection endpoints. |
+| `hypernix.t1api.routers.modules` | Module registry/transport endpoints. |
+| `hypernix.t1api.routers.net` | Network and connection endpoints. |
+| `hypernix.t1api.routers.noodle` | Noodle agent endpoints. |
+| `hypernix.t1api.routers.privacy` | Privacy and retention endpoints. |
+| `hypernix.t1api.routers.runner` | Runner lifecycle and model execution endpoints. |
+| `hypernix.t1api.routers.security` | Security policy/diagnostic endpoints. |
+| `hypernix.t1api.routers.servers` | Remote server registry endpoints. |
+| `hypernix.t1api.routers.t2c` | T2C key-related endpoints. |
+| `hypernix.t1api.routers.training` | Training job endpoints. |
+| `hypernix.t1api.routers.usage` | Usage and cost endpoints. |
+| `hypernix.t1api.routers.web` | Web application/static web endpoints. |
+
 ### Waiter client
 
 Waiter is the official T1 API TUI/CLI client and delegates its API contract to the T1 SDK.
