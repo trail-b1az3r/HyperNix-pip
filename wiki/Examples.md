@@ -788,7 +788,7 @@ A chat path commonly uses `models.old_oven` + `chat.cookbook` + `chat.countertop
 
 ## Keeping this page accurate
 
-- Treat [`hypernix.MODULE_CATEGORIES`](../src/hypernix/MODULE_CATEGORIES.py) as the authoritative registry for the public categorized module surface.
+- Treat `hypernix.MODULE_CATEGORIES` as the authoritative registry for the public categorized module surface.
 - Treat the actual `src/hypernix/` tree as the inventory for additional packages and implementation modules.
 - When a module moves or is renamed, update this page and the corresponding source/API references in the same change.
 - For each new module, add its path, purpose, public/internal status, and a link to a detailed guide or source.
