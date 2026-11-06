@@ -49,7 +49,7 @@
 
 ## Using this page
 
-The canonical public grouping is [`hypernix.MODULE_CATEGORIES`](../src/hypernix/MODULE_CATEGORIES.py) in [`src/hypernix/__init__.py`](../src/hypernix/__init__.py). Import paths shown below use the current category layout. The legacy flat import aliases are retained for compatibility where the package provides them; new code should prefer the category path.
+The canonical public grouping is `hypernix.MODULE_CATEGORIES` in [`src/hypernix/__init__.py`](../src/hypernix/__init__.py). Import paths shown below use the current category layout. The legacy flat import aliases are retained for compatibility where the package provides them; new code should prefer the category path.
 
 ```python
 import hypernix
