@@ -572,7 +572,10 @@ class Relay:
             if part.get("type") == "text":
                 parts.append(str(part.get("text") or ""))
             elif part.get("type") == "image_url":
-                parts.append("[image attached]")
+                # Match HyperLink's existing conservative vision allowance
+                # when estimating a prompt. The real image content remains
+                # intact for the direct/final backend request.
+                parts.append("[image attached] " + ("x" * 1024))
             elif part.get("type"):
                 parts.append(f"[{part['type']} content attached]")
         return "\n".join(part for part in parts if part)
