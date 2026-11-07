@@ -2406,6 +2406,8 @@ def chat_turn_stream(
     # `memory` frame after `done` tells the app to sync now rather than
     # whenever somebody next opens the Memories screen.
     memory_before = _memory_head(memories, principal.owner)
+    # Shared by the stream generator and its persistence helper.
+    relay_runs: list[dict[str, Any]] = []
 
     def _events():
         yield _frame(
@@ -2422,7 +2424,6 @@ def chat_turn_stream(
         error: dict[str, Any] | None = None
         cancelled = False
         tool_rounds: list[dict[str, Any]] = []
-        relay_runs: list[dict[str, Any]] = []
         try:
             if setup is not None:
                 # The same tools the non-streamed route offers. Ordinary
