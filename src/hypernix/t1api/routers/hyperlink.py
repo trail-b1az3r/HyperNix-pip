@@ -2431,14 +2431,13 @@ def chat_turn_stream(
                 # is held back rather than shown (toolloop.CallGuard),
                 # and each tool the model runs is announced as it ends.
                 def ask_stream(messages, tools):
-                    envelope, relay_info = _queued_relay_chat(
+                    return _queued_relay_chat_stream(
                         request=request, config=config, backend=backend, runner=runner,
                         principal=principal, meter=meter,
                         messages=messages, model=requested_model, sampling=sampling,
                         tools=tools, cancelled=lambda: active.cancelled,
+                        on_result=relay_runs.append,
                     )
-                    relay_runs.append(relay_info)
-                    return _relay_stream_chunks(envelope)
 
                 for kind, value in stream_tool_loop(
                     wire, setup.context, ask_stream=ask_stream, t1=setup.t1,
@@ -2459,14 +2458,13 @@ def chat_turn_stream(
                         tool_rounds = value["rounds"]
                 stream = iter(())
             else:
-                envelope, relay_info = _queued_relay_chat(
+                stream = _queued_relay_chat_stream(
                     request=request, config=config, backend=backend, runner=runner,
                     principal=principal, meter=meter,
                     messages=wire, model=requested_model, sampling=sampling,
                     cancelled=lambda: active.cancelled,
+                    on_result=relay_runs.append,
                 )
-                relay_runs.append(relay_info)
-                stream = _relay_stream_chunks(envelope)
             for chunk in stream:
                 # The cooperative half of Stop. Breaking here closes
                 # `stream`, which closes the upstream response, which is
@@ -2504,8 +2502,9 @@ def chat_turn_stream(
             yield _frame("error", error=error)
         except GeneratorExit:
             # The phone closed the connection (backgrounded, tunnel
-            # dropped). Persist what arrived, then let the exit
-            # propagate — swallowing it would leak the generator.
+            # dropped). Signal the worker too: it owns the upstream
+            # chat_stream generator and will close it between chunks.
+            active.cancel_event.set()
             generations.finish(active.generation_id)
             _persist(collected, model_id, finish or "disconnected", usage, truncated=True)
             # Nobody is listening for a model-written title any more; the
