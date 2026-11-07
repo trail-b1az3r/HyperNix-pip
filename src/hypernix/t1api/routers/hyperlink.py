@@ -1303,9 +1303,6 @@ def _relay_stream_completion(
             endpoint="/hyperlink/sessions/chat/stream",
             feature="relay",
         )
-        if cancelled():
-            raise InterruptedError("The chat generation was stopped during a relay hop.")
-
     def stream_call(hop_messages, max_tokens, slot):
         client = clients[slot]
         return client.chat_stream(
@@ -1353,6 +1350,7 @@ def _relay_stream_completion(
         "input_tokens": result.input_tokens,
         "output_tokens": result.output_tokens,
         "requests": result.requests,
+        "cancelled": result.cancelled,
     }
     return envelope, info
 
@@ -1392,6 +1390,8 @@ def _queued_relay_chat_stream(
                 on_chunk=lambda chunk: events.put(("chunk", chunk)),
                 cancelled=cancelled,
             )
+            if on_result is not None:
+                on_result(info)
             events.put(("complete", info))
             return envelope
         except Exception as exc:  # noqa: BLE001 - communicate worker errors to the reader
@@ -1415,8 +1415,6 @@ def _queued_relay_chat_stream(
             yield value
         elif kind == "complete":
             ticket.wait()
-            if on_result is not None:
-                on_result(value)
             break
         elif kind == "error":
             try:
@@ -2474,10 +2472,7 @@ def chat_turn_stream(
                 # a socket read cannot be cancelled.
                 if active.cancelled:
                     cancelled = True
-                    close = getattr(stream, "close", None)
-                    if callable(close):
-                        close()
-                    break
+                    continue
                 model_id = str(chunk.get("model") or model_id)
                 if isinstance(chunk.get("usage"), dict):
                     usage = chunk["usage"]
@@ -2514,6 +2509,8 @@ def chat_turn_stream(
         finally:
             generations.finish(active.generation_id)
 
+        if active.cancelled:
+            cancelled = True
         if cancelled:
             finish = "cancelled"
         message = _persist(
