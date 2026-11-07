@@ -555,6 +555,89 @@ class Relay:
         )
         return result
 
+    def stream_messages(
+        self,
+        messages: Sequence[dict[str, Any]],
+        *,
+        stream_call: Callable[[list[dict[str, Any]], int, int], Any],
+        on_chunk: Callable[[dict[str, Any]], None],
+        cancelled: Callable[[], bool] = lambda: False,
+    ) -> RelayResult:
+        """Run chat through Relay and stream the final answer hop as it arrives."""
+        if not messages:
+            raise ValueError("a relay chat needs at least one message")
+
+        system_parts: list[str] = []
+        body: list[dict[str, Any]] = []
+        for message in messages:
+            role = str(message.get("role") or "user")
+            if role in ("system", "developer"):
+                value = self._content_text(message.get("content"))
+                if value:
+                    system_parts.append(f"[{role}]\n{value}")
+            else:
+                body.append(dict(message))
+        if not body:
+            raise ValueError("a relay chat needs a user or conversation message")
+
+        question_index = next(
+            (i for i in range(len(body) - 1, -1, -1) if body[i].get("role") == "user"),
+            len(body) - 1,
+        )
+        question_content = body[question_index].get("content", "")
+        question = self._content_text(question_content)
+        if not question:
+            question = "Respond to the latest message in the conversation."
+
+        transcript: list[str] = []
+        for message in body[:question_index]:
+            role = str(message.get("role") or "message").upper()
+            content = self._content_text(message.get("content"))
+            if message.get("tool_calls"):
+                content = (content + "\n" if content else "") + f"Tool calls: {message['tool_calls']}"
+            if content:
+                transcript.append(f"{role}:\n{content}")
+        document = "\n\n".join(transcript)
+        system_prompt = "\n\n".join(system_parts)
+        sizing_question = f"{system_prompt}\n\n{question}" if system_prompt else question
+        planned = plan(
+            document, sizing_question, context_tokens=self.context_tokens,
+            instances=len(self.instances), mode=self.mode,
+            notes_tokens=self.notes_tokens, answer_tokens=self.answer_tokens,
+        )
+        result = RelayResult("", planned)
+        if planned.single:
+            result.answer = self._call_stream(
+                result, 0, "direct", None, [dict(message) for message in messages],
+                planned.answer_tokens, stream_call, on_chunk, cancelled,
+            )
+            return result
+
+        if self.mode == CHAIN:
+            notes = self._chain(
+                result, planned.chunks, question, planned.notes_tokens,
+                system_prompt=system_prompt,
+            )
+        else:
+            notes = self._map(result, planned, question, system_prompt=system_prompt)
+        result.notes = notes
+
+        prefix = f"Notes:\n{notes or '(nothing relevant was found)'}\n\nQuestion: "
+        content: Any = (
+            [{"type": "text", "text": prefix}, *question_content]
+            if isinstance(question_content, list) else prefix + question
+        )
+        final_messages = [
+            {"role": "system", "content": self._system_prompt(ANSWER_PROMPT, system_prompt)},
+            {"role": "user", "content": content},
+        ]
+        slot = len(result.hops) % len(self.instances)
+        result.answer = self._call_stream(
+            result, slot, "answer", None, final_messages, planned.answer_tokens,
+            stream_call, on_chunk, cancelled,
+        )
+        return result
+
     @staticmethod
     def _content_text(content: Any) -> str:
         """A conservative text estimate for OpenAI chat content.
