@@ -272,14 +272,15 @@ class TestStreamingChatMessages:
             received.append(chunk)
             cancelled.set()
 
-        with pytest.raises(InterruptedError, match="stopped"):
-            Relay([lambda _messages, _tokens: Reply("unused")],
-                  context_tokens=4096).stream_messages(
-                [{"role": "user", "content": "go"}],
-                stream_call=stream_call,
-                on_chunk=forward,
-                cancelled=cancelled.is_set,
-            )
+        result = Relay([lambda _messages, _tokens: Reply("unused")],
+                       context_tokens=4096).stream_messages(
+            [{"role": "user", "content": "go"}],
+            stream_call=stream_call,
+            on_chunk=forward,
+            cancelled=cancelled.is_set,
+        )
+        assert result.cancelled
+        assert result.answer == "one"
         assert len(received) == 1
         assert len(produced) == 2  # one additional chunk can be yielded before the check
         assert closed.is_set()
