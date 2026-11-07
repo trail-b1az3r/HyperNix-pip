@@ -1732,7 +1732,7 @@ Integrate the CUDA management system directly into:
 hypernix.cuda
 ```
 The custom-compiled PyTorch build should target **CUDA 6.x through CUDA 12.4**, but only for combinations that can actually be built and tested. Do not imply that one PyTorch binary natively supports every CUDA generation. Newer CUDA/runtime targets should use the separately installable modern upstream PyTorch build where compatible.
-However, do not falsely claim that PyTorch 2.14 natively supports every historical CUDA version.  
+However, do not falsely claim that PyTorch 2.14.1 or 2.15 natively supports every historical CUDA version.  
 Create a compatibility matrix determining which CUDA runtime/toolchain combinations are actually possible.  
 For unsupported combinations, HyperNix must clearly report:  
 ```
@@ -2173,7 +2173,7 @@ Example:
 ```
 [CUDA] NVIDIA GPU detected
 [CUDA] Driver: ...
-[CUDA] Runtime: 13.2
+[CUDA] Runtime: 13.2 (modern upstream PyTorch build selected)
 [TORCH] HyperNix Torch 2.14
 [TORCH] Backend: CUDA
 [MODEL] Loading model...
