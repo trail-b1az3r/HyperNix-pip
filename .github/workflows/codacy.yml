@@ -63,6 +63,11 @@ jobs:
               --format sarif --output "$PWD/results.sarif" \
               --max-allowed-issues 2147483647 --gh-code-scanning-compat
 
+      # The CLI runs in Docker and creates its SARIF file as root.
+      # Return ownership before the unprivileged Python filter rewrites it.
+      - name: Give the runner ownership of the SARIF report
+        run: sudo chown "$(id -u):$(id -g)" results.sarif
+
       # GitHub refuses a SARIF run over 25,000 results, and pylint alone has
       # 37,000 here. Keep the security findings, errors and warnings; drop
       # formatting. The job summary lists what was kept per tool.
@@ -71,6 +76,6 @@ jobs:
 
       # Upload the SARIF file generated in the previous step
       - name: Upload SARIF results file
-        uses: github/codeql-action/upload-sarif@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4
+        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4
         with:
           sarif_file: results.sarif

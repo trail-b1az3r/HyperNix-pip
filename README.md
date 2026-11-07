@@ -1000,6 +1000,7 @@ preset because non-HyperNix `model_type` values route through
 Topic-focused reference guides live in the `wiki/` directory:
 
 - [`wiki/Home.md`](wiki/Home.md) — index
+- [`wiki/Examples.md`](wiki/Examples.md) — table-of-contents-driven encyclopedia for every Python module in `src/hypernix/`, linked to its source file
 - [`wiki/Ovens.md`](wiki/Ovens.md) — `old_oven` / `new_oven` reference
 - [`wiki/Fridges.md`](wiki/Fridges.md) — `old_fridge` / `mediocre_fridge` / `new_fridge`
 - [`wiki/Ranges.md`](wiki/Ranges.md) — `new_range` / `old_range` / `industrial_range` (labeling rubrics)

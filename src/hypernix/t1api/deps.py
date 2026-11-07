@@ -680,13 +680,29 @@ def _owner(request: Request, key_id: str) -> str:
 
 
 def _refuse_keyless_chats(request: Request) -> None:
-    """Chats belong to an account or a key; a request with neither gets
-    none (unless the operator turned the shared pool back on)."""
+    """Refuse anonymous chat ownership except on a trusted tailnet
+    when account support is disabled.
+
+    With accounts enabled, a keyless caller still has no owner and must
+    sign in or pair. With accounts disabled, there is no account
+    requirement to satisfy: a trusted tailnet caller is assigned the
+    stable trusted-tailnet owner by trusted_network_context. This
+    restores the pre-account Tailscale chat experience without opening
+    keyless chat to the LAN or public internet.
+    """
     from ..hyperlink.ownership import keyless_chats_shared
 
     path = request.url.path
     if keyless_chats_shared() or not path.startswith(_OWNED_PREFIXES):
         return
+
+    webauth = getattr(request.app.state, "t1_webauth", None)
+    if not bool(getattr(webauth, "enabled", False)):
+        from ..system.nettrust import Trust
+
+        if get_origin(request).trust is Trust.TAILNET:
+            return
+
     # 403, not 401. The connection is allowed (the trusted network let it
     # in); what it lacks is an owner for chats. HyperLink for iOS read a
     # 401 AUTH_* as "this device was revoked" and unpaired, so a keyless

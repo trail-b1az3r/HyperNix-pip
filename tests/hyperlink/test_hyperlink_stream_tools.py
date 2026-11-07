@@ -219,13 +219,26 @@ class StreamingModel:
         self.replies = list(replies)
         self.seen = []
 
+    def chat(self, messages, *, model=None, tools=None, **kwargs):
+        # The relay executes complete OpenAI chat calls. The streaming
+        # HyperLink route adapts each relay result into its existing SSE
+        # frame contract, then the tool loop continues with the next turn.
+        if any("You name conversations" in str(m.get("content") or "") for m in messages):
+            content = "A title"
+        else:
+            self.seen.append({"messages": [dict(m) for m in messages], "tools": tools})
+            content = self.replies.pop(0) if self.replies else "ok"
+        return {
+            "choices": [{"message": {"role": "assistant", "content": content},
+                         "finish_reason": "stop"}],
+            "model": model or "gemma-4-e4b",
+            "usage": {"prompt_tokens": 8, "completion_tokens": 4},
+        }
+
     def chat_stream(self, messages, *, model=None, tools=None, **kwargs):
+        # Kept for clients that use the bridge's direct streaming API.
         self.seen.append({"messages": [dict(m) for m in messages], "tools": tools})
         return _chunks(self.replies.pop(0) if self.replies else "ok")
-
-    def chat(self, messages, *, model=None, tools=None, **kwargs):  # titles
-        return {"choices": [{"message": {"role": "assistant", "content": "A title"},
-                             "finish_reason": "stop"}], "model": model, "usage": {}}
 
 
 def _free_port() -> int:
@@ -381,6 +394,10 @@ def test_a_failed_reply_is_saved_with_its_error(served, monkeypatch):
     from hypernix.bridge.lmstudio import LMStudioError
 
     class Unreachable(StreamingModel):
+        def chat(self, messages, **kwargs):
+            raise LMStudioError("No LM Studio server answering at http://127.0.0.1:1234",
+                                code="unreachable", base_url="http://127.0.0.1:1234")
+
         def chat_stream(self, messages, **kwargs):
             raise LMStudioError("No LM Studio server answering at http://127.0.0.1:1234",
                                 code="unreachable", base_url="http://127.0.0.1:1234")

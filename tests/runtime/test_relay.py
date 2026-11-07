@@ -145,6 +145,178 @@ class TestChain:
         assert len(result.notes) <= result.plan.notes_tokens * relay.CHARS_PER_TOKEN
 
 
+class TestChatMessages:
+    def test_a_short_chat_is_sent_unchanged_and_keeps_its_envelope(self):
+        messages = [
+            {"role": "system", "content": "Answer accurately."},
+            {"role": "user", "content": [
+                {"type": "text", "text": "What is in this picture?"},
+                {"type": "image_url", "image_url": {"url": "data:image/png;base64,abc"}},
+            ]},
+            {"role": "assistant", "content": "I see a tree."},
+            {"role": "user", "content": "What color are its leaves?"},
+        ]
+        envelope = {
+            "model": "small",
+            "choices": [{"message": {"role": "assistant", "content": "Green."},
+                         "finish_reason": "stop"}],
+        }
+        sent = []
+
+        def answer(call_messages, max_tokens):
+            sent.append(call_messages)
+            return Reply("Green.", 23, 2, envelope)
+
+        result = Relay([answer], context_tokens=4096).run_messages(messages)
+        assert sent == [messages]
+        assert result.plan.single
+        assert result.envelope is envelope
+        assert result.answer == "Green."
+
+    def test_a_long_chat_keeps_instructions_roles_and_latest_image(self):
+        messages = [
+            {"role": "system", "content": "Use the conversation as context. Be precise."},
+            {"role": "user", "content": "Earlier user detail. " + "alpha " * 500},
+            {"role": "assistant", "content": "Earlier assistant response. " + "beta " * 500},
+            {"role": "user", "content": [
+                {"type": "text", "text": "Describe this image in light of our earlier discussion."},
+                {"type": "image_url", "image_url": {"url": "data:image/png;base64,latest"}},
+            ]},
+        ]
+        calls = []
+
+        def instance(call_messages, max_tokens):
+            calls.append(call_messages)
+            system = call_messages[0]["content"]
+            if system.endswith(relay.READ_PROMPT):
+                return Reply("Earlier context preserved.", 40, 8)
+            raw = {
+                "model": "small",
+                "choices": [{"message": {"role": "assistant", "content": "It is green."},
+                             "finish_reason": "stop"}],
+            }
+            return Reply("It is green.", 45, 4, raw)
+
+        result = Relay(
+            [instance], context_tokens=512, notes_tokens=40, answer_tokens=48
+        ).run_messages(messages)
+
+        assert not result.plan.single
+        assert [hop.kind for hop in result.hops] == ["read"] * len(result.plan.chunks) + ["answer"]
+        read_calls = calls[:-1]
+        assert all(call[0]["content"].startswith("[system]\nUse the conversation") for call in read_calls)
+        assert all(call[0]["content"].endswith(relay.READ_PROMPT) for call in read_calls)
+        read_input = read_calls[0][-1]["content"]
+        assert "USER:\nEarlier user detail." in read_input
+        assert "ASSISTANT:\nEarlier assistant response." in read_input
+        final_content = calls[-1][-1]["content"]
+        assert isinstance(final_content, list)
+        assert final_content[-1] == messages[-1]["content"][-1]
+        assert result.envelope["choices"][0]["message"]["content"] == "It is green."
+
+    def test_system_only_messages_are_rejected(self):
+        with pytest.raises(ValueError, match="user or conversation"):
+            Relay([lambda messages, max_tokens: Reply("ok")],
+                  context_tokens=1024).run_messages([
+                {"role": "system", "content": "instructions only"}
+            ])
+
+
+class TestStreamingChatMessages:
+    def test_short_chat_forwards_chunks_and_keeps_the_final_envelope(self):
+        messages = [
+            {"role": "system", "content": "Be concise."},
+            {"role": "user", "content": "Say hello."},
+        ]
+        chunks = [
+            {"model": "small", "choices": [{"delta": {"content": "Hello "}}]},
+            {"model": "small", "choices": [{"delta": {"content": "there."},
+                                             "finish_reason": "stop"}]},
+        ]
+        received = []
+        sent = []
+
+        def stream_call(call_messages, max_tokens, slot):
+            sent.append((call_messages, max_tokens, slot))
+            return iter(chunks)
+
+        result = Relay([lambda _messages, _tokens: Reply("unused")],
+                       context_tokens=4096).stream_messages(
+            messages, stream_call=stream_call, on_chunk=received.append,
+        )
+        assert received == chunks
+        assert sent[0][0] == messages
+        assert result.plan.single
+        assert result.answer == "Hello there."
+        assert result.envelope["choices"][0]["message"]["content"] == "Hello there."
+        assert result.hops[0].kind == "direct"
+
+    def test_stop_closes_the_upstream_stream_between_chunks(self):
+        cancelled = threading.Event()
+        closed = threading.Event()
+        received = []
+        produced = []
+
+        def upstream():
+            try:
+                for text in ("one", "two", "three", "four"):
+                    produced.append(text)
+                    yield {"choices": [{"delta": {"content": text}}]}
+            finally:
+                closed.set()
+
+        def stream_call(_messages, _tokens, _slot):
+            return upstream()
+
+        def forward(chunk):
+            received.append(chunk)
+            cancelled.set()
+
+        result = Relay([lambda _messages, _tokens: Reply("unused")],
+                       context_tokens=4096).stream_messages(
+            [{"role": "user", "content": "go"}],
+            stream_call=stream_call,
+            on_chunk=forward,
+            cancelled=cancelled.is_set,
+        )
+        assert result.cancelled
+        assert result.answer == "one"
+        assert len(received) == 1
+        assert len(produced) == 2  # one additional chunk can be yielded before the check
+        assert closed.is_set()
+
+    def test_long_chat_reads_old_context_then_streams_the_final_answer(self):
+        messages = [
+            {"role": "system", "content": "Keep the whole discussion in mind."},
+            {"role": "user", "content": "Old user note. " + "alpha " * 500},
+            {"role": "assistant", "content": "Old assistant reply. " + "beta " * 500},
+            {"role": "user", "content": "Use the earlier details to answer."},
+        ]
+        reads = []
+        streamed = []
+
+        def instance(call_messages, _tokens):
+            reads.append(call_messages)
+            return Reply("Preserved context.", 32, 4)
+
+        def stream_call(call_messages, _tokens, _slot):
+            streamed.append(call_messages)
+            yield {"model": "small", "choices": [{"delta": {"content": "Final "}}]}
+            yield {"model": "small", "choices": [{"delta": {"content": "answer."},
+                                                  "finish_reason": "stop"}]}
+
+        result = Relay([instance], context_tokens=1024,
+                       notes_tokens=40, answer_tokens=48).stream_messages(
+            messages, stream_call=stream_call, on_chunk=lambda _chunk: None,
+        )
+        assert not result.plan.single
+        assert reads
+        assert len(streamed) == 1
+        assert streamed[0][0]["content"].endswith(relay.ANSWER_PROMPT)
+        assert result.answer == "Final answer."
+        assert [hop.kind for hop in result.hops][-1] == "answer"
+
+
 class TestMap:
     def test_parts_are_digested_on_every_instance_then_answered(self):
         instances, calls = _fakes(3, 1024)
