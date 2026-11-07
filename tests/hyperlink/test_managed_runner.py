@@ -179,6 +179,17 @@ class TestSwapIsReportedNotUsed:
 
 
 class TestTheRunnerStartsEmpty:
+    def test_a_port_already_owned_by_another_process_is_refused(self):
+        import socket
+
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
+            listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            listener.bind(("127.0.0.1", 0))
+            listener.listen(1)
+            runner = ManagedRunner(host="127.0.0.1", port=listener.getsockname()[1])
+            with pytest.raises(ManagedError, match="already in use"):
+                runner._ensure_port_available()
+
     def test_nothing_is_loaded(self):
         assert ManagedRunner(port=8799).current is None
 
@@ -231,6 +242,36 @@ def client(models_dir, monkeypatch, **env) -> TestClient:
     for key, value in env.items():
         monkeypatch.setenv(key, value)
     return TestClient(create_app(), client=("192.168.1.50", 5432))
+
+
+class TestRunnerLifecycle:
+    def test_t1_shutdown_stops_the_runner_child(self, tmp_path, monkeypatch):
+        from hypernix.hyperlink.managed import ManagedRunner
+        from hypernix.t1api.app import create_app
+        from hypernix.t1api.config import T1APIConfig
+
+        config = T1APIConfig(
+            token_secret="runner-lifecycle-test-secret",
+            db_path=str(tmp_path / "t1.sqlite3"),
+            module_storage_dir=str(tmp_path / "modules"),
+            hyperlink_files_dir=str(tmp_path / "files"),
+            web_enabled=False,
+            counter_host=False,
+        )
+        stopped = []
+
+        def fake_unload(runner):
+            stopped.append(runner)
+            return False
+
+        monkeypatch.setattr(ManagedRunner, "unload", fake_unload)
+        app = create_app(config=config)
+        runner = app.state.t1_runner
+
+        with TestClient(app):
+            pass
+
+        assert stopped == [runner]
 
 
 class TestStatusIsOpen:
