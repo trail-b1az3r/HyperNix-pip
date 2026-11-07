@@ -1069,7 +1069,6 @@ def _relay_chat_completion(
     hops.
     """
     from ...runtime.relay import (
-        ANSWER_PROMPT,
         DIGEST_PROMPT,
         READ_PROMPT,
         CHAIN,
