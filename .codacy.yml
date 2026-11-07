@@ -14,6 +14,7 @@ exclude_paths:
   - "**/*.pdf"
   - "**/*.so"
   - "docs/public/v1/**"
+  - "wiki/**" # documentation prose is not source code or a security surface
   - "src/hypernix.egg-info/**"
   - "build/**"
   - "**/*.gguf"
