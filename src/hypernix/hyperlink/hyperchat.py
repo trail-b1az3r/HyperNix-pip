@@ -174,7 +174,7 @@ class Ticket:
                  "finished_at", "_state", "_result", "_error", "_done",
                  "_lock")
 
-    def __init__(self, ticket_id: int, prompt: str, kwargs: dict[str, Any]):
+    def __init__(self, ticket_id: int, prompt: Any, kwargs: dict[str, Any]):
         self.id = ticket_id
         self.prompt = prompt
         self.kwargs = kwargs
@@ -182,8 +182,8 @@ class Ticket:
         self.started_at = 0.0
         self.finished_at = 0.0
         self._state = "queued"
-        self._result = ""
-        self._error = ""
+        self._result: Any = None
+        self._error: BaseException | str = ""
         self._done = threading.Event()
         self._lock = threading.Lock()
 
@@ -214,8 +214,8 @@ class Ticket:
         self._done.set()
         return True
 
-    def wait(self, timeout: float | None = None) -> str:
-        """Block for the answer. Raises on failure or cancellation."""
+    def wait(self, timeout: float | None = None) -> Any:
+        """Block for the result, preserving the worker's original exception."""
         if not self._done.wait(timeout):
             raise TimeoutError(
                 f"no answer after {timeout}s; the prompt is still "
@@ -223,6 +223,8 @@ class Ticket:
             )
         if self._state == "done":
             return self._result
+        if isinstance(self._error, BaseException):
+            raise self._error
         raise RuntimeError(self._error or f"prompt {self._state}")
 
     def to_dict(self) -> dict[str, Any]:
@@ -231,7 +233,7 @@ class Ticket:
             "state": self._state,
             "waited_seconds": round(self.waited, 2),
             "submitted_at": self.submitted_at,
-            "error": self._error,
+            "error": str(self._error) if self._error else "",
         }
 
     # -- used by the workers --------------------------------------------
@@ -244,14 +246,14 @@ class Ticket:
             self.started_at = time.time()
         return True
 
-    def _finish(self, result: str) -> None:
+    def _finish(self, result: Any) -> None:
         with self._lock:
             self._state = "done"
             self._result = result
             self.finished_at = time.time()
         self._done.set()
 
-    def _fail(self, error: str) -> None:
+    def _fail(self, error: BaseException | str) -> None:
         with self._lock:
             self._state = "failed"
             self._error = error
@@ -303,7 +305,7 @@ class Hyperchat:
 
     # -- submitting ------------------------------------------------------
 
-    def submit(self, prompt: str, **kwargs: Any) -> Ticket:
+    def submit(self, prompt: Any, **kwargs: Any) -> Ticket:
         if self._closed:
             raise RuntimeError("this hyperchat has been closed")
         with self._lock:
@@ -319,8 +321,8 @@ class Hyperchat:
         self._queue.put(ticket)
         return ticket
 
-    def ask(self, prompt: str, *, timeout: float | None = None,
-            **kwargs: Any) -> str:
+    def ask(self, prompt: Any, *, timeout: float | None = None,
+            **kwargs: Any) -> Any:
         """Submit and wait. The simple case, for callers with no UI."""
         return self.submit(prompt, **kwargs).wait(timeout)
 
@@ -372,7 +374,7 @@ class Hyperchat:
                     self._served += 1
             except Exception as exc:  # noqa: BLE001 - one prompt, not the pool
                 logger.warning("hyperchat: worker %d failed: %s", index, exc)
-                ticket._fail(f"{type(exc).__name__}: {exc}")
+                ticket._fail(exc)
                 with self._lock:
                     self._failed += 1
                 # The instance is discarded rather than reused. A
