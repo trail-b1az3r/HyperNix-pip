@@ -1971,8 +1971,19 @@ def chat_turn(
     )
     used_backup = False
     tool_rounds: list[dict[str, Any]] = []
+    relay_runs: list[dict[str, Any]] = []
     setup = _tool_setup(config, principal, settings, request, memories, session_id,
                         _code_sandbox(payload, user_message))
+
+    def relay_completion(messages, offered_tools, selected_model=wanted):
+        envelope, info = _queued_relay_chat(
+            request=request, config=config, backend=backend, runner=runner,
+            messages=messages, model=selected_model, sampling=sampling,
+            tools=offered_tools,
+        )
+        relay_runs.append(info)
+        return envelope
+
     try:
         if setup is not None:
             envelope, tool_rounds = _chat_with_tools(
@@ -1982,14 +1993,14 @@ def chat_turn(
                 # calls. Teaching the format costs one system message and
                 # is what makes those models call tools at all.
                 teach_format=_teach_tools(backend),
+                ask_completion=relay_completion,
             )
         else:
-            envelope = bridge.chat(
-                wire,
-                model=wanted,
-                temperature=sampling["temperature"],
-                max_tokens=sampling["max_tokens"],
+            envelope, info = _queued_relay_chat(
+                request=request, config=config, backend=backend, runner=runner,
+                messages=wire, model=wanted, sampling=sampling,
             )
+            relay_runs.append(info)
     except LMStudioError as exc:
         # The backup model, if there is one and it is not the one that
         # just failed. Trying the same model again would be a retry
@@ -2003,12 +2014,11 @@ def chat_turn(
             wanted or "the default model", principal.label, fallback,
         )
         try:
-            envelope = bridge.chat(
-                wire,
-                model=fallback,
-                temperature=sampling["temperature"],
-                max_tokens=sampling["max_tokens"],
+            envelope, info = _queued_relay_chat(
+                request=request, config=config, backend=backend, runner=runner,
+                messages=wire, model=fallback, sampling=sampling,
             )
+            relay_runs.append(info)
         except LMStudioError as second:
             # Reported as the *original* failure. The backup failing is
             # a detail; what the person needs to know is that the model
@@ -2041,6 +2051,7 @@ def chat_turn(
             # rather than just knowing something.
             **({"tool_rounds": tool_rounds} if tool_rounds else {}),
             **({"documents": _documents(tool_rounds)} if _documents(tool_rounds) else {}),
+            "relay": relay_runs,
             # Recorded rather than hidden: an answer from a different
             # model than the one asked for is the single most confusing
             # thing that can happen in a thread, and the fix is to say
