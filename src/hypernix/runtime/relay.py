@@ -460,14 +460,7 @@ class Relay:
                     notes_tokens=self.notes_tokens, answer_tokens=self.answer_tokens)
 
     def run(self, document: str, question: str) -> RelayResult:
-        # The system/developer instructions are sent on every hop, so
-        # count them against every hop's question allowance as well.
-        sizing_question = f"{system_prompt}\\n\\n{question}" if system_prompt else question
-        planned = plan(
-            document, sizing_question, context_tokens=self.context_tokens,
-            instances=len(self.instances), mode=self.mode,
-            notes_tokens=self.notes_tokens, answer_tokens=self.answer_tokens,
-        )
+        planned = self.plan(document, question)
         result = RelayResult("", planned)
         if planned.single:
             user = f"{document}\n\n{question}" if document else question
@@ -525,7 +518,14 @@ class Relay:
         document = "\\n\\n".join(transcript)
         system_prompt = "\\n\\n".join(system_parts)
 
-        planned = self.plan(document, question)
+        # The system/developer instructions are sent on every hop, so
+        # count them against every hop's question allowance as well.
+        sizing_question = f"{system_prompt}\\n\\n{question}" if system_prompt else question
+        planned = plan(
+            document, sizing_question, context_tokens=self.context_tokens,
+            instances=len(self.instances), mode=self.mode,
+            notes_tokens=self.notes_tokens, answer_tokens=self.answer_tokens,
+        )
         result = RelayResult("", planned)
         if planned.single:
             result.answer = self._call(
