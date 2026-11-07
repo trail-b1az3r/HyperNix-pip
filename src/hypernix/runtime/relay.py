@@ -769,21 +769,125 @@ class Relay:
 
     # -- one call ----------------------------------------------------------
 
-    def _call(self, result: RelayResult, slot: int, kind: str, part: int | None,
-              messages: list[dict[str, Any]], max_tokens: int) -> str:
-        started = time.monotonic()
-        reply = self.instances[slot](messages, max_tokens)
-        # Map-mode digests finish in whatever order they finish; the index
-        # is the order they finished in.
+    def _record_hop(
+        self, result: RelayResult, slot: int, kind: str, part: int | None,
+        reply: Reply, started: float,
+    ) -> None:
         with self._lock:
-            hop = Hop(len(result.hops), slot, kind, part, int(reply.input_tokens),
-                      int(reply.output_tokens), time.monotonic() - started)
+            hop = Hop(
+                len(result.hops), slot, kind, part, int(reply.input_tokens),
+                int(reply.output_tokens), time.monotonic() - started,
+            )
             result.hops.append(hop)
             if kind in ("direct", "answer") and reply.raw is not None:
                 result.envelope = reply.raw
             if self.on_hop is not None:
                 self.on_hop(hop)
+
+    def _call(self, result: RelayResult, slot: int, kind: str, part: int | None,
+              messages: list[dict[str, Any]], max_tokens: int) -> str:
+        started = time.monotonic()
+        reply = self.instances[slot](messages, max_tokens)
+        self._record_hop(result, slot, kind, part, reply, started)
         return reply.text.strip()
+
+    def _call_stream(
+        self,
+        result: RelayResult,
+        slot: int,
+        kind: str,
+        part: int | None,
+        messages: list[dict[str, Any]],
+        max_tokens: int,
+        stream_call: Callable[[list[dict[str, Any]], int, int], Any],
+        on_chunk: Callable[[dict[str, Any]], None],
+        cancelled: Callable[[], bool],
+    ) -> str:
+        started = time.monotonic()
+        stream = stream_call(messages, max_tokens, slot)
+        text_parts: list[str] = []
+        tool_calls: dict[int, dict[str, Any]] = {}
+        input_tokens = 0
+        output_tokens = 0
+        model = ""
+        finish = "stop"
+        interrupted = False
+        try:
+            for chunk in stream:
+                if cancelled():
+                    interrupted = True
+                    break
+                if not isinstance(chunk, dict):
+                    continue
+                on_chunk(chunk)
+                model = str(chunk.get("model") or model)
+                usage = chunk.get("usage")
+                if isinstance(usage, dict):
+                    input_tokens = int(usage.get("prompt_tokens") or input_tokens)
+                    output_tokens = int(usage.get("completion_tokens") or output_tokens)
+                for choice in chunk.get("choices") or []:
+                    if not isinstance(choice, dict):
+                        continue
+                    delta = choice.get("delta") or {}
+                    if not isinstance(delta, dict):
+                        continue
+                    piece = delta.get("content")
+                    if isinstance(piece, str) and piece:
+                        text_parts.append(piece)
+                    for position, update in enumerate(delta.get("tool_calls") or []):
+                        if not isinstance(update, dict):
+                            continue
+                        index = int(update.get("index", position))
+                        call = tool_calls.setdefault(index, {
+                            "id": "", "type": "function",
+                            "function": {"name": "", "arguments": ""},
+                        })
+                        if update.get("id"):
+                            call["id"] = update["id"]
+                        if update.get("type"):
+                            call["type"] = update["type"]
+                        function = update.get("function") or {}
+                        if function.get("name"):
+                            call["function"]["name"] += str(function["name"])
+                        if function.get("arguments"):
+                            argument_part = function["arguments"]
+                            call["function"]["arguments"] += (
+                                argument_part if isinstance(argument_part, str)
+                                else str(argument_part)
+                            )
+                    if choice.get("finish_reason"):
+                        finish = str(choice["finish_reason"])
+        finally:
+            if interrupted or cancelled():
+                close = getattr(stream, "close", None)
+                if callable(close):
+                    close()
+
+        content = "".join(text_parts)
+        input_estimate = estimate_tokens("\n".join(
+            self._content_text(message.get("content")) for message in messages
+        ))
+        if not input_tokens:
+            input_tokens = input_estimate
+        if not output_tokens:
+            output_tokens = estimate_tokens(content)
+        message: dict[str, Any] = {"role": "assistant", "content": content}
+        if tool_calls:
+            message["tool_calls"] = [tool_calls[index] for index in sorted(tool_calls)]
+        raw: dict[str, Any] = {
+            "model": model,
+            "choices": [{"message": message, "finish_reason": finish}],
+            "usage": {
+                "prompt_tokens": input_tokens,
+                "completion_tokens": output_tokens,
+                "total_tokens": input_tokens + output_tokens,
+            },
+        }
+        reply = Reply(content, input_tokens, output_tokens, raw)
+        self._record_hop(result, slot, kind, part, reply, started)
+        if interrupted or cancelled():
+            raise InterruptedError("The chat generation was stopped during a relay hop.")
+        return content.strip()
 
     @staticmethod
     def _clip(text: str, tokens: int) -> str:
