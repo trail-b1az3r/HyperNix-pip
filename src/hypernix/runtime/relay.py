@@ -495,7 +495,7 @@ class Relay:
             if role in ("system", "developer"):
                 value = self._content_text(message.get("content"))
                 if value:
-                    system_parts.append(f"[{role}]\\n{value}")
+                    system_parts.append(f"[{role}]\n{value}")
             else:
                 body.append(dict(message))
 
@@ -514,13 +514,13 @@ class Relay:
             role = str(message.get("role") or "message").upper()
             content = self._content_text(message.get("content"))
             if content:
-                transcript.append(f"{role}:\\n{content}")
-        document = "\\n\\n".join(transcript)
-        system_prompt = "\\n\\n".join(system_parts)
+                transcript.append(f"{role}:\n{content}")
+        document = "\n\n".join(transcript)
+        system_prompt = "\n\n".join(system_parts)
 
         # The system/developer instructions are sent on every hop, so
         # count them against every hop's question allowance as well.
-        sizing_question = f"{system_prompt}\\n\\n{question}" if system_prompt else question
+        sizing_question = f"{system_prompt}\n\n{question}" if system_prompt else question
         planned = plan(
             document, sizing_question, context_tokens=self.context_tokens,
             instances=len(self.instances), mode=self.mode,
@@ -573,11 +573,11 @@ class Relay:
                 parts.append("[image attached]")
             elif part.get("type"):
                 parts.append(f"[{part['type']} content attached]")
-        return "\\n".join(part for part in parts if part)
+        return "\n".join(part for part in parts if part)
 
     @staticmethod
     def _system_prompt(base: str, extra: str) -> str:
-        return f"{extra}\\n\\n{base}" if extra else base
+        return f"{extra}\n\n{base}" if extra else base
 
     # -- the two modes ---------------------------------------------------
 
@@ -659,7 +659,7 @@ class Relay:
         self, result: RelayResult, notes: str, question: str, *,
         system_prompt: str = "", question_content: Any = None,
     ) -> str:
-        prefix = f"Notes:\\n{notes or '(nothing relevant was found)'}\\n\\nQuestion: "
+        prefix = f"Notes:\n{notes or '(nothing relevant was found)'}\n\nQuestion: "
         if isinstance(question_content, list):
             content: Any = [{"type": "text", "text": prefix}, *question_content]
         else:
