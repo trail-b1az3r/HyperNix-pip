@@ -294,10 +294,9 @@ release candidates; the [Changelog](Changelog.md) has each batch.
 - **Release plumbing** (post3): Codacy's crash fixed, nightly builds
   behind `PUBLIC_RELEASE_NIGHTLY`.
 
-## 0.72.7 — planned: Python 3.12 → 3.15
+## 0.72.7 — Python 3.12 → 3.15 (Shipped)
 
-**Status:** implemented on the 0.72.7 branch — what was done, what was
-measured and the tested matrix are on [Python 3.12–3.15](Python-3.15.md).
+**Status:** Shipped. The implementation, measurements, and tested matrix are documented in [Python 3.12–3.15](Python-3.15.md).
 
 A real migration, not a `python_requires` edit. Final target:
 
@@ -363,9 +362,9 @@ A real migration, not a `python_requires` edit. Final target:
 - **A final migration report**, ending in a per-version test matrix.
   Nothing is marked passing until it has actually been run.
 
-## 0.72.8 — model tooling, HyperLink, and hardware support (Planned)
+## 0.72.8 — model tooling, HyperLink, and hardware support (Shipped)
 
-This release consolidates the 0.72.8 alpha and release-candidate requirements in the current prompt. Treat the subsections below as planned until the corresponding implementation and release gates are verified.
+**Status: Shipped.** The 0.72.8 alpha and release-candidate scope is complete. The prompt retains the historical specification in a collapsible section; shipped behavior and release evidence belong in the changelog and linked technical documentation.
 
 - **HyperLink sessions and model selection:** make chats private to the signed-in account, or to the calling API key when accounts are disabled. Sign and validate requests consistently across account/key identity, message timestamp, chat/session identifiers, and fresh request nonces; editing or resending a message must revalidate it. Improve timeout behavior, reject empty/invalid requests, prevent global chat leakage, and make multiple loaded models visible and selectable in both the Models view and chat.
 - **T1 runner and API behavior:** add an interactive, refreshable model/backend picker without launching a separate full-screen TUI. Improve launch-script staged arguments and live log following. Introduce the versioned web-search API and configurable, permission-aware search storage; retain the documented compatibility window for the older endpoint before removal. Add bounded system-prompt compaction for models whose context cannot fit the full prompt. Harden the API, close outstanding security findings, publish a security policy, and document licensing changes before release.
@@ -403,11 +402,11 @@ This release is the early-beta integration milestone described by the 0.73.6 pro
 
 ## 0.74.0 — HyperNix0xV3 architecture (Planned)
 
-Design and implement HyperNix0xV3 as a genuinely new architecture rather than a renamed Transformer or a collection of standard layers. Explore two new custom layers for efficient context and adaptive processing, a scalable block architecture, context-aware synchronous optimization, adaptive and thermal-aware control, and hardware-aware execution. Support multiple model sizes using shared configuration and implementation paths. Treat any claimed gains as research hypotheses until baselines, numerical checks, training stability, hardware compatibility and repeatable experiments support them; record failed experiments as well as successful ones.
+Build V3 around two original trainable layers: efficient long-context retention and adaptive persistent state. Add a unified scalable block/configuration system, hardware-aware resource selection, training integrity, numerical tests, ablations, and repeatable benchmarks. The 0.74.0 scope no longer includes a separate synchronous module or synchronous controller; use the repository's shared runtime/resource abstractions instead. Do not claim architectural or performance gains without measured evidence.
 
-## 0.74.1 — HyperLink local runtime and context telemetry (Planned)
+## 0.74.1 — HyperLink telemetry, theme restoration, and remaining UX gaps (Planned)
 
-Add the legacy **Origins** theme and fix hardware reporting so supported telemetry can identify CPU, RAM, GPU, and power use rather than showing partial or guessed readings. Report hourly power consumption and efficiency only where the system exposes enough information, clearly labeling estimates. Integrate a usable local model runner based on the modified llama.cpp runtime. Add a three-ring chat indicator for context and remaining usage, with clear color thresholds and automatic context compaction at the specified 96% full point. Add an actionable example that trains a small Brewer model using the latest supported Pressure Cooker, Neo Oven, and synchronous-training components.
+Reuse the existing local llama.cpp runner and two-layer context/usage indicator; do not rebuild completed functionality. Restore the historical Origins theme, finish CPU/RAM telemetry alongside existing GPU detection, and add honest power/energy reporting with measured-versus-estimated labels. Extend the chat indicator only where needed for the intended three-ring presentation, preserve API compatibility, and compact context at 96% only when the model's real context limit is known. Add a runnable tiny Brewer example using current optimizer and Neo Oven APIs, without depending on the removed synchronous module. Test missing telemetry, usage entitlements, model switching, long prompts, and fallback behavior.
 
 ## 0.74.2 — experiment ledger and reproducible workbench (Planned)
 
@@ -415,27 +414,19 @@ Make training, evaluation, inference benchmarking, and quantization runs reprodu
 
 ## 0.74.3 — HyperNix Studio, local runtime, and agent tools (Planned)
 
-Deliver a coherent Studio experience that can discover, load, inspect, and run local models without a T1 key or hosted server. Integrate Strife and the shared optimizer framework instead of duplicating them. Add observable local tool calling, parallel calls where safe, capability detection, built-in tools, agent profiles/tool packs, environment snapshots, project diagnostics, patch/apply and test-and-fix loops, shell support for Bash/Fish/PowerShell, and safe streaming/cancellation. Preserve permissions and user approval at tool boundaries; isolate execution, constrain file/process/network access, and make failures recoverable. Include model/context/tool-result management, caching, training dashboard integration, configuration and CLI support, accessible high-quality UI, backward compatibility, performance tests and complete documentation.
+Deliver a cohesive Studio that discovers and runs local models without a T1 key, integrates Strife and Optimizer Framework V2 rather than duplicating them, and supports hosted providers through a shared runtime interface. Add observable tool calling, safe parallel execution, model capability detection, agent profiles/tool packs, environment snapshots, project diagnostics, reviewable patch/apply, test-and-fix loops, and Bash/Fish/PowerShell shell support. Enforce user approval, workspace isolation, filesystem/process/network limits, streaming, cancellation, bounded context/cache management, and recoverable errors. Integrate training dashboards and optimizer controls; provide configuration, CLI, accessible UI, backward compatibility, tests, performance evidence, and complete documentation. Do not ship mocks or claim unsupported capabilities.
 
-## 0.75.0 — HyperNix0xV4 cognitive architecture (Planned)
+## 0.75.0 — HyperNix0xV4 cognitive architecture with V3 fallback (Planned)
 
-Research and build a new model architecture rather than simply modifying V3 or renaming conventional Transformer blocks. The proposed design explores perception, curiosity, parallel internal processing, hypothesis formation, synchronization, memory, learning and perspective formation. Keep internal computation distinct from user-facing explanations; do not expose or require a traditional chain-of-thought transcript. Provide configurable model sizes and validate the architecture through reproducible training/evaluation, memory and compute measurements, and comparisons with documented baselines before claiming advantages.
+Build V4 as a distinct cognitive architecture exploring perception, curiosity, parallel latent processing, hypothesis formation, synchronization, memory, learning, and perspective formation. Keep internal computation separate from user-facing explanations; do not expose or require a traditional chain-of-thought transcript. Retain V3 as a supported, selectable fallback when V4 cannot safely load or execute. Explain fallback reasons, never silently convert checkpoints or claim equivalence, and preserve independently tested V3 configs/checkpoints. Validate V4 through reproducible training/evaluation, ablations, memory/compute measurements, and documented baselines.
 
-## 0.76.0 — scope not yet specified
+## 0.80.0 — T1 API v1.2 security and protocol hardening (Planned)
 
-The current prompt reserves this version number but does not define deliverables.
+Generate T1 API v1.2 as a security-first protocol generation. Audit authentication, authorization, key lifecycle, request/session signing and replay protection, rate limits, quotas/billing, CORS, Tailscale identity, uploads, model access, MCP/tools, storage, transport, installers, and update paths. Enforce least privilege and deny-by-default server-side checks; harden secret generation/storage/redaction, scoped and expiring credentials, request validation, path/archive handling, SSRF and command-injection boundaries, upload limits, and audit logging. Version the API contract explicitly and align the server, SDK, HyperLink, waiter, installer, and OpenAPI schemas. Preserve safe v1.1 compatibility through a documented migration window, with version negotiation, clear errors, tests, and rollback guidance. Require a reviewed threat model, adversarial security tests, vulnerability-reporting policy, and reproducible release evidence. Do not treat a clean static scan as proof of security.
 
-## 0.76.1 — hyperNix.25 and safer shutdown UX (Planned)
+## 0.81.0 — unified in-house runtime and selectable PyTorch builds (Planned)
 
-Add support for `hyperNix.25`. For the wall-clock/shutdown script, show a clear five-to-one countdown and a final shutdown notice, with a documented **Shift+C** cancellation path. Make cancellation reliable during the entire countdown and test that cancellation prevents shutdown.
-
-## 0.80.0 — scope not yet specified
-
-The current prompt reserves this version number but does not define deliverables; no additional scope is inferred here.
-
-## 0.81.0 — unified in-house runtime (Planned)
-
-Consolidate the runtime into the single `hypernix` Python package; do not split the design into separately installed `hypernix-torch`, `hypernix-poor`, `hypernix-hardware`, or `hypernix-cuda` packages. Build the proposed HyperNix Torch interface around the specified PyTorch 2.14 codebase where required, with internal hardware, runtime, CUDA, CPU, logging, terminal, Unicode and compatibility modules. Add automatic backend/runtime selection, explicit compatibility handling, native build and packaging support, and a versioned migration path. Validate the supported CPU/GPU combinations and package once-install behavior with real CI, build, install, runtime and performance tests; do not promise universal CUDA or hardware compatibility by catalog entry alone.
+Consolidate the runtime into the single `hypernix` Python package; do not split the design into separately installed `hypernix-torch`, `hypernix-poor`, `hypernix-hardware`, or `hypernix-cuda` packages. Build the custom HyperNix Torch interface on PyTorch **2.14.1**, or **2.15** only if a reproducible source build and compatibility suite pass. The custom build should target tested CUDA **6.x through 12.4** combinations; unsupported combinations must be reported honestly. Also provide a separately installable option for the newest compatible upstream PyTorch build for modern targets, including the requested `9.8+` target; resolve that target from real upstream compatibility data rather than guessing. Keep hardware, runtime, CUDA, CPU, logging, terminal, Unicode and compatibility modules internal to the single package. Add automatic backend/runtime selection, explicit compatibility handling, native build and packaging support, and a versioned migration path. Validate the supported CPU/GPU combinations and package once-install behavior with real CI, build, install, runtime and performance tests; do not promise universal CUDA or hardware compatibility by catalog entry alone.
 
 ## 0.81.1 — HyperLink Android, navigation, providers, and HyperNixUP (Planned)
 
