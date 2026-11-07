@@ -219,8 +219,8 @@ jobs:
 
   test-windows:
     name: test (py${{ matrix.python-version }} on Windows)
-    needs: [triage, test-linux]
-    if: always() && needs.triage.result == 'success' && needs.triage.outputs.narrow != 'true' && needs.test-linux.result != 'skipped'
+    needs: [triage, linux-complete]
+    if: always() && needs.triage.result == 'success' && needs.triage.outputs.narrow != 'true' && needs.linux-complete.result != 'skipped'
     runs-on: windows-latest
     strategy:
       fail-fast: false
@@ -280,11 +280,54 @@ jobs:
           python setup.py --name
           python setup.py --version
 
+  # Every Linux-hosted check is held until macOS (including iOS simulator)
+  # has finished. This barrier waits for every Linux job and fails only
+  # after all of them have completed; Windows still runs after a failure.
+  linux-complete:
+    name: Linux stage (all Linux checks)
+    needs: [triage, test-linux, lint, typecheck, python315, benchmarks, native, llamacpp, cuda, build-check, hyped-pro, tvtop-max, firefox-extension]
+    if: always() && needs.triage.result == 'success' && needs.triage.outputs.narrow != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report all Linux-stage results
+        env:
+          PYTHON_MATRIX: ${{ needs.test-linux.result }}
+          LINT: ${{ needs.lint.result }}
+          TYPECHECK: ${{ needs.typecheck.result }}
+          PYTHON315: ${{ needs.python315.result }}
+          BENCHMARKS: ${{ needs.benchmarks.result }}
+          NATIVE: ${{ needs.native.result }}
+          LLAMACPP: ${{ needs.llamacpp.result }}
+          CUDA: ${{ needs.cuda.result }}
+          BUILD: ${{ needs.build-check.result }}
+          HYPED_PRO: ${{ needs.hyped-pro.result }}
+          TVTOP_MAX: ${{ needs.tvtop-max.result }}
+          FIREFOX: ${{ needs.firefox-extension.result }}
+        run: |
+          printf '%s\\n' \\
+            "Linux OS matrix: $PYTHON_MATRIX" \\
+            "Lint: $LINT" \\
+            "Typecheck: $TYPECHECK" \\
+            "Python 3.15 features: $PYTHON315" \\
+            "Benchmarks: $BENCHMARKS" \\
+            "Native: $NATIVE" \\
+            "llama.cpp: $LLAMACPP" \\
+            "CUDA: $CUDA" \\
+            "Build: $BUILD" \\
+            "hyped-pro: $HYPED_PRO" \\
+            "tvtop-max: $TVTOP_MAX" \\
+            "Firefox extension: $FIREFOX"
+          failed=0
+          for result in "$PYTHON_MATRIX" "$LINT" "$TYPECHECK" "$PYTHON315" "$BENCHMARKS" "$NATIVE" "$LLAMACPP" "$CUDA" "$BUILD" "$HYPED_PRO" "$TVTOP_MAX" "$FIREFOX"; do
+            [ "$result" = "success" ] || failed=1
+          done
+          exit "$failed"
+
   # This aggregator is the one dependency for the later live-integration jobs.
   # It fails only after every OS stage has finished, if any stage failed.
   test-complete:
     name: cross-platform tests (all OS stages)
-    needs: [triage, test-macos, integration-ios, test-linux, test-windows]
+    needs: [triage, test-macos, integration-ios, linux-complete, test-windows]
     if: always() && needs.triage.result == 'success' && needs.triage.outputs.narrow != 'true'
     runs-on: ubuntu-latest
     steps:
@@ -292,7 +335,7 @@ jobs:
         env:
           MACOS_RESULT: ${{ needs.test-macos.result }}
           IOS_RESULT: ${{ needs.integration-ios.result }}
-          LINUX_RESULT: ${{ needs.test-linux.result }}
+          LINUX_RESULT: ${{ needs.linux-complete.result }}
           WINDOWS_RESULT: ${{ needs.test-windows.result }}
         run: |
           printf 'macOS: %s\nLinux: %s\nWindows: %s\n' "$MACOS_RESULT" "$LINUX_RESULT" "$WINDOWS_RESULT"
@@ -303,8 +346,8 @@ jobs:
   # `test` job, where on 3.12-3.14 it checks the compatibility boundary.
   python315:
     name: Python 3.15 features (PEP 798/799/810/831)
-    needs: triage
-    if: needs.triage.outputs.narrow != 'true'
+    needs: [triage, integration-ios]
+    if: always() && needs.triage.result == 'success' && needs.triage.outputs.narrow != 'true' && needs.integration-ios.result != 'skipped'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -338,8 +381,8 @@ jobs:
   # runners are too noisy to gate on, so compare runs, not single numbers.
   benchmarks:
     name: benchmarks (py${{ matrix.python-version }})
-    needs: triage
-    if: needs.triage.outputs.narrow != 'true'
+    needs: [triage, integration-ios]
+    if: always() && needs.triage.result == 'success' && needs.triage.outputs.narrow != 'true' && needs.integration-ios.result != 'skipped'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -563,8 +606,8 @@ jobs:
   # that is about to stop working.
   native:
     name: native (ggml-hnx + studio core)
-    needs: triage
-    if: needs.triage.outputs.narrow != 'true'
+    needs: [triage, integration-ios]
+    if: always() && needs.triage.result == 'success' && needs.triage.outputs.narrow != 'true' && needs.integration-ios.result != 'skipped'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -650,8 +693,8 @@ jobs:
   # instead of eight.
   llamacpp:
     name: patcher against real llama.cpp
-    needs: triage
-    if: needs.triage.outputs.narrow != 'true'
+    needs: [triage, integration-ios]
+    if: always() && needs.triage.result == 'success' && needs.triage.outputs.narrow != 'true' && needs.integration-ios.result != 'skipped'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -751,8 +794,8 @@ jobs:
   # pass, which only nvcc can say.
   cuda:
     name: cuda kernels
-    needs: triage
-    if: needs.triage.outputs.narrow != 'true'
+    needs: [triage, integration-ios]
+    if: always() && needs.triage.result == 'success' && needs.triage.outputs.narrow != 'true' && needs.integration-ios.result != 'skipped'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -786,8 +829,8 @@ jobs:
 
   build-check:
     name: build sdist + wheel (smoke)
-    needs: triage
-    if: needs.triage.outputs.narrow != 'true'
+    needs: [triage, integration-ios]
+    if: always() && needs.triage.result == 'success' && needs.triage.outputs.narrow != 'true' && needs.integration-ios.result != 'skipped'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -831,8 +874,8 @@ jobs:
   # the Python launcher and the packaging in `test`, on every platform.
   hyped-pro:
     name: hyped-pro (bun test + tsc)
-    needs: triage
-    if: needs.triage.outputs.narrow != 'true'
+    needs: [triage, integration-ios]
+    if: always() && needs.triage.result == 'success' && needs.triage.outputs.narrow != 'true' && needs.integration-ios.result != 'skipped'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -850,8 +893,8 @@ jobs:
   # launcher, bridge and the script reading behind it.
   tvtop-max:
     name: tvtop-max (bun test + tsc)
-    needs: triage
-    if: needs.triage.outputs.narrow != 'true'
+    needs: [triage, integration-ios]
+    if: always() && needs.triage.result == 'success' && needs.triage.outputs.narrow != 'true' && needs.integration-ios.result != 'skipped'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -870,8 +913,8 @@ jobs:
   # content script in a real page.
   firefox-extension:
     name: firefox extension (bun test)
-    needs: triage
-    if: needs.triage.outputs.narrow != 'true'
+    needs: [triage, integration-ios]
+    if: always() && needs.triage.result == 'success' && needs.triage.outputs.narrow != 'true' && needs.integration-ios.result != 'skipped'
     runs-on: ubuntu-latest
     defaults:
       run:
