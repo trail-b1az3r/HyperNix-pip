@@ -341,8 +341,11 @@ jobs:
           LINUX_RESULT: ${{ needs.linux-complete.result }}
           WINDOWS_RESULT: ${{ needs.test-windows.result }}
         run: |
-          printf 'macOS: %s\nLinux: %s\nWindows: %s\n' "$MACOS_RESULT" "$LINUX_RESULT" "$WINDOWS_RESULT"
-          test "$MACOS_RESULT" = "success" && test "$LINUX_RESULT" = "success" && test "$WINDOWS_RESULT" = "success"
+          echo "macOS Python matrix: $MACOS_RESULT"
+          echo "macOS iOS integration: $IOS_RESULT"
+          echo "Linux stage: $LINUX_RESULT"
+          echo "Windows stage: $WINDOWS_RESULT"
+          test "$MACOS_RESULT" = "success" && test "$IOS_RESULT" = "success" && test "$LINUX_RESULT" = "success" && test "$WINDOWS_RESULT" = "success"
 
   # The four Python 3.15 features hyperNix-pip uses (PEP 798, 799, 810,
   # 831), verbosely, on 3.15 itself; the same suite also runs inside every
