@@ -1088,7 +1088,7 @@ def _relay_chat_completion(
     context_tokens = _model_context(config, runner, backend)
     if context_tokens <= 0:
         context_tokens = max(256, int(config.relay_default_context_tokens or 4096))
-    default_answer = max(32, min(512, int(context_tokens * 0.225)))
+    default_answer = max(32, int(context_tokens * 0.225))
     answer_tokens = min(
         int(sampling.get("max_tokens") or default_answer),
         default_answer,
@@ -1227,6 +1227,17 @@ def _queued_relay_chat(
             details={"queue": chat.stats()},
             http_status=429,
         ) from exc
+
+
+def _relay_usage_totals(relay_runs: list[dict[str, Any]]) -> dict[str, int]:
+    """Sum every relay-backed completion, including separate tool rounds."""
+    input_tokens = sum(max(0, int(run.get("input_tokens", 0) or 0)) for run in relay_runs)
+    output_tokens = sum(max(0, int(run.get("output_tokens", 0) or 0)) for run in relay_runs)
+    return {
+        "prompt_tokens": input_tokens,
+        "completion_tokens": output_tokens,
+        "total_tokens": input_tokens + output_tokens,
+    }
 
 
 def _relay_stream_chunks(envelope: dict[str, Any]):
@@ -2053,7 +2064,7 @@ def chat_turn(
     elapsed = time.monotonic() - started
 
     content, finish = _extract_reply(envelope)
-    usage = envelope.get("usage") or {}
+    usage = _relay_usage_totals(relay_runs) if relay_runs else (envelope.get("usage") or {})
     model_id = str(envelope.get("model") or payload.model_id or session.model_id or "")
     assistant_message = store.append(
         session_id,
@@ -2349,6 +2360,8 @@ def chat_turn_stream(
         pieces: list[str], model_id: str, finish: str, usage: dict[str, Any], *, truncated: bool,
         tool_rounds: list[dict[str, Any]] | None = None, error: dict[str, Any] | None = None,
     ) -> ChatMessage:
+        if relay_runs:
+            usage = _relay_usage_totals(relay_runs)
         message = store.append(
             session_id,
             role="assistant",
