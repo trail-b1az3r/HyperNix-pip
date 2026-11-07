@@ -176,8 +176,8 @@ class TestChatMessages:
     def test_a_long_chat_keeps_instructions_roles_and_latest_image(self):
         messages = [
             {"role": "system", "content": "Use the conversation as context. Be precise."},
-            {"role": "user", "content": "Earlier user detail. " + "alpha " * 160},
-            {"role": "assistant", "content": "Earlier assistant response. " + "beta " * 140},
+            {"role": "user", "content": "Earlier user detail. " + "alpha " * 500},
+            {"role": "assistant", "content": "Earlier assistant response. " + "beta " * 500},
             {"role": "user", "content": [
                 {"type": "text", "text": "Describe this image in light of our earlier discussion."},
                 {"type": "image_url", "image_url": {"url": "data:image/png;base64,latest"}},
