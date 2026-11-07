@@ -1,99 +1,51 @@
+<details>
+<summary>0.72.7 — Completed: Python 3.12–3.15 migration</summary>
+
 # 0.72.7
 
 Modernize HyperNix-pip into a reliable, production-ready release by fixing HyperLink model selection, image and file support, and runner behavior; resolving Linux, macOS, and Windows CI failures; and completing a repository-wide migration to Python 3.12–3.15. Audit and update source code, dependencies, packaging, native builds, typing, async behavior, APIs, tests, and documentation; implement Python 3.15 features including PEP 798, PEP 799, PEP 810, and PEP 831 where they provide real value, with safe compatibility paths for Python 3.12–3.14. Add repeatable before-and-after benchmarks for startup, imports, memory, CPU, and representative workloads, and verify installs, wheels, source distributions, tests, and supported-platform compatibility. Preserve existing behavior and public APIs wherever possible, document any unavoidable changes, and never claim a feature, performance gain, or test result without implementation and evidence.
+
+</details>
+
+<details>
+<summary>0.72.8 — Completed: model tooling, HyperLink, hardware support, and security</summary>
+
 # 0.72.8 alpha 0
-Make a new module,  
-That  will be able to load many instances of a small context model, and use each one in series to be to use larger prompts, make it work in the 1api, factor into to costs on larger costs, update the billing format for some of the newer features, in tvtopmax, and more keybinds, o: sort items like if processs are slected it will change how it’s sorted, or if ram is selected, can sort by highese/lowest use or speed, if a selected window is longer then it’s available space, users can press right arrow, to move the view area right, pressing shift right goes the other way, left arrow, cycle selected section, d: deselect all sections, add 5 more sections( hidden by default show via shift+number) , add to the cpu section per core temps, the ram usage is 100% inaccurate, add volume in decibels and a warning text if it’s playing audio and at a volume that’s unsafe, make it not eatmate the volume, make it real and accurate, and add a Firefox extension, that allows models running on the api, localy, or a other cloud provider like gpt, Claude, to interact with your browser, search the web, type, etc.  
-  
-# 0.72.8 alpha 1:
-Make hyperlink chats no longer be gloable, if accounts are on, link it to accounts, if not then it must be linked to the api key, and make requests in hyperlink, only time out, if the client can’t respond to the server first when sending prompt, then 4 second after, and the t1 api doesn’t send a model free response to a ping, and if a user makes a request with no data,it won’t work and the app will show and error since the app can’t sent a validat ping that is time stamped to when send is pressed in app, and resending or editing the message, will resign the message using the account id and Unix time and date, or if no accounts then with t1 or t2 (or 2.1) key id, Unix time and date, and a random string (23 to 26 long), and both ways also use the chat or code session and server session Id all with the others for signing and resigning and validation   
-In hnx-t1 runner start, make it instead of needing the exact t1 name for the model, make it have a lms load like interface, that is not locked, but does refresh, (no open tui), that people use their arrow keys to change selection, and hnx-t1 runner backend to change the back end like that, update wikis, for the alpha release, in hyperlink, make models that are loaded, (if more than one), both in models tab, and chat, show what is loaded, and allow users to pick one of the loaded 2 (or more (no limit)) to use  
-Add a command hnx-t1 launch-script -1 ‘command one’ -2 ‘command 2 that runs after, in the case of yay for example when it asks like packages to exclude it goes there, and -3, -4 up to 9, and make -5 (example), then “” just press enter,   
-Update older features like the ranges, fix the remiaining 20k secutity issued found by GitHub scans, add a security policy,  swap the dual license for a HOS1.1, and Apache 2.0, HOS1.1, from the LLU is more descriptive, add to hyperlink, app, a login so users after using t1 key, local network, or paring code, can login once and never lose data, add a 2 layer circal to the chat window, layer one has context, layer 2 shows useage if it ennabled on your key and server, if it’s not then it shows gpu useage or if running on cpu, cpu usage. Also add one more model runner, multi lama. Add to the hnx llama mod: make it also add all types from non stock llama that multi llama can use into it. The model only makes memories when it’s told to, modify the system prompt so it can pick when it wants or needs to run a tool call, like user asks make me a markdown document that I can download form this app, ( not always needed) (add a stuff for that too)  talking about the most recent version of Claude and how much better it is compared to gpt, it needs to determine what it needs to search for, and a new v2 web serch api endpoint,   
-  
-/web/v2/I?=query&q?=depth&mx?=maxitems&sq?=# that is lowest allowed ranked site, like 1 only lets the first site to be read and summarized &kpd?=[true or false to keep search data and/or site text in parquet or jsonl] (changes via admin hnx/hypernix-t1 settings command for format, enabling Ai search storage), all together it is /web/v2/I?=query&q?=depth&mx?=maxitems&sq?=#&&kpd?=[true] (two ampersands are needed for requests that use the non curly brackets)   
-t1 v1.1.26.10.1.0  
-No more /web/v1/search?q= but it will still work until  0.73.0, and a /web/v1/ai/config that the ai can call those endpoints if user has admin or partial admin user it can be used to change less risky commands, and add 5 more admin config setting for web endpoints and a command hypernix-t1 config web, and make models running in a hyperlink runner auto compress system prompt if the models context is lower then the prompt’s size then it compacts to 1/3 up to  1/5 of the max context length /chat/hypercompress/size?s?=[1 or 2] make the new default model lfm2.5-2.7b hnx convert -q -p doesn’t work, it always tries to quantisize it before conferring it, make hyperNix download support repo links, links to specific gguf files, and make —repo-id optional and add -o for output, add one more hnx quant, hnx_q6h1 (int 2, q6s, hnx-1375, and iq1s and q3m) and hnx_q6h1m (int2 q5k, new quant hnx15125, iq1s, q2m) add hnx-t1 launch-script —logs -F so It follows the scripts logs live till control C   
-  
-hypernix 0.72.8 pt 2  
-add a new module, called c4, and uses the users gpu, and a safetenrsors, pt, or gguf, (all but gguf require a config.json), what it will do , is it will “explode” the model weights into single and multi peramiters and layer groups, called, stems, mstems (stems are connection with peramiters and mstems are connections and a layer), dial, mdials (2 peramiters per mdial) and Pdials (3 or more peramiters ) and it will measure, test, and it can check I what layer, or weight, or peramiter is unneeded, or that one specificity needs retraining or would be the most beneficial to prioritize training that one more, its sections are used and separated in, hypernix.c4.explode, hypernix.c4.stem, hypernix.c4.dial, and hypernix.c4.restore, and most importantl the final 2, hypernix.c4.reap (this will find the best weights, layers, and collects them for: hypernix.c4.sow, which will use those things and make it into a new models made of those cherry picked layers and/or weights), each with multiple useful, and production features, and it can also, use a custom new type of optimizer that will back propagate, then instead of updating, it will first separate and check, the sections, make it also be able to a use specially modified pressure cooker v5s and adamW hybrid optimizer designed just for this, not regular training   
-HyperNix 0.72.8 pt3  
-Add Claude code support for models running in hyperNix, make a new arch called hnx0xv2image, it’s a custom image to text model, that can be fused/merged with any lfm2.5 non vl model, a qwen3.5 model, and any hyperNix model, that can be trained separately, update the examples/t1api/readme and other files in there, make t1 servers fully work with mcp’s like huggingface’s, and add all of hnx net’s features into the t1 API, and depracate net, add a code section to the hyperlink app, that allows the model to have more access to file, (using /code sandboxes, and other stuff), git support, and more. In the hyperlink chat function, add a way for users to integrate parts of dataset files in jsonl, parquet, txt, md, etc into the model, make t1 servers that are running and are public, and have not turned off t1_public_counter in the env settings, on this version of t1.1.26.10.1.0 or newer, have a live hourly counter in the GitHub repo showing how or if any are up yet, add a new commmad hnx auto, it will auto download a repo you give it from hf, if it’s not gguf, it will convert it, then quanitzsize it to what you want it to be, move the following hnx help command, to only be shown if user runs, hnx extra, then they can see these moved commands, hnx; neuron, pipeline, assistant, generate, wiki, prot (fix it so it doesn’t lock my screen), oven, path, and map, tvtop, cctvtop, camo, web search, and scavenger. Add to the help command, tvtopmax, and hypedpro, add a shortcut for fetch-llama-quantisize being fllq, and check all of those for being fakes, stubs or being broken and fix them, fix hyperNix download,  make hyperlink support full markdown, markdown extra, and common mark, and GitHub flavored markdown   
-  
+Make a module that can load multiple instances of a small-context model and use them in sequence to process larger prompts; integrate it with the T1 API and account for additional compute in billing. Update tvtopmax sorting, navigation, hidden sections, per-core temperatures, accurate RAM reporting, and measured audio-level warnings. Add a Firefox extension for explicitly authorized model-driven browser interaction.
+
+# 0.72.8 alpha 1
+Make HyperLink chats private to the signed-in account, or to the API key when accounts are disabled. Bind requests to identity, timestamp, chat/session IDs, and fresh nonces; validate sends, edits, and resends. Reject empty requests and use a bounded client/server timeout handshake. Add a refreshable model/backend picker to hnx-t1 runner start, expose loaded models in HyperLink's Models view and chat picker, and allow users to choose among them. Extend `hnx-t1 launch-script` with ordered `-1` through `-9` input steps and live log following with `--logs -F`. Complete security fixes, a security policy, HOS-1.1/Apache-2.0 licensing choice, account-backed chat persistence, consent-aware tool calls and memory behavior, multi-llama support, and the versioned T1 web-search API with permission-aware configuration and storage. Improve prompt compaction for models whose context is smaller than the system prompt. Fix download, conversion, and quantization workflows; accept Hugging Face repository and direct-file URLs, optional repository IDs, and output paths; add `hnx_q6h1` and `hnx_q6h1m`; validate non-stock llama.cpp support.
+
+# 0.72.8 pt 2
+Add C4 model analysis for safetensors, PyTorch, and GGUF inputs where supported. Implement safe weight/layer inspection, measurement, restore, and provenance-aware `reap`/`sow` workflows. Integrate the proposed specialized V5S/AdamW hybrid only when numerical and reproducibility tests support it.
+
+# 0.72.8 pt 3
+Add Claude Code-compatible workflows, the `hnx0xv2image` image-to-text architecture and supported fusion paths, T1 MCP integrations, and the requested HNX Net capabilities in T1 before deprecating the old Net surface. Expand HyperLink's Code workspace with sandboxed file access and Git support; allow selected dataset-file context; add the public T1 server counter; implement `hnx auto`; move less-common commands behind `hnx extra`; audit commands for stubs and broken behavior; add missing aliases/help; and complete CommonMark/GFM Markdown support.
+
 # 0.72.8 Final Release Candidate (RC)
 
 ## Release objective
+Complete and validate the 0.72.8 release by expanding hardware and model-architecture support from verified sources, making capability detection reliable, and publishing support information on GitHub Pages. A registry entry must map to tested detection and an honest compatibility status; a name in a list is not proof of a working capability.
 
-Complete and validate the 0.72.8 release candidate by expanding hardware and model-architecture support from verified sources, making capability detection reliable, and publishing the resulting support information on GitHub Pages. These are implementation requirements for HyperNix-pip itself. Do not merely add names to a list: each new registry entry must map to tested detection, capability information, and an honest compatibility status.
+## 1. Supported CPU catalogue
+Add at least 251 net-new identifiable CPU model/SKU entries beyond the recorded baseline, covering Intel, AMD, Apple silicon, ARM-based vendors, and other verifiable families. Store canonical IDs, aliases, family/generation, architecture, cores/threads, instruction sets, and sourced specifications. Keep catalogue metadata separate from live detection and preserve unknown values as unknown. Test aliases, virtual machines, containers, missing tools, and differing feature flags.
 
-## 1. Supported CPU catalogue: at least 250 additional CPU models
+## 2. Supported GPU catalogue
+Add at least 151 net-new identifiable GPU model/SKU entries beyond baseline, covering NVIDIA, AMD, Intel, Apple/Metal where relevant, and supported vendors. Distinguish device recognition, architecture/compute capability, driver/toolkit/runtime compatibility, backend initialization, and tested workload support. Handle hybrid GPUs, eGPUs, WSL, containers, CPU-only systems, missing telemetry, and older Pascal devices such as GTX 1080.
 
-Audit the existing CPU identification, hardware snapshot, training presets, runtime selector, and documentation. Add **at least 251 net-new identifiable CPU model/SKU entries** beyond the baseline checked at the start of this work, covering current and legacy families from Intel, AMD, Apple silicon, ARM-based vendors, and other vendors with verifiable public specifications.
-
-Create or extend a structured CPU catalogue with canonical vendor/model identifiers, family/generation, architecture, physical/logical core information where discoverable, supported instruction sets, relevant memory/runtime constraints, and links or citations to public vendor specifications. Use CPUID/platform APIs, `platform`, `cpuinfo` or existing repository abstractions where appropriate. Do not infer unsupported features from a product name. Unknown fields must remain unknown rather than becoming fake zeroes.
-
-Keep the catalogue separate from live hardware detection: a CPU being listed must not imply that the current machine has it. Support aliases and noisy OS-reported names, and show which facts were directly detected versus mapped from catalogue metadata. Do not create hundreds of special-case branches; use data-driven registries and reusable capability rules. Cover Windows, Linux, and macOS where platform APIs allow it; where exact SKU data is unavailable, return a useful family-level result and explain uncertainty. Add fixture tests for vendor strings, aliases, unknown IDs, missing tools, virtual machines, containers, and CPUs whose feature flags differ despite similar names.
-
-## 2. Supported GPU catalogue: at least 150 additional GPU models
-
-Audit `hypernix.system.gpus`, runtime selection, VRAM detection, hardware compatibility metadata, and GPU documentation. Add **at least 151 net-new identifiable GPU model/SKU entries** beyond the existing baseline, covering NVIDIA GeForce/RTX/Quadro/datacenter lines, AMD Radeon/Instinct, Intel Arc and integrated graphics, and other GPU families actually supported by repository backends.
-
-For each entry, record vendor, canonical model and aliases, architecture/generation, public device identifiers where available, published memory configuration where stable, compute capability or backend feature level where applicable, and supported backend(s). For NVIDIA, distinguish GPU compute capability from the installed CUDA runtime/driver; for AMD distinguish GPU family/gfx target from ROCm version support; for Intel distinguish the device family from the installed XPU stack. Do not treat one backend's version as a universal compatibility guarantee.
-
-Keep detection failure-safe. Missing vendor tools, unavailable telemetry, `N/A` fields, hybrid/multi-GPU systems, eGPUs, WSL/containers, and virtualized environments must return explicit partial results. Separate “catalogue recognizes this model,” “device detected,” “backend can initialize,” and “workload successfully tested.” A GPU name in a registry alone does not prove that it can run a workload.
-
-Add tests for new canonical families and reusable parsing rules, including NVIDIA, AMD, Intel, Apple/Metal where relevant, CPU-only machines, mixed-vendor systems, and older Pascal GPUs such as the GTX 1080.
-
-## 3. Discover and support at least 36 new model architecture families from Hugging Face
-
-Use the current official Hugging Face Transformers documentation and Hub configuration metadata:
-- https://huggingface.co/docs/transformers/model_doc/auto
-- https://huggingface.co/docs/transformers/models
-- https://huggingface.co/docs/huggingface_hub/guides/api
-
-Export the current HyperNix architecture/model-type registry and compare it to current Transformers AutoConfig/AutoModel mappings and real Hub `config.json` files. Add **at least 36 net-new architecture families/model types** that are not fully supported in the baseline. Count distinct functional architecture-family keys, not checkpoints, aliases, or spelling variations.
-
-Discover candidates across decoder-only language models, MoE models, state-space/recurrent models, encoder-decoder models, embeddings/rerankers, vision-language models, and speech/audio models. Select the actual additions from current upstream support and the repository baseline, not from names alone.
-
-For each family, implement and document the operations genuinely supported: config/checkpoint inspection; tokenizer/processor resolution; loading and inference for the advertised task; training/fine-tuning where compatible; conversion and quantization where tensor layouts/operators are correctly mapped; GGUF export/runtime only where truly supported; and multimodal input only where the model implementation and data path exist.
-
-Do not mark an architecture “fully supported” if only its config can be parsed. Publish a per-operation capability matrix with statuses such as supported-and-tested, supported-with-limitations, experimental, metadata-only, and unsupported. Use `AutoConfig`/the appropriate `AutoModel` class where it gives a real tested path; implement custom adapters where necessary. Pin small fixtures/config revisions and compare tensor names/shapes and outputs against a trusted Transformers implementation where feasible.
-
-Security and reproducibility requirements:
-- Do not enable `trust_remote_code=True` by default or execute downloaded repository scripts during discovery.
-- Use explicit Hub API timeouts, pagination, cache control, and rate-limit handling; do not scrape to bypass API limits.
-- Pin revisions for tests/downloads, validate config inputs, and never download giant weights during normal tests.
-- Handle gated/private repositories, malformed configs, safetensors metadata, timeouts, and upstream schema changes with clear diagnostics.
-- Preserve licenses and attribution.
+## 3. Model architecture catalogue
+Add at least 36 net-new functional architecture families based on current upstream documentation and real Hub configurations. For each, implement and document the operations actually supported: config/checkpoint inspection, tokenizer/processor resolution, inference, training/fine-tuning, conversion, quantization, GGUF runtime, and multimodal input as applicable. Do not equate config parsing with full support. Keep remote code disabled by default, pin test revisions, and use tiny fixtures.
 
 ## 4. Hardware-aware recommendations
+Unify hardware and model metadata to estimate memory and recommend plausible workloads. Separate detected facts, catalogue metadata, backend availability, estimated fit, and successfully tested workloads. Label estimates and never infer support from a model name.
 
-Unify CPU/GPU registries with model-architecture metadata to report whether a proposed workload is plausible for a machine. Estimate memory from model/config/quantization data and label estimates clearly; include weights, KV cache, runtime overhead, optimizer/training state where relevant, and a safety margin rather than relying only on file size.
+## 5. GitHub Pages and generated support data
+Generate versioned CPU, GPU, and architecture JSON from canonical registries. Publish a searchable, filterable support matrix with source/revision and generation metadata. Validate schemas, deterministic generation, the production Pages build, and functional filters. Update README, wiki, examples, and API references from verified data.
 
-Distinguish hardware recognized, hardware actually detected, backend available, architecture and quantization supported, estimated fit for the selected settings, and a tested workload with measured performance. Show incompatibilities and safe fallbacks. Never infer optimizer, CUDA, kernel, or architecture support from name recognition alone.
+## 6. RC completion gate
+Measure net-new counts against a saved baseline; test aliases, unknown devices, offline loading, CPU-only and mixed-device behavior, real architecture operations, packaging, and Pages generation. Keep large model downloads and paid services out of ordinary CI. Do not claim an operation is supported without evidence.
 
-## 5. Update GitHub Pages and generated support data
-
-Publish a searchable **Supported Hardware & Model Architectures** page on HyperNix GitHub Pages. Include filters for vendor, CPU/GPU family, architecture, backend, task/modality, and support maturity. Clearly distinguish catalogue entries from combinations that have passed actual tests.
-
-Generate versioned machine-readable files such as `docs/public/v1/supported-cpus.json`, `supported-gpus.json`, and `supported-model-architectures.json` from canonical registries, not duplicated hand-written UI lists. Include generation timestamp, source/revision, and schema version. Make the page responsive and link to detailed compatibility notes.
-
-Update the docs-data generator and GitHub Actions workflows for GitHub Pages deployment and generated docs-data refresh. Include new JSON files in generation, validation, change detection, and commit steps. Add manual regeneration with diff preview and skip commits when data is unchanged.
-
-Update the README support summary, hardware/architecture wiki pages, relevant examples, API/reference pages, and GitHub Pages. Fix broken links and clearly distinguish upstream-sourced data, tested compatibility, and experimental support. Run the actual Pages production build and validate generated data/schema before release; adding a workflow alone is not completion.
-
-## 6. Release-candidate test and sign-off gate
-
-- Snapshot the original registries and calculate exact net-new counts to prove the 251+ CPU, 151+ GPU, and 36+ architecture requirements.
-- Test canonical lookup, aliases, duplicates, schema validation, parsing real fixtures/configs, unknown devices/architectures, and fallback behavior.
-- Test registry loading offline; network discovery must be an explicit refresh operation with cache and failure handling.
-- Run CPU-only tests on supported CI platforms, GPU parser tests using fixtures, and device integration tests only on compatible runners.
-- Smoke-test architectures with tiny public fixtures or generated configurations; keep large weights and paid APIs out of default CI.
-- Verify deterministic data generation, the GitHub Pages production build, functional page filters, and evidence for each published support claim.
-- Run existing tests and packaging/install checks; fix regressions rather than weakening tests.
-
-The RC is not complete until the net-new counts are measured against the baseline, tests pass for the advertised capabilities, generated data matches canonical registries, and GitHub Pages publishes the matrices.
-
+</details>
 
 ### HyperNix 0.73.0 pre-alpha 1 changes  
   
@@ -1348,379 +1300,40 @@ Do not require every aspirational tokens/second target from pt1 to be met before
 This is not complete merely because commands exist or one prompt returns text. A real supported local model must run end-to-end, HGPS must make and explain real decisions, core reliability/security tests must pass, support data must reflect evidence, and an external tester must be able to reproduce the documented early-beta path.
 
 
-## HyperNix 0.74.0 — Build HyperNix0xV3 From Scratch  
-Create a completely new custom LLM architecture called **HyperNix0xV3** for HyperNix 0.74.0. This must be a genuine architectural evolution rather than a renamed Transformer or a collection of standard layers. Use **HyperNix0xV2 as conceptual inspiration**, but redesign the internals around efficiency, long-context reasoning, training stability, and hardware-aware execution.  
-HyperNix0xV3 must support **multiple model sizes/configurations**, from extremely small models suitable for consumer hardware up through very large models. The architecture should scale cleanly by changing dimensions, number of blocks, attention heads, context length, parameter sharing, and other architectural scaling parameters without requiring separate implementations.  
-## 1. Two Brand-New Custom Layers  
-Design and implement **two genuinely new neural-network layers**.  
-**Custom Layer A — Efficient Context Layer**  
-Create a new layer specifically designed to provide **more useful context at significantly lower computational and memory cost** than conventional full-context attention.  
-Requirements:  
-* Efficiently preserve information from distant tokens.  
-* Support very long contexts.  
-* Avoid simply implementing standard full attention with a renamed API.  
-* Reduce KV-cache and/or attention-memory requirements where practical.  
-* Dynamically determine which contextual information deserves higher retention.  
-* Allow important information to persist across large token distances.  
-* Degrade gracefully when context becomes extremely large.  
-* Work with causal language modeling.  
-* Be compatible with batching and variable sequence lengths.  
-* Be differentiable and trainable with standard backpropagation.  
-* Have a mathematically well-defined forward pass.  
-* Include a computational-complexity analysis.  
-* Include memory-complexity analysis.  
-* Include ablations against standard attention and the HyperNix0xV2 mechanism.  
-Give this layer an original name and document exactly how it works.  
-**Custom Layer B — Adaptive Reasoning/State Layer**  
-Invent a second original layer for a complementary purpose. Its primary goal should be **maintaining and transforming a compact internal state representing information that remains useful across multiple layers and distant parts of the sequence**.  
-The layer should ideally:  
-* Maintain a learned latent/state representation.  
-* Selectively update that state instead of recomputing everything from scratch.  
-* Distinguish transient token information from persistent information.  
-* Allow information to flow between local token representations and the persistent state.  
-* Improve reasoning over multi-step dependencies.  
-* Work alongside the efficient-context layer rather than replacing it.  
-* Have bounded computational/memory overhead.  
-* Be stable during large-scale training.  
-* Avoid becoming an unrestricted recurrent bottleneck.  
-* Support parallel training where possible.  
-Again, give it an original name and provide the mathematical formulation, tensor shapes, initialization strategy, normalization strategy, and gradient-flow considerations.  
-The two custom layers should have **different responsibilities** and should complement each other.  
-## 2. HyperNix0xV3 Block Architecture  
-Design a complete V3 block using the new components.  
-Consider a structure along the lines of:  
-Input → normalization → local/token processing → Custom Efficient Context Layer → gated residual → Custom Adaptive State Layer → gated residual → feed-forward/MLP component → output normalization → residual  
-However, do not blindly follow this structure. Determine the best ordering and explain why.  
-The architecture may use additional components such as:  
-* RMSNorm or a new normalization mechanism  
-* gated residual connections  
-* SwiGLU/GEGLU or an improved custom MLP  
-* rotary/relative/learned positional mechanisms  
-* mixture-of-experts for larger configurations  
-* parameter sharing  
-* learned routing  
-* sparse computation  
-* low-rank projections  
-* auxiliary state representations  
-Only introduce components when they provide a measurable architectural benefit.  
-## 3. Scaling System  
-Create a unified HyperNix0xV3 configuration system supporting multiple sizes.  
-Each configuration must define at minimum:  
-* Parameter count  
-* Hidden dimension  
-* Number of layers  
-* Attention/context dimensions  
-* Number of heads  
-* Head dimension  
-* Context length  
-* State dimensions  
-* MLP dimensions  
-* Vocabulary size  
-* Precision  
-* KV/state cache configuration  
-* Number of experts if MoE is enabled  
-* Expected VRAM requirement  
-* Expected RAM requirement  
-* Recommended CPU threads  
-* Recommended GPU utilization target  
-Include presets ranging from tiny/edge models to extremely large models.  
-The architecture must not assume that every model has enough VRAM to fit entirely on the GPU.  
-# 4. New   
-```
-synchronous
-```
-## Module  
-Add a completely new HyperNix module called:  
-```
-hypernix.synchronous
-```
-The Synchronous system is a **hardware-aware training and inference optimization controller**.  
-Its purpose is to continuously monitor the actual system and intelligently adjust runtime parameters to keep performance **as close as possible to the hardware’s optimal tokens/second throughput without damaging model quality, training stability, or convergence**.  
-It must monitor:  
-* GPU utilization  
-* GPU temperature  
-* GPU power usage when available  
-* GPU memory usage  
-* Free VRAM  
-* CPU utilization  
-* CPU temperature when available  
-* CPU thread utilization  
-* Available CPU threads  
-* RAM usage  
-* Free RAM  
-* System load  
-* Current training run  
-* Current training step  
-* Tokens processed  
-* Current tokens/second  
-* Smoothed tokens/second  
-* Recent tokens/second history  
-* Estimated time remaining  
-* Current sequence/context length  
-* Batch size  
-* Microbatch size  
-* Gradient accumulation  
-* Precision  
-* Activation/checkpointing state  
-* Data-loader throughput  
-* GPU/CPU synchronization stalls  
-* OOM/recovery events  
-* Thermal throttling indicators when available  
-The module must work with hardware telemetry that is unavailable on a particular platform. Never assume temperature, power, or VRAM telemetry exists.  
-## 5. Synchronous Optimization Engine  
-Synchronous should continuously calculate a **safe operating envelope** for the current hardware.  
-Its goal is NOT simply:  
-“maximize GPU usage.”  
-Instead, optimize a multi-variable objective such as:  
-**maximize stable tokens/sec**  
-while respecting:  
-* thermal limits  
-* VRAM limits  
-* RAM limits  
-* CPU limits  
-* training stability  
-* gradient behavior  
-* numerical stability  
-* model quality  
-* convergence  
-* dataloader performance  
-* user-defined hardware limits  
-Create a controller that can adjust safe runtime variables such as:  
-* batch size  
-* microbatch size  
-* gradient accumulation  
-* number of CPU data-loader workers  
-* CPU thread count  
-* prefetch depth  
-* context length where explicitly permitted  
-* activation checkpointing  
-* memory-efficient attention mode  
-* inference batch size  
-* GPU/CPU offloading  
-* scheduling parameters  
-* evaluation frequency  
-* checkpoint frequency  
-Do **NOT** silently modify architectural hyperparameters that would invalidate or compromise the training run.  
-The controller must understand the difference between:  
-**performance parameters**  
-and  
-**model-defining parameters**.  
-For example, it may dynamically change microbatching or worker count, but must not silently change hidden size, layer count, vocabulary size, learned weights, optimizer semantics, or other parameters that would fundamentally alter the experiment.  
-## 6. Adaptive Control  
-Implement a feedback controller rather than simple threshold-based if/else logic.  
-The system should:  
-1. Collect telemetry.  
-2. Smooth noisy measurements.  
-3. Determine current performance.  
-4. Identify the current bottleneck.  
-5. Predict whether a parameter change will help.  
-6. Make a small safe adjustment.  
-7. Measure the result.  
-8. Compare performance against the previous state.  
-9. Keep successful changes.  
-10. Roll back harmful changes.  
-11. Continue learning the hardware’s optimal operating region.  
-Use concepts from:  
-* feedback control  
-* adaptive optimization  
-* online profiling  
-* constrained optimization  
-* hysteresis  
-* rate limiting  
-* exponential moving averages  
-* Bayesian/bandit-style parameter exploration where useful  
-Avoid constant oscillation between configurations.  
-Implement configurable stability margins and cooldown periods.  
-## 7. Thermal and Hardware Safety  
-Synchronous must prioritize hardware safety.  
-Create configurable limits such as:  
-* maximum GPU temperature  
-* maximum CPU temperature  
-* maximum VRAM utilization  
-* maximum RAM utilization  
-* maximum power target where supported  
-When thermal conditions worsen, automatically reduce workload intensity.  
-For example:  
-Normal: → optimize throughput  
-Warm: → reduce workload growth  
-Hot: → reduce batch/microbatch or increase accumulation  
-Critical: → aggressively throttle or pause  
-Recovered: → gradually return toward the previous optimal configuration  
-Never rapidly oscillate between maximum and minimum workloads.  
-## 8. Training Integrity  
-The most important requirement:  
-**Synchronous optimization must never compromise the resulting trained model merely to increase tokens/sec.**  
-Do not trade away:  
-* numerical stability  
-* gradient correctness  
-* optimizer correctness  
-* loss behavior  
-* convergence  
-* reproducibility beyond explicitly documented runtime differences  
-* model architecture  
-* learned parameter quality  
-When making a performance optimization, record:  
-* old value  
-* new value  
-* reason for change  
-* measured tokens/sec before  
-* measured tokens/sec after  
-* VRAM before/after  
-* RAM before/after  
-* temperature before/after  
-* current training step  
-* rollback condition  
-Provide an option for strict/reproducible mode where adaptive behavior is restricted.  
-## 9. Performance Prediction  
-Have Synchronous maintain a lightweight performance model of the current hardware.  
-Over time it should learn relationships such as:  
-```
-batch size → tokens/sec
-microbatch → VRAM usage
-CPU workers → data throughput
-context length → memory/compute
-checkpointing → VRAM vs tokens/sec
-```
-Use historical measurements to predict which configuration is likely to improve throughput before applying it.  
-The first few minutes of a training run may therefore be treated as an **automatic calibration phase**.  
-## 10. Context-Aware Optimization  
-Because HyperNix0xV3 introduces a new efficient-context layer, Synchronous must understand context-related resource usage.  
-Track:  
-* context length  
-* effective context length  
-* context-cache/state memory  
-* KV memory if applicable  
-* persistent-state memory  
-* attention compute  
-* context-related tokens/sec degradation  
-Use this information to determine whether the bottleneck is:  
-* compute  
-* memory bandwidth  
-* VRAM capacity  
-* CPU preprocessing  
-* synchronization  
-* context processing  
-* data loading  
-The controller should optimize the actual bottleneck rather than blindly increasing or decreasing batch size.  
-## 11. Observability  
-Create a complete Synchronous dashboard/API exposing:  
-* Current tokens/sec  
-* Optimal estimated tokens/sec  
-* Efficiency percentage  
-* GPU utilization  
-* CPU utilization  
-* GPU temperature  
-* CPU temperature  
-* VRAM used/free  
-* RAM used/free  
-* active threads  
-* batch/microbatch  
-* gradient accumulation  
-* context length  
-* current bottleneck  
-* current optimization state  
-* estimated time remaining  
-* recent adjustments  
-* rollback events  
-* thermal state  
-* training stability state  
-Add structured logging and machine-readable telemetry.  
-Example:  
-```
-[SYNCHRONOUS]
-GPU: 96%
-VRAM: 7.4/8.0 GB
-GPU Temp: 74°C
-CPU: 68%
-RAM: 18.2/32 GB
-Threads: 12/16
-Context: 8192
-Batch: 2
-Microbatch: 1
-Grad Accum: 16
+## HyperNix 0.74.0 — Build HyperNix0xV3 From Scratch
 
-Throughput: 18,420 tok/s
-Estimated Optimal: 19,050 tok/s
-Efficiency: 96.7%
+Build **HyperNix0xV3** as a genuinely new architecture, not a renamed Transformer or a superficial V2 revision. Use V2 only as conceptual inspiration. Prioritize efficient long-context processing, persistent learned state, scalable model configurations, training stability, and hardware-aware execution.
 
-Bottleneck: VRAM
-Action: Reduce activation memory
-Change: checkpointing = selective
-Expected gain: +4.2%
-Confidence: 87%
-```
-## 12. Hardware Compatibility  
-Make Synchronous work across:  
-* NVIDIA GPUs  
-* AMD GPUs where supported  
-* Intel GPUs where supported  
-* CPU-only systems  
-It must gracefully degrade when hardware telemetry APIs are unavailable.  
-Do not hard-code assumptions about modern GPUs.  
-It should be capable of operating on older GPUs with limited VRAM as well as high-end GPUs.  
-## 13. Implementation Requirements  
-Build this as real production-quality code, not pseudocode.  
-Provide:  
-* architecture implementation  
-* configuration system  
-* model initialization  
-* forward pass  
-* training integration  
-* inference integration  
-* Synchronous module  
-* telemetry abstraction layer  
-* hardware backends  
-* adaptive controller  
-* logging  
-* configuration files  
-* checkpoint compatibility  
-* unit tests  
-* numerical tests  
-* stress tests  
-* performance benchmarks  
-* documentation  
-* example training scripts  
-* example inference scripts  
-Use clean modular interfaces so the architecture can later receive additional HyperNix layers without requiring a rewrite.  
-## 14. Research and Validation  
-Before declaring HyperNix0xV3 complete, benchmark it against appropriate baselines.  
-Measure:  
-* training tokens/sec  
-* inference tokens/sec  
-* VRAM usage  
-* RAM usage  
-* peak memory  
-* context scaling  
-* loss curves  
-* convergence speed  
-* perplexity  
-* long-context retrieval  
-* reasoning benchmarks  
-* small-data overfitting behavior  
-* numerical stability  
-* thermal behavior  
-* Synchronous optimization effectiveness  
-Run ablations:  
-1. Standard attention baseline  
-2. Efficient Context Layer removed  
-3. Adaptive State Layer removed  
-4. Both custom layers removed  
-5. Synchronous disabled  
-6. Synchronous enabled  
-7. Different context lengths  
-8. Different hardware configurations  
-The goal is to prove that each new component provides a measurable benefit rather than merely increasing complexity.  
-## 15. Deliverable  
-Implement HyperNix0xV3 as a complete new architecture for **HyperNix 0.74.0**.  
-Do not simply modify HyperNix0xV2 into V3.  
-Create a clean V3 architecture with its own modules, configuration system, documentation, tests, benchmarks, and training integration.  
-The final architecture should prioritize:  
-**efficient long-context processing + persistent learned state + scalable architecture + hardware-aware adaptive execution + training integrity.**  
-The final result should feel like a genuinely new HyperNix architecture rather than a conventional Transformer with renamed components.  
-# 0.74.1
-In hyperlink add the following, 1: a  theme named origins that is old theme before customization was added, 2: when I have pcutil installed it see my gpu, but not my ram and cpu, also make it have power usage per hour, 80plus estimated efficiency rating, actual power efficiency. Make an actual fully working hyperNix model runner like lms, lm studio, using modified llama cpp, in hyperlink, add a little circle on the right of the chat text box, that has 3 rings that are different colors, red means nearly full, blue means not less than 60% free but less than 85% free, 100= green, 45 to 31% yellow, that is for the user context, when it hits 96% full, it will auto compact, then next is useage remaining deep crimson = empty, white = fine and above 50, orange = over 10, less than 50, make a action run a new example that trains a 50 peramiter model using brewer, the newest pressure cooker, Neo oven, synchronous, and more   
-  
-  
+### 1. Two original trainable layers
+- **Efficient Context Layer:** retain useful distant-token information at lower compute and memory cost than full attention; support causal masking, batching, variable sequence lengths, differentiable training, graceful long-context degradation, and explicit time/memory complexity analysis.
+- **Adaptive State Layer:** maintain a compact learned state across layers and distant sequence positions; selectively update persistent information, distinguish transient token features from durable state, and exchange information with local token representations without creating an unstable recurrent bottleneck.
+
+Define each layer mathematically, including tensor shapes, initialization, normalization, gradient flow, and ablations. The two layers must have distinct, complementary responsibilities.
+
+### 2. V3 block and scaling
+Design and justify a complete block using the custom layers, residual/gating, normalization, positional information, and feed-forward processing. Add MoE, sparse routing, low-rank projections, or parameter sharing only where experiments justify them. Use one configuration system across tiny/edge through large models. Expose parameter count, dimensions, depth, context, state/cache sizes, precision, vocabulary, optional experts, and estimated RAM/VRAM. Support partial CPU/GPU placement; never assume the full model fits in VRAM.
+
+### 3. Hardware-aware execution
+Provide a portable runtime/resource interface that detects available CPU/GPU, memory, temperature, and power telemetry without assuming every platform exposes every metric. Select safe batch, microbatch, accumulation, worker, prefetch, checkpointing, offload, and inference-batch settings. Do not silently change model-defining parameters, optimizer semantics, training objectives, or learned weights. Make selected settings, limitations, and fallback reasons observable.
+
+### 4. Training integrity and validation
+Preserve numerical stability, gradient correctness, convergence, reproducibility, and model quality. Record every adaptive runtime change, its reason, before/after measurements, and rollback condition. Include a strict reproducibility mode. Benchmark training/inference throughput, memory, context scaling, loss, perplexity, long-context retrieval, and numerical stability. Run ablations for each custom layer and compare against standard attention and V2 using repeatable experiments.
+
+### 5. Production deliverables
+Implement the architecture, configuration and initialization paths, forward pass, training/inference integration, telemetry abstraction, portable runtime selection, checkpoint compatibility, tests, benchmarks, documentation, and runnable examples. Do not declare V3 complete from a design document or synthetic performance claims; every claimed improvement needs measured evidence.
+
+# 0.74.1 — HyperLink telemetry, theme restoration, and remaining UX gaps
+
+Start by auditing the current HyperLink implementation and its tests. The local llama.cpp runner and existing two-layer chat indicator already exist; preserve and extend them rather than rebuilding them. Do not duplicate completed 0.72.8 work.
+
+1. **Origins theme:** restore the original pre-customization theme as a selectable theme. Match the historical appearance from repository assets/history where available; do not invent a different theme and label it Origins.
+2. **Hardware telemetry:** complete CPU and RAM reporting when pcutil is installed, while retaining existing GPU detection. Use platform-specific sources with explicit availability/error states. Never substitute guessed values or zeroes for unavailable readings.
+3. **Power and efficiency:** expose measured power/energy and hourly consumption only when reliable hardware telemetry exists. Any extrapolated hourly energy/cost or 80 PLUS efficiency classification must be clearly labelled as an estimate, with assumptions and uncertainty visible. Do not claim actual PSU efficiency unless the required input/output measurements exist.
+4. **Chat indicator:** evolve the existing two-layer indicator only as needed to meet the intended three-ring presentation. Keep context, account/key usage, and local GPU/CPU fallback metrics distinct; preserve the existing API contract or version it compatibly. Use explicit, documented thresholds and accessible text labels. Trigger context compaction at 96% only when the active model's real context limit is known; preserve the original conversation and report what was compacted.
+5. **Context and usage correctness:** test missing usage entitlements, unavailable hardware metrics, context changes after model switching, long prompts, and server/client disagreement. The UI must distinguish unavailable from zero.
+6. **Brewer example:** add a runnable tiny Brewer training example using the current supported optimizer and Neo Oven APIs. Do not depend on the removed 0.74.0 synchronous module. Include prerequisites, expected output, a CPU-safe path, and a test that verifies the example runs.
+7. **Completion gate:** update HyperLink docs, API schemas, examples, and tests only for remaining work. Keep existing local inference, model selection, and ring behavior working; add regression tests for every changed telemetry and UI path. Never claim completion without test evidence.
+
 # 0.74.2
 
 # HyperNix 0.74.2 — Experiment Ledger and Reproducible Model Workbench
@@ -1811,1097 +1424,56 @@ Completion requires a real end-to-end run, validated recovery behavior, useful c
 
 # 0.74.3 — HyperNix Studio, Local Runtime, and Agent Tools
 
-## Release goal and implementation rules
+Implement a cohesive, production-ready Studio experience. First inventory existing screens, providers, local runtimes, tool permissions, shell execution, training dashboards, and tests. Reuse existing components and the shared Optimizer Framework V2/Strife APIs from 0.73.0; do not fork optimizer or inference cores. Local models must work without a T1 key, hosted providers must remain available, and no feature may be represented by a mock, no-op, or unsupported capability label.
 
-Implement the HyperNix Studio, local-model runtime, and agent/tool execution work below as real repository changes in this release. Integrate the optimizer framework delivered in 0.73.0 rather than reimplementing its core algorithms here. These are engineering requirements, not a request to rewrite or improve a prompt. Start by inspecting the existing implementation and mapping each requirement to source modules, public APIs, UI surfaces, and tests. Reuse working components, preserve backward compatibility, and do not ship mock screens, no-op commands, fabricated benchmark metrics, or placeholder integrations.
+## 1. Studio model workspace
+- Discover local models from supported directories and runtimes; show source, format, architecture, quantization, context limit, load state, hardware fit, and capability limitations.
+- Load, unload, switch, and inspect models with actionable errors, progress, cancellation, and recovery. Support local inference independently of T1 authentication.
+- Provide coherent chat/model UX with streaming, stop/cancel, context visibility, prompt and tool-result management, and bounded caching.
+- Detect model/provider capabilities at runtime. Unknown or unsupported features must be shown as such rather than guessed.
 
-The Studio/runtime/agent-tools plan previously grouped under the 0.73.0 alpha-two work is specified in this 0.74.3 release. The Optimizer Framework V2 and Pressure Cooker V7 implementation remain under 0.73.0; integrate with their shared API for Studio controls, training workflows, and diagnostics without duplicating their optimizer core. Alpha one (Strife's custom GGUF runner) also remains under 0.73.0. Do not re-implement Strife inside Studio; integrate with it through the shared runtime/provider interface where appropriate.
+## 2. Providers and runtime integration
+- Use one provider/runtime interface for Strife, local llama.cpp-compatible backends, T1, and configured hosted providers.
+- Keep credentials in secure configuration; redact secrets from logs, errors, diagnostics, and exports.
+- Apply timeouts, retries, cancellation, streaming, concurrency limits, and capability checks consistently.
+- Preserve existing APIs and configuration. Make provider-specific behavior explicit and testable.
 
-## Required implementation sequence
+## 3. Agent tools and permissions
+Implement real, observable tool calling with structured arguments/results, validation, bounded output, timeouts, cancellation, and audit-friendly logs. Include file read/search, project inspection, diagnostics, patch/apply, test execution, documentation lookup, and other repository-supported tools. Tool calls must be visible to the user; actions that modify files, execute commands, access networks, or cross project boundaries require configured approval.
+- Support safe parallel calls only when operations are independent; serialize conflicting writes and preserve deterministic result ordering.
+- Add capability detection, tool schemas, per-tool permissions, allow/deny policies, and clear failure/retry behavior.
+- Build an agent loop that distinguishes planning, tool execution, observation, and final response without exposing private reasoning traces.
 
-1. Inventory the existing Studio screens, model/provider abstractions, local inference backends, T1 client, tool execution and permissions, shell streaming, optimizer implementations, and training dashboard. Produce a file-to-feature map before editing code.
-2. Define stable interfaces and compatibility behavior before wiring UI. Keep local providers independent of T1 authentication.
-3. Implement runtime/provider and permission behavior before building the UI around it. Ensure that each operation has an explicit error state and cancellation path.
-4. Wire Studio training workflows and UI into the OptimizerFrameworkV2 API delivered in 0.73.0, preserving each optimizer's real capabilities and exposing unsupported configurations clearly.
-5. Build Studio controls and diagnostics against measured runtime state, not hard-coded labels or guessed values.
-6. Add behavior-focused tests, run existing targeted suites, then the broader test suite. Fix regressions instead of weakening tests.
-7. Update CLI help, README, wiki, API/reference docs, changelog, generated docs data, and GitHub Pages only after the implemented behavior has been verified.
+## 4. Shell and execution isolation
+Support Bash, Fish, and PowerShell where installed. Detect shells rather than assuming them. Stream stdout/stderr, exit status, and process state; support cancellation and bounded output. Execute in an isolated workspace with explicit working-directory, environment, process, filesystem, and network limits. Never silently elevate privileges or run a command discovered in model output without policy checks and approval where required.
 
-## Acceptance criteria
+## 5. Agent profiles and tool packs
+Provide editable agent profiles and reusable tool packs with declared capabilities, permissions, defaults, and validation. Include an environment snapshot for relevant OS/runtime/dependency/device information and project diagnostics for repository structure, configuration, tests, and common failures. Redact secrets and allow users to inspect data before sharing.
 
-- Local models can be used without a T1 key; hosted/T1/custom providers remain available.
-- Model capabilities, tool support, context limits, and hardware placement are detected or explicitly marked unknown.
-- Tool calls, shell commands, cancellation, permissions, and concurrent jobs behave correctly and are covered by tests.
-- Studio can select the 0.73.0 OptimizerFrameworkV2 generations through one coherent interface, show safe fallbacks, and launch or display reproducible optimizer benchmark results.
-- The Studio UI exposes real state and error information, preserves existing workflows, and does not report unsupported capabilities as available.
-- Documentation and release notes describe only implemented and tested behavior.
+## 6. Patch/apply and test-and-fix workflow
+Provide reviewable diffs before applying changes, preserve backups or reversible history, and prevent writes outside approved workspaces. The test-and-fix loop must run only approved commands, capture logs, stop on cancellation or configured limits, summarize failures, and never claim a fix without rerunning relevant tests.
 
-## HyperNix Studio, Local Model Runtime, and Agent Tools
-You are working on the **HyperNix-pip** repository.  
-Implement the complete **HyperNix 0.74.3** release.  
-This is a substantial Studio/runtime release. Do not create superficial stubs, fake integrations, placeholder buttons, or “coming soon” implementations. Inspect the existing add architecture first and integrate these features cleanly into the existing codebase.  
-Repository: https://github.com/trail-b1az3r/HyperNix-pip  
-Relevant optimizer documentation:  
-Pressure Cooker V5: https://github.com/trail-b1az3r/HyperNix-pip/blob/main/wiki/Pressure-Cooker-V5.md  
-Pressure Cooker V6: https://github.com/trail-b1az3r/HyperNix-pip/blob/main/wiki/Pressure-Cooker-V6.md  
-   
-⸻  
-   
-## 1. HyperNix Studio: Full Local Model Support  
-Add **first-class local model support** to HyperNix Studio.  
-The most important requirement:  
-## Local models MUST NOT require a T1 key.  
-A locally running model should be treated as a completely independent provider.  
-The user must be able to use HyperNix Studio with:  
-* local models  
-* T1 hosted models  
-* future hosted providers  
-* custom OpenAI-compatible endpoints  
-* local OpenAI-compatible servers  
-without forcing the user to configure a T1 API key when they are only using a local model.  
-**Provider architecture**  
-Create/extend a provider abstraction similar to:  
-```
-Provider
- ├── HyperNix T1
- ├── Local
- │    ├── llama.cpp
-```
-```
- |    |—- strife
- │    ├── Ollama
-```
-```
- │    ├── LM Studio
- │    └── OpenAI-compatible local endpoint
- └── Custom OpenAI-compatible endpoint
-```
-Do not hard-code local models into the T1 implementation.  
-The Studio should determine:  
-```
-provider
-model
-endpoint
-capabilities
-context_length
-tool_support
-vision_support
-structured_output
-streaming
-embedding_support
-reasoning_support
-```
-automatically where possible.  
-   
-⸻  
-   
-## 2. Local Model Discovery  
-Add automatic discovery for locally running model servers.  
-At minimum support:  
-**Ollama**  
-Detect:  
-```
-localhost:11434
-```
-and compatible configured endpoints.  
-Discover:  
-* installed models  
-* model names  
-* tags  
-* context length when available  
-* capabilities  
-* embedding models  
-* tool/function-calling capability when available  
-**LM Studio**  
-Support its OpenAI-compatible API.  
-Automatically detect common LM Studio endpoints such as:  
-```
-localhost:1234
-```
-but make the endpoint configurable.  
-**llama.cpp**  
-Support llama.cpp’s OpenAI-compatible server.  
-Allow users to configure:  
-```
-host
-port
-model
-API path
-```
-and automatically detect a running server when practical.  
-**Generic OpenAI-compatible local servers**  
-Allow:  
-```
-http://localhost:<port>/v1
-```
-and similar configurable endpoints.  
-The user should be able to add custom local providers manually.  
-   
-⸻  
-   
-## 3. Local Model UX  
-The Studio model selector should clearly distinguish:  
-```
-☁ HyperNix T1
-🖥 Local
-🔌 Custom
-```
-For local models display:  
-```
-● Local
-Model Name
-Provider
-Context: 32K
-Tools: ✓
-Vision: ✓
-Streaming: ✓
-```
-Do not display a T1-key requirement for local models.  
-Add:  
-* Refresh models  
-* Scan local servers  
-* Add endpoint  
-* Remove endpoint  
-* Test connection  
-* Model capability inspection  
-* Default local model  
-* Default provider  
-* Per-project model selection  
-Persist provider configuration safely.  
-Never log API keys or authentication headers.  
-   
-⸻  
-   
-## 4. Local Tool Calling  
-Local models should receive the **same tool framework** as hosted models whenever their backend supports tool calling.  
-Create a capability negotiation layer:  
-```
-supports_tools
-supports_parallel_tools
-supports_structured_output
-supports_streaming
-supports_vision
-supports_json_mode
-supports_reasoning
-```
-If the model natively supports tool calling, use it.  
-If it does not, provide a controlled compatibility layer using structured JSON tool requests.  
-Never blindly execute arbitrary model-generated text as a command.  
-   
-⸻  
-   
-## 5. Massive Tool Calling Upgrade  
-HyperNix Studio currently needs substantially more tool functionality.  
-Build a proper extensible **HyperNix Tool Runtime**.  
-Tools should have:  
-```
-name
-description
-schema
-permissions
-risk_level
-execute()
-validate()
-preview()
-```
-Use JSON-schema-compatible argument validation.  
-The model should be able to:  
-1. select a tool  
-2. generate arguments  
-3. validate arguments  
-4. request permission when necessary  
-5. execute  
-6. receive structured output  
-7. continue reasoning  
-8. call another tool  
-9. eventually produce a final answer  
-Support:  
-```
-tool → tool → tool → tool
-```
-rather than only one tool call per response.  
-   
-⸻  
-   
-## 6. Parallel Tool Calling  
-Add parallel tool execution.  
-Example:  
-```
-Model:
-  ├── search_file("config.py")
-  ├── search_file("model.py")
-  ├── inspect_git_status()
-  └── inspect_environment()
+## 7. Training dashboard and optimizer integration
+Expose the existing training dashboard and Optimizer Framework V2 through one interface. Show supported optimizer generations and their real options, current run state, metrics, logs, checkpoints, and cancellation. Launch and compare reproducible benchmarks using actual results; clearly label unavailable metrics and unsupported configurations.
 
-execute concurrently
+## 8. Context, cache, and recovery
+Manage model context, tool context, and tool results separately. Bound caches by size/age and invalidate on model, prompt, permission, project, or runtime changes. Handle tool errors, provider disconnects, process crashes, partial output, cancellation, and interrupted jobs without losing unrelated chat or project data.
 
-collect results
+## 9. Configuration, CLI, UI, and accessibility
+Provide documented configuration for providers, models, tools, permissions, shells, workspaces, and resource limits. Add CLI commands that match the actual implementation and provide help, status, diagnostics, and safe configuration editing. The UI must expose real state, streaming, cancellation, errors, model capabilities, and approval prompts; support keyboard navigation, screen readers, scalable text, and clear empty/loading/error states.
 
-send combined result back to model
-```
-Add dependency-aware execution so independent calls can run simultaneously while dependent calls wait.  
-Implement:  
-```
-ToolCallGraph
-ToolExecutionQueue
-ToolResultStore
-```
-with cancellation support.  
-   
-⸻  
-   
-## 7. Tool Calls Must Be Observable  
-Add a Studio tool execution panel.  
-Display:  
-```
-Tool
-Arguments
-Status
-Duration
-Output
-Errors
-Permission
-```
-Example:  
-```
-✓ read_file
-✓ search_code
-⟳ shell
-✓ git_diff
-✗ install_package
-```
-Allow expanding individual calls.  
-Add a live execution timeline.  
-   
-⸻  
-   
-## 8. New Built-In Tools  
-Add useful tools beyond the existing HyperNix functionality.  
-At minimum implement:  
-**Filesystem**  
-```
-read_file
-write_file
-edit_file
-delete_file
-move_file
-copy_file
-list_directory
-search_files
-find_symbol
-```
-**Code intelligence**  
-```
-search_code
-find_definition
-find_references
-inspect_ast
-analyze_imports
-```
-**Git**  
-```
-git_status
-git_diff
-git_log
-git_branch
-git_checkout
-git_commit
-git_create_branch
-```
-Potentially dangerous Git operations must require confirmation.  
-**Process/system**  
-```
-system_info
-process_list
-process_info
-environment_info
-disk_usage
-memory_usage
-gpu_info
-```
-**Package management**  
-Provide controlled package-manager tools where appropriate:  
-```
-python_package_info
-pip_install
-pip_uninstall
-npm_install
-npm_uninstall
-```
-These must require explicit permission before mutating the environment.  
-**HTTP/API**  
-Add a controlled HTTP client tool:  
-```
-http_get
-http_post
-http_put
-http_delete
-```
-with:  
-* domain allowlists  
-* timeout  
-* response-size limits  
-* authentication isolation  
-* confirmation for dangerous requests  
-**Documentation**  
-Add:  
-```
-search_documentation
-open_documentation
-```
-and allow projects to register documentation sources.  
-**Project tools**  
-Add:  
-```
-project_tree
-project_info
-detect_language
-detect_framework
-run_tests
-run_linter
-run_formatter
-build_project
-```
-   
-⸻  
-   
-## 9. Bash + Fish + PowerShell Shell Support  
-HyperNix Studio should have significantly better shell integration.  
-Support at minimum:  
-```
-Bash
-Fish
-PowerShell
-```
-Detect available shells automatically.  
-The shell tool should expose:  
-```
-shell
-command
-working_directory
-environment
-timeout
-stdin
-```
-and return:  
-```
-stdout
-stderr
-exit_code
-duration
-```
-Do NOT implement shell execution as unrestricted string concatenation.  
-Use an explicit execution abstraction:  
-```
-ShellProvider
- ├── BashShell
- ├── FishShell
- └── PowerShell
-```
-   
-⸻  
-   
-## 10. Shell Security  
-Shell access is powerful and dangerous.  
-Implement permission levels:  
-```
-SAFE
-NORMAL
-ELEVATED
-DANGEROUS
-```
-Examples:  
-```
-ls
-pwd
-git status
-cat file
-```
-→ SAFE  
-```
-pip install package
-npm install
-git checkout
-```
-→ NORMAL  
-```
-sudo ...
-chmod ...
-systemctl ...
-```
-→ ELEVATED  
-```
-rm -rf
-disk formatting
-destructive system operations
-credential manipulation
-```
-→ DANGEROUS  
-Never silently execute dangerous operations.  
-Provide:  
-```
-Allow once
-Allow for session
-Deny
-```
-and preferably:  
-```
-Always allow this exact command
-Always allow commands matching this safe pattern
-```
-Do not create a security bypass mechanism.  
-   
-⸻  
-   
-## 11. Shell Streaming  
-Shell commands should support live output.  
-Instead of waiting for:  
-```
-command finished
-```
-support:  
-```
-stdout chunk
-stdout chunk
-stderr chunk
-stdout chunk
-...
-exit
-```
-Expose this to Studio so long-running commands have live output.  
-Support cancellation.  
-   
-⸻  
-   
-## 12. Tool Runtime Architecture  
-Create a central runtime along the lines of:  
-```
-HyperNixToolRuntime
-│
-├── ToolRegistry
-├── ToolValidator
-├── ToolExecutor
-├── ToolPermissionManager
-├── ToolResultStore
-├── ToolExecutionQueue
-├── ToolCallGraph
-├── ParallelExecutor
-└── ToolTelemetry
-```
-Do not duplicate tool implementations between Studio, CLI, and other interfaces.  
-The runtime should become a reusable HyperNix core component.  
-   
-⸻  
-   
-## 13. Studio Training Dashboard  
-Add an optimizer/training panel displaying:  
-```
-Optimizer
-Learning rate
-Momentum
-Trust ratio
-Gradient norm
-Loss
-Tokens/sec
-Steps/sec
-VRAM
-RAM
-GPU utilization
-CPU utilization
-Temperature
-Optimizer state memory
-```
-For V5S display:  
-```
-Fast cosine
-Medium cosine
-Ultra-slow cosine
-VOS
-Frozen fraction
-```
-For V6 display:  
-```
-Fused operations
-Foreach enabled
-Trust ratio
-Compile status
-CUDA graph status
-```
-   
-⸻  
-   
-## 14. Unified Model + Tool + Training Architecture  
-HyperNix Studio should conceptually become:  
-```
-                         HyperNix Studio
-                               │
-             ┌─────────────────┼─────────────────┐
-             │                 │                 │
-          Models             Tools            Training
-             │                 │                 │
-      ┌──────┼──────┐          │          Optimizer V2
-      │      │      │          │                 │
-     T1    Local   Custom      │        ┌────────┼────────┐
-             │                 │       V5/V5+  V5S   V6/V6V
-       ┌─────┼─────┐           │
-    Ollama LMStudio llama.cpp   │
-                               │
-                    Tool Runtime
-                               │
-            ┌──────────────────┼──────────────────┐
-         Files              Shell              Git/API
-```
-Keep these systems modular.  
-   
-⸻  
-   
-## 15. Model Context / Tool Context Management  
-Add a context manager that tracks:  
-```
-system instructions
-conversation
-tool calls
-tool outputs
-files
-shell output
-project metadata
-model metadata
-```
-Prevent enormous tool outputs from consuming the entire context window.  
-Implement:  
-* output truncation  
-* summarization  
-* relevant-result extraction  
-* tool-result caching  
-* deduplication  
-* context budgeting  
-Large files should never automatically be dumped into the model context.  
-   
-⸻  
-   
-## 16. Tool Result Caching  
-Add optional caching.  
-For deterministic read-only operations:  
-```
-git_status
-project_tree
-file_search
-system_info
-documentation lookup
-```
-cache results for a configurable amount of time.  
-Never cache mutable/destructive operations as if they were successful.  
-   
-⸻  
-   
-## 17. Tool Error Recovery  
-Models should be able to recover from tool failures.  
-Example:  
-```
-Tool call
-   ↓
-Failure
-   ↓
-Structured error
-   ↓
-Model sees error
-   ↓
-Model changes arguments/strategy
-   ↓
-Retry
-```
-Implement retry limits and prevent infinite tool loops.  
-Add configurable:  
-```
-max_tool_calls
-max_parallel_calls
-max_retries
-max_execution_time
-max_context_growth
-```
-   
-⸻  
-   
-## 18. Agent Loop  
-Create a robust agent execution loop:  
-```
-USER
- ↓
-MODEL
- ↓
-TOOL DECISION
- ↓
-VALIDATE
- ↓
-PERMISSION
- ↓
-EXECUTE
- ↓
-RESULT
- ↓
-MODEL
- ↓
-...
- ↓
-FINAL RESPONSE
-```
-Support:  
-* multiple sequential calls  
-* parallel calls  
-* retries  
-* cancellation  
-* timeouts  
-* tool dependencies  
-* permission prompts  
-* structured errors  
-The loop must terminate deterministically.  
-   
-⸻  
-   
-## 19. Model Capability Detection  
-When connecting to a local model, automatically inspect what it supports.  
-Display:  
-```
-Context length
-Vision
-Tools
-JSON
-Streaming
-Embeddings
-Reasoning
-Parallel tools
-```
-If a feature is unavailable, gracefully downgrade rather than crashing.  
-Example:  
-```
-Native tool calling unavailable
-→ compatibility tool parser enabled
-```
-   
-⸻  
-   
-## 20. Security Boundaries  
-Treat every model as untrusted.  
-A local model must NOT automatically gain:  
-* unrestricted filesystem access  
-* unrestricted shell access  
-* network access  
-* secrets  
-* environment variables containing credentials  
-* SSH keys  
-* browser cookies  
-* API keys  
-Create explicit permission scopes.  
-Example:  
-```
-filesystem.read
-filesystem.write
-shell.execute
-network.request
-git.write
-package.install
-system.admin
-```
-Studio should show the current agent permissions.  
-   
-⸻  
-   
-## 21. Configuration  
-Add a centralized configuration system.  
-Example:  
-```
-providers:
-  local:
-    enabled: true
-    auto_discover: true
+## 10. Security and backward compatibility
+Enforce authorization at the execution boundary, not merely by hiding UI. Validate tool inputs and paths, defend against prompt injection and symlink/path traversal, isolate processes, protect credentials, constrain network access, and record security-relevant actions without logging secrets. Preserve existing public APIs and workflows; document and test any migration.
 
-    ollama:
-      enabled: true
-      host: http://127.0.0.1:11434
+## 11. Tests, documentation, and definition of done
+Add unit, integration, UI, provider-contract, permission, shell, concurrency, cancellation, recovery, and security tests. Use mocked providers and tiny local fixtures so normal CI requires no paid API, secret, or GPU. Benchmark startup, model load, streaming, tool latency, and memory with repeatable measurements. Update README, wiki, CLI/API references, examples, changelog, generated docs, and release metadata only after behavior is verified. Completion requires working local inference, real tool execution with enforced permissions, optimizer integration, accessible UI, regression-free tests, and documentation that matches shipped implementation.
 
-    lmstudio:
-      enabled: true
-      host: http://127.0.0.1:1234
-
-    llamacpp:
-      enabled: true
-      host: http://127.0.0.1:8080
-
-tools:
-  enabled: true
-  max_calls: 64
-  parallel: true
-
-shell:
-  enabled: true
-  bash: true
-  fish: true
-  powershell: true
-
-optimizer:
-  framework: v2
-  auto_select: true
-```
-Do not expose secrets in this configuration.  
-   
-⸻  
-   
-## 22. CLI  
-Add useful CLI commands where appropriate:  
-```
-hypernix studio
-hypernix models list
-hypernix models scan
-hypernix models test
-hypernix providers list
-hypernix tools list
-hypernix tools test
-hypernix optimizer list
-hypernix optimizer benchmark
-```
-The existing CLI architecture should be reused instead of creating a separate CLI framework.  
-   
-⸻  
-   
-## 23. Tests  
-This release must have extensive tests.  
-Add tests for:  
-**Providers**  
-* local provider discovery  
-* Ollama discovery  
-* LM Studio connection  
-* llama.cpp connection  
-* custom OpenAI-compatible endpoint  
-* no T1 key required  
-**Tools**  
-* schema validation  
-* tool registration  
-* sequential calls  
-* parallel calls  
-* dependency handling  
-* cancellation  
-* timeout  
-* retries  
-* malformed arguments  
-**Shell**  
-* Bash  
-* Fish  
-* PowerShell  
-* output streaming  
-* exit codes  
-* timeout  
-* cancellation  
-* permission enforcement  
-**Optimizers**  
-* V5  
-* V5+  
-* V5S  
-* V6  
-* V6V  
-* fallback behavior  
-* state serialization  
-* checkpoint restoration  
-* optimizer auto-selection  
-**Security**  
-Explicitly test that:  
-* local models cannot bypass permissions  
-* dangerous commands require approval  
-* secrets aren’t injected into model context  
-* shell escaping works correctly  
-* tool schemas cannot execute arbitrary Python  
-* path traversal is blocked where appropriate  
-   
-⸻  
-   
-## 24. Backward Compatibility  
-Do not break existing HyperNix APIs unnecessarily.  
-Existing users should still be able to use:  
-```
-PressureCookerV5(...)
-PressureCookerV5S(...)
-PressureCookerV6(...)
-PressureCookerV6V(...)
-```
-even after Optimizer Framework V2 is introduced.  
-Optimizer Framework V2 should wrap or compose existing implementations where practical rather than needlessly rewriting stable optimizer code.  
-   
-⸻  
-   
-## 25. Documentation  
-Create/update:  
-```
-wiki/HyperNix-Studio.md
-wiki/Local-Models.md
-wiki/Tool-Calling.md
-wiki/Shell-Tools.md
-wiki/Optimizer-Framework-V2.md
-wiki/Pressure-Cooker-V6.md
-wiki/Changelog.md
-```
-Document:  
-* local model setup  
-* Ollama  
-* LM Studio  
-* llama.cpp  
-* custom endpoints  
-* tool permissions  
-* shell security  
-* optimizer selection  
-* benchmarks  
-* V5/V5+/V5S/V6/V6V differences  
-Include working examples.  
-   
-⸻  
-   
-## 26. Performance Requirements  
-Avoid introducing unnecessary overhead.  
-For local inference:  
-* stream tokens  
-* reuse HTTP connections  
-* avoid unnecessary serialization  
-* avoid blocking the UI  
-* support cancellation  
-* keep tool execution asynchronous  
-For training:  
-* preserve V6’s fused/foreach execution path  
-* avoid per-parameter CPU synchronization  
-* preserve V6V CUDA graph functionality  
-* don’t accidentally force tensors onto CPU  
-* don’t add Python loops around hot optimizer paths unless unavoidable  
-V6’s design specifically targets reduced host/device synchronization and fused multi-tensor operations, so do not regress those properties while wrapping it in Framework V2. (++[GitHub](https://github.com/trail-b1az3r/HyperNix-pip/blob/main/wiki/Pressure-Cooker-V6.md)++)  
-   
-⸻  
-   
-## 27. UI Quality  
-HyperNix Studio should feel like a real professional AI development environment, not a collection of debug panels.  
-Add polished sections for:  
-```
-Models
-Chat
-Tools
-Terminal
-Files
-Git
-Training
-Optimizers
-System
-Settings
-```
-Use clear status indicators:  
-```
-● Connected
-● Local
-● Streaming
-✓ Tool available
-⚠ Permission required
-✕ Failed
-```
-The interface should remain usable with:  
-* local-only models  
-* hosted-only models  
-* mixed local + hosted workflows  
-   
-⸻  
-   
-## 28. New “Agent Profiles”  
-Add configurable agent profiles.  
-Examples:  
-```
-Coder
-Researcher
-System Admin
-Training Engineer
-Local Assistant
-```
-Each profile can define:  
-```
-model
-system prompt
-enabled tools
-permissions
-max tool calls
-temperature
-context policy
-```
-Users can create custom profiles.  
-   
-⸻  
-   
-## 29. New “Tool Packs”  
-Allow tools to be grouped into packs:  
-```
-Core
-Coding
-Git
-Shell
-Python
-System
-Web/API
-Training
-Documentation
-```
-The user can enable/disable packs.  
-Models should only see enabled tools.  
-   
-⸻  
-   
-## 30. New Useful Tool: Environment Snapshot  
-Implement:  
-```
-environment_snapshot
-```
-that produces a safe structured summary:  
-```
-{
-  "os": "...",
-  "python": "...",
-  "node": "...",
-  "git": "...",
-  "cuda": "...",
-  "gpu": "...",
-  "ram": "...",
-  "disk": "...",
-  "project": "..."
-}
-```
-Do not expose secrets.  
-This should be especially useful for coding agents and debugging.  
-   
-⸻  
-   
-## 31. New Useful Tool: Project Diagnostics  
-Implement:  
-```
-project_diagnostics
-```
-that can inspect:  
-* dependency problems  
-* missing files  
-* invalid configuration  
-* Python import errors  
-* Node dependency problems  
-* Git state  
-* common build errors  
-Return structured diagnostic objects rather than a giant text blob.  
-   
-⸻  
-   
-## 32. New Useful Tool: Patch/Apply  
-Implement a safe structured patch tool:  
-```
-apply_patch
-```
-The model should be able to request:  
-```
-file
-operation
-old_text
-new_text
-```
-or an equivalent structured patch format.  
-Before applying:  
-```
-validate
-preview
-permission
-apply
-verify
-```
-After applying, optionally run relevant tests.  
-   
-⸻  
-   
-## 33. New Useful Tool: Test-and-Fix Loop  
-Create a high-level orchestration tool:  
-```
-test_and_diagnose
-```
-which can:  
-1. detect project type  
-2. run the appropriate test suite  
-3. collect failures  
-4. identify relevant files  
-5. return structured diagnostics  
-Do not automatically modify code unless explicitly requested/authorized.  
-   
-⸻  
-   
-## 34. Release Requirements  
-Update the version to:  
-```
-## Release metadata and completion requirements
-```
-Update:  
-* package metadata  
-* changelog  
-* documentation  
-* version constants  
-* CLI version  
-* Studio version  
-* tests  
-Follow the repository’s existing versioning conventions.  
-   
-⸻  
-   
-## 35. Definition of Done  
-Do not consider 0.74.3 complete until:  
-* HyperNix Studio can use a local model without a T1 key.  
-* Ollama works.  
-* LM Studio works.  
-* llama.cpp/OpenAI-compatible local servers work.  
-* Custom local endpoints work.  
-* Local model capability detection works.  
-* Tool calling works across local models where supported.  
-* Compatibility tool calling exists for models without native tool calls.  
-* Multiple tool calls can execute sequentially.  
-* Independent tool calls can execute in parallel.  
-* Tool permissions work.  
-* Bash works.  
-* Fish works.  
-* PowerShell works where available.  
-* Shell output streams live.  
-* Shell execution can be cancelled.  
-* Dangerous commands require approval.  
-* Optimizer Framework V2 exists.  
-* V5 is integrated.  
-* V5+ is integrated.  
-* V5S is integrated.  
-* V6 is integrated.  
-* V6V is integrated.  
-* Optimizer auto-selection works.  
-* Optimizer benchmarking works.  
-* Training diagnostics expose optimizer-specific metrics.  
-* Existing optimizer APIs remain functional.  
-* Tests cover the new functionality.  
-* Documentation is complete.  
-* No fake/stub implementations remain.  
-   
-⸻  
-   
-## 36. Implementation Strategy  
-Before modifying code:  
-1. Inspect the repository structure.  
-2. Locate the current HyperNix Studio implementation.  
-3. Locate model/provider abstractions.  
-4. Locate T1 authentication logic.  
-5. Locate existing tool-calling infrastructure.  
-6. Locate shell/terminal functionality.  
-7. Locate optimizer framework.  
-8. Inspect V5/V5+/V5S/V6/V6V implementations.  
-9. Inspect existing tests.  
-10. Determine the minimum set of architectural changes required.  
-Then implement incrementally.  
-Do not rewrite unrelated working systems.  
-Prefer reusable abstractions over special-case integrations.  
-Run the relevant tests after each major subsystem.  
-Finally run the full test suite and fix regressions.  
-The final result should feel like a **major HyperNix Studio upgrade**, with local AI becoming a first-class citizen rather than an afterthought, a genuinely capable agent/tool runtime, and Optimizer Framework V2 providing a clean unified interface over the Pressure Cooker generations.
-
+Implementation sequence: inventory and map files → define stable interfaces → implement runtime/provider and permission behavior → wire training and tools → build UI → test failure/security paths → update documentation. Keep each stage buildable and reviewable.
 
 # 0.75.0
 #   
 # HyperNix 0.75.0 — Create HyperNix0xV4  
-Create a completely new LLM architecture called **hypernix0xV4** from scratch. Do not simply modify 0xV3 or make a conventional Transformer with renamed components. V4 should introduce a fundamentally different **learning and thinking paradigm** inspired by how a developing human learns: perception → curiosity/wondering → parallel internal processing → tentative understanding → repetition → learning → perspective formation. The model must be designed around **continuous parallel cognition rather than conventional sequential chain-of-thought**. It must **not expose or require traditional chain-of-thought** during inference. Instead, implement a new **Multi-Thread Cognitive Reasoning system** where several lightweight internal reasoning threads independently examine an input from different perspectives, periodically synchronize, challenge one another, discard weak hypotheses, and merge useful representations into a compact latent state. Threads should be dynamically created, paused, merged, or terminated depending on uncertainty and task complexity. The architecture should have explicit modules for **Perception, Wonder/Curiosity, Hypothesis Formation, Parallel Thought, Synchronization, Memory, Learning, Perspective Formation, and Response Generation**.  
+Create a completely new LLM architecture called **hypernix0xV4** from scratch. Do not simply modify 0xV3 or make a conventional Transformer with renamed components. Keep **HyperNix0xV3 as a supported fallback architecture**: V4 is preferred when its architecture, kernels, memory, and runtime capabilities are available; V3 remains selectable and is used as a controlled fallback when V4 cannot load or execute safely. Detect compatibility before loading, explain why fallback occurred, preserve the requested model identity, and let users disable automatic fallback. Never silently convert V4 checkpoints into V3 or claim architectural equivalence. Keep V3 checkpoints, configs, tokenizer compatibility, and inference/training paths independently testable. V4 should introduce a fundamentally different **learning and thinking paradigm** inspired by how a developing human learns: perception → curiosity/wondering → parallel internal processing → tentative understanding → repetition → learning → perspective formation. The model must be designed around **continuous parallel cognition rather than conventional sequential chain-of-thought**. It must **not expose or require traditional chain-of-thought** during inference. Instead, implement a new **Multi-Thread Cognitive Reasoning system** where several lightweight internal reasoning threads independently examine an input from different perspectives, periodically synchronize, challenge one another, discard weak hypotheses, and merge useful representations into a compact latent state. Threads should be dynamically created, paused, merged, or terminated depending on uncertainty and task complexity. The architecture should have explicit modules for **Perception, Wonder/Curiosity, Hypothesis Formation, Parallel Thought, Synchronization, Memory, Learning, Perspective Formation, and Response Generation**.  
 ## Developmental Learning System  
 During training, implement a staged developmental curriculum rather than treating every training example identically. Early training should include an **English-Language Competency Gate** that continuously evaluates whether the model has developed sufficient understanding of English syntax, semantics, grounding, and basic linguistic relationships. Before the threshold is reached, training emphasizes language acquisition and perceptual grounding. Once the model demonstrates sufficient English competence, gradually activate the higher-level **Cognitive Development stage** rather than abruptly switching objectives.  
 The developmental system should behave somewhat like an artificial infant learning from repeated exposure. Inputs should pass through a cycle resembling:  
@@ -3026,15 +1598,29 @@ Provide:
 The final implementation should be **research-grade, modular, reproducible, and extensible**. Every novel component should have a clear mathematical definition, implementation, ablation configuration, and benchmark so it is possible to determine whether the new cognitive mechanisms actually improve learning, reasoning, multimodal understanding, efficiency, and generalization rather than merely making the architecture more complicated.  
   
   
-# 0.76.0
-  
-  
-# 0.76.1
-Add support for hyperNix.25  
-Make wall clock, before shutting script down log, shutting down: in 5 4 3 2 1. Now, and with a option to stop shutdown by pressing shift c  
-# 0.80.0
-  
-  
+# 0.80.0 — T1 API v1.2: security and protocol hardening
+
+Generate and release **T1 API v1.2** as a security-first protocol generation. Treat this as a security and compatibility release, not a feature-expansion milestone. Audit the complete server, SDK, HyperLink, waiter, installer, key lifecycle, transport, storage, and deployment surfaces before implementation.
+
+### Security objectives
+- Perform a threat model and source audit covering authentication, authorization, key issuance/rotation/revocation, delegated/admin roles, session ownership, request signing/replay, rate limits, quotas, billing, CORS/origins, Tailscale identity, file/model access, uploads, MCP/tools, webhooks, and update/install paths.
+- Enforce least privilege at every server-side route and operation. Deny by default; never treat network location, a Tailscale IP, a client header, model name, or hidden UI as authorization.
+- Harden credentials: secure random generation, digest-based lookup, constant-time comparisons, scoped/expiring/revocable tokens, safe storage permissions, redaction, rotation, and no secret leakage in logs, errors, traces, or generated docs.
+- Add replay protection and request/session binding with timestamps, nonces, identity, and session scope. Define clock-skew and retry behavior; reject stale, duplicated, malformed, or cross-session requests.
+- Harden transport and deployment: explicit TLS/mTLS policy where configured, strict CORS, safe proxy/header handling, request/body limits, timeouts, rate limiting, IP allow/deny rules, and secure defaults in generated configuration and installers.
+- Validate uploads, model metadata, paths, archive extraction, serialization, and MCP/tool inputs. Prevent path traversal, unsafe deserialization, command injection, SSRF, and unauthorized filesystem/network access.
+- Add structured audit events for security-sensitive actions with secrets and personal content excluded. Define retention, access control, and export behavior.
+- Review dependency and build supply-chain risks; pin and verify release artifacts where practical, publish a security policy and vulnerability-reporting instructions, and document the threat model.
+
+### v1.2 protocol and migration
+- Version the API contract explicitly and keep server, Python SDK, HyperLink, waiter, and generated OpenAPI/schema definitions aligned.
+- Preserve supported v1.1 clients through a documented compatibility/deprecation window where safe. Do not silently reinterpret key scopes, permissions, request fields, or billing semantics.
+- Provide explicit version negotiation, clear unsupported-version errors, migration diagnostics, and rollback guidance. Never downgrade security controls to preserve an unsafe client.
+- Add contract tests for old/new clients, malformed inputs, permission boundaries, replay attempts, revoked/expired keys, rate limits, concurrent sessions, and failure recovery.
+
+### Release gate
+Run the full security test suite and targeted adversarial tests; resolve or explicitly document every finding. Produce a reviewed threat model, security checklist, migration guide, API/SDK compatibility matrix, reproducible test evidence, and release notes. Do not call v1.2 secure merely because the version number changed or static scans are clean.
+
 # 0.81.0
 ##   
 ## HyperNix 0.81.0 — Unified In-House Runtime  
@@ -3078,10 +1664,7 @@ Create:
 import hypernix.torch
 ```
 This is HyperNix’s modified PyTorch interface.  
-Base it on:  
-```
-PyTorch 2.14
-```
+Base the custom-compiled build on **PyTorch 2.14.1**. If the source tree and toolchain can reliably compile and pass the full compatibility suite, prefer **PyTorch 2.15** instead. Do not claim 2.15 support until a reproducible build proves it. Keep a separately installable option for the newest compatible upstream PyTorch release on modern hardware/runtime targets (including the requested `9.8+` target); first resolve that target against real upstream version, driver, toolkit, and GPU compatibility data rather than guessing what the number means. Users must be able to select the custom legacy-compatible build or the separate modern upstream build.
 The goal is to maintain broad PyTorch compatibility while allowing HyperNix to add its own runtime, hardware, optimization, and backend functionality.  
 Examples:  
 ```
@@ -3148,12 +1731,7 @@ Integrate the CUDA management system directly into:
 ```
 hypernix.cuda
 ```
-Support CUDA runtimes from:  
-```
-CUDA 6.1
-through
-CUDA 13.2
-```
+The custom-compiled PyTorch build should target **CUDA 6.x through CUDA 12.4**, but only for combinations that can actually be built and tested. Do not imply that one PyTorch binary natively supports every CUDA generation. Newer CUDA/runtime targets should use the separately installable modern upstream PyTorch build where compatible.
 However, do not falsely claim that PyTorch 2.14 natively supports every historical CUDA version.  
 Create a compatibility matrix determining which CUDA runtime/toolchain combinations are actually possible.  
 For unsupported combinations, HyperNix must clearly report:  
@@ -3222,7 +1800,7 @@ Show the user what will be installed and why.
    
 ⸻  
    
-## 6. CUDA 6.1 → 13.2 Compatibility  
+## 6. Legacy CUDA 6.x → 12.4 compatibility and modern upstream build selection  
 Create an internal compatibility database:  
 ```
 hypernix.cuda.compatibility
@@ -3938,7 +2516,7 @@ The implementation is only complete when:
 14. Existing HyperNix functionality continues working.  
 15. Comprehensive automated tests cover the new runtime.  
 16. hypernix doctor provides a complete environment report.  
-The final result should feel like **one cohesive HyperNix runtime**, with torch, poor, CUDA management, hardware detection, Unicode rendering, and runtime selection acting as integrated subsystems of the same Python package.  
+The final result should feel like **one cohesive HyperNix runtime**, with torch, poor, CUDA management, hardware detection, Unicode rendering, and runtime selection acting as integrated subsystems of the same Python package. Ship two clearly distinguished install choices where compatibility requires them: the custom-compiled PyTorch 2.14.1 (or verified 2.15) build targeting tested CUDA 6.x–12.4 combinations, and a separately installable latest upstream PyTorch build for supported modern targets. The selector must explain the selected build, detected CUDA/driver/GPU capabilities, and fallback reason.  
   
   
   
