@@ -145,6 +145,83 @@ class TestChain:
         assert len(result.notes) <= result.plan.notes_tokens * relay.CHARS_PER_TOKEN
 
 
+class TestChatMessages:
+    def test_a_short_chat_is_sent_unchanged_and_keeps_its_envelope(self):
+        messages = [
+            {"role": "system", "content": "Answer accurately."},
+            {"role": "user", "content": [
+                {"type": "text", "text": "What is in this picture?"},
+                {"type": "image_url", "image_url": {"url": "data:image/png;base64,abc"}},
+            ]},
+            {"role": "assistant", "content": "I see a tree."},
+            {"role": "user", "content": "What color are its leaves?"},
+        ]
+        envelope = {
+            "model": "small",
+            "choices": [{"message": {"role": "assistant", "content": "Green."},
+                         "finish_reason": "stop"}],
+        }
+        sent = []
+
+        def answer(call_messages, max_tokens):
+            sent.append(call_messages)
+            return Reply("Green.", 23, 2, envelope)
+
+        result = Relay([answer], context_tokens=4096).run_messages(messages)
+        assert sent == [messages]
+        assert result.plan.single
+        assert result.envelope is envelope
+        assert result.answer == "Green."
+
+    def test_a_long_chat_keeps_instructions_roles_and_latest_image(self):
+        messages = [
+            {"role": "system", "content": "Use the conversation as context. Be precise."},
+            {"role": "user", "content": "Earlier user detail. " + "alpha " * 160},
+            {"role": "assistant", "content": "Earlier assistant response. " + "beta " * 140},
+            {"role": "user", "content": [
+                {"type": "text", "text": "Describe this image in light of our earlier discussion."},
+                {"type": "image_url", "image_url": {"url": "data:image/png;base64,latest"}},
+            ]},
+        ]
+        calls = []
+
+        def instance(call_messages, max_tokens):
+            calls.append(call_messages)
+            system = call_messages[0]["content"]
+            if system.endswith(relay.READ_PROMPT):
+                return Reply("Earlier context preserved.", 40, 8)
+            raw = {
+                "model": "small",
+                "choices": [{"message": {"role": "assistant", "content": "It is green."},
+                             "finish_reason": "stop"}],
+            }
+            return Reply("It is green.", 45, 4, raw)
+
+        result = Relay(
+            [instance], context_tokens=512, notes_tokens=40, answer_tokens=48
+        ).run_messages(messages)
+
+        assert not result.plan.single
+        assert [hop.kind for hop in result.hops] == ["read"] * len(result.plan.chunks) + ["answer"]
+        read_calls = calls[:-1]
+        assert all(call[0]["content"].startswith("[system]\nUse the conversation") for call in read_calls)
+        assert all(call[0]["content"].endswith(relay.READ_PROMPT) for call in read_calls)
+        read_input = read_calls[0][-1]["content"]
+        assert "USER:\nEarlier user detail." in read_input
+        assert "ASSISTANT:\nEarlier assistant response." in read_input
+        final_content = calls[-1][-1]["content"]
+        assert isinstance(final_content, list)
+        assert final_content[-1] == messages[-1]["content"][-1]
+        assert result.envelope["choices"][0]["message"]["content"] == "It is green."
+
+    def test_system_only_messages_are_rejected(self):
+        with pytest.raises(ValueError, match="user or conversation"):
+            Relay([lambda messages, max_tokens: Reply("ok")],
+                  context_tokens=1024).run_messages([
+                {"role": "system", "content": "instructions only"}
+            ])
+
+
 class TestMap:
     def test_parts_are_digested_on_every_instance_then_answered(self):
         instances, calls = _fakes(3, 1024)
