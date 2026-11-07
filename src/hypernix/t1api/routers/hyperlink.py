@@ -31,6 +31,7 @@ import json
 import logging
 import threading
 import time
+import weakref
 from pathlib import Path
 from typing import Any
 
@@ -1046,6 +1047,10 @@ def _hyperchat_for_request(request: Request, config: T1APIConfig):
                 max_queued=int(config.hyperchat_max_queued or 256),
             )
             state.t1_hyperchat = chat
+            # Test clients and short-lived embedded apps do not always
+            # enter FastAPI's lifespan context. Finalize the worker pool
+            # when its owning app is collected as a second cleanup path.
+            weakref.finalize(request.app, chat.close)
     return chat
 
 
