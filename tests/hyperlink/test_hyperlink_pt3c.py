@@ -400,6 +400,8 @@ class TestTitlesThroughTheAPI:
         metadata = response.json()["assistant_message"]["metadata"]
         assert metadata["relay"][0]["plan"]["single"] is True
         assert metadata["relay"][0]["hops"][0]["kind"] == "direct"
+        assert response.json()["assistant_message"]["input_tokens"] > 0
+        assert response.json()["assistant_message"]["output_tokens"] > 0
         assert model.calls.count("chat") == 1
 
     def test_streamed_chat_uses_the_same_relay_path(self, api, monkeypatch):
@@ -421,6 +423,8 @@ class TestTitlesThroughTheAPI:
         assert any(frame["type"] == "done" for frame in frames)
         saved = client.get(f"/hyperlink/sessions/{session}/messages").json()["messages"][-1]
         assert saved["metadata"]["relay"][0]["hops"][0]["kind"] == "direct"
+        assert saved["input_tokens"] > 0
+        assert saved["output_tokens"] > 0
         assert model.calls.count("chat") == 1
 
     def test_the_stream_sends_the_title_after_done(self, api, monkeypatch):
