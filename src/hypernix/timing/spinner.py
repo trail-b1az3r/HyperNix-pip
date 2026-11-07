@@ -1,4 +1,4 @@
-"""spinner — Terminal loading animations for HyperNix CLI.
+"""spinner \u2014 Terminal loading animations for HyperNix CLI.
 
 Provides a lightweight spinner/progress animation that works without
 any external dependencies (pure stdlib + ANSI), with a rich fallback
@@ -35,33 +35,33 @@ def _is_tty() -> bool:
 
 
 # ---------------------------------------------------------------------------
-# Spinner frames — several beautiful animation styles
+# Spinner frames \u2014 several beautiful animation styles
 # ---------------------------------------------------------------------------
 
 SPINNERS: dict[str, list[str]] = {
-    "dots":    ["⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷"],
-    "arc":     ["◜", "◠", "◝", "◞", "◡", "◟"],
-    "bounce":  ["⠁", "⠂", "⠄", "⠂"],
-    "pulse":   ["█", "▓", "▒", "░", "▒", "▓"],
+    "dots":    ["\u28fe", "\u28fd", "\u28fb", "\u28bf", "\u287f", "\u28df", "\u28ef", "\u28f7"],
+    "arc":     ["\u25dc", "\u25e0", "\u25dd", "\u25de", "\u25e1", "\u25df"],
+    "bounce":  ["\u2801", "\u2802", "\u2804", "\u2802"],
+    "pulse":   ["\u2588", "\u2593", "\u2592", "\u2591", "\u2592", "\u2593"],
     "bar":     ["[    ]", "[=   ]", "[==  ]", "[=== ]", "[====]", "[ ===]", "[  ==]", "[   =]"],
-    "moon":    ["🌑", "🌒", "🌓", "🌔", "🌕", "🌖", "🌗", "🌘"],
-    "clock":   ["🕐", "🕑", "🕒", "🕓", "🕔", "🕕", "🕖", "🕗", "🕘", "🕙", "🕚", "🕛"],
-    "fire":    ["🔥", "💥", "✨", "💫", "⚡"],
-    "star":    ["✶", "✸", "✹", "✺", "✹", "✷"],
-    "line":    ["─", "╲", "│", "╱"],
-    "grow":    ["▏", "▎", "▍", "▌", "▋", "▊", "▉", "█", "▉", "▊", "▋", "▌", "▍", "▎"],
-    "arrows":  ["←", "↖", "↑", "↗", "→", "↘", "↓", "↙"],
+    "moon":    ["\U0001f311", "\U0001f312", "\U0001f313", "\U0001f314", "\U0001f315", "\U0001f316", "\U0001f317", "\U0001f318"],
+    "clock":   ["\U0001f550", "\U0001f551", "\U0001f552", "\U0001f553", "\U0001f554", "\U0001f555", "\U0001f556", "\U0001f557", "\U0001f558", "\U0001f559", "\U0001f55a", "\U0001f55b"],
+    "fire":    ["\U0001f525", "\U0001f4a5", "\u2728", "\U0001f4ab", "\u26a1"],
+    "star":    ["\u2736", "\u2738", "\u2739", "\u273a", "\u2739", "\u2737"],
+    "line":    ["\u2500", "\u2572", "\u2502", "\u2571"],
+    "grow":    ["\u258f", "\u258e", "\u258d", "\u258c", "\u258b", "\u258a", "\u2589", "\u2588", "\u2589", "\u258a", "\u258b", "\u258c", "\u258d", "\u258e"],
+    "arrows":  ["\u2190", "\u2196", "\u2191", "\u2197", "\u2192", "\u2198", "\u2193", "\u2199"],
     "matrix":  ["0", "1", "0", "1", "0", "1"],
 }
 
 # ---------------------------------------------------------------------------
-# 3x3 grid spinner (no center) — cells light up to show estimated progress
+# 3x3 grid spinner (no center) \u2014 cells light up to show estimated progress
 # ---------------------------------------------------------------------------
 #
 # Eight cells are arranged clockwise around a deliberately blank center:
 #
 #     0 1 2
-#     7 · 3
+#     7 \u00b7 3
 #     6 5 4
 #
 # `progress` (0..1) sets how many of the 8 outer cells are "filled" to
@@ -77,10 +77,10 @@ _GRID3X3_LAYOUT: tuple[tuple[int | None, ...], ...] = (
     (6, 5, 4),
 )
 _GRID3X3_RAMP = [
-    f"{_CSI}31m",  # red          — just started
-    _YELLOW,       # yellow       — a little over a third done
-    _GREEN,        # green        — over halfway
-    f"{_CSI}92m",  # bright green — nearly / fully done
+    f"{_CSI}31m",  # red          \u2014 just started
+    _YELLOW,       # yellow       \u2014 a little over a third done
+    _GREEN,        # green        \u2014 over halfway
+    f"{_CSI}92m",  # bright green \u2014 nearly / fully done
 ]
 _GRID3X3_ACTIVE_COLOR = f"{_BOLD}{_CSI}96m"  # bright cyan highlight
 
@@ -108,10 +108,10 @@ def _grid3x3_frame(progress: float, tick: int, *, color: bool = True, label: str
         cells = []
         for pos in row:
             if pos is None:
-                cells.append(" ")  # blank center — deliberately no cell here
+                cells.append(" ")  # blank center \u2014 deliberately no cell here
                 continue
             is_filled = pos < filled
-            glyph = "█" if is_filled else "▫"
+            glyph = "\u2588" if is_filled else "\u25ab"
             if not color:
                 cells.append(glyph)
                 continue
@@ -134,11 +134,11 @@ def _grid3x3_frame(progress: float, tick: int, *, color: bool = True, label: str
 
 BANNER_FRAMES = [
     "H Y P E R N I X",
-    "H·Y·P·E·R·N·I·X",
+    "H\u00b7Y\u00b7P\u00b7E\u00b7R\u00b7N\u00b7I\u00b7X",
     "HYPERNIX",
-    "⚡HYPERNIX⚡",
-    "▓HYPERNIX▓",
-    "█HYPERNIX█",
+    "\u26a1HYPERNIX\u26a1",
+    "\u2593HYPERNIX\u2593",
+    "\u2588HYPERNIX\u2588",
 ]
 
 
@@ -156,7 +156,7 @@ class Spinner:
         with Spinner("Downloading model") as sp:
             do_work()
             sp.update("Still downloading...")
-        # On exit, prints ✓ Done (or ✗ on exception)
+        # On exit, prints \u2713 Done (or \u2717 on exception)
     """
 
     def __init__(
@@ -243,11 +243,11 @@ class Spinner:
             self._thread.join(timeout=1)
         if self._tty:
             sys.stdout.write(_SHOW)
-            icon = f"{_GREEN}✓{_RESET}" if succeeded else f"\x1b[91m✗{_RESET}"
+            icon = f"{_GREEN}\u2713{_RESET}" if succeeded else f"\x1b[91m\u2717{_RESET}"
             sys.stdout.write(f"\r{icon}  {_BOLD}{self.text}{_RESET}  \n")
             sys.stdout.flush()
         else:
-            status = "✓" if succeeded else "✗"
+            status = "\u2713" if succeeded else "\u2717"
             print(f"{status}  {self.text}")
 
     def __enter__(self) -> Spinner:
@@ -273,7 +273,7 @@ def decode_frames(
 ) -> list[str]:
     """The frames of a ``decode`` animation, as plain strings.
 
-    Separated from the printing so it can be tested — an animation that
+    Separated from the printing so it can be tested \u2014 an animation that
     only exists inside a ``time.sleep`` loop is one nobody ever checks,
     and the property that matters (the last frame is the text, exactly)
     is trivial to assert and easy to get wrong.
@@ -320,12 +320,12 @@ def anime_print(
     """Print an animated banner or text effect to the terminal.
 
     Styles:
-      ``banner``  — slide in letter by letter then flash
-      ``glitch``  — glitch effect (randomised chars) then settle
-      ``decode``  — scrambled text resolving in random order, as if
+      ``banner``  \u2014 slide in letter by letter then flash
+      ``glitch``  \u2014 glitch effect (randomised chars) then settle
+      ``decode``  \u2014 scrambled text resolving in random order, as if
                     decrypted. See :func:`_decode_frames`.
-      ``typewriter`` — typewriter character reveal
-      ``fade``    — fade in using block characters
+      ``typewriter`` \u2014 typewriter character reveal
+      ``fade``    \u2014 fade in using block characters
     """
     if not _is_tty() or not color:
         print(text)
@@ -336,7 +336,7 @@ def anime_print(
         sys.stdout.flush()
         try:
             for i in range(1, len(text) + 1):
-                sys.stdout.write(f"\r{_BOLD}{_CYAN}{text[:i]}{_RESET}{'▌' if i < len(text) else '  '}")
+                sys.stdout.write(f"\r{_BOLD}{_CYAN}{text[:i]}{_RESET}{'\u258c' if i < len(text) else '  '}")
                 sys.stdout.flush()
                 time.sleep(delay)
         finally:
@@ -387,7 +387,7 @@ def anime_print(
             sys.stdout.flush()
 
     elif style == "fade":
-        blocks = ["░", "▒", "▓", "█"]
+        blocks = ["\u2591", "\u2592", "\u2593", "\u2588"]
         sys.stdout.write(_HIDE)
         sys.stdout.flush()
         try:
@@ -433,13 +433,13 @@ def print_startup_header(version: str = "") -> None:
         print(f"HyperNix {version}")
         return
 
-    logo = r"""
-  ██╗  ██╗██╗   ██╗██████╗ ███████╗██████╗ ███╗   ██╗██╗██╗  ██╗
-  ██║  ██║╚██╗ ██╔╝██╔══██╗██╔════╝██╔══██╗████╗  ██║██║╚██╗██╔╝
-  ███████║ ╚████╔╝ ██████╔╝█████╗  ██████╔╝██╔██╗ ██║██║ ╚███╔╝ 
-  ██╔══██║  ╚██╔╝  ██╔═══╝ ██╔══╝  ██╔══██╗██║╚██╗██║██║ ██╔██╗ 
-  ██║  ██║   ██║   ██║     ███████╗██║  ██║██║ ╚████║██║██╔╝ ██╗
-  ╚═╝  ╚═╝   ╚═╝   ╚═╝     ╚══════╝╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝
+    logo = """
+  \u2588\u2588\u2557  \u2588\u2588\u2557\u2588\u2588\u2557   \u2588\u2588\u2557\u2588\u2588\u2588\u2588\u2588\u2588\u2557 \u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2557\u2588\u2588\u2588\u2588\u2588\u2588\u2557 \u2588\u2588\u2588\u2557   \u2588\u2588\u2557\u2588\u2588\u2557\u2588\u2588\u2557  \u2588\u2588\u2557
+  \u2588\u2588\u2551  \u2588\u2588\u2551\u255a\u2588\u2588\u2557 \u2588\u2588\u2554\u255d\u2588\u2588\u2554\u2550\u2550\u2588\u2588\u2557\u2588\u2588\u2554\u2550\u2550\u2550\u2550\u255d\u2588\u2588\u2554\u2550\u2550\u2588\u2588\u2557\u2588\u2588\u2588\u2588\u2557  \u2588\u2588\u2551\u2588\u2588\u2551\u255a\u2588\u2588\u2557\u2588\u2588\u2554\u255d
+  \u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2551 \u255a\u2588\u2588\u2588\u2588\u2554\u255d \u2588\u2588\u2588\u2588\u2588\u2588\u2554\u255d\u2588\u2588\u2588\u2588\u2588\u2557  \u2588\u2588\u2588\u2588\u2588\u2588\u2554\u255d\u2588\u2588\u2554\u2588\u2588\u2557 \u2588\u2588\u2551\u2588\u2588\u2551 \u255a\u2588\u2588\u2588\u2554\u255d 
+  \u2588\u2588\u2554\u2550\u2550\u2588\u2588\u2551  \u255a\u2588\u2588\u2554\u255d  \u2588\u2588\u2554\u2550\u2550\u2550\u255d \u2588\u2588\u2554\u2550\u2550\u255d  \u2588\u2588\u2554\u2550\u2550\u2588\u2588\u2557\u2588\u2588\u2551\u255a\u2588\u2588\u2557\u2588\u2588\u2551\u2588\u2588\u2551 \u2588\u2588\u2554\u2588\u2588\u2557 
+  \u2588\u2588\u2551  \u2588\u2588\u2551   \u2588\u2588\u2551   \u2588\u2588\u2551     \u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2557\u2588\u2588\u2551  \u2588\u2588\u2551\u2588\u2588\u2551 \u255a\u2588\u2588\u2588\u2588\u2551\u2588\u2588\u2551\u2588\u2588\u2554\u255d \u2588\u2588\u2557
+  \u255a\u2550\u255d  \u255a\u2550\u255d   \u255a\u2550\u255d   \u255a\u2550\u255d     \u255a\u2550\u2550\u2550\u2550\u2550\u2550\u255d\u255a\u2550\u255d  \u255a\u2550\u255d\u255a\u2550\u255d  \u255a\u2550\u2550\u2550\u255d\u255a\u2550\u255d\u255a\u2550\u255d  \u255a\u2550\u255d
 """
 
     sys.stdout.write(_HIDE)
