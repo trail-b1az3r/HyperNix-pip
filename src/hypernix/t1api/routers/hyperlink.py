@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import json
 import logging
+import threading
 import time
 from pathlib import Path
 from typing import Any
@@ -984,7 +985,8 @@ def _tool_setup(config, principal, settings, request, memory_store, session_id, 
     return _ToolSetup(context, t1, workspace)
 
 
-def _chat_with_tools(bridge, wire, model, sampling, setup: _ToolSetup, teach_format=False):
+def _chat_with_tools(bridge, wire, model, sampling, setup: _ToolSetup, teach_format=False,
+                     ask_completion=None):
     """One turn, with the model allowed to call the tools in *setup*.
 
     Returns ``(envelope, rounds)``. The rounds are what it did, for the
@@ -999,6 +1001,8 @@ def _chat_with_tools(bridge, wire, model, sampling, setup: _ToolSetup, teach_for
     from ...hyperlink.toolloop import run_tool_loop
 
     def ask(messages, tools):
+        if ask_completion is not None:
+            return ask_completion(messages, tools)
         return bridge.chat(
             messages,
             model=model,
@@ -1012,6 +1016,220 @@ def _chat_with_tools(bridge, wire, model, sampling, setup: _ToolSetup, teach_for
         teach_format=teach_format, workspace=setup.workspace,
     )
     return envelope, [r.to_dict() for r in rounds]
+
+
+_HYPERCHAT_INIT_LOCK = threading.Lock()
+
+
+def _hyperchat_for_request(request: Request, config: T1APIConfig):
+    """One bounded Hyperchat queue per API app, created on first chat.
+
+    The workers are deliberately lazy: importing or constructing a test
+    app does not start threads or load model copies. In multi mode the
+    CPU budget is enforced by Hyperchat itself; otherwise one worker
+    provides a FIFO queue.
+    """
+    from ...hyperlink.hyperchat import Hyperchat, plan_cores
+
+    state = request.app.state
+    chat = getattr(state, "t1_hyperchat", None)
+    if chat is not None:
+        return chat
+    with _HYPERCHAT_INIT_LOCK:
+        chat = getattr(state, "t1_hyperchat", None)
+        if chat is None:
+            wanted = int(config.hyperchat_instances or 0) if config.hyperchat_multi else 1
+            budget = plan_cores(wanted=wanted)
+            chat = Hyperchat(
+                lambda: (lambda _prompt, operation, **_kwargs: operation()),
+                budget=budget,
+                max_queued=int(config.hyperchat_max_queued or 256),
+            )
+            state.t1_hyperchat = chat
+    return chat
+
+
+def _relay_chat_completion(
+    *,
+    backend,
+    runner,
+    config: T1APIConfig,
+    messages: list[dict[str, Any]],
+    model: str | None,
+    sampling: dict[str, Any],
+    tools: list[dict[str, Any]] | None = None,
+    cancelled=lambda: False,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Run one OpenAI-shaped completion through the shared context relay.
+
+    The relay sees the structured chat unchanged when it fits. If it does
+    not, older messages are condensed in role-preserving hops while the
+    system prompt and newest user message are retained. Tools are offered
+    only to the direct/final answer call, never to the internal reading
+    hops.
+    """
+    from ...runtime.relay import (
+        ANSWER_PROMPT,
+        DIGEST_PROMPT,
+        READ_PROMPT,
+        CHAIN,
+        ContextTooSmall,
+        Relay,
+        Reply,
+        estimate_tokens,
+    )
+
+    context_tokens = _model_context(config, runner, backend)
+    if context_tokens <= 0:
+        context_tokens = max(256, int(config.relay_default_context_tokens or 4096))
+    default_answer = max(32, min(512, int(context_tokens * 0.225)))
+    answer_tokens = min(
+        int(sampling.get("max_tokens") or default_answer),
+        default_answer,
+    )
+
+    pool_urls: list[str] = []
+    if backend.is_hypernix and runner is not None:
+        try:
+            pool_urls = [str(url) for url in (getattr(runner, "base_urls", None) or [])]
+        except Exception:  # noqa: BLE001 - a broken pool degrades to its main endpoint
+            pool_urls = []
+    max_instances = max(1, int(config.relay_max_instances or 1))
+    if pool_urls:
+        clients = [
+            LMStudioBridge(base_url=url, timeout=config.lmstudio_timeout_seconds)
+            for url in pool_urls[:max_instances]
+        ]
+    else:
+        clients = [backend.client]
+
+    def make_instance(client):
+        def complete(hop_messages: list[dict[str, Any]], max_tokens: int) -> Reply:
+            instruction = ""
+            if hop_messages and hop_messages[0].get("role") == "system":
+                instruction = str(hop_messages[0].get("content") or "")
+            internal_read = instruction.endswith(READ_PROMPT) or instruction.endswith(DIGEST_PROMPT)
+            offered = None if internal_read else (tools or None)
+            envelope = client.chat(
+                hop_messages,
+                model=model,
+                temperature=sampling.get("temperature", 0.2),
+                max_tokens=max_tokens,
+                tools=offered,
+            )
+            content, _finish = _extract_reply(envelope)
+            usage = envelope.get("usage") or {}
+            used_in = int(usage.get("prompt_tokens") or 0)
+            used_out = int(usage.get("completion_tokens") or 0)
+            if not used_in:
+                used_in = estimate_tokens(
+                    "\\n".join(str(message.get("content") or "") for message in hop_messages)
+                )
+            if not used_out:
+                used_out = estimate_tokens(content)
+            return Reply(content, used_in, used_out, envelope)
+        return complete
+
+    def after_hop(_hop) -> None:
+        if cancelled():
+            raise InterruptedError("The chat generation was stopped between relay hops.")
+
+    try:
+        relay = Relay(
+            [make_instance(client) for client in clients],
+            context_tokens=context_tokens,
+            mode=CHAIN,
+            answer_tokens=answer_tokens,
+            on_hop=after_hop,
+        )
+        result = relay.run_messages(messages)
+    except ContextTooSmall as exc:
+        raise T1APIError(
+            T1ErrorCode.VALIDATION_ERROR,
+            str(exc),
+            details={"context_tokens": context_tokens, "model": model or backend.model_id},
+        ) from exc
+
+    envelope = result.envelope or {
+        "choices": [{
+            "message": {"role": "assistant", "content": result.answer},
+            "finish_reason": "stop",
+        }],
+    }
+    envelope["model"] = str(envelope.get("model") or model or backend.model_id or "")
+    envelope["usage"] = {
+        "prompt_tokens": result.input_tokens,
+        "completion_tokens": result.output_tokens,
+        "total_tokens": result.input_tokens + result.output_tokens,
+    }
+    relay_info = {
+        "plan": result.plan.to_dict(),
+        "hops": [hop.to_dict() for hop in result.hops],
+        "input_tokens": result.input_tokens,
+        "output_tokens": result.output_tokens,
+        "requests": result.requests,
+    }
+    return envelope, relay_info
+
+
+def _queued_relay_chat(
+    *,
+    request: Request,
+    config: T1APIConfig,
+    backend,
+    runner,
+    messages: list[dict[str, Any]],
+    model: str | None,
+    sampling: dict[str, Any],
+    tools: list[dict[str, Any]] | None = None,
+    cancelled=lambda: False,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Queue a Relay completion through Hyperchat and return its envelope."""
+    from ...hyperlink.hyperchat import QueueFull
+
+    operation = lambda: _relay_chat_completion(
+        backend=backend,
+        runner=runner,
+        config=config,
+        messages=messages,
+        model=model,
+        sampling=sampling,
+        tools=tools,
+        cancelled=cancelled,
+    )
+    chat = _hyperchat_for_request(request, config)
+    try:
+        return chat.submit("relay chat completion", operation=operation).wait()
+    except QueueFull as exc:
+        raise T1APIError(
+            T1ErrorCode.RATE_LIMITED,
+            str(exc),
+            details={"queue": chat.stats()},
+            http_status=429,
+        ) from exc
+
+
+def _relay_stream_chunks(envelope: dict[str, Any]):
+    """Adapt a completed relay response to the existing OpenAI stream shape."""
+    choices = envelope.get("choices") or []
+    choice = choices[0] if choices else {}
+    message = (choice or {}).get("message") or {}
+    delta: dict[str, Any] = {}
+    if message.get("content"):
+        delta["content"] = message["content"]
+    if message.get("tool_calls"):
+        delta["tool_calls"] = [
+            {"index": index, **call}
+            for index, call in enumerate(message["tool_calls"])
+        ]
+    yield {
+        "model": envelope.get("model", ""),
+        "usage": envelope.get("usage") or {},
+        "choices": [{
+            "delta": delta,
+            "finish_reason": (choice or {}).get("finish_reason") or "stop",
+        }],
+    }
 
 
 def _apply_preferences(
