@@ -398,6 +398,10 @@ def test_a_failed_reply_is_saved_with_its_error(served, monkeypatch):
             raise LMStudioError("No LM Studio server answering at http://127.0.0.1:1234",
                                 code="unreachable", base_url="http://127.0.0.1:1234")
 
+        def chat_stream(self, messages, **kwargs):
+            raise LMStudioError("No LM Studio server answering at http://127.0.0.1:1234",
+                                code="unreachable", base_url="http://127.0.0.1:1234")
+
     base, auth = served()
     _use(monkeypatch, Unreachable())
     session, frames = _stream(base, auth, "hello")
