@@ -1077,9 +1077,9 @@ def _relay_chat_completion(
     hops.
     """
     from ...runtime.relay import (
+        CHAIN,
         DIGEST_PROMPT,
         READ_PROMPT,
-        CHAIN,
         ContextTooSmall,
         Relay,
         Reply,
@@ -1206,18 +1206,19 @@ def _queued_relay_chat(
     """Queue a Relay completion through Hyperchat and return its envelope."""
     from ...hyperlink.hyperchat import QueueFull
 
-    operation = lambda: _relay_chat_completion(
-        backend=backend,
-        runner=runner,
-        config=config,
-        principal=principal,
-        meter=meter,
-        messages=messages,
-        model=model,
-        sampling=sampling,
-        tools=tools,
-        cancelled=cancelled,
-    )
+    def operation():
+        return _relay_chat_completion(
+            backend=backend,
+            runner=runner,
+            config=config,
+            principal=principal,
+            meter=meter,
+            messages=messages,
+            model=model,
+            sampling=sampling,
+            tools=tools,
+            cancelled=cancelled,
+        )
     chat = _hyperchat_for_request(request, config)
     try:
         return chat.submit("relay chat completion", operation=operation).wait()
