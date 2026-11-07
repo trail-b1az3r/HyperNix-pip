@@ -1638,7 +1638,7 @@ Everything belongs to:
 ```
 hypernix/
 ```
-The only external dependency that this architecture is intentionally based upon is the upstream PyTorch 2.14 codebase/runtime where required. HyperNix should provide its own modified/integrated interfaces around it.  
+The custom HyperNix Torch build is based on upstream PyTorch 2.14.1, or 2.15 only after a reproducible source build and compatibility suite pass. A separate, selectable upstream PyTorch build must also be installable for modern hardware/runtime targets. HyperNix should provide integrated interfaces around the selected build.  
 The final package should conceptually look like:  
 ```
 hypernix/
@@ -1792,8 +1792,8 @@ Provide:
 hypernix cuda detect
 hypernix cuda list
 hypernix cuda doctor
-hypernix cuda install 13.2
-hypernix cuda use 13.2
+hypernix cuda install <version>
+hypernix cuda use <version>
 ```
 Do not silently download very large components.  
 Show the user what will be installed and why.  
@@ -2470,7 +2470,7 @@ but these are **internal component versions**, not separate Python distributions
 Example:  
 ```
 HyperNix: 0.81.0
-HyperNix Torch: PyTorch 2.14 + HyperNix
+HyperNix Torch: PyTorch 2.14.1 (or verified 2.15) + HyperNix
 poor: 0.81
 ```
    
@@ -2501,9 +2501,10 @@ Recommended:
 ## 27. Final Requirements  
 The implementation is only complete when:  
 1. **Everything is part of the single** hypernix **Python package.**  
-2. HyperNix Torch is based on PyTorch 2.14.  
-3. CUDA support is automatically detected and selected.  
-4. The architecture supports CUDA 6.1 through CUDA 13.2+ where technically possible.  
+2. The custom HyperNix Torch build is based on PyTorch 2.14.1, or verified 2.15.
+3. A separate newest-compatible upstream PyTorch build is installable for modern targets.
+4. CUDA support is automatically detected and selected.
+5. The custom build targets tested CUDA 6.x–12.4 combinations; modern CUDA targets use the separate upstream build when compatible.  
 5. CPU execution works without CUDA.  
 6. Intel Mac systems are explicitly supported.  
 7. rich is replaced internally by hypernix.poor.  
