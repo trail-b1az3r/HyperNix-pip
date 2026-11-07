@@ -16,7 +16,7 @@ concurrency:
 jobs:
   # An autofix commit says, in its trailers, exactly which tests its change
   # can affect. When one is present there is nothing to learn from re-running
-  # the 16-way matrix over a scaled sleep constant, so the matrix is skipped
+  # the 12-job OS/Python matrix over a scaled sleep constant, so the matrix is skipped
   # and `autofix-verify` runs that named set instead. Only autofix-F writes
   # these trailers: it edits the bodies of the tests it names and nothing
   # else. autofix-B and autofix-E touch src/, so their commits carry no
