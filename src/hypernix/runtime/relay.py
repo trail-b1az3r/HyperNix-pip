@@ -400,6 +400,7 @@ class RelayResult:
     #: Raw OpenAI envelope for the direct or final answer hop. It keeps
     #: structured tool calls intact for chat-aware callers.
     envelope: dict[str, Any] | None = None
+    cancelled: bool = False
 
     @property
     def input_tokens(self) -> int:
@@ -542,7 +543,7 @@ class Relay:
         if self.mode == CHAIN:
             notes = self._chain(
                 result, planned.chunks, question, planned.notes_tokens,
-                system_prompt=system_prompt,
+                system_prompt=system_prompt, cancelled=cancelled,
             )
         else:
             notes = self._map(
@@ -621,6 +622,9 @@ class Relay:
         else:
             notes = self._map(result, planned, question, system_prompt=system_prompt)
         result.notes = notes
+        if cancelled():
+            result.cancelled = True
+            return result
 
         prefix = f"Notes:\n{notes or '(nothing relevant was found)'}\n\nQuestion: "
         content: Any = (
@@ -675,10 +679,13 @@ class Relay:
     def _chain(
         self, result: RelayResult, chunks: Sequence[str], question: str,
         notes_tokens: int, *, system_prompt: str = "",
+        cancelled: Callable[[], bool] = lambda: False,
     ) -> str:
         notes = ""
         total = len(chunks)
         for part, chunk in enumerate(chunks):
+            if cancelled():
+                break
             user = (f"Question: {question}\n\nNotes so far:\n{notes or '(none yet)'}\n\n"
                     f"Part {part + 1} of {total}:\n{chunk}")
             notes = self._clip(self._call(
@@ -687,6 +694,8 @@ class Relay:
                  {"role": "user", "content": user}],
                 notes_tokens,
             ), notes_tokens)
+            if cancelled():
+                break
         return notes
 
     def _map(
@@ -803,6 +812,9 @@ class Relay:
         on_chunk: Callable[[dict[str, Any]], None],
         cancelled: Callable[[], bool],
     ) -> str:
+        if cancelled():
+            result.cancelled = True
+            return ""
         started = time.monotonic()
         stream = stream_call(messages, max_tokens, slot)
         text_parts: list[str] = []
@@ -886,7 +898,7 @@ class Relay:
         reply = Reply(content, input_tokens, output_tokens, raw)
         self._record_hop(result, slot, kind, part, reply, started)
         if interrupted or cancelled():
-            raise InterruptedError("The chat generation was stopped during a relay hop.")
+            result.cancelled = True
         return content.strip()
 
     @staticmethod
