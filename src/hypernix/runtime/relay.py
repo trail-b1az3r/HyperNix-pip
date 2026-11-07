@@ -498,6 +498,8 @@ class Relay:
                     system_parts.append(f"[{role}]\n{value}")
             else:
                 body.append(dict(message))
+        if not body:
+            raise ValueError("a relay chat needs a user or conversation message")
 
         question_index = next(
             (i for i in range(len(body) - 1, -1, -1) if body[i].get("role") == "user"),
@@ -636,8 +638,13 @@ class Relay:
             raise failures[0]
 
         joined = "\n\n".join(f"[Part {i + 1}] {d}" for i, d in enumerate(digests))
-        room = (_usable(self.context_tokens) - OVERHEAD_TOKENS - estimate_tokens(question)
-                - planned.answer_tokens)
+        sized_question = (
+            f"{system_prompt}\n\n{question}" if system_prompt else question
+        )
+        room = (
+            _usable(self.context_tokens) - OVERHEAD_TOKENS
+            - estimate_tokens(sized_question) - planned.answer_tokens
+        )
         if estimate_tokens(joined) <= room:
             return joined
         # Too long to answer from at once: fold the digests together in
