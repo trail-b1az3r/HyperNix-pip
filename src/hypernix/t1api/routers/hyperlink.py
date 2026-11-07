@@ -1127,7 +1127,7 @@ def _relay_chat_completion(
             used_out = int(usage.get("completion_tokens") or 0)
             if not used_in:
                 used_in = estimate_tokens(
-                    "\\n".join(str(message.get("content") or "") for message in hop_messages)
+                    "\n".join(str(message.get("content") or "") for message in hop_messages)
                 )
             if not used_out:
                 used_out = estimate_tokens(content)
