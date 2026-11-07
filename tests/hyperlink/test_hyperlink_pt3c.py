@@ -387,6 +387,42 @@ class TestTitlesThroughTheAPI:
         got = client.post(f"/hyperlink/sessions/{session}/title")
         assert got.status_code == 200 and got.json()["session"]["title"] == "Planning a Lisbon trip"
 
+    def test_nonstreamed_chat_records_the_relay_plan(self, api, monkeypatch):
+        client = api()
+        model = ScriptedModel("A relay-backed answer.")
+        use_model(monkeypatch, model)
+        client.patch("/hyperlink/preferences", json={"model_titles": False})
+        session = client.post("/hyperlink/sessions", json={"title": "t"}).json()["session"]["session_id"]
+        response = client.post(
+            f"/hyperlink/sessions/{session}/chat", json={"content": "hello"}
+        )
+        assert response.status_code == 200, response.text
+        metadata = response.json()["assistant_message"]["metadata"]
+        assert metadata["relay"][0]["plan"]["single"] is True
+        assert metadata["relay"][0]["hops"][0]["kind"] == "direct"
+        assert model.calls.count("chat") == 1
+
+    def test_streamed_chat_uses_the_same_relay_path(self, api, monkeypatch):
+        client = api()
+        model = ScriptedModel("A streamed relay-backed answer.")
+        use_model(monkeypatch, model)
+        session = client.post("/hyperlink/sessions", json={"title": "t"}).json()["session"]["session_id"]
+        with client.stream(
+            "POST", f"/hyperlink/sessions/{session}/chat/stream",
+            json={"content": "hello"},
+        ) as response:
+            frames = [
+                json.loads(line[5:]) for line in response.iter_lines()
+                if line.startswith("data:") and line[5:].strip() != "[DONE]"
+            ]
+        assert response.status_code == 200
+        assert [frame["type"] for frame in frames][0] == "start"
+        assert any(frame["type"] == "delta" for frame in frames)
+        assert any(frame["type"] == "done" for frame in frames)
+        saved = client.get(f"/hyperlink/sessions/{session}/messages").json()["messages"][-1]
+        assert saved["metadata"]["relay"][0]["hops"][0]["kind"] == "direct"
+        assert model.calls.count("chat") == 1
+
     def test_the_stream_sends_the_title_after_done(self, api, monkeypatch):
         client = api()
         use_model(monkeypatch, ScriptedModel("Alfama is lovely"))
