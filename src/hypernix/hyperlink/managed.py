@@ -35,7 +35,9 @@ explaining *why* a model was refused.
 """
 from __future__ import annotations
 
+import json
 import logging
+import socket
 import subprocess
 import sys
 import threading
@@ -524,6 +526,25 @@ class ManagedRunner:
     def base_url(self) -> str:
         return f"http://{self.host}:{self.port}"
 
+    def _ensure_port_available(self) -> None:
+        """Refuse an already-listening runner port before starting a child.
+
+        A T1 server can be restarted while its llama-server child survives.
+        In that case /health belongs to the old process, not the process
+        this runner is starting. Check before spawn so a stale listener
+        cannot make a failed child look successfully loaded.
+        """
+        try:
+            with socket.create_connection((self.host, self.port), timeout=0.25):
+                pass
+        except OSError:
+            return
+        raise ManagedError(
+            f"Cannot start the managed runner: {self.host}:{self.port} is already in use. "
+            "A runner from an earlier T1 process may still be listening there. "
+            "Stop that process, or set T1_RUNNER_PORT to another free port."
+        )
+
     # -- lifecycle ------------------------------------------------------
 
     def load(
@@ -624,6 +645,7 @@ class ManagedRunner:
         placement = _with_offload(placement, offload)
 
         self.unload()
+        self._ensure_port_available()
 
         projector = find_mmproj(model_path) if mmproj is None else (
             Path(mmproj).expanduser() if mmproj else None)
@@ -657,7 +679,7 @@ class ManagedRunner:
             self._process = process
             self._current = record
 
-        if not self._wait_until_ready(process, timeout):
+        if not self._wait_until_ready(process, timeout, model_id=record.model_id):
             code = process.poll()
             output = self._drain(process)
             self.unload()
@@ -695,6 +717,7 @@ class ManagedRunner:
                 f"{' (' + why + ')' if why else ''}, and it is not available: {exc.message}"
             ) from exc
         self.unload()
+        self._ensure_port_available()
         argv = fork_argv(fork, binary, model_path, host=self.host, port=self.port,
                          gpu_layers=placement.gpu_layers, context=context_length,
                          alias=model_id or model_path.stem, extra=extra)
@@ -711,7 +734,8 @@ class ManagedRunner:
         with self._lock:
             self._process = process
             self._current = record
-        if not self._wait_until_ready(process, timeout):
+        expected_id = None if fork == "kobold" else record.model_id
+        if not self._wait_until_ready(process, timeout, model_id=expected_id):
             code = process.poll()
             output = self._drain(process)
             self.unload()
@@ -760,6 +784,7 @@ class ManagedRunner:
             offload="" if on_gpu >= layers or device == "cpu" else "later layers in RAM",
         )
         self.unload()
+        self._ensure_port_available()
         alias = model_id or str(config.get("name") or folder.name).lower()
         argv = [sys.executable, "-m", "hypernix.hyperlink.brewed_server",
                 "--model", str(folder), "--host", self.host, "--port", str(self.port),
@@ -779,7 +804,7 @@ class ManagedRunner:
         with self._lock:
             self._process = process
             self._current = record
-        if not self._wait_until_ready(process, timeout):
+        if not self._wait_until_ready(process, timeout, model_id=record.model_id):
             code = process.poll()
             output = self._drain(process)
             self.unload()
@@ -813,23 +838,48 @@ class ManagedRunner:
 
     # -- readiness ------------------------------------------------------
 
-    def _wait_until_ready(self, process: subprocess.Popen, timeout: float) -> bool:
-        """Poll until the server answers, or it dies, or time runs out.
+    def _wait_until_ready(
+        self, process: subprocess.Popen, timeout: float, *, model_id: str | None = None
+    ) -> bool:
+        """Poll until this child is serving, or it dies, or time runs out.
 
-        Polling the health endpoint rather than sleeping a fixed time:
-        loading a 70B off a slow disk takes minutes and loading a 1B
-        takes a second, and a fixed wait is either a stall or a race.
+        /health alone is not enough: a leftover process from an earlier T1
+        server can answer on the same port while the child being started
+        exits with "address already in use". Confirm the served model when
+        the backend exposes /v1/models, then make sure our child survives
+        a one-second bind/stability window before reporting success.
         """
         deadline = time.monotonic() + timeout
-        url = f"{self.base_url}/health"
+        health_url = f"{self.base_url}/health"
+        models_url = f"{self.base_url}/v1/models"
         while time.monotonic() < deadline:
             if process.poll() is not None:
                 return False
             try:
-                with safe_urlopen(url, timeout=2) as response:
-                    if response.status == 200:
-                        return True
-            except (urllib.error.URLError, OSError, TimeoutError):
+                with safe_urlopen(health_url, timeout=2) as response:
+                    healthy = response.status == 200
+                if not healthy:
+                    time.sleep(0.5)
+                    continue
+
+                if model_id is not None:
+                    with safe_urlopen(models_url, timeout=2) as response:
+                        listing = json.loads(response.read() or b"{}")
+                    model_ids = {
+                        str(row.get("id") or "")
+                        for row in listing.get("data", [])
+                        if isinstance(row, dict)
+                    } if isinstance(listing, dict) else set()
+                    if model_id not in model_ids:
+                        time.sleep(0.5)
+                        continue
+
+                # Another process can answer /health during the short
+                # interval before our child loses the port bind. Do not
+                # report success until the child we spawned stays alive.
+                time.sleep(1.0)
+                return process.poll() is None
+            except (urllib.error.URLError, OSError, TimeoutError, ValueError):
                 pass
             time.sleep(0.5)
         return False
