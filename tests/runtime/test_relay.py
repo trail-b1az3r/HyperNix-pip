@@ -222,6 +222,100 @@ class TestChatMessages:
             ])
 
 
+class TestStreamingChatMessages:
+    def test_short_chat_forwards_chunks_and_keeps_the_final_envelope(self):
+        messages = [
+            {"role": "system", "content": "Be concise."},
+            {"role": "user", "content": "Say hello."},
+        ]
+        chunks = [
+            {"model": "small", "choices": [{"delta": {"content": "Hello "}}]},
+            {"model": "small", "choices": [{"delta": {"content": "there."},
+                                             "finish_reason": "stop"}]},
+        ]
+        received = []
+        sent = []
+
+        def stream_call(call_messages, max_tokens, slot):
+            sent.append((call_messages, max_tokens, slot))
+            return iter(chunks)
+
+        result = Relay([lambda _messages, _tokens: Reply("unused")],
+                       context_tokens=4096).stream_messages(
+            messages, stream_call=stream_call, on_chunk=received.append,
+        )
+        assert received == chunks
+        assert sent[0][0] == messages
+        assert result.plan.single
+        assert result.answer == "Hello there."
+        assert result.envelope["choices"][0]["message"]["content"] == "Hello there."
+        assert result.hops[0].kind == "direct"
+
+    def test_stop_closes_the_upstream_stream_between_chunks(self):
+        cancelled = threading.Event()
+        closed = threading.Event()
+        received = []
+        produced = []
+
+        def upstream():
+            try:
+                for text in ("one", "two", "three", "four"):
+                    produced.append(text)
+                    yield {"choices": [{"delta": {"content": text}}]}
+            finally:
+                closed.set()
+
+        def stream_call(_messages, _tokens, _slot):
+            return upstream()
+
+        def forward(chunk):
+            received.append(chunk)
+            cancelled.set()
+
+        with pytest.raises(InterruptedError, match="stopped"):
+            Relay([lambda _messages, _tokens: Reply("unused")],
+                  context_tokens=4096).stream_messages(
+                [{"role": "user", "content": "go"}],
+                stream_call=stream_call,
+                on_chunk=forward,
+                cancelled=cancelled.is_set,
+            )
+        assert len(received) == 1
+        assert len(produced) == 2  # one additional chunk can be yielded before the check
+        assert closed.is_set()
+
+    def test_long_chat_reads_old_context_then_streams_the_final_answer(self):
+        messages = [
+            {"role": "system", "content": "Keep the whole discussion in mind."},
+            {"role": "user", "content": "Old user note. " + "alpha " * 500},
+            {"role": "assistant", "content": "Old assistant reply. " + "beta " * 500},
+            {"role": "user", "content": "Use the earlier details to answer."},
+        ]
+        reads = []
+        streamed = []
+
+        def instance(call_messages, _tokens):
+            reads.append(call_messages)
+            return Reply("Preserved context.", 32, 4)
+
+        def stream_call(call_messages, _tokens, _slot):
+            streamed.append(call_messages)
+            yield {"model": "small", "choices": [{"delta": {"content": "Final "}}]}
+            yield {"model": "small", "choices": [{"delta": {"content": "answer."},
+                                                  "finish_reason": "stop"}]}
+
+        result = Relay([instance], context_tokens=1024,
+                       notes_tokens=40, answer_tokens=48).stream_messages(
+            messages, stream_call=stream_call, on_chunk=lambda _chunk: None,
+        )
+        assert not result.plan.single
+        assert reads
+        assert len(streamed) == 1
+        assert streamed[0][0]["content"].endswith(relay.ANSWER_PROMPT)
+        assert result.answer == "Final answer."
+        assert [hop.kind for hop in result.hops][-1] == "answer"
+
+
 class TestMap:
     def test_parts_are_digested_on_every_instance_then_answered(self):
         instances, calls = _fakes(3, 1024)
