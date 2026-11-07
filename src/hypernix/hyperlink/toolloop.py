@@ -636,6 +636,8 @@ def stream_tool_loop(
             close = getattr(stream, "close", None)
             if stopped and callable(close):
                 close()
+        if cancelled():
+            stopped = True
         if stopped:
             rest = guard.rest()
             if rest and not guard.holding:
