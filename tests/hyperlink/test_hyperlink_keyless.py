@@ -187,6 +187,7 @@ class TestKeylessTailnetChatsWithoutAccounts:
         )
         assert response.status_code == 401
 
+
 class TestTailscaleIPv6:
     """Bug 2. Tailscale gives every node a v4 and a v6 address, and a
     phone resolving a MagicDNS name will often take the v6."""
