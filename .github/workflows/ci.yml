@@ -51,6 +51,8 @@ jobs:
 
   lint:
     name: ruff lint
+    needs: [triage, integration-ios]
+    if: always() && needs.triage.result == 'success' && needs.triage.outputs.narrow != 'true' && needs.integration-ios.result != 'skipped'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -66,6 +68,8 @@ jobs:
   # hyperNix-pip supports.
   typecheck:
     name: mypy (py${{ matrix.python-version }})
+    needs: [triage, integration-ios]
+    if: always() && needs.triage.result == 'success' && needs.triage.outputs.narrow != 'true' && needs.integration-ios.result != 'skipped'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -304,19 +308,18 @@ jobs:
           TVTOP_MAX: ${{ needs.tvtop-max.result }}
           FIREFOX: ${{ needs.firefox-extension.result }}
         run: |
-          printf '%s\\n' \\
-            "Linux OS matrix: $PYTHON_MATRIX" \\
-            "Lint: $LINT" \\
-            "Typecheck: $TYPECHECK" \\
-            "Python 3.15 features: $PYTHON315" \\
-            "Benchmarks: $BENCHMARKS" \\
-            "Native: $NATIVE" \\
-            "llama.cpp: $LLAMACPP" \\
-            "CUDA: $CUDA" \\
-            "Build: $BUILD" \\
-            "hyped-pro: $HYPED_PRO" \\
-            "tvtop-max: $TVTOP_MAX" \\
-            "Firefox extension: $FIREFOX"
+          echo "Linux OS matrix: $PYTHON_MATRIX"
+          echo "Lint: $LINT"
+          echo "Typecheck: $TYPECHECK"
+          echo "Python 3.15 features: $PYTHON315"
+          echo "Benchmarks: $BENCHMARKS"
+          echo "Native: $NATIVE"
+          echo "llama.cpp: $LLAMACPP"
+          echo "CUDA: $CUDA"
+          echo "Build: $BUILD"
+          echo "hyped-pro: $HYPED_PRO"
+          echo "tvtop-max: $TVTOP_MAX"
+          echo "Firefox extension: $FIREFOX"
           failed=0
           for result in "$PYTHON_MATRIX" "$LINT" "$TYPECHECK" "$PYTHON315" "$BENCHMARKS" "$NATIVE" "$LLAMACPP" "$CUDA" "$BUILD" "$HYPED_PRO" "$TVTOP_MAX" "$FIREFOX"; do
             [ "$result" = "success" ] || failed=1
