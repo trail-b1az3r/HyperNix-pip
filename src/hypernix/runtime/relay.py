@@ -515,6 +515,9 @@ class Relay:
         for message in body[:question_index]:
             role = str(message.get("role") or "message").upper()
             content = self._content_text(message.get("content"))
+            tool_calls = message.get("tool_calls")
+            if tool_calls:
+                content = (content + "\n" if content else "") + f"Tool calls: {tool_calls}"
             if content:
                 transcript.append(f"{role}:\n{content}")
         document = "\n\n".join(transcript)
