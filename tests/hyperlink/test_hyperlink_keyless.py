@@ -63,6 +63,9 @@ _ENV = (
     "T1_TRUSTED_NETWORK_PARTIAL_ADMIN",
     "T1_TRUSTED_PROXIES",
     "T1_HYPERLINK_SHARED_KEYLESS_CHATS",
+    "T1_ACCOUNTS_ENABLED",
+    "T1_ACCOUNTS_MODE",
+    "T1_ACCOUNTS_REGISTRATION",
 )
 
 
@@ -145,9 +148,46 @@ class TestAKeylessRequestReachesHyperLink:
         ).post("/hyperlink/pair", json={"name": "a phone"})
         assert response.status_code in (401, 403)
 
+class TestKeylessTailnetChatsWithoutAccounts:
+    """When accounts are switched off, a trusted tailnet has no account
+    gate to satisfy. LAN and public keyless callers remain restricted."""
 
-class TestTailscaleIPv6:
-    """Bug 2. Tailscale gives every node a v4 and a v6 address, and a
+    @pytest.mark.parametrize("peer", [TAILNET_V4, TAILNET_V6])
+    def test_tailnet_can_chat_when_accounts_are_disabled(self, peer):
+        response = client(
+            peer,
+            T1_TRUSTED_NETWORK="1",
+            T1_TRUSTED_NETWORK_TAILNET_VERIFY="0",
+            T1_ACCOUNTS_ENABLED="0",
+        ).get("/hyperlink/sessions")
+        assert response.status_code == 200, response.text
+
+    def test_tailnet_still_needs_an_owner_when_accounts_are_enabled(self):
+        response = client(
+            TAILNET_V4,
+            T1_TRUSTED_NETWORK="1",
+            T1_TRUSTED_NETWORK_TAILNET_VERIFY="0",
+            T1_ACCOUNTS_ENABLED="1",
+            T1_ACCOUNTS_MODE="tailscale",
+        ).get("/hyperlink/sessions")
+        assert response.status_code == 403
+        assert response.json()["error"]["details"]["keyless"] is True
+
+    def test_lan_keyless_chat_stays_refused_when_accounts_are_disabled(self):
+        response = client(
+            LAN,
+            T1_TRUSTED_NETWORK="1",
+            T1_ACCOUNTS_ENABLED="0",
+        ).get("/hyperlink/sessions")
+        assert response.status_code == 403
+
+    def test_public_keyless_chat_stays_refused_when_accounts_are_disabled(self):
+        response = client("8.8.8.8", T1_TRUSTED_NETWORK="1", T1_ACCOUNTS_ENABLED="0").get(
+            "/hyperlink/sessions"
+        )
+        assert response.status_code == 401
+
+class TestTailscaleIPv6:    """Bug 2. Tailscale gives every node a v4 and a v6 address, and a
     phone resolving a MagicDNS name will often take the v6."""
 
     def test_the_v6_range_is_known(self):
