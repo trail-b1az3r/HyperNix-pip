@@ -528,19 +528,20 @@ def create_app(
             async with previous_lifespan(lifespan_app) as state:
                 yield state
         finally:
-            if web is not None:
-                web.stop()
-            if pinger is not None:
-                pinger.stop()
-            retention.stop()
-            hyperchat = getattr(lifespan_app.state, "t1_hyperchat", None)
             try:
+                if web is not None:
+                    web.stop()
+                if pinger is not None:
+                    pinger.stop()
+                retention.stop()
+                hyperchat = getattr(lifespan_app.state, "t1_hyperchat", None)
                 if hyperchat is not None:
                     hyperchat.close()
             finally:
                 # Uvicorn does not stop child processes automatically.
                 # Unload the model while this app still owns its process
-                # handle, so an API restart cannot leave a listener behind.
+                # handle, so an API restart cannot leave a listener behind,
+                # even when another shutdown hook fails.
                 runner = getattr(lifespan_app.state, "t1_runner", None)
                 if runner is not None:
                     try:
