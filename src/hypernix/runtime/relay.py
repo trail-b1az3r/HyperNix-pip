@@ -120,11 +120,12 @@ class ContextTooSmall(ValueError):
 
 @dataclass(frozen=True)
 class Reply:
-    """One instance's answer, and what it cost."""
+    """One instance's answer, what it cost, and the original response envelope."""
 
     text: str
     input_tokens: int = 0
     output_tokens: int = 0
+    raw: dict[str, Any] | None = None
 
 
 #: One copy of the model: ``(messages, max_tokens) -> Reply``.
@@ -152,7 +153,7 @@ def openai_instance(client: Any, model: str = "", *, temperature: float | None =
         if not input_tokens and not output_tokens:
             input_tokens = estimate_tokens("".join(str(m.get("content", "")) for m in messages))
             output_tokens = estimate_tokens(text)
-        return Reply(text, input_tokens, output_tokens)
+        return Reply(text, input_tokens, output_tokens, envelope)
 
     return complete
 
@@ -396,6 +397,9 @@ class RelayResult:
     plan: RelayPlan
     hops: list[Hop] = field(default_factory=list)
     notes: str = ""
+    #: Raw OpenAI envelope for the direct or final answer hop. It keeps
+    #: structured tool calls intact for chat-aware callers.
+    envelope: dict[str, Any] | None = None
 
     @property
     def input_tokens(self) -> int:
@@ -471,10 +475,109 @@ class Relay:
         result.answer = self._answer(result, notes, question)
         return result
 
+    def run_messages(self, messages: Sequence[dict[str, Any]]) -> RelayResult:
+        """Run a structured chat through the same planner and hop engine.
+
+        A prompt that fits is sent unchanged, including roles, image parts,
+        tool history and provider-specific fields. For an oversized
+        conversation, older messages become a role-labelled transcript;
+        system/developer instructions are repeated on every hop, and the
+        newest user message remains the final question. This is the chat
+        entry point used by HyperLink and HyperChat.
+        """
+        if not messages:
+            raise ValueError("a relay chat needs at least one message")
+
+        system_parts: list[str] = []
+        body: list[dict[str, Any]] = []
+        for message in messages:
+            role = str(message.get("role") or "user")
+            if role in ("system", "developer"):
+                value = self._content_text(message.get("content"))
+                if value:
+                    system_parts.append(f"[{role}]\\n{value}")
+            else:
+                body.append(dict(message))
+
+        question_index = next(
+            (i for i in range(len(body) - 1, -1, -1) if body[i].get("role") == "user"),
+            len(body) - 1,
+        )
+        question_message = body[question_index]
+        question_content = question_message.get("content", "")
+        question = self._content_text(question_content)
+        if not question:
+            question = "Respond to the latest message in the conversation."
+
+        transcript = []
+        for message in body[:question_index]:
+            role = str(message.get("role") or "message").upper()
+            content = self._content_text(message.get("content"))
+            if content:
+                transcript.append(f"{role}:\\n{content}")
+        document = "\\n\\n".join(transcript)
+        system_prompt = "\\n\\n".join(system_parts)
+
+        planned = self.plan(document, question)
+        result = RelayResult("", planned)
+        if planned.single:
+            result.answer = self._call(
+                result, 0, "direct", None, [dict(m) for m in messages],
+                planned.answer_tokens,
+            )
+            return result
+
+        if self.mode == CHAIN:
+            notes = self._chain(
+                result, planned.chunks, question, planned.notes_tokens,
+                system_prompt=system_prompt,
+            )
+        else:
+            notes = self._map(
+                result, planned, question, system_prompt=system_prompt,
+            )
+        result.notes = notes
+        result.answer = self._answer(
+            result, notes, question, system_prompt=system_prompt,
+            question_content=question_content,
+        )
+        return result
+
+    @staticmethod
+    def _content_text(content: Any) -> str:
+        """A conservative text estimate for OpenAI chat content.
+
+        Image and other non-text parts are represented by a marker rather
+        than silently disappearing from the transcript. The original
+        structured content is retained on the direct path and on the
+        final question of a relayed conversation.
+        """
+        if isinstance(content, str):
+            return content
+        if not isinstance(content, list):
+            return str(content or "")
+        parts: list[str] = []
+        for part in content:
+            if not isinstance(part, dict):
+                continue
+            if part.get("type") == "text":
+                parts.append(str(part.get("text") or ""))
+            elif part.get("type") == "image_url":
+                parts.append("[image attached]")
+            elif part.get("type"):
+                parts.append(f"[{part['type']} content attached]")
+        return "\\n".join(part for part in parts if part)
+
+    @staticmethod
+    def _system_prompt(base: str, extra: str) -> str:
+        return f"{extra}\\n\\n{base}" if extra else base
+
     # -- the two modes ---------------------------------------------------
 
-    def _chain(self, result: RelayResult, chunks: Sequence[str], question: str,
-               notes_tokens: int) -> str:
+    def _chain(
+        self, result: RelayResult, chunks: Sequence[str], question: str,
+        notes_tokens: int, *, system_prompt: str = "",
+    ) -> str:
         notes = ""
         total = len(chunks)
         for part, chunk in enumerate(chunks):
@@ -482,12 +585,16 @@ class Relay:
                     f"Part {part + 1} of {total}:\n{chunk}")
             notes = self._clip(self._call(
                 result, len(result.hops) % len(self.instances), "read", part,
-                [{"role": "system", "content": READ_PROMPT}, {"role": "user", "content": user}],
+                [{"role": "system", "content": self._system_prompt(READ_PROMPT, system_prompt)},
+                 {"role": "user", "content": user}],
                 notes_tokens,
             ), notes_tokens)
         return notes
 
-    def _map(self, result: RelayResult, planned: RelayPlan, question: str) -> str:
+    def _map(
+        self, result: RelayResult, planned: RelayPlan, question: str,
+        *, system_prompt: str = "",
+    ) -> str:
         chunks, n = planned.chunks, len(self.instances)
         digests: list[str] = [""] * len(chunks)
 
@@ -498,7 +605,8 @@ class Relay:
                 user = f"Question: {question}\n\nPart {part + 1} of {len(chunks)}:\n{chunks[part]}"
                 digests[part] = self._clip(self._call(
                     result, slot, "digest", part,
-                    [{"role": "system", "content": DIGEST_PROMPT}, {"role": "user", "content": user}],
+                    [{"role": "system", "content": self._system_prompt(DIGEST_PROMPT, system_prompt)},
+                     {"role": "user", "content": user}],
                     planned.notes_tokens,
                 ), planned.notes_tokens)
 
@@ -534,16 +642,25 @@ class Relay:
                     f"More notes to merge in:\n{chunk}")
             notes = self._clip(self._call(
                 result, len(result.hops) % n, "fold", None,
-                [{"role": "system", "content": READ_PROMPT}, {"role": "user", "content": user}],
+                [{"role": "system", "content": self._system_prompt(READ_PROMPT, system_prompt)},
+                 {"role": "user", "content": user}],
                 planned.notes_tokens,
             ), planned.notes_tokens)
         return notes
 
-    def _answer(self, result: RelayResult, notes: str, question: str) -> str:
-        user = f"Notes:\n{notes or '(nothing relevant was found)'}\n\nQuestion: {question}"
+    def _answer(
+        self, result: RelayResult, notes: str, question: str, *,
+        system_prompt: str = "", question_content: Any = None,
+    ) -> str:
+        prefix = f"Notes:\\n{notes or '(nothing relevant was found)'}\\n\\nQuestion: "
+        if isinstance(question_content, list):
+            content: Any = [{"type": "text", "text": prefix}, *question_content]
+        else:
+            content = prefix + question
         return self._call(
             result, len(result.hops) % len(self.instances), "answer", None,
-            [{"role": "system", "content": ANSWER_PROMPT}, {"role": "user", "content": user}],
+            [{"role": "system", "content": self._system_prompt(ANSWER_PROMPT, system_prompt)},
+             {"role": "user", "content": content}],
             result.plan.answer_tokens,
         )
 
@@ -559,6 +676,8 @@ class Relay:
             hop = Hop(len(result.hops), slot, kind, part, int(reply.input_tokens),
                       int(reply.output_tokens), time.monotonic() - started)
             result.hops.append(hop)
+            if kind in ("direct", "answer") and reply.raw is not None:
+                result.envelope = reply.raw
             if self.on_hop is not None:
                 self.on_hop(hop)
         return reply.text.strip()
