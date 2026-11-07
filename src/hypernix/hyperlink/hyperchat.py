@@ -369,7 +369,7 @@ class Hyperchat:
                     # must not mean N copies of the model in memory.
                     generate = self.factory()
                 answer = generate(ticket.prompt, **ticket.kwargs)
-                ticket._finish(str(answer))
+                ticket._finish(answer)
                 with self._lock:
                     self._served += 1
             except Exception as exc:  # noqa: BLE001 - one prompt, not the pool
