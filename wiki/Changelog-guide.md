@@ -1,6 +1,6 @@
 # hyperNix Changelog Guide
 
-### Guide version: v2.2.1
+### Guide version: v2.3.0
 > Whenever this guide changes, update the guide version.
 
 This document defines the format and editorial rules for the canonical hyperNix release history. It records published releases, meaningful beta/dev work, features, fixes, API changes, site changes, removals, known issues, and temporary workarounds.
@@ -60,7 +60,7 @@ The symbols communicate hierarchy. Format related changes as follows:
 5. Keep each bullet to one logical change. Use indented continuation lines for explanation, migration notes, or evidence.
 6. Use nested bullets only for details of the item immediately above them.
 7. A **patch** release must follow Python's `.postN` version format.
-
+8. A **dev** pre release must follow the dev section of the guide.
 Example:
 
 ```markdown
@@ -212,7 +212,7 @@ For LTS releases, use this format:
 ## 0.72.6.post7 — LTS-# — YYYY-MM-DD — number of security issues fixed
 ```
 
-For the alternate patch-release format, use this form only for security patches in non-LTS releases:
+For the alternate patch-release format, use this form only for security patches in non-LTS releases/patches:
 
 ```markdown
 ## 0.72.4.post18 — patch # — dependencies updated — [CRITICAL FIX, if applicable]
@@ -220,6 +220,13 @@ For the alternate patch-release format, use this form only for security patches 
 
 If an in-branch development point has no meaningful release date, omit the date rather than inventing one.
 
+```markdown
+## 0.73.0.dev1 — what feature(s) from the next alpha where added 
+### what alpha features are remaining before next alpha release
+### code lines changed:
+### what is needing testing
+### <install command>
+```
 ---
 
 ## Quick reminder
@@ -281,23 +288,24 @@ Use only categories that contain entries. Keep categories in this order unless a
 3. `Added`
 4. `Changed`
 5. `API Changes`
-6. `Architecture`
-7. `CLI and UX`
-8. `Performance`
-9. `Compatibility`
-10. `Security`
-11. `Fixed`
-12. `Dependencies and Packaging`
-13. `Data, Checkpoints, and Migrations`
-14. `Deprecated`
-15. `Removed`
-16. `Documentation`
-17. `Site Changes`
-18. `Tests`
-19. `Known Issues`
-20. `Temporary Workarounds`
-21. `Caveats`
-22. `Notes`
+6. `API Additions`
+7. `Architecture`
+8. `CLI and UX`
+9. `Performance`
+10. `Compatibility`
+11. `Security`
+12. `Fixed`
+13. `Dependencies and Packaging`
+14. `Data, Checkpoints, and Migrations`
+15. `Deprecated`
+16. `Removed`
+17. `Documentation`
+18. `Site Changes`
+19. `Tests`
+20. `Known Issues`
+21. `Temporary Workarounds`
+22. `Caveats`
+23. `Notes`
 
 `Site Changes` is the canonical category for wiki, documentation-site, landing-page, examples-site, navigation, and hosted-page changes. Use `Documentation` for repository documentation that is primarily consumed as package or developer documentation.
 
