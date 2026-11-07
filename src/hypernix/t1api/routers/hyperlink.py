@@ -1059,6 +1059,8 @@ def _relay_chat_completion(
     backend,
     runner,
     config: T1APIConfig,
+    principal: HyperLinkPrincipal,
+    meter,
     messages: list[dict[str, Any]],
     model: str | None,
     sampling: dict[str, Any],
@@ -1134,7 +1136,17 @@ def _relay_chat_completion(
             return Reply(content, used_in, used_out, envelope)
         return complete
 
-    def after_hop(_hop) -> None:
+    key_id = getattr(principal.auth_context, "key_id", "") or principal.owner
+
+    def after_hop(hop) -> None:
+        meter.record_quietly(
+            key_id=key_id,
+            model_id=model or backend.model_id,
+            input_tokens=hop.input_tokens,
+            output_tokens=hop.output_tokens,
+            endpoint="/hyperlink/sessions/chat",
+            feature="relay",
+        )
         if cancelled():
             raise InterruptedError("The chat generation was stopped between relay hops.")
 
@@ -1182,6 +1194,8 @@ def _queued_relay_chat(
     config: T1APIConfig,
     backend,
     runner,
+    principal: HyperLinkPrincipal,
+    meter,
     messages: list[dict[str, Any]],
     model: str | None,
     sampling: dict[str, Any],
@@ -1195,6 +1209,8 @@ def _queued_relay_chat(
         backend=backend,
         runner=runner,
         config=config,
+        principal=principal,
+        meter=meter,
         messages=messages,
         model=model,
         sampling=sampling,
@@ -1904,6 +1920,7 @@ def chat_turn(
     memories: MemoryStore = Depends(get_memory_store),
     preferences=Depends(get_preference_store),
     runner=Depends(get_runner),
+    meter=Depends(get_usage_meter),
     config: T1APIConfig = Depends(get_config),
     request_id: str = Depends(get_request_id),
     request: Request = None,
@@ -1982,6 +1999,7 @@ def chat_turn(
     def relay_completion(messages, offered_tools, selected_model=wanted):
         envelope, info = _queued_relay_chat(
             request=request, config=config, backend=backend, runner=runner,
+            principal=principal, meter=meter,
             messages=messages, model=selected_model, sampling=sampling,
             tools=offered_tools,
         )
@@ -2002,6 +2020,7 @@ def chat_turn(
         else:
             envelope, info = _queued_relay_chat(
                 request=request, config=config, backend=backend, runner=runner,
+                principal=principal, meter=meter,
                 messages=wire, model=wanted, sampling=sampling,
             )
             relay_runs.append(info)
@@ -2020,6 +2039,7 @@ def chat_turn(
         try:
             envelope, info = _queued_relay_chat(
                 request=request, config=config, backend=backend, runner=runner,
+                principal=principal, meter=meter,
                 messages=wire, model=fallback, sampling=sampling,
             )
             relay_runs.append(info)
@@ -2093,6 +2113,7 @@ def chat_turn_stream(
     memories: MemoryStore = Depends(get_memory_store),
     preferences=Depends(get_preference_store),
     runner=Depends(get_runner),
+    meter=Depends(get_usage_meter),
     config: T1APIConfig = Depends(get_config),
     request_id: str = Depends(get_request_id),
     request: Request = None,
@@ -2204,6 +2225,7 @@ def chat_turn_stream(
                 def ask_stream(messages, tools):
                     envelope, relay_info = _queued_relay_chat(
                         request=request, config=config, backend=backend, runner=runner,
+                        principal=principal, meter=meter,
                         messages=messages, model=requested_model, sampling=sampling,
                         tools=tools, cancelled=lambda: active.cancelled,
                     )
@@ -2231,6 +2253,7 @@ def chat_turn_stream(
             else:
                 envelope, relay_info = _queued_relay_chat(
                     request=request, config=config, backend=backend, runner=runner,
+                    principal=principal, meter=meter,
                     messages=wire, model=requested_model, sampling=sampling,
                     cancelled=lambda: active.cancelled,
                 )
