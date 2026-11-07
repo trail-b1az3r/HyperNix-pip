@@ -11,39 +11,97 @@ Modernize HyperNix-pip into a reliable, production-ready release by fixing Hyper
 <summary>0.72.8 — Completed: model tooling, HyperLink, hardware support, and security</summary>
 
 # 0.72.8 alpha 0
-Make a module that can load multiple instances of a small-context model and use them in sequence to process larger prompts; integrate it with the T1 API and account for additional compute in billing. Update tvtopmax sorting, navigation, hidden sections, per-core temperatures, accurate RAM reporting, and measured audio-level warnings. Add a Firefox extension for explicitly authorized model-driven browser interaction.
-
-# 0.72.8 alpha 1
-Make HyperLink chats private to the signed-in account, or to the API key when accounts are disabled. Bind requests to identity, timestamp, chat/session IDs, and fresh nonces; validate sends, edits, and resends. Reject empty requests and use a bounded client/server timeout handshake. Add a refreshable model/backend picker to hnx-t1 runner start, expose loaded models in HyperLink's Models view and chat picker, and allow users to choose among them. Extend `hnx-t1 launch-script` with ordered `-1` through `-9` input steps and live log following with `--logs -F`. Complete security fixes, a security policy, HOS-1.1/Apache-2.0 licensing choice, account-backed chat persistence, consent-aware tool calls and memory behavior, multi-llama support, and the versioned T1 web-search API with permission-aware configuration and storage. Improve prompt compaction for models whose context is smaller than the system prompt. Fix download, conversion, and quantization workflows; accept Hugging Face repository and direct-file URLs, optional repository IDs, and output paths; add `hnx_q6h1` and `hnx_q6h1m`; validate non-stock llama.cpp support.
-
-# 0.72.8 pt 2
-Add C4 model analysis for safetensors, PyTorch, and GGUF inputs where supported. Implement safe weight/layer inspection, measurement, restore, and provenance-aware `reap`/`sow` workflows. Integrate the proposed specialized V5S/AdamW hybrid only when numerical and reproducibility tests support it.
-
-# 0.72.8 pt 3
-Add Claude Code-compatible workflows, the `hnx0xv2image` image-to-text architecture and supported fusion paths, T1 MCP integrations, and the requested HNX Net capabilities in T1 before deprecating the old Net surface. Expand HyperLink's Code workspace with sandboxed file access and Git support; allow selected dataset-file context; add the public T1 server counter; implement `hnx auto`; move less-common commands behind `hnx extra`; audit commands for stubs and broken behavior; add missing aliases/help; and complete CommonMark/GFM Markdown support.
-
+Make a new module,  
+That  will be able to load many instances of a small context model, and use each one in series to be to use larger prompts, make it work in the 1api, factor into to costs on larger costs, update the billing format for some of the newer features, in tvtopmax, and more keybinds, o: sort items like if processs are slected it will change how it’s sorted, or if ram is selected, can sort by highese/lowest use or speed, if a selected window is longer then it’s available space, users can press right arrow, to move the view area right, pressing shift right goes the other way, left arrow, cycle selected section, d: deselect all sections, add 5 more sections( hidden by default show via shift+number) , add to the cpu section per core temps, the ram usage is 100% inaccurate, add volume in decibels and a warning text if it’s playing audio and at a volume that’s unsafe, make it not eatmate the volume, make it real and accurate, and add a Firefox extension, that allows models running on the api, localy, or a other cloud provider like gpt, Claude, to interact with your browser, search the web, type, etc.  
+  
+# 0.72.8 alpha 1:
+Make hyperlink chats no longer be gloable, if accounts are on, link it to accounts, if not then it must be linked to the api key, and make requests in hyperlink, only time out, if the client can’t respond to the server first when sending prompt, then 4 second after, and the t1 api doesn’t send a model free response to a ping, and if a user makes a request with no data,it won’t work and the app will show and error since the app can’t sent a validat ping that is time stamped to when send is pressed in app, and resending or editing the message, will resign the message using the account id and Unix time and date, or if no accounts then with t1 or t2 (or 2.1) key id, Unix time and date, and a random string (23 to 26 long), and both ways also use the chat or code session and server session Id all with the others for signing and resigning and validation   
+In hnx-t1 runner start, make it instead of needing the exact t1 name for the model, make it have a lms load like interface, that is not locked, but does refresh, (no open tui), that people use their arrow keys to change selection, and hnx-t1 runner backend to change the back end like that, update wikis, for the alpha release, in hyperlink, make models that are loaded, (if more than one), both in models tab, and chat, show what is loaded, and allow users to pick one of the loaded 2 (or more (no limit)) to use  
+Add a command hnx-t1 launch-script -1 ‘command one’ -2 ‘command 2 that runs after, in the case of yay for example when it asks like packages to exclude it goes there, and -3, -4 up to 9, and make -5 (example), then “” just press enter,   
+Update older features like the ranges, fix the remiaining 20k secutity issued found by GitHub scans, add a security policy,  swap the dual license for a HOS1.1, and Apache 2.0, HOS1.1, from the LLU is more descriptive, add to hyperlink, app, a login so users after using t1 key, local network, or paring code, can login once and never lose data, add a 2 layer circal to the chat window, layer one has context, layer 2 shows useage if it ennabled on your key and server, if it’s not then it shows gpu useage or if running on cpu, cpu usage. Also add one more model runner, multi lama. Add to the hnx llama mod: make it also add all types from non stock llama that multi llama can use into it. The model only makes memories when it’s told to, modify the system prompt so it can pick when it wants or needs to run a tool call, like user asks make me a markdown document that I can download form this app, ( not always needed) (add a stuff for that too)  talking about the most recent version of Claude and how much better it is compared to gpt, it needs to determine what it needs to search for, and a new v2 web serch api endpoint,   
+  
+/web/v2/I?=query&q?=depth&mx?=maxitems&sq?=# that is lowest allowed ranked site, like 1 only lets the first site to be read and summarized &kpd?=[true or false to keep search data and/or site text in parquet or jsonl] (changes via admin hnx/hypernix-t1 settings command for format, enabling Ai search storage), all together it is /web/v2/I?=query&q?=depth&mx?=maxitems&sq?=#&&kpd?=[true] (two ampersands are needed for requests that use the non curly brackets)   
+t1 v1.1.26.10.1.0  
+No more /web/v1/search?q= but it will still work until  0.73.0, and a /web/v1/ai/config that the ai can call those endpoints if user has admin or partial admin user it can be used to change less risky commands, and add 5 more admin config setting for web endpoints and a command hypernix-t1 config web, and make models running in a hyperlink runner auto compress system prompt if the models context is lower then the prompt’s size then it compacts to 1/3 up to  1/5 of the max context length /chat/hypercompress/size?s?=[1 or 2] make the new default model lfm2.5-2.7b hnx convert -q -p doesn’t work, it always tries to quantisize it before conferring it, make hyperNix download support repo links, links to specific gguf files, and make —repo-id optional and add -o for output, add one more hnx quant, hnx_q6h1 (int 2, q6s, hnx-1375, and iq1s and q3m) and hnx_q6h1m (int2 q5k, new quant hnx15125, iq1s, q2m) add hnx-t1 launch-script —logs -F so It follows the scripts logs live till control C   
+  
+hypernix 0.72.8 pt 2  
+add a new module, called c4, and uses the users gpu, and a safetenrsors, pt, or gguf, (all but gguf require a config.json), what it will do , is it will “explode” the model weights into single and multi peramiters and layer groups, called, stems, mstems (stems are connection with peramiters and mstems are connections and a layer), dial, mdials (2 peramiters per mdial) and Pdials (3 or more peramiters ) and it will measure, test, and it can check I what layer, or weight, or peramiter is unneeded, or that one specificity needs retraining or would be the most beneficial to prioritize training that one more, its sections are used and separated in, hypernix.c4.explode, hypernix.c4.stem, hypernix.c4.dial, and hypernix.c4.restore, and most importantl the final 2, hypernix.c4.reap (this will find the best weights, layers, and collects them for: hypernix.c4.sow, which will use those things and make it into a new models made of those cherry picked layers and/or weights), each with multiple useful, and production features, and it can also, use a custom new type of optimizer that will back propagate, then instead of updating, it will first separate and check, the sections, make it also be able to a use specially modified pressure cooker v5s and adamW hybrid optimizer designed just for this, not regular training   
+HyperNix 0.72.8 pt3  
+Add Claude code support for models running in hyperNix, make a new arch called hnx0xv2image, it’s a custom image to text model, that can be fused/merged with any lfm2.5 non vl model, a qwen3.5 model, and any hyperNix model, that can be trained separately, update the examples/t1api/readme and other files in there, make t1 servers fully work with mcp’s like huggingface’s, and add all of hnx net’s features into the t1 API, and depracate net, add a code section to the hyperlink app, that allows the model to have more access to file, (using /code sandboxes, and other stuff), git support, and more. In the hyperlink chat function, add a way for users to integrate parts of dataset files in jsonl, parquet, txt, md, etc into the model, make t1 servers that are running and are public, and have not turned off t1_public_counter in the env settings, on this version of t1.1.26.10.1.0 or newer, have a live hourly counter in the GitHub repo showing how or if any are up yet, add a new commmad hnx auto, it will auto download a repo you give it from hf, if it’s not gguf, it will convert it, then quanitzsize it to what you want it to be, move the following hnx help command, to only be shown if user runs, hnx extra, then they can see these moved commands, hnx; neuron, pipeline, assistant, generate, wiki, prot (fix it so it doesn’t lock my screen), oven, path, and map, tvtop, cctvtop, camo, web search, and scavenger. Add to the help command, tvtopmax, and hypedpro, add a shortcut for fetch-llama-quantisize being fllq, and check all of those for being fakes, stubs or being broken and fix them, fix hyperNix download,  make hyperlink support full markdown, markdown extra, and common mark, and GitHub flavored markdown   
+  
 # 0.72.8 Final Release Candidate (RC)
 
 ## Release objective
-Complete and validate the 0.72.8 release by expanding hardware and model-architecture support from verified sources, making capability detection reliable, and publishing support information on GitHub Pages. A registry entry must map to tested detection and an honest compatibility status; a name in a list is not proof of a working capability.
 
-## 1. Supported CPU catalogue
-Add at least 251 net-new identifiable CPU model/SKU entries beyond the recorded baseline, covering Intel, AMD, Apple silicon, ARM-based vendors, and other verifiable families. Store canonical IDs, aliases, family/generation, architecture, cores/threads, instruction sets, and sourced specifications. Keep catalogue metadata separate from live detection and preserve unknown values as unknown. Test aliases, virtual machines, containers, missing tools, and differing feature flags.
+Complete and validate the 0.72.8 release candidate by expanding hardware and model-architecture support from verified sources, making capability detection reliable, and publishing the resulting support information on GitHub Pages. These are implementation requirements for HyperNix-pip itself. Do not merely add names to a list: each new registry entry must map to tested detection, capability information, and an honest compatibility status.
 
-## 2. Supported GPU catalogue
-Add at least 151 net-new identifiable GPU model/SKU entries beyond baseline, covering NVIDIA, AMD, Intel, Apple/Metal where relevant, and supported vendors. Distinguish device recognition, architecture/compute capability, driver/toolkit/runtime compatibility, backend initialization, and tested workload support. Handle hybrid GPUs, eGPUs, WSL, containers, CPU-only systems, missing telemetry, and older Pascal devices such as GTX 1080.
+## 1. Supported CPU catalogue: at least 250 additional CPU models
 
-## 3. Model architecture catalogue
-Add at least 36 net-new functional architecture families based on current upstream documentation and real Hub configurations. For each, implement and document the operations actually supported: config/checkpoint inspection, tokenizer/processor resolution, inference, training/fine-tuning, conversion, quantization, GGUF runtime, and multimodal input as applicable. Do not equate config parsing with full support. Keep remote code disabled by default, pin test revisions, and use tiny fixtures.
+Audit the existing CPU identification, hardware snapshot, training presets, runtime selector, and documentation. Add **at least 251 net-new identifiable CPU model/SKU entries** beyond the baseline checked at the start of this work, covering current and legacy families from Intel, AMD, Apple silicon, ARM-based vendors, and other vendors with verifiable public specifications.
+
+Create or extend a structured CPU catalogue with canonical vendor/model identifiers, family/generation, architecture, physical/logical core information where discoverable, supported instruction sets, relevant memory/runtime constraints, and links or citations to public vendor specifications. Use CPUID/platform APIs, `platform`, `cpuinfo` or existing repository abstractions where appropriate. Do not infer unsupported features from a product name. Unknown fields must remain unknown rather than becoming fake zeroes.
+
+Keep the catalogue separate from live hardware detection: a CPU being listed must not imply that the current machine has it. Support aliases and noisy OS-reported names, and show which facts were directly detected versus mapped from catalogue metadata. Do not create hundreds of special-case branches; use data-driven registries and reusable capability rules. Cover Windows, Linux, and macOS where platform APIs allow it; where exact SKU data is unavailable, return a useful family-level result and explain uncertainty. Add fixture tests for vendor strings, aliases, unknown IDs, missing tools, virtual machines, containers, and CPUs whose feature flags differ despite similar names.
+
+## 2. Supported GPU catalogue: at least 150 additional GPU models
+
+Audit `hypernix.system.gpus`, runtime selection, VRAM detection, hardware compatibility metadata, and GPU documentation. Add **at least 151 net-new identifiable GPU model/SKU entries** beyond the existing baseline, covering NVIDIA GeForce/RTX/Quadro/datacenter lines, AMD Radeon/Instinct, Intel Arc and integrated graphics, and other GPU families actually supported by repository backends.
+
+For each entry, record vendor, canonical model and aliases, architecture/generation, public device identifiers where available, published memory configuration where stable, compute capability or backend feature level where applicable, and supported backend(s). For NVIDIA, distinguish GPU compute capability from the installed CUDA runtime/driver; for AMD distinguish GPU family/gfx target from ROCm version support; for Intel distinguish the device family from the installed XPU stack. Do not treat one backend's version as a universal compatibility guarantee.
+
+Keep detection failure-safe. Missing vendor tools, unavailable telemetry, `N/A` fields, hybrid/multi-GPU systems, eGPUs, WSL/containers, and virtualized environments must return explicit partial results. Separate “catalogue recognizes this model,” “device detected,” “backend can initialize,” and “workload successfully tested.” A GPU name in a registry alone does not prove that it can run a workload.
+
+Add tests for new canonical families and reusable parsing rules, including NVIDIA, AMD, Intel, Apple/Metal where relevant, CPU-only machines, mixed-vendor systems, and older Pascal GPUs such as the GTX 1080.
+
+## 3. Discover and support at least 36 new model architecture families from Hugging Face
+
+Use the current official Hugging Face Transformers documentation and Hub configuration metadata:
+- https://huggingface.co/docs/transformers/model_doc/auto
+- https://huggingface.co/docs/transformers/models
+- https://huggingface.co/docs/huggingface_hub/guides/api
+
+Export the current HyperNix architecture/model-type registry and compare it to current Transformers AutoConfig/AutoModel mappings and real Hub `config.json` files. Add **at least 36 net-new architecture families/model types** that are not fully supported in the baseline. Count distinct functional architecture-family keys, not checkpoints, aliases, or spelling variations.
+
+Discover candidates across decoder-only language models, MoE models, state-space/recurrent models, encoder-decoder models, embeddings/rerankers, vision-language models, and speech/audio models. Select the actual additions from current upstream support and the repository baseline, not from names alone.
+
+For each family, implement and document the operations genuinely supported: config/checkpoint inspection; tokenizer/processor resolution; loading and inference for the advertised task; training/fine-tuning where compatible; conversion and quantization where tensor layouts/operators are correctly mapped; GGUF export/runtime only where truly supported; and multimodal input only where the model implementation and data path exist.
+
+Do not mark an architecture “fully supported” if only its config can be parsed. Publish a per-operation capability matrix with statuses such as supported-and-tested, supported-with-limitations, experimental, metadata-only, and unsupported. Use `AutoConfig`/the appropriate `AutoModel` class where it gives a real tested path; implement custom adapters where necessary. Pin small fixtures/config revisions and compare tensor names/shapes and outputs against a trusted Transformers implementation where feasible.
+
+Security and reproducibility requirements:
+- Do not enable `trust_remote_code=True` by default or execute downloaded repository scripts during discovery.
+- Use explicit Hub API timeouts, pagination, cache control, and rate-limit handling; do not scrape to bypass API limits.
+- Pin revisions for tests/downloads, validate config inputs, and never download giant weights during normal tests.
+- Handle gated/private repositories, malformed configs, safetensors metadata, timeouts, and upstream schema changes with clear diagnostics.
+- Preserve licenses and attribution.
 
 ## 4. Hardware-aware recommendations
-Unify hardware and model metadata to estimate memory and recommend plausible workloads. Separate detected facts, catalogue metadata, backend availability, estimated fit, and successfully tested workloads. Label estimates and never infer support from a model name.
 
-## 5. GitHub Pages and generated support data
-Generate versioned CPU, GPU, and architecture JSON from canonical registries. Publish a searchable, filterable support matrix with source/revision and generation metadata. Validate schemas, deterministic generation, the production Pages build, and functional filters. Update README, wiki, examples, and API references from verified data.
+Unify CPU/GPU registries with model-architecture metadata to report whether a proposed workload is plausible for a machine. Estimate memory from model/config/quantization data and label estimates clearly; include weights, KV cache, runtime overhead, optimizer/training state where relevant, and a safety margin rather than relying only on file size.
 
-## 6. RC completion gate
-Measure net-new counts against a saved baseline; test aliases, unknown devices, offline loading, CPU-only and mixed-device behavior, real architecture operations, packaging, and Pages generation. Keep large model downloads and paid services out of ordinary CI. Do not claim an operation is supported without evidence.
+Distinguish hardware recognized, hardware actually detected, backend available, architecture and quantization supported, estimated fit for the selected settings, and a tested workload with measured performance. Show incompatibilities and safe fallbacks. Never infer optimizer, CUDA, kernel, or architecture support from name recognition alone.
+
+## 5. Update GitHub Pages and generated support data
+
+Publish a searchable **Supported Hardware & Model Architectures** page on HyperNix GitHub Pages. Include filters for vendor, CPU/GPU family, architecture, backend, task/modality, and support maturity. Clearly distinguish catalogue entries from combinations that have passed actual tests.
+
+Generate versioned machine-readable files such as `docs/public/v1/supported-cpus.json`, `supported-gpus.json`, and `supported-model-architectures.json` from canonical registries, not duplicated hand-written UI lists. Include generation timestamp, source/revision, and schema version. Make the page responsive and link to detailed compatibility notes.
+
+Update the docs-data generator and GitHub Actions workflows for GitHub Pages deployment and generated docs-data refresh. Include new JSON files in generation, validation, change detection, and commit steps. Add manual regeneration with diff preview and skip commits when data is unchanged.
+
+Update the README support summary, hardware/architecture wiki pages, relevant examples, API/reference pages, and GitHub Pages. Fix broken links and clearly distinguish upstream-sourced data, tested compatibility, and experimental support. Run the actual Pages production build and validate generated data/schema before release; adding a workflow alone is not completion.
+
+## 6. Release-candidate test and sign-off gate
+
+- Snapshot the original registries and calculate exact net-new counts to prove the 251+ CPU, 151+ GPU, and 36+ architecture requirements.
+- Test canonical lookup, aliases, duplicates, schema validation, parsing real fixtures/configs, unknown devices/architectures, and fallback behavior.
+- Test registry loading offline; network discovery must be an explicit refresh operation with cache and failure handling.
+- Run CPU-only tests on supported CI platforms, GPU parser tests using fixtures, and device integration tests only on compatible runners.
+- Smoke-test architectures with tiny public fixtures or generated configurations; keep large weights and paid APIs out of default CI.
+- Verify deterministic data generation, the GitHub Pages production build, functional page filters, and evidence for each published support claim.
+- Run existing tests and packaging/install checks; fix regressions rather than weakening tests.
+
+The RC is not complete until the net-new counts are measured against the baseline, tests pass for the advertised capabilities, generated data matches canonical registries, and GitHub Pages publishes the matrices.
 
 </details>
 
