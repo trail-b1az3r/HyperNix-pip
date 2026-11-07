@@ -533,6 +533,9 @@ def create_app(
             if pinger is not None:
                 pinger.stop()
             retention.stop()
+            hyperchat = getattr(lifespan_app.state, "t1_hyperchat", None)
+            if hyperchat is not None:
+                hyperchat.close()
 
     app.router.lifespan_context = _lifespan
     app.state.t1_preference_store = PreferenceStore(db)
