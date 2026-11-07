@@ -153,8 +153,8 @@ jobs:
 
   test-linux:
     name: test (py${{ matrix.python-version }} on ${{ matrix.os }})
-    needs: [triage, test-macos]
-    if: always() && needs.triage.result == 'success' && needs.triage.outputs.narrow != 'true' && needs.test-macos.result != 'skipped'
+    needs: [triage, test-macos, integration-ios]
+    if: always() && needs.triage.result == 'success' && needs.triage.outputs.narrow != 'true' && needs.test-macos.result != 'skipped' && needs.integration-ios.result != 'skipped'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -284,13 +284,14 @@ jobs:
   # It fails only after every OS stage has finished, if any stage failed.
   test-complete:
     name: cross-platform tests (all OS stages)
-    needs: [triage, test-macos, test-linux, test-windows]
+    needs: [triage, test-macos, integration-ios, test-linux, test-windows]
     if: always() && needs.triage.result == 'success' && needs.triage.outputs.narrow != 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Report each OS result
         env:
           MACOS_RESULT: ${{ needs.test-macos.result }}
+          IOS_RESULT: ${{ needs.integration-ios.result }}
           LINUX_RESULT: ${{ needs.test-linux.result }}
           WINDOWS_RESULT: ${{ needs.test-windows.result }}
         run: |
@@ -459,7 +460,8 @@ jobs:
 
   integration-ios:
     name: integration — iPhone simulator + live API
-    needs: test-complete
+    needs: [triage, test-macos]
+    if: always() && needs.triage.result == 'success' && needs.triage.outputs.narrow != 'true' && needs.test-macos.result != 'skipped'
     runs-on: macos-latest
     timeout-minutes: 40
     env:
