@@ -134,10 +134,10 @@ class TestThePackage:
             spec = next(d for d in deps if d.startswith(name))
             assert "python_version < '3.15'" in spec, spec
 
-    def test_setup_cfg_agrees(self):
-        text = (ROOT / "setup.cfg").read_text()
-        assert "torch>=1.13,<3; python_version < '3.15'" in text
-        assert "sentencepiece>=0.2.1; python_version < '3.15'" in text
+    def test_setup_cfg_does_not_repeat_them(self):
+        """Since 0.73.0 the dependencies live only in pyproject.toml: a
+        second copy in setup.cfg was overwritten on every build."""
+        assert "install_requires =" not in (ROOT / "setup.cfg").read_text()
 
     def test_the_installer_runs_the_shim(self):
         assert "-m hypernix.system.torch_shim" in (ROOT / "install-t1.sh").read_text()

@@ -319,6 +319,22 @@ pane only decides what the screen offers: the server checks every action
 on its own. Without `-T` there is no Control pane and none of its keys
 do anything.
 
+### Promoting a key (`-Pro`)
+
+```bash
+waiter serv -Pro "T2_…-2" -K "<admin key>" -L 7
+```
+
+Grants the key after `-Pro` access level 7 (1-9) on the server,
+authenticating with the admin key after `-K` (or the saved one). With
+`-Pro`, `-L` takes the level; on its own `-L` still means local only.
+Nothing is saved: the admin key is used for this one call.
+
+The answer is the key spelled at its new level. A T2 key carries its
+level in its last character and the server holds that to the grant, so
+its holder switches to the new spelling. The old spelling keeps working
+at its old level. `POST /t1/auth/undo` reverses a promotion.
+
 ## Checking a server
 
 ```bash

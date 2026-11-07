@@ -176,6 +176,24 @@ class AdminRotateRequest(BaseModel):
     promote_to_admin: bool = False
 
 
+class AccessLevelRequest(BaseModel):
+    """Grant a key an access level (0.72.9): ``waiter serv -Pro KEY -L N``."""
+
+    #: The key to promote (or demote), as its holder has it: T1, T2, T2S or T2P.
+    key: str = Field(min_length=8)
+    access_level: int = Field(ge=1, le=9)
+
+
+class AccessLevelResponse(BaseModel):
+    key_id: str
+    access_level: int
+    previous_level: int | None
+    #: The key spelled at its new level. A T2 key carries its level in its
+    #: last character, so the holder needs this spelling to use the grant.
+    key: str
+    request_id: str
+
+
 # ---------------------------------------------------------------------------
 # Models
 # ---------------------------------------------------------------------------

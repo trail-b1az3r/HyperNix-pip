@@ -89,6 +89,12 @@ _PAIRS = {"Rf": "--force-refresh", "ud": "--update-exact"}
 #: Whole tokens that are options as they stand.
 _EXACT = {"-Rf": "--force-refresh", "-ud": "--update-exact"}
 
+#: ``-Pro KEY``: promote a key (0.72.9). Taken whole, before any letter is
+#: read -- as a cluster it would be -P (port) swallowing "ro". While it is
+#: on the command line, a lone ``-L`` is the level it grants, not
+#: --local-only: ``waiter serv -Pro KEY -K ADMIN -L 5``.
+_PROMOTE = "-Pro"
+
 _KEY_PREFIXES = ("T1_", "T2_", "T2S_", "T2P_", "T2C_", "T2CK_")
 _LIMIT = re.compile(r"^(?:[a-z]+:[^=\s]+=)?\d+/\d+s?$", re.IGNORECASE)
 _KV = re.compile(r"^[A-Za-z_][A-Za-z0-9_.-]*=.*$")
@@ -140,7 +146,7 @@ def _expand_cluster(token: str) -> list[str]:
 
 
 def _takes_value(option: str) -> bool:
-    return option in VALUE_LETTERS.values() or option in {
+    return option in VALUE_LETTERS.values() or option in {"--promote", "--level"} or option in {
         f"-{letter}" for letter in VALUE_LETTERS
     }
 
@@ -187,11 +193,25 @@ def expand(argv: list[str]) -> Expanded:
     tokens: list[str] = []
     loose: list[str] = []
     expecting_value = False
+    promoting = any(t == _PROMOTE or t == "--promote" or t.startswith("--promote=") for t in argv)
     for token in argv:
         if expecting_value:
             tokens.append(token)
             expecting_value = False
             continue
+        if token == _PROMOTE:
+            tokens.append("--promote")
+            expecting_value = True
+            continue
+        if promoting and token == "-L":
+            tokens.append("--level")
+            expecting_value = True
+            continue
+        if promoting and _is_option(token) and not token.startswith("--") and "L" in token[1:]:
+            raise ServArgsError(
+                f"With -Pro, -L is the level and takes a value, so give it on its own: "
+                f"-L <1-9> (not inside {token!r})."
+            )
         if token in _EXACT:
             tokens.append(_EXACT[token])
             continue

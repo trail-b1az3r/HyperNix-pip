@@ -142,6 +142,71 @@ installs (`waiter`, `gkey`, `hyprslug` and its other names, `tvtop-max`,
 appears without an edit. The suggestions `hnx` prints after a typo
 (`dl`, `quantise`) do not run, so they are not listed.
 
+## `strife`
+
+```bash
+hnx strife inspect model.gguf         # what it is, and whether Strife runs it
+hnx strife run model.gguf -p "Hi" -n 64
+hnx strife chat model.gguf
+hnx strife diag model.gguf            # hardware, backend, placement
+hnx strife types | selftest
+```
+
+New in 0.73.0 alpha 1 (in progress). Strife is HyperNix's own GGUF
+runtime: it reads the file and runs the model itself, with no llama.cpp
+process, no T1 key and no network. It runs llama, mistral, qwen2 and
+qwen3 on the CPU today, with every llama.cpp K-quant and the HyperNix
+sub-bit types. GPU offload and native kernels are next. See
+[Strife](Strife.md) for the capability matrix and what is not there yet.
+
+## `sandbox` / `sb`
+
+```bash
+hnx sb ./project                          # a shell, shut in ./project
+hnx sb ./project -- python train.py       # one command
+hnx sb ./project -s no-web,no-write       # change the settings (kept for next time)
+hnx sb ./project -s                       # change them one by one, interactively
+hnx sb ./project --show                   # the settings, and how this machine enforces them
+hnx sb ./project --reset                  # back to the defaults
+```
+
+New in 0.73.0 pre-alpha 1. Runs a command, or your shell, inside one
+directory. The directory is created if it is missing.
+
+| Setting | Values (default first) | Meaning |
+|---|---|---|
+| `web` | **off**, on | off: no network at all, so no web access |
+| `write` | **dir**, none, all | dir: files can be created and edited only inside the directory; none: no file editing or creation anywhere; all: no limit |
+| `tmp` | **on**, off | a private, empty `/tmp` that disappears afterwards |
+| `home` | **hide**, show | hide: your home folder looks empty (the directory itself stays visible) |
+| `env` | **clean**, keep | clean: variables that look like secrets (`*KEY*`, `*TOKEN*`, `*SECRET*`, `*PASSWORD*`, …) are not passed in |
+| `timeout` | seconds, 0 | kill the command after this long (exit 124) |
+| `memory` | MB, 0 | most memory it may allocate |
+| `cpu` | seconds, 0 | most CPU time it may use |
+| `filesize` | MB, 0 | largest file it may write |
+
+`-s` takes `name=value` pairs separated by commas or spaces, or the short
+forms `no-web`, `web`, `no-write`, `write-dir`, `no-tmp`, `show-home` and
+`keep-env`. What `-s` sets is saved for that directory in
+`~/.config/hypernix/sandbox.json`, which is outside the sandbox, so the
+command inside cannot loosen its own settings. Add `--no-save` to apply
+it to this run only. Put the command after `--` when it has options of
+its own.
+
+**How it is enforced.** On Linux, by `unshare` and unprivileged user
+namespaces:
+
+- a network namespace with no interfaces;
+- a mount namespace that remounts everything read-only except the
+  directory, and puts empty tmpfs over `/tmp` and the home folder.
+
+The command runs as you, not as root. On macOS, `sandbox-exec` with a
+generated profile does the same job. Where neither is available, the
+settings that need them are **refused**, never quietly skipped (exit 3):
+a sandbox you believe has no web access must not have it. `env`,
+`timeout` and the limits work everywhere. It is a boundary for programs
+that are careless, not a VM: the command still runs as your user.
+
 ## `claude`
 
 ```bash

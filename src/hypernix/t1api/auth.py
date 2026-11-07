@@ -375,6 +375,13 @@ class T1AuthService:
             raise
         context.t2_family = parsed.family.value
         context.t2_access_level = parsed.access_level
+        # The suffix is the holder's claim; the key's record is the grant
+        # (gkey create, or `waiter serv -Pro KEY -L N`). Held to the grant,
+        # rewriting "-1" as "-9" buys nothing. A key with no recorded
+        # level keeps the level it states, as every key did before 0.72.9.
+        granted = str(((getattr(context.key_meta, "tags", None) or {}).get("access_level")) or "")
+        if granted.isdigit():
+            context.t2_access_level = min(parsed.access_level, int(granted))
         context.t2_is_admin = parsed.is_admin
         context.t2_sspkid = str(parsed.sspkid) if parsed.sspkid else ""
         if parsed.family is T2Type.T2S:

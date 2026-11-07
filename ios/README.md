@@ -161,6 +161,30 @@ secrets. Three ways to install it:
 * **An Apple Developer account** — set the repository secrets listed
   below and CI produces a properly signed, distributable build.
 
+## On a Mac (paused until 0.73.2)
+
+> **Paused until 0.73.2.** Releases do not include the DMGs yet. The build
+> below is in place and can be run by hand (the `macos` workflow, or
+> `ios/scripts/make_macos_dmg.sh` on a Mac).
+
+From 0.73.2, each release also carries HyperLink for the Mac: the same app
+built with Mac Catalyst, for macOS 15 or newer.
+
+* `HyperLink-<version>-macos-apple-silicon.dmg` — M-series Macs
+* `HyperLink-<version>-macos-intel.dmg` — Intel Macs
+
+Open the DMG and drag HyperLink to Applications. It is ad hoc signed, not
+notarised (there is no Apple Developer identity in CI), so the first time
+Control-click the app and choose **Open**, or allow it under System
+Settings › Privacy & Security. Check it against `SHA256SUMS.macos`.
+
+On-device models are iPhone-only: the Mac build has no local llama.cpp
+engine, and on a Mac the HyperNix server is the thing to run models with.
+CarPlay is iPhone-only too.
+
+Build one yourself with `ios/scripts/make_macos_dmg.sh arm64 <version>`
+(or `x86_64`); `.github/workflows/macos.yml` builds both.
+
 ---
 
 ## Building it yourself

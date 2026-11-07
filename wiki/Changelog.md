@@ -35,6 +35,153 @@ Historical wording and technical detail are retained during format normalization
 
 > Format normalized to `wiki/Changelog-guide.md`; release wording and historical detail are preserved.
 
+## Unreleased
+
+### Added
+
+✨ **Strife** (in progress for 0.73.0 alpha 1): HyperNix's own GGUF inference
+  runtime, `hnx strife` and `hypernix.strife`. It reads the GGUF and runs
+  the model itself: no llama.cpp process, no T1 key, no network.
+  - llama, mistral, qwen2 and qwen3;
+  - every llama.cpp K-quant and legacy type, and every HyperNix sub-bit and
+    low-bit type;
+  - the GGUF's own tokenizer (BPE or SentencePiece) and chat template,
+    sandboxed;
+  - sessions that reuse their prefix, streaming, stop strings, cancellation,
+    timeouts, and bounded queues and caches.
+
+  `inspect` checks a file before loading anything. `diag` reports hardware
+  and placement. Alpha 1 computes on the CPU with numpy; GPU offload, native
+  kernels and the benchmark are next. See `wiki/Strife.md`.
+
+### Security
+
+🔒 The GGUF reader checks every length against the bytes actually left in the
+  file before reading. A 40-byte file claiming a 16 GB array used to make
+  `read()` try to allocate 16 GB; it is now refused as truncated. Every user
+  of `hypernix.quant.gguf` benefits.
+
+### Tests
+
+🧪 `tests/strife/test_strife.py` (66 tests):
+  - logits against `transformers` for every architecture and every
+    supported quant type;
+  - the BPE tokenizer against the `tokenizers` library;
+  - hostile and damaged files;
+  - streaming, stops, cancellation, timeouts, session isolation and bounds;
+  - placement and the CLI.
+
+## 0.73.0.dev1 — 2026-11-04
+
+Pre-alpha 1: the first pre-alpha of 0.73.0, and T1 **v1.2.26.11.0.0**: a new T1
+generation, because `/web/v1` is gone. A pre-alpha is for trying things
+out, not for a server other people depend on.
+
+### Breaking Changes
+
+❌ **T1 `/web/v1`.** Every route under it answers `410 Gone` with
+  `details.successor`, the `/web/v2` route that replaced it (`/web/v1/search`
+  → `/web/v2/I`, `/web/v1/summarize` → `/web/v2/summarize`, `/web/v1/ai/config`
+  → `/web/v2/ai/config`). The waiter's tools and the Firefox extension now
+  call `/web/v2`. Removing routes is what a new generation is for, so the T1
+  API is now generation 1.2 and `MIN_CLIENT_VERSION` moves with it. A 1.1
+  client is told to upgrade instead of failing on a missing route.
+
+### Added
+
+✨ **HyperLink for the Mac**, as DMGs: `HyperLink-<version>-macos-apple-silicon.dmg`
+  (arm64) and `HyperLink-<version>-macos-intel.dmg` (x86_64), built by Mac
+  Catalyst (`ios/scripts/make_macos_dmg.sh`). They are attached to every
+  public release with `SHA256SUMS.macos`. They are signed ad hoc, so macOS
+  asks before opening one the first time (right-click → Open).
+  **Paused until 0.73.2:** the release does not build or attach them yet, and
+  pull requests no longer build them. The build itself is in place and runs
+  on demand (the `macos` workflow, `workflow_dispatch`).
+
+✨ `waiter serv -Pro KEY -K ADMIN_KEY -L LEVEL`: an administrator grants a key an
+  access level, 1-9, and gets back the key spelled at that level. With
+  `-Pro`, `-L` takes the level; on its own it is still `--local-only`.
+  Server side: `POST /auth/t1/admin/access-level` (admin only), recorded as a
+  reversible `level_change` (`POST /t1/auth/undo`), and
+  `T1Client.admin_set_access_level()` in the SDK.
+
+✨ `T1_ACCOUNTS_DEFAULT_PERMISSIONS`: what keys minted from a T1 account page may
+  do, as comma-separated scopes (`read`, `write`, `plugin`, `service`).
+  Unset is `read,write`, as before; `read` makes every account read-only.
+  `admin` is never given whatever it says, unknown names are left out with a
+  warning, and a value that leaves nothing usable falls back to the default.
+
+✨ ATC (API traffic control), `hypernix.atc`: the outermost layer of the T1 API,
+  on by default (`T1_ATC_ENABLED`). It jails addresses that probe for
+  `/.env`, `/wp-admin` and similar, guess keys or map the API, with times that
+  double on each repeat. It also enforces a body limit (`413`) and in-flight
+  limits per server and per client (`503`), gzips complete JSON and text
+  replies, and keeps per-route statistics. Admin routes: `GET /atc/status`,
+  `POST /atc/jail`, `POST /atc/release`. See `wiki/T1-API.md#atc-api-traffic-control`.
+
+✨ End-to-end encryption, `hypernix-atc/1`: `POST /atc/handshake`, an X25519
+  exchange signed by the server's T2C identity key, then `POST /atc/tunnel`.
+  The request (route, key, body) and the reply are sealed with
+  ChaCha20-Poly1305, so they stay private past wherever TLS ends: a proxy, a
+  tunnel, an inspection box. Replies are sealed frame by frame, so streams
+  still stream. Replays are refused. `T1_ATC_E2E_REQUIRED=1` makes other
+  machines use the tunnel. The client is `hypernix.atc.client.ATCTunnel`.
+
+✨ `hnx sandbox DIR` (or `hnx sb`): runs a command, or your shell, shut inside one
+  directory. `-s` changes the settings and keeps them for that directory
+  (`-s` alone asks for each one):
+  - web access (`no-web`);
+  - file editing and creation: only in the directory, or nowhere with
+    `no-write`;
+  - a private `/tmp`;
+  - a hidden home folder;
+  - secret-looking environment variables left out;
+  - a timeout, memory, CPU and file-size limits.
+
+  Enforced by Linux namespaces (`unshare`) or macOS `sandbox-exec`. Where
+  neither exists, those settings are refused, never skipped.
+  See `wiki/CLI.md#sandbox--sb`.
+
+### Security
+
+🔒 A T2 key's stated access level is now held to the level the server granted it.
+  The level is the key's last character and the server took it at its word, so
+  a holder could rewrite `-1` as `-9`. The grant is the key's recorded
+  `access_level` (gkey already wrote it); a key with none recorded keeps the
+  level it states, as before.
+
+### Dependencies and Packaging
+
+📦 Building hypernix no longer warns, and keeps building after 2027-02-18.
+  `project.license` is a PEP 639 SPDX string (`LicenseRef-HOS-1.1 OR
+  Apache-2.0`) with `license-files`, instead of the TOML table setuptools has
+  deprecated. `setup.cfg` no longer repeats the dependencies, extras, licence
+  or a `License ::` classifier: setuptools overwrote those copies from
+  `pyproject.toml` on every build ("install_requires overwritten"), and the
+  ignored copy had drifted (`rich==15.0.0` against `>14,<=15`, three extras
+  missing). The wheel's dependencies are unchanged.
+
+### Tests
+
+🧪 `tests/t1api/test_key_promotion.py`: the command line, a rewritten suffix
+  buying nothing, promotion and its new spelling, admin-only, undo, and
+  `waiter serv -Pro` end to end.
+
+🧪 `tests/t1api/test_t1_accounts.py`: account keys get the variable's scopes (the
+  server's record, not only the reply), `admin` is refused, and bad values
+  are left out or fall back.
+
+🧪 `tests/interfaces/test_sandbox.py`: settings and saving, the macOS profile,
+  refusing without a sandbox, the timeout, `hnx sb` dispatch. Where the
+  machine allows user namespaces, real runs check four things: writes go
+  only into the directory, `no-write` changes nothing, `no-web` has no
+  network, and the home folder is hidden while the command keeps its own uid.
+
+🧪 `tests/atc/`: the shield, traffic limits, settings, the handshake and its
+  signature, sealing, replays, tampered and truncated replies, and ATC in front
+  of a real app: the jail, probes, `413`, gzip, the admin routes, and requests
+  through `ATCTunnel` that leave no key on the wire.
+
 ## 0.72.8.post2 — patch 2 - `hnx-t1 runner start` loads the model again
 
 ### Fixed

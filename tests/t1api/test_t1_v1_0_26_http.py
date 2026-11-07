@@ -141,7 +141,7 @@ class TestStatus:
         assert body["t1_api_version"] == T1_VERSION.short
         assert body["t1_api_version_long"] == T1_VERSION.long
         assert body["t1_version"]["year"] == 2026
-        assert body["t1_version"]["generation"] == "1.1"
+        assert body["t1_version"]["generation"] == "1.2"
 
     def test_the_beta_field_still_exists_for_beta_3_clients(self, client):
         # Renaming it would break every Beta 3 client for a cosmetic win.

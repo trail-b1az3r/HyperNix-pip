@@ -301,9 +301,16 @@ def parse_version(text: str) -> T1Version:
 # MCP 2025-11-25, /net in place of `hnx net`, the public-server counter,
 # dataset parts and code sandboxes in HyperLink chats, and git, search and
 # import in /code sandboxes. Still generation 1.1.
-T1_VERSION = T1Version(api=1, major=1, year=2026, month=10, feature=2, fix=0)
-T1_VERSION_SHORT = T1_VERSION.short   # "1.1.26.10.2.0"
-T1_VERSION_LONG = T1_VERSION.long     # "1.1.2026.10.2.0"
+#
+# 1.2.26.11.0.0 (0.73.0.dev1) is a new generation, because it removes:
+# /web/v1 is gone (it answers 410 with the /web/v2 route that replaced
+# it), and a 1.1 client that called it -- waiter's summarize did -- no
+# longer works. Within a generation the API only adds. It also adds ATC
+# (/atc/*: the hypernix-atc/1 end-to-end tunnel, the jail, traffic
+# statistics). MIN_CLIENT_VERSION moves with it, as it did for 1.1.
+T1_VERSION = T1Version(api=1, major=2, year=2026, month=11, feature=0, fix=0)
+T1_VERSION_SHORT = T1_VERSION.short   # "1.2.26.11.0.0"
+T1_VERSION_LONG = T1_VERSION.long     # "1.2.2026.11.0.0"
 
 #: Oldest client this server still answers without a compatibility
 #: warning. Same generation, first release of it — everything from the
@@ -314,7 +321,7 @@ T1_VERSION_LONG = T1_VERSION.long     # "1.1.2026.10.2.0"
 #: independent of T1_VERSION: `compatible_with` is by generation, so an
 #: out-of-generation minimum claims the server accepts clients it
 #: refuses.
-MIN_CLIENT_VERSION = T1Version(api=1, major=1, year=2026, month=9, feature=0, fix=0)
+MIN_CLIENT_VERSION = T1Version(api=1, major=2, year=2026, month=11, feature=0, fix=0)
 
 #: The release that added T2 key recognition, /t1/auth/undo, /t1/auth/redo,
 #: /backup/list and /backup/restore. A client that needs any of those can

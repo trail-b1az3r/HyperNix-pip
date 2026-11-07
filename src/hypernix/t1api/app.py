@@ -653,6 +653,29 @@ def create_app(
     # client's disconnect from streaming endpoints (see t1api.disconnect).
     app.add_middleware(ClientGoneWatch)
 
+    # 0.73.0: ATC (API traffic control) outside everything else -- the
+    # jail, probe refusals, body limits, in-flight limits, compression
+    # and the end-to-end tunnel, whose opened request then goes through
+    # every layer above like any other. T1_ATC_ENABLED=0 leaves it out.
+    from ..atc import ATC, ATCSettings
+    from ..atc.middleware import ATCMiddleware
+
+    atc_settings = ATCSettings()
+    if atc_settings.enabled:
+        atc_signer = None
+        if atc_settings.e2e:
+            from ..atc.e2e import RSASigner
+
+            try:
+                t2c = auth_service.t2c
+                atc_signer = RSASigner(t2c.private_key, t2c.public_key_pem, t2c.fingerprint)
+            except Exception as exc:  # no cryptography or no key folder: no tunnel
+                logger.info("ATC end-to-end encryption unavailable: %s", exc)
+        app.state.t1_atc = ATC(atc_settings, signer=atc_signer)
+        app.add_middleware(ATCMiddleware, atc=app.state.t1_atc, prefix=prefix)
+    else:
+        app.state.t1_atc = None
+
     def _error_response(request: Request, exc: T1APIError) -> JSONResponse:
         """Render a T1APIError as the documented JSON envelope.
 

@@ -745,3 +745,66 @@ class TestTheCli:
         assert "getpass" in source
         assert 'add_argument("--password"' not in source
         assert "add_argument('--password'" not in source
+
+
+class TestDefaultPermissions:
+    """T1_ACCOUNTS_DEFAULT_PERMISSIONS picks what an account's keys may do."""
+
+    def _mint(self, signed_in) -> dict:
+        client, csrf = signed_in
+        reply = client.post("/accounts/keys", json={}, headers={CSRF_HEADER: csrf})
+        assert reply.status_code == 200, reply.text
+        return reply.json()
+
+    def test_unset_is_read_and_write(self, signed_in, monkeypatch):
+        monkeypatch.delenv("T1_ACCOUNTS_DEFAULT_PERMISSIONS", raising=False)
+        assert set(self._mint(signed_in)["scopes"]) == {"read", "write"}
+
+    def test_read_only_accounts(self, signed_in, monkeypatch):
+        monkeypatch.setenv("T1_ACCOUNTS_DEFAULT_PERMISSIONS", "read")
+        assert self._mint(signed_in)["scopes"] == ["read"]
+
+    def test_more_than_the_default(self, signed_in, monkeypatch):
+        monkeypatch.setenv("T1_ACCOUNTS_DEFAULT_PERMISSIONS", " Read, write ,plugin")
+        assert self._mint(signed_in)["scopes"] == ["plugin", "read", "write"]
+
+    def test_admin_is_never_given_whatever_it_says(self, signed_in, monkeypatch):
+        monkeypatch.setenv("T1_ACCOUNTS_DEFAULT_PERMISSIONS", "read,admin")
+        assert self._mint(signed_in)["scopes"] == ["read"]
+
+    def test_the_key_really_has_only_those_scopes(self, signed_in, monkeypatch):
+        """The server's own record, not just what the reply says."""
+        monkeypatch.setenv("T1_ACCOUNTS_DEFAULT_PERMISSIONS", "read")
+        client, _csrf = signed_in
+        minted = self._mint(signed_in)
+        meta = client.app.state.t1_keymaster.get(minted["key_id"])
+        assert {s.value for s in meta.scopes} == {"read"}
+
+
+class TestReadingTheVariable:
+    @pytest.fixture
+    def read(self, monkeypatch):
+        from hypernix.t1api.accounts import default_permissions_from_env
+
+        def go(value):
+            if value is None:
+                monkeypatch.delenv("T1_ACCOUNTS_DEFAULT_PERMISSIONS", raising=False)
+            else:
+                monkeypatch.setenv("T1_ACCOUNTS_DEFAULT_PERMISSIONS", value)
+            return default_permissions_from_env()
+        return go
+
+    @pytest.mark.parametrize("value", [None, "", " , "])
+    def test_empty_is_the_default(self, read, value):
+        assert read(value) == ("read", "write")
+
+    def test_an_unknown_name_is_left_out(self, read, caplog):
+        assert read("read,delete-everything") == ("read",)
+        assert "not a key scope" in caplog.text
+
+    def test_only_admin_falls_back_rather_than_granting_nothing(self, read, caplog):
+        assert read("admin") == ("read", "write")
+        assert "never given" in caplog.text
+
+    def test_duplicates_count_once(self, read):
+        assert read("write,write,read") == ("read", "write")

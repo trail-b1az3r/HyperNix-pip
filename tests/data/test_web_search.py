@@ -1,4 +1,4 @@
-"""`/web/v1` — keyless web search, and the grammar that configures it.
+"""`/web/v2` — keyless web search, and the grammar that configures it.
 
 What these tests are actually for
 ---------------------------------
@@ -551,7 +551,7 @@ def _auth(key: str) -> dict[str, str]:
 
 class TestTheEndpoints:
     def test_config_reads_back(self, client, user_key):
-        got = client.get("/web/v1/config", headers=_auth(user_key))
+        got = client.get("/web/v2/config", headers=_auth(user_key))
         assert got.status_code == 200, got.text
         body = got.json()
         assert body["s2"]["engine"] == "duckduckgo"
@@ -561,7 +561,7 @@ class TestTheEndpoints:
         """Three sigils and a divider is not something anyone will
         remember, and the endpoint that uses it is the one place they
         will look."""
-        body = client.get("/web/v1/config", headers=_auth(user_key)).json()
+        body = client.get("/web/v2/config", headers=_auth(user_key)).json()
         assert "?:=" in body["grammar"]
 
     def test_the_documented_config_form_survives_being_a_url(self, client, admin_key):
@@ -569,59 +569,59 @@ class TestTheEndpoints:
         HTTP is concerned, so `config/s1?=k|s2?:=wikipedia` arrives as a
         path of `config/s1` and a query of `=k|s2?:=wikipedia`. Reading
         the path parameter alone sees `s1` and nothing else."""
-        got = client.get("/web/v1/config/s1?=k|s2?:=wikipedia",
+        got = client.get("/web/v2/config/s1?=k|s2?:=wikipedia",
                          headers=_auth(admin_key))
         assert got.status_code == 200, got.text
         assert got.json()["s2"]["engine"] == "wikipedia"
         assert got.json()["changed"] == ["s2"]
 
     def test_a_change_sticks_for_the_next_request(self, client, admin_key, user_key):
-        client.get("/web/v1/config/s2?:=wikipedia", headers=_auth(admin_key))
-        body = client.get("/web/v1/config", headers=_auth(user_key)).json()
+        client.get("/web/v2/config/s2?:=wikipedia", headers=_auth(admin_key))
+        body = client.get("/web/v2/config", headers=_auth(user_key)).json()
         assert body["s2"]["engine"] == "wikipedia"
 
     def test_a_bad_clause_is_a_400_that_says_what_to_write(self, client, admin_key):
-        got = client.get("/web/v1/config/s2?=google", headers=_auth(admin_key))
+        got = client.get("/web/v2/config/s2?=google", headers=_auth(admin_key))
         assert got.status_code == 400
         assert "s2?:=google" in got.text
 
     def test_the_refused_string_comes_back_redacted(self, client, admin_key):
         """A rejected config still carried a key, and error details are
         logged."""
-        got = client.get("/web/v1/config/s3?:=BSAsecret|s9?:=x",
+        got = client.get("/web/v2/config/s3?:=BSAsecret|s9?:=x",
                          headers=_auth(admin_key))
         assert got.status_code == 400
         assert "BSAsecret" not in got.text
 
     def test_a_key_set_over_http_never_comes_back(self, client, admin_key):
-        got = client.get("/web/v1/config/s3?:=BSAsupersecret?[auto]",
+        got = client.get("/web/v2/config/s3?:=BSAsupersecret?[auto]",
                          headers=_auth(admin_key))
         assert got.status_code == 200, got.text
         assert "BSAsupersecret" not in got.text
         assert got.json()["s3"]["provider"] == "brave"
-        later = client.get("/web/v1/config", headers=_auth(admin_key))
+        later = client.get("/web/v2/config", headers=_auth(admin_key))
         assert "BSAsupersecret" not in later.text
 
     def test_a_key_never_reaches_the_log(self, client, admin_key, caplog):
         with caplog.at_level(logging.DEBUG, logger="hypernix.t1api.routers.web"):
-            client.get("/web/v1/config/s3?:=BSAtoplevelsecret",
+            client.get("/web/v2/config/s3?:=BSAtoplevelsecret",
                        headers=_auth(admin_key))
         assert "BSAtoplevelsecret" not in caplog.text
 
     def test_changing_settings_needs_an_admin_key(self, client, user_key):
         """Changing the engine changes where every query on this server
         goes, which is not a read."""
-        got = client.get("/web/v1/config/s2?:=google", headers=_auth(user_key))
+        got = client.get("/web/v2/config/s2?:=google", headers=_auth(user_key))
         assert got.status_code == 403
 
     def test_reading_the_settings_does_not(self, client, user_key):
-        assert client.get("/web/v1/config",
+        assert client.get("/web/v2/config",
                           headers=_auth(user_key)).status_code == 200
 
     def test_search_needs_a_query(self, client, user_key):
-        got = client.get("/web/v1/I", headers=_auth(user_key))
+        got = client.get("/web/v2/I", headers=_auth(user_key))
         assert got.status_code == 400
-        assert "/web/v1/search?q=" in got.text
+        assert "/web/v2/I?=" in got.text
 
     def test_search_reaches_the_module(self, client, user_key, monkeypatch):
         seen = {}
@@ -631,7 +631,7 @@ class TestTheEndpoints:
             return ws.SearchOutcome(query, [], engine="duckduckgo", depth=depth)
 
         monkeypatch.setattr("hypernix.t1api.routers.web.ws.search", fake)
-        got = client.get("/web/v1/I?=big+cats&q?=3", headers=_auth(user_key))
+        got = client.get("/web/v2/I?=big+cats&q?=3", headers=_auth(user_key))
         assert got.status_code == 200, got.text
         assert seen == {"query": "big cats", "depth": 3}
 
@@ -644,13 +644,13 @@ class TestTheEndpoints:
             "hypernix.t1api.routers.web.ws.search",
             lambda q, **k: ws.SearchOutcome(q, [], engine="duckduckgo"),
         )
-        for path in ("/web/v1/I?=cats", "/web/v1/i?=cats",
-                     "/web/v1/search?q=cats"):
+        for path in ("/web/v2/I?=cats", "/web/v2/i?=cats",
+                     "/web/v2/I?query=cats"):
             assert client.get(path, headers=_auth(user_key)).status_code == 200
 
     def test_summarize_works_with_no_model_loaded(self, client, user_key):
         got = client.post(
-            "/web/v1/summarize",
+            "/web/v2/summarize",
             json={"text": TestSummarize.TEXT, "sentences": 2},
             headers=_auth(user_key),
         )
@@ -659,12 +659,12 @@ class TestTheEndpoints:
         assert len(got.json()["sentences"]) == 2
 
     def test_summarize_needs_something_to_summarise(self, client, user_key):
-        got = client.post("/web/v1/summarize", json={},
+        got = client.post("/web/v2/summarize", json={},
                           headers=_auth(user_key))
         assert got.status_code == 400
 
     def test_both_spellings_of_summarize(self, client, user_key):
-        for path in ("/web/v1/summarize", "/web/v1/summarise"):
+        for path in ("/web/v2/summarize", "/web/v2/summarise"):
             got = client.post(path, json={"text": "One. Two. Three."},
                               headers=_auth(user_key))
             assert got.status_code == 200, path
@@ -674,16 +674,16 @@ class TestTheEndpoints:
         the endpoint is open — it reaches the network on the server's
         behalf, which is exactly what an unauthenticated one should not
         do."""
-        for path in ("/web/v1/config", "/web/v1/I?=cats"):
+        for path in ("/web/v2/config", "/web/v2/I?=cats"):
             assert client.get(path).status_code in (401, 403), path
-        assert client.post("/web/v1/summarize",
+        assert client.post("/web/v2/summarize",
                            json={"text": "a."}).status_code in (401, 403)
 
 
 class TestAPairedPhoneCanUseIt:
     """The client these endpoints were built for.
 
-    `/web/v1` authenticated with the T1-key dependency, which validates a
+    `/web/v2` authenticated with the T1-key dependency, which validates a
     device's `HLNK_` token as a T1 key and refuses it — so a paired
     phone got a 401 on every web endpoint while every test here, all
     using T1 keys, passed.
@@ -701,11 +701,11 @@ class TestAPairedPhoneCanUseIt:
         return redeemed.json()["device_token"]
 
     def test_a_device_can_read_the_settings(self, client, device_token):
-        got = client.get("/web/v1/config", headers=_auth(device_token))
+        got = client.get("/web/v2/config", headers=_auth(device_token))
         assert got.status_code == 200, got.text
 
     def test_a_device_can_summarise(self, client, device_token):
-        got = client.post("/web/v1/summarize", json={"text": "One. Two. Three."},
+        got = client.post("/web/v2/summarize", json={"text": "One. Two. Three."},
                           headers=_auth(device_token))
         assert got.status_code == 200, got.text
 
@@ -714,13 +714,13 @@ class TestAPairedPhoneCanUseIt:
             "hypernix.t1api.routers.web.ws.search",
             lambda q, **k: ws.SearchOutcome(q, [], engine="duckduckgo"),
         )
-        got = client.get("/web/v1/search?q=cats", headers=_auth(device_token))
+        got = client.get("/web/v2/I?query=cats", headers=_auth(device_token))
         assert got.status_code == 200, got.text
 
     def test_a_device_still_cannot_change_them(self, client, device_token):
         """A device token is never an admin credential — that rule is
         about pairing, and it holds here too."""
-        got = client.get("/web/v1/config/s2?:=google", headers=_auth(device_token))
+        got = client.get("/web/v2/config/s2?:=google", headers=_auth(device_token))
         assert got.status_code == 403
 
 
@@ -731,7 +731,7 @@ class TestAPairedPhoneCanUseIt:
 
 
 class TestServerSideFetchIsPublicOnly:
-    """/web/v1/summarise fetches a URL the caller names. Without this, a
+    """/web/v2/summarise fetches a URL the caller names. Without this, a
     paired phone — or a model steered by a page it read — could have the
     server fetch itself, the LAN, or a cloud metadata endpoint."""
 
@@ -935,7 +935,7 @@ class TestServerSideFetchIsPublicOnly:
         called = {}
         monkeypatch.setattr(gather, "fetch", lambda *a, **k: called.setdefault("fetched", {}))
         monkeypatch.setattr(iw, "_shared_robots", lambda: called.setdefault("robots", {}))
-        response = client.post("/web/v1/summarise", json={"url": "http://127.0.0.1:8000/"},
+        response = client.post("/web/v2/summarise", json={"url": "http://127.0.0.1:8000/"},
                                headers=_auth(user_key))
         assert response.status_code == 400
         assert "public" in response.text
@@ -958,7 +958,7 @@ class TestServerSideFetchIsPublicOnly:
 
         page = Page(url="https://example.com/gone", status=404, error="HTTP 404")
         self._stub_fetch(monkeypatch, page)
-        response = client.post("/web/v1/summarise", json={"url": "https://example.com/gone"},
+        response = client.post("/web/v2/summarise", json={"url": "https://example.com/gone"},
                                headers=_auth(user_key))
         assert response.status_code == 502
         assert "404" in response.text
@@ -968,7 +968,7 @@ class TestServerSideFetchIsPublicOnly:
 
         page = Page(url="https://example.com/", error="<urlopen error [Errno 111] /secret/internal/path>")
         self._stub_fetch(monkeypatch, page)
-        response = client.post("/web/v1/summarise", json={"url": "https://example.com/"},
+        response = client.post("/web/v2/summarise", json={"url": "https://example.com/"},
                                headers=_auth(user_key))
         assert response.status_code == 502
         assert "secret" not in response.text and "Errno" not in response.text
@@ -980,7 +980,7 @@ class TestServerSideFetchIsPublicOnly:
         page = Page(url="https://example.com/", status=200,
                     text="Lisbon is the capital of Portugal. It is built on seven hills. Trams climb them.")
         self._stub_fetch(monkeypatch, page)
-        response = client.post("/web/v1/summarise", json={"url": "https://example.com/"},
+        response = client.post("/web/v2/summarise", json={"url": "https://example.com/"},
                                headers=_auth(user_key))
         assert response.status_code == 200, response.text
         assert "Lisbon" in response.json()["summary"]

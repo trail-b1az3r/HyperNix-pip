@@ -94,7 +94,7 @@ TOOLS: tuple[T1Tool, ...] = (
             "read": _i("Read and summarise this many of the top-ranked sites; "
                        "1 reads only the first.", minimum=0, maximum=20)},
            required=("q",)),
-    T1Tool("web_summarize", "POST", "/web/v1/summarize",
+    T1Tool("web_summarize", "POST", "/web/v2/summarize",
            "Open a web page and read it: give it any http or https link, such "
            "as a GitHub repository, a file on GitHub, or an article, and it "
            "returns what the page says. Use it whenever the person gives you "
@@ -104,9 +104,9 @@ TOOLS: tuple[T1Tool, ...] = (
             "query": _s("What the summary should focus on."),
             "sentences": _i("Roughly how many sentences.", minimum=1, maximum=12)},
            body=True),
-    T1Tool("web_settings", "GET", "/web/v1/ai/config",
+    T1Tool("web_settings", "GET", "/web/v2/ai/config",
            "The server's web search settings, and which of them you may change."),
-    T1Tool("web_settings_set", "POST", "/web/v1/ai/config",
+    T1Tool("web_settings_set", "POST", "/web/v2/ai/config",
            "Change a web search setting. Only the less risky ones are allowed "
            "with partial admin: store_format, max_items, max_read_sites.",
            {"store_format": _s("jsonl or parquet.", enum=["jsonl", "parquet"]),

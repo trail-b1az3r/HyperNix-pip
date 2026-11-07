@@ -14,12 +14,13 @@ reachable if you already knew the filename. Fixed.)
 | Guide | Covers |
 |---|---|
 | [CLI](CLI.md) | Every subcommand (the short `hnx` menu and `hnx extra`), every companion command, every flag, typical invocations. |
-| [Examples](Examples.md) | Source-complete module encyclopedia: every Python module, grouped by subsystem, with its role and links to deeper guides. |
 | [Error codes](Error-Codes.md) | Every error code (`L#-NNNNN.kS`): what it means and what to do, by domain, with hyped-pro's older names. Generated from the registry; `hnx errors explain <code>` says the same. |
+| [Examples](Examples.md) | Source-complete module encyclopedia: every Python module, grouped by subsystem, with its role and links to deeper guides. |
 | [Architecture](Architecture.md) | Generated chart of the package's subsystems and how they connect, rebuilt by the `arch-map` workflow. |
 | [HyperNix Studio](../desktop/README.md) | The Qt desktop client: models, chat, a workspace the model may edit, and why it cannot run a command. |
 | [ggml-hnx](../native/ggml-hnx/README.md) | Building a llama.cpp that reads every HyperNix type (sub-bit, codebook, FP8) and runs Q8_K weights. |
 | [Runtime](Runtime.md) | `hypernix runtime` — using that llama.cpp from LM Studio and other applications. |
+| [Strife](Strife.md) | HyperNix's own GGUF inference runtime (`hnx strife`): inspection, tokenizer, CPU forward pass, sessions and streaming, the capability matrix and what is not there yet. 0.73.0 alpha 1, in progress. |
 | [llama-easy](Llama-Easy.md) | Make any Llama model faster in one line: the Hugging Face Hub kernel (Triton RMSNorm, RoPE, SwiGLU), its three ways in, and how it auto-publishes. |
 | [Context relay](Context-Relay.md) | Prompts longer than a model's context, read in hops by several small-context instances — in Python and as `POST /inference/relay`, with its cost. |
 | [Browser Agent](Browser-Agent.md) | The Firefox extension: a model on T1, your machine, OpenAI or Anthropic searches, reads, clicks and types in your browser, asking first. |
@@ -139,7 +140,7 @@ reachable if you already knew the filename. Fixed.)
 
 | Guide | Covers |
 |---|---|
-| [T1-API](T1-API.md) | `hypernix.t1api` — controlled HTTP gateway into HyperNix-pip (model registry, auth, routing, modules, servers, jobs, events, billing, the LM Studio bridge, HyperLink and HyperLink on the web, web accounts, MCP both ways, Net, the Anthropic Messages API for Claude Code, backups, governed inference), every route and every setting. Current: **T1 v1.1.26.10.2.0** in 0.72.8.post2. |
+| [T1-API](T1-API.md) | `hypernix.t1api` — controlled HTTP gateway into HyperNix-pip (model registry, auth, routing, modules, servers, jobs, events, billing, the LM Studio bridge, HyperLink and HyperLink on the web, web accounts, MCP both ways, Net, the Anthropic Messages API for Claude Code, backups, governed inference), every route and every setting. Current: **T1 v1.2.26.11.0.0** in 0.73.0.dev1. |
 | [T1-API Security Checklist](T1-API-Security-Checklist.md) | What to check before exposing a deployment — one page, per-item, with the config field each maps to, including every opt-in feature and keeping the server current. |
 | [HyperLink-OnDevice](HyperLink-OnDevice.md) | HyperLink's on-phone models: search Hugging Face, download a GGUF and run it on the iPhone. |
 | [HyperLink-Sync](HyperLink-Sync.md) | HyperLink's sync, push notifications and search — how a phone that sleeps catches up. |

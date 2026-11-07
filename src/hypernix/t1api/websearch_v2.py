@@ -11,7 +11,7 @@ parameters written in the ``?=`` form from a flag after them, and is
 read as one separator; the conventional spelling (``?q=cats&depth=2&
 max=10&read=1&keep=true``) works too.
 
-The five settings (``hypernix-t1 config web``, or ``/web/v1/ai/config``
+The five settings (``hypernix-t1 config web``, or ``/web/v2/ai/config``
 for the less risky ones):
 
 ``store_enabled``  keep searches at all (AI search storage); off by default
@@ -46,7 +46,7 @@ __all__ = [
 
 FORMATS = ("jsonl", "parquet")
 AI_CONFIG = ("off", "partial", "admin")
-#: What a model may change through /web/v1/ai/config with partial admin.
+#: What a model may change through /web/v2/ai/config with partial admin.
 #: Turning storage on, and who may configure, need a full admin.
 AI_SAFE = ("store_format", "max_items", "max_read_sites")
 

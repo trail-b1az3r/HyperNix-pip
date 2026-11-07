@@ -31,7 +31,7 @@ Who may do what:
 * Changing the permissions needs an admin key, as changing the web
   search settings does.
 
-The permissions are the server's, held on the app like ``/web/v1``'s
+The permissions are the server's, held on the app like ``/web/v2``'s
 settings: a restart puts back the cautious defaults. Everything that is
 not HTTP lives in :mod:`hypernix.t1api.codebox`.
 """
@@ -294,7 +294,7 @@ def code_perms_write(
 ) -> dict[str, Any]:
     """``perms/s2?:=on|s3?:=120``, or ``perms|s1=?;s2?:=on``.
 
-    As with ``/web/v1/config``, everything from the first ``?`` on is the
+    As with ``/web/v2/config``, everything from the first ``?`` on is the
     query string to HTTP, so the clause is rebuilt from the path and the
     raw query before it is read. A request that only reads (``s1=?``,
     ``s1?=k``) is open to anyone who may read the perms; one that

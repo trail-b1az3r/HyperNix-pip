@@ -4,7 +4,7 @@
 </p>
 
 <p align="center">
-  <img alt="PyPI" src="https://img.shields.io/badge/PyPI-v0.72.8.post1-ff2d55?style=for-the-badge&logo=pypi&logoColor=white" />
+  <img alt="PyPI" src="https://img.shields.io/badge/PyPI-v0.73.0.dev1-ff2d55?style=for-the-badge&logo=pypi&logoColor=white" />
   <img alt="Python" src="https://img.shields.io/badge/Python-3.12--3.15-00c9ff?style=for-the-badge&logo=python&logoColor=white" />
   <img alt="License" src="https://img.shields.io/badge/License-HOS--1.1%20/%20Apache--2.0-00c853?style=for-the-badge" />
   <a href="https://github.com/trail-b1az3r/HyperNix-pip/blob/main/wiki/T1-API.md#the-public-server-counter"><img alt="Public T1 servers" src="https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Ftrail-b1az3r%2FHyperNix-pip%2Fmain%2Fdocs%2Fpublic%2Fv1%2Ft1-counter-badge.json&style=for-the-badge" /></a>
@@ -23,7 +23,7 @@ is next.
 
 ## What's new: 0.72.8 — Claude Code, relays, image models, and Python 3.15
 
-T1 is now **T1 v1.1.26.10.2.0**: the [T1 API](wiki/T1-API.md) page has
+T1 is now **T1 v1.2.26.11.0.0**: the [T1 API](wiki/T1-API.md) page has
 every route.
 
 - **Claude Code on your own models.** T1 speaks the Anthropic Messages
@@ -1070,7 +1070,7 @@ the signature of a wall-clock assertion that lost a race, which is the one
 thing it can fix. It widens the margins in those tests by scaling every time
 constant in them uniformly, re-runs only what it changed, and commits with an
 `Autofix-Scope:` trailer. CI reads that trailer and verifies just those tests
-instead of re-running the staged 4-runner x 3-Python CI matrix. Python 3.13 remains supported, but is intentionally omitted from CI testing. Failures it can't honestly
+instead of re-running the 4-OS x 4-Python matrix. Failures it can't honestly
 fix — a renamed symbol, a changed signature, a real regression — are reported
 and left alone.
 

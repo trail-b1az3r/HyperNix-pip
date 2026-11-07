@@ -23,7 +23,7 @@ HELP = {
     "store_format": "jsonl or parquet (parquet needs pyarrow)",
     "max_items": "the most results mx?= may ask for (1-100)",
     "max_read_sites": "the most top-ranked sites sq?= may read and summarise (1-20)",
-    "ai_config": "who may let a model change settings via /web/v1/ai/config: off, partial, admin",
+    "ai_config": "who may let a model change settings via /web/v2/ai/config: off, partial, admin",
 }
 
 
