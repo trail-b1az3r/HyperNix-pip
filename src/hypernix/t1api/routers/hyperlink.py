@@ -32,6 +32,7 @@ import logging
 import threading
 import time
 import weakref
+from queue import Queue
 from pathlib import Path
 from typing import Any
 
@@ -1227,6 +1228,202 @@ def _queued_relay_chat(
             details={"queue": chat.stats()},
             http_status=429,
         ) from exc
+
+
+def _relay_stream_completion(
+    *,
+    backend,
+    runner,
+    config: T1APIConfig,
+    principal: HyperLinkPrincipal,
+    meter,
+    messages: list[dict[str, Any]],
+    model: str | None,
+    sampling: dict[str, Any],
+    tools: list[dict[str, Any]] | None,
+    on_chunk,
+    cancelled=lambda: False,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Relay a conversation while forwarding answer chunks as the backend emits them."""
+    from ...runtime.relay import CHAIN, DIGEST_PROMPT, READ_PROMPT, ContextTooSmall, Relay, Reply, estimate_tokens
+
+    context_tokens = _model_context(config, runner, backend)
+    if context_tokens <= 0:
+        context_tokens = max(256, int(config.relay_default_context_tokens or 4096))
+    answer_limit = max(32, int(context_tokens * 0.225))
+    answer_tokens = min(int(sampling.get("max_tokens") or answer_limit), answer_limit)
+
+    pool_urls: list[str] = []
+    if backend.is_hypernix and runner is not None:
+        try:
+            pool_urls = [str(url) for url in (getattr(runner, "base_urls", None) or [])]
+        except Exception:  # noqa: BLE001
+            pool_urls = []
+    max_instances = max(1, int(config.relay_max_instances or 1))
+    clients = (
+        [LMStudioBridge(base_url=url, timeout=config.lmstudio_timeout_seconds)
+         for url in pool_urls[:max_instances]]
+        if pool_urls else [backend.client]
+    )
+
+    def make_instance(client):
+        def complete(hop_messages: list[dict[str, Any]], max_tokens: int) -> Reply:
+            instruction = ""
+            if hop_messages and hop_messages[0].get("role") == "system":
+                instruction = str(hop_messages[0].get("content") or "")
+            internal = instruction.endswith(READ_PROMPT) or instruction.endswith(DIGEST_PROMPT)
+            envelope = client.chat(
+                hop_messages,
+                model=model,
+                temperature=sampling.get("temperature", 0.2),
+                max_tokens=max_tokens,
+                tools=None if internal else (tools or None),
+            )
+            content, _finish = _extract_reply(envelope)
+            usage = envelope.get("usage") or {}
+            used_in = int(usage.get("prompt_tokens") or 0)
+            used_out = int(usage.get("completion_tokens") or 0)
+            if not used_in:
+                used_in = estimate_tokens("\n".join(
+                    Relay._content_text(message.get("content")) for message in hop_messages
+                ))
+            if not used_out:
+                used_out = estimate_tokens(content)
+            return Reply(content, used_in, used_out, envelope)
+        return complete
+
+    key_id = getattr(principal.auth_context, "key_id", "") or principal.owner
+
+    def after_hop(hop) -> None:
+        meter.record_quietly(
+            key_id=key_id,
+            model_id=model or backend.model_id,
+            input_tokens=hop.input_tokens,
+            output_tokens=hop.output_tokens,
+            endpoint="/hyperlink/sessions/chat/stream",
+            feature="relay",
+        )
+        if cancelled():
+            raise InterruptedError("The chat generation was stopped during a relay hop.")
+
+    def stream_call(hop_messages, max_tokens, slot):
+        client = clients[slot]
+        return client.chat_stream(
+            hop_messages,
+            model=model,
+            temperature=sampling.get("temperature", 0.2),
+            max_tokens=max_tokens,
+            tools=tools or None,
+        )
+
+    try:
+        relay = Relay(
+            [make_instance(client) for client in clients],
+            context_tokens=context_tokens,
+            mode=CHAIN,
+            answer_tokens=answer_tokens,
+            on_hop=after_hop,
+        )
+        result = relay.stream_messages(
+            messages,
+            stream_call=stream_call,
+            on_chunk=on_chunk,
+            cancelled=cancelled,
+        )
+    except ContextTooSmall as exc:
+        raise T1APIError(
+            T1ErrorCode.VALIDATION_ERROR,
+            str(exc),
+            details={"context_tokens": context_tokens, "model": model or backend.model_id},
+        ) from exc
+
+    envelope = result.envelope or {
+        "choices": [{"message": {"role": "assistant", "content": result.answer},
+                     "finish_reason": "stop"}],
+    }
+    envelope["model"] = str(envelope.get("model") or model or backend.model_id or "")
+    envelope["usage"] = {
+        "prompt_tokens": result.input_tokens,
+        "completion_tokens": result.output_tokens,
+        "total_tokens": result.input_tokens + result.output_tokens,
+    }
+    info = {
+        "plan": result.plan.to_dict(),
+        "hops": [hop.to_dict() for hop in result.hops],
+        "input_tokens": result.input_tokens,
+        "output_tokens": result.output_tokens,
+        "requests": result.requests,
+    }
+    return envelope, info
+
+
+def _queued_relay_chat_stream(
+    *,
+    request: Request,
+    config: T1APIConfig,
+    backend,
+    runner,
+    principal: HyperLinkPrincipal,
+    meter,
+    messages: list[dict[str, Any]],
+    model: str | None,
+    sampling: dict[str, Any],
+    tools: list[dict[str, Any]] | None = None,
+    cancelled=lambda: False,
+    on_result=None,
+):
+    """Stream Relay chunks from a Hyperchat worker to the HTTP event thread."""
+    from ...hyperlink.hyperchat import QueueFull
+
+    events: Queue = Queue()
+
+    def operation():
+        try:
+            envelope, info = _relay_stream_completion(
+                backend=backend,
+                runner=runner,
+                config=config,
+                principal=principal,
+                meter=meter,
+                messages=messages,
+                model=model,
+                sampling=sampling,
+                tools=tools,
+                on_chunk=lambda chunk: events.put(("chunk", chunk)),
+                cancelled=cancelled,
+            )
+            events.put(("complete", info))
+            return envelope
+        except Exception as exc:  # noqa: BLE001 - communicate worker errors to the reader
+            events.put(("error", exc))
+            raise
+
+    chat = _hyperchat_for_request(request, config)
+    try:
+        ticket = chat.submit("relay streaming completion", operation=operation)
+    except QueueFull as exc:
+        raise T1APIError(
+            T1ErrorCode.RATE_LIMITED,
+            str(exc),
+            details={"queue": chat.stats()},
+            http_status=429,
+        ) from exc
+
+    while True:
+        kind, value = events.get()
+        if kind == "chunk":
+            yield value
+        elif kind == "complete":
+            ticket.wait()
+            if on_result is not None:
+                on_result(value)
+            break
+        elif kind == "error":
+            try:
+                ticket.wait()
+            except Exception as exc:  # preserve the backend/Relay exception
+                raise exc
+            raise value
 
 
 def _relay_usage_totals(relay_runs: list[dict[str, Any]]) -> dict[str, int]:
