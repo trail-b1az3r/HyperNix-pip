@@ -2190,6 +2190,7 @@ def chat_turn_stream(
         error: dict[str, Any] | None = None
         cancelled = False
         tool_rounds: list[dict[str, Any]] = []
+        relay_runs: list[dict[str, Any]] = []
         try:
             if setup is not None:
                 # The same tools the non-streamed route offers. Ordinary
@@ -2197,13 +2198,13 @@ def chat_turn_stream(
                 # is held back rather than shown (toolloop.CallGuard),
                 # and each tool the model runs is announced as it ends.
                 def ask_stream(messages, tools):
-                    return bridge.chat_stream(
-                        messages,
-                        model=requested_model,
-                        temperature=sampling["temperature"],
-                        max_tokens=sampling["max_tokens"],
-                        tools=tools or None,
+                    envelope, relay_info = _queued_relay_chat(
+                        request=request, config=config, backend=backend, runner=runner,
+                        messages=messages, model=requested_model, sampling=sampling,
+                        tools=tools, cancelled=lambda: active.cancelled,
                     )
+                    relay_runs.append(relay_info)
+                    return _relay_stream_chunks(envelope)
 
                 for kind, value in stream_tool_loop(
                     wire, setup.context, ask_stream=ask_stream, t1=setup.t1,
@@ -2224,12 +2225,13 @@ def chat_turn_stream(
                         tool_rounds = value["rounds"]
                 stream = iter(())
             else:
-                stream = bridge.chat_stream(
-                    wire,
-                    model=requested_model,
-                    temperature=sampling["temperature"],
-                    max_tokens=sampling["max_tokens"],
+                envelope, relay_info = _queued_relay_chat(
+                    request=request, config=config, backend=backend, runner=runner,
+                    messages=wire, model=requested_model, sampling=sampling,
+                    cancelled=lambda: active.cancelled,
                 )
+                relay_runs.append(relay_info)
+                stream = _relay_stream_chunks(envelope)
             for chunk in stream:
                 # The cooperative half of Stop. Breaking here closes
                 # `stream`, which closes the upstream response, which is
@@ -2239,7 +2241,9 @@ def chat_turn_stream(
                 # a socket read cannot be cancelled.
                 if active.cancelled:
                     cancelled = True
-                    stream.close()
+                    close = getattr(stream, "close", None)
+                    if callable(close):
+                        close()
                     break
                 model_id = str(chunk.get("model") or model_id)
                 if isinstance(chunk.get("usage"), dict):
@@ -2254,8 +2258,14 @@ def chat_turn_stream(
                         yield _frame("delta", text=piece)
                     if choice.get("finish_reason"):
                         finish = str(choice["finish_reason"])
+        except InterruptedError:
+            cancelled = True
+            finish = "cancelled"
         except LMStudioError as exc:
             error = exc.to_dict()
+            yield _frame("error", error=error)
+        except T1APIError as exc:
+            error = {"code": exc.code.value, "message": exc.message, "details": exc.details}
             yield _frame("error", error=error)
         except GeneratorExit:
             # The phone closed the connection (backgrounded, tunnel
@@ -2326,6 +2336,7 @@ def chat_turn_stream(
                 "base_url": bridge.base_url,
                 "truncated": truncated,
                 "streamed": True,
+                "relay": relay_runs,
                 **({"tool_rounds": tool_rounds} if tool_rounds else {}),
                 **({"documents": _documents(tool_rounds)} if _documents(tool_rounds) else {}),
                 **({"compacted_before": compacted.get("messages_compacted", 0)} if compacted else {}),
