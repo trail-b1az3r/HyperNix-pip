@@ -1070,7 +1070,7 @@ the signature of a wall-clock assertion that lost a race, which is the one
 thing it can fix. It widens the margins in those tests by scaling every time
 constant in them uniformly, re-runs only what it changed, and commits with an
 `Autofix-Scope:` trailer. CI reads that trailer and verifies just those tests
-instead of re-running the 4-OS x 4-Python matrix. Failures it can't honestly
+instead of re-running the staged 4-runner x 3-Python CI matrix. Python 3.13 remains supported, but is intentionally omitted from CI testing. Failures it can't honestly
 fix — a renamed symbol, a changed signature, a real regression — are reported
 and left alone.
 
