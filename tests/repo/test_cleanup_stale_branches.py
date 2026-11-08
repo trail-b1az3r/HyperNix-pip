@@ -63,7 +63,9 @@ def test_keeps_branch_with_a_trail_b1az3r_commit():
 
 
 def test_keeps_branch_with_a_claude_commit():
-    action, _ = classify(make_branch("feature/claude-work"), commits=[make_commit("claude", name="Claude")])
+    action, _ = classify(
+        make_branch("feature/claude-work"), commits=[make_commit("claude", name="Claude")]
+    )
     assert action == "keep"
 
 
@@ -122,7 +124,9 @@ def test_keeps_branch_when_its_tip_is_by_trail_b1az3r():
 
 
 def test_keeps_branch_with_a_pull_request_authored_by_trail_b1az3r():
-    action, reason = classify(make_branch("feature/owned-pr"), owned_refs={"feature/owned-pr"}, commits=[])
+    action, reason = classify(
+        make_branch("feature/owned-pr"), owned_refs={"feature/owned-pr"}, commits=[]
+    )
     assert action == "keep"
     assert "pull request authored" in reason
 
@@ -140,7 +144,9 @@ def test_keeps_branch_when_commit_identity_is_uncertain():
 
 
 def test_recognizes_claude_anthropic_email():
-    assert is_owned_branch("feature/claude", [make_commit("", name="Claude", email="noreply@anthropic.com")])
+    assert is_owned_branch(
+        "feature/claude", [make_commit("", name="Claude", email="noreply@anthropic.com")]
+    )
 
 
 def test_recognizes_the_owner_noreply_email():
