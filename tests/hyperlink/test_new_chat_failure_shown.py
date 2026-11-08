@@ -86,7 +86,7 @@ def test_the_server_refuses_a_keyless_chat_with_the_403_the_app_reads(monkeypatc
     from starlette.applications import Starlette
 
     request = Request({"type": "http", "method": "POST", "path": "/hyperlink/sessions",
-                       "headers": [], "query_string": b"", "app": Starlette()})
+                       "headers": [], "query_string": b"", "client": ("192.168.1.9", 5000), "app": Starlette()})
     with pytest.raises(T1APIError) as refused:
         deps._refuse_keyless_chats(request)
     assert refused.value.http_status == 403
