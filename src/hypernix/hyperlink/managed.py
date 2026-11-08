@@ -522,7 +522,7 @@ class ManagedRunner:
                         output = ""
                     if output:
                         logger.warning(
-                            "managed: the server for %s exited with %s\\nLast output:\\n%s",
+                            "managed: the server for %s exited with %s\nLast output:\n%s",
                             model_id, returncode, output[-2000:],
                         )
                     else:
