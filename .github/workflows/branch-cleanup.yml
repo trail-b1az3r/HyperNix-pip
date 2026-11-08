@@ -1,0 +1,43 @@
+name: Stale Branch Cleanup
+
+on:
+  schedule:
+    # Daily. Branches are deleted only after 30 days with no commits.
+    - cron: "29 5 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Preview eligible deletions without deleting branches"
+        type: boolean
+        default: true
+        required: true
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: stale-branch-cleanup
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    name: Remove stale branches not authored by trail-b1az3r or Claude
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+
+      - name: Find and remove stale branches
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          ${{ github.event.repository.default_branch }}: ${{ github.event.repository.default_branch }}
+          STALE_DAYS: "30"
+          # Scheduled runs are live. Manual runs default to preview mode.
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && '1' || '0' }}
+        run: python .github/scripts/cleanup_stale_branches.py
