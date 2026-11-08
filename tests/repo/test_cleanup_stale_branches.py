@@ -38,11 +38,13 @@ def make_commit(login: str, *, name: str = "", email: str = "") -> dict:
     }
 
 
-def classify(branch: dict, *, open_refs: set[str] | None = None, commits=None):
+def classify(branch: dict, *, open_refs: set[str] | None = None,
+             owned_refs: set[str] | None = None, commits=None):
     return classify_branch(
         branch,
         default_branch="main",
         open_pr_refs=open_refs or set(),
+        owned_pr_refs=owned_refs or set(),
         now=NOW,
         compare_commits=lambda _base, _head: commits if commits is not None else [],
         stale_days=30,
@@ -97,10 +99,32 @@ def test_keeps_branch_with_a_recent_commit():
     assert "only 12 day(s) old" in reason
 
 
-def test_keeps_branch_when_history_cannot_establish_ownership():
+def test_keeps_branch_when_history_and_tip_identity_are_unavailable():
     action, reason = classify(make_branch("feature/no-history"), commits=[])
     assert action == "keep"
     assert "no branch-only commits" in reason
+
+
+def test_deletes_merged_branch_when_its_tip_is_not_by_an_allowed_author():
+    branch = make_branch("feature/merged-other")
+    branch["commit"]["author"] = {"login": "someone-else"}
+    branch["commit"]["committer"] = {"login": "someone-else"}
+    action, reason = classify(branch, commits=[])
+    assert action == "delete"
+    assert "already contained" in reason
+
+
+def test_keeps_branch_when_its_tip_is_by_trail_b1az3r():
+    branch = make_branch("feature/created-by-rayla")
+    branch["commit"]["author"] = {"login": "trail-b1az3r"}
+    action, _ = classify(branch, commits=[make_commit("someone-else")])
+    assert action == "keep"
+
+
+def test_keeps_branch_with_a_pull_request_authored_by_trail_b1az3r():
+    action, reason = classify(make_branch("feature/owned-pr"), owned_refs={"feature/owned-pr"}, commits=[])
+    assert action == "keep"
+    assert "pull request authored" in reason
 
 
 def test_keeps_branch_when_commit_identity_is_uncertain():
