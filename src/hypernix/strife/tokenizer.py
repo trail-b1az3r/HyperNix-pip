@@ -273,6 +273,14 @@ class Tokenizer:
                             add_generation_prompt: bool = True) -> str:
         """The model's own template (Jinja, sandboxed); ChatML without one."""
         if self.chat_template:
+            # Jinja sandbox renders forbidden dunder lookups as Undefined in
+            # some versions instead of raising. Reject the attempted escape
+            # explicitly so a hostile template is never silently accepted.
+            if re.search(r"\.\s*__[A-Za-z0-9_]+__|\b__[A-Za-z0-9_]+__\s*\(", self.chat_template):
+                raise StrifeError(
+                    "strife.chat.template",
+                    "chat template: access to Python dunder attributes is forbidden",
+                )
             try:
                 from jinja2.sandbox import ImmutableSandboxedEnvironment
 
