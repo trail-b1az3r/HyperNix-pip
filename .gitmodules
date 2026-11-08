@@ -1,0 +1,3 @@
+[submodule "native/ggml-hnx/llama.cpp"]
+	path = native/ggml-hnx/llama.cpp
+	url = https://github.com/ggml-org/llama.cpp.git
