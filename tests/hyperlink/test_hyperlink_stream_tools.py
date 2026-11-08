@@ -354,6 +354,12 @@ def test_the_screenshot_a_default_server_streams_with_t1_tools(served, monkeypat
     assert reply["content"] == "HyperNix is running and up to date."
     assert reply["metadata"]["tool_rounds"][0]["tool"] == "server_version"
 
+    relay_runs = reply["metadata"]["relay"]
+    assert relay_runs, "streamed Relay runs were not persisted"
+    assert all("input_tokens" in run and "output_tokens" in run for run in relay_runs)
+    assert reply["input_tokens"] == sum(run["input_tokens"] for run in relay_runs)
+    assert reply["output_tokens"] == sum(run["output_tokens"] for run in relay_runs)
+
 
 def test_the_workspace_needs_both_switches(served, monkeypatch):
     base, auth = served(noodle_enabled=True)

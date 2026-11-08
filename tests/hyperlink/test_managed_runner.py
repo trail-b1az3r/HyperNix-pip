@@ -195,6 +195,24 @@ class TestTheRunnerStartsEmpty:
         runner = ManagedRunner(port=8799, host="127.0.0.1")
         assert runner.base_url == "http://127.0.0.1:8799"
 
+    def test_a_dead_server_includes_its_output_in_the_log(self, caplog):
+        from types import SimpleNamespace
+
+        runner = ManagedRunner(port=8799)
+        output = "RuntimeError: CUDA initialization failed"
+        runner._process = SimpleNamespace(
+            poll=lambda: 1,
+            returncode=1,
+            output_tail=SimpleNamespace(text=lambda wait=0.25: output),
+        )
+        runner._current = SimpleNamespace(model_id="hypernix-3-1-mini-c")
+        # The module's fixture quiets expected warnings for other tests.
+        logging.disable(logging.NOTSET)
+        with caplog.at_level(logging.WARNING, logger="hypernix.hyperlink.managed"):
+            assert runner.current is None
+        assert "exited with 1" in caplog.text
+        assert output in caplog.text
+
 
 # ---------------------------------------------------------------------------
 # Through the API

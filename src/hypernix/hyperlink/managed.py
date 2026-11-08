@@ -510,14 +510,27 @@ class ManagedRunner:
         request to a socket nobody is listening on.
         """
         with self._lock:
-            if self._process is not None and self._process.poll() is not None:
-                logger.warning(
-                    "managed: the server for %s exited with %s",
-                    self._current.model_id if self._current else "?",
-                    self._process.returncode,
-                )
-                self._process = None
-                self._current = None
+            process = self._process
+            if process is not None:
+                returncode = process.poll()
+                if returncode is not None:
+                    model_id = self._current.model_id if self._current else "?"
+                    output_tail = getattr(process, "output_tail", None)
+                    try:
+                        output = output_tail.text(wait=0.25).strip() if output_tail else ""
+                    except Exception:  # noqa: BLE001 - diagnostics must not break status reads
+                        output = ""
+                    if output:
+                        logger.warning(
+                            "managed: the server for %s exited with %s\\nLast output:\\n%s",
+                            model_id, returncode, output[-2000:],
+                        )
+                    else:
+                        logger.warning(
+                            "managed: the server for %s exited with %s", model_id, returncode,
+                        )
+                    self._process = None
+                    self._current = None
             return self._current
 
     @property

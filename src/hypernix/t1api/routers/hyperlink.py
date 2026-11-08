@@ -2406,9 +2406,6 @@ def chat_turn_stream(
     # `memory` frame after `done` tells the app to sync now rather than
     # whenever somebody next opens the Memories screen.
     memory_before = _memory_head(memories, principal.owner)
-    # Shared by the stream generator and its persistence helper.
-    relay_runs: list[dict[str, Any]] = []
-
     def _events():
         yield _frame(
             "start",
@@ -2424,6 +2421,9 @@ def chat_turn_stream(
         error: dict[str, Any] | None = None
         cancelled = False
         tool_rounds: list[dict[str, Any]] = []
+        # Keep all completed relay calls for this turn. _persist receives
+        # this explicitly so persistence cannot depend on an outer closure.
+        relay_runs: list[dict[str, Any]] = []
         try:
             if setup is not None:
                 # The same tools the non-streamed route offers. Ordinary
@@ -2503,7 +2503,10 @@ def chat_turn_stream(
             # chat_stream generator and will close it between chunks.
             active.cancel_event.set()
             generations.finish(active.generation_id)
-            _persist(collected, model_id, finish or "disconnected", usage, truncated=True)
+            _persist(
+                collected, model_id, finish or "disconnected", usage,
+                truncated=True, relay_runs=relay_runs,
+            )
             # Nobody is listening for a model-written title any more; the
             # first-line one costs nothing.
             store.autotitle(session_id, owner=principal.owner)
@@ -2517,7 +2520,7 @@ def chat_turn_stream(
             finish = "cancelled"
         message = _persist(
             collected, model_id, finish, usage, truncated=bool(error) or cancelled,
-            tool_rounds=tool_rounds, error=error,
+            relay_runs=relay_runs, tool_rounds=tool_rounds, error=error,
         )
         yield _frame(
             "done",
@@ -2553,6 +2556,7 @@ def chat_turn_stream(
 
     def _persist(
         pieces: list[str], model_id: str, finish: str, usage: dict[str, Any], *, truncated: bool,
+        relay_runs: list[dict[str, Any]],
         tool_rounds: list[dict[str, Any]] | None = None, error: dict[str, Any] | None = None,
     ) -> ChatMessage:
         if relay_runs:
