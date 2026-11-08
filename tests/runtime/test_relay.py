@@ -198,7 +198,7 @@ class TestChatMessages:
             return Reply("It is green.", 45, 4, raw)
 
         result = Relay(
-            [instance], context_tokens=512, notes_tokens=40, answer_tokens=48
+            [instance], context_tokens=768, notes_tokens=40, answer_tokens=48
         ).run_messages(messages)
 
         assert not result.plan.single
