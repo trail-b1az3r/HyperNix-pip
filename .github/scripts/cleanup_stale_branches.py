@@ -69,8 +69,8 @@ class GitHubAPI:
             page += 1
 
     def compare_commits(self, base: str, head: str) -> list[dict]:
-        base_ref = quote(base, safe="")
-        head_ref = quote(head, safe="")
+        base_ref = quote(base, safe="/")
+        head_ref = quote(head, safe="/")
         path = f"/compare/{base_ref}...{head_ref}"
         commits: list[dict] = []
         page = 1
@@ -141,6 +141,16 @@ def is_owned_branch(name: str, commits: list[dict]) -> bool:
     return any(commit_is_owned(commit) for commit in commits)
 
 
+def commit_identity_available(commit: dict) -> bool:
+    details = commit.get("commit") or {}
+    return any(
+        bool((commit.get(role) or {}).get("login")
+             or (details.get(role) or {}).get("name")
+             or (details.get(role) or {}).get("email"))
+        for role in ("author", "committer")
+    )
+
+
 def classify_branch(
     branch: dict,
     *,
@@ -148,6 +158,7 @@ def classify_branch(
     open_pr_refs: set[str],
     now: datetime,
     compare_commits,
+    owned_pr_refs: set[str] | None = None,
     stale_days: int = 30,
 ) -> tuple[str, str]:
     """Return (action, reason) without mutating the repository."""
@@ -160,6 +171,11 @@ def classify_branch(
         return "keep", "protected branch"
     if name in open_pr_refs:
         return "keep", "used by an open pull request"
+    if name in (owned_pr_refs or set()):
+        return "keep", "has a pull request authored by trail-b1az3r or Claude"
+    tip_commit = branch.get("commit") or {}
+    if is_owned_branch(name, [tip_commit]):
+        return "keep", "branch tip is attributed to trail-b1az3r or Claude"
 
     last_commit = branch_tip_time(branch)
     if last_commit is None:
@@ -173,7 +189,9 @@ def classify_branch(
     except Exception as exc:  # noqa: BLE001 - unknown history must fail closed
         return "keep", f"could not verify branch ownership: {exc}"
     if not commits:
-        return "keep", "no branch-only commits to establish ownership"
+        if commit_identity_available(tip_commit):
+            return "delete", "branch is already contained in the default branch and its tip is not by an allowed author"
+        return "keep", "no branch-only commits or reliable tip identity to establish ownership"
     if is_owned_branch(name, commits):
         return "keep", "contains a commit authored by trail-b1az3r or Claude"
     return "delete", f"no commits for at least {stale_days} days; no trail-b1az3r/Claude commits"
@@ -190,6 +208,18 @@ def open_pull_request_refs(pulls: list[dict], repository: str) -> set[str]:
             refs.add(str(head["ref"]))
         if base_repo.get("full_name") == repository and base.get("ref"):
             refs.add(str(base["ref"]))
+    return refs
+
+
+def owned_pull_request_refs(pulls: list[dict], repository: str) -> set[str]:
+    refs: set[str] = set()
+    for pull in pulls:
+        head = pull.get("head") or {}
+        head_repo = head.get("repo") or {}
+        author = pull.get("user") or {}
+        login = str(author.get("login") or "").casefold()
+        if head_repo.get("full_name") == repository and head.get("ref") and login in {OWNER_LOGIN, CLAUDE_LOGIN}:
+            refs.add(str(head["ref"]))
     return refs
 
 
@@ -218,8 +248,10 @@ def main() -> int:
 
     api = GitHubAPI(repository, token)
     branches = api.list_all("/branches")
-    pulls = api.list_all("/pulls?state=open")
-    protected_refs = open_pull_request_refs(pulls, repository)
+    pulls = api.list_all("/pulls?state=all")
+    open_pulls = [pull for pull in pulls if (pull.get("state") == "open")]
+    protected_refs = open_pull_request_refs(open_pulls, repository)
+    owned_refs = owned_pull_request_refs(pulls, repository)
     now = datetime.now(timezone.utc)
 
     report = [
@@ -240,6 +272,7 @@ def main() -> int:
             open_pr_refs=protected_refs,
             now=now,
             compare_commits=api.compare_commits,
+            owned_pr_refs=owned_refs,
             stale_days=stale_days,
         )
         if action == "keep":
