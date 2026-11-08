@@ -105,6 +105,9 @@ class TestTheEndpoints:
 class TestATurn:
     def test_a_small_model_gets_a_compressed_system_prompt(self, app_and_client, monkeypatch):
         app, client = app_and_client
+        # Tool-format teaching is tested separately; its full schema/example
+        # is deliberately not part of this small-context compression case.
+        monkeypatch.setenv("T1_HYPERLINK_TEACH_TOOLS", "0")
 
         class Loaded:
             model_id = "tiny"
