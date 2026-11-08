@@ -32,8 +32,8 @@ import logging
 import threading
 import time
 import weakref
-from queue import Queue
 from pathlib import Path
+from queue import Queue
 from typing import Any
 
 from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile
@@ -45,8 +45,7 @@ from ...hyperlink.default_prompt import default_prompt_for
 from ...hyperlink.discovery import advertise
 from ...hyperlink.files import AttachmentStore
 from ...hyperlink.generation import GenerationRegistry
-from ...hyperlink.hfmerge import HFResolveError
-from ...hyperlink.hfmerge import resolve as hf_resolve
+from ...hyperlink.hfmerge import HFResolveError, resolve as hf_resolve
 from ...hyperlink.identity import fingerprint as server_fingerprint
 from ...hyperlink.memory import MemoryStore
 from ...hyperlink.notify import EventKind, NotificationStore
@@ -1246,7 +1245,15 @@ def _relay_stream_completion(
     cancelled=lambda: False,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Relay a conversation while forwarding answer chunks as the backend emits them."""
-    from ...runtime.relay import CHAIN, DIGEST_PROMPT, READ_PROMPT, ContextTooSmall, Relay, Reply, estimate_tokens
+    from ...runtime.relay import (
+        CHAIN,
+        DIGEST_PROMPT,
+        READ_PROMPT,
+        ContextTooSmall,
+        Relay,
+        Reply,
+        estimate_tokens,
+    )
 
     context_tokens = _model_context(config, runner, backend)
     if context_tokens <= 0:
