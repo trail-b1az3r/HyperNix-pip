@@ -1,16 +1,16 @@
 from __future__ import annotations
 
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT / ".github" / "scripts"))
 
-from cleanup_stale_branches import classify_branch, is_owned_branch  # noqa: E402
+from cleanup_stale_branches import classify_branch, is_owned_branch  # noqa: E402, I001
 
 
-NOW = datetime(2026, 11, 7, 12, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 11, 7, 12, 0, tzinfo=UTC)
 
 
 def make_branch(name: str, *, age_days: int = 45, protected: bool = False) -> dict:
