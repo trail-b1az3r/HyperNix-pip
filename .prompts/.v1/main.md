@@ -1365,8 +1365,10 @@ Build **HyperNix0xV3** as a genuinely new architecture, not a renamed Transforme
 ### 1. Two original trainable layers
 - **Efficient Context Layer:** retain useful distant-token information at lower compute and memory cost than full attention; support causal masking, batching, variable sequence lengths, differentiable training, graceful long-context degradation, and explicit time/memory complexity analysis.
 - **Adaptive State Layer:** maintain a compact learned state across layers and distant sequence positions; selectively update persistent information, distinguish transient token features from durable state, and exchange information with local token representations without creating an unstable recurrent bottleneck.
+- **Relational Structure Layer (RSL):** learn explicit, typed relationships among token- and state-level latent features, such as entity–attribute, event–participant, cause–effect, temporal, and hierarchical links. It must build and update a compact relation representation rather than simply applying another dense attention operation. It should preserve direction, relation type, confidence, and provenance so later layers can use structured associations without confusing correlation with causation.
+- **Hierarchical Temporal Abstraction Layer (HTAL):** learn multi-scale temporal abstractions by grouping contiguous or semantically related sequence regions into progressively higher-level latent summaries. It should preserve fine-grained token access while exposing learned phrase-, event-, and segment-level representations to deeper layers. Unlike SKV, which provides a secondary historical KV memory tier, HTAL must learn hierarchical segment boundaries and abstraction features as part of the forward representation.
 
-Define each layer mathematically, including tensor shapes, initialization, normalization, gradient flow, and ablations. The two layers must have distinct, complementary responsibilities.
+Define all four layers mathematically, including tensor shapes, initialization, normalization, gradient flow, state/memory bounds, and ablations. The four layers must have distinct, complementary responsibilities: efficient distant-context access, persistent adaptive state, structured relational binding, and hierarchical temporal abstraction. Do not implement the new layers as renamed attention/MLP blocks or duplicate SKV, HGDP, IRP, or SCL.
 
 ### 2. V3 block and scaling
 Design and justify a complete block using the custom layers, residual/gating, normalization, positional information, and feed-forward processing. Add MoE, sparse routing, low-rank projections, or parameter sharing only where experiments justify them. Use one configuration system across tiny/edge through large models. Expose parameter count, dimensions, depth, context, state/cache sizes, precision, vocabulary, optional experts, and estimated RAM/VRAM. Support partial CPU/GPU placement; never assume the full model fits in VRAM.
@@ -1526,6 +1528,72 @@ Design constraints:
 - Report correction magnitude, gate values, residual norm, calibration loss, parameter overhead, latency, and memory overhead. If correction magnitude grows beyond configured bounds or validation quality degrades, stop or roll back calibration rather than allowing runaway compensation.
 
 Evaluate SCL in at least four settings: standalone with SCL disabled (control), stacked with no correction, stacked with SCL enabled and calibrated, and stacked with an intentionally mismatched interface to verify that incompatibility is rejected or safely handled. Include distribution-shift tests and ensure SCL does not merely memorize calibration examples. Measure downstream task quality, calibration/generalization, numerical stability, parameter/compute overhead, latency, and memory.
+
+#### 6.11 Trainable Relational Structure Layer (RSL)
+
+Add a second new original trainable layer: the **Relational Structure Layer (RSL)**. Its job is to learn explicit structured relationships between latent representations, rather than relying only on implicit similarity in attention weights. It should help the model represent who/what is related to what, how events connect, and which relationships are directional, typed, uncertain, or hierarchical.
+
+Design a compact, differentiable relation representation. A relation record or slot should encode at minimum:
+- A source representation/slot and a target representation/slot.
+- A learned relation type or relation embedding.
+- Directionality and a confidence/strength estimate.
+- Optional temporal/order metadata and a provenance pointer to the sequence span or latent state that supplied the evidence.
+
+The layer must learn to propose, score, update, merge, and prune relation candidates under a bounded compute and memory budget. Relation proposals must be grounded in available causal context; no future-token leakage is permitted. Support soft/differentiable relation assignment during training and a compatible bounded representation at inference. Avoid requiring a discrete graph-construction step that blocks gradients.
+
+Specify the trainable components and exact equations for candidate generation, relation scoring, typed message passing or relation-conditioned feature updates, confidence calibration, pruning, and output fusion. The layer should distinguish relation types such as entity–attribute, event–participant, temporal order, spatial relation, part–whole, and candidate causal relation, while allowing learned task-specific relation types. Causal relations must be treated as hypotheses unless supported by training evidence; do not encode mere co-occurrence as proven causation.
+
+Integration requirements:
+- Define how RSL consumes token features, HTAL segment features, Adaptive State Layer state, and optional IRP summaries, and how it returns updated token/segment features plus a bounded relation state.
+- Permit per-layer placement and configurable relation-slot counts, dimensions, update frequency, and memory budgets.
+- Preserve token-level grounding and allow downstream layers to inspect supporting spans; do not replace the sequence representation with an opaque graph.
+- Ensure relation state is isolated by sample, batch item, sequence, and inference session; define reset, reorder, chunk carry, and checkpoint behavior.
+- Use stable normalization, bounded updates, conservative initialization, and gradient clipping/regularization where justified. Monitor relation confidence calibration, slot utilization, duplicate relations, relation collapse, and gradient health.
+- Provide an ablation switch and a no-RSL path with unchanged behavior.
+
+Evaluate RSL on held-out relation extraction, entity/attribute binding, event-role binding, temporal ordering, multi-hop association, and controlled causal-reasoning tasks. Compare it against attention-only baselines and parameter/compute-matched alternatives. Measure relation accuracy/calibration, language-model loss/perplexity, long-context retrieval, latency, memory, and generalization to unseen relation combinations. Do not claim structured reasoning merely because relation slots are populated.
+
+#### 6.12 Trainable Hierarchical Temporal Abstraction Layer (HTAL)
+
+Add a third new original trainable layer: the **Hierarchical Temporal Abstraction Layer (HTAL)**. Its purpose is to learn multiple levels of sequence abstraction: local token/phrase patterns, medium-range events or clauses, and longer-range segments or discourse units. It must learn useful boundaries and summaries from training signals rather than relying only on fixed-size pooling or hand-authored segmentation rules.
+
+Design a differentiable hierarchy that:
+- Produces a bounded set of segment/level representations from token features.
+- Learns soft boundary/assignment scores and combines them into phrase-, event-, and segment-level summaries.
+- Preserves ordering, span coverage, and links from each abstraction back to its supporting token range.
+- Allows deeper layers to query both fine-grained token features and coarser abstractions.
+- Supports incremental/chunked processing, including how incomplete segments are carried forward and finalized without changing previously emitted tokens.
+- Handles padding, variable lengths, packed batches, and short sequences without creating empty or invalid segments.
+
+Specify the trainable boundary predictor, assignment/aggregation mechanism, level-to-level composition, positional/temporal encoding, normalization, and gradient path. Define how abstraction count and compute scale with sequence length and model size. Bound the number of active segments and retained token references; do not keep unbounded copies of activations. If hard boundaries are used for inference efficiency, provide a differentiable training estimator and measure the train/inference mismatch.
+
+Keep HTAL conceptually distinct from existing mechanisms: it is not another KV cache, not the SKV secondary memory tier, not an HGDP recurrent state, and not simply an attention pooling head. Its learned hierarchy must expose interpretable span membership and support both coarse-to-fine and fine-to-coarse information flow. It must not discard token detail needed for exact next-token prediction.
+
+Integration requirements:
+- Define the interface with Efficient Context Layer, Adaptive State Layer, RSL, heterogeneous attention, SKV, HGDP, and IRP.
+- Allow HTAL to be enabled in selected layers and to vary hierarchy depth/segment budgets by model configuration.
+- Keep segment representations causal: a segment summary may only include tokens already observed at the current prediction position.
+- Ensure full-sequence training and incremental/chunked inference produce equivalent outputs within documented tolerances.
+- Support state reset, sequence reorder, save/restore, gradient checkpointing, and mixed precision.
+- Add stability diagnostics for boundary entropy, segment-size distribution, hierarchy collapse, over-fragmentation, coverage, and gradient norms.
+- Include an explicit identity/disabled path for ablations and small hardware profiles.
+
+Evaluate HTAL on next-token loss, phrase/event boundary quality where labels or defensible proxies exist, long-context retrieval, temporal ordering, document/discourse tasks, and chunked streaming consistency. Compare learned hierarchy against fixed pooling and attention-only baselines at matched parameter/compute budgets. Report quality, throughput, latency, memory, and boundary/segment diagnostics; do not assume more hierarchy levels are always better.
+
+#### 6.13 Four-layer integration and acceptance gate
+
+Treat Efficient Context, Adaptive State, RSL, and HTAL as four original trainable architectural layers with distinct mathematical roles. Define a common layer contract, initialization and normalization conventions, state ownership, residual interface, masking semantics, and configuration schema. They may be placed in different parts of a block or repeated selectively, but avoid blindly stacking all four in every block.
+
+Add tests for:
+- RSL relation direction/type/confidence, causal masking, span provenance, relation-state isolation, bounded slot count, and gradient flow.
+- HTAL learned boundaries/assignments, hierarchy coverage, causal summaries, padding/variable-length behavior, bounded segment count, and gradient flow.
+- Full-sequence versus incremental/chunked equivalence for both layers.
+- Checkpoint round trips, reset/reorder, mixed precision, and CPU reference execution.
+- Independent ablations and combined RSL+HTAL interaction tests.
+- Parameter, activation-memory, state-memory, and compute accounting for each layer.
+- Regression tests showing that disabling either new layer restores the corresponding baseline path.
+
+Do not mark either layer complete because its module can instantiate. Require measurable held-out improvements or a clearly documented trade-off, reproducible ablations, and evidence that each contributes something not already supplied by attention, SKV, HGDP, IRP, or SCL.
 
 #### 6.10 Deep-stack and relation-development acceptance tests
 
