@@ -158,9 +158,21 @@ results. A benchmark that does not meet one reports it as unmet.
 A 27B or 32B quantised model does **not** fit entirely in 8 GB of VRAM.
 On that card Strife will place what fits and keep the rest in host
 memory, and it will say so. Today, on the CPU path, a model of that size
-decodes at well under one token per second. The benchmark command
-(`benchmarks/strife_bench.py`) comes with the native kernels, and
-compares against the llama.cpp runner on the same machine and files.
+decodes at well under one token per second.
+
+Measure it with the benchmark:
+
+```bash
+python benchmarks/strife_bench.py model.gguf -p 512 -n 128 -r 3 --json record.json
+python benchmarks/strife_bench.py model.gguf --target 8   # exits 1 when unmet
+```
+
+It reports prefill and decode tokens per second, each the median of the
+repeats in fresh sessions. It runs llama.cpp's `llama-bench` on the same
+file with the same lengths, on the CPU (`-ngl 0`, the placement Strife
+alpha 1 uses), when a llama.cpp build is found. The JSON record names the
+file by SHA-256 and includes the machine, Strife's placement and its
+weight-cache figures. Compare records from one machine only.
 
 ## How it is built
 

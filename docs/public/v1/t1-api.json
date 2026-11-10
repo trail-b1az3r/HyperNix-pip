@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-t1-api",
   "generated_at": "2026-10-07T05:12:17Z",
-  "commit": "d3d6a638a164ed5bba75a8575a3b324e1e9a547c",
+  "commit": "7ea12404e5f66e4c4afaec8eecb684daa112c6be",
   "history_available": true,
   "server_extra": "pip install 'hypernix[t1api]'",
   "client_install": "pip install hypernix",
@@ -12615,6 +12615,18 @@
       ],
       "changes": [
         {
+          "sha": "7ea12404",
+          "date": "2026-11-10",
+          "author": "Claude",
+          "subject": "0.73.0.dev2: your own Strife build as a T1 runner; V3 serving; docs",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _strife_builds() -> list[dict]:"
+            }
+          ]
+        },
+        {
           "sha": "d2a47609",
           "date": "2026-10-28",
           "author": "Claude",
@@ -12680,42 +12692,6 @@
           "author": "Claude",
           "subject": "Model sync: mirror ~/.hypernix/models into ~/.hypernix/t1api/models",
           "api_changes": []
-        },
-        {
-          "sha": "bf44cc7e",
-          "date": "2026-09-27",
-          "author": "Claude",
-          "subject": "HyperLink: move LM Studio's model onto the HyperNix runner",
-          "api_changes": [
-            {
-              "kind": "added",
-              "text": "def _may_adopt(principal: HyperLinkPrincipal, request: Request) -> tuple[bool, str]:"
-            },
-            {
-              "kind": "added",
-              "text": "def _lmstudio(config: T1APIConfig):"
-            },
-            {
-              "kind": "added",
-              "text": "def _lmstudio_loaded(bridge) -> list[str]:"
-            },
-            {
-              "kind": "added",
-              "text": "@router.get(\"/adopt\")"
-            },
-            {
-              "kind": "added",
-              "text": "def runner_adopt_preview("
-            },
-            {
-              "kind": "added",
-              "text": "@router.post(\"/adopt\", response_model=RunnerStatusResponse)"
-            },
-            {
-              "kind": "added",
-              "text": "def runner_adopt("
-            }
-          ]
         }
       ]
     },
@@ -15619,6 +15595,13 @@
       ],
       "changes": [
         {
+          "sha": "7ea12404",
+          "date": "2026-11-10",
+          "author": "Claude",
+          "subject": "0.73.0.dev2: your own Strife build as a T1 runner; V3 serving; docs",
+          "api_changes": []
+        },
+        {
           "sha": "69b14ca9",
           "date": "2026-11-04",
           "author": "Claude",
@@ -15713,18 +15696,6 @@
             {
               "kind": "added",
               "text": "class HyperLinkPingResponse(BaseModel):"
-            }
-          ]
-        },
-        {
-          "sha": "cad7e52e",
-          "date": "2026-10-14",
-          "author": "t",
-          "subject": "HyperLink: every loaded model listed, and a chat picks which answers",
-          "api_changes": [
-            {
-              "kind": "added",
-              "text": "class LoadedModelsResponse(BaseModel):"
             }
           ]
         }

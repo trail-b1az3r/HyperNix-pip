@@ -22,7 +22,7 @@
         "Strife on T1 and in HyperLink: the runner has a strife backend (POST /runner/load {\"backend\": \"strife\"}). hypernix.strife.server speaks the OpenAI API, so HyperLink chats are answered by Strife unchanged.",
         "Your own Strife build as a T1 runner: hnx strife build NAME --source CHECKOUT (or --python INTERPRETER) selftests the build in its own interpreter and registers it (--default makes it the one strife loads use). GET /runner/status lists strife_builds. POST /runner/load\u2026",
         "Relay continuations: a HyperLink answer the model's context cut off (finish reason length) is picked up and continued in a fresh call, up to T1_RELAY_CONTINUATIONS times (default 2). The cut answer joins the history, which the relay condenses if it no longer fits, and the model\u2026",
-        "HyperNix0xV3 (experimental): brew new --preset NAME -E. Its Tidepool attention reads a local window plus summaries of every earlier chunk in one softmax. Its Keel state is a set of memory slots each token reads and each chunk updates. Presets have the same names as V2, plus xl\u2026"
+        "benchmarks/strife_bench.py: prefill and decode tokens per second on one GGUF, the median of fresh-session runs, beside llama.cpp's llama-bench on the same file when a build is found. --target reports a decode speed as met or unmet (exit 1), and --json writes a record naming the\u2026"
       ],
       "changes": [
         {
@@ -66,6 +66,13 @@
           "label": "feature",
           "category": "Added",
           "text": "Relay continuations: a HyperLink answer the model's context cut off (finish reason length) is picked up and continued in a fresh call, up to T1_RELAY_CONTINUATIONS times (default 2). The cut answer joins the history, which the relay condenses if it no longer fits, and the model\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\u2728",
+          "label": "feature",
+          "category": "Added",
+          "text": "benchmarks/strife_bench.py: prefill and decode tokens per second on one GGUF, the median of fresh-session runs, beside llama.cpp's llama-bench on the same file when a build is found. --target reports a decode speed as met or unmet (exit 1), and --json writes a record naming the\u2026",
           "details": []
         },
         {

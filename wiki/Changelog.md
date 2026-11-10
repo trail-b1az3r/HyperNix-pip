@@ -87,6 +87,12 @@ out, not for a server other people depend on.
   history, which the relay condenses if it no longer fits, and the model
   resumes from its last words. Streamed answers continue in the same stream.
 
+✨ **`benchmarks/strife_bench.py`**: prefill and decode tokens per second on
+  one GGUF, the median of fresh-session runs, beside llama.cpp's
+  `llama-bench` on the same file when a build is found. `--target` reports
+  a decode speed as met or unmet (exit 1), and `--json` writes a record
+  naming the file by SHA-256.
+
 ๋࣭⭑ **HyperNix0xV3** (experimental): `brew new --preset NAME -E`. Its Tidepool
   attention reads a local window plus summaries of every earlier chunk in
   one softmax. Its Keel state is a set of memory slots each token reads and

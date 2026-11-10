@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-api-deep",
   "generated_at": "2026-09-20T21:20:57Z",
-  "commit": "d3d6a638a164ed5bba75a8575a3b324e1e9a547c",
+  "commit": "7ea12404e5f66e4c4afaec8eecb684daa112c6be",
   "history_available": true,
   "source_root": "src/hypernix",
   "modules": [
@@ -17,6 +17,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "7ea12404",
+          "date": "2026-11-10",
+          "author": "Claude",
+          "subject": "0.73.0.dev2: your own Strife build as a T1 runner; V3 serving; docs",
+          "api_changes": []
+        },
         {
           "sha": "233cfa72",
           "date": "2026-11-04",
@@ -64,13 +71,6 @@
           "date": "2026-10-22",
           "author": "Claude",
           "subject": "0.72.8a4: changelog, version, and the guides start with hnx-t1 setup",
-          "api_changes": []
-        },
-        {
-          "sha": "c21dc6db",
-          "date": "2026-10-21",
-          "author": "Claude",
-          "subject": "0.72.8a3: T1 v1.1.26.10.2.0, changelog, docs and examples/t1api",
           "api_changes": []
         }
       ]
@@ -13453,6 +13453,13 @@
       "required_modules": [],
       "changes": [
         {
+          "sha": "7ea12404",
+          "date": "2026-11-10",
+          "author": "Claude",
+          "subject": "0.73.0.dev2: your own Strife build as a T1 runner; V3 serving; docs",
+          "api_changes": []
+        },
+        {
           "sha": "12a41302",
           "date": "2026-11-10",
           "author": "Claude",
@@ -13542,18 +13549,6 @@
             {
               "kind": "added",
               "text": "def _load_fork(self, fork: str, model_path: Path, *, model_id: str, gpu_layers: int | None,"
-            }
-          ]
-        },
-        {
-          "sha": "d595eb4a",
-          "date": "2026-10-06",
-          "author": "Claude",
-          "subject": "0.72.7 step 2: images on the HyperNix runner; macOS/Linux CI and first Windows fixes",
-          "api_changes": [
-            {
-              "kind": "added",
-              "text": "def supports_images(self) -> bool:"
             }
           ]
         }
@@ -23327,7 +23322,7 @@
     {
       "module": "hypernix.models.hnx0xv3",
       "source": "src/hypernix/models/hnx0xv3.py",
-      "line_count": 458,
+      "line_count": 459,
       "summary": "hypernix.models.hnx0xv3 \u2014 the HyperNix0xV3 architecture (0.73.0, experimental).",
       "api": [
         {
@@ -23470,31 +23465,31 @@
             {
               "name": "tie_weights",
               "signature": "def tie_weightsself -> None",
-              "line": 457,
+              "line": 458,
               "doc": ""
             },
             {
               "name": "forward",
               "signature": "def forwardself, input_ids: torch.Tensor, attn_mask: torch.Tensor | None=None -> torch.Tensor",
-              "line": 461,
+              "line": 462,
               "doc": ""
             },
             {
               "name": "aux_loss",
               "signature": "def aux_lossself -> torch.Tensor",
-              "line": 471,
+              "line": 472,
               "doc": ""
             },
             {
               "name": "num_params",
               "signature": "def num_paramsself, trainable_only: bool=False -> int",
-              "line": 475,
+              "line": 476,
               "doc": ""
             },
             {
               "name": "generate",
               "signature": "def generateself, input_ids: torch.Tensor, max_new_tokens: int=64, temperature: float=0.0 -> torch.Tensor",
-              "line": 485,
+              "line": 486,
               "doc": "Greedy or sampled continuation (recomputes; caching comes with Strife support)."
             }
           ]
@@ -23503,7 +23498,7 @@
           "kind": "function",
           "name": "preset",
           "signature": "def presetname: str -> HyperNix0xV3Config",
-          "line": 529,
+          "line": 530,
           "doc": ""
         }
       ],
@@ -23519,6 +23514,13 @@
         }
       ],
       "changes": [
+        {
+          "sha": "7ea12404",
+          "date": "2026-11-10",
+          "author": "Claude",
+          "subject": "0.73.0.dev2: your own Strife build as a T1 runner; V3 serving; docs",
+          "api_changes": []
+        },
         {
           "sha": "d3d6a638",
           "date": "2026-11-10",
@@ -38607,7 +38609,7 @@
     {
       "module": "hypernix.runtime.relay",
       "source": "src/hypernix/runtime/relay.py",
-      "line_count": 910,
+      "line_count": 912,
       "summary": "Read prompts longer than a model's context, with small-context instances in series.",
       "api": [
         {
@@ -38796,6 +38798,13 @@
       "required_modules": [],
       "changes": [
         {
+          "sha": "7ea12404",
+          "date": "2026-11-10",
+          "author": "Claude",
+          "subject": "0.73.0.dev2: your own Strife build as a T1 runner; V3 serving; docs",
+          "api_changes": []
+        },
+        {
           "sha": "d3d6a638",
           "date": "2026-11-10",
           "author": "Claude",
@@ -38905,13 +38914,6 @@
           "date": "2026-11-06",
           "author": "Rayla",
           "subject": "fix: budget vision attachments in relay chat planning",
-          "api_changes": []
-        },
-        {
-          "sha": "72982825",
-          "date": "2026-11-06",
-          "author": "Rayla",
-          "subject": "fix: handle system prompts when folding relay digests",
           "api_changes": []
         }
       ]
@@ -43245,7 +43247,80 @@
       ],
       "deprecations": [],
       "required_modules": [],
-      "changes": []
+      "changes": [
+        {
+          "sha": "7ea12404",
+          "date": "2026-11-10",
+          "author": "Claude",
+          "subject": "0.73.0.dev2: your own Strife build as a T1 runner; V3 serving; docs",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class StrifeBuild:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_dict(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def public(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def registry_path() -> Path:"
+            },
+            {
+              "kind": "added",
+              "text": "def _check_owner(path: Path) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _read() -> list[StrifeBuild]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _write(builds: list[StrifeBuild]) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def list_builds() -> list[StrifeBuild]:"
+            },
+            {
+              "kind": "added",
+              "text": "def get_build(name: str) -> StrifeBuild | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def default_build() -> StrifeBuild | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def launch_env(build: StrifeBuild | None, base: dict[str, str] | None = None) -> dict[str, str]:"
+            },
+            {
+              "kind": "added",
+              "text": "def launch_argv(build: StrifeBuild | None) -> list[str]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _source_root(source: Path) -> Path:"
+            },
+            {
+              "kind": "added",
+              "text": "def _selftest(build: StrifeBuild) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def register(name: str, *, source: str | Path | None = None, python: str | None = None,"
+            },
+            {
+              "kind": "added",
+              "text": "def remove(name: str) -> bool:"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.strife.cli",
@@ -43314,6 +43389,18 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "7ea12404",
+          "date": "2026-11-10",
+          "author": "Claude",
+          "subject": "0.73.0.dev2: your own Strife build as a T1 runner; V3 serving; docs",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def cmd_build(args: argparse.Namespace) -> int:"
+            }
+          ]
+        },
         {
           "sha": "b60eba7c",
           "date": "2026-11-10",
@@ -44583,6 +44670,18 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "7ea12404",
+          "date": "2026-11-10",
+          "author": "Claude",
+          "subject": "0.73.0.dev2: your own Strife build as a T1 runner; V3 serving; docs",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _selftest() -> int:"
+            }
+          ]
+        },
         {
           "sha": "b60eba7c",
           "date": "2026-11-10",
@@ -64427,6 +64526,18 @@
       ],
       "changes": [
         {
+          "sha": "7ea12404",
+          "date": "2026-11-10",
+          "author": "Claude",
+          "subject": "0.73.0.dev2: your own Strife build as a T1 runner; V3 serving; docs",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _strife_builds() -> list[dict]:"
+            }
+          ]
+        },
+        {
           "sha": "d2a47609",
           "date": "2026-10-28",
           "author": "Claude",
@@ -64492,42 +64603,6 @@
           "author": "Claude",
           "subject": "Model sync: mirror ~/.hypernix/models into ~/.hypernix/t1api/models",
           "api_changes": []
-        },
-        {
-          "sha": "bf44cc7e",
-          "date": "2026-09-27",
-          "author": "Claude",
-          "subject": "HyperLink: move LM Studio's model onto the HyperNix runner",
-          "api_changes": [
-            {
-              "kind": "added",
-              "text": "def _may_adopt(principal: HyperLinkPrincipal, request: Request) -> tuple[bool, str]:"
-            },
-            {
-              "kind": "added",
-              "text": "def _lmstudio(config: T1APIConfig):"
-            },
-            {
-              "kind": "added",
-              "text": "def _lmstudio_loaded(bridge) -> list[str]:"
-            },
-            {
-              "kind": "added",
-              "text": "@router.get(\"/adopt\")"
-            },
-            {
-              "kind": "added",
-              "text": "def runner_adopt_preview("
-            },
-            {
-              "kind": "added",
-              "text": "@router.post(\"/adopt\", response_model=RunnerStatusResponse)"
-            },
-            {
-              "kind": "added",
-              "text": "def runner_adopt("
-            }
-          ]
         }
       ]
     },
@@ -67419,6 +67494,13 @@
       ],
       "changes": [
         {
+          "sha": "7ea12404",
+          "date": "2026-11-10",
+          "author": "Claude",
+          "subject": "0.73.0.dev2: your own Strife build as a T1 runner; V3 serving; docs",
+          "api_changes": []
+        },
+        {
           "sha": "69b14ca9",
           "date": "2026-11-04",
           "author": "Claude",
@@ -67513,18 +67595,6 @@
             {
               "kind": "added",
               "text": "class HyperLinkPingResponse(BaseModel):"
-            }
-          ]
-        },
-        {
-          "sha": "cad7e52e",
-          "date": "2026-10-14",
-          "author": "t",
-          "subject": "HyperLink: every loaded model listed, and a chat picks which answers",
-          "api_changes": [
-            {
-              "kind": "added",
-              "text": "class LoadedModelsResponse(BaseModel):"
             }
           ]
         }
