@@ -446,11 +446,12 @@ class HyperNix0xV3Model(nn.Module):
             elif isinstance(module, nn.Embedding):
                 nn.init.normal_(module.weight, 0.0, std)
         scale = (2 * self.cfg.n_layers) ** -0.5
-        for block in self.blocks:
+        for block_module in self.blocks:
+            block: Any = block_module
             nn.init.normal_(block.tidepool.o_proj.weight, 0.0, std * scale)
             nn.init.normal_(block.keel.read_o.weight, 0.0, std * scale)
             nn.init.constant_(block.keel.gate.bias, 2.0)
-            ffns = block.ffn.experts if isinstance(block.ffn, _MoE) else [block.ffn]
+            ffns: list[Any] = list(block.ffn.experts) if isinstance(block.ffn, _MoE) else [block.ffn]
             for ffn in ffns:
                 nn.init.normal_(ffn.down_proj.weight, 0.0, std * scale)
 

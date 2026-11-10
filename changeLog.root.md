@@ -1,6 +1,16 @@
 ### non web and non python package and non hyperlink changelog here (mainly for security issues and breaking changes)
 ### empty as of public release of 0.72.7.post1
 
+## 0.73.0.dev2
+
+<details>
+<summary>0.73.0.dev2 — pre-alpha 2: security</summary>
+
+- **Security:** Strife chat templates refuse underscore attributes however they are spelled.
+- **Security:** the Strife build registry (`~/.hypernix/strife/builds.json`) is written owner-only and refused if others can write it. The T1 API selects builds by registered name only.
+
+</details>
+
 ## 0.73.0.dev1
 
 <details>

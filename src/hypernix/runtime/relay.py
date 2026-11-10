@@ -656,7 +656,9 @@ class Relay:
         A continuation (see :meth:`run_messages`) streams on as more of the
         same answer, with a joining space when the two halves need one.
         """
-        state = {"tail": "", "join": False, "calls": 0}
+        tail = [""]          # the last characters sent, to decide on a joining space
+        join = [False]       # the next text is the start of a continuation
+        calls = [0]
 
         def track(chunk: dict[str, Any]) -> None:
             for choice in chunk.get("choices") or []:
@@ -664,16 +666,16 @@ class Relay:
                 text = delta.get("content") if isinstance(delta, dict) else None
                 if not isinstance(text, str) or not text:
                     continue
-                if state["join"]:
-                    state["join"] = False
-                    if self._needs_space(str(state["tail"]), text):
+                if join[0]:
+                    join[0] = False
+                    if self._needs_space(tail[0], text):
                         delta["content"] = text = " " + text
-                state["tail"] = (str(state["tail"]) + text)[-8:]
+                tail[0] = (tail[0] + text)[-8:]
             on_chunk(chunk)
 
         def once(msgs: Sequence[dict[str, Any]]) -> RelayResult:
-            state["join"] = state["calls"] > 0  # a continuation: join it to what went before
-            state["calls"] = int(state["calls"]) + 1
+            join[0] = calls[0] > 0  # a continuation: join it to what went before
+            calls[0] += 1
             return self._stream_messages_once(msgs, stream_call=stream_call, on_chunk=track,
                                               cancelled=cancelled)
 

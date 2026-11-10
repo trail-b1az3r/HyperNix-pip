@@ -35,24 +35,65 @@ Historical wording and technical detail are retained during format normalization
 
 > Format normalized to `wiki/Changelog-guide.md`; release wording and historical detail are preserved.
 
-## Unreleased
+## 0.73.0.dev2 — 2026-11-10
+
+Pre-alpha 2. Strife runs four new architectures and is a T1 runner, a
+user's own Strife build can serve, HyperLink's relay picks up answers the
+context cut off, and HyperNix0xV3 arrives behind `brew new -E`. The fixes
+from the `create` branch are merged in. A pre-alpha is for trying things
+out, not for a server other people depend on.
 
 ### Added
 
-✨ **Strife** (in progress for 0.73.0 alpha 1): HyperNix's own GGUF inference
+๋࣭⭑ **Strife** (in progress for 0.73.0 alpha 1): HyperNix's own GGUF inference
   runtime, `hnx strife` and `hypernix.strife`. It reads the GGUF and runs
   the model itself: no llama.cpp process, no T1 key, no network.
   - llama, mistral, qwen2 and qwen3;
+  - **Qwen3.5** (dense and MoE): gated DeltaNet layers between gated
+    attention;
+  - **LFM3**: short convolutions, sliding-window and full attention;
+  - **GLM-4.5**: sigmoid-routed experts with a shared expert, dense leading
+    layers;
   - every llama.cpp K-quant and legacy type, and every HyperNix sub-bit and
     low-bit type;
   - the GGUF's own tokenizer (BPE or SentencePiece) and chat template,
     sandboxed;
-  - sessions that reuse their prefix, streaming, stop strings, cancellation,
-    timeouts, and bounded queues and caches.
+  - sessions that reuse their prefix, with checkpoints for recurrent state,
+    streaming, stop strings, cancellation, timeouts, and bounded queues and
+    caches.
 
   `inspect` checks a file before loading anything. `diag` reports hardware
   and placement. Alpha 1 computes on the CPU with numpy; GPU offload, native
   kernels and the benchmark are next. See `wiki/Strife.md`.
+
+✨ **`hnx strife chat MODEL_ID`**: a terminal screen with saved chats, a
+  context meter, a text area and the mouse. `--plain` is the line-by-line
+  chat.
+
+✨ **Strife on T1 and in HyperLink**: the runner has a `strife` backend
+  (`POST /runner/load {"backend": "strife"}`). `hypernix.strife.server`
+  speaks the OpenAI API, so HyperLink chats are answered by Strife unchanged.
+
+✨ **Your own Strife build as a T1 runner**: `hnx strife build NAME --source
+  CHECKOUT` (or `--python INTERPRETER`) selftests the build in its own
+  interpreter and registers it (`--default` makes it the one `strife` loads
+  use). `GET /runner/status` lists `strife_builds`.
+  `POST /runner/load {"backend": "strife", "strife_build": NAME}` serves with
+  that build. The API accepts registered names only, never a path.
+
+✨ **Relay continuations**: a HyperLink answer the model's context cut off
+  (finish reason `length`) is picked up and continued in a fresh call, up to
+  `T1_RELAY_CONTINUATIONS` times (default 2). The cut answer joins the
+  history, which the relay condenses if it no longer fits, and the model
+  resumes from its last words. Streamed answers continue in the same stream.
+
+๋࣭⭑ **HyperNix0xV3** (experimental): `brew new --preset NAME -E`. Its Tidepool
+  attention reads a local window plus summaries of every earlier chunk in
+  one softmax. Its Keel state is a set of memory slots each token reads and
+  each chunk updates. Presets have the same names as V2, plus `xl`, a
+  mixture of experts. Without `-E`, `brew new` still builds HyperNix0xV2.
+  Brewer trains, saves, reloads and exports V3 (`.pt`). The runner, NeoOven
+  and the HyperLink catalogue serve it in PyTorch.
 
 ### Security
 
@@ -61,15 +102,34 @@ Historical wording and technical detail are retained during format normalization
   `read()` try to allocate 16 GB; it is now refused as truncated. Every user
   of `hypernix.quant.gguf` benefits.
 
+🔒 Strife chat templates: an attribute starting with `_` is refused however a
+  template spells it (`.__class__`, `|attr('__class__')`, `['__' ~ 'class__']`),
+  not only as a literal.
+
+🔒 The Strife build registry names programs to run, so it is written
+  owner-only and refused if anyone else can write it.
+
+### Fixed
+
+🐛 A refusal from the runner named LM Studio ("LM Studio returned HTTP ...").
+  It now names the HyperNix runner.
+
+🐛 `get_origin` no longer fails on an app without a T1 config.
+
+### Known Issues
+
+❗ HyperNix0xV3 has no GGUF form: llama.cpp does not know its layers.
+  `brew export --format gguf` refuses it with that reason.
+
 ### Tests
 
-🧪 `tests/strife/test_strife.py` (66 tests):
-  - logits against `transformers` for every architecture and every
-    supported quant type;
-  - the BPE tokenizer against the `tokenizers` library;
-  - hostile and damaged files;
-  - streaming, stops, cancellation, timeouts, session isolation and bounds;
-  - placement and the CLI.
+🧪 Strife: logits against `transformers` for every architecture (Qwen3.5,
+  Qwen3.5-MoE and GLM-4.5 within 6e-6; LFM3 against an independent
+  reference). Also the BPE tokenizer against the `tokenizers` library,
+  hostile and damaged files, sessions, the chat screen in a real terminal,
+  and T1 → Strife → HyperLink end to end. `tests/strife/test_strife_builds.py`
+  covers user builds, `tests/models/test_hnx0xv3.py` covers V3, and
+  `tests/runtime/test_relay.py` covers continuations.
 
 ## 0.73.0.dev1 — 2026-11-04
 

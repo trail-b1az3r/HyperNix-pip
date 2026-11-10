@@ -39,6 +39,38 @@ a stable code (`strife.<area>.<reason>`) and a remedy.
 | `--stop` | A stop string, repeatable. The text is cut before it. |
 | `--timeout` | Seconds before the request stops with `timeout`. |
 
+## Your own build as a T1 runner
+
+A Strife you built yourself can serve for T1. It might be a checkout with
+your changes, or HyperNix installed in another interpreter. Register it
+once:
+
+```bash
+hnx strife build mine --source ~/src/HyperNix-pip          # a checkout (its src/ is used)
+hnx strife build fast --python ~/venvs/strife/bin/python   # an interpreter with HyperNix
+hnx strife build mine --source ~/src/HyperNix-pip --default   # what strife loads use by default
+hnx strife build --list
+hnx strife build --remove fast
+```
+
+Registering runs the build's own selftest in its own interpreter: a
+generated model through load, prefill and decode. Only a build that passes
+is recorded, in `~/.hypernix/strife/builds.json` (`HYPERNIX_HOME` moves it).
+The file is owner-only, and Strife refuses it if anyone else can write it.
+
+On T1, `GET /runner/status` lists `strife_builds`, and a load picks one by
+name:
+
+```json
+POST /runner/load
+{"model_id": "qwen3.5-2b", "backend": "strife", "strife_build": "mine"}
+```
+
+The API takes registered names only, never a path. `"builtin"` is the
+Strife in the installed package. Without `strife_build`, the default build
+is used (`--default`, or `HNX_STRIFE_BUILD=NAME` on the server). The
+placement reason says which build is serving.
+
 ## Python
 
 ```python

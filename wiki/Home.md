@@ -21,6 +21,7 @@ reachable if you already knew the filename. Fixed.)
 | [ggml-hnx](../native/ggml-hnx/README.md) | Building a llama.cpp that reads every HyperNix type (sub-bit, codebook, FP8) and runs Q8_K weights. |
 | [Runtime](Runtime.md) | `hypernix runtime` — using that llama.cpp from LM Studio and other applications. |
 | [Strife](Strife.md) | HyperNix's own GGUF inference runtime (`hnx strife`): inspection, tokenizer, CPU forward pass, sessions and streaming, the capability matrix and what is not there yet. 0.73.0 alpha 1, in progress. |
+| [HyperNix0xV3](HyperNix0xV3.md) | The experimental architecture after hyperNix0x-v2: Tidepool attention, Keel state, presets up to the `xl` mixture of experts. `brew new -E`. |
 | [llama-easy](Llama-Easy.md) | Make any Llama model faster in one line: the Hugging Face Hub kernel (Triton RMSNorm, RoPE, SwiGLU), its three ways in, and how it auto-publishes. |
 | [Context relay](Context-Relay.md) | Prompts longer than a model's context, read in hops by several small-context instances — in Python and as `POST /inference/relay`, with its cost. |
 | [Browser Agent](Browser-Agent.md) | The Firefox extension: a model on T1, your machine, OpenAI or Anthropic searches, reads, clicks and types in your browser, asking first. |
@@ -140,7 +141,7 @@ reachable if you already knew the filename. Fixed.)
 
 | Guide | Covers |
 |---|---|
-| [T1-API](T1-API.md) | `hypernix.t1api` — controlled HTTP gateway into HyperNix-pip (model registry, auth, routing, modules, servers, jobs, events, billing, the LM Studio bridge, HyperLink and HyperLink on the web, web accounts, MCP both ways, Net, the Anthropic Messages API for Claude Code, backups, governed inference), every route and every setting. Current: **T1 v1.2.26.11.0.0** in 0.73.0.dev1. |
+| [T1-API](T1-API.md) | `hypernix.t1api` — controlled HTTP gateway into HyperNix-pip (model registry, auth, routing, modules, servers, jobs, events, billing, the LM Studio bridge, HyperLink and HyperLink on the web, web accounts, MCP both ways, Net, the Anthropic Messages API for Claude Code, backups, governed inference), every route and every setting. Current: **T1 v1.2.26.11.0.0** in 0.73.0.dev2. |
 | [T1-API Security Checklist](T1-API-Security-Checklist.md) | What to check before exposing a deployment — one page, per-item, with the config field each maps to, including every opt-in feature and keeping the server current. |
 | [HyperLink-OnDevice](HyperLink-OnDevice.md) | HyperLink's on-phone models: search Hugging Face, download a GGUF and run it on the iPhone. |
 | [HyperLink-Sync](HyperLink-Sync.md) | HyperLink's sync, push notifications and search — how a phone that sleeps catches up. |

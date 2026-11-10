@@ -1,11 +1,11 @@
 {
   "definition": "non-blank source lines across repository code roots: src, scripts, tests, examples, bin, native, docs/src",
-  "total_lines": 256006,
-  "code_files": 865,
+  "total_lines": 263901,
+  "code_files": 890,
   "top_files": [
     {
       "path": "src/hypernix/t1api/routers/hyperlink.py",
-      "lines": 2819
+      "lines": 3271
     },
     {
       "path": "src/hypernix/waiter/cli.py",
@@ -21,7 +21,7 @@
     },
     {
       "path": "src/hypernix/t1api/schemas.py",
-      "lines": 1849
+      "lines": 1855
     },
     {
       "path": "src/hypernix/hyped_pro.ts",
@@ -29,7 +29,7 @@
     },
     {
       "path": "src/hypernix/interfaces/cli.py",
-      "lines": 1704
+      "lines": 1709
     },
     {
       "path": "src/hypernix/models/neo_oven.py",
@@ -57,7 +57,7 @@
     },
     {
       "path": "src/hypernix/training/brewer.py",
-      "lines": 1247
+      "lines": 1304
     },
     {
       "path": "src/hypernix/system/fusebox.py",
@@ -78,6 +78,10 @@
     {
       "path": "src/hypernix/interfaces/hyped_pro_app/src/app.ts",
       "lines": 1079
+    },
+    {
+      "path": "src/hypernix/hyperlink/managed.py",
+      "lines": 1065
     },
     {
       "path": "tests/ios/test_hyperlink_ios_wiring.py",
@@ -116,10 +120,6 @@
       "lines": 963
     },
     {
-      "path": "src/hypernix/hyperlink/managed.py",
-      "lines": 959
-    },
-    {
       "path": "src/hypernix/training/train.py",
       "lines": 957
     }
@@ -127,12 +127,12 @@
   "contributors": [
     {
       "author": "Claude",
-      "additions": 251141,
-      "deletions": 18865,
-      "net": 232276,
-      "changes": 270006,
-      "commits": 307,
-      "files": 1742
+      "additions": 258780,
+      "deletions": 19238,
+      "net": 239542,
+      "changes": 278018,
+      "commits": 313,
+      "files": 1768
     },
     {
       "author": "Ray0ffire",
@@ -145,12 +145,12 @@
     },
     {
       "author": "minerofthesoal",
-      "additions": 28557,
+      "additions": 28558,
       "deletions": 10843,
-      "net": 17714,
-      "changes": 39400,
-      "commits": 25,
-      "files": 138
+      "net": 17715,
+      "changes": 39401,
+      "commits": 26,
+      "files": 139
     },
     {
       "author": "t",
@@ -172,12 +172,12 @@
     },
     {
       "author": "Rayla",
-      "additions": 1220,
-      "deletions": 1035,
-      "net": 185,
-      "changes": 2255,
-      "commits": 32,
-      "files": 14
+      "additions": 2783,
+      "deletions": 1247,
+      "net": 1536,
+      "changes": 4030,
+      "commits": 92,
+      "files": 36
     },
     {
       "author": "github-actions[bot]",
@@ -199,6 +199,6 @@
     }
   ],
   "history_available": true,
-  "commit": "e8ffe9d9b27b90985594afd485f0902bf05a0aa9",
+  "commit": "d3d6a638a164ed5bba75a8575a3b324e1e9a547c",
   "generated_at": null
 }

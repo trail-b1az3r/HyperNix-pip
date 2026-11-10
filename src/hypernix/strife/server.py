@@ -35,6 +35,7 @@ import threading
 import time
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 from typing import Any
 
 from .engine import Engine
@@ -248,9 +249,39 @@ def _usage(stats: dict[str, Any]) -> dict[str, int]:
     return {"prompt_tokens": prompt, "completion_tokens": done, "total_tokens": prompt + done}
 
 
+def _selftest() -> int:
+    """Load, prefill and decode a generated model with *this* Strife.
+
+    ``hnx strife build`` runs it in the build's own interpreter, so what it
+    proves is that build: its import path, its kernels, its server module.
+    """
+    import platform
+    import tempfile
+
+    from .. import __version__
+    from .fixtures import make_model
+
+    report: dict[str, Any] = {"ok": False, "version": __version__,
+                              "python": platform.python_version(),
+                              "module": str(Path(__file__).resolve())}
+    try:
+        with tempfile.TemporaryDirectory(prefix="strife-selftest-") as tmp:
+            made = make_model(Path(tmp) / "selftest.gguf", arch="qwen2", seed=11)
+            with Engine(made["path"], n_ctx=64) as engine:
+                result = engine.generate("selftest", max_tokens=4)
+            report.update(ok=len(result.tokens) > 0, tokens=len(result.tokens),
+                          architecture=engine.report.architecture)
+    except Exception as exc:  # noqa: BLE001 - the report is the point
+        report["error"] = f"{type(exc).__name__}: {exc}"
+    print(json.dumps(report), flush=True)
+    return 0 if report["ok"] else 1
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    parser.add_argument("--model", required=True, help="a .gguf file")
+    parser.add_argument("--model", help="a .gguf file")
+    parser.add_argument("--selftest", action="store_true",
+                        help="check this Strife on a generated model, print one JSON line, exit")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8781)
     parser.add_argument("--alias", default="", help="the model id to answer as")
@@ -259,6 +290,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--cache-mb", type=int, default=-1)
     parser.add_argument("--sessions", type=int, default=8, help="conversations kept warm")
     args = parser.parse_args(argv)
+    if args.selftest:
+        return _selftest()
+    if not args.model:
+        parser.error("--model is required")
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     try:
         engine = Engine(args.model, n_ctx=args.ctx or None, threads=args.threads or None,

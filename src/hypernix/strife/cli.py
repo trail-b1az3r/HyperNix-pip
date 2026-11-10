@@ -98,7 +98,58 @@ def _parser() -> argparse.ArgumentParser:
     _common(p)
     p = sub.add_parser("selftest", help="build a tiny model and generate with it")
     _common(p)
+    p = sub.add_parser("build", help="register your own Strife build as a T1 runner",
+                       description="Register a Strife you built -- a HyperNix checkout "
+                       "(--source) or an interpreter with HyperNix installed (--python) -- so "
+                       "the T1 runner can serve with it: POST /runner/load "
+                       '{"backend": "strife", "strife_build": NAME}. The build is selftested '
+                       "in its own interpreter first; nothing is recorded if it fails.")
+    p.add_argument("name", nargs="?", help="what to call it (lower case)")
+    p.add_argument("--source", default=None, help="a HyperNix source checkout")
+    p.add_argument("--python", default=None, help="the interpreter to run it with")
+    p.add_argument("--default", action="store_true",
+                   help="use it whenever a strife load names no build")
+    p.add_argument("--list", action="store_true", help="show the registered builds")
+    p.add_argument("--remove", metavar="NAME", default=None, help="forget a build")
+    _common(p)
     return parser
+
+
+def cmd_build(args: argparse.Namespace) -> int:
+    from . import builds
+
+    if args.remove:
+        gone = builds.remove(args.remove)
+        print(json.dumps({"removed": gone}) if args.json else
+              (f"Removed {args.remove}." if gone else f"No build called {args.remove}."))
+        return 0 if gone else 1
+    if args.list or not args.name:
+        found = builds.list_builds()
+        chosen = builds.default_build()
+        if args.json:
+            print(json.dumps({"builds": [b.public() for b in found],
+                              "default": chosen.name if chosen else builds.BUILTIN}))
+            return 0
+        print(f"  {builds.BUILTIN:<16} the Strife in this package"
+              + ("  (default)" if chosen is None else ""))
+        for b in found:
+            mark = "  (default)" if chosen is not None and chosen.name == b.name else ""
+            print(f"  {b.name:<16} {b.version or '?':<14} {b.source or b.python}{mark}")
+        if not found:
+            print("\nNo builds of your own yet: hnx strife build NAME --source CHECKOUT")
+        return 0
+    print(f"Selftesting {args.name} in its own interpreter...", file=sys.stderr)
+    build = builds.register(args.name, source=args.source, python=args.python,
+                            make_default=args.default)
+    if args.json:
+        print(json.dumps(build.public()))
+    else:
+        print(f"Registered {build.name}: HyperNix {build.version}, "
+              f"selftest {build.selftest.get('tokens', 0)} tokens in "
+              f"{build.selftest.get('seconds', 0)}s.")
+        print(f'  T1: POST /runner/load {{"model_id": ..., "backend": "strife", '
+              f'"strife_build": "{build.name}"}}')
+    return 0
 
 
 def _fail(exc: Exception, as_json: bool) -> int:
@@ -367,7 +418,8 @@ def cli_main(argv: list[str] | None = None) -> int:
     _apply_threads_early(argv)
     args = _parser().parse_args(argv)
     handler = {"inspect": cmd_inspect, "run": cmd_run, "chat": cmd_chat, "diag": cmd_diag,
-               "types": cmd_types, "selftest": cmd_selftest}[args.cmd]
+               "types": cmd_types, "selftest": cmd_selftest,
+               "build": cmd_build}[args.cmd]
     try:
         return handler(args)
     except Exception as exc:  # StrifeError is printed; anything else propagates

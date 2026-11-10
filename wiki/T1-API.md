@@ -6,7 +6,7 @@ server decides what exists, what's available, and how much is left — see
 [Design principle](#design-principle).
 
 **Status: T1 v1.2.26.11.0.0** (long form `1.2.2026.11.0.0`) in
-`0.73.0.dev1` (pre-alpha 1): the 1.2 generation. It is new because
+`0.73.0.dev2` (pre-alpha 1): the 1.2 generation. It is new because
 `/web/v1` was removed (it answers `410` with its `/web/v2` successor),
 and it adds [ATC](#atc-api-traffic-control), with end-to-end encryption.
 Before it came the 1.1 generation, which began with T1 v1.1.26.9.0.0 in
@@ -1845,7 +1845,7 @@ and runs T1 v1.1.26.10.1.0 or newer sends one heartbeat an hour, unless
 `T1_PUBLIC_COUNTER=0`:
 
 ```json
-{"id": "<32 hex>", "t1_version": "1.2.26.11.0.0", "version": "0.73.0.dev1"}
+{"id": "<32 hex>", "t1_version": "1.2.26.11.0.0", "version": "0.73.0.dev2"}
 ```
 
 `id` is a SHA-256 of a random value the server made once and keeps in
@@ -1943,6 +1943,13 @@ context, between 32 and 512 tokens (0.72.8rc1); a fixed 512 made a
 model the runner loads is registered if the registry has no entry for
 it (local, free, sized from the loaded context), so `/inference/chat`
 and the relay can ask it; an operator's entry is left as it is.
+
+HyperLink chats go through the same relay (0.73.0.dev2). A chat that fits
+is sent unchanged; a longer one is condensed role by role. An answer the
+context cuts off (finish reason `length`) is continued in a fresh call:
+the cut answer joins the history (condensed if it no longer fits), and the
+model resumes from its last words, in the same stream when streaming.
+`T1_RELAY_CONTINUATIONS` (default 2, 0 to turn it off) is how many times.
 
 Every gate of `/inference/chat` applies, sized by the largest single
 call. Each hop is metered as it finishes, under the `relay` feature, so
@@ -2371,9 +2378,9 @@ is a key with `write`, or a trusted origin on a server with
 
 | Method | Path | Auth | Notes |
 |---|---|---|---|
-| GET | `/runner/status` | bearer | what is loaded, where its layers are, how long it has been up |
+| GET | `/runner/status` | bearer | what is loaded, where its layers are, how long it has been up; `strife_builds`, the Strife builds registered with `hnx strife build` (0.73.0.dev2) |
 | POST | `/runner/plan` | bearer | where a model's layers would go; changes nothing |
-| POST | `/runner/load` | bearer, **admin, partial admin, or a switch grant** (`T1_RUNNER_SWITCH_PERM`) | load a model, replacing what was running; the default model is downloaded the first time; `cpu_moe` (0, -1 or N) and `kv_on_cpu` keep experts or the KV cache in RAM (0.72.8); a HyperNix release named by id (or `latest`) is downloaded too, and a model the registry does not list is registered (see [the runner in 0.72.8](#the-runner-in-0728)) |
+| POST | `/runner/load` | bearer, **admin, partial admin, or a switch grant** (`T1_RUNNER_SWITCH_PERM`) | load a model, replacing what was running; the default model is downloaded the first time; `cpu_moe` (0, -1 or N) and `kv_on_cpu` keep experts or the KV cache in RAM (0.72.8); a HyperNix release named by id (or `latest`) is downloaded too, and a model the registry does not list is registered (see [the runner in 0.72.8](#the-runner-in-0728)); with `"backend": "strife"`, `strife_build` names a registered Strife build (a name only; see [Strife](Strife.md#your-own-build-as-a-t1-runner)) |
 | POST | `/runner/unload` | as `load` | stop serving; unloading nothing is a success |
 | POST | `/runner/auto` | as `load` | load what this server usually runs: the last model loaded that is still here (`{"prefer": "most"}`: loaded most often), on the backend used most, with that model's last settings; `{"dry_run": true}` names it and loads nothing. With no history, the default model. `hypernix-t1 runner auto` |
 

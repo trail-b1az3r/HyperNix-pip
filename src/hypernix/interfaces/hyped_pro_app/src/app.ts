@@ -38,7 +38,7 @@ import {
 } from "./session.ts"
 import { theme } from "./theme.ts"
 
-export const VERSION = "0.73.0-dev1"
+export const VERSION = "0.73.0-dev2"
 
 const SPINNER = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
 
