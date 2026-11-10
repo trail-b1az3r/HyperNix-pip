@@ -204,4 +204,7 @@ class TestEndToEndOnT1AndHyperLink:
         reply = client.post(f"/hyperlink/sessions/{session}/chat", json={"content": "hello"})
         assert reply.status_code >= 400
         message = reply.json()["error"]["message"]
-        assert "HyperNix runner" in message and "LM Studio" not in message
+        # Either the runner's own refusal, named as the runner, or HyperLink's
+        # relay refusing first because 64 tokens cannot hold the prompt.
+        assert "LM Studio" not in message
+        assert "HyperNix runner" in message or "64-token context" in message

@@ -206,7 +206,8 @@ class TestChatMessages:
         read_calls = calls[:-1]
         assert all(call[0]["content"].startswith("[system]\nUse the conversation") for call in read_calls)
         assert all(call[0]["content"].endswith(relay.READ_PROMPT) for call in read_calls)
-        read_input = read_calls[0][-1]["content"]
+        # Roles survive chunking: each turn is labelled in whichever part it lands.
+        read_input = "\n".join(call[-1]["content"] for call in read_calls)
         assert "USER:\nEarlier user detail." in read_input
         assert "ASSISTANT:\nEarlier assistant response." in read_input
         final_content = calls[-1][-1]["content"]
@@ -315,6 +316,102 @@ class TestStreamingChatMessages:
         assert streamed[0][0]["content"].endswith(relay.ANSWER_PROMPT)
         assert result.answer == "Final answer."
         assert [hop.kind for hop in result.hops][-1] == "answer"
+
+
+class TestContinuations:
+    """An answer the context cut off (finish reason "length") is picked up."""
+
+    @staticmethod
+    def _env(text, finish, tool_calls=None):
+        message = {"role": "assistant", "content": text}
+        if tool_calls:
+            message["tool_calls"] = tool_calls
+        return {"model": "m", "choices": [{"message": message, "finish_reason": finish}]}
+
+    def test_a_cut_answer_is_continued_and_joined(self):
+        calls = []
+        replies = [("The first half", "length"), ("and the second.", "stop")]
+
+        def instance(call_messages, _tokens):
+            calls.append(call_messages)
+            text, finish = replies[len(calls) - 1]
+            return Reply(text, 10, 5, self._env(text, finish))
+
+        result = Relay([instance], context_tokens=4096, continuations=2).run_messages(
+            [{"role": "user", "content": "Tell me everything."}])
+        assert result.answer == "The first half and the second."
+        assert result.continued == 1
+        assert result.finish_reason == "stop"
+        assert result.envelope["choices"][0]["message"]["content"] == result.answer
+        follow = calls[1]
+        assert follow[-2] == {"role": "assistant", "content": "The first half"}
+        assert "The first half" in follow[-1]["content"]  # where to resume
+        assert [h.index for h in result.hops] == [0, 1]
+        assert result.to_dict()["continued"] == 1
+
+    def test_continuations_stop_at_the_limit_and_default_off(self):
+        def instance(_messages, _tokens):
+            return Reply("more", 1, 1, self._env("more", "length"))
+
+        capped = Relay([instance], context_tokens=4096, continuations=2).run_messages(
+            [{"role": "user", "content": "go"}])
+        assert capped.continued == 2 and capped.answer == "more more more"
+        assert capped.finish_reason == "length"
+        off = Relay([instance], context_tokens=4096).run_messages(
+            [{"role": "user", "content": "go"}])
+        assert off.continued == 0 and off.answer == "more"
+
+    def test_tool_calls_and_complete_answers_are_left_alone(self):
+        calls = []
+
+        def tool(_messages, _tokens):
+            calls.append(1)
+            return Reply("", 1, 1, self._env("", "length", tool_calls=[{"id": "x"}]))
+
+        Relay([tool], context_tokens=4096, continuations=3).run_messages(
+            [{"role": "user", "content": "go"}])
+        assert len(calls) == 1
+
+    def test_a_continuation_that_no_longer_fits_is_relayed(self):
+        """The cut answer is history now: past the context, the relay condenses it."""
+        long = "word " * 900
+        kinds = []
+
+        def instance(call_messages, _tokens):
+            system = call_messages[0]["content"] if call_messages[0]["role"] == "system" else ""
+            if system.endswith(relay.READ_PROMPT):
+                kinds.append("read")
+                return Reply("notes", 5, 2)
+            kinds.append("answer")
+            if len(kinds) == 1:
+                return Reply(long, 10, 900, self._env(long, "length"))
+            return Reply("End.", 10, 2, self._env("End.", "stop"))
+
+        result = Relay([instance], context_tokens=1024, notes_tokens=40,
+                       continuations=1).run_messages([{"role": "user", "content": "go"}])
+        assert "read" in kinds
+        assert result.answer.endswith("End.") and result.continued == 1
+
+    def test_streaming_continues_with_a_joining_space(self):
+        rounds = [
+            [{"choices": [{"delta": {"content": "Half"}}]},
+             {"choices": [{"delta": {"content": " way"}, "finish_reason": "length"}]}],
+            [{"choices": [{"delta": {"content": "there."}, "finish_reason": "stop"}]}],
+        ]
+        sent = []
+
+        def stream_call(call_messages, _tokens, _slot):
+            sent.append(call_messages)
+            return iter(rounds[len(sent) - 1])
+
+        received = []
+        result = Relay([lambda _m, _t: Reply("unused")], context_tokens=4096,
+                       continuations=1).stream_messages(
+            [{"role": "user", "content": "go"}], stream_call=stream_call,
+            on_chunk=received.append)
+        text = "".join(c["choices"][0]["delta"]["content"] for c in received)
+        assert text == "Half way there." == result.answer
+        assert result.continued == 1
 
 
 class TestMap:

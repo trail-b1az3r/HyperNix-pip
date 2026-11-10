@@ -349,7 +349,9 @@ def get_origin(request: Request):
     if cached is not None:
         return cached
 
-    config: T1APIConfig = request.app.state.t1_config
+    # An app without a T1 config (a bare Starlette app, a sub-app) classifies
+    # with the defaults: no trusted proxies, tailnet verification on.
+    config: T1APIConfig | None = getattr(request.app.state, "t1_config", None)
     peer = request.client.host if request.client else ""
     origin = nettrust.classify(
         peer,

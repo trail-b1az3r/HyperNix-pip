@@ -285,6 +285,17 @@ class TestTokenizer:
         with pytest.raises(StrifeError, match="chat template"):
             Engine(evil["path"], n_ctx=64).tokenizer.apply_chat_template([])
 
+    @pytest.mark.parametrize("payload", [
+        "{{ ''|attr('__class__') }}",
+        "{{ ''['__' ~ 'class__'] }}",
+        "{{ cycler.__init__ }}",
+    ])
+    def test_chat_template_refuses_underscore_attributes_however_spelled(self, tmp_path, payload):
+        evil = make_model(tmp_path / "u.gguf", arch="qwen2", chat_template=payload)
+        with pytest.raises(StrifeError, match="chat template"):
+            Engine(evil["path"], n_ctx=64).tokenizer.apply_chat_template(
+                [{"role": "user", "content": "hi"}])
+
 
 class TestEngine:
     @pytest.fixture(scope="class")

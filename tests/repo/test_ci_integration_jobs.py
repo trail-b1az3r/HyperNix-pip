@@ -49,7 +49,9 @@ class TestTheJobsExist:
     def test_ci_runs_them_after_the_tests(self):
         jobs = workflow(CI)["jobs"]
         assert jobs["integration-api"]["needs"] == "test-complete"
-        assert jobs["integration-ios"]["needs"] == "test-complete"
+        # The simulator job is part of the gate itself: it waits for the macOS
+        # tests, and test-complete waits for it.
+        assert jobs["integration-ios"]["needs"] == ["triage", "test-macos"]
         assert workflow(CI)["jobs"]["test-complete"]["needs"] == [
             "triage", "test-macos", "integration-ios", "linux-complete", "test-windows"
         ]

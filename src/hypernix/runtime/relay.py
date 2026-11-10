@@ -50,7 +50,7 @@ import re
 import threading
 import time
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 __all__ = [
@@ -100,6 +100,14 @@ DIGEST_PROMPT = (
     "help answer the question: facts, names, numbers, quotes worth keeping word for "
     "word. If nothing in it is relevant, say so in one line. Write only the notes."
 )
+CONTINUE_PROMPT = (
+    "Your previous answer stopped because it ran out of room. Continue it exactly "
+    "where it stopped: do not repeat anything, do not start over, do not summarise. "
+    "It ended with:\n\n{tail}"
+)
+#: Tokens of the cut answer quoted back so the model can find its place.
+CONTINUE_TAIL_TOKENS = 120
+
 ANSWER_PROMPT = (
     "Answer the question from the notes below, which were taken while reading a "
     "document too long to show you whole. If the notes do not hold the answer, say "
@@ -401,6 +409,8 @@ class RelayResult:
     #: structured tool calls intact for chat-aware callers.
     envelope: dict[str, Any] | None = None
     cancelled: bool = False
+    #: Times an answer cut off by the context was picked up and continued.
+    continued: int = 0
 
     @property
     def input_tokens(self) -> int:
@@ -422,7 +432,22 @@ class RelayResult:
             "input_tokens": self.input_tokens,
             "output_tokens": self.output_tokens,
             "requests": self.requests,
+            "continued": self.continued,
         }
+
+    @property
+    def finish_reason(self) -> str:
+        try:
+            return str((self.envelope or {})["choices"][0].get("finish_reason") or "")
+        except (KeyError, IndexError, TypeError, AttributeError):
+            return ""
+
+    @property
+    def has_tool_calls(self) -> bool:
+        try:
+            return bool((self.envelope or {})["choices"][0]["message"].get("tool_calls"))
+        except (KeyError, IndexError, TypeError, AttributeError):
+            return False
 
 
 class Relay:
@@ -442,6 +467,7 @@ class Relay:
         notes_tokens: int | None = None,
         answer_tokens: int | None = None,
         on_hop: Callable[[Hop], None] | None = None,
+        continuations: int = 0,
     ) -> None:
         if not instances:
             raise ValueError("a relay needs at least one instance")
@@ -453,6 +479,9 @@ class Relay:
         self.notes_tokens = notes_tokens
         self.answer_tokens = answer_tokens
         self.on_hop = on_hop
+        #: How many times an answer cut short by the context (finish
+        #: reason ``length``) is continued in a fresh call. 0 keeps the cut.
+        self.continuations = max(0, int(continuations))
         self._lock = threading.Lock()
 
     def plan(self, document: str, question: str) -> RelayPlan:
@@ -477,6 +506,64 @@ class Relay:
         return result
 
     def run_messages(self, messages: Sequence[dict[str, Any]]) -> RelayResult:
+        """:meth:`_run_messages_once`, continued while the context cuts the answer."""
+        return self._continue(messages, self._run_messages_once(messages),
+                              self._run_messages_once)
+
+    def _continuation(self, messages: Sequence[dict[str, Any]], answer: str) -> list[dict[str, Any]]:
+        """The chat again, with the cut answer in it and a request to go on.
+
+        The whole partial answer is an assistant turn (the relay condenses it
+        with the rest of the history when it no longer fits); its last words
+        ride in the new user turn, which the relay always keeps whole, so the
+        model knows exactly where to resume.
+        """
+        tail = self._clip_tail(answer, CONTINUE_TAIL_TOKENS)
+        return [dict(m) for m in messages] + [
+            {"role": "assistant", "content": answer},
+            {"role": "user", "content": CONTINUE_PROMPT.format(tail=tail)},
+        ]
+
+    @staticmethod
+    def _needs_space(before: str, after: str) -> bool:
+        return bool(before and after) and not before.endswith((" ", "\n")) \
+            and not after.startswith((" ", "\n", ",", ".", ";", ":", "!", "?", ")"))
+
+    @staticmethod
+    def _clip_tail(text: str, tokens: int) -> str:
+        limit = max(1, tokens) * CHARS_PER_TOKEN
+        return text if len(text) <= limit else "…" + text[-limit:]
+
+    def _continue(self, messages: Sequence[dict[str, Any]], result: RelayResult,
+                  once: Callable[[Sequence[dict[str, Any]]], RelayResult]) -> RelayResult:
+        """Intercept an answer the context cut off and keep it going.
+
+        Only a plain-text answer is continued: a reply with tool calls is a
+        turn the caller acts on, and a cancelled one stays cancelled.
+        """
+        while (result.continued < self.continuations and not result.cancelled
+               and result.finish_reason == "length" and not result.has_tool_calls
+               and result.answer.strip()):
+            more = once(self._continuation(messages, result.answer))
+            for hop in more.hops:
+                result.hops.append(replace(hop, index=len(result.hops)))
+            result.continued += 1
+            result.cancelled = more.cancelled
+            joiner = " " if self._needs_space(result.answer, more.answer) else ""
+            result.answer = result.answer + joiner + more.answer
+            envelope = dict(more.envelope or result.envelope or {})
+            choices = envelope.get("choices") or [{}]
+            first = dict(choices[0])
+            first["message"] = {**dict(first.get("message") or {}), "role": "assistant",
+                                "content": result.answer}
+            first["finish_reason"] = more.finish_reason or "stop"
+            envelope["choices"] = [first, *choices[1:]]
+            result.envelope = envelope
+            if not more.answer.strip():
+                break
+        return result
+
+    def _run_messages_once(self, messages: Sequence[dict[str, Any]]) -> RelayResult:
         """Run a structured chat through the same planner and hop engine.
 
         A prompt that fits is sent unchanged, including roles, image parts,
@@ -564,7 +651,42 @@ class Relay:
         on_chunk: Callable[[dict[str, Any]], None],
         cancelled: Callable[[], bool] = lambda: False,
     ) -> RelayResult:
-        """Run chat through Relay and stream the final answer hop as it arrives."""
+        """Run chat through Relay and stream the final answer hop as it arrives.
+
+        A continuation (see :meth:`run_messages`) streams on as more of the
+        same answer, with a joining space when the two halves need one.
+        """
+        state = {"tail": "", "join": False, "calls": 0}
+
+        def track(chunk: dict[str, Any]) -> None:
+            for choice in chunk.get("choices") or []:
+                delta = choice.get("delta")
+                text = delta.get("content") if isinstance(delta, dict) else None
+                if not isinstance(text, str) or not text:
+                    continue
+                if state["join"]:
+                    state["join"] = False
+                    if self._needs_space(str(state["tail"]), text):
+                        delta["content"] = text = " " + text
+                state["tail"] = (str(state["tail"]) + text)[-8:]
+            on_chunk(chunk)
+
+        def once(msgs: Sequence[dict[str, Any]]) -> RelayResult:
+            state["join"] = state["calls"] > 0  # a continuation: join it to what went before
+            state["calls"] = int(state["calls"]) + 1
+            return self._stream_messages_once(msgs, stream_call=stream_call, on_chunk=track,
+                                              cancelled=cancelled)
+
+        return self._continue(messages, once(messages), once)
+
+    def _stream_messages_once(
+        self,
+        messages: Sequence[dict[str, Any]],
+        *,
+        stream_call: Callable[[list[dict[str, Any]], int, int], Any],
+        on_chunk: Callable[[dict[str, Any]], None],
+        cancelled: Callable[[], bool] = lambda: False,
+    ) -> RelayResult:
         if not messages:
             raise ValueError("a relay chat needs at least one message")
 

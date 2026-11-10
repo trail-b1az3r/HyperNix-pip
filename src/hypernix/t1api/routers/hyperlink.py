@@ -45,7 +45,8 @@ from ...hyperlink.default_prompt import default_prompt_for
 from ...hyperlink.discovery import advertise
 from ...hyperlink.files import AttachmentStore
 from ...hyperlink.generation import GenerationRegistry
-from ...hyperlink.hfmerge import HFResolveError, resolve as hf_resolve
+from ...hyperlink.hfmerge import HFResolveError
+from ...hyperlink.hfmerge import resolve as hf_resolve
 from ...hyperlink.identity import fingerprint as server_fingerprint
 from ...hyperlink.memory import MemoryStore
 from ...hyperlink.notify import EventKind, NotificationStore
@@ -1157,6 +1158,7 @@ def _relay_chat_completion(
             mode=CHAIN,
             answer_tokens=answer_tokens,
             on_hop=after_hop,
+            continuations=max(0, int(getattr(config, "relay_continuations", 0) or 0)),
         )
         result = relay.run_messages(messages)
     except ContextTooSmall as exc:
@@ -1184,6 +1186,7 @@ def _relay_chat_completion(
         "input_tokens": result.input_tokens,
         "output_tokens": result.output_tokens,
         "requests": result.requests,
+        "continued": result.continued,
     }
     return envelope, relay_info
 
@@ -1328,6 +1331,7 @@ def _relay_stream_completion(
             mode=CHAIN,
             answer_tokens=answer_tokens,
             on_hop=after_hop,
+            continuations=max(0, int(getattr(config, "relay_continuations", 0) or 0)),
         )
         result = relay.stream_messages(
             messages,
@@ -1358,6 +1362,7 @@ def _relay_stream_completion(
         "input_tokens": result.input_tokens,
         "output_tokens": result.output_tokens,
         "requests": result.requests,
+        "continued": result.continued,
         "cancelled": result.cancelled,
     }
     return envelope, info

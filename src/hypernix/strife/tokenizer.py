@@ -310,6 +310,8 @@ class Tokenizer:
                     "chat template: access to Python dunder attributes is forbidden",
                 )
             try:
+                from jinja2.exceptions import SecurityError
+
                 env = _template_env()
             except ImportError:
                 env = None
@@ -322,6 +324,9 @@ class Tokenizer:
                         bos_token=bos, eos_token=eos, **variables)
                 except StrifeError:
                     raise
+                except SecurityError as exc:
+                    raise StrifeError("strife.chat.template",
+                                      f"chat template: {exc}") from exc
                 except Exception as exc:  # a template this engine cannot render
                     raise StrifeError("strife.chat.template",
                                       f"the model's chat template did not render: {exc}",
@@ -356,8 +361,25 @@ def _template_env() -> Any:
             body = parser.parse_statements(("name:endgeneration",), drop_needle=True)
             return nodes.Scope(body, lineno=lineno)
 
-    env = ImmutableSandboxedEnvironment(trim_blocks=True, lstrip_blocks=True,
-                                        extensions=["jinja2.ext.loopcontrols", Generation])
+    from jinja2.exceptions import SecurityError
+
+    class Sandbox(ImmutableSandboxedEnvironment):
+        """No underscore attribute is reachable, and reaching for one raises.
+
+        Jinja's sandbox answers an unsafe attribute with an *undefined*
+        value, which renders as nothing: a template probing for
+        ``__class__`` (by dot, by ``attr()``, or by ``['__' ~ 'class__']``)
+        would render quietly instead of being refused.
+        """
+
+        def is_safe_attribute(self, obj: Any, attr: str, value: Any) -> bool:
+            return not str(attr).startswith("_") and super().is_safe_attribute(obj, attr, value)
+
+        def unsafe_undefined(self, obj: Any, attribute: str) -> Any:
+            raise SecurityError(f"access to {attribute!r} is not allowed in a chat template")
+
+    env = Sandbox(trim_blocks=True, lstrip_blocks=True,
+                  extensions=["jinja2.ext.loopcontrols", Generation])
 
     def raise_exception(message: str) -> None:
         raise StrifeError("strife.chat.template", f"chat template: {message}")
