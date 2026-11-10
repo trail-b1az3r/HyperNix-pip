@@ -1481,6 +1481,68 @@ Required tests include mathematical/reference tests for attention, SKV, HGDP, ga
 
 Deliver a full mathematical architecture specification and block diagram, versioned configuration schema, runnable small/medium examples, reference implementation, validated optimized paths, model-shape/resource report, training and inference examples, and an evidence-based 0xv2 comparison/ablation report. The 0xv3 work is not complete when modules merely instantiate or a training loop runs: equations, implementation, tests, checkpoint format, inference behavior, and experimental evidence must agree.
 
+#### 6.8 Interlayer depth, cross-layer relation development, and deep-stack stability
+
+Make 0xv3 capable of learning useful relationships across substantially deeper layer stacks. The objective is not simply to increase layer count: each layer must develop, refine, preserve, and communicate representations that later layers can use without destroying useful information from earlier layers.
+
+Design an explicit **Interlayer Relation Path (IRP)** that supports controlled communication across layers and layer groups. Specify its equations, tensor shapes, initialization, normalization, gating, and gradient behavior. It may include learned cross-layer projections, gated skip routes, hierarchical summaries, or other mechanisms, but select the design through ablations rather than accumulating mechanisms without evidence.
+
+Requirements:
+- Support configurable depth from compact models through genuinely deep configurations, with optional layer groups/stages and configurable communication intervals.
+- Let later layers selectively retrieve or refine earlier representations, including non-adjacent layer outputs, without requiring every layer to retain every full activation indefinitely.
+- Preserve a clear distinction between token-local features, layer-level abstractions, persistent SKV/HGDP state, and cross-layer relation state.
+- Use bounded memory and explicit lifetimes for retained activations/state. During training, use checkpointing/recomputation or compressed summaries where appropriate; do not hide an unbounded activation cache.
+- Use gated residual/skip paths and stable initialization so added cross-layer routes begin near identity or another justified stable operating point, rather than injecting large uncalibrated signals at initialization.
+- Keep normalization placement and residual scaling consistent and mathematically documented. Monitor activation/gradient norms by layer and route, detect vanishing/exploding gradients, and provide actionable diagnostics.
+- Permit per-layer composition and depth scaling without silently changing hidden width, attention semantics, SKV/HGDP dimensions, or the training objective.
+- Add reference and optimized implementations, with equivalence tests and a correct fallback.
+
+Define and test **intralayer relation stability** as well. Within each block, attention heads, primary/secondary KV paths, HGDP, feed-forward transformations, and residual branches must learn compatible relationships instead of competing or destabilizing one another. Introduce a small, bounded relation-balancing mechanism where justified: for example, normalized branch gates, learned but constrained mixing coefficients, or a low-cost consistency signal between branches. The mechanism must:
+- Keep each branch's contribution observable and independently ablatable.
+- Avoid forcing unrelated branches to agree when they encode complementary information.
+- Avoid collapse in which one branch dominates or all branches converge to the same representation.
+- Use numerically stable normalization and bounded gate parameterization; document initialization and regularization.
+- Track branch contribution, gate saturation, representation similarity/diversity, gradient norms, and finite-value statistics during training.
+- Be evaluated on whether it improves held-out quality and optimization stability, not merely whether internal similarity increases.
+
+Training must develop cross-layer and within-layer relationships progressively. Add an optional **relation-development curriculum** that begins with stable local/block learning and gradually enables or strengthens selected interlayer routes and branch interactions according to measured training health. Any schedule must be deterministic and checkpointed; it must not depend on arbitrary wall-clock timing or silently alter the objective. Define observable activation criteria and rollback conditions using validation loss, gradient/activation health, gate saturation, and finite-value checks. Compare progressive activation with enabling the same mechanisms from the start.
+
+#### 6.9 Lightweight Stack Correction Layer (SCL)
+
+Add one additional architecture component: a **Stack Correction Layer (SCL)**. It must be very small relative to the main 0xv3 network and serve as a trainable correction/calibration layer when one 0xv3 model is stacked with another model, another 0xv3 instance, or a compatible upstream/downstream network.
+
+The SCL is not another full transformer block, not a second large reasoning network, and not a substitute for fixing the base architecture. Its purpose is to learn small, targeted corrections to representation scale, bias, alignment, and interface mismatch introduced by stacking. It should be able to correct its own calibration parameters during training from the actual stacked-system signal.
+
+Design constraints:
+- Keep the correction module deliberately parameter-light. Prefer low-rank projections, per-channel scale/shift, small gated residual adapters, or another compact parameterization. State a strict configurable parameter/compute budget and report its exact parameter count and percentage of the base model.
+- Define explicit input/output contracts for standalone mode, stack-input mode, and stack-output mode. Include shape, dtype, normalization, masking, residual, and state semantics. SCL must not guess the neighboring model's hidden width or silently reshape incompatible tensors.
+- Include a trainable interface mapper only where needed, with a low-rank or otherwise bounded design. Keep the identity/no-op path available when dimensions and distributions are already compatible.
+- Use a bounded correction gate and conservative initialization so the initial SCL behaves close to identity. Corrections must not overwhelm or erase the upstream representation.
+- Train the SCL jointly with the stacked system or in a controlled calibration stage using representative paired activations and the real downstream objective. The correction must learn from gradients and measured interface error; do not implement an inference-time self-editing loop that changes weights unpredictably.
+- Support freezing the base models while calibrating SCL, joint fine-tuning when explicitly requested, and independent save/load/versioning of correction parameters. Keep base checkpoints immutable during calibration unless the user explicitly enables joint training.
+- When a stack contains multiple compatible interfaces, allow a small SCL instance per interface or a shared SCL only when parameter sharing is validated. Prevent correction state from leaking between models, users, sessions, or unrelated stack configurations.
+- Detect stack topology and interface compatibility explicitly. Record model identities/revisions, layer/interface location, dimensions, normalization assumptions, and SCL schema version in the stack manifest. Reject stale or mismatched correction checkpoints with actionable errors.
+- Expose SCL enable/disable, budget, calibration, freeze/joint-training mode, and diagnostics through the architecture configuration and training APIs. Standalone 0xv3 inference must remain fully functional without SCL.
+- Report correction magnitude, gate values, residual norm, calibration loss, parameter overhead, latency, and memory overhead. If correction magnitude grows beyond configured bounds or validation quality degrades, stop or roll back calibration rather than allowing runaway compensation.
+
+Evaluate SCL in at least four settings: standalone with SCL disabled (control), stacked with no correction, stacked with SCL enabled and calibrated, and stacked with an intentionally mismatched interface to verify that incompatibility is rejected or safely handled. Include distribution-shift tests and ensure SCL does not merely memorize calibration examples. Measure downstream task quality, calibration/generalization, numerical stability, parameter/compute overhead, latency, and memory.
+
+#### 6.10 Deep-stack and relation-development acceptance tests
+
+Add tests and experiments for:
+- Shallow, medium, and deep configurations generated from the same configuration schema.
+- Forward/backward correctness and finite gradients through long layer stacks.
+- Interlayer route causality, shape correctness, masking, and no cross-sample/session leakage.
+- Residual/normalization stability at initialization and after training.
+- Intralayer branch contribution, gate saturation, branch collapse, and representation-diversity diagnostics.
+- Relation-development curriculum determinism, checkpoint/resume, activation thresholds, and rollback.
+- Gradient/activation norm trends across depth, including stress tests for very deep configurations.
+- SCL identity behavior, parameter-budget enforcement, bounded correction, calibration convergence, save/load, frozen-base guarantees, joint-training opt-in, stack-manifest validation, and rejection of incompatible interfaces.
+- Stacked-model tests with different widths/dtypes/normalization assumptions and distribution shifts.
+- Ablations isolating depth, interlayer relation paths, intralayer balancing, curriculum, and SCL.
+
+Compare models at matched parameter, compute, and memory budgets where feasible. A deeper model or extra correction component is not automatically better. Report whether the added depth and relation mechanisms improve held-out quality, convergence, long-context behavior, and stack composition enough to justify their cost. SCL must remain a small correction component, not a hidden increase in the main model's capacity.
+
 # 0.74.1 — HyperLink telemetry, theme restoration, and remaining UX gaps
 
 Start by auditing the current HyperLink implementation and its tests. The local llama.cpp runner and existing two-layer chat indicator already exist; preserve and extend them rather than rebuilding them. Do not duplicate completed 0.72.8 work.
