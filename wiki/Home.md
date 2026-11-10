@@ -15,6 +15,7 @@ reachable if you already knew the filename. Fixed.)
 |---|---|
 | [CLI](CLI.md) | Every subcommand (the short `hnx` menu and `hnx extra`), every companion command, every flag, typical invocations. |
 | [Error codes](Error-Codes.md) | Every error code (`L#-NNNNN.kS`): what it means and what to do, by domain, with hyped-pro's older names. Generated from the registry; `hnx errors explain <code>` says the same. |
+| [Examples](Examples.md) | Source-complete module encyclopedia: every Python module, grouped by subsystem, with its role and links to deeper guides. |
 | [Architecture](Architecture.md) | Generated chart of the package's subsystems and how they connect, rebuilt by the `arch-map` workflow. |
 | [HyperNix Studio](../desktop/README.md) | The Qt desktop client: models, chat, a workspace the model may edit, and why it cannot run a command. |
 | [ggml-hnx](../native/ggml-hnx/README.md) | Building a llama.cpp that reads every HyperNix type (sub-bit, codebook, FP8) and runs Q8_K weights. |

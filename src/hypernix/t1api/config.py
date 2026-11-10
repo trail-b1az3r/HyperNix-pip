@@ -259,6 +259,11 @@ class T1APIConfig:
     feature_prices_json: str = field(default_factory=lambda: os.environ.get("T1_FEATURE_PRICES", ""))
     # The most instances one POST /inference/relay may rotate through.
     relay_max_instances: int = field(default_factory=lambda: _int_env("T1_RELAY_MAX_INSTANCES", 8))
+    # Used only when a backend does not report its loaded context size.
+    # It still lets the normal Relay planner run instead of bypassing it.
+    relay_default_context_tokens: int = field(
+        default_factory=lambda: _int_env("T1_RELAY_DEFAULT_CONTEXT_TOKENS", 4096)
+    )
 
     # HyperLink prompts carry a signature (hypernix.hyperlink.signing) from
     # 0.72.8 apps. Off: a signature that is present is checked, and one
