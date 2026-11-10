@@ -1380,6 +1380,107 @@ Preserve numerical stability, gradient correctness, convergence, reproducibility
 ### 5. Production deliverables
 Implement the architecture, configuration and initialization paths, forward pass, training/inference integration, telemetry abstraction, portable runtime selection, checkpoint compatibility, tests, benchmarks, documentation, and runnable examples. Do not declare V3 complete from a design document or synthetic performance claims; every claimed improvement needs measured evidence.
 
+
+### 6. HyperNix 0xv3 custom attention, secondary KV heads, and gated DeltaNet
+
+Extend the 0.74.0 **HyperNix0xV3** architecture specification with the following required design directions. These are core 0xv3 architecture requirements, not optional future roadmap items. Implement them as one coherent architecture while retaining ablation switches so each contribution can be evaluated independently. Do not turn 0xv3 into a conventional Transformer with renamed modules, and do not assume that adding mechanisms automatically improves quality.
+
+#### 6.1 Configurable heterogeneous attention heads
+
+Introduce custom attention-head layouts that can vary by layer and, where efficient, by head. A model configuration must be able to describe:
+- Attention head count and dimension per layer.
+- Head roles/patterns such as local-window, global, dilated, or other explicitly specified causal patterns.
+- Optional head grouping, routing, and positional treatment where justified by experiments.
+- Which layers use attention, the head layout used there, and how attention outputs are projected back into the block's residual width.
+
+Define the tensor shapes, equations, masking, positional behavior, and head-combination rule. Validate all dimension and divisibility constraints at configuration load time. Use grouped/batched operations rather than Python loops in hot paths wherever possible. Keep a compact default layout for small models and older GPUs; experimental layouts must be explicitly selectable.
+
+Tests must cover causal masking, no future-token leakage, padding, variable sequence lengths, head isolation, gradient flow, and parity between reference and optimized implementations.
+
+#### 6.2 HyperNix Secondary KV Heads (SKV): a distinct second KV tier
+
+Design a HyperNix-specific **secondary KV-head system (SKV)** alongside primary KV heads. SKV must be a genuinely distinct learned historical-information path, not simply a duplicate of primary K/V tensors or a renamed GQA/MQA configuration.
+
+Use a two-tier memory design:
+- **Primary KV tier:** high-fidelity key/value memory for recent or otherwise selected token-level interactions.
+- **Secondary KV tier:** separately projected, compact learned representations of selected historical information. Investigate learned compression, causal summary/state updates, or another explicitly defined mechanism.
+- **Read path:** queries may retrieve from both tiers. Define retrieval, normalization, gating/combination, and causal visibility precisely.
+- **Write/update path:** define when and how secondary entries are produced, merged, compressed, and bounded.
+- **Cache lifecycle:** define eviction, chunk boundaries, sequence reset, batch isolation, beam/reorder behavior, and serialization/restoration.
+
+Make secondary head count, head dimension, per-layer placement, compression/update policy, and memory budget configurable. Permit SKV to be disabled for ablations and low-memory profiles. Explain its computational and memory complexity.
+
+Correctness requirements:
+- Compression, summaries, routing, and updates must never expose future tokens.
+- State must never leak across samples, batches, users, or inference sessions.
+- Padding must not update persistent state.
+- Full-sequence causal execution and incremental decoding must agree within documented numerical tolerances.
+- Cache growth must be bounded and predictable.
+- Cache save/restore and reorder must preserve generation behavior.
+- Long-context retention must be demonstrated with retrieval tests at multiple distances and distractor densities; cache capacity alone is not evidence.
+
+Compare SKV against MHA, GQA, and MQA with both parameter-matched and memory-matched experiments.
+
+#### 6.3 HyperNix Gated Delta Path (HGDP)
+
+Develop a custom **HyperNix Gated Delta Path (HGDP)** inspired by gated delta-rule and recurrent/linear-attention approaches. It must provide a mathematically specified sequence-mixing path that can complement or selectively replace standard attention in chosen layers.
+
+Specify:
+- Recurrent state representation and exact update equations.
+- Query, key, value, and gate projections and their dimensions.
+- Delta-rule correction/update, normalization, retention, and stability constraints.
+- How gates control memory retention, update strength, and output contribution.
+- State initialization, per-sequence reset, per-item batch handling, chunk carry, and gradient behavior.
+- How HGDP output joins attention, SKV, residual, and feed-forward paths.
+- Numerical precision and accumulation requirements for long sequences and mixed-precision execution.
+
+Provide a simple recurrent reference implementation first. Add a parallel or chunkwise training formulation only when it is mathematically equivalent to the reference within tested tolerances. Support causal full-sequence training and incremental decoding. Keep state memory bounded and expose its size in model/resource reports.
+
+Document which parts are established gated-delta-rule concepts and which modifications are specifically HyperNix's. Do not claim algorithmic novelty from renaming an existing method; review and attribute relevant prior work and code licenses.
+
+Evaluate at least: attention-only; attention+HGDP; attention+SKV; attention+SKV+HGDP; and a hybrid with HGDP in selected layers and attention in others. Layer placement and ratios must be configurable.
+
+#### 6.4 Non-static model dimensions and deeper configurations
+
+Remove the restriction that 0xv3 can only be instantiated from a small list of fixed named sizes. Model dimensions must be configuration-driven across a validated design space, including:
+- Number of layers/depth and optional per-layer block composition.
+- Hidden/model width and feed-forward width/expansion.
+- Per-layer attention head count and head dimensions.
+- Primary and secondary KV-head counts and dimensions.
+- HGDP state dimensions and layer placement.
+- Vocabulary/output dimensions and supported positional/context parameters.
+- Optional per-layer width variation only if residual interfaces and projection costs are explicitly defined and tested.
+
+Support deeper networks than the shallow 0xv2 small-model layouts, but do not impose arbitrary depth targets or claim more layers always improve quality. Provide recommended small, medium, and large configurations as examples, not as architectural limits. All valid configurations must be generated from the same architecture implementation.
+
+Validate configurations early and reject impossible dimensions, unsupported combinations, and unsafe memory requests with actionable errors. Derive parameter counts from instantiated modules and compare estimates with actual counts. Report per-layer shapes and parameter breakdowns for attention, SKV, HGDP, feed-forward, embeddings, and output layers. Estimate KV/recurrent-state memory and training memory with clearly stated assumptions and safety margins.
+
+Checkpoint metadata must preserve the complete architecture configuration and schema version. Never silently reshape, discard, or reinterpret tensors when loading a mismatched configuration.
+
+#### 6.5 Block composition, stability, and hardware-aware scaling
+
+Define a consistent block interface that permits different layers to combine heterogeneous attention, primary/secondary KV processing, HGDP, gated feed-forward layers, normalization, and residual paths in different proportions. Select stable normalization, initialization, and residual-scaling defaults through experiments. If widths vary, define explicit tested projections. Avoid forcing every mechanism into every layer.
+
+The default must remain usable on modest hardware, including older CUDA GPUs such as Pascal-class devices where the installed software stack supports them. Provide safe CPU and CUDA reference paths; optimize only after profiling. Resource planning must account for weights, activations, optimizer state, primary KV cache, secondary KV memory, HGDP recurrent state, runtime overhead, and safety margin. Hardware adaptation may tune execution settings but must not silently change model-defining dimensions or training objectives.
+
+#### 6.6 Training, inference, checkpoint, and compatibility
+
+Integrate with existing HyperNix training and inference APIs without changing 0xv2 behavior. Validate next-token label shifting, masks, padding, gradients, mixed precision, gradient accumulation/checkpointing, optimizer state, deterministic seeds, and checkpoint resume. Architecture correctness must work with a standard supported optimizer; do not make a custom optimizer a hidden requirement.
+
+The 0xv3 runtime must support full-sequence causal forward, incremental decoding, chunked prefill, variable-length batches, independent session state, cache reset/reorder/clone, and cache serialization/restoration. Compare full-sequence and incremental results, and compare recurrent reference and chunked HGDP paths. Unsupported optimized kernels must fall back to a correct reference implementation or return an explicit unsupported-capability error. Never silently move a requested CUDA workload to CPU.
+
+Give 0xv3 a distinct architecture identifier and versioned config/checkpoint schema. Preserve 0xv2 loading and behavior as a separate legacy architecture. Do not claim GGUF or llama.cpp support unless the format and runtime can represent and execute every 0xv3 operation faithfully. If they cannot, document the limitation and provide a supported native inference route rather than a lossy export presented as compatible.
+
+#### 6.7 Research, ablations, and acceptance criteria
+
+Before selecting defaults, compare against a parameter-matched 0xv2 baseline with tokenizer, data, token budget, optimizer, schedule, and evaluation protocol held constant wherever possible. Also compare compute- and memory-matched configurations. Run ablations that independently vary heterogeneous heads, SKV, HGDP, depth/width, and layer placement.
+
+Measure validation loss/perplexity, held-out language-model quality, long-context retrieval across multiple distances, copying/induction-style tasks, prefill and decode throughput, time-to-first-token, latency distribution, peak RAM/VRAM, KV/recurrent-state memory, gradient norms, numerical stability, and training convergence. Use multiple seeds where feasible. Publish exact configs, dataset revisions, code commit, hardware, precision, and raw machine-readable results. Do not invent results or select a more expensive design based on one benchmark.
+
+Required tests include mathematical/reference tests for attention, SKV, HGDP, gates, and cache updates; causality/no-future-leakage; batch and session isolation; padding; full versus incremental decoding; chunked versus recurrent HGDP equivalence; gradient and finite-value checks; variable dimensions and per-layer layouts; parameter/memory estimate validation; checkpoint round trips; and regression tests proving 0xv2 remains unchanged. CPU tests belong in normal CI; CUDA tests run on compatible runners and otherwise report explicit skips.
+
+Deliver a full mathematical architecture specification and block diagram, versioned configuration schema, runnable small/medium examples, reference implementation, validated optimized paths, model-shape/resource report, training and inference examples, and an evidence-based 0xv2 comparison/ablation report. The 0xv3 work is not complete when modules merely instantiate or a training loop runs: equations, implementation, tests, checkpoint format, inference behavior, and experimental evidence must agree.
+
 # 0.74.1 — HyperLink telemetry, theme restoration, and remaining UX gaps
 
 Start by auditing the current HyperLink implementation and its tests. The local llama.cpp runner and existing two-layer chat indicator already exist; preserve and extend them rather than rebuilding them. Do not duplicate completed 0.72.8 work.
