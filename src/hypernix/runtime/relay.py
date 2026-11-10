@@ -543,7 +543,7 @@ class Relay:
         if self.mode == CHAIN:
             notes = self._chain(
                 result, planned.chunks, question, planned.notes_tokens,
-                system_prompt=system_prompt, cancelled=cancelled,
+                system_prompt=system_prompt,
             )
         else:
             notes = self._map(

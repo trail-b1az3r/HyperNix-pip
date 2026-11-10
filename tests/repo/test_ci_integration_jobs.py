@@ -48,8 +48,11 @@ class TestTheJobsExist:
 
     def test_ci_runs_them_after_the_tests(self):
         jobs = workflow(CI)["jobs"]
-        assert jobs["integration-api"]["needs"] == "test"
-        assert jobs["integration-ios"]["needs"] == "test"
+        assert jobs["integration-api"]["needs"] == "test-complete"
+        assert jobs["integration-ios"]["needs"] == "test-complete"
+        assert workflow(CI)["jobs"]["test-complete"]["needs"] == [
+            "triage", "test-macos", "integration-ios", "linux-complete", "test-windows"
+        ]
 
     def test_the_ios_job_runs_on_macos(self):
         """A simulator needs a Mac. Anywhere else the job would look

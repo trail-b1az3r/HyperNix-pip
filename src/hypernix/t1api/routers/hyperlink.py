@@ -32,8 +32,8 @@ import logging
 import threading
 import time
 import weakref
-from queue import Queue
 from pathlib import Path
+from queue import Queue
 from typing import Any
 
 from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile
@@ -45,8 +45,7 @@ from ...hyperlink.default_prompt import default_prompt_for
 from ...hyperlink.discovery import advertise
 from ...hyperlink.files import AttachmentStore
 from ...hyperlink.generation import GenerationRegistry
-from ...hyperlink.hfmerge import HFResolveError
-from ...hyperlink.hfmerge import resolve as hf_resolve
+from ...hyperlink.hfmerge import HFResolveError, resolve as hf_resolve
 from ...hyperlink.identity import fingerprint as server_fingerprint
 from ...hyperlink.memory import MemoryStore
 from ...hyperlink.notify import EventKind, NotificationStore
@@ -1246,7 +1245,15 @@ def _relay_stream_completion(
     cancelled=lambda: False,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Relay a conversation while forwarding answer chunks as the backend emits them."""
-    from ...runtime.relay import CHAIN, DIGEST_PROMPT, READ_PROMPT, ContextTooSmall, Relay, Reply, estimate_tokens
+    from ...runtime.relay import (
+        CHAIN,
+        DIGEST_PROMPT,
+        READ_PROMPT,
+        ContextTooSmall,
+        Relay,
+        Reply,
+        estimate_tokens,
+    )
 
     context_tokens = _model_context(config, runner, backend)
     if context_tokens <= 0:
@@ -2406,9 +2413,6 @@ def chat_turn_stream(
     # `memory` frame after `done` tells the app to sync now rather than
     # whenever somebody next opens the Memories screen.
     memory_before = _memory_head(memories, principal.owner)
-    # Shared by the stream generator and its persistence helper.
-    relay_runs: list[dict[str, Any]] = []
-
     def _events():
         yield _frame(
             "start",
@@ -2424,6 +2428,9 @@ def chat_turn_stream(
         error: dict[str, Any] | None = None
         cancelled = False
         tool_rounds: list[dict[str, Any]] = []
+        # Keep all completed relay calls for this turn. _persist receives
+        # this explicitly so persistence cannot depend on an outer closure.
+        relay_runs: list[dict[str, Any]] = []
         try:
             if setup is not None:
                 # The same tools the non-streamed route offers. Ordinary
@@ -2503,7 +2510,10 @@ def chat_turn_stream(
             # chat_stream generator and will close it between chunks.
             active.cancel_event.set()
             generations.finish(active.generation_id)
-            _persist(collected, model_id, finish or "disconnected", usage, truncated=True)
+            _persist(
+                collected, model_id, finish or "disconnected", usage,
+                truncated=True, relay_runs=relay_runs,
+            )
             # Nobody is listening for a model-written title any more; the
             # first-line one costs nothing.
             store.autotitle(session_id, owner=principal.owner)
@@ -2517,7 +2527,7 @@ def chat_turn_stream(
             finish = "cancelled"
         message = _persist(
             collected, model_id, finish, usage, truncated=bool(error) or cancelled,
-            tool_rounds=tool_rounds, error=error,
+            relay_runs=relay_runs, tool_rounds=tool_rounds, error=error,
         )
         yield _frame(
             "done",
@@ -2553,6 +2563,7 @@ def chat_turn_stream(
 
     def _persist(
         pieces: list[str], model_id: str, finish: str, usage: dict[str, Any], *, truncated: bool,
+        relay_runs: list[dict[str, Any]],
         tool_rounds: list[dict[str, Any]] | None = None, error: dict[str, Any] | None = None,
     ) -> ChatMessage:
         if relay_runs:
