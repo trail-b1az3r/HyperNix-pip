@@ -93,13 +93,21 @@ def detect() -> dict[str, Any]:
             "gpus": _gpus(), "support": platform_support()}
 
 
-def plan(report: ModelReport, *, n_ctx: int, gpu_layers: int = 0, max_sessions: int = 1,
-         hardware: dict[str, Any] | None = None) -> dict[str, Any]:
+def plan(report: ModelReport, model_plan: Any = None, *, n_ctx: int, gpu_layers: int = 0,
+         max_sessions: int = 1, hardware: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Where everything goes. *model_plan* is the :class:`~.archs.Plan`
+    (read from ``report.path`` when not given)."""
     hw = hardware or detect()
-    from .model import Hyper, KVCache
+    from .model import state_bytes
 
-    hp = Hyper.from_report(report)
-    kv_per_session = KVCache.nbytes_for(hp, n_ctx)
+    if model_plan is None:
+        from .archs import build_plan
+        from .inspect import read_gguf, shapes_of
+
+        gguf, _ = read_gguf(report.path)
+        assert gguf is not None
+        model_plan = build_plan(gguf.metadata, shapes_of(gguf))
+    state = state_bytes(model_plan, n_ctx)
     reasons: list[str] = []
     if gpu_layers:
         if not hw["gpus"]:
@@ -112,13 +120,17 @@ def plan(report: ModelReport, *, n_ctx: int, gpu_layers: int = 0, max_sessions: 
         reasons.append(f"the weights ({report.weight_bytes / 2**30:.1f} GiB) are larger than "
                        f"free RAM ({avail / 2**30:.1f} GiB); they stay memory-mapped and are "
                        "read from disk as needed, which is slow")
+    per_session = state["total"] + state["checkpoints_max"]
     return {
         "backend": "cpu-numpy",
-        "layers_total": hp.n_layers, "gpu_layers_requested": int(gpu_layers),
-        "gpu_layers_used": 0, "cpu_layers": hp.n_layers,
+        "layers_total": model_plan.n_layers, "gpu_layers_requested": int(gpu_layers),
+        "gpu_layers_used": 0, "cpu_layers": model_plan.n_layers,
         "weights_mapped_bytes": report.weight_bytes,
-        "kv_cache_bytes_per_session": kv_per_session,
-        "kv_cache_bytes_max": kv_per_session * max(1, max_sessions),
+        "kv_cache_bytes_per_session": state["kv_cache"],
+        "recurrent_state_bytes_per_session": state["conv_state"] + state["recurrent_state"]
+        + state["checkpoints_max"],
+        "state_bytes_per_session": per_session,
+        "kv_cache_bytes_max": per_session * max(1, max_sessions),
         "peak_vram_bytes": 0,
         "fallback_reasons": reasons, "hardware": hw,
     }

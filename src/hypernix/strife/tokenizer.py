@@ -35,10 +35,22 @@ _LLAMA3 = (r"""(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\p{L}\p{N}]?\p{L}+|\p{N}{1,3}|
            r""" ?[^\s\p{L}\p{N}]+[\r\n]*|\s*[\r\n]+|\s+(?!\S)|\s+""")
 _QWEN2 = (r"""(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\p{L}\p{N}]?\p{L}+|\p{N}|"""
           r""" ?[^\s\p{L}\p{N}]+[\r\n]*|\s*[\r\n]+|\s+(?!\S)|\s+""")
+_QWEN35 = (r"""(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\p{L}\p{N}]?[\p{L}\p{M}]+|\p{N}|"""
+           r""" ?[^\s\p{L}\p{M}\p{N}]+[\r\n]*|\s*[\r\n]+|\s+(?!\S)|\s+""")
 _PRE = {"default": _GPT2, "gpt2": _GPT2, "llama-bpe": _LLAMA3, "llama3": _LLAMA3,
-        "qwen2": _QWEN2, "deepseek-llm": _QWEN2, "smaug-bpe": _LLAMA3}
+        "llama-v3": _LLAMA3, "qwen2": _QWEN2, "deepseek-llm": _QWEN2, "smaug-bpe": _LLAMA3,
+        # 0.73.0: LFM3 and GLM-4.5 split as llama3 does; Qwen3.5 keeps
+        # combining marks with their letters (llama.cpp's llama-vocab.cpp).
+        "lfm2": _LLAMA3, "glm4": _LLAMA3, "glm5": _LLAMA3, "qwen35": _QWEN35}
+
+#: Pre-tokenizers whose words go straight to one token when the whole word
+#: is in the vocabulary, before any merge (llama.cpp's ``ignore_merges``,
+#: tokenizers' ``BPE(ignore_merges=True)``). Without it a few words split
+#: differently than the model was trained on.
+_IGNORE_MERGES = {"llama-bpe", "llama3", "llama-v3", "lfm2", "glm4", "glm5"}
 
 
+_MARK = "\u0300-\u036f\u0483-\u0489\u0591-\u05bd\u064b-\u065f\u0900-\u0903\u093a-\u094f\u20d0-\u20ff\ufe20-\ufe2f"
 _LETTER, _NUMBER = "a-zA-Z\u00aa\u00b5\u00ba\u00c0-\u00d6\u00d8-\u00f6\u00f8-\uffff", "0-9"
 
 
@@ -52,10 +64,12 @@ def _compile(pattern: str) -> Any:
     # Without the regex module: \p{L} and \p{N} become explicit ranges,
     # inside a character class as they are, outside one in brackets.
     def inside(match: re.Match[str]) -> str:
-        return match.group(0).replace(r"\p{L}", _LETTER).replace(r"\p{N}", _NUMBER)
+        return (match.group(0).replace(r"\p{L}", _LETTER).replace(r"\p{N}", _NUMBER)
+                .replace(r"\p{M}", _MARK))
 
     translated = re.sub(r"\[[^\]]*\]", inside, pattern)
-    translated = translated.replace(r"\p{L}", f"[{_LETTER}]").replace(r"\p{N}", f"[{_NUMBER}]")
+    translated = (translated.replace(r"\p{L}", f"[{_LETTER}]").replace(r"\p{N}", f"[{_NUMBER}]")
+                  .replace(r"\p{M}", f"[{_MARK}]"))
     return re.compile(translated)
 
 
@@ -114,6 +128,7 @@ class Tokenizer:
                 left, _, right = str(merge).partition(" ")
                 self.ranks.setdefault((left, right), rank)
             self._split = _compile(_PRE.get(self.pre, _GPT2))
+            self._ignore_merges = self.pre in _IGNORE_MERGES
             self._b2u = _byte_to_unicode()
             self._u2b = {v: k for k, v in self._b2u.items()}
         self._bpe_cache: dict[str, list[int]] = {}
@@ -165,6 +180,10 @@ class Tokenizer:
 
     def _bpe(self, word: str) -> list[int]:
         symbols = [self._b2u[b] for b in word.encode("utf-8")]
+        if self._ignore_merges:
+            whole = self.vocab.get("".join(symbols))
+            if whole is not None:
+                return [whole]
         while len(symbols) > 1:
             best, best_rank = -1, None
             for i in range(len(symbols) - 1):
@@ -269,32 +288,36 @@ class Tokenizer:
 
     # -- chat ------------------------------------------------------------
 
-    def apply_chat_template(self, messages: list[dict[str, str]], *,
-                            add_generation_prompt: bool = True) -> str:
-        """The model's own template (Jinja, sandboxed); ChatML without one."""
+    def apply_chat_template(self, messages: list[dict[str, Any]], *,
+                            add_generation_prompt: bool = True,
+                            **variables: Any) -> str:
+        """The model's own template (Jinja, sandboxed); ChatML without one.
+
+        Rendered as Hugging Face renders templates: ``trim_blocks`` and
+        ``lstrip_blocks``, the ``loopcontrols`` extension, a no-op
+        ``{% generation %}`` block (it marks training targets), and
+        ``raise_exception``, ``strftime_now`` and ``tojson(indent=...)``.
+        *variables* reach the template too (``enable_thinking=False``,
+        ``tools=[...]``).
+        """
         if self.chat_template:
             try:
-                from jinja2.sandbox import ImmutableSandboxedEnvironment
-
-                env = ImmutableSandboxedEnvironment(trim_blocks=True, lstrip_blocks=True)
-
-                def raise_exception(message: str) -> None:
-                    raise StrifeError("strife.chat.template", f"chat template: {message}")
-
-                env.globals["raise_exception"] = raise_exception
+                env = _template_env()
+            except ImportError:
+                env = None
+            if env is not None:
                 bos = self.tokens[self.bos_id] if self.bos_id is not None else ""
                 eos = self.tokens[self.eos_id] if self.eos_id is not None else ""
-                return env.from_string(self.chat_template).render(
-                    messages=messages, add_generation_prompt=add_generation_prompt,
-                    bos_token=bos, eos_token=eos)
-            except ImportError:
-                pass
-            except StrifeError:
-                raise
-            except Exception as exc:  # a template this engine cannot render
-                raise StrifeError("strife.chat.template",
-                                  f"the model's chat template did not render: {exc}",
-                                  remedy="Pass a plain prompt instead of messages.") from exc
+                try:
+                    return env.from_string(self.chat_template).render(
+                        messages=messages, add_generation_prompt=add_generation_prompt,
+                        bos_token=bos, eos_token=eos, **variables)
+                except StrifeError:
+                    raise
+                except Exception as exc:  # a template this engine cannot render
+                    raise StrifeError("strife.chat.template",
+                                      f"the model's chat template did not render: {exc}",
+                                      remedy="Pass a plain prompt instead of messages.") from exc
         parts = [f"<|im_start|>{m.get('role', 'user')}\n{m.get('content', '')}<|im_end|>\n"
                  for m in messages]
         if add_generation_prompt:
@@ -303,6 +326,43 @@ class Tokenizer:
 
     def templated_has_bos(self, text: str) -> bool:
         return self.bos_id is not None and text.startswith(self.tokens[self.bos_id])
+
+
+def _template_env() -> Any:
+    """A sandboxed Jinja environment that renders Hugging Face chat templates."""
+    import json
+    from datetime import datetime
+
+    from jinja2 import nodes
+    from jinja2.ext import Extension
+    from jinja2.sandbox import ImmutableSandboxedEnvironment
+
+    class Generation(Extension):
+        """``{% generation %}...{% endgeneration %}``: marks the assistant's
+        text for training masks; rendering it is just its body."""
+
+        tags = {"generation"}
+
+        def parse(self, parser: Any) -> Any:
+            lineno = next(parser.stream).lineno
+            body = parser.parse_statements(("name:endgeneration",), drop_needle=True)
+            return nodes.Scope(body, lineno=lineno)
+
+    env = ImmutableSandboxedEnvironment(trim_blocks=True, lstrip_blocks=True,
+                                        extensions=["jinja2.ext.loopcontrols", Generation])
+
+    def raise_exception(message: str) -> None:
+        raise StrifeError("strife.chat.template", f"chat template: {message}")
+
+    def tojson(value: Any, indent: int | None = None, ensure_ascii: bool = False,
+               separators: Any = None, sort_keys: bool = False) -> str:
+        return json.dumps(value, indent=indent, ensure_ascii=ensure_ascii,
+                          separators=separators, sort_keys=sort_keys)
+
+    env.globals["raise_exception"] = raise_exception
+    env.globals["strftime_now"] = lambda fmt: datetime.now().strftime(fmt)
+    env.filters["tojson"] = tojson
+    return env
 
 
 def _opt_int(value: Any) -> int | None:

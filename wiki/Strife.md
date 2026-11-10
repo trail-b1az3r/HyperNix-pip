@@ -33,7 +33,7 @@ a stable code (`strife.<area>.<reason>`) and a remedy.
 |---|---|
 | `-c`, `--ctx` | Context length. Default: the model's trained length, at most 4096. |
 | `-t`, `--threads` | CPU threads for BLAS. Applied before numpy loads; `diag` and `status()` report whether it took. |
-| `--cache-mb` | RAM for decoded weights. Default: a quarter of free RAM. Weights beyond it are decoded a slab at a time on each use, so RAM stays bounded and speed drops. |
+| `--cache-mb` | RAM for decoded weights. Default: 60% of free RAM. Weights beyond it are decoded a slab at a time on each use, so RAM stays bounded and speed drops. |
 | `--gpu-layers` | Accepted and reported. Alpha 1 runs every layer on the CPU and says why. |
 | `-n`, `--temp`, `--top-k`, `--top-p`, `--min-p`, `--repeat-penalty`, `--seed` | Sampling. `--temp 0` is greedy. A seed makes sampling reproducible. |
 | `--stop` | A stop string, repeatable. The text is cut before it. |

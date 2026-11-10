@@ -4,7 +4,7 @@ The GGUF is mapped read-only once. A tensor's bytes are a view into that
 map, so opening a 20 GB model costs address space, not 20 GB of RAM.
 
 Decoding to float32 is where memory goes, so it is budgeted:
-``cache_bytes`` (default: a quarter of free RAM) holds decoded tensors,
+``cache_bytes`` (default: 60% of free RAM) holds decoded tensors,
 least recently used first out. A tensor larger than the whole budget is
 never cached; the backend multiplies it a slab of rows at a time instead
 (:meth:`WeightStore.matmul`), so peak RAM stays bounded whatever the
@@ -37,7 +37,7 @@ def default_cache_bytes() -> int:
     try:
         import psutil
 
-        return int(psutil.virtual_memory().available // 4)
+        return int(psutil.virtual_memory().available * 0.6)
     except Exception:
         return 2 << 30
 
@@ -135,20 +135,28 @@ class WeightStore:
             out[i] = decode(raw[rid * per_row:(rid + 1) * per_row], t.ggml_type)
         return out
 
-    def matmul(self, x: np.ndarray, name: str) -> np.ndarray:
-        """``x @ W.T`` for weight *name* stored ``(out, in)``: ``x`` is ``(n, in)``."""
+    def matmul(self, x: np.ndarray, name: str, rows: tuple[int, int] | None = None) -> np.ndarray:
+        """``x @ W.T`` for weight *name* stored ``(out, in)``: ``x`` is ``(n, in)``.
+
+        *rows* takes a range of output rows only: one expert's slice of a
+        3-D expert tensor, decoded alone when the whole is not cached.
+        """
         t = self.tensor(name)
         n_rows, cols = self.shape2d(t)
+        first, last = rows if rows is not None else (0, n_rows)
+        if not 0 <= first < last <= n_rows:
+            raise StrifeError("strife.runtime.bad_rows", f"rows {first}:{last} of {name}")
         if self.cacheable(name):
-            return x @ self.get(name).T
+            w = self.get(name)
+            return x @ (w if rows is None else w[first:last]).T
         per_row = cols // type_block_size(t.ggml_type) * type_size_bytes(t.ggml_type)
         slab = max(1, _SLAB_BYTES // max(1, cols * 4))
         raw = self.raw(t)
-        out = np.empty((x.shape[0], n_rows), dtype=np.float32)
-        for start in range(0, n_rows, slab):
-            stop = min(n_rows, start + slab)
+        out = np.empty((x.shape[0], last - first), dtype=np.float32)
+        for start in range(first, last, slab):
+            stop = min(last, start + slab)
             block = decode(raw[start * per_row:stop * per_row], t.ggml_type).reshape(-1, cols)
-            out[:, start:stop] = x @ block.T
+            out[:, start - first:stop - first] = x @ block.T
         return out
 
     # -- reporting ---------------------------------------------------------

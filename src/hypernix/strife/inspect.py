@@ -25,34 +25,17 @@ from pathlib import Path
 from typing import Any
 
 from ..quant.gguf import GGUFError, GGUFFile, type_block_size
+from .archs import ARCHITECTURES, PlanError, build_plan
 from .errors import StrifeError
 from .quants import quant_name, supported_type
 
-__all__ = ["ARCHITECTURES", "ArchSpec", "ModelReport", "inspect_model", "require_runnable",
-           "file_sha256", "read_gguf"]
+__all__ = ["ARCHITECTURES", "ModelReport", "inspect_model", "require_runnable",
+           "file_sha256", "read_gguf", "shapes_of"]
 
 #: The largest element count accepted for one tensor (2^40): past any
 #: real tensor, short of overflow in any arithmetic done on it.
 _MAX_ELEMENTS = 1 << 40
 _MAX_DIMS = 4
-
-
-@dataclass(frozen=True)
-class ArchSpec:
-    name: str
-    rope: str                 # "norm": adjacent pairs; "neox": first half with second
-    qkv_bias: bool = False    # qwen2: biases on q, k and v
-    qk_norm: bool = False     # qwen3: RMSNorm on q and k, per head
-
-
-#: The architectures Strife runs, and how each differs from plain llama.
-#: Anything else is refused at inspection, with this list in the message.
-ARCHITECTURES: dict[str, ArchSpec] = {
-    "llama": ArchSpec("llama", rope="norm"),
-    "mistral": ArchSpec("mistral", rope="norm"),
-    "qwen2": ArchSpec("qwen2", rope="neox", qkv_bias=True),
-    "qwen3": ArchSpec("qwen3", rope="neox", qk_norm=True),
-}
 
 
 @dataclass
@@ -81,6 +64,8 @@ class ModelReport:
     weight_bytes: int = 0
     types: dict[str, int] = field(default_factory=dict)
     tied_output: bool = False
+    #: The architecture's own facts (layer mix, experts, rope dims, ...).
+    details: dict[str, Any] = field(default_factory=dict)
     problems: list[dict[str, Any]] = field(default_factory=list)
 
     @property
@@ -104,10 +89,6 @@ def file_sha256(path: str | Path) -> str:
         for chunk in iter(lambda: handle.read(1 << 22), b""):
             digest.update(chunk)
     return digest.hexdigest()
-
-
-def _meta(md: dict[str, Any], arch: str, key: str, default: Any = None) -> Any:
-    return md.get(f"{arch}.{key}", default)
 
 
 def _block(ggml_type: int) -> int:
@@ -172,94 +153,31 @@ def _check_tensors(gguf: GGUFFile, report: ModelReport, file_size: int) -> None:
                            tensor=bn)
 
 
-def _shape(gguf: GGUFFile, name: str) -> tuple[int, ...] | None:
-    t = gguf.get(name)
-    return tuple(int(d) for d in t.shape) if t is not None else None
+def shapes_of(gguf: GGUFFile) -> dict[str, tuple[int, ...]]:
+    return {t.name: tuple(int(d) for d in t.shape) for t in gguf.tensors}
 
 
 def _check_architecture(gguf: GGUFFile, report: ModelReport) -> None:
     md = gguf.metadata
-    arch = str(md.get("general.architecture") or "")
-    report.architecture = arch
+    report.architecture = str(md.get("general.architecture") or "")
     report.name = str(md.get("general.name") or "")
-    spec = ARCHITECTURES.get(arch)
-    if spec is None:
-        report.problem("strife.arch.unsupported",
-                       f"architecture {arch or '(none)'!r} is not one Strife runs",
-                       "Strife runs: " + ", ".join(ARCHITECTURES)
-                       + ". Use the llama.cpp runner (hnx-t1 runner start) for others.",
-                       architecture=arch)
-        return
     try:
-        n_layers = int(_meta(md, arch, "block_count", 0) or 0)
-        n_embd = int(_meta(md, arch, "embedding_length", 0) or 0)
-        n_heads = int(_meta(md, arch, "attention.head_count", 0) or 0)
-        n_kv = int(_meta(md, arch, "attention.head_count_kv", n_heads) or n_heads)
-        n_ff = int(_meta(md, arch, "feed_forward_length", 0) or 0)
-        head_dim = int(_meta(md, arch, "attention.key_length", 0) or 0) or (
-            n_embd // n_heads if n_heads else 0)
-        report.context_length = int(_meta(md, arch, "context_length", 0) or 0)
-        report.rope_freq_base = float(_meta(md, arch, "rope.freq_base", 10000.0) or 10000.0)
-        if str(_meta(md, arch, "rope.scaling.type", "") or "") == "linear":
-            report.rope_scale = float(_meta(md, arch, "rope.scaling.factor", 1.0) or 1.0)
-        report.rms_eps = float(_meta(md, arch, "attention.layer_norm_rms_epsilon", 1e-5) or 1e-5)
-    except (TypeError, ValueError):
-        report.problem("strife.model.bad_metadata", "architecture metadata is not numeric",
-                       architecture=arch)
+        plan = build_plan(md, shapes_of(gguf))
+    except PlanError as exc:
+        details = {"architecture": report.architecture}
+        if exc.tensor:
+            details["tensor"] = exc.tensor
+        report.problem(exc.code, str(exc), exc.remedy, **details)
         return
-    report.n_layers, report.n_embd, report.n_heads = n_layers, n_embd, n_heads
-    report.n_kv_heads, report.n_ff, report.head_dim = n_kv, n_ff, head_dim
-    if min(n_layers, n_embd, n_heads, n_kv, head_dim, n_ff) <= 0 or n_heads % n_kv:
-        report.problem("strife.model.bad_metadata",
-                       "the architecture metadata is missing or inconsistent "
-                       f"(layers={n_layers}, embd={n_embd}, heads={n_heads}, "
-                       f"kv_heads={n_kv}, ff={n_ff})", architecture=arch)
-        return
-    if n_layers > 1024 or n_embd > 1 << 17 or head_dim > 1024 or head_dim % 2:
-        report.problem("strife.model.bad_metadata", "implausible architecture metadata",
-                       architecture=arch)
-        return
-
-    emb = _shape(gguf, "token_embd.weight")
-    if emb is None or len(emb) != 2 or emb[0] != n_embd:
-        report.problem("strife.model.missing_tensor",
-                       "token_embd.weight is missing or the wrong shape",
-                       tensor="token_embd.weight")
-        return
-    report.n_vocab = emb[1]
-    report.tied_output = gguf.get("output.weight") is None
-    q_out, kv_out = n_heads * head_dim, n_kv * head_dim
-    expected: dict[str, tuple[int, ...]] = {
-        "attn_norm.weight": (n_embd,), "ffn_norm.weight": (n_embd,),
-        "attn_q.weight": (n_embd, q_out), "attn_k.weight": (n_embd, kv_out),
-        "attn_v.weight": (n_embd, kv_out), "attn_output.weight": (q_out, n_embd),
-        "ffn_gate.weight": (n_embd, n_ff), "ffn_up.weight": (n_embd, n_ff),
-        "ffn_down.weight": (n_ff, n_embd),
-    }
-    if spec.qkv_bias:
-        expected.update({"attn_q.bias": (q_out,), "attn_k.bias": (kv_out,),
-                         "attn_v.bias": (kv_out,)})
-    if spec.qk_norm:
-        expected.update({"attn_q_norm.weight": (head_dim,), "attn_k_norm.weight": (head_dim,)})
-    for layer in range(n_layers):
-        for part, shape in expected.items():
-            name = f"blk.{layer}.{part}"
-            got = _shape(gguf, name)
-            if got is None:
-                report.problem("strife.model.missing_tensor", f"{name} is missing",
-                               tensor=name)
-                return
-            if got != shape:
-                report.problem("strife.model.bad_shape", f"{name} is {got}, expected {shape}",
-                               tensor=name)
-                return
-    if _shape(gguf, "output_norm.weight") != (n_embd,):
-        report.problem("strife.model.missing_tensor", "output_norm.weight is missing",
-                       tensor="output_norm.weight")
-    out = _shape(gguf, "output.weight")
-    if out is not None and out != (n_embd, report.n_vocab):
-        report.problem("strife.model.bad_shape", f"output.weight is {out}",
-                       tensor="output.weight")
+    report.n_layers, report.n_embd, report.n_vocab = plan.n_layers, plan.n_embd, plan.n_vocab
+    report.context_length, report.rms_eps, report.tied_output = plan.context_length, plan.eps, plan.tied
+    attn = next((lay.attn for lay in plan.layers if lay.attn is not None), None)
+    if attn is not None:
+        report.n_heads, report.n_kv_heads, report.head_dim = attn.n_heads, attn.n_kv_heads, attn.head_dim
+        report.rope_freq_base, report.rope_scale = attn.rope_base, attn.rope_scale
+    report.n_ff = next((lay.n_ff for lay in plan.layers if lay.n_ff), 0) or next(
+        (lay.moe.n_ff for lay in plan.layers if lay.moe), 0)
+    report.details = dict(plan.summary)
 
 
 def _check_tokenizer(gguf: GGUFFile, report: ModelReport) -> None:
@@ -278,6 +196,16 @@ def _check_tokenizer(gguf: GGUFFile, report: ModelReport) -> None:
         return
     if model == "gpt2" and not isinstance(md.get("tokenizer.ggml.merges"), list):
         report.problem("strife.tokenizer.missing", "a gpt2 tokenizer without merges")
+    if model == "gpt2":
+        from .tokenizer import _PRE
+
+        pre = str(md.get("tokenizer.ggml.pre") or "default")
+        if pre not in _PRE:
+            report.problem("strife.tokenizer.pre_unsupported",
+                           f"the pre-tokenizer {pre!r} is not one Strife knows, so text would be "
+                           "split differently from how the model was trained",
+                           "Strife knows: " + ", ".join(sorted(_PRE))
+                           + ". Use the llama.cpp runner for this model.", pre=pre)
     if report.n_vocab and len(tokens) > report.n_vocab:
         report.problem("strife.tokenizer.mismatch",
                        f"{len(tokens)} tokens for an embedding of {report.n_vocab} rows")

@@ -18,7 +18,7 @@ from hypernix.quant.gguf import GGUFFile
 from hypernix.strife import Engine, SamplerConfig, StrifeError, inspect_model
 from hypernix.strife.fixtures import QUANT_TYPES, make_model
 from hypernix.strife.inspect import read_gguf
-from hypernix.strife.model import KVCache, Transformer
+from hypernix.strife.model import Transformer
 from hypernix.strife.quants import decode, supported_type, supported_types
 from hypernix.strife.weights import WeightStore
 
@@ -68,32 +68,32 @@ class TestAgainstTransformers:
     @pytest.mark.parametrize("arch", ["llama", "qwen2", "qwen3"])
     def test_every_position_matches(self, models, arch):
         tr = _transformer(models[arch]["path"])
-        ours = tr.forward(IDS, KVCache(tr.hp, 64), all_logits=True)
+        ours = tr.forward(IDS, tr.new_state(64), all_logits=True)
         np.testing.assert_allclose(ours, _hf_logits(models[arch], IDS), atol=1e-4, rtol=1e-4)
 
     @pytest.mark.parametrize("arch", ["llama", "qwen2", "qwen3"])
     def test_decoding_one_token_at_a_time_through_the_cache_agrees(self, models, arch):
         tr = _transformer(models[arch]["path"])
-        cache = KVCache(tr.hp, 64)
+        cache = tr.new_state(64)
         tr.forward(IDS[:3], cache)
         for i, token in enumerate(IDS[3:], start=3):
             last = tr.forward([token], cache)
             whole = _transformer(models[arch]["path"]).forward(
-                IDS[: i + 1], KVCache(tr.hp, 64))
+                IDS[: i + 1], tr.new_state(64))
             np.testing.assert_allclose(last, whole, atol=1e-4)
 
     def test_a_tied_output_uses_the_embedding(self, models):
         tr = _transformer(models["tied"]["path"])
-        assert tr.hp.tied
-        np.testing.assert_allclose(tr.forward(IDS, KVCache(tr.hp, 64), all_logits=True),
+        assert tr.plan.tied
+        np.testing.assert_allclose(tr.forward(IDS, tr.new_state(64), all_logits=True),
                                    _hf_logits(models["tied"], IDS), atol=1e-4)
 
     def test_a_tiny_decode_cache_changes_nothing(self, models):
         """Over budget, weights are multiplied a slab at a time instead."""
         roomy = _transformer(models["qwen2"]["path"])
         tight = _transformer(models["qwen2"]["path"], cache_bytes=0)
-        a = roomy.forward(IDS, KVCache(roomy.hp, 64), all_logits=True)
-        b = tight.forward(IDS, KVCache(tight.hp, 64), all_logits=True)
+        a = roomy.forward(IDS, roomy.new_state(64), all_logits=True)
+        b = tight.forward(IDS, tight.new_state(64), all_logits=True)
         np.testing.assert_allclose(a, b, atol=1e-5)
         assert tight.w.stats()["cached_bytes"] == 0
 
@@ -127,7 +127,7 @@ class TestQuantisedModels:
         model = make_model(tmp_path / "m.gguf", arch="qwen2", quant=quant, n_embd=256, n_ff=512,
                            n_heads=4, n_kv_heads=2, n_layers=1, seed=7)
         tr = _transformer(model["path"])
-        ours = tr.forward(IDS, KVCache(tr.hp, 32), all_logits=True)
+        ours = tr.forward(IDS, tr.new_state(32), all_logits=True)
         ref = _hf_logits(model, IDS, _dequantized_hf(model["path"], model))
         np.testing.assert_allclose(ours, ref, atol=2e-4, rtol=1e-3)
 
@@ -137,8 +137,8 @@ class TestQuantisedModels:
         q = make_model(tmp_path / "q.gguf", arch="qwen2", quant=quant, n_embd=256, n_ff=512,
                        n_layers=1, seed=7)
         a, b = _transformer(f32["path"]), _transformer(q["path"])
-        la = a.forward(IDS, KVCache(a.hp, 32), all_logits=True)
-        lb = b.forward(IDS, KVCache(b.hp, 32), all_logits=True)
+        la = a.forward(IDS, a.new_state(32), all_logits=True)
+        lb = b.forward(IDS, b.new_state(32), all_logits=True)
         corr = np.corrcoef(la.reshape(-1), lb.reshape(-1))[0, 1]
         # Measured on these random weights: Q8_0 0.9999, Q4_K 0.98, Q3_K 0.92-0.93.
         assert corr > {"Q8_0": 0.999, "Q4_K": 0.97, "Q3_K": 0.90}[quant], corr
@@ -159,7 +159,7 @@ class TestHyperNixTypes:
         report = inspect_model(model["path"])
         assert report.runnable, report.problems
         tr = _transformer(model["path"])
-        logits = tr.forward(IDS, KVCache(tr.hp, 32))
+        logits = tr.forward(IDS, tr.new_state(32))
         assert np.isfinite(logits).all()
         ref = _hf_logits(model, IDS, _dequantized_hf(model["path"], model))[-1]
         np.testing.assert_allclose(logits, ref, atol=2e-4, rtol=1e-3)
@@ -484,6 +484,6 @@ def test_a_real_model_against_transformers():
                                                            dtype=torch.float32).eval()
     with torch.no_grad():
         ref = hf(torch.tensor([ids])).logits[0].numpy()
-    ours = engine.model.forward(ids, KVCache(engine.model.hp, 256), all_logits=True)
+    ours = engine.model.forward(ids, engine.model.new_state(256), all_logits=True)
     assert np.abs(ours - ref).max() < 1e-3 * max(1.0, np.abs(ref).max())
     assert (ours.argmax(-1) == ref.argmax(-1)).mean() == 1.0

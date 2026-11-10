@@ -4,7 +4,8 @@
 
     hnx strife inspect MODEL.gguf [--json]     # what it is, and whether Strife runs it
     hnx strife run MODEL.gguf -p "prompt"      # generate, streaming to the terminal
-    hnx strife chat MODEL.gguf                 # a conversation, one session
+    hnx strife chat MODEL                      # the chat screen: chats, context, mouse
+    hnx strife chat MODEL --plain              # line by line, for pipes and scripts
     hnx strife diag [MODEL.gguf]               # hardware, backend and placement
     hnx strife types                           # tensor types Strife can read
     hnx strife selftest                        # build a tiny model and run it
@@ -42,12 +43,12 @@ def _common(p: argparse.ArgumentParser) -> None:
 
 
 def _load_args(p: argparse.ArgumentParser) -> None:
-    p.add_argument("model", help="path to a .gguf file")
+    p.add_argument("model", help="a model id from the models folder, or a path to a .gguf")
     p.add_argument("-c", "--ctx", type=int, default=0, help="context length (default: the "
                    "model's, at most 4096)")
     p.add_argument("-t", "--threads", type=int, default=0, help="CPU threads")
     p.add_argument("--cache-mb", type=int, default=-1,
-                   help="RAM for decoded weights (default: a quarter of free RAM)")
+                   help="RAM for decoded weights (default: 60% of free RAM)")
     p.add_argument("--gpu-layers", type=int, default=0,
                    help="layers to put on the GPU (alpha 1: reported, runs on the CPU)")
 
@@ -80,10 +81,14 @@ def _parser() -> argparse.ArgumentParser:
                    help="wrap the prompt in the model's chat template as a user message")
     p.add_argument("--system", default=None, help="system message (with --chat)")
     _common(p)
-    p = sub.add_parser("chat", help="talk to a model")
+    p = sub.add_parser("chat", help="talk to a model: a screen with chats, context and the mouse")
     _load_args(p)
     _sampling_args(p)
     p.add_argument("--system", default=None)
+    p.add_argument("--plain", action="store_true",
+                   help="line-by-line chat instead of the screen (also when not on a terminal)")
+    p.add_argument("--chats", default=None, help="where chats are kept "
+                   "(default ~/.hypernix/strife/chats.json)")
     p = sub.add_parser("diag", help="hardware, backend selection and placement")
     p.add_argument("model", nargs="?")
     p.add_argument("-c", "--ctx", type=int, default=0)
@@ -114,8 +119,9 @@ def _fail(exc: Exception, as_json: bool) -> int:
 
 def _engine(args: argparse.Namespace) -> Any:
     from .engine import Engine
+    from .models import resolve_model
 
-    return Engine(args.model, n_ctx=args.ctx or None, threads=args.threads or None,
+    return Engine(resolve_model(args.model), n_ctx=args.ctx or None, threads=args.threads or None,
                   cache_bytes=None if args.cache_mb < 0 else args.cache_mb * 1024 * 1024,
                   gpu_layers=args.gpu_layers)
 
@@ -133,9 +139,10 @@ def _gib(n: int) -> str:
 
 def cmd_inspect(args: argparse.Namespace) -> int:
     from .inspect import read_gguf
+    from .models import resolve_model
     from .quants import quant_name
 
-    gguf, report = read_gguf(args.model)
+    gguf, report = read_gguf(resolve_model(args.model))
     if args.json:
         out = report.to_dict()
         if args.tensors and gguf is not None:
@@ -210,6 +217,26 @@ def cmd_run(args: argparse.Namespace) -> int:
 
 
 def cmd_chat(args: argparse.Namespace) -> int:
+    if not args.plain and sys.stdin.isatty() and sys.stdout.isatty():
+        return _chat_screen(args)
+    return _chat_plain(args)
+
+
+def _chat_screen(args: argparse.Namespace) -> int:
+    from pathlib import Path
+
+    from .tui import ChatApp, ChatStore, run
+
+    print(f"strife: loading {args.model}…", file=sys.stderr, flush=True)
+    with _engine(args) as engine:
+        store = ChatStore(Path(args.chats).expanduser() if args.chats else None)
+        app = ChatApp(engine, store, max_tokens=args.max_tokens, sampling=_sampling(args))
+        if args.system and not app.chat.messages:
+            app.chat.messages.append({"role": "system", "content": args.system})
+        return run(app)
+
+
+def _chat_plain(args: argparse.Namespace) -> int:
     with _engine(args) as engine:
         session = engine.new_session()
         messages: list[dict[str, str]] = (
@@ -256,11 +283,12 @@ def cmd_diag(args: argparse.Namespace) -> int:
         out["blas"] = {}
     if args.model:
         from .inspect import inspect_model
+        from .models import resolve_model
 
-        report = inspect_model(args.model)
+        report = inspect_model(resolve_model(args.model))
         out["model"] = {"runnable": report.runnable, "problems": report.problems}
         if report.runnable:
-            out["placement"] = plan(report, n_ctx=args.ctx or min(report.context_length or 4096,
+            out["placement"] = plan(report, None, n_ctx=args.ctx or min(report.context_length or 4096,
                                                                     4096),
                                     gpu_layers=args.gpu_layers, hardware=hw)
     if args.json:

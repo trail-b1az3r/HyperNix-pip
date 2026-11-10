@@ -43,7 +43,7 @@ from typing import Any
 
 from .errors import StrifeError
 from .inspect import ModelReport, read_gguf, require_runnable
-from .model import KVCache, Transformer
+from .model import SeqState, Transformer
 from .sampler import Sampler, SamplerConfig
 from .tokenizer import StreamDecoder, Tokenizer
 from .weights import WeightStore
@@ -61,7 +61,7 @@ class GenerationResult:
 
 @dataclass
 class _Session:
-    cache: KVCache
+    cache: SeqState
     lock: threading.Lock = field(default_factory=threading.Lock)
     last_used: float = field(default_factory=time.monotonic)
 
@@ -87,7 +87,7 @@ class Engine:
             raise StrifeError("strife.config.bad_context", "n_ctx must be positive")
         from .placement import plan
 
-        self.placement = plan(report, n_ctx=self.n_ctx, gpu_layers=gpu_layers,
+        self.placement = plan(report, self.model.plan, n_ctx=self.n_ctx, gpu_layers=gpu_layers,
                               max_sessions=max_sessions)
         self.max_sessions = max(1, int(max_sessions))
         self._sessions: OrderedDict[str, _Session] = OrderedDict()
@@ -106,10 +106,32 @@ class Engine:
     def new_session(self) -> str:
         sid = uuid.uuid4().hex
         with self._sessions_lock:
-            self._sessions[sid] = _Session(KVCache(self.model.hp, self.n_ctx))
+            self._sessions[sid] = _Session(self.model.new_state(self.n_ctx))
             while len(self._sessions) > self.max_sessions:
                 self._sessions.popitem(last=False)
         return sid
+
+    def session_for(self, ids: list[int]) -> str:
+        """The session whose state shares the longest prefix with *ids*,
+        or a new one when none shares a useful part (fewer than 16 tokens).
+
+        For a server with several conversations going: each request lands
+        on the cache that already holds most of it, and only the new
+        message is run.
+        """
+        best, best_len = None, 15
+        with self._sessions_lock:
+            for sid, s in self._sessions.items():
+                if s.lock.locked():
+                    continue
+                common = 0
+                for a, b in zip(s.cache.tokens, ids, strict=False):
+                    if a != b:
+                        break
+                    common += 1
+                if common > best_len:
+                    best, best_len = sid, common
+        return best if best is not None else self.new_session()
 
     def close_session(self, sid: str) -> bool:
         with self._sessions_lock:
@@ -129,11 +151,12 @@ class Engine:
     # -- prompts -------------------------------------------------------------
 
     def prompt_tokens(self, prompt: str | None = None,
-                      messages: list[dict[str, str]] | None = None) -> list[int]:
+                      messages: list[dict[str, Any]] | None = None,
+                      template_vars: dict[str, Any] | None = None) -> list[int]:
         if (prompt is None) == (messages is None):
             raise StrifeError("strife.request.bad", "give exactly one of prompt or messages")
         if messages is not None:
-            text = self.tokenizer.apply_chat_template(messages)
+            text = self.tokenizer.apply_chat_template(messages, **(template_vars or {}))
             return self.tokenizer.encode(text, add_bos=False if self.tokenizer.templated_has_bos(text)
                                          else None)
         return self.tokenizer.encode(prompt or "")
@@ -152,15 +175,17 @@ class Engine:
     def stream(self, prompt: str | None = None, *, messages: list[dict[str, str]] | None = None,
                session: str | None = None, max_tokens: int = 256,
                stop: list[str] | None = None, sampling: SamplerConfig | None = None,
-               timeout: float | None = None, cancel: threading.Event | None = None
-               ) -> Iterator[dict[str, Any]]:
+               timeout: float | None = None, cancel: threading.Event | None = None,
+               template_vars: dict[str, Any] | None = None,
+               prompt_ids: list[int] | None = None) -> Iterator[dict[str, Any]]:
         if self._closed:
             raise StrifeError("strife.engine.closed", "the engine was closed")
         if max_tokens < 0:
             raise StrifeError("strife.request.bad", "max_tokens must not be negative")
         stops = [s for s in (stop or []) if s]
         sampler = Sampler(sampling or SamplerConfig())
-        ids = self.prompt_tokens(prompt, messages)
+        ids = list(prompt_ids) if prompt_ids is not None else self.prompt_tokens(
+            prompt, messages, template_vars)
         if not ids:
             raise StrifeError("strife.request.bad", "the prompt is empty")
         deadline = time.monotonic() + timeout if timeout else None
@@ -196,7 +221,7 @@ class Engine:
                     yield from self._run(ids, s.cache, sampler, max_tokens, stops, stopped,
                                          cancel, reuse=True)
             else:
-                cache = KVCache(self.model.hp, self.n_ctx)
+                cache = self.model.new_state(self.n_ctx)
                 yield from self._run(ids, cache, sampler, max_tokens, stops, stopped, cancel,
                                      reuse=False)
         finally:
@@ -209,7 +234,7 @@ class Engine:
         return {"type": "done", "text": text, "tokens": tokens, "stop_reason": reason,
                 "stats": stats}
 
-    def _run(self, ids: list[int], cache: KVCache, sampler: Sampler, max_tokens: int,
+    def _run(self, ids: list[int], cache: SeqState, sampler: Sampler, max_tokens: int,
              stops: list[str], stopped: Any, cancel: threading.Event | None, *, reuse: bool
              ) -> Iterator[dict[str, Any]]:
         if len(ids) >= cache.n_ctx:
@@ -224,19 +249,23 @@ class Engine:
                     break
                 common += 1
             common = min(common, len(ids) - 1)  # always run at least one token
-            cache.truncate(common)
-            reused = common
+            # Attention goes back anywhere; recurrent layers only to a
+            # snapshot, so this may reuse less than the common prefix.
+            reused = cache.rewind(common)
         else:
-            cache.truncate(0)
+            reused = cache.rewind(0)
         t0 = time.perf_counter()
         try:
             logits = self.model.forward(ids[reused:], cache, cancelled=stopped)
         except StrifeError as exc:
             if exc.code == "strife.runtime.cancelled":
-                cache.truncate(reused)
+                cache.rewind(reused, force=True)
                 yield self._done("", [], self._why(cancel), {"prompt_tokens": len(ids)})
                 return
             raise
+        # The next turn of a conversation starts with this prompt: remember
+        # the recurrent state here so it can carry on instead of starting over.
+        cache.checkpoint()
         t_prefill = time.perf_counter() - t0
         decoder = StreamDecoder(self.tokenizer)
         generated: list[int] = []
@@ -276,6 +305,9 @@ class Engine:
                 logits = self.model.forward([token], cache, cancelled=stopped)
             except StrifeError as exc:
                 if exc.code == "strife.runtime.cancelled":
+                    # A pass stopped partway leaves recurrent layers ahead of
+                    # the tokens; go back to a state that is consistent.
+                    cache.rewind(cache.n, force=True)
                     reason = self._why(cancel)
                     break
                 raise

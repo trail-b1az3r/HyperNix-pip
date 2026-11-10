@@ -84,6 +84,15 @@ def _openai_client(base_url: str, *, timeout: float = 300.0):
     return LMStudioBridge(base_url, timeout=timeout)
 
 
+def _named(client: Any, name: str) -> Any:
+    """Tell the client what its errors should call the server."""
+    try:
+        client.name = name
+    except AttributeError:  # a stand-in client without the attribute
+        pass
+    return client
+
+
 def loaded_models(config: Any, runner: Any = None, *, lmstudio_timeout: float = 4.0) -> list[dict[str, Any]]:
     """Every model loaded right now, whichever backend holds it.
 
@@ -158,7 +167,7 @@ def resolve_backend(config: Any, runner: Any = None, model_id: str | None = None
     if current is not None:
         base_url = f"{runner.base_url}/v1"
         return Backend(
-            client=_openai_client(base_url),
+            client=_named(_openai_client(base_url), "the HyperNix runner"),
             name=HYPERNIX,
             base_url=base_url,
             model_id=getattr(current, "model_id", ""),
