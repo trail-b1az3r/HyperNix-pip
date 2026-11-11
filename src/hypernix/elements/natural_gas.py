@@ -188,6 +188,7 @@ def attach(
         raise
     return attachment
 
+
 def detach(oven: Any) -> list[str]:
     """Restore the oven's methods and release its element/dependency leases."""
     attachment = attached(oven)
@@ -201,6 +202,7 @@ def detach(oven: Any) -> list[str]:
             element.spec.symbol for element in attachment.elements
         )
     return attachment.symbols
+
 
 def _wrap(name: str, original, attachment: Attachment):
     if name == "chat":
