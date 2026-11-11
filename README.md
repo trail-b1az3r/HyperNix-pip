@@ -1000,6 +1000,9 @@ preset because non-HyperNix `model_type` values route through
 Topic-focused reference guides live in the `wiki/` directory:
 
 - [`wiki/Home.md`](wiki/Home.md) — index
+- [`wiki/Elements.md`](wiki/Elements.md) — Hydrogen's element system, chat integration, dependencies and groups
+- [`wiki/3H.md`](wiki/3H.md) — the 3H isotope runtime and editable .hnx loader
+- [`wiki/HNX-Syntax.md`](wiki/HNX-Syntax.md) — dedicated v1.1.0 .hnx language and file-format reference
 - [`wiki/Examples.md`](wiki/Examples.md) — table-of-contents-driven encyclopedia for every Python module in `src/hypernix/`, linked to its source file
 - [`wiki/Ovens.md`](wiki/Ovens.md) — `old_oven` / `new_oven` reference
 - [`wiki/Fridges.md`](wiki/Fridges.md) — `old_fridge` / `mediocre_fridge` / `new_fridge`
