@@ -1,7 +1,7 @@
 {
   "kind": "hypernix-api-deep",
   "generated_at": "2026-09-20T21:20:57Z",
-  "commit": "6b9111e4fb8906ca7f8d61298c98278cb09d8726",
+  "commit": "78f6fcd413ecc638d94ec33f128c81f6337ee38c",
   "history_available": true,
   "source_root": "src/hypernix",
   "modules": [
@@ -8210,13 +8210,20 @@
     {
       "module": "hypernix.elements",
       "source": "src/hypernix/elements/__init__.py",
-      "line_count": 10,
+      "line_count": 14,
       "summary": "hypernix.elements \u2014 addons named after the periodic table.",
       "api": [],
       "errors": [],
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "26e9a6f7",
+          "date": "2026-11-11",
+          "author": "Rayla",
+          "subject": "Document the 3H element scripting isotope",
+          "api_changes": []
+        },
         {
           "sha": "589ebbdc",
           "date": "2026-09-23",
@@ -8273,7 +8280,7 @@
     {
       "module": "hypernix.elements.carbon",
       "source": "src/hypernix/elements/carbon.py",
-      "line_count": 201,
+      "line_count": 210,
       "summary": "carbon \u2014 quality of life, and elements you write yourself.",
       "api": [
         {
@@ -8346,6 +8353,13 @@
       "required_modules": [],
       "changes": [
         {
+          "sha": "bd1a7587",
+          "date": "2026-11-11",
+          "author": "Rayla",
+          "subject": "Add Hydrogen v1.1.0 dependencies and 3H .hnx runtime",
+          "api_changes": []
+        },
+        {
           "sha": "99ddc1ae",
           "date": "2026-09-29",
           "author": "Claude",
@@ -8411,23 +8425,59 @@
       ]
     },
     {
+      "module": "hypernix.elements.chat_elements",
+      "source": "src/hypernix/elements/chat_elements.py",
+      "line_count": 76,
+      "summary": "Resolve elements selected by hypernix chat --elements.",
+      "api": [
+        {
+          "kind": "function",
+          "name": "resolve_chat_elements",
+          "signature": "def resolve_chat_elementsselection: str | None=None, group: str | None=None, *, allow_experimental: bool=False -> tuple[Registry, list[str]]",
+          "line": 13,
+          "doc": "Resolve file/directory/all selection and return chat-addon roots."
+        }
+      ],
+      "errors": [
+        "FileNotFoundError",
+        "HyperNixError",
+        "ValueError"
+      ],
+      "deprecations": [],
+      "required_modules": [],
+      "changes": [
+        {
+          "sha": "bd1a7587",
+          "date": "2026-11-11",
+          "author": "Rayla",
+          "subject": "Add Hydrogen v1.1.0 dependencies and 3H .hnx runtime",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def resolve_chat_elements("
+            }
+          ]
+        }
+      ]
+    },
+    {
       "module": "hypernix.elements.elements_cli",
       "source": "src/hypernix/elements/elements_cli.py",
-      "line_count": 121,
+      "line_count": 135,
       "summary": "``hypernix elements`` \u2014 list, inspect, scaffold, and run elements.",
       "api": [
         {
           "kind": "function",
           "name": "main",
           "signature": "def mainargv: list[str] | None=None -> int",
-          "line": 107,
+          "line": 119,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "cli_main",
           "signature": "def cli_mainargv: list[str] | None=None -> int",
-          "line": 145,
+          "line": 159,
           "doc": ""
         }
       ],
@@ -8435,6 +8485,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "bd1a7587",
+          "date": "2026-11-11",
+          "author": "Rayla",
+          "subject": "Add Hydrogen v1.1.0 dependencies and 3H .hnx runtime",
+          "api_changes": []
+        },
         {
           "sha": "589ebbdc",
           "date": "2026-09-23",
@@ -8480,72 +8537,72 @@
     {
       "module": "hypernix.elements.hydrogen",
       "source": "src/hypernix/elements/hydrogen.py",
-      "line_count": 320,
+      "line_count": 443,
       "summary": "hydrogen \u2014 the framework element modules are built on.",
       "api": [
         {
           "kind": "function",
           "name": "atomic_number",
           "signature": "def atomic_numbersymbol: str -> int",
-          "line": 107,
+          "line": 112,
           "doc": "``\"Mg\"`` -> 12. Case matters, as it does on the table: ``Co`` is cobalt and ``CO`` is carbon monoxide."
         },
         {
           "kind": "function",
           "name": "period_of",
           "signature": "def period_ofnumber: int -> int",
-          "line": 119,
+          "line": 124,
           "doc": "The row. 1 to 7."
         },
         {
           "kind": "function",
           "name": "is_experimental",
           "signature": "def is_experimentalnumber: int -> bool",
-          "line": 130,
+          "line": 135,
           "doc": "Periods 6 and 7: caesium (55) onward."
         },
         {
           "kind": "function",
           "name": "name_of",
           "signature": "def name_ofsymbol: str -> str",
-          "line": 135,
+          "line": 140,
           "doc": ""
         },
         {
           "kind": "class",
           "name": "ElementSpec",
           "signature": "class ElementSpec",
-          "line": 140,
+          "line": 145,
           "doc": "What an element is and what it may do.",
           "methods": [
             {
               "name": "number",
               "signature": "def numberself -> int",
-              "line": 163,
+              "line": 196,
               "doc": ""
             },
             {
               "name": "name",
               "signature": "def nameself -> str",
-              "line": 167,
+              "line": 200,
               "doc": ""
             },
             {
               "name": "period",
               "signature": "def periodself -> int",
-              "line": 171,
+              "line": 204,
               "doc": ""
             },
             {
               "name": "experimental",
               "signature": "def experimentalself -> bool",
-              "line": 175,
+              "line": 208,
               "doc": ""
             },
             {
               "name": "to_dict",
               "signature": "def to_dictself -> dict[str, Any]",
-              "line": 178,
+              "line": 211,
               "doc": ""
             }
           ]
@@ -8554,19 +8611,19 @@
           "kind": "class",
           "name": "ElementContext",
           "signature": "class ElementContext",
-          "line": 189,
+          "line": 225,
           "doc": "What an element is handed. Its only way to reach anything.",
           "methods": [
             {
               "name": "require",
               "signature": "def requireself, permission: str -> None",
-              "line": 196,
+              "line": 232,
               "doc": "Refuse unless the element declared *permission*."
             },
             {
               "name": "log",
               "signature": "def logself -> logging.Logger",
-              "line": 212,
+              "line": 248,
               "doc": ""
             }
           ]
@@ -8575,43 +8632,43 @@
           "kind": "class",
           "name": "Element",
           "signature": "class Element",
-          "line": 216,
+          "line": 252,
           "doc": "Base class. Subclass, set ``spec``, override what you need.",
           "methods": [
             {
               "name": "activate",
               "signature": "def activateself -> None",
-              "line": 232,
+              "line": 268,
               "doc": "Start doing whatever this element does."
             },
             {
               "name": "deactivate",
               "signature": "def deactivateself -> None",
-              "line": 235,
+              "line": 271,
               "doc": "Undo it. Must be safe to call when ``activate`` never ran."
             },
             {
               "name": "transform_prompt",
               "signature": "def transform_promptself, prompt: str -> str",
-              "line": 240,
+              "line": 276,
               "doc": ""
             },
             {
               "name": "transform_messages",
               "signature": "def transform_messagesself, messages: list[dict[str, str]] -> list[dict[str, str]]",
-              "line": 243,
+              "line": 279,
               "doc": ""
             },
             {
               "name": "transform_output",
               "signature": "def transform_outputself, text: str -> str",
-              "line": 246,
+              "line": 282,
               "doc": ""
             },
             {
               "name": "status",
               "signature": "def statusself -> dict[str, Any]",
-              "line": 249,
+              "line": 285,
               "doc": ""
             }
           ]
@@ -8620,55 +8677,79 @@
           "kind": "class",
           "name": "Registry",
           "signature": "class Registry",
-          "line": 253,
+          "line": 289,
           "doc": "Which elements exist here. One per process is the normal case.",
           "methods": [
             {
               "name": "register",
               "signature": "def registerself, cls: type[Element] -> type[Element]",
-              "line": 267,
+              "line": 307,
               "doc": "Add an element class. Usable as a decorator."
             },
             {
               "name": "lookup",
               "signature": "def lookupself, symbol_or_name: str -> type[Element]",
-              "line": 303,
+              "line": 343,
               "doc": ""
             },
             {
               "name": "specs",
               "signature": "def specsself -> list[ElementSpec]",
-              "line": 315,
+              "line": 355,
               "doc": ""
+            },
+            {
+              "name": "in_group",
+              "signature": "def in_groupself, group: str -> list[str]",
+              "line": 359,
+              "doc": "Return symbols assigned to a named group (case-insensitive)."
+            },
+            {
+              "name": "dependency_order",
+              "signature": "def dependency_orderself, elements: Iterable[str] -> list[str]",
+              "line": 369,
+              "doc": "Resolve all transitive dependencies, ordered dependency-first."
+            },
+            {
+              "name": "retain_attachment",
+              "signature": "def retain_attachmentself, symbols: Iterable[str], newly_activated: Iterable[str] -> None",
+              "line": 408,
+              "doc": "Keep chat elements alive while one or more ovens use them."
+            },
+            {
+              "name": "release_attachment",
+              "signature": "def release_attachmentself, symbols: Iterable[str] -> None",
+              "line": 416,
+              "doc": "Release an oven's element lease; stop only framework-owned idle elements."
             },
             {
               "name": "instance",
               "signature": "def instanceself, symbol_or_name: str, *, config: dict | None=None -> Element",
-              "line": 321,
+              "line": 433,
               "doc": "The live instance, created on first use. Gated here."
             },
             {
               "name": "activate",
               "signature": "def activateself, symbol_or_name: str, *, config: dict | None=None -> Element",
-              "line": 338,
-              "doc": ""
+              "line": 450,
+              "doc": "Activate the requested element after activating its dependencies."
             },
             {
               "name": "deactivate",
               "signature": "def deactivateself, symbol_or_name: str -> bool",
-              "line": 345,
+              "line": 472,
               "doc": ""
             },
             {
               "name": "deactivate_all",
               "signature": "def deactivate_allself -> list[str]",
-              "line": 359,
+              "line": 491,
               "doc": ""
             },
             {
               "name": "active",
               "signature": "def activeself -> list[Element]",
-              "line": 371,
+              "line": 501,
               "doc": ""
             }
           ]
@@ -8677,7 +8758,7 @@
           "kind": "function",
           "name": "default_registry",
           "signature": "def default_registry*, allow_experimental: bool | None=None -> Registry",
-          "line": 379,
+          "line": 509,
           "doc": "The process-wide registry, with the built-in elements in it."
         }
       ],
@@ -8688,6 +8769,41 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "059a01ad",
+          "date": "2026-11-11",
+          "author": "Rayla",
+          "subject": "Sort Hydrogen standard-library imports",
+          "api_changes": []
+        },
+        {
+          "sha": "bd1a7587",
+          "date": "2026-11-11",
+          "author": "Rayla",
+          "subject": "Add Hydrogen v1.1.0 dependencies and 3H .hnx runtime",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def in_group(self, group: str) -> list[str]:"
+            },
+            {
+              "kind": "added",
+              "text": "def dependency_order(self, elements: Iterable[str]) -> list[str]:"
+            },
+            {
+              "kind": "added",
+              "text": "def visit(requested: str) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def retain_attachment(self, symbols: Iterable[str], newly_activated: Iterable[str]) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def release_attachment(self, symbols: Iterable[str]) -> None:"
+            }
+          ]
+        },
         {
           "sha": "589ebbdc",
           "date": "2026-09-23",
@@ -8789,6 +8905,182 @@
             {
               "kind": "added",
               "text": "class Registry:"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "module": "hypernix.elements.isotope_3h",
+      "source": "src/hypernix/elements/isotope_3h.py",
+      "line_count": 627,
+      "summary": "3H (tritium): the interpreted .hnx element scripting runtime.",
+      "api": [
+        {
+          "kind": "class",
+          "name": "IsotopeSpec",
+          "signature": "class IsotopeSpec",
+          "line": 66,
+          "doc": "",
+          "methods": [
+            {
+              "name": "to_dict",
+              "signature": "def to_dictself -> dict[str, str]",
+              "line": 73,
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "kind": "class",
+          "name": "HNXProgram",
+          "signature": "class HNXProgram",
+          "line": 484,
+          "doc": "Parsed .hnx hooks and JSONL data records.",
+          "methods": [
+            {
+              "name": "hooks",
+              "signature": "def hooksself -> tuple[str, ...]",
+              "line": 492,
+              "doc": ""
+            },
+            {
+              "name": "call",
+              "signature": "def callself, hook: str, *args: Any -> Any",
+              "line": 495,
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "parse_hnx",
+          "signature": "def parse_hnxpath: Path | str -> tuple[ElementSpec, HNXProgram]",
+          "line": 513,
+          "doc": "Read a v1.1.0 .hnx file, validating JSONL metadata and hook syntax."
+        },
+        {
+          "kind": "function",
+          "name": "load_hnx_elements",
+          "signature": "def load_hnx_elementsregistry: Registry, directory: Path | str -> list[str]",
+          "line": 619,
+          "doc": "Load .hnx files beneath a directory into a Hydrogen registry."
+        },
+        {
+          "kind": "function",
+          "name": "scaffold_hnx",
+          "signature": "def scaffold_hnxsymbol: str, directory: Path | str | None=None, *, registry: Registry | None=None -> Path",
+          "line": 644,
+          "doc": "Create an editable v1.1.0 .hnx file without overwriting existing work."
+        }
+      ],
+      "errors": [
+        "HyperNixError"
+      ],
+      "deprecations": [],
+      "required_modules": [],
+      "changes": [
+        {
+          "sha": "bd1a7587",
+          "date": "2026-11-11",
+          "author": "Rayla",
+          "subject": "Add Hydrogen v1.1.0 dependencies and 3H .hnx runtime",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "class IsotopeSpec:"
+            },
+            {
+              "kind": "added",
+              "text": "def to_dict(self) -> dict[str, str]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _fail(message: str) -> HyperNixError:"
+            },
+            {
+              "kind": "added",
+              "text": "def _rewrite_tokens(expression: str) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def replace(match: re.Match[str]) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _python_types(source: str) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _normalise_script(source: str) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _validate_expression(node: ast.expr) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _validate_statement(node: ast.stmt) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "class _Return(Exception):"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, value: Any) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _method_call(target: Any, name: str, args: list[Any], kwargs: dict[str, Any]) -> Any:"
+            },
+            {
+              "kind": "added",
+              "text": "def _evaluate(node: ast.expr, env: dict[str, Any]) -> Any:"
+            },
+            {
+              "kind": "added",
+              "text": "def _execute(statements: list[ast.stmt], env: dict[str, Any]) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "class HNXProgram:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, functions: dict[str, ast.FunctionDef], data: dict[str, Any]) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def hooks(self) -> tuple[str, ...]:"
+            },
+            {
+              "kind": "added",
+              "text": "def call(self, hook: str, *args: Any) -> Any:"
+            },
+            {
+              "kind": "added",
+              "text": "def parse_hnx(path: Path | str) -> tuple[ElementSpec, HNXProgram]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _element_class(spec: ElementSpec, program: HNXProgram) -> type[Element]:"
+            },
+            {
+              "kind": "added",
+              "text": "def bind(name: str):"
+            },
+            {
+              "kind": "added",
+              "text": "def run(self, *args: Any) -> Any:"
+            },
+            {
+              "kind": "added",
+              "text": "def load_hnx_elements(registry: Registry, directory: Path | str) -> list[str]:"
+            },
+            {
+              "kind": "added",
+              "text": "def scaffold_hnx("
             }
           ]
         }
@@ -9000,38 +9292,38 @@
     {
       "module": "hypernix.elements.natural_gas",
       "source": "src/hypernix/elements/natural_gas.py",
-      "line_count": 151,
+      "line_count": 192,
       "summary": "natural_gas \u2014 elements as Neo Oven addons.",
       "api": [
         {
           "kind": "class",
           "name": "Attachment",
           "signature": "class Attachment",
-          "line": 46,
+          "line": 45,
           "doc": "What natural gas did to one oven, so it can be undone.",
           "methods": [
             {
               "name": "symbols",
               "signature": "def symbolsself -> list[str]",
-              "line": 54,
+              "line": 56,
               "doc": ""
             },
             {
               "name": "prompt",
               "signature": "def promptself, text: str -> str",
-              "line": 63,
+              "line": 65,
               "doc": ""
             },
             {
               "name": "messages",
               "signature": "def messagesself, messages: list[dict[str, str]] -> list[dict[str, str]]",
-              "line": 71,
+              "line": 73,
               "doc": ""
             },
             {
               "name": "output",
               "signature": "def outputself, text: str -> str",
-              "line": 82,
+              "line": 84,
               "doc": ""
             }
           ]
@@ -9040,28 +9332,28 @@
           "kind": "function",
           "name": "attached",
           "signature": "def attachedoven: Any -> Attachment | None",
-          "line": 91,
+          "line": 93,
           "doc": ""
         },
         {
           "kind": "function",
           "name": "attach",
           "signature": "def attachoven: Any, elements: list[str | Element], *, registry: Registry | None=None -> Attachment",
-          "line": 95,
-          "doc": "Wrap *oven* so *elements* run around each generation."
+          "line": 97,
+          "doc": "Wrap one oven with requested elements and their transitive dependencies."
         },
         {
           "kind": "function",
           "name": "detach",
           "signature": "def detachoven: Any -> list[str]",
-          "line": 150,
-          "doc": "Put the oven's own methods back. Returns what was removed."
+          "line": 192,
+          "doc": "Restore the oven's methods and release its element/dependency leases."
         },
         {
           "kind": "function",
           "name": "require_attached",
           "signature": "def require_attachedoven: Any -> Attachment",
-          "line": 180,
+          "line": 222,
           "doc": ""
         }
       ],
@@ -9071,6 +9363,25 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "532ed927",
+          "date": "2026-11-11",
+          "author": "Rayla",
+          "subject": "Fix element attachment module formatting",
+          "api_changes": []
+        },
+        {
+          "sha": "bd1a7587",
+          "date": "2026-11-11",
+          "author": "Rayla",
+          "subject": "Add Hydrogen v1.1.0 dependencies and 3H .hnx runtime",
+          "api_changes": [
+            {
+              "kind": "removed",
+              "text": "# the class method, and a later patch to the class would never"
+            }
+          ]
+        },
         {
           "sha": "6066ce53",
           "date": "2026-09-23",
@@ -17113,14 +17424,14 @@
     {
       "module": "hypernix.interfaces.cli",
       "source": "src/hypernix/interfaces/cli.py",
-      "line_count": 1709,
+      "line_count": 1745,
       "summary": "Command-line interface for the hypernix package.",
       "api": [
         {
           "kind": "function",
           "name": "main",
           "signature": "def mainargv: list[str] | None=None -> int",
-          "line": 1433,
+          "line": 1471,
           "doc": ""
         }
       ],
@@ -17131,6 +17442,26 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "bd1a7587",
+          "date": "2026-11-11",
+          "author": "Rayla",
+          "subject": "Add Hydrogen v1.1.0 dependencies and 3H .hnx runtime",
+          "api_changes": [
+            {
+              "kind": "removed",
+              "text": "def turn(user_msg: str) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def session() -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def turn(user_msg: str) -> str:"
+            }
+          ]
+        },
         {
           "sha": "b2d72615",
           "date": "2026-11-04",
@@ -17183,13 +17514,6 @@
           "date": "2026-10-22",
           "author": "Claude",
           "subject": "hnx list-all, hnx-t1 setup (installer b1), hnx-t1 upgrade -S env|venv|all",
-          "api_changes": []
-        },
-        {
-          "sha": "da36f8dc",
-          "date": "2026-10-21",
-          "author": "Claude",
-          "subject": "Error codes: hyped-pro's moved into the registry (70), and 38 more",
           "api_changes": []
         }
       ]
@@ -43189,7 +43513,32 @@
       "errors": [],
       "deprecations": [],
       "required_modules": [],
-      "changes": []
+      "changes": [
+        {
+          "sha": "93d34cdb",
+          "date": "2026-11-11",
+          "author": "Claude",
+          "subject": "Strife native kernels: quantised decode and matmul in C, built and verified on the user's machine",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _openblas() -> list[tuple[Any, Any]]:"
+            },
+            {
+              "kind": "added",
+              "text": "def controllable() -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def set_threads(count: int) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def get_threads() -> int | None:"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.strife.builds",
@@ -43430,6 +43779,18 @@
       "required_modules": [],
       "changes": [
         {
+          "sha": "93d34cdb",
+          "date": "2026-11-11",
+          "author": "Claude",
+          "subject": "Strife native kernels: quantised decode and matmul in C, built and verified on the user's machine",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def cmd_kernels(args: argparse.Namespace) -> int:"
+            }
+          ]
+        },
+        {
           "sha": "7ea12404",
           "date": "2026-11-10",
           "author": "Claude",
@@ -43609,6 +43970,26 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "93d34cdb",
+          "date": "2026-11-11",
+          "author": "Claude",
+          "subject": "Strife native kernels: quantised decode and matmul in C, built and verified on the user's machine",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def _pick_kernels(self, gguf: Any, wanted: str | bool | None) -> tuple[Any, bool, str]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _hold_blas() -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _release_blas() -> None:"
+            }
+          ]
+        },
         {
           "sha": "b60eba7c",
           "date": "2026-11-10",
@@ -44187,7 +44568,112 @@
           "requirement": "numpy>=1.26,<3"
         }
       ],
-      "changes": []
+      "changes": [
+        {
+          "sha": "93d34cdb",
+          "date": "2026-11-11",
+          "author": "Claude",
+          "subject": "Strife native kernels: quantised decode and matmul in C, built and verified on the user's machine",
+          "api_changes": [
+            {
+              "kind": "added",
+              "text": "def source_path() -> Path:"
+            },
+            {
+              "kind": "added",
+              "text": "def kernels_dir() -> Path:"
+            },
+            {
+              "kind": "added",
+              "text": "class Kernels:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, lib: ctypes.CDLL, path: Path, types: frozenset[int],"
+            },
+            {
+              "kind": "added",
+              "text": "def has(self, ggml_type: int) -> bool:"
+            },
+            {
+              "kind": "added",
+              "text": "def _bytes_for(ggml_type: int, elements: int) -> int:"
+            },
+            {
+              "kind": "added",
+              "text": "def decode(self, raw: Any, ggml_type: int, elements: int, threads: int = 0) -> np.ndarray:"
+            },
+            {
+              "kind": "added",
+              "text": "def matmul(self, raw: Any, ggml_type: int, rows: int, cols: int, x: np.ndarray,"
+            },
+            {
+              "kind": "added",
+              "text": "def describe(self) -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _compiler() -> str | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _compiler_version(cc: str) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _cpu_id() -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _flag_sets() -> list[list[str]]:"
+            },
+            {
+              "kind": "added",
+              "text": "def _key(cc: str) -> str:"
+            },
+            {
+              "kind": "added",
+              "text": "def _check_owner(path: Path) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _current_dir() -> Path | None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _open(directory: Path) -> Kernels:"
+            },
+            {
+              "kind": "added",
+              "text": "def build(*, force: bool = False, compiler: str | None = None,"
+            },
+            {
+              "kind": "added",
+              "text": "def _write_manifest(directory: Path, manifest: dict[str, Any]) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def _blocks(ggml_type: int, count: int, rng: np.random.Generator) -> bytes:"
+            },
+            {
+              "kind": "added",
+              "text": "def _verify(kernels: Kernels, *, seed: int = 20261111) -> dict[int, dict[str, Any]]:"
+            },
+            {
+              "kind": "added",
+              "text": "def verify() -> dict[str, Any]:"
+            },
+            {
+              "kind": "added",
+              "text": "def reset() -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def load() -> Kernels | None:"
+            }
+          ]
+        }
+      ]
     },
     {
       "module": "hypernix.strife.model",
@@ -44551,6 +45037,13 @@
       "required_modules": [],
       "changes": [
         {
+          "sha": "93d34cdb",
+          "date": "2026-11-11",
+          "author": "Claude",
+          "subject": "Strife native kernels: quantised decode and matmul in C, built and verified on the user's machine",
+          "api_changes": []
+        },
+        {
           "sha": "b60eba7c",
           "date": "2026-11-10",
           "author": "Claude",
@@ -44819,6 +45312,13 @@
       "deprecations": [],
       "required_modules": [],
       "changes": [
+        {
+          "sha": "93d34cdb",
+          "date": "2026-11-11",
+          "author": "Claude",
+          "subject": "Strife native kernels: quantised decode and matmul in C, built and verified on the user's machine",
+          "api_changes": []
+        },
         {
           "sha": "7ea12404",
           "date": "2026-11-10",
@@ -45606,6 +46106,30 @@
         }
       ],
       "changes": [
+        {
+          "sha": "93d34cdb",
+          "date": "2026-11-11",
+          "author": "Claude",
+          "subject": "Strife native kernels: quantised decode and matmul in C, built and verified on the user's machine",
+          "api_changes": [
+            {
+              "kind": "removed",
+              "text": "def __init__(self, gguf: GGUFFile, *, cache_bytes: int | None = None) -> None:"
+            },
+            {
+              "kind": "added",
+              "text": "def __init__(self, gguf: GGUFFile, *, cache_bytes: int | None = None,"
+            },
+            {
+              "kind": "added",
+              "text": "def _decode(self, raw: memoryview, ggml_type: int, elements: int) -> np.ndarray:"
+            },
+            {
+              "kind": "added",
+              "text": "def _native(self, t: GGUFTensor) -> bool:"
+            }
+          ]
+        },
         {
           "sha": "b60eba7c",
           "date": "2026-11-10",

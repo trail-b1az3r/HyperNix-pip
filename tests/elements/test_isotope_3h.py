@@ -12,7 +12,6 @@ from hypernix.elements.isotope_3h import ISOTOPE_3H, parse_hnx, scaffold_hnx
 from hypernix.system import errorcatalogue as codes
 from hypernix.system.errorcodes import HyperNixError
 
-
 SCRIPT = """#!hnx 1.1.0
 {"kind":"element","symbol":"Na","summary":"Prompt decorator","dependencies":["C"],"groups":["chat","prompt"],"permissions":["oven"]}
 {"kind":"data","name":"prefix","value":"[Na]"}

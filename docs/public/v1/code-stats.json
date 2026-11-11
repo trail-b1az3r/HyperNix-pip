@@ -1,7 +1,7 @@
 {
   "definition": "non-blank source lines across repository code roots: src, scripts, tests, examples, bin, native, docs/src",
-  "total_lines": 265451,
-  "code_files": 895,
+  "total_lines": 266539,
+  "code_files": 898,
   "top_files": [
     {
       "path": "src/hypernix/t1api/routers/hyperlink.py",
@@ -29,7 +29,7 @@
     },
     {
       "path": "src/hypernix/interfaces/cli.py",
-      "lines": 1709
+      "lines": 1745
     },
     {
       "path": "src/hypernix/models/neo_oven.py",
@@ -127,12 +127,12 @@
   "contributors": [
     {
       "author": "Claude",
-      "additions": 259377,
-      "deletions": 19259,
-      "net": 240118,
-      "changes": 278636,
-      "commits": 316,
-      "files": 1771
+      "additions": 261097,
+      "deletions": 19280,
+      "net": 241817,
+      "changes": 280377,
+      "commits": 318,
+      "files": 1775
     },
     {
       "author": "Ray0ffire",
@@ -172,12 +172,12 @@
     },
     {
       "author": "Rayla",
-      "additions": 2783,
-      "deletions": 1247,
-      "net": 1536,
-      "changes": 4030,
-      "commits": 92,
-      "files": 36
+      "additions": 4254,
+      "deletions": 1371,
+      "net": 2883,
+      "changes": 5625,
+      "commits": 97,
+      "files": 46
     },
     {
       "author": "github-actions[bot]",
@@ -199,6 +199,6 @@
     }
   ],
   "history_available": true,
-  "commit": "6b9111e4fb8906ca7f8d61298c98278cb09d8726",
+  "commit": "78f6fcd413ecc638d94ec33f128c81f6337ee38c",
   "generated_at": null
 }
