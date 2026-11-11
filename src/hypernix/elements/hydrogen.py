@@ -30,8 +30,8 @@ of use. A permission list that is only read by humans is a comment.
 """
 from __future__ import annotations
 
-from collections.abc import Iterable
 import logging
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, ClassVar
