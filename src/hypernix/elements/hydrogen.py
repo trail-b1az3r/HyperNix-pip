@@ -31,6 +31,7 @@ of use. A permission list that is only read by humans is a comment.
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, ClassVar
@@ -42,6 +43,7 @@ logger = logging.getLogger(__name__)
 
 __all__ = [
     "GENERATION",
+    "ELEMENT_FORMAT_VERSION",
     "PERMISSIONS",
     "SYMBOLS",
     "Element",
@@ -59,6 +61,9 @@ __all__ = [
 #: against the old one cannot survive. Elements declare the generation
 #: they need; a mismatch is refused at registration, not at first call.
 GENERATION = 1
+
+#: Editable on-disk element schema, separate from the Python hook ABI.
+ELEMENT_FORMAT_VERSION = "1.1.0"
 
 #: Everything an element can ask for. A request outside this set is a
 #: typo, and a typo in a permission list is how an element ends up
@@ -148,9 +153,37 @@ class ElementSpec:
     #: Written by somebody other than HyperNix. User elements may not
     #: take a symbol a built-in already holds.
     user: bool = False
+    format_version: str = ELEMENT_FORMAT_VERSION
+    dependencies: tuple[str, ...] = ()
+    groups: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
-        atomic_number(self.symbol)  # raises for a symbol that is not one
+        atomic_number(self.symbol)
+        if self.format_version != ELEMENT_FORMAT_VERSION:
+            raise HyperNixError(
+                codes.ELEMENT_LOAD_FAILED,
+                f"{self.symbol} uses element format {self.format_version!r}; "
+                f"supported format is {ELEMENT_FORMAT_VERSION}",
+            )
+        if isinstance(self.dependencies, str) or isinstance(self.groups, str):
+            raise HyperNixError(
+                codes.ELEMENT_LOAD_FAILED,
+                "dependencies and groups must be sequences of names",
+            )
+        dependencies = tuple(str(value).strip() for value in self.dependencies)
+        groups = tuple(str(value).strip() for value in self.groups)
+        if any(not value for value in (*dependencies, *groups)):
+            raise HyperNixError(
+                codes.ELEMENT_LOAD_FAILED,
+                f"{self.symbol} has an empty dependency or group name",
+            )
+        if len(set(dependencies)) != len(dependencies):
+            raise HyperNixError(
+                codes.ELEMENT_LOAD_FAILED,
+                f"{self.symbol} declares a dependency more than once",
+            )
+        object.__setattr__(self, "dependencies", dependencies)
+        object.__setattr__(self, "groups", groups)
         unknown = set(self.permissions) - PERMISSIONS
         if unknown:
             raise HyperNixError(
@@ -181,6 +214,9 @@ class ElementSpec:
             "period": self.period, "experimental": self.experimental,
             "summary": self.summary, "version": self.version,
             "generation": self.generation,
+            "format_version": self.format_version,
+            "dependencies": list(self.dependencies),
+            "groups": list(self.groups),
             "permissions": sorted(self.permissions), "user": self.user,
         }
 
@@ -259,6 +295,10 @@ class Registry:
         self.data_root = data_root or Path.home() / ".hypernix" / "elements" / "data"
         self._classes: dict[str, type[Element]] = {}
         self._live: dict[str, Element] = {}
+        self.sources: dict[str, list[str]] = {}
+        self._activation_order: list[str] = []
+        self._attachment_refs: dict[str, int] = {}
+        self._attachment_owned: set[str] = set()
         #: symbol -> why it failed to load, for `hypernix elements list`.
         self.failures: dict[str, str] = {}
 
@@ -316,6 +356,78 @@ class Registry:
         return sorted((c.spec for c in self._classes.values()),
                       key=lambda s: s.number)
 
+    def in_group(self, group: str) -> list[str]:
+        """Return symbols assigned to a named group (case-insensitive)."""
+        key = group.strip().casefold()
+        if not key:
+            return []
+        return [
+            spec.symbol for spec in self.specs()
+            if any(item.casefold() == key for item in spec.groups)
+        ]
+
+    def dependency_order(self, elements: Iterable[str]) -> list[str]:
+        """Resolve all transitive dependencies, ordered dependency-first."""
+        ordered: list[str] = []
+        visiting: list[str] = []
+        visited: set[str] = set()
+
+        def visit(requested: str) -> None:
+            cls = self.lookup(requested)
+            symbol = cls.spec.symbol
+            if symbol in visiting:
+                cycle = " -> ".join((*visiting, symbol))
+                raise HyperNixError(
+                    codes.ELEMENT_LOAD_FAILED,
+                    f"element dependency cycle: {cycle}",
+                )
+            if symbol in visited:
+                return
+            visiting.append(symbol)
+            for dependency in sorted(
+                cls.spec.dependencies,
+                key=lambda item: self.lookup(item).spec.number,
+            ):
+                try:
+                    visit(dependency)
+                except HyperNixError as exc:
+                    if exc.code is codes.ELEMENT_NOT_FOUND:
+                        raise HyperNixError(
+                            codes.ELEMENT_NOT_FOUND,
+                            f"{symbol} requires missing dependency {dependency!r}",
+                        ) from exc
+                    raise
+            visiting.pop()
+            visited.add(symbol)
+            ordered.append(symbol)
+
+        for root in sorted(set(elements), key=lambda item: self.lookup(item).spec.number):
+            visit(root)
+        return ordered
+
+    def retain_attachment(self, symbols: Iterable[str], newly_activated: Iterable[str]) -> None:
+        """Keep chat elements alive while one or more ovens use them."""
+        owned = set(newly_activated)
+        for symbol in dict.fromkeys(symbols):
+            self._attachment_refs[symbol] = self._attachment_refs.get(symbol, 0) + 1
+            if symbol in owned:
+                self._attachment_owned.add(symbol)
+
+    def release_attachment(self, symbols: Iterable[str]) -> None:
+        """Release an oven's element lease; stop only framework-owned idle elements."""
+        for symbol in reversed(list(dict.fromkeys(symbols))):
+            count = self._attachment_refs.get(symbol, 0)
+            if count > 1:
+                self._attachment_refs[symbol] = count - 1
+                continue
+            self._attachment_refs.pop(symbol, None)
+            if symbol in self._attachment_owned:
+                self._attachment_owned.remove(symbol)
+                try:
+                    self.deactivate(symbol)
+                except Exception as exc:  # noqa: BLE001 - release the remaining leases
+                    logger.warning("elements: leased %s failed to deactivate: %s", symbol, exc)
+
     # -- running ---------------------------------------------------------
 
     def instance(self, symbol_or_name: str, *, config: dict | None = None) -> Element:
@@ -336,31 +448,49 @@ class Registry:
         return live
 
     def activate(self, symbol_or_name: str, *, config: dict | None = None) -> Element:
-        element = self.instance(symbol_or_name, config=config)
-        if not element.active:
-            element.activate()
-            element.active = True
-        return element
+        """Activate the requested element after activating its dependencies."""
+        order = self.dependency_order((symbol_or_name,))
+        started: list[str] = []
+        try:
+            for symbol in order:
+                element = self.instance(symbol, config=config)
+                if element.active:
+                    continue
+                element.activate()
+                element.active = True
+                self._activation_order.append(symbol)
+                started.append(symbol)
+        except BaseException:
+            for symbol in reversed(started):
+                try:
+                    self.deactivate(symbol)
+                except Exception as exc:  # noqa: BLE001 - preserve the activation error
+                    logger.warning("elements: rollback of %s failed: %s", symbol, exc)
+            raise
+        return self.instance(symbol_or_name, config=config)
 
     def deactivate(self, symbol_or_name: str) -> bool:
         cls = self.lookup(symbol_or_name)
-        live = self._live.get(cls.spec.symbol)
+        symbol = cls.spec.symbol
+        if self._attachment_refs.get(symbol, 0):
+            raise HyperNixError(
+                codes.ELEMENT_LOAD_FAILED,
+                f"{symbol} is still attached to an active chat session",
+            )
+        live = self._live.get(symbol)
         if live is None or not live.active:
             return False
         try:
             live.deactivate()
         finally:
-            # Marked inactive even if deactivate raised: an element that
-            # failed half way through undoing itself must not be reported
-            # as still running, or nothing will try again.
             live.active = False
+            if symbol in self._activation_order:
+                self._activation_order.remove(symbol)
         return True
 
     def deactivate_all(self) -> list[str]:
         stopped = []
-        # Highest number first, the reverse of activation order, so a
-        # heavier element built on a lighter one goes before it.
-        for symbol in sorted(self._live, key=atomic_number, reverse=True):
+        for symbol in reversed(list(self._activation_order)):
             try:
                 if self.deactivate(symbol):
                     stopped.append(symbol)

@@ -1268,13 +1268,7 @@ _CACHE_BYTES_HELP = (
 
 
 def _run_chat(raw: list[str]) -> int:
-    """`hypernix chat` — chat REPL against any HyperNix-family model.
-
-    Accepts short names from :data:`hypernix.download.KNOWN_MODELS`
-    (``nano-nano``, ``nano-mini``, ``nano-nano-927``, ``hyper-nix``) or a
-    full HF repo id. ``--message`` runs a single turn and exits (useful
-    for scripting); without it, drops into an interactive REPL.
-    """
+    """Chat REPL with optional Hydrogen elements and 3H .hnx scripts."""
     from hypernix.models.neo_oven import preheat
 
     p = argparse.ArgumentParser(
@@ -1304,13 +1298,35 @@ def _run_chat(raw: list[str]) -> int:
                    default=0, help=_CACHE_BYTES_HELP)
     p.add_argument("--hnx-device", dest="hnx_device", default="auto",
                    help=_DEVICE_HELP)
+    p.add_argument(
+        "--elements", nargs="?", const="all", default=None, metavar="PATH",
+        help="Load all chat elements, or load elements from a .py/.hnx file or directory.",
+    )
+    p.add_argument(
+        "-G", "--element-group", dest="element_group", default=None, metavar="NAME",
+        help="Load only the named element group and its dependencies.",
+    )
+    p.add_argument(
+        "--experimental-elements", action="store_true",
+        help="Permit experimental-period elements selected by --elements.",
+    )
 
     ns = p.parse_args(raw)
 
+    element_registry = None
+    selected_elements: list[str] = []
+    if ns.elements is not None or ns.element_group:
+        from hypernix.elements.chat_elements import resolve_chat_elements
+        try:
+            element_registry, selected_elements = resolve_chat_elements(
+                ns.elements, ns.element_group,
+                allow_experimental=ns.experimental_elements,
+            )
+        except Exception as exc:  # noqa: BLE001 - fail before loading the model
+            print(f"hypernix chat: elements: {exc}", file=sys.stderr)
+            return 2
+
     # A .gguf given as --model-dir is a model, not a snapshot directory.
-    # Held open across the whole session rather than reloaded per turn: a
-    # GGUF load is seconds to minutes, and paying it on every message
-    # would make the REPL unusable.
     from hypernix.models.ggufrun import GGUFRunError, is_gguf, load_gguf
 
     gguf_model = None
@@ -1324,49 +1340,71 @@ def _run_chat(raw: list[str]) -> int:
             print(f"hypernix chat: {exc}", file=sys.stderr)
             return 1
         oven = None
+        target = gguf_model
     else:
         oven = preheat(
             repo_id=ns.repo_id, revision=ns.revision, local_dir=ns.model_dir,
             token=ns.token, device=ns.device, dtype=ns.dtype, quiet=ns.quiet,
         )
+        target = oven
 
-    history: list[dict[str, str]] = []
-    if ns.system:
-        history.append({"role": "system", "content": ns.system})
-
-    def turn(user_msg: str) -> str:
-        history.append({"role": "user", "content": user_msg})
-        if gguf_model is not None:
-            reply = gguf_model.chat(
-                [m for m in history if m["role"] != "system"],
-                system=ns.system,
-                max_tokens=ns.max_new_tokens,
-                temperature=ns.temperature,
-            )
-        else:
-            reply = oven.chat(
-                list(history),
-                max_new_tokens=ns.max_new_tokens,
-                temperature=ns.temperature, top_k=ns.top_k, top_p=ns.top_p,
-                seed=ns.seed,
-            )
-        history.append({"role": "assistant", "content": reply})
-        return reply
-
-    if ns.message is not None:
-        _safe_print(turn(ns.message))
-        return 0
-
-    print("[hypernix chat] Ctrl-D or empty line to exit.", file=sys.stderr)
-    while True:
+    attachment = None
+    if selected_elements:
         try:
-            line = input("you> ")
-        except EOFError:
-            print(file=sys.stderr)
+            from hypernix.elements.natural_gas import attach
+            attachment = attach(target, selected_elements, registry=element_registry)
+        except Exception as exc:  # noqa: BLE001 - report invalid selections clearly
+            print(f"hypernix chat: could not attach elements: {exc}", file=sys.stderr)
+            return 2
+        if not ns.quiet:
+            print("[hypernix chat] elements: " + ", ".join(attachment.symbols),
+                  file=sys.stderr)
+
+    def session() -> int:
+        history: list[dict[str, str]] = []
+        if ns.system:
+            history.append({"role": "system", "content": ns.system})
+
+        def turn(user_msg: str) -> str:
+            history.append({"role": "user", "content": user_msg})
+            if gguf_model is not None:
+                reply = gguf_model.chat(
+                    [m for m in history if m["role"] != "system"],
+                    system=ns.system,
+                    max_tokens=ns.max_new_tokens,
+                    temperature=ns.temperature,
+                )
+            else:
+                reply = oven.chat(
+                    list(history),
+                    max_new_tokens=ns.max_new_tokens,
+                    temperature=ns.temperature, top_k=ns.top_k, top_p=ns.top_p,
+                    seed=ns.seed,
+                )
+            history.append({"role": "assistant", "content": reply})
+            return reply
+
+        if ns.message is not None:
+            _safe_print(turn(ns.message))
             return 0
-        if not line.strip():
-            return 0
-        print(f"assistant> {turn(line)}")
+
+        print("[hypernix chat] Ctrl-D or empty line to exit.", file=sys.stderr)
+        while True:
+            try:
+                line = input("you> ")
+            except EOFError:
+                print(file=sys.stderr)
+                return 0
+            if not line.strip():
+                return 0
+            print(f"assistant> {turn(line)}")
+
+    try:
+        return session()
+    finally:
+        if attachment is not None:
+            from hypernix.elements.natural_gas import detach
+            detach(target)
 
 
 def _run_generate(raw: list[str]) -> int:
