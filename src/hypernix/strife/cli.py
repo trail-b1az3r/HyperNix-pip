@@ -48,7 +48,7 @@ def _load_args(p: argparse.ArgumentParser) -> None:
                    "model's, at most 4096)")
     p.add_argument("-t", "--threads", type=int, default=0, help="CPU threads")
     p.add_argument("--cache-mb", type=int, default=-1,
-                   help="RAM for decoded weights (default: 60% of free RAM)")
+                   help="RAM for decoded weights (default: 60%% of free RAM)")
     p.add_argument("--gpu-layers", type=int, default=0,
                    help="layers to put on the GPU (alpha 1: reported, runs on the CPU)")
 
