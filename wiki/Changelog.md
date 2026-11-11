@@ -122,11 +122,6 @@ out, not for a server other people depend on.
 
 🐛 `get_origin` no longer fails on an app without a T1 config.
 
-### Known Issues
-
-❗ HyperNix0xV3 has no GGUF form: llama.cpp does not know its layers.
-  `brew export --format gguf` refuses it with that reason.
-
 ### Tests
 
 🧪 Strife: logits against `transformers` for every architecture (Qwen3.5,
@@ -136,6 +131,11 @@ out, not for a server other people depend on.
   and T1 → Strife → HyperLink end to end. `tests/strife/test_strife_builds.py`
   covers user builds, `tests/models/test_hnx0xv3.py` covers V3, and
   `tests/runtime/test_relay.py` covers continuations.
+
+### Known Issues
+
+❗ HyperNix0xV3 has no GGUF form: llama.cpp does not know its layers.
+  `brew export --format gguf` refuses it with that reason.
 
 ## 0.73.0.dev1 — 2026-11-04
 

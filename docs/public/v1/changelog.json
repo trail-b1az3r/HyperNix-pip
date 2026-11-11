@@ -118,17 +118,17 @@
           "details": []
         },
         {
-          "symbol": "\u2757",
-          "label": "known issue",
-          "category": "Known Issues",
-          "text": "HyperNix0xV3 has no GGUF form: llama.cpp does not know its layers. brew export --format gguf refuses it with that reason.",
-          "details": []
-        },
-        {
           "symbol": "\ud83e\uddea",
           "label": "tests",
           "category": "Tests",
           "text": "Strife: logits against transformers for every architecture (Qwen3.5, Qwen3.5-MoE and GLM-4.5 within 6e-6; LFM3 against an independent reference). Also the BPE tokenizer against the tokenizers library, hostile and damaged files, sessions, the chat screen in a real terminal, and\u2026",
+          "details": []
+        },
+        {
+          "symbol": "\u2757",
+          "label": "known issue",
+          "category": "Known Issues",
+          "text": "HyperNix0xV3 has no GGUF form: llama.cpp does not know its layers. brew export --format gguf refuses it with that reason.",
           "details": []
         }
       ]
